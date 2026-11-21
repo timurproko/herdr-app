@@ -2,85 +2,70 @@
   "version": 1,
   "normalization": "sha256LF hashes normalize CRLF to LF; no other transformation.",
   "herdrCommit": "034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f",
-  "lucideCommit": "f12b0de177fbc2a6795e99be065887e72b237123",
   "licenseSources": {
     "Apache-2.0": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/LICENSE",
-    "ISC": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/LICENSE",
-    "MIT": "https://github.com/feathericons/feather/blob/1b002399e8758fb2bccea4d07312dc9e0f43dcb8/LICENSE",
     "herdrLucide": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/icons/LICENSE-Lucide.txt"
   },
   "entries": [
     {
       "path": "src/appearance/layouts/custom.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/panels-top-left.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "321a2a5500f2b814a2e62eb73c4b01dc65c7334fe2e6f7d77517239383e26bb1"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "583c1fc78e982fc0123eb0c910c421668375c5dbca88e20db84af98393495975",
+      "sha256LF": "583c1fc78e982fc0123eb0c910c421668375c5dbca88e20db84af98393495975"
     },
     {
       "path": "src/features/menu/automatic.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/wand-sparkles.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "d73067ff2463118d4f11f9c532e7162be45f96835b966b4fc89977ca47a7317d"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "26f5f9f34ea7bf3924d9f061b3f8e74dc2197ac85e0263578b369035b9d0e634",
+      "sha256LF": "26f5f9f34ea7bf3924d9f061b3f8e74dc2197ac85e0263578b369035b9d0e634"
     },
     {
       "path": "src/features/pane/split-down.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/rows-2.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "92f8d9962230c2d2a93ff1d9f40cde8d969b3e4f9890fabf741593a8c83835f4"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "aedde891320c05f0fb5d58a1ff2279d32518c0cf67f2017515e2aaaa126eb834",
+      "sha256LF": "aedde891320c05f0fb5d58a1ff2279d32518c0cf67f2017515e2aaaa126eb834"
     },
     {
       "path": "src/features/pane/split-right.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/columns-2.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "bddf3348a9c82d111a060d118299c90755b1ae8411bd16ea1d5ddb83c5f98a27"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "6156e73e475d2c41c88d049dd82bb473c8e87c6c2bee6dabbcafc6da9d419015",
+      "sha256LF": "6156e73e475d2c41c88d049dd82bb473c8e87c6c2bee6dabbcafc6da9d419015"
     },
     {
       "path": "src/features/pane/unzoom.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/minimize-2.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "29f4686d2c30f76def7057230d08737228e5f4d9bed3ebc2341d019bb1803837"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "bf90f64ca8a6ea964df066d7d09c5e6906576ba59d4dbb1746fb6a1f877af0cb",
+      "sha256LF": "bf90f64ca8a6ea964df066d7d09c5e6906576ba59d4dbb1746fb6a1f877af0cb"
     },
     {
       "path": "src/features/pane/zoom.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/maximize-2.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "f81488c6b37714d3aa402209ba9696bbc4e318d3b400a8eeba7188f25eb81340"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "0388734774a8a81cb60a79abde55afacfa890f237a09471af471711be3365bd5",
+      "sha256LF": "0388734774a8a81cb60a79abde55afacfa890f237a09471af471711be3365bd5"
     },
     {
       "path": "src/features/settings/agent.svg",
@@ -98,27 +83,23 @@
     },
     {
       "path": "src/features/settings/arrow-down.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/arrow-down.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "2b641c7a59d39450edfed72067fcc9940a1a316a737346af23b4b9103c0689f2"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "0d860be00ca73280de23b64bb575a9cf14064b16d4d171611453b744a4e26c1f",
+      "sha256LF": "0d860be00ca73280de23b64bb575a9cf14064b16d4d171611453b744a4e26c1f"
     },
     {
       "path": "src/features/settings/arrow-up.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/arrow-up.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "8c22c25874c80bb062bef985d207d8f1d4a4d7847237d0a8cf720a3235968518"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "de5312601142a77cb6ffa1fd984f044580899f6c5957bc3c4cf2916e67c3a176",
+      "sha256LF": "de5312601142a77cb6ffa1fd984f044580899f6c5957bc3c4cf2916e67c3a176"
     },
     {
       "path": "src/features/settings/bell.svg",
@@ -164,36 +145,43 @@
     },
     {
       "path": "src/features/settings/color-hue.svg",
-      "status": "held-absent",
-      "licenses": [],
+      "status": "kept as in the original project, source not recorded",
       "source": null,
-      "modifications": "Not imported. Awaiting maintainer authorship/MIT declaration."
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "53d9a9c4b9a4dd2cf93aa301c6f9e6e08d7af0290ebe11ae1512c272f5b0424a",
+      "sha256LF": "53d9a9c4b9a4dd2cf93aa301c6f9e6e08d7af0290ebe11ae1512c272f5b0424a"
     },
     {
       "path": "src/features/settings/color-sv-value.svg",
-      "status": "held-absent",
-      "licenses": [],
+      "status": "kept as in the original project, source not recorded",
       "source": null,
-      "modifications": "Not imported. Awaiting maintainer authorship/MIT declaration."
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "51fe4d7e2739d6ede1df1e464059b96921a3fdbc807cfcc6e924f117b5619d6a",
+      "sha256LF": "51fe4d7e2739d6ede1df1e464059b96921a3fdbc807cfcc6e924f117b5619d6a"
     },
     {
       "path": "src/features/settings/color-sv.svg",
-      "status": "held-absent",
-      "licenses": [],
+      "status": "kept as in the original project, source not recorded",
       "source": null,
-      "modifications": "Not imported. Awaiting maintainer authorship/MIT declaration."
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "1a2f9e2f4657f34902081db2e4c0f9b5f256452755f9aef6f9e0e51f1c07f78a",
+      "sha256LF": "1a2f9e2f4657f34902081db2e4c0f9b5f256452755f9aef6f9e0e51f1c07f78a"
     },
     {
       "path": "src/features/settings/grip.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/grip-vertical.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "ddf3a20c45869614f7b49dd14c5cbaba026d4155382e30b0ae8418f31c1ce2c5"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "8328c336150cc4122ab2fcd9a93ad0052ef233e0844bd919ba12d862e8cf8b46",
+      "sha256LF": "8328c336150cc4122ab2fcd9a93ad0052ef233e0844bd919ba12d862e8cf8b46"
     },
     {
       "path": "src/features/settings/keyboard.svg",
@@ -225,15 +213,13 @@
     },
     {
       "path": "src/features/settings/pencil.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/pencil.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "7e1ca7a6f5c1eb949671df762f2baadd32f5bd841d43153c3a15279af7d78d0c"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "116513cef1bb75317bf13952d887c36088d4d6c215f8552f1375840d2ff584c6",
+      "sha256LF": "116513cef1bb75317bf13952d887c36088d4d6c215f8552f1375840d2ff584c6"
     },
     {
       "path": "src/features/settings/puzzle.svg",
@@ -265,27 +251,23 @@
     },
     {
       "path": "src/features/settings/terminal.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/terminal.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "1ec2382658b6fe0642253ba75d3bbd8f48d03c9aa79c9cdb0dbbc269e112b8a1"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "6b51e59ec2950ea7d829ed08fb636d67fa764c4489627c51c373c540ab5abb7c",
+      "sha256LF": "6b51e59ec2950ea7d829ed08fb636d67fa764c4489627c51c373c540ab5abb7c"
     },
     {
       "path": "src/features/space-start/racing-flag.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/flag-triangle-right.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "68e40b6418304d304679c6095eaad037b0ddcd51149bf71581397f5fc441794a"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "c32b16a2f6b0252e04f1db9b1669bd4e6b27fae2516bd331948aac60a54e35ae",
+      "sha256LF": "c32b16a2f6b0252e04f1db9b1669bd4e6b27fae2516bd331948aac60a54e35ae"
     },
     {
       "path": "src/features/tabs/win-close.svg",
@@ -517,15 +499,13 @@
     },
     {
       "path": "src/features/workspace-chrome/more.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/ellipsis.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "4f495cc72013ffdfec677f03b33a150f7b4dd741979283fd6853a09024bca112"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "b135d5ac3acb0ace609ee2ed00d15229d3220a7e2b9eb0f36398f5da1779c0af",
+      "sha256LF": "b135d5ac3acb0ace609ee2ed00d15229d3220a7e2b9eb0f36398f5da1779c0af"
     },
     {
       "path": "src/features/workspace-chrome/panel-left.svg",
@@ -634,15 +614,13 @@
     },
     {
       "path": "src/features/workspace-chrome/spinner.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/loader-circle.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "043021bb903919668804bdb6fee0342072e4ffea5f03fbd857774c440179ad3b"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "fa4d357c09b602b790de7a0e380026a93a6e9cfc0b23ab44b4b06b94ff96cc5c",
+      "sha256LF": "fa4d357c09b602b790de7a0e380026a93a6e9cfc0b23ab44b4b06b94ff96cc5c"
     },
     {
       "path": "src/features/workspace-chrome/square-pen.svg",
@@ -700,15 +678,13 @@
     },
     {
       "path": "src/features/workspace-status/preview.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/eye.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "5bf90197dd7629cad64a2e48d1186a71559deb6121207d10e3dc5b19ebaffdcf"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "0dd93dace835027d3f8efdf7f252849e428733f6a1890222264c2ccf4a61973c",
+      "sha256LF": "0dd93dace835027d3f8efdf7f252849e428733f6a1890222264c2ccf4a61973c"
     },
     {
       "path": "src/plugins/files/mod/file.svg",
@@ -724,27 +700,23 @@
     },
     {
       "path": "src/plugins/files/mod/folder-filled.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/folder.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "CurrentColor fill replaces upstream none.",
-      "sha256LF": "52e6c7b52160000bd7120985544e69a4c577f4edaa0229fbc3f45184abe04aca"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "20b8e263f4427e93891221ab5be4bb11db41e5ad27b7177335e51cfa837476dd",
+      "sha256LF": "20b8e263f4427e93891221ab5be4bb11db41e5ad27b7177335e51cfa837476dd"
     },
     {
       "path": "src/plugins/files/mod/trash.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/trash-2.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "e63698acf757d3043fcb4a9ea6ffceff9dd84708707eafc879c86b34a6ff2786"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "a342f0507345a4006915d21f1772f4a2901bb55fb7a479ebe71ad614e8a11ec6",
+      "sha256LF": "a342f0507345a4006915d21f1772f4a2901bb55fb7a479ebe71ad614e8a11ec6"
     },
     {
       "path": "src/plugins/git/mod/changes.svg",
@@ -760,147 +732,123 @@
     },
     {
       "path": "src/plugins/git/mod/checklist.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/list-checks.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "01516400eab1492cf7abe94a0a58d3809f8d3c59f24116a74658f49bbaf740e4"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "c19bd71b76b2c082df5010595cfb34c72f18d926f8b92a0d89c355cfe3fa60f3",
+      "sha256LF": "c19bd71b76b2c082df5010595cfb34c72f18d926f8b92a0d89c355cfe3fa60f3"
     },
     {
       "path": "src/plugins/git/mod/circle-check.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/circle-check.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "3e519680ab8e2a8ad8f56a340c10d61957d872237aaa868cf324b0900a74f384"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "532dd4d8ed8bbb0b8442d81604400d45119846941a1f45537221a2c052946c27",
+      "sha256LF": "532dd4d8ed8bbb0b8442d81604400d45119846941a1f45537221a2c052946c27"
     },
     {
       "path": "src/plugins/git/mod/circle-play.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/circle-play.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "c49d7f348353fbdecdbd77a4f1c12f19b3b1cbb269b2e06c255247f82927a2a3"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "7decf7ec10cad40d3a47fad4027a441ea2cf2aedf10a8a31389f344077252abb",
+      "sha256LF": "7decf7ec10cad40d3a47fad4027a441ea2cf2aedf10a8a31389f344077252abb"
     },
     {
       "path": "src/plugins/git/mod/code.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/code.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "5410b4a298a5134504585fbce676d43784722c8529d531c7fa75f8a64fab0499"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "4ef3df493dc8deb48ed2376402eb6ea4563d50f5aed3d4879a5cd946cc6a976d",
+      "sha256LF": "4ef3df493dc8deb48ed2376402eb6ea4563d50f5aed3d4879a5cd946cc6a976d"
     },
     {
       "path": "src/plugins/git/mod/git-merge.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/git-merge.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "1199a8738328e9faa9d1e18b4053e6849a473aa9456117006c92681f6d547477"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "65e3f88184ffa00ef22b018795e622a8517782373949475a00d01c705998d928",
+      "sha256LF": "65e3f88184ffa00ef22b018795e622a8517782373949475a00d01c705998d928"
     },
     {
       "path": "src/plugins/git/mod/git-pull-request-closed.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/git-pull-request-closed.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "40b74c1908aaa414d71d6557b3d45cc13c272f0c505913cd1842d9d55b36b444"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "7d38ba923cdfde13bfd03926773a369816b5aae152381d49d64154a6e5358a7a",
+      "sha256LF": "7d38ba923cdfde13bfd03926773a369816b5aae152381d49d64154a6e5358a7a"
     },
     {
       "path": "src/plugins/git/mod/git-pull-request.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/git-pull-request.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "6dbc18c42d08f225e3fc0a34fe5bf62d8b2abae83ada8163f3bbb649f2b8d25f"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "43325d850fa356ab6ef5023e64f997f6cc871dadf096f56f85bbe144818cbd2f",
+      "sha256LF": "43325d850fa356ab6ef5023e64f997f6cc871dadf096f56f85bbe144818cbd2f"
     },
     {
       "path": "src/plugins/git/mod/info.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/info.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "bc977a64eb96f3e9c1041ffd09a3fceb70e3e65c02b571f76064062ed31f3cb9"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "a9ab1075064baf36dc5039067a45ca7fda21e8c2abd071abd0e7e3678942c9f3",
+      "sha256LF": "a9ab1075064baf36dc5039067a45ca7fda21e8c2abd071abd0e7e3678942c9f3"
     },
     {
       "path": "src/plugins/git/mod/merge-conflict.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/git-compare-arrows.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "312a5913462dd0bd33bb3dae8e136ee2a4396e0906b917be4a2c1dd3c2d2a2a2"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "ee3e1223b844e11c88238eb640a7500b99635f0a04b49c66fb5d49afd6f15457",
+      "sha256LF": "ee3e1223b844e11c88238eb640a7500b99635f0a04b49c66fb5d49afd6f15457"
     },
     {
       "path": "src/plugins/git/mod/repository.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/folder-git-2.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "ad3696413e9a4952231750e3dc06547eab47714405619c94ae0a61aefb1644e4"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "67e6e473614d698673db8dd700a81d743a2da99cccc0a3c2e52ea03f6d1cec1d",
+      "sha256LF": "67e6e473614d698673db8dd700a81d743a2da99cccc0a3c2e52ea03f6d1cec1d"
     },
     {
       "path": "src/plugins/usage/mod/codex.svg",
-      "status": "provisional-neutral-provider",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/bot.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "e46fe72fc5b33d7a17b0112df85da9ded851860312e8353f4fe23d87a4ce77f5"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "2c1c0fcc2127011bce8462a4e8effb4795f377b046ddcf1b12130c8262fc0f01",
+      "sha256LF": "376031a84daba7db7bb85968ffd859ae67b3b259703e2ab34fba666299f6d67b"
     },
     {
       "path": "src/plugins/usage/mod/copilot.svg",
-      "status": "provisional-neutral-provider",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/bot-message-square.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "f4e30f270d058ecfe678cf2650a9a983d87eb3cdda4bc426a1afd0dfcaf93e23"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "767e75202ea062f21a670786c3892e398fc1fb90571ee01cc6fb47d26efb05fb",
+      "sha256LF": "3da90ba5a4b10dbe6a5bce039f5083f6f82dba1a92fd2273e9a378d8c0aba093"
     },
     {
       "path": "src/plugins/usage/mod/login.svg",
@@ -932,15 +880,13 @@
     },
     {
       "path": "src/shared/arrow-up-right.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/arrow-up-right.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "50b2503b9d11881142255466b7e3461d022b919735841c321d72003ac9959fe1"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "4284650f1befe987e6f1cda1b6879f6387a7e5b4996155b5f448c9e19b0226cb",
+      "sha256LF": "4284650f1befe987e6f1cda1b6879f6387a7e5b4996155b5f448c9e19b0226cb"
     },
     {
       "path": "src/shared/chevron-down.svg",
@@ -986,51 +932,43 @@
     },
     {
       "path": "src/shared/claude.svg",
-      "status": "provisional-neutral-provider",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/sparkles.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "cc8061ee31c43138e081522260d2ddd35465dfb2a4435fddd3d9857952d7231e"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "ef6a580639ba22358967d7b1ea239b902f0fadf28a32fa60d71e42eeb188a3f2",
+      "sha256LF": "fc3207827c0c6736e16037500c5a5d747ac80de8546e4e9e445a801cbfb97990"
     },
     {
       "path": "src/shared/close.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/x.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "4a9cdab38fbb96162e7dace28e33f4ca0e49d8963a6162abc3d4691b7d675117"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "50f770046acb0db8e1a6aa0b35b751adb7f8bf52a68055ff9da1cceabe158f1f",
+      "sha256LF": "50f770046acb0db8e1a6aa0b35b751adb7f8bf52a68055ff9da1cceabe158f1f"
     },
     {
       "path": "src/shared/copy.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/copy.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "ea80e566c7a12628a447cb53179b19aea4f60b9143e2becd0d0f20bf260e5718"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "4750ed0e06b2452120e5d66e1127dfdfc5848606d29c2423c38b96638493b315",
+      "sha256LF": "4750ed0e06b2452120e5d66e1127dfdfc5848606d29c2423c38b96638493b315"
     },
     {
       "path": "src/shared/cpu.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/cpu.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "6fb8cf8edbbbaa4b6a47ddbcc6879e8d2166613c663b93db0ac1fde566515362"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "57985cdc6e1ed23a0f528e4f656f8d71b03cca5876dbec7da82cd17e9ca302f6",
+      "sha256LF": "57985cdc6e1ed23a0f528e4f656f8d71b03cca5876dbec7da82cd17e9ca302f6"
     },
     {
       "path": "src/shared/folder.svg",
@@ -1048,39 +986,33 @@
     },
     {
       "path": "src/shared/gauge.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/gauge.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "d7710543a5085c5a61d0bbac1da8b89ef28e541b38ed739357991dff33d475b5"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "51ced845a4daf975ae855a80839774b6083dc02c823fbc97d3dd6b9d579ebed8",
+      "sha256LF": "51ced845a4daf975ae855a80839774b6083dc02c823fbc97d3dd6b9d579ebed8"
     },
     {
       "path": "src/shared/pin.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/pin.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "55e8e5e04bcb671179fc1dd589abf09cf6a1e71301ff14eb739419cfab6011e7"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "0ce20476b6f4595dd9aae993b30b64f805f9f6343076c25dee653fe7412a6d6e",
+      "sha256LF": "0ce20476b6f4595dd9aae993b30b64f805f9f6343076c25dee653fe7412a6d6e"
     },
     {
       "path": "src/shared/plug.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/plug.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "2797d68c45c73c7b0befc312bb5d9a8b90f16c86c7f8b31b8afe57b39b97718a"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "24493ac8fde751433fbab109736143583b20ee7cdad35e8e6cb33ec339e62993",
+      "sha256LF": "24493ac8fde751433fbab109736143583b20ee7cdad35e8e6cb33ec339e62993"
     },
     {
       "path": "src/shared/refresh.svg",
@@ -1098,15 +1030,13 @@
     },
     {
       "path": "src/shared/server.svg",
-      "status": "licensed-replacement",
-      "licenses": [
-        "ISC",
-        "MIT"
-      ],
-      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/server.svg",
-      "version": "Lucide 0.468.0",
-      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
-      "sha256LF": "f7bea54b609dc488f3b848995014041846b2443fd2a880653e9e583d7a034f61"
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "6b252e12a573169ef2857dccfff64ed1474a0826abaecafa42543ee24b8d7b87",
+      "sha256LF": "217c4fd3498e850c5d31cf8309a2af79ef1a5fab8bcb6b1fab3b52cb0df0e0af"
     },
     {
       "path": "src/shared/settings.svg",
@@ -1155,7 +1085,7 @@
       "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/palette/main.js",
       "version": "0.1.13 / 0.1.14+ reviewed palettes",
       "modifications": "Modified Custom UI, routing and scrolling.",
-      "sha256LF": "c35931aaea37fb65a3cf923f842b20a51e5826da0e8109ebfb3c633fe72d74eb",
+      "sha256LF": "f24c190d2d4e7863bc6f0215ed82ae47072eaf4dc95e89e1c46958ffb41984de",
       "evidence": "Version relationships from reviewed tag comparisons; comparisons reverse existing facade import and normalize newlines."
     },
     {
@@ -1179,7 +1109,7 @@
       "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/feedback/main.js",
       "version": "0.1.13–0.1.16 reviewed feedback",
       "modifications": "Modified Custom styling, draft and attachment behavior.",
-      "sha256LF": "3d75dabae4f7b9495f007143365da4ca9d34a2d92f0bea883d4b511238d52e4b",
+      "sha256LF": "dccf45e47cc847e112ee93e2b073d67eaf75dadc5a42d5335c680b636c1acc85",
       "evidence": "Version relationships from reviewed tag comparisons; comparisons reverse existing facade import and normalize newlines."
     }
   ]

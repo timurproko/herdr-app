@@ -8,10 +8,9 @@ Core document, native update channel, agent process or permission is patched.
 
 One Windows user task named **Herdr CI Monitor** runs on each explicitly installed
 machine. It monitors **only that Core's local terminals**, never connected remote
-terminals. Installation on a primary computer and an SSH remote workstation is independent:
-closing either desktop leaves its worker running; shutting down one machine does
-not stop the other's worker. SSH is needed for installation/configuration, not
-for the remote worker's normal monitoring.
+terminals. Install on both the main PC and SSH `pc2`: closing either desktop leaves
+its worker running; shutting down the main PC does not stop pc2's worker. SSH is
+needed for installation/configuration, not for pc2's normal monitoring.
 
 The host must remain powered on, awake, network-connected, and its Windows user
 signed in. This is a limited interactive-user task, not a system/password service.
@@ -97,15 +96,15 @@ assigned the same PR do **not** have global exactly-once/failover coordination.
 
 ## Commands
 
-Run from this checkout on the managing computer, with an explicitly selected target:
+Run from `~/.config/herdr-app/customizations` on the managing PC:
 
 ```sh
 node tools/core-ci-monitor.mjs status --on local
-node tools/core-ci-monitor.mjs status --on remote-workstation
-node tools/core-ci-monitor.mjs install --on remote-workstation --paused
-node tools/core-ci-monitor.mjs probe --on remote-workstation
-node tools/core-ci-monitor.mjs update --on remote-workstation
-node tools/core-ci-monitor.mjs stop --on remote-workstation
+node tools/core-ci-monitor.mjs status --on pc2
+node tools/core-ci-monitor.mjs install --on pc2 --paused
+node tools/core-ci-monitor.mjs probe --on pc2
+node tools/core-ci-monitor.mjs update --on pc2
+node tools/core-ci-monitor.mjs stop --on pc2
 ```
 
 `--paused` installs/updates without enabling messages. `probe` performs read-only
@@ -126,12 +125,12 @@ native checks. The native preview confirms there is no background status/Check o
 machine/repository setup UI. The broader integration suite has a separately known
 unrelated theme-selection assertion; focused CI/Git/Settings checks pass.
 
-Historical, separately authorized validation used local and remote-workstation
-companions, enabled only after retiring the desktop sender. Both reported healthy
-packages after launcher/SSH exit. Example selections are `example-owner/project`
-and `example-owner/another-project`, not recommended defaults. A historical
-read-only remote probe found mapped targets and submitted zero messages.
-These observations were not revalidated by the standalone import. No actual desktop close, PC shutdown, logout or reboot
+On this user's explicit authorization, local and pc2 companions were installed,
+then enabled only after the desktop sender was retired. Both report Running,
+enabled, healthy and current packages after their launcher/SSH commands exited.
+They use Idle/Done/Error and the current Git selections (`timurproko/a1` and
+`timurproko/xrbuild`). A read-only pc2 probe discovered two live mapped targets and
+submitted zero messages. No actual desktop close, PC shutdown, logout or reboot
 was simulated, and no real CI-fix/push success is claimed.
 
 Synthetic tests use fake Core/GitHub/task APIs and disposable state: local-only

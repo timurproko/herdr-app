@@ -85,7 +85,7 @@ assert.equal(result.reports.find(e=>e.sourceId==='copilot').account.login,'fixtu
 const envIdentity={...options,env:{GH_TOKEN:'fixture-secret-github'},readJsonc:async()=>null};
 const resolved=await collector.collect({},envIdentity);assert.equal(resolved.reports.find(e=>e.sourceId==='copilot').account.login,'fixture');assert.ok(!JSON.stringify(resolved).includes('public@example.test'));
 const denied=await collector.collect({}, {...envIdentity,requestJson:async(url,...args)=>url===collector.ENDPOINTS.githubUser?{status:403,body:{message:'fixture-secret-denied'}}:options.requestJson(url,...args)});
-assert.equal(denied.reports.find(e=>e.sourceId==='copilot').report.status,'available');assert.ok(!JSON.stringify(denied).includes('fixture-secret'));
+assert.equal(denied.reports.find(e=>e.sourceId==='copilot').report.status,'available');assert.ok(!JSON.stringify(denied).includes('fixture-secret')); 
 await assert.rejects(collector.requestJson('https://api.github.com/user/emails',{}),/Unapproved/);
 assert.ok(!JSON.stringify(result).includes('fixture-secret'));assert.ok(!JSON.stringify(result).includes('must-not-leave'));
 const unknown=collector.codexReport({rate_limit:{primary_window:{used_percent:10}}});assert.equal(unknown.windows[0].id,'unknown_primary');

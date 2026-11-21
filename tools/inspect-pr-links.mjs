@@ -1,11 +1,8 @@
-// Explicit LIVE diagnostic: writes a temporary mod/receipt in the selected app home.
-// Reads real host agents; no terminal navigation/input. Never part of host-free tests.
+// Explicit, read-only diagnostic against real host agents. No navigation/input.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import {app,defaultHome} from './deploy.mjs';
-import {prLinkOptions} from './pr-link-options.mjs';
-const {repository,numbers}=prLinkOptions(process.argv.slice(2)); // Validate before any effect.
 const home=defaultHome(),name='custom-pr-link-inspector',dir=path.join(home,'mods',name);
 const nonce=crypto.randomUUID(),receipt=path.join(home,'.customizations',`pr-link-inspection-${nonce}.json`);
 if(fs.existsSync(dir))throw Error('Inspector already exists; preserve and inspect it before retrying.');
@@ -20,7 +17,7 @@ export default class Inspector extends View {
   const links=new AgentLinks(),jobs=[];
   links.refresh({spawn:fn=>jobs.push(fn(cx)),notify(){}});
   await Promise.all(jobs);
-  await writeTextFile(${JSON.stringify(receipt)},JSON.stringify({nonce:${JSON.stringify(nonce)},targets:agentTargets(),entries:[...links.entries.values()],matches:${JSON.stringify(numbers)}.map(number=>({number,agent:links.related({number},${JSON.stringify(repository)})}))}),null);
+  await writeTextFile(${JSON.stringify(receipt)},JSON.stringify({nonce:${JSON.stringify(nonce)},targets:agentTargets(),entries:[...links.entries.values()],matches:[920,922,923].map(number=>({number,agent:links.related({number},'timurproko/a1')}))}),null);
   closeOverlay(props().overlay);
  });}
  render(){return div().p(12).child('Checking live PR-agent links…');}

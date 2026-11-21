@@ -1,5 +1,3 @@
-// Modified from Herdr App's Apache-2.0 palette: Custom UI/routing/scrolling.
-// Copyright Herdr App contributors. See THIRD-PARTY.md and ASSET-PROVENANCE.json.
 // The frame's command palette: everything you can do, by name, with its key.
 // Places (spaces, tabs) stay in the picker. Fuzzy: your letters in
 // order, word starts and runs rank higher. Empty: recent first, then every

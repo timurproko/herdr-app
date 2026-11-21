@@ -1,5 +1,5 @@
 // Explicit opt-in live test. Never calls stop/start on the default session.
-// Usage: node scripts/permission-launcher.smoke.mjs --on remote-workstation
+// Usage: node scripts/permission-launcher.smoke.mjs --on pc2
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import crypto from 'node:crypto';

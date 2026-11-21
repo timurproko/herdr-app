@@ -1,77 +1,25 @@
-# Herdr app — Custom workspace
+# Custom — Herdr customizations
 
-Mods, theme and behavior extensions, **separate from the native Herdr application**.
-The layout shown in native and custom Settings is **Custom**. Clone this repository
-anywhere; deployment installs from this checkout into `HERDR_APP_HOME`, or
-`~/.config/herdr-app` when that variable is unset. Source is not installed output.
+Your mods, theme and behavior extensions, **separate from the native Herdr application**.
+The layout shown in both native and custom Settings is **Custom**.
+This project lives at `~/.config/herdr-app/customizations/`: everything is inside
+Herdr's app folder, but authored source is separate from installed/runtime files.
 
-**Import status:** three color-gradient SVGs are intentionally absent pending their
-maintainer's authorship/license declaration. The draft source cannot yet build;
-do not deploy it or remove the missing mappings to bypass this hold. All other
-unresolved glyphs use licensed replacements; provider symbols are provisional
-neutral icons, not brand logos. See [third-party notices](THIRD-PARTY.md).
-
-Read [development safety](docs/DEVELOPMENT.md) and the
-[architecture guide](docs/ARCHITECTURE.md) before development. No command here
-builds Herdr or herdr-core. [Testing and exclusions](docs/TESTING.md) separates
-host-free fixtures from native/live checks; [follow-ups](docs/FOLLOW-UPS.md) tracks
-remaining installation/security work.
-
-## Standalone setup
-
-Node.js **20+** is required. Runtime installation is Windows-first and needs a
-separately installed Herdr App/Core, Node on target machines, and Windows PowerShell
-for Windows operational helpers. The general facade reviews App **0.1.13–0.1.16**;
-tab movement separately allows App **0.1.15/0.1.16** and Core **0.1.19/0.1.21**.
-Unknown versions/shapes fail closed, not automatically approved by unit tests.
-
-After the gradient hold is resolved, from this checkout:
-
-```powershell
-npm install                    # bootstrap shared tooling; app uses Node built-ins
-npm test                       # host-free tests with disposable homes
-npm run build                  # generated customization packages only
-$env:HERDR_APP_HOME = Join-Path $HOME '.config/herdr-app' # or another explicit home
-npm run check:host-api         # optional installed-host check, not host-free CI
-npm run deploy                 # explicit write into the chosen Herdr home
-npm run enable                 # explicit switch to Custom
-npm run doctor                 # inspect installed ownership/compatibility
-```
-
-These are installation instructions, not actions performed by this source import.
-No private dotfiles, `.config/AGENTS.md`, personal snapshot or shell-profile copying
-is required. Keep native settings/session data where Herdr owns them. Conflicts
-abort; reconcile edits instead of adopting or overwriting unknown files. Native
-checks and real UI validation need a separate installation and explicit consent.
-
-| Capability | Prerequisites / optional behavior |
-|---|---|
-| Base layout, tabs, spaces, settings | Reviewed Herdr App/Core and Node; no provider account or private snapshot. |
-| Files | Selected machine's filesystem and supported shell; recycling requires that machine's supported trash facility. |
-| Git / PRs / CI | Git and gh login on the relevant machine; webhook/Cloudflare setup is an explicit optional external action. Auto-fix is **off by default**. |
-| Usage | Optional provider logins; reads provider credential stores and may refresh Claude credentials, not merely visual styling. Disable Usage to stop new collection. |
-| VS Code Remote | Optional VS Code and Remote SSH extension, explicitly configured targets. |
-| A1 color/control | Optional **protocol-1 matching release pending verification**; do not enable against older installations or restart immutable sessions. |
-| Crew / Firstmate | Optional configured companion/repository; Crew setup can follow mutable `main` and install npm tools at `latest`, so it is not a fully pinned runtime. |
-| Live shell cwd / Claude companion reporting | Optional external shell/profile wiring and companion helpers not supplied/installed by standalone deploy; native cwd fallback has reduced reporting. |
-
-The relay has authenticated events but known pre-authentication connection-capacity
-and replay limitations; publication is not a security-hardening release. See
-[follow-ups](docs/FOLLOW-UPS.md). Enable network/auth/automation features only after
-reviewing their effects and prerequisites.
+Read [AGENTS.md](AGENTS.md) and the [architecture decision guide](docs/ARCHITECTURE.md)
+before development. No command here builds Herdr or herdr-core.
 
 ## Ownership
 
 | Location | Owner / purpose |
 |---|---|
 | This project's `src/`, `tools/`, `tests/`, `customization.json` | Your canonical source |
-| `preferences/` | Public visual snapshots only; private host exports remain ignored local backups, not anonymized examples |
+| `preferences/` | Your allowlisted durable snapshots (per-host profiles, palette, layout preferences) |
 | `dist/` | Generated customization packages; ignored by version control |
-| `<Herdr home>/mods/custom-*/`, `layouts/Custom.json`, `themes/Custom.json` | Installed output; do not edit directly |
-| `<Herdr home>/.customizations/runtime/` | Self-contained deployed workers and license notices; no source-checkout dependency |
-| `<Herdr home>/.customizations/` | Ownership, preference projection, patch opt-ins and rollback journals; never commit |
-| `<Herdr home>/.customizations/recovery/` | Local recovery copies outside the live mod scanner |
-| `<Herdr home>/settings.json`, `keys.json` | Native global settings/shortcuts, not repository source |
+| `../mods/custom-*/`, `../layouts/Custom.json`, `../themes/Custom.json` | Installed customization output; do not edit directly |
+| `../.customizations/runtime/` | Self-contained deployed compatibility workers; no source-checkout dependency |
+| `../.customizations/` | Local ownership records, preference projection, patch opt-ins and rollback journals; never sync |
+| `../.customizations/recovery/` | Archived Herdr recovery copies; retained outside the live `mods/` scanner |
+| `../settings.json`, `../keys.json` | Your native global settings/shortcuts; still tracked directly |
 | Stock mods/layouts, `frame/`, SDK declarations, generated `AGENTS.md` | Herdr-owned; regenerated by Herdr |
 | `shared.json`, `data/`, `.state/`, window/view files | Host runtime state; never sync or edit wholesale |
 
@@ -127,7 +75,7 @@ startup is separate and retains a read-only core space-existence check; see
 ## Moving tabs between spaces
 
 Right-click a tab → **Move to…** → choose another space on the **same machine**
-(this computer or a connected machine such as `remote-workstation`). Destination names and colored
+(this computer or a connected machine such as `pc2`). Destination names and colored
 number badges match the sidebar. The tab keeps its running terminals and splits;
 moving does not change their working directories. After the window confirms the
 move, the destination sidebar icon and label pop up and settle back, without
@@ -529,8 +477,8 @@ PR URL; `{runUrl}` expands to the failed Actions run URL. Default:
 on this computer and connected SSH machines, reusing Git's existing repository
 selections. No separate background setup, status/Check section or machine/scope
 controls are needed. Each worker polls its local Core roughly once a minute and uses
-that host's own gh login. Closing Herdr leaves the worker active; a remote workstation does not depend
-on the primary computer staying on or connected over SSH. This is a limited-user Windows
+that host's own gh login. Closing Herdr leaves the worker active; pc2 does not depend
+on the main PC staying on or connected over SSH. This is a limited-user Windows
 task: the host must remain awake/online and its user signed in. No native Core patch,
 elevation, password service, agent restart, pre-logon or other-OS support is implied.
 
@@ -611,7 +559,7 @@ selected terminal's folder.
   Start-only empty space immediately, regardless of these switches.
 - **Close space when the last tab closes** (on by default): turn off to retain the
   space in the sidebar after its terminals exit or you close its last work tab.
-  Its pane header shows a neutral start flag before **Start**, matching the robot
+  Its pane header shows a checkered racing flag before **Start**, matching the robot
   glyph's size, stroke and color. The space's folder appears after **Start**, using
   the same muted, truncated label and full-path tooltip as agent/terminal headers;
   empty spaces use their remembered last directory. The content contains only a compact **Terminal**
@@ -720,7 +668,7 @@ new synchronization requests and leaves agents at their last applied color
 session identities and unrelated runtime state are never exported.
 
 **This source requires the merged shared A1 protocol 1 in
-[the integration contract](docs/A1-COLOR-CONTRACT.md); a compatible released minimum is pending verification. This integration is optional.**
+[the integration contract](docs/A1-COLOR-CONTRACT.md); deployment awaits its A1 release.**
 A compatible A1 publishes its own session/runtime identity to the local Core.
 Remote machines then need only Core, A1 and Node—not Herdr App, this source tree
 or a reporting companion. Herdr accepts only native `a1.session`, `a1.runtime` and
@@ -910,11 +858,6 @@ per-item fade code.
 
 ## Claude session account in the status bar
 
-**Optional external integration:** the behavior below requires the separately
-installed account-switcher and explicitly configured shell profiles. Standalone
-deploy does not supply those helpers, fixed-path loaders or private yadm hooks;
-without them these companion-dependent launch/account features are unavailable.
-
 **New Claude sessions opened through Custom's + → Claude Code profile or the normal
 `claude` command in the configured Bash/PowerShell profiles are isolated by default.** The target machine's account-switcher launcher creates a private login
 for each new session, while retaining shared projects/history and coordinated token
@@ -1000,24 +943,20 @@ npm run preferences:import
 npm run deploy
 ```
 
-The exporter validates palette ownership and filters credential/cache/session fields.
-It is **not an anonymizer**: retained pins, plugin settings, paths, machine profiles
-and automation choices can still identify accounts or infrastructure. Treat exports
-as private backups, never public example configuration. Usage reports, raw credentials,
-discovery caches and sessions are not intended export data. `preferences/theme.json` is the personal native-schema palette;
+The exporter validates palette ownership and exports only allowlisted settings.
+It does not export usage reports, account identities, credentials, discovery caches
+or sessions. `preferences/theme.json` is the personal native-schema palette;
 `preferences/palette.json` retains picker metadata. Host files never overwrite a
 different computer's profiles. Global settings/shortcuts remain native files.
-Optional private yadm hooks previously called the exporter; those hooks are not
-provided or installed here. No automatic clone/build step imports state or restarts
-the desktop. Reconcile a palette conflict rather than overwriting it.
+The yadm pre-commit hook calls the safe exporter; no pull hook imports state or
+restarts the desktop. Reconcile a palette conflict rather than overwriting it.
 
 ## First installation / another computer
 
-Follow **Standalone setup** above from any checkout, after the documented gradient
-hold is resolved. No preference restore is required. `npm run test:native` and
-installed-host integration checks are opt-in, require a separately installed host,
-and are not proof of deferred UI interactions. A1 matching remains optional/pending
-against a compatible release; do not enable its consumer on older installations.
+1. Pull this source under `.config/herdr-app/customizations/`, `.config/AGENTS.md`, and the tracked shell/yadm integration changes.
+2. `npm test` and `npm run test:native`.
+3. Run `npm run deploy`; restore preferences with the desktop closed if needed, deploy again, then `npm run enable`. A1 matching requires the coordinated protocol in `docs/A1-COLOR-CONTRACT.md`; do not deploy its breaking consumer against older installations.
+4. `npm run doctor` and inspect the UI.
 
 Only the current Custom namespace is supported. Old namespace migration tools,
 source bridges and terminal-label aliases have been retired. A machine with an
@@ -1026,11 +965,9 @@ adopt unknown files, replay old shell/core actions, or copy live session state.
 
 ## Existing shells after moving the source folder
 
-The following is historical private shell wiring, **optional/pending**, not an
-installation step for this standalone checkout. The loader assumes the old fixed
-source location, yadm revision marker and companion hooks. Standalone deployment
-does not edit shell profiles or install that dispatcher. On a machine deliberately
-retaining that private wiring, an idle Bash prompt may source its configured path:
+New shells load the new path automatically. A Bash session that loaded the interim
+sibling project path can continue running, but its folder reporter needs this
+one-time reload **at an idle prompt** (or a new shell):
 
 ```bash
 source "$HOME/.config/herdr-app/customizations/src/integration/shell/bash-cwd-loader.sh"
@@ -1094,9 +1031,8 @@ are refused per patch. The worker is deployed with the customization and does no
 need this source folder.
 
 ```powershell
-$HerdrHome = if ($env:HERDR_APP_HOME) { $env:HERDR_APP_HOME } else { Join-Path $HOME '.config/herdr-app' }
-node "$HerdrHome/.customizations/runtime/scripts/frame-patch.mjs" check palette
-node "$HerdrHome/.customizations/runtime/scripts/frame-patch.mjs" restore palette
+node ../.customizations/runtime/scripts/frame-patch.mjs check palette
+node ../.customizations/runtime/scripts/frame-patch.mjs restore palette
 # apply is explicit opt-in; do not use it for new exceptions without approval
 ```
 
@@ -1125,5 +1061,4 @@ layouts alone does not uninstall features or reset per-terminal preferences.
 Bundled artwork retains its original licenses and truthful attribution. Third-party
 project names in notices are not our runtime brand. `docs/history/` contains archived
 feature notes from the earlier packaging; its old command examples are not the
-current product documentation. See this README, docs/DEVELOPMENT.md and the
-per-file provenance manifest for current source ownership and attribution.
+current development workflow. This README and AGENTS.md are authoritative.

@@ -1,6 +1,6 @@
 # CodeQuota reference analysis
 
-Reference only: a separate CodeQuota checkout (MIT, Simão L. Lúcio, 2026). No CodeQuota app, package, token store or checkout is required at runtime. The collector/parser here is independently implemented.
+Reference only: `D:/Git/CodeQuota` (MIT, Simão L. Lúcio, 2026). No CodeQuota app, package, token store or checkout is required at runtime. The collector/parser here is independently implemented.
 
 ## Useful findings
 

@@ -5,7 +5,6 @@ import { gzipSync } from 'node:zlib';
 import { digest, read, put, safeRelative } from './files.mjs';
 import { HOST_CONTRACT } from '../src/integration/herdr/compatibility.js';
 import { pluginEntries } from './plugins.mjs';
-import { noticeEntries } from './notices.mjs';
 export const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export function build(root = project) {
   const config = JSON.parse(read(path.join(root, 'customization.json')));
@@ -28,10 +27,6 @@ export function build(root = project) {
   for (const entry of pluginEntries(root, config)) {
     if (entries.has(entry.dest.toLowerCase())) throw Error(`Duplicate output: ${entry.dest} (plugins are packaged from src/plugins/, remove the manual mapping)`);
     if(compressed.has(entry.dest)) entry.bytes=Buffer.from(`// Generated Node transport; canonical source: ${entry.source}\neval(require('node:zlib').gunzipSync(Buffer.from('${gzipSync(entry.bytes,{level:9}).toString('base64')}','base64')).toString('utf8'));\n`);
-    entries.set(entry.dest.toLowerCase(), entry);
-  }
-  for (const entry of noticeEntries(root, config.features)) {
-    if (entries.has(entry.dest.toLowerCase())) throw Error(`Duplicate notice output: ${entry.dest}`);
     entries.set(entry.dest.toLowerCase(), entry);
   }
   for(const dest of compressed)if(!entries.has(dest.toLowerCase()))throw Error(`Missing compressed Node worker: ${dest}`);
@@ -75,7 +70,7 @@ export function build(root = project) {
   for (const {dest,source,bytes} of entries.values()) {
     const privateFile=/^(mods\/custom-[a-z-]+\/|layouts\/Custom\.json$|layouts\/custom\.svg$|themes\/Custom\.json$)/.test(dest) && !dest.includes('.test.');
     if (privateFile) payload[dest]={source,hash:digest(bytes)};
-    const workerFile=/^(licenses\/|lib\/|frame-patches\/)/.test(dest) && !dest.endsWith('.md') || /^scripts\/(frame-(?:registry|patch)|startup-frames|terminal-input|readline-paste|feedback-draft)\.mjs$/.test(dest) || dest==='scripts/a1-session-report.js';
+    const workerFile=/^(lib\/|frame-patches\/)/.test(dest) && !dest.endsWith('.md') || /^scripts\/(frame-(?:registry|patch)|startup-frames|terminal-input|readline-paste|feedback-draft)\.mjs$/.test(dest) || dest==='scripts/a1-session-report.js';
     if(workerFile)payload[`.customizations/runtime/${dest}`]={source,hash:digest(bytes),from:dest};
   }
   payload['.customizations/runtime/package.json']={source:'generated',hash:digest('{"type":"module"}\n'),text:'{"type":"module"}\n'};

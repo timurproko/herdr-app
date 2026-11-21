@@ -20,8 +20,8 @@ assert.equal(page.cursor,'cursor:10'); assert.equal(page.hasMore,true); assert.e
 assert.throws(()=>m.parsePullPage('{}'));
 assert.throws(()=>m.parsePullPage(JSON.stringify({errors:[{message:'GitHub rate limit'}]})),/rate limit/);
 assert.throws(()=>m.parsePullPage(JSON.stringify({data:{repository:{pullRequests:{nodes:[],pageInfo:{hasNextPage:true}}}}})),/cursor/);
-assert.deepEqual(m.countArgs('example-owner/project').slice(0,2),['api','graphql']);
-assert.ok(m.countArgs('example-owner/project').includes('owner=example-owner')&&m.countArgs('example-owner/project').includes('name=project'));
+assert.deepEqual(m.countArgs('timurproko/a1').slice(0,2),['api','graphql']);
+assert.ok(m.countArgs('timurproko/a1').includes('owner=timurproko')&&m.countArgs('timurproko/a1').includes('name=a1'));
 assert.deepEqual(m.parseCounts(JSON.stringify({data:{repository:{open:{totalCount:1},closed:{totalCount:893}}}})),{open:1,closed:893});
 assert.equal(m.parseCounts('nope'),null);
 
@@ -75,17 +75,17 @@ const rerun=[
 assert.equal(m.checks(rerun).state,'pending','An in-progress rerun beats an older attempt, despite its sentinel completion time');
 assert.equal(m.checks([...rerun].reverse()).state,'pending');
 
-const pr={number:903,title:'fix(ux): align dialogs',url:'https://github.com/example-owner/project/pull/903',state:'OPEN',isDraft:true,author:{login:'example-owner'},createdAt:'2026-11-10T16:45:10Z',body:'- [x] a\n- [ ] b\n- [ ] c',statusCheckRollup:rollup,reviewDecision:''};
-const row=m.pullRow(pr,'example-owner',now);
-assert.equal(row.meta,'#903 · example-owner opened 25 minutes ago');
+const pr={number:903,title:'fix(ux): align dialogs',url:'https://github.com/timurproko/a1/pull/903',state:'OPEN',isDraft:true,author:{login:'timurproko'},createdAt:'2026-11-10T16:45:10Z',body:'- [x] a\n- [ ] b\n- [ ] c',statusCheckRollup:rollup,reviewDecision:''};
+const row=m.pullRow(pr,'timurproko',now);
+assert.equal(row.meta,'#903 · timurproko opened 25 minutes ago');
 assert.ok(m.PR_FIELDS.split(',').includes('headRefName'));
 assert.equal(m.pullRow({...pr,headRefName:'fix/agent-pr'},'x',now).headRefName,'fix/agent-pr');
 assert.equal(row.headRefName,null,'Older/missing branch data never selects a PR');
 assert.equal(row.owner,true);assert.equal(row.state,'draft');assert.equal(row.tasks.label,'1 of 3 tasks');assert.equal(row.checks.label,'3/3');assert.equal(row.review,null);
 assert.equal(m.pullRow({...pr,isDraft:false},'Someone',now).state,'open');
 assert.equal(m.pullRow({...pr,isDraft:false},'Someone',now).owner,false);
-assert.equal(m.pullRow({...pr,state:'MERGED',mergedAt:'2026-11-10T16:10:10Z'},'x',now).meta,'#903 · example-owner merged 1 hour ago');
-assert.equal(m.pullRow({...pr,state:'CLOSED',closedAt:'2026-11-10T17:09:10Z'},'x',now).meta,'#903 · example-owner closed 1 minute ago');
+assert.equal(m.pullRow({...pr,state:'MERGED',mergedAt:'2026-11-10T16:10:10Z'},'x',now).meta,'#903 · timurproko merged 1 hour ago');
+assert.equal(m.pullRow({...pr,state:'CLOSED',closedAt:'2026-11-10T17:09:10Z'},'x',now).meta,'#903 · timurproko closed 1 minute ago');
 assert.equal(m.pullRow({...pr,reviewDecision:'APPROVED'},'x',now).review,'approved');
 assert.equal(m.pullRow({...pr,author:null},'x',now).meta,'#903 · opened 25 minutes ago');
 

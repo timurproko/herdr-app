@@ -2,7 +2,7 @@
 
 Enabling CI auto-fix automatically provisions a **Core-side background companion
 on each connected machine**, not a visible desktop-panel sender. Closing Herdr does not stop an
-installed worker. An SSH remote-workstation worker does not depend on the main PC staying on.
+installed worker. An SSH pc2 worker does not depend on the main PC staying on.
 See [installation, lifecycle and limits](GIT-CORE-MONITOR.md).
 
 ## Settings

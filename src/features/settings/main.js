@@ -504,7 +504,7 @@ export default class Settings extends View {
               .items_center()
               // Keep the font dropdown on the right, aligned with Interface font.
               .when(Boolean(sizeKey), (el) => el.child(this.stepper(t, `st-${sizeKey}`, `${Math.round(sizeNow)}`, (_e, cx) => which === 'preview_font' ? adjustPreviewFontSize(-1) : size(sizeKey, sizeNow, -1, cx), (_e, cx) => which === 'preview_font' ? adjustPreviewFontSize(1) : size(sizeKey, sizeNow, 1, cx))))
-              .child(this.fontButton(t, which, family, def)),
+              .child(this.fontButton(t, which, family, def)), 
             which === "ui_font",
           ),
         );

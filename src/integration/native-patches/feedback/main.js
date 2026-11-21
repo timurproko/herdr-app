@@ -1,5 +1,3 @@
-// Modified from Herdr App's Apache-2.0 feedback: Custom styling/drafts/attachments.
-// Copyright Herdr App contributors. See THIRD-PARTY.md and ASSET-PROVENANCE.json.
 import { View, div, image, svg } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, TextareaState, Textarea, Toggle } from "gpui-base";
 import { theme, props, closeOverlay, feedbackPreview, feedbackPasteImage, feedbackPickImages, feedbackAttachImages, feedbackClearImages, sendFeedback, appHome, readTextFile, writeTextFile } from "./host.js";

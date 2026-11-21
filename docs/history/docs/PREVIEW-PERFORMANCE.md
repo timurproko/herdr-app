@@ -8,17 +8,17 @@ documents that history reads may scroll full-screen apps and then restore their
 view. Repeating that against an idle interactive agent interfered with normal
 terminal use. Automatic history requests have been removed, not merely slowed.
 
-Historical observation on a remote test terminal (not revalidated by this import):
+Observed on the existing pc2/t44 session:
 
 | Read | Elapsed | Result size |
 | --- | ---: | ---: |
 | Screen only, `--lines 0` | 31–46 ms | about 2–3.5 KB |
 | History, `--lines 200` | 2.1–4.6 seconds | about the same size; incomplete screen fallback |
 
-A concurrent `hc get remote-workstation/test-terminal` completed in 38 ms during a 2.1-second history
+A concurrent `hc get pc2/t44` completed in 38 ms during a 2.1-second history
 request. CPU samples did not show saturation, and over 40 GB of physical RAM was
 free. This supports terminal-view interference rather than a demonstrated
-core-wide lockup. The existing core log also contains remote-workstation 45-second connection
+core-wide lockup. The existing core log also contains pc2 45-second connection
 timeouts, without timestamps; these cannot be attributed to this feature from
 those entries alone. No app, core, or agent was restarted or stopped.
 

@@ -8,8 +8,7 @@ import {digest,read,put,json,contained,safeRelative} from './files.mjs';
 export const defaultHome=()=>process.env.HERDR_APP_HOME||path.join(os.homedir(),'.config/herdr-app');
 export function allowedPath(rel) {
   safeRelative(rel);
-  const notice = /^\.customizations\/runtime\/licenses\/(?:THIRD-PARTY\.txt|Project-MIT\.txt|Apache-2\.0\.txt|Lucide-ISC\.txt|Feather-MIT\.txt|Herdr-Lucide\.txt|ASSET-PROVENANCE\.json)$/.test(rel);
-  if(!notice&&!/^(?:mods\/custom-[a-z-]+\/(?:[a-zA-Z0-9_.-]+\/)*[a-zA-Z0-9_.-]+\.(?:js|cjs|json|svg|txt)|layouts\/(?:Custom\.json|custom\.svg)|themes\/Custom\.json|\.customizations\/runtime\/(?:[a-zA-Z0-9_.-]+\/)*[a-zA-Z0-9_.-]+\.(?:js|mjs|cjs|json|svg))$/.test(rel))throw Error(`Unowned deployment path: ${rel}`);
+  if(!/^(?:mods\/custom-[a-z-]+\/(?:[a-zA-Z0-9_.-]+\/)*[a-zA-Z0-9_.-]+\.(?:js|cjs|json|svg|txt)|layouts\/(?:Custom\.json|custom\.svg)|themes\/Custom\.json|\.customizations\/runtime\/(?:[a-zA-Z0-9_.-]+\/)*[a-zA-Z0-9_.-]+\.(?:js|mjs|cjs|json|svg))$/.test(rel))throw Error(`Unowned deployment path: ${rel}`);
   return rel;
 }
 const mutable=new Set(['theme','colors','font','font_size','ui_font','terminal_padding','terminal_opacity','size','hidden','active','background','padding','radius','border','focus']);

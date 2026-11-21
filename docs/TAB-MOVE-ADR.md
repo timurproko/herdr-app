@@ -15,7 +15,7 @@ until then use a tightly restricted, version-gated Core-document adapter.
 The UI must not know document shapes or call document RPCs.
 
 Scope: tabs between existing spaces on the **same machine**, including remote
-`remote-workstation`. No cross-machine migration. The remote extension has separate routing,
+`pc2`. No cross-machine migration. The remote extension has separate routing,
 qualification, session/identity checks and synthetic isolation tests. A fixed
 read-only Node/hc probe verifies the actual remote hello; the worker stays local
 and forwards document calls through `on` and terminal calls through qualified
@@ -36,7 +36,7 @@ make an app-private document format a stable public contract.
 ## Evidence checked
 
 Installed versions inspected: Herdr App **0.1.15**, local Core **0.1.21**, remote
-A reviewed remote Core **0.1.19**, protocol generation **1**. The remote schema confirms the same
+`pc2` Core **0.1.19**, protocol generation **1**. The remote schema confirms the same
 version-checked document API; a live, read-only scoped worker probe returns ready. The local native source checkout is 0.1.14; the relevant
 **v0.1.15 release sources were inspected separately**, rather than assuming they
 matched the checkout.
@@ -101,7 +101,7 @@ Validation: `npm test` passed (including 116 adapter assertions and deferred men
 fixtures), `check:host-api` passed, focused adapter-only deployment preserved all
 713 unselected outputs, `doctor` passed, and `check:native` passed all 17 mods.
 Read-only installed-worker `inspect` returned `ready`, with no metadata repair
-needed, for both this computer and the remote workstation. No live tab move was performed. A live
+needed, for both this computer and `pc2`. No live tab move was performed. A live
 window screenshot was inspected, but the destination submenu still needs a manual
 interaction check; fixture coverage is not a claim of live move continuity.
 
@@ -250,7 +250,7 @@ The existing `check:host-api` does not check private document formats or CAS beh
 - No compatibility promise about unreviewed peers: other connected App versions may
   interpret/write the same document differently and cannot all be gated by this mod.
 
-`docs/DEVELOPMENT.md` / `docs/ARCHITECTURE.md` document the narrow exception.
+`AGENTS.md` / `docs/ARCHITECTURE.md` now document the narrow exception.
 `tests/architecture.test.mjs` permits exactly one validated CAS call site in the
 adapter and retains the ban for all unrelated source, retired shell-replacement
 jobs and other document names. The generic ban was not globally removed.

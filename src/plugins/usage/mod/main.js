@@ -408,7 +408,7 @@ export default class Usage extends View {
       .child(this.iconButton(t,'usage-refresh',I('refresh'),'Refresh usage',refreshAll,state.busy,state.id==='usage-refresh'));
     const tools=h_flex().id('usage-header-tools').gap(12).items_center().child(this.hostPicker(t)).child(actions);
     const title=h_flex().gap(10).items_center().child(div().child('Usage'))
-      .child(div().id('usage-checking').w(120).flex_none().text_size(U.meta).font_normal().text_color(t.muted).opacity(data.loading?1:0).child('Checking usage…'));
+      .child(div().id('usage-checking').w(120).flex_none().text_size(U.meta).font_normal().text_color(t.muted).opacity(data.loading?1:0).child('Checking usage…')); 
     return dialogSurface(t,v_flex()).id('usage-dialog').h_full().track_focus(this.handle)
       .on_key_down((e,cx)=>{if(e.key==='escape'){this.close();cx.stop_propagation();}})
       .child(dialogHeader(t,title,()=>this.close(),tools).gap(4))

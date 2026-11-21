@@ -88,7 +88,7 @@ function add(address,{repo='owner/repo',cwd='/repo',branch='feature',app='a1',na
   if (!group) {group={id:space,machine:on,tabs:[]};allSpaces.push(group);}
   group.tabs.push({id:tab,name,named});
   allTerminals.push({address,cwd});
-  // gh canonicalizes a configured SSH host alias (git@github-example:...)
+  // gh canonicalizes the user's SSH host alias (git@github-timurproko:...)
   // just as it does for the panel, rather than requiring a literal github.com.
   remotes.set(JSON.stringify([on,cwd]),JSON.stringify({nameWithOwner:repo,url:`https://github.com/${repo}`}));
 }

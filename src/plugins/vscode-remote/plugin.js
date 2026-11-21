@@ -20,7 +20,7 @@ async function machineList() {
   return Array.isArray(list) ? list.filter(m => !m.temporary) : [];
 }
 
-// vscode-remote://ssh-remote+remote-workstation/d:/Projects/example/x.json for D:/Projects/example/x.json.
+// vscode-remote://ssh-remote+pc2/d:/Git/a1/x.json for D:/Git/a1/x.json on pc2.
 export function remoteFileUri(target, path) {
   const p = String(path).replace(/\\/g, '/');
   const drive = /^[A-Za-z]:/.test(p);

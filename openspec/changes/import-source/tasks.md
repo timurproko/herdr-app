@@ -4,11 +4,11 @@ The maintainer-approved smaller repository-split scope supersedes the earlier re
 
 ## 1. Original tracked source and artwork retain behavior with only approved privacy edits and truthful notices
 
-- [ ] 1.1 Restore tracked current source/artwork, excluding the personal snapshot and source AGENTS/README/package/ignore files requiring scaffold adoption; compare against the planning inventory and verify no untracked/runtime files or source history enter the export.
-- [ ] 1.2 Remove out-of-scope portability helpers, test splits, genericization, diagnostic changes and runtime notice injection; compare every imported code/test/tool file against source, allowing only clipboard parameterization, neutral status labels and the moved-guidance path.
-- [ ] 1.3 Restore all 41 original SVGs and record raw/LF hashes plus source-not-recorded status, without inferred licenses/authorship; verify working-copy bytes match source and no replacement/neutral glyph remains in the final tree.
-- [ ] 1.4 Retain established Herdr/Lucide/Feather/Material/Paseo notices and a per-file manifest for 89 SVGs and five derived JS files; verify exact-match evidence, unchanged existing notices and complete license texts.
-- [ ] 1.5 Preserve shared scaffold, root identity/MIT/Node requirement and merged app scripts/ignores; run audited checkout build and focused safe checks without the personal snapshot or a real Herdr home.
+- [x] 1.1 Restore tracked current source/artwork, excluding the personal snapshot and source AGENTS/README/package/ignore files requiring scaffold adoption; compare against the planning inventory and verify no untracked/runtime files or source history enter the export.
+- [x] 1.2 Remove out-of-scope portability helpers, test splits, genericization, diagnostic changes and runtime notice injection; compare every imported code/test/tool file against source, allowing only clipboard parameterization, neutral status labels and the moved-guidance path.
+- [x] 1.3 Restore all 41 original SVGs and record raw/LF hashes plus source-not-recorded status, without inferred licenses/authorship; verify working-copy bytes match source and no replacement/neutral glyph remains in the final tree.
+- [x] 1.4 Retain established Herdr/Lucide/Feather/Material/Paseo notices and a per-file manifest for 89 SVGs and five derived JS files; verify exact-match evidence, unchanged existing notices and complete license texts.
+- [x] 1.5 Preserve shared scaffold, root identity/MIT/Node requirement and merged app scripts/ignores; run audited checkout build and focused safe checks without the personal snapshot or a real Herdr home.
 
 ## 2. Standalone paths and retained development guidance match the repository move
 

@@ -21,7 +21,7 @@ Canonical project: `~/.config/herdr-app/customizations/`.
   Claude fixtures and **six deferred tab-move menu states** passed in a disposable
   app home, with process APIs denied in those tab-move UI fixtures.
 - Guarded deployment, ownership report, doctor and installed native checks passed.
-- Remote-workstation Core 0.1.19 schema was reviewed for document CAS compatibility.
+- Remote `pc2` Core 0.1.19 schema was reviewed for document CAS compatibility.
   A live read-only scoped probe verified its hello, document and terminal-get
   routing without installing anything or changing remote documents/labels.
 - A read-only probe through the installed GPUI mod's actual `exec` → Node → Core
@@ -49,7 +49,7 @@ Canonical project: `~/.config/herdr-app/customizations/`.
 - Architecture-audit deployment: 16 facade payload updates; only palette/feedback frame opt-ins refreshed. No built-in mod patches.
 - `npm run doctor`: 347 owned files and both retained frame opt-ins healthy, with no conflicts.
 - `npm run report:ownership`: 15 Custom mods, 21 Herdr-catalogued mods, no unknown/recovery/legacy live mod folders. Catalog membership alone does not verify stock bytes.
-- Live temporary inspector tested through the shared facade: 10 panes, local/remote-workstation layouts ready, no legacy mod references.
+- Live temporary inspector tested through the shared facade: 10 panes, local/pc2 layouts ready, no legacy mod references.
 - `npm run preferences:export`: safe per-host snapshots at the new nested source location.
 - External Bash revision-dispatch and PowerShell logical-directory fixtures passed.
 - Native `herdr-app status`: Custom active, zoom 1.3, no reported UI/file errors.
