@@ -33,7 +33,7 @@ The imported root will contain `src/`, `tests/`, `tools/`, `docs/`, `upstream/`,
 
 ### Approval decisions
 
-Approve the three ordered outcomes represented in tasks.md, the default Lucide replacements, the three capability boundaries, and the runner split. Supply an authorship/license declaration for each of the three color-gradient SVGs (or request a separately agreed replacement), and decide whether to replace each of the three provider marks with neutral glyphs or supply its source and redistribution permission. Until then, those six assets are blocked from public import. No app files are copied in this planning change.
+The coordinator approved implementation, all three capability boundaries, targeted sanitizing, notices and manifest, and the runner split. Apply the 35 Lucide replacements in a clean separate commit and use the three suggested neutral provider glyphs provisionally. The three color gradients remain absent pending the maintainer's authorship/license answer and are a separate final outcome, after import, documentation and CI preparation. Stop when validation requires them; do not add substitutes, silently omit build mappings, or claim a complete build. Final asset permission and validation remain blocking.
 
 ### Follow-ups, not this import
 

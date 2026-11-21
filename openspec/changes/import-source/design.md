@@ -4,7 +4,7 @@
 
 See [proposal.md](proposal.md) for motivation and scope. The source inventory is 550 yadm-tracked current files, including a personal host snapshot and an obsolete project AGENTS.md. The destination is a public scaffold with MIT licensing, Node 20+, shared workflow bootstrap, tests, and an OpenSpec root with no capability specs. The source's build is checkout-only; deployment already resolves `HERDR_APP_HOME` or the user's default Herdr home. The main portability problems are documentation/source-location assumptions and several tests, not a need to rewrite the installer.
 
-The full public-readiness audit, including its relay, environment-reference and artwork appendices, was read before planning. The source and real app home remain read-only. Only planning artifacts are written now; artwork and runtime decisions below require approval before implementation.
+The full public-readiness audit, including its relay, environment-reference and artwork appendices, was read before planning. The source and real app home remain read-only. Implementation is now approved, with provisional neutral brand glyphs and a separate Lucide-swap commit; three gradient assets remain held and are added only in the final outcome after explicit permission.
 
 ## Goals / Non-Goals
 
@@ -31,7 +31,7 @@ Never copy `preferences/pc.json` into this checkout or Git's index. Keep the ins
 
 Preserve destination LICENSE, AGENTS.md, CLAUDE.md, `.github/workflows/delivery.yml`, the existing CI structure/aggregator, `scripts/workflow-bootstrap.mjs`, `scripts/ci-required*`, `.gitattributes`, and `openspec/`. Keep `package.json` name `herdr-app`, private flag, MIT and engines; merge source app scripts with bootstrap and scaffold checks. Merge ignore rules, keeping generated `dist/`, dependencies and `.artifacts/` ignored and preventing accidental host snapshots from being added (allowlist the three visual snapshots and any deliberately synthetic example).
 
-Perform privacy edits and legal replacement/notice work **before the first app-source commit**; never commit blocked assets or private settings and remove them later. All app files and imported owner-neutral docs arrive together with their notices in outcome 1. Architecture assertion updates required by the shared guidance move land with outcome 2, and host-free test-runner changes land with outcome 3; do not pretend the intermediate import passes the full suite. Quick per-outcome checks are targeted; integration belongs to the final CI head.
+Perform privacy edits and legal notices **before the first app-source commit**; never commit blocked assets or private settings and remove them later. Outcome 1 imports curated source and provisional neutral brand glyphs, with the 35 approved Lucide swaps in a separate clean commit. The unresolved originals and three gradients are never committed. Outcome 2 adapts guidance; outcome 3 prepares host-free tests and CI; outcome 4 alone resolves gradients and completes build/validation. Until then manifest references remain intact and build must fail rather than silently ship an incomplete app.
 
 Alternative rejected: bulk copying then scrubbing. It risks irreversible public exposure and imports untracked runtime data. Source digests/curation logs stay in ignored `.artifacts/`; public provenance records contain only distributable paths and public upstream references, not personal configuration values or the private audit report.
 
@@ -68,7 +68,7 @@ Include Apache-2.0 text, upstream copyright/attribution and modification notices
 
 [image-decisions.md](image-decisions.md) is the exhaustive decision ledger for 41 unresolved SVGs: 35 proposed Lucide replacements, 3 functional-gradient authorship holds and 3 provider-brand decisions. Nothing is silently labeled MIT/Apache because of visual similarity. A maintainer's original-artwork declaration must explicitly cover each retained gradient and the project MIT grant. Retaining a third-party brand SVG needs its actual permission trail, not just an assertion of project ownership.
 
-Retain the Material Icon Theme/Paseo notices and their existing packaging. Ensure new general notices/license texts accompany build output and deployed copies where required (including native patches and layout/shared SVGs), extending packaging/deploy path allowances narrowly if necessary. Test notice propagation and ownership; do not broadly allow arbitrary deployment paths. An unavailable authorship/brand decision blocks importing those files and therefore the complete source outcome; it is not a reason to commit unlicensed bytes temporarily.
+Retain the Material Icon Theme/Paseo notices and their existing packaging. Ensure new general notices/license texts accompany build output and deployed copies where required (including native patches and layout/shared SVGs), extending packaging/deploy path allowances narrowly if necessary. Test notice propagation and ownership; do not broadly allow arbitrary deployment paths. The coordinator approved neutral brand replacements provisionally. An unavailable gradient authorship decision blocks those three files and the final build outcome, not curated source/CI preparation; it is never a reason to commit unlicensed bytes temporarily.
 
 Alternative rejected: licensing all icons under the project MIT file or assuming Herdr's Apache license covers every provider mark. Neither establishes the missing provenance.
 
@@ -94,7 +94,7 @@ Alternative rejected: running the source's unit command unchanged or dropping al
 
 ## Risks / Trade-offs
 
-- [Missing artwork declarations] → Complete import stays blocked until the six held files receive explicit decisions; default 35 replacements also require plan approval.
+- [Missing gradient declarations] → Final build outcome stays blocked; the three gradients remain absent. The 35 replacements and provisional neutral brands are approved and documented, not claims about the originals.
 - [Import source drifts] → Re-enumerate current tracked files and inspect changed digests before copying; no hidden use of stale audit claims.
 - [Portability differences] → Windows and Ubuntu required lanes cover shell/path behavior; fix defects rather than broad skip filters. Windows OS recycling is unverified until the hosted runner executes it.
 - [Guidance move breaks architecture assertions] → Move the same substantive assertion to docs; do not alter generated shared instructions to satisfy the old test.
@@ -104,9 +104,10 @@ Alternative rejected: running the source's unit command unchanged or dropping al
 
 ## Migration Plan
 
-1. After approval and the held-image decisions, curate the current tracked source in this worktree, complete targeted privacy edits/replacements/notices before the first app-source push, and check build plus focused import/attribution regressions in a sandbox.
+1. Curate the approved source excluding all unresolved originals and gradients, complete privacy edits/notices and provisional neutral brands, and commit the 35 licensed replacements separately. Check host-free metadata/privacy without requiring a build.
 2. Complete standalone README/docs and shared-guidance adoption with focused contract checks.
 3. Complete the host-free runner/CI split and capability regression coverage. All three capability deltas describe the imported main behaviors, not an exhaustive feature inventory. Record actual targeted results and all native/live gaps; final ready-head CI is the integration gate.
-4. No live deployment occurs. Eventual installation is a maintainer action against the chosen Herdr home using the guarded installer. Existing ownership conflicts abort, prior opt-ins stay explicit, and rollback preserves personal edits; no automatic preference import or shell integration is added.
+4. Resolve and add the three gradients only after the maintainer's permission, then run the checkout build and focused validation. If permission is unavailable when tests need those files, report the blocker and stop; do not mark the last outcome complete.
+5. No live deployment occurs. Eventual installation is a maintainer action against the chosen Herdr home using the guarded installer. Existing ownership conflicts abort, prior opt-ins stay explicit, and rollback preserves personal edits; no automatic preference import or shell integration is added.
 
 The concrete approval requests are in proposal.md and image-decisions.md. There are no deferred design decisions hidden as implementation discovery tasks.

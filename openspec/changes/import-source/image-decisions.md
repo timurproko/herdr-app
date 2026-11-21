@@ -1,6 +1,6 @@
-# Unresolved image decisions — approval requested
+# Image decisions — implementation approval and gradient hold
 
-The audit identified **41 unresolved SVGs**, not 40 exactly. This table covers every one; it is a proposal, not a claim that the existing vectors are Lucide or original artwork. Paths are relative to the future repository root. No unresolved image is included in the plan commit.
+The audit identified **41 unresolved SVGs**, not 40 exactly. The coordinator approved the 35 R replacements in a clean separate commit and provisional neutral B replacements (`bot`, `bot-message-square`, `sparkles`). This is not a claim that the original vectors are Lucide. The three A gradients remain OUT of the branch pending the maintainer's permission and are added last; build-dependent validation stops if they are unavailable. Paths are relative to repository root.
 
 **R — replace:** proposed default is a fresh copy of the named official Lucide SVG from one pinned release/commit, with complete ISC/Feather MIT notices and per-file source/hash records. Keep the existing filename to preserve runtime references; document any stroke, size, fill or orientation adaptation. Names below identify Lucide catalog slugs, not asserted provenance of the old file. A few are semantic equivalents rather than identical artwork.
 
@@ -54,7 +54,7 @@ The audit identified **41 unresolved SVGs**, not 40 exactly. This table covers e
 | 40 | `src/shared/plug.svg` | R: `plug` | Integration/plugin indicator. |
 | 41 | `src/shared/server.svg` | R: `server` | Machine indicator; keep all packaged copies identical. |
 
-**Totals:** 35 proposed replacements, 3 authorship holds, 3 brand decisions. Approval of the general plan alone does not supply the missing authorship or logo permissions. Do not import unresolved bytes into an early commit and delete them later: this is a public fresh-history export.
+**Totals:** 35 approved replacements, 3 authorship holds, 3 provisional neutral brand replacements. The maintainer may still choose to retain originals after declaring authorship; the R swap remains a clean separate commit. Approval does not supply gradient authorship or logo permissions. Do not import unresolved bytes into an early commit and delete them later: this is a public fresh-history export.
 
 ## Established assets — retain and attribute, do not silently relicense
 
