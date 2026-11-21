@@ -1,0 +1,15 @@
+{
+  "mod": "custom-changes",
+  "shared": {
+    "copy.svg": "src/shared/copy.svg",
+    "arrow-up-right.svg": "src/shared/arrow-up-right.svg",
+    "directory.js": "src/ui/directory.js",
+    "panel-state.js": "src/shared/panel-state.js",
+    "panel-pin.js": "src/ui/panel-pin.js",
+    "sidebar-title.js": "src/ui/sidebar-title.js",
+    "refresh.svg": "src/shared/refresh.svg",
+    "ui.js": "src/ui/ui.js",
+    "space-color-state.js": "src/shared/space-color-state.js",
+    "panel-kit.js": "src/ui/panel-kit.js"
+  }
+}

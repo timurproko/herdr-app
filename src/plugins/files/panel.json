@@ -1,0 +1,21 @@
+{
+  "mod": "custom-files",
+  "shared": {
+    "chevron-down.svg": "src/shared/chevron-down.svg",
+    "chevron-right.svg": "src/shared/chevron-right.svg",
+    "directory.js": "src/ui/directory.js",
+    "file-header.js": "src/shared/file-header.js",
+    "panel-state.js": "src/shared/panel-state.js",
+    "panel-pin.js": "src/ui/panel-pin.js",
+    "sidebar-title.js": "src/ui/sidebar-title.js",
+    "file-icons.js": "src/shared/file-icons.js",
+    "folder.svg": "src/shared/folder.svg",
+    "preview-font.js": "src/shared/preview-font.js",
+    "refresh.svg": "src/shared/refresh.svg",
+    "ui.js": "src/ui/ui.js",
+    "arrow-up-right.svg": "src/shared/arrow-up-right.svg",
+    "copy.svg": "src/shared/copy.svg",
+    "space-color-state.js": "src/shared/space-color-state.js",
+    "panel-kit.js": "src/ui/panel-kit.js"
+  }
+}

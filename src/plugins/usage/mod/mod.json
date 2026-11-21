@@ -1,0 +1,6 @@
+{
+  "place": "none",
+  "title": "Usage",
+  "cloned_from": { "name": "workspace-status", "version": "0.1.13" },
+  "overlay": { "kind": "dialog", "frame": "none", "width": 680, "height": 560 }
+}

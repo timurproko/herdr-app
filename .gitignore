@@ -5,3 +5,12 @@ coverage/
 logs/
 .worktrees/
 .artifacts/
+.work/
+*.error
+*.d.ts
+**/jsconfig.json
+# Host snapshots are private backups; only these visual snapshots are public.
+preferences/*.json
+!preferences/layout.json
+!preferences/palette.json
+!preferences/theme.json

@@ -1,0 +1,15 @@
+{
+  "version": "0.1.15",
+  "executableSha256": "ec5284289742710f3c247b4e8f4148c906671cdac9da33a00e8ffbe02846ae1b",
+  "verifiedEmbeddedStock": [
+    "mods/spaces/main.js",
+    "mods/agents/main.js",
+    "mods/tabs/main.js",
+    "mods/pane/main.js",
+    "mods/changes/main.js",
+    "mods/new-menu/main.js",
+    "mods/picker/main.js",
+    "mods/machine-add/main.js",
+    "mods/worktree/main.js"
+  ]
+}

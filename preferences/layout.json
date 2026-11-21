@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "overrides": {
+    "terminal_padding": [
+      6,
+      6
+    ]
+  }
+}

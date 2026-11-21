@@ -1,0 +1,31 @@
+{
+  "mod": "custom-usage",
+  "shared": {
+    "gauge.svg": "src/shared/gauge.svg",
+    "claude.svg": "src/shared/claude.svg",
+    "pin.svg": "src/shared/pin.svg",
+    "look.js": "src/ui/look.js",
+    "machine-picker.js": "src/ui/machine-picker.js",
+    "model.js": "src/plugins/usage/model.js",
+    "claude-context.js": "src/shared/claude-context.js",
+    "ui.js": "src/ui/ui.js",
+    "space-color-state.js": "src/shared/space-color-state.js",
+    "panel-kit.js": "src/ui/panel-kit.js",
+    "reorder.js": "src/ui/reorder.js",
+    "chevron-down.svg": "src/shared/chevron-down.svg",
+    "chevron-up.svg": "src/shared/chevron-up.svg"
+  },
+  "extensions": {
+    "custom-settings": {
+      "usage-page.js": "mod/settings-page.js",
+      "store.js": "mod/store.js",
+      "model.js": "model.js"
+    }
+  },
+  "settingsPage": {
+    "mod": "custom-settings",
+    "section": "usage",
+    "entry": "usage-page.js",
+    "export": "usagePage"
+  }
+}

@@ -1,0 +1,12 @@
+File icon artwork: Material Icon Theme, MIT license.
+Copyright (c) 2025 Material Extensions.
+https://github.com/material-extensions/vscode-material-icon-theme
+See LICENSE-MATERIAL.txt.
+
+Vendor SVG table and 65% OKLab chroma treatment adapted from Paseo.
+Copyright (c) 2025-present Mohamed Boudra, Apache License 2.0.
+https://github.com/paseo-ai/paseo
+See LICENSE-REFERENCE.txt. Third-party artwork retains its original MIT license.
+
+Static build artifacts only. No Paseo application, package or checkout is
+required to install or run this skin. File matching is sandbox-local.

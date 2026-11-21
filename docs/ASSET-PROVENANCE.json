@@ -1,0 +1,1116 @@
+{
+  "version": 1,
+  "normalization": "sha256LF hashes normalize CRLF to LF; no other transformation.",
+  "herdrCommit": "034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f",
+  "licenseSources": {
+    "Apache-2.0": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/LICENSE",
+    "herdrLucide": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/icons/LICENSE-Lucide.txt"
+  },
+  "entries": [
+    {
+      "path": "src/appearance/layouts/custom.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "583c1fc78e982fc0123eb0c910c421668375c5dbca88e20db84af98393495975",
+      "sha256LF": "583c1fc78e982fc0123eb0c910c421668375c5dbca88e20db84af98393495975"
+    },
+    {
+      "path": "src/features/menu/automatic.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "26f5f9f34ea7bf3924d9f061b3f8e74dc2197ac85e0263578b369035b9d0e634",
+      "sha256LF": "26f5f9f34ea7bf3924d9f061b3f8e74dc2197ac85e0263578b369035b9d0e634"
+    },
+    {
+      "path": "src/features/pane/split-down.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "aedde891320c05f0fb5d58a1ff2279d32518c0cf67f2017515e2aaaa126eb834",
+      "sha256LF": "aedde891320c05f0fb5d58a1ff2279d32518c0cf67f2017515e2aaaa126eb834"
+    },
+    {
+      "path": "src/features/pane/split-right.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "6156e73e475d2c41c88d049dd82bb473c8e87c6c2bee6dabbcafc6da9d419015",
+      "sha256LF": "6156e73e475d2c41c88d049dd82bb473c8e87c6c2bee6dabbcafc6da9d419015"
+    },
+    {
+      "path": "src/features/pane/unzoom.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "bf90f64ca8a6ea964df066d7d09c5e6906576ba59d4dbb1746fb6a1f877af0cb",
+      "sha256LF": "bf90f64ca8a6ea964df066d7d09c5e6906576ba59d4dbb1746fb6a1f877af0cb"
+    },
+    {
+      "path": "src/features/pane/zoom.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "0388734774a8a81cb60a79abde55afacfa890f237a09471af471711be3365bd5",
+      "sha256LF": "0388734774a8a81cb60a79abde55afacfa890f237a09471af471711be3365bd5"
+    },
+    {
+      "path": "src/features/settings/agent.svg",
+      "sha256LF": "bd193b72b415a2306b27aa8120226049dc259b860a9d709be12e408fae1c145f",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/welcome/bot.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/settings/arrow-down.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "0d860be00ca73280de23b64bb575a9cf14064b16d4d171611453b744a4e26c1f",
+      "sha256LF": "0d860be00ca73280de23b64bb575a9cf14064b16d4d171611453b744a4e26c1f"
+    },
+    {
+      "path": "src/features/settings/arrow-up.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "de5312601142a77cb6ffa1fd984f044580899f6c5957bc3c4cf2916e67c3a176",
+      "sha256LF": "de5312601142a77cb6ffa1fd984f044580899f6c5957bc3c4cf2916e67c3a176"
+    },
+    {
+      "path": "src/features/settings/bell.svg",
+      "sha256LF": "c67d04050712c3c6338ad59f5107ee33f27780b1034fcf5ff1b07652bed87114",
+      "status": "herdr-derivative",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/settings/bell.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Audit XML child-geometry match; presentation attributes differ.",
+      "modifications": "Presentation/stroke/dimension attributes adapted."
+    },
+    {
+      "path": "src/features/settings/check.svg",
+      "sha256LF": "9af2b0041d875d35f77ac53c6c295386e82360fe698565e31108bae1035a2bcf",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/settings/check.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/settings/code.svg",
+      "sha256LF": "edab485f73f1b7773559dd55ef5fffa2d4f78ff90c6bbfcee2443aead2b3eb8e",
+      "status": "lucide-marked",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide",
+      "icon": "code-xml",
+      "version": null,
+      "evidence": "Explicit Lucide class; original download version unrecorded.",
+      "modifications": "Presentation/source version unrecorded; no invented exact-copy assertion."
+    },
+    {
+      "path": "src/features/settings/color-hue.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "53d9a9c4b9a4dd2cf93aa301c6f9e6e08d7af0290ebe11ae1512c272f5b0424a",
+      "sha256LF": "53d9a9c4b9a4dd2cf93aa301c6f9e6e08d7af0290ebe11ae1512c272f5b0424a"
+    },
+    {
+      "path": "src/features/settings/color-sv-value.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "51fe4d7e2739d6ede1df1e464059b96921a3fdbc807cfcc6e924f117b5619d6a",
+      "sha256LF": "51fe4d7e2739d6ede1df1e464059b96921a3fdbc807cfcc6e924f117b5619d6a"
+    },
+    {
+      "path": "src/features/settings/color-sv.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "1a2f9e2f4657f34902081db2e4c0f9b5f256452755f9aef6f9e0e51f1c07f78a",
+      "sha256LF": "1a2f9e2f4657f34902081db2e4c0f9b5f256452755f9aef6f9e0e51f1c07f78a"
+    },
+    {
+      "path": "src/features/settings/grip.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "8328c336150cc4122ab2fcd9a93ad0052ef233e0844bd919ba12d862e8cf8b46",
+      "sha256LF": "8328c336150cc4122ab2fcd9a93ad0052ef233e0844bd919ba12d862e8cf8b46"
+    },
+    {
+      "path": "src/features/settings/keyboard.svg",
+      "sha256LF": "f898409323b1286ad5cc0d946c5939166b047bd03f1e864ebd0bb1a4db006dd1",
+      "status": "herdr-derivative",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/settings/keyboard.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Audit XML child-geometry match; presentation attributes differ.",
+      "modifications": "Presentation/stroke/dimension attributes adapted."
+    },
+    {
+      "path": "src/features/settings/palette.svg",
+      "sha256LF": "0fded9bc09e74396aed0f015a7479bcd8721fb68082b81a8af45c07b755a6f51",
+      "status": "herdr-derivative",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/settings/palette.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Audit XML child-geometry match; presentation attributes differ.",
+      "modifications": "Presentation/stroke/dimension attributes adapted."
+    },
+    {
+      "path": "src/features/settings/pencil.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "116513cef1bb75317bf13952d887c36088d4d6c215f8552f1375840d2ff584c6",
+      "sha256LF": "116513cef1bb75317bf13952d887c36088d4d6c215f8552f1375840d2ff584c6"
+    },
+    {
+      "path": "src/features/settings/puzzle.svg",
+      "sha256LF": "6b163dd2565b41013a578613b9bc444e26e0b6122783b6b1453e4abe30d728bf",
+      "status": "lucide-marked",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide",
+      "icon": "puzzle",
+      "version": null,
+      "evidence": "Explicit Lucide class; original download version unrecorded.",
+      "modifications": "Presentation/source version unrecorded; no invented exact-copy assertion."
+    },
+    {
+      "path": "src/features/settings/shield.svg",
+      "sha256LF": "40fe13acad77c838d40107eb104d44ac9e90dfb8e5da45c3f4506778b8b52948",
+      "status": "herdr-derivative",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/settings/shield.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Audit XML child-geometry match; presentation attributes differ.",
+      "modifications": "Presentation/stroke/dimension attributes adapted."
+    },
+    {
+      "path": "src/features/settings/terminal.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "6b51e59ec2950ea7d829ed08fb636d67fa764c4489627c51c373c540ab5abb7c",
+      "sha256LF": "6b51e59ec2950ea7d829ed08fb636d67fa764c4489627c51c373c540ab5abb7c"
+    },
+    {
+      "path": "src/features/space-start/racing-flag.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "c32b16a2f6b0252e04f1db9b1669bd4e6b27fae2516bd331948aac60a54e35ae",
+      "sha256LF": "c32b16a2f6b0252e04f1db9b1669bd4e6b27fae2516bd331948aac60a54e35ae"
+    },
+    {
+      "path": "src/features/tabs/win-close.svg",
+      "sha256LF": "bc46f314ea68818459856618e10f694e53cccd947b3069286f1988927e8a1fac",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/tabs/win-close.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/tabs/win-max.svg",
+      "sha256LF": "d8f2df2b1c3b3416ab765be0ad0b6f453f4c89e0c01ac01e4e10bd12e01b109a",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/tabs/win-max.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/tabs/win-min.svg",
+      "sha256LF": "c2f8d7d1e117f99b73970816877a926becb3da102cd706fd0f0ce1780259cd52",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/tabs/win-min.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/tabs/win-restore.svg",
+      "sha256LF": "69ccde33c78d83ce39972ef129e158dd09fb19d3002bd709047801802fbad51d",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/tabs/win-restore.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/archive.svg",
+      "sha256LF": "bcb4f7103eef0133d0fae701ed5b74c8a531e20f4d38d4f37a1a83af6b582540",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/archive.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/branch.svg",
+      "sha256LF": "45c696f0f646e9471e9c77aa9e237c17c784cb3d8aaecf47bf5c6e05e7e67fcd",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/branch.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/check.svg",
+      "sha256LF": "bb1d520e122285018a0b9d257b7f73d78156337a09706da2b5619a75c45aa231",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/check.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/chevron-left.svg",
+      "sha256LF": "1a3db31d090bce6c795dbcbd1a95cb6bb074d0b2fcd8d26e5610211e10c8291f",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/chevron-left.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/circle-check.svg",
+      "sha256LF": "7d9e10a404a556a239ee33ad8a5b1e415ce39d505991760115d3a515cf387426",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/circle-check.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/clock.svg",
+      "sha256LF": "0f3d2e2b3668e96889f182ef6ab2fb66aa54d48472e83be98bd239d81f64a9cc",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/clock.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/file-text.svg",
+      "sha256LF": "b00717747452168438e35e9ec6828e779bcace9497e3f6dc63f7a618a80cf4f4",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/file-text.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/files.svg",
+      "sha256LF": "d0cb1467cd6c7b726d19d13f7aabeebaf094991605bd9fd4a47a6d084a575d24",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/files.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/folder-plus.svg",
+      "sha256LF": "b89f6eb87b75714f01b723971ba96ee6d6969d6a7cdb878989cd9981268d92eb",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/folder-plus.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/git-branch.svg",
+      "sha256LF": "d2f7cf0c6d1944b9453268f1155da2e93374fad83beeae5ab9a7d5e3584e2204",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/git-branch.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/git-compare.svg",
+      "sha256LF": "2bc47e7dc3c5df4cfaf82de1fdc5bf9f1bbc7f790170d5d434ed7c4ffc86295f",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/git-compare.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/layers.svg",
+      "sha256LF": "d63f7cec8a79eec4a60755af9f2549584a61c8e349ef9f7e9a6c4af2aeb73d9d",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/layers.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/minus.svg",
+      "sha256LF": "709a2f4c02741159ea14691d4fb1cbcf68073b27ec4e738bc9a73d660f409d7c",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/minus.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/monitor.svg",
+      "sha256LF": "cbb2f05267714ca1ffa6411cf102bbba7da13743654e4fe518429b181cf19099",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/monitor.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/more.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "b135d5ac3acb0ace609ee2ed00d15229d3220a7e2b9eb0f36398f5da1779c0af",
+      "sha256LF": "b135d5ac3acb0ace609ee2ed00d15229d3220a7e2b9eb0f36398f5da1779c0af"
+    },
+    {
+      "path": "src/features/workspace-chrome/panel-left.svg",
+      "sha256LF": "2e67d422da7253a4efcfbc02e74c17104844d7fdb19d63210e18b2c03bfa0ab4",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/panel-left.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/panel-right.svg",
+      "sha256LF": "85a85f016e5be2c50a3906161d190df94e3770d22e9069abf21649c9b7f36b1a",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/panel-right.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/pin-off.svg",
+      "sha256LF": "265298d18044617313022b40f1e24bb4989fe1f18f33585786fc947bb1ab270a",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/pin-off.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/pin.svg",
+      "sha256LF": "d4b9b5f5ef7f89e819316110ba8d8aa1d1998a30b03b4eeaf3323682890778dc",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/pin.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/plus.svg",
+      "sha256LF": "109da7afa021037ac0278aa9f5e72fd53e2fa2ea1f8ea32fbf78e7d98e6301e6",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/plus.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/search.svg",
+      "sha256LF": "7be6e7a558041594b46f0c22ccf0fd8d1f02458933b8038523323c874c7ad50b",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/search.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/sidebar-right.svg",
+      "sha256LF": "2f99a72cc93424491044ff86dfb48e46dd32a4d6fe058d03eed841ff900117f1",
+      "status": "herdr-derivative",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/sidebar.svg",
+      "version": "Herdr v0.1.16",
+      "modifications": "Mirrored sidebar path (M9.5 to M14.5); existing regression checks mirror."
+    },
+    {
+      "path": "src/features/workspace-chrome/sidebar.svg",
+      "sha256LF": "2f5ce4d2f78c3740d874db721092360cd58b809dca2564ea3fb65480ed4a9471",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/sidebar.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/spinner.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "fa4d357c09b602b790de7a0e380026a93a6e9cfc0b23ab44b4b06b94ff96cc5c",
+      "sha256LF": "fa4d357c09b602b790de7a0e380026a93a6e9cfc0b23ab44b4b06b94ff96cc5c"
+    },
+    {
+      "path": "src/features/workspace-chrome/square-pen.svg",
+      "sha256LF": "e46ff55127ad0510e9637cba346fcb5c672cf6e14e74815652358cece8a2889e",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/square-pen.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/square.svg",
+      "sha256LF": "e475514f8a336eaa799db562ec89a87eacc5e9202c1b1f0e0ab387b6334b0d1b",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/square.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/terminal.svg",
+      "sha256LF": "a6f93e62a6ec412e6a214849be5b566cd21cff81d5570891c2e04e96c4dd964e",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/terminal.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/x.svg",
+      "sha256LF": "c1e53fc9bbe1a0a0b8183bcacf5ab7dbf160fd1f082594de3dcbba1cd5a71614",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/x.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-status/preview.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "0dd93dace835027d3f8efdf7f252849e428733f6a1890222264c2ccf4a61973c",
+      "sha256LF": "0dd93dace835027d3f8efdf7f252849e428733f6a1890222264c2ccf4a61973c"
+    },
+    {
+      "path": "src/plugins/files/mod/file.svg",
+      "sha256LF": "aad5bc0712faa95774727b83b9b7d1bc3ff28d781a838fc7693b9c9ae7383a4b",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/files/file.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/plugins/files/mod/folder-filled.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "20b8e263f4427e93891221ab5be4bb11db41e5ad27b7177335e51cfa837476dd",
+      "sha256LF": "20b8e263f4427e93891221ab5be4bb11db41e5ad27b7177335e51cfa837476dd"
+    },
+    {
+      "path": "src/plugins/files/mod/trash.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "a342f0507345a4006915d21f1772f4a2901bb55fb7a479ebe71ad614e8a11ec6",
+      "sha256LF": "a342f0507345a4006915d21f1772f4a2901bb55fb7a479ebe71ad614e8a11ec6"
+    },
+    {
+      "path": "src/plugins/git/mod/changes.svg",
+      "sha256LF": "8370414f7d5bd16e2a21e0b83c4e95c75674bd241ce4d83cf91762d620647fb3",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/changes/changes.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/plugins/git/mod/checklist.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "c19bd71b76b2c082df5010595cfb34c72f18d926f8b92a0d89c355cfe3fa60f3",
+      "sha256LF": "c19bd71b76b2c082df5010595cfb34c72f18d926f8b92a0d89c355cfe3fa60f3"
+    },
+    {
+      "path": "src/plugins/git/mod/circle-check.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "532dd4d8ed8bbb0b8442d81604400d45119846941a1f45537221a2c052946c27",
+      "sha256LF": "532dd4d8ed8bbb0b8442d81604400d45119846941a1f45537221a2c052946c27"
+    },
+    {
+      "path": "src/plugins/git/mod/circle-play.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "7decf7ec10cad40d3a47fad4027a441ea2cf2aedf10a8a31389f344077252abb",
+      "sha256LF": "7decf7ec10cad40d3a47fad4027a441ea2cf2aedf10a8a31389f344077252abb"
+    },
+    {
+      "path": "src/plugins/git/mod/code.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "4ef3df493dc8deb48ed2376402eb6ea4563d50f5aed3d4879a5cd946cc6a976d",
+      "sha256LF": "4ef3df493dc8deb48ed2376402eb6ea4563d50f5aed3d4879a5cd946cc6a976d"
+    },
+    {
+      "path": "src/plugins/git/mod/git-merge.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "65e3f88184ffa00ef22b018795e622a8517782373949475a00d01c705998d928",
+      "sha256LF": "65e3f88184ffa00ef22b018795e622a8517782373949475a00d01c705998d928"
+    },
+    {
+      "path": "src/plugins/git/mod/git-pull-request-closed.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "7d38ba923cdfde13bfd03926773a369816b5aae152381d49d64154a6e5358a7a",
+      "sha256LF": "7d38ba923cdfde13bfd03926773a369816b5aae152381d49d64154a6e5358a7a"
+    },
+    {
+      "path": "src/plugins/git/mod/git-pull-request.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "43325d850fa356ab6ef5023e64f997f6cc871dadf096f56f85bbe144818cbd2f",
+      "sha256LF": "43325d850fa356ab6ef5023e64f997f6cc871dadf096f56f85bbe144818cbd2f"
+    },
+    {
+      "path": "src/plugins/git/mod/info.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "a9ab1075064baf36dc5039067a45ca7fda21e8c2abd071abd0e7e3678942c9f3",
+      "sha256LF": "a9ab1075064baf36dc5039067a45ca7fda21e8c2abd071abd0e7e3678942c9f3"
+    },
+    {
+      "path": "src/plugins/git/mod/merge-conflict.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "ee3e1223b844e11c88238eb640a7500b99635f0a04b49c66fb5d49afd6f15457",
+      "sha256LF": "ee3e1223b844e11c88238eb640a7500b99635f0a04b49c66fb5d49afd6f15457"
+    },
+    {
+      "path": "src/plugins/git/mod/repository.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "67e6e473614d698673db8dd700a81d743a2da99cccc0a3c2e52ea03f6d1cec1d",
+      "sha256LF": "67e6e473614d698673db8dd700a81d743a2da99cccc0a3c2e52ea03f6d1cec1d"
+    },
+    {
+      "path": "src/plugins/usage/mod/codex.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "2c1c0fcc2127011bce8462a4e8effb4795f377b046ddcf1b12130c8262fc0f01",
+      "sha256LF": "376031a84daba7db7bb85968ffd859ae67b3b259703e2ab34fba666299f6d67b"
+    },
+    {
+      "path": "src/plugins/usage/mod/copilot.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "767e75202ea062f21a670786c3892e398fc1fb90571ee01cc6fb47d26efb05fb",
+      "sha256LF": "3da90ba5a4b10dbe6a5bce039f5083f6f82dba1a92fd2273e9a378d8c0aba093"
+    },
+    {
+      "path": "src/plugins/usage/mod/login.svg",
+      "sha256LF": "3f0ed61b6553fa7e9eb7b082d8895f1e9614f2f104d95fc3b241ab45ab92d4c4",
+      "status": "lucide-marked",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide",
+      "icon": "log-in",
+      "version": null,
+      "evidence": "Explicit Lucide class; original download version unrecorded.",
+      "modifications": "Presentation/source version unrecorded; no invented exact-copy assertion."
+    },
+    {
+      "path": "src/plugins/usage/mod/refresh.svg",
+      "sha256LF": "1d31737a03732a40e3e59f1590cd790d8826a55bc75105c0fef3bcf12ded6b7b",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/settings/refresh.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/shared/arrow-up-right.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "4284650f1befe987e6f1cda1b6879f6387a7e5b4996155b5f448c9e19b0226cb",
+      "sha256LF": "4284650f1befe987e6f1cda1b6879f6387a7e5b4996155b5f448c9e19b0226cb"
+    },
+    {
+      "path": "src/shared/chevron-down.svg",
+      "sha256LF": "be2f2e86753c4c6bc19b1cc196611b18597cc7a553580ed2bdf80f26a5e2440d",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/files/chevron-down.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/shared/chevron-right.svg",
+      "sha256LF": "280d2c796344a22fb6cb7086edc90868a27c7812405cffb9be66a3c5835aa898",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/files/chevron-right.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/shared/chevron-up.svg",
+      "sha256LF": "77ccf1f41d1c16f973abeaa496d43bbcd0612da8328fae10e2dcfb8ed2d23425",
+      "status": "lucide-marked",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide",
+      "icon": "chevron-up",
+      "version": null,
+      "evidence": "Explicit Lucide class; original download version unrecorded.",
+      "modifications": "Presentation/source version unrecorded; no invented exact-copy assertion."
+    },
+    {
+      "path": "src/shared/claude.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "ef6a580639ba22358967d7b1ea239b902f0fadf28a32fa60d71e42eeb188a3f2",
+      "sha256LF": "fc3207827c0c6736e16037500c5a5d747ac80de8546e4e9e445a801cbfb97990"
+    },
+    {
+      "path": "src/shared/close.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "50f770046acb0db8e1a6aa0b35b751adb7f8bf52a68055ff9da1cceabe158f1f",
+      "sha256LF": "50f770046acb0db8e1a6aa0b35b751adb7f8bf52a68055ff9da1cceabe158f1f"
+    },
+    {
+      "path": "src/shared/copy.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "4750ed0e06b2452120e5d66e1127dfdfc5848606d29c2423c38b96638493b315",
+      "sha256LF": "4750ed0e06b2452120e5d66e1127dfdfc5848606d29c2423c38b96638493b315"
+    },
+    {
+      "path": "src/shared/cpu.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "57985cdc6e1ed23a0f528e4f656f8d71b03cca5876dbec7da82cd17e9ca302f6",
+      "sha256LF": "57985cdc6e1ed23a0f528e4f656f8d71b03cca5876dbec7da82cd17e9ca302f6"
+    },
+    {
+      "path": "src/shared/folder.svg",
+      "sha256LF": "9d7567649afffe0523114fcff3ac9da0504ac24cabc35e0b1dc0a4d90a34beb8",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/welcome/folder.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/shared/gauge.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "51ced845a4daf975ae855a80839774b6083dc02c823fbc97d3dd6b9d579ebed8",
+      "sha256LF": "51ced845a4daf975ae855a80839774b6083dc02c823fbc97d3dd6b9d579ebed8"
+    },
+    {
+      "path": "src/shared/pin.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "0ce20476b6f4595dd9aae993b30b64f805f9f6343076c25dee653fe7412a6d6e",
+      "sha256LF": "0ce20476b6f4595dd9aae993b30b64f805f9f6343076c25dee653fe7412a6d6e"
+    },
+    {
+      "path": "src/shared/plug.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "24493ac8fde751433fbab109736143583b20ee7cdad35e8e6cb33ec339e62993",
+      "sha256LF": "24493ac8fde751433fbab109736143583b20ee7cdad35e8e6cb33ec339e62993"
+    },
+    {
+      "path": "src/shared/refresh.svg",
+      "sha256LF": "adca407fef68236e478c6d1c98e151622d42f7b3d40ebf20918a7367209e7e84",
+      "status": "lucide-marked",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide",
+      "icon": "refresh-cw",
+      "version": null,
+      "evidence": "Explicit Lucide class; original download version unrecorded.",
+      "modifications": "Presentation/source version unrecorded; no invented exact-copy assertion."
+    },
+    {
+      "path": "src/shared/server.svg",
+      "status": "kept as in the original project, source not recorded",
+      "source": null,
+      "licenses": [],
+      "version": null,
+      "modifications": "None. Retained exactly from the original tracked project by maintainer direction; no inferred source, authorship or license.",
+      "sha256Raw": "6b252e12a573169ef2857dccfff64ed1474a0826abaecafa42543ee24b8d7b87",
+      "sha256LF": "217c4fd3498e850c5d31cf8309a2af79ef1a5fab8bcb6b1fab3b52cb0df0e0af"
+    },
+    {
+      "path": "src/shared/settings.svg",
+      "sha256LF": "3035425117f57dce1f0590ead6166a7e943f029b6a96b51ddcc4e507992bbfca",
+      "status": "lucide-marked",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide",
+      "icon": "settings",
+      "version": null,
+      "evidence": "Explicit Lucide class; original download version unrecorded.",
+      "modifications": "Presentation/source version unrecorded; no invented exact-copy assertion."
+    },
+    {
+      "path": "src/integration/native-patches/palette/original-0.1.13.js",
+      "status": "herdr-adapted-snapshot",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/v0.1.13/defaults/frame/palette/main.js",
+      "version": "0.1.13",
+      "modifications": "Stock snapshot; facade import adapted from herdr to ./host.js.",
+      "sha256LF": "1af7b6d96775788b629d40b70dc3cc0b6833a6d686422c1cda149acb6d8b06fd",
+      "evidence": "Version relationships from reviewed tag comparisons; comparisons reverse existing facade import and normalize newlines."
+    },
+    {
+      "path": "src/integration/native-patches/palette/original.js",
+      "status": "herdr-adapted-snapshot",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/palette/main.js",
+      "version": "0.1.14–0.1.16",
+      "modifications": "0.1.14 review-era stock, also matches 0.1.15/0.1.16; facade import adapted.",
+      "sha256LF": "e04927533d3f0b3937268818b3b2a3f495cda41e4d5f245584a477ea013b1539",
+      "evidence": "Version relationships from reviewed tag comparisons; comparisons reverse existing facade import and normalize newlines."
+    },
+    {
+      "path": "src/integration/native-patches/palette/main.js",
+      "status": "herdr-derivative",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/palette/main.js",
+      "version": "0.1.13 / 0.1.14+ reviewed palettes",
+      "modifications": "Modified Custom UI, routing and scrolling.",
+      "sha256LF": "f24c190d2d4e7863bc6f0215ed82ae47072eaf4dc95e89e1c46958ffb41984de",
+      "evidence": "Version relationships from reviewed tag comparisons; comparisons reverse existing facade import and normalize newlines."
+    },
+    {
+      "path": "src/integration/native-patches/feedback/original.js",
+      "status": "herdr-adapted-snapshot",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/feedback/main.js",
+      "version": "0.1.13–0.1.16",
+      "modifications": "Stock snapshot; initial copy version indistinguishable; facade import adapted.",
+      "sha256LF": "c38cef2537175f569cf987a5cbc56d563ee14f841d01a8c2df0d54cfa5994ef7",
+      "evidence": "Version relationships from reviewed tag comparisons; comparisons reverse existing facade import and normalize newlines."
+    },
+    {
+      "path": "src/integration/native-patches/feedback/main.js",
+      "status": "herdr-derivative",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/feedback/main.js",
+      "version": "0.1.13–0.1.16 reviewed feedback",
+      "modifications": "Modified Custom styling, draft and attachment behavior.",
+      "sha256LF": "dccf45e47cc847e112ee93e2b073d67eaf75dadc5a42d5335c680b636c1acc85",
+      "evidence": "Version relationships from reviewed tag comparisons; comparisons reverse existing facade import and normalize newlines."
+    }
+  ]
+}

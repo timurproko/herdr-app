@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "patches": [
+    {
+      "id": "palette",
+      "target": "frame/palette",
+      "originals": ["frame-patches/palette/original.js", "frame-patches/palette/original-0.1.13.js"],
+      "files": {
+        "custom-ui.js": "lib/ui.js",
+        "custom-look.js": "lib/look.js",
+        "custom-routing.js": "frame-patches/palette/routing.js",
+        "custom-scroll-fade.js": "lib/scroll-fade.js",
+        "identity.js": "lib/identity.js",
+        "compatibility.js": "lib/compatibility.js",
+        "host.js": "lib/host.js",
+        "main.js": "frame-patches/palette/main.js"
+      }
+    },
+    {
+      "id": "feedback",
+      "target": "frame/feedback",
+      "originals": ["frame-patches/feedback/original.js"],
+      "files": {
+        "custom-ui.js": "lib/ui.js",
+        "custom-look.js": "lib/look.js",
+        "custom-modal-layout.js": "lib/modal-layout.js",
+        "identity.js": "lib/identity.js",
+        "compatibility.js": "lib/compatibility.js",
+        "host.js": "lib/host.js",
+        "main.js": "frame-patches/feedback/main.js"
+      }
+    }
+  ]
+}

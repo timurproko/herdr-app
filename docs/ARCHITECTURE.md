@@ -1,0 +1,911 @@
+# Custom architecture
+
+This is the decision guide for future customization work. Read it before adding a
+feature or changing runtime files. See [the audit findings](ARCHITECTURE-AUDIT.md)
+for resolved issues and remaining coupling risks.
+
+## Ownership model
+
+| Area | Owner | Rule |
+|---|---|---|
+| Checkout `src/` | Custom source | Edit here |
+| Checkout `tools/`, `tests/`, docs | Custom development | Build/deploy/test logic only |
+| Checkout `dist/` | Generated | Disposable; never edit |
+| `mods/custom-*` | Installed Custom output | Flat direct children required by Herdr; never edit |
+| `layouts/Custom.json`, `themes/Custom.json` | Installed Custom output | Deploy from source |
+| `.customizations/runtime/` | Installed workers | Generated from the project |
+| `.customizations/backups/`, `recovery/` | Machine-local safety data | Never sync or use as source |
+| Unprefixed `mods/*`, `frame/*`, native layouts | Herdr | Read-only except approved registry patches |
+| `shared.json`, `data/`, `.state/`, sessions | Herdr runtime state | Access narrowly through supported APIs; never rewrite wholesale |
+
+Herdr discovers mods as direct `mods/<name>/mod.json` children. A nested
+`mods/custom/feature` hierarchy is therefore not supported. `custom-*` is the
+runtime ownership namespace. Herdr may add `gpui-kit.d.ts` and `jsconfig.json`
+inside those directories; those two files remain host-generated.
+
+The report uses Herdr's `installed.json` as read-only ownership evidence, never
+assumes that every unprefixed directory is vanilla, and flags uncatalogued mods
+as unknown. Catalog membership does not prove bytes are stock: use integration
+baseline checks for reviewed coverage and `doctor` for Custom ownership hashes.
+
+Run this read-only inventory whenever ownership is unclear:
+
+```powershell
+npm run report:ownership
+```
+
+## Choose the least-coupled extension
+
+Use the first row that can implement the request.
+
+1. **Existing private feature mod** — add behavior under `src/features/<feature>/`.
+2. **New private mod** — use `custom-<name>` and compose it into `Custom.json` or
+   open it explicitly as an overlay.
+3. **Shared UI/model/service** — place reusable code in `src/ui/`, `src/shared/`,
+   or `src/services/`; package a local copy into each sandboxed mod.
+4. **Layout/theme change** — use `src/appearance/` and preference projection.
+5. **Herdr facade adapter** — handle public API/command renames centrally under
+   `src/integration/herdr/`.
+6. **Native compatibility patch** — last resort, requires explicit approval,
+   reviewed stock snapshots, guarded restore, tests, and a registry entry.
+
+Never rebuild Herdr/herdr-core, edit native binaries, or patch an unprefixed mod as
+a shortcut. The former `confirm`, `prompt`, and `toast` patches demonstrated why:
+Herdr quarantined them as `*-edited-*` and warned after every relaunch.
+
+## Adding or changing a private mod
+
+1. Put canonical code in `src/features/<feature>/`.
+2. Name the runtime mod `custom-<feature>`.
+3. Add its entry to `customization.json.features` when it is a new mod.
+4. Map every entrypoint, asset, worker and shared helper in
+   `customization.json.files`.
+5. Import host APIs only from local `./host.js`.
+6. Add the mod to `src/appearance/layouts/Custom.json` or open it explicitly.
+7. Add focused regression coverage and update integration expectations.
+8. Run validation and deploy through the guarded tools.
+
+The build deliberately injects these integration files into every mod:
+
+- `host.js` — sole direct `herdr` importer.
+- `compatibility.js` — reviewed version/API/command profiles.
+- `identity.js` — stable Custom identity.
+- `terminal-labels.js` — current namespaced working-directory/home reports.
+
+Do not manually duplicate those files in feature folders.
+
+## Dependency boundaries
+
+- `src/appearance/`: layout/theme composition, not service behavior.
+- `src/features/`: one user-facing feature and its local controller.
+- `src/ui/`: reusable presentation and interaction primitives.
+- `src/shared/`: reusable models/state helpers/assets.
+- `src/services/`: filesystem, process, network, terminal discovery and privileged work.
+- `src/integration/herdr/`: host facade and compatibility only.
+- `src/integration/shell/`: shell reporting hooks.
+- `src/integration/native-patches/`: approved native exceptions only.
+
+Large built-ins-only Node workers may be listed in `compressedNodeWorkers` in
+`customization.json`. The build emits a deterministic gzip/Node wrapper at that
+same mapped output path, preserving the full canonical source byte-for-byte.
+This keeps `hc` remote `node -e` transport below Windows' 32K command-line limit;
+it changes packaging only, not credentials, endpoints or collector behavior.
+
+A UI mod may call a narrow service worker. A service must not depend on rendered UI.
+Runtime UI mods and deployed workers must never import from the source checkout by
+absolute path. The yadm-managed Bash/PowerShell prompt hooks are the deliberate
+external-integration exception: shell profiles source `src/integration/shell/` so
+yadm can refresh existing sessions at a safe prompt without injecting input or
+restarting terminals. This is optional private profile/yadm wiring, not included or
+installed by standalone deploy; its fixed source path is not an arbitrary-checkout
+integration guarantee.
+
+## Host API changes
+
+Feature code imports `./host.js`, never `herdr`. After a Herdr update:
+
+```powershell
+npm run check:host-api
+```
+
+- API or command rename: update `compatibility.js`.
+- Return-shape change: normalize it in `host.js`.
+- New API: add a thin facade export and contract entry, then use that export.
+- Unknown Herdr version: review it explicitly; do not bypass the deployment gate.
+
+Temporary diagnostic mods also receive the same facade through
+`tools/temporary-mod.mjs`.
+
+Herdr 0.1.16's public SDK, commands and stock provenance are reviewed in
+[the compatibility record](HERDR-0.1.16-REVIEW.md). The separate tab-move document review below also permits App 0.1.16; neither
+review opts in additional native patches.
+
+Deployment accepts explicit `--source` selectors for mod/runtime-only updates when
+unrelated branch outputs are already installed. It retains unselected ownership
+hashes and bytes, never prunes, and leaves layout/preferences byte-for-byte intact.
+Dependency reloads use the existing verified-owned entrypoint rather than an older
+branch's copy. This remains a guarded build/deploy operation, not a manual runtime
+edit or a way to adopt unknown output; see [commands](COMMANDS.md).
+
+## State placement
+
+| Need | Storage |
+|---|---|
+| Host/session state | Read through Herdr APIs; never copy session state into source. The explicitly authorized tab-move adapter is the sole Core-document write exception (below) |
+| Custom cross-mod state | Namespaced `shared("custom.*")` keys |
+| Per-mod ephemeral UI state | View fields or mod-local `localStorage` |
+| Portable user preference | Allowlisted, versioned snapshot under `preferences/` |
+| Generated deployment ownership | `.customizations/manifest.json` |
+| Recovery/rollback | `.customizations/backups/` or `recovery/` |
+
+Do not sync credentials, account caches, usage reports, sessions, `shared.json`,
+`data/`, `.state/`, sockets or window files. Current runtime identifiers use only
+`custom-*` and `custom.*`. Old namespace migration tools and label aliases have
+been retired; third-party license notices retain their original attribution.
+
+## Right-sidebar tab pins
+
+`shared/panel-state.js` is the single owner of `custom.panel.tabs` (version 1):
+`{ default: {open,view}, pins: { [qualifiedTabId]: {space,open,view} } }`. Valid views
+come from plugin sidebar declarations (the shipped stable IDs remain `files` and
+`changes`). It uses supported native layout commands; no Core or layout-document
+writes. Availability is only a projection: disabled pinned views fall back to the
+first enabled panel and both disabled hides the sidebar. Stored choices survive
+so re-enabling restores them. With no pins, the existing global choice is captured
+only when availability first masks it; ordinary navigation stays native. This tab-runtime state is deliberately excluded from
+preference export. The unpinned default stays separate from pinned choices; the
+legacy `custom.panel.view` reopen hint follows only the shared/default choice.
+
+Files/Git headers share `ui/panel-pin.js`. Their Close actions, the tab-bar toggle
+and the panel switcher all use `changePanel`, recording the source tab before
+commands queue. The switcher captures its target when opened; stale popups cannot
+retarget another tab. Mounted Tabs calls `syncPanelState` for every navigation
+path, yielding before state/command work. One in-flight projection, a captured
+store/binding check and acknowledgement grace prevent intermediate native layout
+frames or a superseded task from corrupting a pin/default or creating a command
+loop. No new polling, terminal interaction, focus command or window restart.
+Unknown state versions are preserved and disable pin changes.
+
+## Shared empty-state component
+
+`ui/ui.js` exports `emptyState(t,{id,title,icon})` for lists, panels and pickers.
+It owns centering, 24px icon size, the shared gap, regular `U.font` text in `t.muted`,
+and removal of trailing periods. Contexts may supply an existing icon and concise
+title, not duplicate the markup/style. Search/palette/Jump, repositories, worktrees,
+folders, Agents, terminals, machine lists and Usage share this contract. The right
+sidebar's Files/Git empty messages deliberately retain their original compact,
+top-aligned text-only presentation, without a centered icon.
+Loading/error diagnostics and disabled-feature explanations remain separate states.
+Shared UI updates retain the public `rolePill`/`ROLE_LABELS` helpers used by the
+independently installed Firstmate views; no Firstmate behavior or preferences change.
+
+## Reorderable UI components
+
+`ui/reorder.js` is the shared drag interaction for Tabs, Spaces and sidebar footer
+icons. The `strip`, `list` and `icons` variants expose their geometry/presentation
+through one API: threshold, guarded controls, suppressed hover/tooltips, source
+dimming, insertion markers, zoom/scroll-aware previews and return/fade cancellation
+are not implemented in individual features. Features supply icons/labels and domain
+constraints/commit callbacks only. New reorderable surfaces should use the
+[component API](REORDER.md), not copy another feature's mouse handlers/timers.
+
+## Settings sections and sidebar shortcuts
+
+`src/ui/settings-sections.js` is the canonical section catalog. Register a page there
+with `{ id, title, icon }` (and `platform` if needed). Settings navigation, Look's
+Left sidebar configuration and both expanded/compact sidebar shortcuts derive from
+that catalog. A new section gets an off-by-default shortcut targeting its Settings
+page automatically; implement its page normally and package its icon as usual.
+Look's **Left sidebar ›** navigation uses the same 32px height, 8px horizontal
+padding/gap and rounded hover as Settings' left navigation, with its chevron on the right.
+Its 8px left hover padding sits outside the text anchor, keeping the label aligned
+with other Look rows. The chevron compensates its SVG's blank right third; the hover's
+right extension is reduced by the same amount to retain the chevron's original
+position. Auto/stretch width absorbs these margins. The visible glyph's right gap
+equals the label's left gap (not merely the invisible icon box's padding).
+
+Optional `plugin` metadata gates runtime navigation/configuration/shortcuts through
+the plugin registry, while the pure catalog retains the ID for portable preference
+validation. Disabling never deletes that section's saved shortcut order/visibility.
+`machineScoped` lets plugin pages reuse the common Settings machine picker.
+
+Optional `shortcut` metadata on the section customizes initial visibility, side,
+initial order, icon or action. Existing Usage keeps its quota dialog through that
+metadata. Do not add ID switches or parallel section lists to footer/menu code.
+The global Settings shortcut is a separate required escape hatch, not a toggle.
+Existing saved visibility/order/placement values still win over initial defaults.
+
+The snapshot validator derives its allowed IDs from `settingsShortcuts()` too.
+`tools/runtime/settings-sections.js` is a development-only re-export; the build maps
+the canonical catalog directly to `scripts/settings-sections.js`, so the packaged
+snapshot tool is self-contained. The regression fixture adds one synthetic catalog
+entry and checks automatic configuration, expanded/compact navigation, icons and
+safe preference export/import, including rejection of invalid values and unknown IDs.
+
+## Plugins
+
+Optional integrations people switch on in Settings > Plugins. Each plugin is
+self-contained in its own folder and talks to the app only through the plugin API:
+
+```
+src/plugins/
+  api.js            GPUI plugin API: host facade, spaceColor(id), pluginFile(id, name)
+  api.cjs           Node plugin API: shared A1 command transport and protocol validation
+  registry.js       on/off state, settings, hooks/events/transforms, checks (features import this)
+  <id>/plugin.js    the plugin's declaration (entry point)
+  <id>/*            its own helpers, workers, assets and *.test.mjs tests
+```
+
+- **Adding a plugin is adding a folder.** `tools/plugins.mjs` finds every folder with a
+  `plugin.js`; the build packages the registry, the API and every plugin folder into
+  each mod listed in `customization.json` `plugins.mods` (as `plugins.js` and
+  `plugins/<id>/…`, which Herdr resolves like any relative import) and generates
+  `plugins/index.js` (the list) and `plugins/where.js` (which mod this copy is in).
+  `plugins.order` sets hook priority and the order on the Plugins page; unlisted
+  plugins follow alphabetically. No per-file manifest lines.
+- **Boundaries are tested** (`tests/architecture.test.mjs`): a plugin file imports only
+  `../api.js`, or `../api.cjs` for Node workers, its own folder and packages (`gpui-kit`, `node:`).
+  `api.cjs` owns the single shared A1 client, never color/membership policy. Explicit
+  `plugins.nodeWorkers` entries embed that canonical adapter and the worker verbatim
+  into deterministic compressed self-contained transport; remote hosts need no companion.
+  `api.js`
+  reaches only the host facade, Spaces' color state and `where.js`; features use plugins
+  only through the registry (`./plugins.js`), never a plugin's files. Plugin tests run
+  with `npm test` and load code as packaged through `tools/plugin-harness.mjs`.
+- Mods cannot load each other's code and mod commands reach only shown copies, so every
+  plugin mod carries its own copy; only state is shared at run time.
+
+- A plugin declares `id`, `name`, `category`, `version`, `icon`, `description`,
+  `settings` (typed `toggle`/`choice`/`multiselect`/`machine`/`text` fields with defaults), `prerequisites`
+  (`check()` returning `ready`/`missing`/`recommended`/`error`, optional `fix`), and how it
+  joins features: `hooks`, `events` and `transforms` (below).
+- A `multiselect` setting holds a unique array of declared option values, including
+  an empty selection. Settings renders a native dropdown with controlled checkboxes
+  that stays open between selections. Changes save immediately through the registry;
+  disabled/closed/dismissed callbacks cannot save. Portable snapshots retain bounded
+  unique plain-string option arrays, never nested objects or runtime request data.
+- A `machine` setting holds a Herdr machine name, or `null` for this computer. Settings
+  draws it with the shared machine picker. The registry only checks the type, so a
+  machine that has been removed shows up as a failing check. Changing it re-checks the plugin.
+- A `text` setting is one line of text (up to 1024 characters, no control characters;
+  empty means not set), drawn full width with an optional `placeholder`. It is saved
+  on Enter or when the field loses focus, and the plugin is re-checked only if the value
+  changed. Plugins must quote it themselves before it goes into a command (Firstmate
+  passes its folder to git as a separate argument and single-quotes it for PowerShell).
+- A setting marked `hidden: true` is stored and validated like any other but not drawn
+  in the Settings block. A prerequisite may declare
+  `pick: { machine, folder, label, changeLabel }`. Its row then gets an Add/Change
+  button that opens a folder browser (`features/settings/folder-browser.js`) with a
+  machine switch. It lists folders over `exec({ on })` with PowerShell, so it works for
+  remote machines, which the system folder dialog cannot browse. Choosing a folder saves
+  both settings and re-checks the plugin. Firstmate uses this so the clone's machine
+  decides where every other requirement is checked and installed.
+- `check(context)` and `fix.run(context)` receive `{ setting(key) }`, the same accessor
+  hooks get. `checkPlugin` passes one context object to every check in a round, so a
+  plugin can share work between its checks (Firstmate does this, using a WeakMap keyed
+  by the context). A check may return `fix: null` to hide a fix that cannot help right
+  now. A fix with `manual: true` only helps a person do the step (Firstmate's Open shows
+  Windows Settings > For developers on the folder's machine); it is drawn as a plain
+  button and "Install all" skips it. Fixes run one at a time. "Install all" runs every offered fix in order and stops
+  at the first failure, then the plugin is re-checked.
+- Plugins today: VS Code Remote, A1 session colors, and Firstmate (a setup checklist
+  for the machine that runs Firstmate, run through `hc exec --on <machine> --json`;
+  pinned, SHA-256-verified exe installs into `%USERPROFILE%\.local\bin`, global npm
+  installs through PowerShell. Its Agent hooks row reads `~/.claude/settings.json` there
+  for each installed axi tool's SessionStart hook (matched like the installer does: the
+  hook command contains the tool name) and runs `<tool> setup hooks` only when the person
+  presses Set up. Developer Mode's Set up (another machine only, manual) runs one fixed
+  `reg add` over `ssh <machine's target>` from this computer: an administrator's Windows
+  OpenSSH login is elevated, herdr-core is not. On this computer the button opens
+  Settings instead. It never edits PATH or restarts a core).
+- State is `shared('custom.plugins')`: `{ [id]: { enabled, settings } }`, allowlisted
+  and validated for preference sync. A plugin that took over an older preference
+  supplies `state: {get, set}` instead (A1 session colors keeps
+  `custom.match-agent-session-color`).
+- Features name moments; plugins join them three ways, all only while enabled, each
+  given `setting(key)`:
+  - `runPluginHook(name, context)`: the first plugin returning `true` handles it alone;
+    otherwise the feature does its own thing. Hooks: `files.open` (Files' Open…).
+  - `pluginEvent(name, context)`: every plugin hears it; nobody handles it. Synchronous,
+    plugins start their own work with `context.cx`. Events: `spaces.refresh`
+    (`{ owner, cx }`, whenever Spaces looks at its spaces).
+  - `pluginTransform(name, value, context)`: the value passes through each plugin, which
+    returns a new one or `undefined`. Transforms: `profile.launch` (the argv a profile
+    starts with; `{ space, machine, profile }`).
+  A throwing plugin is reported once per moment and skipped; the feature carries on.
+  Moment names avoid Herdr's command namespaces (`agent.`, `tab.` …), which the
+  host-API audit treats as native commands.
+  - `pluginGate(name, context)` is the one **required** moment: exactly one enabled plugin
+    must claim it and return a prepared object, otherwise the result is a refusal with a
+    reason and the feature must stop. Nothing is swallowed and there is no "carry on
+    without it". Gates: `profile.role.firstmate` (`{ machine, space, profile, argv, cwd,
+    token }` captured at the click; returns `{ cwd, labels }`). Use a gate only where a
+    silent fallback would be wrong; everything else stays a hook/event/transform.
+- Add a hook only where a feature can fall back cleanly. Integration plugins keep
+  their hooks free of UI; Settings draws their controls from their declaration
+  (`features/settings/plugins-ui.js`).
+
+### Plugin-owned agent context actions
+
+`pluginMenuItems('agents.context',{terminal})` freezes enabled plugin contributions
+when the context menu opens. Core Menu invokes ordinary actions without knowing
+plugin-specific policy. This reusable registry infrastructure remains available,
+but A1 contributes no Rename action, eligibility guard or naming gate. Agents has
+no inline name editor, expiring rename request or double-click rename path; clicks
+retain normal pane selection/sub-agent peek behavior in every presentation.
+
+The retired `renameSession` preference is ignored by declarations and remains
+readable in old portable snapshots without destructive migration. Tab and space
+inline rename remain independent. The shared Node client still validates external
+`session.get` / `session.rename` calls; A1 owns external automatic-name control through
+its exact-session boolean `sessionAutoName` settings API. No sidebar control calls it.
+Nothing writes native title/reporting state, creates an alias, polls names or echoes
+A1 name changes. Vanilla A1 → Herdr updates remain independent of plugin switches.
+
+### Direct plugin configuration links
+
+Settings accepts ephemeral `{section:'plugins',plugin:<known-id>}` overlay props.
+`initPlugins` validates the ID, expands its Requirements/Settings disclosures and
+scopes the initial checks to that plugin. Plugins marked `advancedSettings` keep
+manual fields collapsed under Settings instead of opening them with prerequisites. `pluginsPage` shows only the target card;
+the fixed dialog header uses `ui/settings-back.js`, shared with Sidebar settings.
+Its `{id,parent,onBack}` contract derives visible text from `parent` and the
+accessibility label as `Back to <parent>`; missing parent names fail explicitly.
+Plugin pages show ‹ Plugins and Sidebar settings show ‹ Look. Clicking the parent
+or pressing Escape returns to the parent section. Ordinary navigation clears the target. Unknown IDs fall
+back to the full catalog. No plugin preference, selection or credential is changed
+by opening a link. Prerequisite fixes may opt into primary styling with
+`fix.primary`; this is presentation only. `fix.manual` continues to exclude manual
+actions from Install all regardless of their color. Install all itself uses the
+same primary control style. Git's bottom info notice uses this route through the standard
+Settings overlay and says Set up Git in Settings for missing setup, or
+Add this repo in Settings for an unenrolled repository. The enrollment link also
+passes ephemeral `pluginSection:'repository'` and `pluginSearch:<owner/repo>` props,
+captured from the rendered repository. Settings validates the target section against
+that plugin's declarations, collapses Requirements, expands the section and seeds
+only its searchable input once. Invalid targets/queries are ignored; ordinary setup
+links retain their defaults. Git's Repositories disclosure starts collapsed on ordinary
+Plugins/setup entry; the explicit enrollment link still expands it. No account,
+repository checkbox or preference is changed.
+
+`plugins-ui.js` supplies prerequisite action context with a canonical live-directory
+reader and validated compare-before-write setting updates. Checks still pass through
+the registry's one check/error boundary. This preserves a separately installed
+registry extension rather than overwriting its branch's code. Results synchronize
+unfocused public inputs; closed views and disabled plugins cannot save stale results.
+Confirmation-required actions show a fixed footer outside scrolling content, bind
+the approved action/account/repository snapshot, and are excluded from Install all.
+Account choices are public setting selections, not secret input fields. A
+`section` prerequisite uses the same disclosure as Requirements. All plugin headers
+and rows reuse `statusRail`: 80px action column, 10px gap, 72px right-hand status
+column. Disclosures are ui.js `collapsible` (chevron first): open, header and body share one panel, and the header's 8px inset matches the body's. **Check** stays left of the status with fixed 80×24 dimensions (including min/max
+constraints) and keeps its label while disabled. Checking headers show a leading
+blue bulb followed by blue **Checking** text in the right-hand status column.
+Requirements and each section have independent jobs, result merging and per-group
+completion tokens. A Requirements Check never runs section checks, and a section
+Check never reruns Requirements. Initial checks and setup-setting changes schedule
+both groups independently, so either can finish, show errors or refresh again without
+waiting on the other. A group's reply merges only its own IDs and rejects superseded
+or closed-view completions. Context memoization stays within a group, not between
+groups. Ordinary rows retain prior results or remain quiet; only an individually
+running action gets its own bulb. Buttons reject duplicate pre-paint clicks. Ready
+and All ready badges both occupy the full 72px status width.
+Plugin captions show only the version; category metadata remains available to the
+registry but is not rendered. Collapsed state keeps header controls and search state. `searchable` adds a
+local InputState filter. Optional `checklist` data renders controlled native
+individual checkboxes without a bulk All option, with a fixed 240px viewport,
+non-shrinking content and an explicit always-visible scrollbar. `configuredValue`
+renders a read-only value instead of an editable preference field. Native Checkbox
+uses `checked` + `on_change` (not `on_click`). Changes edit a per-view draft; only
+Apply snapshots values and calls enabled-only actions. Plugins uses the same fixed
+`modalFooter` editor row as Core, with Unapplied changes, Discard and Apply. Discard
+has no remote effects. Partial success clears only acknowledged edits; failures stay
+pending. Rechecks retain drafts and reject changed relay/account/repository identity.
+Search, collapse, stale nodes, close and Install all cannot apply drafts. Plain
+`overflow_y_scroll` pairs with the explicit Scrollbar; the viewport stops wheel
+bubbling after native scrolling so the outer page does not also move. Empty search
+results reuse `emptyState` within the same viewport and do not show an empty scrollbar.
+A checklist can provide its shared `emptyState` title/icon for filtered results.
+Section loading and zero-inventory states omit the list viewport entirely: loading
+shows only **Repositories will appear here.**, while an empty account retains its
+account-switch guidance. Neither has a large icon or duplicate empty-state label.
+A populated inventory with zero filter matches retains search and the shared No results
+state inside the normal viewport. `statusLabel: null` hides a section's redundant
+status badge without suppressing checks or errors.
+Section prerequisites may return public `selection` options, rendered as reusable
+choice tabs (with `hideLabel` for a redundant visible title). Switching is blocked
+during that section's check, mutations, drafts or stale callbacks; a valid choice
+saves only its declared setting and reloads that section. Repository lists, search,
+checkboxes and Apply depend on their own check state, not unrelated Requirements.
+
+### Plugin-owned sidebar mods
+
+Files and Git are independent, enabled-by-default plugins. Each contributes
+`sidebar: {id,name,mod,icon}` in `plugin.js`; the registry's `sidebarPanels()` is the
+single availability catalog. UI consumers do not switch on plugin IDs. The generic
+`ui/sidebar-title.js` provides a dropdown only when several panels are enabled;
+Tabs renders no toggle when none are enabled. `workspace.panels` stays native and
+is not used as plugin enable state.
+
+`src/plugins/<id>/mod/` owns that plugin's separately packaged native mod, including
+its assets and service code; `panel.json` declares the stable mod name and explicit
+shared-source dependencies. `tools/plugins.mjs` copies those files only into their
+own mod sandbox. Peer mods receive only `plugin.js` and integration helpers, never
+the panel implementation. This is an intentional plugin-boundary extension: mod
+code imports its local injected `host.js`, `ui.js`, registry and declared shared
+helpers, while ordinary plugin hooks still import only `../api.js`/`api.cjs`.
+Panel manifests cannot import another plugin's sources; architecture tests verify
+local dependency closure. The stable feature/mod registrations in
+`customization.json` and layout stack children remain compatibility anchors.
+
+Plugin manifests can also declare sandbox-local `extensions` and a `settingsPage`.
+The build validates their relative paths/feature targets, copies only that plugin's
+sources, and generates the Settings `plugin-pages.js` dispatcher. Core Settings
+imports that generic dispatcher, never a particular plugin page. Shared dependencies
+may reference the owning plugin, but never a peer plugin. Plugin-owned Node workers
+use the same validated, byte-preserving compression as central workers.
+
+No native rebuild, document writer, new watcher or background timer is introduced.
+Disabled panels gate request starts, async follow-ups and stale results; Git's
+agent-link controller uses the same enable guard. Existing file viewers remain
+usable independently of the browser sidebar, and explicitly confirmed in-flight
+recycle operations may finish. Disabled/re-enabled panels reuse their normal
+refresh lifecycle. Panel switching and stale popups recheck current availability.
+
+## Git webhook updates
+
+`src/plugins/git/` owns public relay/repository settings, setup prerequisites and
+explicit credential/webhook actions. Local keys live only in
+`.customizations/git-webhook.json`, never shared state or preference snapshots.
+`setup.cjs` runs only for Settings checks/actions; it verifies relay authentication
+and secret fingerprint, and changes only the approved repositories' exact relay URL.
+GitHub webhook secrets go over `gh api --input -`, not command-line arguments.
+
+`actions.js` owns Install/Login/Configure and repository-checkbox prerequisites, sharing readonly
+facts per check round. `cloudflare.cjs` installs Wrangler 4.162.0 privately on explicit
+Install, delegates browser authorization to Wrangler, validates the chosen account,
+and configures only its dedicated fingerprint-owned Worker. It uploads keys over
+stdin and returns only a verified public relay URL. Wrangler logging/telemetry are
+disabled; the supported auth-token command stays inside the Node worker. Existing
+account subdomains and unrelated Workers are never replaced. No wizard, daemon,
+automatic background provisioning, private auth-store parsing or credential export
+is involved. Node/npm installation, cloud changes and webhook creation remain
+separate explicit actions. Configure starts on its first click; repository checkbox
+changes are drafts whose explicit approval is Apply, using the existing editor
+footer rather than another confirmation panel. Core and Plugins Apply/Discard
+controls both use `ui/modal-layout.js`'s `editorActionButton`: 88×32 logical pixels.
+Repository hover rows use `U.radius` and symmetric `U.gutter` scroll insets so
+rounded highlights have the same left/right breathing room.
+`repositories.cjs` reads all pages of the current GitHub account's active admin
+repositories, not local clone folders. Checkboxes reflect server hook state, never
+persisted desired-state jobs. Individual checkbox actions bind the repository,
+GitHub login and relay URL, revalidate immutable repository IDs before mutation,
+and report failures. Unchecking removes only the matching receiver's webhook. Mutations share
+the existing cross-process setup lock; duplicate/unknown hooks fail closed. The canonical receiver is `src/plugins/git/relay-worker.js`, packaged
+with the plugin; the optional manual tools entrypoint only re-exports it.
+
+`mod/notices.js` owns notice decisions independently of socket/agent state. Missing
+setup is global; enrollment is cached by repository, never terminal ID. Checks are
+one-shot on configuration revision, visibility or explicit Refresh. A repository
+switch clears the prior enrollment notice immediately; unresolved roots and pending
+membership checks stay quiet. Only the current repo's confirmed unenrolled result
+shows the notice; cached same-repo results need no new check. Unknown connectivity does not claim setup is
+missing. Settings publishes public membership facts via `notice-state.js` in the
+runtime-only `custom.git.webhook-state` key; no credentials or secret hashes are
+shared/exported. Configured non-Git contexts and enrolled repos have no prompt.
+
+The shown panel's `mod/webhooks.js` owns one native WSS subscription, closes it on
+hidden/disabled/context changes, and uses transport-only reconnect backoff.
+GitHub events and successful reconnection invalidate every loaded page rather than
+just the pinned PR. Snapshot refreshes are single-flight with one coalesced dirty
+flag, retain expanded depth, renew cursors, and guard repository/machine/request
+identity before reads and writes. No periodic CI/list polling remains. The local
+branch/footer and agent-link discovery lifecycle is separate.
+
+The explicitly configured private Cloudflare Worker uses
+a hibernating Durable Object. It verifies raw-body GitHub HMAC, bounds input and
+clients, authenticates WebSocket subscribers, and forwards only invalidation
+metadata. It is not installed or provisioned by customization deployment. There
+is no local daemon, native rebuild or persistent deferred job queue. Opening and
+reconnection catch up from authoritative GitHub reads rather than replaying jobs.
+The public `checking()` API is exposed through the facade to prevent subscriptions
+during eager native checks. See [setup and trust boundaries](GIT-WEBHOOKS.md).
+
+Git's opt-in auto-fix now automatically provisions a **Core-side companion on each
+connected supported machine**, authorized to operate after desktop closure and main-PC shutdown. The
+panel no longer instantiates `CIFix`; the old controller remains only for legacy
+manual tooling/evidence tests, not an automatic delivery path. Shared pure
+`ci-evidence.js`, `ci-delivery.js`, `ci-footer.js`, `ci-history.js` and `ci-states.js`
+own policy for both legacy tools and the new worker.
+
+`monitor-engine.js` verifies only its local Core's live agents, repository allowlist,
+current footer/explicit-label/unique-feature-branch PR mapping, fresh terminal
+identity, selected state, open PR/head and latest complete Actions attempts.
+`monitor-runner.js` owns the ~60-second loop, per-Core singleton and atomic bounded
+attempt history; uncertain sends survive restarts and are never replayed. No private
+agent API, force, interrupt, raw keys, transcript-based PR matching or credentials
+are used. A blocked target is never eligible. Different Core hosts have separate
+histories, not globally coordinated failover.
+
+`monitor-host.cjs` is explicit limited-user Windows scheduled-task setup; it never
+patches Core, restarts an agent, elevates, stores a password, or copies credentials.
+`monitor-control.cjs` transports its owned code/public config/history over supported
+local/SSH `hc exec` with stdin. Enabling auto-fix authorizes guarded provisioning;
+there is no separate Background status/Check section, machine picker or repository
+input. Existing Git repository selections own the scope. `ensureMonitors` yields
+from the header's existing lifecycle event and coalesces connected-host/config
+changes without a timer, desktop polling or persisted setup jobs. It checks package
+hashes and installs only missing/outdated owned companions; ordinary settings
+updates do not restart them. Native checking/disabled contexts cannot provision.
+Explicit preference changes synchronize to reachable hosts recorded in runtime-only
+`custom.git.monitor-hosts`.
+Offline hosts retain their last config, with failed sync reported. Closing the app
+does not disable monitors. Registry `onSettingChange`/async `onEnabledChange` are
+explicit preference-action hooks, not render observers or persistent job queues.
+The host must remain awake/online with its Windows user signed in; other OS/custom
+sessions and pre-logon/logout operation are not claimed. Build/tests never install
+tasks or send to real agents; the enabled runtime provisions authorized hosts. See [worker lifecycle](GIT-CORE-MONITOR.md)
+and [message/evidence rules](GIT-CI-FIX.md).
+
+The 1px native CI pass is owned by the panel body immediately below the header,
+independent of pin/agent selection; no JavaScript frame loop is used. Merge-conflict
+icons require GitHub's explicit `CONFLICTING` mergeability, never a CI failure or
+`UNKNOWN`. The red-circle wrapper owns its native hover tooltip. Both circle and
+X are SVG strokes with no fill, matching PR icons' 2-unit rounded stroke style.
+The normal or hovered row background shows through without hard-coded colors.
+
+## Complete Usage plugin
+
+`src/plugins/usage/` owns the quota dialog, summary, settings UI, collection store,
+models, account-display selection and compressed collector. Stable `custom-usage`,
+`custom.usage.<machine>.*`, Settings `usage` and footer IDs remain unchanged.
+The plugin is enabled by default; existing per-machine preferences remain independent.
+
+Generic `pluginIsEnabled(id)` gates UI and request boundaries. Optional
+`onEnabledChange` handles explicit toggle cleanup/invalidation. Usage increments
+runtime-only `custom.usage.generation`; the store captures it around worker-file
+reads and local/SSH execution. A disabled or obsolete generation cannot launch
+follow-up work or publish results. Stale loading flags cannot block a fresh
+collection after re-enabling. Already-executing workers are not killed.
+
+The generic `pluginEvent('sidebar.sync')` moment runs from the permanently mounted
+header. `lifecycle` handlers receive the current `enabled` flag even when disabled,
+so plugins can hide/reclaim owned UI; ordinary enabled-only events are unchanged.
+Usage's handler performs only existing narrow layout reconciliation, with no polling,
+credentials, provider reads or render-time commands. Disabled dialog copies close
+by captured overlay ID after yielding; stale shortcuts/settings controls are guarded.
+The Settings page and footer/Look entries are availability projections, not destructive
+preference migrations. Node preference validation still knows disabled section IDs.
+
+Claude session switching is not quota collection: its read-only terminal-label
+identity helper is shared in `src/shared/claude-context.js`, independently of Usage.
+The collector, credentials, caches and session/account IDs are never exported with
+portable plugin preferences. No native source or Core document changes are needed.
+
+Usage's widget is navigation only, even while stale or loading: it preserves pin
+positions/provider identity, shows `---` for unavailable, failed or stuck snapshots,
+and opens the selected machine's dialog. Routine automatic refreshes retain the
+current numbers until successful replacement. `reportDisplayable` allows the next
+minute tick after the ten-minute TTL and holds good values through a bounded
+135-second in-flight request. Missed ticks and hung requests become actionable;
+expired loading leases release manual refresh controls and invalidate late replies.
+A prior collector error stays visible during recovery until a successful result. Its reusable quota-value cell keeps healthy text at its original intrinsic width
+and alignment. `on_size_change` converts its rendered widths through the captured app zoom into
+logical widths without triggering a reflow;
+unavailable placeholders reuse those measured widths. An invisible layout-only
+reference covers an initial stale snapshot without displaying its old percentage.
+No oversized fixed value/caption columns are introduced. Each pinned quota renders
+its own icon/value pair, even for the same provider. Pair identity and fallback
+artwork come from pin keys. Per-view metadata retains only icons, captions and
+measured widths (never cached quota values), scoped by host and pin set.
+`reportFresh` retains the strict ten-minute age contract for cross-machine reuse;
+widget and card presentation instead share `reportDisplayable` so scheduled work
+does not flash placeholders or demand manual action. Cards retain clearly marked last-known
+values; their **Refresh required** action and refresh icon force a scoped collection,
+with the existing single-flight/generation guards and Retry-After handling. The
+Claude-card refresh collects every Claude account on the selected machine, including
+hidden accounts and new discoveries, without querying or replacing other providers.
+The selected report ID still owns feedback; per-account Retry-After and last-success
+history remain intact. Account selection and pins are not rewritten by refreshing.
+The Usage view coordinates one active refresh icon: only the initiating provider or
+global icon rotates; all refresh controls stay disabled through collection and
+the existing 600ms feedback floor. Live click guards also reject stale pre-paint
+callbacks, without starting feedback on a second control. No widget leaf starts collection. The existing minute timer also redraws age-dependent status.
+The mounted view observes window activation, selected machine and Check usage changes,
+then yields before calling the same guarded refresh path; no click/modal is required
+and no additional timer is introduced. Collection completion time cannot postpone an
+older reused or unrefreshed report's expiry. Automatic collections reuse fresh reports
+from this machine as well as peers, so one expiring account does not re-query healthy
+siblings. Manual refresh still bypasses reuse; Retry-After and generation/single-flight
+guards remain unchanged.
+
+The collector discovers the default A1 Codex OAuth store (`~/.a1/agent/auth.json`)
+even when the desktop/SSH environment lacks `PI_CODING_AGENT_DIR`. Login candidates
+remain grouped by account identity, so a fresh A1 copy can replace expired CLI copies
+without changing pins, borrowing another account, rotating credentials or launching
+a CLI. Discovery adds only a local read; credentials remain worker-private.
+
+## A1 space-color matching
+
+All of it is the A1 plugin (stable ID/folder `src/plugins/a1-colors/`); Spaces and Tabs
+only announce `spaces.refresh` and `profile.launch` and know nothing about A1.
+The plugin owns its master switch and `matchSpaceColor` setting under
+`custom.plugins`. The retired `renameSession` field is ignored. `state.js` reads the legacy
+`custom.match-agent-session-color` only as the fallback for unset master/color choices;
+explicit generic preferences win without destructively rewriting legacy records.
+No plugin switch gates vanilla A1 → Herdr name reporting. For each Spaces view copy it keeps `session-sync.js`, a single-flight,
+per-machine synchronizer targeting every live reported A1 pane in each space,
+not only the focused agent. Space color and membership changes trigger a new
+sync immediately; unchanged groups get a five-second fallback check.
+Its worker `session-color.cjs` (shipped in the plugin folder, found with `pluginFile`)
+uses the shared Node plugin API (`../api.cjs`) for versioned descriptor discovery
+and exact runtime/session `accentColor` settings reads/updates, only when it differs. It checks fresh captured
+terminal/session/space/tab bindings and a short expiry before writing; nothing
+is persisted for later replay. Disabling stops new work, not already-applied or
+in-flight changes. Only A1 Current color changes, never its saved Default.
+
+Space colors remain the source of truth in `custom.space-colors`, mirrored to
+`space.colors`. Matching neither migrates unrelated stored state nor rewrites
+space colors. Named mapping aligns
+hues (including the pink-tinted Red swatch); saved hex colors map to the nearest
+A1 palette because the API does not accept RGB. No private endpoint records,
+transcripts, input injection or native patches are involved.
+
+A1's shared integration API requires exact session and runtime UUIDs but exposes no terminal inventory.
+The native contract uses `a1.session`, `a1.runtime` and `a1.at` labels,
+written by A1 itself to its local Core. Only complete fresh native identity is
+accepted; partial bindings fail closed. This requires no remote App/customizations/companion.
+Live matching validates the target's fresh identity and acknowledged settings API,
+not a desktop installation's version; see [A1's integration contract](A1-COLOR-CONTRACT.md).
+
+The API separately validates the exact active runtime. There is no companion,
+older-protocol adapter or stored-state cleanup path. Explicit profile A1 executable
+paths survive their shell wrapper as the launch-time `custom.profile.a1-command`
+routing hint, captured and rechecked by the worker, never used as identity authority.
+The generic client never falls back from an explicit installation to another PATH A1.
+
+The plugin's `profile.launch` transform (`launch-color.js`) targets the merged protocol-1 A1 contract,
+without version/capability negotiation or compatibility retries. With matching
+on, an explicit interactive A1 profile launch in an existing identified space
+receives `--session-color <latest-space-color>` in its actual startup argv, before
+any literal `--` prompt boundary. This selects the matching color before A1's
+first startup/trust/editor frame. Profile names/IDs do not matter: only a recognized
+A1 executable and interactive argument grammar qualify. Explicit user color
+options, wrappers, comparison/CLI commands and unknown flags remain unchanged.
+Disabled matching adds no option. Actual startup argv is the only launch-color
+payload; queued colors are never authoritative. No settings or persistent shell
+color environment are written. Older A1 installations are not automatically
+negotiated; update them before using this launch path with matching enabled.
+
+Manual shell starts and new-space launches without a known space ID retain
+identity-driven live matching after startup. Existing live synchronization also
+handles subsequent space-color changes. Identity/membership changes schedule
+immediate sync; matching retains a five-second fallback for live API changes.
+Unavailable identity/control is silently skipped, with no warning toasts. No private runtime inventory is read.
+
+## Empty spaces and close policy
+
+`shared/space-preferences.js` owns the version-1 `custom.spaces.preferences`
+switches (`confirmLastTab: false`, `closeOnLastTab: true` by default). Settings'
+Spaces page edits only those switches through the host facade; the preference
+exporter allowlists and type-checks them without exporting runtime identities.
+
+Herdr cannot retain zero-tab spaces through its public commands. The mounted
+Custom Tabs view starts `shared/space-lifecycle.js`: when retention is enabled,
+it prepares connected spaces with one terminal-free `custom-space-start` mod tab.
+This is a supported layout operation, not a document write or native override.
+`run()` enqueues commands while model readers retain the current snapshot. Pending
+creation therefore returns not-ready without being treated as an immediate error.
+A five-second `custom.spaces.start-pending` lease coordinates requests across mod
+copies; it is runtime-only, expires, and never replays deferred close/create jobs.
+The lifecycle observer acknowledges the actual Start pane on a later snapshot,
+then settles/moves it. Missing acknowledgements warn once after ten seconds;
+loading/offline/removed spaces are not failures, and exceptions/backoff are isolated
+per space rather than blocking other local/remote preparations.
+It restores selection/focus after preparation, hides only a sole Start-mod pane
+from the Custom tab strip, and settles it out of native tab-next/previous while
+work exists. Normal terminal exits leave that tab in place. Steady state issues
+no structural commands. Re-enabling auto-close removes only terminal-free Start
+tabs alongside work; it never closes already-empty spaces or real processes.
+A split Start tab is ordinary work, never automatically removed.
+
+`isAutomaticSpace` exempts spaces whose id is Firstmate's own adoption label
+(`fm-<home>`, optionally machine-prefixed): reconciliation treats them as auto-close
+regardless of the preference and closes a Start tab left alone there, so Herdr removes
+the space. Ids Herdr issues (`sp` + 32 hex) and any other id are unaffected.
+
+The controller observes new/reconnected spaces every 250ms; it cannot intercept
+native creation/removal atomically or override another client's space.close.
+A space that disappears before observation cannot be recovered without new native
+APIs. Preparing spaces requires Custom's mounted tab bar and a ready machine
+layout. Prepared Start tabs persist across desktop shutdown because they are
+ordinary machine-layout mod tabs, not runtime shared-state snapshots. Other
+layouts/clients can expose those mod tabs, and need the private mod installed to
+render them. No fake terminal, daemon or terminal input is used.
+
+`ui/close-space.js` applies the policy to explicit Custom close entry points,
+counts only work tabs, and ensures retention before closing the final work tab.
+`features/confirm` captures the space and (for retention) tab ID; stale targets
+never fall back to focus. Explicit Close space retains its confirmation when
+work remains, but bypasses it for a Start-only empty space across all preference
+combinations. Other mod panes and mixed Start/terminal splits remain protected.
+`shared/profile-actions.js` is the shared +/Start-page launch path, using existing
+machine-scoped discovery and the tab bar's profile worker. Merely showing a Start
+page never starts a terminal or agent. Compact icon rows mirror menu visibility,
+including unavailable profiles. The content has no large title, icon or Edit
+profiles action; a checkered racing flag belongs before Start in the pane header and uses the
+same programIcon wrapper/16px geometry and 2px rounded outline as the robot glyph.
+A visible-page metadata check follows the existing Tabs catalog without extra
+discovery. Unavailable or pending rows ignore clicks while keeping their normal
+text/icon colors: no native disabled style, opacity changes or added status content.
+Explicit bounded profile-list height prevents later rows being clipped by native
+scroll-container measurement.
+
+`ui/directory.js` stores the last valid live location in the bounded, machine-bound
+runtime map `custom.spaces.last-directory`. `ensureSpaceStart` captures it before
+returning, both from explicit final-tab closes and the existing 250ms lifecycle
+observer. With no terminal panes, directory resolution uses that record before the
+original launch folder. Start and + launches share the same resolver; direct native
+commands are unchanged. Empty unnamed spaces keep their last directory label.
+Missing reports cannot overwrite a valid snapshot with a fallback HOME, and paths
+never cross machine identity. The map is not a preference and is never exported.
+
+## Cross-space tab moves (explicit document-write exception)
+
+**Move to...** in the tab context menu lists other spaces on the **same machine**,
+including connected machines such as `pc2`, with sidebar badges/names. Cross-machine
+moves are rejected. Enter/Right opens the list; Left/Escape returns. Compatibility
+inspection starts as soon as a valid tab's parent context menu opens (hover/entry
+are fallbacks). Destinations appear immediately from the existing model snapshot,
+without loading text; unverified actions cannot write. No item tooltips. Mouse-open
+does not select the first destination; keyboard selection suppresses pointer hover,
+and separate submenu row IDs prevent retained parent-hover state leaking across.
+
+`shared/tab-moves.js` sends a short-lived domain request over the existing native
+mod command channel to the mounted Tabs receiver (`features/tabs/rename-keys.js`).
+There is no persisted mutation queue or restart replay. The popup never owns the
+write. A bounded shared busy lease coordinates local copies, not other clients.
+
+`services/tabs/move-tab.cjs` orchestrates the operation; the document shape, exact
+App/Core profile and **sole CAS write site** live in
+`integration/herdr/documents/tab-move-v1.cjs`. The packaged local worker uses
+`core-rpc.cjs` for a short-lived `hc connect` process; it never stops a Core. No
+native rebuild/patch or new remote companion is used. This exception is explicitly
+authorized for tab moves only; it does not apply to shell replacement or other docs.
+
+The adapter requires App 0.1.15 or 0.1.16 / running Core 0.1.19 or 0.1.21 / generation 1.
+Remote routing remains in that same adapter: validate the connected machine's
+identity/session/version, verify its live hello using a fixed read-only Node/hc
+probe, then route document calls with `on` and terminal calls with the exact
+machine prefix. Normalize only terminal address/parent and clicked UI IDs, never
+mod props or adoption-label values. Recheck the pinned binding around each call.
+No remote App installation, new companion or cross-machine terminal migration.
+Unknown versions/shapes disable moving, not Custom. Whole tab objects and stable
+pane/terminal IDs are retained; unrelated fields are not reconstructed from UI
+projections. Unknown structural data, floating panes/custom pane headers/previews,
+Start pages and detected space-bound mod props are refused. Moving never opens the
+moved tab or switches to its destination. Prepare a normal Start tab through public
+commands so even a final-tab move leaves the source space open. The shared busy
+lease protects that preparation from the lifecycle's normal auto-close cleanup;
+afterward ordinary close preferences resume without changing any saved setting.
+Work is inserted before a target's trailing Start tab to avoid an extra reorder. No terminals are killed or
+created by the move worker; cwd/startup environment do not change.
+
+After committing, verify Core/app membership and reconcile only terminal adoption
+labels, including verified unshown descendants (not children with their own panes
+elsewhere). A label failure is partial success; the submenu offers explicit
+**Repair move metadata** on the tab's current location. Repair derives desired
+membership from the latest document and never writes that document. Timeouts are
+unknown outcomes, not permission to replay or restore an old whole-document backup.
+There is no automatic-follow selection request after a move; user navigation is
+left alone. After a moved/partial result is acknowledged in the window snapshot,
+Tabs sends a three-second `custom-spaces.tab-arrived:` presentation command (not
+shared state). `features/spaces/tab-arrival.js` validates qualified destination/tab
+membership, expiry and duplicate tokens, then sequences a native content-only pop
+with three one-shot phase callbacks. No background/glow layer is added; hover and
+selection surfaces stay still. New moves supersede old callbacks. Expanded rows
+pop their icon/label; compact rows pop their badge; folded machines pop their
+header label/icon without changing folding, focus or scroll. Hidden/unmounted views do not replay feedback.
+Failures, unknown outcomes, missing acknowledgements and repairs send no arrival.
+
+CAS cannot protect a native client's unflushed model edits; labels have no CAS or
+transaction with the document. No competing watcher tries to make this atomic.
+The exact-version gate and synthetic failure tests reduce coupling but do not
+promise compatibility with future or mixed-version peers. Review/update this small
+adapter after an upgrade. `check:host-api` reports the separate tab-move gate and,
+for unknown App versions, automatically runs the development-only pinned-source
+and synthetic regression audit. Known versions stay offline in that ordinary check;
+`npm run check:tab-move` explicitly audits upstream evidence. No audit rewrites a
+runtime profile, runs downloaded code, connects to a Core or proves native continuity.
+See [audit commands and limits](TAB-MOVE-COMPATIBILITY.md).
+See [the decision and limits](TAB-MOVE-ADR.md) and
+`tests/tab-move.test.mjs` / `tests/tab-move-ui.test.mjs`.
+
+## Native patch policy
+
+The active registry contains only `frame/palette` and `frame/feedback`. A new patch
+must have all of the following before approval:
+
+- no supported private-mod/facade alternative;
+- exact reviewed stock baseline(s);
+- Custom-only behavior where possible;
+- atomic apply/check/restore with unknown-edit refusal;
+- explicit local opt-in record;
+- disposable native test plus real UI inspection;
+- documented behavior loss if retired.
+
+Never patch `mods/confirm`, `mods/prompt`, `mods/toast`, or another built-in mod merely
+to restyle it.
+
+## Shell tabs and profile startup
+
+The pane's shell menu is **Open new tab in…**. Selection uses `run('tab.new',
+{space, folder, argv})` through the facade. Keep machine-qualified space IDs and
+use the clicked pane's working directory. The existing terminal/tab/splits remain
+untouched; there is no replacement worker, shell handoff queue or automatic kill.
+Do not restore the retired `shell-replace.cjs` or replay old `custom.shell-switch`
+state. Architecture tests forbid core-document writes everywhere except the exact,
+explicitly authorized tab-move CAS boundary described above.
+
+Profile launching remains a separate explicit action, implemented in
+`src/services/terminals/profile-launch.cjs` and `src/features/tabs/profile-launches.js`.
+It uses supported terminal APIs and adoption labels, with a disposable default-shell
+probe when needed. Its existing `doc.get` space-existence check still depends on a
+read-only internal shape; this narrower dependency is not covered by `check:host-api`
+and must not acquire write access through the separate tab-move exception.
+No profile startup path writes the core document.
+
+### Profile roles (Run as Firstmate)
+
+`shared/profiles.js` exposes `role` (`'firstmate'` or `null`) from a validated boolean
+`firstmate` on the custom entry or its override, keyed by the stable profile key; the
+Terminal row never has one. The editor's checkbox is separate from **Show in + menu**;
+`ui/rolePill` marks role profiles in Settings, the **+** menu and the Start page.
+`profile-actions.js` copies the role into the captured launch job and allows one pending
+role job per machine. `tabs/profile-launches.js` runs `pluginGate('profile.role.<role>')`
+before reading the worker source and treats any refusal as the job's failure: a
+coordinator profile is never started as an ordinary agent. `roleLaunch` accepts only a
+startup folder, `custom.*` labels and a scoped environment (`PATH` and `FM_*` keys) from the
+gate; argv remains the profile's literal command, with optional transforms (A1 colors)
+applied afterwards. The Firstmate gate prepends A1's `pi`-compatible launcher directory to
+that terminal's `PATH` so Firstmate spawns A1 workers instead of stock Pi, and refuses when
+the launcher is not installed on the clone's machine. `profile-launch.cjs`
+re-validates the role request and adds `custom.profile.role` plus the gate's labels to
+the `terminal.run` labels. The Firstmate plugin's gate (`prepareCoordinatorLaunch`) only
+reads: configured machine/folder equality with the captured machine, machine state,
+repository root, A1-only executable grammar, a label-filtered live-owner check and the
+exact clone revision/dirty state. It installs, fixes, pulls or unlocks nothing, and its
+labels record what was launched, not Firstmate readiness or ownership (Firstmate's own
+session lock stays authoritative). The role is an allow-listed portable preference.
+
+The built-in Claude profile now carries its profile ID through the startup queue.
+At explicit launch time, the worker routes a configured `claude` executable through
+the target machine's companion `claude-as.sh` launcher. Only that companion creates
+and removes private credential/config mirrors; the customization does not copy login
+files. `--command` preserves the configured binary, and `--` preserves literal CLI
+arguments. Git Bash/Bash is resolved read-only on that host. Missing isolation support
+fails before starting a visible agent, with no fallback to a shared login. Other agents
+and custom launcher commands retain their configured behavior. Running sessions are
+never converted or restarted by deployment.
+
+Other intentional couplings remain: gpui-kit/gpui-base APIs, native command
+argument/result shapes, and explicit external network/auth/core-management workers.
+The facade handles public Herdr API/command naming; it cannot guarantee those
+contracts. Native tests and focused integration/manual checks remain necessary.
+
+## Required workflow
+
+```powershell
+cd ~/.config/herdr-app/customizations
+npm run report:ownership
+npm run check:host-api
+npm test
+npm run test:integration
+npm run test:native
+npm run deploy
+npm run doctor
+npm run check:native
+```
+
+Do not force a deployment through conflicts. Investigate unknown files and preserve
+personal edits or recovery material before cleanup.

@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import vm from 'node:vm';
+const source=await fs.readFile(new URL('../mods/custom-usage/plugins/usage/sidebar.js',import.meta.url),'utf8');
+for(const name of ['custom-usage','custom-workspace-chrome'])assert.equal(await fs.readFile(new URL(`../mods/${name}/plugins/usage/sidebar.js`,import.meta.url),'utf8'),source);
+let phase='render',machine=null;
+const prefsKey=host=>`custom.usage.${host===null?'local':`remote:${host}`}.preferences`;
+const values=new Map([['layout','Custom']]),jobs=[],commands=[];
+const block={id:'sidebar-usage',size:{px:36},content:{mod:'custom-usage',props:{summary:true}}};
+const lists={id:'sidebar-lists',size:{weight:1}},footer={id:'sidebar-footer',size:{px:36}};
+let tree={id:'sidebar',children:[lists,block,footer]};
+const native={layout:()=>tree,spaces:()=>[{active:true,machine}],shared:key=>values.get(key),setShared:(key,value)=>{assert.notEqual(phase,'render');values.set(key,value);},run:(name,args)=>{assert.notEqual(phase,'render','Layout mutations must yield out of render');commands.push({name,args});assert.equal(args.id,'sidebar-usage');block.hidden=name==='layout.hide';}};
+const context=vm.createContext({});
+const mod=new vm.SourceTextModule(source,{context});
+await mod.link(async name=>name==='./model.js'?new vm.SourceTextModule(await fs.readFile(new URL('../mods/custom-usage/model.js',import.meta.url),'utf8'),{context}):new vm.SyntheticModule(Object.keys(native),function(){for(const[k,v]of Object.entries(native))this.setExport(k,v);},{context}));
+await mod.evaluate();
+const {sidebarUsageVisible,syncSidebarUsage}=mod.namespace,owner={},cx={spawn:fn=>jobs.push(fn)};
+const sync=()=>{phase='render';syncSidebarUsage(owner,cx,values.get('custom.plugins')?.usage?.enabled!==false);};
+const drain=async()=>{phase='event';while(jobs.length)await jobs.shift()();};
+for(const prefs of [undefined,{}, {pins:[]},{summary:false,pins:['quota']},{pins:['',null,3]}])assert.equal(sidebarUsageVisible(prefs),false);
+assert.equal(sidebarUsageVisible({pins:['quota']}),true);
+assert.equal(sidebarUsageVisible({enabled:false,pins:['quota']}),true,'Pausing checks does not remove a configured quota');
+sync();sync();assert.equal(jobs.length,1);assert.equal(commands.length,0,'No commands or shared writes during render');
+await drain();assert.equal(block.hidden,true,'No pinned quota releases the fixed 36px slot');
+assert.equal(values.get('custom.usage.sidebar.Custom.auto-hidden'),true);
+assert.equal(lists.size.weight,1);assert.equal(footer.size.px,36,'Only the empty usage block changes, never footer/list preferences');
+sync();assert.equal(jobs.length,0,'Stable visibility schedules nothing');
+values.set(prefsKey(null),{pins:['quota']});sync();await drain();assert.equal(block.hidden,false,'Pinning restores the widget from the permanently mounted header');
+values.set(prefsKey(null),{summary:false,pins:['quota']});sync();await drain();assert.equal(block.hidden,true,'Summary off reclaims its space even with saved pins');
+values.set(prefsKey(null),{summary:true,pins:['quota']});sync();await drain();assert.equal(block.hidden,false);
+values.set(prefsKey('pc2'),{pins:[]});machine='pc2';sync();await drain();assert.equal(block.hidden,true,'Host switches follow that host’s own preferences');
+machine=null;sync();await drain();assert.equal(block.hidden,false);
+const savedPrefs=JSON.stringify(values.get(prefsKey(null)));
+values.set('custom.plugins',{usage:{enabled:false}});sync();await drain();assert.equal(block.hidden,true,'Disabling the plugin reclaims the widget slot');
+values.set('custom.plugins',{usage:{enabled:true}});sync();await drain();assert.equal(block.hidden,false,'Re-enabling restores the pinned summary');
+assert.equal(JSON.stringify(values.get(prefsKey(null))),savedPrefs,'Plugin toggles preserve quota preferences');
+// Respect deliberate manual layout hiding rather than assuming the controller owns it.
+block.hidden=true;sync();assert.equal(jobs.length,0);assert.equal(block.hidden,true);
+values.set(prefsKey(null),{pins:[]});sync();assert.equal(jobs.length,0);
+values.set(prefsKey(null),{pins:['quota']});sync();assert.equal(jobs.length,0,'A later pin does not undo manually hidden layout content');
+// A host switch after scheduling cannot apply an obsolete hide to a visible host.
+block.hidden=false;values.set(prefsKey(null),{pins:[]});values.set(prefsKey('pc2'),{pins:['remote-quota']});
+sync();const before=commands.length;machine='pc2';await drain();assert.equal(commands.length,before);assert.equal(block.hidden,false);
+// Layout switches/custom blocks are revalidated when a queued callback runs.
+machine=null;sync();tree={id:'other-layout',children:[]};await drain();assert.equal(commands.length,before);
+tree={id:'sidebar',children:[lists,block,footer]};block.content.mod='personal-widget';sync();assert.equal(jobs.length,0);
+console.log('PASS: empty/off usage slots reclaim sidebar space, pins/hosts restore them without polling, queued work is revalidated, manual hide/footer/list sizes are preserved');
