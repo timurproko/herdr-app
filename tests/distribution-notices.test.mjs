@@ -11,7 +11,7 @@ assert.ok(!Object.values(bundle.files).some(e=>e.source==='preferences/pc.json')
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'custom-notices-'));
 try {
  deploy(output,temp,{repair:false});
- for(const name of ['THIRD-PARTY.txt','Apache-2.0.txt','Lucide-ISC.txt','Feather-MIT.txt','Herdr-Lucide.txt','ASSET-PROVENANCE.json']){
+ for(const name of ['THIRD-PARTY.txt','Project-MIT.txt','Apache-2.0.txt','Lucide-ISC.txt','Feather-MIT.txt','Herdr-Lucide.txt','ASSET-PROVENANCE.json']){
   const rel=`.customizations/runtime/licenses/${name}`;
   assert.ok(bundle.files[rel],rel);
   assert.deepEqual(fs.readFileSync(path.join(temp,rel)),fs.readFileSync(path.join(output,'licenses',name)));

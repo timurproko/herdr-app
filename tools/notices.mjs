@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 export const NOTICE_SOURCES = Object.freeze({
   'THIRD-PARTY.txt': 'THIRD-PARTY.md',
+  'Project-MIT.txt': 'LICENSE',
   'Apache-2.0.txt': 'LICENSES/Apache-2.0.txt',
   'Lucide-ISC.txt': 'LICENSES/Lucide-ISC.txt',
   'Feather-MIT.txt': 'LICENSES/Feather-MIT.txt',
