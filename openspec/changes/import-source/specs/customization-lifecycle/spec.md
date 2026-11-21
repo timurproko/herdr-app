@@ -15,12 +15,12 @@ The app SHALL build customization packages from a standalone checkout without an
 - **AND** it does not write into the user's Herdr home or invoke native deployment
 
 ### Requirement: Curated and attributable distribution
-The public app distribution MUST exclude personal host snapshots, real account/infrastructure identifiers, account quota pins and private runtime state. Bundled third-party code and artwork MUST have recorded provenance, applicable license texts, attribution and modification notices; unresolved artwork MUST NOT be distributed without permission or replacement.
+The public app distribution MUST exclude the personal host snapshot and private runtime state. Established third-party code/artwork MUST retain applicable license texts, attribution, evidence and modification notes. Artwork retained from the original project without a recorded source MUST be identified honestly, without an inferred source, license or authorship claim.
 
 #### Scenario: Public source package
 - **WHEN** the app source and generated packages are prepared for distribution
-- **THEN** they contain only deliberately public configuration and permitted assets with accompanying notices
-- **AND** they do not contain live sessions, credential stores, private snapshots or unlicensed pending artwork
+- **THEN** they retain original project assets with truthful known or source-not-recorded entries and accompanying established third-party notices
+- **AND** they do not contain live sessions, credential stores or the personal host snapshot
 
 ### Requirement: Explicit conflict-safe installation
 Installation SHALL target an explicitly selected Herdr home or the user's default Herdr home, independent of source checkout location. It SHALL update only owned customization output, preserve unrelated/native state and allowed visual preferences, and abort on unknown or personally modified files rather than silently overwrite them.

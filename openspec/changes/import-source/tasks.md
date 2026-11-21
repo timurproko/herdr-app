@@ -1,41 +1,24 @@
 # Tasks
 
-The four numbered groups match the PR outcomes. Implementation, the 35 replacements in a separate commit, and provisional neutral brand glyphs are approved. Per the coordinator's instruction, gradients stay absent until the final group; missing permission blocks the complete build, not source/docs/CI preparation. Approval is not a gradient authorship declaration.
+The maintainer-approved smaller repository-split scope supersedes the earlier refactoring/replacement plan. The three groups match the PR outcomes in order. Source/test restoration and final-head execution are in progress; no prior tick implies the reduced scope is complete.
 
-## 1. Curated root source excludes personal snapshots and includes licensed provisional glyphs and notices
+## 1. Original tracked source and artwork retain behavior with only approved privacy edits and truthful notices
 
-- [x] 1.1 Re-enumerate only yadm-tracked current customization files from the home cwd, review inventory/content drift against planning, and copy allowed regular files to root-relative paths; verify no untracked/runtime files, source Git metadata, inherited history or personal host snapshot enter the index.
-- [x] 1.2 Merge package metadata/scripts and ignore rules with the scaffold, preserving MIT, Node 20+, bootstrap, shared instructions, workflows, aggregator scripts and OpenSpec; verify the scaffold identity checks and an explicit protected-file diff.
-- [x] 1.3 Retain only the three inspected visual snapshots and ignore other host snapshots; add focused import/privacy tests without any real configuration. Complete-build validation belongs to group 4.
-- [x] 1.4 Parameterize the clipboard smoke tool's remote machine and PR inspector's owner/repository/numbers with validation before any effect; add static or side-effect-free argument tests proving no hardcoded destination and safe serialization, without executing either live tool.
-- [x] 1.5 Neutralize status-reveal account labels/comment, genericize pull/SSH-alias fixtures and audit-listed operational docs/examples, preserving functional dependency names and synthetic routing cases; verify focused status/pull fixtures and a curated personal-reference scan before source publication.
-- [x] 1.6 Vendor the 35 approved Lucide replacements in a clean separate commit and three provisional neutral brand glyphs from one pinned source; record all 41 decisions, with three gradients absent and pending. Verify inventory and attribution without importing unresolved originals.
-- [x] 1.7 Add THIRD-PARTY.md, full Apache-2.0 and Lucide ISC/Feather MIT texts, and per-file provenance for the five native-derived JS files and all 89 non-file-icon SVGs; verify exact public source evidence, modification notes and retention of Material/Paseo notices, without inventing unknown copy versions.
-- [x] 1.8 Package required notices with generated/deployed assets using narrowly owned paths, documenting any allowed-path addition; add notice-propagation and ownership/conflict fixtures that check both code and artwork coverage without modifying stock snapshots or broadening deployment ownership generally.
-- [x] 1.9 Run audited non-build import/privacy/attribution checks in a sandbox, record actual results and preserve build mappings for the held gradients; no operational commands, private-home writes or live service calls.
+- [ ] 1.1 Restore tracked current source/artwork, excluding the personal snapshot and source AGENTS/README/package/ignore files requiring scaffold adoption; compare against the planning inventory and verify no untracked/runtime files or source history enter the export.
+- [ ] 1.2 Remove out-of-scope portability helpers, test splits, genericization, diagnostic changes and runtime notice injection; compare every imported code/test/tool file against source, allowing only clipboard parameterization, neutral status labels and the moved-guidance path.
+- [ ] 1.3 Restore all 41 original SVGs and record raw/LF hashes plus source-not-recorded status, without inferred licenses/authorship; verify working-copy bytes match source and no replacement/neutral glyph remains in the final tree.
+- [ ] 1.4 Retain established Herdr/Lucide/Feather/Material/Paseo notices and a per-file manifest for 89 SVGs and five derived JS files; verify exact-match evidence, unchanged existing notices and complete license texts.
+- [ ] 1.5 Preserve shared scaffold, root identity/MIT/Node requirement and merged app scripts/ignores; run audited checkout build and focused safe checks without the personal snapshot or a real Herdr home.
 
-## 2. Standalone setup docs retain host safety and distinguish optional private shell wiring
+## 2. Standalone paths and retained development guidance match the repository move
 
-- [x] 2.1 Adapt README ownership/quick-start/commands to a checkout anywhere and the resolved HERDR_APP_HOME/default home, including deployed-worker paths and no required snapshot restore; verify paths and documented supported Node/Herdr/Core versions against source without running deployment or native tools.
-- [x] 2.2 Move valid old AGENTS host/architecture/packaging/preferences/conflict/session-safety guidance into docs/DEVELOPMENT.md, remove obsolete location and delivery rules, and update README links plus the architecture test's guidance path; verify the substantive host-boundary assertion still passes and shared AGENTS.md/CLAUDE.md remain unchanged.
-- [x] 2.3 Document base versus optional integration prerequisites, Usage credential reads/refresh, auto-fix off by default, relay limitations and Crew's mutable dependencies; verify docs match the shipped switches and do not imply that this task installs/configures external services.
-- [x] 2.4 Retain shell-hook/yadm/companion information as optional private or pending wiring rather than standalone installation prerequisites; verify README and architecture docs do not promise arbitrary-checkout loader integration or require unrelated private dotfiles.
-- [x] 2.5 Correct the preference-export anonymity claim and A1 protocol rollout wording; verify public release evidence before naming an A1 minimum, otherwise leave it explicitly pending/optional, and retain historical compatibility/validation facts without claiming they were rerun.
-- [x] 2.6 Document the four agreed follow-ups and native/live validation gaps, including the historical theme assertion; add focused guidance/doc-contract tests and defer build-dependent architecture execution to group 4.
+- [ ] 2.1 Restore the original README and docs, adjusting only checkout/install/deployed-worker paths and optional external shell wiring required by the move; verify no feature-guide rewrite or broad genericization remains.
+- [ ] 2.2 Move still-valid source AGENTS guidance into docs, remove obsolete source-location/delivery rules and keep shared root instructions unchanged; update only the architecture assertion's moved-file path and verify the substantive host boundary remains.
+- [ ] 2.3 Preserve and clearly list optional/pending private shell integration and the four agreed follow-ups without claiming native/live checks were performed; verify links and source/documentation diff.
 
-## 3. Host-free app regressions run on Windows and Ubuntu behind the existing CI required check
+## 3. Supported unmodified suites run on hosted runners behind CI required
 
-- [ ] 3.1 Add test-runner sandboxing for HERDR_APP_HOME, credential/config homes, inherited session/auth variables and native executable fallbacks; add runner isolation tests proving subprocess inheritance and no real Herdr/Core fallback, then audit reachable effects before any local app test.
-- [ ] 3.2 Split installed-Core schema and real-profile assertions from directory regression into explicit opt-in integration coverage, retaining equivalent independent fixture assertions; verify pure routing and fake-hc behavior runs without installed Core or a user .bashrc.
-- [ ] 3.3 Make directory and directory-loader Bash fixtures portable to Ubuntu and Git Bash while preserving prompt, exit-status, non-TTY, Unicode and idempotence cases; verify focused fixture execution in each CI lane, with shell prerequisites asserted rather than silently skipped.
-- [ ] 3.4 Split real Windows recycle-bin behavior into an explicit hosted-Windows OS fixture, retaining exact-pair cleanup/restoration checks and fake-trash/UI tests in the safe suite; verify default local discovery cannot recycle real files and the hosted step exercises only its own temp files.
-- [ ] 3.5 Merge scaffold/aggregator checks with deterministic app regression, top-level, new-menu and plugin discovery, retaining VM flags and explicit optional-candidate reporting; add discovery/failure-propagation tests and verify the inspected 122-entry baseline is reconciled with the split rather than silently reduced.
-- [ ] 3.6 Extend the existing CI matrix with sandbox/prerequisite setup, real app npm test in both lanes and the Windows OS-fixture step, preserving Readiness, OpenSpec, read-only permissions, Delivery workflow and the exact CI required aggregator; verify workflow/aggregator tests cover failed, cancelled and missing matrix results.
-- [ ] 3.7 Add or retain regression coverage for the three capability specs: clean standalone packaging/conflicts/preferences/native gates; workspace targets/profile launches/tab moves; plugin disablement/files/Git policy/Usage privacy/companion compatibility; verify each scenario maps to a fixture or an explicitly excluded native/manual check.
-- [ ] 3.8 Add a maintained runner/exclusion guide matching ci-proposal.md and run focused non-build runner/workflow checks; record current per-check results and native/live/A1-candidate gaps. The matrix integration gate cannot complete until group 4.
-
-## 4. Approved color surfaces complete the build without unresolved artwork
-
-- [ ] 4.1 Obtain explicit per-file authorship/MIT permission or an approved alternative for color-hue.svg, color-sv-value.svg and color-sv.svg; only then add these files and finish their provenance. Do not copy them before permission.
-- [ ] 4.2 Build without any personal snapshot, run audited focused import/notice/architecture/portable-suite checks, and reconcile suite discovery against the baseline; stop and report if missing gradients prevent validation before permission arrives.
-- [ ] 4.3 Record each final-head required check and exact executed/excluded suites after bot promotion, repairing failures without weakening tests; preserve all native/live prohibitions and do not mark ready or merge manually.
+- [ ] 3.1 Add minimal CI-only discovery/invocation for existing packaged/source/plugin suites, preserving their code and VM flags; list every included/excluded entry and reason, with disposable Herdr home and no native executable fallback.
+- [ ] 3.2 Wire the existing Windows/Ubuntu Node 20 matrix to the supported subset without changing Readiness/OpenSpec/Delivery/CI required semantics; verify workflow and aggregator checks and inspect current runner failures.
+- [ ] 3.3 Exclude whole suites that cannot run unmodified on a runner, documenting the exact dependency or observed failure; do not split, rewrite or weaken their assertions.
+- [ ] 3.4 Record capability-scenario coverage, targeted local checks, complete executed/excluded suite lists and per-check results on the bot-promoted finalized head; repair genuine split/wiring failures and report unperformed native/live coverage.

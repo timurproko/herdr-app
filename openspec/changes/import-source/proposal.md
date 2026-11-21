@@ -2,44 +2,38 @@
 
 ## Why
 
-This repository contains only a scaffold; the working Herdr customization app still lives in private dotfiles. A curated, fresh-history import will make the app independently buildable and reusable without publishing personal configuration or implying permission for unattributed artwork.
+Split the existing Herdr customization project out of private dotfiles into this public standalone repository, without redesigning the app or refactoring its tests and tools. Preserve current source behavior and the shared repository scaffold.
 
 ## What Changes
 
-- Import only the current files enumerated by `yadm ls-files -- .config/herdr-app/customizations`, flattening that directory into this repository's root. The inspected inventory contains 550 tracked files; no dotfiles commits or untracked/runtime files are imported.
-- Preserve the repository's MIT LICENSE, shared AGENTS.md/CLAUDE.md, delivery workflow, existing CI workflow and required-check aggregator, workflow bootstrap, and OpenSpec root. Merge package scripts and ignore rules instead of overwriting the scaffold.
-- Exclude the personal host snapshot entirely, retain only the three inspected visual snapshots, and provide a small synthetic example if a snapshot is needed. No real account IDs, infrastructure URLs, quota pins, or machine-specific profiles become public defaults.
-- Apply the audit's targeted privacy edits, including explicit remote-target selection for the clipboard smoke tool, neutral account-switch fixtures, reusable PR-link diagnostics, and generic operational documentation. Preserve functional package names, public provenance links, and meaningful synthetic routing/path cases.
-- Adapt installation to a checkout anywhere, deploying into `HERDR_APP_HOME` or `~/.config/herdr-app`. Move valid host/architecture guidance from the old project AGENTS.md into `docs/DEVELOPMENT.md`; remove obsolete source-location and delivery rules. Document external private shell wiring as optional/pending, not supplied by this repository.
-- Add third-party notices, full Apache-2.0 and Lucide ISC/Feather MIT texts, and per-file provenance for native-derived code and all 89 SVGs outside the existing file-icon collection. Preserve Material Icon Theme/Paseo notices. The [41-file image decision table](image-decisions.md) proposes licensed replacements and explicitly holds gradient artwork and brand marks for maintainer decisions; none is silently relicensed.
-- Make the app's host-free regression/build/deployment-fixture coverage run on Windows and Ubuntu in the existing CI, preserving `CI required`. Separate installed-host assertions from synthetic tests and identify every native/live exclusion; see [the runner proposal](ci-proposal.md).
-- Introduce three high-level app capability specs rather than a spec for every feature. Existing behavior is imported, not redesigned; fail-closed native boundaries and explicit operational actions remain intact.
+- Copy only the current 550 yadm-tracked customization paths into the repository root, excluding `preferences/pc.json`; import no yadm history, untracked files or live runtime state.
+- Preserve LICENSE, shared AGENTS.md/CLAUDE.md, delivery/CI workflows, bootstrap and required-check scripts, and OpenSpec. Merge package metadata/scripts and ignore rules.
+- Keep source code, tests, fixtures and docs as originally tracked except three authorized content edits: omit the personal snapshot, parameterize the clipboard smoke tool's hardcoded remote host, and neutralize personal names/comment in status-reveal fixtures. No wider genericization or portability rewrites.
+- Keep all 41 previously unresolved SVGs exactly as in the original project, including provider marks and gradients. Record each honestly as "kept as in the original project, source not recorded"; infer no author, source or redistribution license. Undo the provisional Lucide/neutral substitutions in follow-up commits; do not rewrite published history.
+- Keep established third-party notices: Apache-2.0 attribution/modification notes for the five Herdr-derived JS files and matched/derived SVGs, complete Lucide ISC/Feather MIT notices for identified icons, and existing Material/Paseo notices. Keep a per-file provenance manifest distinguishing evidence from unknowns.
+- Adjust README and move still-valid old project AGENTS guidance into docs only where source location, deployment paths and shared instructions adoption require it. Retain feature descriptions and optional/private shell-integration information rather than rewrite documentation.
+- Wire the existing CI to run only unmodified suites supported by Windows/Ubuntu runners without Herdr. Leave unsupported suites out with explicit reasons; do not split or rewrite tests/tools to increase portability. Keep the exact required check name `CI required`.
 
 ## Capabilities
 
 ### New Capabilities
 
-- `customization-lifecycle`: single-source packaging, standalone conflict-safe deployment, durable preference preservation, native compatibility gates, and distributable source boundaries.
-- `workspace-experience`: the Custom layout/theme, workspace/tab/pane interaction, profile launch behavior, and the narrow same-machine tab-move exception.
-- `plugin-integrations`: independently controlled sidebar/integration plugins, external-operation boundaries, and account/credential privacy.
+- `customization-lifecycle`: existing packaging/deployment/preferences and reviewed native safety boundaries, with standalone source distribution.
+- `workspace-experience`: existing layout, workspace/tab/pane interactions, profiles and narrowly gated tab movement.
+- `plugin-integrations`: existing independently controlled panels, companion integrations and operational/account boundaries.
 
 ### Modified Capabilities
 
-None. The scaffold has no existing capability specs.
+None; these are the first app capability records in the scaffold.
 
 ## Impact
 
-The imported root will contain `src/`, `tests/`, `tools/`, `docs/`, `upstream/`, visual `preferences/`, `customization.json`, merged package metadata, and standalone documentation. No native Herdr/Core source, binaries, live state, credential stores, or relay deployment is included. Node.js 20+ remains the declared minimum; CI retains its Node 20 runtime and Windows/Ubuntu matrix. Native compatibility remains limited to the versions actually reviewed in source; the A1 protocol-1 release minimum is not yet established.
+The app's existing root layout and behavior are retained. Only minimal new-root path and CI-wiring adjustments are allowed beyond the three content edits. Native/live behavior is not exercised. Required CI tests the supported unmodified subset, not the entire original default unit command or installed-host integration. Unknown artwork provenance remains explicitly unresolved, by maintainer direction, not silently assigned to MIT or Apache.
 
-### Approval decisions
+## Approved direction
 
-The coordinator approved implementation, all three capability boundaries, targeted sanitizing, notices and manifest, and the runner split. Apply the 35 Lucide replacements in a clean separate commit and use the three suggested neutral provider glyphs provisionally. The three color gradients remain absent pending the maintainer's authorship/license answer and are a separate final outcome, after import, documentation and CI preparation. Stop when validation requires them; do not add substitutes, silently omit build mappings, or claim a complete build. Final asset permission and validation remain blocking.
+The maintainer explicitly approved this smaller repository-split scope and retention of all original artwork. The earlier replacement/gradient-last plan is superseded. The three task groups match the PR outcomes. The shared delivery bot, not the implementation agent, handles promotion and OpenSpec finalization.
 
-### Follow-ups, not this import
+## Follow-ups
 
-- Relocating preference snapshots into the Herdr home (retain current explicit export/import location semantics here).
-- Hardening the webhook relay's unauthenticated admission, resource limits, token comparisons, and replay handling.
-- Removing the old customizations subtree from private dotfiles.
-- Configuring a second/remote workstation.
-
-No deploy, enable/disable/remove/rollback command, preference import, native/live tool, provider access, relay call, or external mutation is part of plan validation. App tests have not been run; the imported suite's compatibility and the historically noted theme assertion remain unverified until implementation checks.
+Preference snapshot relocation to the Herdr home, relay hardening, removal of customizations from private dotfiles, and second-workstation setup remain out of scope. External shell wiring and unverified A1 rollout claims remain documented as optional/pending where installation guidance needs clarification.
