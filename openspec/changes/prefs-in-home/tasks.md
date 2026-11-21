@@ -2,9 +2,9 @@
 
 ## 1. Preference tools use the selected Herdr home without touching legacy checkout snapshots
 
-- [ ] 1.1 Route source-wrapper snapshot access to the selected home's `preferences/` and align runtime CLI home fallback with deploy; fixture assertions cover environment, empty/unset default and explicit-home precedence without touching the real user home.
-- [ ] 1.2 Extend focused fixture coverage for lowercase host filenames, host and visual export/import, missing-host preservation, unchanged legacy checkout host bytes and no checkout writes; retain existing schema, quiet-write, credential, palette-conflict and desktop-open rejection coverage.
-- [ ] 1.3 Update preference command documentation and tool comments with the home-based paths and unchanged explicit-restore safety rules; check examples against both tool entrypoints and run only the targeted preference fixtures with disposable `HERDR_APP_HOME` values.
+- [x] 1.1 Route source-wrapper snapshot access to the selected home's `preferences/` and align runtime CLI home fallback with deploy; fixture assertions cover environment, empty/unset default and explicit-home precedence without touching the real user home.
+- [x] 1.2 Extend focused fixture coverage for lowercase host filenames, host and visual export/import, missing-host preservation, unchanged legacy checkout host bytes and no checkout writes; retain existing schema, quiet-write, credential, palette-conflict and desktop-open rejection coverage.
+- [x] 1.3 Update preference command documentation and tool comments with the home-based paths and unchanged explicit-restore safety rules; check examples against both tool entrypoints and run only the targeted preference fixtures with disposable `HERDR_APP_HOME` values.
 
 ## 2. Personal visual snapshots leave public source, with private ownership and manual relocation documented
 

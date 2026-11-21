@@ -73,8 +73,21 @@ npm run preferences:export
 npm run preferences:import
 ```
 
-Portable snapshots intentionally exclude session data and per-space color IDs.
-Space colors are durable machine-local state in `shared.json`.
+Both commands use `<Herdr home>/preferences/`, never the checkout: home is
+`HERDR_APP_HOME` or `~/.config/herdr-app`, matching deploy. Host snapshots use
+`<lowercase-hostname>.json`; portable visual backups are `layout.json`,
+`palette.json` (picker metadata) and `theme.json` (native-schema theme).
+The underlying `node tools/preferences.mjs export|import [home]` and
+`node tools/runtime/preferences.mjs export|import [home] [hostname]` entrypoints
+also accept an explicit home, which takes precedence over the environment.
+The runtime entrypoint handles host settings and palette metadata; the source
+wrapper additionally handles layout overrides and the native theme backup.
+
+Import is explicit: close Herdr Desktop first, leaving Core/terminals running.
+Existing palette conflicts must be reconciled, not overwritten. Snapshots are
+credential-filtered **private backups**, not anonymized or public-safe files;
+keep them in private dotfiles, never this repository. Session data and per-space
+color IDs are excluded; space colors remain machine-local in `shared.json`.
 
 ## Typical explicit host installation (not performed by this import)
 
