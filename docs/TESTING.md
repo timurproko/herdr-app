@@ -17,6 +17,9 @@ unavailable native app executable and temporary fixture directories under ignore
 `.artifacts/`. No Herdr install, private snapshot or external A1 checkout is supplied.
 On Windows the CI child environment drops inherited PowerShell 7 module paths so
 original helpers invoking Windows PowerShell 5 can load its own default modules.
+Temporary fixtures have a CommonJS package boundary, matching the default OS temp
+directory, so original .js subprocess helpers do not inherit this checkout's ESM
+package type. This is CI environment setup, not a test/helper rewrite.
 The command refuses full execution outside `CI=true` because original OS-specific
 tests may recycle fixture files. It is not a local test-isolation framework.
 
@@ -40,6 +43,9 @@ Provider/relay/Cloudflare unit transports are mocks, not live requests.
 | `tests/regression/directory.test.mjs` | Both | Executes installed hc schema and reads the user's real .bashrc; requires native/private environment. |
 | `tests/regression/directory-loader.test.mjs` | Ubuntu | Hardcoded Windows Git Bash and cygpath in the original fixture; Windows retains the whole suite. |
 | `tests/regression/previews.test.mjs` | Ubuntu | Original Node 20 VM/test-runner process crashed with SIGSEGV after seven passing subtests in run 44946866722; suite retained unchanged, not rewritten. |
+| `tests/cloudflare-prerequisites.test.mjs` | Both | Original fixture requires Node 22.12+, while retained CI uses Node 20.20.2; failed explicitly in run 44947261103. |
+| `tests/file-delete.test.mjs` | Windows | Original Git-sh Darwin-backend mock returned exit 7 instead of 0 at line 77 in run 44947261103, before the real recycle-bin branch. Whole suite left unchanged; its Linux lane remains. |
+| `tests/file-tab-reuse.test.mjs` | Windows | Original VM process exited 3221225477 / 0xC0000005 (access violation) on Node 20 in run 44947261103. Linux lane remains. |
 | `tests/a1-api-candidate.test.mjs` | Both | Requires a separately built external A1 checkout and tsx. Normal A1 client/color tests remain included. |
 | `tests/regression/test.mjs` / test:integration | Both | Installed Herdr binary, stock baseline/layout and real host files. Mock UI cases remain inside this original integration file, not extracted. Its historical theme-selection assertion is not claimed fixed or rerun. |
 | tools/validate-native.mjs / test:native | Both | Native Herdr checks, even though its app home is disposable. |
@@ -70,14 +76,25 @@ ClaudeRefreshError(storage), whose helper suppresses the native stderr. The
 required aggregator correctly failed with the matrix. Ubuntu excludes that whole
 crashing suite. Windows first retries with its native PowerShell module environment
 rather than rewriting the test/helper; the precise original native error is not
-claimed established from the suppressed diagnostic.
+claimed established from the suppressed diagnostic. It passed unchanged in run
+44947261103 after the CI module-path correction.
+
+Run 44947261103 exercised all selected entries instead of stopping at the first
+failure. Ubuntu failed usage-accounts and Cloudflare prerequisites; Windows failed
+those plus file-delete and file-tab-reuse. The usage helper failure was a CI wiring
+defect: temporary .js CommonJS helpers inherited the checkout's ESM package type.
+A temporary CommonJS package boundary restores normal OS-temp semantics without
+changing the helper or test. The other unsupported whole suites are excluded above
+with their observed failure, not rewritten or weakened.
 
 ## Exact selected source entries
 
 The list below is generated from the CI entrypoint selection, not inferred from
 file naming alone. The command prints the same list in each run. Initially there
 were 122 entries on Windows and 121 on Ubuntu. After the observed Ubuntu VM crash,
-the selection is 122 on Windows and 120 on Ubuntu, including scaffold/aggregator tests.
+the selection was 122 on Windows and 120 on Ubuntu. The final selection after the
+additional observed unsupported suites is **119 on each runner**, with five explicit
+exclusions per lane, including scaffold/aggregator tests in the selected counts.
 
 ### Both runners
 
@@ -136,14 +153,11 @@ tests/ci-message.test.mjs
 tests/claude-isolation.test.mjs
 tests/claude-session-account.test.mjs
 tests/close-space.test.mjs
-tests/cloudflare-prerequisites.test.mjs
 tests/copy-toast.test.mjs
 tests/crew-projects-ui.test.mjs
 tests/deployment.test.mjs
 tests/empty-state.test.mjs
-tests/file-delete.test.mjs
 tests/file-refresh.test.mjs
-tests/file-tab-reuse.test.mjs
 tests/files-plugin-tabs.test.mjs
 tests/files-refresh-policy.test.mjs
 tests/firstmate-profile-role.test.mjs
@@ -209,4 +223,11 @@ scripts/ci-required.test.mjs
 ```text
 tests/regression/directory-loader.test.mjs
 tests/regression/previews.test.mjs
+```
+
+### Ubuntu only
+
+```text
+tests/file-delete.test.mjs
+tests/file-tab-reuse.test.mjs
 ```
