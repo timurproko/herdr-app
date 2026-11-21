@@ -12,9 +12,9 @@ The maintainer-approved smaller repository-split scope supersedes the earlier re
 
 ## 2. Standalone paths and retained development guidance match the repository move
 
-- [ ] 2.1 Restore the original README and docs, adjusting only checkout/install/deployed-worker paths and optional external shell wiring required by the move; verify no feature-guide rewrite or broad genericization remains.
-- [ ] 2.2 Move still-valid source AGENTS guidance into docs, remove obsolete source-location/delivery rules and keep shared root instructions unchanged; update only the architecture assertion's moved-file path and verify the substantive host boundary remains.
-- [ ] 2.3 Preserve and clearly list optional/pending private shell integration and the four agreed follow-ups without claiming native/live checks were performed; verify links and source/documentation diff.
+- [x] 2.1 Restore the original README and docs, adjusting only checkout/install/deployed-worker paths and optional external shell wiring required by the move; verify no feature-guide rewrite or broad genericization remains.
+- [x] 2.2 Move still-valid source AGENTS guidance into docs, remove obsolete source-location/delivery rules and keep shared root instructions unchanged; update only the architecture assertion's moved-file path and verify the substantive host boundary remains.
+- [x] 2.3 Preserve and clearly list optional/pending private shell integration and the four agreed follow-ups without claiming native/live checks were performed; verify links and source/documentation diff.
 
 ## 3. Supported unmodified suites run on hosted runners behind CI required
 

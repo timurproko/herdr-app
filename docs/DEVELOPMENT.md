@@ -1,41 +1,45 @@
-# Development safety and ownership
+# Custom — development contract
 
-Read README.md and ARCHITECTURE.md before adding a feature or runtime path.
-Source can live in any checkout. Installation targets `HERDR_APP_HOME` or
-`~/.config/herdr-app`; host-relative paths below are beneath that resolved home.
+## Non-negotiable host boundary
 
-## Host boundary
+- Read `ARCHITECTURE.md` before adding a feature or new runtime path.
+- Work at the **mod / layout / theme** layer using supported Herdr APIs.
+- **Do not build, fork, replace, or patch Herdr/herdr-core binaries** for a customization request. Do not change native Rust/GPUI sources, installers, update channels, process permissions or services as an implicit workaround.
+- Native limitations must be explained, with supported alternatives. Native work requires separate explicit user authorization.
+- Never edit shipped mods/layouts/frames directly. Herdr overwrites those on startup. Private mods use `custom-*`; the layout and base theme are `Custom`.
+- Existing native-file compatibility patches are a narrow, explicit exception, not a pattern for new features. Preserve opt-ins; unknown upstream code must fail safely. Never opt in another patch without approval.
+- Never edit the Herdr home's generated AGENTS.md, SDK declarations, installed.json, core documents, or layouts/.state/ by hand. The Herdr home is HERDR_APP_HOME or ~/.config/herdr-app, not this checkout's parent.
+- Shell selection opens a new tab via native `tab.new`, leaving the existing terminal intact. The document-mutating replacement worker is retired; never reintroduce it or replay legacy shell-switch jobs. Profile startup is separate; see `docs/ARCHITECTURE.md`.
+- Explicitly authorized exception: **Move to...** may relocate a tab in the `herdr-app` document only through `src/integration/herdr/documents/tab-move-v1.cjs`'s validated CAS boundary. No other document writers, general JSON editor, native rebuild, startup mutation/replay or live-session tests. Keep the App/Core version gate, ephemeral requests, preservation checks and partial-success handling; see `docs/TAB-MOVE-ADR.md`.
 
-- Work at the mod/layout/theme layer through supported Herdr APIs.
-- **Do not build, fork, replace, or patch Herdr/herdr-core binaries** for customization work. Native Rust/GPUI sources, installers, update channels, permissions and services are not implicit workarounds. Explain native limits and supported alternatives.
-- Do not edit shipped mods/layouts/frames directly; Herdr regenerates them. Private mods use `custom-*`; layout/theme are `Custom`.
-- Existing registry-backed native-file compatibility patches are narrow explicit opt-ins, not a pattern for new features. Unknown stock fails safely; no new opt-in is implied.
-- Read the installed SDK declarations and host-generated instructions as read-only API evidence. Never hand-edit installed.json, SDKs, core documents or layouts/.state.
-- Shell selection opens a new native tab and leaves existing terminals intact. Never revive the retired document-mutating shell-replacement worker or replay old jobs.
-- The sole document-write exception is explicit **Move to...**, through the validated versioned CAS tab-move boundary described in TAB-MOVE-ADR.md. Preserve machine identity, App/Core gates, ephemeral requests, preservation checks and partial-success handling; no general document editor or live-session test.
+## Source ownership
 
-## Canonical source
+- Author only `src/`, `tools/`, `tests/`, docs, `customization.json` and deliberately exported `preferences/`.
+- Source may live in any standalone checkout. Run deployment from this checkout into HERDR_APP_HOME or ~/.config/herdr-app.
+- `dist/` is generated. Installed `<Herdr home>/mods/custom-*/`, layouts, themes and `<Herdr home>/.customizations/runtime/` are deployment outputs, not canonical source.
+- `customization.json` maps each packaged file to one canonical source. Shared helpers are authored once; the build copies them into sandbox-local mod packages. Do not duplicate helpers manually.
+- `src/appearance/` owns visuals and layout composition. `src/ui/` owns visual primitives. Features own behavior. Services own external/privileged operations. `src/integration/` owns host identity, shell reporting and native compatibility.
+- Keep runtime workers self-contained in the deployment. Never import source-checkout paths from UI mods.
+- Feature/UI code must import Herdr functions from `./host.js`, never directly from `herdr`. `src/integration/herdr/host.js` is the sole native-module boundary; version aliases and shape adapters belong in `compatibility.js`.
+- Keep public IDs stable and use `src/integration/herdr/identity.js`. No former product name in new identifiers/paths; retired namespace aliases and migration tooling must not be reintroduced. Preserve required third-party attribution.
 
-- Author `src/`, `tools/`, `tests/`, docs, customization.json and deliberately public visual preferences. `dist/`, installed custom mods/layouts/themes and `.customizations/runtime/` are outputs, never canonical source.
-- customization.json maps packaged output to one canonical source. Build-injected helpers are shared authoring, necessary sandbox-local copies, not manually maintained duplicates.
-- Appearance owns visuals/layout; UI owns reusable presentation; features own behavior; services own external/privileged operations; integration owns host identity, shell reporting and native compatibility.
-- Workers must be self-contained after installation, never import absolute paths into a source checkout.
-- Feature/UI code imports Herdr functions via local `./host.js`. Only the host facade imports native `herdr`; version aliases/shape adapters stay centralized.
-- Keep public IDs stable and current Custom identity. Do not restore retired namespace aliases/migrations or rename away required third-party attribution.
-- Shared root AGENTS.md/CLAUDE.md are not the old app-specific safety guide; this document preserves the valid product guidance from that former file.
+## Preferences, updates and safety
 
-## Preferences and session safety
+- Personal preferences are not disposable payload. Use versioned, allowlisted preferences; preserve native settings and unrelated shared state.
+- Native layout click state belongs to Herdr. Layout-file preferences use the dedicated projection sidecar and field-aware deployment merge.
+- Never sync `shared.json`, credentials, account caches, sessions, window state, sockets, `data/`, rollback journals or generated output.
+- Never delete or rewrite unknown/modified files to make installation succeed. Stop on conflicts. Do not invent baseline hashes or silently adopt edits.
+- Normal feature deployment must not stop/restart terminals, agents, cores or the desktop; never inject terminal input. Preserve existing focus and topology.
+- Shell/profile, network/auth and core-management behavior must remain explicit feature actions. Tests use disposable fixtures, not real credentials or running sessions.
+- No broad cleanup of `*-edited` native files, old data, or migration backups. Those may contain user edits. Use `npm run report:ownership` to classify runtime before cleanup.
 
-- Personal preferences are durable, not disposable payload. Preserve native settings, unrelated shared state and layout click state. Layout preference projection uses the dedicated sidecar and field-aware merge.
-- Credential-filtered snapshots are **private backups, not anonymized exports**. Pins, paths, plugin settings and automation choices can identify people/accounts/infrastructure. Public visual snapshots are explicitly allowlisted; host exports are ignored. Snapshot relocation remains a follow-up.
-- Never commit shared.json, credentials, account caches, sessions, window state, sockets, data/, rollback journals or generated outputs.
-- Never delete/rewrite unknown or modified files to make installation succeed. Stop on conflicts; do not invent hashes or silently adopt edits.
-- Feature deployment must not restart terminals/agents/cores/desktop or inject terminal input. Shell/profile, auth/network and core-management actions remain explicit feature actions.
-- Do not broadly clean native `*-edited` files, old data or migration backups; they may be personal edits. Ownership diagnostics classify rather than discard.
-- Tests use disposable homes and mock credentials/transport, not running sessions. Inspect reachable subprocesses first. Follow TESTING.md for host-free and native/live boundaries; a native initial check never proves real deferred rendering/interactions.
+## Development commands (native operations require explicit authorization)
 
-## Source checks
+1. Read README and the relevant feature. Consult AGENTS.md, herdr.d.ts and gpui-kit.d.ts in the resolved Herdr home as read-only API truth.
+2. Make a focused source change; register new outputs/dependencies in `customization.json`.
+3. Use the supported hosted subset documented in TESTING.md; the original `npm test` includes installed/private-environment assumptions. `npm run check:host-api` needs an installed host. `npm run build` builds **only customization files**, never Herdr.
+4. For an explicitly authorized installation, `npm run deploy` (conflict-safe and idempotent), `npm run doctor`, and `npm run check:native` target the resolved Herdr home.
+5. When native UI validation is explicitly authorized, inspect the relevant real UI. Native initial checks do not prove deferred rendering, interactions, or visual correctness.
+6. Report tests actually run, remaining manual checks and compatibility limits. Do not claim all future native updates are compatible.
 
-Register new outputs/dependencies in customization.json. Build only customization files, never Herdr. Add focused fixtures for changed behavior; host-free tests must not fall back to installed executables or real user profiles. Build and app-suite execution are currently blocked by the three held gradients listed in ASSET-PROVENANCE.json; do not fabricate them or skip their build mappings.
-
-Retain stock snapshot bytes with their existing facade-import adaptation, full third-party notices and truthful modification/version provenance. No automatic hook may import live state or restart Herdr. Shell payloads remain available, but private external profile/yadm dispatcher integration is optional and not installed by standalone deploy.
+Use `npm run test:integration` explicitly for read-only checks against the installed host. Never run smoke tests that start/stop cores, alter privileges or create terminals without explicit approval. Keep native patch originals and third-party licenses byte-faithful. No automatic pull hook may import live shared state or restart Herdr.

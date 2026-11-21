@@ -8,9 +8,9 @@ for resolved issues and remaining coupling risks.
 
 | Area | Owner | Rule |
 |---|---|---|
-| `customizations/src/` | Custom source | Edit here |
-| `customizations/tools/`, `tests/`, docs | Custom development | Build/deploy/test logic only |
-| `customizations/dist/` | Generated | Disposable; never edit |
+| Checkout `src/` | Custom source | Edit here |
+| Checkout `tools/`, `tests/`, docs | Custom development | Build/deploy/test logic only |
+| Checkout `dist/` | Generated | Disposable; never edit |
 | `mods/custom-*` | Installed Custom output | Flat direct children required by Herdr; never edit |
 | `layouts/Custom.json`, `themes/Custom.json` | Installed Custom output | Deploy from source |
 | `.customizations/runtime/` | Installed workers | Generated from the project |
@@ -96,7 +96,9 @@ Runtime UI mods and deployed workers must never import from the source checkout 
 absolute path. The yadm-managed Bash/PowerShell prompt hooks are the deliberate
 external-integration exception: shell profiles source `src/integration/shell/` so
 yadm can refresh existing sessions at a safe prompt without injecting input or
-restarting terminals.
+restarting terminals. This is optional private profile/yadm wiring, not included or
+installed by standalone deploy; its fixed source path is not an arbitrary-checkout
+integration guarantee.
 
 ## Host API changes
 

@@ -98,7 +98,7 @@ for(const file of walk(path.join(project,'tools')).filter(p=>/\.(?:js|mjs|cjs)$/
 for(const action of Object.values(json(path.join(project,'package.json')).scripts))assert.doesNotMatch(action,/cargo|rustc|cmake|herdr-core.*(?:stop|restart)/i);
 assert.equal(json(path.join(project,'package.json')).scripts['report:ownership'],'node tools/report-ownership.mjs');
 assert.match(fs.readFileSync(path.join(project,'docs/ARCHITECTURE.md'),'utf8'),/Choose the least-coupled extension/);
-assert.match(fs.readFileSync(path.join(project,'AGENTS.md'),'utf8'),/Do not build, fork, replace, or patch/);
+assert.match(fs.readFileSync(path.join(project,'docs/DEVELOPMENT.md'),'utf8'),/Do not build, fork, replace, or patch/);
 assert.equal(config.layout,'Custom');
 for(const rel of ['mods/custom-new-menu/shell-replace.cjs','mods/custom-tabs/shell-handoff.js'])assert.ok(!bundle.files[rel],`Retired replacement worker must not deploy: ${rel}`);
 console.log('PASS: documented ownership/decision model, single-source packaging, one Herdr facade including temporary mods, versioned compatibility profile, Custom identity, no source-dependent UI workers and no native build commands');

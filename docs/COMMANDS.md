@@ -1,10 +1,9 @@
 # Customization commands
 
-Run customization commands from the canonical project directory.
-
-```powershell
-cd ~/.config/herdr-app/customizations
-```
+Run customization commands from this standalone checkout, wherever cloned.
+Deployment targets HERDR_APP_HOME or ~/.config/herdr-app, not the checkout parent.
+See TESTING.md before running tests: the unchanged broad suite includes installed
+host/private-environment assumptions; native/live commands need separate approval.
 
 ## Validate after a Herdr update
 
@@ -77,10 +76,10 @@ npm run preferences:import
 Portable snapshots intentionally exclude session data and per-space color IDs.
 Space colors are durable machine-local state in `shared.json`.
 
-## Typical safe workflow
+## Typical explicit host installation (not performed by this import)
 
 ```powershell
-cd ~/.config/herdr-app/customizations
+# Run from this checkout; choose HERDR_APP_HOME explicitly if needed
 npm run check:host-api
 npm test
 npm run deploy
