@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "repository": "herdrdev/herdr-app",
+  "appVersion": "0.1.16",
+  "commit": "034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f",
+  "inventorySha256": "0d5bd5e15b1372bf5cae44b0142cd780b3d4fed878a072a41ce9c9ead0935162",
+  "criticalFiles": {
+    "src/mirror.rs": "0d16d2b02b3f6d48ae101868e3d7ba4616ec3d7a",
+    "src/mirror_sync.rs": "8d13a990dc64e9fea6bd6a0061118b0e59480818",
+    "src/layout.rs": "ebe141a9c74faf16ed56fd23b42f2839705cd712",
+    "src/model.rs": "f0de13730dad81551bb7338ee415076782d4c7ad",
+    "src/window.rs": "41c07e87628f3f926b95d6e84a351a0a5d1896e3"
+  }
+}

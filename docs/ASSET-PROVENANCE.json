@@ -1,0 +1,1186 @@
+{
+  "version": 1,
+  "normalization": "sha256LF hashes normalize CRLF to LF; no other transformation.",
+  "herdrCommit": "034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f",
+  "lucideCommit": "f12b0de177fbc2a6795e99be065887e72b237123",
+  "licenseSources": {
+    "Apache-2.0": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/LICENSE",
+    "ISC": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/LICENSE",
+    "MIT": "https://github.com/feathericons/feather/blob/1b002399e8758fb2bccea4d07312dc9e0f43dcb8/LICENSE",
+    "herdrLucide": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/icons/LICENSE-Lucide.txt"
+  },
+  "entries": [
+    {
+      "path": "src/appearance/layouts/custom.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/panels-top-left.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "321a2a5500f2b814a2e62eb73c4b01dc65c7334fe2e6f7d77517239383e26bb1"
+    },
+    {
+      "path": "src/features/menu/automatic.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/wand-sparkles.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "d73067ff2463118d4f11f9c532e7162be45f96835b966b4fc89977ca47a7317d"
+    },
+    {
+      "path": "src/features/pane/split-down.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/rows-2.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "92f8d9962230c2d2a93ff1d9f40cde8d969b3e4f9890fabf741593a8c83835f4"
+    },
+    {
+      "path": "src/features/pane/split-right.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/columns-2.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "bddf3348a9c82d111a060d118299c90755b1ae8411bd16ea1d5ddb83c5f98a27"
+    },
+    {
+      "path": "src/features/pane/unzoom.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/minimize-2.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "29f4686d2c30f76def7057230d08737228e5f4d9bed3ebc2341d019bb1803837"
+    },
+    {
+      "path": "src/features/pane/zoom.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/maximize-2.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "f81488c6b37714d3aa402209ba9696bbc4e318d3b400a8eeba7188f25eb81340"
+    },
+    {
+      "path": "src/features/settings/agent.svg",
+      "sha256LF": "bd193b72b415a2306b27aa8120226049dc259b860a9d709be12e408fae1c145f",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/welcome/bot.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/settings/arrow-down.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/arrow-down.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "2b641c7a59d39450edfed72067fcc9940a1a316a737346af23b4b9103c0689f2"
+    },
+    {
+      "path": "src/features/settings/arrow-up.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/arrow-up.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "8c22c25874c80bb062bef985d207d8f1d4a4d7847237d0a8cf720a3235968518"
+    },
+    {
+      "path": "src/features/settings/bell.svg",
+      "sha256LF": "c67d04050712c3c6338ad59f5107ee33f27780b1034fcf5ff1b07652bed87114",
+      "status": "herdr-derivative",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/settings/bell.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Audit XML child-geometry match; presentation attributes differ.",
+      "modifications": "Presentation/stroke/dimension attributes adapted."
+    },
+    {
+      "path": "src/features/settings/check.svg",
+      "sha256LF": "9af2b0041d875d35f77ac53c6c295386e82360fe698565e31108bae1035a2bcf",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/settings/check.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/settings/code.svg",
+      "sha256LF": "edab485f73f1b7773559dd55ef5fffa2d4f78ff90c6bbfcee2443aead2b3eb8e",
+      "status": "lucide-marked",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide",
+      "icon": "code-xml",
+      "version": null,
+      "evidence": "Explicit Lucide class; original download version unrecorded.",
+      "modifications": "Presentation/source version unrecorded; no invented exact-copy assertion."
+    },
+    {
+      "path": "src/features/settings/color-hue.svg",
+      "status": "held-absent",
+      "licenses": [],
+      "source": null,
+      "modifications": "Not imported. Awaiting maintainer authorship/MIT declaration."
+    },
+    {
+      "path": "src/features/settings/color-sv-value.svg",
+      "status": "held-absent",
+      "licenses": [],
+      "source": null,
+      "modifications": "Not imported. Awaiting maintainer authorship/MIT declaration."
+    },
+    {
+      "path": "src/features/settings/color-sv.svg",
+      "status": "held-absent",
+      "licenses": [],
+      "source": null,
+      "modifications": "Not imported. Awaiting maintainer authorship/MIT declaration."
+    },
+    {
+      "path": "src/features/settings/grip.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/grip-vertical.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "ddf3a20c45869614f7b49dd14c5cbaba026d4155382e30b0ae8418f31c1ce2c5"
+    },
+    {
+      "path": "src/features/settings/keyboard.svg",
+      "sha256LF": "f898409323b1286ad5cc0d946c5939166b047bd03f1e864ebd0bb1a4db006dd1",
+      "status": "herdr-derivative",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/settings/keyboard.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Audit XML child-geometry match; presentation attributes differ.",
+      "modifications": "Presentation/stroke/dimension attributes adapted."
+    },
+    {
+      "path": "src/features/settings/palette.svg",
+      "sha256LF": "0fded9bc09e74396aed0f015a7479bcd8721fb68082b81a8af45c07b755a6f51",
+      "status": "herdr-derivative",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/settings/palette.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Audit XML child-geometry match; presentation attributes differ.",
+      "modifications": "Presentation/stroke/dimension attributes adapted."
+    },
+    {
+      "path": "src/features/settings/pencil.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/pencil.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "7e1ca7a6f5c1eb949671df762f2baadd32f5bd841d43153c3a15279af7d78d0c"
+    },
+    {
+      "path": "src/features/settings/puzzle.svg",
+      "sha256LF": "6b163dd2565b41013a578613b9bc444e26e0b6122783b6b1453e4abe30d728bf",
+      "status": "lucide-marked",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide",
+      "icon": "puzzle",
+      "version": null,
+      "evidence": "Explicit Lucide class; original download version unrecorded.",
+      "modifications": "Presentation/source version unrecorded; no invented exact-copy assertion."
+    },
+    {
+      "path": "src/features/settings/shield.svg",
+      "sha256LF": "40fe13acad77c838d40107eb104d44ac9e90dfb8e5da45c3f4506778b8b52948",
+      "status": "herdr-derivative",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/settings/shield.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Audit XML child-geometry match; presentation attributes differ.",
+      "modifications": "Presentation/stroke/dimension attributes adapted."
+    },
+    {
+      "path": "src/features/settings/terminal.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/terminal.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "1ec2382658b6fe0642253ba75d3bbd8f48d03c9aa79c9cdb0dbbc269e112b8a1"
+    },
+    {
+      "path": "src/features/space-start/racing-flag.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/flag-triangle-right.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "68e40b6418304d304679c6095eaad037b0ddcd51149bf71581397f5fc441794a"
+    },
+    {
+      "path": "src/features/tabs/win-close.svg",
+      "sha256LF": "bc46f314ea68818459856618e10f694e53cccd947b3069286f1988927e8a1fac",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/tabs/win-close.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/tabs/win-max.svg",
+      "sha256LF": "d8f2df2b1c3b3416ab765be0ad0b6f453f4c89e0c01ac01e4e10bd12e01b109a",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/tabs/win-max.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/tabs/win-min.svg",
+      "sha256LF": "c2f8d7d1e117f99b73970816877a926becb3da102cd706fd0f0ce1780259cd52",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/tabs/win-min.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/tabs/win-restore.svg",
+      "sha256LF": "69ccde33c78d83ce39972ef129e158dd09fb19d3002bd709047801802fbad51d",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/tabs/win-restore.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/archive.svg",
+      "sha256LF": "bcb4f7103eef0133d0fae701ed5b74c8a531e20f4d38d4f37a1a83af6b582540",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/archive.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/branch.svg",
+      "sha256LF": "45c696f0f646e9471e9c77aa9e237c17c784cb3d8aaecf47bf5c6e05e7e67fcd",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/branch.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/check.svg",
+      "sha256LF": "bb1d520e122285018a0b9d257b7f73d78156337a09706da2b5619a75c45aa231",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/check.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/chevron-left.svg",
+      "sha256LF": "1a3db31d090bce6c795dbcbd1a95cb6bb074d0b2fcd8d26e5610211e10c8291f",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/chevron-left.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/circle-check.svg",
+      "sha256LF": "7d9e10a404a556a239ee33ad8a5b1e415ce39d505991760115d3a515cf387426",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/circle-check.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/clock.svg",
+      "sha256LF": "0f3d2e2b3668e96889f182ef6ab2fb66aa54d48472e83be98bd239d81f64a9cc",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/clock.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/file-text.svg",
+      "sha256LF": "b00717747452168438e35e9ec6828e779bcace9497e3f6dc63f7a618a80cf4f4",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/file-text.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/files.svg",
+      "sha256LF": "d0cb1467cd6c7b726d19d13f7aabeebaf094991605bd9fd4a47a6d084a575d24",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/files.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/folder-plus.svg",
+      "sha256LF": "b89f6eb87b75714f01b723971ba96ee6d6969d6a7cdb878989cd9981268d92eb",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/folder-plus.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/git-branch.svg",
+      "sha256LF": "d2f7cf0c6d1944b9453268f1155da2e93374fad83beeae5ab9a7d5e3584e2204",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/git-branch.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/git-compare.svg",
+      "sha256LF": "2bc47e7dc3c5df4cfaf82de1fdc5bf9f1bbc7f790170d5d434ed7c4ffc86295f",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/git-compare.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/layers.svg",
+      "sha256LF": "d63f7cec8a79eec4a60755af9f2549584a61c8e349ef9f7e9a6c4af2aeb73d9d",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/layers.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/minus.svg",
+      "sha256LF": "709a2f4c02741159ea14691d4fb1cbcf68073b27ec4e738bc9a73d660f409d7c",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/minus.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/monitor.svg",
+      "sha256LF": "cbb2f05267714ca1ffa6411cf102bbba7da13743654e4fe518429b181cf19099",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/monitor.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/more.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/ellipsis.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "4f495cc72013ffdfec677f03b33a150f7b4dd741979283fd6853a09024bca112"
+    },
+    {
+      "path": "src/features/workspace-chrome/panel-left.svg",
+      "sha256LF": "2e67d422da7253a4efcfbc02e74c17104844d7fdb19d63210e18b2c03bfa0ab4",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/panel-left.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/panel-right.svg",
+      "sha256LF": "85a85f016e5be2c50a3906161d190df94e3770d22e9069abf21649c9b7f36b1a",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/panel-right.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/pin-off.svg",
+      "sha256LF": "265298d18044617313022b40f1e24bb4989fe1f18f33585786fc947bb1ab270a",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/pin-off.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/pin.svg",
+      "sha256LF": "d4b9b5f5ef7f89e819316110ba8d8aa1d1998a30b03b4eeaf3323682890778dc",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/pin.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/plus.svg",
+      "sha256LF": "109da7afa021037ac0278aa9f5e72fd53e2fa2ea1f8ea32fbf78e7d98e6301e6",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/plus.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/search.svg",
+      "sha256LF": "7be6e7a558041594b46f0c22ccf0fd8d1f02458933b8038523323c874c7ad50b",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/search.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/sidebar-right.svg",
+      "sha256LF": "2f99a72cc93424491044ff86dfb48e46dd32a4d6fe058d03eed841ff900117f1",
+      "status": "herdr-derivative",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/sidebar.svg",
+      "version": "Herdr v0.1.16",
+      "modifications": "Mirrored sidebar path (M9.5 to M14.5); existing regression checks mirror."
+    },
+    {
+      "path": "src/features/workspace-chrome/sidebar.svg",
+      "sha256LF": "2f5ce4d2f78c3740d874db721092360cd58b809dca2564ea3fb65480ed4a9471",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/sidebar.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/spinner.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/loader-circle.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "043021bb903919668804bdb6fee0342072e4ffea5f03fbd857774c440179ad3b"
+    },
+    {
+      "path": "src/features/workspace-chrome/square-pen.svg",
+      "sha256LF": "e46ff55127ad0510e9637cba346fcb5c672cf6e14e74815652358cece8a2889e",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/square-pen.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/square.svg",
+      "sha256LF": "e475514f8a336eaa799db562ec89a87eacc5e9202c1b1f0e0ab387b6334b0d1b",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/square.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/terminal.svg",
+      "sha256LF": "a6f93e62a6ec412e6a214849be5b566cd21cff81d5570891c2e04e96c4dd964e",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/terminal.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-chrome/x.svg",
+      "sha256LF": "c1e53fc9bbe1a0a0b8183bcacf5ab7dbf160fd1f082594de3dcbba1cd5a71614",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/workspace-chrome/x.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/features/workspace-status/preview.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/eye.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "5bf90197dd7629cad64a2e48d1186a71559deb6121207d10e3dc5b19ebaffdcf"
+    },
+    {
+      "path": "src/plugins/files/mod/file.svg",
+      "sha256LF": "aad5bc0712faa95774727b83b9b7d1bc3ff28d781a838fc7693b9c9ae7383a4b",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/files/file.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/plugins/files/mod/folder-filled.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/folder.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "CurrentColor fill replaces upstream none.",
+      "sha256LF": "52e6c7b52160000bd7120985544e69a4c577f4edaa0229fbc3f45184abe04aca"
+    },
+    {
+      "path": "src/plugins/files/mod/trash.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/trash-2.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "e63698acf757d3043fcb4a9ea6ffceff9dd84708707eafc879c86b34a6ff2786"
+    },
+    {
+      "path": "src/plugins/git/mod/changes.svg",
+      "sha256LF": "8370414f7d5bd16e2a21e0b83c4e95c75674bd241ce4d83cf91762d620647fb3",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/changes/changes.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/plugins/git/mod/checklist.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/list-checks.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "01516400eab1492cf7abe94a0a58d3809f8d3c59f24116a74658f49bbaf740e4"
+    },
+    {
+      "path": "src/plugins/git/mod/circle-check.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/circle-check.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "3e519680ab8e2a8ad8f56a340c10d61957d872237aaa868cf324b0900a74f384"
+    },
+    {
+      "path": "src/plugins/git/mod/circle-play.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/circle-play.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "c49d7f348353fbdecdbd77a4f1c12f19b3b1cbb269b2e06c255247f82927a2a3"
+    },
+    {
+      "path": "src/plugins/git/mod/code.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/code.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "5410b4a298a5134504585fbce676d43784722c8529d531c7fa75f8a64fab0499"
+    },
+    {
+      "path": "src/plugins/git/mod/git-merge.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/git-merge.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "1199a8738328e9faa9d1e18b4053e6849a473aa9456117006c92681f6d547477"
+    },
+    {
+      "path": "src/plugins/git/mod/git-pull-request-closed.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/git-pull-request-closed.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "40b74c1908aaa414d71d6557b3d45cc13c272f0c505913cd1842d9d55b36b444"
+    },
+    {
+      "path": "src/plugins/git/mod/git-pull-request.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/git-pull-request.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "6dbc18c42d08f225e3fc0a34fe5bf62d8b2abae83ada8163f3bbb649f2b8d25f"
+    },
+    {
+      "path": "src/plugins/git/mod/info.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/info.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "bc977a64eb96f3e9c1041ffd09a3fceb70e3e65c02b571f76064062ed31f3cb9"
+    },
+    {
+      "path": "src/plugins/git/mod/merge-conflict.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/git-compare-arrows.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "312a5913462dd0bd33bb3dae8e136ee2a4396e0906b917be4a2c1dd3c2d2a2a2"
+    },
+    {
+      "path": "src/plugins/git/mod/repository.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/folder-git-2.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "ad3696413e9a4952231750e3dc06547eab47714405619c94ae0a61aefb1644e4"
+    },
+    {
+      "path": "src/plugins/usage/mod/codex.svg",
+      "status": "provisional-neutral-provider",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/bot.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "e46fe72fc5b33d7a17b0112df85da9ded851860312e8353f4fe23d87a4ce77f5"
+    },
+    {
+      "path": "src/plugins/usage/mod/copilot.svg",
+      "status": "provisional-neutral-provider",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/bot-message-square.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "f4e30f270d058ecfe678cf2650a9a983d87eb3cdda4bc426a1afd0dfcaf93e23"
+    },
+    {
+      "path": "src/plugins/usage/mod/login.svg",
+      "sha256LF": "3f0ed61b6553fa7e9eb7b082d8895f1e9614f2f104d95fc3b241ab45ab92d4c4",
+      "status": "lucide-marked",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide",
+      "icon": "log-in",
+      "version": null,
+      "evidence": "Explicit Lucide class; original download version unrecorded.",
+      "modifications": "Presentation/source version unrecorded; no invented exact-copy assertion."
+    },
+    {
+      "path": "src/plugins/usage/mod/refresh.svg",
+      "sha256LF": "1d31737a03732a40e3e59f1590cd790d8826a55bc75105c0fef3bcf12ded6b7b",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/settings/refresh.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/shared/arrow-up-right.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/arrow-up-right.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "50b2503b9d11881142255466b7e3461d022b919735841c321d72003ac9959fe1"
+    },
+    {
+      "path": "src/shared/chevron-down.svg",
+      "sha256LF": "be2f2e86753c4c6bc19b1cc196611b18597cc7a553580ed2bdf80f26a5e2440d",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/files/chevron-down.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/shared/chevron-right.svg",
+      "sha256LF": "280d2c796344a22fb6cb7086edc90868a27c7812405cffb9be66a3c5835aa898",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/mods/files/chevron-right.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/shared/chevron-up.svg",
+      "sha256LF": "77ccf1f41d1c16f973abeaa496d43bbcd0612da8328fae10e2dcfb8ed2d23425",
+      "status": "lucide-marked",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide",
+      "icon": "chevron-up",
+      "version": null,
+      "evidence": "Explicit Lucide class; original download version unrecorded.",
+      "modifications": "Presentation/source version unrecorded; no invented exact-copy assertion."
+    },
+    {
+      "path": "src/shared/claude.svg",
+      "status": "provisional-neutral-provider",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/sparkles.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "cc8061ee31c43138e081522260d2ddd35465dfb2a4435fddd3d9857952d7231e"
+    },
+    {
+      "path": "src/shared/close.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/x.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "4a9cdab38fbb96162e7dace28e33f4ca0e49d8963a6162abc3d4691b7d675117"
+    },
+    {
+      "path": "src/shared/copy.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/copy.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "ea80e566c7a12628a447cb53179b19aea4f60b9143e2becd0d0f20bf260e5718"
+    },
+    {
+      "path": "src/shared/cpu.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/cpu.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "6fb8cf8edbbbaa4b6a47ddbcc6879e8d2166613c663b93db0ac1fde566515362"
+    },
+    {
+      "path": "src/shared/folder.svg",
+      "sha256LF": "9d7567649afffe0523114fcff3ac9da0504ac24cabc35e0b1dc0a4d90a34beb8",
+      "status": "herdr-match",
+      "licenses": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/welcome/folder.svg",
+      "version": "Herdr v0.1.16",
+      "evidence": "Exact Git blob match after checkout LF normalization.",
+      "modifications": "None apart from checkout line endings."
+    },
+    {
+      "path": "src/shared/gauge.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/gauge.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "d7710543a5085c5a61d0bbac1da8b89ef28e541b38ed739357991dff33d475b5"
+    },
+    {
+      "path": "src/shared/pin.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/pin.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "55e8e5e04bcb671179fc1dd589abf09cf6a1e71301ff14eb739419cfab6011e7"
+    },
+    {
+      "path": "src/shared/plug.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/plug.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "2797d68c45c73c7b0befc312bb5d9a8b90f16c86c7f8b31b8afe57b39b97718a"
+    },
+    {
+      "path": "src/shared/refresh.svg",
+      "sha256LF": "adca407fef68236e478c6d1c98e151622d42f7b3d40ebf20918a7367209e7e84",
+      "status": "lucide-marked",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide",
+      "icon": "refresh-cw",
+      "version": null,
+      "evidence": "Explicit Lucide class; original download version unrecorded.",
+      "modifications": "Presentation/source version unrecorded; no invented exact-copy assertion."
+    },
+    {
+      "path": "src/shared/server.svg",
+      "status": "licensed-replacement",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide/blob/f12b0de177fbc2a6795e99be065887e72b237123/icons/server.svg",
+      "version": "Lucide 0.468.0",
+      "modifications": "Runtime filename adapted; SVG geometry unchanged.",
+      "sha256LF": "f7bea54b609dc488f3b848995014041846b2443fd2a880653e9e583d7a034f61"
+    },
+    {
+      "path": "src/shared/settings.svg",
+      "sha256LF": "3035425117f57dce1f0590ead6166a7e943f029b6a96b51ddcc4e507992bbfca",
+      "status": "lucide-marked",
+      "licenses": [
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://github.com/lucide-icons/lucide",
+      "icon": "settings",
+      "version": null,
+      "evidence": "Explicit Lucide class; original download version unrecorded.",
+      "modifications": "Presentation/source version unrecorded; no invented exact-copy assertion."
+    },
+    {
+      "path": "src/integration/native-patches/palette/original-0.1.13.js",
+      "status": "herdr-adapted-snapshot",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/v0.1.13/defaults/frame/palette/main.js",
+      "version": "0.1.13",
+      "modifications": "Stock snapshot; facade import adapted from herdr to ./host.js.",
+      "sha256LF": "1af7b6d96775788b629d40b70dc3cc0b6833a6d686422c1cda149acb6d8b06fd",
+      "evidence": "Version relationships from reviewed tag comparisons; comparisons reverse existing facade import and normalize newlines."
+    },
+    {
+      "path": "src/integration/native-patches/palette/original.js",
+      "status": "herdr-adapted-snapshot",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/palette/main.js",
+      "version": "0.1.14–0.1.16",
+      "modifications": "0.1.14 review-era stock, also matches 0.1.15/0.1.16; facade import adapted.",
+      "sha256LF": "e04927533d3f0b3937268818b3b2a3f495cda41e4d5f245584a477ea013b1539",
+      "evidence": "Version relationships from reviewed tag comparisons; comparisons reverse existing facade import and normalize newlines."
+    },
+    {
+      "path": "src/integration/native-patches/palette/main.js",
+      "status": "herdr-derivative",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/palette/main.js",
+      "version": "0.1.13 / 0.1.14+ reviewed palettes",
+      "modifications": "Modified Custom UI, routing and scrolling.",
+      "sha256LF": "c35931aaea37fb65a3cf923f842b20a51e5826da0e8109ebfb3c633fe72d74eb",
+      "evidence": "Version relationships from reviewed tag comparisons; comparisons reverse existing facade import and normalize newlines."
+    },
+    {
+      "path": "src/integration/native-patches/feedback/original.js",
+      "status": "herdr-adapted-snapshot",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/feedback/main.js",
+      "version": "0.1.13–0.1.16",
+      "modifications": "Stock snapshot; initial copy version indistinguishable; facade import adapted.",
+      "sha256LF": "c38cef2537175f569cf987a5cbc56d563ee14f841d01a8c2df0d54cfa5994ef7",
+      "evidence": "Version relationships from reviewed tag comparisons; comparisons reverse existing facade import and normalize newlines."
+    },
+    {
+      "path": "src/integration/native-patches/feedback/main.js",
+      "status": "herdr-derivative",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/feedback/main.js",
+      "version": "0.1.13–0.1.16 reviewed feedback",
+      "modifications": "Modified Custom styling, draft and attachment behavior.",
+      "sha256LF": "3d75dabae4f7b9495f007143365da4ca9d34a2d92f0bea883d4b511238d52e4b",
+      "evidence": "Version relationships from reviewed tag comparisons; comparisons reverse existing facade import and normalize newlines."
+    }
+  ]
+}

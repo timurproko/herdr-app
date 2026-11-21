@@ -8,6 +8,22 @@
   },
   "scripts": {
     "prepare": "node scripts/workflow-bootstrap.mjs",
-    "test": "node --test tests/scaffold.test.mjs scripts/ci-required.test.mjs"
+    "test": "node tools/test.mjs",
+    "test:unit": "node tools/test.mjs unit",
+    "test:integration": "node tools/test.mjs integration",
+    "test:native": "node tools/validate-native.mjs",
+    "build": "node tools/build.mjs",
+    "deploy": "node tools/check-host-api.mjs && node tools/build.mjs && node tools/deploy.mjs deploy",
+    "doctor": "node tools/deploy.mjs doctor",
+    "report:ownership": "node tools/report-ownership.mjs",
+    "check:native": "node tools/deploy.mjs check",
+    "check:host-api": "node tools/check-host-api.mjs",
+    "check:tab-move": "node tools/check-tab-move.mjs",
+    "enable": "node tools/deploy.mjs enable",
+    "disable": "node tools/deploy.mjs disable",
+    "preferences:export": "node tools/preferences.mjs export",
+    "preferences:import": "node tools/preferences.mjs import",
+    "rollback": "node tools/rollback.mjs",
+    "remove": "node tools/deploy.mjs remove"
   }
 }

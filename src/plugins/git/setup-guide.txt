@@ -1,0 +1,30 @@
+GIT AUTOMATIC TEST UPDATES
+
+Settings > Plugins > Git:
+
+1. Install beside Cloudflare tools (private, pinned Wrangler installation).
+2. Login beside Cloudflare account; authorize it in your browser.
+   If several accounts are available, Choose the account to use.
+3. Configure beside Automatic test updates. One click starts configuration;
+   there is no extra confirmation panel. Cloudflare charges may apply.
+   The relay, local keys, secret upload and URL are handled automatically.
+4. In Repositories (separate from Requirements), search and check the
+   repositories to enable individually. Selections are local until Apply.
+   Apply saves changes; Discard restores saved selections, like Core settings.
+   Unchecking removes only this relay's webhook when applied. There is no
+   separate Connect step. Wheel scrolling over the list stays inside it.
+
+The list comes from your GitHub account, not locally cloned folders. It includes
+active repositories you can administer. Failures appear beside the affected rows;
+successful updates are retained. Check refreshes the actual GitHub state.
+
+Install all never logs in, provisions cloud resources or changes webhooks.
+Local credentials are reused; invalid/edited files are never overwritten.
+Keys and Cloudflare tokens never appear in settings or command arguments.
+The configured Cloudflare URL is shown read-only under Automatic test updates.
+
+If Cloudflare deployment or propagation is interrupted, retry Configure. No keys
+or URLs need to be copied. Closing Settings does not undo an approved request.
+
+Full reference: customizations/docs/GIT-WEBHOOKS.md
+Optional manual source: customizations/tools/git-webhook-relay/

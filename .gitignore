@@ -5,3 +5,13 @@ coverage/
 logs/
 .worktrees/
 .artifacts/
+.work/
+*.error
+*.d.ts
+**/jsconfig.json
+# Private host exports stay local; these visual snapshots are deliberately public.
+preferences/*.json
+!preferences/layout.json
+!preferences/palette.json
+!preferences/theme.json
+!preferences/example.json

@@ -1,0 +1,7 @@
+{
+  "name": "herdr-git-webhooks",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-01-01",
+  "durable_objects": {"bindings": [{"name": "HUB", "class_name": "WebhookHub"}]},
+  "migrations": [{"tag": "v1", "new_sqlite_classes": ["WebhookHub"]}]
+}

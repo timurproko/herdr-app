@@ -1,0 +1,11 @@
+{
+  "version": "0.1.16",
+  "executableSha256": "c78e454556f33c2240a0be366fd4e5b183f092286500acd9ac861c29bffa058e",
+  "verifiedEmbeddedStock": [
+    "mods/spaces/main.js",
+    "mods/agents/main.js",
+    "mods/tabs/main.js",
+    "mods/machine-add/main.js",
+    "mods/worktree/main.js"
+  ]
+}
