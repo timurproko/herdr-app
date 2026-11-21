@@ -9,5 +9,8 @@ logs/
 *.error
 *.d.ts
 **/jsconfig.json
-# The original personal host snapshot is not part of the public export.
-preferences/pc.json
+# Host snapshots are private backups; only these visual snapshots are public.
+preferences/*.json
+!preferences/layout.json
+!preferences/palette.json
+!preferences/theme.json

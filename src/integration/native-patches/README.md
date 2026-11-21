@@ -25,8 +25,9 @@ catalog. Only entries with an existing local opt-in record are repaired.
 From the project directory:
 
 ```powershell
-node ../.customizations/runtime/scripts/frame-patch.mjs check palette
-node ../.customizations/runtime/scripts/frame-patch.mjs restore palette
+$HerdrHome = if ($env:HERDR_APP_HOME) { $env:HERDR_APP_HOME } else { Join-Path $HOME '.config/herdr-app' }
+node "$HerdrHome/.customizations/runtime/scripts/frame-patch.mjs" check palette
+node "$HerdrHome/.customizations/runtime/scripts/frame-patch.mjs" restore palette
 ```
 
 `apply <id>` is an explicit opt-in. Restore a patch before deleting its registry

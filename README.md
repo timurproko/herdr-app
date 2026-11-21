@@ -945,13 +945,20 @@ npm run preferences:import
 npm run deploy
 ```
 
-The exporter validates palette ownership and exports only allowlisted settings.
-It does not export usage reports, account identities, credentials, discovery caches
-or sessions. `preferences/theme.json` is the personal native-schema palette;
-`preferences/palette.json` retains picker metadata. Host files never overwrite a
-different computer's profiles. Global settings/shortcuts remain native files.
-The yadm pre-commit hook calls the safe exporter; no pull hook imports state or
-restarts the desktop. Reconcile a palette conflict rather than overwriting it.
+The exporter validates palette ownership and writes **credential-filtered private
+backups**, not anonymized or public-safe exports. Account-derived usage pins and
+arbitrary plugin settings are preserved and may contain account identities,
+infrastructure identifiers, relay URLs or personal paths. Filtering is not a
+guarantee that a snapshot is free of secrets or personal information. **Never commit
+personal host snapshots (`preferences/<hostname>.json`)**, even if the exporter
+accepts them. Host snapshots are ignored; only the deliberately tracked visual
+files `layout.json`, `palette.json` and `theme.json` are exceptions.
+
+`preferences/theme.json` is the native-schema palette; `preferences/palette.json`
+retains picker metadata. Host files never overwrite a different computer's
+profiles. Global settings/shortcuts remain native files. The optional private
+yadm pre-commit hook calls the exporter; no pull hook imports state or restarts
+the desktop. Reconcile a palette conflict rather than overwriting it.
 
 ## First installation / another computer
 
