@@ -15,6 +15,8 @@ passes their original VM flags, and propagates failures. It prints every include
 and excluded source path before execution. CI children use a disposable Herdr home,
 unavailable native app executable and temporary fixture directories under ignored
 `.artifacts/`. No Herdr install, private snapshot or external A1 checkout is supplied.
+On Windows the CI child environment drops inherited PowerShell 7 module paths so
+original helpers invoking Windows PowerShell 5 can load its own default modules.
 The command refuses full execution outside `CI=true` because original OS-specific
 tests may recycle fixture files. It is not a local test-isolation framework.
 
@@ -37,6 +39,7 @@ Provider/relay/Cloudflare unit transports are mocks, not live requests.
 |---|---|---|
 | `tests/regression/directory.test.mjs` | Both | Executes installed hc schema and reads the user's real .bashrc; requires native/private environment. |
 | `tests/regression/directory-loader.test.mjs` | Ubuntu | Hardcoded Windows Git Bash and cygpath in the original fixture; Windows retains the whole suite. |
+| `tests/regression/previews.test.mjs` | Ubuntu | Original Node 20 VM/test-runner process crashed with SIGSEGV after seven passing subtests in run 44946866722; suite retained unchanged, not rewritten. |
 | `tests/a1-api-candidate.test.mjs` | Both | Requires a separately built external A1 checkout and tsx. Normal A1 client/color tests remain included. |
 | `tests/regression/test.mjs` / test:integration | Both | Installed Herdr binary, stock baseline/layout and real host files. Mock UI cases remain inside this original integration file, not extracted. Its historical theme-selection assertion is not claimed fixed or rerun. |
 | tools/validate-native.mjs / test:native | Both | Native Herdr checks, even though its app home is disposable. |
@@ -58,11 +61,23 @@ The scaffold package contract and scripts/ci-required.test.mjs also run in each 
 `CI required` retains its exact name and fails on a failed/cancelled/missing required
 dependency. Drafts skip app suites; the finalized ready head is the integration gate.
 
+## Observed hosted failures
+
+Run 44946866722 on finalized head 6f87f962 failed on both lanes: Ubuntu's original
+previews suite crashed with SIGSEGV after seven passing subtests; Windows' original
+Claude-refresh suite failed its real credential-file ACL-save branch with
+ClaudeRefreshError(storage), whose helper suppresses the native stderr. The
+required aggregator correctly failed with the matrix. Ubuntu excludes that whole
+crashing suite. Windows first retries with its native PowerShell module environment
+rather than rewriting the test/helper; the precise original native error is not
+claimed established from the suppressed diagnostic.
+
 ## Exact selected source entries
 
 The list below is generated from the CI entrypoint selection, not inferred from
 file naming alone. The command prints the same list in each run. Initially there
-are 122 entries on Windows and 121 on Ubuntu, including scaffold/aggregator tests.
+were 122 entries on Windows and 121 on Ubuntu. After the observed Ubuntu VM crash,
+the selection is 122 on Windows and 120 on Ubuntu, including scaffold/aggregator tests.
 
 ### Both runners
 
@@ -86,7 +101,6 @@ tests/regression/permissions.test.mjs
 tests/regression/picker-labels.test.mjs
 tests/regression/preferences.test.mjs
 tests/regression/preview-font.test.mjs
-tests/regression/previews.test.mjs
 tests/regression/profile-cache.test.mjs
 tests/regression/profile-launch.test.mjs
 tests/regression/profiles.test.mjs
@@ -194,4 +208,5 @@ scripts/ci-required.test.mjs
 
 ```text
 tests/regression/directory-loader.test.mjs
+tests/regression/previews.test.mjs
 ```

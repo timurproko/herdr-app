@@ -20,6 +20,7 @@ export function ciTestPlan(platform=process.platform) {
     let reason=null;
     if(entry.file==='scripts/directory.test.mjs')reason='Requires installed hc schema and the real user .bashrc; native/private integration.';
     if(platform==='linux'&&entry.file==='scripts/directory-loader.test.mjs')reason='Unmodified fixture requires Windows Git Bash and cygpath.';
+    if(platform==='linux'&&entry.file==='scripts/previews.test.mjs')reason='Unmodified Node 20 VM/test-runner suite crashes with SIGSEGV on ubuntu-latest (run 44946866722).';
     if(entry.file==='tests/a1-api-candidate.test.mjs')reason='Requires a separately built external A1 candidate checkout and tsx.';
     (reason?excluded:included).push(reason?{...entry,reason}:entry);
   }
@@ -32,8 +33,11 @@ function run(plan) {
   const home=fs.mkdtempSync(path.join(project,'.artifacts','ci-home-'));
   const fixtures=path.join(home,'fixtures');fs.mkdirSync(fixtures);
   const env={...process.env,HERDR_APP_HOME:home,HERDR_APP_BIN:path.join(home,'unavailable-herdr.exe'),HERDR_CUSTOMIZATION_SOURCE:project,TMP:fixtures,TEMP:fixtures,TMPDIR:fixtures};
+  // Original helpers launch Windows PowerShell 5, not the workflow's pwsh 7.
+  // Let that process choose its own default modules instead of inheriting pwsh's paths.
+  if(plan.platform==='win32')for(const key of Object.keys(env))if(key.toLowerCase()==='psmodulepath')delete env[key];
   try {
-    for(const [command,args] of [['gh',['--version']],plan.platform==='win32'?['powershell.exe',['-NoProfile','-NonInteractive','-Command','$PSVersionTable.PSVersion.ToString()']]:['/bin/bash',['--version']]]){
+    for(const [command,args] of [['gh',['--version']],plan.platform==='win32'?['powershell.exe',['-NoProfile','-NonInteractive','-Command','$PSVersionTable.PSVersion.ToString(); Get-Command Get-Acl,Set-Acl | Select-Object -ExpandProperty Name']]:['/bin/bash',['--version']]]){
       const result=cp.spawnSync(command,args,{env,encoding:'utf8',timeout:15000});
       if(result.error||result.status!==0)throw Error(`Required runner tool unavailable: ${command}: ${result.error??result.stderr}`);
     }
@@ -46,8 +50,10 @@ function run(plan) {
       const result=cp.spawnSync(process.execPath,['--experimental-vm-modules',...(entry.file.endsWith('/previews.test.mjs')?['--test']:[]),file],{cwd:entry.packaged?output:project,env,stdio:'inherit',timeout:180000});
       results.push({source:entry.source,file:entry.file,status:result.status,error:result.error?.message??null,milliseconds:Date.now()-start});
       fs.writeFileSync(path.join(project,'.artifacts',`ci-results-${plan.platform}.json`),JSON.stringify({plan,results},null,2)+'\n');
-      if(result.error||result.status!==0)throw Error(`FAILED ${entry.source}: ${result.error?.message??`exit ${result.status}`}`);
+      if(result.error||result.status!==0)console.error(`FAILED ${entry.source}: ${result.error?.message??`exit ${result.status}`}`);
     }
+    const failed=results.filter(result=>result.error||result.status!==0);
+    if(failed.length)throw Error(`${failed.length} unmodified suite entries failed: ${failed.map(result=>result.source).join(', ')}`);
     console.log(`PASS: ${results.length} supported unmodified suite entries on ${plan.platform}; ${plan.excluded.length} documented exclusions.`);
   } finally {fs.rmSync(home,{recursive:true,force:true});}
 }
