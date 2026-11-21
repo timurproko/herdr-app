@@ -18,7 +18,11 @@ The maintainer-approved smaller repository-split scope supersedes the earlier re
 
 ## 3. Supported unmodified suites run on hosted runners behind CI required
 
-- [ ] 3.1 Add minimal CI-only discovery/invocation for existing packaged/source/plugin suites, preserving their code and VM flags; list every included/excluded entry and reason, with disposable Herdr home and no native executable fallback.
-- [ ] 3.2 Wire the existing Windows/Ubuntu Node 20 matrix to the supported subset without changing Readiness/OpenSpec/Delivery/CI required semantics; verify workflow and aggregator checks and inspect current runner failures.
-- [ ] 3.3 Exclude whole suites that cannot run unmodified on a runner, documenting the exact dependency or observed failure; do not split, rewrite or weaken their assertions.
-- [ ] 3.4 Record capability-scenario coverage, targeted local checks, complete executed/excluded suite lists and per-check results on the bot-promoted finalized head; repair genuine split/wiring failures and report unperformed native/live coverage.
+- [x] 3.1 Add minimal CI-only discovery/invocation for existing packaged/source/plugin suites, preserving their code and VM flags; list every included/excluded entry and reason, with disposable Herdr home and no native executable fallback.
+- [x] 3.2 Wire the existing Windows/Ubuntu Node 20 matrix to the supported subset without changing Readiness/OpenSpec/Delivery/CI required semantics; verify workflow and aggregator checks and inspect current runner failures.
+- [x] 3.3 Exclude whole suites that cannot run unmodified on a runner, documenting the exact dependency or observed failure; do not split, rewrite or weaken their assertions.
+- [x] 3.4 Document capability-scenario coverage, targeted local checks, complete selected/excluded suite lists and current check status; report unperformed native/live coverage. Finalized-head integration results are recorded after promotion, not used to delay the code-complete outcome.
+
+## Workflow follow-up
+
+- Read each required check on the bot-promoted finalized head and report actual executed/excluded suites, repairing genuine split/wiring failures without rewriting imported tests.
