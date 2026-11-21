@@ -9,8 +9,5 @@ logs/
 *.error
 *.d.ts
 **/jsconfig.json
-# Host snapshots are private backups; only these visual snapshots are public.
-preferences/*.json
-!preferences/layout.json
-!preferences/palette.json
-!preferences/theme.json
+# Private snapshots belong in <Herdr home>/preferences; protect legacy checkout copies.
+/preferences/

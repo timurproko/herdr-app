@@ -14,7 +14,7 @@
 
 ## Source ownership
 
-- Author only `src/`, `tools/`, `tests/`, docs, `customization.json` and deliberately exported `preferences/`.
+- Author only `src/`, `tools/`, `tests/`, docs and `customization.json`. Personal snapshots belong in `<Herdr home>/preferences/`, versioned in private dotfiles, never this source checkout; shipped visual defaults stay in `src/appearance/`.
 - Source may live in any standalone checkout. Run deployment from this checkout into HERDR_APP_HOME or ~/.config/herdr-app.
 - `dist/` is generated. Installed `<Herdr home>/mods/custom-*/`, layouts, themes and `<Herdr home>/.customizations/runtime/` are deployment outputs, not canonical source.
 - `customization.json` maps each packaged file to one canonical source. Shared helpers are authored once; the build copies them into sandbox-local mod packages. Do not duplicate helpers manually.

@@ -50,7 +50,7 @@ Canonical project: `~/.config/herdr-app/customizations/`.
 - `npm run doctor`: 347 owned files and both retained frame opt-ins healthy, with no conflicts.
 - `npm run report:ownership`: 15 Custom mods, 21 Herdr-catalogued mods, no unknown/recovery/legacy live mod folders. Catalog membership alone does not verify stock bytes.
 - Live temporary inspector tested through the shared facade: 10 panes, local/pc2 layouts ready, no legacy mod references.
-- `npm run preferences:export`: safe per-host snapshots at the new nested source location.
+- Historical `npm run preferences:export` used the then-new nested source location. Current snapshots live privately at `<Herdr home>/preferences/`; see README's manual relocation guidance. This historical run does not validate the current path change.
 - External Bash revision-dispatch and PowerShell logical-directory fixtures passed.
 - Native `herdr-app status`: Custom active, zoom 1.3, no reported UI/file errors.
 - Personal terminal padding remains 7px; layout preferences are separate from generated layout source.
