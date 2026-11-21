@@ -9,7 +9,11 @@ to reproduce hosted CI.
 
 ## Supported hosted subset
 
-The existing Windows/Ubuntu Node 20 matrix invokes `npm run test:ci`.
+The existing Windows/Ubuntu matrix invokes `npm run test:ci` on **Node 24**.
+Only the hosted test-runtime selection changed: the repository's declared Node
+20+ build minimum and imported test/tool code remain unchanged. Node 24 avoids
+observed Node 20 experimental-VM crashes and meets the unchanged Cloudflare
+fixture's Node 22.12+ prerequisite.
 `scripts/test-ci.mjs` only builds this checkout, selects existing test entrypoints,
 passes their original VM flags, and propagates failures. It prints every included
 and excluded source path before execution. CI children use a disposable Herdr home,
@@ -42,10 +46,7 @@ Provider/relay/Cloudflare unit transports are mocks, not live requests.
 |---|---|---|
 | `tests/regression/directory.test.mjs` | Both | Executes installed hc schema and reads the user's real .bashrc; requires native/private environment. |
 | `tests/regression/directory-loader.test.mjs` | Ubuntu | Hardcoded Windows Git Bash and cygpath in the original fixture; Windows retains the whole suite. |
-| `tests/regression/previews.test.mjs` | Ubuntu | Original Node 20 VM/test-runner process crashed with SIGSEGV after seven passing subtests in run 44946866722; suite retained unchanged, not rewritten. |
-| `tests/cloudflare-prerequisites.test.mjs` | Both | Original fixture requires Node 22.12+, while retained CI uses Node 20.20.2; failed explicitly in run 44947261103. |
 | `tests/file-delete.test.mjs` | Windows | Original Git-sh Darwin-backend mock returned exit 7 instead of 0 at line 77 in run 44947261103, before the real recycle-bin branch. Whole suite left unchanged; its Linux lane remains. |
-| `tests/file-tab-reuse.test.mjs` | Windows | Original VM process exited 3221225477 / 0xC0000005 (access violation) on Node 20 in run 44947261103. Linux lane remains. |
 | `tests/a1-api-candidate.test.mjs` | Both | Requires a separately built external A1 checkout and tsx. Normal A1 client/color tests remain included. |
 | `tests/regression/test.mjs` / test:integration | Both | Installed Herdr binary, stock baseline/layout and real host files. Mock UI cases remain inside this original integration file, not extracted. Its historical theme-selection assertion is not claimed fixed or rerun. |
 | tools/validate-native.mjs / test:native | Both | Native Herdr checks, even though its app home is disposable. |
@@ -73,8 +74,8 @@ Run 44946866722 on finalized head 6f87f962 failed on both lanes: Ubuntu's origin
 previews suite crashed with SIGSEGV after seven passing subtests; Windows' original
 Claude-refresh suite failed its real credential-file ACL-save branch with
 ClaudeRefreshError(storage), whose helper suppresses the native stderr. The
-required aggregator correctly failed with the matrix. Ubuntu excludes that whole
-crashing suite. Windows first retries with its native PowerShell module environment
+required aggregator correctly failed with the matrix. Ubuntu initially excluded
+that whole crashing suite; it is restored unchanged with the Node 24 runtime. Windows first retries with its native PowerShell module environment
 rather than rewriting the test/helper; the precise original native error is not
 claimed established from the suppressed diagnostic. It passed unchanged in run
 44947261103 after the CI module-path correction.
@@ -84,17 +85,20 @@ failure. Ubuntu failed usage-accounts and Cloudflare prerequisites; Windows fail
 those plus file-delete and file-tab-reuse. The usage helper failure was a CI wiring
 defect: temporary .js CommonJS helpers inherited the checkout's ESM package type.
 A temporary CommonJS package boundary restores normal OS-temp semantics without
-changing the helper or test. The other unsupported whole suites are excluded above
-with their observed failure, not rewritten or weakened.
+changing the helper or test. It passed on both runners in run 44947787876. That run
+passed all 119 selected Ubuntu entries, but Windows hit a further Node 20 access
+violation in a different original VM suite, usage-plugin. Rather than successively
+exclude otherwise portable VM tests, the hosted runtime moves to Node 24. The
+previews, file-tab-reuse and Cloudflare prerequisite suites are re-enabled unchanged;
+only the demonstrated Windows Git-sh fixture remains an observed suite exclusion.
 
 ## Exact selected source entries
 
-The list below is generated from the CI entrypoint selection, not inferred from
-file naming alone. The command prints the same list in each run. Initially there
-were 122 entries on Windows and 121 on Ubuntu. After the observed Ubuntu VM crash,
-the selection was 122 on Windows and 120 on Ubuntu. The final selection after the
-additional observed unsupported suites is **119 on each runner**, with five explicit
-exclusions per lane, including scaffold/aggregator tests in the selected counts.
+The list below is generated from CI selection, not inferred from naming. On Node
+24 the final selection is **121 entries per runner**, with three explicit exclusions
+per lane. It includes scaffold/aggregator tests. Earlier Node 20 attempts selected
+122/121 and then 119/119 entries while diagnosing the crashes; those temporary
+Node-20-only exclusions no longer apply.
 
 ### Both runners
 
@@ -118,6 +122,7 @@ tests/regression/permissions.test.mjs
 tests/regression/picker-labels.test.mjs
 tests/regression/preferences.test.mjs
 tests/regression/preview-font.test.mjs
+tests/regression/previews.test.mjs
 tests/regression/profile-cache.test.mjs
 tests/regression/profile-launch.test.mjs
 tests/regression/profiles.test.mjs
@@ -153,11 +158,13 @@ tests/ci-message.test.mjs
 tests/claude-isolation.test.mjs
 tests/claude-session-account.test.mjs
 tests/close-space.test.mjs
+tests/cloudflare-prerequisites.test.mjs
 tests/copy-toast.test.mjs
 tests/crew-projects-ui.test.mjs
 tests/deployment.test.mjs
 tests/empty-state.test.mjs
 tests/file-refresh.test.mjs
+tests/file-tab-reuse.test.mjs
 tests/files-plugin-tabs.test.mjs
 tests/files-refresh-policy.test.mjs
 tests/firstmate-profile-role.test.mjs
@@ -222,12 +229,10 @@ scripts/ci-required.test.mjs
 
 ```text
 tests/regression/directory-loader.test.mjs
-tests/regression/previews.test.mjs
 ```
 
 ### Ubuntu only
 
 ```text
 tests/file-delete.test.mjs
-tests/file-tab-reuse.test.mjs
 ```

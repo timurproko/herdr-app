@@ -19,6 +19,22 @@ Delivery check and CI required are skipped while draft. This is not final app CI
 The final ready-head result and exact actually executed/excluded entries will be
 recorded in the task report after bot promotion, without foreground CI watching.
 
+## Subsequent CI wiring repairs
+
+Node 20 runs exposed VM-native process crashes (Ubuntu previews SIGSEGV; Windows
+file-tab-reuse and later usage-plugin access violations) and Cloudflare's unchanged
+Node 22.12+ requirement. The CI-only runtime moves to Node 24 and restores those
+suite selections without modifying source/tests. The original Git-sh Darwin mock
+in file-delete fails on Windows at line 77 (7 versus 0), so that whole suite is
+excluded there and retained on Linux. Final selection is 121 entries per OS.
+
+Two genuine CI-environment defects were repaired rather than excluded: Windows
+PowerShell helpers must not inherit pwsh 7 module paths; temporary CommonJS .js
+helpers must not inherit the repository's ESM type. The original Claude ACL and
+Usage-account fixtures passed after those CI-only corrections. Exact current
+lists and observed failures are maintained in docs/TESTING.md; final required
+results are recorded in the task report.
+
 ## Not run
 
 No unchanged broad npm test, installed-host integration/native checks, native/live
