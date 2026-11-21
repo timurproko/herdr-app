@@ -8,9 +8,9 @@ for resolved issues and remaining coupling risks.
 
 | Area | Owner | Rule |
 |---|---|---|
-| `customizations/src/` | Custom source | Edit here |
-| `customizations/tools/`, `tests/`, docs | Custom development | Build/deploy/test logic only |
-| `customizations/dist/` | Generated | Disposable; never edit |
+| Checkout `src/` | Custom source | Edit here |
+| Checkout `tools/`, `tests/`, docs | Custom development | Build/deploy/test logic only |
+| Checkout `dist/` | Generated | Disposable; never edit |
 | `mods/custom-*` | Installed Custom output | Flat direct children required by Herdr; never edit |
 | `layouts/Custom.json`, `themes/Custom.json` | Installed Custom output | Deploy from source |
 | `.customizations/runtime/` | Installed workers | Generated from the project |
@@ -93,10 +93,12 @@ it changes packaging only, not credentials, endpoints or collector behavior.
 
 A UI mod may call a narrow service worker. A service must not depend on rendered UI.
 Runtime UI mods and deployed workers must never import from the source checkout by
-absolute path. The yadm-managed Bash/PowerShell prompt hooks are the deliberate
-external-integration exception: shell profiles source `src/integration/shell/` so
-yadm can refresh existing sessions at a safe prompt without injecting input or
-restarting terminals.
+absolute path. Optional private yadm-managed Bash/PowerShell profile hooks are an
+external integration, not part of standalone installation: they source shell
+payloads at a fixed legacy path and use an external revision marker/companion.
+Those profiles and dispatcher wiring are not supplied or installed here. Native
+cwd fallback remains available with reduced reporting; arbitrary-checkout hook
+installation is pending, not promised.
 
 ## Host API changes
 

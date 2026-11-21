@@ -16,12 +16,12 @@ The four numbered groups match the PR outcomes. Implementation, the 35 replaceme
 
 ## 2. Standalone setup docs retain host safety and distinguish optional private shell wiring
 
-- [ ] 2.1 Adapt README ownership/quick-start/commands to a checkout anywhere and the resolved HERDR_APP_HOME/default home, including deployed-worker paths and no required snapshot restore; verify paths and documented supported Node/Herdr/Core versions against source without running deployment or native tools.
-- [ ] 2.2 Move valid old AGENTS host/architecture/packaging/preferences/conflict/session-safety guidance into docs/DEVELOPMENT.md, remove obsolete location and delivery rules, and update README links plus the architecture test's guidance path; verify the substantive host-boundary assertion still passes and shared AGENTS.md/CLAUDE.md remain unchanged.
-- [ ] 2.3 Document base versus optional integration prerequisites, Usage credential reads/refresh, auto-fix off by default, relay limitations and Crew's mutable dependencies; verify docs match the shipped switches and do not imply that this task installs/configures external services.
-- [ ] 2.4 Retain shell-hook/yadm/companion information as optional private or pending wiring rather than standalone installation prerequisites; verify README and architecture docs do not promise arbitrary-checkout loader integration or require unrelated private dotfiles.
-- [ ] 2.5 Correct the preference-export anonymity claim and A1 protocol rollout wording; verify public release evidence before naming an A1 minimum, otherwise leave it explicitly pending/optional, and retain historical compatibility/validation facts without claiming they were rerun.
-- [ ] 2.6 Document the four agreed follow-ups and native/live validation gaps, including the historical theme assertion; add focused guidance/doc-contract tests and defer build-dependent architecture execution to group 4.
+- [x] 2.1 Adapt README ownership/quick-start/commands to a checkout anywhere and the resolved HERDR_APP_HOME/default home, including deployed-worker paths and no required snapshot restore; verify paths and documented supported Node/Herdr/Core versions against source without running deployment or native tools.
+- [x] 2.2 Move valid old AGENTS host/architecture/packaging/preferences/conflict/session-safety guidance into docs/DEVELOPMENT.md, remove obsolete location and delivery rules, and update README links plus the architecture test's guidance path; verify the substantive host-boundary assertion still passes and shared AGENTS.md/CLAUDE.md remain unchanged.
+- [x] 2.3 Document base versus optional integration prerequisites, Usage credential reads/refresh, auto-fix off by default, relay limitations and Crew's mutable dependencies; verify docs match the shipped switches and do not imply that this task installs/configures external services.
+- [x] 2.4 Retain shell-hook/yadm/companion information as optional private or pending wiring rather than standalone installation prerequisites; verify README and architecture docs do not promise arbitrary-checkout loader integration or require unrelated private dotfiles.
+- [x] 2.5 Correct the preference-export anonymity claim and A1 protocol rollout wording; verify public release evidence before naming an A1 minimum, otherwise leave it explicitly pending/optional, and retain historical compatibility/validation facts without claiming they were rerun.
+- [x] 2.6 Document the four agreed follow-ups and native/live validation gaps, including the historical theme assertion; add focused guidance/doc-contract tests and defer build-dependent architecture execution to group 4.
 
 ## 3. Host-free app regressions run on Windows and Ubuntu behind the existing CI required check
 

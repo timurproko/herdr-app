@@ -1,14 +1,15 @@
 # Shared A1 API and space-color contract
 
-## Coordinated rollout — not deployed
+## Optional coordinated rollout — matching released minimum pending
 
 This source targets A1 integration **protocol 1**, merged in
 [timurproko/a1#939](https://github.com/timurproko/a1/pull/939).
 Customization plugin version is **3.1.0**. Only this current API is supported;
 there are no older-protocol adapters or stored-state migrations.
-Source and customization build are ready; deployment awaits publication and
-installation of the matching A1 release. These yadm-managed files are delivered
-separately from A1.
+The matching released A1 minimum has not been established for this standalone
+export. Treat this integration as optional/pending; do not enable it against older
+installations. These sources are delivered separately from A1. The overall app
+build is additionally held pending gradient artwork permission (see FOLLOW-UPS.md).
 
 Before deployment, each target machine must have the matching A1 public API.
 Old immutable running sessions remain usable but unavailable to this controller;

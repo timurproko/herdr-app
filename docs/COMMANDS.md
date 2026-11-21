@@ -1,10 +1,11 @@
 # Customization commands
 
-Run customization commands from the canonical project directory.
-
-```powershell
-cd ~/.config/herdr-app/customizations
-```
+Run commands from this standalone checkout, wherever it is cloned. Installed paths
+are beneath `$env:HERDR_APP_HOME`, or `Join-Path $HOME '.config/herdr-app'` by default,
+not relative to the checkout's parent. The three gradient assets are currently
+held absent: build/deploy/app suites cannot complete until permission is resolved.
+See TESTING.md before running tests; native/live commands below are opt-in and
+were not run during the import.
 
 ## Validate after a Herdr update
 
@@ -74,15 +75,25 @@ npm run preferences:export
 npm run preferences:import
 ```
 
-Portable snapshots intentionally exclude session data and per-space color IDs.
-Space colors are durable machine-local state in `shared.json`.
+Snapshots exclude session data and per-space color IDs, but are **not anonymized**:
+account-linked pins, plugin settings, paths and automation choices may remain.
+Host snapshots are private ignored backups, not public configuration examples.
+Space colors are durable machine-local state in `shared.json`. Export/import still
+uses this checkout's preferences directory; relocation is a later change. No
+snapshot restore is required for standalone installation.
 
-## Typical safe workflow
+## Explicit installation example (after resolving the artwork hold)
+
+From this checkout, first run host-free `npm test`. Then explicitly choose a home
+and opt into operational checks/deployment:
 
 ```powershell
-cd ~/.config/herdr-app/customizations
+$env:HERDR_APP_HOME = Join-Path $HOME '.config/herdr-app'
 npm run check:host-api
-npm test
 npm run deploy
 npm run doctor
 ```
+
+Shell profiles, private yadm hooks and companion account-switcher wiring are not
+installed by these commands. Live smoke/inspection tools may modify clipboard,
+tasks or temporary host mods; they are never part of the host-free suite.

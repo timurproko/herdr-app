@@ -250,7 +250,7 @@ The existing `check:host-api` does not check private document formats or CAS beh
 - No compatibility promise about unreviewed peers: other connected App versions may
   interpret/write the same document differently and cannot all be gated by this mod.
 
-`AGENTS.md` / `docs/ARCHITECTURE.md` now document the narrow exception.
+`docs/DEVELOPMENT.md` / `docs/ARCHITECTURE.md` document the narrow exception.
 `tests/architecture.test.mjs` permits exactly one validated CAS call site in the
 adapter and retains the ban for all unrelated source, retired shell-replacement
 jobs and other document names. The generic ban was not globally removed.

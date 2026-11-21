@@ -1,0 +1,20 @@
+// Static documentation contracts only; no build, host or subprocess.
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const read=rel=>fs.readFileSync(new URL('../'+rel,import.meta.url),'utf8');
+const readme=read('README.md'),guide=read('docs/DEVELOPMENT.md');
+assert.match(readme,/Clone this repository\s+anywhere/);
+assert.match(readme,/HERDR_APP_HOME/);
+assert.match(readme,/protocol-1 matching release pending verification/);
+assert.match(readme,/not an anonymizer/);
+assert.match(readme,/three color-gradient SVGs are intentionally absent/);
+assert.doesNotMatch(readme,/\bpc2\b|node \.\.\/\.customizations|Pull this source under/);
+assert.match(guide,/Do not build, fork, replace, or patch/);
+assert.match(guide,/versioned CAS/);
+assert.match(read('tests/architecture.test.mjs'),/docs\/DEVELOPMENT\.md/);
+assert.doesNotMatch(read('AGENTS.md'),/Custom —|Keep this project inside/);
+assert.equal(read('CLAUDE.md').trim(),'@AGENTS.md');
+for(const phrase of ['Relocate private preference','Harden the webhook relay','Remove the old customizations','Set up a second'])assert.ok(read('docs/FOLLOW-UPS.md').includes(phrase));
+assert.match(read('docs/FOLLOW-UPS.md'),/theme-selection/);
+assert.match(read('docs/ARCHITECTURE.md'),/profiles and dispatcher wiring are not supplied/);
+console.log('PASS: standalone setup, relocated safety guidance, optional private wiring and honest validation limits');
