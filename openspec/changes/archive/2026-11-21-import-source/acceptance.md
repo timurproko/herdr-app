@@ -28,7 +28,7 @@ The maintainer integration decision accepts these scenarios:
     "The existing Windows and Ubuntu CI lanes select supported unmodified suites and list whole-suite exclusions.",
     "Native live operations, private shell installation and the four agreed follow-ups remain outside this repository split."
   ],
-  "archiveDigest": "1bff4d9bccca793d8ccd83d2a75ade974ad071250c86256d723ca2de91024414",
+  "archiveDigest": "c4f15de46969a44f1198a68ed3fa560d67c2ae814036077e7a8cc7233b02f31f",
   "specDigest": "e2f75eb9f6986753c9aecd5987533a4971af0b503915c8389c6741ee48cc3723",
   "tasksDigest": "bdff15164c6bb3afc535ad96b96e14a4bcc973d45e3937f73a877d0400200908",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
