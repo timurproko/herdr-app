@@ -1,0 +1,28 @@
+# Spec Delta
+
+## MODIFIED Requirements
+
+### Requirement: Reload-independent bounded update result
+An update SHALL run independently of the mod it replaces, with a finite deadline and one latest durable status/result/log under the selected Herdr home. Reload, closing Settings or duplicate clicks SHALL NOT cancel or repeat it. A missing final result SHALL NOT imply success. No daemon, scheduler or job history SHALL be introduced. Replacement of an open Updates view SHALL preserve that section and reconcile truthful row feedback without exporting navigation state as preferences.
+
+#### Scenario: Page replaced during deploy
+- **WHEN** deployment replaces Settings or the user closes and reopens it
+- **THEN** the same update continues independently and the row reattaches to its status
+- **AND** it shows Updating all machines with a disabled action until a result is known
+
+#### Scenario: Open Updates view replaced
+- **WHEN** an update started from Updates replaces the still-open Settings view, while the runner is active or has just finished
+- **THEN** the dialog remains on Updates without requiring another navigation click
+- **AND** a pending or running update never flashes a stale actionable Update or Up to date result
+- **AND** completion reconciles the verified revision and published-main check, retaining existing failure, partial-outcome and unknown-result behavior
+
+#### Scenario: Navigation and dismissal remain deliberate
+- **WHEN** the person changes section or explicitly dismisses Settings before replacement
+- **THEN** restoration does not force Updates over their newer selection or reopen the dismissed dialog
+- **AND** a new dialog honors its requested destination or the ordinary Look default
+- **AND** remembered navigation is not included in portable preference snapshots
+
+#### Scenario: Deadline or lost completion
+- **WHEN** the update exceeds its deadline, crashes or leaves no final result
+- **THEN** the row reports outcome unknown with a log path and does not replay the update
+- **AND** another deployment remains blocked while the prior process or lock is unresolved
