@@ -21,7 +21,9 @@ const find = (tree, id) => nodes(tree).find(el => el.attrs.id?.[0] === id);
 const marker = (tree, size) => nodes(tree).find(el => el.attrs.bg?.[0] === '#8844cc' && (el.attrs.size?.[0] === size || el.attrs.w?.[0] === size));
 const signature = node => JSON.stringify(node?.attrs);
 const store = new Map(), copies = [], refreshes = new Set(), jobs = [], calls = [];
-let width = 248, nativeReady = false, coreReady = false, managed = false;
+let width = 248, nativeReady = false, coreReady = false, managed = false, failExec = false;
+const clock = Date.now();
+class Clock extends Date { static now() { return clock; } }
 let next = { revision: 'a'.repeat(40), check: { checked: 1000, available: false } };
 const theme = Object.fromEntries(['accent', 'chrome', 'muted', 'foreground', 'dim', 'border', 'selected', 'solid', 'solid_foreground'].map((key, i) => [key, i === 0 ? '#8844cc' : `#${String(i).repeat(6)}`]));
 const realFiles = {
@@ -34,7 +36,7 @@ const realFiles = {
   './update-check-feedback.js': 'src/features/settings/update-check-feedback.js',
 };
 async function mount(kind, props) {
-  const context = vm.createContext({ Date, console }), cache = new Map(), requested = new Map();
+  const context = vm.createContext({ Date: Clock, console }), cache = new Map(), requested = new Map();
   const copy = { kind, props, renders: 0, timers: [] };
   const clone = value => value === undefined ? undefined : vm.runInContext(`JSON.parse(${JSON.stringify(JSON.stringify(value))})`, context);
   const noop = () => null;
@@ -48,7 +50,7 @@ async function mount(kind, props) {
       store.set(key, JSON.parse(encoded));
       for (const root of copies) refreshes.add(root);
     },
-    exec: async (_command, args) => { const request = JSON.parse(args[1]); calls.push({ kind, ...request }); return { code: 0, stdout: JSON.stringify(next) }; },
+    exec: async (_command, args) => { const request = JSON.parse(args[1]); calls.push({ kind, ...request }); if (failExec) throw Error('fixture transport unavailable'); return { code: 0, stdout: JSON.stringify(next) }; },
     keys: () => [], spaces: () => [], terminals: () => [], panes: () => [], agents: () => [],
     run: noop, openOverlay: noop, closeOverlay: noop,
   };
@@ -118,6 +120,21 @@ const markers = () => surfaces().map((tree, i) => marker(tree, i === 3 ? 7 : 6))
 assert.deepEqual(markers().map(Boolean), [false, false, false, false]);
 assert.equal(footer.timers.length, 0, 'Footer reader has no polling/controller');
 assert.ok(header.timers.some(timer => timer.ms === 3600000));
+// Review regression: a failed manual check followed immediately by Updates
+// navigation must not turn the unchanged cached success into confirmation.
+// A frozen clock makes this exactly within the native three-second window.
+const cachedCheck = JSON.stringify(store.get(KEY).check);
+failExec = true;
+find(settings.tree, 'st-check-customizations').attrs.on_click[0](null, settings.cx);
+await settle();
+assert.ok(find(settings.tree, 'st-check-customizations').kids.includes('Check now'));
+failExec = false;
+find(settings.tree, 'st-s-updates').attrs.on_click[0]({}, settings.cx);
+await settle();
+assert.equal(calls.at(-1).action, 'status', 'actual Updates navigation performs a status request');
+assert.equal(JSON.stringify(store.get(KEY).check), cachedCheck, 'status restored the unchanged cached current result');
+assert.ok(find(settings.tree, 'st-check-customizations').kids.includes('Check now'), 'failed check cannot be revived as success feedback by cached status');
+assert.equal(settings.view.customUpdateAsked, null);
 const before = copies.map(copy => copy.renders);
 // This is the real rendered row callback, not a test-only publication or render.
 next = { ...next, check: { checked: 2000, available: true } };

@@ -1,5 +1,5 @@
 import { exec, appHome, shared, setShared, checking } from './host.js';
-import { CUSTOMIZATION_UPDATE_KEY, updateProjection, updateAvailable } from './customization-update-model.js';
+import { CUSTOMIZATION_UPDATE_KEY, updateProjection, updateAvailable, customizationRowState } from './customization-update-model.js';
 
 export const customizationUpdateSnapshot = () => shared(CUSTOMIZATION_UPDATE_KEY) || null;
 export const customizationUpdateAvailable = () => updateAvailable(customizationUpdateSnapshot());
@@ -16,6 +16,7 @@ export function refreshCustomizationUpdates(owner, cx, action = 'status', force 
   if (action === 'check') setShared(CUSTOMIZATION_UPDATE_KEY, { ...customizationUpdateSnapshot(), checking: true });
   cx.notify();
   cx.spawn(async cx => {
+    let checkedCurrent = false;
     try {
       let snapshot = await request(owner, action, force);
       setShared(CUSTOMIZATION_UPDATE_KEY, updateProjection(snapshot));
@@ -27,6 +28,8 @@ export function refreshCustomizationUpdates(owner, cx, action = 'status', force 
         snapshot = await request(owner, 'check');
         setShared(CUSTOMIZATION_UPDATE_KEY, updateProjection(snapshot));
       }
+      const completed = customizationRowState(updateProjection(snapshot));
+      checkedCurrent = completed.current && completed.enabled;
     } catch (error) {
       const failedAction = owner.customUpdatePending;
       owner.customUpdateError = failedAction === 'check' ? 'Check failed. Try again.' : error.message;
@@ -34,7 +37,12 @@ export function refreshCustomizationUpdates(owner, cx, action = 'status', force 
       setShared(CUSTOMIZATION_UPDATE_KEY, { ...previous, checking: false,
         ...(failedAction === 'check' ? { check: { ...previous?.check, error: 'Check failed. Try again.' } } : {}),
         ...(failedAction === 'launch' ? { locked: true, job: { state: 'unknown' }, details: null, log: previous?.log || `${appHome()}/.customizations/update.log` } : {}) });
-    } finally { owner.customUpdatePending = null; cx.notify(); }
+    } finally {
+      // Do not let a later status reload revive a failed/unknown requested check
+      // using its old timestamp and an unchanged cached current result.
+      if (!checkedCurrent) owner.customUpdateAsked = null;
+      owner.customUpdatePending = null; cx.notify();
+    }
   });
 }
 export function initCustomizationUpdates(owner, cx, mod, { chrome = false } = {}) {

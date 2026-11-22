@@ -85,11 +85,38 @@ nativeChecking = false; clock += 3000; feedbackTick();
 // A failed requested check must not reuse a previous current answer.
 reject = true; draw().button.callback(null, cx); await flush();
 assert.equal(draw().button.label, 'Check now'); assert.match(draw().description, /Check failed/);
+assert.equal(owner.customUpdateAsked, null, 'transport failure cancels the request feedback');
 reject = false;
-// Missing result or unknown installed revision never becomes a confirmation.
-for (const value of [{ revision: 'a'.repeat(40), check: null }, { revision: null, check: { checked: clock, available: false } }, { revision: 'a'.repeat(40), check: { checked: clock } }, { revision: 'a'.repeat(40), check: { checked: clock, available: false }, locked: true }, { revision: 'a'.repeat(40), check: { checked: clock, available: false }, job: { state: 'unknown' } }]) {
+api.refreshCustomizationUpdates(owner, cx); await flush();
+assert.equal(draw().description, cachedDescription, 'status can restore a cached current description');
+assert.equal(draw().button.label, 'Check now', 'status must not restore feedback for the failed check');
+assert.equal(draw().button.options.enabled, true);
+// A new explicit successful retry still gets the original native confirmation.
+draw().button.callback(null, cx); await flush();
+assert.equal(draw().button.label, '✓ Up to date'); assert.equal(draw().button.options.enabled, false);
+reject = true; api.refreshCustomizationUpdates(owner, cx); await flush();
+assert.equal(owner.customUpdateAsked, null, 'a failed status refresh also cancels existing confirmation');
+reject = false; api.refreshCustomizationUpdates(owner, cx); await flush();
+assert.equal(draw().button.label, 'Check now', 'status recovery alone cannot rearm confirmation');
+// Worker-reported failure, missing/unknown or unfinished results also cancel
+// feedback, so a subsequent successful status read cannot resurrect it.
+for (const value of [
+  { revision: 'a'.repeat(40), check: { checked: clock, available: false, error: 'check failed' } },
+  { revision: 'a'.repeat(40), check: null },
+  { revision: null, check: { checked: clock, available: false } },
+  { revision: 'a'.repeat(40), check: { checked: clock } },
+  { revision: 'a'.repeat(40), check: { checked: clock, available: false }, locked: true },
+  { revision: 'a'.repeat(40), check: { checked: clock, available: false }, job: { state: 'unknown' } },
+  { revision: 'a'.repeat(40), check: { checked: clock, available: false }, checking: true },
+]) {
+  owner.customUpdateAsked = clock;
   next = value; api.refreshCustomizationUpdates(owner, cx, 'check', true); await flush();
-  assert.equal(draw().button.label, 'Check now');
+  assert.equal(draw().button.label, value.checking ? 'Checking…' : 'Check now');
+  assert.equal(owner.customUpdateAsked, null, 'non-current or unfinished check cancels the feedback timestamp');
+  next = { revision: 'a'.repeat(40), check: { checked: clock, available: false } };
+  api.refreshCustomizationUpdates(owner, cx); await flush();
+  assert.equal(draw().button.label, 'Check now', 'cached current status cannot revive unsuccessful feedback');
+  assert.equal(draw().button.options.enabled, true);
 }
 next = { revision: 'a'.repeat(40), check: { checked: clock, available: false }, log: '/fixture/update.log' };
 next = { ...next, check: { ...next.check, available: true, target: 'b'.repeat(40) } };
