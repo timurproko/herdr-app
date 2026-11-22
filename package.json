@@ -16,6 +16,7 @@
     "build": "node tools/build.mjs",
     "deploy": "node tools/check-host-api.mjs && node tools/build.mjs && node tools/deploy.mjs deploy",
     "deploy:shell": "node tools/build.mjs && node tools/deploy.mjs deploy-shell",
+    "deploy:all": "node tools/deploy-all.mjs",
     "doctor": "node tools/deploy.mjs doctor",
     "report:ownership": "node tools/report-ownership.mjs",
     "check:native": "node tools/deploy.mjs check",

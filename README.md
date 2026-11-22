@@ -117,6 +117,7 @@ npm run build                  # builds customization files ONLY
 npm run check:host-api         # validate facade/profile against this Herdr version
 npm run test:native             # 17 mods + 2 frame-patch fixtures, disposable app home
 npm run deploy                 # guarded incremental deployment; refresh prior patch opt-ins
+npm run deploy:all             # watched clean-main desktop + eligible peer shell deployments
 npm run doctor                 # ownership, layout preferences and compatibility status
 npm run report:ownership       # classify custom, host, unknown and recovery runtime
 npm run check:native            # eager checks on installed custom mods
@@ -998,6 +999,34 @@ source bridges and terminal-label aliases have been retired. A machine with an
 older installation needs a separately reviewed removal/installation plan; never
 adopt unknown files, replay old shell/core actions, or copy live session state.
 
+## Update all machines
+
+Run `npm run deploy:all` from this checkout on the desktop. It requires **clean main**
+(including untracked files), fetches origin and refuses the entire run if ahead of
+or diverged from origin/main. It never stashes, resets or switches branches.
+It fast-forwards selected local source and runs the existing full `npm run deploy`,
+including the host compatibility check, build, ownership checks and backup.
+Checkout HEAD equality alone does not prove the installed files are current.
+
+Use `npm run deploy:all -- --dry-run` to preview (still fetches; no fast-forward,
+build or install), `--only local,pc2` to select machines, or `--skip-local` to omit
+the desktop deploy. The source safety gate always runs. The final per-machine
+summary includes deployed/current/skipped/failed, source commit and any printed
+backup ID. Failures exit non-zero; stated skips alone do not. See
+[command details](docs/COMMANDS.md#watched-all-machine-deployment).
+
+Each peer needs a configured/reachable Herdr Core and Git, Node 20+ and npm on
+**Core's PATH**, plus a clean main clone of this repository at
+`~/.local/share/herdr-app`. Full desktop deployments are skipped: run their own
+full deploy there. To set up a new peer once, **on that machine**, clone
+`https://github.com/timurproko/herdr-app.git` to that path and run
+`npm run deploy:shell -- "$HOME/.config/herdr-app"` from the clone. This explicit
+first installation and shell-profile wiring are manual steps; see
+[remote setup](docs/COMMANDS.md#one-time-new-peer-setup) and
+[installed shell reporting](#installed-shell-reporting). deploy:all never clones,
+installs tools or repairs checkouts. It records source commits in output, not
+installed Git provenance, and never restarts live shells or agents.
+
 ## Installed shell reporting
 
 On a Core-only host without Desktop/Custom, run `npm run deploy:shell` from this
@@ -1007,7 +1036,8 @@ deploy, preserving all non-shell output and preference bytes. It never enables a
 layout or invokes native checks/patches. A later full deploy shares that ownership.
 `npm run rollback:shell -- <backup-id> [home]` restores only a verified shell-only
 journal without Desktop, refusing mixed journals, newer records and later edits.
-Installation on a remote peer is a separate explicit action, never a deploy side effect.
+Ordinary deploy/deploy:shell never contacts peers. `deploy:all` explicitly authorizes
+updates to eligible existing peer checkouts; new-peer setup remains manual.
 
 Deploy owns `<Herdr home>/.customizations/runtime/shell/` containing
 `bash-cwd-loader.sh`, `bash-cwd.sh`, `powershell-cwd.ps1` and `revision`.

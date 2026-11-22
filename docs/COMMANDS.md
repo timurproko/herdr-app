@@ -73,6 +73,86 @@ ownership. Use README's exact installed profile lines; no source checkout is nee
 by the running shells. Shell rollback also accepts an explicit home after its ID.
 Mixed/full journals, later edits and newer ownership/preference records are refused.
 
+## Watched all-machine deployment
+
+`npm run deploy:all` requires clean main on the desktop, including untracked files.
+It fetches origin, refuses ahead/diverged or unsafe source before contacting peers,
+then fast-forwards and uses the existing full deploy. It never stashes or resets.
+
+Peers come from `hc machine ls --json`, not terminal membership. Connected eligible
+peers run a supplied Node worker through `hc exec --on <machine> --timeout 600 --json -- node -e ...`,
+without creating a terminal. The worker checks the existing checkout at
+`~/.local/share/herdr-app`, fetches and fast-forwards clean non-ahead main of this
+repository, then runs `npm run deploy:shell` into that peer's default
+`~/.config/herdr-app` (remote HERDR_APP_HOME overrides are deliberately not used).
+Offline peers, absent tools/checkouts, unsafe source and unreadable ownership are
+skipped with reasons. Full desktop ownership is skipped as **needs its own full deploy**.
+A failed local/remote deployment does not prevent later peer attempts. There is no
+remote cloning, tool installation, checkout repair, terminal input or process restart.
+
+```powershell
+npm run deploy:all -- --dry-run
+npm run deploy:all -- --only local,pc2
+npm run deploy:all -- --skip-local
+```
+
+`--only` accepts comma-separated configured peer names, plus `local` or this
+computer's hostname. Unknown names fail before deployment. `--skip-local` overrides
+local selection; neither option bypasses the clean-main source gate.
+`--dry-run` still fetches to compare: Git objects and remote-tracking refs are the
+only mutation exception. HEAD, working files, dist, installed homes and backups
+stay unchanged; no compatibility check/build/deploy runs. It reports **would deploy**,
+not an installed-version claim. Every selected eligible checkout still runs its
+installer in a real run, even at equal HEAD; only a successful no-change installer
+can report **already current**.
+
+The final table contains **Machine | Action | Source commit | Backup**. Deployed
+rows name the source SHA actually used; failed rows label it attempted, dry-run
+rows target, and unavailable values are `-`. Backup IDs come from the existing
+deploy JSON, including any printed before a failure. The command records no
+installed Git provenance. Main can advance between peers, so SHAs may differ.
+Any failed machine, unsafe source, inventory or option error exits 1; only deployed,
+current and stated-skip outcomes exit 0. Calls have tool/fetch bounds of 15/60 seconds,
+a 600-second remote cap and a 615-second outer transport deadline. A disconnect or
+timeout after dispatch means outcome unknown: inspect the machine before retrying.
+There is no automatic retry or rollback, or cross-machine transaction; retain the
+printed backup IDs and use the existing recovery commands below.
+
+### One-time new peer setup
+
+Do these manual steps **on the new peer**, not by running deploy:all. Install Git,
+Node 20+ and npm yourself, ensure they are on **Core's PATH**, and configure this
+peer in Herdr Machines. `hc` on the desktop must support machine listing and
+terminal-free remote exec. A Core-only peer needs no Desktop or Custom mods.
+A plain HTTPS clone is sufficient; no management/adoption record is created.
+
+PowerShell on the peer:
+
+```powershell
+New-Item -ItemType Directory -Force "$HOME/.local/share" | Out-Null
+git clone https://github.com/timurproko/herdr-app.git "$HOME/.local/share/herdr-app"
+Set-Location "$HOME/.local/share/herdr-app"
+npm run deploy:shell -- "$HOME/.config/herdr-app"
+```
+
+Bash on the peer:
+
+```bash
+mkdir -p "$HOME/.local/share"
+git clone https://github.com/timurproko/herdr-app.git "$HOME/.local/share/herdr-app"
+cd "$HOME/.local/share/herdr-app"
+npm run deploy:shell -- "$HOME/.config/herdr-app"
+```
+
+The explicit home selects the same peer default used by deploy:all, even if an
+interactive shell has HERDR_APP_HOME set. Keep this checkout clean on main.
+Wire shell profiles explicitly using [README's installed lines](../README.md#installed-shell-reporting).
+Installing updated files does not restart or inject input into live shells;
+compatible Bash payloads reload at an idle prompt, while dispatcher changes may
+need a person to re-source the installed loader or open a new shell. Existing
+[backup-ID recovery](#disable-enable-rollback-or-remove) remains unchanged;
+Core-only hosts use [shell-only rollback](#core-only-shell-installation).
+
 ## Disable, enable, rollback or remove
 
 ```powershell
