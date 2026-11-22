@@ -15,9 +15,9 @@
 
 ## 3. Selection preview and per-machine results
 
-- [ ] 3.1 Add --only, --skip-local and --dry-run with pre-deployment selector validation; fixtures prove selection never bypasses the source gate and dry-run changes only fetched Git data/refs, not HEAD/files/dist/homes/backups.
-- [ ] 3.2 Print per-machine deployed/current/skipped/failed results with actual source commit and existing printed backup IDs; fixtures cover no-change installation, missing values, failed attempted SHA, dry-run rows and zero/non-zero aggregate exit codes.
-- [ ] 3.3 Document options, dry-run fetch exception and summary semantics in README/docs/COMMANDS.md; command-contract tests cover the examples without running operational commands.
+- [x] 3.1 Add --only, --skip-local and --dry-run with pre-deployment selector validation; fixtures prove selection never bypasses the source gate and dry-run changes only fetched Git data/refs, not HEAD/files/dist/homes/backups.
+- [x] 3.2 Print per-machine deployed/current/skipped/failed results with actual source commit and existing printed backup IDs; fixtures cover no-change installation, missing values, failed attempted SHA, dry-run rows and zero/non-zero aggregate exit codes.
+- [x] 3.3 Document options, dry-run fetch exception and summary semantics in README/docs/COMMANDS.md; command-contract tests cover the examples without running operational commands.
 
 ## 4. Explicit manual remote bootstrap guidance
 

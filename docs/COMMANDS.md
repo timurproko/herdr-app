@@ -90,6 +90,34 @@ skipped with reasons. Full desktop ownership is skipped as **needs its own full 
 A failed local/remote deployment does not prevent later peer attempts. There is no
 remote cloning, tool installation, checkout repair, terminal input or process restart.
 
+```powershell
+npm run deploy:all -- --dry-run
+npm run deploy:all -- --only local,pc2
+npm run deploy:all -- --skip-local
+```
+
+`--only` accepts comma-separated configured peer names, plus `local` or this
+computer's hostname. Unknown names fail before deployment. `--skip-local` overrides
+local selection; neither option bypasses the clean-main source gate.
+`--dry-run` still fetches to compare: Git objects and remote-tracking refs are the
+only mutation exception. HEAD, working files, dist, installed homes and backups
+stay unchanged; no compatibility check/build/deploy runs. It reports **would deploy**,
+not an installed-version claim. Every selected eligible checkout still runs its
+installer in a real run, even at equal HEAD; only a successful no-change installer
+can report **already current**.
+
+The final table contains **Machine | Action | Source commit | Backup**. Deployed
+rows name the source SHA actually used; failed rows label it attempted, dry-run
+rows target, and unavailable values are `-`. Backup IDs come from the existing
+deploy JSON, including any printed before a failure. The command records no
+installed Git provenance. Main can advance between peers, so SHAs may differ.
+Any failed machine, unsafe source, inventory or option error exits 1; only deployed,
+current and stated-skip outcomes exit 0. Calls have tool/fetch bounds of 15/60 seconds,
+a 600-second remote cap and a 615-second outer transport deadline. A disconnect or
+timeout after dispatch means outcome unknown: inspect the machine before retrying.
+There is no automatic retry or rollback, or cross-machine transaction; retain the
+printed backup IDs and use the existing recovery commands below.
+
 ## Disable, enable, rollback or remove
 
 ```powershell

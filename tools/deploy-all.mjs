@@ -1,6 +1,7 @@
 // Explicit watched deployment, never a daemon or a terminal-based remote command.
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import worker from './deploy-all-worker.cjs';
 const directory = path.dirname(fileURLToPath(import.meta.url));
@@ -44,8 +45,28 @@ export function deployPeer(machine, { run = worker.runCommand, env = process.env
   } catch { return { action: 'failed', reason: 'remote transport failed; outcome unknown' }; }
 }
 
-export function deployAll(args = [], { root = project, log = console.log, ...options } = {}) {
-  if (args.length) throw Error('Use npm run deploy:all (options are not yet supported).');
+export function parseOptions(args) {
+  const options = { dryRun: false, skipLocal: false, only: null };
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--dry-run') options.dryRun = true;
+    else if (args[i] === '--skip-local') options.skipLocal = true;
+    else if (args[i] === '--only' && options.only === null && args[i + 1] && !args[i + 1].startsWith('--')) {
+      options.only = args[++i].split(',').map(name => name.trim());
+      if (options.only.some(name => !name)) throw Error('--only needs comma-separated machine names');
+    } else throw Error('Use npm run deploy:all -- [--dry-run] [--only local,machine] [--skip-local]');
+  }
+  return options;
+}
+export function printSummary(results, log) {
+  const cell = value => String(value || '-').replace(/[\r\n\t\x00-\x1f\x7f|]/g, ' ').slice(0, 250);
+  log('\nMachine | Action | Source commit | Backup');
+  for (const row of results) {
+    const qualifier = row.action === 'failed' ? ' (attempted)' : row.action === 'would deploy' ? ' (target)' : row.action === 'skipped' ? ' (checkout only)' : '';
+    log([row.machine, row.action + (row.reason ? ': ' + row.reason : ''), row.commit ? row.commit + qualifier : '-', row.backup || '-'].map(cell).join(' | '));
+  }
+}
+export function deployAll(args = [], { root = project, log = console.log, hostname = os.hostname(), ...options } = {}) {
+  const selection = parseOptions(args);
   let source;
   try { source = worker.checkSource(root, options); }
   catch (error) {
@@ -56,17 +77,31 @@ export function deployAll(args = [], { root = project, log = console.log, ...opt
   let machines = [];
   try { machines = inventory(options.run || worker.runCommand, options.env || process.env); }
   catch (error) { results.push({ machine: '(inventory)', action: 'failed', reason: error.message }); }
+  const known = new Set(['local', hostname, ...machines.map(machine => machine.name)]);
+  const unknown = selection.only?.filter(name => !known.has(name));
+  if (unknown?.length) {
+    results.push({ machine: '(selection)', action: 'failed', reason: `unknown machine: ${unknown.join(', ')}` });
+    printSummary(results, log);
+    return { code: 1, results };
+  }
+  const localSelected = !selection.only || selection.only.some(name => name === 'local' || name === hostname);
+  log(`Desktop: ${hostname}${selection.dryRun ? ' (dry-run; fetch only)' : ''}`);
   let result;
-  try {
+  if (selection.skipLocal || !localSelected) result = { action: 'skipped', reason: selection.skipLocal ? '--skip-local' : 'not selected' };
+  else if (selection.dryRun) result = { action: 'would deploy', reason: source.before === source.commit ? 'full deploy (HEAD unchanged)' : 'fast-forward and full deploy', commit: source.commit };
+  else try {
     worker.fastForward(root, source.commit, options);
     result = worker.deployCheckout(root, source.commit, 'deploy', { ...options, log });
   } catch (error) { result = { action: 'failed', reason: error.message, commit: source.commit }; }
   results.push({ machine: 'local', ...result });
   for (const machine of machines) {
-    log(`${machine.name}: checking existing shell checkout`);
-    results.push({ machine: machine.name, ...deployPeer(machine, { ...options, log }) });
+    if (selection.only && !selection.only.includes(machine.name)) results.push({ machine: machine.name, action: 'skipped', reason: 'not selected' });
+    else {
+      log(`${machine.name}: checking existing shell checkout`);
+      results.push({ machine: machine.name, ...deployPeer(machine, { ...options, log, dryRun: selection.dryRun }) });
+    }
   }
-  for (const row of results) log(`${row.machine}: ${row.action}${row.reason ? ': ' + row.reason : ''}; source ${row.commit || '-'}; backup ${row.backup || '-'}`);
+  printSummary(results, log);
   return { code: results.some(r => r.action === 'failed') ? 1 : 0, results };
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {

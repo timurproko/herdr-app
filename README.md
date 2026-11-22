@@ -1008,6 +1008,13 @@ It fast-forwards selected local source and runs the existing full `npm run deplo
 including the host compatibility check, build, ownership checks and backup.
 Checkout HEAD equality alone does not prove the installed files are current.
 
+Use `npm run deploy:all -- --dry-run` to preview (still fetches; no fast-forward,
+build or install), `--only local,pc2` to select machines, or `--skip-local` to omit
+the desktop deploy. The source safety gate always runs. The final per-machine
+summary includes deployed/current/skipped/failed, source commit and any printed
+backup ID. Failures exit non-zero; stated skips alone do not. See
+[command details](docs/COMMANDS.md#watched-all-machine-deployment).
+
 ## Installed shell reporting
 
 On a Core-only host without Desktop/Custom, run `npm run deploy:shell` from this

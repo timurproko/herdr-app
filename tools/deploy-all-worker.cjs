@@ -79,7 +79,8 @@ function deployCheckout(root, commit, script, { run = runCommand, env = process.
     action: 'failed', reason: r.timedOut ? 'deployment timed out; outcome unknown' : 'deployment failed; inspect output', commit, backup,
   };
   if (!result) return { action: 'failed', reason: 'deployment returned no result; outcome unknown', commit, backup };
-  return { action: result.changed || result.removed || backup || result.patches?.changed ? 'deployed' : 'already current', commit, backup };
+  const patched = Object.values(result.patches?.frames || {}).some(frame => / frame applied\b/.test(frame.message || ''));
+  return { action: result.changed || result.removed || backup || patched ? 'deployed' : 'already current', commit, backup };
 }
 const SHELL_PATHS = ['bash-cwd-loader.sh', 'bash-cwd.sh', 'powershell-cwd.ps1', 'revision']
   .map(name => `.customizations/runtime/shell/${name}`);
