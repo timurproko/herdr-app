@@ -1001,7 +1001,7 @@ adopt unknown files, replay old shell/core actions, or copy live session state.
 
 ## Update all machines
 
-**Settings → Updates → Customizations** is one row beside Herdr and herdr-core,
+**Settings → Updates → herdr-app-custom** is one row beside Herdr and herdr-core,
 showing a short installed revision and **Check now** or **Update**. Update uses the
 existing all-machine command through an independent, finite runner: full deploy
 on this desktop and shell deploy on eligible peers. Its desktop source is only

@@ -24,7 +24,7 @@ try {
   worker.atomic(p.result, { complete: true, desktop: { commit: target, verified: true, manifest: createHash('sha256').update(manifest).digest('hex') }, results: [{ machine: 'local', action: 'deployed' }] });
   let snapshot = worker.checkMain(home, options);
   assert.equal(snapshot.revision, target); assert.equal(snapshot.check.available, false);
-  assert.equal(customizationRowState(updateProjection(snapshot)).title, 'Customizations aaaaaaa');
+  assert.equal(customizationRowState(updateProjection(snapshot)).title, 'herdr-app-custom aaaaaaa');
   assert.match(customizationRowState(updateProjection(snapshot)).description, /^Up to date\. Checked at \d\d:\d\d\.$/);
   worker.checkMain(home, options); assert.equal(calls, 1, 'mounts coalesce within the persisted hour');
   clock += worker.HOUR; target = 'b'.repeat(40); snapshot = worker.checkMain(home, options);
@@ -54,7 +54,7 @@ try {
   assert.match(row.description, /fixture conflict.*documented rollback.*fixture/); assert.equal(row.action, 'check');
   row = customizationRowState({ ...current, partial: true }); assert.match(row.description, /some machines skipped or failed.*fixture/);
   row = customizationRowState({ ...current, job: { state: 'complete', finished: clock + 1 } }); assert.equal(row.description, 'Updated. Check now.');
-  assert.equal(CUSTOMIZATION_LABEL, 'Customizations');
+  assert.equal(CUSTOMIZATION_LABEL, 'herdr-app-custom');
   // Runtime projection and sidecars are never preference export inputs.
   fs.writeFileSync(path.join(home, 'shared.json'), JSON.stringify({ [CUSTOMIZATION_UPDATE_KEY]: { log: '/private', token: 'private' }, 'sidebar.width': 268 }));
   syncPreferences('export', home, { hostname: 'fixture', isDesktopOpen: () => false });

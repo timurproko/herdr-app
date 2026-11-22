@@ -1,5 +1,5 @@
 // The user-visible name lives here only, independent of native Herdr branding.
-export const CUSTOMIZATION_LABEL = 'Customizations';
+export const CUSTOMIZATION_LABEL = 'herdr-app-custom';
 export const CUSTOMIZATION_UPDATE_KEY = 'custom.customization-update';
 const ok = row => ['deployed', 'already current'].includes(row?.action);
 export function updateProjection(snapshot) {

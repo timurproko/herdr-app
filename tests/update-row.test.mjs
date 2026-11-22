@@ -40,7 +40,7 @@ const owner = { section: 'updates', button(_theme, id, label, callback, options)
 api.initCustomizationUpdates(owner, cx, 'custom-settings'); await flush();
 assert.equal(calls[0].action, 'status'); assert.equal(timers[0].ms, 1000);
 let row = api.customizationUpdateRow(owner, {});
-assert.equal(row.title, 'Customizations aaaaaaa'); assert.equal(owner.buttonCalls.length, 1); assert.equal(owner.buttonCalls[0].label, 'Check now');
+assert.equal(row.title, 'herdr-app-custom aaaaaaa'); assert.equal(owner.buttonCalls.length, 1); assert.equal(owner.buttonCalls[0].label, 'Check now');
 next = { ...next, check: { ...next.check, available: true, target: 'b'.repeat(40) } };
 api.refreshCustomizationUpdates(owner, cx, 'check', true);
 assert.equal(owner.customUpdatePending, 'check'); api.refreshCustomizationUpdates(owner, cx, 'launch');
