@@ -17,27 +17,8 @@ export function allowedPath(rel) {
   if(!/^(?:mods\/custom-[a-z-]+\/(?:[a-zA-Z0-9_.-]+\/)*[a-zA-Z0-9_.-]+\.(?:js|cjs|json|svg|txt)|layouts\/(?:Custom\.json|custom\.svg)|themes\/Custom\.json|\.customizations\/runtime\/(?:[a-zA-Z0-9_.-]+\/)*[a-zA-Z0-9_.-]+\.(?:js|mjs|cjs|json|svg))$/.test(rel))throw Error(`Unowned deployment path: ${rel}`);
   return rel;
 }
-const mutable=new Set(['theme','colors','font','font_size','ui_font','terminal_padding','terminal_opacity','size','hidden','active','background','padding','radius','border','focus']);
-export function layoutOverrides(base,current,prefix='',out={}) {
-  for(const key of new Set([...Object.keys(base??{}),...Object.keys(current??{})])) {
-    const a=base?.[key],b=current?.[key],p=prefix?`${prefix}.${key}`:key;
-    if(JSON.stringify(a)===JSON.stringify(b))continue;
-    if(mutable.has(key)&&b!==undefined){out[p]=b;continue;}
-    if(a&&b&&typeof a==='object'&&typeof b==='object')layoutOverrides(a,b,p,out);
-    else throw Error(`Personal layout structure conflict: ${p}`);
-  }
-  return out;
-}
-export function projectLayout(base,overrides={}) {
-  const result=structuredClone(base);
-  for(const [p,value]of Object.entries(overrides)) {
-    const parts=p.split('.');if(parts.some(k=>['__proto__','constructor','prototype'].includes(k))||!mutable.has(parts.at(-1)))throw Error(`Invalid layout preference: ${p}`);
-    let target=result;for(const k of parts.slice(0,-1)){if(!target?.[k]||typeof target[k]!=='object')throw Error(`Layout preference no longer applies: ${p}`);target=target[k];}
-    if(parts.at(-1)==='terminal_padding'&&(!Array.isArray(value)||value.length!==2||value.some(n=>typeof n!=='number'||!Number.isFinite(n)||n<0||n>48)))throw Error('Invalid terminal padding preference.');
-    target[parts.at(-1)]=value;
-  }
-  return result;
-}
+import {layoutOverrides,projectLayout} from './layout-preferences.mjs';
+export {layoutOverrides,projectLayout} from './layout-preferences.mjs';
 function bundleAt(root) {const manifest=json(path.join(root,'bundle.json'));if(manifest?.version!==2||manifest.id!=='custom'||!manifest.files)throw Error('Build the customization package first.');for(const rel of Object.keys(manifest.files))allowedPath(rel);return manifest;}
 export function app(args,home=defaultHome()) {
   const executable=process.env.HERDR_APP_BIN||path.join(process.env.LOCALAPPDATA??'', 'Programs/herdr-app/herdr-app.exe');

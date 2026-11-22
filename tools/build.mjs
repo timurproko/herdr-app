@@ -73,12 +73,21 @@ export function build(root = project) {
       if (!entries.has(target.toLowerCase()) && !dest.startsWith('scripts/') && !dest.includes('.test.') && !dest.startsWith('frame-patches/')) throw Error(`Missing packaged import: ${dest} -> ${target}`);
     }
   }
+  const exportScripts=new Set(['scripts/export-preferences.mjs','scripts/runtime/preferences.mjs','scripts/runtime/settings-sections.js','scripts/layout-preferences.mjs','scripts/files.mjs']);
   const payload={};
   for (const {dest,source,bytes} of entries.values()) {
     const privateFile=/^(mods\/custom-[a-z-]+\/|layouts\/Custom\.json$|layouts\/custom\.svg$|themes\/Custom\.json$)/.test(dest) && !dest.includes('.test.');
     if (privateFile) payload[dest]={source,hash:digest(bytes)};
     const workerFile=/^(lib\/|frame-patches\/)/.test(dest) && !dest.endsWith('.md') || /^scripts\/(frame-(?:registry|patch)|startup-frames|terminal-input|readline-paste|feedback-draft)\.mjs$/.test(dest) || dest==='scripts/a1-session-report.js';
-    if(workerFile || dest.startsWith('shell/'))payload[`.customizations/runtime/${dest}`]={source,hash:digest(bytes),from:dest};
+    if(workerFile || dest.startsWith('shell/') || exportScripts.has(dest))payload[`.customizations/runtime/${dest}`]={source,hash:digest(bytes),from:dest};
+  }
+  // Unlike development-only scripts, every exporter import must be installed.
+  for(const dest of exportScripts) {
+    const entry=entries.get(dest);if(!entry)throw Error(`Missing exporter dependency: ${dest}`);
+    for(const match of entry.bytes.toString().matchAll(/(?:from\s*|import\s*)["'](\.\.?\/[^"']+)["']/g)) {
+      const target=path.posix.normalize(path.posix.join(path.posix.dirname(dest),match[1]));
+      if(!exportScripts.has(target))throw Error(`Uninstalled exporter import: ${dest} -> ${target}`);
+    }
   }
   payload['.customizations/runtime/package.json']={source:'generated',hash:digest('{"type":"module"}\n'),text:'{"type":"module"}\n'};
   const manifest={version:2,id:config.id,layout:config.layout,supportedHerdr:[...HOST_CONTRACT.reviewedVersions],files:payload};

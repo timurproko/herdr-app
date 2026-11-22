@@ -11,10 +11,10 @@ Each numbered group corresponds, in order, to one PR Implementation outcome. All
 
 ## 2. Checkout-independent full preference exporter
 
-- [ ] 2.1 Share full export orchestration and pure layout validation without duplicating filters; retain source import guards and source-only authored-base fallback, with focused existing preference-home/filter fixtures demonstrating unchanged schemas and safety behavior.
-- [ ] 2.2 Package the export-only entrypoint and complete local dependency graph, including canonical settings catalog rather than its source bridge; assert owned installed imports resolve and no checkout/build imports or test entrypoints are required.
-- [ ] 2.3 Add installed CLI fixtures comparing all four snapshot classes byte-for-byte with source export, then run with disposable source unavailable; cover explicit-home precedence, no-op writes, absent visuals, invalid baseline/layout/palette/credentials and unsupported-action no-writes while preserving live bytes.
-- [ ] 2.4 Document installed export syntax and private-backup limitations in README and docs/COMMANDS.md; check the documented export command in an isolated fixture and retain explicit-only source import with no new filters or pull behavior.
+- [x] 2.1 Share full export orchestration and pure layout validation without duplicating filters; retain source import guards and source-only authored-base fallback, with focused existing preference-home/filter fixtures demonstrating unchanged schemas and safety behavior.
+- [x] 2.2 Package the export-only entrypoint and complete local dependency graph, including canonical settings catalog rather than its source bridge; assert owned installed imports resolve and no checkout/build imports or test entrypoints are required.
+- [x] 2.3 Add installed CLI fixtures comparing all four snapshot classes byte-for-byte with source export, then run with disposable source unavailable; cover explicit-home precedence, no-op writes, absent visuals, invalid baseline/layout/palette/credentials and unsupported-action no-writes while preserving live bytes.
+- [x] 2.4 Document installed export syntax and private-backup limitations in README and docs/COMMANDS.md; check the documented export command in an isolated fixture and retain explicit-only source import with no new filters or pull behavior.
 
 ## 3. Core-only shell installation and guarded recovery
 

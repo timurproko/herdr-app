@@ -80,8 +80,19 @@ Both commands use `<Herdr home>/preferences/`, never the checkout: home is
 The underlying `node tools/preferences.mjs export|import [home]` and
 `node tools/runtime/preferences.mjs export|import [home] [hostname]` entrypoints
 also accept an explicit home, which takes precedence over the environment.
-The runtime entrypoint handles host settings and palette metadata; the source
-wrapper additionally handles layout overrides and the native theme backup.
+The lower runtime helper handles host settings and palette metadata. Full deploy
+also installs a supported **export-only** entrypoint with all four snapshot classes:
+
+```powershell
+$HerdrHome = if ($env:HERDR_APP_HOME) { $env:HERDR_APP_HOME } else { Join-Path $HOME '.config/herdr-app' }
+node "$HerdrHome/.customizations/runtime/scripts/export-preferences.mjs" export "$HerdrHome"
+```
+
+It requires `export` and an explicit home, uses the recorded installed layout base,
+and works without the source checkout. Import and extra arguments are refused.
+`npm run preferences:export` shares the same export operation, preferring the
+installed base and retaining authored-layout validation for source-only usage.
+No profile or pull hook is installed; preference restoration remains explicit.
 
 Import is explicit: close Herdr Desktop first, leaving Core/terminals running.
 Existing palette conflicts must be reconciled, not overwritten. Snapshots are

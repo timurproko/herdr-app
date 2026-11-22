@@ -959,9 +959,15 @@ personal portable backups, not shipped defaults; authored defaults stay in
 `src/appearance/`. Build/deploy need none of these snapshots. Host files never
 overwrite a different computer's profiles. Global settings/shortcuts remain native
 files. Version the snapshots in private yadm/dotfiles that track the Herdr home,
-not this checkout. The optional private yadm pre-commit hook calls the exporter;
-no pull hook imports state or restarts the desktop. Reconcile a palette conflict
-rather than overwriting it.
+not this checkout. Full deploy installs the export-only Node entrypoint
+`<Herdr home>/.customizations/runtime/scripts/export-preferences.mjs`, accepting
+`export <home>` with an explicit home. It produces the same four snapshot classes
+without source imports, validates layout overrides against the recorded installed
+layout base, and rejects import/extra arguments. The source export command shares
+that operation, with an authored-base fallback only for source-only usage.
+Private pre-commit hooks may call this installed exporter; deploy does not install
+hooks, and no pull hook imports state or restarts the desktop. Reconcile a palette
+conflict rather than overwriting it. See [the exact export command](docs/COMMANDS.md#portable-preferences).
 
 ### Existing snapshots: manual relocation
 
