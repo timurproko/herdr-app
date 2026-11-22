@@ -109,14 +109,115 @@ can report **already current**.
 The final table contains **Machine | Action | Source commit | Backup**. Deployed
 rows name the source SHA actually used; failed rows label it attempted, dry-run
 rows target, and unavailable values are `-`. Backup IDs come from the existing
-deploy JSON, including any printed before a failure. The command records no
-installed Git provenance. Main can advance between peers, so SHAs may differ.
+deploy JSON, including any printed before a failure. The table alone records no
+installed Git provenance. Real runs additionally write the latest atomic
+`<Herdr home>/.customizations/deploy-all-result.json` after the desktop and each
+peer, including source refusals, machine outcomes and printed backup IDs. A
+successful full desktop result records its source SHA and ownership-manifest
+digest; only matching evidence without a later local failure identifies an
+installed revision. Old or changed installations show revision unknown, never
+checkout HEAD. Peer skips/failures preserve a successful desktop revision;
+dry-run writes no result sidecar. Main can advance between peers, so SHAs may differ.
 Any failed machine, unsafe source, inventory or option error exits 1; only deployed,
 current and stated-skip outcomes exit 0. Calls have tool/fetch bounds of 15/60 seconds,
 a 600-second remote cap and a 615-second outer transport deadline. A disconnect or
 timeout after dispatch means outcome unknown: inspect the machine before retrying.
 There is no automatic retry or rollback, or cross-machine transaction; retain the
 printed backup IDs and use the existing recovery commands below.
+
+### Settings customization updater
+
+The Updates row launches one terminal-free detached Node runner; the mod does not
+supervise its own replacement. It uses only the desktop's ordinary clone at
+`~/.local/share/herdr-app`, creating it on first Update if absent. Wrong, dirty,
+ahead/diverged, redirected or linked source is refused, never repaired. Git,
+Node 20+, npm and hc must already be available in the desktop/Core environment.
+Before executing checkout code, the runner validates source, fetches and safely
+fast-forwards that managed clone, then starts a fresh Node process and verifies
+the CLI's read-only `--protocol` response. This bootstraps clones predating the
+row instead of keeping their old CLI loaded through its own fast-forward. Only
+then does a fresh deploy:all CLI run with the captured Herdr home; it repeats its
+normal source gates. No developer checkout, npm install/prepare, daemon or
+scheduled task is involved.
+
+The selected Herdr home's `.customizations/` holds only the latest operation:
+`update-status.json`, `deploy-all-result.json`, `update-check.json`, `update.log`,
+`update-runner.cjs` and the active `update.lock` (plus a short check lock). These
+are private runtime files, not portable preferences. Reload/reopen reads the same
+status. The update has a 30-minute deadline in addition to existing subprocess
+limits; a deadline/crash/missing result reports outcome unknown, never success or
+automatic retry. The installer's own eight-minute npm timeout is also unknown:
+especially on Windows, termination of cmd.exe does not prove npm/installer
+descendants stopped. Its structured unknown result retains update.lock even
+when the CLI exits and a fresh Check succeeds. Remote work already dispatched
+might still finish.
+
+When the desktop succeeds but peers skip/fail, the single row names that fact and
+its matching details path: **Log:** points to `update.log` for a detached Settings
+run; **Details:** points to `deploy-all-result.json` for an ordinary CLI run that
+captured no log. A missing or unrelated earlier Settings log is never advertised.
+Inspect the matching file for individual reasons and backup IDs.
+Desktop failure states the short cause and documented rollback recovery for both
+Settings and ordinary CLI runs, even after a successful version check. A definite
+failure may offer an explicit retry after a fresh successful check, without hiding
+the failure line. A CLI installer timeout remains unknown and blocks Settings
+launches at the worker boundary too, even when no Settings job/lock was created;
+its durable result itself carries the unresolved outcome. There
+is **no automatic rollback**: from the managed clone with the same HERDR_APP_HOME,
+use the existing `npm run disable` then `npm run rollback -- <backup-id>` sequence
+below. If a failure produced no printed ID, inspect `.customizations/backups/` and
+the log to identify the matching journal; do not guess or bypass refusal gates.
+
+An unresolved `update.lock` blocks another Update even after a crash. Inspect its
+matching `update-status.json`, PID/childPid, log, result and any dispatched machine;
+wait for active work, and use normal rollback recovery for uncertain writes.
+**Manual resolution, one step:** only after checking that the recorded processes,
+all npm/installer descendants and any dispatched remote updates have stopped,
+and completing any required recovery, move `deploy-all-result.json` out of the
+captured home's active `.customizations/` path to a private recovery location,
+and remove `update.lock` and `update-status.json` if present; then reopen Settings
+and Check now. Preserve that moved result, the log and backup journals. This also
+resolves a plain CLI timeout with no Settings lock. Removing only the lock/status
+deliberately does not clear the durable unknown result; revision evidence will
+be unknown until the next successful full deployment. Never delete
+`.customizations/deploy.lock` to force an update, reset a checkout or replay an
+uncertain remote request.
+
+### Trying the row after merge
+
+These are maintainer actions, **not agent tests**. Do not install from an unmerged
+feature branch or a crew worktree. Keep Node 20+, Git, npm and hc on Core's PATH;
+existing host/A1 compatibility gates still apply.
+
+1. After merge, create the ordinary main clone at `~/.local/share/herdr-app` if
+   absent, or ensure its existing source is clean main of this repository. Run
+   `npm run deploy:all` there; it fetches/fast-forwards and performs the first
+   installation, including the new row. This command updates eligible peers too.
+   Do not run npm install/prepare, switch an unsafe clone, or deploy automatically.
+2. Open **Custom Settings → Updates**. Beside unchanged Herdr/herdr-core rows,
+   **Customizations <short revision>** should use the same typography and one
+   button. **Check now** must disable as Checking… and show **Up to date. Checked
+   at HH:MM.** when installed and published main match. A peer skip/failure instead
+   keeps the desktop revision and matching log/result-path warning; read its reasons before trying
+   those machines. Do not erase status files just to manufacture a clean result.
+3. **Update available:** when published main advances after that installation,
+   click Check now (or wait for the mounted hourly check); the button becomes
+   Update and the existing Settings/compact More dots light. A first installation
+   using ordinary `npm run deploy` instead of deploy:all legitimately has unknown
+   revision and also offers Update after checking; do not fabricate a receipt.
+   Click Update once, navigate away/reopen Settings during Updating…, and verify
+   one operation completes through the mod reload. Confirm terminals/focus stay
+   unchanged and only eligible existing peer shell installations were updated.
+4. **Failure state:** with no update running, temporarily disconnect this
+   desktop's network, click Check now and expect **Check failed. Try again.**
+   Restore connectivity and check again. No deploy/rollback is needed to exercise
+   this state. A previous confirmed available dot stays lit during failed checks.
+5. Inspect the captured home's `.customizations/update-status.json` and
+   `update.log`, and `deploy-all-result.json` for per-machine details/backup IDs.
+   A real desktop deploy failure or timeout is not a test to induce in the live
+   home: follow the manual recovery/unknown-outcome rules above. UI geometry,
+   detached survival under the actual Core, permissions and real peer behavior
+   remain observations for the maintainer, not conclusions from fixture tests.
 
 ### One-time new peer setup
 

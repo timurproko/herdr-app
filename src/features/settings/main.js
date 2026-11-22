@@ -26,6 +26,8 @@ import { machinePicker } from './machine-picker.js';
 import { initPermissions, reloadPermissions, corePage, coreHasChanges, coreEditorActions } from './permissions.js';
 
 import { M, sectionAction, sectionRow, modalFooter } from './modal-layout.js';
+import { initCustomizationUpdates, refreshCustomizationUpdates, customizationUpdateAvailable } from './customization-updates.js';
+import { customizationUpdateRow } from './customization-update-row.js';
 
 const I = (name) => `mods/custom-settings/${name}.svg`;
 const SETTINGS_NAV_WIDTH = 176;
@@ -106,6 +108,7 @@ export default class Settings extends View {
     initProfiles(this, cx);
     initTerminals(this, cx);
     initPermissions(this, cx);
+    initCustomizationUpdates(this, cx, 'custom-settings');
     initPlugins(this, cx, this.section === 'plugins' ? props()?.plugin : null, {section:props()?.pluginSection,search:props()?.pluginSearch});
     if (this.section === 'plugins') { followSettingsMachine(this); reloadPlugins(this, cx, this.pluginTarget); }
     initDesign(this, cx);
@@ -873,6 +876,7 @@ export default class Settings extends View {
         .child(this.button(t, "st-whats-new", "What's new", () => { closeOverlay(props()?.overlay); run("app.whats_new"); }))
         .when(Boolean(app[1]), (el) => el.child(app[1]))))
       .child(this.row(t, `herdr-core ${c.version ?? ""}`, core[0], core[1] ?? div()))
+      .child(customizationUpdateRow(this, t))
       .child(div().pt(12).text_size(12.5).line_height("18px").text_color(t.dim).child("Herdr looks for both every hour and tells you in the corner. herdr-core runs your terminals, so they keep running through its updates."));
   }
 
@@ -954,7 +958,7 @@ export default class Settings extends View {
       : this.section === 'plugins' && this.pluginTarget ? `plugin-${this.pluginTarget}` : null;
     const bodyId = this.section === 'look' && this.lookPage ? `st-body-${this.lookPage}` : 'st-body';
     const u = updates();
-    const waiting = Boolean(u.app.ready || (u.core.ready && !u.core.managed));
+    const waiting = Boolean(u.app.ready || (u.core.ready && !u.core.managed) || customizationUpdateAvailable());
     const nav = v_flex()
       .flex_none()
       .w(SETTINGS_NAV_WIDTH)
@@ -992,6 +996,7 @@ export default class Settings extends View {
               this.profileShellOpen = false;
               this.handle.focus();
               if (s.id === "machines") cx.spawn(async (cx) => { await this.loadMachines(); cx.notify(); });
+              if (s.id === 'updates') refreshCustomizationUpdates(this, cx);
               if (s.id === 'core') reloadPermissions(this, cx);
               if (s.id === 'profiles' && !this.profileEdit) reloadProfiles(this, cx);
               if (s.id === 'terminals' && !this.terminalEdit) reloadTerminals(this, cx);

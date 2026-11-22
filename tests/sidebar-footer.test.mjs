@@ -23,10 +23,10 @@ function find(node, id) {
   return node.kids?.map(child => find(child, id)).find(Boolean);
 }
 const state = new Map(), calls = [], context = vm.createContext({});
-let props = { footer: true }, width = 248, boot = 0, platform = 'windows';
+let props = { footer: true }, width = 248, boot = 0, platform = 'windows', nativeReady = true, customReady = false;
 const host = {
   props: () => props, theme: () => ({}), layout: () => ({ id: 'sidebar', size: { px: width } }),
-  window: () => ({ platform }), updates: () => ({ app: { ready: true } }),
+  window: () => ({ platform }), updates: () => ({ app: { ready: nativeReady } }),
   shared: key => state.get(key), setShared: (key, value) => state.set(key, structuredClone(value)),
   run: (...args) => calls.push(args), openOverlay: spec => calls.push(spec), closeOverlay: id => calls.push(['close', id]),
 };
@@ -36,6 +36,7 @@ const exports = {
   'gpui-base': { h_flex: element, v_flex: element, Popover: {}, Input: {}, Popup: { new: (id, trigger) => element().id(id).child(trigger) }, ScrollHandle:{new:()=>({scroll_to_item(){}})} },
   './look.js': { enterCustom: () => boot++ }, './startup.js': { restoreFrames: () => boot++ },
   './sidebar-usage.js': { syncSidebarUsage: () => boot++ },
+  './customization-updates.js': { initCustomizationUpdates() {}, customizationUpdateAvailable: () => customReady },
   './plugins.js': {pluginIsEnabled:()=>true,pluginEvent:()=>boot++},
 };
 const cache = new Map();
@@ -57,6 +58,14 @@ const cx = { focus_handle: () => ({ focus() {} }), notify() {}, stop_propagation
 const tick = ms => { const at = timers.findIndex(timer => timer.ms === ms); assert.ok(at >= 0); timers.splice(at, 1)[0].fn(cx); };
 const view = new mod.namespace.default(); view.init({}, cx);
 for (const id of ['usage', 'machine', 'plugins', 'settings']) assert.ok(find(view.render(cx), id));
+assert.equal(find(view.render(cx), 'settings').kids.length, 2, 'Native readiness retains its dot');
+nativeReady = false;
+assert.equal(find(view.render(cx), 'settings').kids.length, 1);
+customReady = true;
+assert.equal(find(view.render(cx), 'settings').kids.length, 2, 'Confirmed Custom availability adds the same expanded dot');
+width = 44; assert.equal(find(view.render(cx), 'footer-menu').kids.length, 2, 'Custom availability also lights compact More');
+customReady = false; assert.equal(find(view.render(cx), 'footer-menu').kids.length, 1);
+width = 248; nativeReady = true;
 const footer = find(view.render(cx), 'sidebar-footer-controls');
 footer.attrs.on_mouse_down[1]({}, cx);
 assert.equal(calls.at(-1).mod, 'custom-workspace-chrome');

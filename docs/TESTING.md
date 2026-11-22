@@ -64,6 +64,26 @@ fixture runs actual npm scripts and the existing full/shell installers only agai
 its disposable home, with a fake host check and synthetic bundle; no real machine,
 Core, native app or account is contacted. Cases include source refusal, peer skips,
 independent failures, selection, dry-run byte preservation, backup IDs and exit codes.
+`tests/deploy-all-result.test.mjs` additionally covers incremental result sidecars
+and revision evidence. `tests/update-{runner,detach,check,row}.test.mjs` cover
+managed-source refusal, clone-on-Update, deadlines, reload/late-result recovery,
+main-only checks/coalescing, one-button states, dots, packaging and preference
+exclusion. The runner fixture also upgrades a pre-feature clean clone through a local bare
+origin and a fresh protocol-capable CLI, and simulates the installer's eight-minute
+Windows timeout to verify unknown status/lock retention after Check. The pipeline
+fixture runs ordinary npm deploy:all with a skipped peer and verifies that the row
+links its matching result, not a missing/stale Settings log. It also runs the real
+CLI with mocked definite installer failure and eight-minute timeout, then checks
+failure/recovery details and launch blocking after a successful main check.
+The check suite enumerates every Settings-job/plain-CLI by success/partial/failed/
+unknown combination using the real result writer, worker, check, projection and
+row functions; all eight cells assert truthful text and source-matching details.
+Unknown CLI receipts block even before peers finish and when no Settings lock
+exists; stale completed Settings jobs cannot hide the latest CLI outcome. The detach fixture
+runs actual detached Node supervision with synthetic Git and deploy CLI; it does
+not prove survival under the real Herdr/Core process lifecycle. All use checkout `.artifacts/` homes; exec, peer transport and deployment
+are mocked/synthetic. Real-app steps are in COMMANDS.md; no live home, machine,
+terminal, account or native UI is used by these suites.
 CI otherwise executes library fixtures, not real-home
 deploy/enable/disable/remove/rollback/preference-import operational commands.
 The real gh CLI fixture uses synthetic auth and a GET-only localhost server.
@@ -123,7 +143,7 @@ only the demonstrated Windows Git-sh fixture remains an observed suite exclusion
 ## Exact selected source entries
 
 The list below is generated from CI selection, not inferred from naming. On Node
-24 the current selection is **131 Ubuntu / 130 Windows entries**, with two/three
+24 the current selection is **136 Ubuntu / 135 Windows entries**, with two/three
 explicit exclusions respectively. The installed directory-loader fixture now runs
 on both; the preference-home and four runtime-contract suites are included. It includes scaffold/aggregator tests. Earlier Node 20 attempts selected
 122/121 and then 119/119 entries while diagnosing the crashes; those temporary
@@ -194,6 +214,7 @@ tests/crew-projects-ui.test.mjs
 tests/deploy-all-options.test.mjs
 tests/deploy-all-pipeline.test.mjs
 tests/deploy-all-remote.test.mjs
+tests/deploy-all-result.test.mjs
 tests/deploy-all.test.mjs
 tests/deployment.test.mjs
 tests/empty-state.test.mjs
@@ -256,6 +277,10 @@ tests/tab-move-ui.test.mjs
 tests/tab-move.test.mjs
 tests/temporary-mod.test.mjs
 tests/terminal-labels.test.mjs
+tests/update-check.test.mjs
+tests/update-detach.test.mjs
+tests/update-row.test.mjs
+tests/update-runner.test.mjs
 tests/usage-plugin.test.mjs
 src/plugins/a1-colors/session-name.test.mjs
 src/plugins/a1-colors/session-sync.test.mjs

@@ -41,7 +41,8 @@ export function fixture() {
     if (command === 'npm' || command === 'cmd.exe') return { code: 0, stdout: 'npm banner\n' + JSON.stringify({ changed: 4, removed: 0, backup: '123-45', patches: null }), stderr: '' };
     throw Error(`Unexpected process: ${command} ${args}`);
   };
-  return { base, root, origin, author, advance, calls, run, env,
+  return { base, root, origin, author, advance, calls, run,
+    env: { ...env, HERDR_APP_HOME: path.join(base, 'desktop home') },
     originMatches: value => value === origin, log() {},
   };
 }
