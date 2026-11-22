@@ -4,7 +4,7 @@ Verdict: accepted only when an authorized human directly merges the containing e
 
 The maintainer integration decision accepts these scenarios:
 - The customization row shows herdr-app-custom followed by its short installed revision or the existing revision-unknown text.
-- Tests, fixtures, README, command documentation and current and archived spec quotations use the new display label.
+- Tests, fixtures, README, command documentation and the current spec use the new display label; historical archives remain unchanged.
 - The label is display-only and is never compared or parsed as the native app name; update state, identifiers, actions and layout are unchanged.
 - Targeted pure and VM fixtures pass without deployment or live-home access; actual native rendering remains a maintainer-only check.
 
@@ -20,7 +20,7 @@ The maintainer integration decision accepts these scenarios:
   "specBaseSha": "b7e00d57ab978152bd8f27cc17afe27654e35e61",
   "acceptanceScenarios": [
     "The customization row shows herdr-app-custom followed by its short installed revision or the existing revision-unknown text.",
-    "Tests, fixtures, README, command documentation and current and archived spec quotations use the new display label.",
+    "Tests, fixtures, README, command documentation and the current spec use the new display label; historical archives remain unchanged.",
     "The label is display-only and is never compared or parsed as the native app name; update state, identifiers, actions and layout are unchanged.",
     "Targeted pure and VM fixtures pass without deployment or live-home access; actual native rendering remains a maintainer-only check."
   ],
