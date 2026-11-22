@@ -6,7 +6,7 @@ Custom Settings already presents simple Herdr and herdr-core update rows, but up
 
 ## What Changes
 
-- Add one **Customizations** row: short installed revision, short status, and Check now or Update; retain the two native rows unchanged. Keep the label in one constant so it can be renamed in one place.
+- Add one **herdr-app-custom** row: short installed revision, short status, and Check now or Update; retain the two native rows unchanged. Keep the label in one constant so it can be renamed in one place.
 - Run Update independently of the replaceable Settings mod, using a desktop managed clone at `~/.local/share/herdr-app` and existing deploy:all semantics.
 - Keep only latest status/result/log files, including successful desktop revision and peer outcomes; surface partial failures and documented manual recovery.
 - Add cheap Custom-owned dots and hourly checking while Custom is mounted; neither checks nor timers deploy.

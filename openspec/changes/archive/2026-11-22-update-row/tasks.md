@@ -13,7 +13,7 @@
 
 ## 3. One Settings row with shared dots and hourly checks
 
-- [x] 3.1 Add the Customizations row with its label in one constant using existing typography/button layout and verified revision/short status logic; VM/pure fixtures cover current/available/checking/updating/failure/partial/unknown states and unchanged native actions.
+- [x] 3.1 Add the herdr-app-custom row with its label in one constant using existing typography/button layout and verified revision/short status logic; VM/pure fixtures cover current/available/checking/updating/failure/partial/unknown states and unchanged native actions.
 - [x] 3.2 Add bounded published-main checks, persisted check cache and shared availability projection; fake-clock/transport fixtures cover hourly/due-on-mount/manual checks, coalescing, failure retention, eager-check guards and zero peer/deploy activity during checks.
 - [x] 3.3 Extend existing Settings navigation and expanded/compact chrome dots; packaging/state fixtures verify import closure, preserved native predicates and no update sidecars/runtime state in preference exports.
 - [x] 3.4 Update README and command/testing documentation with bootstrap, one-button all-machine behavior, log paths, manual recovery and maintainer-only UI/self-replacement/real-peer checks; run only targeted fixture/plan validation and report live validation as not performed.

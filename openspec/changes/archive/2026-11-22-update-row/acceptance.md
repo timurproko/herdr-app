@@ -3,7 +3,7 @@
 Verdict: accepted only when an authorized human directly merges the containing exact pull-request head after required current-head validation, explicitly asks the active agent to execute that protected exact-head merge while it is currently eligible, or personally enables native auto-merge for the unchanged head and GitHub integrates it after validation succeeds.
 
 The maintainer integration decision accepts these scenarios:
-- Customizations and its short revision share one row and one label constant; the native Herdr and herdr-core update actions remain unchanged.
+- herdr-app-custom and its short revision share one row and one label constant; the native Herdr and herdr-core update actions remain unchanged.
 - Updates use the fixed managed desktop clone and existing full-desktop and eligible-peer shell deployment policy without touching development worktrees.
 - Detached execution reattaches through status files; partial failures and unknown outcomes retain logs and never trigger automatic replay or rollback.
 - Published-main checks run hourly while mounted and on request, with shared Custom dots and no peer probes or deployments during checks.
@@ -20,7 +20,7 @@ The maintainer integration decision accepts these scenarios:
   "finalizedDate": "2026-11-22",
   "specBaseSha": "028dcfb5312ad232986204727078830d9970f922",
   "acceptanceScenarios": [
-    "Customizations and its short revision share one row and one label constant; the native Herdr and herdr-core update actions remain unchanged.",
+    "herdr-app-custom and its short revision share one row and one label constant; the native Herdr and herdr-core update actions remain unchanged.",
     "Updates use the fixed managed desktop clone and existing full-desktop and eligible-peer shell deployment policy without touching development worktrees.",
     "Detached execution reattaches through status files; partial failures and unknown outcomes retain logs and never trigger automatic replay or rollback.",
     "Published-main checks run hourly while mounted and on request, with shared Custom dots and no peer probes or deployments during checks.",

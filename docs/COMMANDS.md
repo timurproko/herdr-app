@@ -195,7 +195,7 @@ existing host/A1 compatibility gates still apply.
    installation, including the new row. This command updates eligible peers too.
    Do not run npm install/prepare, switch an unsafe clone, or deploy automatically.
 2. Open **Custom Settings → Updates**. Beside unchanged Herdr/herdr-core rows,
-   **Customizations <short revision>** should use the same typography and one
+   **herdr-app-custom <short revision>** should use the same typography and one
    button. **Check now** must disable as Checking… and show **Up to date. Checked
    at HH:MM.** when installed and published main match. A peer skip/failure instead
    keeps the desktop revision and matching log/result-path warning; read its reasons before trying
