@@ -2,9 +2,9 @@
 
 ## 1. Safe published-main desktop deployment
 
-- [ ] 1.1 Add the deploy:all entrypoint and source gate; disposable bare-origin fixtures prove dirty/non-main/wrong-origin/ahead/diverged or unverifiable source refuses before any deployment or hc call.
-- [ ] 1.2 Fast-forward eligible selected local main and invoke the existing full deploy; fixtures prove the existing pipeline runs even at equal HEAD and preserves home selection, source SHA and installer result.
-- [ ] 1.3 Add README command/local requirements alongside the script; command-contract assertions confirm the documented clean-main rule and unchanged deploy pipeline.
+- [x] 1.1 Add the deploy:all entrypoint and source gate; disposable bare-origin fixtures prove dirty/non-main/wrong-origin/ahead/diverged or unverifiable source refuses before any deployment or hc call.
+- [x] 1.2 Fast-forward eligible selected local main and invoke the existing full deploy; fixtures prove the existing pipeline runs even at equal HEAD and preserves home selection, source SHA and installer result.
+- [x] 1.3 Add README command/local requirements alongside the script; command-contract assertions confirm the documented clean-main rule and unchanged deploy pipeline.
 
 ## 2. Bounded existing-peer shell updates
 

@@ -117,6 +117,7 @@ npm run build                  # builds customization files ONLY
 npm run check:host-api         # validate facade/profile against this Herdr version
 npm run test:native             # 17 mods + 2 frame-patch fixtures, disposable app home
 npm run deploy                 # guarded incremental deployment; refresh prior patch opt-ins
+npm run deploy:all             # watched clean-main desktop + eligible peer shell deployments
 npm run doctor                 # ownership, layout preferences and compatibility status
 npm run report:ownership       # classify custom, host, unknown and recovery runtime
 npm run check:native            # eager checks on installed custom mods
@@ -997,6 +998,15 @@ Only the current Custom namespace is supported. Old namespace migration tools,
 source bridges and terminal-label aliases have been retired. A machine with an
 older installation needs a separately reviewed removal/installation plan; never
 adopt unknown files, replay old shell/core actions, or copy live session state.
+
+## Update all machines
+
+Run `npm run deploy:all` from this checkout on the desktop. It requires **clean main**
+(including untracked files), fetches origin and refuses the entire run if ahead of
+or diverged from origin/main. It never stashes, resets or switches branches.
+It fast-forwards selected local source and runs the existing full `npm run deploy`,
+including the host compatibility check, build, ownership checks and backup.
+Checkout HEAD equality alone does not prove the installed files are current.
 
 ## Installed shell reporting
 
