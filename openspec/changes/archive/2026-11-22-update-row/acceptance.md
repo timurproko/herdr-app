@@ -26,8 +26,8 @@ The maintainer integration decision accepts these scenarios:
     "Published-main checks run hourly while mounted and on request, with shared Custom dots and no peer probes or deployments during checks.",
     "Isolated fixture coverage includes real detached Node supervision with synthetic deployment; actual Herdr rendering and self-reload remain maintainer checks documented in COMMANDS.md."
   ],
-  "archiveDigest": "011afd4c62ff571c860e8090a94d69dcc9ba19a61110910eb5072da1e1b50696",
-  "specDigest": "8a609d1ce8c6e1899722e1051e2fde2bbf250c4f4023a77e47151d0d2c553c95",
+  "archiveDigest": "6dd18c790c352da656afd9e80eb21a5e1c913ea42761544bdb4fe48cda7ee0b3",
+  "specDigest": "9868c5cfcb08c774ac2aa6e6bf3c6f448f686cce60c4badd0d26e304f0dc1fce",
   "tasksDigest": "13068e79d310a6720380edea87c40381a975168490d8bc4da09767bae3160e0c",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []
