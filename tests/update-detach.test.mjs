@@ -23,6 +23,7 @@ try {
   const prefix = `
     require('node:os').homedir=()=>${JSON.stringify(user)};
     require('node:child_process').spawnSync=(program,args)=>{
+      if(program===process.execPath && args[1]==='--protocol')return {status:0,stdout:'{"resultProtocol":1}',stderr:''};
       if(program!=='git')throw Error('No external tool permitted by fixture');
       const text=args.includes('--show-toplevel')?${JSON.stringify(root)}:args.includes('symbolic-ref')?'main':args.includes('config')?${JSON.stringify(worker.REPOSITORY)}:args.includes('--verify')?'${'a'.repeat(40)}':'';
       return {status:0,stdout:text,stderr:''};

@@ -40,6 +40,8 @@ try {
   const preload=path.join(f.base,'mock-hc.cjs');
   write(preload,`const cp=require('node:child_process'),real=cp.spawnSync; cp.spawnSync=function(c,a,o){if(c==='hc'){if(a.join(' ')==='machine ls --json')return {status:0,stdout:'{"machines":[]}',stderr:''};throw Error('No remote transport permitted');}return real(c,a,o);};`);
   const cli = args => cp.spawnSync(process.execPath,['--require',preload,path.join(f.root,'tools/deploy-all.mjs'),...args],{cwd:f.root,env:f.env,encoding:'utf8',timeout:60000});
+  const protocol=cli(['--protocol']); assert.equal(protocol.status,0,protocol.stderr); assert.deepEqual(JSON.parse(protocol.stdout),{resultProtocol:1});
+  assert.equal(fs.existsSync(f.env.HERDR_APP_HOME),false,'protocol probe performs no deployment/status writes');
   const target = f.advance();
   let r=cli([]);assert.equal(r.status,0,r.stderr+'\n'+r.stdout);assert.match(r.stdout,/local \| deployed/);assert.ok(r.stdout.includes(target));
   assert.equal(git(f.root,'rev-parse','HEAD'),target);

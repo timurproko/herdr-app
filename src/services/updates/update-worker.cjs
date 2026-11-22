@@ -114,8 +114,8 @@ function prepareClone({ userHome = os.homedir(), run = command, env = process.en
     if (result.code !== 0) throw Error(`Managed source ${args[0]} failed`);
     return result.stdout.trim();
   };
-  // Validate before executing ANY code from the checkout. deploy:all repeats the
-  // authoritative gate and does the actual fast-forward, never this launcher.
+  // Validate before executing ANY code from the checkout. Bootstrap it first:
+  // executing an old CLI before its own fast-forward keeps that old module loaded.
   const top = git(['rev-parse', '--show-toplevel']);
   const same = value => process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
   if (same(top) !== same(root)) throw Error('Managed path is not the repository root');
@@ -125,6 +125,12 @@ function prepareClone({ userHome = os.homedir(), run = command, env = process.en
   git(['fetch', 'origin']);
   const target = git(['rev-parse', '--verify', 'origin/main^{commit}']);
   git(['merge-base', '--is-ancestor', 'HEAD', target]);
+  log(git(['merge', '--ff-only', target]));
+  if (git(['symbolic-ref', '--quiet', '--short', 'HEAD']) !== 'main' || git(['status', '--porcelain', '--untracked-files=all'])) throw Error('Managed source changed during bootstrap');
+  const probe = run(process.execPath, [path.join(root, 'tools/deploy-all.mjs'), '--protocol'], { cwd: root, env: gitEnv, timeout: 15000 });
+  let protocol;
+  try { protocol = JSON.parse(probe.stdout); } catch {}
+  if (probe.code !== 0 || protocol?.resultProtocol !== 1) throw Error('Managed updater result protocol unavailable; nothing deployed');
   return root;
 }
 function killTree(pid) {

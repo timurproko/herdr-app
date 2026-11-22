@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { EventEmitter } from 'node:events';
+import cp from 'node:child_process';
 import { createRequire } from 'node:module';
-import { fixture, clean, git } from './support/deploy-all.mjs';
+import { fixture, clean, git, project } from './support/deploy-all.mjs';
 const require = createRequire(import.meta.url);
 const worker = require('../src/services/updates/update-worker.cjs');
 const deployWorker = require('../tools/deploy-all-worker.cjs');
@@ -14,7 +15,13 @@ function setup() {
   fs.mkdirSync(path.dirname(root), { recursive: true }); fs.renameSync(f.root, root);
   git(root, 'remote', 'set-url', 'origin', worker.REPOSITORY);
   git(root, 'config', `url.${f.origin}.insteadOf`, worker.REPOSITORY);
-  return { ...f, root, userHome, home: f.env.HERDR_APP_HOME };
+  return { ...f, root, userHome, home: f.env.HERDR_APP_HOME, run(program, args, options) {
+    if (program === process.execPath) {
+      assert.deepEqual(args, [path.join(root, 'tools/deploy-all.mjs'), '--protocol']);
+      return { code: 0, stdout: '{"resultProtocol":1}' };
+    }
+    return f.run(program, args, { ...options, env: { ...options.env, GIT_CONFIG_GLOBAL: f.env.GIT_CONFIG_GLOBAL, GIT_CONFIG_NOSYSTEM: '1' } });
+  } };
 }
 function pending(f) {
   const p = files(f.home), token = 'fixture-run';
@@ -100,6 +107,33 @@ try {
       final(p, token); assert.equal(inspect(h.home, { isAlive: () => false }).job.state, 'complete'); assert.equal(fs.existsSync(p.lock), false);
     }
   }
+  // An ordinary clean main clone can predate the result protocol. Only Git is
+  // allowed to bootstrap it; the legacy loaded CLI must never run the deploy.
+  const old = setup();
+  const put = (name, text) => { const file = path.join(old.author, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); };
+  put('package.json', JSON.stringify({ type: 'module', scripts: { deploy: 'node tools/fake-deploy.mjs' } }));
+  put('tools/deploy-all.mjs', `import fs from 'node:fs'; import path from 'node:path'; import cp from 'node:child_process'; cp.execFileSync('git',['merge','--ff-only','origin/main']); fs.writeFileSync(path.join(process.env.HERDR_APP_HOME,'legacy-cli-ran'),'old loaded CLI ran');`);
+  put('tools/fake-deploy.mjs', `import fs from 'node:fs'; import path from 'node:path'; const dir=path.join(process.env.HERDR_APP_HOME,'.customizations'); fs.mkdirSync(dir,{recursive:true}); fs.writeFileSync(path.join(dir,'manifest.json'),JSON.stringify({version:2,id:'custom',files:{}})); console.log(JSON.stringify({changed:1,removed:0,backup:'fixture-backup'}));`);
+  git(old.author, 'add', '.'); git(old.author, 'commit', '-m', 'legacy CLI'); git(old.author, 'push'); git(old.root, 'pull', '--ff-only');
+  const before = git(old.root, 'rev-parse', 'HEAD');
+  for (const name of ['deploy-all.mjs', 'deploy-all-worker.cjs']) put(`tools/${name}`, fs.readFileSync(path.join(project, 'tools', name)));
+  git(old.author, 'add', '.'); git(old.author, 'commit', '-m', 'published result protocol'); git(old.author, 'push');
+  const target = git(old.author, 'rev-parse', 'HEAD');
+  const preload = path.join(old.base, 'mock-hc.cjs');
+  fs.writeFileSync(preload, `const cp=require('node:child_process'),real=cp.spawnSync; cp.spawnSync=(program,args,options)=>{if(program==='hc'){if(args.join(' ')==='machine ls --json')return {status:0,stdout:'{"machines":[]}',stderr:''};throw Error('No real remote transport permitted');}return real(program,args,options);};`);
+  const launched = pending(old);
+  const upgraded = await runUpdate(old.home, launched.token, {
+    userHome: old.userHome,
+    run(program, args, options) { return program === process.execPath ? worker.command(program, args, options) : old.run(program, args, options); },
+    spawn(program, args, options) { return cp.spawn(program, ['--require', preload, ...args], { ...options, env: { ...options.env, GIT_CONFIG_GLOBAL: old.env.GIT_CONFIG_GLOBAL, GIT_CONFIG_NOSYSTEM: '1' } }); },
+  });
+  assert.notEqual(before, target); assert.equal(git(old.root, 'rev-parse', 'HEAD'), target);
+  assert.equal(upgraded.state, 'complete', JSON.stringify(upgraded)); assert.equal(fs.existsSync(launched.p.lock), false);
+  assert.equal(read(launched.p.result).token, launched.token); assert.equal(inspect(old.home).revision, target);
+  assert.equal(fs.existsSync(path.join(old.home, 'legacy-cli-ran')), false, 'legacy CLI must not be loaded even for a protocol probe');
+  const unsupported = setup(), unsupportedJob = pending(unsupported);
+  const refused = await runUpdate(unsupported.home, unsupportedJob.token, { userHome: unsupported.userHome, run(program, args, options) { return program === process.execPath ? { code: 0, stdout: '{}' } : unsupported.run(program, args, options); }, spawn() { assert.fail('unsupported result protocol must not deploy'); } });
+  assert.equal(refused.state, 'failed'); assert.match(refused.error, /result protocol unavailable/);
   const h = setup(), { p, token } = pending(h);
   let spawns = 0;
   await launch(h.home, { spawn() { spawns++; throw Error('must not duplicate'); } }); assert.equal(spawns, 0);

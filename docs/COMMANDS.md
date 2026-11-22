@@ -132,8 +132,13 @@ supervise its own replacement. It uses only the desktop's ordinary clone at
 `~/.local/share/herdr-app`, creating it on first Update if absent. Wrong, dirty,
 ahead/diverged, redirected or linked source is refused, never repaired. Git,
 Node 20+, npm and hc must already be available in the desktop/Core environment.
-It invokes the existing deploy:all CLI with the captured Herdr home, not a developer
-checkout; no npm install/prepare, daemon or scheduled task is involved.
+Before executing checkout code, the runner validates source, fetches and safely
+fast-forwards that managed clone, then starts a fresh Node process and verifies
+the CLI's read-only `--protocol` response. This bootstraps clones predating the
+row instead of keeping their old CLI loaded through its own fast-forward. Only
+then does a fresh deploy:all CLI run with the captured Herdr home; it repeats its
+normal source gates. No developer checkout, npm install/prepare, daemon or
+scheduled task is involved.
 
 The selected Herdr home's `.customizations/` holds only the latest operation:
 `update-status.json`, `deploy-all-result.json`, `update-check.json`, `update.log`,

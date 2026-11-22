@@ -8,6 +8,7 @@ import worker from './deploy-all-worker.cjs';
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const project = path.resolve(directory, '..');
 const MARKER = 'HERDR_DEPLOY_ALL_RESULT=';
+export const RESULT_PROTOCOL = 1;
 
 export function remoteArgs(machine, dryRun = false) {
   const source = fs.readFileSync(path.join(directory, 'deploy-all-worker.cjs'), 'utf8');
@@ -147,6 +148,10 @@ export function deployAll(args = [], { root = project, log = console.log, hostna
   return { code: results.some(r => r.action === 'failed') ? 1 : 0, results };
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
-  try { process.exitCode = deployAll(process.argv.slice(2)).code; }
+  try {
+    const args = process.argv.slice(2);
+    if (args.length === 1 && args[0] === '--protocol') console.log(JSON.stringify({ resultProtocol: RESULT_PROTOCOL }));
+    else process.exitCode = deployAll(args).code;
+  }
   catch (error) { console.error(error.message); process.exitCode = 1; }
 }
