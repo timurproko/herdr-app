@@ -10,13 +10,14 @@ import { U, slot, menuSurface, menuRow, hotkey, badge, spaceBadgeColor, menuHead
 import { displaySpace } from './directory.js';
 import { inspectTabMove, tabMoveDestinations, requestTabMove } from './tab-moves.js';
 import { footerItems } from './sidebar-footer.js';
+import { customizationUpdateAvailable } from './customization-updates.js';
 import { divider, dividerHeight } from './modal-layout.js';
 import { spaceColorPicker, setSpaceColor, selectedColorIndex, colorAt as colorValueAt, COLOR_COUNT } from './space-colors.js';
 import { requestInlineTabRename } from './tab-rename.js';
 import { requestInlineSpaceRename } from './space-rename.js';
 import { closeWithConfirmation } from './close-space.js';
 import { pluginMenuItems } from './plugins.js';
-import { run, props, closeOverlay, openOverlay, theme, keys, terminals, spaces, panes, agents, shared, notify } from "./host.js";
+import { run, props, closeOverlay, openOverlay, theme, keys, terminals, spaces, panes, agents, shared, notify, updates } from "./host.js";
 
 function items(p, git, pluginItems = []) {
   p = p ?? {};
@@ -34,7 +35,7 @@ function items(p, git, pluginItems = []) {
       ];
     }
     case "footer":
-      return footerItems().map(item => [item.label, item.action.command, item.action.args, item.icon]);
+      return footerItems().map(item => [item.label, item.action.command, item.action.args, item.icon, null, false, null, item.id]);
     case "pane": {
       // A kept sub-agent can go back under its parent, still running.
       const all = terminals();
@@ -254,6 +255,8 @@ export default class Menu extends View {
               onHover: (hovered, cx) => { if (hovered) { if (!this.keyboard) { this.at = -1;this.colorAt = -1; } if (it[1] === 'custom.move-menu') this.checkMove(cx); } cx.notify(); },
               onClick: (_e, cx) => this.choose(i, cx) })
               .text_color(this.unavailable(it) ? t.dim : t.foreground)
+              .when(props()?.tab === 'footer' && it[7] === 'settings' && Boolean(updates().app.ready || customizationUpdateAvailable()),
+                el => el.child(div().size(6).rounded_full().bg(t.accent)))
               .on_mouse_move((_e, cx) => {
                 if (this.keyboard || this.at >= 0 || this.colorAt >= 0) { this.keyboard = false; this.at = -1; this.colorAt = -1; cx.notify(); }
               })),

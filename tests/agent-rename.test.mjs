@@ -14,7 +14,7 @@ assert.doesNotMatch(read('src/plugins/a1-colors/session-color.cjs'),/controlName
 
 let props={tab:'agent',target:{terminal:'pc2/t1'},overlay:'fixture'},pinned=false;
 const commands=[],closed=[];
-const host={props:()=>props,agents:()=>[{address:'pc2/t1',pinned}],terminals:()=>[],
+const host={updates:()=>({app:{}}),props:()=>props,agents:()=>[{address:'pc2/t1',pinned}],terminals:()=>[],
  panes:()=>[{terminal:'pc2/t1',pane:'pc2/p1'}],spaces:()=>[],keys:()=>[],shared:()=>null,theme:()=>({}),
  closeOverlay:id=>closed.push(id),run:()=>{},openOverlay:()=>{},notify:()=>{}};
 const mocks={
@@ -27,6 +27,7 @@ const mocks={
  './space-rename.js':{requestInlineSpaceRename:job=>{commands.push(job.command);return true;}},
  './close-space.js':{closeWithConfirmation:(name,args)=>commands.push({name,args})},
  './plugins.js':{pluginMenuItems:()=>[]},
+ './customization-updates.js':{customizationUpdateAvailable:()=>false},
 };
 const context=vm.createContext({}),mod=new vm.SourceTextModule(read('src/features/menu/main.js'),{context});
 await mod.link(name=>{assert.ok(mocks[name],`Unexpected dependency ${name}`);return new vm.SyntheticModule(Object.keys(mocks[name]),function(){for(const [key,value]of Object.entries(mocks[name]))this.setExport(key,value);},{context});});

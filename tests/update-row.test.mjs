@@ -87,7 +87,7 @@ reject = true; draw().button.callback(null, cx); await flush();
 assert.equal(draw().button.label, 'Check now'); assert.match(draw().description, /Check failed/);
 reject = false;
 // Missing result or unknown installed revision never becomes a confirmation.
-for (const value of [{ revision: 'a'.repeat(40), check: null }, { revision: null, check: { checked: clock, available: false } }, { revision: 'a'.repeat(40), check: { checked: clock } }]) {
+for (const value of [{ revision: 'a'.repeat(40), check: null }, { revision: null, check: { checked: clock, available: false } }, { revision: 'a'.repeat(40), check: { checked: clock } }, { revision: 'a'.repeat(40), check: { checked: clock, available: false }, locked: true }, { revision: 'a'.repeat(40), check: { checked: clock, available: false }, job: { state: 'unknown' } }]) {
   next = value; api.refreshCustomizationUpdates(owner, cx, 'check', true); await flush();
   assert.equal(draw().button.label, 'Check now');
 }
@@ -123,8 +123,8 @@ assert.match(settings, /initUpdateCheckFeedback\(this, cx/);
 assert.match(settings, /updateCheckSlot\(this, t/);
 const { output } = build();
 assert.equal(fs.readFileSync(path.join(output, 'mods/custom-settings/update-check-feedback.js'), 'utf8'), fs.readFileSync('src/features/settings/update-check-feedback.js', 'utf8'));
-for (const mod of ['custom-settings', 'custom-workspace-chrome']) {
+for (const mod of ['custom-settings', 'custom-workspace-chrome', 'custom-menu']) {
   for (const file of ['customization-updates.js', 'customization-update-model.js']) assert.equal(fs.readFileSync(path.join(output, 'mods', mod, file), 'utf8'), fs.readFileSync(path.join('src/shared', file), 'utf8'));
-  assert.equal(fs.readFileSync(path.join(output, 'mods', mod, 'update-worker.cjs'), 'utf8'), fs.readFileSync('src/services/updates/update-worker.cjs', 'utf8'));
+  if (mod !== 'custom-menu') assert.equal(fs.readFileSync(path.join(output, 'mods', mod, 'update-worker.cjs'), 'utf8'), fs.readFileSync('src/services/updates/update-worker.cjs', 'utf8'));
 }
 console.log('PASS: real row/controller VM fixtures, one label constant/button, stale click/eager/hidden guards, reload check, dots and package closure; no native UI.');

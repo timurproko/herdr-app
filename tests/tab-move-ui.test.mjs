@@ -129,10 +129,11 @@ const modules = {
   './directory.js': {displaySpace: x => x}, './sidebar-footer.js': {footerItems: () => []}, './modal-layout.js': {divider: element, dividerHeight: () => 17},
   './space-colors.js': {spaceColorPicker: element,setSpaceColor(){},selectedColorIndex:()=>0,colorAt:()=>0,COLOR_COUNT:6},
   './plugins.js': {pluginMenuItems:()=>menuActions},
+  './customization-updates.js': {customizationUpdateAvailable:()=>false},
   './agent-rename.js': {requestInlineAgentRename:()=>true},
   './tab-rename.js': {requestInlineTabRename:()=>true}, './space-rename.js': {requestInlineSpaceRename:()=>true}, './close-space.js': {closeWithConfirmation(...args){legacyActions.push(args);}},
   './tab-moves.js': {inspectTabMove:async()=>capability,tabMoveDestinations:()=>menuSpaces.filter(s=>s.id!=='s1'),requestTabMove:(...args)=>{selected.push(args);return true;}},
-  './host.js': {run(){},props:()=>p,closeOverlay:id=>closed.push(id),openOverlay:spec=>opened.push(spec),theme:()=>({}),keys:()=>[],terminals:()=>[],spaces:()=>menuSpaces,panes:()=>[],exec:async()=>({}),agents:()=>[],shared:()=>({s2:'#abcdef'}),notify(){}},
+  './host.js': {updates:()=>({app:{}}),run(){},props:()=>p,closeOverlay:id=>closed.push(id),openOverlay:spec=>opened.push(spec),theme:()=>({}),keys:()=>[],terminals:()=>[],spaces:()=>menuSpaces,panes:()=>[],exec:async()=>({}),agents:()=>[],shared:()=>({s2:'#abcdef'}),notify(){}},
 };
 withKitUi(modules['./ui.js'],element);
 const menuModule = new vm.SourceTextModule(fs.readFileSync(new URL('../src/features/menu/main.js',import.meta.url),'utf8'),{context:menuContext});

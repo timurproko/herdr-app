@@ -75,6 +75,18 @@ fixture runs ordinary npm deploy:all with a skipped peer and verifies that the r
 links its matching result, not a missing/stale Settings log. It also runs the real
 CLI with mocked definite installer failure and eight-minute timeout, then checks
 failure/recovery details and launch blocking after a successful main check.
+`tests/update-row.test.mjs` also covers the shared native/Custom 300 ms/3000 ms
+confirmation path, success/expiry and unchanged busy/error/unknown states.
+`tests/update-markers.test.mjs` uses separate Settings/header/footer/menu VM
+contexts, the real controller/helper and a changed-shared-value refresh queue:
+manual checks reach already-mounted roots, and all native/Custom combinations
+produce the same marker markup. The original-source comparison exposes the missing
+More-popup Settings marker, but **does not reproduce** the reported real-app
+expanded-footer missing dot. It proves neither GPUI pixel visibility nor native
+runtime scheduling. `tests/update-marker-inspection.test.mjs` exercises the
+read-only capture with fixture homes and a mocked status/shot CLI, proving no
+live-home writes or invented last-render facts. See the read-only capture in
+COMMANDS.md for the next real occurrence; no native app is launched by these tests.
 The check suite enumerates every Settings-job/plain-CLI by success/partial/failed/
 unknown combination using the real result writer, worker, check, projection and
 row functions; all eight cells assert truthful text and source-matching details.
@@ -143,7 +155,7 @@ only the demonstrated Windows Git-sh fixture remains an observed suite exclusion
 ## Exact selected source entries
 
 The list below is generated from CI selection, not inferred from naming. On Node
-24 the current selection is **136 Ubuntu / 135 Windows entries**, with two/three
+24 the current selection is **138 Ubuntu / 137 Windows entries**, with two/three
 explicit exclusions respectively. The installed directory-loader fixture now runs
 on both; the preference-home and four runtime-contract suites are included. It includes scaffold/aggregator tests. Earlier Node 20 attempts selected
 122/121 and then 119/119 entries while diagnosing the crashes; those temporary
@@ -280,6 +292,8 @@ tests/terminal-labels.test.mjs
 tests/update-check.test.mjs
 tests/update-detach.test.mjs
 tests/update-row.test.mjs
+tests/update-marker-inspection.test.mjs
+tests/update-markers.test.mjs
 tests/update-runner.test.mjs
 tests/usage-plugin.test.mjs
 src/plugins/a1-colors/session-name.test.mjs

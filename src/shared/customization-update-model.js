@@ -34,7 +34,7 @@ export function customizationRowState(snapshot, { busy = null, error = null, now
   else if (updateAvailable(snapshot)) description = 'Update available.';
   else if (check?.checked && snapshot?.revision) {
     description = `Up to date. Checked at ${at(check.checked)}.`;
-    current = check.available === false;
+    current = check.available === false && !snapshot?.locked;
   }
   else description = 'Not checked.';
   return { title, description, current, action: canUpdate ? 'launch' : 'check', label: running ? 'Updating…' : checking ? 'Checking…' : canUpdate ? 'Update' : 'Check now', enabled: !busy && !running && !checking };
