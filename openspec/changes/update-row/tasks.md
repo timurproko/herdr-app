@@ -7,9 +7,9 @@
 
 ## 2. Independent managed-clone update survives Settings replacement
 
-- [ ] 2.1 Add/package the self-contained detached launcher/runner using only the fixed managed desktop path and existing deploy-all CLI; temporary-home/mocked-exec fixtures cover clone-on-Update, redirected/linked/unsafe source refusal and captured home routing without development-checkout access.
-- [ ] 2.2 Add one latest status/log and exclusive launch lock, startup acknowledgement, run-token correlation and 30-minute supervision; fixtures cover duplicate dispatch, page disappearance, reload reattachment, launch failure, deadline/crash/missing/late results and mixed outcomes.
-- [ ] 2.3 Document the runner deadline, unresolved-lock inspection, partial outcome log and existing manual disable/rollback recovery; fixtures assert no automatic retry, rollback, daemon, scheduler, job history or live machine access.
+- [x] 2.1 Add/package the self-contained detached launcher/runner using only the fixed managed desktop path and existing deploy-all CLI; temporary-home/mocked-exec fixtures cover clone-on-Update, redirected/linked/unsafe source refusal and captured home routing without development-checkout access.
+- [x] 2.2 Add one latest status/log and exclusive launch lock, startup acknowledgement, run-token correlation and 30-minute supervision; fixtures cover duplicate dispatch, page disappearance, reload reattachment, launch failure, deadline/crash/missing/late results and mixed outcomes.
+- [x] 2.3 Document the runner deadline, unresolved-lock inspection, partial outcome log and existing manual disable/rollback recovery; fixtures assert no automatic retry, rollback, daemon, scheduler, job history or live machine access.
 
 ## 3. One Settings row with shared dots and hourly checks
 

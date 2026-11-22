@@ -123,6 +123,8 @@
     "mods/custom-pane/space-lifecycle.js": "src/shared/space-lifecycle.js",
     "mods/custom-tabs/space-preferences.js": "src/shared/space-preferences.js",
     "mods/custom-tabs/space-lifecycle.js": "src/shared/space-lifecycle.js",
+    "mods/custom-settings/update-worker.cjs": "src/services/updates/update-worker.cjs",
+    "mods/custom-workspace-chrome/update-worker.cjs": "src/services/updates/update-worker.cjs",
     "mods/custom-settings/space-preferences.js": "src/shared/space-preferences.js",
     "mods/custom-settings/spaces-ui.js": "src/features/settings/spaces-ui.js",
     "mods/custom-settings/layers.svg": "src/features/workspace-chrome/layers.svg",

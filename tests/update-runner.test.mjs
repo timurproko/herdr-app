@@ -1,0 +1,89 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { EventEmitter } from 'node:events';
+import { createRequire } from 'node:module';
+import { fixture, clean, git } from './support/deploy-all.mjs';
+const require = createRequire(import.meta.url);
+const worker = require('../src/services/updates/update-worker.cjs');
+const { files, atomic, read, prepareClone, runUpdate, launch, inspect, outcome } = worker;
+function setup() {
+  const f = fixture(), userHome = path.join(f.base, 'user'), root = path.join(userHome, '.local/share/herdr-app');
+  fs.mkdirSync(path.dirname(root), { recursive: true }); fs.renameSync(f.root, root);
+  git(root, 'remote', 'set-url', 'origin', worker.REPOSITORY);
+  git(root, 'config', `url.${f.origin}.insteadOf`, worker.REPOSITORY);
+  return { ...f, root, userHome, home: f.env.HERDR_APP_HOME };
+}
+function pending(f) {
+  const p = files(f.home), token = 'fixture-run';
+  atomic(p.lock, { token }); atomic(p.status, { token, pid: process.pid, state: 'running', phase: 'starting', started: Date.now(), deadline: Date.now() + 1800000 });
+  fs.writeFileSync(p.log, 'fixture\n'); return { p, token };
+}
+function final(p, token, rows = [{ machine: 'local', action: 'deployed', commit: 'a'.repeat(40), backup: 'fixture-backup' }]) {
+  atomic(p.result, { token, complete: true, results: rows });
+}
+try {
+  let f = setup();
+  assert.equal(prepareClone(f), f.root);
+  for (const kind of ['dirty', 'branch', 'ahead', 'origin', 'linked', 'redirect']) {
+    const g = setup();
+    if (kind === 'dirty') fs.writeFileSync(path.join(g.root, 'personal'), 'keep');
+    if (kind === 'branch') git(g.root, 'checkout', '-b', 'feature/personal');
+    if (kind === 'ahead') { fs.writeFileSync(path.join(g.root, 'personal'), 'keep'); git(g.root, 'add', '.'); git(g.root, 'commit', '-m', 'ahead'); }
+    if (kind === 'origin') git(g.root, 'remote', 'set-url', 'origin', 'https://invalid.example/other.git');
+    if (kind === 'linked') { fs.renameSync(path.join(g.root, '.git'), path.join(g.base, 'git-aside')); fs.writeFileSync(path.join(g.root, '.git'), 'gitdir: elsewhere'); }
+    if (kind === 'redirect') { fs.renameSync(g.root, g.root + '-aside'); fs.symlinkSync(g.root + '-aside', g.root, process.platform === 'win32' ? 'junction' : 'dir'); }
+    assert.throws(() => prepareClone(g), undefined, kind);
+  }
+  // Clone only at explicit preparation; canonical URL is intercepted to a bare fixture.
+  const g = setup(); fs.renameSync(g.root, g.root + '-aside');
+  let cloned = false;
+  const run = (program, args, options) => {
+    if (args[0] !== 'clone') return g.run(program, args, options);
+    cloned = true; assert.equal(args.at(-2), worker.REPOSITORY); assert.equal(options.timeout, 120000);
+    const result = worker.command(program, [...args.slice(0, -2), g.origin, args.at(-1)], options);
+    git(g.root, 'remote', 'set-url', 'origin', worker.REPOSITORY);
+    git(g.root, 'config', `url.${g.origin}.insteadOf`, worker.REPOSITORY);
+    return result;
+  };
+  inspect(g.home); assert.equal(cloned, false); assert.equal(fs.existsSync(g.root), false);
+  prepareClone({ ...g, run }); assert.equal(cloned, true);
+  for (const kind of ['success', 'partial', 'local-failure', 'missing', 'wrong-token', 'spawn-error', 'timeout']) {
+    const h = setup(), { p, token } = pending(h); let killed = false;
+    const spawn = (program, args, options) => {
+      assert.equal(program, process.execPath); assert.deepEqual(args, [path.join(h.root, 'tools/deploy-all.mjs')]);
+      assert.equal(options.cwd, h.root); assert.equal(options.env.HERDR_APP_HOME, path.resolve(h.home)); assert.equal(options.env.HERDR_UPDATE_RUN_ID, token);
+      assert.equal(options.detached, true);
+      const child = new EventEmitter(); child.pid = 123456789;
+      setImmediate(() => {
+        if (kind === 'timeout') return;
+        if (kind === 'spawn-error') return child.emit('error', Error('fixture spawn failure'));
+        if (!['missing', 'wrong-token'].includes(kind)) final(p, token, kind === 'partial' ? [{ machine: 'local', action: 'deployed' }, { machine: 'off', action: 'skipped', reason: 'offline' }] : kind === 'local-failure' ? [{ machine: 'local', action: 'failed', reason: 'fixture install failure' }] : undefined);
+        if (kind === 'wrong-token') final(p, 'other-run');
+        child.emit('exit', kind === 'local-failure' || kind === 'partial' ? 1 : 0);
+      });
+      return child;
+    };
+    const result = await runUpdate(h.home, token, { userHome: h.userHome, run: h.run, spawn, deadlineMs: kind === 'timeout' ? 1000 : 30000, kill: () => { killed = true; } });
+    assert.equal(result.state, kind === 'success' ? 'complete' : kind === 'partial' ? 'partial' : ['missing', 'wrong-token', 'timeout'].includes(kind) ? 'unknown' : 'failed', kind);
+    assert.equal(fs.existsSync(p.lock), result.state === 'unknown', kind);
+    assert.equal(killed, kind === 'timeout');
+    if (kind === 'missing') {
+      // Reload sees the same unresolved job; a later exact result can settle it.
+      assert.equal(inspect(h.home, { isAlive: () => false }).job.state, 'unknown');
+      final(p, token); assert.equal(inspect(h.home, { isAlive: () => false }).job.state, 'complete'); assert.equal(fs.existsSync(p.lock), false);
+    }
+  }
+  const h = setup(), { p, token } = pending(h);
+  let spawns = 0;
+  await launch(h.home, { spawn() { spawns++; throw Error('must not duplicate'); } }); assert.equal(spawns, 0);
+  atomic(p.status, { ...read(p.status), pid: 123456789, deadline: 1 });
+  assert.equal(inspect(h.home, { isAlive: () => false }).job.state, 'unknown');
+  assert.equal(fs.existsSync(p.lock), true, 'crash is not permission to remove a lock');
+  fs.unlinkSync(p.lock);
+  const failed = await launch(h.home, { spawn() { throw Error('fixture launcher failed'); } }); assert.equal(failed.job.state, 'failed'); assert.equal(failed.locked, false);
+  const noAck = await launch(h.home, { spawn() { const child = new EventEmitter(); child.pid = 123456789; child.unref = () => {}; return child; }, sleep: async () => {} });
+  assert.equal(noAck.job.state, 'unknown'); assert.equal(noAck.locked, true);
+  assert.equal(outcome({ results: [{ machine: 'local', action: 'already current' }, { machine: '(inventory)', action: 'failed' }] }).state, 'partial');
+  console.log('PASS: managed source safety, clone-on-Update, exact CLI routing, duplicate launch, bounded supervision and reload/late-result recovery (isolated fixtures).');
+} finally { clean(); }

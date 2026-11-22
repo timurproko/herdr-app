@@ -125,6 +125,39 @@ timeout after dispatch means outcome unknown: inspect the machine before retryin
 There is no automatic retry or rollback, or cross-machine transaction; retain the
 printed backup IDs and use the existing recovery commands below.
 
+### Settings customization updater
+
+The Updates row launches one terminal-free detached Node runner; the mod does not
+supervise its own replacement. It uses only the desktop's ordinary clone at
+`~/.local/share/herdr-app`, creating it on first Update if absent. Wrong, dirty,
+ahead/diverged, redirected or linked source is refused, never repaired. Git,
+Node 20+, npm and hc must already be available in the desktop/Core environment.
+It invokes the existing deploy:all CLI with the captured Herdr home, not a developer
+checkout; no npm install/prepare, daemon or scheduled task is involved.
+
+The selected Herdr home's `.customizations/` holds only the latest operation:
+`update-status.json`, `deploy-all-result.json`, `update-check.json`, `update.log`,
+`update-runner.cjs` and the active `update.lock` (plus a short check lock). These
+are private runtime files, not portable preferences. Reload/reopen reads the same
+status. The update has a 30-minute deadline in addition to existing subprocess
+limits; a deadline/crash/missing result reports outcome unknown, never success or
+automatic retry. Remote work already dispatched might still finish.
+
+When the desktop succeeds but peers skip/fail, the single row names that fact and
+the log path; inspect the log/result for individual reasons and backup IDs.
+Desktop failure states the short cause and documented rollback recovery. There
+is **no automatic rollback**: from the managed clone with the same HERDR_APP_HOME,
+use the existing `npm run disable` then `npm run rollback -- <backup-id>` sequence
+below. If a failure produced no printed ID, inspect `.customizations/backups/` and
+the log to identify the matching journal; do not guess or bypass refusal gates.
+
+An unresolved `update.lock` blocks another Update even after a crash. Inspect its
+matching `update-status.json`, PID/childPid, log, result and any dispatched machine;
+wait for active work, and use normal rollback recovery for uncertain writes. Only
+a person who has established that no local/remote update remains active should
+remove that one stale lock. Never delete `.customizations/deploy.lock` to force an
+update, reset a checkout or replay an uncertain remote request.
+
 ### One-time new peer setup
 
 Do these manual steps **on the new peer**, not by running deploy:all. Install Git,
