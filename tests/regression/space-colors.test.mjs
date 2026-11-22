@@ -6,7 +6,7 @@ const colors={'local-space':'ansi6','pc2/space':'ansi4'},automaticFlags={'local-
 let list=[{id:'local-space',name:'Local',active:true,machine:null,tabs:[]},{id:'pc2/space',name:'Remote',active:false,machine:'pc2',tabs:[]}];
 let props={tab:'space',target:{id:'pc2/space'},overlay:'space-menu'};
 const theme={foreground:'#eeeeee',muted:'#aaaaaa',dim:'#888888',hover:'#333333',border:'#444444',popover:'#222222'};
-const context={pluginIsEnabled:()=>true,console,View:class{},div:element,svg:element,h_flex:element,v_flex:element,shared:k=>state.get(k),setShared:(k,v)=>{state.set(k,structuredClone(v));writes.push(v);},spaces:()=>list,panes:()=>[],terminals:()=>[],agents:()=>[],keys:()=>[],props:()=>props,closeOverlay:id=>closed.push(id),openOverlay:()=>{},theme:()=>theme,run:(...v)=>runs.push(v),requestInlineTabRename:p=>(requests.push(p),true),requestInlineSpaceRename:p=>(requests.push(p),true),exec:async()=>{throw Error('Unexpected execution');}};
+const context={updates:()=>({app:{ready:null}}),pluginIsEnabled:()=>true,console,View:class{},div:element,svg:element,h_flex:element,v_flex:element,shared:k=>state.get(k),setShared:(k,v)=>{state.set(k,structuredClone(v));writes.push(v);},spaces:()=>list,panes:()=>[],terminals:()=>[],agents:()=>[],keys:()=>[],props:()=>props,closeOverlay:id=>closed.push(id),openOverlay:()=>{},theme:()=>theme,run:(...v)=>runs.push(v),requestInlineTabRename:p=>(requests.push(p),true),requestInlineSpaceRename:p=>(requests.push(p),true),exec:async()=>{throw Error('Unexpected execution');}};
 const clean=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8').replace(/^import .*;\r?\n/gm,'').replace(/export /g,'');
 vm.createContext(context);
 vm.runInContext(clean('../mods/custom-menu/space-color-state.js')+'\nglobalThis.spaceColorState={savedSpaceColors,reconcileSpaceColors};',context);
@@ -18,6 +18,7 @@ vm.runInContext(clean('../mods/custom-menu/close-space.js'),context);
 vm.runInContext(clean('../mods/custom-menu/settings-sections.js'),context);
 context.window=()=>({platform:'windows'});
 vm.runInContext(clean('../mods/custom-menu/sidebar-footer.js'),context);
+vm.runInContext(`(()=>{${clean('../mods/custom-menu/customization-update-model.js')}\n${clean('../mods/custom-menu/customization-updates.js')}\nglobalThis.customizationUpdateAvailable=customizationUpdateAvailable;})();`,context);
 vm.runInContext(clean('../mods/custom-menu/main.js').replace('default class Menu','class Menu')+'\nglobalThis.Menu=Menu;',context);
 const cx={focus_handle:()=>({focus(){}}),notify(){},stop_propagation(){},spawn(){throw Error('A folderless menu must not execute commands');}};
 const nodes=e=>e&&typeof e==='object'?[e,...e.kids.flatMap(nodes)]:[];
