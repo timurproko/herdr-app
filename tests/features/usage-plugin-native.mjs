@@ -1,14 +1,16 @@
 // All Usage surfaces in a disposable app home, with no credentials or collection.
+import {temporaryMod} from '../../tools/temporary-mod.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 export function checkUsagePluginStates(home,app) {
  let checked=0;
  for(const feature of ['usage','settings','workspace-chrome']) {
   const dir=path.join(home,`mods/custom-${feature}-usage-fixture`);
+  const dispose=temporaryMod(home,path.basename(dir));
+  try {
   fs.cpSync(path.join(home,`mods/custom-${feature}`),dir,{recursive:true});
   fs.renameSync(path.join(dir,'main.js'),path.join(dir,'feature-view.js'));
   fs.renameSync(path.join(dir,'host.js'),path.join(dir,'native-host.js'));
-  try {
    for(const enabled of [false,true])for(const summary of feature==='usage'?[false,true]:[true])for(const state of feature==='usage'&&enabled?['fresh','stale','unavailable','error','loading','provider-loading']:['fresh']) {
     const properties=feature==='usage'?{summary}:feature==='workspace-chrome'?{footer:true}:{section:'usage'};
     fs.writeFileSync(path.join(dir,'host.js'),`export * from './native-host.js';
@@ -35,7 +37,7 @@ export default class Fixture extends View {
     else fs.writeFileSync(path.join(dir,'main.js'),"export {default} from './feature-view.js';\n");
     app(['check',dir],home);checked++;
    }
-  } finally {fs.rmSync(dir,{recursive:true,force:true});}
+  } finally {dispose();}
  }
  return checked;
 }

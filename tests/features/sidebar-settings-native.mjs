@@ -1,4 +1,5 @@
 // Terminal-free native preview of Look's deferred sidebar configuration pages.
+import {temporaryMod} from '../../tools/temporary-mod.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -9,6 +10,7 @@ const page = process.argv[2] ?? 'sidebar';
 if (!['look', 'sidebar', 'hover'].includes(page)) throw Error('Use look, sidebar or hover.');
 if (fs.existsSync(dir)) throw Error('Preview already exists; inspect before retrying.');
 if (JSON.parse(app(['status'], home)).overlays?.length) throw Error('Dismiss existing dialogs before previewing.');
+const dispose=temporaryMod(home,name);
 try {
   fs.cpSync(path.join(home, 'mods/custom-settings'), dir, { recursive: true });
   fs.renameSync(path.join(dir, 'main.js'), path.join(dir, 'settings.js'));
@@ -49,5 +51,5 @@ export default class Preview extends Settings {
 } finally {
   try {
     if (JSON.parse(app(['status'], home)).overlays?.includes(name)) app(['do', 'mod.open', '--name', name], home);
-  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  } finally { dispose(); }
 }

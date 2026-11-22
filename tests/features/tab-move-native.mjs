@@ -1,8 +1,12 @@
 // Deferred menu states through the real GPUI checker, with all process APIs denied.
+import {temporaryMod} from '../../tools/temporary-mod.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 export function checkTabMoveStates(home, app) {
   const original = path.join(home, 'mods/custom-menu'), dir = path.join(home, 'mods/custom-tab-move-fixture');
+  const dispose=temporaryMod(home,path.basename(dir));
+  let checked = 0;
+  try {
   fs.cpSync(original, dir, {recursive: true});
   const source = fs.readFileSync(path.join(dir, 'main.js'), 'utf8').replace('export default class Menu extends View {', 'class Menu extends View {');
   fs.renameSync(path.join(dir, 'host.js'), path.join(dir, 'native-host.js'));
@@ -13,8 +17,6 @@ export const exec=()=>{throw Error('Native menu fixture must not execute workers
 export const hc=()=>{throw Error('Native menu fixture must not contact a Core');};
 export const run=()=>{throw Error('Native menu fixture must not issue commands');};
 `);
-  let checked = 0;
-  try {
     for (const state of ['menu', 'loading', 'destinations', 'unsupported', 'repair', 'empty']) {
       const capability = state === 'loading' ? null : state === 'unsupported' ? {ok:false,message:'Unreviewed Herdr version; moving is disabled'} : {ok:true,repairNeeded:state==='repair'};
       fs.writeFileSync(path.join(dir, 'main.js'), source + `
@@ -25,13 +27,16 @@ export default class Fixture extends Menu {
 `);
       app(['check', dir], home); checked++;
     }
-  } finally { fs.rmSync(dir, {recursive: true, force: true}); }
+  } finally { dispose(); }
   return checked;
 }
 
 // Render every arrival phase with synthetic spaces; never invoke a move worker.
 export function checkTabArrivalStates(home, app) {
   const dir = path.join(home, 'mods/custom-tab-arrival-fixture');
+  const dispose=temporaryMod(home,path.basename(dir));
+  let checked = 0;
+  try {
   fs.cpSync(path.join(home, 'mods/custom-spaces'), dir, {recursive: true});
   fs.renameSync(path.join(dir, 'main.js'), path.join(dir, 'spaces.js'));
   fs.renameSync(path.join(dir, 'host.js'), path.join(dir, 'native-host.js'));
@@ -44,8 +49,6 @@ export const exec=()=>{throw Error('Arrival fixture must not execute workers');}
 export const hc=()=>{throw Error('Arrival fixture must not contact a Core');};
 export const run=()=>{throw Error('Arrival fixture must not navigate');};
 `);
-  let checked = 0;
-  try {
     for (const phase of ['arm', 'hop', 'settle']) for (const mode of ['row', 'compact', 'folded']) {
       fs.writeFileSync(path.join(dir, 'main.js'), `import Spaces from './spaces.js';
 import {theme,spaces} from './host.js';
@@ -56,6 +59,6 @@ export default class Fixture extends Spaces {
 `);
       app(['check', dir], home); checked++;
     }
-  } finally { fs.rmSync(dir, {recursive: true, force: true}); }
+  } finally { dispose(); }
   return checked;
 }

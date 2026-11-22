@@ -1,5 +1,6 @@
 // Explicit live UI test, dummy accounts only. Never creates terminals, sends terminal input or changes auth.
 // Run manually: node tests/features/claude-account-click.mjs
+import {temporaryMod} from '../../tools/temporary-mod.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -9,6 +10,7 @@ import {app,defaultHome} from '../../tools/deploy.mjs';
 const home=defaultHome(),name='custom-claude-click-fixture',dir=path.join(home,'mods',name);
 if(fs.existsSync(dir))throw Error('Click fixture already exists; preserve it and inspect before retrying.');
 const nonce=crypto.randomUUID(),receipt=path.join(home,'.customizations',`click-fixture-${nonce}.json`),image=path.join(os.tmpdir(),'claude-account-click.png');
+const dispose=temporaryMod(home,name);
 try {
   fs.cpSync(path.join(home,'mods/custom-workspace-status'),dir,{recursive:true});
   fs.renameSync(path.join(dir,'host.js'),path.join(dir,'native-host.js'));
@@ -72,5 +74,5 @@ $coords=[IntPtr](($y -shl 16) -bor ($x -band 65535))
   try {
     const status=JSON.parse(app(['status'],home));
     if(status.overlays?.includes(name))app(['do','mod.open','--name',name],home);
-  } finally {fs.rmSync(dir,{recursive:true,force:true});fs.rmSync(receipt,{force:true});}
+  } finally {dispose();fs.rmSync(receipt,{force:true});}
 }

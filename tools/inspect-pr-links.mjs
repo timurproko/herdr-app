@@ -1,4 +1,5 @@
 // Explicit, read-only diagnostic against real host agents. No navigation/input.
+import {temporaryMod} from './temporary-mod.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -6,6 +7,7 @@ import {app,defaultHome} from './deploy.mjs';
 const home=defaultHome(),name='custom-pr-link-inspector',dir=path.join(home,'mods',name);
 const nonce=crypto.randomUUID(),receipt=path.join(home,'.customizations',`pr-link-inspection-${nonce}.json`);
 if(fs.existsSync(dir))throw Error('Inspector already exists; preserve and inspect it before retrying.');
+const dispose=temporaryMod(home,name);
 try {
   fs.cpSync(path.join(home,'mods/custom-changes'),dir,{recursive:true});
   fs.writeFileSync(path.join(dir,'mod.json'),JSON.stringify({place:'none',overlay:{width:320,height:72}}));
@@ -41,5 +43,5 @@ export default class Inspector extends View {
   try {
     const status=JSON.parse(app(['status'],home));
     if(status.overlays?.includes(name))app(['do','mod.open','--name',name],home);
-  } finally {fs.rmSync(dir,{recursive:true,force:true});fs.rmSync(receipt,{force:true});}
+  } finally {dispose();fs.rmSync(receipt,{force:true});}
 }

@@ -1,8 +1,10 @@
 // Manual native layout check with dummy quotas. No auth, network or settings IO.
+import {temporaryMod} from '../../tools/temporary-mod.mjs';
 import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';import {execFileSync} from 'node:child_process';import {app,defaultHome} from '../../tools/deploy.mjs';
 const home=defaultHome(),name='custom-usage-widget-preview',dir=path.join(home,'mods',name),status=JSON.parse(app(['status'],home));
 if(status.overlays?.length)throw Error('Existing overlays left untouched; close them before this preview.');if(fs.existsSync(dir))throw Error('Existing fixture preserved.');
 const nonce=crypto.randomUUID(),fulls=[],images=[];const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const dispose=temporaryMod(home,name);
 try{
  fs.cpSync(path.resolve('dist/mods/custom-usage'),dir,{recursive:true});fs.renameSync(path.join(dir,'main.js'),path.join(dir,'usage-view.js'));fs.renameSync(path.join(dir,'host.js'),path.join(dir,'native-host.js'));
  fs.writeFileSync(path.join(dir,'host.js'),`export * from './native-host.js';let mode='fresh';export const previewMode=()=>mode;export const setPreviewMode=value=>{mode=value;};
@@ -22,4 +24,4 @@ export default class Preview extends Usage {init(_p,cx){if(!checking())cx.timer.
   execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',`Add-Type -AssemblyName System.Drawing;$s=[System.Drawing.Bitmap]::FromFile('${full.replaceAll("'","''")}');try{$w=[int](360*${current.zoom}-8);$h=[int](160*${current.zoom}-8);$r=New-Object System.Drawing.Rectangle([int](($s.Width-$w)/2),[int](($s.Height-$h)/2),$w,$h);$c=$s.Clone($r,$s.PixelFormat);try{$c.Save('${image.replaceAll("'","''")}',[System.Drawing.Imaging.ImageFormat]::Png)}finally{$c.Dispose()}}finally{$s.Dispose()}`],{windowsHide:true,timeout:15000});
  }
  console.log('Native fresh/missing widget captures: '+images.join(', ')+'; dummy data only, no input or backend calls.');
-}finally{try{if(JSON.parse(app(['status'],home)).overlays?.includes(name))app(['do','mod.open','--name',name],home);}finally{fs.rmSync(dir,{recursive:true,force:true});for(const full of fulls)fs.rmSync(full,{force:true});}}
+}finally{try{if(JSON.parse(app(['status'],home)).overlays?.includes(name))app(['do','mod.open','--name',name],home);}finally{dispose();for(const full of fulls)fs.rmSync(full,{force:true});}}

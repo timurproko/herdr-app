@@ -1,4 +1,5 @@
 // Explicit, terminal-free native preview. Synthetic spaces; no move worker/commands.
+import {temporaryMod} from '../../tools/temporary-mod.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -9,6 +10,7 @@ if (fs.existsSync(dir)) throw Error('Preview already exists; refusing to overwri
 const before = JSON.parse(app(['status'], home));
 if (before.overlays.length) throw Error('Dismiss other overlays before previewing.');
 let opened = false;
+const dispose=temporaryMod(home,name);
 try {
   fs.cpSync(path.join(home, 'mods/custom-spaces'), dir, {recursive: true});
   fs.renameSync(path.join(dir, 'main.js'), path.join(dir, 'spaces.js'));
@@ -50,7 +52,7 @@ export default class Preview extends Spaces {
   console.log(JSON.stringify({syntheticSpaces:true,liveMoves:false,shots},null,2));
 } finally {
   try { if (opened) app(['do','overlay.close',JSON.stringify({id:'mod-'+name})],home); }
-  finally {fs.rmSync(dir,{recursive:true,force:true});}
+  finally {dispose();}
 }
 const after = JSON.parse(app(['status'],home));
 if (before.space !== after.space || before.tab !== after.tab || before.focused_pane !== after.focused_pane)

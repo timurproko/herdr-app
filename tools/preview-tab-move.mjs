@@ -1,4 +1,5 @@
 // Explicit read-only live UI preview. Never submits a move or changes topology.
+import {temporaryMod} from './temporary-mod.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -13,6 +14,7 @@ const machine = process.argv[4] && process.argv[4] !== 'local' ? process.argv[4]
 if (machine !== null && !/^[a-z0-9_-]{1,200}$/i.test(machine)) throw Error('Invalid preview machine.');
 if (fs.existsSync(dir)) throw Error('Preview directory already exists; refusing to overwrite.');
 let opened = false;
+const dispose=temporaryMod(home,name);
 try {
   fs.cpSync(path.join(home, 'mods/custom-menu'), dir, {recursive: true});
   fs.renameSync(path.join(dir, 'host.js'), path.join(dir, 'native-host.js'));
@@ -54,7 +56,7 @@ export default class Preview extends Menu {
   fs.mkdirSync(path.dirname(shot), {recursive: true}); app(['shot', shot], home);
   console.log(JSON.stringify({readOnlyInstalledProbe: result, machine, screenshot: shot, mutationsEnabled: false}, null, 2));
 } finally {
-  if (opened) try { app(['do', 'overlay.close', JSON.stringify({id: 'mod-' + name})], home); } catch {}
-  fs.rmSync(dir, {recursive: true, force: true});
+  try { if (opened) app(['do', 'overlay.close', JSON.stringify({id: 'mod-' + name})], home); }
+  finally { dispose(); }
   if (fs.existsSync(receipt) && JSON.parse(fs.readFileSync(receipt, 'utf8')).nonce === nonce) fs.rmSync(receipt);
 }

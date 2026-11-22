@@ -66,4 +66,54 @@ try {
   for (const area of ['mods','data']) assert.equal(fs.existsSync(path.join(home,area,name)),false,mode);
  }
  console.log('PASS: exact temporary mod/data cleanup on success, error, exit and interruption preserves unrelated state');
+
+ // Imported fixture functions receive a fake checker and a synthetic home. No
+ // generated UI is evaluated and no native command is ever executed.
+ const cases = [
+  ['claude-account-native.mjs','checkClaudeAccountStates'],
+  ['file-delete-native.mjs','checkFileDeleteStates'],
+  ['panel-pin-native.mjs','checkPanelPinStates'],
+  ['pinned-pr-native.mjs','checkPinnedPullStates'],
+  ['rename-selection-native.mjs','checkRenameSelection'],
+  ['reorder-native.mjs','checkReorderStates'],
+  ['sidebar-plugins-native.mjs','checkSidebarPluginStates'],
+  ['tab-move-native.mjs','checkTabMoveStates'],
+  ['tab-move-native.mjs','checkTabArrivalStates'],
+  ['usage-plugin-native.mjs','checkUsagePluginStates']
+ ];
+ const fakeHome=path.join(home,'callers'), sources=['workspace-status','files','changes','tabs','spaces','workspace-chrome','settings','menu','usage'];
+ for (const feature of sources) {
+  const source=path.join(fakeHome,'mods',`custom-${feature}`);fs.mkdirSync(source,{recursive:true});
+  fs.writeFileSync(path.join(source,'main.js'),'export default class Menu extends View {}');fs.writeFileSync(path.join(source,'host.js'),'// fake host');
+ }
+ for (const [file,fn] of cases) {
+  const fixture=await import(new URL(`./features/${file}`,import.meta.url));
+  for (const fail of [false,true]) {
+   const seen=[];
+   const checker=([command,mod])=>{
+    assert.equal(command,'check');const name=path.basename(mod);seen.push(name);
+    fs.mkdirSync(path.join(fakeHome,'data',name),{recursive:true});
+    if(fail)throw Error('fake checker failed');
+   };
+   if(fail)assert.throws(()=>fixture[fn](fakeHome,checker),/fake checker failed/);else assert.ok(fixture[fn](fakeHome,checker)>0);
+   for (const name of seen) for (const area of ['mods','data']) assert.equal(fs.existsSync(path.join(fakeHome,area,name)),false,`${fn}: ${area}/${name}`);
+  }
+  const missingHome=path.join(home,`missing-${fn}`);
+  assert.throws(()=>fixture[fn](missingHome,()=>assert.fail('Missing source must fail before the checker')),/ENOENT/);
+  assert.deepEqual(fs.readdirSync(path.join(missingHome,'mods')),[],`${fn}: partial setup cleanup`);
+ }
+ for (const feature of sources) assert.equal(fs.readFileSync(path.join(fakeHome,'mods',`custom-${feature}`,'host.js'),'utf8'),'// fake host');
+ // Guard the hand-written entrypoints without importing their live top levels.
+ const callers=[...fs.readdirSync(path.join(project,'tests/features')).filter(f=>f.endsWith('.mjs')).map(f=>`tests/features/${f}`),
+  ...['enroll-core-ci','inspect-live','inspect-pr-links','preview-ci-fix','preview-tab-move','retry-ci-fix'].map(f=>`tools/${f}.mjs`)];
+ let adopted=0;
+ for(const file of callers){
+  const source=fs.readFileSync(path.join(project,file),'utf8');
+  if(!/fs\.cpSync|installTemporaryHostFacade\(dir/.test(source))continue;
+  assert.match(source,/import \{[^}]*temporaryMod[^}]*\} from .*temporary-mod\.mjs/,file);
+  assert.match(source,/temporaryMod\(home,/,file);assert.match(source,/finally\s*\{\s*dispose\(\)/,file);
+  assert.doesNotMatch(source,/fs\.rmSync\(dir\s*[,)]/,file);adopted++;
+ }
+ assert.equal(adopted,26);
+ console.log('PASS: 10 caller functions clean synthetic mod/data on completion and checker/setup failure; 26 entrypoints use shared disposal');
 } finally { fs.rmSync(home,{recursive:true,force:true}); }
