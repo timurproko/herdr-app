@@ -26,7 +26,7 @@ Check makes one noninteractive, 15-second `git ls-remote` request for fixed publ
 
 ### 3. Self-update: one detached, finite runner
 
-Package one self-contained built-ins-only launcher/runner in `src/services/updates/`. A short local facade hc exec copies it to `.customizations/update-runner.cjs` **outside replaceable runtime** and starts detached Node with redirected stdio/unref. Return after startup acknowledgement. The runner asynchronously supervises the managed clone's existing deploy-all CLI with captured HERDR_APP_HOME/cwd and a launch token; no terminal is created.
+Package one self-contained built-ins-only launcher/runner in `src/services/updates/`. A short local facade exec call (the supported terminal-free API, explicitly on this computer) copies it to `.customizations/update-runner.cjs` **outside replaceable runtime** and starts detached Node with redirected stdio/unref. Return after startup acknowledgement. The runner asynchronously supervises the managed clone's existing deploy-all CLI with captured HERDR_APP_HOME/cwd and a launch token; no terminal is created.
 
 Keep one exclusive launch lock, one atomic `update-status.json` (token, PID, start/deadline, state, log path) and one latest `update.log`. Duplicate clicks/windows attach to the active run; never overwrite its runner/log. All supervisor code loads before deploy. Existing subprocess limits remain, plus a **30-minute overall deadline** that stops only its own local child tree. Dispatched remote work can remain uncertain; never replay it automatically.
 

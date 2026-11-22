@@ -5,6 +5,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const worker = require('../src/services/updates/update-worker.cjs');
+fs.mkdirSync(path.resolve('.artifacts'), { recursive: true });
 const base = fs.mkdtempSync(path.resolve('.artifacts/update-detach-'));
 try {
   const user = path.join(base, 'user'), root = path.join(user, '.local/share/herdr-app'), home = path.join(base, 'app home');

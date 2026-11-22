@@ -158,6 +158,42 @@ a person who has established that no local/remote update remains active should
 remove that one stale lock. Never delete `.customizations/deploy.lock` to force an
 update, reset a checkout or replay an uncertain remote request.
 
+### Trying the row after merge
+
+These are maintainer actions, **not agent tests**. Do not install from an unmerged
+feature branch or a crew worktree. Keep Node 20+, Git, npm and hc on Core's PATH;
+existing host/A1 compatibility gates still apply.
+
+1. After merge, create the ordinary main clone at `~/.local/share/herdr-app` if
+   absent, or ensure its existing source is clean main of this repository. Run
+   `npm run deploy:all` there; it fetches/fast-forwards and performs the first
+   installation, including the new row. This command updates eligible peers too.
+   Do not run npm install/prepare, switch an unsafe clone, or deploy automatically.
+2. Open **Custom Settings → Updates**. Beside unchanged Herdr/herdr-core rows,
+   **Customizations <short revision>** should use the same typography and one
+   button. **Check now** must disable as Checking… and show **Up to date. Checked
+   at HH:MM.** when installed and published main match. A peer skip/failure instead
+   keeps the desktop revision and log-path warning; read its reasons before trying
+   those machines. Do not erase status files just to manufacture a clean result.
+3. **Update available:** when published main advances after that installation,
+   click Check now (or wait for the mounted hourly check); the button becomes
+   Update and the existing Settings/compact More dots light. A first installation
+   using ordinary `npm run deploy` instead of deploy:all legitimately has unknown
+   revision and also offers Update after checking; do not fabricate a receipt.
+   Click Update once, navigate away/reopen Settings during Updating…, and verify
+   one operation completes through the mod reload. Confirm terminals/focus stay
+   unchanged and only eligible existing peer shell installations were updated.
+4. **Failure state:** with no update running, temporarily disconnect this
+   desktop's network, click Check now and expect **Check failed. Try again.**
+   Restore connectivity and check again. No deploy/rollback is needed to exercise
+   this state. A previous confirmed available dot stays lit during failed checks.
+5. Inspect the captured home's `.customizations/update-status.json` and
+   `update.log`, and `deploy-all-result.json` for per-machine details/backup IDs.
+   A real desktop deploy failure or timeout is not a test to induce in the live
+   home: follow the manual recovery/unknown-outcome rules above. UI geometry,
+   detached survival under the actual Core, permissions and real peer behavior
+   remain observations for the maintainer, not conclusions from fixture tests.
+
 ### One-time new peer setup
 
 Do these manual steps **on the new peer**, not by running deploy:all. Install Git,

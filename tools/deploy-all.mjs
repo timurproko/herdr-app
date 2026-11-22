@@ -80,13 +80,14 @@ export function resultRecorder(env = process.env, dryRun = false) {
   if (dryRun) return () => {};
   const home = env.HERDR_APP_HOME || path.join(os.homedir(), '.config/herdr-app');
   const file = path.join(home, '.customizations/deploy-all-result.json');
-  let desktop = null;
+  let desktop = null, localRecorded = false;
   try { desktop = JSON.parse(fs.readFileSync(file, 'utf8')).desktop ?? null; } catch {}
   return (results, complete = false, error = null) => {
     const local = results.find(row => row.machine === 'local');
-    if (local && ['deployed', 'already current'].includes(local.action)) {
+    if (local && ['deployed', 'already current'].includes(local.action) && !localRecorded) {
       const manifest = manifestDigest(home);
       desktop = { commit: local.commit, manifest, verified: Boolean(manifest), at: Date.now() };
+      localRecorded = true;
     } else if (local?.action === 'failed' || error) {
       desktop = desktop ? { ...desktop, verified: false } : null;
     }

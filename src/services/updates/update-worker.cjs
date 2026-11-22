@@ -56,7 +56,36 @@ function inspect(home, { now = Date.now, isAlive = alive } = {}) {
     atomic(p.status, job); unlock(p, job.token);
   }
   if (job?.state === 'running' && (now() > job.deadline || (job.phase !== 'starting' && !isAlive(job.pid)) || (job.phase === 'starting' && now() - job.started > 5000))) job = { ...job, state: 'unknown' };
-  return { job, result, check: read(p.check), revision: installedRevision(p, result), locked: fs.existsSync(p.lock), log: p.log };
+  const revision = installedRevision(p, result);
+  let check = read(p.check);
+  if (check?.target) check = { ...check, available: revision !== check.target && (!check.error || check.available === true) };
+  return { job, result, check, checking: (read(p.checkLock)?.until || 0) > now(), revision, locked: fs.existsSync(p.lock), log: p.log };
+}
+function checkMain(home, { force = false, now = Date.now, run = command, env = process.env } = {}) {
+  const p = files(home), snapshot = inspect(home, { now });
+  if (snapshot.job?.state === 'running') return snapshot;
+  const previous = snapshot.check || {};
+  const afterUpdate = ['complete', 'partial'].includes(snapshot.job?.state) && (snapshot.job.finished || 0) > (previous.attempted || 0);
+  if (!force && !afterUpdate && previous.attempted && now() - previous.attempted < HOUR) return snapshot;
+  fs.mkdirSync(p.dir, { recursive: true });
+  const held = read(p.checkLock);
+  if (held && held.until < now() && read(p.checkLock)?.token === held.token) fs.unlinkSync(p.checkLock);
+  let fd;
+  try { fd = fs.openSync(p.checkLock, 'wx'); }
+  catch (error) { if (error.code === 'EEXIST') return inspect(home, { now }); throw error; }
+  const token = randomUUID(); fs.writeFileSync(fd, JSON.stringify({ token, until: now() + 20000 })); fs.closeSync(fd);
+  const attempted = now();
+  try {
+    // Persist attempts before I/O: a failed request cannot create an hourly loop.
+    atomic(p.check, { ...previous, attempted });
+    const reply = run('git', ['ls-remote', '--', REPOSITORY, 'refs/heads/main'], { timeout: 15000, env: { ...env, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never' } });
+    const match = /^([a-f0-9]{40,64})\s+refs\/heads\/main\s*$/i.exec(reply.stdout.trim());
+    if (reply.code !== 0 || !match) throw Error('Check failed. Try again.');
+    atomic(p.check, { attempted, checked: now(), target: match[1], available: snapshot.revision !== match[1], error: null });
+  } catch {
+    atomic(p.check, { ...previous, attempted, error: 'Check failed. Try again.' });
+  } finally { if (read(p.checkLock)?.token === token) fs.unlinkSync(p.checkLock); }
+  return inspect(home, { now });
 }
 function noRedirect(file) {
   // Covers junctions as well as symlinks, including existing parent components.
@@ -158,6 +187,7 @@ async function launch(home, { spawn = cp.spawn, source = fs.readFileSync(__filen
   const token = randomUUID();
   fs.writeFileSync(fd, JSON.stringify({ token })); fs.closeSync(fd);
   let job = { token, state: 'running', phase: 'starting', started: now(), deadline: now() + DEADLINE, log: p.log };
+  let dispatched = false;
   try {
     atomic(p.runner, source); fs.writeFileSync(p.log, 'Starting customization update.\n'); atomic(p.status, job);
     const logFd = fs.openSync(p.log, 'a');
@@ -168,7 +198,7 @@ async function launch(home, { spawn = cp.spawn, source = fs.readFileSync(__filen
     child.unref();
     // The runner alone writes its acknowledgement; a parent write here could
     // race it and erase an already completed phase/result.
-    job.pid = child.pid;
+    job.pid = child.pid; dispatched = Number.isInteger(child.pid);
     for (let i = 0; i < 30; i++) {
       await sleep(100);
       if (failure) throw failure;
@@ -179,11 +209,12 @@ async function launch(home, { spawn = cp.spawn, source = fs.readFileSync(__filen
     atomic(p.status, { ...job, state: 'unknown', error: 'Startup acknowledgement missing; inspect log' });
     return inspect(home);
   } catch (error) {
-    atomic(p.status, { ...job, state: 'failed', error: shortError(error), finished: now() });
-    unlock(p, token); return inspect(home);
+    atomic(p.status, { ...job, state: dispatched ? 'unknown' : 'failed', error: shortError(error), finished: now() });
+    if (!dispatched) unlock(p, token);
+    return inspect(home);
   }
 }
-module.exports = { REPOSITORY, DEADLINE, HOUR, files, read, atomic, command, installedRevision, inspect, prepareClone, outcome, launch, runUpdate };
+module.exports = { REPOSITORY, DEADLINE, HOUR, files, read, atomic, command, installedRevision, inspect, checkMain, prepareClone, outcome, launch, runUpdate };
 if (require.main === module) {
   if (process.argv[2] === '--run') runUpdate(process.argv[3], process.argv[4]).catch(error => { console.error(shortError(error)); process.exitCode = 1; });
   else {
@@ -192,6 +223,7 @@ if (require.main === module) {
       if (!request.home || !path.isAbsolute(request.home)) throw Error('An absolute Herdr home is required');
       if (request.action === 'launch') return launch(request.home);
       if (request.action === 'status') return inspect(request.home);
+      if (request.action === 'check') return checkMain(request.home, { force: request.force === true });
       throw Error('Unknown update action');
     }).then(value => console.log(JSON.stringify(value))).catch(error => { console.log(JSON.stringify({ error: shortError(error) })); process.exitCode = 1; });
   }

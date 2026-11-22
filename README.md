@@ -1001,6 +1001,26 @@ adopt unknown files, replay old shell/core actions, or copy live session state.
 
 ## Update all machines
 
+**Settings → Updates → Customizations** is one row beside Herdr and herdr-core,
+showing a short installed revision and **Check now** or **Update**. Update uses the
+existing all-machine command through an independent, finite runner: full deploy
+on this desktop and shell deploy on eligible peers. Its desktop source is only
+`~/.local/share/herdr-app` (created on first Update if absent), never the developer
+checkout or a crew worktree. Checks compare published main, run hourly while
+Custom is mounted and raise the existing Custom dots; they never deploy or probe
+peers. Unknown/changed revision evidence is shown honestly as revision unknown.
+
+The latest status, result and log live under the selected Herdr home's
+`.customizations/`: `update-status.json`, `deploy-all-result.json`,
+`update-check.json` and `update.log`. Reload/closing Settings does not cancel or
+repeat an update. Peer skips/failures retain the successful desktop revision and
+show one short log-path warning; desktop failure names the cause and documented
+manual rollback. Missing results/deadlines say outcome unknown and block replay
+while the prior process/lock is unresolved. There is no per-machine UI, news,
+rollback button, automatic rollback, daemon, scheduler or job history. See
+[first installation and real-app checks](docs/COMMANDS.md#trying-the-row-after-merge).
+The label is defined once in `src/shared/customization-update-model.js`.
+
 Run `npm run deploy:all` from this checkout on the desktop. It requires **clean main**
 (including untracked files), fetches origin and refuses the entire run if ahead of
 or diverged from origin/main. It never stashes, resets or switches branches.
@@ -1024,8 +1044,10 @@ full deploy there. To set up a new peer once, **on that machine**, clone
 first installation and shell-profile wiring are manual steps; see
 [remote setup](docs/COMMANDS.md#one-time-new-peer-setup) and
 [installed shell reporting](#installed-shell-reporting). deploy:all never clones,
-installs tools or repairs checkouts. It records source commits in output, not
-installed Git provenance, and never restarts live shells or agents.
+installs tools or repairs checkouts. Its output table alone is not
+installed Git provenance; the latest result sidecar additionally ties a successful
+desktop commit to its installed ownership-manifest digest. It never restarts live
+shells or agents.
 
 ## Installed shell reporting
 

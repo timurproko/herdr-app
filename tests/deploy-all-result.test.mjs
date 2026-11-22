@@ -22,6 +22,7 @@ try {
     if (command !== 'hc') return original(command, args, options);
     if (args[0] === 'machine') return { code: 0, stdout: JSON.stringify({ machines: [{ name: 'bad', state: 'connected' }, { name: 'off', state: 'offline' }] }) };
     seen.push(read()); // local completion must be durable before peer dispatch
+    fs.writeFileSync(manifest, JSON.stringify({ version: 2, id: 'custom', files: { later: 'other deployment' } }));
     return { code: 1, stdout: 'transport failed' };
   };
   result = deployAll([], f); saved = read();
@@ -29,6 +30,8 @@ try {
   assert.equal(seen[0].desktop.verified, true);
   assert.deepEqual(saved.results.map(row => row.action), ['deployed', 'failed', 'skipped']);
   assert.equal(saved.desktop.verified, true, 'peer failure preserves desktop success');
+  assert.equal(saved.desktop.manifest, seen[0].desktop.manifest, 'peer callbacks cannot restamp another deployment as the earlier desktop SHA');
+  assert.notEqual(saved.desktop.manifest, manifestDigest(home));
   const bytes = fs.readFileSync(file);
   deployAll(['--dry-run'], f); assert.deepEqual(fs.readFileSync(file), bytes);
   f.run = (command, args, options) => command === 'git' || command === 'hc' ? original(command, args, options) : { code: 1, stdout: '', stderr: 'fixture installer failed' };
