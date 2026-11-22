@@ -1016,6 +1016,8 @@ The latest status, result and log live under the selected Herdr home's
 update started on Updates remains visible through reload. Explicit dismissal still
 closes Settings; a new opening honors its requested page or starts on Look.
 The remembered section is dialog-scoped runtime state, never a portable preference.
+Shared launch feedback keeps the row on Updating before the detached runner's
+receipt arrives; a lost receipt becomes outcome unknown, not stale Up to date.
 Reload/closing Settings does not cancel or repeat an update. Peer skips/failures retain the successful desktop revision and
 show one short matching-details warning (`update.log` for Settings runs,
 `deploy-all-result.json` for ordinary CLI runs without a captured log); desktop

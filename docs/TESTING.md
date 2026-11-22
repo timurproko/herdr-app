@@ -76,7 +76,14 @@ links its matching result, not a missing/stale Settings log. It also runs the re
 CLI with mocked definite installer failure and eight-minute timeout, then checks
 failure/recovery details and launch blocking after a successful main check.
 `tests/update-row.test.mjs` also covers the shared native/Custom 300 ms/3000 ms
-confirmation path, success/expiry and unchanged busy/error/unknown states.
+confirmation path, success/expiry and unchanged busy/error/unknown states. Fresh
+module graphs and owners simulate replacement before the launch receipt, during
+running work and just after completion. Shared provisional launch feedback stays
+Updating until durable status acknowledges it, or becomes unknown after the
+22-second transport bound; obsolete replies cannot overwrite newer receipts.
+The real Settings controller harness covers the same section-and-row flow together,
+including final success, partial, failure and unknown outcomes. No fixture launches
+a real update or demonstrates native process survival.
 `tests/update-markers.test.mjs` uses separate Settings/header/footer/menu VM
 contexts, the real controller/helper and a changed-shared-value refresh queue:
 manual checks reach already-mounted roots, and all native/Custom combinations

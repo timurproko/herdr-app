@@ -37,7 +37,10 @@ const SETTINGS_CONTENT_INSET = 16;
 const SETTINGS_NAV_KEY = 'custom.settings.navigation';
 const navigationRecords = () => {
   const value = shared(SETTINGS_NAV_KEY);
-  return value?.version === 1 && Array.isArray(value.dialogs) ? value.dialogs.slice(-8) : [];
+  return value?.version === 1 && Array.isArray(value.dialogs) ? value.dialogs.slice(-8)
+    .filter(record => typeof record?.overlay === 'string' && record.overlay.length > 0 && record.overlay.length <= 128 &&
+      typeof record?.section === 'string' && record.section.length <= 64)
+    .map(({ overlay, section }) => ({ overlay, section })) : [];
 };
 
 const SECTIONS = settingsSections(window()?.platform);
@@ -195,7 +198,7 @@ export default class Settings extends View {
     if (this.pluginClosed || !SECTIONS.some(s => s.id === section && sectionAvailable(s))) return;
     this.section = section;
     if (this.settingsOverlay) setShared(SETTINGS_NAV_KEY, { version: 1, dialogs: [
-      ...navigationRecords().filter(record => record?.overlay !== this.settingsOverlay && typeof record?.overlay === 'string' && typeof record?.section === 'string').slice(-7),
+      ...navigationRecords().filter(record => record.overlay !== this.settingsOverlay).slice(-7),
       { overlay: this.settingsOverlay, section },
     ] });
   }
@@ -204,6 +207,7 @@ export default class Settings extends View {
   // overlay or erase the section before the replacement initializes.
   close() {
     this.pluginClosed=true;this.pluginConfirm=null;
+    this.customUpdateClosed = true;
   }
 
   dismiss() {

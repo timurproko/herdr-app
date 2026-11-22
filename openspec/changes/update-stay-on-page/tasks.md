@@ -8,5 +8,5 @@
 
 ## 2. The update row stays truthful from replacement through the runner's final result
 
-- [ ] 2.1 Preserve bounded pending-launch feedback in the existing shared controller state before awaiting transport and reconcile authoritative status after remount; extend the row VM fixture to replace the owner before launch acknowledgement and assert disabled Updating feedback with no duplicate launch.
-- [ ] 2.2 Exercise replacement while running and just finished, post-success revision/main reconciliation, failure/partial/unknown results, superseded replies and existing visible-page polling guards in row/controller VM fixtures; run both targeted suites with Node's experimental VM modules flag and document fixture-only limits.
+- [x] 2.1 Preserve bounded pending-launch feedback in the existing shared controller state before awaiting transport and reconcile authoritative status after remount; extend the row VM fixture to replace the owner before launch acknowledgement and assert disabled Updating feedback with no duplicate launch.
+- [x] 2.2 Exercise replacement while running and just finished, post-success revision/main reconciliation, failure/partial/unknown results, superseded replies and existing visible-page polling guards in row/controller VM fixtures; run both targeted suites with Node's experimental VM modules flag and document fixture-only limits.

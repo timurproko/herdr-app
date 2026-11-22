@@ -18,8 +18,9 @@ export function customizationRowState(snapshot, { busy = null, error = null, now
   const job = snapshot?.job, check = snapshot?.check;
   const details = snapshot?.details || (snapshot?.log ? { kind: 'log', path: snapshot.log } : null);
   const log = details ? ` ${details.kind === 'log' ? 'Log' : 'Details'}: ${details.path}` : '';
-  const unknown = job?.state === 'unknown' || (job?.state === 'running' && job.deadline < now);
-  const running = busy === 'launch' || (job?.state === 'running' && !unknown);
+  const launch = snapshot?.launch;
+  const unknown = (launch && launch.deadline < now) || job?.state === 'unknown' || (job?.state === 'running' && job.deadline < now);
+  const running = busy === 'launch' || ((launch || job?.state === 'running') && !unknown);
   const checking = busy === 'check' || snapshot?.checking;
   const freshAfterFailure = !job?.finished || (check?.attempted || 0) > job.finished;
   const canUpdate = !unknown && !running && !snapshot?.locked && !check?.error && updateAvailable(snapshot) && (job?.state !== 'failed' || freshAfterFailure);

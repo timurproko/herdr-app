@@ -21,7 +21,7 @@ const find = (tree, id) => nodes(tree).find(el => el.attrs.id?.[0] === id);
 const marker = (tree, size) => nodes(tree).find(el => el.attrs.bg?.[0] === '#8844cc' && (el.attrs.size?.[0] === size || el.attrs.w?.[0] === size));
 const signature = node => JSON.stringify(node?.attrs);
 const store = new Map(), copies = [], refreshes = new Set(), jobs = [], calls = [];
-let width = 248, nativeReady = false, coreReady = false, managed = false, failExec = false;
+let width = 248, nativeReady = false, coreReady = false, managed = false, failExec = false, transport = null;
 const clock = Date.now();
 class Clock extends Date { static now() { return clock; } }
 let next = { revision: 'a'.repeat(40), check: { checked: 1000, available: false } };
@@ -50,7 +50,7 @@ async function mount(kind, props) {
       store.set(key, JSON.parse(encoded));
       for (const root of copies) refreshes.add(root);
     },
-    exec: async (_command, args) => { const request = JSON.parse(args[1]); calls.push({ kind, ...request }); if (failExec) throw Error('fixture transport unavailable'); return { code: 0, stdout: JSON.stringify(next) }; },
+    exec: async (_command, args) => { const request = JSON.parse(args[1]); calls.push({ kind, ...request }); if (failExec) throw Error('fixture transport unavailable'); return transport ? transport(request) : { code: 0, stdout: JSON.stringify(next) }; },
     keys: () => [], spaces: () => [], terminals: () => [], panes: () => [], agents: () => [],
     readTextFile: async () => null,
     run: noop, openOverlay: () => assert.fail('No replacement opens a dialog'),
@@ -211,4 +211,47 @@ const bounded = await mount('settings', settings.props); await settle();
 find(bounded.tree, 'st-s-updates').attrs.on_click[0]({}, bounded.cx); await settle();
 assert.equal(store.get(navKey).dialogs.length, 8, 'runtime records stay bounded');
 retire(bounded);
+// Actual Settings + row callbacks survive an update's replacement, including
+// the interval before the old launch call has delivered its receipt.
+const available = { revision: 'a'.repeat(40), check: { attempted: clock - 10, checked: clock - 10, available: true } };
+store.set(KEY, available); next = available;
+const initiating = await mount('settings', settings.props); await settle();
+assert.equal(initiating.view.section, 'updates');
+let resolveLaunch;
+const launchReceipt = new Promise(resolve => { resolveLaunch = resolve; });
+transport = request => request.action === 'launch' ? launchReceipt : { code: 0, stdout: JSON.stringify(next) };
+find(initiating.tree, 'st-check-customizations').attrs.on_click[0](null, initiating.cx);
+const discardedJobs = jobs.splice(0); retire(initiating);
+const replacing = await mount('settings', settings.props); await settle();
+const rowButton = copy => find(copy.tree, 'st-check-customizations');
+const text = copy => nodes(copy.tree).flatMap(node => node.kids).filter(value => typeof value === 'string').join(' ');
+assert.equal(replacing.view.section, 'updates');
+assert.ok(rowButton(replacing).kids.includes('Updating…'));
+assert.equal(rowButton(replacing).attrs.disabled[0], true);
+const launchCount = calls.filter(call => call.action === 'launch').length;
+rowButton(replacing).attrs.on_click[0](null, replacing.cx); await settle();
+assert.equal(calls.filter(call => call.action === 'launch').length, launchCount);
+const running = { ...available, locked: true, job: { token: 'settings-update', started: clock, state: 'running', deadline: clock + 1800000 } };
+next = running; resolveLaunch({ code: 0, stdout: JSON.stringify(running) }); await Promise.all(discardedJobs);
+replacing.timers.find(timer => timer.ms === 1000).fn(replacing.cx); await settle();
+assert.ok(rowButton(replacing).kids.includes('Updating…'));
+retire(replacing);
+const during = await mount('settings', settings.props); await settle();
+assert.equal(during.view.section, 'updates'); assert.ok(rowButton(during).kids.includes('Updating…'));
+const final = { revision: 'b'.repeat(40), job: { ...running.job, state: 'complete', finished: clock }, check: { attempted: clock + 1, checked: clock + 1, available: false } };
+next = final; during.timers.find(timer => timer.ms === 1000).fn(during.cx); await settle();
+assert.match(text(during), /herdr-app-custom bbbbbbb/); assert.match(text(during), /Up to date\. Checked at/);
+retire(during);
+const justFinished = await mount('settings', settings.props); await settle();
+assert.equal(justFinished.view.section, 'updates'); assert.match(text(justFinished), /herdr-app-custom bbbbbbb/);
+assert.match(text(justFinished), /Up to date/); retire(justFinished);
+for (const [state, expected] of [['partial', /some machines skipped or failed/], ['failed', /Update failed.*documented rollback/], ['unknown', /outcome unknown/]]) {
+  store.set(KEY, running); next = { ...final, job: { ...final.job, state, error: 'fixture result' } };
+  const result = await mount('settings', settings.props);
+  assert.equal(result.view.section, 'updates'); assert.ok(rowButton(result).kids.includes('Updating…'));
+  await settle(); assert.match(text(result), expected); assert.ok(!text(result).includes('Up to date'));
+  retire(result);
+}
+assert.equal(closes(), beforeReplacement + 1, 'update replacements never close/reopen Settings');
+transport = null;
 console.log('PASS: separate Settings/header/footer/menu sandboxes, real init/navigation, fresh-generation section restoration and dismissal; all marker combinations and native markup parity. Expanded-footer failure NOT reproduced; no native UI exercised.');
