@@ -73,6 +73,23 @@ ownership. Use README's exact installed profile lines; no source checkout is nee
 by the running shells. Shell rollback also accepts an explicit home after its ID.
 Mixed/full journals, later edits and newer ownership/preference records are refused.
 
+## Watched all-machine deployment
+
+`npm run deploy:all` requires clean main on the desktop, including untracked files.
+It fetches origin, refuses ahead/diverged or unsafe source before contacting peers,
+then fast-forwards and uses the existing full deploy. It never stashes or resets.
+
+Peers come from `hc machine ls --json`, not terminal membership. Connected eligible
+peers run a supplied Node worker through `hc exec --on <machine> --timeout 600 --json -- node -e ...`,
+without creating a terminal. The worker checks the existing checkout at
+`~/.local/share/herdr-app`, fetches and fast-forwards clean non-ahead main of this
+repository, then runs `npm run deploy:shell` into that peer's default
+`~/.config/herdr-app` (remote HERDR_APP_HOME overrides are deliberately not used).
+Offline peers, absent tools/checkouts, unsafe source and unreadable ownership are
+skipped with reasons. Full desktop ownership is skipped as **needs its own full deploy**.
+A failed local/remote deployment does not prevent later peer attempts. There is no
+remote cloning, tool installation, checkout repair, terminal input or process restart.
+
 ## Disable, enable, rollback or remove
 
 ```powershell

@@ -31,10 +31,10 @@ try {
   const f = fixture(), next = f.advance();
   let r = deployAll([], f); assert.equal(r.code, 0); assert.equal(git(f.root, 'rev-parse', 'HEAD'), next);
   assert.equal(r.results[0].commit, next); assert.equal(r.results[0].backup, '123-45');
-  const npm = f.calls.find(c => c.command !== 'git'); assert.equal(npm.cwd, f.root); assert.equal(npm.env.HERDR_APP_HOME, f.env.HERDR_APP_HOME);
+  const npm = f.calls.find(c => ['npm','cmd.exe'].includes(c.command)); assert.equal(npm.cwd, f.root); assert.equal(npm.env.HERDR_APP_HOME, f.env.HERDR_APP_HOME);
   assert.deepEqual([npm.command,npm.args], worker.npmCommand('deploy'));
   f.calls.length = 0; r = deployAll([], f); assert.equal(r.code, 0);
-  assert.ok(f.calls.some(c => c.command !== 'git'), 'equal HEAD still invokes installer');
+  assert.ok(f.calls.some(c => ['npm','cmd.exe'].includes(c.command)), 'equal HEAD still invokes installer');
   assert.deepEqual(worker.npmCommand('deploy:shell', 'win32'), ['cmd.exe', ['/d', '/s', '/c', 'npm run deploy:shell']]);
   assert.deepEqual(worker.npmCommand('deploy:shell', 'linux'), ['npm', ['run', 'deploy:shell']]);
   const pkg = JSON.parse(fs.readFileSync(path.join(project, 'package.json')));

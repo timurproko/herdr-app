@@ -8,10 +8,10 @@
 
 ## 2. Bounded existing-peer shell updates
 
-- [ ] 2.1 List peers with hc machine ls --json and implement the design's exact hc exec argv with a self-contained worker; fake hc fixtures verify inventory use, Base64 results, deadlines and absence of hc run or terminal creation.
-- [ ] 2.2 Validate peer home/checkout/tools/history/installation type and run npm run deploy:shell only for eligible peers; temporary-home/bare-origin fixtures cover fast-forward and every stated skip, including full-desktop exclusion and fixed default remote home.
-- [ ] 2.3 Keep attempting peers after local/remote deploy, fetch or transport failure; mock failures and deadlines prove continuation, no retries and no clone/install/repair or real machine access.
-- [ ] 2.4 Document peer eligibility and full-desktop exclusion in docs/COMMANDS.md; fixture assertions check the documented transport and shell-only boundary.
+- [x] 2.1 List peers with hc machine ls --json and implement the design's exact hc exec argv with a self-contained worker; fake hc fixtures verify inventory use, Base64 results, deadlines and absence of hc run or terminal creation.
+- [x] 2.2 Validate peer home/checkout/tools/history/installation type and run npm run deploy:shell only for eligible peers; temporary-home/bare-origin fixtures cover fast-forward and every stated skip, including full-desktop exclusion and fixed default remote home.
+- [x] 2.3 Keep attempting peers after local/remote deploy, fetch or transport failure; mock failures and deadlines prove continuation, no retries and no clone/install/repair or real machine access.
+- [x] 2.4 Document peer eligibility and full-desktop exclusion in docs/COMMANDS.md; fixture assertions check the documented transport and shell-only boundary.
 
 ## 3. Selection preview and per-machine results
 

@@ -37,6 +37,7 @@ export function fixture() {
   const run = (command, args, opts) => {
     calls.push({ command, args, ...opts });
     if (command === 'git') return worker.runCommand(command, args, opts);
+    if (command === 'hc' && args[0] === 'machine') return { code: 0, stdout: '{"machines":[]}' };
     if (command === 'npm' || command === 'cmd.exe') return { code: 0, stdout: 'npm banner\n' + JSON.stringify({ changed: 4, removed: 0, backup: '123-45', patches: null }), stderr: '' };
     throw Error(`Unexpected process: ${command} ${args}`);
   };

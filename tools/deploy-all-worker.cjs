@@ -32,7 +32,7 @@ function checkSource(root, options = {}) {
   const git = args => gitAt(root, args, options);
   const must = (args, reason) => {
     const r = git(args);
-    if (r.code !== 0) throw Error(r.missing ? 'git is missing' : `${reason}${r.timedOut ? ' (timed out)' : ''}`);
+    if (r.code !== 0) throw Object.assign(Error(r.missing ? 'git is missing' : `${reason}${r.timedOut ? ' (timed out)' : ''}`), { failure: args[0] === 'fetch' });
     return r.stdout.trim();
   };
   const top = must(['rev-parse', '--show-toplevel'], 'not a readable Git checkout');
@@ -46,7 +46,7 @@ function checkSource(root, options = {}) {
   const before = must(['rev-parse', 'HEAD'], 'cannot read HEAD');
   const ancestor = git(['merge-base', '--is-ancestor', before, commit]);
   if (ancestor.code !== 0) {
-    if (ancestor.code !== 1) throw Error('cannot compare HEAD with origin/main');
+    if (ancestor.code !== 1) throw Object.assign(Error('cannot compare HEAD with origin/main'), { failure: true });
     const ahead = git(['merge-base', '--is-ancestor', commit, before]);
     throw Error(ahead.code === 0 ? 'checkout is ahead of origin/main' : 'checkout has diverged from origin/main');
   }
@@ -81,4 +81,36 @@ function deployCheckout(root, commit, script, { run = runCommand, env = process.
   if (!result) return { action: 'failed', reason: 'deployment returned no result; outcome unknown', commit, backup };
   return { action: result.changed || result.removed || backup || result.patches?.changed ? 'deployed' : 'already current', commit, backup };
 }
-module.exports = { TIMEOUT, runCommand, repositoryOrigin, npmCommand, gitAt, checkSource, fastForward, deployResult, deployCheckout };
+const SHELL_PATHS = ['bash-cwd-loader.sh', 'bash-cwd.sh', 'powershell-cwd.ps1', 'revision']
+  .map(name => `.customizations/runtime/shell/${name}`);
+function runRemote({ dryRun = false } = {}, { home = os.homedir(), run = runCommand, env = process.env, log = console.log, ...options } = {}) {
+  const root = path.join(home, '.local/share/herdr-app');
+  const appHome = path.join(home, '.config/herdr-app');
+  const skip = reason => ({ action: 'skipped', reason });
+  if (!fs.existsSync(root)) return skip('checkout missing: ~/.local/share/herdr-app');
+  const manifest = path.join(appHome, '.customizations/manifest.json');
+  try {
+    if (fs.existsSync(manifest)) {
+      const state = JSON.parse(fs.readFileSync(manifest, 'utf8'));
+      if (state.version !== 2 || state.id !== 'custom' || !state.files || typeof state.files !== 'object' || Array.isArray(state.files)) return skip('unrecognized ownership record');
+      if (state.layoutBase || Object.keys(state.files).some(name => !SHELL_PATHS.includes(name))) return skip('needs its own full deploy');
+    }
+  } catch { return skip('unreadable ownership record'); }
+  for (const [name, command, args] of [
+    ['git', 'git', ['--version']],
+    ['npm', ...(process.platform === 'win32' ? ['cmd.exe', ['/d', '/s', '/c', 'npm --version']] : ['npm', ['--version']])],
+  ]) {
+    const r = run(command, args, { env, timeout: TIMEOUT.check });
+    if (r.code !== 0) return skip(`${name} is missing or unavailable`);
+  }
+  const context = { ...options, run, env: { ...env, HERDR_APP_HOME: appHome }, log };
+  let source;
+  try { source = checkSource(root, context); }
+  catch (error) { return { action: error.failure ? 'failed' : 'skipped', reason: error.message }; }
+  if (dryRun) return { action: 'would deploy', reason: source.before === source.commit ? 'shell deploy (HEAD unchanged)' : 'fast-forward and shell deploy', commit: source.commit };
+  try {
+    fastForward(root, source.commit, context);
+    return deployCheckout(root, source.commit, 'deploy:shell', context);
+  } catch (error) { return { action: 'failed', reason: error.message, commit: source.commit }; }
+}
+module.exports = { TIMEOUT, SHELL_PATHS, runCommand, repositoryOrigin, npmCommand, gitAt, checkSource, fastForward, deployResult, deployCheckout, runRemote };
