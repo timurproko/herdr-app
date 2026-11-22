@@ -1,8 +1,9 @@
 # Testing the repository split
 
-Imported tests and tools remain unchanged, apart from neutral status-reveal labels
-and the architecture assertion's moved-guidance path. No suite was split or made
-portable. `npm test` retains the original command and is **not** the hosted CI
+The split retained imported suites, apart from neutral status-reveal labels
+and the architecture assertion's moved-guidance path. Preference-home regression
+coverage was subsequently added as described below; no imported suite was split
+or made portable. `npm test` retains the original command and is **not** the hosted CI
 selection: it includes installed Core/private-profile assumptions and Windows
 recycle operations. Do not run the broad command on a working installation just
 to reproduce hosted CI.
@@ -34,9 +35,18 @@ npm run test:ci -- --list --windows
 npm run test:ci -- --list --linux
 ```
 
-A clean `npm run build` writes only dist/. No preference example is needed: the
-build does not read preferences/pc.json. CI executes original library fixtures,
-not deploy/enable/disable/remove/rollback/preference-import operational commands.
+A clean `npm run build` writes only dist/. No preference snapshot is needed:
+shipped defaults come from `src/appearance/`, not personal host/layout/palette/theme
+backups under `<Herdr home>/preferences/`. The scaffold build fixture omits all
+snapshots and compares emitted defaults with their authored sources.
+`tests/preferences-home.test.mjs` exercises the actual source/runtime preference
+CLI files in a disposable checkout/home. A test-only Node preload isolates the
+reported user home/hostname and replaces desktop process checks; no real desktop
+or user configuration is accessed. It covers environment/default/explicit home
+selection, round trips, conflicts, open-desktop refusal and untouched legacy files.
+Both new fixtures are discovered by the existing hosted and local unit runners.
+CI otherwise executes library fixtures, not real-home
+deploy/enable/disable/remove/rollback/preference-import operational commands.
 The real gh CLI fixture uses synthetic auth and a GET-only localhost server.
 Provider/relay/Cloudflare unit transports are mocks, not live requests.
 

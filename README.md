@@ -15,7 +15,7 @@ before development. No command here builds Herdr or herdr-core.
 | Location | Owner / purpose |
 |---|---|
 | This project's `src/`, `tools/`, `tests/`, `customization.json` | Your canonical source |
-| `preferences/` | Your allowlisted durable snapshots (per-host profiles, palette, layout preferences) |
+| `<Herdr home>/preferences/` | Private durable snapshots (per-host profiles, palette, layout preferences); version in private dotfiles, not here |
 | `dist/` | Generated customization packages; ignored by version control |
 | `<Herdr home>/mods/custom-*/`, `layouts/Custom.json`, `themes/Custom.json` | Installed customization output; do not edit directly |
 | `<Herdr home>/.customizations/runtime/` | Self-contained deployed compatibility workers; no source-checkout dependency |
@@ -45,7 +45,6 @@ src/
 upstream/                  Read-only baseline hashes and migration provenance
 tools/                     Customization build, deploy, diagnostics and migrations
 tests/                     Deployment/migration tests and preserved regression suites
-preferences/               Portable palette/layout + allowlisted per-host settings
 ```
 
 `customization.json` explicitly maps feature entrypoints, assets and shared helpers.
@@ -950,15 +949,36 @@ backups**, not anonymized or public-safe exports. Account-derived usage pins and
 arbitrary plugin settings are preserved and may contain account identities,
 infrastructure identifiers, relay URLs or personal paths. Filtering is not a
 guarantee that a snapshot is free of secrets or personal information. **Never commit
-personal host snapshots (`preferences/<hostname>.json`)**, even if the exporter
-accepts them. Host snapshots are ignored; only the deliberately tracked visual
-files `layout.json`, `palette.json` and `theme.json` are exceptions.
+personal snapshots to this public repository**, even if the exporter accepts them.
 
-`preferences/theme.json` is the native-schema palette; `preferences/palette.json`
-retains picker metadata. Host files never overwrite a different computer's
-profiles. Global settings/shortcuts remain native files. The optional private
-yadm pre-commit hook calls the exporter; no pull hook imports state or restarts
-the desktop. Reconcile a palette conflict rather than overwriting it.
+Export/import use `<Herdr home>/preferences/`, where home is `HERDR_APP_HOME` or
+`~/.config/herdr-app`, matching deploy. Host files are `<lowercase-hostname>.json`.
+The same private directory holds `layout.json` (layout overrides), `palette.json`
+(picker metadata) and `theme.json` (native-schema palette). These three files are
+personal portable backups, not shipped defaults; authored defaults stay in
+`src/appearance/`. Build/deploy need none of these snapshots. Host files never
+overwrite a different computer's profiles. Global settings/shortcuts remain native
+files. Version the snapshots in private yadm/dotfiles that track the Herdr home,
+not this checkout. The optional private yadm pre-commit hook calls the exporter;
+no pull hook imports state or restarts the desktop. Reconcile a palette conflict
+rather than overwriting it.
+
+### Existing snapshots: manual relocation
+
+Tools do not read, migrate or delete old checkout host snapshots. Move a desired
+`<old checkout>/preferences/<hostname>.json` yourself into
+`<Herdr home>/preferences/<hostname>.json`; missing host files leave local profiles
+unchanged. The maintainer's existing snapshot must move from
+**`~/.config/herdr-app/customizations/preferences/pc.json`** to
+**`~/.config/herdr-app/preferences/pc.json`** (or
+**`$HERDR_APP_HOME/preferences/pc.json`** when using a nondefault home).
+
+Before updating a checkout that still tracks `preferences/layout.json`,
+`palette.json` and `theme.json`, preserve any wanted personal copies in that same
+home preference directory; this version removes their public source copies.
+Reconcile existing destination files manually, without blindly overwriting them.
+No automatic migration runs, and the checkout's entire `preferences/` directory
+remains ignored to protect any leftover personal files.
 
 ## First installation / another computer
 
@@ -1083,8 +1103,8 @@ project-specific guidance. See [third-party notices](THIRD-PARTY.md) and the
 [provenance manifest](docs/ASSET-PROVENANCE.json) for established and unrecorded
 artwork sources; original assets are retained without inferred attribution.
 
-Follow-ups remain: preference snapshot relocation to the Herdr home, webhook relay
-hardening, removing customizations from private dotfiles, and second-workstation
+Follow-ups remain: webhook relay hardening, removing customizations from private
+dotfiles, and second-workstation
 setup. Existing validation notes are historical, not claims that this import ran
 native/live checks. The A1 release caveat and optional shell integration remain
 pending as documented.

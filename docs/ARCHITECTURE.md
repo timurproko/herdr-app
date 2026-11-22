@@ -134,7 +134,7 @@ edit or a way to adopt unknown output; see [commands](COMMANDS.md).
 | Host/session state | Read through Herdr APIs; never copy session state into source. The explicitly authorized tab-move adapter is the sole Core-document write exception (below) |
 | Custom cross-mod state | Namespaced `shared("custom.*")` keys |
 | Per-mod ephemeral UI state | View fields or mod-local `localStorage` |
-| Portable user preference | Allowlisted, versioned snapshot under `preferences/` |
+| Portable user preference | Private, versioned snapshot under `<Herdr home>/preferences/`, never the checkout; shipped defaults remain in `src/appearance/` |
 | Generated deployment ownership | `.customizations/manifest.json` |
 | Recovery/rollback | `.customizations/backups/` or `recovery/` |
 

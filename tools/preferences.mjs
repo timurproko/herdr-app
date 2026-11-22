@@ -1,4 +1,4 @@
-// Durable allowlisted snapshots live with source, never inside the deployed package.
+// Private durable snapshots live in the selected Herdr home, never in source.
 import path from 'node:path';
 import cp from 'node:child_process';
 import {project} from './build.mjs';
@@ -6,7 +6,7 @@ import {syncPreferences} from './runtime/preferences.mjs';
 import {defaultHome,layoutOverrides,projectLayout} from './deploy.mjs';
 import {read,put,json,digest} from './files.mjs';
 const [action,home=defaultHome()]=process.argv.slice(2);
-const snapshotDir=path.join(project,'preferences');
+const snapshotDir=path.join(home,'preferences');
 try {
  if(!['export','import'].includes(action))throw Error('Use export or import.');
  const sidecar=path.join(home,'.customizations/layout-preferences.json'),snapshot=path.join(snapshotDir,'layout.json');
