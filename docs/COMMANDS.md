@@ -109,8 +109,15 @@ can report **already current**.
 The final table contains **Machine | Action | Source commit | Backup**. Deployed
 rows name the source SHA actually used; failed rows label it attempted, dry-run
 rows target, and unavailable values are `-`. Backup IDs come from the existing
-deploy JSON, including any printed before a failure. The command records no
-installed Git provenance. Main can advance between peers, so SHAs may differ.
+deploy JSON, including any printed before a failure. The table alone records no
+installed Git provenance. Real runs additionally write the latest atomic
+`<Herdr home>/.customizations/deploy-all-result.json` after the desktop and each
+peer, including source refusals, machine outcomes and printed backup IDs. A
+successful full desktop result records its source SHA and ownership-manifest
+digest; only matching evidence without a later local failure identifies an
+installed revision. Old or changed installations show revision unknown, never
+checkout HEAD. Peer skips/failures preserve a successful desktop revision;
+dry-run writes no result sidecar. Main can advance between peers, so SHAs may differ.
 Any failed machine, unsafe source, inventory or option error exits 1; only deployed,
 current and stated-skip outcomes exit 0. Calls have tool/fetch bounds of 15/60 seconds,
 a 600-second remote cap and a 615-second outer transport deadline. A disconnect or

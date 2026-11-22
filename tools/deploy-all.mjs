@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { createHash, randomUUID } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import worker from './deploy-all-worker.cjs';
 const directory = path.dirname(fileURLToPath(import.meta.url));
@@ -65,12 +66,48 @@ export function printSummary(results, log) {
     log([row.machine, row.action + (row.reason ? ': ' + row.reason : ''), row.commit ? row.commit + qualifier : '-', row.backup || '-'].map(cell).join(' | '));
   }
 }
+// Kept outside runtime/ and the ownership manifest: the row can reattach after
+// its own mod is replaced. Dry-run must remain byte-preserving, including here.
+export function manifestDigest(home) {
+  try {
+    const bytes = fs.readFileSync(path.join(home, '.customizations/manifest.json'));
+    const value = JSON.parse(bytes);
+    if (value.version !== 2 || value.id !== 'custom' || !value.files) return null;
+    return createHash('sha256').update(bytes).digest('hex');
+  } catch { return null; }
+}
+export function resultRecorder(env = process.env, dryRun = false) {
+  if (dryRun) return () => {};
+  const home = env.HERDR_APP_HOME || path.join(os.homedir(), '.config/herdr-app');
+  const file = path.join(home, '.customizations/deploy-all-result.json');
+  let desktop = null;
+  try { desktop = JSON.parse(fs.readFileSync(file, 'utf8')).desktop ?? null; } catch {}
+  return (results, complete = false, error = null) => {
+    const local = results.find(row => row.machine === 'local');
+    if (local && ['deployed', 'already current'].includes(local.action)) {
+      const manifest = manifestDigest(home);
+      desktop = { commit: local.commit, manifest, verified: Boolean(manifest), at: Date.now() };
+    } else if (local?.action === 'failed' || error) {
+      desktop = desktop ? { ...desktop, verified: false } : null;
+    }
+    const value = { version: 1, token: env.HERDR_UPDATE_RUN_ID || null, at: Date.now(), complete, desktop, results, error };
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const temp = `${file}.${randomUUID()}.tmp`;
+    try { fs.writeFileSync(temp, JSON.stringify(value, null, 2) + '\n'); fs.renameSync(temp, file); }
+    finally { if (fs.existsSync(temp)) fs.unlinkSync(temp); }
+  };
+}
 export function deployAll(args = [], { root = project, log = console.log, hostname = os.hostname(), ...options } = {}) {
-  const selection = parseOptions(args);
+  const record = resultRecorder(options.env || process.env, args.includes('--dry-run'));
+  let selection;
+  try { selection = parseOptions(args); }
+  catch (error) { record([], true, error.message); throw error; }
+  record([]);
   let source;
   try { source = worker.checkSource(root, options); }
   catch (error) {
     log(`local: refused: ${error.message}; nothing deployed anywhere`);
+    record([], true, error.message);
     return { code: 1, results: [] };
   }
   const results = [];
@@ -82,6 +119,7 @@ export function deployAll(args = [], { root = project, log = console.log, hostna
   if (unknown?.length) {
     results.push({ machine: '(selection)', action: 'failed', reason: `unknown machine: ${unknown.join(', ')}` });
     printSummary(results, log);
+    record(results, true);
     return { code: 1, results };
   }
   const localSelected = !selection.only || selection.only.some(name => name === 'local' || name === hostname);
@@ -94,14 +132,17 @@ export function deployAll(args = [], { root = project, log = console.log, hostna
     result = worker.deployCheckout(root, source.commit, 'deploy', { ...options, log });
   } catch (error) { result = { action: 'failed', reason: error.message, commit: source.commit }; }
   results.push({ machine: 'local', ...result });
+  record(results);
   for (const machine of machines) {
     if (selection.only && !selection.only.includes(machine.name)) results.push({ machine: machine.name, action: 'skipped', reason: 'not selected' });
     else {
       log(`${machine.name}: checking existing shell checkout`);
       results.push({ machine: machine.name, ...deployPeer(machine, { ...options, log, dryRun: selection.dryRun }) });
     }
+    record(results);
   }
   printSummary(results, log);
+  record(results, true);
   return { code: results.some(r => r.action === 'failed') ? 1 : 0, results };
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {

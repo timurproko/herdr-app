@@ -44,20 +44,20 @@ Launch failure is reported directly, with log path if available. A definite fail
 
 ### 4. UI: one ordinary row; inexpensive dot/hourly check
 
-Proposed label: **Custom customizations**, distinct from the native app. Reuse `this.row()`, existing description typography and 112px button slot below herdr-core. No new heading/disclosure. Three normal states:
+Approved label: **Customizations**, followed by the short revision; keep it in one constant for renaming. Reuse `this.row()`, existing description typography and 112px button slot below herdr-core. No new heading/disclosure. Three normal states:
 
 ```text
 Herdr 0.1.16                   [What's new] [Check now]
   Up to date. Checked at 17:41.
 herdr-core 0.1.21                          [Check now]
   Up to date. Checked at 17:41.
-Custom customizations a1b2c3d              [Check now]
+Customizations a1b2c3d                     [Check now]
   Up to date. Checked at 17:41.
 
-Custom customizations a1b2c3d                 [Update]
+Customizations a1b2c3d                        [Update]
   Update available.
 
-Custom customizations a1b2c3d              [Check now]
+Customizations a1b2c3d                     [Check now]
   Check failed. Try again.
 ```
 

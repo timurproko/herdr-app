@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Single Custom customization update row
-Custom Settings Updates SHALL retain its native rows and add one Custom customizations row with a short verified installed revision or revision unknown, a short status and one Check now or Update button. It SHALL NOT add machine rows, news, settings or rollback controls. Checking and updating SHALL disable only that row's action.
+Custom Settings Updates SHALL retain its native rows and add one Customizations row with a short verified installed revision or revision unknown, a short status and one Check now or Update button. It SHALL NOT add machine rows, news, settings or rollback controls. Checking and updating SHALL disable only that row's action.
 
 #### Scenario: Current or newer published main
 - **WHEN** a successful check compares the verified desktop installation with published main
