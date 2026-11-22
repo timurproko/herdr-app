@@ -23,7 +23,7 @@ export function customizationRowState(snapshot, { busy = null, error = null, now
   const checking = busy === 'check' || snapshot?.checking;
   const freshAfterFailure = !job?.finished || (check?.attempted || 0) > job.finished;
   const canUpdate = !unknown && !running && !snapshot?.locked && !check?.error && updateAvailable(snapshot) && (job?.state !== 'failed' || freshAfterFailure);
-  let description;
+  let description, current = false;
   if (running) description = 'Updating all machines…';
   else if (unknown) description = `Update outcome unknown${job?.error ? `: ${job.error}` : ''}. Inspect ${details?.kind === 'result' ? 'details' : 'log'}: ${details?.path || 'unavailable'}`;
   else if (error) description = error;
@@ -32,7 +32,10 @@ export function customizationRowState(snapshot, { busy = null, error = null, now
   else if (snapshot?.partial || job?.state === 'partial') description = `Desktop updated; some machines skipped or failed.${log}`;
   else if (['complete', 'partial'].includes(job?.state) && (check?.attempted || 0) < job.finished) description = 'Updated. Check now.';
   else if (updateAvailable(snapshot)) description = 'Update available.';
-  else if (check?.checked && snapshot?.revision) description = `Up to date. Checked at ${at(check.checked)}.`;
+  else if (check?.checked && snapshot?.revision) {
+    description = `Up to date. Checked at ${at(check.checked)}.`;
+    current = check.available === false && !snapshot?.locked;
+  }
   else description = 'Not checked.';
-  return { title, description, action: canUpdate ? 'launch' : 'check', label: running ? 'Updating…' : checking ? 'Checking…' : canUpdate ? 'Update' : 'Check now', enabled: !busy && !running && !checking };
+  return { title, description, current, action: canUpdate ? 'launch' : 'check', label: running ? 'Updating…' : checking ? 'Checking…' : canUpdate ? 'Update' : 'Check now', enabled: !busy && !running && !checking };
 }

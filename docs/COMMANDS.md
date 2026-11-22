@@ -197,7 +197,11 @@ existing host/A1 compatibility gates still apply.
 2. Open **Custom Settings → Updates**. Beside unchanged Herdr/herdr-core rows,
    **herdr-app-custom <short revision>** should use the same typography and one
    button. **Check now** must disable as Checking… and show **Up to date. Checked
-   at HH:MM.** when installed and published main match. A peer skip/failure instead
+   at HH:MM.** when installed and published main match. Its button briefly shows
+   disabled **✓ Up to date** using the native recent-request window: the request
+   timestamp is refreshed every 300 ms while checking and expires after 3000 ms
+   of age, then the button returns to Check now without erasing the check time.
+   A peer skip/failure instead
    keeps the desktop revision and matching log/result-path warning; read its reasons before trying
    those machines. Do not erase status files just to manufacture a clean result.
 3. **Update available:** when published main advances after that installation,
@@ -218,6 +222,58 @@ existing host/A1 compatibility gates still apply.
    home: follow the manual recovery/unknown-outcome rules above. UI geometry,
    detached survival under the actual Core, permissions and real peer behavior
    remain observations for the maintainer, not conclusions from fixture tests.
+
+### Read-only capture of a missing update dot
+
+Before pressing **Update**, leave Settings → Updates visible with **Update
+available.** and the expanded footer Settings icon in view. Merging a source change
+puts published main ahead of the installed build, providing the next natural
+reproduction; do not deploy first or alter any status/receipt/shared file.
+
+From a checkout containing this inspector, run
+`node tools/inspect-update-markers.mjs .artifacts/update-markers-before-update`.
+An optional second argument selects the actual Herdr home; otherwise it uses
+`HERDR_APP_HOME` or `~/.config/herdr-app`. It issues only **status, shot, status**
+to the already-running desktop and fails if none is listening. It does not start
+a desktop, install a diagnostic mod, open an overlay, check or deploy. Output is
+`capture.json` and `desktop.png` under the checkout's ignored `.artifacts/`;
+no live-home file is written. Keep captures private: they contain local paths,
+update results, window status and a screenshot of your desktop.
+
+Read the capture in this order:
+
+1. Compare the before/after `published.check.available` from the selected
+   `shared.json` key `custom.customization-update` with
+   `.customizations/update-check.json` (`persistedCheck`), their checked/attempted
+   times and any check error. Different facts indicate publication/persistence
+   lag, a concurrent status publication or a different selected home; they do not
+   prove a rendering problem. Both samples true rule out **persisted** false
+   availability at those sampling times, not stale in-memory state at render time.
+2. Inspect `status.layout`, zoom/errors, `footerConfiguration` and
+   `savedLayoutState`. The expected Custom footer references
+   `custom-workspace-chrome` with `{footer:true}`. A sidebar width under 160 selects
+   More; an expanded sidebar selects icon-only footer items. Verify against the
+   screenshot, because saved layout/state is not a live geometry API. Source hashes
+   and relevant predicate lines identify the installed bytes and whether they
+   differ from this checkout; differing hashes alone are not a diagnosis.
+3. In `desktop.png`, inspect the Settings gear, the Updates navigation item and
+   the Update-available row **in the same frame**. The native-ready and Custom-ready
+   circle paths are identical within each Custom surface: footer circle is 6px at
+   top 2 / right 2 of its relative icon target; navigation is 7×7px, radius 4. Scale
+   logical pixels by status zoom. Look for clipping at the target/rail boundary,
+   another surface covering the corner, or no contrast with the background.
+   `configuredAppearance` supplies the configured palette, not guaranteed runtime
+   theme colors. Do not infer a successful draw from the predicate alone.
+4. **Important limit:** Herdr 0.1.16's supported `status`/`ls`/`shot` CLI exposes
+   neither a mod render tree nor a last-render timestamp/in-memory shared read.
+   The screenshot proves what the visible footer contained, not whether an absent
+   circle was never emitted, was clipped/covered, or belonged to an older render.
+   This tool deliberately reports last-render availability as **unknown**. These
+   remaining possibilities cannot be distinguished retrospectively by pretending
+   disk state is render state; preserve this capture for a separately authorized
+   runtime-instrumentation investigation if necessary. Do **not** use
+   `tools/inspect-live.mjs` for this read-only procedure: it installs a temporary mod
+   and writes a receipt into the live home.
 
 ### One-time new peer setup
 

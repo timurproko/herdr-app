@@ -26,8 +26,9 @@ import { machinePicker } from './machine-picker.js';
 import { initPermissions, reloadPermissions, corePage, coreHasChanges, coreEditorActions } from './permissions.js';
 
 import { M, sectionAction, sectionRow, modalFooter } from './modal-layout.js';
-import { initCustomizationUpdates, refreshCustomizationUpdates, customizationUpdateAvailable } from './customization-updates.js';
+import { initCustomizationUpdates, refreshCustomizationUpdates, customizationUpdateAvailable, customizationUpdateSnapshot } from './customization-updates.js';
 import { customizationUpdateRow } from './customization-update-row.js';
+import { initUpdateCheckFeedback, updateCheckSlot } from './update-check-feedback.js';
 
 const I = (name) => `mods/custom-settings/${name}.svg`;
 const SETTINGS_NAV_WIDTH = 176;
@@ -120,12 +121,10 @@ export default class Settings extends View {
     });
     // After "Check now": follow the look (the answer comes from the app), then
     // "Up to date" for a moment.
-    cx.timer.every(300, (cx) => {
-      if (!this.asked) return;
-      if (updates().checking) this.asked = Date.now();
-      else if (Date.now() - this.asked >= 3000) this.asked = null;
-      cx.notify();
-    });
+    initUpdateCheckFeedback(this, cx, [
+      { key: 'asked', checking: () => updates().checking },
+      { key: 'customUpdateAsked', checking: () => this.customUpdatePending === 'check' || customizationUpdateSnapshot()?.checking },
+    ]);
     cx.timer.every(3000, (cx) => {
       if (this.section !== "machines") return;
       cx.spawn(async (cx) => {
@@ -841,14 +840,15 @@ export default class Settings extends View {
     const result = this.updateCheckDescription ?? outcome;
     // Pressed: "Checking\u2026" while it looks, then "Up to date" for a moment
     // (a find changes the row instead). One per row: an element shows once.
-    const asked = this.asked && Date.now() - this.asked < 3000;
-    const check = (id) => !u.checks ? null : h_flex().id(`${id}-slot`).w(112).h(U.field).flex_none().items_center().justify_center()
-      .child(this.button(t, id, u.checking ? 'Checking…' : asked && u.checked ? '✓ Up to date' : 'Check now', (_e, cx) => {
+    const check = (id) => !u.checks ? null : updateCheckSlot(this, t, {
+      id, key: 'asked', checking: u.checking, checked: u.checked,
+      onClick: (_e, cx) => {
         if (updates().checking) return;
         this.asked = Date.now();
         run("app.check_updates");
         cx.notify();
-      }, {enabled: !u.checking && !(asked && u.checked)}).w_full());
+      },
+    });
     const primary = (id, label, f) =>
       control(t, div()).id(id).px(U.gutter).flex().items_center().justify_center().cursor_pointer()
         .bg(t.solid).border_color(t.solid).text_color(t.solid_foreground).hover((s) => s.opacity(0.9)).on_click(f).child(label);
