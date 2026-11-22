@@ -18,7 +18,7 @@ before development. No command here builds Herdr or herdr-core.
 | `<Herdr home>/preferences/` | Private durable snapshots (per-host profiles, palette, layout preferences); version in private dotfiles, not here |
 | `dist/` | Generated customization packages; ignored by version control |
 | `<Herdr home>/mods/custom-*/`, `layouts/Custom.json`, `themes/Custom.json` | Installed customization output; do not edit directly |
-| `<Herdr home>/.customizations/runtime/` | Self-contained deployed compatibility workers; no source-checkout dependency |
+| `<Herdr home>/.customizations/runtime/` | Self-contained deployed workers and shell integration; no source-checkout dependency |
 | `<Herdr home>/.customizations/` | Local ownership records, preference projection, patch opt-ins and rollback journals; never sync |
 | `<Herdr home>/.customizations/recovery/` | Archived Herdr recovery copies; retained outside the live `mods/` scanner |
 | `<Herdr home>/settings.json`, `keys.json` | Native global settings/shortcuts, not source in this repository |
@@ -992,25 +992,36 @@ source bridges and terminal-label aliases have been retired. A machine with an
 older installation needs a separately reviewed removal/installation plan; never
 adopt unknown files, replay old shell/core actions, or copy live session state.
 
-## Existing shells after moving the source folder
+## Installed shell reporting
 
-The shell/yadm integration described here is optional private wiring, not included
-or installed by this standalone checkout. Its loader still assumes the historical
-fixed source path and external revision marker. The original integration notes
-below apply only to machines that deliberately retain that wiring; independent
-standalone shell setup is pending. No unrelated private `.config/AGENTS.md` is
-required for the base checkout.
+Deploy owns `<Herdr home>/.customizations/runtime/shell/` containing
+`bash-cwd-loader.sh`, `bash-cwd.sh`, `powershell-cwd.ps1` and `revision`.
+Profiles remain your explicit wiring; deploy never edits them. These exact profile
+lines honor `HERDR_APP_HOME`, defaulting to `~/.config/herdr-app`:
 
-With that external wiring in place, new shells load its configured path. A Bash session that loaded the interim
-sibling project path can continue running, but its folder reporter needs this
-one-time reload **at an idle prompt** (or a new shell):
-
+Bash profile:
 ```bash
-source "$HOME/.config/herdr-app/customizations/src/integration/shell/bash-cwd-loader.sh"
+_herdr_cwd_hook="${HERDR_APP_HOME:-$HOME/.config/herdr-app}/.customizations/runtime/shell/bash-cwd-loader.sh"; if [[ -r $_herdr_cwd_hook ]]; then source "$_herdr_cwd_hook"; fi; unset _herdr_cwd_hook
 ```
 
-Do not reload all of `.bashrc`, inject this into a running command, or restart agents.
-No sibling directory or junction is retained just to mask the move.
+PowerShell profile:
+```powershell
+$herdrHome = if ($env:HERDR_APP_HOME) { $env:HERDR_APP_HOME } else { Join-Path $HOME '.config/herdr-app' }; $cwdHook = Join-Path $herdrHome '.customizations/runtime/shell/powershell-cwd.ps1'; if (Test-Path -LiteralPath $cwdHook -PathType Leaf) { . $cwdHook }; Remove-Variable cwdHook, herdrHome
+```
+
+Bash captures its loader directory at source time and reads its sibling payload
+and deploy-owned content revision there, even after `cd`. Compatible payload
+updates reload at the next idle prompt, preserving command status and existing
+prompt hooks. Only interactive Herdr TTYs report; captured tool shells stay quiet.
+PowerShell reports logical `Get-Location`, not Win32 process cwd.
+
+After relocating an old loader, re-source only the installed loader **at an idle
+prompt**, or open a new shell. Dispatcher structural changes also need this
+explicit reload; a new revision refreshes compatible payload definitions, not
+already-resident dispatcher code. Do not reload all of `.bashrc`, inject input or
+restart agents. Install on every peer before changing dotfiles or deleting old
+source. The optional private Claude shell initializer remains separately managed;
+its own updates do not change this deploy-owned revision.
 
 ## Native updates and compatibility exceptions
 

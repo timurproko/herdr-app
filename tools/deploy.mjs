@@ -6,8 +6,14 @@ import cp from 'node:child_process';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {digest,read,put,json,contained,safeRelative} from './files.mjs';
 export const defaultHome=()=>process.env.HERDR_APP_HOME||path.join(os.homedir(),'.config/herdr-app');
+export const shellPaths=['bash-cwd-loader.sh','bash-cwd.sh','powershell-cwd.ps1','revision'].map(name=>`.customizations/runtime/shell/${name}`);
+export const shellRevisionPath=shellPaths.at(-1);
 export function allowedPath(rel) {
   safeRelative(rel);
+  if(rel.startsWith('.customizations/runtime/shell/')) {
+    if(!shellPaths.includes(rel))throw Error(`Unowned deployment path: ${rel}`);
+    return rel;
+  }
   if(!/^(?:mods\/custom-[a-z-]+\/(?:[a-zA-Z0-9_.-]+\/)*[a-zA-Z0-9_.-]+\.(?:js|cjs|json|svg|txt)|layouts\/(?:Custom\.json|custom\.svg)|themes\/Custom\.json|\.customizations\/runtime\/(?:[a-zA-Z0-9_.-]+\/)*[a-zA-Z0-9_.-]+\.(?:js|mjs|cjs|json|svg))$/.test(rel))throw Error(`Unowned deployment path: ${rel}`);
   return rel;
 }
@@ -57,7 +63,12 @@ export function deploy(root,home=defaultHome(),{adopt={},repair=true,sources=nul
       safeRelative(source.replace(/\/$/,''));
       if(!Object.values(bundle.files).some(entry=>source.endsWith('/')?entry.source?.startsWith(source):entry.source===source))throw Error(`No packaged source matches: ${source}`);
     }
-    const selected=Object.entries(bundle.files).filter(([,entry])=>!partial || sources.some(source=>source.endsWith('/')?entry.source?.startsWith(source):entry.source===source));
+    let selected=Object.entries(bundle.files).filter(([,entry])=>!partial || sources.some(source=>source.endsWith('/')?entry.source?.startsWith(source):entry.source===source));
+    // A revision describes the whole shell package, even for source-scoped updates.
+    if(partial && selected.some(([rel])=>shellPaths.includes(rel)))selected=[...selected.filter(([rel])=>!shellPaths.includes(rel)),...shellPaths.map(rel=>{
+      if(!bundle.files[rel])throw Error(`Missing shell package file: ${rel}`);
+      return [rel,bundle.files[rel]];
+    })];
     if(partial && selected.some(([rel])=>!rel.startsWith('mods/')&&!rel.startsWith('.customizations/runtime/')))throw Error('Source-scoped deployment preserves layouts/themes; use a full deployment to change them.');
     const prefsFile=path.join(owner,'layout-preferences.json'),prefsRaw=read(prefsFile),prefs=prefsRaw===null?{version:1,overrides:{}}:JSON.parse(prefsRaw);
     if(prefs.version!==1||!prefs.overrides||Array.isArray(prefs.overrides))throw Error('Unsupported layout preferences.');
@@ -105,7 +116,7 @@ export function deploy(root,home=defaultHome(),{adopt={},repair=true,sources=nul
       put(path.join(transaction,'rollback.json'),JSON.stringify(rollback,null,2)+'\n');
     }
     // All conflicts checked first. Dependencies precede entrypoints; unchanged installs are quiet.
-    const rank=j=>j.rel.startsWith('themes/')?0:j.rel.startsWith('layouts/')?3:j.rel.endsWith('/main.js')?2:1;
+    const rank=j=>j.rel===shellRevisionPath?4:j.rel.startsWith('themes/')?0:j.rel.startsWith('layouts/')?3:j.rel.endsWith('/main.js')?2:1;
     const order=[...jobs].sort((a,b)=>rank(a)-rank(b));
     for(const j of order){if(j.before!==digest(j.bytes))put(j.file,j.bytes,j.before);else if(j.rel.endsWith('/main.js')&&touchedMods.has(path.posix.dirname(j.rel))) {if(digest(fs.readFileSync(j.file))!==j.before)throw Error(`Concurrent edit: ${j.rel}`);fs.writeFileSync(j.file,j.bytes);}}
     for(const j of stale){if(fs.existsSync(j.file)){if(digest(fs.readFileSync(j.file))!==j.hash)throw Error(`Concurrent obsolete edit: ${j.rel}`);fs.unlinkSync(j.file);}}

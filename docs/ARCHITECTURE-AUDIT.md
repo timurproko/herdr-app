@@ -24,9 +24,11 @@ This is an inspection snapshot, not a guarantee of future compatibility.
    stores, label aliases and migration tooling are no longer part of the Custom
    installation. Third-party licenses remain byte-faithful. Host-owned history
    must be cleaned only while Desktop is closed; leave cores and terminals alive.
-5. **Shell hooks deliberately use tracked source.** Bash/PowerShell profiles load
-   `src/integration/shell/`, unlike self-contained UI/worker deployment. This is
-   the existing yadm safe-prompt update design, now documented explicitly.
+5. **Shell source coupling resolved.** Deploy now owns the scripts and content
+   revision under `.customizations/runtime/shell/`; profiles only source those
+   installed entrypoints. Bash resolves siblings at source time and reloads
+   compatible payloads at idle prompts. Existing old dispatchers still need one
+   explicit re-source/new shell after profile migration; see the current README.
 
 ## Corrected during this audit
 

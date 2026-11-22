@@ -4,10 +4,10 @@ Each numbered group corresponds, in order, to one PR Implementation outcome. All
 
 ## 1. Owned shell runtime and sibling-based Bash reload
 
-- [ ] 1.1 Add deterministic shell revision generation, the four owned runtime destinations and exact shell-path allowlisting; check build determinism, unsafe/linked path refusal and digest preflight in focused build/deployment fixtures.
-- [ ] 1.2 Capture the loader directory from its source-time location and use sibling payload/revision files; update directory-loader fixtures to installed paths and cover alternate homes, spaces, later cd, status preservation, revision reload/retry, hook deduplication and interactive/TTY/identity guards with fake Core only.
-- [ ] 1.3 Publish the shell revision after script replacements, including coherent expansion of shell source selectors; cover no-op timestamps, conflict-before-writes, owned-file reporting and journal rollback in disposable deployment fixtures.
-- [ ] 1.4 Document exact installed paths/profile lines, loader relocation/re-source limits and deploy-owned revisions in README and architecture shell guidance; replace the audit's unresolved source-hook exception while preserving historical execution evidence, and check examples match the fixtures.
+- [x] 1.1 Add deterministic shell revision generation, the four owned runtime destinations and exact shell-path allowlisting; check build determinism, unsafe/linked path refusal and digest preflight in focused build/deployment fixtures.
+- [x] 1.2 Capture the loader directory from its source-time location and use sibling payload/revision files; update directory-loader fixtures to installed paths and cover alternate homes, spaces, later cd, status preservation, revision reload/retry, hook deduplication and interactive/TTY/identity guards with fake Core only.
+- [x] 1.3 Publish the shell revision after script replacements, including coherent expansion of shell source selectors; cover no-op timestamps, conflict-before-writes, owned-file reporting and journal rollback in disposable deployment fixtures.
+- [x] 1.4 Document exact installed paths/profile lines, loader relocation/re-source limits and deploy-owned revisions in README and architecture shell guidance; replace the audit's unresolved source-hook exception while preserving historical execution evidence, and check examples match the fixtures.
 
 ## 2. Checkout-independent full preference exporter
 

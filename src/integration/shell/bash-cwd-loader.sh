@@ -1,11 +1,14 @@
-# Stable, yadm-tracked bootstrap. Payload updates reload at a safe Bash prompt;
+# Deployed bootstrap; profiles only source this file. Payload updates reload at a safe Bash prompt;
 # never inject terminal input, restart shells/agents, or require Herdr Desktop.
 [[ $- == *i* && -n ${HC_TERMINAL_ID:-} && -t 1 ]] || return 0
 
+# Capture before returning to the profile: BASH_SOURCE later names the caller.
+_herdr_cwd_directory=$(builtin cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && builtin pwd -P) || return 0
+
 _herdr_cwd_prompt() {
     local status=$? revision=''
-    local payload="$HOME/.config/herdr-app/customizations/src/integration/shell/bash-cwd.sh"
-    local marker="$HOME/.local/state/yadm/herdr-shell.revision"
+    local payload="$_herdr_cwd_directory/bash-cwd.sh"
+    local marker="$_herdr_cwd_directory/revision"
     local _herdr_cwd_reload_only=1
     [[ -r $payload ]] || return "$status"
     [[ ! -r $marker ]] || revision=$(<"$marker")

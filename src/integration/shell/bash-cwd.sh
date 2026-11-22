@@ -50,7 +50,7 @@ _herdr_report_cwd() {
     return "$status"
 }
 
-# The stable yadm dispatcher loads definitions only, then reports with the
+# The deployed dispatcher loads definitions only, then reports with the
 # original command's exit status. Direct sourcing remains backward-compatible.
 [[ ${_herdr_cwd_reload_only:-0} != 1 ]] || return 0
 

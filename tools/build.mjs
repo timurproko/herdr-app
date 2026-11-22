@@ -58,6 +58,13 @@ export function build(root = project) {
     const dest=`scripts/${name}`,source=`tools/${name}`;
     entries.set(dest.toLowerCase(),{dest,source,bytes:fs.readFileSync(path.join(root,source))});
   }
+  // Filename/byte framing makes the revision deterministic and unambiguous.
+  const shellNames=['bash-cwd-loader.sh','bash-cwd.sh','powershell-cwd.ps1'];
+  const revision=digest(Buffer.concat(shellNames.flatMap(name=>{
+    const bytes=entries.get(`shell/${name}`).bytes;
+    return [Buffer.from(`${name}\0${bytes.length}\0`),bytes];
+  })))+'\n';
+  entries.set('shell/revision',{dest:'shell/revision',source:'generated:shell',bytes:Buffer.from(revision)});
   entries.set('package.json',{dest:'package.json',source:'generated',bytes:Buffer.from('{"private":true,"type":"module"}\n')});
   // Detect missing relative imports in the emitted graph before touching live files.
   for (const {dest,bytes} of entries.values()) if (/\.(?:m?js|cjs)$/.test(dest)) {
@@ -71,7 +78,7 @@ export function build(root = project) {
     const privateFile=/^(mods\/custom-[a-z-]+\/|layouts\/Custom\.json$|layouts\/custom\.svg$|themes\/Custom\.json$)/.test(dest) && !dest.includes('.test.');
     if (privateFile) payload[dest]={source,hash:digest(bytes)};
     const workerFile=/^(lib\/|frame-patches\/)/.test(dest) && !dest.endsWith('.md') || /^scripts\/(frame-(?:registry|patch)|startup-frames|terminal-input|readline-paste|feedback-draft)\.mjs$/.test(dest) || dest==='scripts/a1-session-report.js';
-    if(workerFile)payload[`.customizations/runtime/${dest}`]={source,hash:digest(bytes),from:dest};
+    if(workerFile || dest.startsWith('shell/'))payload[`.customizations/runtime/${dest}`]={source,hash:digest(bytes),from:dest};
   }
   payload['.customizations/runtime/package.json']={source:'generated',hash:digest('{"type":"module"}\n'),text:'{"type":"module"}\n'};
   const manifest={version:2,id:config.id,layout:config.layout,supportedHerdr:[...HOST_CONTRACT.reviewedVersions],files:payload};
