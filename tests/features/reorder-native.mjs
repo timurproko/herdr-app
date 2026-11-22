@@ -1,12 +1,14 @@
 // All three real adapters in deferred drag/return/fade states, synthetic data only.
+import {temporaryMod} from '../../tools/temporary-mod.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 export function checkReorderStates(home, app) {
   const name='custom-reorder-fixture', dir=path.join(home,'mods',name);
   if(fs.existsSync(dir)) throw Error('Reorder fixture already exists; refusing to overwrite it.');
   let checked=0;
-  try {
-    for(const variant of ['tabs','spaces','workspace-chrome']) {
+  for(const variant of ['tabs','spaces','workspace-chrome']) {
+    const dispose=temporaryMod(home,name);
+    try {
       fs.cpSync(path.join(home,'mods','custom-'+variant),dir,{recursive:true});
       fs.renameSync(path.join(dir,'main.js'),path.join(dir,'base.js'));
       fs.renameSync(path.join(dir,'host.js'),path.join(dir,'native-host.js'));
@@ -39,8 +41,7 @@ export default class Fixture extends Base {
 `);
         app(['check',dir],home);checked++;
       }
-      fs.rmSync(dir,{recursive:true,force:true});
-    }
-  } finally {fs.rmSync(dir,{recursive:true,force:true});}
+    } finally {dispose();}
+  }
   return checked;
 }

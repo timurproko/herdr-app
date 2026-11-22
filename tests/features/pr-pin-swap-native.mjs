@@ -1,5 +1,6 @@
 // Explicit live fixture: click only dummy PRs; never navigate real agents or
 // touch terminals/network. --slow slows ONLY this disposable copy for photos.
+import {temporaryMod} from '../../tools/temporary-mod.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -15,6 +16,7 @@ const artifacts=fileURLToPath(new URL('../../.artifacts/',import.meta.url));
 fs.mkdirSync(artifacts,{recursive:true});
 const shot=part=>path.join(artifacts,`pr-pin-swap-${part}.png`);
 if(fs.existsSync(dir))throw Error('Fixture exists; preserve it and inspect before retrying.');
+const dispose=temporaryMod(home,name);
 try {
   fs.cpSync(path.join(home,'mods/custom-changes'),dir,{recursive:true});
   fs.renameSync(path.join(dir,'main.js'),path.join(dir,'changes-view.js'));
@@ -121,5 +123,5 @@ Start-Sleep -Milliseconds 80
   try {
     const status=JSON.parse(app(['status'],home));
     if(status.overlays?.includes(name))app(['do','mod.open','--name',name],home);
-  } finally {fs.rmSync(dir,{recursive:true,force:true});fs.rmSync(receipt,{force:true});fs.rmSync(debug,{force:true});}
+  } finally {dispose();fs.rmSync(receipt,{force:true});fs.rmSync(debug,{force:true});}
 }

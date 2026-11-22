@@ -1,4 +1,5 @@
 // Explicit, terminal-free live preview of the sidebar's deferred context menu.
+import {temporaryMod} from '../../tools/temporary-mod.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -9,6 +10,7 @@ const mode = process.argv[2] ?? 'menu';
 if (!['menu', 'drag', 'drag-right', 'return'].includes(mode)) throw Error('Use menu, drag, drag-right or return.');
 const dragging = mode !== 'menu';
 if (fs.existsSync(dir)) throw Error('Preview already exists; preserve it and inspect first.');
+const dispose=temporaryMod(home,name);
 try {
   fs.cpSync(path.join(home, 'mods/custom-workspace-chrome'), dir, { recursive: true });
   fs.renameSync(path.join(dir, 'main.js'), path.join(dir, 'chrome.js'));
@@ -64,5 +66,5 @@ export default class Preview extends Chrome {
   try {
     const status = JSON.parse(app(['status'], home));
     if (status.overlays?.includes(name)) app(['do', 'mod.open', '--name', name], home);
-  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  } finally { dispose(); }
 }

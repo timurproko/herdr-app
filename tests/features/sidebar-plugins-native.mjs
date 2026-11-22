@@ -1,14 +1,16 @@
 // Eager native composition for every switch combination; no real state/IO/focus.
+import {temporaryMod} from '../../tools/temporary-mod.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 export function checkSidebarPluginStates(home,app) {
  let checked=0;
  for(const feature of ['files','changes','tabs']) {
   const dir=path.join(home,`mods/custom-${feature}-availability-fixture`);
+  const dispose=temporaryMod(home,path.basename(dir));
+  try {
   fs.cpSync(path.join(home,`mods/custom-${feature}`),dir,{recursive:true});
   fs.renameSync(path.join(dir,'main.js'),path.join(dir,'feature-view.js'));
   fs.renameSync(path.join(dir,'host.js'),path.join(dir,'native-host.js'));
-  try {
    for(const [files,git]of [[true,true],[true,false],[false,true],[false,false]]) {
     fs.writeFileSync(path.join(dir,'host.js'),`export * from './native-host.js';
 export const shared=key=>key==='layout'?'Custom':key==='custom.plugins'?${JSON.stringify({files:{enabled:files},git:{enabled:git}})}:null;
@@ -27,14 +29,15 @@ export default class Fixture extends Feature {
 `);
     app(['check',dir],home);checked++;
    }
-  } finally {fs.rmSync(dir,{recursive:true,force:true});}
+  } finally {dispose();}
  }
  // Render the direct Git configuration target with native inputs/disclosures,
  // but never run prerequisite checks, credentials reads or setup actions.
  const dir=path.join(home,'mods/custom-git-settings-fixture');
+ const dispose=temporaryMod(home,path.basename(dir));
+ try {
  fs.cpSync(path.join(home,'mods/custom-settings'),dir,{recursive:true});
  fs.renameSync(path.join(dir,'host.js'),path.join(dir,'native-host.js'));
- try {
   fs.writeFileSync(path.join(dir,'host.js'),`export * from './native-host.js';
 export const shared=()=>null;export const spaces=()=>[];export const machines=()=>[];
 export const exec=()=>{throw Error('Settings fixture cannot run setup');};export const hc=exec;export const readTextFile=exec;export const setShared=exec;
@@ -71,6 +74,6 @@ export default class Fixture extends View {
 `);
    app(['check',dir],home);checked++;
   }
- } finally {fs.rmSync(dir,{recursive:true,force:true});}
+ } finally {dispose();}
  return checked;
 }

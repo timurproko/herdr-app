@@ -1,5 +1,6 @@
 // Explicit, exact-attempt manual retry. Reuses the INSTALLED Git controller;
 // no raw keys, force, focus change, automatic retry loop, or broad journal reset.
+import {temporaryMod} from './temporary-mod.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -17,6 +18,7 @@ const installed=path.join(home,'mods/custom-changes');
 if(!fs.existsSync(path.join(installed,'ci-core-send.js')))throw Error('Install the reviewed done-state fix first.');
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 let result;
+const dispose=temporaryMod(home,name);
 try {
   fs.cpSync(installed,dir,{recursive:true});
   fs.writeFileSync(path.join(dir,'mod.json'),JSON.stringify({place:'none',overlay:{width:420,height:90}}));
@@ -74,5 +76,5 @@ export default class Retry extends View {
   console.log(JSON.stringify(result,null,2));if(!result.ok)process.exitCode=1;
 } finally {
   try{const status=JSON.parse(app(['status'],home));if(status.overlays?.includes(name))app(['do','overlay.close','--id',name],home);}
-  finally{fs.rmSync(dir,{recursive:true,force:true});if(result)fs.rmSync(resultPath,{force:true});}
+  finally{dispose();if(result)fs.rmSync(resultPath,{force:true});}
 }

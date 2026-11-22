@@ -1,5 +1,6 @@
 // Read-only native preview of candidate Git settings. Dummy prerequisites/state;
 // no Core messages, credentials, network, preference writes or terminal input.
+import {temporaryMod} from './temporary-mod.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -12,6 +13,7 @@ if(fs.existsSync(dir))throw Error('Preview directory already exists; preserve it
 const statesOpen=process.argv.includes('--states-open');
 const image=path.join(os.tmpdir(),statesOpen?'herdr-ci-fix-states.png':'herdr-ci-fix-settings.png');
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const dispose=temporaryMod(home,name);
 try {
   const {output}=build();fs.cpSync(path.join(output,'mods/custom-settings'),dir,{recursive:true});
   fs.renameSync(path.join(dir,'host.js'),path.join(dir,'native-host.js'));
@@ -36,5 +38,5 @@ export default class Preview extends Settings {
   await wait(800);app(['shot',image],home);console.log(image);
 } finally {
   try {const status=JSON.parse(app(['status'],home));if(status.overlays?.includes(name))app(['do','overlay.close','--id',name],home);}
-  finally {fs.rmSync(dir,{recursive:true,force:true});}
+  finally {dispose();}
 }
