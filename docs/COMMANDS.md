@@ -141,7 +141,11 @@ The selected Herdr home's `.customizations/` holds only the latest operation:
 are private runtime files, not portable preferences. Reload/reopen reads the same
 status. The update has a 30-minute deadline in addition to existing subprocess
 limits; a deadline/crash/missing result reports outcome unknown, never success or
-automatic retry. Remote work already dispatched might still finish.
+automatic retry. The installer's own eight-minute npm timeout is also unknown:
+especially on Windows, termination of cmd.exe does not prove npm/installer
+descendants stopped. Its structured unknown result retains update.lock even
+when the CLI exits and a fresh Check succeeds. Remote work already dispatched
+might still finish.
 
 When the desktop succeeds but peers skip/fail, the single row names that fact and
 the log path; inspect the log/result for individual reasons and backup IDs.
@@ -153,10 +157,15 @@ the log to identify the matching journal; do not guess or bypass refusal gates.
 
 An unresolved `update.lock` blocks another Update even after a crash. Inspect its
 matching `update-status.json`, PID/childPid, log, result and any dispatched machine;
-wait for active work, and use normal rollback recovery for uncertain writes. Only
-a person who has established that no local/remote update remains active should
-remove that one stale lock. Never delete `.customizations/deploy.lock` to force an
-update, reset a checkout or replay an uncertain remote request.
+wait for active work, and use normal rollback recovery for uncertain writes.
+**Manual resolution, one step:** only after checking that the recorded processes,
+all npm/installer descendants and any dispatched remote updates have stopped,
+and completing any required recovery, remove **both** `update.lock` and
+`update-status.json` from this captured home's `.customizations/`, then reopen
+Settings and Check now. Keep the result, log and backup journals. Removing only
+the lock deliberately does not clear the row's unknown status. Never delete
+`.customizations/deploy.lock` to force an update, reset a checkout or replay an
+uncertain remote request.
 
 ### Trying the row after merge
 

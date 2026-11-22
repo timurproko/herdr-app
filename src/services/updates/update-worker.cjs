@@ -42,6 +42,7 @@ function installedRevision(p, result) {
 }
 function outcome(result) {
   const local = result?.results?.find(row => row.machine === 'local');
+  if (local?.outcome === 'unknown' || /\boutcome unknown\b/i.test(local?.reason || '')) return { state: 'unknown', error: shortError(local.reason || 'Desktop deployment outcome unknown') };
   if (!success(local)) return { state: 'failed', error: shortError(result?.error || local?.reason || 'Desktop returned no successful result') };
   return { state: result.results.some(row => row.machine !== 'local' && !success(row)) ? 'partial' : 'complete', error: null };
 }
@@ -53,7 +54,8 @@ function inspect(home, { now = Date.now, isAlive = alive } = {}) {
   if (job && ['running', 'unknown'].includes(job.state) && !isAlive(job.pid) && !isAlive(job.childPid)
       && result?.complete === true && result.token === job.token) {
     job = { ...job, ...outcome(result), finished: now() };
-    atomic(p.status, job); unlock(p, job.token);
+    atomic(p.status, job);
+    if (job.state !== 'unknown') unlock(p, job.token);
   }
   if (job?.state === 'running' && (now() > job.deadline || (job.phase !== 'starting' && !isAlive(job.pid)) || (job.phase === 'starting' && now() - job.started > 5000))) job = { ...job, state: 'unknown' };
   const revision = installedRevision(p, result);
@@ -136,7 +138,7 @@ async function runUpdate(home, token, { userHome, run = command, spawn = cp.spaw
   job = { ...job, pid: process.pid, phase: 'preparing', deadline: job.started + deadlineMs };
   atomic(p.status, job);
   const log = text => { if (text) fs.appendFileSync(p.log, text.endsWith('\n') ? text : text + '\n'); };
-  const finish = (state, error, release = true) => {
+  const finish = (state, error, release = state !== 'unknown') => {
     job = { ...job, state, error: error ? shortError(error) : null, finished: now() };
     atomic(p.status, job);
     if (release) unlock(p, token);
@@ -149,7 +151,7 @@ async function runUpdate(home, token, { userHome, run = command, spawn = cp.spaw
     // CLI already owns the result writer, full pipeline and peer eligibility.
     return await new Promise(resolve => {
       let child, timer, settled = false;
-      const done = (state, error, release = true) => {
+      const done = (state, error, release = state !== 'unknown') => {
         if (settled) return; settled = true; clearTimeout(timer);
         resolve(finish(state, error, release));
       };

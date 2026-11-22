@@ -6,6 +6,8 @@ import { createRequire } from 'node:module';
 import { fixture, clean, git } from './support/deploy-all.mjs';
 const require = createRequire(import.meta.url);
 const worker = require('../src/services/updates/update-worker.cjs');
+const deployWorker = require('../tools/deploy-all-worker.cjs');
+const { customizationRowState, updateProjection } = await import('../src/shared/customization-update-model.js');
 const { files, atomic, read, prepareClone, runUpdate, launch, inspect, outcome } = worker;
 function setup() {
   const f = fixture(), userHome = path.join(f.base, 'user'), root = path.join(userHome, '.local/share/herdr-app');
@@ -48,7 +50,7 @@ try {
   };
   inspect(g.home); assert.equal(cloned, false); assert.equal(fs.existsSync(g.root), false);
   prepareClone({ ...g, run }); assert.equal(cloned, true);
-  for (const kind of ['success', 'partial', 'local-failure', 'missing', 'wrong-token', 'spawn-error', 'timeout']) {
+  for (const kind of ['success', 'partial', 'local-failure', 'installer-timeout', 'missing', 'wrong-token', 'spawn-error', 'timeout']) {
     const h = setup(), { p, token } = pending(h); let killed = false;
     const spawn = (program, args, options) => {
       assert.equal(program, process.execPath); assert.deepEqual(args, [path.join(h.root, 'tools/deploy-all.mjs')]);
@@ -59,15 +61,39 @@ try {
         if (kind === 'timeout') return;
         if (kind === 'spawn-error') return child.emit('error', Error('fixture spawn failure'));
         if (!['missing', 'wrong-token'].includes(kind)) final(p, token, kind === 'partial' ? [{ machine: 'local', action: 'deployed' }, { machine: 'off', action: 'skipped', reason: 'offline' }] : kind === 'local-failure' ? [{ machine: 'local', action: 'failed', reason: 'fixture install failure' }] : undefined);
+        if (kind === 'installer-timeout') {
+          const local = deployWorker.deployCheckout(h.root, 'a'.repeat(40), 'deploy', {
+            platform: 'win32', log() {}, run(program, args, options) {
+              assert.equal(program, 'cmd.exe'); assert.equal(options.timeout, 480000);
+              return { code: null, timedOut: true, stdout: '', stderr: 'fixture npm timeout' };
+            },
+          });
+          assert.equal(local.outcome, 'unknown'); final(p, token, [{ machine: 'local', ...local }]);
+        }
         if (kind === 'wrong-token') final(p, 'other-run');
-        child.emit('exit', kind === 'local-failure' || kind === 'partial' ? 1 : 0);
+        child.emit('exit', ['local-failure', 'partial', 'installer-timeout'].includes(kind) ? 1 : 0);
       });
       return child;
     };
     const result = await runUpdate(h.home, token, { userHome: h.userHome, run: h.run, spawn, deadlineMs: kind === 'timeout' ? 1000 : 30000, kill: () => { killed = true; } });
-    assert.equal(result.state, kind === 'success' ? 'complete' : kind === 'partial' ? 'partial' : ['missing', 'wrong-token', 'timeout'].includes(kind) ? 'unknown' : 'failed', kind);
+    assert.equal(result.state, kind === 'success' ? 'complete' : kind === 'partial' ? 'partial' : ['missing', 'wrong-token', 'timeout', 'installer-timeout'].includes(kind) ? 'unknown' : 'failed', kind);
     assert.equal(fs.existsSync(p.lock), result.state === 'unknown', kind);
     assert.equal(killed, kind === 'timeout');
+    if (kind === 'installer-timeout') {
+      const reloaded = inspect(h.home, { isAlive: () => false });
+      assert.equal(reloaded.job.state, 'unknown'); assert.equal(reloaded.locked, true, 'completed CLI receipt does not resolve uncertain descendants');
+      const checked = worker.checkMain(h.home, { force: true, run: () => ({ code: 0, stdout: `${'b'.repeat(40)}\trefs/heads/main\n` }) });
+      assert.equal(checked.check.available, true);
+      assert.equal(customizationRowState(updateProjection(checked)).action, 'check', 'fresh successful Check cannot re-enable Update');
+      await launch(h.home, { spawn() { assert.fail('uncertain installer must not be replayed'); } });
+      assert.equal(fs.existsSync(p.lock), true);
+      // Simulate the documented human-only resolution after verifying no work is
+      // active in this fixture; deleting only the lock is insufficient.
+      fs.unlinkSync(p.lock);
+      assert.equal(customizationRowState(updateProjection(inspect(h.home))).action, 'check');
+      fs.unlinkSync(p.status);
+      assert.equal(customizationRowState(updateProjection(worker.checkMain(h.home, { force: true, run: () => ({ code: 0, stdout: `${'b'.repeat(40)}\trefs/heads/main\n` }) }))).action, 'launch');
+    }
     if (kind === 'missing') {
       // Reload sees the same unresolved job; a later exact result can settle it.
       assert.equal(inspect(h.home, { isAlive: () => false }).job.state, 'unknown');

@@ -75,10 +75,10 @@ function deployCheckout(root, commit, script, { run = runCommand, env = process.
   if (r.stderr.trim()) log(r.stderr.trim());
   const result = deployResult(r.stdout);
   const backup = result?.backup || null;
-  if (r.code !== 0 || result?.patches?.ok === false) return {
-    action: 'failed', reason: r.timedOut ? 'deployment timed out; outcome unknown' : 'deployment failed; inspect output', commit, backup,
+  if (r.timedOut || r.code !== 0 || result?.patches?.ok === false) return {
+    action: 'failed', outcome: r.timedOut ? 'unknown' : 'failed', reason: r.timedOut ? 'deployment timed out; outcome unknown' : 'deployment failed; inspect output', commit, backup,
   };
-  if (!result) return { action: 'failed', reason: 'deployment returned no result; outcome unknown', commit, backup };
+  if (!result) return { action: 'failed', outcome: 'unknown', reason: 'deployment returned no result; outcome unknown', commit, backup };
   const patched = Object.values(result.patches?.frames || {}).some(frame => / frame applied\b/.test(frame.message || ''));
   return { action: result.changed || result.removed || backup || patched ? 'deployed' : 'already current', commit, backup };
 }
