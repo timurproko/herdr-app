@@ -1,6 +1,6 @@
 # Automated tab-move compatibility audit
 
-Run from `~/.config/herdr-app/customizations/`:
+Run from your standalone source checkout, wherever cloned:
 
 ```sh
 npm run check:tab-move                         # installed App release + upstream evidence + synthetic tests

@@ -899,7 +899,7 @@ contracts. Native tests and focused integration/manual checks remain necessary.
 ## Required workflow
 
 ```powershell
-cd ~/.config/herdr-app/customizations
+# Run from your standalone source checkout, wherever cloned
 npm run report:ownership
 npm run check:host-api
 npm test

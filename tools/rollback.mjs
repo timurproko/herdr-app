@@ -37,7 +37,10 @@ export function rollback(home,id,{fixture=false,shellOnly=false}={}) {
    jobs.push({rel,file,before,actual});
   }
   for(const [name,value,after]of [['manifest.json',record.manifest,record.afterManifest],['layout-preferences.json',record.preferences,record.afterPreferences]]){
-   const file=contained(home,`.customizations/${name}`),actual=read(file);if(![digest(value),after].includes(digest(actual)))throw Error(`Newer deployment/preference change: ${name}`);jobs.push({file,before:value===null?null:Buffer.from(value),actual:actual===null?null:Buffer.from(actual)});
+   const file=contained(home,`.customizations/${name}`),actual=shellOnly?(fs.existsSync(file)?fs.readFileSync(file,'utf8'):null):read(file);
+   if(![digest(value),after].includes(digest(actual)))throw Error(`Newer deployment/preference change: ${name}`);
+   // Shell recovery checks preferences but must never rewrite them.
+   if(!shellOnly||name!=='layout-preferences.json')jobs.push({file,before:value===null?null:Buffer.from(value),actual:actual===null?null:Buffer.from(actual)});
   }
   // Restore native exceptions before removing their runtime support on first-install rollback.
   if(!shellOnly&&record.manifest===null){const runtime=path.join(owner,'runtime');for(const patch of json(path.join(runtime,'frame-patches/registry.json'))?.patches??[])if(fs.existsSync(path.join(owner,`frame-${patch.id}.json`)))cp.execFileSync(process.execPath,[path.join(runtime,'scripts/frame-patch.mjs'),'restore',patch.id,home],{encoding:'utf8',timeout:30000});}

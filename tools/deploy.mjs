@@ -56,7 +56,10 @@ export function deploy(root,home=defaultHome(),{adopt={},repair=true,sources=nul
       return [rel,bundle.files[rel]];
     });
     if(partial && selected.some(([rel])=>!rel.startsWith('mods/')&&!rel.startsWith('.customizations/runtime/')))throw Error('Source-scoped deployment preserves layouts/themes; use a full deployment to change them.');
-    const prefsFile=contained(home,'.customizations/layout-preferences.json'),prefsRaw=read(prefsFile),prefs=shellOnly||prefsRaw===null?{version:1,overrides:{}}:JSON.parse(prefsRaw);
+    const prefsFile=contained(home,'.customizations/layout-preferences.json');
+    // Shell mode journals bytes only: do not parse, normalize a BOM or project them.
+    const prefsRaw=shellOnly?(fs.existsSync(prefsFile)?fs.readFileSync(prefsFile,'utf8'):null):read(prefsFile);
+    const prefs=shellOnly||prefsRaw===null?{version:1,overrides:{}}:JSON.parse(prefsRaw);
     if(prefs.version!==1||!prefs.overrides||Array.isArray(prefs.overrides))throw Error('Unsupported layout preferences.');
     const layoutFile='layouts/Custom.json',base=retained?old?.layoutBase:JSON.parse(read(path.join(root,layoutFile))),currentRaw=retained?null:read(contained(home,layoutFile));
     let overrides={...prefs.overrides};

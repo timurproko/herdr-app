@@ -25,9 +25,9 @@ Each numbered group corresponds, in order, to one PR Implementation outcome. All
 
 ## 4. Remaining operational guidance and source-independent artifact paths
 
-- [ ] 4.1 Replace remaining current fixed-source guidance in architecture Required workflow, Core monitor/tab-move/validation docs, Git setup help and ownership-report text; use a targeted scan and ownership-report assertions while retaining historical/migration mentions and architecture negative guards.
-- [ ] 4.2 Move the two native screenshot scripts' default output from Herdr-home customizations/.work to checkout .artifacts resolved from their file location; add static path/output-directory coverage without executing either live script.
-- [ ] 4.3 Update testing guidance and any runner registration required by the added fixtures, with source-path discovery/list checks showing coverage; perform only quick focused integration checks under a disposable HERDR_APP_HOME and record remaining live/remote checks as separate rollout gates.
+- [x] 4.1 Replace remaining current fixed-source guidance in architecture Required workflow, Core monitor/tab-move/validation docs, Git setup help and ownership-report text; use a targeted scan and ownership-report assertions while retaining historical/migration mentions and architecture negative guards.
+- [x] 4.2 Move the two native screenshot scripts' default output from Herdr-home customizations/.work to checkout .artifacts resolved from their file location; add static path/output-directory coverage without executing either live script.
+- [x] 4.3 Update testing guidance and any runner registration required by the added fixtures, with source-path discovery/list checks showing coverage; perform only quick focused integration checks under a disposable HERDR_APP_HOME and record remaining live/remote checks as separate rollout gates.
 
 ## Workflow follow-up
 

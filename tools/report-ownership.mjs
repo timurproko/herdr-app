@@ -43,7 +43,7 @@ export function ownershipReport(home = defaultHome()) {
       customRuntime: 'mods/custom-* (flat because Herdr discovers direct child mods)',
       hostRuntime: 'mods listed in read-only installed.json; catalog membership is not content verification',
       nativeExceptions: 'registry-backed frame targets only',
-      source: 'customizations/src; never edit installed runtime copies',
+      source: 'src/ in your standalone checkout; never edit installed runtime copies',
     },
     mods: result,
     customFiles: { hostGenerated, unknown: unknownCustomFiles },

@@ -1,4 +1,4 @@
-// CI wiring only: invoke supported ORIGINAL suites, never rewrite their fixtures.
+// CI wiring: invoke supported suites with their required VM flags.
 import fs from 'node:fs';
 import path from 'node:path';
 import cp from 'node:child_process';
@@ -19,7 +19,6 @@ export function ciTestPlan(platform=process.platform) {
   for(const entry of entries){
     let reason=null;
     if(entry.file==='scripts/directory.test.mjs')reason='Requires installed hc schema and the real user .bashrc; native/private integration.';
-    if(platform==='linux'&&entry.file==='scripts/directory-loader.test.mjs')reason='Unmodified fixture requires Windows Git Bash and cygpath.';
     if(platform==='win32'&&entry.file==='tests/file-delete.test.mjs')reason='Original Git-sh Darwin backend fixture returns 7 instead of 0 at line 77 on windows-latest (run 44947261103).';
     if(entry.file==='tests/a1-api-candidate.test.mjs')reason='Requires a separately built external A1 candidate checkout and tsx.';
     (reason?excluded:included).push(reason?{...entry,reason}:entry);

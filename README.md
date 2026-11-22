@@ -1133,5 +1133,5 @@ artwork sources; original assets are retained without inferred attribution.
 Follow-ups remain: webhook relay hardening, removing customizations from private
 dotfiles, and second-workstation
 setup. Existing validation notes are historical, not claims that this import ran
-native/live checks. The A1 release caveat and optional shell integration remain
-pending as documented.
+native/live checks. The A1 release caveat remains as documented. Shell integration
+is deployed, but profile wiring and installation on each host remain explicit rollout steps.

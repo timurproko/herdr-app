@@ -1,7 +1,7 @@
 # Validation — Custom architecture and source ownership
 
 Host checked: Herdr App 0.1.14, Windows.
-Canonical project: `~/.config/herdr-app/customizations/`.
+Canonical source: this standalone repository, wherever cloned; the following host results are historical.
 
 ## Cross-space tab moves — App 0.1.15 / Core 0.1.19 and 0.1.21
 
@@ -153,7 +153,8 @@ space guard is still outside the public API facade's checks. See
 
 Existing shells which loaded the interim sibling source path need a one-time
 narrow folder-reporter reload at an idle prompt, or a new shell. The command is in
-the project README. New shells already use the nested path. Old namespace bridges,
+the project README. Current profiles must use the deployed runtime paths documented
+there, not a source checkout. Old namespace bridges,
 label aliases and completed migration tooling have since been retired. These
 historical validation results do not certify the later cleanup; rerun the checks.
 

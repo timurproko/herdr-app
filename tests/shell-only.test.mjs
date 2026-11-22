@@ -58,14 +58,15 @@ try {
  const fullBundle=json(path.join(output,'bundle.json'));
  for(const rel of shellPaths)assert.equal(fullState.files[rel],fullBundle.files[rel].hash);
  const untouched=path.join(home,'mods/custom-tabs/main.js');fs.appendFileSync(untouched,'\n// keep my edit');
- const prefsFile=path.join(home,'.customizations/layout-preferences.json');put(prefsFile,'unparsed personal sidecar\n');
- const before=snapshot(home),beforeState=text(stateFile);
+ const prefsFile=path.join(home,'.customizations/layout-preferences.json');put(prefsFile,'\ufeffunparsed personal sidecar\n');
+ const before=snapshot(home),beforeState=text(stateFile),prefsStamp=fs.statSync(prefsFile,{bigint:true}).mtimeNs;
  const shell=deploy(candidate,home,{shellOnly:true});assert.equal(shell.removed,0);assert.equal(shell.patches,null);
  const after=snapshot(home);
  for(const [rel,bytes]of Object.entries(before))if(!shellPaths.includes(rel.replaceAll('\\','/'))&&rel!=='.customizations'+path.sep+'manifest.json')assert.equal(after[rel],bytes,rel);
  const strip=value=>({...value,files:Object.fromEntries(Object.entries(value.files).filter(([rel])=>!shellPaths.includes(rel)))});
  assert.deepEqual(strip(json(stateFile)),strip(JSON.parse(beforeState)));
  cli('rollback.mjs',['--shell-only',shell.backup]);assert.deepEqual(snapshot(home),before);
+ assert.equal(fs.statSync(prefsFile,{bigint:true}).mtimeNs,prefsStamp,'Shell install/recovery never rewrites preference bytes.');
  cli('rollback.mjs',['--shell-only',full.backup],/verified shell-only/);
  // Preferences changed after shell deployment must not be overwritten.
  const last=deploy(candidate,home,{shellOnly:true});put(prefsFile,'later personal sidecar\n');

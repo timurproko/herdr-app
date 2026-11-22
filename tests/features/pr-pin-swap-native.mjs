@@ -5,12 +5,15 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import {app,defaultHome} from '../../tools/deploy.mjs';
 const full=process.argv.includes('--full');
 const home=defaultHome(),name='custom-pr-swap-fixture',dir=path.join(home,'mods',name);
 const receipt=path.join(home,'.customizations',`pr-swap-${crypto.randomUUID()}.json`);
 const debug=receipt+'.debug';
-const shot=part=>path.join(home,'customizations/.work',`pr-pin-swap-${part}.png`);
+const artifacts=fileURLToPath(new URL('../../.artifacts/',import.meta.url));
+fs.mkdirSync(artifacts,{recursive:true});
+const shot=part=>path.join(artifacts,`pr-pin-swap-${part}.png`);
 if(fs.existsSync(dir))throw Error('Fixture exists; preserve it and inspect before retrying.');
 try {
   fs.cpSync(path.join(home,'mods/custom-changes'),dir,{recursive:true});

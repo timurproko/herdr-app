@@ -110,8 +110,8 @@ See also [the public compatibility review](HERDR-0.1.16-REVIEW.md).
 
 ## Boundaries and proposed files
 
-Paths below are relative to `customizations/`. `shared/tab-moves.js` uses the existing
-Tabs command receiver in `features/tabs/rename-keys.js`; no second nextCommand
+Paths below are relative to the standalone repository root. `src/shared/tab-moves.js` uses the existing
+Tabs command receiver in `src/features/tabs/rename-keys.js`; no second nextCommand
 consumer competes with keyboard handling.
 
 | Layer | Responsibility |
