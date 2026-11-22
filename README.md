@@ -1000,6 +1000,15 @@ adopt unknown files, replay old shell/core actions, or copy live session state.
 
 ## Installed shell reporting
 
+On a Core-only host without Desktop/Custom, run `npm run deploy:shell` from this
+standalone checkout (Node 20+); an optional home follows `--`. It installs only the
+four shell files using the same lock, ownership, conflicts and journals as full
+deploy, preserving all non-shell output and preference bytes. It never enables a
+layout or invokes native checks/patches. A later full deploy shares that ownership.
+`npm run rollback:shell -- <backup-id> [home]` restores only a verified shell-only
+journal without Desktop, refusing mixed journals, newer records and later edits.
+Installation on a remote peer is a separate explicit action, never a deploy side effect.
+
 Deploy owns `<Herdr home>/.customizations/runtime/shell/` containing
 `bash-cwd-loader.sh`, `bash-cwd.sh`, `powershell-cwd.ps1` and `revision`.
 Profiles remain your explicit wiring; deploy never edits them. These exact profile
@@ -1095,7 +1104,8 @@ See [native patch policy](src/integration/native-patches/README.md).
 
 ## Rollback / removal
 
-Deploy reports a backup ID when it changes files. Switch to Herdr/main first:
+Deploy reports a backup ID when it changes files. Ordinary rollback always requires
+that ID and the stock layout; switch to Herdr/main first:
 
 ```powershell
 npm run disable

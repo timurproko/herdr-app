@@ -54,6 +54,25 @@ cannot update layouts/themes. Include every changed dependency's canonical sourc
 this option is not automatic dependency or branch merging. A later **full** deployment
 still installs the complete current checkout, so reconcile its other branches first.
 
+## Core-only shell installation
+
+From a standalone checkout with Node 20+, without Desktop or a Custom layout:
+
+```powershell
+npm run deploy:shell                 # build and install only the four shell files
+npm run deploy:shell -- <home>        # optional explicit home overrides HERDR_APP_HOME
+npm run rollback:shell -- <backup-id> # restore only a verified shell-only journal
+```
+
+This fixed subset shares the full deploy lock, manifest, conflict checks and backup
+journals. It preserves non-shell ownership, files, layout base and preference bytes;
+it does not validate/project layouts, enable Custom, refresh patches, edit profiles,
+install remotely or restart processes. Preference bytes are read only for journal
+safeguards, never parsed by this mode. A later full deploy recognizes the same shell
+ownership. Use README's exact installed profile lines; no source checkout is needed
+by the running shells. Shell rollback also accepts an explicit home after its ID.
+Mixed/full journals, later edits and newer ownership/preference records are refused.
+
 ## Disable, enable, rollback or remove
 
 ```powershell
@@ -63,8 +82,12 @@ npm run rollback -- <backup-id>
 npm run remove
 ```
 
-Disable Custom before rollback when practical. `remove` removes only files owned
-by the customization manifest; it does not uninstall or rebuild Herdr.
+Ordinary rollback always requires a valid backup ID reported by deploy and a
+verified stock layout: switch to Herdr/main first with `npm run disable`. It refuses
+later personal edits or newer deployment records. The explicit shell-only recovery
+above is the narrow Desktop-free exception, not a bypass for full journals.
+`remove` removes only files owned by the customization manifest; it does not
+uninstall or rebuild Herdr.
 
 ## Portable preferences
 

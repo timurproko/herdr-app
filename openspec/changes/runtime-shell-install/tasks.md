@@ -18,10 +18,10 @@ Each numbered group corresponds, in order, to one PR Implementation outcome. All
 
 ## 3. Core-only shell installation and guarded recovery
 
-- [ ] 3.1 Add deploy:shell/deploy-shell as a fixed subset in the existing deploy flow, preserving non-shell manifest metadata and skipping layout/preferences/native work; cover fresh install, update, no-op and modified-file refusal without a Desktop executable.
-- [ ] 3.2 Add explicit rollback:shell support for verified shell-scoped journals using the existing lock, backup ID, ownership and later-edit guards; test initial/update restoration, revision-last restore and mixed/tampered/newer-journal refusal without native patch/status calls.
-- [ ] 3.3 Cover shell-then-full and full-then-shell deployment sequences, asserting identical shell ownership and untouched unselected files/layout base/preferences; include modified non-shell bytes to ensure shell mode never prunes or adopts them.
-- [ ] 3.4 Document Core-only local installation, compatible full deployment and shell recovery in README/docs/COMMANDS.md; correct ordinary rollback to require a reported backup ID and stock layout, and check each documented mode against disposable CLI fixtures.
+- [x] 3.1 Add deploy:shell/deploy-shell as a fixed subset in the existing deploy flow, preserving non-shell manifest metadata and skipping layout/preferences/native work; cover fresh install, update, no-op and modified-file refusal without a Desktop executable.
+- [x] 3.2 Add explicit rollback:shell support for verified shell-scoped journals using the existing lock, backup ID, ownership and later-edit guards; test initial/update restoration, revision-last restore and mixed/tampered/newer-journal refusal without native patch/status calls.
+- [x] 3.3 Cover shell-then-full and full-then-shell deployment sequences, asserting identical shell ownership and untouched unselected files/layout base/preferences; include modified non-shell bytes to ensure shell mode never prunes or adopts them.
+- [x] 3.4 Document Core-only local installation, compatible full deployment and shell recovery in README/docs/COMMANDS.md; correct ordinary rollback to require a reported backup ID and stock layout, and check each documented mode against disposable CLI fixtures.
 
 ## 4. Remaining operational guidance and source-independent artifact paths
 
