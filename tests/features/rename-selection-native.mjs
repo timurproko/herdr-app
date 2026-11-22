@@ -1,9 +1,13 @@
 // Actual native InputState replacement in a disposable home. No real session,
 // terminal input, rename command, dialog or user focus is involved.
+import {temporaryMod} from '../../tools/temporary-mod.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 export function checkRenameSelection(home,app) {
   const dir=path.join(home,'mods/custom-rename-selection-fixture');
+  const dispose=temporaryMod(home,path.basename(dir));
+  let checked=0;
+  try {
   fs.cpSync(path.join(home,'mods/custom-tabs'),dir,{recursive:true});
   fs.renameSync(path.join(dir,'host.js'),path.join(dir,'native-host.js'));
   fs.writeFileSync(path.join(dir,'host.js'),`export * from './native-host.js';
@@ -13,8 +17,6 @@ export const focused=()=>({space:'fixture-space',tab:'fixture-tab',pane:null});
 export const layout=()=>({id:'sidebar',size:{px:248}});
 export const run=()=>{throw Error('Fixture cannot issue real commands');};
 `);
-  let checked=0;
-  try {
     for(const kind of ['Tab','Space']) {
       fs.writeFileSync(path.join(dir,'main.js'),`import {View,div} from 'gpui-kit';
 import {begin${kind}Rename,cancel${kind}Rename} from './${kind.toLowerCase()}-rename.js';
@@ -30,5 +32,5 @@ export default class Fixture extends View {
       app(['check',dir],home);checked++;
     }
     return checked;
-  } finally {fs.rmSync(dir,{recursive:true});}
+  } finally {dispose();}
 }

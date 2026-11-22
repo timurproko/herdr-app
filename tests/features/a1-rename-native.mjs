@@ -1,4 +1,5 @@
 // Sidebar naming removal previews only: no agent/Core reads, preference writes or submissions.
+import {temporaryMod} from '../../tools/temporary-mod.mjs';
 import fs from 'node:fs';import path from 'node:path';import {randomUUID} from 'node:crypto';
 import {app,defaultHome} from '../../tools/deploy.mjs';
 const home=defaultHome(),out=path.resolve(process.argv[2]??'.artifacts/a1-native');
@@ -7,6 +8,7 @@ fs.mkdirSync(out,{recursive:true});
 for(const mode of ['settings','menu','agents']){
  const name=`custom-a1-preview-${randomUUID().slice(0,8)}`,dir=path.join(home,'mods',name);
  if(fs.existsSync(dir))throw Error('Existing preview directory preserved.');
+ const dispose=temporaryMod(home,name);
  try{
   const mod=mode==='settings'?'custom-settings':mode==='agents'?'custom-agents':'custom-menu';
   fs.cpSync(path.resolve('dist/mods',mod),dir,{recursive:true});fs.renameSync(path.join(dir,'host.js'),path.join(dir,'native-host.js'));
@@ -25,7 +27,7 @@ export const checking=()=>true;export const exec=()=>{throw Error('Preview canno
   if(status.errors?.length || status.overlays?.length!==1 || !status.overlays.includes(name))throw Error('Preview changed or failed; capture skipped.');
   const shot=path.join(out,`${mode}.png`);app(['shot',shot],home);console.log(`Native ${mode}: ${shot}`);
  }finally{
-  if(JSON.parse(app(['status'],home)).overlays?.includes(name))app(['do','mod.open','--name',name],home);
-  fs.rmSync(dir,{recursive:true,force:true});
+  try{if(JSON.parse(app(['status'],home)).overlays?.includes(name))app(['do','mod.open','--name',name],home);}
+  finally{dispose();}
  }
 }

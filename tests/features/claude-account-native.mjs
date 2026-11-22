@@ -1,8 +1,12 @@
 // Disposable fixture UI only. No real terminal, credential, worker or switch action.
+import {temporaryMod} from '../../tools/temporary-mod.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 export function checkClaudeAccountStates(home,app) {
   const original=path.join(home,'mods/custom-workspace-status'),dir=path.join(home,'mods/custom-claude-account-fixture');
+  const dispose=temporaryMod(home,path.basename(dir));
+  let checked=0;
+  try {
   fs.cpSync(original,dir,{recursive:true});
   fs.renameSync(path.join(dir,'host.js'),path.join(dir,'native-host.js'));
   fs.writeFileSync(path.join(dir,'host.js'),`export * from './native-host.js';
@@ -12,7 +16,6 @@ export const terminals=()=>[{address:'t42',program:{key:'claude'},labels:{
  'custom.claude.control':globalThis.fixtureControl?'1':''}}];
 export const exec=()=>{throw Error('Fixture must not execute processes');};
 `);
-  let checked=0;
   for(const state of ['cold','error','empty','accounts','shared','pending']) {
     fs.writeFileSync(path.join(dir,'main.js'),`import {View} from 'gpui-kit';
 import {theme} from './host.js';
@@ -28,5 +31,6 @@ export default class Fixture extends View {
 `);
     app(['check',dir],home);checked++;
   }
-  fs.rmSync(dir,{recursive:true});return checked;
+  return checked;
+  } finally {dispose();}
 }

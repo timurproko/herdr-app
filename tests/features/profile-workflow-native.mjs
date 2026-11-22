@@ -1,5 +1,6 @@
 // Terminal-free native Profiles preview: fake profiles and in-memory actions only.
 // Scroll the list, edit/Cancel, or Remove/Cancel without touching real settings.
+import {temporaryMod} from '../../tools/temporary-mod.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -10,6 +11,7 @@ const scene=process.argv[2]??'list';
 if(!['list','edit','remove'].includes(scene))throw Error('Use list, edit or remove.');
 if(fs.existsSync(dir))throw Error('Preview already exists; inspect before retrying.');
 if(JSON.parse(app(['status'],home)).overlays?.length)throw Error('Dismiss existing dialogs before previewing.');
+const dispose=temporaryMod(home,name);
 try{
  fs.cpSync(path.join(project,'dist/mods/custom-settings'),dir,{recursive:true});
  fs.writeFileSync(path.join(dir,'profiles.js'),`
@@ -59,5 +61,5 @@ try{
  console.log(`PASS: native ${scene} Profiles surface; inspect ${shot}`);
 }finally{
  try{if(JSON.parse(app(['status'],home)).overlays?.includes(name))app(['do','mod.open','--name',name],home);}
- finally{fs.rmSync(dir,{recursive:true,force:true});}
+ finally{dispose();}
 }

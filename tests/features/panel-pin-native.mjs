@@ -1,11 +1,14 @@
 // Deferred header/menu descriptions with synthetic host snapshots in a scratch
 // home. No real layout commands, network, terminals, pin state or focus changes.
+import {temporaryMod} from '../../tools/temporary-mod.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 export function checkPanelPinStates(home,app) {
   let checked=0;
   for(const feature of ['files','changes']) {
     const dir=path.join(home,`mods/custom-${feature}-pin-fixture`);
+    const dispose=temporaryMod(home,path.basename(dir));
+    try {
     fs.cpSync(path.join(home,`mods/custom-${feature}`),dir,{recursive:true});
     fs.renameSync(path.join(dir,'main.js'),path.join(dir,'feature-view.js'));
     fs.renameSync(path.join(dir,'host.js'),path.join(dir,'native-host.js'));
@@ -20,7 +23,6 @@ export const setShared=()=>{throw Error('Fixture cannot save real state');};
 export const exec=()=>{throw Error('Fixture cannot run processes');};
 export const hc=()=>{throw Error('Fixture cannot read agents');};
 `);
-    try {
       for(const pinned of [false,true]) {
         fs.writeFileSync(path.join(dir,'main.js'),`import Feature from './feature-view.js';
 export default class Fixture extends Feature {
@@ -40,7 +42,7 @@ export default class Fixture extends Feature {
 `);
         app(['check',dir],home);checked++;
       }
-    } finally {fs.rmSync(dir,{recursive:true});}
+    } finally {dispose();}
   }
   return checked;
 }

@@ -1,5 +1,6 @@
 // Explicit live fixture only: dummy PRs, intercepted navigation/browser actions.
 // Never selects a real agent, creates terminals, sends terminal input or uses GitHub.
+import {temporaryMod} from '../../tools/temporary-mod.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
@@ -10,6 +11,7 @@ const artifacts=fileURLToPath(new URL('../../.artifacts/',import.meta.url));
 fs.mkdirSync(artifacts,{recursive:true});
 const image=path.join(artifacts,'pr-agent-fixture.png');
 if(fs.existsSync(dir))throw Error('Fixture exists; inspect it before retrying.');
+const dispose=temporaryMod(home,name);
 try {
   fs.cpSync(path.join(home,'mods/custom-changes'),dir,{recursive:true});
   fs.renameSync(path.join(dir,'main.js'),path.join(dir,'changes-view.js'));
@@ -69,5 +71,5 @@ $coords=[IntPtr](($y -shl 16) -bor ($x -band 65535))
   try {
     const status=JSON.parse(app(['status'],home));
     if(status.overlays?.includes(name))app(['do','mod.open','--name',name],home);
-  } finally {fs.rmSync(dir,{recursive:true,force:true});}
+  } finally {dispose();}
 }
