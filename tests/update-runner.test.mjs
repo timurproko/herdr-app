@@ -99,6 +99,8 @@ try {
       fs.unlinkSync(p.lock);
       assert.equal(customizationRowState(updateProjection(inspect(h.home))).action, 'check');
       fs.unlinkSync(p.status);
+      assert.equal(customizationRowState(updateProjection(inspect(h.home))).action, 'check', 'orphaned unknown result remains blocking');
+      fs.renameSync(p.result, `${p.result}.resolved`);
       assert.equal(customizationRowState(updateProjection(worker.checkMain(h.home, { force: true, run: () => ({ code: 0, stdout: `${'b'.repeat(40)}\trefs/heads/main\n` }) }))).action, 'launch');
     }
     if (kind === 'missing') {
@@ -140,7 +142,7 @@ try {
   atomic(p.status, { ...read(p.status), pid: 123456789, deadline: 1 });
   assert.equal(inspect(h.home, { isAlive: () => false }).job.state, 'unknown');
   assert.equal(fs.existsSync(p.lock), true, 'crash is not permission to remove a lock');
-  fs.unlinkSync(p.lock);
+  fs.unlinkSync(p.lock); fs.unlinkSync(p.status);
   const failed = await launch(h.home, { spawn() { throw Error('fixture launcher failed'); } }); assert.equal(failed.job.state, 'failed'); assert.equal(failed.locked, false);
   const noAck = await launch(h.home, { spawn() { const child = new EventEmitter(); child.pid = 123456789; child.unref = () => {}; return child; }, sleep: async () => {} });
   assert.equal(noAck.job.state, 'unknown'); assert.equal(noAck.locked, true);

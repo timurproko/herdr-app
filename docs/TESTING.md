@@ -72,7 +72,14 @@ exclusion. The runner fixture also upgrades a pre-feature clean clone through a 
 origin and a fresh protocol-capable CLI, and simulates the installer's eight-minute
 Windows timeout to verify unknown status/lock retention after Check. The pipeline
 fixture runs ordinary npm deploy:all with a skipped peer and verifies that the row
-links its matching result, not a missing/stale Settings log. The detach fixture
+links its matching result, not a missing/stale Settings log. It also runs the real
+CLI with mocked definite installer failure and eight-minute timeout, then checks
+failure/recovery details and launch blocking after a successful main check.
+The check suite enumerates every Settings-job/plain-CLI by success/partial/failed/
+unknown combination using the real result writer, worker, check, projection and
+row functions; all eight cells assert truthful text and source-matching details.
+Unknown CLI receipts block even before peers finish and when no Settings lock
+exists; stale completed Settings jobs cannot hide the latest CLI outcome. The detach fixture
 runs actual detached Node supervision with synthetic Git and deploy CLI; it does
 not prove survival under the real Herdr/Core process lifecycle. All use checkout `.artifacts/` homes; exec, peer transport and deployment
 are mocked/synthetic. Real-app steps are in COMMANDS.md; no live home, machine,

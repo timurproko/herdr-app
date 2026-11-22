@@ -63,16 +63,23 @@ function inspect(home, { now = Date.now, isAlive = alive } = {}) {
   if (job && !['running', 'unknown'].includes(job.state) && result?.complete && result.at >= job.started && result.token !== job.token) job = null;
   const details = job && fs.existsSync(p.log) ? { kind: 'log', path: p.log }
     : result && (!job || result.token === job.token) ? { kind: 'result', path: p.result } : null;
+  // Plain CLI runs have no Settings job. Preserve their terminal outcome (and
+  // an already-known local uncertainty even while peers are still finishing).
+  const classified = result ? outcome(result) : null;
+  const local = result?.results?.find(row => row.machine === 'local');
+  const lastRun = result && local?.action !== 'skipped' && (result.complete === true || classified.state === 'unknown')
+    ? { ...classified, source: result.token ? 'settings' : 'cli', finished: result.at || 0 } : null;
   const revision = installedRevision(p, result);
   let check = read(p.check);
   if (check?.target) check = { ...check, available: revision !== check.target && (!check.error || check.available === true) };
-  return { job, result, check, checking: (read(p.checkLock)?.until || 0) > now(), revision, locked: fs.existsSync(p.lock), details, log: details?.kind === 'log' ? details.path : '' };
+  return { job, lastRun, result, check, checking: (read(p.checkLock)?.until || 0) > now(), revision, locked: fs.existsSync(p.lock), details, log: details?.kind === 'log' ? details.path : '' };
 }
 function checkMain(home, { force = false, now = Date.now, run = command, env = process.env } = {}) {
   const p = files(home), snapshot = inspect(home, { now });
   if (snapshot.job?.state === 'running') return snapshot;
   const previous = snapshot.check || {};
-  const afterUpdate = ['complete', 'partial'].includes(snapshot.job?.state) && (snapshot.job.finished || 0) > (previous.attempted || 0);
+  const latest = snapshot.job || snapshot.lastRun;
+  const afterUpdate = ['complete', 'partial'].includes(latest?.state) && (latest.finished || 0) > (previous.attempted || 0);
   if (!force && !afterUpdate && previous.attempted && now() - previous.attempted < HOUR) return snapshot;
   fs.mkdirSync(p.dir, { recursive: true });
   const held = read(p.checkLock);
@@ -192,7 +199,10 @@ async function runUpdate(home, token, { userHome, run = command, spawn = cp.spaw
   } catch (error) { log(shortError(error)); return finish('failed', error); }
 }
 async function launch(home, { spawn = cp.spawn, source = fs.readFileSync(__filename, 'utf8'), now = Date.now, sleep = ms => new Promise(resolve => setTimeout(resolve, ms)) } = {}) {
-  const p = files(home);
+  const p = files(home), current = inspect(home);
+  // Enforce this at the process boundary too: a stale UI or absent Settings lock
+  // cannot replay a tokenless CLI timeout whose descendants may still be alive.
+  if (current.job?.state === 'unknown' || current.lastRun?.state === 'unknown') return current;
   fs.mkdirSync(p.dir, { recursive: true });
   let fd;
   try { fd = fs.openSync(p.lock, 'wx'); }

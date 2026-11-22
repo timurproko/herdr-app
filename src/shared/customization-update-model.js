@@ -7,7 +7,7 @@ export function updateProjection(snapshot) {
   return {
     revision: snapshot?.revision || null, check: snapshot?.check || null,
     checking: snapshot?.checking === true, locked: snapshot?.locked === true,
-    log: snapshot?.log || '', details: snapshot?.details || null, job: snapshot?.job || null,
+    log: snapshot?.log || '', details: snapshot?.details || null, job: snapshot?.job || snapshot?.lastRun || null,
     partial: Boolean(result?.complete && ok(result.results?.find(row => row.machine === 'local')) && result.results.some(row => row.machine !== 'local' && !ok(row))),
   };
 }
@@ -25,7 +25,7 @@ export function customizationRowState(snapshot, { busy = null, error = null, now
   const canUpdate = !unknown && !running && !snapshot?.locked && !check?.error && updateAvailable(snapshot) && (job?.state !== 'failed' || freshAfterFailure);
   let description;
   if (running) description = 'Updating all machines…';
-  else if (unknown) description = `Update outcome unknown. Inspect ${details?.kind === 'result' ? 'details' : 'log'}: ${details?.path || 'unavailable'}`;
+  else if (unknown) description = `Update outcome unknown${job?.error ? `: ${job.error}` : ''}. Inspect ${details?.kind === 'result' ? 'details' : 'log'}: ${details?.path || 'unavailable'}`;
   else if (error) description = error;
   else if (job?.state === 'failed') description = `Update failed: ${job.error || 'inspect log'}. Recovery: documented rollback.${log}`;
   else if (check?.error) description = 'Check failed. Try again.';

@@ -1018,7 +1018,9 @@ show one short matching-details warning (`update.log` for Settings runs,
 `deploy-all-result.json` for ordinary CLI runs without a captured log); desktop
 failure names the cause and documented
 manual rollback. Missing results/deadlines say outcome unknown and block replay
-while the prior process/lock is unresolved. There is no per-machine UI, news,
+while the prior process/lock is unresolved. Ordinary CLI failures also retain
+their cause/recovery/details line after checking; a CLI installer timeout's
+durable result blocks another Settings update even without a Settings lock. There is no per-machine UI, news,
 rollback button, automatic rollback, daemon, scheduler or job history. See
 [first installation and real-app checks](docs/COMMANDS.md#trying-the-row-after-merge).
 The label is defined once in `src/shared/customization-update-model.js`.

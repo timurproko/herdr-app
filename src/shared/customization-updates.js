@@ -21,7 +21,8 @@ export function refreshCustomizationUpdates(owner, cx, action = 'status', force 
       setShared(CUSTOMIZATION_UPDATE_KEY, updateProjection(snapshot));
       // A successful deploy needs a fresh main check, including after a reload.
       // Failed checks persist an attempt time so a visible page cannot retry-loop.
-      if (['complete', 'partial'].includes(snapshot.job?.state) && (snapshot.check?.attempted || 0) < snapshot.job.finished) {
+      const latest = snapshot.job || snapshot.lastRun;
+      if (['complete', 'partial'].includes(latest?.state) && (snapshot.check?.attempted || 0) < latest.finished) {
         owner.customUpdatePending = 'check'; cx.notify();
         snapshot = await request(owner, 'check');
         setShared(CUSTOMIZATION_UPDATE_KEY, updateProjection(snapshot));

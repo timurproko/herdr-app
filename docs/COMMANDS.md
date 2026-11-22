@@ -157,7 +157,12 @@ its matching details path: **Log:** points to `update.log` for a detached Settin
 run; **Details:** points to `deploy-all-result.json` for an ordinary CLI run that
 captured no log. A missing or unrelated earlier Settings log is never advertised.
 Inspect the matching file for individual reasons and backup IDs.
-Desktop failure states the short cause and documented rollback recovery. There
+Desktop failure states the short cause and documented rollback recovery for both
+Settings and ordinary CLI runs, even after a successful version check. A definite
+failure may offer an explicit retry after a fresh successful check, without hiding
+the failure line. A CLI installer timeout remains unknown and blocks Settings
+launches at the worker boundary too, even when no Settings job/lock was created;
+its durable result itself carries the unresolved outcome. There
 is **no automatic rollback**: from the managed clone with the same HERDR_APP_HOME,
 use the existing `npm run disable` then `npm run rollback -- <backup-id>` sequence
 below. If a failure produced no printed ID, inspect `.customizations/backups/` and
@@ -168,10 +173,13 @@ matching `update-status.json`, PID/childPid, log, result and any dispatched mach
 wait for active work, and use normal rollback recovery for uncertain writes.
 **Manual resolution, one step:** only after checking that the recorded processes,
 all npm/installer descendants and any dispatched remote updates have stopped,
-and completing any required recovery, remove **both** `update.lock` and
-`update-status.json` from this captured home's `.customizations/`, then reopen
-Settings and Check now. Keep the result, log and backup journals. Removing only
-the lock deliberately does not clear the row's unknown status. Never delete
+and completing any required recovery, move `deploy-all-result.json` out of the
+captured home's active `.customizations/` path to a private recovery location,
+and remove `update.lock` and `update-status.json` if present; then reopen Settings
+and Check now. Preserve that moved result, the log and backup journals. This also
+resolves a plain CLI timeout with no Settings lock. Removing only the lock/status
+deliberately does not clear the durable unknown result; revision evidence will
+be unknown until the next successful full deployment. Never delete
 `.customizations/deploy.lock` to force an update, reset a checkout or replay an
 uncertain remote request.
 

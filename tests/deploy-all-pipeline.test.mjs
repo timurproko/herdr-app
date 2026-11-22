@@ -41,8 +41,8 @@ try {
   git(f.root,'remote','set-url','origin','https://github.com/timurproko/herdr-app.git');
   git(f.root,'config',`url.${f.origin}.insteadOf`,'https://github.com/timurproko/herdr-app.git');
   const preload=path.join(f.base,'mock-hc.cjs');
-  write(preload,`const cp=require('node:child_process'),real=cp.spawnSync; cp.spawnSync=function(c,a,o){if(c==='hc'){if(a.join(' ')==='machine ls --json')return {status:0,stdout:JSON.stringify({machines:process.env.HERDR_FIXTURE_OFFLINE_PEER?[{name:'offline-fixture',state:'offline'}]:[]}),stderr:''};throw Error('No remote transport permitted');}return real(c,a,o);};`);
-  const cli = args => cp.spawnSync(process.execPath,['--require',preload,path.join(f.root,'tools/deploy-all.mjs'),...args],{cwd:f.root,env:f.env,encoding:'utf8',timeout:60000});
+  write(preload,`const cp=require('node:child_process'),real=cp.spawnSync; cp.spawnSync=function(c,a,o){if(c==='hc'){if(a.join(' ')==='machine ls --json')return {status:0,stdout:JSON.stringify({machines:process.env.HERDR_FIXTURE_OFFLINE_PEER?[{name:'offline-fixture',state:'offline'}]:[]}),stderr:''};throw Error('No remote transport permitted');}if(process.env.HERDR_FIXTURE_INSTALLER_MODE&&(c==='npm'&&a[0]==='run'&&a[1]==='deploy'||c==='cmd.exe'&&a.includes('npm run deploy'))){const timeout=process.env.HERDR_FIXTURE_INSTALLER_MODE==='timeout';return {status:timeout?null:1,stdout:'',stderr:'fixture installer failure',...(timeout?{error:{code:'ETIMEDOUT'}}:{})};}return real(c,a,o);};`);
+  const cli = (args,extra={}) => cp.spawnSync(process.execPath,['--require',preload,path.join(f.root,'tools/deploy-all.mjs'),...args],{cwd:f.root,env:{...f.env,HERDR_UPDATE_RUN_ID:'',...extra},encoding:'utf8',timeout:60000});
   const protocol=cli(['--protocol']); assert.equal(protocol.status,0,protocol.stderr); assert.deepEqual(JSON.parse(protocol.stdout),{resultProtocol:1});
   assert.equal(fs.existsSync(f.env.HERDR_APP_HOME),false,'protocol probe performs no deployment/status writes');
   const target = f.advance();
@@ -97,5 +97,19 @@ try {
   fs.appendFileSync(path.join(home,'.customizations/runtime/shell/bash-cwd.sh'),'personal');
   r=cli([]);assert.equal(r.status,1,r.stderr);assert.match(r.stdout,/Personal file conflict/);assert.match(r.stdout,/\(attempted\)/);
   assert.equal(fs.readdirSync(path.join(home,'.customizations/backups')).length,1);
-  console.log('PASS: disposable CLI/npm/full installer, real backup/no-op/conflict exit codes and byte-preserving dry-run; hc mocked.');
+  for(const mode of ['failed','timeout']) {
+    r=cli([],{HERDR_FIXTURE_INSTALLER_MODE:mode}); assert.equal(r.status,1,r.stderr);
+    const receipt=JSON.parse(fs.readFileSync(updatePaths.result)); assert.equal(receipt.token,null); assert.equal(receipt.desktop.verified,false);
+    const commit=git(f.root,'rev-parse','HEAD');
+    const inspected=updater.checkMain(home,{force:true,now:()=>receipt.at+100,run:()=>({code:0,stdout:`${commit}\trefs/heads/main\n`})});
+    const shown=customizationRowState(updateProjection(inspected),{now:receipt.at+100});
+    assert.equal(inspected.check.available,true);
+    assert.ok(shown.description.includes(updatePaths.result));
+    if(mode==='failed') { assert.match(shown.description,/Update failed:.*documented rollback/); assert.equal(shown.action,'launch','definite failure allows explicit retry only after fresh Check, without hiding failure'); }
+    else {
+      assert.equal(receipt.results[0].outcome,'unknown'); assert.match(shown.description,/Update outcome unknown: deployment timed out/); assert.equal(shown.action,'check');
+      let dispatched=0; await updater.launch(home,{spawn(){dispatched++;throw Error('must not launch');}}); assert.equal(dispatched,0,'tokenless CLI timeout cannot dispatch another Settings deployment');
+    }
+  }
+  console.log('PASS: disposable CLI/npm/full installer, backups/no-op/conflict, tokenless failed/unknown presentation and launch blocking, and byte-preserving dry-run; hc/install timeouts mocked.');
 } finally {clean();}
