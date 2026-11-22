@@ -2,8 +2,8 @@
 
 ## 1. Exact-name temporary-mod disposal
 
-- [ ] 1.1 Add a small owned-lifetime cleanup API to `tools/temporary-mod.mjs` that removes only the claimed temporary mod and matching data directory, with idempotence and existing-directory protection; verify with disposable-home success and thrown-error fixtures in `tests/temporary-mod.test.mjs`.
-- [ ] 1.2 Cover already-removed mod cleanup, unrelated installed/stock mod and data preservation, and any introduced interruption hooks with fixture assertions; run `node tests/temporary-mod.test.mjs` without invoking Herdr.
+- [x] 1.1 Add a small owned-lifetime cleanup API to `tools/temporary-mod.mjs` that removes only the claimed temporary mod and matching data directory, with idempotence and existing-directory protection; verify with disposable-home success and thrown-error fixtures in `tests/temporary-mod.test.mjs`.
+- [x] 1.2 Cover already-removed mod cleanup, unrelated installed/stock mod and data preservation, and any introduced interruption hooks with fixture assertions; run `node tests/temporary-mod.test.mjs` without invoking Herdr.
 
 ## 2. Temporary-mod caller cleanup
 
