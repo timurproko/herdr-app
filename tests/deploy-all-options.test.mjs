@@ -57,6 +57,15 @@ try {
     const docs = fs.readFileSync(path.join(project,file),'utf8');
     for (const text of ['--dry-run','--only','--skip-local']) assert.ok(docs.includes(text),file+text);
     assert.match(docs,/fetch.*(?:exception|still|only)|still.*fetch/i);
+    for (const text of ['Core\'s PATH','Node 20+','https://github.com/timurproko/herdr-app.git','~/.local/share/herdr-app','npm run deploy:shell -- "$HOME/.config/herdr-app"']) assert.ok(docs.includes(text),file+': '+text);
+    assert.ok(docs.includes('installed Git provenance'));
+    assert.match(docs,/never restarts|does not restart/);
+    assert.ok(docs.includes('shell-reporting') || docs.includes('installed-shell-reporting'));
   }
-  console.log('PASS: deploy-all selection, mandatory source gate, fetch-only preview, result/backup reporting and exit codes.');
+  const readme = fs.readFileSync(path.join(project,'README.md'),'utf8');
+  assert.ok(readme.includes('Ordinary deploy/deploy:shell never contacts peers'));
+  assert.ok(!readme.includes('Installation on a remote peer is a separate explicit action, never a deploy side effect.'));
+  const commands = fs.readFileSync(path.join(project,'docs/COMMANDS.md'),'utf8');
+  assert.ok(commands.includes('One-time new peer setup')); assert.ok(commands.includes('Core-only hosts use'));
+  console.log('PASS: deploy-all selection, mandatory source gate, fetch-only preview, results/exit codes and manual setup docs.');
 } finally { clean(); }

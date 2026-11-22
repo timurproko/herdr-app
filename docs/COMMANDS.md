@@ -118,6 +118,41 @@ timeout after dispatch means outcome unknown: inspect the machine before retryin
 There is no automatic retry or rollback, or cross-machine transaction; retain the
 printed backup IDs and use the existing recovery commands below.
 
+### One-time new peer setup
+
+Do these manual steps **on the new peer**, not by running deploy:all. Install Git,
+Node 20+ and npm yourself, ensure they are on **Core's PATH**, and configure this
+peer in Herdr Machines. `hc` on the desktop must support machine listing and
+terminal-free remote exec. A Core-only peer needs no Desktop or Custom mods.
+A plain HTTPS clone is sufficient; no management/adoption record is created.
+
+PowerShell on the peer:
+
+```powershell
+New-Item -ItemType Directory -Force "$HOME/.local/share" | Out-Null
+git clone https://github.com/timurproko/herdr-app.git "$HOME/.local/share/herdr-app"
+Set-Location "$HOME/.local/share/herdr-app"
+npm run deploy:shell -- "$HOME/.config/herdr-app"
+```
+
+Bash on the peer:
+
+```bash
+mkdir -p "$HOME/.local/share"
+git clone https://github.com/timurproko/herdr-app.git "$HOME/.local/share/herdr-app"
+cd "$HOME/.local/share/herdr-app"
+npm run deploy:shell -- "$HOME/.config/herdr-app"
+```
+
+The explicit home selects the same peer default used by deploy:all, even if an
+interactive shell has HERDR_APP_HOME set. Keep this checkout clean on main.
+Wire shell profiles explicitly using [README's installed lines](../README.md#installed-shell-reporting).
+Installing updated files does not restart or inject input into live shells;
+compatible Bash payloads reload at an idle prompt, while dispatcher changes may
+need a person to re-source the installed loader or open a new shell. Existing
+[backup-ID recovery](#disable-enable-rollback-or-remove) remains unchanged;
+Core-only hosts use [shell-only rollback](#core-only-shell-installation).
+
 ## Disable, enable, rollback or remove
 
 ```powershell

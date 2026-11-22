@@ -58,6 +58,12 @@ production non-TTY/identity guards are separately checked.
 CI discovery and the two native screenshot scripts' checkout `.artifacts/` paths;
 it never runs those scripts. Existing old dispatchers and live/remote profile
 wiring still need separately authorized rollout checks.
+`tests/deploy-all*.test.mjs` cover the all-machine command with local bare Git
+origins, temporary source/default homes and a mocked hc/remote transport. The pipeline
+fixture runs actual npm scripts and the existing full/shell installers only against
+its disposable home, with a fake host check and synthetic bundle; no real machine,
+Core, native app or account is contacted. Cases include source refusal, peer skips,
+independent failures, selection, dry-run byte preservation, backup IDs and exit codes.
 CI otherwise executes library fixtures, not real-home
 deploy/enable/disable/remove/rollback/preference-import operational commands.
 The real gh CLI fixture uses synthetic auth and a GET-only localhost server.
@@ -117,7 +123,7 @@ only the demonstrated Windows Git-sh fixture remains an observed suite exclusion
 ## Exact selected source entries
 
 The list below is generated from CI selection, not inferred from naming. On Node
-24 the current selection is **127 Ubuntu / 126 Windows entries**, with two/three
+24 the current selection is **131 Ubuntu / 130 Windows entries**, with two/three
 explicit exclusions respectively. The installed directory-loader fixture now runs
 on both; the preference-home and four runtime-contract suites are included. It includes scaffold/aggregator tests. Earlier Node 20 attempts selected
 122/121 and then 119/119 entries while diagnosing the crashes; those temporary
@@ -185,6 +191,10 @@ tests/close-space.test.mjs
 tests/cloudflare-prerequisites.test.mjs
 tests/copy-toast.test.mjs
 tests/crew-projects-ui.test.mjs
+tests/deploy-all-options.test.mjs
+tests/deploy-all-pipeline.test.mjs
+tests/deploy-all-remote.test.mjs
+tests/deploy-all.test.mjs
 tests/deployment.test.mjs
 tests/empty-state.test.mjs
 tests/file-refresh.test.mjs

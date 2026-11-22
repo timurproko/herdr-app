@@ -21,5 +21,5 @@
 
 ## 4. Explicit manual remote bootstrap guidance
 
-- [ ] 4.1 Document Git/Node 20+/npm on the remote Core PATH, HTTPS clone to ~/.local/share/herdr-app and the explicit first npm run deploy:shell into the default home; inspect examples and static assertions for agreement with worker paths and prerequisites.
-- [ ] 4.2 Reconcile README's old no-remote-deploy-side-effect wording with explicit deploy:all authorization, link existing profile wiring/rollback guidance and state no automatic clone/repair/restart; static documentation checks confirm the new command neither claims installed provenance nor live-shell restart.
+- [x] 4.1 Document Git/Node 20+/npm on the remote Core PATH, HTTPS clone to ~/.local/share/herdr-app and the explicit first npm run deploy:shell into the default home; inspect examples and static assertions for agreement with worker paths and prerequisites.
+- [x] 4.2 Reconcile README's old no-remote-deploy-side-effect wording with explicit deploy:all authorization, link existing profile wiring/rollback guidance and state no automatic clone/repair/restart; static documentation checks confirm the new command neither claims installed provenance nor live-shell restart.
