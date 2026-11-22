@@ -58,10 +58,15 @@ function inspect(home, { now = Date.now, isAlive = alive } = {}) {
     if (job.state !== 'unknown') unlock(p, job.token);
   }
   if (job?.state === 'running' && (now() > job.deadline || (job.phase !== 'starting' && !isAlive(job.pid)) || (job.phase === 'starting' && now() - job.started > 5000))) job = { ...job, state: 'unknown' };
+  // A later ordinary CLI run has no Settings launch token/log. Do not attach
+  // its result to a stale completed Settings job or that job's unrelated log.
+  if (job && !['running', 'unknown'].includes(job.state) && result?.complete && result.at >= job.started && result.token !== job.token) job = null;
+  const details = job && fs.existsSync(p.log) ? { kind: 'log', path: p.log }
+    : result && (!job || result.token === job.token) ? { kind: 'result', path: p.result } : null;
   const revision = installedRevision(p, result);
   let check = read(p.check);
   if (check?.target) check = { ...check, available: revision !== check.target && (!check.error || check.available === true) };
-  return { job, result, check, checking: (read(p.checkLock)?.until || 0) > now(), revision, locked: fs.existsSync(p.lock), log: p.log };
+  return { job, result, check, checking: (read(p.checkLock)?.until || 0) > now(), revision, locked: fs.existsSync(p.lock), details, log: details?.kind === 'log' ? details.path : '' };
 }
 function checkMain(home, { force = false, now = Date.now, run = command, env = process.env } = {}) {
   const p = files(home), snapshot = inspect(home, { now });

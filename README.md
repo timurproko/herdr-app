@@ -1014,7 +1014,9 @@ The latest status, result and log live under the selected Herdr home's
 `.customizations/`: `update-status.json`, `deploy-all-result.json`,
 `update-check.json` and `update.log`. Reload/closing Settings does not cancel or
 repeat an update. Peer skips/failures retain the successful desktop revision and
-show one short log-path warning; desktop failure names the cause and documented
+show one short matching-details warning (`update.log` for Settings runs,
+`deploy-all-result.json` for ordinary CLI runs without a captured log); desktop
+failure names the cause and documented
 manual rollback. Missing results/deadlines say outcome unknown and block replay
 while the prior process/lock is unresolved. There is no per-machine UI, news,
 rollback button, automatic rollback, daemon, scheduler or job history. See

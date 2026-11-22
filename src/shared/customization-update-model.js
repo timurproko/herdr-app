@@ -7,7 +7,7 @@ export function updateProjection(snapshot) {
   return {
     revision: snapshot?.revision || null, check: snapshot?.check || null,
     checking: snapshot?.checking === true, locked: snapshot?.locked === true,
-    log: snapshot?.log || '', job: snapshot?.job || null,
+    log: snapshot?.log || '', details: snapshot?.details || null, job: snapshot?.job || null,
     partial: Boolean(result?.complete && ok(result.results?.find(row => row.machine === 'local')) && result.results.some(row => row.machine !== 'local' && !ok(row))),
   };
 }
@@ -16,7 +16,8 @@ const at = millis => { const date = new Date(millis); return `${String(date.getH
 export function customizationRowState(snapshot, { busy = null, error = null, now = Date.now() } = {}) {
   const title = `${CUSTOMIZATION_LABEL} ${snapshot?.revision?.slice(0, 7) || 'revision unknown'}`;
   const job = snapshot?.job, check = snapshot?.check;
-  const log = snapshot?.log ? ` Log: ${snapshot.log}` : '';
+  const details = snapshot?.details || (snapshot?.log ? { kind: 'log', path: snapshot.log } : null);
+  const log = details ? ` ${details.kind === 'log' ? 'Log' : 'Details'}: ${details.path}` : '';
   const unknown = job?.state === 'unknown' || (job?.state === 'running' && job.deadline < now);
   const running = busy === 'launch' || (job?.state === 'running' && !unknown);
   const checking = busy === 'check' || snapshot?.checking;
@@ -24,7 +25,7 @@ export function customizationRowState(snapshot, { busy = null, error = null, now
   const canUpdate = !unknown && !running && !snapshot?.locked && !check?.error && updateAvailable(snapshot) && (job?.state !== 'failed' || freshAfterFailure);
   let description;
   if (running) description = 'Updating all machines…';
-  else if (unknown) description = `Update outcome unknown. Inspect log: ${snapshot?.log || 'unavailable'}`;
+  else if (unknown) description = `Update outcome unknown. Inspect ${details?.kind === 'result' ? 'details' : 'log'}: ${details?.path || 'unavailable'}`;
   else if (error) description = error;
   else if (job?.state === 'failed') description = `Update failed: ${job.error || 'inspect log'}. Recovery: documented rollback.${log}`;
   else if (check?.error) description = 'Check failed. Try again.';

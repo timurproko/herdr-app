@@ -269,7 +269,7 @@ Real deploy:all runs SHALL record latest per-machine outcomes and successful des
 
 #### Scenario: Desktop success with incomplete peers
 - **WHEN** the desktop deploy succeeds but a peer is skipped, fails or machine inventory fails
-- **THEN** the row shows the new desktop revision and one short partial-outcome line naming the log path
+- **THEN** the row shows the new desktop revision and one short partial-outcome line naming the matching captured log or durable result path
 - **AND** the log/result contains machine reasons and available backup IDs without adding machine rows
 - **AND** ordinary successful version checks do not erase the partial-outcome warning
 

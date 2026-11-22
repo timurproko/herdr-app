@@ -153,7 +153,10 @@ when the CLI exits and a fresh Check succeeds. Remote work already dispatched
 might still finish.
 
 When the desktop succeeds but peers skip/fail, the single row names that fact and
-the log path; inspect the log/result for individual reasons and backup IDs.
+its matching details path: **Log:** points to `update.log` for a detached Settings
+run; **Details:** points to `deploy-all-result.json` for an ordinary CLI run that
+captured no log. A missing or unrelated earlier Settings log is never advertised.
+Inspect the matching file for individual reasons and backup IDs.
 Desktop failure states the short cause and documented rollback recovery. There
 is **no automatic rollback**: from the managed clone with the same HERDR_APP_HOME,
 use the existing `npm run disable` then `npm run rollback -- <backup-id>` sequence
@@ -187,7 +190,7 @@ existing host/A1 compatibility gates still apply.
    **Customizations <short revision>** should use the same typography and one
    button. **Check now** must disable as Checking… and show **Up to date. Checked
    at HH:MM.** when installed and published main match. A peer skip/failure instead
-   keeps the desktop revision and log-path warning; read its reasons before trying
+   keeps the desktop revision and matching log/result-path warning; read its reasons before trying
    those machines. Do not erase status files just to manufacture a clean result.
 3. **Update available:** when published main advances after that installation,
    click Check now (or wait for the mounted hourly check); the button becomes

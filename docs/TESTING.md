@@ -68,9 +68,13 @@ independent failures, selection, dry-run byte preservation, backup IDs and exit 
 and revision evidence. `tests/update-{runner,detach,check,row}.test.mjs` cover
 managed-source refusal, clone-on-Update, deadlines, reload/late-result recovery,
 main-only checks/coalescing, one-button states, dots, packaging and preference
-exclusion. The detach fixture runs actual detached Node supervision with synthetic
-Git and deploy CLI; it does not prove survival under the real Herdr/Core process
-lifecycle. All use checkout `.artifacts/` homes; exec, peer transport and deployment
+exclusion. The runner fixture also upgrades a pre-feature clean clone through a local bare
+origin and a fresh protocol-capable CLI, and simulates the installer's eight-minute
+Windows timeout to verify unknown status/lock retention after Check. The pipeline
+fixture runs ordinary npm deploy:all with a skipped peer and verifies that the row
+links its matching result, not a missing/stale Settings log. The detach fixture
+runs actual detached Node supervision with synthetic Git and deploy CLI; it does
+not prove survival under the real Herdr/Core process lifecycle. All use checkout `.artifacts/` homes; exec, peer transport and deployment
 are mocked/synthetic. Real-app steps are in COMMANDS.md; no live home, machine,
 terminal, account or native UI is used by these suites.
 CI otherwise executes library fixtures, not real-home

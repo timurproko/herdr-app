@@ -32,7 +32,7 @@ export function refreshCustomizationUpdates(owner, cx, action = 'status', force 
       const previous = customizationUpdateSnapshot();
       setShared(CUSTOMIZATION_UPDATE_KEY, { ...previous, checking: false,
         ...(failedAction === 'check' ? { check: { ...previous?.check, error: 'Check failed. Try again.' } } : {}),
-        ...(failedAction === 'launch' ? { locked: true, job: { state: 'unknown' }, log: previous?.log || `${appHome()}/.customizations/update.log` } : {}) });
+        ...(failedAction === 'launch' ? { locked: true, job: { state: 'unknown' }, details: null, log: previous?.log || `${appHome()}/.customizations/update.log` } : {}) });
     } finally { owner.customUpdatePending = null; cx.notify(); }
   });
 }
