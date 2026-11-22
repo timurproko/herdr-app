@@ -80,7 +80,12 @@ confirmation path, success/expiry and unchanged busy/error/unknown states.
 `tests/update-markers.test.mjs` uses separate Settings/header/footer/menu VM
 contexts, the real controller/helper and a changed-shared-value refresh queue:
 manual checks reach already-mounted roots, and all native/Custom combinations
-produce the same marker markup. The original-source comparison exposes the missing
+produce the same marker markup. The Settings harness also runs real initialization
+and navigation, replacing the complete module graph with original overlay props
+and retained shared state to check section restoration, lifecycle teardown,
+explicit dismissal, deliberate navigation, destination defaults and bounded/invalid
+runtime records. The update-check fixture confirms navigation is not exported as a
+portable preference. These are VM fixtures, not live GPUI reload evidence. The original-source comparison exposes the missing
 More-popup Settings marker, but **does not reproduce** the reported real-app
 expanded-footer missing dot. It proves neither GPUI pixel visibility nor native
 runtime scheduling. `tests/update-marker-inspection.test.mjs` exercises the

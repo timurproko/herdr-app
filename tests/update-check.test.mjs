@@ -56,7 +56,7 @@ try {
   row = customizationRowState({ ...current, job: { state: 'complete', finished: clock + 1 } }); assert.equal(row.description, 'Updated. Check now.');
   assert.equal(CUSTOMIZATION_LABEL, 'herdr-app-custom');
   // Runtime projection and sidecars are never preference export inputs.
-  fs.writeFileSync(path.join(home, 'shared.json'), JSON.stringify({ [CUSTOMIZATION_UPDATE_KEY]: { log: '/private', token: 'private' }, 'sidebar.width': 268 }));
+  fs.writeFileSync(path.join(home, 'shared.json'), JSON.stringify({ [CUSTOMIZATION_UPDATE_KEY]: { log: '/private', token: 'private' }, 'custom.settings.navigation': { version: 1, dialogs: [{ overlay: 'private-dialog', section: 'updates' }] }, 'sidebar.width': 268 }));
   syncPreferences('export', home, { hostname: 'fixture', isDesktopOpen: () => false });
   const exported = JSON.parse(fs.readFileSync(path.join(home, 'preferences/fixture.json')));
   assert.deepEqual(exported.shared, { 'sidebar.width': 268 });

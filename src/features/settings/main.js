@@ -6,7 +6,7 @@ import { v_flex, h_flex, Scrollbar, InputState, Input } from "gpui-base";
 import { U, DIALOG_SCROLL, control, slot, itemHover, spinner, dialogHeader, dialogSurface, button as uiButton, sectionHeading, description, dropdown, menuSurface, dropdownPlacement, searchHeader, dialogScrollFrame, dialogScrollbar, dialogScrollBody, refreshButton, emptyState } from "./ui.js";
 import { initDesign, accentControl } from "./design.js";
 import { isCustom, refreshLook, watchSettingsLayout, liveTheme as theme } from "./look.js";
-import { hc, run, themes, fonts, updates, telemetry, settings, layouts, shared, appHome, readTextFile, writeTextFile, playSound, props, closeOverlay, window, spaces, machines } from "./host.js";
+import { hc, run, themes, fonts, updates, telemetry, settings, layouts, shared, setShared, appHome, readTextFile, writeTextFile, playSound, props, closeOverlay, window, spaces, machines } from "./host.js";
 import { pluginIsEnabled } from './plugins.js';
 import { renderPluginSettings, pluginPageRefresh } from './plugin-pages.js';
 import { previewFont, previewFontPreference, setPreviewFont, adjustPreviewFontSize } from './preview-font.js';
@@ -33,6 +33,12 @@ import { initUpdateCheckFeedback, updateCheckSlot } from './update-check-feedbac
 const I = (name) => `mods/custom-settings/${name}.svg`;
 const SETTINGS_NAV_WIDTH = 176;
 const SETTINGS_CONTENT_INSET = 16;
+// Host runtime only: never a portable preference. Keep at most eight dialogs.
+const SETTINGS_NAV_KEY = 'custom.settings.navigation';
+const navigationRecords = () => {
+  const value = shared(SETTINGS_NAV_KEY);
+  return value?.version === 1 && Array.isArray(value.dialogs) ? value.dialogs.slice(-8) : [];
+};
 
 const SECTIONS = settingsSections(window()?.platform);
 const sectionAvailable = section => !section.plugin || pluginIsEnabled(section.plugin);
@@ -63,8 +69,12 @@ export default class Settings extends View {
   init(_props, cx) {
     // A plugin's role list (Crew › Settings › Profiles) reads and changes the app's profiles through this.
     provideProfiles({ list: warmProfiles, setRole: setProfileRole, order: roleOrder, setOrder: setRoleOrder });
+    const overlay = props()?.overlay;
+    this.settingsOverlay = typeof overlay === 'string' && overlay.length > 0 && overlay.length <= 128 ? overlay : null;
+    const remembered = this.settingsOverlay && navigationRecords().find(record => record?.overlay === this.settingsOverlay)?.section;
+    const valid = id => SECTIONS.some(s => s.id === id && sectionAvailable(s));
     const asked = props()?.section;
-    this.section = SECTIONS.some((s) => s.id === asked && sectionAvailable(s)) ? asked : "look";
+    this.section = valid(remembered) ? remembered : valid(asked) ? asked : 'look';
     this.lookPage = this.section === 'look' && props()?.lookPage === 'sidebar' ? 'sidebar' : null;
     const requestedMachine = this.section === 'profiles' ? props()?.profilesMachine
       : this.section === 'terminals' ? (props()?.terminalsMachine === null || typeof props()?.terminalsMachine === 'string' ? props().terminalsMachine : props()?.profilesMachine)
@@ -181,9 +191,26 @@ export default class Settings extends View {
     });
   }
 
+  selectSection(section) {
+    if (this.pluginClosed || !SECTIONS.some(s => s.id === section && sectionAvailable(s))) return;
+    this.section = section;
+    if (this.settingsOverlay) setShared(SETTINGS_NAV_KEY, { version: 1, dialogs: [
+      ...navigationRecords().filter(record => record?.overlay !== this.settingsOverlay && typeof record?.overlay === 'string' && typeof record?.section === 'string').slice(-7),
+      { overlay: this.settingsOverlay, section },
+    ] });
+  }
+
+  // View.close is also called by host VM teardown; it must not dismiss the
+  // overlay or erase the section before the replacement initializes.
   close() {
     this.pluginClosed=true;this.pluginConfirm=null;
-    closeOverlay(props().overlay);
+  }
+
+  dismiss() {
+    if (this.settingsOverlay) setShared(SETTINGS_NAV_KEY, { version: 1,
+      dialogs: navigationRecords().filter(record => record?.overlay !== this.settingsOverlay) });
+    this.close();
+    closeOverlay(props()?.overlay);
   }
 
   // Pieces ---------------------------------------------------------------
@@ -732,14 +759,14 @@ export default class Settings extends View {
   openRoleLink(link, cx) {
     if (this.profileEdit || this.terminalEdit) return;
     cancelProfileDrag(this);
-    this.section = 'plugins'; this.pluginTarget = null; this.pluginConfirm = null; this.pluginTextFrom = 'profiles';
+    this.selectSection('plugins'); this.pluginTarget = null; this.pluginConfirm = null; this.pluginTextFrom = 'profiles';
     followSettingsMachine(this); reloadPlugins(this, cx);
     openPluginRoleLink(this, cx, link); cx.notify();
   }
   closePluginPage(cx) {
     const from = this.pluginTextFrom; this.pluginTextFrom = null;
     closePluginTextPage(this);
-    if (from === 'profiles') { this.section = 'profiles'; reloadProfiles(this, cx); }
+    if (from === 'profiles') { this.selectSection('profiles'); reloadProfiles(this, cx); }
   }
 
   machineSection() {
@@ -873,7 +900,7 @@ export default class Settings extends View {
       .w_full()
       .child(this.heading(t, "Herdr"))
       .child(this.row(t, `Herdr ${u.app.version}`, app[0], h_flex().gap(8).flex_none()
-        .child(this.button(t, "st-whats-new", "What's new", () => { closeOverlay(props()?.overlay); run("app.whats_new"); }))
+        .child(this.button(t, "st-whats-new", "What's new", () => { this.dismiss(); run("app.whats_new"); }))
         .when(Boolean(app[1]), (el) => el.child(app[1]))))
       .child(this.row(t, `herdr-core ${c.version ?? ""}`, core[0], core[1] ?? div()))
       .child(customizationUpdateRow(this, t))
@@ -983,7 +1010,7 @@ export default class Settings extends View {
             .on_click((_e, cx) => {
               if(!sectionAvailable(s))return;
               cancelProfileDrag(this);cancelTerminalDrag(this);
-              this.section = s.id;
+              this.selectSection(s.id);
               this.pluginTarget = null; this.pluginTextFrom = null;
               this.pluginConfirm=null;this.pluginChoice=null;
               this.lookPage = null;
@@ -1040,20 +1067,20 @@ export default class Settings extends View {
           else if (this.section === 'plugins' && pluginTextOpen(this)) this.closePluginPage(cx);
           else if (this.section === 'look' && this.lookPage) this.lookPage = null;
           else if (this.section === 'plugins' && this.pluginTarget) this.backToPlugins(cx);
-          else return this.close();
+          else return this.dismiss();
           this.handle.focus();
         } else return;
         cx.stop_propagation();
         cx.notify();
       })
-      .child(dialogHeader(t, "Settings", () => this.close(), this.headerTools(t)).gap(4)
+      .child(dialogHeader(t, "Settings", () => this.dismiss(), this.headerTools(t)).gap(4)
         .when((this.section === 'look' && Boolean(this.lookPage)) || (this.section === 'plugins' && (Boolean(this.pluginTarget) || pluginTextOpen(this))), el => el.child(
           (this.section === 'plugins' && pluginTextOpen(this) ? settingsBackButton(this, t, {id:'st-plugin-text-back',parent:this.pluginTextFrom==='profiles'?'Profiles':'Plugins',onBack:cx=>this.closePluginPage(cx)})
             : this.section === 'plugins' ? settingsBackButton(this, t, {id:'st-plugin-back',parent:'Plugins',onBack:cx=>this.backToPlugins(cx)})
             : lookBackButton(this, t)).absolute().top(8)
             .left(SETTINGS_NAV_WIDTH + DIALOG_SCROLL.inset + SETTINGS_CONTENT_INSET - LOOK_BACK_LABEL_INSET))))
       .child(h_flex().w_full().flex_1().min_h(0)
-      .child(nav.h_full().child(div().flex_1()).child(this.button(t, "st-feedback", "Send feedback", () => { closeOverlay(props()?.overlay); run("app.feedback"); })))
+      .child(nav.h_full().child(div().flex_1()).child(this.button(t, "st-feedback", "Send feedback", () => { this.dismiss(); run("app.feedback"); })))
       .child(
         // Shared modal edge/rail spacing, with content padding kept inside.
         v_flex().id('st-content').flex_1().min_w(0).min_h(0).h_full()

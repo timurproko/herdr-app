@@ -52,10 +52,12 @@ async function mount(kind, props) {
     },
     exec: async (_command, args) => { const request = JSON.parse(args[1]); calls.push({ kind, ...request }); if (failExec) throw Error('fixture transport unavailable'); return { code: 0, stdout: JSON.stringify(next) }; },
     keys: () => [], spaces: () => [], terminals: () => [], panes: () => [], agents: () => [],
-    run: noop, openOverlay: noop, closeOverlay: noop,
+    readTextFile: async () => null,
+    run: noop, openOverlay: () => assert.fail('No replacement opens a dialog'),
+    closeOverlay: id => calls.push({ kind, action: 'closeOverlay', id }),
   };
   const primitives = { View: class {}, div: element, svg: element, image: element, h_flex: element, v_flex: element,
-    Input: {}, InputState: {}, Popover: {}, Scrollbar: { vertical: element }, ScrollHandle: { new: () => ({ scroll_to_item() {} }) },
+    Input: {}, InputState: { new: () => ({ on() {}, value: () => '' }) }, Popover: {}, Scrollbar: { vertical: element }, ScrollHandle: { new: () => ({ scroll_to_item() {} }) },
     Popup: { new: (id, trigger) => element().id(id).child(trigger) } };
   const values = { liveTheme: host.theme, pluginIsEnabled: () => true, pluginTextOpen: () => false,
     M: { bodyInset: 16 }, sectionRow: (_t, el) => el, sectionStack: (_t, el) => el, divider: () => element(), dividerHeight: () => 1 };
@@ -87,10 +89,10 @@ async function mount(kind, props) {
   copy.render = () => { copy.tree = copy.view.render(copy.cx); copy.renders++; };
   copies.push(copy);
   if (kind === 'settings') {
-    copy.view.section = 'updates'; copy.view.handle = copy.cx.focus_handle();
-    // Unrelated page initialization is excluded, not the real Updates renderer,
-    // controller, shared helper, host facade contract or publication path.
-    cache.get('./customization-updates.js').namespace.initCustomizationUpdates(copy.view, copy.cx, 'custom-settings');
+    // Only unrelated page bodies are stubbed, not Settings init/navigation,
+    // Updates, the controller or the shared-state publication path.
+    copy.view.look = copy.view.privacy = () => element();
+    copy.view.init({}, copy.cx);
   } else copy.view.init({}, copy.cx);
   copy.api = cache.get('./customization-updates.js')?.namespace;
   copy.render(); return copy;
@@ -102,7 +104,9 @@ async function settle() {
     for (const copy of dirty) copy.render();
   }
 }
-const settings = await mount('settings', {});
+const settings = await mount('settings', { overlay: 'fixture-settings', section: 'look' });
+assert.equal(settings.view.section, 'look');
+find(settings.tree, 'st-s-updates').attrs.on_click[0]({}, settings.cx);
 const header = await mount('workspace-chrome', {});
 const footer = await mount('workspace-chrome', { footer: true });
 const compact = await mount('workspace-chrome', { footer: true });
@@ -169,4 +173,42 @@ managed = true; for (const copy of copies) refreshes.add(copy); await settle();
 assert.deepEqual(markers().map(Boolean), [false, false, false, false], 'managed Core does not light navigation');
 assert.equal(find(footer.tree, 'settings').attrs.accessibility_label[0], 'Settings');
 assert.ok(!markers().some(Boolean));
-console.log('PASS: separate Settings/header/footer/menu sandboxes, real manual publication and queued host refresh; all marker combinations and native markup parity. Expanded-footer failure NOT reproduced; no native UI exercised.');
+// A fresh module graph/owner, original overlay props and shared host store model
+// host replacement. Removed generations no longer have timers or redraws.
+function retire(copy) {
+  copy.view.close();
+  copy.timers.length = 0;
+  copies.splice(copies.indexOf(copy), 1); refreshes.delete(copy);
+}
+const navKey = 'custom.settings.navigation';
+const closes = () => calls.filter(call => call.action === 'closeOverlay').length;
+const beforeReplacement = closes();
+retire(settings);
+const replacement = await mount('settings', settings.props); await settle();
+assert.equal(replacement.view.section, 'updates', 'original Look props cannot override the clicked section on replacement');
+assert.ok(find(replacement.tree, 'st-check-customizations'));
+assert.equal(closes(), beforeReplacement, 'lifecycle teardown does not close the retained overlay');
+find(replacement.tree, 'st-s-privacy').attrs.on_click[0]({}, replacement.cx); await settle();
+retire(replacement);
+const navigated = await mount('settings', settings.props); await settle();
+assert.equal(navigated.view.section, 'privacy', 'deliberate navigation wins over the old Updates selection');
+navigated.view.dismiss(); retire(navigated);
+assert.equal(closes(), beforeReplacement + 1, 'explicit dismissal still closes exactly once');
+const reopened = await mount('settings', settings.props); await settle();
+assert.equal(reopened.view.section, 'look', 'dismissal clears the stable overlay id before a new opening');
+retire(reopened);
+const directed = await mount('settings', { overlay: 'new-dialog', section: 'updates' }); await settle();
+assert.equal(directed.view.section, 'updates', 'new dialog keeps its explicit destination');
+retire(directed);
+for (const value of [null, { version: 2, dialogs: [{ overlay: 'fixture-settings', section: 'updates' }] },
+  { version: 1, dialogs: {} }, { version: 1, dialogs: [null, { overlay: 'fixture-settings', section: 'not-a-section' }] }]) {
+  store.set(navKey, value);
+  const invalid = await mount('settings', settings.props); await settle();
+  assert.equal(invalid.view.section, 'look', 'unknown/invalid runtime records cannot choose a section'); retire(invalid);
+}
+store.set(navKey, { version: 1, dialogs: Array.from({ length: 20 }, (_, i) => ({ overlay: `old-${i}`, section: 'updates' })) });
+const bounded = await mount('settings', settings.props); await settle();
+find(bounded.tree, 'st-s-updates').attrs.on_click[0]({}, bounded.cx); await settle();
+assert.equal(store.get(navKey).dialogs.length, 8, 'runtime records stay bounded');
+retire(bounded);
+console.log('PASS: separate Settings/header/footer/menu sandboxes, real init/navigation, fresh-generation section restoration and dismissal; all marker combinations and native markup parity. Expanded-footer failure NOT reproduced; no native UI exercised.');

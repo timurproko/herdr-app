@@ -1012,8 +1012,11 @@ peers. Unknown/changed revision evidence is shown honestly as revision unknown.
 
 The latest status, result and log live under the selected Herdr home's
 `.customizations/`: `update-status.json`, `deploy-all-result.json`,
-`update-check.json` and `update.log`. Reload/closing Settings does not cancel or
-repeat an update. Peer skips/failures retain the successful desktop revision and
+`update-check.json` and `update.log`. Replacing the Settings mod keeps the open dialog on its selected section, so an
+update started on Updates remains visible through reload. Explicit dismissal still
+closes Settings; a new opening honors its requested page or starts on Look.
+The remembered section is dialog-scoped runtime state, never a portable preference.
+Reload/closing Settings does not cancel or repeat an update. Peer skips/failures retain the successful desktop revision and
 show one short matching-details warning (`update.log` for Settings runs,
 `deploy-all-result.json` for ordinary CLI runs without a captured log); desktop
 failure names the cause and documented
