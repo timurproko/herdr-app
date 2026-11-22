@@ -6,32 +6,19 @@ import cp from 'node:child_process';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {digest,read,put,json,contained,safeRelative} from './files.mjs';
 export const defaultHome=()=>process.env.HERDR_APP_HOME||path.join(os.homedir(),'.config/herdr-app');
+export const shellPaths=['bash-cwd-loader.sh','bash-cwd.sh','powershell-cwd.ps1','revision'].map(name=>`.customizations/runtime/shell/${name}`);
+export const shellRevisionPath=shellPaths.at(-1);
 export function allowedPath(rel) {
   safeRelative(rel);
+  if(rel.startsWith('.customizations/runtime/shell/')) {
+    if(!shellPaths.includes(rel))throw Error(`Unowned deployment path: ${rel}`);
+    return rel;
+  }
   if(!/^(?:mods\/custom-[a-z-]+\/(?:[a-zA-Z0-9_.-]+\/)*[a-zA-Z0-9_.-]+\.(?:js|cjs|json|svg|txt)|layouts\/(?:Custom\.json|custom\.svg)|themes\/Custom\.json|\.customizations\/runtime\/(?:[a-zA-Z0-9_.-]+\/)*[a-zA-Z0-9_.-]+\.(?:js|mjs|cjs|json|svg))$/.test(rel))throw Error(`Unowned deployment path: ${rel}`);
   return rel;
 }
-const mutable=new Set(['theme','colors','font','font_size','ui_font','terminal_padding','terminal_opacity','size','hidden','active','background','padding','radius','border','focus']);
-export function layoutOverrides(base,current,prefix='',out={}) {
-  for(const key of new Set([...Object.keys(base??{}),...Object.keys(current??{})])) {
-    const a=base?.[key],b=current?.[key],p=prefix?`${prefix}.${key}`:key;
-    if(JSON.stringify(a)===JSON.stringify(b))continue;
-    if(mutable.has(key)&&b!==undefined){out[p]=b;continue;}
-    if(a&&b&&typeof a==='object'&&typeof b==='object')layoutOverrides(a,b,p,out);
-    else throw Error(`Personal layout structure conflict: ${p}`);
-  }
-  return out;
-}
-export function projectLayout(base,overrides={}) {
-  const result=structuredClone(base);
-  for(const [p,value]of Object.entries(overrides)) {
-    const parts=p.split('.');if(parts.some(k=>['__proto__','constructor','prototype'].includes(k))||!mutable.has(parts.at(-1)))throw Error(`Invalid layout preference: ${p}`);
-    let target=result;for(const k of parts.slice(0,-1)){if(!target?.[k]||typeof target[k]!=='object')throw Error(`Layout preference no longer applies: ${p}`);target=target[k];}
-    if(parts.at(-1)==='terminal_padding'&&(!Array.isArray(value)||value.length!==2||value.some(n=>typeof n!=='number'||!Number.isFinite(n)||n<0||n>48)))throw Error('Invalid terminal padding preference.');
-    target[parts.at(-1)]=value;
-  }
-  return result;
-}
+import {layoutOverrides,projectLayout} from './layout-preferences.mjs';
+export {layoutOverrides,projectLayout} from './layout-preferences.mjs';
 function bundleAt(root) {const manifest=json(path.join(root,'bundle.json'));if(manifest?.version!==2||manifest.id!=='custom'||!manifest.files)throw Error('Build the customization package first.');for(const rel of Object.keys(manifest.files))allowedPath(rel);return manifest;}
 export function app(args,home=defaultHome()) {
   const executable=process.env.HERDR_APP_BIN||path.join(process.env.LOCALAPPDATA??'', 'Programs/herdr-app/herdr-app.exe');
@@ -45,26 +32,39 @@ function withLock(home,fn) {
   try{fd=fs.openSync(file,'wx');fs.writeFileSync(fd,String(process.pid));}catch(e){throw Error(`Deployment lock exists or cannot be created (${file}); verify no deployment is running before clearing it.`);}
   try{return fn();}finally{fs.closeSync(fd);fs.unlinkSync(file);}
 }
-export function deploy(root,home=defaultHome(),{adopt={},repair=true,sources=null}={}) {
+export function deploy(root,home=defaultHome(),{adopt={},repair=true,sources=null,shellOnly=false}={}) {
   return withLock(home,()=>{
     const bundle=bundleAt(root),owner=contained(home,'.customizations'),stateFile=path.join(owner,'manifest.json');
     const old=json(stateFile);if(old&&(old.version!==2||old.id!=='custom'))throw Error('Unrecognized deployment ownership record.');
     for(const rel of Object.keys(old?.files??{}))allowedPath(rel);
-    const partial=sources!==null;
+    const partial=sources!==null,retained=partial||shellOnly;
+    if(shellOnly&&partial)throw Error('Shell-only deployment does not accept source selectors.');
     if(partial && (!old || !Array.isArray(sources) || !sources.length))throw Error('Source-scoped deployment needs an existing owned installation and nonempty source selectors.');
     for(const source of sources??[]) {
       if(typeof source!=='string' || !/^(src|tools)\//.test(source))throw Error('Invalid deployment source selector.');
       safeRelative(source.replace(/\/$/,''));
       if(!Object.values(bundle.files).some(entry=>source.endsWith('/')?entry.source?.startsWith(source):entry.source===source))throw Error(`No packaged source matches: ${source}`);
     }
-    const selected=Object.entries(bundle.files).filter(([,entry])=>!partial || sources.some(source=>source.endsWith('/')?entry.source?.startsWith(source):entry.source===source));
+    let selected=Object.entries(bundle.files).filter(([,entry])=>!partial || sources.some(source=>source.endsWith('/')?entry.source?.startsWith(source):entry.source===source));
+    // A revision describes the whole shell package, even for source-scoped updates.
+    if(partial && selected.some(([rel])=>shellPaths.includes(rel)))selected=[...selected.filter(([rel])=>!shellPaths.includes(rel)),...shellPaths.map(rel=>{
+      if(!bundle.files[rel])throw Error(`Missing shell package file: ${rel}`);
+      return [rel,bundle.files[rel]];
+    })];
+    if(shellOnly)selected=shellPaths.map(rel=>{
+      if(!bundle.files[rel])throw Error(`Missing shell package file: ${rel}`);
+      return [rel,bundle.files[rel]];
+    });
     if(partial && selected.some(([rel])=>!rel.startsWith('mods/')&&!rel.startsWith('.customizations/runtime/')))throw Error('Source-scoped deployment preserves layouts/themes; use a full deployment to change them.');
-    const prefsFile=path.join(owner,'layout-preferences.json'),prefsRaw=read(prefsFile),prefs=prefsRaw===null?{version:1,overrides:{}}:JSON.parse(prefsRaw);
+    const prefsFile=contained(home,'.customizations/layout-preferences.json');
+    // Shell mode journals bytes only: do not parse, normalize a BOM or project them.
+    const prefsRaw=shellOnly?(fs.existsSync(prefsFile)?fs.readFileSync(prefsFile,'utf8'):null):read(prefsFile);
+    const prefs=shellOnly||prefsRaw===null?{version:1,overrides:{}}:JSON.parse(prefsRaw);
     if(prefs.version!==1||!prefs.overrides||Array.isArray(prefs.overrides))throw Error('Unsupported layout preferences.');
-    const layoutFile='layouts/Custom.json',base=partial?old.layoutBase:JSON.parse(read(path.join(root,layoutFile))),currentRaw=read(contained(home,layoutFile));
+    const layoutFile='layouts/Custom.json',base=retained?old?.layoutBase:JSON.parse(read(path.join(root,layoutFile))),currentRaw=retained?null:read(contained(home,layoutFile));
     let overrides={...prefs.overrides};
-    if(!partial && currentRaw!==null&&old?.layoutBase)overrides={...layoutOverrides(old.layoutBase,JSON.parse(currentRaw)),...overrides};
-    const layout=partial?null:projectLayout(base,overrides),jobs=[],files=partial?{...old.files}:{};
+    if(!retained && currentRaw!==null&&old?.layoutBase)overrides={...layoutOverrides(old.layoutBase,JSON.parse(currentRaw)),...overrides};
+    const layout=retained?null:projectLayout(base,overrides),jobs=[],files=retained?{...old?.files}:{};
     for(const [rel,entry]of selected) {
       const file=contained(home,rel),current=fs.existsSync(file)?fs.readFileSync(file):null;
       let bytes=entry.text!==undefined?Buffer.from(entry.text):fs.readFileSync(contained(root,entry.from??rel));
@@ -89,15 +89,15 @@ export function deploy(root,home=defaultHome(),{adopt={},repair=true,sources=nul
       if(bytes===null || old.files[rel]!==before)throw Error(`Personal entrypoint conflict: ${rel}; nothing deployed.`);
       jobs.push({rel,file,current:bytes,bytes,before});
     }
-    const nextManifest=JSON.stringify({version:2,id:'custom',supportedHerdr:bundle.supportedHerdr,files,layoutBase:base},null,2)+'\n';
-    const nextPrefs=partial?prefsRaw:JSON.stringify({version:1,overrides},null,2)+'\n';
+    const nextManifest=JSON.stringify(shellOnly?{...(old??{version:2,id:'custom',supportedHerdr:bundle.supportedHerdr}),files}:{version:2,id:'custom',supportedHerdr:bundle.supportedHerdr,files,layoutBase:base},null,2)+'\n';
+    const nextPrefs=retained?prefsRaw:JSON.stringify({version:1,overrides},null,2)+'\n';
     let backup=null;
     if(changed.length||stale.length) {
       const transaction=path.join(owner,'backups',`${Date.now()}-${process.pid}`);
       fs.mkdirSync(transaction,{recursive:true});
       // Journal original bytes outside synced source. No shared/session documents are included.
       backup=path.basename(transaction);
-      const rollback={version:1,files:{},after:{},manifest:read(stateFile),preferences:prefsRaw,afterManifest:digest(nextManifest),afterPreferences:digest(nextPrefs)};
+      const rollback={version:1,files:{},after:{},manifest:read(stateFile),preferences:prefsRaw,afterManifest:digest(nextManifest),afterPreferences:digest(nextPrefs),...(shellOnly?{scope:'shell',afterState:nextManifest}:{})};
       for(const j of [...changed,...stale.map(j=>({...j,current:fs.existsSync(j.file)?fs.readFileSync(j.file):null}))]){
         rollback.files[j.rel]=j.current===null?null:j.current.toString('base64');
         rollback.after[j.rel]=files[j.rel]??null;
@@ -105,16 +105,16 @@ export function deploy(root,home=defaultHome(),{adopt={},repair=true,sources=nul
       put(path.join(transaction,'rollback.json'),JSON.stringify(rollback,null,2)+'\n');
     }
     // All conflicts checked first. Dependencies precede entrypoints; unchanged installs are quiet.
-    const rank=j=>j.rel.startsWith('themes/')?0:j.rel.startsWith('layouts/')?3:j.rel.endsWith('/main.js')?2:1;
+    const rank=j=>j.rel===shellRevisionPath?4:j.rel.startsWith('themes/')?0:j.rel.startsWith('layouts/')?3:j.rel.endsWith('/main.js')?2:1;
     const order=[...jobs].sort((a,b)=>rank(a)-rank(b));
     for(const j of order){if(j.before!==digest(j.bytes))put(j.file,j.bytes,j.before);else if(j.rel.endsWith('/main.js')&&touchedMods.has(path.posix.dirname(j.rel))) {if(digest(fs.readFileSync(j.file))!==j.before)throw Error(`Concurrent edit: ${j.rel}`);fs.writeFileSync(j.file,j.bytes);}}
     for(const j of stale){if(fs.existsSync(j.file)){if(digest(fs.readFileSync(j.file))!==j.hash)throw Error(`Concurrent obsolete edit: ${j.rel}`);fs.unlinkSync(j.file);}}
-    if(!partial)put(prefsFile,nextPrefs,digest(prefsRaw));
+    if(!retained)put(prefsFile,nextPrefs,digest(prefsRaw));
     put(stateFile,nextManifest);
     // Native compatibility patches are not regular payload. Refresh only existing opt-ins.
     let patches=null;
-    if(repair){const worker=path.join(owner,'runtime/scripts/startup-frames.mjs');if(fs.existsSync(worker)){const output=cp.execFileSync(process.execPath,[worker,home],{encoding:'utf8',timeout:30000,windowsHide:true});patches=JSON.parse(output);}}
-    return {changed:changed.length,removed:stale.length,patches,backup,...(partial?{sources,preserved:Object.keys(old.files).filter(rel=>!selected.some(([target])=>target===rel)).length}:{})};
+    if(repair&&!shellOnly){const worker=path.join(owner,'runtime/scripts/startup-frames.mjs');if(fs.existsSync(worker)){const output=cp.execFileSync(process.execPath,[worker,home],{encoding:'utf8',timeout:30000,windowsHide:true});patches=JSON.parse(output);}}
+    return {changed:changed.length,removed:stale.length,patches,backup,...(retained?{...(shellOnly?{scope:'shell'}:{sources}),preserved:Object.keys(old?.files??{}).filter(rel=>!selected.some(([target])=>target===rel)).length}:{})};
   });
 }
 export function doctor(home=defaultHome()) {
@@ -166,12 +166,13 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1]
   }
   let result;
   if(action==='deploy')result=deploy(root,home,{sources:sources.length?sources:null});
+  else if(action==='deploy-shell')result=deploy(root,home,{shellOnly:true});
   else if(action==='doctor')result=doctor(home);
   else if(action==='check')result=nativeCheck(home);
   else if(action==='enable')result=app(['do','layout.switch','--name','Custom'],home);
   else if(action==='disable')result=app(['do','layout.switch','--name','main'],home);
   else if(action==='remove')result=remove(home);
-  else throw Error('Use deploy, doctor, check, enable, disable or remove.');
+  else throw Error('Use deploy, deploy-shell, doctor, check, enable, disable or remove.');
   console.log(typeof result==='string'?result:JSON.stringify(result,null,2));if(result?.ok===false||result?.patches?.ok===false)process.exitCode=1;
  }catch(e){console.error(e.message);process.exitCode=1;}
 }

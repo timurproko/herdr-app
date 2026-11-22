@@ -92,13 +92,16 @@ This keeps `hc` remote `node -e` transport below Windows' 32K command-line limit
 it changes packaging only, not credentials, endpoints or collector behavior.
 
 A UI mod may call a narrow service worker. A service must not depend on rendered UI.
-Runtime UI mods and deployed workers must never import from the source checkout by
-absolute path. The yadm-managed Bash/PowerShell prompt hooks are the deliberate
-external-integration exception: shell profiles source `src/integration/shell/` so
-yadm can refresh existing sessions at a safe prompt without injecting input or
-restarting terminals. This is optional private profile/yadm wiring, not included or
-installed by standalone deploy; its fixed source path is not an arbitrary-checkout
-integration guarantee.
+Runtime UI mods, deployed workers and shell hooks must never import from a source
+checkout. Deploy owns `.customizations/runtime/shell/{bash-cwd-loader.sh,bash-cwd.sh,powershell-cwd.ps1,revision}`.
+Profiles explicitly source the installed loader/reporter using `HERDR_APP_HOME` or
+`~/.config/herdr-app`; exact profile lines are in README's Installed shell reporting.
+Bash captures the loader directory when sourced and reads sibling files there.
+Deploy publishes a deterministic content revision after script updates; compatible
+payload changes reload only at idle prompts, preserving status and existing hooks.
+Relocation or dispatcher structural changes require one explicit idle-prompt
+re-source/new shell. No profiles, external yadm markers, terminal input or running
+processes are changed by deployment.
 
 ## Host API changes
 
@@ -896,7 +899,7 @@ contracts. Native tests and focused integration/manual checks remain necessary.
 ## Required workflow
 
 ```powershell
-cd ~/.config/herdr-app/customizations
+# Run from your standalone source checkout, wherever cloned
 npm run report:ownership
 npm run check:host-api
 npm test

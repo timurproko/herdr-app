@@ -96,7 +96,7 @@ assigned the same PR do **not** have global exactly-once/failover coordination.
 
 ## Commands
 
-Run from `~/.config/herdr-app/customizations` on the managing PC:
+Run from your standalone source checkout on the managing PC:
 
 ```sh
 node tools/core-ci-monitor.mjs status --on local

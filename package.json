@@ -15,6 +15,7 @@
     "test:native": "node tools/validate-native.mjs",
     "build": "node tools/build.mjs",
     "deploy": "node tools/check-host-api.mjs && node tools/build.mjs && node tools/deploy.mjs deploy",
+    "deploy:shell": "node tools/build.mjs && node tools/deploy.mjs deploy-shell",
     "doctor": "node tools/deploy.mjs doctor",
     "report:ownership": "node tools/report-ownership.mjs",
     "check:native": "node tools/deploy.mjs check",
@@ -25,6 +26,7 @@
     "preferences:export": "node tools/preferences.mjs export",
     "preferences:import": "node tools/preferences.mjs import",
     "rollback": "node tools/rollback.mjs",
+    "rollback:shell": "node tools/rollback.mjs --shell-only",
     "remove": "node tools/deploy.mjs remove"
   }
 }

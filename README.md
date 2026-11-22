@@ -18,7 +18,7 @@ before development. No command here builds Herdr or herdr-core.
 | `<Herdr home>/preferences/` | Private durable snapshots (per-host profiles, palette, layout preferences); version in private dotfiles, not here |
 | `dist/` | Generated customization packages; ignored by version control |
 | `<Herdr home>/mods/custom-*/`, `layouts/Custom.json`, `themes/Custom.json` | Installed customization output; do not edit directly |
-| `<Herdr home>/.customizations/runtime/` | Self-contained deployed compatibility workers; no source-checkout dependency |
+| `<Herdr home>/.customizations/runtime/` | Self-contained deployed workers and shell integration; no source-checkout dependency |
 | `<Herdr home>/.customizations/` | Local ownership records, preference projection, patch opt-ins and rollback journals; never sync |
 | `<Herdr home>/.customizations/recovery/` | Archived Herdr recovery copies; retained outside the live `mods/` scanner |
 | `<Herdr home>/settings.json`, `keys.json` | Native global settings/shortcuts, not source in this repository |
@@ -959,9 +959,15 @@ personal portable backups, not shipped defaults; authored defaults stay in
 `src/appearance/`. Build/deploy need none of these snapshots. Host files never
 overwrite a different computer's profiles. Global settings/shortcuts remain native
 files. Version the snapshots in private yadm/dotfiles that track the Herdr home,
-not this checkout. The optional private yadm pre-commit hook calls the exporter;
-no pull hook imports state or restarts the desktop. Reconcile a palette conflict
-rather than overwriting it.
+not this checkout. Full deploy installs the export-only Node entrypoint
+`<Herdr home>/.customizations/runtime/scripts/export-preferences.mjs`, accepting
+`export <home>` with an explicit home. It produces the same four snapshot classes
+without source imports, validates layout overrides against the recorded installed
+layout base, and rejects import/extra arguments. The source export command shares
+that operation, with an authored-base fallback only for source-only usage.
+Private pre-commit hooks may call this installed exporter; deploy does not install
+hooks, and no pull hook imports state or restarts the desktop. Reconcile a palette
+conflict rather than overwriting it. See [the exact export command](docs/COMMANDS.md#portable-preferences).
 
 ### Existing snapshots: manual relocation
 
@@ -992,25 +998,45 @@ source bridges and terminal-label aliases have been retired. A machine with an
 older installation needs a separately reviewed removal/installation plan; never
 adopt unknown files, replay old shell/core actions, or copy live session state.
 
-## Existing shells after moving the source folder
+## Installed shell reporting
 
-The shell/yadm integration described here is optional private wiring, not included
-or installed by this standalone checkout. Its loader still assumes the historical
-fixed source path and external revision marker. The original integration notes
-below apply only to machines that deliberately retain that wiring; independent
-standalone shell setup is pending. No unrelated private `.config/AGENTS.md` is
-required for the base checkout.
+On a Core-only host without Desktop/Custom, run `npm run deploy:shell` from this
+standalone checkout (Node 20+); an optional home follows `--`. It installs only the
+four shell files using the same lock, ownership, conflicts and journals as full
+deploy, preserving all non-shell output and preference bytes. It never enables a
+layout or invokes native checks/patches. A later full deploy shares that ownership.
+`npm run rollback:shell -- <backup-id> [home]` restores only a verified shell-only
+journal without Desktop, refusing mixed journals, newer records and later edits.
+Installation on a remote peer is a separate explicit action, never a deploy side effect.
 
-With that external wiring in place, new shells load its configured path. A Bash session that loaded the interim
-sibling project path can continue running, but its folder reporter needs this
-one-time reload **at an idle prompt** (or a new shell):
+Deploy owns `<Herdr home>/.customizations/runtime/shell/` containing
+`bash-cwd-loader.sh`, `bash-cwd.sh`, `powershell-cwd.ps1` and `revision`.
+Profiles remain your explicit wiring; deploy never edits them. These exact profile
+lines honor `HERDR_APP_HOME`, defaulting to `~/.config/herdr-app`:
 
+Bash profile:
 ```bash
-source "$HOME/.config/herdr-app/customizations/src/integration/shell/bash-cwd-loader.sh"
+_herdr_cwd_hook="${HERDR_APP_HOME:-$HOME/.config/herdr-app}/.customizations/runtime/shell/bash-cwd-loader.sh"; if [[ -r $_herdr_cwd_hook ]]; then source "$_herdr_cwd_hook"; fi; unset _herdr_cwd_hook
 ```
 
-Do not reload all of `.bashrc`, inject this into a running command, or restart agents.
-No sibling directory or junction is retained just to mask the move.
+PowerShell profile:
+```powershell
+$herdrHome = if ($env:HERDR_APP_HOME) { $env:HERDR_APP_HOME } else { Join-Path $HOME '.config/herdr-app' }; $cwdHook = Join-Path $herdrHome '.customizations/runtime/shell/powershell-cwd.ps1'; if (Test-Path -LiteralPath $cwdHook -PathType Leaf) { . $cwdHook }; Remove-Variable cwdHook, herdrHome
+```
+
+Bash captures its loader directory at source time and reads its sibling payload
+and deploy-owned content revision there, even after `cd`. Compatible payload
+updates reload at the next idle prompt, preserving command status and existing
+prompt hooks. Only interactive Herdr TTYs report; captured tool shells stay quiet.
+PowerShell reports logical `Get-Location`, not Win32 process cwd.
+
+After relocating an old loader, re-source only the installed loader **at an idle
+prompt**, or open a new shell. Dispatcher structural changes also need this
+explicit reload; a new revision refreshes compatible payload definitions, not
+already-resident dispatcher code. Do not reload all of `.bashrc`, inject input or
+restart agents. Install on every peer before changing dotfiles or deleting old
+source. The optional private Claude shell initializer remains separately managed;
+its own updates do not change this deploy-owned revision.
 
 ## Native updates and compatibility exceptions
 
@@ -1078,7 +1104,8 @@ See [native patch policy](src/integration/native-patches/README.md).
 
 ## Rollback / removal
 
-Deploy reports a backup ID when it changes files. Switch to Herdr/main first:
+Deploy reports a backup ID when it changes files. Ordinary rollback always requires
+that ID and the stock layout; switch to Herdr/main first:
 
 ```powershell
 npm run disable
@@ -1106,5 +1133,5 @@ artwork sources; original assets are retained without inferred attribution.
 Follow-ups remain: webhook relay hardening, removing customizations from private
 dotfiles, and second-workstation
 setup. Existing validation notes are historical, not claims that this import ran
-native/live checks. The A1 release caveat and optional shell integration remain
-pending as documented.
+native/live checks. The A1 release caveat remains as documented. Shell integration
+is deployed, but profile wiring and installation on each host remain explicit rollout steps.

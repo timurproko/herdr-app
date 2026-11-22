@@ -26,5 +26,5 @@ The configured Cloudflare URL is shown read-only under Automatic test updates.
 If Cloudflare deployment or propagation is interrupted, retry Configure. No keys
 or URLs need to be copied. Closing Settings does not undo an approved request.
 
-Full reference: customizations/docs/GIT-WEBHOOKS.md
-Optional manual source: customizations/tools/git-webhook-relay/
+Full reference: https://github.com/timurproko/herdr-app/blob/main/docs/GIT-WEBHOOKS.md
+Optional manual source: tools/git-webhook-relay/ in your standalone checkout

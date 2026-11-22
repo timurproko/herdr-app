@@ -3,9 +3,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import {app,defaultHome} from '../../tools/deploy.mjs';
 const home=defaultHome(),name='custom-pr-agent-fixture',dir=path.join(home,'mods',name);
-const image=path.join(home,'customizations/.work/pr-agent-fixture.png');
+const artifacts=fileURLToPath(new URL('../../.artifacts/',import.meta.url));
+fs.mkdirSync(artifacts,{recursive:true});
+const image=path.join(artifacts,'pr-agent-fixture.png');
 if(fs.existsSync(dir))throw Error('Fixture exists; inspect it before retrying.');
 try {
   fs.cpSync(path.join(home,'mods/custom-changes'),dir,{recursive:true});

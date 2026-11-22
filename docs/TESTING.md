@@ -2,8 +2,9 @@
 
 The split retained imported suites, apart from neutral status-reveal labels
 and the architecture assertion's moved-guidance path. Preference-home regression
-coverage was subsequently added as described below; no imported suite was split
-or made portable. `npm test` retains the original command and is **not** the hosted CI
+coverage was subsequently added as described below. The directory-loader fixture
+now exercises installed sibling paths and selects Git Bash or /bin/bash; other
+imported suites retain their existing platform/private-environment assumptions. `npm test` retains the original command and is **not** the hosted CI
 selection: it includes installed Core/private-profile assumptions and Windows
 recycle operations. Do not run the broad command on a working installation just
 to reproduce hosted CI.
@@ -44,7 +45,19 @@ CLI files in a disposable checkout/home. A test-only Node preload isolates the
 reported user home/hostname and replaces desktop process checks; no real desktop
 or user configuration is accessed. It covers environment/default/explicit home
 selection, round trips, conflicts, open-desktop refusal and untouched legacy files.
-Both new fixtures are discovered by the existing hosted and local unit runners.
+These fixtures are discovered by the existing hosted and local unit runners.
+`tests/shell-deployment.test.mjs`, `tests/shell-only.test.mjs` and
+`tests/installed-export.test.mjs` cover owned shell payload/revision ordering,
+Core-only installation/recovery and full export parity without a source checkout.
+They explicitly use disposable homes and fake/unavailable Desktop executables;
+no real profiles, credentials or native sessions are used. The packaged
+`tests/regression/directory-loader.test.mjs` uses fake Core and installed paths,
+on both Windows Git Bash and Linux Bash. Only its fixture's TTY check is relaxed;
+production non-TTY/identity guards are separately checked.
+`tests/runtime-contract.test.mjs` statically checks exact profile documentation,
+CI discovery and the two native screenshot scripts' checkout `.artifacts/` paths;
+it never runs those scripts. Existing old dispatchers and live/remote profile
+wiring still need separately authorized rollout checks.
 CI otherwise executes library fixtures, not real-home
 deploy/enable/disable/remove/rollback/preference-import operational commands.
 The real gh CLI fixture uses synthetic auth and a GET-only localhost server.
@@ -55,7 +68,6 @@ Provider/relay/Cloudflare unit transports are mocks, not live requests.
 | Entry | Runner | Reason |
 |---|---|---|
 | `tests/regression/directory.test.mjs` | Both | Executes installed hc schema and reads the user's real .bashrc; requires native/private environment. |
-| `tests/regression/directory-loader.test.mjs` | Ubuntu | Hardcoded Windows Git Bash and cygpath in the original fixture; Windows retains the whole suite. |
 | `tests/file-delete.test.mjs` | Windows | Original Git-sh Darwin-backend mock returned exit 7 instead of 0 at line 77 in run 44947261103, before the real recycle-bin branch. Whole suite left unchanged; its Linux lane remains. |
 | `tests/a1-api-candidate.test.mjs` | Both | Requires a separately built external A1 checkout and tsx. Normal A1 client/color tests remain included. |
 | `tests/regression/test.mjs` / test:integration | Both | Installed Herdr binary, stock baseline/layout and real host files. Mock UI cases remain inside this original integration file, not extracted. Its historical theme-selection assertion is not claimed fixed or rerun. |
@@ -70,7 +82,7 @@ shell wiring, live SSH/core permissions, provider refreshes or relay hardening.
 
 ## Capability coverage
 
-- Lifecycle: checkout build; deployment/scoped-deployment and rollback fixtures; ownership-report; preferences/frame-registry/frame-palette; host-facade and tab-move compatibility. Architecture verifies single-source packaging and the native boundary.
+- Lifecycle: checkout build; full/scoped/shell-only deployment and guarded rollback; installed shell reload/export and preference-home fixtures; ownership-report; preferences/frame-registry/frame-palette; host-facade and tab-move compatibility. Architecture verifies single-source packaging and the native boundary.
 - Workspace: close-space, rename-selection, panel-state/pin, profile-workflow/Firstmate-role, new-menu, tab-move and tab-move-ui fixtures. Real native interactions remain excluded.
 - Plugins: plugin lifecycle/UI, file viewer/recycle policy, Git/PR/CI policy and webhook mocks, Usage/Claude/account fixtures, A1 adapters and Crew fixtures. External service correctness is not inferred from mocks.
 
@@ -105,8 +117,9 @@ only the demonstrated Windows Git-sh fixture remains an observed suite exclusion
 ## Exact selected source entries
 
 The list below is generated from CI selection, not inferred from naming. On Node
-24 the final selection is **121 entries per runner**, with three explicit exclusions
-per lane. It includes scaffold/aggregator tests. Earlier Node 20 attempts selected
+24 the current selection is **127 Ubuntu / 126 Windows entries**, with two/three
+explicit exclusions respectively. The installed directory-loader fixture now runs
+on both; the preference-home and four runtime-contract suites are included. It includes scaffold/aggregator tests. Earlier Node 20 attempts selected
 122/121 and then 119/119 entries while diagnosing the crashes; those temporary
 Node-20-only exclusions no longer apply.
 
@@ -116,6 +129,7 @@ Node-20-only exclusions no longer apply.
 tests/regression/claude-refresh.test.mjs
 tests/regression/core-control.test.mjs
 tests/regression/dialog-scroll.test.mjs
+tests/regression/directory-loader.test.mjs
 tests/regression/feedback-draft.test.mjs
 tests/regression/feedback.test.mjs
 tests/regression/file-icons.test.mjs
@@ -191,6 +205,7 @@ tests/git-repository-checkboxes.test.mjs
 tests/git-repository-cli.test.mjs
 tests/git-webhooks.test.mjs
 tests/host-facade.test.mjs
+tests/installed-export.test.mjs
 tests/native-selection.test.mjs
 tests/ownership-report.test.mjs
 tests/pane-crew-role.test.mjs
@@ -203,16 +218,20 @@ tests/plugin-prerequisite-ui.test.mjs
 tests/plugin-ui-contract.test.mjs
 tests/plugins.test.mjs
 tests/pr-agent-links.test.mjs
+tests/preferences-home.test.mjs
 tests/profile-workflow.test.mjs
 tests/pulls-pagination.test.mjs
 tests/refresh-feedback.test.mjs
 tests/rename-selection.test.mjs
 tests/reorder.test.mjs
+tests/runtime-contract.test.mjs
 tests/scaffold.test.mjs
 tests/scoped-deployment.test.mjs
 tests/settings-back-button.test.mjs
 tests/settings-catalog.test.mjs
 tests/settings-refresh.test.mjs
+tests/shell-deployment.test.mjs
+tests/shell-only.test.mjs
 tests/sidebar-footer.test.mjs
 tests/sidebar-plugins.test.mjs
 tests/sidebar-refresh.test.mjs
@@ -233,12 +252,6 @@ src/plugins/a1-colors/session-sync.test.mjs
 src/plugins/a1-colors/settings.test.mjs
 src/plugins/crew/plugin.test.mjs
 scripts/ci-required.test.mjs
-```
-
-### Windows only
-
-```text
-tests/regression/directory-loader.test.mjs
 ```
 
 ### Ubuntu only

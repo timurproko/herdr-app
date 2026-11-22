@@ -3,7 +3,8 @@ import path from 'node:path';
 import cp from 'node:child_process';
 import {project} from './build.mjs';
 import {syncPreferences} from './runtime/preferences.mjs';
-import {defaultHome,layoutOverrides,projectLayout} from './deploy.mjs';
+import {defaultHome,projectLayout} from './deploy.mjs';
+import {exportPreferences} from './preferences-export.mjs';
 import {read,put,json,digest} from './files.mjs';
 const [action,home=defaultHome()]=process.argv.slice(2);
 const snapshotDir=path.join(home,'preferences');
@@ -22,12 +23,6 @@ try {
   console.log(syncPreferences(action,home,{snapshotDir}));
   if(prefs)put(sidecar,JSON.stringify(prefs,null,2)+'\n');
  } else {
-  // Existing exporter verifies palette ownership and filters account/session data.
-  console.log(syncPreferences(action,home,{snapshotDir}));
-  const themeRaw=read(theme);if(themeRaw!==null)put(savedTheme,themeRaw);
-  const state=json(path.join(home,'.customizations/manifest.json')),live=json(path.join(home,'layouts/Custom.json'));
-  let prefs=json(sidecar);
-  if(state?.layoutBase&&live)prefs={version:1,overrides:{...layoutOverrides(state.layoutBase,live),...prefs?.overrides}};
-  if(prefs){projectLayout(json(path.join(project,'src/appearance/layouts/Custom.json')),prefs.overrides);put(snapshot,JSON.stringify(prefs,null,2)+'\n');}
+  console.log(exportPreferences(home,{fallbackBase:json(path.join(project,'src/appearance/layouts/Custom.json'))}));
  }
 } catch(e){console.error(e.message);process.exitCode=1;}
