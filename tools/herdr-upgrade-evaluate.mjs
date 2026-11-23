@@ -120,6 +120,11 @@ export async function evaluateCandidate({root,inventory,discovery,get,baseSha,he
       return 'Reviewed version; scoped source comparison recorded.';
     },{requires:[`${component}-source`]});
   }
+  await runner.step('reachability','Hosted no-write feed/tag/tree/blob/schema reachability',async()=>{
+    for(const file of ['defaults/herdr.d.ts','src/commands.rs',...inventory.patches.map(p=>`defaults/${p.target}/main.js`)])await repos.app.read(file);
+    JSON.parse((await repos.core.read('schema/hc.openrpc.json')).toString('utf8'));
+    return 'Both feeds, immutable tags/trees, SDK, command source, all patched surfaces and Core schema reachable and hash-verified. No writes performed.';
+  },{requires:['app-source','core-source']});
   await runner.step('host-api','Static candidate SDK, command catalog, signatures and direct imports',async()=>{
     const version=discovery.releases.app.version;
     const beforeSdk=(await repos.appBase.read('defaults/herdr.d.ts')).toString('utf8'),afterSdk=(await repos.app.read('defaults/herdr.d.ts')).toString('utf8');

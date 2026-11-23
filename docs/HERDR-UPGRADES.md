@@ -58,3 +58,37 @@ source or a native release binary. Source API/command checks are **static**, not
 live `herdr-app commands` invocation. Synthetic tab-move tests do not establish
 native CAS persistence, multi-client continuity or pixels. Those checks need a
 separately authorized disposable native host.
+
+## Local preview and agent handoff
+
+`node tools/propose-herdr-upgrade.mjs --probe` performs only source/reachability
+checks and writes a preview under `.artifacts/herdr-upgrade/`. Without `--probe`,
+it also runs the customization build, focused fixtures and the supported CI subset.
+Both modes are no-write with respect to GitHub, branches and installed files.
+Optional `--app-version 0.1.17` / `--core-version 0.1.23` select exact source tags;
+`--output .artifacts/my-report` selects a separate ignored output directory.
+`--refresh app-0.1.17` identifies an existing proposal for a read-only refresh.
+Reports bind the merged base, evaluated checkout head, candidate commits and feeds.
+A default-branch evaluation is never represented as testing an agent's edited head.
+
+Open the proposal's committed `upstream/migrations/<identity>/report.md`. It
+contains each verdict, exact native and consumed-contract hunks, missing evidence
+and a checklist naming files, reasons and check commands. The generated body and
+OpenSpec scaffold remain untouched after publication; later runs add reports as
+comments/artifacts. The evidence-only scaffold assumes no product behavior change.
+Any actual behavioral migration needs a revised plan and appropriate spec deltas,
+not an invented version-permission requirement.
+
+After approving the proposal, ask an agent: “Continue PR <url> on its existing
+branch <branch> and change <change>; read its migration report and carry out the
+file-specific tasks. Preserve capability and patch safety; do not create a second
+PR or merge.” The report provides the actual identifiers and continuation text.
+The shared change-delivery skill remains the delivery authority.
+
+For Crew, use `crew spawn <task-id> --project herdr-app --kind ship "<approved
+continuation instruction>"`, or `crew tell <existing-task-id> "The plan is approved;
+implement PR <url> on its existing branch."` for a worker already assigned to it.
+Crew creates a separate task branch: continue the existing proposal using supported
+task/worktree attachment, not by overwriting it from that unrelated branch. Report
+an attachment blocker rather than creating another migration PR. No Crew extension,
+automatic worker launch or terminal-input injection is needed.

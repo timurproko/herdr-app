@@ -16,10 +16,10 @@
 
 ## 3. Agent-ready reports and migration planning artifacts
 
-- [ ] 3.1 Render JSON/Markdown reports with exact base/head/candidate SHAs, per-step verdicts, durable hunks and unchecked file-specific migration actions; snapshot tests prove degraded palette/feedback, missing native proof and failing checks cannot read as fully compatible.
-- [ ] 3.2 Generate absent-only delivery bodies and OpenSpec scaffolds with one task group per outcome; fixture tests validate body format, unchecked migration outcomes, review-only skip_specs and preservation of edited artifacts/checklists on refresh.
-- [ ] 3.3 Add README discovery guidance, report continuation text and concrete ordinary-agent/Crew instructions in docs/HERDR-UPGRADES.md; fixtures check exact PR/branch/report identifiers, approval boundary and no duplicate task PR or automatic agent spawning.
-- [ ] 3.4 Integrate fake-feed/fake-GitHub suites into existing hosted test discovery and document coverage in docs/TESTING.md; run focused suites plus CI=true npm run test:ci and record real results without claiming native UI or hosted-network proof.
+- [x] 3.1 Render JSON/Markdown reports with exact base/head/candidate SHAs, per-step verdicts, durable hunks and unchecked file-specific migration actions; snapshot tests prove degraded palette/feedback, missing native proof and failing checks cannot read as fully compatible.
+- [x] 3.2 Generate absent-only delivery bodies and OpenSpec scaffolds with one task group per outcome; fixture tests validate body format, unchecked migration outcomes, review-only skip_specs and preservation of edited artifacts/checklists on refresh.
+- [x] 3.3 Add README discovery guidance, report continuation text and concrete ordinary-agent/Crew instructions in docs/HERDR-UPGRADES.md; fixtures check exact PR/branch/report identifiers, approval boundary and no duplicate task PR or automatic agent spawning.
+- [x] 3.4 Integrate fake-feed/fake-GitHub suites into existing hosted test discovery and document coverage in docs/TESTING.md; run focused suites plus CI=true npm run test:ci and record real results without claiming native UI or hosted-network proof.
 
 ## 4. Controlled scheduled draft publication
 

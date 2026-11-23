@@ -155,6 +155,17 @@ stock mismatches and malformed baseline records still fail. The new
 reviewed/mismatching and missing-0.1.17 fixtures. Existing reviewed hashes remain
 unchanged; a passing public capability gate is not a stock/native source review.
 
+## Herdr migration tooling fixtures
+
+`tests/herdr-upgrade-{releases,evaluate,report}.test.mjs` are automatically discovered
+by the existing hosted runner. They use fake release feeds, hash-verified synthetic
+Git trees/blobs, fake process results and ignored preview directories. They cover
+independent versions, invalid evidence and rate limits, consumed SDK/command
+changes, exact palette/feedback hunks, missing stock/native proof, step verdicts,
+protected reviewed bytes, agent handoff and delivery/OpenSpec rendering. They never
+open a live proposal, execute downloaded code, contact a Core or certify pixels.
+A real hosted no-write probe remains a distinct activation prerequisite.
+
 ## Git PR label facts
 
 Pull facts, pagination, fleet and webhook fixtures cover assigned label names/colours
