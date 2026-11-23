@@ -24,11 +24,11 @@ Implementation approved for recorded links only. These five groups match the PR'
 
 ## 4. The coordinator Git panel groups task PRs across repositories
 
-- [ ] 4.1 Add a generic aggregate context route keyed by selected coordinator space and owner generation, bypassing coordinator-cwd Git resolution; cover non-repository/Start coordinator tabs, fleet selection, unrelated spaces, off parity and immediate context invalidation in Git location fixtures.
-- [ ] 4.2 Consume only recorded task PRs behind a source adapter and label lists as possibly incomplete for unreported tasks; fixture-test working/reported live tasks, plans, stopped/closed/failed exclusions, null links and a newly recorded PR arriving on local-context refresh. Do not call future discovery or depend on a Crew change.
-- [ ] 4.3 Fetch exact linked PRs with repository-qualified identity and bounded concurrency; group/deduplicate rows, count linked Open/Closed PRs, omit the aggregate active pin and repository-wide inventory; cover same-number cross-repository PRs, shared PRs, zero links and partial repository failure with fake gh responses.
-- [ ] 4.4 Reuse row/menu/check presentation and exact bound worker navigation without aggregate pin animation; cover stale menu/robot actions, removed/replaced workers, multiple related tasks and correct browser URLs without real terminal input.
-- [ ] 4.5 Document aggregate task inclusion, counts, ordinary-mode restoration and recorded-link completeness limits; run the focused aggregate and existing Git pin/pagination/context-menu regression fixtures.
+- [x] 4.1 Add a generic aggregate context route keyed by selected coordinator space and owner generation, bypassing coordinator-cwd Git resolution; cover non-repository/Start coordinator tabs, fleet selection, unrelated spaces, off parity and immediate context invalidation in Git location fixtures.
+- [x] 4.2 Consume only recorded task PRs behind a source adapter and label lists as possibly incomplete for unreported tasks; fixture-test working/reported live tasks, plans, stopped/closed/failed exclusions, null links and a newly recorded PR arriving on local-context refresh. Do not call future discovery or depend on a Crew change.
+- [x] 4.3 Fetch exact linked PRs with repository-qualified identity and bounded concurrency; group/deduplicate rows, count linked Open/Closed PRs, omit the aggregate active pin and repository-wide inventory; cover same-number cross-repository PRs, shared PRs, zero links and partial repository failure with fake gh responses.
+- [x] 4.4 Reuse row/menu/check presentation and exact bound worker navigation without aggregate pin animation; cover stale menu/robot actions, removed/replaced workers, multiple related tasks and correct browser URLs without real terminal input.
+- [x] 4.5 Document aggregate task inclusion, counts, ordinary-mode restoration and recorded-link completeness limits; run the focused aggregate and existing Git pin/pagination/context-menu regression fixtures.
 
 ## 5. Coordinator Git keeps repository-scoped live updates and safe lifecycle behavior
 

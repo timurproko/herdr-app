@@ -5,6 +5,7 @@ import { U, headerTools, reveal, subtleActionFill, refreshButton } from './ui.js
 import { exec, hc, theme, run, layout, openOverlay, closeOverlay, props, notify, nextCommand, window, settings } from './host.js';
 import { location } from './location.js';
 import { AgentLinks } from './agent-links.js';
+import { AggregatePulls } from './aggregate.js';
 import { GitWebhooks } from './webhooks.js';
 import { GitNotices } from './notices.js';
 import { PinSwap, PIN_SWAP_MS } from './pin-swap.js';
@@ -70,6 +71,7 @@ export default class Changes extends View {
 
   refresh(cx, notify = true) {
     if (!sidebarPanelEnabled('changes')) return;
+    if (this.syncAggregate(cx)) return;
     const target = location(), { cwd, on } = target, context = folderKey(target);
     if (context !== this.context) {
       // Invalidate before the busy guard: an old machine's slow request must
@@ -113,6 +115,17 @@ export default class Changes extends View {
       } catch (e) { if (current()) { this.resetRepository(); this.error = String(e); } }
       finally { if (this.rootRequest === request) this.loading = false; cx.notify(); }
     });
+  }
+
+  syncAggregate(cx) {
+    this.aggregate ??= new AggregatePulls({shown:()=>this.shown()});
+    if(!this.aggregate.sync(cx)) return false;
+    const scope=`tasks:${this.aggregate.context.scope}`;
+    if(this.context!==scope) {
+      this.resetRepository();this.rootRequest=null;this.loading=false;this.context=scope;
+    }
+    this.webhooks?.stop();this.notices?.stop();
+    return true;
   }
 
   // Only the session PR is agent-specific. Never discard repository rows,
@@ -426,6 +439,14 @@ export default class Changes extends View {
   }
 
   agentButton(t, pr, interactive = true) {
+    if(pr.key) {
+      const target=this.aggregate?.target(pr),scope=this.aggregate?.context?.scope;
+      return target ? div().id(`pr-agent-${pr.key}`).size(U.insetControl).flex_none().flex().items_center().justify_center()
+        .rounded(U.insetRadius).text_color(t.foreground).cursor_pointer().role('button').accessibility_label(`Open related agent for ${pr.repo} #${pr.number}`)
+        .hover(s=>s.bg(subtleActionFill(t))).on_mouse_down('left',(_e,cx)=>cx.stop_propagation())
+        .on_click((_e,cx)=>{cx.stop_propagation();this.aggregate.focus(pr,target,scope);})
+        .child(svg('icons/agent.svg').size(U.icon)) : null;
+    }
     const agent = this.agentLinks?.related(pr, this.repo?.name, location().terminal);
     if (!agent) return null;
     // A separate foreground robot, like the Agents sidebar. Its usual 24px
@@ -480,27 +501,27 @@ export default class Changes extends View {
   }
 
   pullRow(t, pr, ghost = false) {
-    const prefix = ghost ? 'swap-' : '';
+    const prefix = ghost ? 'swap-' : '', rowId = pr.key ?? pr.number;
     const agentButton = this.agentButton(t, pr, !ghost);
     const dot = () => div().text_color(t.dim).child('·');
     const checkColor = pr.checks?.state === 'success' ? t.ansi2 : pr.checks?.state === 'failure' ? t.ansi1 : t.ansi3;
     const checkIcon = pr.checks?.state === 'success' ? svg('mods/custom-workspace-chrome/check.svg').size(U.tinyIcon).text_color(checkColor)
       : pr.checks?.state === 'failure' ? svg('mods/custom-workspace-chrome/x.svg').size(U.tinyIcon).text_color(checkColor)
       : div().size(8).flex_none().rounded_full().bg(checkColor);
-    return h_flex().id(`${prefix}pr-${pr.number}`).w_full().flex_none().px(8).py(6).gap(U.gap).items_start().rounded(U.radius)
+    return h_flex().id(`${prefix}pr-${rowId}`).w_full().flex_none().px(8).py(6).gap(U.gap).items_start().rounded(U.radius)
       .when(!ghost, el => el.cursor_pointer().role('button').accessibility_label(`Open pull request #${pr.number} on GitHub`)
         .hover(s => s.bg(t.hover)).on_click(() => this.openPull(pr))
         .on_mouse_down('right', (_event, cx) => { cx.stop_propagation(); this.showPullMenu(pr, cx); })
-        .on_size_change(size => this.pinMotion?.measureRow(pr.number,size,settings().zoom))
-        .on_mouse_move(event => this.pinMotion?.rowPointer(pr.number,event)))
+        .when(!pr.key, el=>el.on_size_change(size => this.pinMotion?.measureRow(pr.number,size,settings().zoom))
+          .on_mouse_move(event => this.pinMotion?.rowPointer(pr.number,event))))
       .child(div().h(20).flex_none().flex().items_center().child(this.pullIcon(t, pr)))
       .child(v_flex().flex_1().min_w(0).gap(3)
         .child(h_flex().w_full().min_w(0).gap(4).items_center()
-          .child(div().id(`${prefix}pr-title-${pr.number}`).flex_1().min_w(0).truncate().text_size(U.font).font_semibold().text_color(t.foreground).child(pr.title))
+          .child(div().id(`${prefix}pr-title-${rowId}`).flex_1().min_w(0).truncate().text_size(U.font).font_semibold().text_color(t.foreground).child(pr.title))
           .when(Boolean(agentButton), el => el.child(agentButton)))
-        .child(h_flex().id(`${prefix}pr-meta-${pr.number}`).w_full().min_w(0).flex_wrap().gap_x(6).gap_y(2).items_center().text_size(11).text_color(t.muted)
+        .child(h_flex().id(`${prefix}pr-meta-${rowId}`).w_full().min_w(0).flex_wrap().gap_x(6).gap_y(2).items_center().text_size(11).text_color(t.muted)
           .child(div().child(pr.meta))
-          .when(pr.owner, el => el.child(tag(t, `${prefix}pr-owner-${pr.number}`, 'Owner', { compact: true })))
+          .when(pr.owner, el => el.child(tag(t, `${prefix}pr-owner-${rowId}`, 'Owner', { compact: true })))
           .when(Boolean(pr.tasks), el => el.child(dot()).child(h_flex().gap(4).items_center()
             .child(this.taskIcon(t, pr.tasks)).child(div().child(pr.tasks.label))))
           .when(Boolean(pr.checks), el => el.child(dot()).child(h_flex().gap(4).items_center()
@@ -584,6 +605,33 @@ export default class Changes extends View {
       .when(Boolean(swap), el => el.child(this.swapOverlay(t,swap)));
   }
 
+  renderAggregate(cx,t) {
+    const aggregate=this.aggregate,counts=aggregate.counts(),scope=aggregate.context.scope;
+    const repositories=[...new Set([...aggregate.entries.values()].map(e=>e.link.repo))].sort();
+    return v_flex().id('changes').size_full().min_h(0).rounded(8).overflow_hidden().bg(t.background).border_1().border_color(t.input).text_color(t.foreground).text_size(U.font)
+      .child(h_flex().id('changes-header').relative().bg(t.surface).h(U.section).flex_none().pl(4).pr(U.gutter).gap(U.gap).items_center().border_b(1).border_color(t.border)
+        .on_hover((hovered,view)=>{this.headerHovered=hovered;view.notify();})
+        .child(sidebarTitle(t,'changes','git-title'))
+        .child(div().flex_1().min_w(0).truncate().text_size(U.meta).text_color(t.dim).child('Recorded task PRs'))
+        .child(reveal(headerTools(h_flex()).id('git-actions').bg(t.surface),this.headerHovered)
+          .child(refreshButton(t,{id:'git-refresh',icon:'mods/custom-changes/refresh.svg',label:'Refresh',busy:aggregate.busy,spinning:aggregate.busy,
+            owner:this,scope:this.context,enabled:this.headerHovered,size:U.insetControl,iconSize:U.tinyIcon,radius:U.insetRadius,color:t.dim,hover:subtleActionFill(t),
+            onClick:(_e,view)=>{if(aggregate.context?.scope===scope && !aggregate.busy)aggregate.refresh(view);}}))
+          .child(panelPin(t,{id:'git-pin',enabled:this.headerHovered}))
+          .child(headerTool(t,{id:'git-close',icon:'mods/custom-pane/close.svg',label:'Close Git panel',enabled:this.headerHovered,onClick:()=>changePanel({open:false})}))))
+      .child(h_flex().id('git-views').h(40).flex_none().px(4).gap(2).items_center().border_b(1).border_color(t.border)
+        .child(this.segment(t,'git-view-open','Open',counts.open,this.view==='open',view=>this.setView('open',view)))
+        .child(this.segment(t,'git-view-closed','Closed',counts.closed,this.view==='closed',view=>this.setView('closed',view))))
+      .when(aggregate.context.incomplete,el=>el.child(div().id('git-task-incomplete').flex_none().px(12).py(6).text_size(U.meta).text_color(t.dim)
+        .child('Recorded PRs · possibly incomplete until tasks report')))
+      .child(v_flex().id('task-pulls-scroll').flex_1().min_h(0).overflow_y_scrollbar().p(4)
+        .children(repositories.map(repo=>v_flex().id(`task-repo-${repo}`).w_full().flex_none().gap(U.rowGap)
+          .child(div().px(8).py(6).text_size(U.meta).text_color(t.muted).child(repo))
+          .children(aggregate.rows(this.view).filter(pr=>pr.repo===repo).map(pr=>this.pullRow(t,pr)))
+          .children([...aggregate.entries.values()].filter(e=>e.link.repo===repo && e.error).map(e=>div().id(`task-error-${e.link.key}`).px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(e.error)))))
+        .when(!aggregate.rows(this.view).length,el=>el.child(panelMessage(t,'git-task-empty',{text:aggregate.busy?'Loading…':`No recorded ${this.view} task pull requests`,loading:aggregate.busy,rowInset:2}))));
+  }
+
   liveCIInfo(t,kind='setup') {
     const text=kind==='repository'?'Add this repo in':'Set up Git in';
     const repository=kind==='repository'&&typeof this.repo?.name==='string'?this.repo.name:null;
@@ -606,11 +654,12 @@ export default class Changes extends View {
 
   render(cx) {
     if (!sidebarPanelEnabled('changes')) {
-      this.webhooks?.stop();this.notices?.stop();
+      this.webhooks?.stop();this.notices?.stop();this.aggregate?.stop();
       this.resetRepository(); this.rootRequest = null; this.loading = false; this.context = null;
       return div();
     }
     if (this.pullMenu) return this.renderPullMenu(theme());
+    if (this.syncAggregate(cx)) return this.renderAggregate(cx,theme());
     if (key() !== this.context) this.refresh(cx, false);
     this.syncAgent(cx);
     if (this.shown() && this.pullsDue(this.view)) this.loadPulls(this.view, cx, false, false);

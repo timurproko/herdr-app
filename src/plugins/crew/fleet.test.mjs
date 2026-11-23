@@ -9,6 +9,11 @@ const {f,r}=await loadMod({host,modules:{'space-color-state.js':'src/shared/spac
 const status={home:'C:/home/.crew',owner:{terminal:'t1',live:true,mine:false},tasks:[{id:'ship',terminal:'t2',state:'reported',pr:'https://github.com/example/a/pull/12',report:'MUST NOT SHARE'}]};
 const model=()=>({groups,all,list}), copy=v=>JSON.parse(JSON.stringify(v));
 assert.equal(f.bindFleet(status,null,model()).child,'fm-crew-home1');
+for(const taskState of ['working','reported','stopped','failed','closed']) {
+ const result=f.bindFleet({...status,tasks:[{...status.tasks[0],state:taskState}]},null,model());
+ assert.equal(result.tasks.length,['working','reported'].includes(taskState)?1:0);
+ assert.equal(result.incomplete,taskState==='working');
+}
 assert.equal(f.bindFleet({...status,owner:{terminal:'t9',live:true}},null,model()),null);
 list[1].labels['crew.task']='wrong';assert.equal(f.bindFleet(status,null,model()),null);list[1].labels['crew.task']='ship';
 const before=copy(groups);groups[1].id='ordinary';assert.equal(f.bindFleet(status,null,model()),null);groups=before;

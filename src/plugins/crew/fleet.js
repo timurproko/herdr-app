@@ -52,14 +52,14 @@ export function fleetContexts() {
   });
 }
 // Injected source is a seam: future discover-prs can be implemented here, not in consumers.
-export function refreshFleets(cx, readStatus) {
+export function refreshFleets(cx, readStatus, force = false) {
   if(!enabled() || checking()) return;
   const relevant=new Set(terminals().filter(t=>t.state==='live' && (t.labels?.['custom.crew.home']==='1' || t.labels?.['crew.task'])).map(t=>machineOf(t.address)));
   for(const machine of relevant) {
     if(machine && !machines().some(m=>m.name===machine && m.layout==='ready')) continue;
     const key=machine??'local', state=shared(FLEET_KEY), entry=state?.entries?.[key], sig=signature(machine), now=Date.now();
     const pending=shared(READS)?.[key];
-    if(pending?.until>now || entry?.signature===sig && now-entry.at<TTL) continue;
+    if(pending?.until>now || !force && entry?.signature===sig && now-entry.at<TTL) continue;
     const token=`${now}-${Math.random()}`, generation=shared('custom.fleet.generation');
     setShared(READS,{...shared(READS),[key]:{token,until:now+20000}});
     cx.spawn(async view=> {

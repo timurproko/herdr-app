@@ -583,7 +583,12 @@ selection-only and shows the same link glyph. They remain separate selectable na
 spaces; no terminals or tabs are relocated. The coordinator's Git panel shows only
 recorded task PRs across projects, with task-scoped counts and no single active pin.
 Live working and reported tasks (including plans awaiting approval) are included.
-Unreported tasks make the recorded list possibly incomplete. Off retains today's
+Unreported tasks make the recorded list possibly incomplete, even if a previous
+report already supplied a link. PR rows are grouped by repository; Open/Closed
+counts cover those distinct linked PRs only, never all PRs in each repository.
+Robots open the exact live worker, and PR menus retain their captured URL.
+The source is plain `crew status --json` (`tasks[].pr`), not transcript/branch
+inference or a new Crew capability. No Crew change is required. Off retains today's
 independent spaces and folder-based Git. Only the boolean is portable; pair bindings,
 homes, task/terminal identities and in-flight ordering are not exported.
 

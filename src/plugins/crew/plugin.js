@@ -491,7 +491,7 @@ const readFleetStatus = async machine => {
   if(result.code!==0) throw Error('Crew status unavailable');
   return result.stdout;
 };
-const refreshFleetContext = cx => refreshFleets(cx.cx, readFleetStatus);
+const refreshFleetContext = cx => refreshFleets(cx.cx, readFleetStatus, cx.force === true);
 // `crew project list` prints one line per project: name and folder, tab-separated, and
 // sometimes a third column with a setting of that project (how it is delivered, say).
 export function parseProjects(stdout) {
