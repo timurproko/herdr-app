@@ -23,6 +23,11 @@ function find(node,id) {
   return node?.kids?.map(child=>find(child,id)).find(Boolean);
 }
 function descendants(node) {return [node,...(node?.kids??[]).flatMap(descendants)];}
+function pathTo(node,target) {
+  if(node===target)return [node];
+  for(const child of node?.kids??[]) {const rest=pathTo(child,target);if(rest)return [node,...rest];}
+  return null;
+}
 let allAgents=[], allPanes=[], allSpaces=[], allTerminals=[], shown=true;
 const calls=[], actions=[], tasks=[], remotes=new Map(), screens=new Map();
 const place={cwd:'/repo',on:null,terminal:'shell',tab:'shell-tab'};
@@ -150,7 +155,7 @@ for(const [state,color] of [['open','green'],['draft','dim'],['closed','red'],['
   assert.equal(button.kids[0].attrs.text_color[0],'white');
   const original=descendants(row).find(n=>n?.asset?.startsWith('mods/custom-changes/git-'));
   assert.ok(original,'Original PR icon stays beside the separate robot');assert.equal(original.attrs.text_color[0],color);
-  assert.ok(descendants(row).every(n=>n?.attrs?.tooltip===undefined),'No tooltip, including the parent row');
+  assert.ok([...pathTo(row,button),...descendants(button)].every(n=>n?.attrs?.tooltip===undefined),'No tooltip on the robot, its glyph or any ancestor; metadata tooltips stay in sibling rows');
   const hover=element();button.attrs.hover[0](hover);
   assert.equal(hover.attrs.bg[0],'usual-inset-hover');
   assert.notEqual(hover.attrs.bg[0],colors.hover,'Inset icon highlight stays distinct from the parent row hover');

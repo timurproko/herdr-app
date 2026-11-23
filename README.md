@@ -372,7 +372,9 @@ Labels are compact pills in their exact GitHub colours and names (including emoj
 with contrasting text. Multiple/long labels stay in a bounded single-height strip:
 pill text truncates, and hovering the pills or metadata exposes complete names,
 including clipped labels. No labels means no placeholder or extra separator;
-label refreshes never add extra row lines or horizontal overflow.
+label refreshes never add extra row lines or horizontal overflow. Metadata separators,
+including the number/author dot, share a clearly visible muted 3px round shape,
+vertically centred beside text/icons with equal 6px spacing on both sides.
 Git follows the selected terminal's live shell-reported directory (including remote
 Bash and PowerShell), not its launch folder. Changing locations immediately clears
 the old repository and counts; late Git/GitHub replies cannot restore them. A

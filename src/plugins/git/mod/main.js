@@ -518,6 +518,11 @@ export default class Changes extends View {
     return this.taskRing(t, task.done, task.total);
   }
 
+  // Shapes avoid font-baseline drift; parent rows own equal gaps on both sides.
+  metaSeparator(t) {
+    return div().size(3).flex_none().rounded_full().bg(t.muted);
+  }
+
   labelPill(t, label, id) {
     const color = /^#[a-f\d]{6}$/i.test(label.color ?? '') ? label.color : null;
     const channels = color ? [1,3,5].map(at => {
@@ -533,7 +538,7 @@ export default class Changes extends View {
   pullRow(t, pr, ghost = false) {
     const prefix = ghost ? 'swap-' : '', rowId = pr.key ?? pr.number;
     const agentButton = this.agentButton(t, pr, !ghost);
-    const dot = () => div().flex_none().text_color(t.dim).child('·');
+    const dot = () => this.metaSeparator(t);
     const labels = pr.labels ?? [];
     const groups = [];
     if (pr.tasks) groups.push(h_flex().id(`${prefix}pr-tasks-${rowId}`).min_w(0).flex_shrink(1).overflow_hidden().gap(4).items_center()

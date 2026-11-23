@@ -16,7 +16,7 @@
 
 ## 3. All PR metadata separators share a visible centred muted dot with balanced spacing
 
-- [ ] 3.1 Add one metadata separator primitive and use it between every present status/review/label group and between PR number and author/time; assert a common muted size, vertical centring and equal spacing in renderer fixtures.
-- [ ] 3.2 Cover missing-item combinations and narrow rows so separators neither lead/trail empty groups nor become orphaned; demonstrate identical treatment in ordinary/coordinator Open/Closed and ghost rows.
-- [ ] 3.3 Update README.md and docs/TESTING.md with the separator contract and fixture/native-pixel limits; check focused separator and existing metadata regressions.
-- [ ] 3.4 Reconcile with latest main while preserving PR #18 coordinator presentation and PR #17 relay transport work, validate this OpenSpec change and run CI=true npm run test:ci; record actual results and any remaining native-visual gap without deployment.
+- [x] 3.1 Add one metadata separator primitive and use it between every present status/review/label group and between PR number and author/time; assert a common muted size, vertical centring and equal spacing in renderer fixtures.
+- [x] 3.2 Cover missing-item combinations and narrow rows so separators neither lead/trail empty groups nor become orphaned; demonstrate identical treatment in ordinary/coordinator Open/Closed and ghost rows.
+- [x] 3.3 Update README.md and docs/TESTING.md with the separator contract and fixture/native-pixel limits; check focused separator and existing metadata regressions.
+- [x] 3.4 Reconcile with latest main while preserving PR #18 coordinator presentation and PR #17 relay transport work, validate this OpenSpec change and run CI=true npm run test:ci; record actual results and any remaining native-visual gap without deployment.

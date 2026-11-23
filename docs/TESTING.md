@@ -131,7 +131,10 @@ GitHub data, not real label mutations, credentials or relay deployments.
 host/elements. It covers ordinary/coordinator Open/Closed/merged and ghost rows,
 Owner removal, tasks/checks/labels ordering with missing groups, exact emoji names,
 light/dark/fallback colours, bounded strip/pill sizes, truncation and full-name
-individual/strip/metadata tooltips. Pagination/fleet fixtures also assert labels
+individual/strip/metadata tooltips. The same fixture checks 3px muted round separators,
+centred by their parent rows with equal 6px gaps, in bylines and every status/review/label
+boundary, including missing-group combinations without leading/trailing or orphan dots.
+Pagination/fleet fixtures also assert labels
 in actual pinned/scrolling and coordinator render paths; existing menu and pin-swap
 fixtures protect captured URLs, callbacks and measured motion. These prove render-tree
 constraints, not GPUI pixel layout, tooltip hit-testing or native animation appearance.
