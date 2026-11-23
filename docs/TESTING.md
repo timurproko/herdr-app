@@ -339,6 +339,13 @@ ordinary/attached and multiple-tag cases keep the final pill at that edge while
 untagged branch slots retain the machine-chevron axis. Long names, active/inactive
 rows, hidden icons and rename mode are covered. Compact rail fixtures
 remain badge-only and never query plugin tags.
+The packaged `tests/regression/space-colors.test.mjs` fixture covers coordinator and
+fleet palette origins, selected swatches, mouse/keyboard and Automatic choices,
+unchanged saved fleet colour/Automatic flags and unrelated-space preferences.
+Rename/close/worktree targets remain the clicked space. Stale/changed/ambiguous,
+disabled, missing, cross-machine or retained-only pair bindings refuse writes;
+reopening a detached fleet restores independent controls. Actual detached row/rail
+projections restore its own colour without copying preferences.
 
 `tests/fleet-git.test.mjs` loads the actual Git controller, aggregate source and Crew
 provider through the package harness. Synthetic tasks/gh results cover coordinator

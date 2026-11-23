@@ -240,6 +240,11 @@ drag.view={id:'missing'};assert.equal(view.dragPreview(theme),null);
 drag.view={id:'worktree-a',meta:{sources:['missing-parent','worktree-a']}};assert.equal(view.dragPreview(theme),null,'A missing coordinator cannot produce a mismatched chip');
 drag.view=null;assert.equal(view.dragPreview(theme),null);
 context.pluginWorkspaceLinks=()=>[];assert.equal(view.ordered().find(r=>r.w.id==='worktree-a').linked,false);
+context.__store.set('space.colors',{parent:'#123abc','worktree-a':'#ff0044'});
+const detached=view.ordered().find(r=>r.w.id==='worktree-a');
+assert.equal(find(view.row(detached,theme),'space-content-worktree-a').kids[0].attrs.bg[0],'#ff0044');
+assert.equal(find(view.compact(detached,theme),'space-badge-worktree-a').attrs.bg[0],'#ff0044','Actual detached projection restores the fleet colour in both modes');
+context.__store.delete('space.colors');
 // Compare actual machine header and row trailing slots, including tags and the left-aligned fleet name.
 view.machines=[{name:'pc2',state:'connected'}];view.reconnecting={};view.folded=new Set();view.rebuilt=()=>false;
 const machineWrites=new Map();context.localStorage={setItem:(key,value)=>machineWrites.set(key,value)};

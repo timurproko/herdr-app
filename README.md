@@ -613,6 +613,12 @@ weight as other selected spaces, with ordinary hover and selection backgrounds.
 Both expanded rows show the same Crew pill at the right; the pills share the same
 right edge. Renaming hides markers and tags; the Worktree icon switch hides only
 worktree markers, not the independent coordinator chain.
+Choosing a colour or Automatic from either attached row edits the coordinator's
+colour; the fleet's saved colour and Automatic flag stay untouched. Its palette and
+mouse/keyboard choices use that same captured coordinator. Other menu actions still
+target the clicked space. A changed or unverifiable pair refuses a stale colour
+choice; reopen after detachment to edit the fleet's own colour again. Disabling
+attachment or confirmed unlinking restores that independent fleet colour.
 Unrelated plugin tags remain; the compact rail stays badge-only. Refreshing Git or
 Crew, relay events, focus changes and unrelated pane changes do not temporarily remove
 the coordinator chain, shared badge colour or attached row order. The pair is a persisted property of its exact native

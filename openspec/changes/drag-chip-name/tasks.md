@@ -10,10 +10,10 @@
 
 ## 2. Pair colour controls preserve independent fleet preferences
 
-- [ ] 2.1 Add a captured pair-colour target to the space menu using the generic workspace-link registry, leaving all non-colour actions bound to the clicked space; confirm rename, close and worktree action IDs never retarget to the coordinator.
-- [ ] 2.2 Make selected swatches, mouse colour choices and keyboard focus/Enter use the same coordinator target for attached fleet menus, including Automatic; retain existing colour-state write guards and assert the fleet's saved colour and Automatic flag remain unchanged.
-- [ ] 2.3 Revalidate the captured same-machine pair before writes, refusing stale, unavailable, changed, missing or disabled bindings without falling back to the fleet; add menu regressions covering detachment/reopening, unrelated spaces and ordinary attachment-off behaviour, and pass focused colour-menu fixtures.
-- [ ] 2.4 Extend real resolver rendering regressions to show coordinator recolouring synchronously in expanded and rail badges and restore the independent fleet colour after unlink/disable; document fleet-menu shared-colour semantics and guards in `README.md` and `docs/TESTING.md`.
+- [x] 2.1 Add a captured pair-colour target to the space menu using the generic workspace-link registry, leaving all non-colour actions bound to the clicked space; confirm rename, close and worktree action IDs never retarget to the coordinator.
+- [x] 2.2 Make selected swatches, mouse colour choices and keyboard focus/Enter use the same coordinator target for attached fleet menus, including Automatic; retain existing colour-state write guards and assert the fleet's saved colour and Automatic flag remain unchanged.
+- [x] 2.3 Revalidate the captured same-machine pair before writes, refusing stale, unavailable, changed, missing or disabled bindings without falling back to the fleet; add menu regressions covering detachment/reopening, unrelated spaces and ordinary attachment-off behaviour, and pass focused colour-menu fixtures.
+- [x] 2.4 Extend real resolver rendering regressions to show coordinator recolouring synchronously in expanded and rail badges and restore the independent fleet colour after unlink/disable; document fleet-menu shared-colour semantics and guards in `README.md` and `docs/TESTING.md`.
 
 ## 3. Grabbed-row single chip with unchanged pair movement
 
