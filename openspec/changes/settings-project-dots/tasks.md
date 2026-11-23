@@ -2,8 +2,8 @@
 
 ## 1. Crew project names preserve dots across add, list and removal
 
-- [ ] 1.1 Update the shared naming policy, basename derivation and naming hint in `src/plugins/crew/plugin.js`; cover safe dots, mixed case, invalid punctuation, repeated/leading/trailing dots, 1/40/41-character boundaries and truncation with `node --experimental-vm-modules src/plugins/crew/plugin.test.mjs`.
-- [ ] 1.2 Extend mocked project CLI fixtures to show dotted rows and register/remove exact dotted IDs, and to preserve older Crew name refusals and home-ownership refusals without retry or false success; verify using the same plugin test.
+- [x] 1.1 Update the shared naming policy, basename derivation and naming hint in `src/plugins/crew/plugin.js`; cover safe dots, mixed case, invalid punctuation, repeated/leading/trailing dots, 1/40/41-character boundaries and truncation with `node --experimental-vm-modules src/plugins/crew/plugin.test.mjs`.
+- [x] 1.2 Extend mocked project CLI fixtures to show dotted rows and register/remove exact dotted IDs, and to preserve older Crew name refusals and home-ownership refusals without retry or false success; verify using the same plugin test.
 
 ## 2. Folder-change failures identify Crew as the refusal source
 
