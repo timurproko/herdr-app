@@ -21,7 +21,7 @@
 
 ## 4. Deployment entrypoints and stock coverage remain usable on unreviewed hosts
 
-- [ ] 4.1 Replace unconditional integration-baseline loading with explicit reviewed/uncovered classification; cover missing 0.1.17 baseline without a file crash, continued independent regressions, fatal known-stock mismatch and unchanged reviewed hashes.
-- [ ] 4.2 Extend disposable pipeline fixtures through npm deploy, deploy:all, deploy:shell and the managed Settings Update runner with a capable 0.1.17 fake host and unknown native bytes; verify successful completion, source/ownership gates and peer-shell behavior without real deployment or peers.
-- [ ] 4.3 Update testing/command docs with honest unreviewed-stock coverage and exact post-merge Settings Check now then Update instructions; verify the installed runner fetches fixed main before invoking its host gate, with no manual clone repair or lock deletion.
-- [ ] 4.4 Run CI=true npm run test:ci on the implemented head and rerun the real read-only npm run check:host-api; record actual pass/failure evidence, remaining native/UI limitations and the absence of any live install/deploy.
+- [x] 4.1 Replace unconditional integration-baseline loading with explicit reviewed/uncovered classification; cover missing 0.1.17 baseline without a file crash, continued independent regressions, fatal known-stock mismatch and unchanged reviewed hashes.
+- [x] 4.2 Extend disposable pipeline fixtures through npm deploy, deploy:all, deploy:shell and the managed Settings Update runner with a capable 0.1.17 fake host and unknown native bytes; verify successful completion, source/ownership gates and peer-shell behavior without real deployment or peers.
+- [x] 4.3 Update testing/command docs with honest unreviewed-stock coverage and exact post-merge Settings Check now then Update instructions; verify the installed runner fetches fixed main before invoking its host gate, with no manual clone repair or lock deletion.
+- [x] 4.4 Run CI=true npm run test:ci on the implemented head and rerun the real read-only npm run check:host-api; record actual pass/failure evidence, remaining native/UI limitations and the absence of any live install/deploy.

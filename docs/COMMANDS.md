@@ -224,6 +224,20 @@ be unknown until the next successful full deployment. Never delete
 `.customizations/deploy.lock` to force an update, reset a checkout or replay an
 uncertain remote request.
 
+### Retrying the App 0.1.17 blocked update after merge
+
+For an installation that already has the Updates row, no manual deployment or
+installation is needed first. Open **Settings → Updates → herdr-app-custom**,
+click **Check now**, then click **Update** once offered. The existing runner
+fetches and fast-forwards fixed published main in `~/.local/share/herdr-app`
+**before** loading its deployment CLI/host check, so the old exact-version refusal
+does not prevent receiving this fix. A definite failed attempt can be retried
+following a fresh successful check; a running/unknown outcome or unresolved lock
+must be investigated, never bypassed by deleting status/locks or resetting source.
+The desktop update can finish with optional palette/feedback skip advisories;
+see the native patch policy above for what stays stock or retained. An already
+current shell-only pc2 does not need an App upgrade or native patches.
+
 ### Trying the row after merge
 
 These are maintainer actions, **not agent tests**. Do not install from an unmerged
