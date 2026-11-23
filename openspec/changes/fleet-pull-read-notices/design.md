@@ -56,4 +56,6 @@ Keep `mergedAt ?? closedAt`, the strict less-than-24-hour cutoff, exclusion of m
 
 ## Migration Plan
 
+Implementation validation: all focused fleet/read/notice/pagination regressions passed, followed by `CI=true npm run test:ci` passing 153 supported Windows suite entries with three documented exclusions. The branch was checked against the current default branch before that run; no overlapping enrollment/header/discovery/label edits were present to reconcile. The original installed native exec failure remains unreproduced and is not claimed fixed as a proven root cause.
+
 No persistent state migration is needed. This task does not deploy. Source-level rollback is the ordinary revert of the implementation commit; no installed files, credentials or Crew records are changed.
