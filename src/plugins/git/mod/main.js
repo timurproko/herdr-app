@@ -8,6 +8,7 @@ import { AgentLinks } from './agent-links.js';
 import { AggregatePulls } from './aggregate.js';
 import { GitWebhooks } from './webhooks.js';
 import { GitNotices } from './notices.js';
+import { labelColors } from './label-colors.js';
 import { PinSwap, PIN_SWAP_MS } from './pin-swap.js';
 import { panelPin } from './panel-pin.js';
 import { openSettings } from './settings-dialog.js';
@@ -534,14 +535,10 @@ export default class Changes extends View {
   }
 
   labelPill(t, label, id) {
-    const color = /^#[a-f\d]{6}$/i.test(label.color ?? '') ? label.color : null;
-    const channels = color ? [1,3,5].map(at => {
-      const value = parseInt(color.slice(at,at+2),16) / 255;
-      return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-    }) : null;
-    const foreground = channels ? (channels[0]*0.2126 + channels[1]*0.7152 + channels[2]*0.0722 > 0.179 ? '#000000' : '#ffffff') : t.foreground;
-    return h_flex().id(id).flex_none().min_w(0).max_w_full().h(18).px(5).rounded_full()
-      .items_center().overflow_hidden().bg(color ?? t.raised).text_color(foreground).tooltip(label.name)
+    const {background,foreground,border} = labelColors(t,label.color);
+    // Border-box: 4px padding + 1px border preserves the original 5px inset.
+    return h_flex().id(id).flex_none().min_w(0).max_w_full().h(18).px(4).border_1().border_color(border).rounded_full()
+      .items_center().overflow_hidden().bg(background).text_color(foreground).tooltip(label.name)
       .child(div().min_w(0).truncate().child(label.name));
   }
 

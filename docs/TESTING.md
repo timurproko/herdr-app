@@ -168,7 +168,29 @@ GitHub data, not real label mutations, credentials or relay deployments.
 host/elements. It covers ordinary/coordinator Open/Closed/merged and ghost rows,
 Owner removal, tasks/checks/labels ordering with missing groups, exact emoji names,
 light/dark/fallback colours, bounded strip/pill sizes, truncation and full-name
-individual/strip/metadata tooltips. The same fixture checks 3px muted round separators,
+individual/strip/metadata tooltips. Colour cases replace the former solid-fill assertions:
+18 independent samples cover green, amber, purple, red, blue, yellow, black/near-black,
+white/near-white and both sides of the label lightness/border thresholds. The expected
+HSL results were derived with Python colorsys and the three reference hues cross-checked
+against Primer CSS in Chrome; no test computes its oracle using the production helper.
+RGB conversion allows one byte of rounding; alpha bytes are exact (18% becomes `2e`,
+30% becomes `4d`). The real row runs through dark → light → dark palettes at each zoom,
+state and ordinary/coordinator/ghost combination. Border plus padding preserves the
+original 5px content inset and 18px outer height; neutral fallback retains exact names.
+
+`src/plugins/git/mod/label-colors.js` adapts the MIT-licensed
+[Primer IssueLabelToken CSS](https://github.com/primer/react/blob/2128032dca65a1bd565fe382c2e91c638c6473a4/packages/react/src/Token/IssueLabelToken.module.css)
+and its [rounded HSL inputs](https://github.com/primer/react/blob/2128032dca65a1bd565fe382c2e91c638c6473a4/packages/react/src/Token/IssueLabelToken.tsx),
+with attribution preserved in the helper. Perceived lightness is the weighted encoded
+RGB sum divided by 255, not gamma-corrected WCAG luminance. Dark text adds
+`(0.6 - perceived) * 100 * clamp(1 / (0.6 - perceived), 0, 1)` to rounded HSL lightness;
+background/border alpha are 0.18/0.3. Light text switches at 0.453; the border uses
+HSL lightness minus 25 with alpha `clamp((perceived - 0.96) * 100, 0, 1)`.
+Effective panel backgrounds below weighted RGB lightness 0.5 use dark rules, others
+use light; unavailable/invalid backgrounds default dark. This classification and
+invalid label colours are covered separately from the upstream formula.
+
+The same fixture checks 3px muted round separators,
 optically lowered 1.5 logical pixels from the parent line-box centre with equal 6px gaps,
 in bylines and every status/review/label boundary. Zoom cases from 75% to 200% retain
 the same logical offset; comparison with the old separator tree protects neighbouring

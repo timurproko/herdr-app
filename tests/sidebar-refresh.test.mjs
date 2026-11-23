@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
+import * as labelColors from '../src/plugins/git/mod/label-colors.js';
 import {fileURLToPath} from 'node:url';
 import {loadMod} from '../tools/plugin-harness.mjs';
 const pullHelpers=await loadMod({host:{},modules:{'pulls.js':'src/plugins/git/mod/pulls.js'},entry:"export * from './pulls.js';"});
@@ -57,6 +58,7 @@ async function harness(feature, pluginOn = true) {
     },
   };
   const exports = {
+    './label-colors.js':labelColors,
     'gpui-kit': {View: class {}, div: () => element(), svg: asset => element(asset), image: asset => element(asset), PathBuilder: {}},
     'gpui-base': {v_flex: () => element(), h_flex: () => element(), Editor: {}, EditorState: {},
       InputState: {new: () => ({on() {}, set_value() {}})}, Input: {new: () => element()},
