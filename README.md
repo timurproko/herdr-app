@@ -595,9 +595,16 @@ name/directory tooltip. They remain separate selectable native
 spaces; no terminals or tabs are relocated. The coordinator's Git panel shows only
 recorded task PRs across projects, with task-scoped counts and no single active pin.
 Live working and reported tasks (including plans awaiting approval) are included.
-Unreported tasks make the recorded list possibly incomplete, even if a previous
-report already supplied a link. PR rows are grouped by repository; Open/Closed
-counts cover those distinct linked PRs only, never all PRs in each repository.
+The panel keeps its normal Git title and controls, without an extra task heading
+or a generic incomplete-list notice. PR rows are grouped under repository headers
+using the same fold chevron and row style as Spaces machine headers. Click a
+header to fold just that repository; sections start expanded and remember their
+state locally, including panel reopen/reload. Open and Closed task-PR counts stay
+visible and update in folded headers; global counts still include folded sections.
+These counts cover distinct linked PRs only, never all PRs in each repository.
+Folding only hides section bodies: it does not fetch, cancel reads or stop updates.
+The recorded list can omit PRs that tasks have not yet supplied; this does not
+change the source or infer missing links.
 Robots open the exact live worker, and PR menus retain their captured URL.
 The source is plain `crew status --json` (`tasks[].pr`), not transcript/branch
 inference or a new Crew capability. No Crew change is required. The existing

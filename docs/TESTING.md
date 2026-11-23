@@ -143,8 +143,13 @@ long names, tag-only edges, hidden icons and rename mode.
 provider through the package harness. Synthetic tasks/gh results cover coordinator
 non-repo routing, recorded working/reported links, missing/new links, duplicate
 cross-repository PR numbers, shared PR deduplication, scoped counts/errors, exact
-worker robots, incomplete wording, repository enrollment links, webhook burst
-coalescing, no periodic GitHub reads, hide/show catch-up and stale completions.
+worker robots, absent extra task heading/incomplete notice, repository enrollment
+links, webhook burst coalescing, no periodic GitHub reads, hide/show catch-up and
+stale completions. It loads the real shared UI header and covers machine-style
+chevron geometry, default expansion, independent repository folds, localStorage
+restore after panel recreation, temporary repository absence, tab/refresh changes,
+zero and live counts while folded, hidden/restored scoped body notices, stale toggle
+guards, no fold-triggered reads and no false empty state when all sections fold.
 No fixture uses real Core, credentials, GitHub, terminals, native input or deployment.
 Recorded links deliberately do not guarantee pre-report PR discovery. Native pixels,
 actual drag motion and real remote execution remain unverified without separate

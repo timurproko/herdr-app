@@ -168,8 +168,19 @@ pending ordering operations are not exported or replayed.
 for the selected coordinator. It reads exact recorded PR URLs on that machine with
 three bounded concurrent requests, keys rows by repository plus PR number, and
 never probes the coordinator's directory. Working/reported live terminals are
-eligible; unreported tasks trigger the possibly-incomplete label. There is no
-single active pin or repository-wide PR inventory in this mode.
+eligible. There is no extra task heading or generic incomplete-list notice, single
+active pin or repository-wide PR inventory in this mode. Missing recorded links
+still cannot be inferred from transcripts or branches.
+
+`ui/ui.js` owns `sidebarSectionHeader`, the common machine/repository header shell
+and right-edge chevron; Spaces retains its own actions and guarded folding.
+Aggregate repository headers start expanded, retain both task-scoped Open/Closed
+counts when folded, and persist a canonical repository-key set in localStorage
+(`custom.git.task-repositories.folded`), like Spaces' `machines.folded` set.
+Explicit toggles are UI-only: no preference export or Crew/host-document writes,
+and no new fetch or cancellation. Fold state survives tab/context changes and
+panel recreation. Scoped rows/errors/enrollment notices fold with the body; global
+setup stays visible. Counts and webhook-driven facts continue updating while folded.
 
 The existing single authenticated WebSocket routes repository invalidations into
 the aggregate index. Bursts coalesce behind each in-flight PR read; reconnect/show

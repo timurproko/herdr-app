@@ -7,7 +7,7 @@
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, Input, ScrollHandle } from "gpui-base";
-import { U, slot, itemHover, interactionFill, subtleActionFill, iconButton, badge, spaceBadgeColor, chevron, rolePill, menuSurface, menuHeading, menuRow } from "./ui.js";
+import { U, slot, itemHover, interactionFill, subtleActionFill, iconButton, badge, spaceBadgeColor, sidebarSectionHeader, rolePill, menuSurface, menuHeading, menuRow } from "./ui.js";
 import { spaceTitle } from './space-title.js';
 import { sidebarScroll } from './sidebar-scroll.js';
 import { startTabArrivals, tabArrivalMotion } from './tab-arrival.js';
@@ -350,35 +350,33 @@ export default class Spaces extends View {
       // ready connection, so it is only a tooltip.
       const status = () => div().id(`machine-status-${m ?? "local"}`).size(U.statusSize).rounded_full().flex_none().bg(ready ? t.done : t.dim)
         .when(!collapsed, el => el.tooltip(ready ? "Connected" : (machine?.state ?? "Not connected").replace(/_/g, " ")));
-      const head = this.drag.control(h_flex().id(`machine-${m ?? "local"}`).h(U.control).flex_none().pl(collapsed ? 0 : 8).pr(collapsed ? 0 : 4).gap(U.gap).items_center().rounded(U.radius).text_size(U.meta).text_color(t.muted)
-        .when(collapsed, el => el.w(U.control).self_center().justify_center()),
+      const children = collapsed ? [slot(svg(`mods/custom-workspace-chrome/${m ? "server" : "monitor"}.svg`).size(m ? U.smallIcon : U.icon))
+        .when(folded && this.tabArrival?.machine === m, icon => tabArrivalMotion(this, icon))] : [
+        div().flex_1().min_w(0).truncate().child(m ?? "This computer")
+          .when(folded && this.tabArrival?.machine === m, label => tabArrivalMotion(this, label)),
+        ...(rebuilt ? [h_flex().flex_none().gap(3).items_center()
+          .child(div().max_w(140).truncate().child(repair?.error || "rebuilt ·"))
+          .child(this.drag.control(div().id(`machine-connect-${m}`).text_color(repair?.error ? t.blocked : t.muted),
+            {hover: s => s.text_color(t.foreground), tooltip: repair?.error || 'This machine was rebuilt or replaced. Click to connect to the new one.'})
+            .on_click(this.drag.guard((_e, cx) => { cx.stop_propagation(); this.reconnect(machine, cx); }))
+            .child(repair?.busy ? "Connecting…" : "Connect"))] : []),
+        // The status dot, then +, then the shared fold chevron. Preserve the
+        // plus button's visual midpoint without moving the dot or chevron.
+        h_flex().id(`machine-actions-${m ?? "local"}`).flex_none().gap(3).items_center()
+          .when(shows("spaces.show.machineStatus"), el => el.child(status()))
+          .when(connected, el => el.child(iconButton(t, { id: `machine-add-${m ?? "local"}`, icon: "mods/custom-workspace-chrome/plus.svg", label: "New space", color: t.muted,
+            enabled: !this.drag.active, onClick: this.drag.guard(() => run("space.new", { machine: m ?? "" })) })
+            .ml(5).mr(-5)
+            .on_hover(this.drag.guard((hovered, cx) => { this.addHovered = hovered ? (m ?? "local") : null; cx.notify(); })))),
+      ];
+      const head = this.drag.control(sidebarSectionHeader(t, {id:`machine-${m ?? "local"}`, label:m ?? 'This computer', open:!folded, compact:collapsed, children}),
         {hover: s => s.bg(t.selected), cursor: true, tooltip: collapsed ? m ?? 'This computer' : null})
         .when(!this.drag.active && this.addHovered === (m ?? "local"), el => el.bg(t.selected))
         .on_click(this.drag.guard((_e, cx) => {
           folded ? this.folded.delete(m) : this.folded.add(m);
           localStorage.setItem("machines.folded", JSON.stringify([...this.folded]));
           cx.notify();
-        }))
-        .when(collapsed, el => el.child(slot(svg(`mods/custom-workspace-chrome/${m ? "server" : "monitor"}.svg`).size(m ? U.smallIcon : U.icon))
-          .when(folded && this.tabArrival?.machine === m, icon => tabArrivalMotion(this, icon))))
-        .when(!collapsed, el => el.child(div().flex_1().truncate().child(m ?? "This computer")
-          .when(folded && this.tabArrival?.machine === m, label => tabArrivalMotion(this, label)))
-          .when(rebuilt, el => el.child(h_flex().flex_none().gap(3).items_center()
-            .child(div().max_w(140).truncate().child(repair?.error || "rebuilt ·"))
-            .child(this.drag.control(div().id(`machine-connect-${m}`).text_color(repair?.error ? t.blocked : t.muted),
-              {hover: s => s.text_color(t.foreground), tooltip: repair?.error || 'This machine was rebuilt or replaced. Click to connect to the new one.'})
-              .on_click(this.drag.guard((_e, cx) => { cx.stop_propagation(); this.reconnect(machine, cx); }))
-              .child(repair?.busy ? "Connecting…" : "Connect"))))
-          // The status dot, then +, then the fold chevron.
-          .child(h_flex().id(`machine-actions-${m ?? "local"}`).flex_none().gap(3).items_center()
-            .when(shows("spaces.show.machineStatus"), el => el.child(status()))
-            // + sits midway between the dot and the chevron (its 28px box would otherwise leave
-            // it visibly closer to the dot): moved 5px right, the dot and chevron stay put.
-            .when(connected, el => el.child(iconButton(t, { id: `machine-add-${m ?? "local"}`, icon: "mods/custom-workspace-chrome/plus.svg", label: "New space", color: t.muted,
-              enabled: !this.drag.active, onClick: this.drag.guard(() => run("space.new", { machine: m ?? "" })) })
-              .ml(5).mr(-5)
-              .on_hover(this.drag.guard((hovered, cx) => { this.addHovered = hovered ? (m ?? "local") : null; cx.notify(); })))))
-          .child(slot(chevron(t, !folded))));
+        }));
       const empty = this.drag.control(h_flex().id(`machine-new-${m ?? "local"}`).h(28).flex_none().px(collapsed ? 0 : 8).gap(7).items_center().rounded(U.radius)
         .when(collapsed, el => el.w(U.control).self_center().justify_center())
         .text_size(12).text_color(t.dim), {hover: s => s.bg(t.hover).text_color(t.foreground)})

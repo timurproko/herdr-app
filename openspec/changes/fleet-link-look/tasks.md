@@ -18,12 +18,13 @@
 - [x] 3.1 Anchor the trailing branch slot to the machine header chevron's right inset and centre line for ordinary and attached rows, keeping tags to its left; numeric render assertions compare actual header/row anchors rather than merely checking child order.
 - [x] 3.2 Extend local/remote rendering cases for Crew and unrelated/multiple pills, long names, child indentation, tag-only rows, hidden icons and renaming; existing ordinary-worktree order and avatar checks still pass.
 - [x] 3.3 Document right-edge alignment in README and fixture scope in docs/TESTING.md; the added workspace requirement captures tagged and untagged ordinary/attached rows while historical archived changes remain untouched.
+
 ## 4. Consolidated Git repositories fold independently with visible counts and no redundant wording
 
-- [ ] 4.1 Remove the aggregate header's `Recorded task PRs` text and entire generic incomplete-list notice without replacement; render assertions cover reported and unreported tasks while preserving Git title/tools, empty states and scoped error/setup behavior.
-- [ ] 4.2 Extract a shared expanded section-header presentation helper in `src/ui/ui.js` and use it for Spaces machine headers and Git repository headers; regressions compare chevron geometry/style and retain machine plus/status controls, fold actions and drag guards.
-- [ ] 4.3 Add default-expanded per-repository folding backed by a dedicated localStorage JSON set like `machines.folded`, with visible repository name and task-scoped Open/Closed counts; assertions cover independent toggles, tab/context/refresh changes, panel recreation and no preference export.
-- [ ] 4.4 Extend `tests/fleet-git.test.mjs` for live counts while collapsed, zero counts, hidden/restored scoped body notices, no extra fetches and no false empty state when all sections fold; update README, docs/TESTING.md and docs/ARCHITECTURE.md to describe folding and remove the promised generic incomplete notice.
+- [x] 4.1 Remove the aggregate header's `Recorded task PRs` text and entire generic incomplete-list notice without replacement; render assertions cover reported and unreported tasks while preserving Git title/tools, empty states and scoped error/setup behavior.
+- [x] 4.2 Extract a shared expanded section-header presentation helper in `src/ui/ui.js` and use it for Spaces machine headers and Git repository headers; regressions compare chevron geometry/style and retain machine plus/status controls, fold actions and drag guards.
+- [x] 4.3 Add default-expanded per-repository folding backed by a dedicated localStorage JSON set like `machines.folded`, with visible repository name and task-scoped Open/Closed counts; assertions cover independent toggles, tab/context/refresh changes, panel recreation and no preference export.
+- [x] 4.4 Extend `tests/fleet-git.test.mjs` for live counts while collapsed, zero counts, hidden/restored scoped body notices, no extra fetches and no false empty state when all sections fold; update README, docs/TESTING.md and docs/ARCHITECTURE.md to describe folding and remove the promised generic incomplete notice.
 - [ ] 4.5 Run the complete CI-selected suite once with `CI=true npm run test:ci` on Node 24, including git-location, pr-agent-links and sidebar-refresh; record actual results and repair affected shared-header stand-in exports without weakening or excluding coverage.
 
 ## Workflow follow-up

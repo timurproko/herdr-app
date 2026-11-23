@@ -1,5 +1,6 @@
 // Spaces layout/order: dummy host data only; no real navigation or Core writes.
 import * as links from '../src/shared/workspace-links.js';
+import {realUi} from './support/panel-kit.mjs';
 import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';
 function element(){const n={attrs:{},kids:[]};let p;return p=new Proxy(n,{get:(o,k)=>k in o?o[k]:k==='when'?(yes,fn)=>yes?fn(p):p:k==='child'?child=>{o.kids.push(child);return p;}:k==='children'?children=>{o.attrs.children=[children];o.kids.push(...children);return p;}:(...args)=>{o.attrs[k]=args;return p;}});}
 const find=(n,id)=>n?.attrs?.id?.[0]===id?n:n?.kids?.map(child=>find(child,id)).find(Boolean);
@@ -95,11 +96,11 @@ assert.equal(connector.attrs.w[0]+8-(16+8),8,'Only the child label gains an 8px 
 const manifest=JSON.parse(fs.readFileSync(new URL('../customization.json',import.meta.url),'utf8'));
 assert.equal(manifest.files['mods/custom-spaces/fleet-elbow.svg'],'src/shared/fleet-elbow.svg');
 assert.equal(manifest.files['mods/custom-spaces/link.svg'],undefined);
-drag.control=e=>e;
+drag.control=(e,options)=>{e.controlOptions=options;return e;};
 const compact=view.compact(projected[parentAt+1],theme),rail=find(compact,'space-badge-worktree-a');
 assert.equal(rail.attrs.w[0],16);assert.equal(rail.kids[0].attrs.asset[0],'mods/custom-spaces/fleet-elbow.svg');
 assert.equal((28-rail.attrs.w[0])/2+8,28/2,'Rail stem aligns with the parent badge, not the wider SVG centre');
-assert.equal(compact.attrs.w[0],28);assert.equal(compact.attrs.h[0],28);assert.equal(compact.attrs.tooltip,undefined,'Tooltip is delegated to the existing drag control');
+assert.equal(compact.attrs.w[0],28);assert.equal(compact.attrs.h[0],28);assert.equal(compact.controlOptions.tooltip,projected[parentAt+1].w.directory||projected[parentAt+1].w.name,'Rail keeps the existing name/directory tooltip');
 assert.ok(compact.attrs.on_click);assert.equal(find(view.compact(projected[parentAt],theme),'space-badge-parent').kids[0],String(projected[parentAt].i+1));
 const oldRun=context.run,selected=[];context.run=(name,args)=>selected.push([name,args]);
 compact.attrs.on_click[0]();assert.deepEqual(JSON.parse(JSON.stringify(selected)),[['space.select',{id:'worktree-a'}]]);context.run=oldRun;
@@ -109,11 +110,16 @@ assert.equal(preview.rows[1].label.attrs.text_color[0],theme.muted);assert.equal
 context.pluginWorkspaceLinks=()=>[];assert.equal(view.ordered().find(r=>r.w.id==='worktree-a').linked,false);
 // Compare actual machine header and row trailing slots, including tags and child inset.
 view.machines=[{name:'pc2',state:'connected'}];view.reconnecting={};view.folded=new Set();view.rebuilt=()=>false;
-Object.assign(context,{machines:()=>[{name:'pc2',layout:'ready'}],iconButton:(_t,o)=>element().id(o.id),chevron:()=>element()});
+const machineWrites=new Map();context.localStorage={setItem:(key,value)=>machineWrites.set(key,value)};
+Object.assign(context,{machines:()=>[{name:'pc2',layout:'ready'}],iconButton:(_t,o)=>element().id(o.id).on_click(o.onClick),sidebarSectionHeader:realUi(element).sidebarSectionHeader});
 for(const machine of [null,'pc2']) {
  const [header]=view.groupRows(machine,[],false,theme,()=>null,()=>false,()=>element());
  const chevronSlot=header.kids.at(-1),axis=header.attrs.pr[0]+chevronSlot.attrs.size[0]/2;
  assert.equal(axis,12,'Header chevron centre is 12px from the right edge');
+ assert.ok(find(header,`machine-add-${machine??'local'}`),'Machine plus remains beside the shared chevron');
+ assert.ok(find(header,`machine-status-${machine??'local'}`),'Machine status dot remains');
+ header.attrs.on_click[0]({}, {notify(){}});assert.equal(view.folded.has(machine),true);assert.ok(JSON.parse(machineWrites.get('machines.folded')).includes(machine));
+ view.folded.delete(machine);
  for(const linked of [false,true])for(const tags of [[],[{plugin:'crew',label:'Crew'}],[{plugin:'crew',label:'Crew'},{plugin:'other',label:'Other'}]]) {
   context.__tags=tags;
   const row=view.row({w:{...w,machine,name:'very-long-space-name-that-must-not-move-trailing-tools'},i:0,g:{linked:true},linked},theme);
