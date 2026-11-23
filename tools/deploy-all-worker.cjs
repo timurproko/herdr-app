@@ -67,6 +67,39 @@ function deployResult(stdout) {
   }
   return null;
 }
+// npm banners and the advisory audit precede the installer's final object.
+// Read complete JSON objects, respecting quoted braces; never infer a cause from
+// an arbitrary nested object or from a success-shaped audit result.
+function outputObjects(text) {
+  const values=[]; let start=-1,depth=0,quoted=false,escaped=false;
+  for(let i=0;i<text.length;i++) {
+    const c=text[i];
+    if(start<0){if(c==='{'){start=i;depth=1;quoted=false;}continue;}
+    if(quoted){if(escaped)escaped=false;else if(c==='\\')escaped=true;else if(c==='"')quoted=false;continue;}
+    if(c==='"')quoted=true;else if(c==='{')depth++;else if(c==='}'&&!--depth){try{values.push(JSON.parse(text.slice(start,i+1)));}catch{}start=-1;}
+  }
+  return values;
+}
+const concise = value => String(value || '').replace(/[\x00-\x1f\x7f]/g,' ').trim().slice(0,160);
+function deploymentFailure(stdout, stderr, result) {
+  const objects=[...outputObjects(stdout),...outputObjects(stderr)];
+  const typed=objects.findLast(v=>['host check','build','install'].includes(v?.deploymentFailure?.stage));
+  if(typed)return concise(`${typed.deploymentFailure.stage} failed: ${typed.deploymentFailure.reason || 'no diagnostic'}`);
+  const host=objects.find(v=>v.ok===false&&typeof v.version==='string'&&['missingApi','missingCommands','directImports'].every(k=>Array.isArray(v[k])));
+  if(host){
+    const unmet=[host.versionStatus?.reason,
+      host.missingApi.length&&`missing API ${host.missingApi.join(', ')}`,
+      host.missingCommands.length&&`missing command ${host.missingCommands.join(', ')}`,
+      host.directImports.length&&`direct import ${host.directImports.join(', ')}`].filter(Boolean).join('; ');
+    return concise(`host check refused Herdr ${host.version}${unmet?`: ${unmet}`:''}`);
+  }
+  if(result?.patches?.ok===false){
+    const errors=Object.entries(result.patches.frames||{}).filter(([,v])=>v.ok===false).map(([id,v])=>`${id}: ${v.error||'refresh refused'}`);
+    return concise(`native patch refresh failed: ${errors.join('; ')||'inspect patch diagnostics'}`);
+  }
+  const line=stderr.trim().split(/\r?\n/).find(line=>line.trim());
+  return line?concise(`deployment failed: ${line}`):'deployment failed; inspect output';
+}
 function deployCheckout(root, commit, script, { run = runCommand, env = process.env, log = console.log, platform = process.platform } = {}) {
   log(`Source commit: ${commit}; npm run ${script}`);
   const [command, args] = npmCommand(script, platform);
@@ -76,7 +109,7 @@ function deployCheckout(root, commit, script, { run = runCommand, env = process.
   const result = deployResult(r.stdout);
   const backup = result?.backup || null;
   if (r.timedOut || r.code !== 0 || result?.patches?.ok === false) return {
-    action: 'failed', outcome: r.timedOut ? 'unknown' : 'failed', reason: r.timedOut ? 'deployment timed out; outcome unknown' : 'deployment failed; inspect output', commit, backup,
+    action: 'failed', outcome: r.timedOut ? 'unknown' : 'failed', reason: r.timedOut ? 'deployment timed out; outcome unknown' : deploymentFailure(r.stdout,r.stderr,result), commit, backup,
   };
   if (!result) return { action: 'failed', outcome: 'unknown', reason: 'deployment returned no result; outcome unknown', commit, backup };
   const patched = Object.values(result.patches?.frames || {}).some(frame => / frame applied\b/.test(frame.message || ''));
@@ -114,4 +147,4 @@ function runRemote({ dryRun = false } = {}, { home = os.homedir(), run = runComm
     return deployCheckout(root, source.commit, 'deploy:shell', context);
   } catch (error) { return { action: 'failed', reason: error.message, commit: source.commit }; }
 }
-module.exports = { TIMEOUT, SHELL_PATHS, runCommand, repositoryOrigin, npmCommand, gitAt, checkSource, fastForward, deployResult, deployCheckout, runRemote };
+module.exports = { outputObjects, deploymentFailure, TIMEOUT, SHELL_PATHS, runCommand, repositoryOrigin, npmCommand, gitAt, checkSource, fastForward, deployResult, deployCheckout, runRemote };

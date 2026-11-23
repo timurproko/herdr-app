@@ -100,4 +100,7 @@ export function build(root = project) {
   put(path.join(output,'bundle.json'),JSON.stringify(manifest,null,2)+'\n');
   return {output,files:Object.keys(payload).length,modules:config.features.length};
 }
-if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href)console.log(JSON.stringify(build(),null,2));
+if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href){
+  try{console.log(JSON.stringify(build(),null,2));}
+  catch(error){console.error(JSON.stringify({deploymentFailure:{stage:'build',reason:error.message}}));process.exitCode=1;}
+}

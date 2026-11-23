@@ -127,6 +127,34 @@ deploy/enable/disable/remove/rollback/preference-import operational commands.
 The real gh CLI fixture uses synthetic auth and a GET-only localhost server.
 Provider/relay/Cloudflare unit transports are mocks, not live requests.
 
+## Forward-compatible deployment gate
+
+`tests/host-gate.test.mjs` checks the real host-audit function with synthetic SDK,
+command and version facts: newer capable hosts pass without a reviewed profile;
+old/malformed versions, missing capabilities and direct imports fail. Every
+source-audit outcome remains advisory. `tests/frame-upgrade.test.mjs` covers both
+optional patches against synthetic native originals/binaries, preserving complete
+file/record bytes on skips and retaining conflict/corrupt/concurrent-write failures.
+The existing deployment/startup fixtures also assert nonfatal unsupported patches
+and doctor severity; reviewed repair and no-op timestamp checks remain intact.
+
+`tests/deploy-failure.test.mjs` carries host/build/install/patch causes through the
+actual all-machine worker, durable result writer, Update inspection and Settings
+row. `tests/deploy-gate-pipeline.test.mjs` executes the real source host check,
+customization build/install, npm deploy scripts, managed-clone Update bootstrap,
+deploy:all and an eligible peer's shell-only path using local bare origins and
+disposable homes. Only App/Core/network facts are synthetic; no native executable,
+remote peer, real deployment or account is used. It proves 0.1.17's capability and
+optional-patch policies compose, not native pixel/interaction compatibility.
+
+Integration baseline selection is explicit: missing release-specific stock review
+prints **stock baseline unreviewed**, never adopts live bytes or falls back to an
+older release. Independent topology/UI fixture assertions continue. Reviewed
+stock mismatches and malformed baseline records still fail. The new
+`tests/stock-baseline.test.mjs` executes the actual stock-check block against both
+reviewed/mismatching and missing-0.1.17 fixtures. Existing reviewed hashes remain
+unchanged; a passing public capability gate is not a stock/native source review.
+
 ## Git PR label facts
 
 Pull facts, pagination, fleet and webhook fixtures cover assigned label names/colours

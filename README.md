@@ -63,8 +63,10 @@ missing-API errors, and resolves commands/API aliases through
 `src/integration/herdr/compatibility.js`.
 
 After a Herdr update, run `npm run check:host-api`. It compares the reviewed
-profile with the regenerated `herdr.d.ts`, the live command catalog, and direct
-imports. If an API or command was renamed, update one profile/adapter rather than
+API contract with the regenerated `herdr.d.ts`, the live command catalog, and direct
+imports. App 0.1.13+ is required. Newer unreviewed releases pass when those
+checks pass, with a visible **newer than last reviewed** advisory; review history
+is not deployment permission. Tab-move's separate source audit stays advisory. If an API or command was renamed, update one profile/adapter rather than
 every feature. Data-shape changes may require one normalizer in `host.js`. Native
 patch source can still need a reviewed rebase when Herdr changes its private UI
 implementation—the facade reduces public API churn but cannot make copied native
@@ -1186,8 +1188,10 @@ its own updates do not change this deploy-owned revision.
 
 Ordinary Custom mods/layouts are unshipped private files, so native updates do not
 replace them. API compatibility can still change. Run `npm run check:host-api`, tests and native
-checks against the new host. Add the new reviewed version and aliases only in the
-facade compatibility profile; **do not rebuild the native app as a workaround**.
+checks against the new host. Required APIs, commands and import boundaries—not
+exact review-list membership—gate deployment. Record an actual review and any
+needed aliases in the facade profile separately; never add a version merely to
+unblock deployment. **Do not rebuild the native app as a workaround**.
 
 Two approved frame-only exceptions remain: palette and feedback. Each has a
 reviewed stock snapshot, opt-in record, hashes and restore support.
@@ -1232,8 +1236,14 @@ implicit pane-close requests retain native validation. Direct native/CLI command
 outside these Custom entry points still use Herdr's stock confirmation; no
 supported global confirmation override exists, and the shipped Confirm mod is
 never patched.
-Install/layout entry repairs only prior opt-ins. Unknown stock or personal edits
-are refused per patch. The worker is deployed with the customization and does not
+Install/layout entry repairs only prior opt-ins. Unknown native bytes are skipped
+with an advisory, not a failed deploy; personal dependency conflicts and corrupt
+records still fail. On 0.1.17 the standard palette remains instead of Custom's
+styling and command routing. New stock feedback uses Herdr's standard form and
+success view; an old owned feedback patch is retained but not refreshed or
+certified. Restoring supported styling needs reviewed native originals and a
+patch rebase, not a version allowlist. See the native patch policy for the exact
+lost features and provenance safeguards. The worker is deployed with the customization and does not
 need this source folder.
 
 ```powershell

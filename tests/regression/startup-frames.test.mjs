@@ -15,6 +15,9 @@ const snapshot = () => Object.fromEntries(names.flatMap(name => fs.readdirSync(d
   const target = path.join(dir(name), file), stat = fs.statSync(target, { bigint: true });
   return [`${name}/${file}`, [fs.readFileSync(target, 'utf8'), String(stat.ino), String(stat.mtimeNs)]];
 })));
+const previousBin=process.env.HERDR_APP_BIN;
+process.env.HERDR_APP_BIN=path.join(home,'synthetic-host');
+fs.writeFileSync(process.env.HERDR_APP_BIN,Buffer.concat(registry.map(p=>fs.readFileSync(path.join(root,p.originals[0])))));
 try {
   assert.deepEqual(restoreStartupFrames(home), { ok: true, frames: {} });
   assert.equal(fs.existsSync(path.join(home, '.customizations')), false, 'No patch records means no writes or opt-in');
@@ -39,8 +42,9 @@ try {
   fs.writeFileSync(path.join(dir('palette'), 'main.js'), personal);
   fs.copyFileSync(path.join(root, 'frame-patches/feedback/original.js'), path.join(dir('feedback'), 'main.js'));
   const conflict = restoreStartupFrames(home);
-  assert.equal(conflict.ok, false);
-  assert.equal(conflict.frames.palette.ok, false);
+  assert.equal(conflict.ok, true);
+  assert.equal(conflict.frames.palette.status, 'skipped');
+  assert.match(conflict.frames.palette.advisory, /unsupported original/);
   assert.equal(conflict.frames.feedback.ok, true);
   assert.equal(fs.readFileSync(path.join(dir('palette'), 'main.js'), 'utf8'), personal);
   fs.writeFileSync(path.join(dir('feedback'), 'custom-ui.js'), personal);
@@ -81,4 +85,4 @@ try {
   executions = []; replies = [{ code: 0, stdout: '{"ok":false,"frames":{"palette":{"ok":false}}}' }];
   await start(); assert.equal(executions.length, 1, 'Conflicts are not retried');
   console.log('PASS: startup stock-reset repair, no-op identities, opt-in/conflict guards, lock, local hook and bounded retries');
-} finally { fs.rmSync(home, { recursive: true, force: true }); }
+} finally { if(previousBin===undefined)delete process.env.HERDR_APP_BIN;else process.env.HERDR_APP_BIN=previousBin; fs.rmSync(home, { recursive: true, force: true }); }
