@@ -66,7 +66,8 @@ Real deploy:all runs SHALL record latest per-machine outcomes and successful des
 
 #### Scenario: Other deployment changes installed evidence
 - **WHEN** a later ordinary deployment or rollback changes the ownership record from the saved successful desktop evidence
-- **THEN** the row reports revision unknown rather than reusing a stale installed SHA
+- **THEN** the row omits the installed revision from its title rather than reusing a stale installed SHA or showing a revision unknown placeholder
+- **AND** unknown installed evidence still offers Update after a successful published-main check, subject to existing safety guards
 
 #### Scenario: Desktop deployment failure
 - **WHEN** desktop deployment is refused or fails
