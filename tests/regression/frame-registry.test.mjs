@@ -48,6 +48,9 @@ try {
     { ...patch, files: { 'main.js': 'C:/outside.js' } },
     { ...patch, files: { 'main.js': 'lib/helper.js', 'MAIN.JS': 'lib/helper.js' } },
     { ...patch, originals: [] }, { ...patch, originals: ['/absolute.js'] },
+    { ...patch, mainByOriginal: [] },
+    { ...patch, mainByOriginal: { 'not-reviewed.js': 'rename/main.js' } },
+    { ...patch, mainByOriginal: { [patch.originals[0]]: '../escape.js' } },
   ]) {
     catalog([invalid]); assert.throws(() => loadFrameRegistry(root), /Invalid/);
   }
