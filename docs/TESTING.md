@@ -182,6 +182,25 @@ No deployment or live label mutation is performed.
 
 ## Connected fleet fixtures
 
+`tests/fleet-read-failures.test.mjs` and `tests/fleet-read-notices.test.mjs`
+exercise the actual targeted-reader and panel renderer with one live draft and
+three finished-task merged PRs in the same repository. They preserve Open 1 /
+Closed 3, the three-read concurrency limit, GitHub timestamp bounds and last-good
+facts. Fixtures cover rejected spawns, signed/unsigned Windows 0xC0000142 exits
+with empty stderr, command timeouts, account/resource refusals, rate limits,
+malformed responses and real DNS/connection failures. Local command failures say
+**Could not read pull requests; refresh to retry**; only genuine connectivity
+failures say **GitHub is unreachable**. A known Closed failure never appears in
+Open; each applicable repository section gets at most one notice, including mixed
+causes and partial recovery. Cold historical failures use a Closed history-load
+notice without inventing state/counts. Expired history cannot leave error-only
+headers. Folds, unenrolled repositories and hidden/stale/disabled contexts retain
+the existing read and refresh boundaries. Folder-Git pagination tests also preserve
+execution result facts and healthy rows on these failures. These are synthetic
+process/provider responses, not proof that the original installed-app incident was
+caused by Windows load or an account switch; the real-provider four-PR diagnostic
+succeeded and no original failing process result was recovered.
+
 `tests/fleet-preferences.test.mjs` covers the actual Spaces preference and Settings
 switch, explicit durable-identity clearing on disable, old/new snapshot round trips
 and durable/runtime-identity exclusion in disposable

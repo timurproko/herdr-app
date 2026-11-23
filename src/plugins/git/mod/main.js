@@ -197,14 +197,14 @@ export default class Changes extends View {
         if (!this.repo) {
           const r = await gh(REPO_ARGS);
           if (!current()) return;
-          if (r.code !== 0) throw new Error(pullError('', r.stderr));
+          if (r.code !== 0 || r.timed_out || r.timedOut || r.signal) throw new Error(pullError(r));
           const repo = JSON.parse(r.stdout || '{}');
           if (!repo?.nameWithOwner) throw new Error('No GitHub repository');
           if (!current()) return;
           this.repo = { name: repo.nameWithOwner, owner: repo.owner?.login ?? repo.nameWithOwner.split('/')[0], url: repo.url ?? `https://github.com/${repo.nameWithOwner}` };
         }
         const list = await gh(pullListArgs(state, this.repo.name, after));
-        if (list.code !== 0) throw new Error(pullError('', list.stderr));
+        if (list.code !== 0 || list.timed_out || list.timedOut || list.signal) throw new Error(pullError(list));
         if (!current()) return;
         const page = parsePullPage(list.stdout);
         const rows = page.pulls.map(pr => pullRow(pr, this.repo.owner));
@@ -308,7 +308,7 @@ export default class Changes extends View {
           if(!current())throw Error('Obsolete request');
           const r=await exec('gh',args,{cwd:root,on,timeout:30000});
           if(!current())throw Error('Obsolete request');
-          if(r.code!==0)throw Error(pullError('',r.stderr));
+          if(r.code!==0 || r.timed_out || r.timedOut || r.signal)throw Error(pullError(r));
           return r.stdout;
         };
         const updates={};
@@ -666,7 +666,7 @@ export default class Changes extends View {
   }
 
   repositorySection(t, repo, notice, scope) {
-    const aggregate = this.aggregate, folded = this.foldedRepositories.has(repo);
+    const aggregate = this.aggregate, folded = this.foldedRepositories.has(repo), error = aggregate.readNotice(repo, this.view);
     const open = aggregate.rows('open').filter(pr => pr.repo === repo).length;
     const closed = aggregate.rows('closed').filter(pr => pr.repo === repo).length;
     return v_flex().id(`task-repo-${repo}`).w_full().flex_none().gap(U.rowGap)
@@ -684,7 +684,7 @@ export default class Changes extends View {
         }))
       .when(!folded, el => el.child(v_flex().id(`task-repo-body-${repo}`).gap(U.rowGap)
         .children(aggregate.rows(this.view).filter(pr => pr.repo === repo).map(pr => this.pullRow(t, pr)))
-        .children([...aggregate.entries.values()].filter(e => e.link.repo === repo && e.error).map(e => div().id(`task-error-${e.link.key}`).px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(e.error)))
+        .when(Boolean(error), body => body.child(div().id(`task-error-${repo}`).px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(error)))
         .when(notice === 'repository', body => body.child(this.liveCIInfo(t, 'repository', repo)))));
   }
 

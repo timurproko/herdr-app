@@ -81,6 +81,19 @@ async function harness(state) {
   return {view,cx,pending,tasks,calls,place,take,reply,tick,render,scroll};
 }
 
+// Folder Git retains execution facts too; empty NTSTATUS/command timeouts
+// must not be called GitHub outages or discard the last successfully read rows.
+for(const [result,message] of [
+  [{code:3221225794,stderr:''},'Could not read pull requests; refresh to retry'],
+  [{code:0,timed_out:true,stderr:''},'Could not read pull requests; refresh to retry'],
+  [{code:1,stderr:'GraphQL: Could not resolve to a Repository with the name owner/repo'},'Repository or pull request is not accessible with the current GitHub account'],
+  [{code:1,stderr:'Could not resolve host: api.github.com'},'GitHub is unreachable'],
+]) {
+  const h=await harness('open');h.view.pulls.open=[{number:1,state:'open'}];
+  h.view.loadPulls('open',h.cx,true);h.take().resolve(result);await h.tick();
+  assert.equal(h.view.pullError,message);assert.equal(h.view.pulls.open.length,1);assert.equal(h.pending.length,0);
+}
+
 for(const state of ['open','closed']) {
   const h=await harness(state),v=h.view;
   v.loadPulls(state,h.cx,true);

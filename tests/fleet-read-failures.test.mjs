@@ -57,6 +57,9 @@ for(const [failure,kind,message]of cases){
 }
 assert.equal(pullError(new Error('cannot start gh: program not found')),'GitHub CLI (gh) is not installed');
 failures.clear();a.invalidate();a.pump(cx);await drain();for(const e of a.entries.values())assert.equal(e.error,null);
+failures.set(key(5),{code:0,stdout:'not JSON'});a.invalidate();a.pump(cx);await drain();
+assert.equal(a.entries.get(key(5)).error.message,'Could not read pull requests: invalid GitHub response');assert.equal(a.counts().closed,3);
+failures.clear();
 // Same PR number in a different repository retains independent facts and identity.
 context.links.push({url:url(5,'example/other'),task:'other',terminal:'other-worker',historical:false});facts.set(key(5,'example/other'),{number:5,url:url(5,'example/other'),state:'CLOSED',closedAt:iso(now-10*DAY)});
 a.sync(cx);await drain();assert.equal(a.counts().closed,4);assert.ok(a.rows('closed').some(p=>p.key==='example/other#5'));
@@ -69,4 +72,7 @@ for(const date of [iso(now-DAY),iso(now-DAY-1),undefined,'invalid',iso(now+1)]){
 for(const n of [5,6,7]){const f=facts.get(key(n));f.mergedAt=iso(now-1000);f.closedAt=iso(now-2*DAY);}
 a.invalidate();a.pump(cx);await drain();assert.equal(a.counts().closed,4);
 const beforeHide=calls.length;shown=false;a.invalidate();a.pump(cx);await drain();assert.equal(calls.length,beforeHide);
+shown=true;context.links=context.links.filter(l=>l.url===url(8));
+const callbackFailure=new AggregatePulls({shown:()=>shown,onUpdate(){throw Error('presentation callback failed');}});callbackFailure.sync(cx);
+await assert.rejects(drain,/presentation callback failed/);assert.equal(callbackFailure.entries.get(key(8)).error,null,'Presentation callback exceptions cannot invent PR read failures');assert.equal(callbackFailure.busy,false);
 console.log('PASS targeted one-live/three-merged reads, last-good facts, identity/history bounds, spawn/NTSTATUS/timeout/access versus connectivity classification');

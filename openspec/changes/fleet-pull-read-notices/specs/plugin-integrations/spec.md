@@ -25,6 +25,16 @@ The coordinator Git overview SHALL render at most one PR-read failure notice per
 - **THEN** the notice describes the failed read or relevant refusal instead of declaring GitHub unreachable
 - **AND** several failures in that repository still produce at most one notice in the applicable tab
 
+#### Scenario: Local process failure or timeout
+- **WHEN** the GitHub CLI cannot start, exits abnormally with empty stderr or exceeds its local command timeout
+- **THEN** the applicable repository section shows one transient read-failure notice offering Refresh to retry rather than asserting that GitHub is unreachable
+- **AND** last-good eligible PR facts survive and the existing bounded refresh path remains without a new polling or automatic retry loop
+
+#### Scenario: Current account cannot resolve the repository
+- **WHEN** GitHub answers that the repository or PR cannot be resolved or accessed with the current login
+- **THEN** the notice identifies access with the current GitHub account rather than a GitHub connectivity outage
+- **AND** the panel does not switch the login or discard healthy rows
+
 #### Scenario: Genuine connectivity failure
 - **WHEN** applicable PR reads fail because the GitHub connection cannot be established or times out at the transport boundary
 - **THEN** the repository section shows one clear connectivity notice rather than one line per PR

@@ -9,7 +9,7 @@
 
 ## 2. Repository sections show one truthful tab-scoped read notice without leaking finished Closed failures into Open
 
-- [ ] 2.1 Derive one repository-and-tab notice from applicable failures rather than render each entry error; cover known Open versus Closed state and historical-only unknown-state load failures in aggregate tests.
-- [ ] 2.2 Replace only the scoped error-render path in the section body; add real-controller render assertions that the exact one-live/three-merged fixture has no error under Open, at most one notice under Closed after three refresh failures, and unaffected rows remain visible.
-- [ ] 2.3 Cover genuine unreachability, GitHub refusals, mixed causes, partial/full recovery, historical expiry, folds, other repository sections, unenrolled repositories and stale/hidden contexts without extra reads; update applicable testing/architecture documentation with these guarantees.
+- [x] 2.1 Derive one repository-and-tab notice from applicable failures rather than render each entry error; cover known Open versus Closed state and historical-only unknown-state load failures in aggregate tests.
+- [x] 2.2 Replace only the scoped error-render path in the section body; add real-controller render assertions that the exact one-live/three-merged fixture has no error under Open, at most one notice under Closed after three refresh failures, and unaffected rows remain visible.
+- [x] 2.3 Cover genuine unreachability, GitHub refusals, mixed causes, partial/full recovery, historical expiry, folds, other repository sections, unenrolled repositories and stale/hidden contexts without extra reads; update applicable testing/architecture documentation with these guarantees.
 - [ ] 2.4 Rebase on the default branch while preserving concurrent enrollment-picker, discovery and label-style work; run focused regressions and CI=true npm run test:ci, recording actual results and the remaining native-transport reproduction limitation.

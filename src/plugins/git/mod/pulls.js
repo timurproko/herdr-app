@@ -151,7 +151,7 @@ export function pullFailure(e, stderr = '') {
   // local execution failures even if stderr happens to mention the network.
   const code = Number(e?.code);
   if (e?.signal || (Number.isInteger(code) && (code < 0 || code >= 0x80000000)) ||
-      /cannot start gh|failed to (?:start|spawn)|spawn.*(?:EAGAIN|ENOMEM|EPERM)|process init|0xc0000142|3221225794|\bEAGAIN\b|\bENOMEM\b/i.test(text)) return transient();
+      /cannot start gh|failed to (?:start|spawn|execute)|spawn.*(?:EAGAIN|ENOMEM|EPERM)|process init|0xc0000142|3221225794|\bEAGAIN\b|\bENOMEM\b|resource temporarily unavailable|insufficient system resources/i.test(text)) return transient();
   if (e?.timed_out || e?.timedOut || /execution timed out|command timed out|process timed out/i.test(text)) return transient();
   if (/rate limit|HTTP 429|secondary rate/i.test(text)) return failure('rate', 'Could not read pull requests: GitHub rate limit exceeded');
   if (/auth login|not logged in|authentication|HTTP 401|bad credentials/i.test(text)) return failure('auth', 'Sign in first: gh auth login');
@@ -162,6 +162,7 @@ export function pullFailure(e, stderr = '') {
   // "network" must not be mistaken for a DNS/connection failure.
   if (/could not resolve host|no such host|\bENOTFOUND\b|\bEAI_AGAIN\b|network is unreachable|network is down|connection refused|connection reset|failed to connect|TLS handshake timeout|dial tcp.*(?:timeout|timed out)|connect(?:ion)?[^\n]*timed out/i.test(text)) return failure('unreachable', 'GitHub is unreachable');
   if (/timeout|timed out/i.test(text) || (e && typeof e === 'object' && 'code' in e && !detail)) return transient();
-  return failure('read', detail.split('\n')[0] || 'Cannot load pull requests');
+  if (e instanceof SyntaxError) return failure('response', 'Could not read pull requests: invalid GitHub response');
+  return failure('read', detail.split('\n')[0].slice(0,240) || 'Cannot load pull requests');
 }
 export function pullError(e, stderr = '') { return pullFailure(e, stderr).message; }
