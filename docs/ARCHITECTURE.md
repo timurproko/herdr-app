@@ -531,10 +531,25 @@ missing. Settings publishes public membership facts via `notice-state.js` in the
 runtime-only `custom.git.webhook-state` key; no credentials or secret hashes are
 shared/exported. Configured non-Git contexts and enrolled repos have no prompt.
 
-The shown panel's `mod/webhooks.js` owns one native WSS subscription, closes it on
-hidden/disabled/context changes, and uses transport-only reconnect backoff.
-GitHub events and successful reconnection invalidate every loaded page rather than
-just the pinned PR. Snapshot refreshes are single-flight with one coalesced dirty
+`relay-client.js` owns a single authenticated native WSS subscription through
+Git's mounted non-footer `sidebar.sync` lifecycle, using a short renewable public
+owner lease and a handoff grace period across duplicate mounts/windows. The plugin
+API exposes only a supported socket factory; features subscribe through the
+registry, never plugin imports or credentials. `sidebar.close` invalidates queued
+startup, pending credential/connect replies and the socket immediately; disabled
+Git revokes ownership and closes transport. Panel visibility/repository changes do
+not reconnect it. Transport failures use bounded jittered backoff; missing/invalid
+keys block until explicit retry or configuration change.
+
+`mod/webhooks.js` consumes bounded public per-repository invalidation revisions and
+ready generations from runtime-only `custom.git.relay-runtime`. A small retry key
+requests the owner's retry, never creates a panel socket. The render-facing
+consumer coalesces revision changes behind `cx.spawn` and an explicit microtask;
+only then can it invoke panel callbacks, arm a CI sweep or start reads. Delivery
+rechecks view scope, visibility, plugin enablement, relay configuration and
+transport scope; stop/replacement invalidates queued callbacks. Hidden panels still
+do no PR/agent reads. GitHub events and successful reconnection invalidate every
+loaded page rather than just the pinned PR. Snapshot refreshes are single-flight with one coalesced dirty
 flag, retain expanded depth, renew cursors, and guard repository/machine/request
 identity before reads and writes. No periodic CI/list polling remains. The local
 branch/footer and agent-link discovery lifecycle is separate.
@@ -542,11 +557,26 @@ branch/footer and agent-link discovery lifecycle is separate.
 The explicitly configured private Cloudflare Worker uses
 a hibernating Durable Object. It verifies raw-body GitHub HMAC, bounds input and
 clients, authenticates WebSocket subscribers, and forwards only invalidation
-metadata. It is not installed or provisioned by customization deployment. There
+metadata, adding only validated push ref or PR action/merged/base fields for exact
+main filtering. Protocol 1 remains compatible; configuration reports notice version
+2 so Settings can offer explicit Configure for an old relay. It is not installed
+or provisioned by customization deployment. There
 is no local daemon, native rebuild or persistent deferred job queue. Opening and
 reconnection catch up from authoritative GitHub reads rather than replaying jobs.
 The public `checking()` API is exposed through the facade to prevent subscriptions
 during eager native checks. See [setup and trust boundaries](GIT-WEBHOOKS.md).
+
+Custom's updater owns its separate 120–180 second jittered availability cadence,
+persisted failure backoff and startup/idle-activation/sleep catch-up. A fixed-repo
+`updates.watch` subscription only accelerates it: authenticated main hints bypass
+healthy freshness under the same worker lease and persisted 15-second rate floor,
+never failure backoff or installation gates. One dirty generation and a short
+debounce bound storms; a deferred hint survives check-lease contention. The worker
+rechecks its cache after acquiring the lock. Checks compare remote main with
+manifest-linked installed provenance; no event SHA, checkout HEAD or local tracking
+ref becomes installed truth. Disabled/unconfigured Git cannot disable this updater
+fallback. Runtime counters, leases, retry state and credentials are never portable
+preferences. Native App/Core update behavior is unchanged.
 
 Git's opt-in auto-fix now automatically provisions a **Core-side companion on each
 connected supported machine**, authorized to operate after desktop closure and main-PC shutdown. The

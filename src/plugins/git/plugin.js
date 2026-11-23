@@ -5,13 +5,14 @@ import {DEFAULT_CI_MESSAGE,effectiveCIMessage,validCIMessage,CI_MESSAGE_RULES,CI
   DEFAULT_MERGED_MESSAGE,effectiveMergedMessage,validMergedMessage,MERGED_MESSAGE_RULES} from './ci-message.js';
 import {CI_STATES,DEFAULT_CI_STATES} from './ci-states.js';
 import {ensureMonitors,syncMonitors} from './monitor-actions.js';
+import {syncRelay,watchUpdates,stopRelay,closeRelay} from './relay-client.js';
 import {setup,cloud,cloudState,relayState,accountChoices,configureCheck,repositoryCheck,repositoryCandidates,removeRepository,requireReady,createCredentials,githubAccounts} from './actions.js';
 export default {
   id:'git',name:'Git',category:'Sidebar',version:'2.2.0',icon:'mods/custom-changes/git-pull-request.svg',
   description:'View repository pull requests, agent links, checklists, and CI status.',defaultEnabled:true,
   advancedSettings:true,
-  lifecycle:{'sidebar.sync':ensureMonitors},
-  onEnabledChange(_next,cx){return syncMonitors(cx);},
+  lifecycle:{'sidebar.sync':context=>{ensureMonitors(context);syncRelay(context);},'updates.watch':watchUpdates,'sidebar.close':closeRelay},
+  onEnabledChange(next,cx){if(!next)stopRelay();return syncMonitors(cx);},
   onSettingChange(key,cx){if(['autoFixCI','ciFixStates','ciFixMessage','ciFixEnabled','conflictFixMessage','conflictFixEnabled','mergedMessage','mergedEnabled','ciMonitorRepositories'].includes(key))return syncMonitors(cx);},
   settings:[
     {key:'ciMonitorMachine',type:'machine',label:'Legacy monitor machine',default:null,hidden:true},
@@ -53,10 +54,10 @@ export default {
     {id:'gh',label:'GitHub CLI login on this computer',about:'Uses this computer’s GitHub CLI login to connect repository webhooks.',
       async check(cx){const state=await githubAccounts(cx);return {status:state.status,detail:state.status==='ready'?`${state.accounts.length} GitHub account${state.accounts.length===1?'':'s'} signed in. Choose the account in Repositories.`:state.detail};}},
     {id:'cloudflare-tools',label:'Cloudflare tools',about:'Install a pinned Wrangler CLI privately for this plugin. No global installation or terminal commands are needed.',
-      async check(cx){if((await relayState(cx)).status==='ready')return {status:'ready',detail:'Not needed for your existing relay.',fix:null};const state=await cloudState(cx);if(state.installed)return {status:'ready',detail:'Cloudflare tools installed.',fix:null};return {status:'missing',detail:'Press Install to prepare Cloudflare setup.'};},
+      async check(cx){const relay=await relayState(cx);if(relay.status==='ready'&&relay.noticeVersion===2)return {status:'ready',detail:'Not needed for your existing relay.',fix:null};const state=await cloudState(cx);if(state.installed)return {status:'ready',detail:'Cloudflare tools installed.',fix:null};return {status:'missing',detail:'Press Install to prepare Cloudflare setup.'};},
       fix:{label:'Install',busyLabel:'Installing…',run:()=>cloud('install','',360000).then(requireReady)}},
     {id:'cloudflare-login',label:'Cloudflare account',about:'Login opens Cloudflare authorization in your browser. Choose an account here if you have more than one.',
-      async check(cx){if((await relayState(cx)).status==='ready')return {status:'ready',detail:'Your relay is configured; no new login is needed.',fix:null};
+      async check(cx){const relay=await relayState(cx);if(relay.status==='ready'&&relay.noticeVersion===2)return {status:'ready',detail:'Your relay is configured; no new login is needed.',fix:null};
         const state=await cloudState(cx);
         if(!state.installed)return {status:'missing',detail:'Install Cloudflare tools first.',fix:null};
         if(!state.loggedIn||!state.accounts?.length)return {status:'missing',detail:'Press Login, then authorize Cloudflare in your browser.'};

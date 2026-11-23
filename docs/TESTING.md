@@ -220,6 +220,26 @@ here with its concrete failure, not rewritten or silently skipped. Passing hoste
 checks establishes only this documented subset, not GPUI interactions, private
 shell wiring, live SSH/core permissions, provider refreshes or relay hardening.
 
+`tests/git-relay-lifecycle.test.mjs` (also included by git-webhooks) uses fake
+native sockets for main-only notice filtering, one leased chrome owner, bounded
+public revisions, hidden/other-repository subscribers, reconnect, missing/invalid
+keys, disabled Git and close during queued startup or credential/connect promises.
+`tests/update-hint-check.test.mjs` combines the real check worker and UI controller
+with a disposable home and fake Git/time: deferred rate/lease hints, authoritative
+availability, burst backoff, manual bypass and Git-independent polling. A running
+deployment spanning the check deadline keeps worker retries at a bounded 30-second
+cadence, retains one pending hint and performs one authoritative check on completion.
+The fleet fixture also uses the real relay consumer and pending-CI sweep under an
+immediate-spawn render guard. Ordinary/fleet notifications coalesce after a
+microtask, and disabled, hidden or replaced scopes cancel pending delivery. Relay
+lifecycle, update-row and update-markers fixtures guard notify/shared publication
+and new I/O against synchronous render work, including the chrome broker,
+update subscription, idle activation and already-mounted marker roots. Existing
+update-markers now covers a real registry subscriber through chrome publication
+into already-mounted Settings/footer/menu markers without Check now. These are
+fixture contracts, not live delivery, pixel or installed-host evidence; they never
+deploy, enroll hooks, authorize accounts or send to real agents.
+
 ## Capability coverage
 
 - Lifecycle: checkout build; full/scoped/shell-only deployment and guarded rollback; installed shell reload/export and preference-home fixtures; ownership-report; preferences/frame-registry/frame-palette; host-facade and tab-move compatibility. Architecture verifies single-source packaging and the native boundary.
@@ -257,7 +277,7 @@ only the demonstrated Windows Git-sh fixture remains an observed suite exclusion
 ## Exact selected source entries
 
 The list below is generated from CI selection, not inferred from naming. On Node
-24 the current selection is **138 Ubuntu / 137 Windows entries**, with two/three
+24 the current selection is **144 Ubuntu / 143 Windows entries**, with two/three
 explicit exclusions respectively. The installed directory-loader fixture now runs
 on both; the preference-home and four runtime-contract suites are included. It includes scaffold/aggregator tests. Earlier Node 20 attempts selected
 122/121 and then 119/119 entries while diagnosing the crashes; those temporary
@@ -346,6 +366,7 @@ tests/git-github-accounts.test.mjs
 tests/git-location.test.mjs
 tests/git-monitor-settings.test.mjs
 tests/git-notices.test.mjs
+tests/git-relay-lifecycle.test.mjs
 tests/git-repository-checkboxes.test.mjs
 tests/git-repository-cli.test.mjs
 tests/git-webhooks.test.mjs
@@ -393,6 +414,7 @@ tests/temporary-mod.test.mjs
 tests/terminal-labels.test.mjs
 tests/update-check.test.mjs
 tests/update-detach.test.mjs
+tests/update-hint-check.test.mjs
 tests/update-row.test.mjs
 tests/update-marker-inspection.test.mjs
 tests/update-markers.test.mjs

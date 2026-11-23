@@ -256,7 +256,8 @@ export default class Changes extends View {
     this.webhooks ??= new GitWebhooks();
     const aggregate=this.aggregate,scope=aggregate.context.scope;
     const repositories=[...new Set([...aggregate.entries.values()].map(e=>e.link.repo))].sort();
-    this.webhooks.sync(cx,{enabled:this.shown() && repositories.length>0,scope:JSON.stringify(['tasks',scope,repositories]),
+    this.webhooks.sync(cx,{enabled:this.shown() && repositories.length>0,scope:JSON.stringify(['tasks',scope,repositories]),repositories,
+      isCurrent:()=>this.shown() && aggregate.currentContext()?.scope===scope && this.context===`tasks:${scope}`,
       onChange:(event,view)=> {
         if(!this.shown() || aggregate.currentContext()?.scope!==scope || this.context!==`tasks:${scope}`)return;
         aggregate.invalidate(event?.repository??null);aggregate.pump(view);this.startCISweep(view);
@@ -266,10 +267,11 @@ export default class Changes extends View {
 
   syncWebhooks(cx) {
     this.webhooks ??= new GitWebhooks();
-    const shown = this.shown();
+    const shown = this.shown(), context=this.context, repo=this.repo;
     if (shown && this.webhookShown === false && this.repo) this.webhookDirty = true;
     this.webhookShown = shown;
-    this.webhooks.sync(cx, {enabled:shown && Boolean(this.repo),scope:JSON.stringify([this.context,this.repo?.name]),
+    this.webhooks.sync(cx, {enabled:shown && Boolean(this.repo),scope:JSON.stringify([this.context,this.repo?.name]),repository:this.repo?.name,
+      isCurrent:()=>this.shown() && this.context===context && key()===context && this.repo===repo,
       onChange:(event,cx) => this.queueWebhook(event,cx)});
     if (!this.shown()) this.ciSweep = null;
     this.flushWebhook(cx);
