@@ -48,8 +48,13 @@ export function bindFleet(status, machine, {groups, all, list}) {
   }
   if(fleets.size>1 || tags.size>1) return null;
   const child=[...fleets][0]??null;
-  const binding=JSON.stringify([machine,status.home,owner.terminal.address,owner.space,owner.tab,owner.pane,child]);
-  return {parent:owner.space,child,machine,binding,home:status.home,owner:owner.terminal.address,tasks:workers,incomplete:workers.some(t=>t.state==='working')};
+  const identity=[machine,status.home,owner.terminal.address,owner.space,owner.tab,owner.pane];
+  const binding=JSON.stringify([...identity,child]), pullScope=JSON.stringify(identity);
+  // --all records belong to this verified status home, not to a former live
+  // terminal. They contribute links only: never adoption identity or navigation.
+  const history=status.tasks.filter(t=>t.state==='closed' && typeof t.id==='string' && t.id.length>0 && t.id.length<=128 && typeof t.pr==='string' && t.pr.length>0)
+    .map(t=>({id:t.id,state:'closed',pr:t.pr,terminal:null,historical:true}));
+  return {parent:owner.space,child,machine,binding,pullScope,home:status.home,owner:owner.terminal.address,tasks:[...workers,...history],incomplete:workers.some(t=>t.state==='working')};
 }
 const signature = (machine,m=model()) => JSON.stringify([m.groups.filter(s=>(s.machine??null)===machine).map(s=>[s.id,s.tabs?.map(t=>t.id)]).sort((a,b)=>a[0].localeCompare(b[0])),m.all.filter(p=>machineOf(p.terminal)===machine).map(p=>[p.pane,p.tab,p.terminal]).sort((a,b)=>String(a[0]).localeCompare(String(b[0]))),m.list.filter(t=>machineOf(t.address)===machine && (t.labels?.['crew.task'] || t.labels?.['custom.crew.home'])).map(t=>[t.address,t.state,t.labels?.['crew.task'],t.labels?.['crew.home'],t.labels?.['herdr.space'],t.labels?.['custom.crew.home']]).sort((a,b)=>a[0].localeCompare(b[0]))]);
 export function fleetContexts({presentation = false} = {}) {
@@ -91,8 +96,9 @@ export function refreshFleets(cx, readStatus, force = false) {
         await Promise.resolve();if(!current()) return;
         const status=recordedSource(await readStatus(machine));
         if(!current()) return;
-        const latest=shared(FLEET_KEY), snapshot=model();
-        if(incompleteMembership(status,machine,snapshot)) throw Error('Live membership is not yet available');
+        const latest=shared(FLEET_KEY), snapshot=model(), prior=latest?.entries?.[key]?.status;
+        const changedOwner=prior && (prior.home!==status.home || prior.owner.terminal!==status.owner.terminal);
+        if(!changedOwner && incompleteMembership(status,machine,snapshot)) throw Error('Live membership is not yet available');
         const bound=bindFleet(status,machine,snapshot), at=Date.now();
         const display=bound?.child ? {parent:bound.parent,child:bound.child,machine,binding:bound.binding} : null;
         setShared(FLEET_KEY,{version:1,entries:{...(latest?.version===1?latest.entries:{}),[key]:{
@@ -118,5 +124,5 @@ export function invalidateFleet() {
 }
 export function fleetPullContext(space) {
   const context=fleetContexts().find(c=>c.parent===space);
-  return context ? {...context,kind:'tasks',scope:context.binding,links:context.tasks.filter(t=>t.pr).map(t=>({url:t.pr,terminal:t.terminal,task:t.id}))} : null;
+  return context ? {...context,kind:'tasks',scope:context.pullScope,links:context.tasks.filter(t=>t.pr).map(t=>({url:t.pr,terminal:t.terminal,task:t.id,historical:t.historical===true}))} : null;
 }

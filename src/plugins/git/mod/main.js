@@ -660,7 +660,7 @@ export default class Changes extends View {
 
   renderAggregate(cx,t) {
     const aggregate=this.aggregate,counts=aggregate.counts(),scope=aggregate.context.scope;
-    const repositories=[...new Set([...aggregate.entries.values()].map(e=>e.link.repo))].sort();
+    const repositories=aggregate.repositories();
     this.notices ??= new GitNotices();
     const notices=new Map(repositories.map(repo=>[repo,this.notices.sync(cx,{enabled:this.shown(),repository:repo})]));
     const setup=repositories.length ? [...notices.values()].includes('setup') : this.notices.sync(cx,{enabled:this.shown(),repository:null})==='setup';

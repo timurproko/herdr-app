@@ -11,11 +11,18 @@ const model=()=>({groups,all,list}), copy=v=>JSON.parse(JSON.stringify(v));
 assert.equal(f.bindFleet(status,null,model()).child,'fm-crew-home1');
 for(const taskState of ['working','reported','stopped','failed','closed']) {
  const result=f.bindFleet({...status,tasks:[{...status.tasks[0],state:taskState}]},null,model());
- assert.equal(result.tasks.length,['working','reported'].includes(taskState)?1:0);
+ assert.equal(result.tasks.length,['working','reported','closed'].includes(taskState)?1:0);
+ if(taskState==='closed'){assert.equal(result.tasks[0].historical,true);assert.equal(result.tasks[0].terminal,null);assert.equal(result.child,null,'History cannot establish a fleet child');}
  assert.equal(result.incomplete,taskState==='working');
 }
 assert.equal(f.bindFleet({...status,owner:{terminal:'t9',live:true}},null,model()),null);
 list[1].labels['crew.task']='wrong';assert.equal(f.bindFleet(status,null,model()),null);list[1].labels['crew.task']='ship';
+const historical={...status,tasks:[...status.tasks,{id:'finished',state:'closed',terminal:'no-longer-live',pr:'https://github.com/example/history/pull/5'},{id:'scout',state:'closed',pr:null},{id:'failed',state:'failed',pr:'https://github.com/example/history/pull/99'}]};
+const joinedHistory=f.bindFleet(historical,null,model());assert.equal(joinedHistory.tasks.length,2);assert.equal(joinedHistory.tasks[1].terminal,null);assert.equal(joinedHistory.child,'fm-crew-home1');
+const closedOnly=f.bindFleet({...historical,tasks:historical.tasks.filter(t=>t.state==='closed')},null,model());assert.equal(closedOnly.child,null);assert.equal(closedOnly.tasks.length,1);assert.equal(closedOnly.pullScope,joinedHistory.pullScope,'Last-worker exit preserves the coordinator/home PR scope');
+assert.equal(f.bindFleet({...historical,home:'C:/foreign-home',owner:{terminal:'foreign-owner',live:true}},null,model()),null);
+assert.equal(f.bindFleet({...historical,owner:{terminal:'pc2/t1',live:true}},null,model()),null,'Another machine cannot authorize same-home history');
+assert.throws(()=>f.recordedSource(' '.repeat(1048577)));assert.throws(()=>f.recordedSource(JSON.stringify({home:'x',tasks:Array(4097).fill({})})));
 const before=copy(groups);groups[1].id='ordinary';assert.equal(f.bindFleet(status,null,model()),null);groups=before;
 const tasks=[];const cx={spawn(fn){tasks.push(Promise.resolve().then(()=>fn(cx)));},notify(){}};let calls=0;
 const read=async()=>{calls++;return JSON.stringify(status);};

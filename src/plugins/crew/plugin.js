@@ -487,7 +487,7 @@ const crewCommandScript = args => [
 ].join('\n');
 export const crewProjectScript = args => crewCommandScript(['project', ...args]);
 const readFleetStatus = async machine => {
-  const result = await powershell(machine, crewCommandScript(['status', '--json']), {timeout:15});
+  const result = await powershell(machine, crewCommandScript(['status', '--all', '--json']), {timeout:15});
   if(result.code!==0) throw Error('Crew status unavailable');
   return result.stdout;
 };

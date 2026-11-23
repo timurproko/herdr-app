@@ -148,7 +148,7 @@ been retired; third-party license notices retain their original attribution.
 
 ## Fleet context contributions
 
-Crew owns `plugins/crew/fleet.js`: plain installed `crew status --json` supplies
+Crew owns `plugins/crew/fleet.js`: installed `crew status --all --json` supplies
 owner/task terminals and recorded PRs. `custom.crew.home=1` is only a role hint;
 `crew.home` is a worker home tag. The resolver joins exact live machine-qualified
 terminals to actual panes/spaces and verifies the fleet adoption identity. Missing,
@@ -180,7 +180,21 @@ unverified block refuse to move, never fall back to a single-space reorder.
 for the selected coordinator. It reads exact recorded PR URLs on that machine with
 three bounded concurrent requests, keys rows by repository plus PR number, and
 never probes the coordinator's directory. Working/reported live terminals are
-eligible. There is no extra task heading or generic incomplete-list notice, single
+eligible. Same-home closed-task records contribute recorded links without live
+worker authority; they cannot establish a fleet child. The verified owner/home
+PR scope excludes the optional child so last-worker exit does not discard PR facts.
+Full PR identities deduplicate before reads/counts; current live sources win robot
+selection, and historical-only rows have no target. Captured robot callbacks still
+require a current live source.
+
+Historical-only Open/Draft rows remain eligible. Merged/Closed historical rows use
+GitHub's existing `mergedAt`/`closedAt` fields and expire after 24 hours; missing,
+invalid or future completion dates do not admit historical Closed rows. Live-task
+rows retain normal eligibility. Repository/global counts use the same eligible
+rows, and repositories containing only excluded history have no empty headers.
+Candidate facts remain bounded for webhook reopen/merge events; aging does not poll
+GitHub. The existing 1 MiB/4096-task source limits, 15-second status timeout and
+three concurrent targeted GitHub reads remain. No private task timestamps are read. There is no extra task heading or generic incomplete-list notice, single
 active pin or repository-wide PR inventory in this mode. Missing recorded links
 still cannot be inferred from transcripts or branches.
 

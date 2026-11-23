@@ -160,6 +160,14 @@ restore after panel recreation, temporary repository absence, tab/refresh change
 zero and live counts while folded, hidden/restored scoped body notices, stale toggle
 guards, no fold-triggered reads and no false empty state when all sections fold.
 No fixture uses real Core, credentials, GitHub, terminals, native input or deployment.
+`tests/fleet-history.test.mjs` drives the actual --all reader, Crew join, Git
+controller/aggregate and UI with fake GitHub facts. It covers same-home finished
+Open/Draft rows without robots, live/history duplicate precedence and one read per
+PR, last-worker-exit scope continuity, recent/old/undated/invalid/future and exact
+24-hour Closed boundaries, unchanged live-task eligibility, accurate counts,
+excluded empty history headers, webhook reopen/close, three-read concurrency and
+stale robot refusal. The provider also checks source size/task bounds and rejects
+another owner/home or machine. No fixture reads real task reports or GitHub.
 Recorded links deliberately do not guarantee pre-report PR discovery. Native pixels,
 actual drag motion and real remote execution remain unverified without separate
 authorization; fixture success is not deployment evidence.

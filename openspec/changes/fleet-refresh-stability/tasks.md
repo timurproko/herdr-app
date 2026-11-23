@@ -27,10 +27,10 @@ The first four groups carry forward the implemented outcomes and their tests/doc
 
 ## 6. Same-home finished-task PRs remain visible without worker navigation, with live-task precedence and bounded Closed history
 
-- [ ] 6.1 Use `crew status --all --json` through the existing reader and carry sanitized closed-task PR links from the verified owner's home without requiring former live workers; provider tests reject other homes/machines and malformed/no-PR records while preserving response/task/timeout limits and last-worker-exit history.
-- [ ] 6.2 Extend aggregate source metadata/deduplication so live tasks win robot selection and historical-only rows have no worker target; tests retain one fetch/row/count for shared PRs and reject stale captured robot callbacks after worker closure.
-- [ ] 6.3 Filter historical-only merged/closed rows to the last 24 hours using existing GitHub merge/close timestamps, excluding undated history while retaining all eligible recorded Open/Draft PRs; tests cover boundary/expiry/reopen/merge transitions, unchanged live-task eligibility, accurate repository/global counts and absent empty historical headers.
-- [ ] 6.4 Document the --all seam, same-home provenance, no-robot historical rows, deduplication and conservative 24-hour Closed policy in README/docs/TESTING.md/docs/ARCHITECTURE.md; provider/aggregate fixtures cover bounds, no extra polling and scoped failures.
+- [x] 6.1 Use `crew status --all --json` through the existing reader and carry sanitized closed-task PR links from the verified owner's home without requiring former live workers; provider tests reject other homes/machines and malformed/no-PR records while preserving response/task/timeout limits and last-worker-exit history.
+- [x] 6.2 Extend aggregate source metadata/deduplication so live tasks win robot selection and historical-only rows have no worker target; tests retain one fetch/row/count for shared PRs and reject stale captured robot callbacks after worker closure.
+- [x] 6.3 Filter historical-only merged/closed rows to the last 24 hours using existing GitHub merge/close timestamps, excluding undated history while retaining all eligible recorded Open/Draft PRs; tests cover boundary/expiry/reopen/merge transitions, unchanged live-task eligibility, accurate repository/global counts and absent empty historical headers.
+- [x] 6.4 Document the --all seam, same-home provenance, no-robot historical rows, deduplication and conservative 24-hour Closed policy in README/docs/TESTING.md/docs/ARCHITECTURE.md; provider/aggregate fixtures cover bounds, no extra polling and scoped failures.
 - [ ] 6.5 Run the full Node 24 `CI=true npm run test:ci` selection after both new outcomes, including git-location, pr-agent-links and sidebar-refresh; record actual results and repair affected fixtures without weakening or excluding checks.
 
 ## Workflow follow-up
