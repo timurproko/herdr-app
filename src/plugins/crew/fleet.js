@@ -90,9 +90,9 @@ function nextDisplay(machine, bound, snapshot) {
   const members=new Set(snapshot.all.filter(p=>tabs.has(p.tab) && !p.mod).map(p=>p.terminal));
   const conflict=snapshot.list.some(t=>members.has(t.address) && t.state==='live' && (t.labels?.['crew.task'] || t.labels?.['crew.home']) &&
     (t.labels?.['crew.home']!==prior.adoption || t.labels?.['herdr.space']!==prior.child.split('/').at(-1)));
-  // Finished tasks do not disown an extant native fleet. Keep its previously
-  // verified identity until disappearance or completed contradictory evidence.
-  return conflict?null:prior;
+  // Keep only the extant fleet's child/adoption identity; fresh owner membership
+  // must also drive the retained scopes after successful verification.
+  return conflict?null:displayRecord({...identityOf(bound),child:prior.child,adoption:prior.adoption});
 }
 function publishDisplay(machine, bound) {
   const raw=shared(DISPLAY_KEY);if(raw && raw.version!==1)return;

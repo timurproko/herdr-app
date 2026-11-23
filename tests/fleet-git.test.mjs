@@ -154,6 +154,26 @@ await drain();assert.equal(calls.length,staleCalls);coldPanel.close();
 // Fresh same-home verification restores reads/robots, not a new folder/pin context.
 failStatus=false;f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();tree=panel.render(cx);await drain();tree=panel.render(cx);
 assert.equal(find(tree,'git-task-stale'),undefined);assert.ok(find(tree,'pr-agent-example/b#12'));assert.equal(panel.foldedRepositories.has('example/a'),!foldBefore);assert.equal(JSON.stringify(panel.aggregate.counts()),countsBefore);toggle('a');defer=true;
+// Finished workers leave an extant fleet, but successful owner membership moves
+// must refresh the retained display before a later status outage uses its scope.
+defer=false;bClosed=false;for(const task of status.tasks)task.state='closed';for(const worker of list.slice(1))worker.state='finished';all.splice(1);groups[1].tabs=[];
+const priorDisplay=f.fleetContexts({presentation:true})[0];
+f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();
+for(const [ownerTab,ownerPane] of [['c','cp-moved'],['c-moved','cp-moved-again']]) {
+ groups[0].tabs=[{id:ownerTab}];all[0].tab=ownerTab;all[0].pane=ownerPane;failStatus=false;
+ f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();panel.setView('open',cx);tree=panel.render(cx);await drain();tree=panel.render(cx);
+ const verified=r.pluginPullContext('coordinator'),scope=verified.scope,entries=[...panel.aggregate.entries.values()],savedCounts=JSON.stringify(panel.aggregate.counts()),reads=calls.length;
+ assert.equal(verified.child,null);assert.equal(verified.ownerTab,ownerTab);assert.equal(verified.ownerPane,ownerPane);assert.equal(entries.length,2);
+ failStatus=true;now+=31000;tree=panel.render(cx);await drain();tree=panel.render(cx);
+ assert.equal(panel.aggregate.entries.size,2,'Verified owner membership must not revert to an older stale scope and clear loaded PRs');
+ assert.equal(panel.aggregate.context.scope,scope);assert.equal(JSON.stringify(panel.aggregate.counts()),savedCounts);assert.ok(find(tree,'pr-example/a#12'));assert.ok(find(tree,'pr-example/b#12'));assert.ok(find(tree,'git-task-stale'));
+ assert.ok(entries.every(entry=>panel.aggregate.entries.get(entry.link.key)===entry));assert.equal(calls.length,reads,'Retained scope grants no new GitHub reads');assert.equal(r.pluginPullContext('coordinator'),null);assert.equal(find(tree,'pr-agent-example/b#12'),undefined);captured.attrs.on_click[0]({},cx);assert.equal(focus.length,1);
+ const display=f.fleetContexts({presentation:true})[0];
+ for(const field of ['machine','parent','home','owner','ownerTab','ownerPane'])assert.equal(display[field],verified[field],`${field} comes from successful verification`);
+ for(const field of ['child','adoption'])assert.equal(display[field],priorDisplay[field],`${field} retains the extant fleet identity`);
+ assert.equal(display.pullScope,scope);assert.equal(display.binding,JSON.stringify([...JSON.parse(scope),display.child]));
+}
+failStatus=false;f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();tree=panel.render(cx);await drain();tree=panel.render(cx);
 // A slow old context cannot publish after the preference or selected space changes.
 const staleHeader=header('a',tree),savedFolds=storage.get('custom.git.task-repositories.folded');
 defer=true;before=calls.length;panel.aggregate.refresh(cx);await tick();selected={...selected,space:'other'};staleHeader.attrs.on_click[0]({},cx);assert.equal(storage.get('custom.git.task-repositories.folded'),savedFolds,'Stale headers cannot change fold state after context replacement');assert.equal(panel.aggregate.currentContext(),null);assert.equal(panel.aggregate.sync(cx),false);while(waiting.length)waiting.shift()();await drain();assert.equal(calls.length,before+2,'Old context starts no follow-up reads');assert.equal(panel.aggregate.entries.size,0,'Old replies cannot populate another selected space');captured.attrs.on_click[0]({},cx);assert.equal(focus.length,1);
