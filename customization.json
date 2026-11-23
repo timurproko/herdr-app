@@ -99,6 +99,7 @@
     "docs/CODEQUOTA.md": "docs/history/docs/CODEQUOTA.md",
     "docs/PREVIEW-PERFORMANCE.md": "docs/history/docs/PREVIEW-PERFORMANCE.md",
     "frame-patches/feedback/main.js": "src/integration/native-patches/feedback/main.js",
+    "frame-patches/feedback/ui.js": "src/integration/native-patches/feedback/ui.js",
     "frame-patches/feedback/original.js": "src/integration/native-patches/feedback/original.js",
     "frame-patches/palette/main.js": "src/integration/native-patches/palette/main.js",
     "frame-patches/palette/original-0.1.13.js": "src/integration/native-patches/palette/original-0.1.13.js",

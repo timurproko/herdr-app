@@ -40,6 +40,20 @@ Only Custom activation routes Settings/pickers, inline rename and untargeted clo
 explicit close arguments and all non-Custom behavior stay native. Stable row,
 input and activation hooks are still required; this is not a public frame API.
 
+## Feedback bridge
+
+`feedback/ui.js` owns Custom fields/chrome, compact attachments/viewer, JSON
+disclosure, fresh one-use drafts and the sent title/thank-you. The transform derives
+its Custom form from current native child operations, retaining unknown sibling
+actions and callbacks. Native preview, pick, send, validation and thumbnail removal
+callbacks remain native; unsafe overlapping edit regions refuse before writes.
+Drops and late picker results cannot modify a sending/sent Custom form.
+
+Attachments and sending require real `frame-feedback` identity in the host. A
+private mod cannot replace them; this bridge does not spoof that identity or send
+to the network itself. Styling needs structural form/controller hooks and public
+GPUI/host capabilities, not complete reviewed source bytes or a release allowlist.
+
 ## Maintenance
 
 1. Run `npm run check:host-api`; update the central compatibility profile for public API/command changes.

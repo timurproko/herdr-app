@@ -16,10 +16,10 @@
 
 ## 3. Custom feedback with preserved native controller and authority
 
-- [ ] 3.1 Add guarded feedback render-chain transforms and owned chrome/state helpers while keeping native preview/attachment/pick/send controllers and non-Custom output; exercise focused fields, character/native disable predicates, native error paths and actual transformed stock for both fixture releases.
-- [ ] 3.2 Restore compact Add image/helper/thumbnails, count/limit, paste/drop/removal and image viewer navigation; assert sending/sent and late-completion guards, quiet excess handling, Escape/Back/Previous/Next and native attachment callbacks in disposable VM fixtures.
-- [ ] 3.3 Restore collapsible JSON/details, fresh one-use draft consumption and sent title/icon/thank-you; cover expired/consumed/conflicting drafts, manual send only, error/retry/success and unchanged other-layout behavior, and document the frame-only authority boundary.
-- [ ] 3.4 Add synthetic future feedback fields/actions and changed native send/validation behavior; assert additive actions and callbacks survive structural composition, and unsafe overlapping shapes produce a specific pre-write refusal rather than discarded actions.
+- [x] 3.1 Add guarded feedback render-chain transforms and owned chrome/state helpers while keeping native preview/attachment/pick/send controllers and non-Custom output; exercise focused fields, character/native disable predicates, native error paths and actual transformed stock for both fixture releases.
+- [x] 3.2 Restore compact Add image/helper/thumbnails, count/limit, paste/drop/removal and image viewer navigation; assert sending/sent and late-completion guards, quiet excess handling, Escape/Back/Previous/Next and native attachment callbacks in disposable VM fixtures.
+- [x] 3.3 Restore collapsible JSON/details, fresh one-use draft consumption and sent title/icon/thank-you; cover expired/consumed/conflicting drafts, manual send only, error/retry/success and unchanged other-layout behavior, and document the frame-only authority boundary.
+- [x] 3.4 Add synthetic future feedback fields/actions and changed native send/validation behavior; assert additive actions and callbacks survive structural composition, and unsafe overlapping shapes produce a specific pre-write refusal rather than discarded actions.
 
 ## 4. Unified deployment, startup and doctor compatibility reporting
 
