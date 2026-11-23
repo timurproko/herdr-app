@@ -1,9 +1,24 @@
 # Spec Delta
 
+## ADDED Requirements
+
+### Requirement: Independent attached-space identity and tags
+Attached coordinator and fleet rows SHALL remain independently selectable native spaces with distinct tabs and terminals. Only the attached fleet SHALL omit its Crew tag; the coordinator SHALL retain its Crew tag and unrelated plugin tags SHALL remain.
+
+#### Scenario: Attached row selection and tags
+- **WHEN** a verified coordinator and fleet are attached in Spaces
+- **THEN** clicking either row selects that native space without relocating tabs or terminals
+- **AND** the coordinator retains its Crew tag, only the attached fleet omits its Crew tag, and unrelated plugin tags remain
+
+#### Scenario: Attachment removed
+- **WHEN** the relationship is confirmed broken or attachment is disabled
+- **THEN** the rows retain their separate native identities and ordinary plugin tag rules
+- **AND** disabling Crew still hides Crew tags without closing or relocating either space
+
 ## MODIFIED Requirements
 
 ### Requirement: Optional coordinator fleet attachment
-Settings → Spaces SHALL expose **Connect fleet space to coordinator**, defaulting off and portable as a boolean. When enabled with Crew, a verified same-machine fleet SHALL appear below its coordinator with a muted vector chain icon replacing its numbered badge and its name aligned with ordinary space names. Only the attached fleet SHALL omit its Crew tag; the coordinator SHALL retain its Crew tag. Both rows SHALL remain independently selectable. Native spaces, tabs and terminals SHALL remain distinct.
+Settings → Spaces SHALL expose **Connect fleet space to coordinator**, defaulting off and portable as a boolean. When enabled with Crew, a verified same-machine fleet SHALL appear below its coordinator with a muted vector chain icon replacing its numbered badge and its name aligned with ordinary space names.
 
 #### Scenario: First use and disabled setting
 - **WHEN** the preference is absent or false

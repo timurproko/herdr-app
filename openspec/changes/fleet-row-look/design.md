@@ -6,7 +6,7 @@ See proposal.md for motivation and specs/workspace-experience/spec.md for the ob
 
 `Spaces.fleetConnector()` currently allocates a 24px expanded slot or 16px compact slot and places a 24px elbow SVG in a 28px-high wrapper. Ordinary `badge()` uses `U.icon` (16px) for both width and height. The expanded content's existing 8px gap means that the wider connector alone introduces the fleet-name inset. `Spaces.dragPreview()` supplies two rows to the shared reorder preview for captured pairs. Only that Spaces caller consumes the stacked-preview option.
 
-The removed outlined link asset is available verbatim at `ffb0dba^:src/shared/link.svg`: a no-fill, currentColor, rounded 1.5-unit stroke vector in a 24-unit viewBox. Active specs explicitly forbid chain glyphs and require elbows, so a delta must supersede those clauses, including the old elbow references in refresh/restart scenarios. Archived changes remain historical records.
+The removed outlined link asset is available verbatim at `ffb0dba^:src/shared/link.svg`: a no-fill, currentColor, rounded 1.5-unit stroke vector in a 24-unit viewBox. Active specs explicitly forbid chain glyphs and require elbows, so a delta must supersede those clauses, including the old elbow references in refresh/restart scenarios. Archived changes remain historical records. On implementation approval, the person also authorized splitting the overlong attachment requirement: retain its setting and presentation contract under the existing requirement and move its independent-native-identity and tag guarantees into a separate added requirement, preserving every existing scenario and guarantee so strict validation passes.
 
 ## Goals / Non-Goals
 

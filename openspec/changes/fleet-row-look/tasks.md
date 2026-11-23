@@ -2,10 +2,10 @@
 
 ## 1. Attached fleet rows use aligned chain badges and left-aligned muted names
 
-- [ ] 1.1 Restore the historical outlined link SVG and its Spaces mapping, replace the connector helper with a 16px badge-sized muted icon in expanded and compact rows, and remove the unused elbow asset/mapping; rendering and manifest assertions show no remaining connector consumer.
-- [ ] 1.2 Match the fleet badge slot and vertical center to real ordinary badges and remove the fleet-name inset while retaining muted text; expanded and compact render-tree comparisons assert equal box dimensions, name anchors and theme color.
-- [ ] 1.3 Preserve coordinator Crew-tag visibility, fleet-only tag suppression, unrelated tags, independent selection, compact tooltips and the worktree-marker axis; existing targeted fixtures plus updated sidebar regressions pass for local/remote and tagged/untagged rows.
-- [ ] 1.4 Replace active elbow descriptions in README and docs/TESTING.md with chain-badge and left-aligned muted-name behavior; documentation matches this delta without editing archived changes.
+- [x] 1.1 Restore the historical outlined link SVG and its Spaces mapping, replace the connector helper with a 16px badge-sized muted icon in expanded and compact rows, and remove the unused elbow asset/mapping; rendering and manifest assertions show no remaining connector consumer.
+- [x] 1.2 Match the fleet badge slot and vertical center to real ordinary badges and remove the fleet-name inset while retaining muted text; expanded and compact render-tree comparisons assert equal box dimensions, name anchors and theme color.
+- [x] 1.3 Preserve coordinator Crew-tag visibility, fleet-only tag suppression, unrelated tags, independent selection, compact tooltips and the worktree-marker axis; existing targeted fixtures plus updated sidebar regressions pass for local/remote and tagged/untagged rows.
+- [x] 1.4 Replace active elbow descriptions in README and docs/TESTING.md with chain-badge and left-aligned muted-name behavior; documentation matches this delta without editing archived changes.
 
 ## 2. Dragging either linked row shows one ordinary coordinator chip
 

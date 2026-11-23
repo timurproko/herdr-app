@@ -438,18 +438,16 @@ export default class Spaces extends View {
     const block = this.drag.view?.meta?.sources;
     const rows = block?.length > 1 ? block.map((id,k)=> {
       const at=all.findIndex(s=>s.id===id),space=displaySpace(all[at],panes());
-      return {icon:k ? this.fleetConnector(t) : badge(String(at+1),spaceBadgeColor(t,space,shared('space.colors')??{})),
+      return {icon:k ? this.fleetBadge(t) : badge(String(at+1),spaceBadgeColor(t,space,shared('space.colors')??{})),
         label:k ? div().text_color(t.muted).child(space.name) : space.name};
     }) : null;
     return this.drag.preview('space-drag', t, {
       icon: badge(String(i + 1), spaceBadgeColor(t, w, shared('space.colors') ?? {})), label: w.name, rows});
   }
 
-  // The stem stays at x=8, directly below the parent's badge centre. The extra
-  // expanded width insets the child name, not the stem. Rail targets stay 28px.
-  fleetConnector(t, compact = false) {
-    return div().relative().w(compact ? U.icon : U.icon + U.gap).h(U.row).flex_none()
-      .child(svg('mods/custom-spaces/fleet-elbow.svg').size(24).absolute().left(0).top((U.row - 24) / 2).text_color(t.muted));
+  // Match the numbered badge's box so fleet names share the normal text anchor.
+  fleetBadge(t) {
+    return svg('mods/custom-spaces/link.svg').size(U.icon).flex_none().text_color(t.muted);
   }
 
   row({ w, i, g, tree, linked = false, position = i }, t) {
@@ -509,7 +507,7 @@ export default class Spaces extends View {
           .gap(U.gap)
           .items_center()
           .when(this.tabArrival?.spaceId === w.id && !edit, el => tabArrivalMotion(this, el))
-          .child(linked ? this.fleetConnector(t) : badge(String(i + 1), fill))
+          .child(linked ? this.fleetBadge(t) : badge(String(i + 1), fill))
           .when(Boolean(edit), el => el.child(this.renameField(w, t)))
           .when(!edit, el => el
             .child(spaceTitle(t,w).when(linked, el => el.text_color(t.muted)).min_w(0).max_w(150).truncate().child(w.name))
@@ -540,7 +538,7 @@ export default class Spaces extends View {
       .when(w.active, (el) => el.bg(t.selected)), {hover: s => s.bg(itemHover(t, w.active)), tooltip: w.directory || w.name})
       .on_click(this.drag.guard(() => run("space.select", { id: w.id })))
       .on_mouse_down("right", this.drag.guard((_e, cx) => { cx.stop_propagation(); this.menu(w); }))
-      .child((linked ? this.fleetConnector(t, true) : badge(String(i + 1), fill)).id(`space-badge-${w.id}`)
+      .child((linked ? this.fleetBadge(t) : badge(String(i + 1), fill)).id(`space-badge-${w.id}`)
         .when(this.tabArrival?.spaceId === w.id, el => tabArrivalMotion(this, el)));
   }
 
