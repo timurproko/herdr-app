@@ -7,7 +7,7 @@
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, Input, ScrollHandle } from "gpui-base";
-import { U, slot, itemHover, interactionFill, subtleActionFill, iconButton, badge, spaceBadgeColor, chevron, rolePill, menuSurface, menuHeading, menuRow } from "./ui.js";
+import { U, slot, itemHover, interactionFill, subtleActionFill, iconButton, badge, spaceBadgeColor, sidebarSectionHeader, rolePill, menuSurface, menuHeading, menuRow } from "./ui.js";
 import { spaceTitle } from './space-title.js';
 import { sidebarScroll } from './sidebar-scroll.js';
 import { startTabArrivals, tabArrivalMotion } from './tab-arrival.js';
@@ -26,6 +26,7 @@ export const SPACE_OPTIONS = Object.freeze([
   { key: "spaces.show.worktree", label: "Worktree icon", icon: "branch" },
 ]);
 export const shows = key => shared(key) !== false;
+const displayLinks = () => pluginWorkspaceLinks({presentation:true});
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -305,7 +306,7 @@ export default class Spaces extends View {
     return projectLinkedRows(sp.map((w, i) => {
       const g = this.git[where(w, ps)] ?? null;
       return { w, i, g, tree: g?.linked ? true : null };
-    }).filter(r => this.shown.has(r.w.id)), pluginWorkspaceLinks());
+    }).filter(r => this.shown.has(r.w.id)), displayLinks());
   }
 
   // The rows, under a header per machine once one isn't this computer.
@@ -350,35 +351,33 @@ export default class Spaces extends View {
       // ready connection, so it is only a tooltip.
       const status = () => div().id(`machine-status-${m ?? "local"}`).size(U.statusSize).rounded_full().flex_none().bg(ready ? t.done : t.dim)
         .when(!collapsed, el => el.tooltip(ready ? "Connected" : (machine?.state ?? "Not connected").replace(/_/g, " ")));
-      const head = this.drag.control(h_flex().id(`machine-${m ?? "local"}`).h(U.control).flex_none().pl(collapsed ? 0 : 8).pr(collapsed ? 0 : 4).gap(U.gap).items_center().rounded(U.radius).text_size(U.meta).text_color(t.muted)
-        .when(collapsed, el => el.w(U.control).self_center().justify_center()),
+      const children = collapsed ? [slot(svg(`mods/custom-workspace-chrome/${m ? "server" : "monitor"}.svg`).size(m ? U.smallIcon : U.icon))
+        .when(folded && this.tabArrival?.machine === m, icon => tabArrivalMotion(this, icon))] : [
+        div().flex_1().min_w(0).truncate().child(m ?? "This computer")
+          .when(folded && this.tabArrival?.machine === m, label => tabArrivalMotion(this, label)),
+        ...(rebuilt ? [h_flex().flex_none().gap(3).items_center()
+          .child(div().max_w(140).truncate().child(repair?.error || "rebuilt ·"))
+          .child(this.drag.control(div().id(`machine-connect-${m}`).text_color(repair?.error ? t.blocked : t.muted),
+            {hover: s => s.text_color(t.foreground), tooltip: repair?.error || 'This machine was rebuilt or replaced. Click to connect to the new one.'})
+            .on_click(this.drag.guard((_e, cx) => { cx.stop_propagation(); this.reconnect(machine, cx); }))
+            .child(repair?.busy ? "Connecting…" : "Connect"))] : []),
+        // The status dot, then +, then the shared fold chevron. Preserve the
+        // plus button's visual midpoint without moving the dot or chevron.
+        h_flex().id(`machine-actions-${m ?? "local"}`).flex_none().gap(3).items_center()
+          .when(shows("spaces.show.machineStatus"), el => el.child(status()))
+          .when(connected, el => el.child(iconButton(t, { id: `machine-add-${m ?? "local"}`, icon: "mods/custom-workspace-chrome/plus.svg", label: "New space", color: t.muted,
+            enabled: !this.drag.active, onClick: this.drag.guard(() => run("space.new", { machine: m ?? "" })) })
+            .ml(5).mr(-5)
+            .on_hover(this.drag.guard((hovered, cx) => { this.addHovered = hovered ? (m ?? "local") : null; cx.notify(); })))),
+      ];
+      const head = this.drag.control(sidebarSectionHeader(t, {id:`machine-${m ?? "local"}`, label:m ?? 'This computer', open:!folded, compact:collapsed, children}),
         {hover: s => s.bg(t.selected), cursor: true, tooltip: collapsed ? m ?? 'This computer' : null})
         .when(!this.drag.active && this.addHovered === (m ?? "local"), el => el.bg(t.selected))
         .on_click(this.drag.guard((_e, cx) => {
           folded ? this.folded.delete(m) : this.folded.add(m);
           localStorage.setItem("machines.folded", JSON.stringify([...this.folded]));
           cx.notify();
-        }))
-        .when(collapsed, el => el.child(slot(svg(`mods/custom-workspace-chrome/${m ? "server" : "monitor"}.svg`).size(m ? U.smallIcon : U.icon))
-          .when(folded && this.tabArrival?.machine === m, icon => tabArrivalMotion(this, icon))))
-        .when(!collapsed, el => el.child(div().flex_1().truncate().child(m ?? "This computer")
-          .when(folded && this.tabArrival?.machine === m, label => tabArrivalMotion(this, label)))
-          .when(rebuilt, el => el.child(h_flex().flex_none().gap(3).items_center()
-            .child(div().max_w(140).truncate().child(repair?.error || "rebuilt ·"))
-            .child(this.drag.control(div().id(`machine-connect-${m}`).text_color(repair?.error ? t.blocked : t.muted),
-              {hover: s => s.text_color(t.foreground), tooltip: repair?.error || 'This machine was rebuilt or replaced. Click to connect to the new one.'})
-              .on_click(this.drag.guard((_e, cx) => { cx.stop_propagation(); this.reconnect(machine, cx); }))
-              .child(repair?.busy ? "Connecting…" : "Connect"))))
-          // The status dot, then +, then the fold chevron.
-          .child(h_flex().id(`machine-actions-${m ?? "local"}`).flex_none().gap(3).items_center()
-            .when(shows("spaces.show.machineStatus"), el => el.child(status()))
-            // + sits midway between the dot and the chevron (its 28px box would otherwise leave
-            // it visibly closer to the dot): moved 5px right, the dot and chevron stay put.
-            .when(connected, el => el.child(iconButton(t, { id: `machine-add-${m ?? "local"}`, icon: "mods/custom-workspace-chrome/plus.svg", label: "New space", color: t.muted,
-              enabled: !this.drag.active, onClick: this.drag.guard(() => run("space.new", { machine: m ?? "" })) })
-              .ml(5).mr(-5)
-              .on_hover(this.drag.guard((hovered, cx) => { this.addHovered = hovered ? (m ?? "local") : null; cx.notify(); })))))
-          .child(slot(chevron(t, !folded))));
+        }));
       const empty = this.drag.control(h_flex().id(`machine-new-${m ?? "local"}`).h(28).flex_none().px(collapsed ? 0 : 8).gap(7).items_center().rounded(U.radius)
         .when(collapsed, el => el.w(U.control).self_center().justify_center())
         .text_size(12).text_color(t.dim), {hover: s => s.bg(t.hover).text_color(t.foreground)})
@@ -414,6 +413,11 @@ export default class Spaces extends View {
     if (!source) return;
     if (this.blockCommit?.pending) return;
     const links = pluginWorkspaceLinks();
+    // A retained visual pair must never fall through to a one-space move while
+    // live verification is unavailable. Click selection still works normally.
+    if (result.kind === 'drop' && displayLinks().some(link =>
+      [link.parent,link.child].some(id=>id===result.id || id===result.target) &&
+      !links.some(l=>l.parent===link.parent && l.child===link.child && l.binding===link.binding))) return;
     if (result.kind === 'drop' && (result.meta?.sources?.length > 1 || links.length)) {
       const captured = result.meta;
       const wanted = planBlockDrop(all, links, result.id, result.target, captured);
@@ -434,13 +438,19 @@ export default class Spaces extends View {
     const block = this.drag.view?.meta?.sources;
     const rows = block?.length > 1 ? block.map((id,k)=> {
       const at=all.findIndex(s=>s.id===id),space=displaySpace(all[at],panes());
-      return {icon:k ? this.linkBadge(t) : badge(String(at+1),spaceBadgeColor(t,space,shared('space.colors')??{})),label:space.name};
+      return {icon:k ? this.fleetConnector(t) : badge(String(at+1),spaceBadgeColor(t,space,shared('space.colors')??{})),
+        label:k ? div().text_color(t.muted).child(space.name) : space.name};
     }) : null;
     return this.drag.preview('space-drag', t, {
       icon: badge(String(i + 1), spaceBadgeColor(t, w, shared('space.colors') ?? {})), label: w.name, rows});
   }
 
-  linkBadge(t) { return slot(svg('mods/custom-spaces/link.svg').size(U.icon).text_color(t.muted)); }
+  // The stem stays at x=8, directly below the parent's badge centre. The extra
+  // expanded width insets the child name, not the stem. Rail targets stay 28px.
+  fleetConnector(t, compact = false) {
+    return div().relative().w(compact ? U.icon : U.icon + U.gap).h(U.row).flex_none()
+      .child(svg('mods/custom-spaces/fleet-elbow.svg').size(24).absolute().left(0).top((U.row - 24) / 2).text_color(t.muted));
+  }
 
   row({ w, i, g, tree, linked = false, position = i }, t) {
     const on = w.active;
@@ -448,6 +458,7 @@ export default class Spaces extends View {
     const drag = this.drag, d = drag.view;
     const fromIndex = d ? this.ordered().findIndex(r => r.w.id === d.id) : -1;
     const fill = spaceBadgeColor(t, w, shared("space.colors") ?? {});
+    const worktree = !edit && Boolean(g?.linked || tree) && shows("spaces.show.worktree");
     return drag.item(v_flex()
       .relative()
       .id(`space-${w.id}`)
@@ -468,7 +479,7 @@ export default class Spaces extends View {
         if (this.rename?.id === w.id) { cx.stop_propagation();return; }
         if (e?.click_count === 2) { cx.stop_propagation();beginSpaceRename(this, w.id, cx);return; }
         drag.begin(w.id, e, cx, {scale: settings()?.zoom, scrollOffset: this.sidebarScroll?.offset ?? 0,
-          meta: captureSpaceBlock(spaces(), pluginWorkspaceLinks(), w.id)});
+          meta: captureSpaceBlock(spaces(), displayLinks(), w.id)});
       })
       .on_mouse_move((e, cx) => {
         if (this.rename) return;
@@ -483,7 +494,7 @@ export default class Spaces extends View {
           const mine = all.filter(s => (s.machine ?? null) === machine);
           over = (i > from ? mine.at(-1) : mine[0])?.id ?? null;
         }
-        drag.over(e, blockTarget(all, pluginWorkspaceLinks(), drag.current?.id, over), cx);
+        drag.over(e, blockTarget(all, displayLinks(), drag.current?.id, over), cx);
       })
       .on_mouse_up("left", (_e, cx) => {
         if (this.rename) { this.cancelDrag();cx.stop_propagation();return; }
@@ -494,24 +505,25 @@ export default class Spaces extends View {
       .child(
         h_flex()
           .id(`space-content-${w.id}`)
-          .when(linked, el => el.pl(8))
+          .min_w(0)
           .gap(U.gap)
           .items_center()
           .when(this.tabArrival?.spaceId === w.id && !edit, el => tabArrivalMotion(this, el))
-          .child(linked ? this.linkBadge(t) : badge(String(i + 1), fill))
+          .child(linked ? this.fleetConnector(t) : badge(String(i + 1), fill))
           .when(Boolean(edit), el => el.child(this.renameField(w, t)))
           .when(!edit, el => el
-            .child(spaceTitle(t,w).min_w(0).max_w(150).truncate().child(w.name))
+            .child(spaceTitle(t,w).when(linked, el => el.text_color(t.muted)).min_w(0).max_w(150).truncate().child(w.name))
             .child(g ? this.gitTail(g, tree, w.name, t, w.named === true) : div().flex_1()))
-          .when(!edit && Boolean(g?.linked || tree) && shows("spaces.show.worktree"), el => el.child(slot(svg("mods/custom-workspace-chrome/branch.svg").size(U.smallIcon).text_color(t.muted)).id(`space-worktree-${w.id}`).tooltip('Git worktree')))
-          // Tags enabled plugins add to a space (Crew: it runs the coordinator), as pills at the
-          // row's right edge, drawn the same as the role pill in a pane header.
-          // Styled like the agents list's "Needs you" pill (grey), and pulled 4px into the row's
-          // padding so its right edge lines up with that pill's (agent rows pad 4px, spaces 8px).
+          // Keep tags to the left of the fixed trailing icon. Without an icon,
+          // retain the tag-only row's existing right edge beside the Agents pills.
           .when(!edit, el => el.children(pluginSpaceTags(w).map((tag, k, all) =>
             rolePill(t, tag.label, { status: true }).id(`space-tag-${w.id}-${tag.plugin}-${k}`)
-              .when(k === all.length - 1, e => e.mr(-5))
-              .when(Boolean(tag.tooltip), e => e.tooltip(tag.tooltip))))),
+              .when(!worktree && k === all.length - 1, e => e.mr(-5))
+              .when(Boolean(tag.tooltip), e => e.tooltip(tag.tooltip)))))
+          // 8px row padding minus 4px puts this 16px slot on the machine
+          // chevron's axis (4px right inset), independent of child indentation.
+          .when(worktree, el => el.child(slot(svg("mods/custom-workspace-chrome/branch.svg").size(U.smallIcon).text_color(t.muted))
+            .id(`space-worktree-${w.id}`).mr(-4).tooltip('Git worktree'))),
       );
   }
 
@@ -528,7 +540,7 @@ export default class Spaces extends View {
       .when(w.active, (el) => el.bg(t.selected)), {hover: s => s.bg(itemHover(t, w.active)), tooltip: w.directory || w.name})
       .on_click(this.drag.guard(() => run("space.select", { id: w.id })))
       .on_mouse_down("right", this.drag.guard((_e, cx) => { cx.stop_propagation(); this.menu(w); }))
-      .child((linked ? this.linkBadge(t) : badge(String(i + 1), fill)).id(`space-badge-${w.id}`)
+      .child((linked ? this.fleetConnector(t, true) : badge(String(i + 1), fill)).id(`space-badge-${w.id}`)
         .when(this.tabArrival?.spaceId === w.id, el => tabArrivalMotion(this, el)));
   }
 
@@ -557,7 +569,7 @@ export default class Spaces extends View {
     const sp = spaces();
     reconcileSpaceColors(sp);
     if (this.drag.current && !sp.some(s => s.id === this.drag.current.id)) this.drag.reset();
-    if (this.drag.view?.meta && JSON.stringify(this.drag.view.meta) !== JSON.stringify(captureSpaceBlock(sp,pluginWorkspaceLinks(),this.drag.view.id))) this.drag.reset();
+    if (this.drag.view?.meta && JSON.stringify(this.drag.view.meta) !== JSON.stringify(captureSpaceBlock(sp,displayLinks(),this.drag.view.id))) this.drag.reset();
     const preview = this.dragPreview(t);
     return this.drag.surface(v_flex().id("spaces-panel").relative().size_full().min_h(0).bg(t.chrome).text_size(U.font),
       {release: (id, cx) => this.drop(id, cx), enabled: () => !this.rename, scrollOffset: () => this.sidebarScroll?.offset ?? 0})

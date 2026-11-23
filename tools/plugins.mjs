@@ -9,7 +9,7 @@ import {safeRelative} from './files.mjs';
 export const PLUGIN_SOURCE = 'src/plugins';
 const ID = /^[a-z0-9][a-z0-9-]{0,62}$/;
 // Shipped beside the plugins in every plugin mod (packaged path -> source).
-const SHARED = Object.freeze({ 'plugins.js': `${PLUGIN_SOURCE}/registry.js`, 'plugins/api.js': `${PLUGIN_SOURCE}/api.js`, 'plugins/api.cjs': `${PLUGIN_SOURCE}/api.cjs` });
+const SHARED = Object.freeze({ 'plugins.js': `${PLUGIN_SOURCE}/registry.js`, 'plugins/api.js': `${PLUGIN_SOURCE}/api.js`, 'plugins/api.cjs': `${PLUGIN_SOURCE}/api.cjs`, 'fleet-display.js': 'src/shared/fleet-display.js' });
 const isTest = name => /\.test\.[cm]?js$/.test(name);
 
 function walk(dir, base = '') {

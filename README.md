@@ -584,7 +584,9 @@ motion are implemented once, not copied into each feature. See
 ## Spaces and the last tab
 
 Worktree spaces keep normal avatar/title alignment, with a Git worktree icon at
-the right. Drag them like other spaces within their machine: repository discovery
+the right. Its fixed icon slot shares the machine-header chevron's right inset
+and centre line, including attached fleet rows; Crew and other pills sit to its
+left without shifting the icon. Drag them like other spaces within their machine: repository discovery
 never regroups them or overrides the saved order. This is Spaces presentation and
 works independently of the Git plugin.
 
@@ -598,19 +600,51 @@ selected terminal's folder.
 
 **Settings → Spaces → Connect fleet space to coordinator** is off by default
 (`connectFleetToCoordinator`). When on with Crew enabled, a verified same-machine
-fleet attaches below its coordinator with a link badge; both rows omit the Crew tag.
+fleet attaches below its coordinator with a thin muted vector elbow descending
+from beneath the coordinator's number badge toward the inset, muted fleet name.
+The coordinator keeps its Crew tag and only the attached fleet omits it.
+Unrelated plugin tags remain. Refreshing Git or Crew, relay events, focus changes
+and unrelated pane changes do not temporarily turn a verified fleet back into an
+ordinary numbered row. The pair is a persisted property of its exact native
+space IDs and verified coordinator home/owner/adoption identity, not a temporary
+mode with a display timeout. Adding, renaming, removing or reordering unrelated
+spaces/tabs/panes on either machine cannot detach it. App restart, mod reload and
+layout changes restore the attached first frame while verification runs in the
+background. Only completed contradictory evidence, disabling the feature or
+missing native spaces clears it; transport failures alone do not.
+Retained visuals are not action permission: pair moves and Git/worker actions
+still require fresh exact live identity. An unverified coordinator Git panel keeps
+its loaded rows and folds with **Stale**, or shows **Verifying** on cold start;
+it starts no new GitHub reads or worker navigation until verification succeeds.
+Only sanitized pair identity is persisted for restoration, not task/PR inventory,
+reports or credentials; it is never exported as a portable preference.
 Dragging either expanded row moves the pair, with both rows dimmed and a paired
 preview. Public ordering commands wait for acknowledgements; the two-space move is
 not atomic and an uncertain result is never replayed. The compact rail remains
-selection-only and shows the same link glyph. They remain separate selectable native
+selection-only and shows the same elbow in the fleet's badge slot, with its usual
+name/directory tooltip. They remain separate selectable native
 spaces; no terminals or tabs are relocated. The coordinator's Git panel shows only
 recorded task PRs across projects, with task-scoped counts and no single active pin.
 Live working and reported tasks (including plans awaiting approval) are included.
-Unreported tasks make the recorded list possibly incomplete, even if a previous
-report already supplied a link. PR rows are grouped by repository; Open/Closed
-counts cover those distinct linked PRs only, never all PRs in each repository.
+Finished (`closed`) tasks from that coordinator's same Crew home keep their recorded
+Open/Draft PRs, without a robot or worker navigation. Their Merged/Closed PRs remain
+in Closed for only **24 hours after GitHub's merge/close timestamp**; older or
+undated historical closed PRs are excluded. Live-task PRs keep normal eligibility
+regardless of age. Shared PRs are fetched/displayed/counted once, and a live task
+wins the robot. No-PR reviewer/scout tasks add nothing. Finishing the last worker
+does not discard the verified coordinator home's PR facts.
+The panel keeps its normal Git title and controls, without an extra task heading
+or a generic incomplete-list notice. PR rows are grouped under repository headers
+using the same fold chevron and row style as Spaces machine headers. Click a
+header to fold just that repository; sections start expanded and remember their
+state locally, including panel reopen/reload. Open and Closed task-PR counts stay
+visible and update in folded headers; global counts still include folded sections.
+These counts cover distinct linked PRs only, never all PRs in each repository.
+Folding only hides section bodies: it does not fetch, cancel reads or stop updates.
+The recorded list can omit PRs that tasks have not yet supplied; this does not
+change the source or infer missing links.
 Robots open the exact live worker, and PR menus retain their captured URL.
-The source is plain `crew status --json` (`tasks[].pr`), not transcript/branch
+The source is `crew status --all --json` (`tasks[].pr`), not transcript/branch
 inference or a new Crew capability. No Crew change is required. The existing
 webhook connection refreshes only relevant linked repositories; unchanged PR/CI
 facts are not polled. Manual Refresh remains available. Repository errors and
