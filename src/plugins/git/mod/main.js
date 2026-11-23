@@ -239,7 +239,7 @@ export default class Changes extends View {
     const shown = this.shown();
     if (shown && this.webhookShown === false && this.repo) this.webhookDirty = true;
     this.webhookShown = shown;
-    this.webhooks.sync(cx, {enabled:shown && Boolean(this.repo),scope:JSON.stringify([this.context,this.repo?.name]),
+    this.webhooks.sync(cx, {enabled:shown && Boolean(this.repo),scope:JSON.stringify([this.context,this.repo?.name]),repository:this.repo?.name,
       onChange:(event,cx) => this.queueWebhook(event,cx)});
     if (!this.shown()) this.ciSweep = null;
     this.flushWebhook(cx);

@@ -18,7 +18,7 @@ function nextAttempt(check, now) {
 }
 function checkDelay(count, random) {
   const jitter = Math.max(0, Math.min(1, Number(random()) || 0));
-  return count ? Math.min(RETRY_MAX, Math.round(300000 * 2 ** (count - 1) * (0.9 + jitter * 0.2)))
+  return count ? Math.min(RETRY_MAX, Math.round(Math.min(RETRY_MAX, 300000 * 2 ** (count - 1)) * (0.9 + jitter * 0.2)))
     : Math.round(CHECK_MIN + jitter * (CHECK_MAX - CHECK_MIN));
 }
 const success = row => row && ['deployed', 'already current'].includes(row.action);
@@ -92,23 +92,39 @@ function inspect(home, { now = Date.now, isAlive = alive } = {}) {
 function checkMain(home, { force = false, invalidate = false, now = Date.now, random = Math.random, run = command, env = process.env } = {}) {
   const p = files(home), snapshot = inspect(home, { now });
   if (snapshot.job?.state === 'running') return snapshot;
-  const previous = snapshot.check || {};
+  let previous = snapshot.check || {};
   const latest = snapshot.job || snapshot.lastRun;
   const afterUpdate = ['complete', 'partial'].includes(latest?.state) && (latest.finished || 0) > (previous.attempted || 0);
   // Automatic hints bypass healthy freshness, never failure backoff or the
   // cross-process rate floor. Explicit Check now preserves its force semantics.
-  const due = nextAttempt(previous, now());
-  const hinted = invalidate && !previous.error && now() - (previous.attempted || 0) >= INVALIDATE_MIN;
-  if (!force && !afterUpdate && !hinted && now() < due) return snapshot;
+  const cached = value => {
+    if (force || afterUpdate) return null;
+    const check = value.check || {}, age = now() - (check.attempted || 0);
+    if (invalidate && !check.error) {
+      return check.attempted && age >= 0 && age < INVALIDATE_MIN
+        ? { ...value, retryAfter:check.attempted + INVALIDATE_MIN } : null;
+    }
+    return now() < nextAttempt(check, now()) ? value : null;
+  };
+  const reused = cached(snapshot); if (reused) return reused;
   fs.mkdirSync(p.dir, { recursive: true });
   const held = read(p.checkLock);
-  if (held && held.until < now() && read(p.checkLock)?.token === held.token) fs.unlinkSync(p.checkLock);
+  if (held && held.until <= now() && read(p.checkLock)?.token === held.token) fs.unlinkSync(p.checkLock);
   let fd;
   try { fd = fs.openSync(p.checkLock, 'wx'); }
-  catch (error) { if (error.code === 'EEXIST') return inspect(home, { now }); throw error; }
+  catch (error) {
+    if (error.code === 'EEXIST') return { ...inspect(home, { now }),
+      ...(invalidate ? { retryAfter:Math.max(now() + 300, read(p.checkLock)?.until || now() + 20000) } : {}) };
+    throw error;
+  }
   const token = randomUUID(); fs.writeFileSync(fd, JSON.stringify({ token, until: now() + 20000 })); fs.closeSync(fd);
   const attempted = now();
   try {
+    // Recheck after exclusive acquisition: another process can have completed
+    // between our first snapshot and open. Do not lose a deferred merge hint.
+    const fresh = { ...inspect(home, { now }), checking:false };
+    const reused = cached(fresh); if (reused) return reused;
+    previous = fresh.check || {};
     // A killed transport also leaves a bounded retry deadline, not a hot loop.
     atomic(p.check, { ...previous, attempted, nextAttempt: attempted + CHECK_MIN });
     const reply = run('git', ['ls-remote', '--', REPOSITORY, 'refs/heads/main'], { timeout: 15000, env: { ...env, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never' } });

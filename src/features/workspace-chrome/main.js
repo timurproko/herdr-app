@@ -8,7 +8,7 @@ import { enterCustom } from "./look.js";
 import { restoreFrames } from "./startup.js";
 import { pluginEvent } from './plugins.js';
 import { reorder, groupedInsertion } from './reorder.js';
-import { initCustomizationUpdates, customizationUpdateAvailable, observeCustomizationUpdates } from './customization-updates.js';
+import { initCustomizationUpdates, customizationUpdateAvailable, observeCustomizationUpdates, invalidateCustomizationUpdates } from './customization-updates.js';
 import { theme, run, props, window, shared, setShared, updates, layout, openOverlay, closeOverlay } from "./host.js";
 
 function find(node, id) {
@@ -45,6 +45,13 @@ export default class WorkspaceChrome extends View {
       restoreFrames(cx);
       initCustomizationUpdates(this, cx, 'custom-workspace-chrome', { chrome: true });
     }
+  }
+  close() {
+    this.sidebarClosed = true;
+    this.customUpdateClosed = true;
+    this.customAutoTimer = null;
+    this.customAutoDirty = false;
+    pluginEvent('sidebar.close', { owner:this });
   }
   button(id, label, action) {
     const t = theme();
@@ -147,10 +154,13 @@ export default class WorkspaceChrome extends View {
       .when(Boolean(this.drag.view), el => el.child(this.footerPreview(t)));
   }
   render(cx) {
+    if (this.sidebarClosed) return div();
     if (props()?.footerMenu) return this.footerMenu(theme());
     if (!props()?.footer) {
       observeCustomizationUpdates(this, cx);
       pluginEvent('sidebar.sync',{owner:this,cx});
+      pluginEvent('updates.watch',{owner:this,cx,repository:'timurproko/herdr-app',
+        onInvalidate:(cx,current)=>invalidateCustomizationUpdates(this,cx,current)});
     }
     const t = theme();
     const collapsed = narrow();

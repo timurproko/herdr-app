@@ -29,6 +29,8 @@ try {
   worker.checkMain(home, options); assert.equal(calls, 1, 'mounts coalesce within the persisted healthy delay');
   assert.equal(snapshot.check.nextAttempt, clock + worker.CHECK_MIN);
   assert.equal(worker.checkDelay(0, () => 1), worker.CHECK_MAX);
+  assert.equal(worker.checkDelay(4, () => 0), 1620000, 'backoff still jitters at the cap');
+  assert.equal(worker.checkDelay(4, () => 1), worker.RETRY_MAX);
   clock += worker.CHECK_MIN; target = 'b'.repeat(40); snapshot = worker.checkMain(home, options);
   assert.equal(calls, 2); assert.equal(snapshot.check.available, true);
   let row = customizationRowState(updateProjection(snapshot)); assert.equal(row.label, 'Update'); assert.equal(row.description, 'Update available.');
@@ -91,7 +93,7 @@ try {
   row = customizationRowState({ ...current, job: { state: 'complete', finished: clock + 1 } }); assert.equal(row.description, 'Updated. Check now.');
   assert.equal(CUSTOMIZATION_LABEL, 'herdr-app-custom');
   // Runtime projection and sidecars are never preference export inputs.
-  fs.writeFileSync(path.join(home, 'shared.json'), JSON.stringify({ [CUSTOMIZATION_UPDATE_KEY]: { log: '/private', token: 'private', resume: { opening: 'private-opening', started: 1000 } }, 'custom.settings.navigation': { version: 1, dialogs: [{ overlay: 'private-dialog', section: 'updates' }] }, 'sidebar.width': 268 }));
+  fs.writeFileSync(path.join(home, 'shared.json'), JSON.stringify({ [CUSTOMIZATION_UPDATE_KEY]: { log: '/private', token: 'private', resume: { opening: 'private-opening', started: 1000 } }, 'custom.settings.navigation': { version: 1, dialogs: [{ overlay: 'private-dialog', section: 'updates' }] }, 'custom.git.relay-runtime': { owner:'private-lease', repositories:{ 'private/repo':{ revision:3,main:2 } } }, 'custom.git.relay-retry': 4, 'sidebar.width': 268 }));
   syncPreferences('export', home, { hostname: 'fixture', isDesktopOpen: () => false });
   const exported = JSON.parse(fs.readFileSync(path.join(home, 'preferences/fixture.json')));
   assert.deepEqual(exported.shared, { 'sidebar.width': 268 });

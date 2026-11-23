@@ -44,7 +44,7 @@ With no relay or invalid keys, updates run polling-only and do not create/repair
 
 ### 4. Add minimal optional metadata, then filter strictly
 
-Keep protocol 1 and existing fields compatible. For `push`, forward a bounded validated `ref`. For `pull_request`, forward a bounded validated action, boolean merged value and base branch string. Validate both at the HMAC-verified relay producer and consumer; omit/refuse malformed optional fields without breaking ordinary CI invalidations. Do not forward a SHA, body, author or secrets: the authoritative main check does not need them.
+Keep protocol 1 and existing fields compatible. For `push`, forward a bounded validated `ref`. For `pull_request`, forward a bounded validated action, boolean merged value and base branch string. Validate both at the HMAC-verified relay producer and consumer; omit/refuse malformed optional fields without breaking ordinary CI invalidations. Do not forward a SHA, body, author or secrets: the authoritative main check does not need them. The authenticated configuration response adds public `noticeVersion: 2`; Settings uses that capability to offer the existing explicit Configure action for legacy relays, which otherwise hide Configure once reachable. Legacy relay readiness for Git CI is retained. Tool/login checks prepare only on the person's actions, never automatic redeployment.
 
 The update filter matches repository case-insensitively to `timurproko/herdr-app` and branch case-sensitively: `push` with `ref === 'refs/heads/main'`, or `pull_request` with action closed, merged strictly true, base main. Reject other events, incomplete legacy fields and unrelated repositories/branches. Never copy notice facts into target SHA or availability.
 
@@ -57,6 +57,10 @@ Outcome 1 extends `tests/update-check.test.mjs` and `tests/update-row.test.mjs` 
 Outcome 2 extends `tests/git-webhooks.test.mjs` and controller fixtures for metadata validation, HMAC/auth failure, legacy relay payloads, fixed repo/main filters, push+PR bursts, event-during-check, disconnect/reconnect, hidden/other-repo Git, Git disable/re-enable, missing keys, no enrollment, owner replacement and exactly one socket. Cover package closure/plugin architecture and preference exclusion for all new runtime keys. Update docs/GIT-WEBHOOKS.md, docs/ARCHITECTURE.md, README and commands with shared ownership and explicit rollout steps. No real socket/account/cloud/deploy tests.
 
 Run quick targeted fixtures as each outcome lands; final integration is CI, not repeated broad local suites. Native timing/delivery smoke checks remain a clearly named maintainer follow-up after approved installation, not a claim from fixtures.
+
+### 6. Lessons from closed PR 11
+
+The maintainer closed the earlier attempt unmerged with the comment: “The Git-plugin-based design is replaced by an updater-owned mechanism.” There were no review findings explaining a technical failure. Its body/diff retained mount/hourly fallback and treated any target-repository push as a hint without branch metadata, so it needed no receiver redeploy. This change does not revive that as the updater: polling/backoff/startup/focus remain updater-owned and independent of Git, with the now-approved relay route only an optional accelerator under the approved disable policy. Retain the sound one-transport/public-revision boundary, explicit chrome teardown before/after async startup, post-lock cache recheck and deferred lease/rate hints. The current setup UI is Account → Add repo → select → Add, not the stale checkbox/Apply prose; documentation follows the actual UI. Exact-main filtering in this approved plan deliberately requires the new metadata and an explicit relay upgrade.
 
 ## Risks / Trade-offs
 

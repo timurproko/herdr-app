@@ -3,6 +3,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { loadMod } from '../tools/plugin-harness.mjs';
+import { RELAY_STATE } from '../src/plugins/git/relay-state.js';
 const read = file => fs.readFileSync(file, 'utf8');
 const KEY = 'custom.customization-update';
 function element(asset) {
@@ -21,6 +23,8 @@ const find = (tree, id) => nodes(tree).find(el => el.attrs.id?.[0] === id);
 const marker = (tree, size) => nodes(tree).find(el => el.attrs.bg?.[0] === '#8844cc' && (el.attrs.size?.[0] === size || el.attrs.w?.[0] === size));
 const signature = node => JSON.stringify(node?.attrs);
 const store = new Map(), copies = [], refreshes = new Set(), jobs = [], calls = [];
+const subscription = await loadMod({host:{shared:key=>store.get(key),checking:()=>false},globals:{URL},
+  modules:{'space-color-state.js':{currentSpaceColor:()=>null}},entry:"export {watchUpdates} from './plugins/git/relay-client.js';"});
 let width = 248, nativeReady = false, coreReady = false, managed = false, failExec = false, transport = null;
 let clock = Date.now();
 class Clock extends Date { static now() { return clock; } }
@@ -38,7 +42,7 @@ const realFiles = {
 };
 async function mount(kind, props) {
   const context = vm.createContext({ Date: Clock, console }), cache = new Map(), requested = new Map();
-  const copy = { kind, props, renders: 0, timers: [], openings: [] };
+  const copy = { kind, props, renders: 0, timers: [], afters:[], openings: [] };
   const clone = value => value === undefined ? undefined : vm.runInContext(`JSON.parse(${JSON.stringify(JSON.stringify(value))})`, context);
   const noop = () => null;
   const host = {
@@ -61,6 +65,7 @@ async function mount(kind, props) {
     Input: {}, InputState: { new: () => ({ on() {}, value: () => '' }) }, Popover: {}, Scrollbar: { vertical: element }, ScrollHandle: { new: () => ({ scroll_to_item() {} }) },
     Popup: { new: (id, trigger) => element().id(id).child(trigger) } };
   const values = { liveTheme: host.theme, pluginIsEnabled: () => true, pluginTextOpen: () => false,
+    pluginEvent(name,context){if(name==='updates.watch')subscription.watchUpdates({...context,enabled:true,setting:()=> 'https://relay.test'});},
     M: { bodyInset: 16 }, sectionRow: (_t, el) => el, sectionStack: (_t, el) => el, divider: () => element(), dividerHeight: () => 1 };
   function source(name, file) {
     const text = read(file);
@@ -86,7 +91,7 @@ async function mount(kind, props) {
   const main = await load('./main.js'); await main.link(load); await main.evaluate();
   copy.view = new main.namespace.default();
   copy.cx = { notify: () => refreshes.add(copy), stop_propagation() {}, focus_handle: () => ({ focus() {} }),
-    spawn: fn => jobs.push(fn(copy.cx)), timer: { every: (ms, fn) => copy.timers.push({ ms, fn }), after() {} } };
+    spawn: fn => jobs.push(fn(copy.cx)), timer: { every: (ms, fn) => copy.timers.push({ ms, fn }), after: (ms,fn)=>copy.afters.push({at:clock+ms,fn}) } };
   copy.render = () => { copy.tree = copy.view.render(copy.cx); copy.renders++; };
   copies.push(copy);
   if (kind === 'settings') {
@@ -125,7 +130,7 @@ const surfaces = () => [find(footer.tree, 'settings'), find(compact.tree, 'foote
 const markers = () => surfaces().map((tree, i) => marker(tree, i === 3 ? 7 : 6));
 assert.deepEqual(markers().map(Boolean), [false, false, false, false]);
 assert.equal(footer.timers.length, 0, 'Footer reader has no polling/controller');
-assert.ok(header.timers.some(timer => timer.ms === 3600000));
+assert.ok(header.afters.some(timer => timer.at === clock+120000));
 // Review regression: a failed manual check followed immediately by Updates
 // navigation must not turn the unchanged cached success into confirmation.
 // A frozen clock makes this exactly within the native three-second window.
@@ -174,6 +179,24 @@ assert.deepEqual(markers().map(Boolean), [false, false, false, true], 'Core-only
 managed = true; for (const copy of copies) refreshes.add(copy); await settle();
 assert.deepEqual(markers().map(Boolean), [false, false, false, false], 'managed Core does not light navigation');
 assert.equal(find(footer.tree, 'settings').attrs.accessibility_label[0], 'Settings');
+assert.ok(!markers().some(Boolean));
+// Real Git update subscriber -> real chrome controller -> every mounted marker.
+const relay = {scope:'marker-relay',owner:'live',ready:1,repositories:{'timurproko/herdr-app':{revision:1,main:1}}};
+store.set(RELAY_STATE,relay); for(const copy of copies)refreshes.add(copy);
+const beforeHint=calls.length;
+next={...next,check:{attempted:clock+300,checked:clock+300,available:true,nextAttempt:clock+150000}};
+await settle(); assert.equal(calls.length,beforeHint,'merge hint does not claim a badge or dispatch before debounce');
+clock+=300;
+for(const copy of copies)for(const timer of copy.afters.splice(0)){if(timer.at<=clock)timer.fn(copy.cx);else copy.afters.push(timer);}
+await settle();
+assert.equal(calls.length,beforeHint+1);assert.equal(calls.at(-1).kind,'workspace-chrome');
+assert.equal(calls.at(-1).action,'check');assert.equal(calls.at(-1).force,false);assert.equal(calls.at(-1).invalidate,true);
+assert.deepEqual(markers().map(Boolean),[true,true,true,true],'merge hints update existing markers without Check now');
+relay.repositories['other/repo']={revision:2,main:2};for(const copy of copies)refreshes.add(copy);await settle();
+assert.equal(calls.length,beforeHint+1,'unrelated repository does not check');
+assert.ok(calls.slice(beforeHint).every(call=>call.action!=='launch'));
+store.delete(RELAY_STATE);next={...next,check:{checked:clock,available:false}};
+settings.api.refreshCustomizationUpdates(settings.view,settings.cx);await settle();
 assert.ok(!markers().some(Boolean));
 // A fresh module graph/owner, original overlay props and shared host store model
 // host replacement. Removed generations no longer have timers or redraws.
@@ -290,4 +313,8 @@ for (const badResume of [null, { opening: openingA, started: 'invalid' }, { open
   assert.equal(invalid.view.section, 'look', 'invalid/mismatching resume hints never choose a section'); retire(invalid);
 }
 transport = null;
+const beforeTeardown=calls.length;header.view.close();
+assert.equal(header.view.customUpdateClosed,true);assert.equal(header.view.customAutoTimer,null);
+for(const timer of header.afters.splice(0))timer.fn(header.cx);await settle();
+assert.equal(calls.length,beforeTeardown,'actual chrome teardown cancels automatic timer callbacks');
 console.log('PASS: real Settings init/row/controller replacement; per-opening update-only resume, reused o1 native dismissal/restart, expiry/destination guards and marker parity. No native UI exercised.');

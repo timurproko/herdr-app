@@ -5,9 +5,14 @@
 import { appHome } from '../host.js';
 import { currentSpaceColor } from '../space-color-state.js';
 import { MOD } from './where.js';
+import { WebSocket } from 'websocket';
 
 // Herdr, through the one facade every mod uses.
 export { exec, hc, window, spaces, panes, terminals, machines, shared, setShared, appHome, readTextFile, notify, layout, run, checking } from '../host.js';
+
+// Declaration discovery never connects. Only a mounted, enabled integration
+// calls this supported native transport; fixtures inject a connection factory.
+export const connectWebSocket = url => WebSocket.connect(url);
 
 // A space's color as the Spaces feature shows it (a theme color name or #rrggbb).
 export const spaceColor = id => currentSpaceColor(id);

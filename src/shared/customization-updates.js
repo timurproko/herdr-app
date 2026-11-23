@@ -42,6 +42,9 @@ export function refreshCustomizationUpdates(owner, cx, action = 'status', force 
     try {
       let snapshot = await request(owner, action, force, invalidate);
       owner.customAutoRetry = 0; owner.customAutoFailures = 0;
+      if (invalidate && snapshot.retryAfter > Date.now()) {
+        owner.customAutoDirty = true; owner.customAutoHintRetry = snapshot.retryAfter;
+      }
       if (!publish(snapshot)) return;
       // A successful deploy needs a fresh main check, including after a reload.
       // Failed checks persist an attempt time so a visible page cannot retry-loop.
@@ -56,7 +59,7 @@ export function refreshCustomizationUpdates(owner, cx, action = 'status', force 
     } catch (error) {
       if (owner.customUpdateChrome) {
         owner.customAutoFailures = Math.min(4, (owner.customAutoFailures || 0) + 1);
-        owner.customAutoRetry = Date.now() + Math.min(1800000, 300000 * 2 ** (owner.customAutoFailures - 1) * (0.9 + Math.random() * 0.2));
+        owner.customAutoRetry = Date.now() + Math.min(1800000, Math.min(1800000, 300000 * 2 ** (owner.customAutoFailures - 1)) * (0.9 + Math.random() * 0.2));
       }
       const failedAction = owner.customUpdatePending;
       const previous = customizationUpdateSnapshot();
@@ -83,7 +86,7 @@ function scheduleCustomizationCheck(owner, cx, replace = false) {
   const now = Date.now(), snapshot = customizationUpdateSnapshot();
   let due = snapshot?.check?.nextAttempt;
   if (!Number.isFinite(due) || due > now + 1800000) due = now + 120000;
-  if (owner.customAutoDirty) due = snapshot?.check?.error ? due : Math.max(now + 300, (owner.customAutoStarted || 0) + 15000);
+  if (owner.customAutoDirty) due = snapshot?.check?.error ? due : Math.max(now + 300, (owner.customAutoStarted || 0) + 15000, owner.customAutoHintRetry || 0);
   if (snapshot?.checking) due = Math.max(due, now + 20000);
   due = Math.max(now + 300, due, owner.customAutoRetry || 0);
   if (!replace && owner.customAutoDue && owner.customAutoDue <= due) return;
@@ -92,15 +95,20 @@ function scheduleCustomizationCheck(owner, cx, replace = false) {
   cx.timer.after(due - now, cx => {
     if (owner.customAutoTimer !== token || owner.customUpdateClosed || checking()) return;
     owner.customAutoDue = null;
+    if (owner.customAutoDirty && owner.customAutoValid && !owner.customAutoValid()) {
+      owner.customAutoDirty = false; owner.customAutoValid = null;
+      scheduleCustomizationCheck(owner,cx,true); return;
+    }
     if (owner.customUpdatePending) { scheduleCustomizationCheck(owner, cx); return; }
     const invalidate = owner.customAutoDirty === true || Date.now() - due >= 120000;
-    owner.customAutoDirty = false; owner.customAutoStarted = Date.now();
+    owner.customAutoDirty = false; owner.customAutoHintRetry = 0; owner.customAutoStarted = Date.now();
     refreshCustomizationUpdates(owner, cx, 'check', false, invalidate);
   });
 }
-export function invalidateCustomizationUpdates(owner, cx) {
+export function invalidateCustomizationUpdates(owner, cx, current = null) {
   if (checking() || owner.customUpdateClosed || !owner.customUpdateChrome) return;
   owner.customAutoDirty = true;
+  owner.customAutoValid = current;
   scheduleCustomizationCheck(owner, cx);
 }
 export function observeCustomizationUpdates(owner, cx) {
