@@ -34,7 +34,7 @@ Read status on Updates entry/reload and once per second only while that page sho
 
 | Outcome | Row and single button |
 | --- | --- |
-| Running | `Updating…` / disabled Updating… |
+| Running | `Updating all machines…` / disabled Updating… |
 | All succeeded/current | New revision; Up to date plus successful post-run check time / Check now; if main advanced, Update available / Update instead. |
 | Desktop succeeded, peer skipped/failed or inventory failed | New desktop revision; `Desktop updated; some machines skipped or failed. Log: <path>` / Check now unless newer main is confirmed. Routine checks retain this warning; log contains machine details/backup IDs. |
 | Desktop refused/failed | `Update failed: <short reason>. Recovery: documented rollback. Log: <path>` / Check now. Old revision only if still verified; otherwise unknown. |

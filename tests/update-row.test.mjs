@@ -349,6 +349,7 @@ assert.match(settings, /u\.app\.ready \|\| \(u\.core\.ready && !u\.core\.managed
 assert.equal((chromeSource.match(/updates\(\)\.app\.ready \|\| customizationUpdateAvailable\(\)/g) || []).length, 2, 'expanded Settings and compact More preserve native predicates');
 for (const command of ['app.check_updates', 'app.update', 'app.update_core', 'app.whats_new']) assert.ok(settings.includes(command));
 assert.equal((settings.match(/\.child\(customizationUpdateRow\(this, t\)\)/g) || []).length, 1);
+assert.match(fs.readFileSync('openspec/specs/customization-lifecycle/spec.md', 'utf8'), /its description shows Updating… with the unchanged disabled Updating… action until a result is known/, 'current reload contract retains the concise running description after finalization');
 const updateExplanation = settings.match(/\.child\("(Herdr [^"\n]*)"\)/)?.[1];
 assert.equal(updateExplanation, 'Herdr looks for both every hour and tells you in the corner. herdr-core runs your terminals, so they keep running through its updates.', 'Updates retains the exact short paragraph from before PR 20');
 assert.match(settings, /initUpdateCheckFeedback\(this, cx/);
