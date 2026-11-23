@@ -86,8 +86,10 @@ including final success, partial, failure and unknown outcomes. No fixture launc
 a real update or demonstrates native process survival.
 `tests/update-markers.test.mjs` uses separate Settings/header/footer/menu VM
 contexts, the real controller/helper and a changed-shared-value refresh queue:
-manual checks reach already-mounted roots, and all native/Custom combinations
-produce the same marker markup. The Settings harness also runs real initialization
+manual checks and a shared relay push reach already-mounted roots, and all
+native/Custom combinations produce the same marker markup. The push case uses
+the real chrome consumer and publication controller without a Check now click;
+unrelated/duplicate snapshots do not request checks or launch updates. The Settings harness also runs real initialization
 and navigation, replacing the complete module graph with original overlay props
 and retained shared state to check update-only restoration and lifecycle teardown.
 The actual Settings opener supplies fresh per-opening identities: native/backdrop
@@ -134,6 +136,22 @@ Any additional unsupported unmodified suite discovered on hosted runners is list
 here with its concrete failure, not rewritten or silently skipped. Passing hosted
 checks establishes only this documented subset, not GPUI interactions, private
 shell wiring, live SSH/core permissions, provider refreshes or relay hardening.
+
+`tests/git-relay-stream.test.mjs` uses fake native sockets and the actual Git
+panel's visibility/queue/flush methods: visible notices refresh loaded pages,
+hidden notices keep the socket alive without panel reads, showing again catches
+up and later notices still refresh, and reconnect retains expanded depth. All
+pre-existing Git assertions remain; the transport fixture's loader/import stubs
+follow its move to the chrome owner. Its disabling-owner socket-close and
+no-retry assertions now apply to that owner, complemented by the new assertion
+that hiding the panel does not close shared transport.
+`tests/update-hints.test.mjs` combines the real controller and worker in a
+disposable home with fake time/Git replies: fixed-main publication, debounce/max
+wait, cooldown, lease contention, in-flight follow-up, reconnect/generation
+invalidation, failed-attempt retention, disabled/eager/closed guards and unchanged
+manual/mount/hourly paths. Neither suite contacts a relay, creates webhooks,
+installs tasks, launches updates, sends to agents or touches a live Herdr home.
+These tests do not prove live delivery latency or GPUI pixel visibility.
 
 ## Capability coverage
 

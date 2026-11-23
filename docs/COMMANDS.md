@@ -127,6 +127,17 @@ printed backup IDs and use the existing recovery commands below.
 
 ### Settings customization updater
 
+Custom checks published main on mount and hourly without installing anything.
+With the Git plugin enabled and `timurproko/herdr-app` enrolled in its existing
+relay, a push notice schedules the same fixed-main check after a one-second
+quiet period (three-second maximum burst wait). Automatic hint attempts are at
+least ten seconds apart and still honor the existing exclusive check lease;
+reconnection requests one coalesced catch-up. No branch/revision/URL in a notice
+is trusted. Git may be hidden or showing another folder. Disabled/unconfigured or
+unreachable Git quietly leaves the mount/hourly and manual Check now fallbacks.
+Check now retains its force/recent-feedback behavior; only Update installs.
+See [maintainer enrollment](GIT-WEBHOOKS.md#customization-update-discovery).
+
 The Updates row launches one terminal-free detached Node runner; the mod does not
 supervise its own replacement. It uses only the desktop's ordinary clone at
 `~/.local/share/herdr-app`, creating it on first Update if absent. Wrong, dirty,

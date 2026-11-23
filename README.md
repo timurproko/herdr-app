@@ -1006,9 +1006,15 @@ showing a short installed revision and **Check now** or **Update**. Update uses 
 existing all-machine command through an independent, finite runner: full deploy
 on this desktop and shell deploy on eligible peers. Its desktop source is only
 `~/.local/share/herdr-app` (created on first Update if absent), never the developer
-checkout or a crew worktree. Checks compare published main, run hourly while
-Custom is mounted and raise the existing Custom dots; they never deploy or probe
-peers. Unknown/changed revision evidence is shown honestly as revision unknown.
+checkout or a crew worktree. Checks compare published main on mount and hourly
+while Custom is mounted. With Git enabled and its relay enrolled for this
+repository, push notices trigger a debounced check even while the Git panel is
+hidden; reconnecting catches up too. The existing Custom dots light up without
+Check now. Burst checks share the existing lease and a ten-second automatic rate
+bound. Git disabled, unconfigured or offline silently leaves the mount/hourly and
+manual fallbacks. Checks never deploy or probe peers; installation still requires
+**Update**. Unknown/changed revision evidence is shown honestly as revision unknown.
+See [one-time relay enrollment](docs/GIT-WEBHOOKS.md#customization-update-discovery).
 
 The latest status, result and log live under the selected Herdr home's
 `.customizations/`: `update-status.json`, `deploy-all-result.json`,

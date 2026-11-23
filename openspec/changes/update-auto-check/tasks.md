@@ -9,11 +9,11 @@
 
 ## 2. Debounced fixed-repository hints publish update availability while manual actions and fallbacks remain unchanged
 
-- [ ] 2.1 Rebase onto main after PR 10 merges before overlapping controller work, retaining its reload-restoration guards; the updated branch and targeted reload/controller fixtures demonstrate that the two changes coexist.
-- [ ] 2.2 Add chrome-only shared-signal consumption with one-second debounce, three-second maximum burst wait, one pending invalidation and disabled/stale-generation cancellation; fake-time fixtures cover target push, unrelated repository/non-push, duplicates, busy owner and reconnect catch-up.
-- [ ] 2.3 Extend only the existing check request with a validated hint reason, persisted ten-second automatic cooldown and retry-after response while honoring the exclusive check lease and update-running guards; disposable worker fixtures assert fixed public main, burst/race bounds, a new hint during I/O and failure-attempt retention.
-- [ ] 2.4 Keep mount/hourly checks, manual force/feedback and explicit Update dispatch unchanged, and preserve marker/error projections; separate-sandbox updater/marker fixtures assert availability reaches every mounted marker without a click, disabled/unconfigured fallbacks still run and no hint path clones, deploys, contacts peers or launches an update.
-- [ ] 2.5 Update README and update-command/testing guidance with this outcome's behavior and fixture coverage; targeted update/webhook/marker fixtures pass with their existing VM flags and the docs distinguish mocked results from live timing evidence.
+- [x] 2.1 Rebase onto main after PR 10 merges before overlapping controller work, retaining its reload-restoration guards; the updated branch and targeted reload/controller fixtures demonstrate that the two changes coexist.
+- [x] 2.2 Add chrome-only shared-signal consumption with one-second debounce, three-second maximum burst wait, one pending invalidation and disabled/stale-generation cancellation; fake-time fixtures cover target push, unrelated repository/non-push, duplicates, busy owner and reconnect catch-up.
+- [x] 2.3 Extend only the existing check request with a validated hint reason, persisted ten-second automatic cooldown and retry-after response while honoring the exclusive check lease and update-running guards; disposable worker fixtures assert fixed public main, burst/race bounds, a new hint during I/O and failure-attempt retention.
+- [x] 2.4 Keep mount/hourly checks, manual force/feedback and explicit Update dispatch unchanged, and preserve marker/error projections; separate-sandbox updater/marker fixtures assert availability reaches every mounted marker without a click, disabled/unconfigured fallbacks still run and no hint path clones, deploys, contacts peers or launches an update.
+- [x] 2.5 Update README and update-command/testing guidance with this outcome's behavior and fixture coverage; targeted update/webhook/marker fixtures pass with their existing VM flags and the docs distinguish mocked results from live timing evidence.
 
 ## 3. Maintainer setup guidance describes explicit repository enrollment and requires no relay redeployment
 

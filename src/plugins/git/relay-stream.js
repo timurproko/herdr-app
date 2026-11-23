@@ -29,7 +29,8 @@ export function syncRelay(context) {
     }
     if (!scope) return;
     const record = owner.gitRelayRecord;
-    const current = () => owner.gitRelayRecord?.generation === record.generation
+    const current = () => !checking() && owner.gitRelayRecord?.generation === record.generation
+      && (shared('custom.git.webhook-state')?.revision || 0) === revision
       && owner.gitRelayScope === scope && shared('custom.plugins')?.git?.enabled !== false
       && owner.gitRelayContext.enabled && owner.gitRelayContext.setting('relay') === configured;
     const publish = patch => {

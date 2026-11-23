@@ -38,7 +38,7 @@ const realFiles = {
 };
 async function mount(kind, props) {
   const context = vm.createContext({ Date: Clock, console }), cache = new Map(), requested = new Map();
-  const copy = { kind, props, renders: 0, timers: [], openings: [] };
+  const copy = { kind, props, renders: 0, timers: [], afters: [], openings: [] };
   const clone = value => value === undefined ? undefined : vm.runInContext(`JSON.parse(${JSON.stringify(JSON.stringify(value))})`, context);
   const noop = () => null;
   const host = {
@@ -86,7 +86,7 @@ async function mount(kind, props) {
   const main = await load('./main.js'); await main.link(load); await main.evaluate();
   copy.view = new main.namespace.default();
   copy.cx = { notify: () => refreshes.add(copy), stop_propagation() {}, focus_handle: () => ({ focus() {} }),
-    spawn: fn => jobs.push(fn(copy.cx)), timer: { every: (ms, fn) => copy.timers.push({ ms, fn }), after() {} } };
+    spawn: fn => jobs.push(fn(copy.cx)), timer: { every: (ms, fn) => copy.timers.push({ ms, fn }), after: (ms, fn) => copy.afters.push({ at: clock + ms, fn }) } };
   copy.render = () => { copy.tree = copy.view.render(copy.cx); copy.renders++; };
   copies.push(copy);
   if (kind === 'settings') {
@@ -174,6 +174,29 @@ assert.deepEqual(markers().map(Boolean), [false, false, false, true], 'Core-only
 managed = true; for (const copy of copies) refreshes.add(copy); await settle();
 assert.deepEqual(markers().map(Boolean), [false, false, false, false], 'managed Core does not light navigation');
 assert.equal(find(footer.tree, 'settings').attrs.accessibility_label[0], 'Settings');
+assert.ok(!markers().some(Boolean));
+// Public relay push -> real non-footer chrome consumer -> existing publication and
+// already-mounted marker roots, with no Check now callback or forced test render.
+const relayKey = 'custom.git.webhook-events';
+const relay = { version: 1, generation: 'marker-relay', active: true, connected: false, ready: 0, repositories: {} };
+const publishRelay = async () => { store.set(relayKey, JSON.parse(JSON.stringify(relay))); for (const copy of copies) refreshes.add(copy); await settle(); };
+await publishRelay();
+const beforeHint = calls.length;
+relay.connected = true; relay.ready = 1; relay.repositories['timurproko/herdr-app'] = { sequence: 1, push: 1 };
+next = { ...next, check: { attempted: clock + 1000, checked: clock + 1000, available: true } };
+await publishRelay(); assert.equal(calls.length, beforeHint, 'A notice is debounced before dispatch');
+clock += 1000;
+for (const copy of copies) for (const timer of copy.afters.splice(0)) { if (timer.at <= clock) timer.fn(copy.cx); else copy.afters.push(timer); }
+await settle();
+assert.equal(calls.length, beforeHint + 1); assert.equal(calls.at(-1).kind, 'workspace-chrome');
+assert.equal(calls.at(-1).action, 'check'); assert.equal(calls.at(-1).reason, 'webhook'); assert.equal(calls.at(-1).force, false);
+assert.deepEqual(markers().map(Boolean), [true, true, true, true], 'Push publication updates every mounted native-parity marker');
+assert.equal(settings.view.customUpdateAsked, null, 'Background discovery does not arm Settings user-request feedback');
+relay.repositories['other/repo'] = { sequence: 2, push: 2 }; await publishRelay(); await publishRelay();
+assert.equal(calls.length, beforeHint + 1, 'Unrelated or repeated relay snapshots start no checks');
+assert.ok(calls.slice(beforeHint).every(call => call.action !== 'launch'), 'Relay discovery never installs');
+store.delete(relayKey); next = { ...next, check: { checked: clock, available: false } };
+settings.api.refreshCustomizationUpdates(settings.view, settings.cx); await settle();
 assert.ok(!markers().some(Boolean));
 // A fresh module graph/owner, original overlay props and shared host store model
 // host replacement. Removed generations no longer have timers or redraws.

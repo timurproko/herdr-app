@@ -7,6 +7,7 @@ const { createHash, randomUUID } = require('node:crypto');
 const REPOSITORY = 'https://github.com/timurproko/herdr-app.git';
 const DEADLINE = 30 * 60 * 1000;
 const HOUR = 60 * 60 * 1000;
+const HINT_COOLDOWN = 10000;
 const success = row => row && ['deployed', 'already current'].includes(row.action);
 const read = file => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
 function files(home) {
@@ -74,22 +75,31 @@ function inspect(home, { now = Date.now, isAlive = alive } = {}) {
   if (check?.target) check = { ...check, available: revision !== check.target && (!check.error || check.available === true) };
   return { job, lastRun, result, check, checking: (read(p.checkLock)?.until || 0) > now(), revision, locked: fs.existsSync(p.lock), details, log: details?.kind === 'log' ? details.path : '' };
 }
-function checkMain(home, { force = false, now = Date.now, run = command, env = process.env } = {}) {
+function checkMain(home, { force = false, reason = null, now = Date.now, run = command, env = process.env } = {}) {
   const p = files(home), snapshot = inspect(home, { now });
   if (snapshot.job?.state === 'running') return snapshot;
-  const previous = snapshot.check || {};
+  let previous = snapshot.check || {};
+  const hint = reason === 'webhook';
+  if (hint && previous.attempted && now() - previous.attempted < HINT_COOLDOWN) return { ...snapshot, retryAfter: previous.attempted + HINT_COOLDOWN };
   const latest = snapshot.job || snapshot.lastRun;
   const afterUpdate = ['complete', 'partial'].includes(latest?.state) && (latest.finished || 0) > (previous.attempted || 0);
-  if (!force && !afterUpdate && previous.attempted && now() - previous.attempted < HOUR) return snapshot;
+  if (!hint && !force && !afterUpdate && previous.attempted && now() - previous.attempted < HOUR) return snapshot;
   fs.mkdirSync(p.dir, { recursive: true });
   const held = read(p.checkLock);
   if (held && held.until < now() && read(p.checkLock)?.token === held.token) fs.unlinkSync(p.checkLock);
   let fd;
   try { fd = fs.openSync(p.checkLock, 'wx'); }
-  catch (error) { if (error.code === 'EEXIST') return inspect(home, { now }); throw error; }
+  catch (error) {
+    if (error.code === 'EEXIST') return { ...inspect(home, { now }), ...(hint ? { retryAfter: Math.max(now() + 1, read(p.checkLock)?.until || now() + 20000) } : {}) };
+    throw error;
+  }
   const token = randomUUID(); fs.writeFileSync(fd, JSON.stringify({ token, until: now() + 20000 })); fs.closeSync(fd);
   const attempted = now();
   try {
+    // Another process may have finished between our snapshot and exclusive open.
+    previous = read(p.check) || {};
+    if (hint && previous.attempted && attempted - previous.attempted < HINT_COOLDOWN) return { ...inspect(home, { now }), checking: false, retryAfter: previous.attempted + HINT_COOLDOWN };
+    if (!hint && !force && !afterUpdate && previous.attempted && attempted - previous.attempted < HOUR) return { ...inspect(home, { now }), checking: false };
     // Persist attempts before I/O: a failed request cannot create an hourly loop.
     atomic(p.check, { ...previous, attempted });
     const reply = run('git', ['ls-remote', '--', REPOSITORY, 'refs/heads/main'], { timeout: 15000, env: { ...env, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never' } });
@@ -237,7 +247,7 @@ async function launch(home, { spawn = cp.spawn, source = fs.readFileSync(__filen
     return inspect(home);
   }
 }
-module.exports = { REPOSITORY, DEADLINE, HOUR, files, read, atomic, command, installedRevision, inspect, checkMain, prepareClone, outcome, launch, runUpdate };
+module.exports = { REPOSITORY, DEADLINE, HOUR, HINT_COOLDOWN, files, read, atomic, command, installedRevision, inspect, checkMain, prepareClone, outcome, launch, runUpdate };
 if (require.main === module) {
   if (process.argv[2] === '--run') runUpdate(process.argv[3], process.argv[4]).catch(error => { console.error(shortError(error)); process.exitCode = 1; });
   else {
@@ -246,7 +256,10 @@ if (require.main === module) {
       if (!request.home || !path.isAbsolute(request.home)) throw Error('An absolute Herdr home is required');
       if (request.action === 'launch') return launch(request.home);
       if (request.action === 'status') return inspect(request.home);
-      if (request.action === 'check') return checkMain(request.home, { force: request.force === true });
+      if (request.action === 'check') {
+        if (request.reason != null && request.reason !== 'webhook') throw Error('Unknown check reason');
+        return checkMain(request.home, { force: request.force === true, reason: request.reason });
+      }
       throw Error('Unknown update action');
     }).then(value => console.log(JSON.stringify(value))).catch(error => { console.log(JSON.stringify({ error: shortError(error) })); process.exitCode = 1; });
   }
