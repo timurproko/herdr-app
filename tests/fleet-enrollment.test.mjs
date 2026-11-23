@@ -8,8 +8,8 @@ const text=n=>typeof n==='string'?n:[...(n?.kids??[]),...(n?.attrs?.trigger??[])
 let visible=true,enabled=true,context={scope:'machine/coordinator/home/owner',stale:false},selected={space:'coordinator',terminal:'t1',tab:'c',on:null,cwd:'/home'},rendering=false;
 let raw='https://relay.example',account='fixture',snapshot={version:1,relay:raw,revision:1,members:{'owner/a':true,'owner/b':true,'owner/c':true}};
 let repositories=['owner/c','owner/a','owner/b','owner/a'];
-const reads=[],settings=[],jobs=[];let notifications=0;
-const cx={focus_handle:()=>({}),notify(){assert.equal(rendering,false,'Never notify inside render');notifications++;},stop_propagation(){},spawn(fn){jobs.push(Promise.resolve().then(()=>fn(cx)));}};
+const reads=[],settings=[],jobs=[],handles=[];let notifications=0;
+const cx={focus_handle(){assert.equal(rendering,false,'Never create a focus handle inside render');const handle={};handles.push(handle);return handle;},notify(){assert.equal(rendering,false,'Never notify inside render');notifications++;},stop_propagation(){},spawn(fn){jobs.push(Promise.resolve().then(()=>fn(cx)));}};
 const drain=async()=>{while(jobs.length)await Promise.all(jobs.splice(0));};
 const host={checking:()=>false,props:()=>null,closeOverlay(){},openOverlay(){},nextCommand(){},notify(){},settings:()=>({zoom:1}),theme:()=>t,run(){},layout:()=>({id:'panel',hidden:!visible,children:[{id:'panel-body',active:'changes'}]}),
  appHome:()=>'/fixture',shared:()=>snapshot,setShared(){throw Error('No shared writes from presentation');},
@@ -17,11 +17,13 @@ const host={checking:()=>false,props:()=>null,closeOverlay(){},openOverlay(){},n
 const modules={...choiceModules,'label-colors.js':'src/plugins/git/mod/label-colors.js','gpui-kit':{View:class{},div:element,svg,PathBuilder:{}},'gpui-base':{Popover,Input:{},h_flex:element,v_flex:element},
  'main.js':'src/plugins/git/mod/main.js','enrollment-picker.js':'src/plugins/git/mod/enrollment-picker.js','notices.js':'src/plugins/git/mod/notices.js','pulls.js':'src/plugins/git/mod/pulls.js',
  'location.js':{location:()=>selected},'plugins.js':{sidebarPanelEnabled:()=>enabled,pluginById:()=>({}),pluginSetting:(_p,key)=>key==='relay'?raw:account},
- 'aggregate.js':{AggregatePulls:class{}},'agent-links.js':{AgentLinks:class{}},'webhooks.js':{GitWebhooks:class{}},'pin-swap.js':{PinSwap:class{},PIN_SWAP_MS:320},
+ 'aggregate.js':{AggregatePulls:class{}},'agent-links.js':{AgentLinks:class{}},'webhooks.js':{GitWebhooks:class{}},'pin-swap.js':{PinSwap:class{cancel(){}},PIN_SWAP_MS:320},
  'panel-pin.js':{panelPin:element},'sidebar-title.js':{sidebarTitle:element},'panel-state.js':{changePanel(){}},'space-color-state.js':{currentSpaceColor:()=>null},
  'panel-kit.js':{headerTool:(_t,o)=>element().id(o.id).on_click(o.onClick),contextMenu:element,panelMessage:(_t,id,o)=>element().id(id).child(o.text)},'settings-dialog.js':{openSettings:value=>settings.push(value)}};
 const {Main,GitNotices}=await loadMod({host,modules,globals:{URL},entry:'export {default as Main} from "./main.js";export * from "./notices.js";'});
-const panel=new Main();panel.view='open';panel.foldedRepositories=new Set();panel.context='tasks:fixture';panel.notices=new GitNotices();
+const panel=new Main();panel.refresh=()=>{};panel.init({}, {...cx,timer:{every(){}}});delete panel.refresh;
+assert.equal(handles.length,1,'Initialization owns exactly one enrollment focus handle');
+panel.view='open';panel.foldedRepositories=new Set();panel.context='tasks:fixture';panel.notices=new GitNotices();
 const entries=new Map();
 for(let i=0;i<80;i++){const repo=i%2?'owner/a':'owner/b',key=`${repo}#${i+1}`;entries.set(key,{link:{repo,key},pr:{key,repo,number:i+1,title:`Fixture ${i}`,state:'open',url:`https://github.com/${repo}/pull/${i+1}`,labels:[]},error:null});}
 entries.set('owner/c#1',{link:{repo:'owner/c',key:'owner/c#1'},pr:null,error:'Scoped repository read failed'});
@@ -29,7 +31,7 @@ panel.aggregate={context,entries,readNotice:repo=>entries.get(`${repo}#1`)?.erro
 let tree;const render=()=>{rendering=true;try{return tree=panel.renderAggregate(cx,t);}finally{rendering=false;}};
 render();await drain();render();assert.equal(find(tree,'git-enrollment-footer'),undefined,'Zero confirmed choices');
 const change=members=>{snapshot={...snapshot,revision:snapshot.revision+1,members};render();};
-const popup=()=>find(tree,'git-enrollment-popup');
+const popup=()=>{const node=find(tree,'git-enrollment-popup');if(node)assert.equal(node.attrs.track_focus[0],handles[0],'Native Popover reuses the initialization handle');return node;};
 const open=()=>{render();assert.ok(popup(),JSON.stringify({setup:panel.notices.setup,active:panel.notices.active,members:[...panel.notices.members],context,selected,raw,account,notice:panel.enrollmentPresentation()}));popup().attrs.on_open_change[0](true,cx);render();assert.ok(panel.enrollmentPicker.opening);};
 const key=value=>{find(tree,'git-enrollment-choice-0');popup().attrs.content[0].kids[0].attrs.on_key_down[0]({key:value},cx);render();};
 change({'owner/a':true,'owner/b':false,'owner/c':true});await drain();render();
@@ -76,4 +78,5 @@ for(const zoom of [0.75,1,1.25,1.5,2]){
 }
 const staleMeasure=label().attrs.on_size_change[0],notified=notifications;context={...context,scope:'replacement'};panel.aggregate.context=context;render();staleMeasure({width:1},cx);assert.equal(notifications,notified,'Old-scope geometry cannot affect another coordinator');assert.equal(label().attrs.tooltip,undefined);
 assert.equal(text(find(tree,'git-view-open')),'Open 80');assert.equal(text(find(tree,'git-view-closed')),'Closed 0');
+assert.equal(handles.length,1,'Repeated render, open/close and context changes never allocate another handle');
 console.log('PASS real coordinator footer, zero/one/many choices, ordered dedup, fold/scroll, keyboard/dismissal, cached reads and stale Settings guards');

@@ -6,10 +6,12 @@ const terminal={address:'t1',program:{key:'claude'},labels:{'custom.claude.at':S
 const host={terminals:()=>[terminal]};
 const {ClaudeAccount,sessionAccount,choiceDropdown,EnrollmentPicker}=await loadMod({host,modules:{...choiceModules,'enrollment-picker.js':'src/plugins/git/mod/enrollment-picker.js'},
   entry:'export * from "./claude-account.js"; export * from "./choice-menu.js"; export * from "./enrollment-picker.js";'});
-const cx={focus_handle:()=>({}),notify(){},stop_propagation(){}};
+let rendering=false;
+const render=fn=>{rendering=true;try{return fn();}finally{rendering=false;}};
+const cx={focus_handle(){assert.equal(rendering,false,'Never create a focus handle inside render');return {};},notify(){assert.equal(rendering,false,'Never notify inside render');},stop_propagation(){}};
 const account=new ClaudeAccount();account.init(cx);
 const target={terminal:'t1',on:null};account.opening=sessionAccount(target);account.rows=[current,{email:'two@example.test',account:'two'}];account.index=0;account.opened=true;
-const actual=account.render(target,t,cx);
+const actual=render(()=>account.render(target,t,cx));
 const trigger=actual.attrs.trigger[0],menu=actual.attrs.content[0].kids[0];
 assert.equal(actual.attrs.anchor[0],'bottom_left');assert.equal(actual.attrs.overlay_closable[0],true);
 assert.equal(actual.attrs.content[0].kids.at(-1).attrs.h[0],4);
@@ -24,14 +26,15 @@ for(let i=0;i<2;i++){
  assert.equal(row.attrs.hover[0](element()).attrs.bg[0],t.hover);
 }
 assert.equal(find(menu,'status-claude-choice-0').attrs.bg[0],t.hover);
-find(menu,'status-claude-choice-1').attrs.on_hover[0](true,cx);assert.equal(account.index,1);assert.equal(find(account.render(target,t,cx).attrs.content[0],'status-claude-choice-1').attrs.bg[0],t.hover);
+find(menu,'status-claude-choice-1').attrs.on_hover[0](true,cx);assert.equal(account.index,1);assert.equal(find(render(()=>account.render(target,t,cx)).attrs.content[0],'status-claude-choice-1').attrs.bg[0],t.hover);
 // Helper output is the account output, not an independently recreated row or popup.
-const other=choiceDropdown(t,{id:'other',label:'Choose',content:['Choose'],open:true,focus:cx.focus_handle(),onOpen(){},onKeyDown(){},rows:[{id:'other-row',label:'Owner/repo',onClick(){}}]});
+const focus=cx.focus_handle();
+const other=render(()=>choiceDropdown(t,{id:'other',label:'Choose',content:['Choose'],open:true,focus,onOpen(){},onKeyDown(){},rows:[{id:'other-row',label:'Owner/repo',onClick(){}}]}));
 for(const key of ['anchor','overlay_closable'])assert.deepEqual(other.attrs[key],actual.attrs[key]);
 for(const key of ['min_w','max_w','max_h','p','pt','pb','rounded','ml','bg'])assert.deepEqual(other.attrs.content[0].kids[0].attrs[key],menu.attrs[key]);
 assert.equal(nodes(other.attrs.content[0]).filter(n=>n.attrs.h?.[0]===28).length,1);
 const snapshot={key:'scope',choices:['owner/repo','owner/second']},picker=new EnrollmentPicker({focus:cx.focus_handle(),current:()=>snapshot,onChoose(){}});
-let footer=picker.render(t,snapshot);find(footer,'git-enrollment-popup').attrs.on_open_change[0](true,cx);footer=picker.render(t,snapshot);
+let footer=render(()=>picker.render(t,snapshot));find(footer,'git-enrollment-popup').attrs.on_open_change[0](true,cx);footer=render(()=>picker.render(t,snapshot));
 const enrollment=find(footer,'git-enrollment-popup'),enrollmentTrigger=enrollment.attrs.trigger[0],enrollmentMenu=enrollment.attrs.content[0].kids[0];
 for(const key of ['anchor','overlay_closable'])assert.deepEqual(enrollment.attrs[key],actual.attrs[key]);
 for(const key of ['gap','text_color','px','ml','h','rounded'])assert.deepEqual(enrollmentTrigger.attrs[key],trigger.attrs[key]);
@@ -44,5 +47,5 @@ for(let i=0;i<2;i++){
  assert.equal(b.attrs.hover[0](element()).attrs.bg[0],t.hover);
 }
 assert.equal(find(enrollmentMenu,'git-enrollment-choice-0').attrs.bg[0],t.hover);
-find(enrollmentMenu,'git-enrollment-choice-1').attrs.on_hover[0](true,cx);assert.equal(find(picker.render(t,snapshot),'git-enrollment-choice-1').attrs.bg[0],t.hover);
+find(enrollmentMenu,'git-enrollment-choice-1').attrs.on_hover[0](true,cx);assert.equal(find(render(()=>picker.render(t,snapshot)),'git-enrollment-choice-1').attrs.bg[0],t.hover);
 console.log('PASS actual account/enrollment shared choice presentation, inherited 12px chevron, upward native anchor, row states and selected slots');

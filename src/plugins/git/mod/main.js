@@ -41,6 +41,8 @@ export default class Changes extends View {
       this.menuHandle.focus();
       return;
     }
+    // Focus outlives render; the host forbids allocating handles in renderAggregate.
+    this.enrollmentFocus = cx.focus_handle();
     this.headerHovered = false;
     this.agentLinks = new AgentLinks(() => sidebarPanelEnabled('changes'));
     let view = null;
@@ -720,7 +722,7 @@ export default class Changes extends View {
     this.notices ??= new GitNotices();
     const notices=new Map(repositories.map(repo=>[repo,this.notices.sync(cx,{enabled:this.shown() && !aggregate.context.stale,repository:repo})]));
     const setup=repositories.length ? [...notices.values()].includes('setup') : this.notices.sync(cx,{enabled:this.shown() && !aggregate.context.stale,repository:null})==='setup';
-    this.enrollmentPicker ??= new EnrollmentPicker({focus:cx.focus_handle(),current:()=>this.enrollmentPresentation(),
+    this.enrollmentPicker ??= new EnrollmentPicker({focus:this.enrollmentFocus,current:()=>this.enrollmentPresentation(),
       onChoose:repository=>openSettings({section:'plugins',plugin:'git',pluginSection:'repository',pluginSearch:repository})});
     const enrollment=this.enrollmentPicker.render(t,setup?null:this.enrollmentPresentation());
     const sweep=!aggregate.context.stale && this.shown() && this.ciSweep?.context===this.context ? this.ciSweep : null;

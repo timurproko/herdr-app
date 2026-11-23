@@ -191,7 +191,10 @@ footer structure, keyboard/pointer/dismissal, exact captured Settings payload an
 pre-render invalidation on refresh/tab/home/account/config changes. Read counters
 prove opening/choosing adds no membership/GitHub read or enrollment.
 `tests/claude-session-account.test.mjs` retains controller
-loading/switching/session guards. These are render-tree fixtures, not live pixels.
+loading/switching/session guards. All three fixtures reject focus-handle allocation
+and notify during render; coordinator coverage also checks that initialization creates
+one handle which Popover reuses across repeated renders and context changes.
+These are render-tree fixtures, not live pixels.
 
 ## Reviewed native frame stock
 
