@@ -19,7 +19,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-23-fleet-pull-read-notices/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-23-fleet-pull-read-notices/acceptance.md",
   "finalizedDate": "2026-11-23",
-  "specBaseSha": "b884ed48460413529ff1be31444d7c7b892eab66",
+  "specBaseSha": "9fd7c020d7d5e52c3f2aae305447afc0a332807e",
   "acceptanceScenarios": [
     "One live draft and three recent finished merged PRs retain Open 1 and Closed 3 with no historical error notice under Open.",
     "Each repository section shows at most one applicable read notice while healthy rows and last-good eligible facts remain visible.",
@@ -29,7 +29,7 @@ The maintainer integration decision accepts these scenarios:
     "The original installed process failure remains unproven; no deployment, account switch, automatic enrollment or new retry loop is introduced."
   ],
   "archiveDigest": "d5665810a4b9f5820ae4115287498a389d687aac9989282eb821fa291fdca6c4",
-  "specDigest": "2b17782efc2ce8db306c91510adc22b41ba3a026c0d5c196da9dab61ca0a4387",
+  "specDigest": "eafc9adc035eb2c7a87663f498aa618a0dae5fc4047ebb543014161d66a5730b",
   "tasksDigest": "f2e1e937747dbc3851fd79c121e3b48dd849818bb8ba9f7a47835c070113f9e1",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []
