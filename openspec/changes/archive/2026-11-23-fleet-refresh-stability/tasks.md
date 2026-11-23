@@ -1,6 +1,6 @@
 # Tasks
 
-The first four groups carry forward the implemented outcomes and their tests/docs from the finalized `fleet-link-look` change in this same PR. Its archive is preserved. Groups 5 and 6, including the approved persistence/identity-lifetime extension, are implemented and tested after merging origin/main. All six outcomes are complete.
+The first four groups carry forward the implemented outcomes and their tests/docs from the finalized `fleet-link-look` change in this same PR. Its complete original archive is preserved verbatim under `history/2026-11-23-fleet-link-look/` in this consolidated archive. Groups 5 and 6, including the approved persistence/identity-lifetime extension, are implemented and tested after merging origin/main. All six outcomes are complete.
 
 ## 1. Coordinator Crew tags remain visible while only attached fleet tags are omitted
 
@@ -40,5 +40,5 @@ The first four groups carry forward the implemented outcomes and their tests/doc
 ## Workflow follow-up
 
 - The identity-lifetime extension is approved and implemented, superseding the original 60-second display cutoff; the 24-hour finished-PR history bound is unchanged.
-- Continue this worktree, branch and PR; do not edit the existing finalized archive or mark the PR ready manually, merge or deploy.
+- Continue this worktree, branch and PR; do not mark the PR ready manually, merge or deploy.
 - Native pixel/remote-interaction validation remains unclaimed without separate authorization.

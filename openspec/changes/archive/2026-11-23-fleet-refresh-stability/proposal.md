@@ -6,7 +6,7 @@ The completed fleet presentation fixes in PR #18 do not address a reproduced ref
 
 ## What Changes
 
-- Preserve the four implemented PR outcomes and their finalized `fleet-link-look` archive unchanged; deliver the implemented fifth/sixth outcomes in the same PR.
+- Preserve the four implemented PR outcomes and their original planning/spec/acceptance snapshots verbatim under `history/2026-11-23-fleet-link-look/` in this consolidated archive; deliver the implemented fifth/sixth outcomes in the same PR.
 - Keep the last verified fleet presentation through Git manual refresh, relay events, focus changes and periodic Crew status reads. Do not treat a pending read or unrelated pane changes as a completed negative result.
 - Publish successful binding changes atomically, remove an attachment on a completed authoritative negative result, and immediately honor disabling Crew or attachment and definitive removal/replacement of its native spaces.
 - Supersede the original 60-second display expiry with an identity-lifetime bound: at most one persisted verified pair per machine/home, valid only for its exact existing native spaces until a completed read disproves it or the feature is disabled. Failed/timed-out reads and unrelated topology changes never erase an unchanged pair.
