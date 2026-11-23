@@ -10,6 +10,7 @@ export const HOST_CONTRACT = Object.freeze({
     'shared', 'spaces', 'telemetry', 'terminals', 'theme', 'themes', 'updates',
     'watchFolder', 'window', 'writeTextFile',
   ]),
+  minimumVersion: '0.1.13',
   reviewedVersions: Object.freeze(['0.1.13', '0.1.14', '0.1.15', '0.1.16']),
 });
 
@@ -22,6 +23,22 @@ export const HOST_PROFILES = Object.freeze({
   // This does not widen the separate exact-version Core-document adapters.
   '0.1.16': SAME,
 });
+
+// Review history is evidence, not forward-version permission. Capabilities are
+// checked against the installed SDK/catalog by check-host-api.
+export function hostVersionStatus(version) {
+  const parse = value => typeof value === 'string' && value.length <= 40
+    && /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(value)
+    ? value.split('.').map(BigInt) : null;
+  const compare = (a, b) => { for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] > b[i] ? 1 : -1; return 0; };
+  const parsed = parse(version), minimum = HOST_CONTRACT.minimumVersion;
+  const lastReviewed = HOST_CONTRACT.reviewedVersions.at(-1);
+  const supported = Boolean(parsed && compare(parsed, parse(minimum)) >= 0);
+  return { supported, minimum, lastReviewed,
+    reason: !parsed ? 'invalid App release version' : !supported ? `requires Herdr ${minimum} or newer` : null,
+    advisory: parsed && compare(parsed, parse(lastReviewed)) > 0
+      ? `Herdr ${version} is newer than last reviewed ${lastReviewed}; required capabilities checked, native patches reviewed separately.` : null };
+}
 
 export function hostProfile(version) {
   return HOST_PROFILES[String(version ?? '')] ?? null;

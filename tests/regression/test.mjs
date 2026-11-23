@@ -8,11 +8,13 @@ import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { mix } from '../mods/custom-settings/palette.js';
+import { stockBaseline } from './stock-baseline.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const home = process.env.HERDR_APP_HOME || path.join(process.env.USERPROFILE, '.config/herdr-app');
 const json = p => JSON.parse(fs.readFileSync(p,'utf8'));
 const appVersion=execFileSync(path.join(process.env.LOCALAPPDATA,'Programs/herdr-app/herdr-app.exe'),['--version'],{encoding:'utf8'}).trim().replace(/^herdr-app\s+/,'');
-const baseline = json(path.join(root,`baselines/${appVersion}.json`));
+const coverage = stockBaseline(root,appVersion), baseline = coverage.baseline;
+if(coverage.advisory)console.warn(`ADVISORY: ${coverage.advisory}`);
 const terminalRecordPath=path.join(home,'.customizations/terminal-input.json');
 const terminalRecord=fs.existsSync(terminalRecordPath)?json(terminalRecordPath):null;
 for (const [rel, expected] of Object.entries(baseline)) {
@@ -71,7 +73,7 @@ for (const name of names) {
 }
 for(const helper of ['modal-layout.js','program-icon.js','machine-picker.js','space-title.js','directory.js','tab-rename.js','space-rename.js','sidebar-scroll.js','sidebar-usage.js','reorder.js'])for(const name of names){const file=path.join(root,'mods',name,helper);if(fs.existsSync(file))assert.equal(fs.readFileSync(file,'utf8'),fs.readFileSync(path.join(root,'lib',helper),'utf8'),`${helper} copies share one canonical design contract`);}
 assert.equal(json(path.join(root,'themes/Custom.json')).ansi.length,16);
-console.log('PASS: shipped-mod/layout baseline unchanged; topology/features preserved; private assets present (palette exception tested separately)');
+console.log(`PASS: ${coverage.reviewed?'reviewed shipped-mod/layout baseline unchanged':'stock byte coverage unreviewed, not asserted'}; topology/features preserved; private assets present (palette exception tested separately)`);
 
 // Minimal non-visual GPUI builder. Executes every .when and list row without a
 // real terminal, process, timer, filesystem write or network call.

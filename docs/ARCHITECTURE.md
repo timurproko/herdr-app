@@ -114,7 +114,11 @@ npm run check:host-api
 - API or command rename: update `compatibility.js`.
 - Return-shape change: normalize it in `host.js`.
 - New API: add a thin facade export and contract entry, then use that export.
-- Unknown Herdr version: review it explicitly; do not bypass the deployment gate.
+- Newer unreviewed Herdr version: required public APIs/commands and the import
+  boundary still gate deployment, with a visible review advisory. Review metadata
+  is not permission; App versions older than 0.1.13 or invalid version evidence fail.
+  Tab-move retains separate minimum/capability/generation/shape checks and an
+  advisory source audit. Native patches require independent reviewed-byte evidence.
 
 Temporary diagnostic mods also receive the same facade through
 `tools/temporary-mod.mjs`.

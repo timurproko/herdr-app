@@ -443,6 +443,7 @@
     "scripts/terminal-input.test.mjs": "tests/regression/terminal-input.test.mjs",
     "scripts/terminal-spacing.test.mjs": "tests/regression/terminal-spacing.test.mjs",
     "scripts/terminals.test.mjs": "tests/regression/terminals.test.mjs",
+    "scripts/stock-baseline.mjs": "tools/runtime/stock-baseline.mjs",
     "scripts/test.mjs": "tests/regression/test.mjs",
     "scripts/usage-summary.test.mjs": "tests/regression/usage-summary.test.mjs",
     "scripts/usage.test.mjs": "tests/regression/usage.test.mjs",

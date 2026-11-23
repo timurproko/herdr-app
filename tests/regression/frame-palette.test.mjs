@@ -9,6 +9,9 @@ import { paletteCommand } from '../frame-patches/palette/routing.js';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'custom-palette-'));
 const stamp=file=>{const s=fs.statSync(file,{bigint:true});return [s.ino,s.mtimeNs,s.ctimeNs];};
+const previousBin=process.env.HERDR_APP_BIN;
+process.env.HERDR_APP_BIN=path.join(temp,'synthetic-host');
+fs.writeFileSync(process.env.HERDR_APP_BIN,Buffer.concat(['palette','feedback'].map(id=>fs.readFileSync(path.join(root,`frame-patches/${id}/original.js`)))));
 try {
   const home = path.join(temp, 'home'), dir = path.join(home, 'frame/palette');
   fs.mkdirSync(dir, { recursive: true });
@@ -53,7 +56,7 @@ try {
   fs.unlinkSync(path.join(dir, 'custom-ui.js'));
   framePalette('apply', home);
   fs.writeFileSync(path.join(dir, 'main.js'), 'newer stock after app update');
-  assert.throws(() => framePalette('apply', home), /differs/);
+  assert.throws(() => framePalette('apply', home), /unsupported original/);
   framePalette('restore', home);
   assert.equal(fs.readFileSync(path.join(dir, 'main.js'), 'utf8'), 'newer stock after app update');
   const settings = { name: 'app.settings', args: {} };
@@ -99,4 +102,4 @@ try {
     framePatch('apply',legacyHome,root,name);fs.writeFileSync(main,newStock);framePatch('apply',legacyHome,root,name);const record=JSON.parse(fs.readFileSync(path.join(legacyHome,`.customizations/frame-${name}.json`),'utf8'));assert.equal(record.original['main.js'],newStock,'App update rebases the restore backup to reviewed new stock');framePatch('restore',legacyHome,root,name);assert.equal(fs.readFileSync(main,'utf8'),newStock,'Removing the skin never downgrades reviewed updated stock');
   }
   console.log('PASS: scoped modal routing, reversible palette/feedback patches, native feedback API preservation, conflict guards and unchanged shortcuts');
-} finally { fs.rmSync(temp, { recursive: true, force: true }); }
+} finally { if(previousBin===undefined)delete process.env.HERDR_APP_BIN;else process.env.HERDR_APP_BIN=previousBin; fs.rmSync(temp, { recursive: true, force: true }); }

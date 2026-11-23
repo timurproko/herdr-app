@@ -146,7 +146,7 @@ try {
     const row = customizationRowState(projected, { now: result.at + 100 });
     if (state === 'success') { assert.match(row.description, /^Up to date\. Checked at \d\d:\d\d\.$/, title); assert.equal(row.action, 'check', title); }
     if (state === 'partial') { assert.match(row.description, /Desktop updated; some machines skipped or failed/, title); assert.equal(row.action, 'check', title); }
-    if (state === 'failed') { assert.match(row.description, /Update failed: deployment failed; inspect output\. Recovery: documented rollback\./, title); assert.equal(row.action, 'launch', title); }
+    if (state === 'failed') { assert.match(row.description, /Update failed: deployment failed: fixture refused install\. Recovery: documented rollback\./, title); assert.equal(row.action, 'launch', title); }
     if (state === 'unknown') {
       assert.match(row.description, /Update outcome unknown: deployment timed out/, title); assert.equal(row.action, 'check', title);
       assert.equal(snapshot.check.available, true, title);

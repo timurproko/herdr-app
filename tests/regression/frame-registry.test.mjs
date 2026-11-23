@@ -17,6 +17,9 @@ const patch = {
   files: { 'main.js': 'frame-patches/rename/main.js', 'custom-helper.js': 'lib/helper.js' },
 };
 const main = path.join(home, 'mods/prompt/main.js'), helper = path.join(home, 'mods/prompt/custom-helper.js');
+const previousBin=process.env.HERDR_APP_BIN;
+process.env.HERDR_APP_BIN=path.join(temp,'synthetic-host');
+put(process.env.HERDR_APP_BIN,'// reviewed original\n');
 try {
   assert.deepEqual(loadFrameRegistry().map(p=>p.id).sort(), ['feedback','palette']);
   catalog([patch]);
@@ -74,4 +77,4 @@ try {
   const after = fs.statSync(main, { bigint: true });
   assert.equal(after.ino, stat.ino); assert.equal(after.mtimeNs, stat.mtimeNs);
   console.log('PASS: registry-only new dialog, generic apply/check/restore/startup/installer, path/duplicate validation and quiet refresh');
-} finally { fs.rmSync(temp, { recursive: true, force: true }); }
+} finally { if(previousBin===undefined)delete process.env.HERDR_APP_BIN;else process.env.HERDR_APP_BIN=previousBin; fs.rmSync(temp, { recursive: true, force: true }); }
