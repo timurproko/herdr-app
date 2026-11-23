@@ -313,7 +313,8 @@ also samples actual sidebar projection across its in-flight status read.
 `tests/fleet-reorder.test.mjs` exercises pure display blocks and queued public move
 acknowledgements, either grabbed member, pair edges, timeout and no replay. Shared
 reorder and Spaces render fixtures cover both-source dimming, a single ordinary
-coordinator chip from either grabbed member (including return/fade), no stacked
+grabbed-row chip (`2 crew` or `1 coordinator`) with its own number/name and shared
+coordinator fill from either grabbed member (including arm/return/fade), no stacked
 preview or floating chain icon, and each expanded/compact row's own numbered badge
 while preserving ordinary worktree order. Geometry assertions compare numbered badge
 boxes (16px, 4px rounding) and the coordinator's trailing chain slot with the worktree

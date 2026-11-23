@@ -17,8 +17,8 @@
 
 ## 3. Grabbed-row single chip with unchanged pair movement
 
-- [ ] 3.1 Update `dragPreview` to use the grabbed row's name and own numbered badge with its projected pair fill through the existing badge renderer; confirm no chain, extra chip, block-source rewrite or drop-logic change.
-- [ ] 3.2 Replace always-coordinator preview assertions with both-origin active/arm/return/fade rendering checks, distinct parent/fleet numbers and saved colours, coordinator recolouring synchronized with row/rail badges, missing identities and attachment-off cases; pass `node tests/spaces-worktree-layout.test.mjs`.
-- [ ] 3.3 Extend both-origin shared gesture regressions for one chip and the original pressed identity while retaining pair dimming, cancellation and ordering guards; pass `node tests/reorder.test.mjs` and `node tests/fleet-reorder.test.mjs`.
-- [ ] 3.4 Update `README.md`, `docs/REORDER.md` and `docs/TESTING.md` chip descriptions to match the workspace-experience delta, including the example `2 crew` versus `1 coordinator`; confirm no current documentation still promises an always-coordinator chip.
+- [x] 3.1 Update `dragPreview` to use the grabbed row's name and own numbered badge with its projected pair fill through the existing badge renderer; confirm no chain, extra chip, block-source rewrite or drop-logic change.
+- [x] 3.2 Replace always-coordinator preview assertions with both-origin active/arm/return/fade rendering checks, distinct parent/fleet numbers and saved colours, coordinator recolouring synchronized with row/rail badges, missing identities and attachment-off cases; pass `node tests/spaces-worktree-layout.test.mjs`.
+- [x] 3.3 Extend both-origin shared gesture regressions for one chip and the original pressed identity while retaining pair dimming, cancellation and ordering guards; pass `node tests/reorder.test.mjs` and `node tests/fleet-reorder.test.mjs`.
+- [x] 3.4 Update `README.md`, `docs/REORDER.md` and `docs/TESTING.md` chip descriptions to match the workspace-experience delta, including the example `2 crew` versus `1 coordinator`; confirm no current documentation still promises an always-coordinator chip.
 - [ ] 3.5 Run the requested `CI=true npm run test:ci` once after implementation, record the result and obtain required-check results on the final pushed head for handoff; report pending or failed checks as blockers rather than claiming success.

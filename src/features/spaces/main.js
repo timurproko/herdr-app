@@ -433,14 +433,12 @@ export default class Spaces extends View {
 
   dragPreview(t) {
     const all = spaces(), d = this.drag.view, block = d?.meta?.sources;
-    if (!all.some(s => s.id === d?.id)) return null;
-    // Both sources still dim/move together; only the chip represents the parent.
-    const id = block?.length > 1 ? block[0] : d.id;
-    const i = all.findIndex(s => s.id === id);
-    if (i === -1) return null;
-    const w = displaySpace(all[i], panes());
-    return this.drag.preview('space-drag', t, {
-      icon: badge(String(i + 1), spaceBadgeColor(t, w, shared('space.colors') ?? {})), label: w.name});
+    if (!all.some(s => s.id === d?.id) || block?.some(id => !all.some(s => s.id === id))) return null;
+    // Movement stays coordinator-first; the chip retains the original pressed row.
+    const ps = panes();
+    const row = projectLinkedRows(all.map((s, i) => ({w: displaySpace(s, ps), i})), displayLinks())
+      .find(r => r.w.id === d.id);
+    return this.drag.preview('space-drag', t, {icon: this.spaceBadge(row, t), label: row.w.name});
   }
 
   // Display identity only: the projected parent supplies colour, never action authority.

@@ -218,18 +218,23 @@ for(const machine of [null,'pc2']) {
  context.__store.delete('space.colors');
 }
 hostSpaces=savedSpaces;
-// Either grabbed member yields the same ordinary coordinator chip, not two rows.
-drag.preview=(_id,_t,data)=>data;
-const parentBadge=parentContent.kids[0];
-for(const id of ['parent','worktree-a'])for(const phase of [undefined,'arm','return','fade']) {
+// Both origins retain their own name/number, with the row/rail's shared pair colour.
+let previewCalls=0;drag.preview=(_id,_t,data)=>{previewCalls++;return data;};
+for(const color of ['ansi3','#123abc'])for(const id of ['parent','worktree-a'])for(const phase of [undefined,'arm','return','fade']) {
+ context.__store.set('space.colors',{parent:color,'worktree-a':'#ff0044'});
+ const record=view.ordered().find(r=>r.w.id===id),rowBadge=find(view.row(record,theme),`space-content-${id}`).kids[0];
+ const railBadge=find(view.compact(record,theme),`space-badge-${id}`);
  drag.view={id,phase,meta:{sources:['parent','worktree-a'],binding:'pair'}};
- const captured=JSON.stringify(drag.view),preview=view.dragPreview(theme);
- assert.equal(preview.label,'parent');assert.deepEqual(preview.icon.kids,parentBadge.kids,'Coordinator number, not the grabbed fleet number');
- assert.deepEqual(preview.icon.attrs,parentBadge.attrs,'Exactly the ordinary coordinator badge, including size and color');
+ const captured=JSON.stringify(drag.view),before=previewCalls,preview=view.dragPreview(theme);
+ assert.equal(previewCalls,before+1,'Exactly one preview call per rendered chip');
+ assert.equal(preview.label,id);assert.equal(preview.icon.kids[0],String(hostSpaces.findIndex(s=>s.id===id)+1),'Grabbed member retains its own list number');
+ assert.deepEqual(preview.icon.kids,rowBadge.kids);assert.deepEqual(preview.icon.attrs,rowBadge.attrs);
+ assert.equal(preview.icon.attrs.bg[0],railBadge.attrs.bg[0],'Coordinator recolouring stays in sync across row/rail/chip');
  assert.equal(Object.hasOwn(preview,'rows'),false,'No stacked-row preview data');
- assert.equal(preview.icon.attrs.asset,undefined,'No fleet chain in the floating chip');
+ assert.equal(typeof preview.icon.kids[0],'string','Neither chip contains a chain glyph');
  assert.equal(JSON.stringify(drag.view),captured,'Preview normalization never rewrites the pressed ID or paired sources');
 }
+context.__store.delete('space.colors');context.pluginWorkspaceLinks=()=>[];
 for(const id of ['other','worktree-a']) {
  drag.view={id,meta:{sources:[id]}};
  const preview=view.dragPreview(theme);
@@ -306,4 +311,4 @@ drag.take=()=>({kind:'drop',id:'worktree-a',target:'other',meta:{sources:['workt
 drag.take=()=>({kind:'drop',id:'other',target:'parent',meta:{sources:['other']}});view.drop('parent',{});
 assert.equal(guardedCalls.length,0,'Neither grabbing nor targeting a retained unverified pair authorizes a move');
 drag.take=()=>({kind:'click',id:'worktree-a'});view.drop('worktree-a',{});assert.equal(guardedCalls[0][0],'space.select','Ordinary click selection remains available');
-console.log('PASS: first-frame local/remote checkout snapshots; aligned tagged/child worktrees, own numbered badges, muted coordinator chain and ordinary selected fleet names, single coordinator drag chip, retained-pair action guards, preserved user order and cross-machine drag guards (dummy Core only)');
+console.log('PASS: first-frame local/remote checkout snapshots; aligned tagged/child worktrees, own numbered badges, muted coordinator chain and ordinary selected fleet names, single grabbed-row drag chip, retained-pair action guards, preserved user order and cross-machine drag guards (dummy Core only)');
