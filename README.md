@@ -641,9 +641,11 @@ The panel keeps its normal Git title and controls, without an extra task heading
 or a generic incomplete-list notice. PR rows are grouped under repository headers
 using the same fold chevron and row style as Spaces machine headers. Click a
 header to fold just that repository; sections start expanded and remember their
-state locally, including panel reopen/reload. Open and Closed task-PR counts stay
-visible and update in folded headers; global counts still include folded sections.
-These counts cover distinct linked PRs only, never all PRs in each repository.
+state locally, including panel reopen/reload. Expanded and folded headers show
+only the canonical repository name and chevron, without per-repository counts.
+Names use the released width and truncate with a full-name tooltip only when they
+do not fit. Open and Closed totals remain in the panel's top tabs and still include
+folded sections. These counts cover distinct linked PRs only, never all repository PRs.
 Folding only hides section bodies: it does not fetch, cancel reads or stop updates.
 The recorded list can omit PRs that tasks have not yet supplied; this does not
 change the source or infer missing links.
@@ -651,9 +653,15 @@ Robots open the exact live worker, and PR menus retain their captured URL.
 The source is `crew status --all --json` (`tasks[].pr`), not transcript/branch
 inference or a new Crew capability. No Crew change is required. The existing
 webhook connection refreshes only relevant linked repositories; unchanged PR/CI
-facts are not polled. Manual Refresh remains available. Repository errors and
-Add this repo in Settings links are scoped to that repository; nothing is enrolled
-automatically and auto-fix permissions do not change. Off retains today's
+facts are not polled. Manual Refresh remains available. Repository errors stay in their sections. Confirmed unenrolled repositories share
+one **Add this repo in Settings** card pinned below the scrolling list, so folding
+or scrolling cannot hide it. Its account-style dropdown opens upward with canonical
+repository names in section order, even for one choice. Selecting a name opens Git
+Settings with that captured repository prefilled; it does not enroll anything.
+Unknown membership stays quiet, the final enrollment removes the card, and missing
+global setup takes precedence. Changed context or membership closes an obsolete
+picker rather than retargeting it. Ordinary Git notices and auto-fix permissions
+are unchanged. Off retains today's
 independent spaces and folder-based Git. Only the boolean is portable; pair bindings,
 homes, task/terminal identities and in-flight ordering are not exported.
 

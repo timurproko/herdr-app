@@ -64,6 +64,7 @@ const U={font:12,meta:11,icon:16,tinyIcon:12,gap:8,radius:6};
 let zoom=1;
 const host={props:()=>null,closeOverlay(){},openOverlay(){},nextCommand(){},settings:()=>({zoom}),theme:()=>({})};
 const modules={
+  'enrollment-picker.js':{EnrollmentPicker:class{}},
   'main.js':'src/plugins/git/mod/main.js','pulls.js':'src/plugins/git/mod/pulls.js',
   'label-colors.js':'src/plugins/git/mod/label-colors.js',
   'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{}},'gpui-base':{h_flex:element,v_flex:element},
