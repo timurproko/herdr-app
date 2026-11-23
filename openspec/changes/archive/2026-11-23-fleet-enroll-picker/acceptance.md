@@ -19,7 +19,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-23-fleet-enroll-picker/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-23-fleet-enroll-picker/acceptance.md",
   "finalizedDate": "2026-11-23",
-  "specBaseSha": "113e9031f90b31e4ca34255fb9a8ac7dce34a33d",
+  "specBaseSha": "a1e4fc1a1385724ed31887e8aeae51c73a2d738e",
   "acceptanceScenarios": [
     "Coordinator enrollment stays visible below scrolling content, including when every repository section is folded.",
     "Only confirmed unenrolled canonical repository names appear once in section order, always in the shared account-style dropdown.",
@@ -29,7 +29,7 @@ The maintainer integration decision accepts these scenarios:
     "Account operations, ordinary Git notices, scoped PR errors, relay render guards and shared PR metadata remain intact."
   ],
   "archiveDigest": "117b0d46ce5d8cd13631842fef2b9c6f20f68cf7f71f0e0b22ef084843c6b65f",
-  "specDigest": "57fdddaefa9500017e8b52693811d882aeaf65b58cc4250992204e2f26b5d2e2",
+  "specDigest": "b96ecf6472e2d499ee335c8b9f5cecc4516cddc6d454c48bececd5ff8c98427d",
   "tasksDigest": "6a98e7522170d39cbac73a364d61f661e5cedb14daa9aa8639594194bb6fa270",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []
