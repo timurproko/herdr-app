@@ -240,11 +240,16 @@ links, webhook burst coalescing, no periodic GitHub reads, hide/show catch-up an
 stale completions. It loads the real shared UI header and covers machine-style
 chevron geometry, default expansion, independent repository folds, localStorage
 restore after panel recreation, temporary repository absence, tab/refresh changes,
-zero and live counts while folded, hidden/restored scoped body notices, stale toggle
+count-free expanded/collapsed headers, unchanged top-level totals while folded,
+hidden/restored scoped body errors, fixed enrollment visibility, stale toggle
 guards, no fold-triggered reads and no false empty state when all sections fold.
 The merged fixture retains the real shared-relay deferred-delivery/render guards,
-PR label add/remove assertions and new shared row. Repository counts reuse the 3px
-centred separator. Long outages retain rows/counts/folds with Stale and no robot,
+PR label add/remove assertions and new shared row/separators. The enrollment fixture
+also feeds header available/intrinsic layout widths across 75–200% scales: fitting
+names have no tooltip, overflowing names do, widening removes it, repeated callbacks
+never loop notifications and old-scope measurements are ignored. The invisible
+probe is clipped and absolute so no count-width placeholder or extra row remains.
+Long outages retain rows/counts/folds with Stale and no robot,
 read or live-consumer authority; cold controllers render Verifying/waiting without
 persisted PR inventory or folder fallback. Fresh verification restores controls.
 Immediate-spawn guards reject synchronous notify, shared writes and new IO.

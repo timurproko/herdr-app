@@ -228,8 +228,13 @@ still cannot be inferred from transcripts or branches.
 
 `ui/ui.js` owns `sidebarSectionHeader`, the common machine/repository header shell
 and right-edge chevron; Spaces retains its own actions and guarded folding.
-Aggregate repository headers start expanded, retain both task-scoped Open/Closed
-counts when folded using the shared row's 3px centred metadata separator, and persist a canonical repository-key set in localStorage
+Aggregate repository headers start expanded and show only canonical owner/name
+plus the shared chevron, never repository Open/Closed counts. The flexible name
+uses all remaining width; a clipped invisible natural-width probe and the label's
+available width enable its full-name tooltip only on actual overflow. Geometry is
+local, scope-keyed and updated after layout with changed-only notifications, not
+render-time effects. Top-level tab totals still include folded repositories.
+Sections persist a canonical repository-key set in localStorage
 (`custom.git.task-repositories.folded`), like Spaces' `machines.folded` set.
 Explicit toggles are UI-only: no preference export or Crew/host-document writes,
 and no new fetch or cancellation. Fold state survives tab/context changes and

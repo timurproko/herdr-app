@@ -674,15 +674,32 @@ export default class Changes extends View {
     return {choices:notice.choices,key:JSON.stringify([context.scope,location(),this.view,notice.key])};
   }
 
+  repositoryNameLabel(repo,scope) {
+    this.repositoryNameSizes ??= new Map();
+    const id=`task-repo-name-${scope}-${repo}`;
+    const sizes=this.repositoryNameSizes.get(id)??{};
+    const overflowing=()=>Number.isFinite(sizes.available)&&Number.isFinite(sizes.intrinsic)&&sizes.intrinsic>sizes.available+0.5;
+    const measure=(kind,size,cx)=>{
+      if(!this.shown() || this.aggregate?.currentContext({presentation:true})?.scope!==scope || !this.aggregate.repositories().includes(repo) || !Number.isFinite(size.width))return;
+      const before=overflowing();sizes[kind]=size.width;this.repositoryNameSizes.set(id,sizes);
+      if(before!==overflowing())cx.notify();
+    };
+    // A non-shrinking invisible flex child measures the same text's natural width.
+    // Its absolute clipped parent cannot reserve width or add a line to the header.
+    return div().id(id).flex_1().min_w(0).relative().overflow_hidden()
+      .on_size_change((size,cx)=>measure('available',size,cx))
+      .when(overflowing(),el=>el.tooltip(repo))
+      .child(div().truncate().child(repo))
+      .child(div().absolute().left(0).top(0).flex().invisible()
+        .child(div().id(`${id}-probe`).flex_none().whitespace_nowrap().child(repo)
+          .on_size_change((size,cx)=>measure('intrinsic',size,cx))));
+  }
+
   repositorySection(t, repo, scope) {
     const aggregate = this.aggregate, folded = this.foldedRepositories.has(repo);
-    const open = aggregate.rows('open').filter(pr => pr.repo === repo).length;
-    const closed = aggregate.rows('closed').filter(pr => pr.repo === repo).length;
     return v_flex().id(`task-repo-${repo}`).w_full().flex_none().gap(U.rowGap)
       .child(sidebarSectionHeader(t, {id:`task-repo-header-${repo}`, label:repo, open:!folded, children:[
-        div().flex_1().min_w(0).truncate().child(repo),
-        h_flex().id(`task-repo-counts-${repo}`).flex_none().gap(6).items_center().text_color(t.dim)
-          .child(div().child(`Open ${open}`)).child(this.metaSeparator(t)).child(div().child(`Closed ${closed}`)),
+        this.repositoryNameLabel(repo,scope),
       ]}).cursor_pointer().hover(s => s.bg(t.selected))
         .on_click((_e, cx) => {
           cx.stop_propagation();
@@ -699,6 +716,10 @@ export default class Changes extends View {
   renderAggregate(cx,t) {
     const aggregate=this.aggregate,counts=aggregate.counts(),scope=aggregate.context.scope;
     const repositories=aggregate.repositories();
+    if(this.repositoryNameSizes){
+      const ids=new Set(repositories.map(repo=>`task-repo-name-${scope}-${repo}`));
+      for(const id of this.repositoryNameSizes.keys())if(!ids.has(id))this.repositoryNameSizes.delete(id);
+    }
     this.notices ??= new GitNotices();
     const notices=new Map(repositories.map(repo=>[repo,this.notices.sync(cx,{enabled:this.shown() && !aggregate.context.stale,repository:repo})]));
     const setup=repositories.length ? [...notices.values()].includes('setup') : this.notices.sync(cx,{enabled:this.shown() && !aggregate.context.stale,repository:null})==='setup';

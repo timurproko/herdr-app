@@ -8,8 +8,8 @@ const text=n=>typeof n==='string'?n:[...(n?.kids??[]),...(n?.attrs?.trigger??[])
 let visible=true,enabled=true,context={scope:'machine/coordinator/home/owner',stale:false},selected={space:'coordinator',terminal:'t1',tab:'c',on:null,cwd:'/home'},rendering=false;
 let raw='https://relay.example',account='fixture',snapshot={version:1,relay:raw,revision:1,members:{'owner/a':true,'owner/b':true,'owner/c':true}};
 let repositories=['owner/c','owner/a','owner/b','owner/a'];
-const reads=[],settings=[],jobs=[];
-const cx={focus_handle:()=>({}),notify(){assert.equal(rendering,false,'Never notify inside render');},stop_propagation(){},spawn(fn){jobs.push(Promise.resolve().then(()=>fn(cx)));}};
+const reads=[],settings=[],jobs=[];let notifications=0;
+const cx={focus_handle:()=>({}),notify(){assert.equal(rendering,false,'Never notify inside render');notifications++;},stop_propagation(){},spawn(fn){jobs.push(Promise.resolve().then(()=>fn(cx)));}};
 const drain=async()=>{while(jobs.length)await Promise.all(jobs.splice(0));};
 const host={checking:()=>false,props:()=>null,closeOverlay(){},openOverlay(){},nextCommand(){},notify(){},settings:()=>({zoom:1}),theme:()=>t,run(){},layout:()=>({id:'panel',hidden:!visible,children:[{id:'panel-body',active:'changes'}]}),
  appHome:()=>'/fixture',shared:()=>snapshot,setShared(){throw Error('No shared writes from presentation');},
@@ -61,4 +61,19 @@ change({'owner/a':true});await drain();render();assert.equal(find(tree,'git-enro
 // Unknown membership is quiet too; no IO is introduced by popup presentation.
 panel.notices.members.set('owner/b','unknown');panel.notices.members.set('owner/c','unknown');render();assert.equal(find(tree,'git-enrollment-footer'),undefined);
 raw='';render();assert.ok(find(tree,'git-live-ci-footer'));assert.equal(find(tree,'git-enrollment-footer'),undefined,'Global missing setup takes precedence');
+// Header name uses the count-strip width; tooltips require measured real overflow.
+const longRepo='owner/a-very-long-canonical-repository-name';repositories=[longRepo];render();
+const label=()=>find(tree,`task-repo-name-${context.scope}-${longRepo}`);
+const probe=()=>find(tree,`task-repo-name-${context.scope}-${longRepo}-probe`);
+assert.equal(find(tree,`task-repo-header-${longRepo}`).kids.length,2);assert.ok(label().attrs.flex_1);assert.equal(label().attrs.min_w[0],0);assert.ok(label().kids[0].attrs.truncate);assert.ok(label().attrs.overflow_hidden);
+assert.ok(label().kids[1].attrs.absolute);assert.ok(label().kids[1].attrs.invisible);assert.ok(probe().attrs.flex_none);assert.ok(probe().attrs.whitespace_nowrap);
+for(const zoom of [0.75,1,1.25,1.5,2]){
+ label().attrs.on_size_change[0]({width:320*zoom},cx);probe().attrs.on_size_change[0]({width:250*zoom},cx);render();assert.equal(label().attrs.tooltip,undefined,'Fitting text has no tooltip');
+ label().attrs.on_size_change[0]({width:120*zoom},cx);render();assert.equal(label().attrs.tooltip[0],longRepo);
+ const notified=notifications;label().attrs.on_size_change[0]({width:120*zoom},cx);probe().attrs.on_size_change[0]({width:250*zoom},cx);assert.equal(notifications,notified,'Repeated layout measurements never loop notifications');
+ panel.foldedRepositories.add(longRepo);render();assert.equal(label().attrs.tooltip[0],longRepo);assert.equal(find(tree,`task-repo-body-${longRepo}`),undefined);
+ label().attrs.on_size_change[0]({width:320*zoom},cx);render();assert.equal(label().attrs.tooltip,undefined,'Widening removes unnecessary tooltip even when folded');panel.foldedRepositories.delete(longRepo);
+}
+const staleMeasure=label().attrs.on_size_change[0],notified=notifications;context={...context,scope:'replacement'};panel.aggregate.context=context;render();staleMeasure({width:1},cx);assert.equal(notifications,notified,'Old-scope geometry cannot affect another coordinator');assert.equal(label().attrs.tooltip,undefined);
+assert.equal(text(find(tree,'git-view-open')),'Open 80');assert.equal(text(find(tree,'git-view-closed')),'Closed 0');
 console.log('PASS real coordinator footer, zero/one/many choices, ordered dedup, fold/scroll, keyboard/dismissal, cached reads and stale Settings guards');

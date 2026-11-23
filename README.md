@@ -631,9 +631,11 @@ The panel keeps its normal Git title and controls, without an extra task heading
 or a generic incomplete-list notice. PR rows are grouped under repository headers
 using the same fold chevron and row style as Spaces machine headers. Click a
 header to fold just that repository; sections start expanded and remember their
-state locally, including panel reopen/reload. Open and Closed task-PR counts stay
-visible and update in folded headers; global counts still include folded sections.
-These counts cover distinct linked PRs only, never all PRs in each repository.
+state locally, including panel reopen/reload. Expanded and folded headers show
+only the canonical repository name and chevron, without per-repository counts.
+Names use the released width and truncate with a full-name tooltip only when they
+do not fit. Open and Closed totals remain in the panel's top tabs and still include
+folded sections. These counts cover distinct linked PRs only, never all repository PRs.
 Folding only hides section bodies: it does not fetch, cancel reads or stop updates.
 The recorded list can omit PRs that tasks have not yet supplied; this does not
 change the source or infer missing links.

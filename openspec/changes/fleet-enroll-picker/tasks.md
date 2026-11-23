@@ -19,10 +19,10 @@ Implementation begins only after plan approval. Groups map one-to-one to the dra
 
 ## 3. Count-free full-width repository headers
 
-- [ ] 3.1 Remove per-repository Open/Closed count strips and computations while retaining the shared machine-style header, canonical flexible label and fold persistence; expanded/collapsed fixtures must show name plus chevron only, with unchanged top-level totals including folded repositories.
-- [ ] 3.2 Give the label the released width and expose a full-name tooltip only on measured overflow; wide/narrow-panel fixtures must cover fitting/long names, conditional tooltips and unchanged header/chevron geometry without render-time effects.
-- [ ] 3.3 Replace PR #18's count-in-collapsed-header assertions and documentation with count-free behavior, preserving scoped errors, local folding, aggregate history and stale-context guards; focused fleet and ordinary PR regressions must pass.
-- [ ] 3.4 Complete cross-outcome integration with `CI=true npm run test:ci` on the implemented head and record its actual result and any remaining native-UI limitation; do not deploy or exercise real enrollment/accounts.
+- [x] 3.1 Remove per-repository Open/Closed count strips and computations while retaining the shared machine-style header, canonical flexible label and fold persistence; expanded/collapsed fixtures must show name plus chevron only, with unchanged top-level totals including folded repositories.
+- [x] 3.2 Give the label the released width and expose a full-name tooltip only on measured overflow; wide/narrow-panel fixtures must cover fitting/long names, conditional tooltips and unchanged header/chevron geometry without render-time effects.
+- [x] 3.3 Replace PR #18's count-in-collapsed-header assertions and documentation with count-free behavior, preserving scoped errors, local folding, aggregate history and stale-context guards; focused fleet and ordinary PR regressions must pass.
+- [x] 3.4 Complete cross-outcome integration with `CI=true npm run test:ci` on the implemented head and record its actual result and any remaining native-UI limitation; do not deploy or exercise real enrollment/accounts.
 
 ## Workflow follow-up
 

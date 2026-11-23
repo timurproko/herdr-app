@@ -53,15 +53,14 @@ assert.ok(find(tree,'pr-example/a#12'));assert.equal(find(tree,'pr-example/b#12'
 assert.doesNotMatch(text(tree),/Recorded task PRs|possibly incomplete until tasks report/);
 assert.ok(find(tree,'git-actions'));assert.ok(find(tree,'git-views'));
 const header=(repo,root=tree)=>find(root,`task-repo-header-example/${repo}`);
-const counts=(repo,root=tree)=>find(root,`task-repo-counts-example/${repo}`).kids.map(child=>child.attrs?.size?.[0]===3?'·':text(child)).join(' ');
+const nameOnly=(repo,root=tree)=>{assert.equal(find(root,`task-repo-counts-example/${repo}`),undefined);const row=header(repo,root);assert.equal(row.kids.length,2,'Name plus shared chevron only');assert.doesNotMatch(text(row),/Open|Closed/);assert.ok(text(row).includes(`example/${repo}`));};
 const toggle=repo=>{header(repo).attrs.on_click[0]({},cx);tree=panel.render(cx);};
 assert.ok(find(tree,'task-repo-body-example/a'));assert.ok(find(tree,'task-repo-body-example/b'),'Default expanded, including a zero-row current tab');
-assert.equal(counts('a'),'Open 1 · Closed 0');assert.equal(counts('b'),'Open 0 · Closed 1');
-const countStrip=find(tree,'task-repo-counts-example/a');assert.equal(countStrip.attrs.gap[0],6);assert.ok(countStrip.attrs.items_center);assert.equal(countStrip.kids[1].attrs.size[0],3);assert.ok(countStrip.kids[1].attrs.rounded_full,'Collapsible sections reuse the shared metadata separator');
+nameOnly('a');nameOnly('b');assert.equal(text(find(tree,'git-view-open')),'Open 1');assert.equal(text(find(tree,'git-view-closed')),'Closed 1');
 const aHeader=header('a');assert.equal(aHeader.attrs.h[0],28);assert.equal(aHeader.attrs.pr[0],4);assert.equal(aHeader.kids.at(-1).attrs.size[0],16);
 assert.match(aHeader.kids.at(-1).kids[0].attrs.asset[0],/chevron-down.svg$/);assert.equal(aHeader.attrs.accessibility_label[0],'Collapse example/a');
 let foldCalls=calls.length;const foldWrites=writes.length;
-toggle('a');assert.equal(find(tree,'pr-example/a#12'),undefined);assert.ok(find(tree,'task-repo-body-example/b'));assert.equal(counts('a'),'Open 1 · Closed 0');
+toggle('a');assert.equal(find(tree,'pr-example/a#12'),undefined);assert.ok(find(tree,'task-repo-body-example/b'));nameOnly('a');
 assert.match(header('a').kids.at(-1).kids[0].attrs.asset[0],/chevron-right.svg$/);assert.equal(header('a').attrs.accessibility_label[0],'Expand example/a');
 assert.equal(find(tree,'git-task-empty'),undefined,'All open PRs hidden by folding is not an empty data set');
 assert.equal(calls.length,foldCalls,'Folding does no GitHub read');assert.deepEqual(writes.slice(foldWrites),['custom.git.task-repositories.folded']);
@@ -70,7 +69,7 @@ toggle('b');assert.equal(find(tree,'task-repo-body-example/b'),undefined);assert
 panel.setView('closed',cx);tree=panel.render(cx);assert.equal(find(tree,'task-repo-body-example/a'),undefined);assert.equal(find(tree,'task-repo-body-example/b'),undefined,'Tab switches preserve independent folds');
 // A recreated panel restores local state without loading a new source or altering preferences.
 const restored=new Main();restored.init({},cx);await drain();restored.render(cx);await drain();const restoredTree=restored.render(cx);
-assert.equal(find(restoredTree,'task-repo-body-example/a'),undefined);assert.equal(find(restoredTree,'task-repo-body-example/b'),undefined);assert.equal(counts('b',restoredTree),'Open 0 · Closed 1');restored.close();
+assert.equal(find(restoredTree,'task-repo-body-example/a'),undefined);assert.equal(find(restoredTree,'task-repo-body-example/b'),undefined);nameOnly('b',restoredTree);restored.close();
 // Restore original panel presentation; both toggles are independent and only affect UI.
 toggle('a');toggle('b');panel.setView('open',cx);tree=panel.render(cx);
 assert.equal(state['custom.spaces.preferences'].connectFleetToCoordinator,true);
@@ -83,9 +82,9 @@ status.tasks[1].pr=null;f.refreshFleets(cx,async()=>JSON.stringify(status),true)
 status.tasks[1].pr=url('b');f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();panel.render(cx);await drain();assert.equal(panel.aggregate.rows('closed').length,1,'A newly recorded link enters without changing coordinator cwd');tree=panel.render(cx);assert.ok(header('b'));assert.equal(find(tree,'task-repo-body-example/b'),undefined,'A temporarily absent repository keeps its fold');toggle('b');
 failRepo='example/b';panel.aggregate.refresh(cx);await drain();assert.equal(panel.aggregate.rows('closed').length,1,'A read failure retains same-binding facts');assert.ok([...panel.aggregate.entries.values()].find(e=>e.link.repo===failRepo).error);
 noticeModes['example/b']='repository';tree=panel.render(cx);assert.ok(find(tree,'task-error-example/b#12'));assert.ok(find(tree,'git-enrollment-footer'));
-toggle('b');assert.equal(find(tree,'task-error-example/b#12'),undefined);assert.ok(find(tree,'git-enrollment-footer'),'Folding cannot hide enrollment');assert.equal(counts('b'),'Open 0 · Closed 1');
+toggle('b');assert.equal(find(tree,'task-error-example/b#12'),undefined);assert.ok(find(tree,'git-enrollment-footer'),'Folding cannot hide enrollment');nameOnly('b');
 failRepo=null;bClosed=false;panel.aggregate.refresh(cx);await drain();tree=panel.render(cx);
-assert.equal(counts('b'),'Open 1 · Closed 0','Counts update while folded');assert.equal(panel.aggregate.counts().open,2);assert.equal(find(tree,'task-repo-body-example/b'),undefined);
+nameOnly('b');assert.equal(text(find(tree,'git-view-open')),'Open 2','Top-level totals update while folded');assert.equal(panel.aggregate.counts().open,2);assert.equal(find(tree,'task-repo-body-example/b'),undefined);
 bClosed=true;panel.aggregate.refresh(cx);await drain();tree=panel.render(cx);toggle('b');assert.ok(find(tree,'git-enrollment-footer'),'Reopening keeps the one footer');delete noticeModes['example/b'];
 assert.equal(A.taskPullLink('https://github.com/example/a/pull/12').key,'example/a#12');for(const bad of ['https://evil.test/a/b/pull/12','https://github.com/a/b/pull/0','https://github.com/a/b/pull/1?x=1'])assert.equal(A.taskPullLink(bad),null);
 // The same authenticated subscription routes only relevant repositories, coalescing bursts.
