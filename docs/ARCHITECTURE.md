@@ -194,7 +194,11 @@ Verifying/waiting state with no restored inventory on cold start. It starts no t
 GitHub reads or worker navigation from stale context, and pauses its relay consumer,
 not the chrome-owned shared broker or independent update checks. Fresh verification
 resumes targeted reads and controls; different selected spaces or confirmed ownership
-changes cannot inherit those rows.
+changes cannot inherit those rows. Git additionally matches the successfully
+verified live-task membership, independently of the pair/adoption fingerprint: a
+Core-first worker exit cannot silently remove its PR before Crew publishes the
+closed record. A working/finished mismatch remains unverified rather than renewing
+action freshness, while existing same-home rows stay explicitly stale.
 
 `plugins/git/mod/aggregate.js` consumes the registry's explicit task context only
 for the selected coordinator. It reads exact recorded PR URLs on that machine with

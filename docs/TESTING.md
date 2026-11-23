@@ -197,7 +197,9 @@ No fixture uses real Core, credentials, GitHub, terminals, native input or deplo
 `tests/fleet-history.test.mjs` drives the actual --all reader, Crew join, Git
 controller/aggregate and UI with fake GitHub facts. It covers same-home finished
 Open/Draft rows without robots, live/history duplicate precedence and one read per
-PR, last-worker-exit scope continuity, recent/old/undated/invalid/future and exact
+PR, Core-first worker exit before the closed record (even with another live
+worker preserving adoption), last-worker-exit scope continuity,
+recent/old/undated/invalid/future and exact
 24-hour Closed boundaries, unchanged live-task eligibility, accurate counts,
 excluded empty history headers, webhook reopen/close, three-read concurrency and
 stale robot refusal. Finished-task rows use the merged shared row's labels, absent
@@ -321,7 +323,7 @@ only the demonstrated Windows Git-sh fixture remains an observed suite exclusion
 ## Exact selected source entries
 
 The list below is generated from CI selection, not inferred from naming. On Node
-24 the current selection is **144 Ubuntu / 143 Windows entries**, with two/three
+24 the current selection is **147 Ubuntu / 146 Windows entries**, with two/three
 explicit exclusions respectively. The installed directory-loader fixture now runs
 on both; the preference-home and four runtime-contract suites are included. It includes scaffold/aggregator tests. Earlier Node 20 attempts selected
 122/121 and then 119/119 entries while diagnosing the crashes; those temporary
@@ -401,6 +403,10 @@ tests/file-tab-reuse.test.mjs
 tests/files-plugin-tabs.test.mjs
 tests/files-refresh-policy.test.mjs
 tests/firstmate-profile-role.test.mjs
+tests/fleet-git.test.mjs
+tests/fleet-history.test.mjs
+tests/fleet-preferences.test.mjs
+tests/fleet-reorder.test.mjs
 tests/folder-browser-multi.test.mjs
 tests/folder-content.test.mjs
 tests/git-ci-fix.test.mjs
@@ -413,6 +419,7 @@ tests/git-notices.test.mjs
 tests/git-relay-lifecycle.test.mjs
 tests/git-repository-checkboxes.test.mjs
 tests/git-repository-cli.test.mjs
+tests/git-row-labels.test.mjs
 tests/git-webhooks.test.mjs
 tests/host-facade.test.mjs
 tests/installed-export.test.mjs
@@ -467,6 +474,8 @@ tests/usage-plugin.test.mjs
 src/plugins/a1-colors/session-name.test.mjs
 src/plugins/a1-colors/session-sync.test.mjs
 src/plugins/a1-colors/settings.test.mjs
+src/plugins/crew/fleet-refresh.test.mjs
+src/plugins/crew/fleet.test.mjs
 src/plugins/crew/plugin.test.mjs
 scripts/ci-required.test.mjs
 ```

@@ -39,6 +39,18 @@ for(const number of [2,3]){
 }
 assert.equal(find(tree,'task-repo-example/old'),undefined,'An old historical-only repository leaves no empty header');
 panel.setView('closed',cx);tree=panel.render(cx);for(const number of [4,5])assert.ok(find(tree,`pr-example/repo#${number}`));for(const number of [6,7,8,9,10])assert.equal(find(tree,`pr-${number===6?'example/old':'example/repo'}#${number}`),undefined,'Old, boundary-expired, undated, invalid and future-dated Closed history is excluded');
+// A worker's Core exit may precede crew finish's closed record. Another live
+// worker keeps adoption unchanged, so task authority must have its own witness.
+const savedPanes=panes,savedTabs=groups[1].tabs;
+fact(11,'OPEN');tasks[0].pr=url(11);tasks.push({id:'helper',state:'working',terminal:'t3',pr:null});
+terminals.push({address:'t3',state:'live',labels:{'crew.task':'helper','crew.home':'home','herdr.space':'fm-crew-home'}});panes=[...panes,{pane:'hp',tab:'h',terminal:'t3'}];groups[1].tabs=[...savedTabs,{id:'h'}];
+await refreshStatus();panel.setView('open',cx);tree=panel.render(cx);await drain();tree=panel.render(cx);assert.ok(find(tree,'pr-example/repo#11'));
+const beforeExit=calls.length;terminals[1].state='finished';panes=panes.filter(p=>p.terminal!=='t2');groups[1].tabs=[{id:'h'}];
+tree=panel.render(cx);assert.ok(find(tree,'pr-example/repo#11'),'Core-first exit retains the row until the task record is confirmed');assert.equal(find(tree,'pr-agent-example/repo#11'),undefined);assert.ok(find(tree,'git-task-stale'));await drain();
+await refreshStatus();tree=panel.render(cx);assert.ok(find(tree,'pr-example/repo#11'));assert.equal(calls.length,beforeExit,'An inconsistent working/finished result grants no new reads');
+tasks[0].state='closed';await refreshStatus();tree=panel.render(cx);assert.ok(find(tree,'pr-example/repo#11'));assert.equal(find(tree,'pr-agent-example/repo#11'),undefined);await drain();
+tasks[0].state='working';tasks[0].pr=url(1);tasks.pop();terminals.pop();terminals[1].state='live';panes=savedPanes;groups[1].tabs=savedTabs;
+await refreshStatus();panel.setView('closed',cx);tree=panel.render(cx);await drain();
 // Live-task closed PRs are not subjected to the historical cutoff.
 fact(1,'CLOSED',iso(now-10*DAY));socket.onChange({repository:'example/repo'},cx);await drain();tree=panel.render(cx);assert.ok(find(tree,'pr-example/repo#1'));assert.equal(panel.aggregate.counts().closed,3);assert.ok(find(tree,'pr-agent-example/repo#1'));
 fact(1,'OPEN');socket.onChange({repository:'example/repo'},cx);await drain();panel.setView('open',cx);tree=panel.render(cx);

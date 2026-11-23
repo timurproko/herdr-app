@@ -9,13 +9,13 @@ const enabled = () => shared('custom.spaces.preferences')?.connectFleetToCoordin
 const machineOf = address => address?.includes('/') ? address.split('/')[0] : null;
 const qualify = (address, machine) => typeof address !== 'string' || !address || (address.includes('/') && machineOf(address) !== machine) ? null : machine && !address.includes('/') ? `${machine}/${address}` : address;
 const model = () => ({groups:spaces(), all:panes(), list:terminals()});
-// A valid status reply can race a partially published native snapshot. Missing
-// live membership is uncertainty, unlike a finished terminal or conflicting join.
+// A status reply can race native membership or crew finish's record update.
+// Missing workers remain uncertain; a finished owner or conflicting join is not.
 const incompleteMembership = (status, machine, snapshot) => status.owner.live &&
   [status.owner.terminal,...status.tasks.filter(t=>['working','reported'].includes(t.state)).map(t=>t.terminal)].some(address=>{
     const id=qualify(address,machine);if(!id)return false;
     const terminal=snapshot.list.find(t=>t.address===id);if(!terminal)return true;
-    if(terminal.state!=='live')return false;
+    if(terminal.state!=='live')return id!==qualify(status.owner.terminal,machine);
     const members=snapshot.all.filter(p=>p.terminal===id && !p.mod);
     return !members.length || members.length===1 && !snapshot.groups.some(s=>(s.machine??null)===machine && s.tabs?.some(t=>t.id===members[0].tab));
   });
@@ -62,6 +62,7 @@ export function bindFleet(status, machine, {groups, all, list}) {
 }
 const identityOf = bound => bound ? Object.fromEntries(['machine','parent','child','home','owner','ownerTab','ownerPane','adoption'].map(key=>[key,bound[key]])) : null;
 const identityParts = identity => [identity.machine,identity.home,identity.owner,identity.parent,identity.ownerTab,identity.ownerPane];
+const taskMembership = bound => JSON.stringify((bound?.tasks??[]).filter(t=>!t.historical).map(t=>[t.id,t.terminal,t.space,t.tab,t.pane]).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))));
 const withScopes = identity => ({...identity,pullScope:JSON.stringify(identityParts(identity)),binding:JSON.stringify([...identityParts(identity),identity.child])});
 const text = (value, max = 512) => typeof value==='string' && value.length>0 && value.length<=max && !/[\u0000-\u001f\u007f]/.test(value);
 const inMachine = (snapshot, id, machine) => snapshot.groups.some(s=>s.id===id && (s.machine??null)===machine);
@@ -151,7 +152,7 @@ export function fleetContexts({presentation = false} = {}) {
     const layout=hosts.find(m=>(m.name??null)===entry.machine)?.layout;
     if((layout && layout!=='ready') || (entry.machine && !layout) || signature(entry.machine,snapshot,entry.identity)!==entry.signature) return [];
     const bound=bindFleet(entry.status,entry.machine,snapshot);
-    return bound && bound.binding===entry.binding ? [bound] : [];
+    return bound && bound.binding===entry.binding ? [{...bound,taskMembershipVerified:taskMembership(bound)===entry.members}] : [];
   });
 }
 // Injected source is a seam: future discover-prs can be implemented here, not in consumers.
@@ -186,7 +187,7 @@ export function refreshFleets(cx, readStatus, force = false) {
         const bound=bindFleet(status,machine,snapshot), identity=identityOf(bound), at=Date.now();
         const display=nextDisplay(machine,bound,snapshot), verifiedSignature=signature(machine,snapshot,identity);
         setShared(FLEET_KEY,{version:1,entries:{...(latest?.version===1?latest.entries:{}),[key]:{
-          machine,at,attemptAt:at,token,attemptToken:token,signature:verifiedSignature,attemptSignature:signature(machine,snapshot,display??identity),status,binding:bound?.binding??null,identity}}});
+          machine,at,attemptAt:at,token,attemptToken:token,signature:verifiedSignature,attemptSignature:signature(machine,snapshot,display??identity),status,binding:bound?.binding??null,identity,members:taskMembership(bound)}}});
         verifiedTokens.set(key,token);publishDisplay(machine,display);
       } catch {
         if(current()) {
@@ -209,7 +210,7 @@ export function invalidateFleet() {
   verifiedTokens.clear();pendingTokens.clear();
 }
 export function fleetPullContext(space, {presentation = false} = {}) {
-  const context=fleetContexts().find(c=>c.parent===space);
+  const context=fleetContexts().find(c=>c.parent===space && c.taskMembershipVerified);
   if(context)return {...context,kind:'tasks',scope:context.pullScope,stale:false,links:context.tasks.filter(t=>t.pr).map(t=>({url:t.pr,terminal:t.terminal,task:t.id,historical:t.historical===true}))};
   if(!presentation || !enabled())return null;
   let identity=fleetContexts({presentation:true}).find(c=>c.parent===space);
