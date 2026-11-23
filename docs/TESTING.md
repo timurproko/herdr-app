@@ -155,6 +155,23 @@ stock mismatches and malformed baseline records still fail. The new
 reviewed/mismatching and missing-0.1.17 fixtures. Existing reviewed hashes remain
 unchanged; a passing public capability gate is not a stock/native source review.
 
+## Reviewed native frame stock
+
+`tests/feedback-native-stock.test.mjs` and `tests/palette-native-stock.test.mjs`
+use byte-faithful canonical release fixtures, never an installed host. They assert
+pinned digest/raw build parity, native imports, 0.1.16/0.1.17 apply/owned refresh/
+no-op/restore, masked and reset palette upgrades, earlier raw backup retention,
+absent opt-ins and byte-preserving unknown/ambiguous-stock advisories. Existing
+frame-upgrade, startup and actual deploy/update pipeline fixtures retain conflict,
+corrupt-record, concurrent-write and advisory-composition coverage. Both palette
+variants run the existing palette-ui list/heading/fade/keyboard fixture. The actual
+native and Custom 0.1.17 catalogs are compared with non-hardcoded themes across
+light/dark and active layouts, including native command arguments and Custom
+Settings/picker/rename/close routing. Feedback's simulated native sending/UI suite
+is unchanged. Installed 0.1.17 stock was separately compared read-only; provenance
+and limitations are in HERDR-0.1.17-NATIVE-PATCHES.md. No deployment or live UI
+interaction is implied by fixture success.
+
 ## Git PR label facts
 
 Pull facts, pagination, fleet and webhook fixtures cover assigned label names/colours
@@ -388,7 +405,7 @@ only the demonstrated Windows Git-sh fixture remains an observed suite exclusion
 ## Exact selected source entries
 
 The list below is generated from CI selection, not inferred from naming. On Node
-24 the current selection is **152 Ubuntu / 151 Windows entries**, with two/three
+24 the current selection is **154 Ubuntu / 153 Windows entries**, with two/three
 explicit exclusions respectively. The installed directory-loader fixture now runs
 on both; the preference-home and four runtime-contract suites are included. It includes scaffold/aggregator tests. Earlier Node 20 attempts selected
 122/121 and then 119/119 entries while diagnosing the crashes; those temporary
@@ -465,6 +482,7 @@ tests/deploy-failure.test.mjs
 tests/deploy-gate-pipeline.test.mjs
 tests/deployment.test.mjs
 tests/empty-state.test.mjs
+tests/feedback-native-stock.test.mjs
 tests/file-refresh.test.mjs
 tests/file-tab-reuse.test.mjs
 tests/files-plugin-tabs.test.mjs
@@ -498,6 +516,7 @@ tests/pane-crew-role.test.mjs
 tests/panel-kit.test.mjs
 tests/panel-pin-ui.test.mjs
 tests/panel-state.test.mjs
+tests/palette-native-stock.test.mjs
 tests/pin-swap.test.mjs
 tests/pinned-pr-refresh.test.mjs
 tests/plugin-prerequisite-ui.test.mjs
