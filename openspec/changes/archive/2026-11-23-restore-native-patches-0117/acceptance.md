@@ -19,7 +19,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-23-restore-native-patches-0117/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-23-restore-native-patches-0117/acceptance.md",
   "finalizedDate": "2026-11-23",
-  "specBaseSha": "b884ed48460413529ff1be31444d7c7b892eab66",
+  "specBaseSha": "9fd7c020d7d5e52c3f2aae305447afc0a332807e",
   "acceptanceScenarios": [
     "Feedback originals match unchanged pinned 0.1.16 and 0.1.17 source, including explicit LF and Windows CRLF bytes with release commits and digests.",
     "The reviewed 0.1.17 palette retains native dynamic light-dark-layout theme choices alongside all existing Custom presentation and command routes.",
