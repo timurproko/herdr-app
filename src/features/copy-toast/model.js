@@ -10,9 +10,10 @@ export function selectionSignature(list) {
 // What one clipboard check after a settled selection means. Herdr leaves the
 // clipboard untouched when the copied text equals what it already holds (no write,
 // no sequence-number change), so an unchanged clipboard on a later check is taken
-// as the same text copied again.
-// 'show': new text, a definite copy. 'assume': same text copied again (keep checking
-// so a late real change still corrects the count). 'wait': look again if retries remain.
+// as the same text copied again. This is only a heuristic: a held drag or unrelated
+// clipboard write can look the same. The SDK reports no actual copy completion.
+// 'show': changed clipboard text. 'assume': presumed same-text recopy.
+// 'wait': look again if retries remain.
 export const SAME_TEXT_AFTER = 1; // checks that must see the old text before assuming
 export function copyDecision(text, clip, attempt, shown) {
   if (typeof text !== 'string' || !text.length) return 'wait';

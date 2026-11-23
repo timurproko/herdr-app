@@ -118,6 +118,18 @@ deploy/enable/disable/remove/rollback/preference-import operational commands.
 The real gh CLI fixture uses synthetic auth and a GET-only localhost server.
 Provider/relay/Cloudflare unit transports are mocks, not live requests.
 
+## Terminal copy-on-select controller
+
+`node --experimental-vm-modules tests/copy-toast.test.mjs` loads the actual observer
+and real selection model with synthetic host snapshots, a fake clipboard and
+one-shot timers. It covers initially null/undefined/empty window facts followed by
+Windows publication, simulated mouse selection and release-time clipboard updates,
+standard success-toast payloads, same-text selection inference, eligibility changes,
+clearing/focus switches/close, stale callbacks, Unicode counts and bounded failed reads.
+It never accesses real clipboard contents, sends terminal input or starts processes.
+This is controller coverage, not proof of a real mouse release or toast pixels;
+explicit/repeated shortcut detection remains outside the best-effort scope.
+
 ## Exclusions (whole suites, not rewritten assertions)
 
 | Entry | Runner | Reason |

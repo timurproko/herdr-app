@@ -493,6 +493,21 @@ the enabled app lifecycle provisions the user-authorized companions.
 See [independent startup and management](docs/GIT-CORE-MONITOR.md) and
 [message/evidence rules](docs/GIT-CI-FIX.md).
 
+## Terminal copy feedback
+
+On Windows, Custom shows a standard success toast, **Copied N chars to clipboard**,
+for best-effort native terminal mouse copy-on-select. Missing window facts during
+cold startup no longer disable the observer: it starts when those facts arrive.
+Turning native `copy_on_select` off stops this feedback; turning it back on resumes it.
+The observer only reads the local clipboard and leaves text, selection and terminals
+unchanged.
+
+Herdr exposes selection changes, not copy completion or mouse release. Feedback
+therefore uses a short selection-settle delay and bounded clipboard checks; a held
+drag or unrelated clipboard activity can still be mistaken for a copy. Explicit or
+repeated shortcut copies with unchanged selections cannot be detected reliably
+without an upstream copy-success capability. This is not an every-copy guarantee.
+
 ## Text selection color
 
 Native input text selection in Custom blends the theme's muted `selection` color
