@@ -19,7 +19,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-23-fleet-enroll-picker/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-23-fleet-enroll-picker/acceptance.md",
   "finalizedDate": "2026-11-23",
-  "specBaseSha": "9fd7c020d7d5e52c3f2aae305447afc0a332807e",
+  "specBaseSha": "113e9031f90b31e4ca34255fb9a8ac7dce34a33d",
   "acceptanceScenarios": [
     "Coordinator enrollment stays visible below scrolling content, including when every repository section is folded.",
     "Only confirmed unenrolled canonical repository names appear once in section order, always in the shared account-style dropdown.",
