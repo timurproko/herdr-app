@@ -443,18 +443,22 @@ export default class Spaces extends View {
       icon: badge(String(i + 1), spaceBadgeColor(t, w, shared('space.colors') ?? {})), label: w.name});
   }
 
-  // Match the numbered badge's box so fleet names share the normal text anchor.
-  fleetBadge(t) {
-    return svg('mods/custom-spaces/link.svg').size(U.icon).flex_none().text_color(t.muted);
+  // Display identity only: the projected parent supplies colour, never action authority.
+  spaceBadge({ w, i, linked = false, block }, t) {
+    const parent = linked && spaces().find(s => s.id === block?.[0] && (s.machine ?? null) === (w.machine ?? null));
+    const fill = spaceBadgeColor(t, parent || w, shared('space.colors') ?? {});
+    return parent
+      ? badge(svg('mods/custom-spaces/link.svg').size(12).flex_none().text_color('#ffffff'), fill)
+      : badge(String(i + 1), fill);
   }
 
-  row({ w, i, g, tree, linked = false, position = i }, t) {
+  row({ w, i, g, tree, linked = false, block, position = i }, t) {
     const on = w.active;
     const edit = this.rename?.id === w.id ? this.rename : null;
     const drag = this.drag, d = drag.view;
     const fromIndex = d ? this.ordered().findIndex(r => r.w.id === d.id) : -1;
-    const fill = spaceBadgeColor(t, w, shared("space.colors") ?? {});
     const worktree = !edit && Boolean(g?.linked || tree) && shows("spaces.show.worktree");
+    const tags = edit ? [] : pluginSpaceTags(w);
     return drag.item(v_flex()
       .relative()
       .id(`space-${w.id}`)
@@ -505,26 +509,23 @@ export default class Spaces extends View {
           .gap(U.gap)
           .items_center()
           .when(this.tabArrival?.spaceId === w.id && !edit, el => tabArrivalMotion(this, el))
-          .child(linked ? this.fleetBadge(t) : badge(String(i + 1), fill))
+          .child(this.spaceBadge({ w, i, linked, block }, t))
           .when(Boolean(edit), el => el.child(this.renameField(w, t)))
           .when(!edit, el => el
             .child(spaceTitle(t,w).when(linked, el => el.text_color(t.muted)).min_w(0).max_w(150).truncate().child(w.name))
             .child(g ? this.gitTail(g, tree, w.name, t, w.named === true) : div().flex_1()))
-          // Keep tags to the left of the fixed trailing icon. Without an icon,
-          // retain the tag-only row's existing right edge beside the Agents pills.
-          .when(!edit, el => el.children(pluginSpaceTags(w).map((tag, k, all) =>
-            rolePill(t, tag.label, { status: true }).id(`space-tag-${w.id}-${tag.plugin}-${k}`)
-              .when(!worktree && k === all.length - 1, e => e.mr(-5))
-              .when(Boolean(tag.tooltip), e => e.tooltip(tag.tooltip)))))
-          // 8px row padding minus 4px puts this 16px slot on the machine
-          // chevron's axis (4px right inset), independent of child indentation.
+          // Untagged markers retain the machine chevron's axis (4px right inset).
+          // With tags, metadata precedes the shared trailing tag edge instead.
           .when(worktree, el => el.child(slot(svg("mods/custom-workspace-chrome/branch.svg").size(U.smallIcon).text_color(t.muted))
-            .id(`space-worktree-${w.id}`).mr(-4).tooltip('Git worktree'))),
+            .id(`space-worktree-${w.id}`).when(!tags.length, e => e.mr(-4)).tooltip('Git worktree')))
+          .when(!edit, el => el.children(tags.map((tag, k, all) =>
+            rolePill(t, tag.label, { status: true }).id(`space-tag-${w.id}-${tag.plugin}-${k}`)
+              .when(k === all.length - 1, e => e.mr(-5))
+              .when(Boolean(tag.tooltip), e => e.tooltip(tag.tooltip))))),
       );
   }
 
-  compact({ w, i, linked = false }, t) {
-    const fill = spaceBadgeColor(t, w, shared("space.colors") ?? {});
+  compact({ w, i, linked = false, block }, t) {
     return this.drag.control(h_flex().relative()
       .id(`space-${w.id}`)
       .w(U.control).h(U.control).self_center()
@@ -536,7 +537,7 @@ export default class Spaces extends View {
       .when(w.active, (el) => el.bg(t.selected)), {hover: s => s.bg(itemHover(t, w.active)), tooltip: w.directory || w.name})
       .on_click(this.drag.guard(() => run("space.select", { id: w.id })))
       .on_mouse_down("right", this.drag.guard((_e, cx) => { cx.stop_propagation(); this.menu(w); }))
-      .child((linked ? this.fleetBadge(t) : badge(String(i + 1), fill)).id(`space-badge-${w.id}`)
+      .child(this.spaceBadge({ w, i, linked, block }, t).id(`space-badge-${w.id}`)
         .when(this.tabArrival?.spaceId === w.id, el => tabArrivalMotion(this, el)));
   }
 

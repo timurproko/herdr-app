@@ -307,17 +307,22 @@ reorder and Spaces render fixtures cover both-source dimming, a single ordinary
 coordinator chip from either grabbed member (including return/fade), no stacked
 preview or floating chain icon, and expanded/compact chain badges while preserving
 ordinary worktree order. Geometry
-assertions compare the muted vector's 16px box, slot width and vertical centering
-with real numbered badges; fleet names share ordinary names' left edge while
-retaining muted text, without connector lines. Rail selection, name/directory
+assertions compare the filled chain badge's 16px box, 4px rounding, slot width and
+vertical centering with real numbered badges, with an inset 12px white outline glyph.
+The real colour resolver covers distinct coordinator/fleet colours, named and hex
+overrides, recolouring between renders, and retained display identity in both modes;
+missing/cross-machine parents cannot lend colour. Fleet names share ordinary names'
+left edge while retaining muted text, without connector lines. Rail selection, name/directory
 tooltips and ordinary numbering stay unchanged. Packaged Crew
 fixtures retain Crew tags on both attached rows through refresh, finished fleets
 and cold restoration, restore ordinary worker tag rules on confirmed detach/attachment-off,
 and hide all Crew tags when the plugin is disabled; tag reads start no discovery or state writes.
 Worktree layout fixtures compare the real shared Crew pill styling and trailing
-placement on both attached rows, plus actual local/remote machine-chevron and
-branch-slot right axes for ordinary/attached rows, Crew and multiple plugin pills,
-long names, tag-only edges, hidden icons and rename mode. Compact rail fixtures
+placement on both attached rows: counts and worktree markers precede plugin pills,
+and a tag-only coordinator and a tagged fleet share the same right inset. Local/remote,
+ordinary/attached and multiple-tag cases keep the final pill at that edge while
+untagged branch slots retain the machine-chevron axis. Long names, active/inactive
+rows, hidden icons and rename mode are covered. Compact rail fixtures
 remain badge-only and never query plugin tags.
 
 `tests/fleet-git.test.mjs` loads the actual Git controller, aggregate source and Crew
