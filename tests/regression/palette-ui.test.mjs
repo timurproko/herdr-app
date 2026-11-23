@@ -5,6 +5,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+for (const entrypoint of ['main.js', 'main-0.1.17.js']) {
 let inLayout=false;
 function element(kind='div') {
   const node={kind,kids:[],style:{},events:{}};let proxy;
@@ -35,7 +36,7 @@ const base={h_flex:()=>element('hflex'),v_flex:()=>element('vflex'),InputState:{
   },
 };
 const t={foreground:'#fafafa',muted:'#aaa',dim:'#888',border:'#333',raised:'#252525',popover:'#202020',hover:'#303030',selected:'#444',accent:'#55aaff',input:'#555'};
-const api={commands:()=>[],layouts:()=>['main'],keys:()=>[],theme:()=>t,shared:()=>skin?'Custom':'main',window:()=>({platform:'windows'}),props:()=>({overlay:'owned-test'}),run:(...args)=>calls.push(args),closeOverlay:id=>closed.push(id),openOverlay(){}};
+const api={commands:()=>[],layouts:()=>['main'],themes:()=>[],settings:()=>({dark:true}),keys:()=>[],theme:()=>t,shared:()=>skin?'Custom':'main',window:()=>({platform:'windows'}),props:()=>({overlay:'owned-test'}),run:(...args)=>calls.push(args),closeOverlay:id=>closed.push(id),openOverlay(){}};
 const context=vm.createContext({console,localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v)}}),cache=new Map();
 const synthetic=(name,values)=>new vm.SyntheticModule(Object.keys(values),function(){for(const[k,v]of Object.entries(values))this.setExport(k,v);},{context,identifier:name});
 async function load(file){if(cache.has(file))return cache.get(file);const mod=new vm.SourceTextModule(fs.readFileSync(file,'utf8'),{context,identifier:file});cache.set(file,mod);await mod.link((name,ref)=>{
@@ -46,7 +47,7 @@ async function load(file){if(cache.has(file))return cache.get(file);const mod=ne
   if(name==='./custom-scroll-fade.js')return synthetic(name,{bottomFade:(_state,id,color,options)=>element('fade').id(`${id}-more-below`).color(color).insets(options)});
   throw Error(`Unexpected import ${name} in ${ref.identifier}`);
 });return mod;}
-const mod=await load(path.join(root,'frame-patches/palette/main.js'));await mod.evaluate();
+const mod=await load(path.join(root,'frame-patches/palette',entrypoint));await mod.evaluate();
 const {default:Palette,paletteItems,paletteHeading}=mod.namespace;
 const row=(id,head='Tab')=>({e:{id,name:'fixture.action',args:{id},title:`Command ${id}`,group:head},head,hits:[]});
 const fixture=[row('tab-a'),row('tab-b'),row('pane-a','Pane'),row('pane-b','Pane'),row('space-a','Space')];
@@ -91,4 +92,5 @@ palette.rows=()=>fixture;view=palette.render();byId(view,'palette-search-clear')
 // Stock layouts gain neither the new header nor a synchronization task.
 skin=false;const timerCount=timers.length;const stock=new Palette();stock.init({},cx);stock.rows=()=>fixture;view=stock.render();assert.equal(timers.length,timerCount);assert.equal(byId(view,'palette-pinned-heading'),undefined);
 const unchanged=notices;palette.pendingHead='Outside scope';timers[0].fn(cx);assert.equal(notices,unchanged);palette.close();assert.equal(timers[0].cancelled,true,'Header synchronization is cancelled on close');assert.equal(closed.at(-1),'owned-test');
-console.log('PASS: pinned command-group/count headings, scrollbar above sticky headers, native list retention, layout-safe sync, plural counts, clear/stale/empty-key guards and stock scope (synthetic UI)');
+console.log(`PASS ${entrypoint}: pinned command-group/count headings, scrollbar above sticky headers, native list retention, layout-safe sync, plural counts, clear/stale/empty-key guards and stock scope (synthetic UI)`);
+}

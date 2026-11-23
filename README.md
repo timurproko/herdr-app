@@ -600,8 +600,10 @@ selected terminal's folder.
 
 **Settings → Spaces → Connect fleet space to coordinator** is off by default
 (`connectFleetToCoordinator`). When on with Crew enabled, a verified same-machine
-fleet attaches below its coordinator with a thin muted vector elbow descending
-from beneath the coordinator's number badge toward the inset, muted fleet name.
+fleet attaches below its coordinator with a muted outlined chain icon in the normal
+numbered-badge slot: the same 16px box and vertical centre. No elbow or connector
+lines remain. The fleet name starts at the same left edge as all other space names;
+its existing muted text alone keeps it visually subordinate.
 The coordinator keeps its Crew tag and only the attached fleet omits it.
 Unrelated plugin tags remain. Refreshing Git or Crew, relay events, focus changes
 and unrelated pane changes do not temporarily turn a verified fleet back into an
@@ -618,10 +620,12 @@ its loaded rows and folds with **Stale**, or shows **Verifying** on cold start;
 it starts no new GitHub reads or worker navigation until verification succeeds.
 Only sanitized pair identity is persisted for restoration, not task/PR inventory,
 reports or credentials; it is never exported as a portable preference.
-Dragging either expanded row moves the pair, with both rows dimmed and a paired
-preview. Public ordering commands wait for acknowledgements; the two-space move is
+Dragging either expanded row moves the pair, with both rows dimmed and one ordinary
+coordinator chip (its numbered badge and name), whichever row is grabbed. The floating
+preview has no fleet row or chain icon; the insertion indicator still treats the pair
+as one block. Public ordering commands wait for acknowledgements; the two-space move is
 not atomic and an uncertain result is never replayed. The compact rail remains
-selection-only and shows the same elbow in the fleet's badge slot, with its usual
+selection-only and shows the same badge-sized chain icon in the fleet's badge slot, with its usual
 name/directory tooltip. They remain separate selectable native
 spaces; no terminals or tabs are relocated. The coordinator's Git panel shows only
 recorded task PRs across projects, with task-scoped counts and no single active pin.
@@ -1287,12 +1291,18 @@ supported global confirmation override exists, and the shipped Confirm mod is
 never patched.
 Install/layout entry repairs only prior opt-ins. Unknown native bytes are skipped
 with an advisory, not a failed deploy; personal dependency conflicts and corrupt
-records still fail. On 0.1.17 the standard palette remains instead of Custom's
-styling and command routing. New stock feedback uses Herdr's standard form and
-success view; an old owned feedback patch is retained but not refreshed or
-certified. Restoring supported styling needs reviewed native originals and a
-patch rebase, not a version allowlist. See the native patch policy for the exact
-lost features and provenance safeguards. The worker is deployed with the customization and does not
+records still fail. Reviewed 0.1.16/0.1.17 originals support refresh for prior
+opt-ins. On 0.1.17, Custom's palette styling, fixed headings, fades, keyboard
+navigation, Usage entry and Custom command routing return **without losing native
+dynamic light/dark/layout-filtered theme choices**. Feedback's JavaScript did not
+change: its old rejection was a false negative caused by incorrect canonical
+originals. Its compact attachments, Add image, expandable JSON details and Feedback
+sent view refresh again. Other layouts retain native presentation and routing.
+Unknown future stock remains untouched, or an old owned patch is retained without
+refresh; that patch's advisory never blocks an otherwise successful install/update.
+Restoring unsupported styling needs reviewed native originals and a patch rebase,
+not a version allowlist. See [review provenance](docs/HERDR-0.1.17-NATIVE-PATCHES.md)
+and the native patch policy for safeguards. The worker is deployed with the customization and does not
 need this source folder.
 
 ```powershell

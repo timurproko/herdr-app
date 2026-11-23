@@ -16,6 +16,9 @@ export function loadFrameRegistry(root = bundle) {
       || typeof patch.target !== 'string' || !/^(frame|mods)\/[a-z][a-z0-9-]*$/.test(patch.target) || targets.has(patch.target.toLowerCase())
       || !Array.isArray(patch.originals) || !patch.originals.length || !patch.originals.every(relative)
       || !object(patch.files) || !Object.hasOwn(patch.files, 'main.js')) throw Error('Invalid or duplicate frame registry entry.');
+    if (patch.mainByOriginal !== undefined && (!object(patch.mainByOriginal)
+      || Object.entries(patch.mainByOriginal).some(([original, main]) => !patch.originals.includes(original) || !relative(main))))
+      throw Error(`Invalid frame original mapping: ${patch.id}.`);
     const names = new Set();
     for (const [name, source] of Object.entries(patch.files)) {
       if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(name) || !relative(source) || names.has(name.toLowerCase())) throw Error(`Invalid frame file mapping: ${patch.id}.`);

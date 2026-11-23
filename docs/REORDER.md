@@ -52,8 +52,10 @@ feature-local drag implementations. Keep one fixed configuration per instance.
 
 A domain block can pass `meta: {sources: [id, ...], ...binding}` to `begin`.
 All captured sources share dimming/return cleanup; ordinary clicks retain the
-original pressed ID. `preview(..., {rows: [{icon,label}, ...]})` draws a stacked
-block chip with the same pointer/return motion. Domain adapters still validate
+original pressed ID. A block still uses `preview(..., {icon,label})` to draw one
+ordinary chip with the same pointer/return motion. Spaces always represents the
+coordinator's numbered badge and name, whichever linked row is grabbed; no fleet
+row or chain icon appears in that floating preview. Domain adapters still validate
 bindings and destination block edges. Spaces commits its finite public ordering
 sequence only after each prior move is acknowledged; no native transaction is
 claimed and an uncertain result is not replayed. The compact Spaces rail retains

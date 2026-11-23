@@ -68,11 +68,25 @@ for (const variant of ['strip','list','icons']) {
   drag.begin('b',press,cx);old[2].fn(cx);assert.equal(drag.current.id,'b');assert.equal(drag.leaving,null,'Old cleanup cannot cancel a new drag');
   drag.cancel(cx);assert.equal(timers.length,0,'A press without a drag has no return animation');
 }
-const blockDrag=new ReorderDrag({variant:'list'});
-blockDrag.begin('fleet',press,cx,{meta:{sources:['coordinator','fleet']}});blockDrag.track(motion,cx);
-assert.equal(blockDrag.dimmed('coordinator'),true);assert.equal(blockDrag.dimmed('fleet'),true);assert.equal(blockDrag.dimmed('other'),false);
-assert.equal(blockDrag.preview('pair',t,{rows:[{icon:element(),label:'Coordinator'},{icon:element(),label:'Fleet'}]}).style.content[0].kids.length,2);
-blockDrag.reset();
+for(const grabbed of ['coordinator','fleet']) {
+ const blockDrag=new ReorderDrag({variant:'list'}),meta={sources:['coordinator','fleet']};
+ blockDrag.begin(grabbed,press,cx,{meta});blockDrag.track(motion,cx);
+ for(const id of ['coordinator','fleet','other']) {
+  assert.equal(blockDrag.dimmed(id),id!=='other');
+  assert.equal(blockDrag.item(element(),id).style.opacity[0],id==='other'?1:0.5,'Both block sources remain dimmed');
+  assert.equal(blockDrag.sourceLayer(element(),id).style.opacity[0],id==='other'?0:1);
+ }
+ const icon=element('coordinator-badge'),chip=blockDrag.preview('pair',t,{icon,label:'Coordinator'}).style.content[0];
+ assert.equal(chip.style.h[0],28);assert.equal(chip.kids.length,2,'One ordinary chip contains only its icon and label');
+ assert.equal(chip.kids[0],icon);assert.equal(chip.kids[1].kids[0],'Coordinator');
+ assert.equal(blockDrag.current.id,grabbed);assert.equal(blockDrag.current.meta,meta);
+ blockDrag.cancel(cx);
+ assert.equal(blockDrag.dimmed('coordinator'),true);assert.equal(blockDrag.dimmed('fleet'),true,'Cancellation still returns both sources');
+ const phases=timers.splice(0);assert.deepEqual(phases.map(x=>x.ms),[16,236,416]);
+ phases[0].fn(cx);assert.equal(blockDrag.leaving.phase,'return');
+ phases[1].fn(cx);assert.equal(blockDrag.dimmed('coordinator'),false);assert.equal(blockDrag.dimmed('fleet'),false);
+ phases[2].fn(cx);assert.equal(blockDrag.view,null);
+}
 assert.throws(()=>new ReorderDrag({variant:'unknown'}),/Unknown reorder variant/);
 const custom = new ReorderDrag({variant:'icons',threshold:10,cancel:'clear',offset:{x:2,y:3}});
 custom.begin('a',press,cx,{scale:2});custom.track(motion,cx);assert.equal(custom.current.point.x,32);custom.cancel(cx);assert.equal(custom.view,null);

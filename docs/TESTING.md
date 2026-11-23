@@ -157,7 +157,7 @@ unchanged; a passing public capability gate is not a stock/native source review.
 
 ## Herdr migration tooling fixtures
 
-`tests/herdr-upgrade-{releases,evaluate,report,publish}.test.mjs` are automatically discovered
+`tests/herdr-upgrade-{releases,evaluate,refresh,report,publish}.test.mjs` are automatically discovered
 by the existing hosted runner. They use fake release feeds, hash-verified synthetic
 Git trees/blobs, fake process results and ignored preview directories. They cover
 independent versions, invalid evidence and rate limits, consumed SDK/command
@@ -169,7 +169,31 @@ local Skip creation, closed/skipped/merged deduplication, component overlap,
 agent-owned branches/checklists, supersession, interrupted initial publication,
 freeze/activation refusal, stale heads and malicious evidence paths. Static workflow
 assertions protect no-write defaults, credential separation and minimal permissions.
+The refresh fixture creates a disposable Git proposal branch, observes missing API
+and command contracts, commits real adapter aliases and an added contract, then
+runs the trusted evaluator again. A credential-free child reads the evaluated
+checkout's adapters, while the trusted baseline mappings remain separate. The
+refreshed host verdict passes without losing historical upstream deltas. SDK
+overloads/merged declarations, unavailable generation evidence for an exact older
+Core, and retried supersession/cross-link comments have dedicated regressions.
 A real hosted no-write probe remains a distinct activation prerequisite.
+
+## Reviewed native frame stock
+
+`tests/feedback-native-stock.test.mjs` and `tests/palette-native-stock.test.mjs`
+use byte-faithful canonical release fixtures, never an installed host. They assert
+pinned digest/raw build parity, native imports, 0.1.16/0.1.17 apply/owned refresh/
+no-op/restore, masked and reset palette upgrades, earlier raw backup retention,
+absent opt-ins and byte-preserving unknown/ambiguous-stock advisories. Existing
+frame-upgrade, startup and actual deploy/update pipeline fixtures retain conflict,
+corrupt-record, concurrent-write and advisory-composition coverage. Both palette
+variants run the existing palette-ui list/heading/fade/keyboard fixture. The actual
+native and Custom 0.1.17 catalogs are compared with non-hardcoded themes across
+light/dark and active layouts, including native command arguments and Custom
+Settings/picker/rename/close routing. Feedback's simulated native sending/UI suite
+is unchanged. Installed 0.1.17 stock was separately compared read-only; provenance
+and limitations are in HERDR-0.1.17-NATIVE-PATCHES.md. No deployment or live UI
+interaction is implied by fixture success.
 
 ## Git PR label facts
 
@@ -242,11 +266,14 @@ moves on retained unverified pairs; the real Git aggregate/relay refresh fixture
 also samples actual sidebar projection across its in-flight status read.
 `tests/fleet-reorder.test.mjs` exercises pure display blocks and queued public move
 acknowledgements, either grabbed member, pair edges, timeout and no replay. Shared
-reorder and Spaces render fixtures cover both-source dimming, stacked preview and
-expanded/compact vector elbows and paired previews while preserving ordinary
-worktree order. Geometry assertions put the thin 1px muted stem under the parent
-badge centre, the bend on the child name's centre line, and only the name at its
-8px child inset; rail selection and ordinary numbering stay unchanged. Packaged Crew
+reorder and Spaces render fixtures cover both-source dimming, a single ordinary
+coordinator chip from either grabbed member (including return/fade), no stacked
+preview or floating chain icon, and expanded/compact chain badges while preserving
+ordinary worktree order. Geometry
+assertions compare the muted vector's 16px box, slot width and vertical centering
+with real numbered badges; fleet names share ordinary names' left edge while
+retaining muted text, without connector lines. Rail selection, name/directory
+tooltips and ordinary numbering stay unchanged. Packaged Crew
 fixtures retain the coordinator's Crew tag, omit only the verified attached fleet's
 tag, restore ordinary worker tags on confirmed detach/attachment-off, and hide all Crew
 tags when the plugin is disabled; tag reads start no discovery or state writes.
@@ -401,7 +428,7 @@ only the demonstrated Windows Git-sh fixture remains an observed suite exclusion
 ## Exact selected source entries
 
 The list below is generated from CI selection, not inferred from naming. On Node
-24 the current selection is **152 Ubuntu / 151 Windows entries**, with two/three
+24 the current selection is **154 Ubuntu / 153 Windows entries**, with two/three
 explicit exclusions respectively. The installed directory-loader fixture now runs
 on both; the preference-home and four runtime-contract suites are included. It includes scaffold/aggregator tests. Earlier Node 20 attempts selected
 122/121 and then 119/119 entries while diagnosing the crashes; those temporary
@@ -478,6 +505,7 @@ tests/deploy-failure.test.mjs
 tests/deploy-gate-pipeline.test.mjs
 tests/deployment.test.mjs
 tests/empty-state.test.mjs
+tests/feedback-native-stock.test.mjs
 tests/file-refresh.test.mjs
 tests/file-tab-reuse.test.mjs
 tests/files-plugin-tabs.test.mjs
@@ -511,6 +539,7 @@ tests/pane-crew-role.test.mjs
 tests/panel-kit.test.mjs
 tests/panel-pin-ui.test.mjs
 tests/panel-state.test.mjs
+tests/palette-native-stock.test.mjs
 tests/pin-swap.test.mjs
 tests/pinned-pr-refresh.test.mjs
 tests/plugin-prerequisite-ui.test.mjs

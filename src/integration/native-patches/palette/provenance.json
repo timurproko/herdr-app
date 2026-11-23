@@ -1,0 +1,23 @@
+{
+  "repository": "herdrdev/herdr-app",
+  "source": "defaults/frame/palette/main.js",
+  "releases": [
+    { "tag": "v0.1.13", "commit": "93b097f6e29fcb2d90a30dea2f03ce4e5dee7981" },
+    { "tag": "v0.1.16", "commit": "034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f" },
+    { "tag": "v0.1.17", "commit": "a751b75b0418bf13950f7627d122bb934ac2c46c" }
+  ],
+  "originals": [
+    { "file": "original-0.1.13.js", "release": "v0.1.13", "format": "LF", "bytes": 14688, "sha256": "031c431efc08c43d09385a7ab40daccacd5bd64f14e74fa400d322051ab46541", "evidence": "Unmodified pinned release Git blob; corrects only the prior snapshot's facade import." },
+    { "file": "original.js", "release": "v0.1.16", "format": "LF", "bytes": 14890, "sha256": "0f2101ea5a8524d6a3a69e99963fc0e1285b8bb8a303d283f9d92b7887eb7906", "evidence": "Unmodified pinned release Git blob." },
+    { "file": "original-windows.js", "release": "v0.1.16", "format": "CRLF", "bytes": 15211, "sha256": "2c6f0a9105375bfb92bdb3057c24075941d10cc1c13e013663b959a7bda2a067", "evidence": "Pinned release source rendered with the reviewed Windows CRLF embedding format; no installed v0.1.16 binary comparison claimed." },
+    { "file": "original-0.1.17.js", "release": "v0.1.17", "format": "LF", "bytes": 15345, "sha256": "9efc4b79498ffead87af4bab963ba51c62de1accb10e5a9cefb05ba546e37c0c", "evidence": "Unmodified pinned release Git blob." },
+    { "file": "original-0.1.17-windows.js", "release": "v0.1.17", "format": "CRLF", "bytes": 15674, "sha256": "bd625652992f7a35b776d3e42d0ca269a234014780ad658570447dd84061098f", "evidence": "Raw embedded frame/palette source from installed Windows v0.1.17; equals pinned release source with CRLF newlines." }
+  ],
+  "installedVerification": {
+    "release": "v0.1.17",
+    "executableSha256": "75527414eb23a95c9f0a15e88a17996223f12cc9b18d0b87c4726cc64e6c1ac2",
+    "original": "original-0.1.17-windows.js",
+    "offset": 39661812,
+    "method": "Read-only unique palette/main.js through palette/mod.json embedded delimiters; installed frame main also equals this stock."
+  }
+}
