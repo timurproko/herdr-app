@@ -486,8 +486,18 @@ const crewCommandScript = args => [
   'exit $LASTEXITCODE',
 ].join('\n');
 export const crewProjectScript = args => crewCommandScript(['project', ...args]);
-const readFleetStatus = async machine => {
-  const result = await powershell(machine, crewCommandScript(['status', '--all', '--json']), {timeout:15});
+const DISCOVERY_TIMEOUT = 25, RECORDED_TIMEOUT = 15;
+// Only a complete usage refusal for this exact flag is capability evidence.
+// Arbitrary stderr, auth failures, timeouts and transport errors are not retries.
+const unsupportedDiscovery = result => [1,2].includes(result.code) && !result.timedOut && !result.missing && !result.stdout.trim() &&
+  /^(?:crew:\s*)?(?:unknown|unrecognized|unsupported) (?:option|flag|argument):? ['"]?--discover-prs['"]?\.?$/i.test(result.stderr.trim());
+export const readFleetStatus = async (machine, {current = () => true} = {}) => {
+  if(!current()) throw Error('Crew status superseded');
+  let result = await powershell(machine, crewCommandScript(['status', '--all', '--json', '--discover-prs']), {timeout:DISCOVERY_TIMEOUT});
+  // Successful legacy/unknown-version output needs no second command. The
+  // source adapter handles it. This fallback is separate, bounded and one-shot.
+  if(unsupportedDiscovery(result) && current())
+    result = await powershell(machine, crewCommandScript(['status', '--all', '--json']), {timeout:RECORDED_TIMEOUT});
   if(result.code!==0) throw Error('Crew status unavailable');
   return result.stdout;
 };

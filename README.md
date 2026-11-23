@@ -629,9 +629,13 @@ not atomic and an uncertain result is never replayed. The compact rail remains
 selection-only and shows the same badge-sized chain icon in the fleet's badge slot, with its usual
 name/directory tooltip. They remain separate selectable native
 spaces; no terminals or tabs are relocated. The coordinator's Git panel shows only
-recorded task PRs across projects, with task-scoped counts and no single active pin.
+linked task PRs across projects, with task-scoped counts and no single active pin.
+With discovery-capable Crew, a working worker's first draft appears before its first
+report. The app accepts Crew's version-1 known links, preserves **none** (no PR on
+that read) separately from **unavailable** (unknown, including discovery budget
+exhaustion), and does not guess links itself.
 Live working and reported tasks (including plans awaiting approval) are included.
-Finished (`closed`) tasks from that coordinator's same Crew home keep their recorded
+Finished (`closed`) tasks from that coordinator's same Crew home keep their linked
 Open/Draft PRs, without a robot or worker navigation. Their Merged/Closed PRs remain
 in Closed for only **24 hours after GitHub's merge/close timestamp**; older or
 undated historical closed PRs are excluded. Live-task PRs keep normal eligibility
@@ -648,12 +652,19 @@ Names use the released width and truncate with a full-name tooltip only when the
 do not fit. Open and Closed totals remain in the panel's top tabs and still include
 folded sections. These counts cover distinct linked PRs only, never all repository PRs.
 Folding only hides section bodies: it does not fetch, cancel reads or stop updates.
-The recorded list can omit PRs that tasks have not yet supplied; this does not
-change the source or infer missing links.
+Discovery is a bounded snapshot, not a completeness promise or a persistent PR
+record. Older Crew without discovery, or an unknown discovery version, keeps the
+recorded-only list and may omit PRs until tasks report. No generic incomplete-list
+notice is added.
 Robots open the exact live worker, and PR menus retain their captured URL.
-The source is `crew status --all --json` (`tasks[].pr`), not transcript/branch
-inference or a new Crew capability. No Crew change is required. The existing
-webhook connection refreshes only relevant linked repositories; unchanged PR/CI
+The source is read-only `crew status --all --json --discover-prs`, with `tasks[].pr`
+compatibility for older Crew, not app-side transcript/branch inference. A narrowly
+recognized unsupported-flag refusal allows one bounded recorded-only fallback;
+authentication errors and timeouts never mean no PR. Discovery has a 25-second
+transport allowance, its plain fallback has 15 seconds, and a shared 45-second
+in-flight lease prevents duplicate reads. The existing ten-second local refresh
+cadence and 30-second action freshness stay unchanged. No Crew records are written.
+The existing webhook connection refreshes only relevant linked repositories; unchanged PR/CI
 facts are not polled. Manual Refresh remains available. Repository errors stay in their sections. Confirmed unenrolled repositories share
 one **Add this repo in Settings** card pinned below the scrolling list, so folding
 or scrolling cannot hide it. Its account-style dropdown opens upward with canonical
