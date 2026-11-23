@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {reviewInventory,gitBlob,releaseIdentity} from '../tools/herdr-upgrade-releases.mjs';
 import {migrationBranch,migrationFiles,SKIP_LABEL} from '../tools/herdr-upgrade-report.mjs';
-import {TARGET_REPOSITORY,pages,frozenUntil,verifyActivation,validateBundle,validateGeneratedFiles,planProposals,publishMigration,publicationGate,githubApi} from '../tools/publish-herdr-upgrade.mjs';
+import {TARGET_REPOSITORY,pages,frozenUntil,verifyActivation,validateBundle,validateGeneratedFiles,planProposals,publishMigration,publicationGate,githubApi,boundedComment} from '../tools/publish-herdr-upgrade.mjs';
 const base='a'.repeat(40),probeSha='b'.repeat(40),treeSha='c'.repeat(40),commit='d'.repeat(40);
 const inventory=reviewInventory(process.cwd());
 function bundle(versions={app:'0.1.17'}) {
@@ -116,6 +116,7 @@ assert.equal(planProposals({app:'0.1.17'},[pr(1,{app:'0.1.17'},{state:'closed'})
 {
   const {api,state}=server();const denied=async(method,url,body)=>{if(method==='POST'&&url==='labels'){const error=Error('label permission denied');error.status=403;throw error;}return api(method,url,body);};await assert.rejects(publishMigration(bundle(),options(denied)),/permission denied/);assert.equal(state.prs.length,0);assert.equal(state.calls.filter(c=>c.url==='git/refs').length,0);
 }
+const oversizedComment=('native hunk evidence 🤖\n').repeat(10000),comment=boundedComment(oversizedComment);assert.ok(Buffer.byteLength(comment)<55000);assert.match(comment,/complete report, hunks and migration checklist/);assert.equal(boundedComment('short'),'short');
 const workflow=fs.readFileSync('.github/workflows/herdr-upstream-sync.yml','utf8');
 for(const expected of ['schedule:','workflow_dispatch:','options: [probe, publish]','cancel-in-progress: false','Record successful no-write probe','permission-contents: write','permission-pull-requests: write','persist-credentials: false','secrets.DELIVERY_BOT_PRIVATE_KEY'])assert.ok(workflow.includes(expected),expected);
 assert.ok(!workflow.includes('issues: write'));assert.ok(!workflow.includes('actions: write'));assert.ok(!workflow.includes('pull_request_target'));

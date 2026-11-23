@@ -55,6 +55,7 @@ export function validateBundle(bundle) {
   const r=bundle.report;
   if(r?.schema!=='herdr-migration-v1'||r.baseSha!==bundle.baseSha||r.headSha!==bundle.headSha||r.worktreeDirty!==false)throw Error('Mismatched evaluation identity.');
   if(bundle.identity)parseIdentity(bundle.identity);
+  if(typeof r.generatedAt!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(r.generatedAt))throw Error('Invalid report timestamp.');
   if(r.runUrl!==undefined&&!/^https:\/\/github\.com\/timurproko\/herdr-app\/actions\/runs\/[1-9]\d*$/.test(r.runUrl))throw Error('Untrusted report artifact URL.');
   for(const c of ['app','core']) {
     const release=r.discovery?.releases?.[c];if(release){releaseVersion(release.version);if(release.commit)commitSha(release.commit);}
@@ -97,9 +98,14 @@ export async function ensureSkipLabel(api) {
   try {await api('POST','labels',{name:SKIP_LABEL,color:'6e7781',description:SKIP_DESCRIPTION});}
   catch(error){if(error.status!==422||!await optional(api,`labels/${encodeURIComponent(SKIP_LABEL)}`))throw error;}
 }
+export function boundedComment(body) {
+  if(Buffer.byteLength(body)<=55000)return body;
+  const excerpt=Buffer.from(body).subarray(0,48000).toString('utf8');
+  return excerpt.slice(0,excerpt.lastIndexOf('\n'))+'\n\nComment excerpt truncated for GitHub size limits. The complete report, hunks and migration checklist remain in the linked Actions artifact and committed proposal evidence.\n';
+}
 export async function commentOnce(api,number,marker,body) {
   const comments=await pages(api,`issues/${number}/comments`);
-  if(!comments.some(c=>c.body?.includes(marker)))await api('POST',`issues/${number}/comments`,{body:`${marker}\n${body}`});
+  if(!comments.some(c=>c.body?.includes(marker)))await api('POST',`issues/${number}/comments`,{body:`${marker}\n${boundedComment(body)}`});
 }
 const prefixAllowed=(file,identity)=>file.startsWith(`upstream/migrations/${identity}/`)||file.startsWith(`openspec/changes/${migrationChange(identity)}/`);
 export function validateGeneratedFiles(files,identity) {
