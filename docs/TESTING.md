@@ -160,7 +160,14 @@ unchanged; a passing public capability gate is not a stock/native source review.
 `tests/choice-menu.test.mjs` loads the actual account caller, `ui/choice-menu.js`
 and `ui/ui.js` with instrumented native elements. It checks the inherited muted
 12px chevron, gap, upward Popover, surface bounds/padding, row hover/highlight and
-fixed selected slot. `tests/claude-session-account.test.mjs` retains controller
+fixed selected slot through both actual account and enrollment callers.
+`tests/fleet-enrollment.test.mjs` runs the coordinator renderer with real notices,
+picker and UI: zero/one/multiple choices, section-order deduplication, enrollment
+completion, quiet pending/unknown state, global setup precedence, fold/long-scroll
+footer structure, keyboard/pointer/dismissal, exact captured Settings payload and
+pre-render invalidation on refresh/tab/home/account/config changes. Read counters
+prove opening/choosing adds no membership/GitHub read or enrollment.
+`tests/claude-session-account.test.mjs` retains controller
 loading/switching/session guards. These are render-tree fixtures, not live pixels.
 
 ## Git PR label facts

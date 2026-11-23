@@ -233,8 +233,21 @@ counts when folded using the shared row's 3px centred metadata separator, and pe
 (`custom.git.task-repositories.folded`), like Spaces' `machines.folded` set.
 Explicit toggles are UI-only: no preference export or Crew/host-document writes,
 and no new fetch or cancellation. Fold state survives tab/context changes and
-panel recreation. Scoped rows/errors/enrollment notices fold with the body; global
-setup stays visible. Counts and webhook-driven facts continue updating while folded.
+panel recreation. Scoped rows/errors and repository-specific diagnostics fold with
+the body; global setup stays visible. Counts and webhook-driven facts continue
+updating while folded.
+
+Coordinator enrollment uses one non-shrinking footer after `task-pulls-scroll`.
+`GitNotices.presentation` is a pure cached snapshot of confirmed unenrolled
+canonical names, deduplicated in rendered section order; pending/unknown is quiet.
+`EnrollmentPicker` uses the shared `ui/choice-menu.js` presentation even for one
+choice. It captures choices plus coordinator/home, selected location, view and
+notice configuration/refresh generation. Opening starts no read. Revalidation
+uses current cached facts before passing the captured repository to Settings;
+configuration, membership or scope changes close an obsolete menu rather than
+moving entries under the pointer. Escape/backdrop dismiss; local hover and arrow
+navigation share menu-row highlighting. Global missing setup takes precedence;
+ordinary Git's card is unchanged. No picker action enrolls or changes account.
 
 The existing single authenticated WebSocket routes repository invalidations into
 the aggregate index. Bursts coalesce behind each in-flight PR read; reconnect/show

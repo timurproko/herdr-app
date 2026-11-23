@@ -12,7 +12,7 @@ export function element() {
 }
 export const svg=asset=>element().asset(asset);
 export const Popover={new:id=>element().id(id)};
-export const nodes=n=>n&&typeof n==='object'?[n,...(n.kids??[]).flatMap(nodes)]:[];
+export const nodes=n=>n&&typeof n==='object'?[n,...[...(n.kids??[]),...(n.attrs?.trigger??[]),...(n.attrs?.content??[])].flatMap(nodes)]:[];
 export const find=(n,id)=>nodes(n).find(e=>e.attrs.id?.[0]===id);
 export const words=n=>typeof n==='string'?[n]:(n?.kids??[]).flatMap(words);
 export const choiceModules={

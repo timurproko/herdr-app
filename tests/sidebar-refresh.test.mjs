@@ -65,6 +65,7 @@ async function harness(feature, pluginOn = true) {
     './agent-links.js': {AgentLinks:class { related(){return null;} refresh(){} }},
     './pin-swap.js': {PinSwap,PIN_SWAP_MS},
     './ci-fix.js':{CIFix:class {sync(){}stop(){}}},
+    './enrollment-picker.js':{EnrollmentPicker:class{}},
     './notices.js':{GitNotices:class {sync(){return null;}stop(){}retryNow(){}}},
     './webhooks.js': {GitWebhooks:class {sync(){} stop(){} retryNow(){} }},
     './panel-pin.js': {panelPin:(_t,{id,enabled})=>element().id(id).size(24).disabled(!enabled).child(element().size(14))},

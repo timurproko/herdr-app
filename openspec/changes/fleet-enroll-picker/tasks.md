@@ -11,11 +11,11 @@ Implementation begins only after plan approval. Groups map one-to-one to the dra
 
 ## 2. One scope-safe coordinator enrollment footer
 
-- [ ] 2.1 Derive canonical deduplicated choices from existing GitNotices decisions in rendered section order and render one non-shrinking footer after task-pulls-scroll, preserving the card icon/message/surface and global setup precedence; render fixtures must cover zero/one/multiple choices, pending/unknown membership, completion, all-folded sections and long scroll content.
-- [ ] 2.2 Use the shared helper for the enrollment dropdown even with one repository, removing only enrollment prompts from bodies; fixtures must compare actual account/enrollment component output and retain scoped PR errors and repository-specific diagnostics in their sections.
-- [ ] 2.3 Capture choices and coordinator/home/location/view plus notice generations on opening, with local keyboard focus/index and immutable callbacks; interaction fixtures must cover hover, Up/Down, Enter, Escape/backdrop, exact Settings payload, and invalidation by refresh, membership/configuration changes, tab/view/home/coordinator replacement, hide and disable.
-- [ ] 2.4 Prove with fixture counters that picker opening/navigation starts no membership or GitHub reads and never enrolls; retain ordinary Git card, relay render guards and shared PR row/label/separator regressions without changing the label renderer or Crew reader.
-- [ ] 2.5 Update README and architecture/testing guidance for the fixed footer and explicit filtered Settings navigation; ensure descriptions no longer claim coordinator enrollment prompts fold inside section bodies.
+- [x] 2.1 Derive canonical deduplicated choices from existing GitNotices decisions in rendered section order and render one non-shrinking footer after task-pulls-scroll, preserving the card icon/message/surface and global setup precedence; render fixtures must cover zero/one/multiple choices, pending/unknown membership, completion, all-folded sections and long scroll content.
+- [x] 2.2 Use the shared helper for the enrollment dropdown even with one repository, removing only enrollment prompts from bodies; fixtures must compare actual account/enrollment component output and retain scoped PR errors and repository-specific diagnostics in their sections.
+- [x] 2.3 Capture choices and coordinator/home/location/view plus notice generations on opening, with local keyboard focus/index and immutable callbacks; interaction fixtures must cover hover, Up/Down, Enter, Escape/backdrop, exact Settings payload, and invalidation by refresh, membership/configuration changes, tab/view/home/coordinator replacement, hide and disable.
+- [x] 2.4 Prove with fixture counters that picker opening/navigation starts no membership or GitHub reads and never enrolls; retain ordinary Git card, relay render guards and shared PR row/label/separator regressions without changing the label renderer or Crew reader.
+- [x] 2.5 Update README and architecture/testing guidance for the fixed footer and explicit filtered Settings navigation; ensure descriptions no longer claim coordinator enrollment prompts fold inside section bodies.
 
 ## 3. Count-free full-width repository headers
 

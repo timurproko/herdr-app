@@ -8,6 +8,7 @@ import { AgentLinks } from './agent-links.js';
 import { AggregatePulls } from './aggregate.js';
 import { GitWebhooks } from './webhooks.js';
 import { GitNotices } from './notices.js';
+import { EnrollmentPicker } from './enrollment-picker.js';
 import { PinSwap, PIN_SWAP_MS } from './pin-swap.js';
 import { panelPin } from './panel-pin.js';
 import { openSettings } from './settings-dialog.js';
@@ -59,7 +60,7 @@ export default class Changes extends View {
   }
 
   close() {
-    this.aggregate?.stop();this.webhooks?.stop();this.notices?.stop();
+    this.enrollmentPicker?.stop();this.aggregate?.stop();this.webhooks?.stop();this.notices?.stop();
     this.rootRequest=null;this.pullRequest=null;this.relatedRequest=null;
   }
 
@@ -165,7 +166,7 @@ export default class Changes extends View {
 
   setView(view, cx) {
     if (!VIEWS.includes(view) || view === this.view) return;
-    this.pinMotion?.cancel();
+    this.pinMotion?.cancel();this.enrollmentPicker?.stop();
     this.view = view;
     try { localStorage.setItem(VIEW_KEY, view); } catch {}
     cx.notify();
@@ -665,7 +666,15 @@ export default class Changes extends View {
         .left(sweep.phase==='moving'?sweep.width:-CI_SWEEP_WIDTH).transition('left',{duration:CI_SWEEP_MS,easing:'ease-in-out'}));
   }
 
-  repositorySection(t, repo, notice, scope) {
+  enrollmentPresentation() {
+    const aggregate=this.aggregate,context=aggregate?.currentContext({presentation:true});
+    if(!this.shown() || !context || context.stale || context.scope!==aggregate.context?.scope)return null;
+    const notice=this.notices?.presentation(aggregate.repositories());
+    if(!notice)return null;
+    return {choices:notice.choices,key:JSON.stringify([context.scope,location(),this.view,notice.key])};
+  }
+
+  repositorySection(t, repo, scope) {
     const aggregate = this.aggregate, folded = this.foldedRepositories.has(repo);
     const open = aggregate.rows('open').filter(pr => pr.repo === repo).length;
     const closed = aggregate.rows('closed').filter(pr => pr.repo === repo).length;
@@ -684,8 +693,7 @@ export default class Changes extends View {
         }))
       .when(!folded, el => el.child(v_flex().id(`task-repo-body-${repo}`).gap(U.rowGap)
         .children(aggregate.rows(this.view).filter(pr => pr.repo === repo).map(pr => this.pullRow(t, pr)))
-        .children([...aggregate.entries.values()].filter(e => e.link.repo === repo && e.error).map(e => div().id(`task-error-${e.link.key}`).px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(e.error)))
-        .when(notice === 'repository', body => body.child(this.liveCIInfo(t, 'repository', repo)))));
+        .children([...aggregate.entries.values()].filter(e => e.link.repo === repo && e.error).map(e => div().id(`task-error-${e.link.key}`).px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(e.error)))));
   }
 
   renderAggregate(cx,t) {
@@ -694,6 +702,9 @@ export default class Changes extends View {
     this.notices ??= new GitNotices();
     const notices=new Map(repositories.map(repo=>[repo,this.notices.sync(cx,{enabled:this.shown() && !aggregate.context.stale,repository:repo})]));
     const setup=repositories.length ? [...notices.values()].includes('setup') : this.notices.sync(cx,{enabled:this.shown() && !aggregate.context.stale,repository:null})==='setup';
+    this.enrollmentPicker ??= new EnrollmentPicker({focus:cx.focus_handle(),current:()=>this.enrollmentPresentation(),
+      onChoose:repository=>openSettings({section:'plugins',plugin:'git',pluginSection:'repository',pluginSearch:repository})});
+    const enrollment=this.enrollmentPicker.render(t,setup?null:this.enrollmentPresentation());
     const sweep=!aggregate.context.stale && this.shown() && this.ciSweep?.context===this.context ? this.ciSweep : null;
     return v_flex().id('changes').relative().size_full().min_h(0).rounded(8).overflow_hidden().bg(t.background).border_1().border_color(t.input).text_color(t.foreground).text_size(U.font)
       .child(h_flex().id('changes-header').relative().bg(t.surface).h(U.section).flex_none().pl(4).pr(U.gutter).gap(U.gap).items_center().border_b(1).border_color(t.border)
@@ -712,9 +723,10 @@ export default class Changes extends View {
         .child(this.segment(t,'git-view-open','Open',counts.open,this.view==='open',view=>this.setView('open',view)))
         .child(this.segment(t,'git-view-closed','Closed',counts.closed,this.view==='closed',view=>this.setView('closed',view))))
       .child(v_flex().id('task-pulls-scroll').flex_1().min_h(0).overflow_y_scrollbar().p(4)
-        .children(repositories.map(repo => this.repositorySection(t, repo, notices.get(repo), scope)))
+        .children(repositories.map(repo => this.repositorySection(t, repo, scope)))
         .when(!aggregate.rows(this.view).length,el=>el.child(panelMessage(t,'git-task-empty',{text:aggregate.context.stale?'Waiting for fleet verification':aggregate.busy?'Loading…':`No recorded ${this.view} task pull requests`,loading:!aggregate.context.stale && aggregate.busy,rowInset:2}))))
       .when(setup,el=>el.child(this.liveCIInfo(t)))
+      .when(Boolean(enrollment),el=>el.child(enrollment))
       .when(Boolean(sweep),el=>el.child(this.sweepLayer(t,sweep).top(U.section)));
   }
 
@@ -741,12 +753,13 @@ export default class Changes extends View {
 
   render(cx) {
     if (!sidebarPanelEnabled('changes')) {
-      this.webhooks?.stop();this.notices?.stop();this.aggregate?.stop();
+      this.enrollmentPicker?.stop();this.webhooks?.stop();this.notices?.stop();this.aggregate?.stop();
       this.resetRepository(); this.rootRequest = null; this.loading = false; this.context = null;
       return div();
     }
     if (this.pullMenu) return this.renderPullMenu(theme());
     if (this.syncAggregate(cx)) return this.renderAggregate(cx,theme());
+    this.enrollmentPicker?.stop();
     if (key() !== this.context) this.refresh(cx, false);
     this.syncAgent(cx);
     if (this.shown() && this.pullsDue(this.view)) this.loadPulls(this.view, cx, false, false);
