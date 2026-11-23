@@ -1,7 +1,7 @@
 // Custom: GitHub pull requests for the repository under the focused folder.
 import { View, div, svg, PathBuilder } from 'gpui-kit';
 import { v_flex, h_flex } from 'gpui-base';
-import { U, headerTools, reveal, subtleActionFill, refreshButton } from './ui.js';
+import { U, headerTools, reveal, subtleActionFill, refreshButton, sidebarSectionHeader } from './ui.js';
 import { exec, hc, theme, run, layout, openOverlay, closeOverlay, props, notify, nextCommand, window, settings } from './host.js';
 import { location } from './location.js';
 import { AgentLinks } from './agent-links.js';
@@ -19,6 +19,7 @@ import { pullListArgs, REPO_ARGS, countArgs, parseCounts, parsePullPage, agentPu
 
 const VIEWS = ['open', 'closed'];
 const VIEW_KEY = 'custom.git.view';
+const FOLDED_REPOS_KEY = 'custom.git.task-repositories.folded';
 const LOCAL_CONTEXT_TTL = 10000; // shell branch/footer only, never a GitHub poll
 const CI_SWEEP_MS = 2400;
 const CI_SWEEP_WIDTH = 96;
@@ -43,6 +44,11 @@ export default class Changes extends View {
     let view = null;
     try { view = localStorage.getItem(VIEW_KEY); } catch {}
     this.view = VIEWS.includes(view) ? view : 'open';
+    this.foldedRepositories = new Set();
+    try {
+      const folded = JSON.parse(localStorage.getItem(FOLDED_REPOS_KEY) ?? '[]');
+      if (Array.isArray(folded)) this.foldedRepositories = new Set(folded.filter(repo => typeof repo === 'string').map(repo => repo.toLowerCase()));
+    } catch {}
     // Old installations may have remembered the retired Changes tab.
     if (view !== this.view) try { localStorage.setItem(VIEW_KEY, this.view); } catch {}
     this.resetRepository();
@@ -256,13 +262,13 @@ export default class Changes extends View {
     this.webhooks ??= new GitWebhooks();
     const aggregate=this.aggregate,scope=aggregate.context.scope;
     const repositories=[...new Set([...aggregate.entries.values()].map(e=>e.link.repo))].sort();
-    this.webhooks.sync(cx,{enabled:this.shown() && repositories.length>0,scope:JSON.stringify(['tasks',scope,repositories]),repositories,
-      isCurrent:()=>this.shown() && aggregate.currentContext()?.scope===scope && this.context===`tasks:${scope}`,
+    this.webhooks.sync(cx,{enabled:this.shown() && !aggregate.context.stale && repositories.length>0,scope:JSON.stringify(['tasks',scope,repositories]),repositories,
+      isCurrent:()=>this.shown() && !aggregate.context.stale && aggregate.currentContext()?.scope===scope && this.context===`tasks:${scope}`,
       onChange:(event,view)=> {
         if(!this.shown() || aggregate.currentContext()?.scope!==scope || this.context!==`tasks:${scope}`)return;
         aggregate.invalidate(event?.repository??null);aggregate.pump(view);this.startCISweep(view);
       }});
-    if(!this.shown())this.ciSweep=null;
+    if(!this.shown() || aggregate.context.stale)this.ciSweep=null;
   }
 
   syncWebhooks(cx) {
@@ -659,18 +665,43 @@ export default class Changes extends View {
         .left(sweep.phase==='moving'?sweep.width:-CI_SWEEP_WIDTH).transition('left',{duration:CI_SWEEP_MS,easing:'ease-in-out'}));
   }
 
+  repositorySection(t, repo, notice, scope) {
+    const aggregate = this.aggregate, folded = this.foldedRepositories.has(repo);
+    const open = aggregate.rows('open').filter(pr => pr.repo === repo).length;
+    const closed = aggregate.rows('closed').filter(pr => pr.repo === repo).length;
+    return v_flex().id(`task-repo-${repo}`).w_full().flex_none().gap(U.rowGap)
+      .child(sidebarSectionHeader(t, {id:`task-repo-header-${repo}`, label:repo, open:!folded, children:[
+        div().flex_1().min_w(0).truncate().child(repo),
+        h_flex().id(`task-repo-counts-${repo}`).flex_none().gap(6).items_center().text_color(t.dim)
+          .child(div().child(`Open ${open}`)).child(this.metaSeparator(t)).child(div().child(`Closed ${closed}`)),
+      ]}).cursor_pointer().hover(s => s.bg(t.selected))
+        .on_click((_e, cx) => {
+          cx.stop_propagation();
+          if (!this.shown() || aggregate.currentContext({presentation:true})?.scope !== scope || ![...aggregate.entries.values()].some(e => e.link.repo === repo)) return;
+          this.foldedRepositories.has(repo) ? this.foldedRepositories.delete(repo) : this.foldedRepositories.add(repo);
+          try { localStorage.setItem(FOLDED_REPOS_KEY, JSON.stringify([...this.foldedRepositories])); } catch {}
+          cx.notify();
+        }))
+      .when(!folded, el => el.child(v_flex().id(`task-repo-body-${repo}`).gap(U.rowGap)
+        .children(aggregate.rows(this.view).filter(pr => pr.repo === repo).map(pr => this.pullRow(t, pr)))
+        .children([...aggregate.entries.values()].filter(e => e.link.repo === repo && e.error).map(e => div().id(`task-error-${e.link.key}`).px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(e.error)))
+        .when(notice === 'repository', body => body.child(this.liveCIInfo(t, 'repository', repo)))));
+  }
+
   renderAggregate(cx,t) {
     const aggregate=this.aggregate,counts=aggregate.counts(),scope=aggregate.context.scope;
-    const repositories=[...new Set([...aggregate.entries.values()].map(e=>e.link.repo))].sort();
+    const repositories=aggregate.repositories();
     this.notices ??= new GitNotices();
-    const notices=new Map(repositories.map(repo=>[repo,this.notices.sync(cx,{enabled:this.shown(),repository:repo})]));
-    const setup=repositories.length ? [...notices.values()].includes('setup') : this.notices.sync(cx,{enabled:this.shown(),repository:null})==='setup';
-    const sweep=this.shown() && this.ciSweep?.context===this.context ? this.ciSweep : null;
+    const notices=new Map(repositories.map(repo=>[repo,this.notices.sync(cx,{enabled:this.shown() && !aggregate.context.stale,repository:repo})]));
+    const setup=repositories.length ? [...notices.values()].includes('setup') : this.notices.sync(cx,{enabled:this.shown() && !aggregate.context.stale,repository:null})==='setup';
+    const sweep=!aggregate.context.stale && this.shown() && this.ciSweep?.context===this.context ? this.ciSweep : null;
     return v_flex().id('changes').relative().size_full().min_h(0).rounded(8).overflow_hidden().bg(t.background).border_1().border_color(t.input).text_color(t.foreground).text_size(U.font)
       .child(h_flex().id('changes-header').relative().bg(t.surface).h(U.section).flex_none().pl(4).pr(U.gutter).gap(U.gap).items_center().border_b(1).border_color(t.border)
         .on_hover((hovered,view)=>{this.headerHovered=hovered;view.notify();})
         .child(sidebarTitle(t,'changes','git-title'))
-        .child(div().flex_1().min_w(0).truncate().text_size(U.meta).text_color(t.dim).child('Recorded task PRs'))
+        .when(aggregate.context.stale, el=>el.child(div().id('git-task-stale').flex_none().text_size(U.meta).text_color(t.dim)
+          .child([...aggregate.entries.values()].some(e=>e.pr)?'Stale':'Verifying')
+          .tooltip('Fleet status is unverified; actions are paused until fresh verification')))
         .child(reveal(headerTools(h_flex()).id('git-actions').bg(t.surface),this.headerHovered)
           .child(refreshButton(t,{id:'git-refresh',icon:'mods/custom-changes/refresh.svg',label:'Refresh',busy:aggregate.busy,spinning:aggregate.busy,
             owner:this,scope:this.context,enabled:this.headerHovered,size:U.insetControl,iconSize:U.tinyIcon,radius:U.insetRadius,color:t.dim,hover:subtleActionFill(t),
@@ -680,15 +711,9 @@ export default class Changes extends View {
       .child(h_flex().id('git-views').h(40).flex_none().px(4).gap(2).items_center().border_b(1).border_color(t.border)
         .child(this.segment(t,'git-view-open','Open',counts.open,this.view==='open',view=>this.setView('open',view)))
         .child(this.segment(t,'git-view-closed','Closed',counts.closed,this.view==='closed',view=>this.setView('closed',view))))
-      .when(aggregate.context.incomplete,el=>el.child(div().id('git-task-incomplete').flex_none().px(12).py(6).text_size(U.meta).text_color(t.dim)
-        .child('Recorded PRs · possibly incomplete until tasks report')))
       .child(v_flex().id('task-pulls-scroll').flex_1().min_h(0).overflow_y_scrollbar().p(4)
-        .children(repositories.map(repo=>v_flex().id(`task-repo-${repo}`).w_full().flex_none().gap(U.rowGap)
-          .child(div().px(8).py(6).text_size(U.meta).text_color(t.muted).child(repo))
-          .children(aggregate.rows(this.view).filter(pr=>pr.repo===repo).map(pr=>this.pullRow(t,pr)))
-          .children([...aggregate.entries.values()].filter(e=>e.link.repo===repo && e.error).map(e=>div().id(`task-error-${e.link.key}`).px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(e.error)))
-          .when(notices.get(repo)==='repository',el=>el.child(this.liveCIInfo(t,'repository',repo)))))
-        .when(!aggregate.rows(this.view).length,el=>el.child(panelMessage(t,'git-task-empty',{text:aggregate.busy?'Loading…':`No recorded ${this.view} task pull requests`,loading:aggregate.busy,rowInset:2}))))
+        .children(repositories.map(repo => this.repositorySection(t, repo, notices.get(repo), scope)))
+        .when(!aggregate.rows(this.view).length,el=>el.child(panelMessage(t,'git-task-empty',{text:aggregate.context.stale?'Waiting for fleet verification':aggregate.busy?'Loading…':`No recorded ${this.view} task pull requests`,loading:!aggregate.context.stale && aggregate.busy,rowInset:2}))))
       .when(setup,el=>el.child(this.liveCIInfo(t)))
       .when(Boolean(sweep),el=>el.child(this.sweepLayer(t,sweep).top(U.section)));
   }

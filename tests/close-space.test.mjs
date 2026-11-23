@@ -41,14 +41,13 @@ async function load(name) {
   }, { context });
   else {
     const file = name === 'confirm' ? 'src/features/confirm/main.js' : name === './ui.js' ? 'src/ui/ui.js' : name === './panel-kit.js' ? 'src/ui/panel-kit.js'
-      : ['./space-preferences.js', './space-lifecycle.js'].includes(name) ? 'src/shared/' + name.slice(2) : 'src/ui/close-space.js';
+      : ['./space-preferences.js', './space-lifecycle.js', './fleet-display.js'].includes(name) ? 'src/shared/' + name.slice(2) : 'src/ui/close-space.js';
     mod = new vm.SourceTextModule(fs.readFileSync(new URL('../' + file, import.meta.url), 'utf8'), { context });
   }
   cache.set(name, mod);
-  await mod.link(load);
   return mod;
 }
-const helper = await load('helper'); await helper.evaluate();
+const helper = await load('helper'); await helper.link(load); await helper.evaluate();
 const close = helper.namespace.closeWithConfirmation;
 for (const [command, args] of [['space.close', { id: 'pc2/space' }], ['space.close', {}]]) {
   close(command, args);
@@ -149,7 +148,7 @@ for (const [command, args] of [['space.close', { id: 'missing' }], ['space.close
   const before = calls.length; close(command, args); assert.equal(calls.length, before + 1);
   assert.equal(calls.at(-1)[0], command); assert.equal(calls.at(-1)[1], args);
 }
-const component = await load('confirm'); await component.evaluate();
+const component = await load('confirm'); await component.link(load); await component.evaluate();
 const Confirm = component.namespace.default;
 let focused = 0, stopped = 0;
 const cx = { focus_handle: () => ({ focus() { focused++; } }), stop_propagation() { stopped++; } };
