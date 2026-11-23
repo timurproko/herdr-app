@@ -93,6 +93,51 @@ const finishedState=clone(state);
 all=finishedAll;groups[1].tabs=finishedTabs;list[1].state='live';await prime();
 // True cold restarts, hot reload and layout copies have only persisted identity in first frame.
 const savedState=clone(state);
+// Valid JSON with malformed identity is uncertainty, never verified disownership.
+{
+ const store=clone(savedState),writes=[],boot=await load({...host,shared:k=>store[k],setShared:(k,v)=>{writes.push(k);store[k]=v;}});
+ const reply=clone(store[f.FLEET_KEY].entries.local.status);
+ boot.f.refreshFleets(cx,async()=>JSON.stringify(reply),true);await drain();frame(true,boot.r);
+ const before=JSON.stringify(store[f.DISPLAY_KEY]),entry=clone(store[f.FLEET_KEY].entries.local),scope=boot.r.pluginPullContext('coordinator').scope;
+ const fields=[
+  ['owner.terminal',[undefined,null,false,42,{},[],'','bad\u0000terminal','x'.repeat(513)]],
+  ['owner.live',[undefined,null,0,1,'false',{},[]]],
+  ['owner',[undefined,false,42,'t1',[],{}]],
+  ['home',[undefined,null,false,42,{},[],'','bad\u0000home','x'.repeat(2049)]],
+  ['tasks',[undefined,null,false,42,{},'tasks']],
+  ['tasks.0',[null,false,42,'task',[]]],
+  ['tasks.0.id',[undefined,null,false,42,{},[],'','bad\u0000id','x'.repeat(129)]],
+  ['tasks.0.terminal',[undefined,null,false,42,{},[],'','bad\u0000terminal','x'.repeat(513)]],
+  ['tasks.0.state',[undefined,null,false,42,{},[],'','unknown']],
+ ];
+ for(const [field,values] of fields)for(const value of values) {
+  const malformed=clone(reply),keys=field.split('.'),key=keys.pop();let target=malformed;for(const part of keys)target=target[part];target[key]=value;
+  const label=`${field}=${JSON.stringify(value)}`;now++;writes.length=0;
+  boot.f.refreshFleets(cx,async()=>JSON.stringify(malformed),true);await drain();
+  assert.equal(JSON.stringify(store[f.DISPLAY_KEY]),before,`${label}: malformed identity retains persisted bytes`);
+  assert.equal(writes.includes(f.DISPLAY_KEY),false,`${label}: no display publication`);
+  const current=store[f.FLEET_KEY].entries.local;
+  for(const key of ['at','token','status','binding','identity','members'])assert.equal(JSON.stringify(current[key]),JSON.stringify(entry[key]),`${label}: successful verification ${key} is unchanged`);
+  frame(true,boot.r);assert.equal(boot.r.pluginPullContext('coordinator',{presentation:true}).scope,scope,`${label}: retained Git context survives`);
+ }
+ // Missing terminal is invalid even on a released owner or inactive task. An
+ // explicit null terminal is valid only for tasks without a live-worker claim.
+ for(const taskState of ['preparing','working','reported','stopped','failed','closed']) {
+  for(const terminal of [undefined,null,42]) {
+   const malformed=clone(reply);malformed.tasks[0]={...malformed.tasks[0],state:taskState,terminal};
+   if(terminal===null && !['working','reported'].includes(taskState)){assert.doesNotThrow(()=>boot.f.recordedSource(JSON.stringify(malformed)));continue;}
+   now++;boot.f.refreshFleets(cx,async()=>JSON.stringify(malformed),true);await drain();
+   assert.equal(JSON.stringify(store[f.DISPLAY_KEY]),before,`${taskState}: invalid terminal cannot erase display`);assert.equal(store[f.FLEET_KEY].entries.local.at,entry.at);
+  }
+ }
+ const malformedRelease={...reply,owner:{live:false}};now++;boot.f.refreshFleets(cx,async()=>JSON.stringify(malformedRelease),true);await drain();assert.equal(JSON.stringify(store[f.DISPLAY_KEY]),before);assert.equal(store[f.FLEET_KEY].entries.local.at,entry.at);
+ now++;boot.f.refreshFleets(cx,async()=>JSON.stringify(reply),true);await drain();frame(true,boot.r);assert.equal(store[f.FLEET_KEY].entries.local.at,now,'A well-formed recovery renews verification');
+ for(const owner of [{...reply.owner,live:false},null]) {
+  boot.f.refreshFleets(cx,async()=>JSON.stringify(reply),true);await drain();frame(true,boot.r);
+  now++;boot.f.refreshFleets(cx,async()=>JSON.stringify({...reply,owner}),true);await drain();frame(false,boot.r);
+  assert.equal(store[f.DISPLAY_KEY].entries.null,undefined,'A well-formed explicit release remains authoritative');assert.equal(store[f.FLEET_KEY].entries.local.at,now);
+ }
+}
 // The only persistent writer rejects guesses; absence cannot authorize replacement.
 {
  const store=clone(savedState),boot=await load({...host,shared:k=>store[k],setShared:(k,v)=>store[k]=v});

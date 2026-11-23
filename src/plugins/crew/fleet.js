@@ -23,8 +23,16 @@ const incompleteMembership = (status, machine, snapshot) => status.owner.live &&
 export function recordedSource(stdout) {
   if(typeof stdout !== 'string' || stdout.length > 1048576) throw Error('Crew status is too large');
   const value = JSON.parse(stdout);
-  if(typeof value?.home !== 'string' || !value.home || value.home.length > 2048 || !Array.isArray(value.tasks) || value.tasks.length > 4096) throw Error('Invalid Crew status');
-  return {home:value.home,owner:{terminal:value.owner?.terminal,live:value.owner?.live === true},tasks:value.tasks.map(t=>({id:t.id,terminal:t.terminal,state:t.state,pr:typeof t.pr==='string'?t.pr:null}))};
+  const object = item => item!==null && typeof item==='object' && !Array.isArray(item);
+  // A malformed identity is a failed read, not evidence that ownership ended.
+  // Crew explicitly emits owner:null for release and terminal:null for tasks
+  // without a live worker; missing fields must not be coerced into either case.
+  if(!object(value) || !text(value.home,2048) ||
+    !(value.owner===null || object(value.owner) && text(value.owner.terminal) && typeof value.owner.live==='boolean') ||
+    !Array.isArray(value.tasks) || value.tasks.length>4096 || value.tasks.some(t=>!object(t) || !text(t.id,128) ||
+      !['preparing','working','reported','stopped','failed','closed'].includes(t.state) ||
+      !(text(t.terminal) || t.terminal===null && !['working','reported'].includes(t.state)))) throw Error('Invalid Crew status');
+  return {home:value.home,owner:value.owner===null?{terminal:null,live:false}:{terminal:value.owner.terminal,live:value.owner.live},tasks:value.tasks.map(t=>({id:t.id,terminal:t.terminal,state:t.state,pr:typeof t.pr==='string'?t.pr:null}))};
 }
 export function bindFleet(status, machine, {groups, all, list}) {
   if(!status?.owner?.live || !Array.isArray(status.tasks)) return null;
