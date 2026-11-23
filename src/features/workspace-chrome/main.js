@@ -8,7 +8,7 @@ import { enterCustom } from "./look.js";
 import { restoreFrames } from "./startup.js";
 import { pluginEvent } from './plugins.js';
 import { reorder, groupedInsertion } from './reorder.js';
-import { initCustomizationUpdates, customizationUpdateAvailable } from './customization-updates.js';
+import { initCustomizationUpdates, customizationUpdateAvailable, observeCustomizationUpdates } from './customization-updates.js';
 import { theme, run, props, window, shared, setShared, updates, layout, openOverlay, closeOverlay } from "./host.js";
 
 function find(node, id) {
@@ -148,7 +148,10 @@ export default class WorkspaceChrome extends View {
   }
   render(cx) {
     if (props()?.footerMenu) return this.footerMenu(theme());
-    if (!props()?.footer) pluginEvent('sidebar.sync',{owner:this,cx});
+    if (!props()?.footer) {
+      observeCustomizationUpdates(this, cx);
+      pluginEvent('sidebar.sync',{owner:this,cx});
+    }
     const t = theme();
     const collapsed = narrow();
     if (props()?.footer) {

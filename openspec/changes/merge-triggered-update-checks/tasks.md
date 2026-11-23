@@ -2,10 +2,10 @@
 
 ## 1. Independent frequent availability checks and catch-up
 
-- [ ] 1.1 Replace the worker's hourly cache with validated persisted 120–180 second healthy jitter, bounded failure backoff and legacy/clock-skew handling; verify deterministic timing, retry reset and prior-availability retention in tests/update-check.test.mjs.
-- [ ] 1.2 Replace the mounted hourly timer with deadline-driven one-shot scheduling, startup and supported window-activation/timer-drift catch-up; verify two independent fixture homes, idle return, no render loops and no manual success feedback in tests/update-row.test.mjs.
-- [ ] 1.3 Retain manual force, cross-mod tickets, UI single-flight, process check leases, eager-check exclusion, check command bounds and deployment/unknown-outcome gates; verify the existing update fixture matrix plus new overlapping-check cases without invoking deployment.
-- [ ] 1.4 Document cadence, jitter, failure delays, per-machine evidence and supported catch-up limits in README.md and docs/COMMANDS.md; verify those descriptions match the fixture timing constants and remove obsolete hourly claims.
+- [x] 1.1 Replace the worker's hourly cache with validated persisted 120–180 second healthy jitter, bounded failure backoff and legacy/clock-skew handling; verify deterministic timing, retry reset and prior-availability retention in tests/update-check.test.mjs.
+- [x] 1.2 Replace the mounted hourly timer with deadline-driven one-shot scheduling, startup and supported window-activation/timer-drift catch-up; verify two independent fixture homes, idle return, no render loops and no manual success feedback in tests/update-row.test.mjs.
+- [x] 1.3 Retain manual force, cross-mod tickets, UI single-flight, process check leases, eager-check exclusion, check command bounds and deployment/unknown-outcome gates; verify the existing update fixture matrix plus new overlapping-check cases without invoking deployment.
+- [x] 1.4 Document cadence, jitter, failure delays, per-machine evidence and supported catch-up limits in README.md and docs/COMMANDS.md; verify those descriptions match the fixture timing constants and remove obsolete hourly claims.
 
 ## 2. Merge-triggered availability through one authenticated relay owner
 

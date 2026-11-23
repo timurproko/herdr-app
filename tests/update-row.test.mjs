@@ -4,6 +4,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { build } from '../tools/build.mjs';
 const state = new Map(), timers = [], jobs = [], calls = [];
+let active = true;
 let eager = false, next = { revision: 'a'.repeat(40), check: { checked: Date.now(), available: false }, log: '/fixture/update.log' }, reject = false;
 const builder = () => {
   const node = { attrs: {}, kids: [] }; let el;
@@ -16,7 +17,7 @@ let respond = null;
 let clock = Date.now();
 class Clock extends Date { static now() { return clock; } }
 const host = {
-  appHome: () => '/fixture/home', checking: () => eager,
+  appHome: () => '/fixture/home', checking: () => eager, window: () => ({ active }),
   shared: key => state.get(key), setShared: (key, value) => state.set(key, value),
   exec: async (command, args, options) => {
     assert.equal(command, 'node'); assert.equal(options.on, null); assert.equal(options.timeout, 22000);
@@ -46,7 +47,7 @@ const main = new vm.SourceTextModule('export * from "./customization-update-mode
 await main.link(link); await main.evaluate(); return main.namespace;
 }
 const api = await modules();
-const cx = { notify() {}, spawn(fn) { jobs.push(fn(cx)); }, timer: { every(ms, callback) { timers.push({ ms, callback }); } } };
+const cx = { notify() {}, spawn(fn) { jobs.push(fn(cx)); }, timer: { every(ms, callback) { timers.push({ ms, callback }); }, after(ms, callback) { timers.push({ ms, callback, once: true }); } } };
 async function flush() { while (jobs.length) await Promise.all(jobs.splice(0)); }
 const owner = { section: 'updates', button(_theme, id, label, callback, options) { this.buttonCalls.push({ id, label, callback, options }); return builder(); }, row(_theme, title, description, control) { return { title, description, control }; }, buttonCalls: [] };
 api.initCustomizationUpdates(owner, cx, 'custom-settings'); await flush();
@@ -139,9 +140,30 @@ assert.deepEqual(calls.slice(prior).map(call => call.action), ['status', 'check'
 reject = true; api.refreshCustomizationUpdates(owner, cx, 'launch'); await flush();
 assert.equal(api.customizationUpdateSnapshot().job.state, 'unknown'); assert.equal(api.customizationUpdateSnapshot().locked, true);
 reject = false; next = { revision: 'a'.repeat(40), check: { checked: Date.now(), available: true }, log: '/fixture/update.log' };
+next.check.nextAttempt = clock + 150000;
 const chrome = {}; api.initCustomizationUpdates(chrome, cx, 'custom-workspace-chrome', { chrome: true }); await flush();
-assert.equal(calls.at(-1).action, 'check'); assert.equal(timers.at(-1).ms, 3600000); assert.equal(api.customizationUpdateAvailable(), true);
-timers.at(-1).callback(cx); await flush(); assert.equal(calls.at(-1).force, false);
+assert.equal(calls.at(-1).action, 'check'); assert.equal(timers.at(-1).ms, 150000); assert.equal(api.customizationUpdateAvailable(), true);
+const scheduled = timers.at(-1), beforeFocus = calls.length;
+api.observeCustomizationUpdates(chrome, cx); await flush(); assert.equal(calls.length, beforeFocus, 'render does no I/O');
+active = false; api.observeCustomizationUpdates(chrome, cx);
+clock += 120000; active = true; api.observeCustomizationUpdates(chrome, cx); await flush();
+assert.equal(calls.length, beforeFocus, 'focus yields to one debounce timer');
+assert.equal(timers.at(-1).ms, 300);
+clock += 300; timers.at(-1).callback(cx); await flush();
+assert.equal(calls.at(-1).invalidate, true); assert.equal(calls.at(-1).force, false);
+assert.equal(chrome.customUpdateAsked, null, 'automatic catch-up never arms requested feedback');
+const afterFocus = calls.length; scheduled.callback(cx); await flush(); assert.equal(calls.length, afterFocus, 'superseded timer cannot check');
+clock += 400000; timers.at(-1).callback(cx); await flush(); assert.equal(calls.at(-1).invalidate, true, 'delayed sleep timer catches up');
+// An invalidation arriving in-flight retains just one follow-up, rate-limited.
+let settleCheck;
+respond = () => new Promise(resolve => { settleCheck = resolve; });
+clock += 180000; timers.at(-1).callback(cx);
+api.invalidateCustomizationUpdates(chrome, cx); api.invalidateCustomizationUpdates(chrome, cx);
+settleCheck({ code: 0, stdout: JSON.stringify({ ...next, check: { ...next.check, nextAttempt: clock + 150000 } }) }); await flush();
+assert.equal(timers.at(-1).ms, 15000);
+respond = null;
+// Retire this test owner so later replacement fixtures cannot run its timers.
+chrome.customUpdateClosed = true;
 eager = true; const before = calls.length, timerCount = timers.length;
 api.initCustomizationUpdates({}, cx, 'custom-settings'); api.refreshCustomizationUpdates(owner, cx, 'launch'); await flush();
 assert.equal(calls.length, before); assert.equal(timers.length, timerCount);

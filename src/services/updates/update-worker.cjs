@@ -6,7 +6,21 @@ const cp = require('node:child_process');
 const { createHash, randomUUID } = require('node:crypto');
 const REPOSITORY = 'https://github.com/timurproko/herdr-app.git';
 const DEADLINE = 30 * 60 * 1000;
-const HOUR = 60 * 60 * 1000;
+const CHECK_MIN = 120000, CHECK_MAX = 180000, RETRY_MAX = 1800000;
+const INVALIDATE_MIN = 15000;
+const failures = check => Number.isInteger(check?.failures) ? Math.max(0, Math.min(4, check.failures)) : check?.error ? 1 : 0;
+function nextAttempt(check, now) {
+  if (!Number.isFinite(check?.attempted) || check.attempted > now || check.attempted < 1) return now;
+  const max = check.error ? RETRY_MAX : CHECK_MAX;
+  const next = check.nextAttempt;
+  return Number.isFinite(next) && next >= check.attempted && next <= check.attempted + max
+    ? next : check.attempted + (check.error ? 300000 : CHECK_MIN);
+}
+function checkDelay(count, random) {
+  const jitter = Math.max(0, Math.min(1, Number(random()) || 0));
+  return count ? Math.min(RETRY_MAX, Math.round(300000 * 2 ** (count - 1) * (0.9 + jitter * 0.2)))
+    : Math.round(CHECK_MIN + jitter * (CHECK_MAX - CHECK_MIN));
+}
 const success = row => row && ['deployed', 'already current'].includes(row.action);
 const read = file => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
 function files(home) {
@@ -71,16 +85,21 @@ function inspect(home, { now = Date.now, isAlive = alive } = {}) {
     ? { ...classified, source: result.token ? 'settings' : 'cli', finished: result.at || 0 } : null;
   const revision = installedRevision(p, result);
   let check = read(p.check);
+  if (check) check = { ...check, nextAttempt: nextAttempt(check, now()) };
   if (check?.target) check = { ...check, available: revision !== check.target && (!check.error || check.available === true) };
   return { job, lastRun, result, check, checking: (read(p.checkLock)?.until || 0) > now(), revision, locked: fs.existsSync(p.lock), details, log: details?.kind === 'log' ? details.path : '' };
 }
-function checkMain(home, { force = false, now = Date.now, run = command, env = process.env } = {}) {
+function checkMain(home, { force = false, invalidate = false, now = Date.now, random = Math.random, run = command, env = process.env } = {}) {
   const p = files(home), snapshot = inspect(home, { now });
   if (snapshot.job?.state === 'running') return snapshot;
   const previous = snapshot.check || {};
   const latest = snapshot.job || snapshot.lastRun;
   const afterUpdate = ['complete', 'partial'].includes(latest?.state) && (latest.finished || 0) > (previous.attempted || 0);
-  if (!force && !afterUpdate && previous.attempted && now() - previous.attempted < HOUR) return snapshot;
+  // Automatic hints bypass healthy freshness, never failure backoff or the
+  // cross-process rate floor. Explicit Check now preserves its force semantics.
+  const due = nextAttempt(previous, now());
+  const hinted = invalidate && !previous.error && now() - (previous.attempted || 0) >= INVALIDATE_MIN;
+  if (!force && !afterUpdate && !hinted && now() < due) return snapshot;
   fs.mkdirSync(p.dir, { recursive: true });
   const held = read(p.checkLock);
   if (held && held.until < now() && read(p.checkLock)?.token === held.token) fs.unlinkSync(p.checkLock);
@@ -90,14 +109,16 @@ function checkMain(home, { force = false, now = Date.now, run = command, env = p
   const token = randomUUID(); fs.writeFileSync(fd, JSON.stringify({ token, until: now() + 20000 })); fs.closeSync(fd);
   const attempted = now();
   try {
-    // Persist attempts before I/O: a failed request cannot create an hourly loop.
-    atomic(p.check, { ...previous, attempted });
+    // A killed transport also leaves a bounded retry deadline, not a hot loop.
+    atomic(p.check, { ...previous, attempted, nextAttempt: attempted + CHECK_MIN });
     const reply = run('git', ['ls-remote', '--', REPOSITORY, 'refs/heads/main'], { timeout: 15000, env: { ...env, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never' } });
     const match = /^([a-f0-9]{40,64})\s+refs\/heads\/main\s*$/i.exec(reply.stdout.trim());
     if (reply.code !== 0 || !match) throw Error('Check failed. Try again.');
-    atomic(p.check, { attempted, checked: now(), target: match[1], available: snapshot.revision !== match[1], error: null });
+    atomic(p.check, { attempted, checked: now(), nextAttempt: attempted + checkDelay(0, random), failures: 0,
+      target: match[1], available: snapshot.revision !== match[1], error: null });
   } catch {
-    atomic(p.check, { ...previous, attempted, error: 'Check failed. Try again.' });
+    const count = Math.min(4, failures(previous) + 1);
+    atomic(p.check, { ...previous, attempted, nextAttempt: attempted + checkDelay(count, random), failures: count, error: 'Check failed. Try again.' });
   } finally { if (read(p.checkLock)?.token === token) fs.unlinkSync(p.checkLock); }
   return inspect(home, { now });
 }
@@ -237,7 +258,7 @@ async function launch(home, { spawn = cp.spawn, source = fs.readFileSync(__filen
     return inspect(home);
   }
 }
-module.exports = { REPOSITORY, DEADLINE, HOUR, files, read, atomic, command, installedRevision, inspect, checkMain, prepareClone, outcome, launch, runUpdate };
+module.exports = { REPOSITORY, DEADLINE, CHECK_MIN, CHECK_MAX, RETRY_MAX, INVALIDATE_MIN, nextAttempt, checkDelay, files, read, atomic, command, installedRevision, inspect, checkMain, prepareClone, outcome, launch, runUpdate };
 if (require.main === module) {
   if (process.argv[2] === '--run') runUpdate(process.argv[3], process.argv[4]).catch(error => { console.error(shortError(error)); process.exitCode = 1; });
   else {
@@ -246,7 +267,7 @@ if (require.main === module) {
       if (!request.home || !path.isAbsolute(request.home)) throw Error('An absolute Herdr home is required');
       if (request.action === 'launch') return launch(request.home);
       if (request.action === 'status') return inspect(request.home);
-      if (request.action === 'check') return checkMain(request.home, { force: request.force === true });
+      if (request.action === 'check') return checkMain(request.home, { force: request.force === true, invalidate: request.invalidate === true });
       throw Error('Unknown update action');
     }).then(value => console.log(JSON.stringify(value))).catch(error => { console.log(JSON.stringify({ error: shortError(error) })); process.exitCode = 1; });
   }

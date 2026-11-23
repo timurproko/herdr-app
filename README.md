@@ -1033,9 +1033,14 @@ showing a short installed revision and **Check now** or **Update**. Update uses 
 existing all-machine command through an independent, finite runner: full deploy
 on this desktop and shell deploy on eligible peers. Its desktop source is only
 `~/.local/share/herdr-app` (created on first Update if absent), never the developer
-checkout or a crew worktree. Checks compare published main, run hourly while
+checkout or a crew worktree. Checks compare published main every **2–3 minutes** with jitter while
 Custom is mounted and raise the existing Custom dots; they never deploy or probe
-peers. Unknown/changed revision evidence is shown honestly as revision unknown.
+peers. Each desktop checks independently, including one without relay setup.
+Startup, window activation after two minutes idle and delayed timers after sleep
+catch up automatically. Offline failures persist jittered retry delays of roughly
+5, 10, 20 and then at most 30 minutes, reset on success; Check now still bypasses
+the cache under the same single-flight lease. No public network-return event is
+assumed: timer retry and supported activation signals are the fallback. Unknown/changed revision evidence is shown honestly as revision unknown.
 
 The latest status, result and log live under the selected Herdr home's
 `.customizations/`: `update-status.json`, `deploy-all-result.json`,

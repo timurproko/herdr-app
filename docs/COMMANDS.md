@@ -140,6 +140,15 @@ then does a fresh deploy:all CLI run with the captured Herdr home; it repeats it
 normal source gates. No developer checkout, npm install/prepare, daemon or
 scheduled task is involved.
 
+Automatic availability checks run independently on each Desktop/Custom machine
+while its chrome is mounted: a jittered 120–180 second healthy cadence in both
+the UI scheduler and worker cache. Startup, focus after two minutes inactive and
+sleep-delayed timers catch up without opening Settings. Persisted failure retries
+back off roughly 5, 10, 20 and at most 30 minutes with jitter, resetting on success.
+Check now still forces a bounded read under the same check lease. There is no
+guaranteed public online/resume event; retry/activation is the offline fallback.
+Checks never deploy, fetch a checkout, probe peers or change native readiness.
+
 The selected Herdr home's `.customizations/` holds only the latest operation:
 `update-status.json`, `deploy-all-result.json`, `update-check.json`, `update.log`,
 `update-runner.cjs` and the active `update.lock` (plus a short check lock). These
@@ -205,7 +214,7 @@ existing host/A1 compatibility gates still apply.
    keeps the desktop revision and matching log/result-path warning; read its reasons before trying
    those machines. Do not erase status files just to manufacture a clean result.
 3. **Update available:** when published main advances after that installation,
-   click Check now (or wait for the mounted hourly check); the button becomes
+   click Check now (or wait for the mounted 2–3 minute check); the button becomes
    Update and the existing Settings/compact More dots light. A first installation
    using ordinary `npm run deploy` instead of deploy:all legitimately has unknown
    revision and also offers Update after checking; do not fabricate a receipt.
