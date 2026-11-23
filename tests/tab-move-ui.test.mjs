@@ -183,6 +183,41 @@ menu.choose(2,mcx);assert.equal(menu.at,-1,'Mouse-open does not highlight the fi
 assert.equal(menu.keyboard,false);menu.choose(1,mcx);assert.equal(selected[0][1],'s2');assert.equal(closed[0],'menu');
 menu.moveTo=false;menu.moveCapability={...capability,repairNeeded:true};assert.ok(menu.list().some(it=>it[1]==='custom.repair-tab'));menu.moveTo=true;assert.equal(menu.list()[1][1],'custom.repair-tab');menu.moveTo=false;
 menuSpaces=[menuSpaces[0]];menu.moveCapability=capability;menu.moveTo=true;assert.equal(menu.list()[1][0],'No other spaces on this machine');assert.equal(menu.unavailable(menu.list()[1]),true);
+// Explanations use intrinsic wrapping height inside a bounded scroll viewport.
+const longMessage='Core is missing doc.set; tab moving is unavailable. Detected App: 0.1.17; Core: 0.1.23; generation: 1. '.repeat(8);
+menu.moveCapability={ok:false,message:longMessage}; menu.moveTo=true;
+let messageTree=menu.render(mcx),viewport=messageTree.kids[0];
+const noteOf=tree=>nodes(tree).find(n=>n.style.id?.[0]==='move-explanation-1');
+let note=noteOf(messageTree),textNode=note.kids[1];
+assert.equal(viewport.style.h[0],320,'First frame reserves room for an unmeasured note');
+assert.ok(viewport.style.overflow_y_scrollbar,'Long content remains scrollable');
+assert.ok(note.style.h_auto);assert.ok(note.style.flex_none);assert.equal(note.style.h,undefined,'No fixed row height clips wrapped content');
+assert.ok(viewport.kids[1].style.flex_none,'The group cannot shrink a tall note to the viewport');
+assert.equal(note.style.role[0],'note');assert.equal(note.events.on_click,undefined);
+assert.equal(note.style.accessibility_label[0],longMessage);assert.equal(note.style.text_color[0],'#aaaaaa');
+assert.ok(textNode.style.whitespace_normal);assert.equal(textNode.style.truncate,undefined);assert.equal(textNode.kids[0],longMessage);
+assert.equal(note.kids[0].kids[0].asset,'mods/custom-workspace-chrome/chevron-right.svg');
+assert.equal(note.kids[0].style.size[0],16,'Explanation aligns with Back and Move to');
+const beforeInert=selected.length;
+menu.at=1;messageTree.events.on_key_down({key:'enter'},mcx);menu.choose(1,mcx);
+assert.equal(selected.length,beforeInert,'An explanation cannot submit a move');
+note.events.on_size_change({width:220,height:126},mcx);
+assert.equal(menu.render(mcx).kids[0].style.h[0],28+17+126,'Logical measured height replaces the single-row budget');
+note.events.on_size_change({width:140,height:700},mcx);
+assert.equal(menu.render(mcx).kids[0].style.h[0],320,'Narrow/long notes overflow by scrolling, not by shortening their content');
+assert.equal(noteOf(menu.render(mcx)).kids[1].kids[0],longMessage);
+menu.moveCapability={ok:false,message:'Different explanation'};
+note.events.on_size_change({width:220,height:24},mcx);
+assert.equal(menu.moveExplanationHeight,700,'A late callback for old text is ignored');
+note=noteOf(menu.render(mcx));note.events.on_size_change({width:220,height:48},mcx);
+assert.equal(menu.render(mcx).kids[0].style.h[0],28+17+48,'A shorter replacement releases excess height');
+for(const key of ['left','escape']) {menu.moveTo=true;menu.render(mcx).events.on_key_down({key},mcx);assert.equal(menu.moveTo,false);}
+menu.moveTo=true;menu.choose(0,mcx);assert.equal(menu.moveTo,false,'Back remains clickable');
+menu.moveCapability=capability;menu.moveTo=true;
+messageTree=menu.render(mcx);note=noteOf(messageTree);
+assert.equal(note.kids[1].kids[0],'No other spaces on this machine');
+assert.ok(note.kids[1].style.whitespace_normal,'Empty-destination explanations also wrap');
+assert.ok(messageTree.kids[0].kids[0].kids[0].kids[1].style.truncate,'Ordinary Back/destination labels keep the shared compact row behavior');
 assert.ok(!fs.readFileSync(new URL('../src/features/menu/main.js',import.meta.url),'utf8').includes('.tooltip('),'Menu items have no hover tooltips');
 assert.ok(!fs.readFileSync(new URL('../src/features/menu/main.js',import.meta.url),'utf8').includes('Checking move compatibility'),'No loading text in the destination list');
 // Space menu rows are complete in the first frame, with no deferred Git work.
@@ -249,6 +284,9 @@ for (const scenario of [{core:'0.1.22'},{core:'0.1.23'},{core:'0.1.23',missingMe
     assert.equal(instance.moveCapability.ok,false);
     assert.equal(instance.list()[1][1],'custom.move-empty');
     assert.ok(instance.list()[1][0].includes(`missing ${scenario.missingMethod??scenario.missingCommand}`));
+    const refusal=noteOf(instance.render(mcx));
+    assert.equal(refusal.kids[1].kids[0],instance.moveCapability.message,'The actual worker diagnostic reaches the complete wrapping label');
+    assert.equal(refusal.kids[1].style.truncate,undefined);
     instance.choose(1,mcx);instance.at=1;instance.render(mcx).events.on_key_down({key:'enter'},mcx);
     assert.equal(calls.length,before);assert.equal(closed.length,beforeClosed,'Unsupported row is inert');
     assert.deepEqual(rpcCalls,scenario.missingCommand?[]:['hello'],'Actual incompatibility refuses before reading or writing documents');

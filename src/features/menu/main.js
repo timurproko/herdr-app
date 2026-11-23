@@ -201,6 +201,24 @@ export default class Menu extends View {
     else closeWithConfirmation(it[1], it[2]);
   }
 
+  moveExplanation(t, it, i) {
+    const text = it[0];
+    // A note, not a disabled action: normal wrapping and intrinsic height keep
+    // the reason readable. The non-shrinking row can exceed the scroll viewport.
+    return h_flex().id(`move-explanation-${i}`).w_full().h_auto().min_h(U.row).flex_none()
+      .px(8).py(6).gap(U.gap).items_start().text_color(t.muted)
+      .role('note').accessibility_label(text)
+      .child(slot(svg(menuIcon(it[1], it[2])).size(U.smallIcon).text_color(t.muted)))
+      .child(div().flex_1().min_w(0).whitespace_normal().line_height(18).child(text))
+      .on_size_change((size, cx) => {
+        // Native sizes are already logical pixels; do not divide by app zoom.
+        // Ignore a late callback from a replaced/closed explanation.
+        if (!this.moveTo || this.list()[i]?.[0] !== text || !Number.isFinite(size.height) || size.height <= 0) return;
+        const height = Math.max(U.row, Math.ceil(size.height));
+        if (height !== this.moveExplanationHeight) { this.moveExplanationHeight = height; cx.notify(); }
+      });
+  }
+
   render(cx) {
     if (props()?.tab === "pane") return div();
     const t = theme();
@@ -208,7 +226,10 @@ export default class Menu extends View {
     // An overflow container has zero min-content height. Give the popup an
     // explicit measured row budget, rather than letting fit-content collapse it.
     const showSpacesHeading = this.moveTo && (!this.moveCapability || (this.moveCapability.ok && !this.moveCapability.repairNeeded));
-    const listHeight = Math.min(320, list.length * U.row + list.filter((it, i) => separates(it, i, list)).length * dividerHeight(true) + (showSpacesHeading ? 24 : 0));
+    // Until the note's first native measurement, reserve the full bounded
+    // viewport, not one 28px line. Later height changes follow native wrapping.
+    const rowsHeight = list.reduce((height, it) => height + (it[1] === 'custom.move-empty' ? (this.moveExplanationHeight ?? 320) : U.row), 0);
+    const listHeight = Math.min(320, rowsHeight + list.filter((it, i) => separates(it, i, list)).length * dividerHeight(true) + (showSpacesHeading ? 24 : 0));
     const colorSpace = props()?.tab === 'space' && spaces().find(s => s.id === props().target?.id);
     const focusColors = () => { this.at = -1;this.colorAt = Math.max(0, selectedColorIndex(colorSpace.id)); };
     return menuSurface(t, v_flex())
@@ -249,7 +270,7 @@ export default class Menu extends View {
             .when(separates(it, i, list), el => el.child(divider(t,{compact:true,inset:8})))
             .when(showSpacesHeading && i === 1, el => el.child(menuHeading(t, 'Available spaces', h_flex().id('move-spaces-heading').h(24).flex_none().px(8).items_center())))
             // The shared popup-menu row (ui.js); the pointer's highlight waits while the keyboard chooses.
-            .child(menuRow(t, { id: this.moveTo ? `move-mi-${i}` : `mi-${i}`, label: it[0], highlighted: this.keyboard && i === this.at, pointer: !this.keyboard,
+            .child(it[1] === 'custom.move-empty' ? this.moveExplanation(t, it, i) : menuRow(t, { id: this.moveTo ? `move-mi-${i}` : `mi-${i}`, label: it[0], highlighted: this.keyboard && i === this.at, pointer: !this.keyboard,
               icon: it[4] ? badge(String(it[4].index ?? spaces().findIndex(s => s.id === it[4].id) + 1), spaceBadgeColor(t, it[4], shared('space.colors') ?? {}))
                 : svg(it[3] ?? menuIcon(it[1], it[2])).size(U.smallIcon).text_color(t.muted),
               hint: shortcut(it[1], it[2]),

@@ -14,5 +14,5 @@
 
 ## 3. Readable wrapping submenu explanations
 
-- [ ] 3.1 Render refusal/empty explanations as inert wrapping content without label ellipsis and budget their actual height within the bounded scrolling viewport, leaving ordinary menu rows unchanged; verify long/version-specific text, no action on click/Enter, multiline geometry and scrolling in menu fixtures.
-- [ ] 3.2 Preserve Back/Left/Escape, destination layout and no loading text/tooltips; document capability policy, silent doc.set semantic risk, wrapping and verification limits, inventory other exact reviewed-version gates in the report without modifying them, and verify focused suites plus OpenSpec validation with no deployment/live mutation.
+- [x] 3.1 Render refusal/empty explanations as inert wrapping content without label ellipsis and budget their actual height within the bounded scrolling viewport, leaving ordinary menu rows unchanged; verify long/version-specific text, no action on click/Enter, multiline geometry and scrolling in menu fixtures.
+- [x] 3.2 Preserve Back/Left/Escape, destination layout and no loading text/tooltips; document capability policy, silent doc.set semantic risk, wrapping and verification limits, inventory other exact reviewed-version gates in the report without modifying them, and verify focused suites plus OpenSpec validation with no deployment/live mutation.
