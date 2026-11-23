@@ -384,31 +384,29 @@ local context refresh (or manual Refresh), independently of webhook-driven CI. W
 rows stay unselected.
 
 CI updates are **webhook-driven**, for **pinned and unpinned PRs**. Under
-**Settings → Plugins → Git**, use **Install → Login → Configure**, then check
-individual repositories in **Repositories**. Its **GitHub account** tabs show the
-signed-in accounts and which one supplies the list. Switching tabs reloads that
-account's repositories without switching the global CLI login or changing hooks.
-Apply or Discard pending edits before switching accounts. There is no bulk All option.
-This is paginated GitHub account inventory with admin permission, not local
-clones. The actions privately install pinned Cloudflare tools, open browser
-authorization, and configure the relay/keys/URL. No wizard, terminal commands, secret copying or URL pasting are needed.
-Configure starts immediately. Repository checkbox changes are local drafts; the
-same fixed **Apply / Discard** footer as Core saves or cancels them. Only Apply
-changes webhooks; unchecking removes only this relay's hook when applied. Successful
-partial updates stay saved and failed selections remain pending. There is no
-extra confirmation panel or Connect step. Install all cannot trigger remote changes.
-The configured Cloudflare URL is read-only under its requirement. Repositories
-have a separate searchable, scrollable section with individual checkboxes.
-Search never starts network requests; wheel gestures over the list scroll only
-that list. Pending edits survive search/collapse and are not shared or exported.
+**Settings → Plugins → Git**, use **Install → Login → Configure** only if no relay
+is already configured, then expand **Repositories**. Choose the GitHub **Account**,
+press **Add repo**, search/select individual repositories and confirm **Add** in
+the picker. Add creates/updates their actual repository webhooks; selection alone
+changes nothing and there is no bottom Apply step for this list. Remove deletes
+only that relay's matching hook. The main list uses last-confirmed enrollment;
+Add repo reads paginated active admin repositories, not local clones. Choosing an
+account does not switch the global CLI login. Partial successes remain saved and
+failures require explicit retry. The actions privately install pinned Cloudflare
+tools, open browser authorization and configure the relay/keys/URL. No wizard,
+terminal commands, secret copying or URL pasting are needed. Configure starts
+immediately; Install all cannot trigger remote changes. The configured Cloudflare
+URL is read-only. Searching/selecting/canceling the picker does not mutate GitHub;
+pending selections are per-view, never exported or replayed.
 See [Git webhook setup](docs/GIT-WEBHOOKS.md). Credentials stay local and are never
 preference exports; customization deployment itself provisions no account/service.
 
-The shown panel keeps one authenticated native WebSocket. Relevant events refresh
+Enabled Git's non-footer chrome keeps one authenticated native WebSocket shared
+by the panel and customization update discovery. Relevant events refresh
 all loaded Open/Closed pages and an explicitly linked older PR; expanded lists
 retain their depth and renewed cursors. Bursts coalesce, reconnect/open catches up,
-and stale replies cannot update another machine/repository. Hidden/disabled panels
-close the connection. Failed reads retain the last good status. There is **no
+and stale replies cannot update another machine/repository. Hiding Git or changing
+folders keeps transport alive but stops panel reads; disabling Git closes it. Failed reads retain the last good status. There is **no
 periodic CI polling or polling fallback**; unconfigured/offline panels show a
 compact bottom info card **Set up Git in Settings** only when global setup is
 missing. With setup ready, an unenrolled Git repository instead shows **Add this repo in Settings**. Enabled repos and non-Git agents have
@@ -420,7 +418,7 @@ Manual Refresh remains available. Its **Settings** link opens Git's prerequisite
 directly for missing setup. **Add this repo in Settings** instead opens Requirements
 collapsed and Repositories expanded, with the captured **owner/repository** prefilled
 in search. It only filters the list: choose the appropriate account if needed,
-check the repository and click Apply yourself. The header **‹ Plugins** button returns
+open Add repo, select the repository and confirm Add yourself. The header **‹ Plugins** button returns
 to the full catalog. Transport backoff and local agent discovery are
 separate from CI checking.
 

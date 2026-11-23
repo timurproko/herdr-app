@@ -21,41 +21,24 @@ normal path.
    - securely uploads CLIENT_TOKEN and GITHUB_SECRET over Wrangler stdin;
    - verifies the receiver's token and secret fingerprint;
    - saves the public relay URL automatically.
-4. **Repositories**, a collapsible section separate from Requirements. Its header
-   keeps **Check** left of the status, like every plugin's Requirements header.
-   Header and row statuses share the same fixed right-hand column. Check stays the
-   same size/label while disabled; a blue bulb followed by blue **Checking** appears
-   on checking headers, not every row. Repositories show their own checking status
-   whenever their own list refreshes. Requirements and Repositories Check are
-   independent: neither starts or waits on the other. Initial loading starts both
-   separately, and each publishes its own result. The account tabs
-   have no redundant visible title. **GitHub account** tabs
-   show the signed-in CLI accounts and the selected login. They default to the CLI's
-   active saved account. Changing tabs reloads that account's inventory, not the
-   global CLI login; Apply or Discard pending edits before switching. Search locally by owner/name;
-   the fixed-height list has an always-visible scrollbar and contains wheel gestures
-   while hovered. Checkbox clicks update a local draft immediately. Use the fixed
-   **Apply / Discard** footer (shared with Core settings) to save or cancel. Apply
-   enables checked repositories and removes only this relay's webhook for unchecked
-   repositories. Changes are individual-only; there is no All
-   option. These are GitHub repositories accessible to the
-   selected login with admin permission, not locally cloned folders. All API pages
-   are fetched; archived/disabled repositories are omitted. No Connect button or
-   second confirmation is shown. Per-row failures remain visible for retry.
-   Zero eligible repositories hides the search field, status badge and list viewport.
-   Only account tabs and the account-switch guidance remain; there is no icon or
-   duplicate No repositories label. The description contains only the enabled count (for example,
-   **1 of 128 enabled**) or account-switch guidance, without repeating the login or
-   an extra empty-state sentence. A search with zero matches keeps its field and the shared
-   magnifier/**No results** state, so the filter can still be cleared. While checking,
-   the list viewport is omitted; a compact **Repositories will appear here.**
-   description replaces it. Progress appears only beside Check in the header.
+4. Expand **Repositories** and choose the signed-in GitHub **Account** that
+   administers the desired repository. **Add repo** opens a searchable picker;
+   select individual repositories and press its **Add** button. That explicit
+   confirmation creates/updates their GitHub webhooks. Search, selection without
+   Add, Cancel and closing the picker do not change GitHub. There is no bottom
+   Apply step for this list. The main list shows last-confirmed connected
+   repositories; its remove control deletes only this relay's matching webhook.
+   Opening Settings does not enumerate every repository: Add repo requests the
+   chosen account's paginated active admin inventory, not local clones. Changing
+   Account does not switch the global CLI login. Per-repository failures are
+   reported; successful changes remain saved and failed choices need an explicit
+   retry. Requirements and Repositories checks remain independent.
 
 GitHub account discovery exposes only public login names. A named account's token
 is captured privately in the Node worker and supplied only through a child environment
 to GitHub CLI API calls pinned to github.com, never argv, shared state, preferences
 or logs. Ambient token overrides are excluded, API identity is verified, and both
-inventory and Apply stay bound to the selected account. Only its public login is saved.
+inventory and Add/remove stay bound to the selected account. Only its public login is saved.
 The plugin never runs `gh auth switch`, logs in automatically or changes CLI credentials.
 
 Node.js and GitHub CLI login have their own readiness checks. Existing private
@@ -67,18 +50,15 @@ and confirmation-required actions are excluded. Installation, login, deployment
 and connection run only after their own explicit user action. Deployment of the
 customizations itself does not install Wrangler or provision cloud resources.
 
-Configure starts immediately. Repository edits are local until **Apply**; Discard,
-search, collapse, navigation and closing never mutate webhooks. Apply snapshots
-pending choices, revalidates GitHub login, relay scope and immutable identities,
-and changes only those repositories. This uses Core's fixed editor footer, not a
-confirmation dialog. Successful changes remain saved on partial failure; failed
-choices remain pending for retry. Rechecking preserves pending selections unless
-the server already matches them. Drafts are per-view, never shared/exported or
-replayed after restart. Changed scopes/identities require discard or a fresh check.
-Partial successes are retained and failed rows are reported, never rolled back or
-retried silently. Explicit mutations share a cross-process setup lock; inventory
-reads are read-only and there is no persisted desired-state job. Public settings use
-validated compare-before-write updates; closed views cannot overwrite them.
+Configure starts immediately; repository selection alone is local until the
+picker's **Add**. Add/remove revalidates GitHub login, relay scope and immutable
+repository IDs before changing only the selected repositories. Partial successes
+are retained and errors reported, never rolled back or retried silently.
+Selections are per-view and never exported or replayed after restart. Changed
+scopes/identities require reopening the picker. Explicit mutations share a
+cross-process setup lock; inventory reads are read-only and there is no persisted
+desired-state job. Public settings use validated compare-before-write updates;
+closed views cannot overwrite them.
 
 ## Storage and trust boundaries
 
@@ -90,8 +70,9 @@ validated compare-before-write updates; closed views cannot overwrite them.
 - Public account ID and relay URL are ordinary plugin preferences, filled by
   Configure. The URL is displayed read-only under Automatic test updates, like
   other configured prerequisite values; it is not an editable Settings field.
-  The old single-repo preference remains hidden for compatibility. Checkboxes read
-  actual GitHub hook state rather than saved local selection intent.
+  The old single-repo preference remains hidden for compatibility. Add repo reads
+  actual GitHub hook state; the main list caches last-confirmed connected names,
+  scoped to relay/account, as runtime state rather than portable desired intent.
 - Wrangler owns login storage. Its supported `auth token --json` command is used
   only inside the Node worker for account-scoped Cloudflare API operations. Tokens
   are never returned to the UI, put in argv or copied to custom preference files.
@@ -111,6 +92,54 @@ errors distinguish deployment, secret-upload and verification failures without
 printing CLI output or secrets. Cloudflare propagation/DNS can take time. Closing
 Settings does not undo an already approved cloud request; reopening and retrying
 Configure safely verifies/finishes the same dedicated relay.
+
+## Customization update discovery
+
+One-time maintainer enrollment for **herdr-app-custom**:
+
+1. Open **Settings → Plugins → Git** and enable Git. Do not enable auto-fix just
+   for update discovery; it is independent.
+2. Reuse an already verified relay. Only if setup is missing, explicitly complete
+   **Cloudflare tools → Install**, **Cloudflare account → Login** (choose the
+   account if needed), and **Automatic test updates → Configure** above.
+3. Expand **Repositories**. In **Account**, select the GitHub login with webhook
+   administration permission on `timurproko/herdr-app`.
+4. Press **Add repo**, search **timurproko/herdr-app**, select it, then press the
+   picker's **Add**. This creates/updates the actual per-repository GitHub webhook;
+   a local search/list entry alone is not enrollment. If already listed and
+   healthy, leave it alone. An incomplete-hook warning requires explicit
+   remove/re-add; duplicate matching hooks must first be resolved in GitHub.
+5. In **GitHub → timurproko/herdr-app → Settings → Webhooks**, check the active
+   hook points to the existing relay origin plus **/github**, uses JSON and SSL
+   verification, and includes **push**. After a real push/merge, inspect **Recent
+   deliveries** and the existing Custom update dots. Configuration readiness alone
+   does not prove delivery.
+
+The setup UI sends the local webhook secret through gh stdin; it already matches
+this relay's `GITHUB_SECRET`. No secret copying or manual hook creation is needed.
+If the repo is absent, choose an account with repository webhook administration
+access. Adding it also expands the existing CI-monitor repository scope if
+that separate auto-fix feature was already enabled; it does not enable auto-fix.
+
+**No Worker redeploy is required for this feature:** canonical receiver, client
+allowlist and enrollment already include push. An independently managed older
+receiver that lacks push would need a separate explicit maintainer upgrade; this
+change never deploys cloud resources or enrolls repositories automatically.
+
+A target-repository push is only a hint to check fixed public main, never a
+trusted revision or URL. One-second debounce (three-second maximum burst wait),
+the existing check lease and a persisted ten-second automatic rate bound coalesce
+bursts/reconnects. Git may be hidden. A new version raises the existing markers;
+only **Update** installs it. Git disabled/unconfigured/offline silently leaves
+mount/hourly checks and **Check now** available. There is no closed-desktop update
+monitor and no delivery guarantee during network outages.
+
+The simpler alternative considered was startup/focus/ten-minute polling: no
+relay/enrollment/admin permission or socket refactor, but up to six regular main
+reads per active hour and up to ten minutes of focused-desktop delay. This change
+uses the approved relay route plus existing fallbacks, not both polling schedules.
+Fixture tests establish controller/transport behavior, not live delivery latency
+or GPUI pixel visibility; no live enrollment was performed during development.
 
 ## Runtime behavior
 
@@ -142,7 +171,7 @@ exports); no tokens, credential contents or secret hashes enter this record.
 The Settings link for missing setup opens the normal prerequisites view. The
 **Add this repo in Settings** link opens Requirements collapsed, Repositories
 expanded, and the captured **owner/repository** prefilled in search. This is a
-one-time UI filter, not a checked checkbox or enrollment request. It neither
+one-time UI filter, not a selected picker item or enrollment request. It neither
 switches GitHub accounts nor saves preferences; if the selected account cannot
 see that repo, choose the appropriate account yourself. Opening the link never
 applies changes or creates webhooks. Its header navigation uses the shared parent-name component:
@@ -182,7 +211,7 @@ refuse the test without changing the UI.
 ## Advanced/manual deployment
 
 For existing self-managed receivers, Settings accepts an HTTPS relay origin.
-Repository enrollment is managed by the checkbox list. The optional manual Wrangler entrypoint remains
+Repository enrollment is managed by Repositories → Add repo → Add. The optional manual Wrangler entrypoint remains
 `tools/git-webhook-relay/worker.mjs`, re-exporting the single canonical receiver
 `src/plugins/git/relay-worker.js`. The plugin packages that same receiver so setup
 workers have no source-checkout dependency.

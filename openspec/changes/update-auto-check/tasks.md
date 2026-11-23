@@ -17,5 +17,5 @@
 
 ## 3. Maintainer setup guidance describes explicit repository enrollment and requires no relay redeployment
 
-- [ ] 3.1 Correct the relevant webhook-enrollment guidance to the observed Account → Add repo → select → Add UI, including existing-relay reuse, webhook admin access, local-secret handling, incomplete-hook repair and Recent deliveries; review against actions/repositories/renderer sources confirms every step and no live operation is performed.
-- [ ] 3.2 Document that push is already accepted/requested, no Worker redeploy is needed, Git auto-fix is separate and existing enabled monitor scope expands with enrollment; include the startup/focus/ten-minute alternative comparison and fixture/live-validation limits without adding UI or performing setup.
+- [x] 3.1 Correct the relevant webhook-enrollment guidance to the observed Account → Add repo → select → Add UI, including existing-relay reuse, webhook admin access, local-secret handling, incomplete-hook repair and Recent deliveries; review against actions/repositories/renderer sources confirms every step and no live operation is performed.
+- [x] 3.2 Document that push is already accepted/requested, no Worker redeploy is needed, Git auto-fix is separate and existing enabled monitor scope expands with enrollment; include the startup/focus/ten-minute alternative comparison and fixture/live-validation limits without adding UI or performing setup.

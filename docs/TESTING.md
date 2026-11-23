@@ -190,7 +190,7 @@ only the demonstrated Windows Git-sh fixture remains an observed suite exclusion
 ## Exact selected source entries
 
 The list below is generated from CI selection, not inferred from naming. On Node
-24 the current selection is **138 Ubuntu / 137 Windows entries**, with two/three
+24 the current selection is **140 Ubuntu / 139 Windows entries**, with two/three
 explicit exclusions respectively. The installed directory-loader fixture now runs
 on both; the preference-home and four runtime-contract suites are included. It includes scaffold/aggregator tests. Earlier Node 20 attempts selected
 122/121 and then 119/119 entries while diagnosing the crashes; those temporary
@@ -279,6 +279,7 @@ tests/git-github-accounts.test.mjs
 tests/git-location.test.mjs
 tests/git-monitor-settings.test.mjs
 tests/git-notices.test.mjs
+tests/git-relay-stream.test.mjs
 tests/git-repository-checkboxes.test.mjs
 tests/git-repository-cli.test.mjs
 tests/git-webhooks.test.mjs
@@ -326,6 +327,7 @@ tests/temporary-mod.test.mjs
 tests/terminal-labels.test.mjs
 tests/update-check.test.mjs
 tests/update-detach.test.mjs
+tests/update-hints.test.mjs
 tests/update-row.test.mjs
 tests/update-marker-inspection.test.mjs
 tests/update-markers.test.mjs

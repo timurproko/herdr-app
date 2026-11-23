@@ -464,7 +464,7 @@ explicit credential/webhook actions. Local keys live only in
 and secret fingerprint, and changes only the approved repositories' exact relay URL.
 GitHub webhook secrets go over `gh api --input -`, not command-line arguments.
 
-`actions.js` owns Install/Login/Configure and repository-checkbox prerequisites, sharing readonly
+`actions.js` owns Install/Login/Configure and repository Add/remove prerequisites, sharing readonly
 facts per check round. `cloudflare.cjs` installs Wrangler 4.162.0 privately on explicit
 Install, delegates browser authorization to Wrangler, validates the chosen account,
 and configures only its dedicated fingerprint-owned Worker. It uploads keys over
@@ -473,17 +473,18 @@ disabled; the supported auth-token command stays inside the Node worker. Existin
 account subdomains and unrelated Workers are never replaced. No wizard, daemon,
 automatic background provisioning, private auth-store parsing or credential export
 is involved. Node/npm installation, cloud changes and webhook creation remain
-separate explicit actions. Configure starts on its first click; repository checkbox
-changes are drafts whose explicit approval is Apply, using the existing editor
-footer rather than another confirmation panel. Core and Plugins Apply/Discard
-controls both use `ui/modal-layout.js`'s `editorActionButton`: 88×32 logical pixels.
+separate explicit actions. Configure starts on its first click. Repository picker
+selection stays local until its explicit Add; the main list's remove action deletes
+only the selected relay hook. No bottom Apply is used for repository enrollment.
+Other Core/Plugins editors retain `ui/modal-layout.js`'s shared Apply/Discard controls.
 Repository hover rows use `U.radius` and symmetric `U.gutter` scroll insets so
 rounded highlights have the same left/right breathing room.
 `repositories.cjs` reads all pages of the current GitHub account's active admin
-repositories, not local clone folders. Checkboxes reflect server hook state, never
-persisted desired-state jobs. Individual checkbox actions bind the repository,
-GitHub login and relay URL, revalidate immutable repository IDs before mutation,
-and report failures. Unchecking removes only the matching receiver's webhook. Mutations share
+repositories on Add repo, not local clone folders or every Settings opening.
+The main list caches last-confirmed connected repository identities scoped to
+relay/account, never persisted desired-state jobs. Add/remove actions bind the
+repository, GitHub login and relay URL, revalidate immutable IDs and report
+failures. Removal touches only the matching receiver's webhook. Mutations share
 the existing cross-process setup lock; duplicate/unknown hooks fail closed. The canonical receiver is `src/plugins/git/relay-worker.js`, packaged
 with the plugin; the optional manual tools entrypoint only re-exports it.
 
