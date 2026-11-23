@@ -42,5 +42,6 @@ for(const version of ['0.1.16','0.1.17','future']) {
  assert.throws(()=>transformFeedback(stock.replace('send(body, cx)','submit(body, cx)'),'./custom-test'),/method send/);
  assert.throws(()=>transformFeedback(stock.replace('.child(image(path).h(72))','.child(image(path).h(72).on_click(() => this.extra = true))'),'./custom-test'),/thumbnail action shape/);
  transformFeedback('\ufeff'+stock.replaceAll('\n','\r\n'),'./custom-test');
+ transformFeedback(stock.replace('{ View, div','{ View as FrameView, div').replace('Feedback extends View','Renamed extends FrameView').replace('InputState, Input,','InputState, Input as NativeInput,').replace('TextareaState, Textarea }','TextareaState, Textarea as NativeTextarea }').replaceAll('Input.new','NativeInput.new').replaceAll('Textarea.new','NativeTextarea.new'),'./custom-test');
 }
 console.log('PASS actual 0.1.16/0.1.17 and future feedback: Custom form/viewer/drafts, native actions/controllers/validation, non-Custom and safe refusal');

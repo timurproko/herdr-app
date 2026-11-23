@@ -25,7 +25,7 @@ for(const name of fs.readdirSync(mods)){
   if(JSON.parse(fs.readFileSync(metadata,'utf8')).overlay?.kind!=='dialog')continue;
   const code=fs.readFileSync(new URL(name+'/main.js',mods),'utf8');assert.match(code,/dialogScroll(?:Frame|Area)\(/,name+' must use the shared modal scroll contract');
 }
-for(const name of ['palette','feedback'])assert.match(fs.readFileSync(new URL('frame-patches/'+name+'/main.js',root),'utf8'),/dialogScroll(?:Frame|Area)\(/,name+' must use the same contract');
+for(const name of ['palette','feedback'])assert.match(fs.readFileSync(new URL('frame-patches/'+name+'/'+name+'-ui.js',root),'utf8'),/dialogScroll(?:Frame|Area)\(/,name+' must use the same contract');
 const picker=JSON.parse(fs.readFileSync(new URL('mods/custom-picker/mod.json',root),'utf8'));
 assert.equal(picker.overlay.height,48+U.field+2*U.gutter+1+320+2*S.inset+2,'Jump reserves its complete symmetric geometry before first paint');
 console.log('PASS: right-edge modal scrollbar lanes, preserved 8px content gutters/vertical insets, nested-padding compensation, unchanged visibility policies and every skin dialog covered.');

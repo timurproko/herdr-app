@@ -1,6 +1,6 @@
 # Third-party notices
 
-The project's own contributions are MIT (LICENSE). This does not relicense third-party work or grant trademark rights. `docs/ASSET-PROVENANCE.json` records all 89 SVG paths outside the separately attributed file-icon collection and the five Herdr-derived JavaScript files.
+The project's own contributions are MIT (LICENSE). This does not relicense third-party work or grant trademark rights. `docs/ASSET-PROVENANCE.json` records all 89 SVG paths outside the separately attributed file-icon collection and the retained Herdr-derived JavaScript files.
 
 ## Original artwork with unrecorded source
 
@@ -12,17 +12,21 @@ Copyright Herdr App contributors. Source: https://github.com/herdrdev/herdr-app
 
 Reviewed public reference: v0.1.16, commit `034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f`. Full text: `LICENSES/Apache-2.0.txt`.
 
-Five files under `src/integration/native-patches/` are copied/adapted or derived work:
+Retained source/evidence:
 
-- `palette/original-0.1.13.js`: v0.1.13 stock palette; native `herdr` import adapted to the local facade.
-- `palette/original.js`: v0.1.14 review-era stock, also matching v0.1.15/v0.1.16 after import reversal and newline normalization.
-- `palette/main.js`: modified Herdr palette adding Custom UI, routing and scrolling.
-- `feedback/original.js`: stock feedback matching v0.1.13–v0.1.16 after import reversal/newline normalization; initial copy version is indistinguishable.
-- `feedback/main.js`: modified Herdr feedback with Custom styling, drafts and attachments.
+- `src/integration/native-patches/palette/ui.js`: Herdr-derived Custom palette presentation/lifecycle and routing integration; native catalog and controllers are no longer copied here.
+- `src/integration/native-patches/feedback/ui.js`: Herdr-derived Custom feedback presentation, drafts, viewer and attachment integration; native pick/send controllers are retained by structural transformation.
+- `tests/fixtures/native-stock/{0.1.16,0.1.17}/{palette,feedback}.js`: four byte-faithful upstream LF stock fixtures. Pinned commits, paths and SHA-256 digests are in their `provenance.json`. 0.1.17 is commit `a751b75b0418bf13950f7627d122bb934ac2c46c`.
 
-These are prominent modification records for the retained files. Stock snapshots are not claimed raw-byte-identical: they already have facade-import adaptations. Their original project bytes are preserved for compatibility recognition; no new headers are inserted. The manifest records each relationship and source URL. No native binaries, Rust libraries or fonts are redistributed here.
+These are prominent modification records. Former facade-adapted snapshots and full replacements were removed; generated regression previews derive from current raw fixtures and the transform. Fixtures are not runtime allowlists. No headers are inserted into raw stock. No native binaries, Rust libraries or fonts are redistributed here.
 
 The manifest also records 37 LF-normalized exact SVG matches to Herdr v0.1.16, four settings derivatives with changed presentation attributes, and a mirrored sidebar derivative. Preserve applicable Herdr Apache and Lucide/Feather layers; presence in Herdr does not license the 41 unknown-source assets.
+
+## Acorn — MIT
+
+Acorn 8.15.0 (`tools/vendor/acorn/acorn.mjs`) is distributed verbatim from its npm
+package, with the complete copyright/license at `tools/vendor/acorn/LICENSE`.
+Source: https://github.com/acornjs/acorn. Both accompany the offline runtime parser.
 
 ## Lucide / Feather
 

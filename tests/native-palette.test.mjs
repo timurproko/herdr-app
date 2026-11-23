@@ -29,6 +29,8 @@ for(const version of ['0.1.16','0.1.17','future']) {
   assert.ok(h.timers.find(t=>t.ms===32).cancelled);
   h.state.skin=false;const native=new h.View();native.init({},h.cx);assert.equal(native.input.options.placeholder,'Type a command…');native.go({name:'tab.close',args:{},id:'close'});assert.equal(h.calls.at(-1)[0],'tab.close');assert.ok(!byId(native.render(),'palette-search-header'));
   for(const changed of [stock.replace('go(e) {','activate(e) {'),stock.replace('function entries()', 'function entriesBROKEN()')])assert.throws(()=>transformPalette(changed,'./custom-test'),/anchor/);
+  assert.throws(()=>transformPalette(stock.replace('return v_flex()','return v_flex().on_click(() => run("app.future", {}))'),'./custom-test'),/native row action/);
+  assert.throws(()=>transformPalette(stock.replace('k === "pagedown"','k === "home"'),'./custom-test'),/keyboard actions/);
   // Formatting and local binding renames are not review/byte gates.
   transformPalette('\ufeff'+stock.replaceAll('\n','\r\n').replaceAll('keyParts','splitBinding'),'./custom-test');
 }

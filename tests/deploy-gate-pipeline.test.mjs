@@ -25,7 +25,8 @@ try {
  const catalog=path.join(f.base,'commands.json');put(catalog,JSON.stringify([...commands].map(name=>({name}))));
  put(path.join(home,'herdr.d.ts'),HOST_CONTRACT.api.map(n=>`export function ${n}(): void;`).join('\n'));
  const {output}=build();const registry=JSON.parse(fs.readFileSync(path.join(output,'frame-patches/registry.json')));
- for(const p of registry.patches){put(path.join(home,p.target,'main.js'),fs.readFileSync(path.join(output,p.originals[0])));framePatch('apply',home,output,p.id);put(path.join(home,p.target,'main.js'),`new 0.1.17 stock ${p.id}`);}
+ const nativeBytes=Buffer.concat(registry.patches.map(p=>fs.readFileSync(path.join(output,p.originals[0]))));
+ for(const p of registry.patches){put(path.join(home,p.target,'main.js'),fs.readFileSync(path.join(output,p.originals[0])));framePatch('apply',home,output,p.id,{binary:nativeBytes});put(path.join(home,p.target,'main.js'),`new 0.1.17 stock ${p.id}`);}
  const frameBefore=Object.fromEntries(registry.patches.map(p=>[p.id,fs.readFileSync(path.join(home,`.customizations/frame-${p.id}.json`),'utf8')]));
  put(f.env.HERDR_APP_BIN,'synthetic new binary without reviewed native originals');
  const preload=path.join(f.base,'host-fixture.cjs');

@@ -7,20 +7,19 @@ import { fileURLToPath } from 'node:url';
 import { framePatch } from './frame-palette.mjs';
 import { restoreStartupFrames } from './startup-frames.mjs';
 import { loadFrameRegistry } from './frame-registry.mjs';
+import {seedNativeSDK,fileSnapshot} from './frame-fixture.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const home = fs.mkdtempSync(path.join(os.tmpdir(), 'custom startup '));
 const registry = loadFrameRegistry(), names = registry.map(p => p.id);
 const dir = name => path.join(home, registry.find(p => p.id === name).target);
-const snapshot = () => Object.fromEntries(names.flatMap(name => fs.readdirSync(dir(name)).map(file => {
-  const target = path.join(dir(name), file), stat = fs.statSync(target, { bigint: true });
-  return [`${name}/${file}`, [fs.readFileSync(target, 'utf8'), String(stat.ino), String(stat.mtimeNs)]];
-})));
+const snapshot = () => Object.fromEntries(names.map(name=>[name,fileSnapshot(dir(name))]));
 const previousBin=process.env.HERDR_APP_BIN;
 process.env.HERDR_APP_BIN=path.join(home,'synthetic-host');
 fs.writeFileSync(process.env.HERDR_APP_BIN,Buffer.concat(registry.map(p=>fs.readFileSync(path.join(root,p.originals[0])))));
 try {
   assert.deepEqual(restoreStartupFrames(home), { ok: true, frames: {} });
   assert.equal(fs.existsSync(path.join(home, '.customizations')), false, 'No patch records means no writes or opt-in');
+  seedNativeSDK(home,registry);
   for (const name of names) {
     fs.mkdirSync(dir(name), { recursive: true });
     fs.copyFileSync(path.join(root, `frame-patches/${name}/original.js`), path.join(dir(name), 'main.js'));
@@ -28,7 +27,7 @@ try {
   }
   // Simulate the exact startup reset: stock entrypoints and deleted helpers.
   for (const name of names) {
-    for (const file of fs.readdirSync(dir(name))) fs.unlinkSync(path.join(dir(name), file));
+    for (const file of fs.readdirSync(dir(name))) fs.rmSync(path.join(dir(name), file),{recursive:true,force:true});
     fs.copyFileSync(path.join(root, `frame-patches/${name}/original.js`), path.join(dir(name), 'main.js'));
   }
   const result = restoreStartupFrames(home);
@@ -47,15 +46,16 @@ try {
   assert.match(conflict.frames.palette.advisory, /unsupported original/);
   assert.equal(conflict.frames.feedback.ok, true);
   assert.equal(fs.readFileSync(path.join(dir('palette'), 'main.js'), 'utf8'), personal);
-  fs.writeFileSync(path.join(dir('feedback'), 'custom-ui.js'), personal);
+  const feedbackState=JSON.parse(fs.readFileSync(path.join(home,'.customizations/frame-feedback.json')));
+  fs.writeFileSync(path.join(dir('feedback'),feedbackState.generation,'custom-ui.js'), personal);
   assert.equal(restoreStartupFrames(home).frames.feedback.ok, false);
-  assert.equal(fs.readFileSync(path.join(dir('feedback'), 'custom-ui.js'), 'utf8'), personal);
+  assert.equal(fs.readFileSync(path.join(dir('feedback'),feedbackState.generation,'custom-ui.js'), 'utf8'), personal);
   const lock = path.join(home, '.customizations/startup-frames.lock');
   fs.writeFileSync(lock, String(process.pid));
   assert.deepEqual(restoreStartupFrames(home), { busy: true }, 'Another live worker is not disturbed');
   fs.unlinkSync(lock);
   fs.unlinkSync(path.join(home, '.customizations/frame-palette.json'));
-  for (const file of fs.readdirSync(dir('palette'))) fs.unlinkSync(path.join(dir('palette'), file));
+  for (const file of fs.readdirSync(dir('palette'))) fs.rmSync(path.join(dir('palette'), file),{recursive:true,force:true});
   fs.copyFileSync(path.join(root, 'frame-patches/palette/original.js'), path.join(dir('palette'), 'main.js'));
   assert.equal(restoreStartupFrames(home).frames.palette, undefined, 'Removed opt-in is respected');
   assert.equal(fs.readFileSync(path.join(dir('palette'), 'main.js'), 'utf8'), fs.readFileSync(path.join(root, 'frame-patches/palette/original.js'), 'utf8'));

@@ -1,6 +1,6 @@
 {
   "repository": "herdrdev/herdr-app",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "files": {
     "0.1.16/palette.js": {
       "commit": "034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f",

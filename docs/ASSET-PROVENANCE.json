@@ -1053,63 +1053,63 @@
       "modifications": "Presentation/source version unrecorded; no invented exact-copy assertion."
     },
     {
-      "path": "src/integration/native-patches/palette/original-0.1.13.js",
-      "status": "herdr-adapted-snapshot",
-      "licenses": [
-        "Apache-2.0"
-      ],
-      "source": "https://github.com/herdrdev/herdr-app/blob/v0.1.13/defaults/frame/palette/main.js",
-      "version": "0.1.13",
-      "modifications": "Stock snapshot; facade import adapted from herdr to ./host.js.",
-      "sha256LF": "1af7b6d96775788b629d40b70dc3cc0b6833a6d686422c1cda149acb6d8b06fd",
-      "evidence": "Version relationships from reviewed tag comparisons; comparisons reverse existing facade import and normalize newlines."
-    },
-    {
-      "path": "src/integration/native-patches/palette/original.js",
-      "status": "herdr-adapted-snapshot",
-      "licenses": [
-        "Apache-2.0"
-      ],
+      "path": "tests/fixtures/native-stock/0.1.16/palette.js",
+      "status": "herdr-stock-fixture",
+      "licenses": ["Apache-2.0"],
       "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/palette/main.js",
-      "version": "0.1.14–0.1.16",
-      "modifications": "0.1.14 review-era stock, also matches 0.1.15/0.1.16; facade import adapted.",
-      "sha256LF": "e04927533d3f0b3937268818b3b2a3f495cda41e4d5f245584a477ea013b1539",
-      "evidence": "Version relationships from reviewed tag comparisons; comparisons reverse existing facade import and normalize newlines."
+      "version": "0.1.16",
+      "modifications": "None; byte-faithful LF stock test evidence, not runtime permission.",
+      "sha256LF": "0f2101ea5a8524d6a3a69e99963fc0e1285b8bb8a303d283f9d92b7887eb7906"
     },
     {
-      "path": "src/integration/native-patches/palette/main.js",
+      "path": "tests/fixtures/native-stock/0.1.17/palette.js",
+      "status": "herdr-stock-fixture",
+      "licenses": ["Apache-2.0"],
+      "source": "https://github.com/herdrdev/herdr-app/blob/a751b75b0418bf13950f7627d122bb934ac2c46c/defaults/frame/palette/main.js",
+      "version": "0.1.17",
+      "modifications": "None; byte-faithful LF stock test evidence, not runtime permission.",
+      "sha256LF": "9efc4b79498ffead87af4bab963ba51c62de1accb10e5a9cefb05ba546e37c0c"
+    },
+    {
+      "path": "src/integration/native-patches/palette/ui.js",
       "status": "herdr-derivative",
       "licenses": [
         "Apache-2.0"
       ],
       "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/palette/main.js",
       "version": "0.1.13 / 0.1.14+ reviewed palettes",
-      "modifications": "Modified Custom UI, routing and scrolling.",
-      "sha256LF": "f24c190d2d4e7863bc6f0215ed82ae47072eaf4dc95e89e1c46958ffb41984de",
+      "modifications": "Extracted Custom UI/lifecycle, routing and scrolling; native catalog/controller are retained by structural transforms, not copied.",
+      "sha256LF": "63697df71cd383c92479f331b5f57dfe37e9eb2c95628895151a50dd61f1cacb",
       "evidence": "Version relationships from reviewed tag comparisons; comparisons reverse existing facade import and normalize newlines."
     },
     {
-      "path": "src/integration/native-patches/feedback/original.js",
-      "status": "herdr-adapted-snapshot",
-      "licenses": [
-        "Apache-2.0"
-      ],
+      "path": "tests/fixtures/native-stock/0.1.16/feedback.js",
+      "status": "herdr-stock-fixture",
+      "licenses": ["Apache-2.0"],
       "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/feedback/main.js",
-      "version": "0.1.13–0.1.16",
-      "modifications": "Stock snapshot; initial copy version indistinguishable; facade import adapted.",
-      "sha256LF": "c38cef2537175f569cf987a5cbc56d563ee14f841d01a8c2df0d54cfa5994ef7",
-      "evidence": "Version relationships from reviewed tag comparisons; comparisons reverse existing facade import and normalize newlines."
+      "version": "0.1.16",
+      "modifications": "None; byte-faithful LF stock test evidence, not runtime permission.",
+      "sha256LF": "29da2cc452b3054c15218fe23c3c542b12de018e8a797308640b0fd8b840f80b"
     },
     {
-      "path": "src/integration/native-patches/feedback/main.js",
+      "path": "tests/fixtures/native-stock/0.1.17/feedback.js",
+      "status": "herdr-stock-fixture",
+      "licenses": ["Apache-2.0"],
+      "source": "https://github.com/herdrdev/herdr-app/blob/a751b75b0418bf13950f7627d122bb934ac2c46c/defaults/frame/feedback/main.js",
+      "version": "0.1.17",
+      "modifications": "None; byte-identical to the pinned 0.1.16 source.",
+      "sha256LF": "29da2cc452b3054c15218fe23c3c542b12de018e8a797308640b0fd8b840f80b"
+    },
+    {
+      "path": "src/integration/native-patches/feedback/ui.js",
       "status": "herdr-derivative",
       "licenses": [
         "Apache-2.0"
       ],
       "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/feedback/main.js",
       "version": "0.1.13–0.1.16 reviewed feedback",
-      "modifications": "Modified Custom styling, draft and attachment behavior.",
-      "sha256LF": "dccf45e47cc847e112ee93e2b073d67eaf75dadc5a42d5335c680b636c1acc85",
+      "modifications": "Extracted Custom styling, draft/viewer and attachment integration; native pick/send/validation/removal callbacks are retained by transforms.",
+      "sha256LF": "dcdc1e4ef5d84ea05724ff3bfa033dc8e69a2b6d47a8ed951b4e2fc638aa7963",
       "evidence": "Version relationships from reviewed tag comparisons; comparisons reverse existing facade import and normalize newlines."
     }
   ]

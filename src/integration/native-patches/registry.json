@@ -4,7 +4,9 @@
     {
       "id": "palette",
       "target": "frame/palette",
-      "originals": ["frame-patches/palette/original.js", "frame-patches/palette/original-0.1.13.js"],
+      "transform": "palette",
+      "capabilities": ["commands", "layouts", "keys", "run", "settings", "themes", "theme", "props", "closeOverlay", "openOverlay", "shared", "window"],
+      "originals": ["frame-patches/palette/original.js", "frame-patches/palette/original-0.1.16.js"],
       "files": {
         "custom-ui.js": "lib/ui.js",
         "custom-look.js": "lib/look.js",
@@ -13,12 +15,15 @@
         "identity.js": "lib/identity.js",
         "compatibility.js": "lib/compatibility.js",
         "host.js": "lib/host.js",
+        "palette-ui.js": "frame-patches/palette/palette-ui.js",
         "main.js": "frame-patches/palette/main.js"
       }
     },
     {
       "id": "feedback",
       "target": "frame/feedback",
+      "transform": "feedback",
+      "capabilities": ["shared", "settings", "themes", "theme", "props", "closeOverlay", "feedbackPreview", "feedbackPasteImage", "feedbackPickImages", "feedbackAttachImages", "feedbackClearImages", "sendFeedback", "appHome", "readTextFile", "writeTextFile"],
       "originals": ["frame-patches/feedback/original.js"],
       "files": {
         "custom-ui.js": "lib/ui.js",
@@ -27,6 +32,7 @@
         "identity.js": "lib/identity.js",
         "compatibility.js": "lib/compatibility.js",
         "host.js": "lib/host.js",
+        "feedback-ui.js": "frame-patches/feedback/feedback-ui.js",
         "main.js": "frame-patches/feedback/main.js"
       }
     }

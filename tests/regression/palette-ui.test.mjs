@@ -35,12 +35,13 @@ const base={h_flex:()=>element('hflex'),v_flex:()=>element('vflex'),InputState:{
   },
 };
 const t={foreground:'#fafafa',muted:'#aaa',dim:'#888',border:'#333',raised:'#252525',popover:'#202020',hover:'#303030',selected:'#444',accent:'#55aaff',input:'#555'};
-const api={commands:()=>[],layouts:()=>['main'],keys:()=>[],theme:()=>t,shared:()=>skin?'Custom':'main',window:()=>({platform:'windows'}),props:()=>({overlay:'owned-test'}),run:(...args)=>calls.push(args),closeOverlay:id=>closed.push(id),openOverlay(){}};
+const api={commands:()=>[],layouts:()=>['main'],themes:()=>[],settings:()=>({dark:true}),keys:()=>[],theme:()=>t,shared:()=>skin?'Custom':'main',window:()=>({platform:'windows'}),props:()=>({overlay:'owned-test'}),run:(...args)=>calls.push(args),closeOverlay:id=>closed.push(id),openOverlay(){}};
 const context=vm.createContext({console,localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v)}}),cache=new Map();
 const synthetic=(name,values)=>new vm.SyntheticModule(Object.keys(values),function(){for(const[k,v]of Object.entries(values))this.setExport(k,v);},{context,identifier:name});
 async function load(file){if(cache.has(file))return cache.get(file);const mod=new vm.SourceTextModule(fs.readFileSync(file,'utf8'),{context,identifier:file});cache.set(file,mod);await mod.link((name,ref)=>{
   if(name==='gpui-kit')return synthetic(name,kit);if(name==='gpui-base')return synthetic(name,base);if(name==='./host.js')return synthetic(name,api);
   if(name==='./custom-look.js')return synthetic(name,{isCustom:()=>skin,liveTheme:()=>t,ensureNativeSelection(){}});
+  if(name==='./palette-ui.js')return load(path.join(root,'frame-patches/palette/palette-ui.js'));
   if(name==='./custom-ui.js')return load(path.join(root,'lib/ui.js'));
   if(name==='./custom-routing.js')return load(path.join(root,'frame-patches/palette/routing.js'));
   if(name==='./custom-scroll-fade.js')return synthetic(name,{bottomFade:(_state,id,color,options)=>element('fade').id(`${id}-more-below`).color(color).insets(options)});

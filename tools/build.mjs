@@ -5,6 +5,7 @@ import { gzipSync } from 'node:zlib';
 import { digest, read, put, safeRelative } from './files.mjs';
 import { HOST_CONTRACT } from '../src/integration/herdr/compatibility.js';
 import { pluginEntries } from './plugins.mjs';
+import { transformNative } from './runtime/native-transform.mjs';
 export const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export function build(root = project) {
   const config = JSON.parse(read(path.join(root, 'customization.json')));
@@ -22,6 +23,13 @@ export function build(root = project) {
     if(compressed.has(dest))bytes=Buffer.from(`// Generated Node transport; canonical source: ${source}\neval(require('node:zlib').gunzipSync(Buffer.from('${gzipSync(bytes,{level:9}).toString('base64')}','base64')).toString('utf8'));\n`);
     if (entries.has(dest.toLowerCase())) throw Error(`Duplicate output: ${dest}`);
     entries.set(dest.toLowerCase(), {dest, source, bytes});
+  }
+  // Disposable regression previews are derived from raw stock, never maintained replacements.
+  for(const id of ['palette','feedback']) {
+    const stock=entries.get(`frame-patches/${id}/original.js`).bytes.toString('utf8');
+    const extra=id==='palette'?`\nexport { paletteItems, paletteHeading } from './palette-ui.js';`:`\nexport { parseDraft } from './feedback-ui.js';`;
+    const dest=`frame-patches/${id}/main.js`;
+    entries.set(dest,{dest,source:'generated:native-preview',bytes:Buffer.from(transformNative(id,stock,'.')+extra)});
   }
   // Plugins come from their folders (tools/plugins.mjs), never from manifest lines.
   for (const entry of pluginEntries(root, config)) {
@@ -78,7 +86,7 @@ export function build(root = project) {
   for (const {dest,source,bytes} of entries.values()) {
     const privateFile=/^(mods\/custom-[a-z-]+\/|layouts\/Custom\.json$|layouts\/custom\.svg$|themes\/Custom\.json$)/.test(dest) && !dest.includes('.test.');
     if (privateFile) payload[dest]={source,hash:digest(bytes)};
-    const workerFile=/^(lib\/|frame-patches\/)/.test(dest) && !dest.endsWith('.md') || /^scripts\/(frame-(?:registry|patch)|startup-frames|terminal-input|readline-paste|feedback-draft)\.mjs$/.test(dest) || dest==='scripts/a1-session-report.js';
+    const workerFile=/^(lib\/|frame-patches\/|vendor\/acorn\/)/.test(dest) && !dest.endsWith('.md') || /^scripts\/(native-(?:ast|frame|transform)|frame-(?:registry|patch)|startup-frames|terminal-input|readline-paste|feedback-draft)\.mjs$/.test(dest) || dest==='scripts/a1-session-report.js';
     if(workerFile || dest.startsWith('shell/') || exportScripts.has(dest))payload[`.customizations/runtime/${dest}`]={source,hash:digest(bytes),from:dest};
   }
   // Unlike development-only scripts, every exporter import must be installed.

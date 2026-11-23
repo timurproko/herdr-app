@@ -38,6 +38,8 @@ export function init(cx) {
   loadDraft.call(this,cx);
 }
 export const overLimit = form => active() && [...form.message.value()].length > 4000;
+export const unavailable = t => div().flex_none().px(16).pt(12).text_size(U.meta).text_color(t.blocked).child('Feedback is unavailable in source builds.');
+export const draftNotice = t => div().flex_none().text_size(U.meta).text_color(t.muted).child('Agent draft · review before sending');
 export const header = (form,t) => dialogHeader(t,form.sent?'Feedback sent':'Send feedback',()=>form.close());
 const caption = (t,s) => div().text_size(U.font).line_height('18px').font_medium().text_color(t.foreground).child(s);
 const inputFrame = (t,el,focused) => el.w_full().h(U.field).flex_none().px(U.gutter).rounded(U.radius).border_1().border_color(focused?t.input:t.border).bg(t.surface);
@@ -67,12 +69,14 @@ export function preview(form,t,native) {
         .accessibility_label(form.previewExpanded?'Collapse JSON preview':'Expand JSON preview').hover(el=>el.bg(t.hover))
         .on_change((open,cx)=>{cx.stop_propagation();form.previewExpanded=open;cx.notify();}).child(chevron(t,form.previewExpanded)).child('JSON preview')))
     .when(form.previewExpanded,el=>el.child(div().id('feedback-preview-help').text_size(U.meta).line_height('18px').text_color(t.muted).child('App details help diagnose issues. Preview exactly what will be sent.'))
-      .child(native.id('feedback-json').h(160).flex_none().overflow_y_scrollbar()));
+      .child(v_flex().id('feedback-json').w_full().h(160).flex_none().rounded(U.radius).border_1().border_color(t.border).bg(t.surface)
+        .child(dialogScrollArea(v_flex()).id('feedback-json-scroll').flex_1().child(dialogScrollBody(native).p(0)))));
 }
 export const success = t => v_flex().id('feedback-success').w_full().min_w(0).px(24).gap(U.gap).items_center().text_center()
   .child(svg('mods/custom-workspace-chrome/circle-check.svg').size(24).flex_none().text_color(t.dim))
   .child(div().id('feedback-thanks').max_w(360).text_size(U.meta).line_height('18px').text_color(t.muted).child('Thanks for helping us improve Herdr.'));
-export const body = (form,node) => node.px(16).py(16).gap(12).when(form.sent,el=>el.overflow_hidden().items_center().justify_center());
+export const body = (form,node) => dialogScrollArea(v_flex()).id('feedback-scroll').flex_1().when(form.sent,el=>el.overflow_hidden())
+  .child(dialogScrollBody(node).flex_none().gap(12).when(form.sent,el=>el.size_full().px(8).overflow_hidden().items_center().justify_center()));
 export const footer = (t,node) => modalFooter(t,node).id('feedback-actions').gap(8).justify_end();
 export function root(form,t,node) {
   return node.h(500).rounded(U.dialogRadius).overflow_hidden().bg(t.background).text_size(U.font);

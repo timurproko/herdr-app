@@ -132,11 +132,18 @@ Provider/relay/Cloudflare unit transports are mocks, not live requests.
 `tests/host-gate.test.mjs` checks the real host-audit function with synthetic SDK,
 command and version facts: newer capable hosts pass without a reviewed profile;
 old/malformed versions, missing capabilities and direct imports fail. Every
-source-audit outcome remains advisory. `tests/frame-upgrade.test.mjs` covers both
-optional patches against synthetic native originals/binaries, preserving complete
-file/record bytes on skips and retaining conflict/corrupt/concurrent-write failures.
-The existing deployment/startup fixtures also assert nonfatal unsupported patches
-and doctor severity; reviewed repair and no-op timestamp checks remain intact.
+source-audit outcome remains advisory. `tests/frame-upgrade.test.mjs` retains the generic
+legacy-engine failure cases. Active palette/feedback entries instead use structural
+contracts: `tests/native-engine.test.mjs` covers raw provenance, graph/self-checks,
+v1 migration, immutable generations, no-op/restore, locks and injected write/crash/
+recovery failures. `tests/native-palette.test.mjs` and `native-feedback.test.mjs` run
+the transformed actual 0.1.16/0.1.17 sources and synthetic future actions/controllers,
+including formatting/alias variants and concrete incompatible edit sites.
+`tests/native-integration.test.mjs` composes real build/install/startup/CLI/doctor
+paths in disposable homes with synthetic binaries, including offline relocated
+workers, native resets, independent optional skips, current-stock restore and
+personal conflicts. Existing detailed palette/feedback UI regressions now load
+build-generated previews of those same transforms, not obsolete full replacements.
 
 `tests/deploy-failure.test.mjs` carries host/build/install/patch causes through the
 actual all-machine worker, durable result writer, Update inspection and Settings
@@ -282,6 +289,7 @@ deploy, enroll hooks, authorize accounts or send to real agents.
 
 ## Capability coverage
 
+- Native bridges: raw Apache-2.0 release fixtures, offline MIT Acorn parser, checked structural preservation, complete-generation activation, crash recovery, current-stock restore and truthful doctor states. No live installed-home writes or feedback submissions; fixture results do not prove native pixels or future semantics.
 - Lifecycle: checkout build; full/scoped/shell-only deployment and guarded rollback; installed shell reload/export and preference-home fixtures; ownership-report; preferences/frame-registry/frame-palette; host-facade and tab-move compatibility. Architecture verifies single-source packaging and the native boundary.
 - Workspace: close-space, rename-selection, panel-state/pin, profile-workflow/Firstmate-role, new-menu, tab-move and tab-move-ui fixtures. Real native interactions remain excluded.
 - Plugins: plugin lifecycle/UI, file viewer/recycle policy, Git/PR/CI policy and webhook mocks, Usage/Claude/account fixtures, A1 adapters and Crew fixtures. External service correctness is not inferred from mocks.
@@ -317,7 +325,7 @@ only the demonstrated Windows Git-sh fixture remains an observed suite exclusion
 ## Exact selected source entries
 
 The list below is generated from CI selection, not inferred from naming. On Node
-24 the current selection is **144 Ubuntu / 143 Windows entries**, with two/three
+24 the current selection is **154 Ubuntu / 153 Windows entries**, with two/three
 explicit exclusions respectively. The installed directory-loader fixture now runs
 on both; the preference-home and four runtime-contract suites are included. It includes scaffold/aggregator tests. Earlier Node 20 attempts selected
 122/121 and then 119/119 entries while diagnosing the crashes; those temporary
@@ -412,6 +420,10 @@ tests/git-repository-cli.test.mjs
 tests/git-webhooks.test.mjs
 tests/host-facade.test.mjs
 tests/installed-export.test.mjs
+tests/native-engine.test.mjs
+tests/native-feedback.test.mjs
+tests/native-integration.test.mjs
+tests/native-palette.test.mjs
 tests/native-selection.test.mjs
 tests/ownership-report.test.mjs
 tests/pane-crew-role.test.mjs

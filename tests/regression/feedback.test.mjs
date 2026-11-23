@@ -60,6 +60,7 @@ async function load(file) {
     if (specifier === 'gpui-base') return synthetic(specifier,base);
     if (specifier === './host.js') return synthetic(specifier,api);
     if (specifier === './custom-look.js') return synthetic(specifier,{ isCustom:() => skin, liveTheme:() => t, ensureNativeSelection:() => selectionFocusEvents++ });
+    if (specifier === './feedback-ui.js') return load(path.join(root,'frame-patches/feedback/feedback-ui.js'));
     if (specifier === './custom-ui.js') return load(path.join(root,'lib/ui.js'));
     if (specifier === './custom-modal-layout.js') return load(path.join(root,'lib/modal-layout.js'));
     throw Error(`Unexpected import: ${specifier}`);

@@ -1,114 +1,105 @@
 # Optional native compatibility patches
 
-These two frame-only exceptions are not the normal feature architecture. Prefer
-private mods/layouts/themes and supported Herdr APIs. Built-in mod patches were
-retired because Herdr quarantines them into `*-edited*` recovery directories and
-warns on relaunch. A new exception requires explicit approval; never rebuild or
-modify native binaries for a UI request.
+Only `frame/palette` and `frame/feedback` are approved exceptions. Prefer private
+mods/layouts/themes and supported host APIs; never patch built-in mods or binaries.
+Native startup deletes/reseeds `frame/` from the executable, then loads the modules
+as `frame-palette` / `frame-feedback`. Custom repairs **prior opt-ins only** after
+mounting or deployment. Explicit `apply` is the only way to create an opt-in.
 
-`registry.json` maps patch IDs to host targets, reviewed stock snapshots and local
-helpers. Every patch receives the same `host.js` facade and versioned
-`compatibility.js`; patch code must not import `herdr` directly. The build packages this catalog, sources and workers under
-`herdr-app/.customizations/runtime/`. Startup repair and deployment use that same
-catalog. Only entries with an existing local opt-in record are repaired.
+## Compatibility, not a release allowlist
 
-## Structural engine contract
+The registry declares structural transforms, required host capabilities and helper
+graphs. Current stock is proven read-only against the current executable, directly
+from the target, a saved raw original, or bounded unique embedded-file boundaries.
+An owned old patch hash proves ownership, not compatibility with a newer host.
+No runtime download, release allowlist or reviewed-whole-file equality is used.
+Raw 0.1.16/0.1.17 fixtures are evidence only, not runtime permission.
 
-The structural engine (`tools/runtime/native-frame.mjs`) separates stock discovery
-from transform permission. Only the existing palette/feedback targets are eligible.
-Raw source must be proven in the current executable, either directly, from a saved
-raw original, or through bounded unique embedded-file boundaries. Release fixtures
-are evidence, never an allowlist. Parsing uses offline packaged Acorn 8.15.0 (MIT).
+Offline packaged Acorn 8.15.0 (MIT) finds unique AST anchors and applies range edits.
+Untouched native regions remain unchanged. Output parsing, static import/export
+closure and required capabilities are checked before activation. Missing/ambiguous
+necessary sites, unavailable current-stock evidence or failed self-checks leave
+all patch files/records untouched, with a concrete optional incompatibility advisory.
+Personal dependency edits, corrupt records and unsafe recovery remain hard errors.
+Unknown newer stock is never overwritten or downgraded on restore.
 
-A transform stages immutable content-addressed helpers before a single atomic main
-activation. Durable journals retain original bytes and permit ownership-checked
-rollback/recovery; a v1 record migrates only after ownership/provenance checks.
-All mutation paths share a lock. Read-only inspection does not recover or write.
-Detected external edits or obstructed recovery retain backups and report a hard
-recovery-required error; they are never harmless optional skips. Native startup
-and other editors do not honor our lock: compare/readback checks cannot provide a
-native CAS or guarantee rollback against a racing external writer.
+## Surface behavior and native actions
 
-## Palette bridge
+`palette/ui.js` owns Custom search/selection, virtual scrolling, fixed group/results
+headings and passive bottom fade. The bridge retains native entries, fuzzy search,
+history identities, key labels and special dispatch branches. 0.1.17's dynamic
+light/dark/layout-aware themes and compatible future actions survive. Usage follows
+its plugin switch. Only Custom activation routes Settings/pickers/worktree/machine
+choices, inline rename and untargeted close; explicit close arguments remain native.
+Other layouts retain native presentation and activation.
 
-`palette/ui.js` owns the Custom virtual list/search header, pinned group/results
-heading, passive bottom fade and focus/reset/close lifecycle. The structural
-bridge keeps the current stock entries, fuzzy ranking, history, key labels and
-special dispatch branches. This preserves 0.1.17's dynamic light/dark/layout-aware
-themes and compatible future named/generic actions. Usage follows its plugin switch.
-Only Custom activation routes Settings/pickers, inline rename and untargeted close;
-explicit close arguments and all non-Custom behavior stay native. Stable row,
-input and activation hooks are still required; this is not a public frame API.
+`feedback/ui.js` owns Custom field chrome/counts, compact Add image/helper/thumbnails,
+viewer navigation, JSON disclosure, one-use drafts and the Feedback sent thank-you.
+The Custom branch derives from current native child operations and retains unknown
+sibling actions/callbacks. Native preview, pick, send, disable predicates and
+thumbnail-removal callbacks remain native. Unsafe overlapping edits refuse before
+writes rather than discarding actions. Sending/sent forms reject drops and late
+picker/draft results. Other layouts keep their native form/success behavior.
 
-## Feedback bridge
+Feedback attachment and sending APIs require actual `frame-feedback` authority.
+An ordinary mod/overlay cannot fully replace it. This bridge does not spoof identity
+or send directly to a network endpoint. A private palette could cover selected
+Custom openers, but cannot universally intercept native `app.palette` entrypoints.
 
-`feedback/ui.js` owns Custom fields/chrome, compact attachments/viewer, JSON
-disclosure, fresh one-use drafts and the sent title/thank-you. The transform derives
-its Custom form from current native child operations, retaining unknown sibling
-actions and callbacks. Native preview, pick, send, validation and thumbnail removal
-callbacks remain native; unsafe overlapping edit regions refuse before writes.
-Drops and late picker results cannot modify a sending/sent Custom form.
+## Transaction and recovery contract
 
-Attachments and sending require real `frame-feedback` identity in the host. A
-private mod cannot replace them; this bridge does not spoof that identity or send
-to the network itself. Styling needs structural form/controller hooks and public
-GPUI/host capabilities, not complete reviewed source bytes or a release allowlist.
+The engine stages a complete immutable content-addressed helper generation before
+one atomic main-entrypoint activation. Main always references a complete graph;
+new staging cannot mutate active helpers. Durable journals preserve raw originals
+and previous records. State v2 records source/executable digests, generation and
+installed hashes; v1 migrates only after ownership and current-stock checks.
+Identical refresh is a no-op, including main/record timestamps.
 
-## Maintenance
+Explicit CLI, deploy, startup and restore serialize native mutations with the same
+lock. Rollback recreates dependencies needed by the previous main before
+reactivating it, then restores its record and removes new staging. A later
+mutation resolves an interrupted journal before doing new work. Doctor/inspect are
+read-only and report interrupted/recovery-required state without repairing it.
+Obstructed rollback retains backups and reports a hard recovery-required error;
+it never overwrites another writer's edits to pretend recovery succeeded.
 
-1. Run `npm run check:host-api`; update the central compatibility profile for public API/command changes.
-2. Inspect the new host's unmodified shipped file and its supported APIs.
-3. Preserve byte-faithful reviewed originals. Update the private patch source only
-   after checking its native actions and its Custom-only scope.
-4. Add every local dependency to the registry, including helpers required by helpers.
-5. Run regression tests and disposable native checks; inspect the real dialog.
-6. Deploy. Unknown stock is skipped with an advisory during automatic refresh,
-   never overwritten. Explicit apply still refuses it. Personal dependency edits,
-   corrupt records and concurrent-write conflicts remain failures. Doctor reports
-   skipped optional patches as advisories, not broken customization ownership.
+The filesystem does **not** provide multi-file atomicity or a native CAS lock.
+Native startup and external editors do not honor Custom's lock. Rechecks/readback
+expose detected races, but cannot guarantee rollback despite external interference.
+Same API names with changed semantics, a rewritten controller/form, GPUI changes
+or a compressed/unrecoverable stock container can still break a future release.
+Structural compatibility is guarded best effort, not universal certification.
 
-From the project directory:
+## Diagnostics and commands
+
+Deploy, startup, check and doctor share compatible-active, repair-needed,
+incompatible/retained-unverified, ownership-conflict and recovery-required verdicts.
+An incompatible optional patch does not fail unrelated deployment. Unsafe ownership
+or recovery does. Never delete locks/journals or fabricate stock/ownership to force
+an update; preserve the reported backups and investigate the concrete reason.
+
+From the project directory (read-only first):
 
 ```powershell
 $HerdrHome = if ($env:HERDR_APP_HOME) { $env:HERDR_APP_HOME } else { Join-Path $HOME '.config/herdr-app' }
+node "$HerdrHome/.customizations/runtime/scripts/frame-patch.mjs" inspect palette
 node "$HerdrHome/.customizations/runtime/scripts/frame-patch.mjs" check palette
+# restore is a mutation; use only when explicitly authorized:
 node "$HerdrHome/.customizations/runtime/scripts/frame-patch.mjs" restore palette
 ```
 
-## Unreviewed native bytes (including App 0.1.17)
+## 0.1.17 findings
 
-Public API compatibility does not authorize either native patch. Automatic refresh
-checks reviewed target bytes; when an old owned patch masks current stock, a
-reviewed original must also occur in the installed executable's embedded bytes.
-Unknown/unavailable native evidence skips that patch without changing its files,
-helpers, opt-in or recovery record. This is not a version allowlist.
+Palette added dynamic native theme choices. Feedback stock JavaScript did not change
+between 0.1.16 and 0.1.17. The former catalog originals had facade-rewritten imports
+and were not raw stock, causing a false-negative native-byte gate. Those snapshots
+and full replacements are removed; byte-faithful stock fixtures and pinned source
+provenance live under `tests/fixtures/native-stock/`. Generated regression previews
+are derived from those fixtures, never maintained or selected as full replacements.
+The installed Windows stock has CRLF; backups/restoration preserve exact raw bytes.
 
-- **Palette:** the patch supplies Custom's command-search styling, fixed group
-  headings/scroll fades, Usage entry, and routing to Custom Settings/pickers,
-  inline rename and last-tab-aware close actions. With new stock left in place,
-  the person sees Herdr's standard command palette. Its commands use native
-  destinations and native rename/close behavior, not these Custom overrides.
-  Custom's own buttons and sidebar remain available and unchanged.
-- **Feedback:** the patch supplies Custom's dialog styling, compact attachment
-  thumbnails, **+ Add image**, muted drag/add helper, collapsible JSON details and
-  the simplified **Feedback sent** thank-you view. With new stock left in place,
-  the person sees Herdr's standard feedback form/attachments/success view;
-  sending feedback itself is still native and available.
-
-On the observed 0.1.17 installation, palette is already unknown stock, while
-feedback still matches a previously owned patch. Neither canonical reviewed
-original is embedded in the installed binary. Palette is left stock; feedback is
-**retained, not refreshed**, so the old Custom appearance may remain until Herdr
-resets it. Skipping does not uninstall it or certify that old patch for 0.1.17.
-Both are reported explicitly. No native files are rewritten to hide this state.
-
-To restore supported customizations, review the new unmodified native source and
-binary provenance, rebase the patch while preserving native actions, add its
-byte-faithful reviewed original and regression coverage, then deploy. Existing
-opt-ins can refresh after that review; adding an App version to a public profile
-cannot restore either patch. Never use a live patched file as the stock baseline.
-
-`apply <id>` is an explicit opt-in. Restore a patch before deleting its registry
-entry. Restoration preserves unfamiliar newer stock instead of downgrading it.
-Patch state/backups are local under `.customizations/`; never track or fabricate
-ownership records. Adding a registry entry alone must never opt it in.
+Tests cover actual release stock, a synthetic future variant, native-action
+callbacks, v1 migration, current-stock discovery, write/crash/recovery failures,
+independent optional patches and relocated offline workers in disposable homes.
+They do not prove live GPUI pixels, permission changes or future host semantics.
+No deployment or installed-app mutation is part of this implementation task.

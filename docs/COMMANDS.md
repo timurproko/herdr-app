@@ -18,15 +18,17 @@ npm run test:native
 boundary. Newer unreviewed hosts pass with a **newer than last reviewed** advisory.
 The tab-move source audit is advisory, not a deploy gate.
 
-Optional palette/feedback refreshes skip unknown native bytes with a clear
-advisory; `doctor` distinguishes those skips from real ownership/conflict errors.
-No unknown target, helper or backup is overwritten. On 0.1.17 this means the
-standard Herdr palette rather than Custom's styling, Usage entry and Custom
-Settings/rename/close routing. Stock feedback keeps its standard form and success
-view instead of Custom's compact attachments and thank-you layout. A previously
-owned feedback patch may still be present: it is retained, not refreshed or newly
-certified. Restoring supported patches needs a reviewed native-source/binary rebase,
-not a public version allowlist. See [exact behavior and recovery](../src/integration/native-patches/README.md#unreviewed-native-bytes-including-app-0117).
+Optional palette/feedback refreshes use proven current stock and checked structural
+anchors/capabilities, not exact reviewed files or release membership. Both accept
+0.1.17 stock and retain its native actions, including dynamic palette themes.
+Automatic repair touches prior opt-ins only. An actual missing/ambiguous required
+anchor, unavailable source evidence or failed self-check leaves the patch unchanged
+with a specific advisory; ownership/conflict and recovery-required states are hard
+errors. Doctor distinguishes active, repair-needed, incompatible and retained old
+output without applying anything. No unknown target/helper is overwritten and raw
+backups/journals remain available for guarded restoration. See
+[compatibility and recovery](../src/integration/native-patches/README.md). No live
+deployment or UI validation is implied by the disposable fixture results.
 
 Definite update failures keep their stage/cause in the Settings row, for example
 **host check refused Herdr 0.1.17: missing command tab.new**, **build failed** or

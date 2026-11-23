@@ -47,7 +47,7 @@ Use the first row that can implement the request.
 5. **Herdr facade adapter** — handle public API/command renames centrally under
    `src/integration/herdr/`.
 6. **Native compatibility patch** — last resort, requires explicit approval,
-   reviewed stock snapshots, guarded restore, tests, and a registry entry.
+   proven current stock, checked structural anchors/capabilities, guarded recovery, tests and a registry entry.
 
 Never rebuild Herdr/herdr-core, edit native binaries, or patch an unprefixed mod as
 a shortcut. The former `confirm`, `prompt`, and `toast` patches demonstrated why:
@@ -118,7 +118,7 @@ npm run check:host-api
   boundary still gate deployment, with a visible review advisory. Review metadata
   is not permission; App versions older than 0.1.13 or invalid version evidence fail.
   Tab-move retains separate minimum/capability/generation/shape checks and an
-  advisory source audit. Native patches require independent reviewed-byte evidence.
+  advisory source audit. Native bridges independently require proven current stock and structural/capability self-checks, not reviewed-whole-file membership.
 
 Temporary diagnostic mods also receive the same facade through
 `tools/temporary-mod.mjs`.
@@ -904,12 +904,26 @@ The active registry contains only `frame/palette` and `frame/feedback`. A new pa
 must have all of the following before approval:
 
 - no supported private-mod/facade alternative;
-- exact reviewed stock baseline(s);
+- proven current raw stock and uniquely checked structural/capability contracts, not a release/whole-file allowlist;
 - Custom-only behavior where possible;
-- atomic apply/check/restore with unknown-edit refusal;
+- immutable helper generations, atomic entrypoint activation and journaled ownership-checked apply/restore; read-only check/doctor;
 - explicit local opt-in record;
-- disposable native test plus real UI inspection;
+- disposable release/future/failure fixtures; separately authorized native UI inspection (not implied by fixture success);
 - documented behavior loss if retired.
+
+Palette retains current native catalog/search/history/dispatch, while owned helpers
+supply Custom UI and routing. Feedback derives its Custom form from current native
+child operations, keeping native controller/validation/removal callbacks and added
+sibling actions. It must remain the actual feedback frame: attachment/send APIs are
+frame-only. Neither universal palette interception nor a complete private feedback
+overlay is currently supported.
+
+Structural compatibility is best effort, not proof of future semantics. Unsafe
+edit regions skip with concrete reasons. Interrupted/obstructed recovery is a hard
+error with backups retained; native startup/external writers do not honor our lock,
+so there is no native CAS or guaranteed rollback under external interference.
+See `src/integration/native-patches/README.md` for raw provenance, v1 migration,
+transaction states and offline parser packaging.
 
 Never patch `mods/confirm`, `mods/prompt`, `mods/toast`, or another built-in mod merely
 to restyle it.

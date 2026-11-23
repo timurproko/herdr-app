@@ -28,9 +28,11 @@ export function restoreStartupFrames(home, root = bundle, options = {}) {
   try {
     fs.writeFileSync(fd, String(process.pid));
     const results = Object.create(null);
+    const inspections = new Map(frames.map(frame => {try {return [frame,inspectFramePatch(home,root,frame,options)];}catch(error){return [frame,error];}}));
     for (const frame of frames) {
       try {
-        const inspection = inspectFramePatch(home, root, frame, options);
+        const inspection = inspections.get(frame);
+        if(inspection instanceof Error)throw inspection;
         results[frame] = inspection.status === 'skipped' ? inspection
           : { ok: true, message: framePatch('apply', home, root, frame, options) };
       }

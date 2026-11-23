@@ -4,7 +4,8 @@ const insert = (at,value) => ({start:at,end:at,value});
 function view(ast,id) {
   if(nodes(ast,n=>n.type==='Identifier'&&n.name.startsWith('__custom')).length)throw new Incompatible('reserved Custom bridge binding collision');
   const klass=one(ast.body.filter(n=>n.type==='ExportDefaultDeclaration'&&n.declaration.type==='ClassDeclaration'),'default native view').declaration;
-  if(klass.id?.name.toLowerCase()!==id||klass.superClass?.name!=='View')throw new Incompatible(`native ${id} view shape`);
+  const viewBinding=one(ast.body.filter(n=>n.type==='ImportDeclaration'&&n.source.value==='gpui-kit').flatMap(n=>n.specifiers.filter(s=>s.imported?.name==='View')),'native View import').local.name;
+  if(klass.superClass?.name!==viewBinding)throw new Incompatible(`native ${id} view shape`);
   return klass;
 }
 function requireFields(init,names) {
@@ -13,6 +14,12 @@ function requireFields(init,names) {
 export function transformPalette(source,prefix) {
   const ast=tree(source),klass=view(ast,'palette'),init=method(klass,'init'),go=method(klass,'go'),rows=method(klass,'rows'),render=method(klass,'render'),close=method(klass,'close');method(klass,'title');
   requireFields(init,['query','input','at','scroll','recent','handle']);
+  const rowClick=one(nodes(render,n=>call(n,'on_click')),'palette native row action');
+  const rowAction=rowClick.arguments[0]?.body;
+  if(rowAction?.type!=='CallExpression'||rowAction.callee.object?.type!=='ThisExpression'||rowAction.callee.property?.name!=='go')throw new Incompatible('palette row activation shape cannot be preserved');
+  if(nodes(render,n=>n.type==='CallExpression'&&n.callee.type==='MemberExpression'&&n.callee.property.name?.startsWith('on_')&&!['on_click','on_key_down','on_scroll_wheel'].includes(n.callee.property.name)).length)throw new Incompatible('palette native render adds an unsupported interactive region');
+  const nativeKeys=one(nodes(render,n=>call(n,'on_key_down')),'palette keyboard handler').arguments[0];
+  if(nodes(nativeKeys,n=>n.type==='Literal'&&typeof n.value==='string'&&!['escape','down','up','pagedown','pageup'].includes(n.value)).length)throw new Incompatible('palette keyboard actions changed; Custom handler cannot preserve them');
   const entriesCall=one(nodes(rows,n=>n.type==='VariableDeclarator'&&n.init?.type==='CallExpression'&&n.init.arguments.length===0&&n.init.callee.type==='Identifier'&&ast.body.some(f=>f.type==='FunctionDeclaration'&&f.id.name===n.init.callee.name)),'rows entry supplier').init;
   const supplier=one(ast.body.filter(f=>f.type==='FunctionDeclaration'&&f.id.name===entriesCall.callee.name),'entry function');
   const result=one(supplier.body.body.filter(n=>n.type==='ReturnStatement'),'entry result');
@@ -66,8 +73,9 @@ export function transformFeedback(source,prefix) {
   const form=one(bodyChain.ops.filter(o=>o.name==='when'&&o.args[0].type==='UnaryExpression'&&o.args[0].operator==='!'&&o.args[0].argument.property?.name==='sent'),'feedback form condition');
   const cb=form.args[1];if(cb.body.type==='BlockStatement')throw new Incompatible('feedback form callback expression');
   const children=chain(cb.body);if(children.base.type!=='Identifier'||children.base.name!==cb.params[0]?.name)throw new Incompatible('feedback form chain receiver');
-  const message=one(children.ops.filter(o=>o.name==='child'&&newControl(o.args[0],'Textarea').length),'feedback message field');
-  const email=one(children.ops.filter(o=>o.name==='child'&&newControl(o.args[0],'Input').length),'feedback email field');
+  const controlBinding=name=>one(ast.body.filter(n=>n.type==='ImportDeclaration'&&n.source.value==='gpui-base').flatMap(n=>n.specifiers.filter(s=>s.imported?.name===name)),`native ${name} import`).local.name;
+  const message=one(children.ops.filter(o=>o.name==='child'&&newControl(o.args[0],controlBinding('Textarea')).length),'feedback message field');
+  const email=one(children.ops.filter(o=>o.name==='child'&&newControl(o.args[0],controlBinding('Input')).length),'feedback email field');
   const attachments=one(children.ops.filter(o=>o.name==='child'&&nodes(o.args[0],n=>call(n,'shots_row')&&n.callee.object.type==='ThisExpression').length),'feedback attachments');
   const json=one(children.ops.filter(o=>o.name==='child'&&nodes(o.args[0],n=>call(n,'stringify')&&n.callee.object.name==='JSON').length),'feedback JSON');
   const labels=new Set();for(const o of [message,email,json]) {
@@ -78,7 +86,7 @@ export function transformFeedback(source,prefix) {
   const replacements=new Map();
   for(const [o,component,control] of [[message,'messageField','Textarea'],[email,'emailField','Input']]) {
     actionless(o.args[0],component);
-    const leaf=one(newControl(o.args[0],control),component);
+    const leaf=one(newControl(o.args[0],controlBinding(control)),component);
     const unknown=nodes(o.args[0],n=>n.type==='CallExpression'&&n!==leaf&&n.callee.type==='MemberExpression'&&!['h','w','h_full','w_full','text_size','text_color','rounded','p','px','py','border_1','border_color','bg','tooltip','accessibility_label'].includes(n.callee.property.name));
     if(unknown.length)throw new Incompatible(`${component}: unknown field decorator`);
     replacements.set(o,`__customFeedback.${component}(this,${theme.id.name},${text(source,leaf)})`);
@@ -93,15 +101,25 @@ export function transformFeedback(source,prefix) {
   }).join('');
   const sent=one(bodyChain.ops.filter(o=>o.name==='when'&&o.args[0].type==='MemberExpression'&&o.args[0].property.name==='sent'),'feedback sent condition');
   const thanks=chain(sent.args[1].body).ops.find(o=>o.name==='child');if(!thanks)throw new Incompatible('feedback success text missing');actionless(thanks.args[0],'feedback success');
-  const customBody=replaceInside(source,bodyNode,[put(cb.body,formText),put(thanks.args[0],`__customFeedback.success(${theme.id.name})`)]);
+  const agent=one(bodyChain.ops.filter(o=>o.name==='when'&&literal(o.args[0],'agent')),'feedback agent notice');
+  const agentNotice=one(chain(agent.args[1].body).ops.filter(o=>o.name==='child'),'feedback agent caption');actionless(agentNotice.args[0],'feedback agent caption');
+  const bodySource=replaceInside(source,bodyNode,[put(agent.args[0],`(!this.sent && ${text(source,agent.args[0])})`),put(cb.body,formText),put(thanks.args[0],`__customFeedback.success(${theme.id.name})`),put(agentNotice.args[0],`__customFeedback.draftNotice(${theme.id.name})`)]);
+  const derivedBody=chain(tree(bodySource).body[0].expression);
+  const customBody=text(bodySource,derivedBody.base)+derivedBody.ops.filter(o=>!['flex_1','flex_shrink','min_h','overflow_y_scrollbar','px','gap'].includes(o.name)).map(o=>`.${o.name}(${o.args.map(n=>text(bodySource,n)).join(',')})`).join('');
   const header=one(root.ops.filter(o=>o.name==='child'&&literal(o.args[0],'Send feedback')),'feedback header');actionless(header.args[0],'feedback header');
   const footer=one(root.ops.filter(o=>o.name==='child'&&literal(o.args[0],'feedback-send')),'feedback footer');
-  const customRoot=replaceInside(source,ret.argument,[put(bodyNode,`__customFeedback.body(this,${customBody})`),put(header.args[0],`__customFeedback.header(this,${theme.id.name})`),put(footer.args[0],`__customFeedback.footer(${theme.id.name},${text(source,footer.args[0])})`)]);
+  const unavailable=one(root.ops.filter(o=>o.name==='when'&&o.args[0].type==='UnaryExpression'&&o.args[0].argument.property?.name==='available'),'feedback availability notice');
+  const notice=one(chain(unavailable.args[1].body).ops.filter(o=>o.name==='child'),'feedback availability caption');actionless(notice.args[0],'feedback availability caption');
+  const customRoot=replaceInside(source,ret.argument,[put(notice.args[0],`__customFeedback.unavailable(${theme.id.name})`),put(bodyNode,`__customFeedback.body(this,${customBody})`),put(header.args[0],`__customFeedback.header(this,${theme.id.name})`),put(footer.args[0],`__customFeedback.footer(${theme.id.name},${text(source,footer.args[0])})`)]);
   const sendButton=one(nodes(footer.args[0],n=>call(n,'button')&&n.arguments[1]?.value==='feedback-send'),'feedback send button');
   const disabled=one(nodes(render,n=>n.type==='VariableDeclarator'&&n.id.name===sendButton.arguments.at(-1)?.name),'feedback native disable predicate');
   const drop=one(root.ops.filter(o=>o.name==='on_drop'),'feedback drop handler').args[0];
   const dropCalls=nodes(drop,n=>n.type==='CallExpression');
   if(dropCalls.some(n=>!(n.callee.name===binding('feedbackAttachImages')||(n.callee.type==='MemberExpression'&&['add','slice','notify'].includes(n.callee.property.name)))))throw new Incompatible('feedback drop action shape cannot preserve native additions');
+  const addGate=one(nodes(shots,n=>call(n,'when')),'feedback attachment add gate').arguments[0];
+  if(addGate.type!=='BinaryExpression'||addGate.operator!=='<'||addGate.left.property?.name!=='length'||addGate.left.object?.property?.name!=='shots'||addGate.right.type!=='Identifier')throw new Incompatible('feedback attachment add condition cannot be preserved');
+  const limit=one(nodes(ast,n=>n.type==='VariableDeclarator'&&n.id.name===addGate.right.name),'feedback attachment limit');
+  if(limit.init?.value!==3)throw new Incompatible('feedback attachment count contract changed');
   const shotActions=nodes(shots,n=>call(n,'on_click'));
   if(shotActions.length!==1||!nodes(shotActions[0],n=>call(n,'splice')).length)throw new Incompatible('feedback thumbnail action shape cannot preserve native actions');
   const thumb=one(nodes(shots,n=>n.type==='VariableDeclarator'&&n.init?.type==='ArrowFunctionExpression'&&n.init.params.length===2&&nodes(n.init,m=>m===shotActions[0]).length),'feedback thumbnail binding').init;

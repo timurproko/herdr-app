@@ -4,6 +4,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { bundle, loadFrameRegistry } from './frame-registry.mjs';
+import { inspectNative, mutateNative } from './native-frame.mjs';
+import { transformNative } from './native-transform.mjs';
 const hash = text => text === null ? null : crypto.createHash('sha256').update(text).digest('hex');
 const read = file => fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
 function atomic(file, text) {
@@ -14,9 +16,11 @@ function atomic(file, text) {
 }
 // Inspect before mutation. Exact owned bytes are not native compatibility proof
 // after a binary upgrade: the old patch can mask a newly shipped original.
-export function inspectFramePatch(home, root = bundle, frame, { binary } = {}) {
+export function inspectFramePatch(home, root = bundle, frame, options = {}) {
+  let {binary}=options;
   const patch = loadFrameRegistry(root).find(patch => patch.id === frame);
   if (!patch) throw Error(`Unregistered frame patch: ${frame}`);
+  if(patch.transform)return inspectNative(home,root,patch,(source,prefix,options)=>transformNative(frame,source,prefix,options),options);
   const raw = read(path.join(home, `.customizations/frame-${frame}.json`));
   const state = raw === null ? null : JSON.parse(raw);
   if (state && (state.version !== 1 || !state.original || !state.installed
@@ -52,6 +56,15 @@ export function inspectFramePatch(home, root = bundle, frame, { binary } = {}) {
 export function framePatch(action, home, root = bundle, frame, options = {}) {
   if (!['apply', 'check', 'restore', 'inspect'].includes(action)) throw Error(`Unknown frame patch action: ${action}`);
   if (action === 'inspect') return inspectFramePatch(home, root, frame, options);
+  const structural=loadFrameRegistry(root).find(p=>p.id===frame);
+  if(structural?.transform) {
+    if(['apply','restore'].includes(action))return mutateNative(action,home,root,structural,(source,prefix,opts)=>transformNative(frame,source,prefix,opts),options);
+    const result=inspectFramePatch(home,root,frame,options);
+    if(!result.ok)throw Error(result.error);
+    if(result.status==='skipped')return result.advisory;
+    if(!result.active)throw Error(`${frame} patch is repair-needed; structural repair required.`);
+    return `${frame} frame patch and dependencies match.`;
+  }
   if (action === 'apply') {
     const inspection = inspectFramePatch(home, root, frame, options);
     if (inspection.status === 'skipped') throw Error(inspection.advisory);

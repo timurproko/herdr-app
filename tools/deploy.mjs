@@ -10,6 +10,7 @@ export const shellPaths=['bash-cwd-loader.sh','bash-cwd.sh','powershell-cwd.ps1'
 export const shellRevisionPath=shellPaths.at(-1);
 export function allowedPath(rel) {
   safeRelative(rel);
+  if(rel==='.customizations/runtime/vendor/acorn/LICENSE')return rel;
   if(rel.startsWith('.customizations/runtime/shell/')) {
     if(!shellPaths.includes(rel))throw Error(`Unowned deployment path: ${rel}`);
     return rel;
@@ -132,7 +133,7 @@ export function doctor(home=defaultHome()) {
       const inspection=JSON.parse(cp.execFileSync(process.execPath,[worker,'inspect',patch.id,home],{encoding:'utf8',timeout:30000,windowsHide:true}));
       patches.push({id:patch.id,...inspection});
       if(inspection.status==='skipped')advisories.push(inspection.advisory);
-      else if(!inspection.active)issues.push(`Compatibility patch ${patch.id} reset/modified; reviewed repair required.`);
+      else if(!inspection.active)issues.push(inspection.error || `Compatibility patch ${patch.id} repair-needed; structural repair required.`);
     }catch(error){issues.push(`Compatibility patch ${patch.id}: ${error.stderr?.toString().trim()||error.message}`);}
   }
   return {ok:issues.length===0,version,reviewedVersion:state.supportedHerdr?.includes(version)??false,issues,advisories,patches,ownedFiles:Object.keys(state.files).length};

@@ -42,9 +42,23 @@ export function imports(source, ast, prefix) {
 // Imports are closed before activation, not first discovered by a live GPUI VM.
 export function checkGraph(main, files) {
   const seen = new Set();
+  function exported(source) {
+    const names=new Set();
+    for(const node of tree(source).body) {
+      if(node.type==='ExportDefaultDeclaration')names.add('default');
+      if(node.type==='ExportNamedDeclaration') {
+        if(node.declaration?.id)names.add(node.declaration.id.name);
+        for(const d of node.declaration?.declarations??[])if(d.id.name)names.add(d.id.name);
+        for(const s of node.specifiers??[])names.add(s.exported.name);
+      }
+    }
+    return names;
+  }
   function visit(name, source) {
     if (seen.has(name)) return; seen.add(name);
-    for (const n of tree(source).body) if (['ImportDeclaration','ExportNamedDeclaration','ExportAllDeclaration'].includes(n.type) && n.source) {
+    const ast=tree(source);
+    if(nodes(ast,n=>n.type==='ImportExpression').length)throw new Incompatible(`dynamic imports cannot be self-checked: ${name}`);
+    for (const n of ast.body) if (['ImportDeclaration','ExportNamedDeclaration','ExportAllDeclaration'].includes(n.type) && n.source) {
       const ref = n.source.value;
       if (['herdr','gpui-kit','gpui-base'].includes(ref)) continue;
       if (!ref.startsWith('./') && !ref.startsWith('../')) throw new Incompatible(`unsupported module ${ref}`);
@@ -52,6 +66,11 @@ export function checkGraph(main, files) {
       for (const p of ref.split('/')) { if (p === '..') { if (!parts.length) throw new Incompatible('module escapes frame'); parts.pop(); } else if (p !== '.') parts.push(p); }
       const dest = parts.join('/');
       if (!Object.hasOwn(files,dest)) throw new Incompatible(`missing module ${dest}`);
+      const names=exported(files[dest]);
+      for(const s of n.specifiers??[]) {
+        const wanted=s.type==='ImportDefaultSpecifier'?'default':s.imported?.name;
+        if(wanted&&!names.has(wanted))throw new Incompatible(`missing export ${wanted} from ${dest}`);
+      }
       visit(dest,files[dest]);
     }
   }

@@ -7,7 +7,7 @@ import { tree, edits, one, checkGraph } from '../tools/runtime/native-ast.mjs';
 const base=fileURLToPath(new URL('../',import.meta.url));
 const temp=fs.mkdtempSync(path.join(base,'.artifacts/native-engine-'));
 const put=(f,b)=>{fs.mkdirSync(path.dirname(f),{recursive:true});fs.writeFileSync(f,b);};
-const stock='export default class Palette { render() { return 1; } }\n';
+const stock='import { View } from "gpui-kit";\nexport default class Palette extends View { render() { return 1; } }\n';
 const transform=(s,p)=>s+`\nimport { value } from '${p}/helper.js';\n`;
 const patch={id:'palette',target:'frame/palette',files:{'main.js':'unused','helper.js':'helper.js'}};
 let count=0;
@@ -38,11 +38,15 @@ try {
     assert.throws(()=>mutateNative('apply',f.home,f.root,patch,transform,{...f.options,fault}),/previous graph restored/);
     assert.deepEqual(snapshot(f.home),before);
   }
+  const restoreFault=fixture();mutateNative('apply',restoreFault.home,restoreFault.root,patch,transform,restoreFault.options);
+  const restoreMain=path.join(restoreFault.home,patch.target,'main.js'),restoreBefore=snapshot(restoreFault.home),rename=fs.renameSync;
+  fs.renameSync=(from,to)=>{rename(from,to);if(to===restoreMain){const body=fs.readFileSync(to,'utf8'),gen=body.match(/custom-[a-f0-9]{24}/)?.[0];if(gen)assert.ok(fs.existsSync(path.join(restoreFault.home,patch.target,gen,'helper.js')),'Rollback must recreate prior dependencies before reactivating main');}};
+  try{assert.throws(()=>mutateNative('restore',restoreFault.home,restoreFault.root,patch,transform,{...restoreFault.options,fault:(phase,file)=>{if(phase==='after-write'&&file.endsWith('helper.js'))throw Error('restore failed');}}),/previous graph restored/);assert.deepEqual(snapshot(restoreFault.home),restoreBefore);}finally{fs.renameSync=rename;}
   const crash=fixture(),main=path.join(crash.home,patch.target,'main.js');
   assert.throws(()=>mutateNative('apply',crash.home,crash.root,patch,transform,{...crash.options,fault:(phase,file)=>{if(phase==='after-write'&&file.endsWith('/main.js')){const e=Error('killed');e.crash=true;throw e;}}}),/killed/);
   assert.equal(inspectNative(crash.home,crash.root,patch,transform,crash.options).status,'recovery-required');
   mutateNative('apply',crash.home,crash.root,patch,transform,crash.options);assert.equal(inspectNative(crash.home,crash.root,patch,transform,crash.options).active,true);
-  put(main,'personal edit');assert.throws(()=>mutateNative('restore',crash.home,crash.root,patch,transform,crash.options),/Personal.*target/);assert.equal(fs.readFileSync(main,'utf8'),'personal edit');
+  const personal=fs.readFileSync(main,'utf8')+'// personal edit';put(main,personal);assert.throws(()=>mutateNative('restore',crash.home,crash.root,patch,transform,crash.options),/Personal.*target/);assert.equal(fs.readFileSync(main,'utf8'),personal);
   const conflict=fixture();assert.throws(()=>mutateNative('apply',conflict.home,conflict.root,patch,transform,{...conflict.options,fault:(phase,file)=>{if(phase==='after-write'&&file.endsWith('/main.js')){put(path.join(conflict.home,file),'external');throw Error('race');}}}),/recovery required/);
   assert.equal(inspectNative(conflict.home,conflict.root,patch,transform,conflict.options).status,'recovery-required');
   const migration=fixture();const original=stock;const patched=stock+'// old owned\n';put(path.join(migration.home,patch.target,'main.js'),patched);put(path.join(migration.home,'.customizations/frame-palette.json'),JSON.stringify({version:1,original:{'main.js':original},installed:{'main.js':digest(patched)}}));
@@ -54,6 +58,7 @@ try {
   const changed=fixture();mutateNative('apply',changed.home,changed.root,patch,transform,changed.options);const state=JSON.parse(fs.readFileSync(path.join(changed.home,'.customizations/frame-palette.json')));const helper=path.join(changed.home,patch.target,state.generation,'helper.js');put(helper,'personal helper');assert.throws(()=>inspectNative(changed.home,changed.root,patch,transform,changed.options),/Personal.*dependency/);
   const reset=fixture();mutateNative('apply',reset.home,reset.root,patch,transform,reset.options);const state2=JSON.parse(fs.readFileSync(path.join(reset.home,'.customizations/frame-palette.json')));fs.rmSync(path.join(reset.home,patch.target,state2.generation),{recursive:true});put(path.join(reset.home,patch.target,'main.js'),stock);mutateNative('apply',reset.home,reset.root,patch,transform,reset.options);assert.equal(inspectNative(reset.home,reset.root,patch,transform,reset.options).active,true);
   const link=fixture();fs.symlinkSync(link.home,path.join(temp,'linked-home'),process.platform==='win32'?'junction':'dir');assert.throws(()=>inspectNative(path.join(temp,'linked-home'),link.root,patch,transform,link.options),/symlink/);
+  const tempConflict=fixture(),tempPath=path.join(tempConflict.home,`.customizations/native-palette.journal.json.custom-${process.pid}.tmp`);put(tempPath,'personal temp');assert.throws(()=>mutateNative('apply',tempConflict.home,tempConflict.root,patch,transform,tempConflict.options),/EEXIST/);assert.equal(fs.readFileSync(tempPath,'utf8'),'personal temp');
   const unsupported=fixture();assert.equal(inspectNative(unsupported.home,unsupported.root,patch,transform,{binary:null}).status,'skipped');
   const invalid=fixture();assert.equal(inspectNative(invalid.home,invalid.root,patch,()=> 'export default }',invalid.options).status,'skipped');
   const fixtures=path.join(base,'tests/fixtures/native-stock');for(const [f,info]of Object.entries(JSON.parse(fs.readFileSync(path.join(fixtures,'provenance.json'))).files))assert.equal(digest(fs.readFileSync(path.join(fixtures,f))),info.sha256);const feedback16=fs.readFileSync(path.join(fixtures,'0.1.16/feedback.js'));assert.deepEqual(feedback16,fs.readFileSync(path.join(fixtures,'0.1.17/feedback.js')));

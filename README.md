@@ -68,9 +68,10 @@ imports. App 0.1.13+ is required. Newer unreviewed releases pass when those
 checks pass, with a visible **newer than last reviewed** advisory; review history
 is not deployment permission. Tab-move's separate source audit stays advisory. If an API or command was renamed, update one profile/adapter rather than
 every feature. Data-shape changes may require one normalizer in `host.js`. Native
-patch source can still need a reviewed rebase when Herdr changes its private UI
-implementation—the facade reduces public API churn but cannot make copied native
-frames structurally version-independent. Shell selection now uses native `tab.new`
+palette/feedback bridges use current-stock provenance and checked structural
+transforms, not whole-file reviewed-byte permission. They work on newer releases
+when required structures/capabilities remain; private UI or semantic changes can
+still require an adapter update. Shell selection now uses native `tab.new`
 and is labelled **Open new tab in…**; it never replaces the existing shell. Profile
 startup is separate and retains a read-only core space-existence check; see
 [shell tabs and profile startup](docs/ARCHITECTURE.md#shell-tabs-and-profile-startup).
@@ -1193,8 +1194,11 @@ exact review-list membership—gate deployment. Record an actual review and any
 needed aliases in the facade profile separately; never add a version merely to
 unblock deployment. **Do not rebuild the native app as a workaround**.
 
-Two approved frame-only exceptions remain: palette and feedback. Each has a
-reviewed stock snapshot, opt-in record, hashes and restore support.
+Two approved frame-only exceptions remain: palette and feedback. Each has an
+explicit opt-in, raw original backups, ownership hashes and journaled recovery.
+Current native stock and necessary AST/capability checks—not release lists or exact
+reviewed whole files—authorize their structural bridges. Native catalogs/controllers
+and compatible added actions are retained, including 0.1.17's dynamic theme choices.
 Custom's feedback dialog uses muted **Drag or add images to attach them.** helper
 text under Attachments and a **+ Add image** action. The helper matches the JSON
 preview description, with thumbnails
@@ -1236,15 +1240,24 @@ implicit pane-close requests retain native validation. Direct native/CLI command
 outside these Custom entry points still use Herdr's stock confirmation; no
 supported global confirmation override exists, and the shipped Confirm mod is
 never patched.
-Install/layout entry repairs only prior opt-ins. Unknown native bytes are skipped
-with an advisory, not a failed deploy; personal dependency conflicts and corrupt
-records still fail. On 0.1.17 the standard palette remains instead of Custom's
-styling and command routing. New stock feedback uses Herdr's standard form and
-success view; an old owned feedback patch is retained but not refreshed or
-certified. Restoring supported styling needs reviewed native originals and a
-patch rebase, not a version allowlist. See the native patch policy for the exact
-lost features and provenance safeguards. The worker is deployed with the customization and does not
-need this source folder.
+Install/layout entry repairs only prior opt-ins. The same workers discover current
+native stock, check required structural anchors and capabilities, stage immutable
+helper generations and atomically activate the complete entrypoint. Missing or
+ambiguous necessary anchors, unavailable source evidence and failed self-checks
+skip with specific advisories, not another version-review gate; personal edits,
+corrupt records and obstructed recovery remain hard failures. Raw backups/journals
+support ownership-checked restore without downgrading newer stock. Doctor reports
+active, repair-needed, incompatible/retained-unverified and recovery-required states.
+
+Both bridges accept installed 0.1.17 stock in read-only inspection and disposable
+fixtures. Feedback stock did not change in that release: the former rewritten
+originals caused a false-negative byte gate. Custom presentation/routing lives in
+owned helpers, but native form/controller integration still requires identifiable
+structures, GPUI capabilities and real feedback-frame authority. This is guarded
+best-effort forward compatibility, not a guarantee against silent semantic changes
+or external writers racing native startup. See the native patch policy for the
+transaction/restore limits and native-action preservation. Workers are self-contained
+and need no source checkout. This implementation was not deployed to the live app.
 
 ```powershell
 $HerdrHome = if ($env:HERDR_APP_HOME) { $env:HERDR_APP_HOME } else { Join-Path $HOME '.config/herdr-app' }

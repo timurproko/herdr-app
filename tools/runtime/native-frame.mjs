@@ -7,6 +7,7 @@ export const digest = b => b === null ? null : crypto.createHash('sha256').updat
 const read = file => { try { const b=fs.readFileSync(file); if(b.length>16*1024*1024)throw Error('Patch file exceeds 16 MiB');return b; } catch(e) { if(e.code==='ENOENT')return null;throw e; } };
 const encode = b => b === null ? null : b.toString('base64');
 const decode = s => { if(s===null)return null;if(typeof s!=='string'||s.length>24*1024*1024||! /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(s))throw Error('Corrupt patch backup');return Buffer.from(s,'base64'); };
+const sourceText = bytes => {try{return new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes);}catch{throw new Incompatible('stock source is not UTF-8');}};
 const equal = (a,b) => a===null ? b===null : b!==null && a.equals(b);
 const validName = n => typeof n==='string' && /^(?:custom-[a-f0-9]{24}\/)?[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(n) && !['.','..'].includes(n);
 function safe(home, relative) {
@@ -20,7 +21,7 @@ function safe(home, relative) {
 function atomic(file,bytes) {
   if(bytes===null){if(fs.existsSync(file))fs.unlinkSync(file);return;}
   fs.mkdirSync(path.dirname(file),{recursive:true});const temp=`${file}.custom-${process.pid}.tmp`;
-  let fd;try {fd=fs.openSync(temp,'wx');fs.writeFileSync(fd,bytes);fs.fsyncSync(fd);fs.closeSync(fd);fd=undefined;fs.renameSync(temp,file);}finally{if(fd!==undefined)fs.closeSync(fd);if(fs.existsSync(temp))fs.unlinkSync(temp);}
+  let fd,created=false;try {fd=fs.openSync(temp,'wx');created=true;fs.writeFileSync(fd,bytes);fs.fsyncSync(fd);fs.closeSync(fd);fd=undefined;fs.renameSync(temp,file);}finally{if(fd!==undefined)fs.closeSync(fd);if(created&&fs.existsSync(temp))fs.unlinkSync(temp);}
 }
 function record(home,id) {
   const raw=read(safe(home,`.customizations/frame-${id}.json`));if(!raw)return {raw,state:null};
@@ -50,9 +51,10 @@ export function stockSource(id,current,saved,bin) {
   if(i<0||bin.indexOf(begin,i+1)>=0)throw new Incompatible(`stock ${id}/main.js boundary missing/ambiguous`);
   const start=i+begin.length,j=bin.indexOf(end,start);
   if(j<0||bin.indexOf(end,j+1)>=0||j-start>1024*1024)throw new Incompatible(`stock ${id}/mod.json boundary missing/ambiguous`);
-  const source=bin.subarray(start,j);const ast=tree(new TextDecoder('utf-8',{fatal:true}).decode(source));
+  const source=bin.subarray(start,j);const ast=tree(sourceText(source));
   const klass=one(ast.body.filter(n=>n.type==='ExportDefaultDeclaration'&&n.declaration.type==='ClassDeclaration'),'native default view').declaration;
-  if(klass.id?.name.toLowerCase()!==id)throw new Incompatible('embedded frame identity mismatch');
+  const viewImport=ast.body.filter(n=>n.type==='ImportDeclaration'&&n.source.value==='gpui-kit').flatMap(n=>n.specifiers.filter(s=>s.imported?.name==='View'));
+  if(viewImport.length!==1||klass.superClass?.name!==viewImport[0].local.name)throw new Incompatible('embedded frame View identity mismatch');
   return source;
 }
 function context(home,root,patch,options) {
@@ -66,17 +68,18 @@ function context(home,root,patch,options) {
     const b=read(safe(home,`${dir}/${n}`));if(b!==null&&!recognized(n,b))throw Error(`Personal ${patch.id} dependency conflict: ${n}`);
   }
   const owned=Boolean(recognized('main.js',main));
-  if(state && !owned && !unique(bin,main))throw Error(`Personal ${patch.id} target conflict; nothing changed`);
+  if(state && !owned && !unique(bin,main) && main?.toString().includes('./custom-'))throw Error(`Personal ${patch.id} target conflict; nothing changed`);
   return {dir,stateFile,journalFile,state,raw,main,bin,owned};
 }
 function prepare(home,root,patch,transform,options) {
   const c=context(home,root,patch,options);
   const source=stockSource(patch.id,c.main,original(c.state,'main.js'),c.bin);
-  if(!c.owned && !equal(c.main,source))throw new Incompatible('target is not proven current stock; unknown bytes untouched');
-  const text=new TextDecoder('utf-8',{fatal:true}).decode(source);tree(text);
+  if(!c.owned && !equal(c.main,source))throw new Incompatible('unsupported original/unknown target: current stock provenance absent; unknown bytes untouched');
+  const text=sourceText(source),ast=tree(text);
   if(patch.capabilities?.length) {
     const declared=options.apis ?? [...(read(safe(home,'herdr.d.ts'))?.toString().matchAll(/export function (\w+)\s*\(/g)??[])].map(m=>m[1]);
-    const missing=patch.capabilities.filter(n=>!declared.includes(n));
+    const needed=[...patch.capabilities,...ast.body.filter(n=>n.type==='ImportDeclaration'&&n.source.value==='herdr').flatMap(n=>n.specifiers.map(s=>s.imported?.name).filter(Boolean))];
+    const missing=[...new Set(needed)].filter(n=>!declared.includes(n));
     if(missing.length)throw new Incompatible(`missing host API: ${missing.join(', ')}`);
   }
   const payload={};for(const [n,src]of Object.entries(patch.files).filter(([n])=>n!=='main.js')) {
@@ -88,6 +91,10 @@ function prepare(home,root,patch,transform,options) {
   const gen=`custom-${digest(JSON.stringify({payload,sample})).slice(0,24)}`;
   const output=transform(text,`./${gen}`,options),files=Object.fromEntries(Object.entries(payload).map(([n,b])=>[`${gen}/${n}`,b]));
   checkGraph(output,files);
+  for(const [n,b]of Object.entries(files)) {
+    const current=read(safe(home,`${c.dir}/${n}`));
+    if(current!==null&&!equal(current,Buffer.from(b)))throw Error(`Personal ${patch.id} dependency conflict: ${n}`);
+  }
   c.source=source;c.files=Object.fromEntries(Object.entries(files).map(([n,b])=>[n,Buffer.from(b)]));c.output=Buffer.from(output);c.gen=gen;c.binaryDigest=digest(c.bin);
   return c;
 }
@@ -98,7 +105,7 @@ export function inspectNative(home,root,patch,transform,options={}) {
     const c=prepare(home,root,patch,transform,options);
     const active=Boolean(c.state?.version===2&&equal(c.main,c.output)&&Object.entries(c.files).every(([n,b])=>equal(read(safe(home,`${c.dir}/${n}`)),b)));
     return {ok:true,status:'ready',active,phase:active?'active':'repair-needed',source:digest(c.source)};
-  }catch(e){if(!(e instanceof Incompatible))throw e;return {ok:true,status:'skipped',active:false,retained:Boolean(record(home,patch.id).state),advisory:`Optional ${patch.id} patch skipped: ${e.message}; bytes and opt-in unchanged.`};}
+  }catch(e){if(!(e instanceof Incompatible))throw e;const c=context(home,root,patch,options),retained=Boolean(c.owned&&!unique(c.bin,c.main));return {ok:true,status:'skipped',active:false,retained,phase:retained?'retained-unverified':'incompatible',advisory:`Optional ${patch.id} patch skipped: ${retained?'retained owned patch; ':''}${e.message}; bytes and opt-in unchanged.`};}
 }
 function lock(home,fn) {
   const file=safe(home,'.customizations/native-patches.lock');fs.mkdirSync(path.dirname(file),{recursive:true});let fd;
@@ -109,14 +116,17 @@ function lock(home,fn) {
   try{fs.writeFileSync(fd,String(process.pid));return fn();}finally{fs.closeSync(fd);fs.unlinkSync(file);}
 }
 function allowedJournalPath(p,c) {return p===c.stateFile||p.startsWith(c.dir+'/')&&validName(p.slice(c.dir.length+1));}
-export function recoverNative(home,patch) {
+function recoverNative(home,patch) {
   const c={dir:patch.target,stateFile:`.customizations/frame-${patch.id}.json`,journalFile:`.customizations/native-${patch.id}.journal.json`};
   const file=safe(home,c.journalFile),raw=read(file);if(!raw)return;
   const j=JSON.parse(raw);if(j.version!==1||j.id!==patch.id||!Array.isArray(j.changes)||j.changes.length>256)throw Error('Corrupt native transaction journal');
   for(const e of j.changes){if(!allowedJournalPath(e.file,c))throw Error('Unsafe native transaction path');decode(e.before);decode(e.after);}
   // Preflight the entire rollback before its first write.
   for(const e of j.changes){const b=read(safe(home,e.file));if(!equal(b,decode(e.before))&&!equal(b,decode(e.after)))throw Error(`Recovery required: external edit at ${e.file}; backups retained`);}
-  const order=[...j.changes].sort((a,b)=>(a.file.endsWith('/main.js')?-2:a.file===c.stateFile?-1:0)-(b.file.endsWith('/main.js')?-2:b.file===c.stateFile?-1:0));
+  // Restore dependencies that the previous main needs BEFORE reactivating it.
+  // Newly staged helpers (before:null) are removed only AFTER main/state rollback.
+  const rank=e=>e.file.endsWith('/main.js')?-2:e.file===c.stateFile?-1:e.before!==null?-3:0;
+  const order=[...j.changes].sort((a,b)=>rank(a)-rank(b));
   for(const e of order)if(!equal(read(safe(home,e.file)),decode(e.before)))atomic(safe(home,e.file),decode(e.before));
   fs.unlinkSync(file);
 }
@@ -140,11 +150,18 @@ function transact(home,patch,c,changes,options) {
   }
 }
 export function mutateNative(action,home,root,patch,transform,options={}) {
+  if(!['apply','restore'].includes(action))throw Error(`Unsupported native mutation: ${action}`);
   return lock(home,()=>{
     recoverNative(home,patch);
     if(action==='restore') {
       const c=context(home,root,patch,options);if(!c.state)return `No ${patch.id} frame patch is installed.`;
-      let stock;try{stock=stockSource(patch.id,c.main,original(c.state,'main.js'),c.bin);}catch(e){throw Error(`Restore refused: ${e.message}`);}
+      let stock;
+      const unknown=!c.owned&&!unique(c.bin,c.main);
+      if(unknown) {
+        const target=c.main?.toString()??'';
+        if(Object.keys(c.state.installed).filter(n=>n!=='main.js').some(n=>target.includes(`./${n}`)))throw Error('Restore refused: unknown main still references owned helpers');
+        stock=c.main; // Preserve an unfamiliar newer native reset or personal target, never downgrade it.
+      } else try{stock=stockSource(patch.id,c.main,original(c.state,'main.js'),c.bin);}catch(e){throw Error(`Restore refused: ${e.message}`);}
       // Never replace unknown newer stock; context already refuses unknown edits.
       const changes=[];
       if(!equal(c.main,stock))changes.push({file:`${c.dir}/main.js`,before:c.main,after:stock});
