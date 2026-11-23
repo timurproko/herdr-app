@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {loadMod} from '../tools/plugin-harness.mjs';
 const element=()=>{const o={kids:[],attrs:{}};let p;return p=new Proxy(o,{get(t,k){if(k in t)return t[k];if(k==='then')return undefined;if(k==='when')return(yes,fn)=>yes?fn(p):p;if(k==='child')return c=>{o.kids.push(c);return p;};if(k==='children')return cs=>{o.kids.push(...cs);return p;};return(...args)=>{o.attrs[k]=args;return p;};}});};
 const find=(n,id)=>n?.attrs?.id?.[0]===id?n:n?.kids?.map(c=>find(c,id)).find(Boolean);
-const DAY=86400000;let now=Date.UTC(2026,10,23,12),active=0,peak=0,statusReads=0;
+const DAY=86400000;let now=Date.UTC(2026,10,23,12),active=0,peak=0,statusReads=0,readMode='success',releaseStatus;
 const iso=at=>new Date(at).toISOString(),url=(number,repo='example/repo')=>`https://github.com/${repo}/pull/${number}`;
 const facts=new Map();
 const fact=(number,state,completedAt,repo='example/repo',draft=false)=>facts.set(`${repo}#${number}`,{number,state,isDraft:draft,url:url(number,repo),title:`PR ${number}`,author:{login:'fixture'},body:'',labels:[{name:'🤖 Under review',color:'840479'}],createdAt:iso(now-100*DAY),...(completedAt===undefined?{}:{closedAt:completedAt}),...(state==='MERGED'?{mergedAt:completedAt}:{}),statusCheckRollup:[]});
@@ -17,8 +17,8 @@ const terminals=[{address:'t1',state:'live',labels:{'custom.crew.home':'1'}},{ad
 const calls=[],focused=[],jobs=[],storage=new Map();let socket;
 const cx={notify(){},stop_propagation(){},timer:{every(){},after(){}},spawn:fn=>jobs.push(Promise.resolve().then(()=>fn(cx)))};
 const drain=async()=>{while(jobs.length)await Promise.all(jobs.splice(0));};
-const host={shared:key=>state[key],setShared:(key,value)=>state[key]=value,spaces:()=>groups,panes:()=>panes,terminals:()=>terminals,machines:()=>[],checking:()=>false,props:()=>null,theme:()=>({}),settings:()=>({zoom:1}),window:()=>({platform:'windows'}),layout:()=>({id:'panel',children:[{id:'panel-body',active:'changes'}]}),notify(){},run:(...args)=>focused.push(args),closeOverlay(){},openOverlay(){},nextCommand:()=>new Promise(()=>{}),
- hc:async args=>{assert.match(args.at(-1),/status '--all' '--json'/);statusReads++;return {code:0,stdout:JSON.stringify({code:0,stdout:Buffer.from(JSON.stringify(status)).toString('base64'),stderr:'',timed_out:false})};},
+const host={shared:key=>state[key],setShared:(key,value)=>state[key]=value,spaces:()=>groups,panes:()=>panes,terminals:()=>terminals,machines:()=>[{layout:'ready'}],checking:()=>false,props:()=>null,theme:()=>({}),settings:()=>({zoom:1}),window:()=>({platform:'windows'}),layout:()=>({id:'panel',children:[{id:'panel-body',active:'changes'}]}),notify(){},run:(...args)=>focused.push(args),closeOverlay(){},openOverlay(){},nextCommand:()=>new Promise(()=>{}),
+ hc:async args=>{assert.match(args.at(-1),/status '--all' '--json'/);statusReads++;if(readMode==='pending')await new Promise(resolve=>releaseStatus=resolve);if(readMode==='failure')throw Error('Status unavailable');return {code:0,stdout:JSON.stringify({code:0,stdout:Buffer.from(JSON.stringify(status)).toString('base64'),stderr:'',timed_out:false})};},
  exec:async(command,args)=>{assert.equal(command,'gh');assert.equal(args[0],'pr');assert.equal(args[1],'view');assert.ok(args.at(-1).includes('closedAt'));assert.ok(args.at(-1).split(',').includes('labels'));const key=`${args[args.indexOf('--repo')+1]}#${args[2]}`;assert.ok(facts.has(key),'No malformed URL or no-PR task starts a read');calls.push(key);peak=Math.max(peak,++active);await Promise.resolve();active--;return {code:0,stdout:JSON.stringify(facts.get(key))};}};
 const modules={'main.js':'src/plugins/git/mod/main.js','aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js','ui.js':'src/ui/ui.js','space-color-state.js':{currentSpaceColor:()=>null},
  'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{}},'gpui-base':{v_flex:element,h_flex:element,Popover:{},Input:{}},'location.js':{location:()=>({space:'coordinator',cwd:'/not-git',on:null,terminal:'t1'})},'agent-links.js':{AgentLinks:class{}},'pin-swap.js':{PinSwap:class{cancel(){}},PIN_SWAP_MS:320},'panel-pin.js':{panelPin:element},'sidebar-title.js':{sidebarTitle:element},'settings-dialog.js':{openSettings(){}},'panel-state.js':{changePanel(){}},'panel-kit.js':{headerTool:element,contextMenu:element,tag:element,panelMessage:(_t,id)=>element().id(id)},
@@ -55,10 +55,21 @@ await refreshStatus();panel.setView('closed',cx);tree=panel.render(cx);await dra
 fact(1,'CLOSED',iso(now-10*DAY));socket.onChange({repository:'example/repo'},cx);await drain();tree=panel.render(cx);assert.ok(find(tree,'pr-example/repo#1'));assert.equal(panel.aggregate.counts().closed,3);assert.ok(find(tree,'pr-agent-example/repo#1'));
 fact(1,'OPEN');socket.onChange({repository:'example/repo'},cx);await drain();panel.setView('open',cx);tree=panel.render(cx);
 const oldRobot=find(tree,'pr-agent-example/repo#1'),scope=panel.aggregate.context.scope,beforeFinish=calls.length;
-// Finish the final live worker. The verified coordinator/home scope and PR facts survive.
-tasks[0].state='closed';terminals[1].state='finished';panes=panes.filter(p=>p.terminal!=='t2');groups[1].tabs=[];
-await refreshStatus();tree=panel.render(cx);await drain();assert.equal(panel.aggregate.context.scope,scope);assert.equal(calls.length,beforeFinish,'Closing the worker does not discard/re-fetch unchanged PR facts');
-assert.ok(find(tree,'pr-example/repo#1'));assert.equal(find(tree,'pr-agent-example/repo#1'),undefined);assert.equal(panel.aggregate.counts().open,3);oldRobot.attrs.on_click[0]({},cx);assert.equal(focused.length,0,'A retained PR cannot navigate to its finished worker through a stale robot');
+// Herdr removes the empty fleet before the final-worker status read completes.
+// Sidebar attachment ends, but the same live owner/home keeps read-only Git scope.
+const retainedEntry=panel.aggregate.entries.get('example/repo#1');
+tasks[0].state='closed';terminals[1].state='finished';panes=panes.filter(p=>p.terminal!=='t2');groups.splice(1,1);
+assert.equal(r.pluginPullContext('coordinator',{presentation:true})?.scope,scope,'Child removal immediately retains coordinator Git scope');
+assert.equal(r.pluginPullContext('coordinator'),null,'Missing child never authorizes fresh reads');
+readMode='pending';r.pluginEvent('workspace.context.refresh',{cx,force:true});for(let i=0;i<30;i++)await Promise.resolve();assert.equal(typeof releaseStatus,'function');
+assert.equal(Object.keys(state['custom.fleet.display'].entries).length,0,'Missing child prunes only the attachment display');
+const staleFrame=()=>{tree=panel.render(cx);assert.equal(panel.aggregate.context?.scope,scope);assert.ok(find(tree,'git-task-stale'));assert.ok(find(tree,'pr-example/repo#1'));assert.equal(find(tree,'pr-agent-example/repo#1'),undefined);assert.equal(panel.aggregate.entries.get('example/repo#1'),retainedEntry,'Loaded PR facts are not cleared');assert.equal(panel.aggregate.counts().open,3);assert.equal(calls.length,beforeFinish,'Stale history starts no GitHub reads');oldRobot.attrs.on_click[0]({},cx);assert.equal(focused.length,0,'A stale robot cannot navigate to the finished worker');};
+staleFrame();readMode='failure';releaseStatus();await drain();staleFrame();await drain();
+now+=60000;await refreshStatus();staleFrame();await drain();
+terminals[0].state='finished';assert.equal(r.pluginPullContext('coordinator',{presentation:true}),null,'An ended owner cannot retain the child-independent scope');terminals[0].state='live';
+readMode='success';await refreshStatus();tree=panel.render(cx);assert.equal(panel.aggregate.context.scope,scope);assert.equal(panel.aggregate.entries.get('example/repo#1'),retainedEntry);assert.ok(find(tree,'pr-example/repo#1'));assert.equal(find(tree,'git-task-stale'),undefined);assert.equal(r.pluginPullContext('coordinator').child,null);await drain();
+assert.equal(calls.length-beforeFinish,panel.aggregate.entries.size,'Fresh verification catches up once per retained PR, not while stale');
+assert.equal(find(tree,'pr-agent-example/repo#1'),undefined);assert.equal(panel.aggregate.counts().open,3);
 // GitHub closure/reopen transitions and age changes use normal webhook/context refresh.
 fact(2,'CLOSED',iso(now));socket.onChange({repository:'example/repo'},cx);await drain();tree=panel.render(cx);assert.equal(panel.aggregate.counts().open,2);panel.setView('closed',cx);tree=panel.render(cx);assert.ok(find(tree,'pr-example/repo#2'));assert.equal(find(tree,'pr-agent-example/repo#2'),undefined);
 const beforeClock=calls.length;now+=DAY+1;await refreshStatus();tree=panel.render(cx);assert.equal(calls.length,beforeClock,'Aging history does not poll GitHub');assert.equal(panel.aggregate.counts().closed,0);assert.equal(panel.aggregate.counts().open,2,'Old recorded Open/Draft PRs remain');assert.equal(find(tree,'task-repo-example/old'),undefined);

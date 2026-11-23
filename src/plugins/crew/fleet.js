@@ -111,7 +111,8 @@ function pruneDisplays(snapshot, hosts) {
     const layout=hosts.find(h=>(h.name??null)===record.machine)?.layout;
     const ready=layout==='ready';
     if(!ready || [record.parent,record.child].every(id=>inMachine(snapshot,id,record.machine)))entries[JSON.stringify(record.machine)]=identityOf(record);
-    else removed.push(record.machine??'local');
+    // Losing the optional child ends attachment, not the live owner's Git scope.
+    else if(!inMachine(snapshot,record.parent,record.machine))removed.push(record.machine??'local');
   }
   const next={version:1,entries};if(JSON.stringify(raw)!==JSON.stringify(next))setShared(DISPLAY_KEY,next);
   if(removed.length) {
@@ -214,12 +215,15 @@ export function fleetPullContext(space, {presentation = false} = {}) {
   if(context)return {...context,kind:'tasks',scope:context.pullScope,stale:false,links:context.tasks.filter(t=>t.pr).map(t=>({url:t.pr,terminal:t.terminal,task:t.id,historical:t.historical===true}))};
   if(!presentation || !enabled())return null;
   let identity=fleetContexts({presentation:true}).find(c=>c.parent===space);
-  // In the current runtime, finished-task rows may outlive the optional child.
+  // In this runtime, retain the same live owner/home independently of the child.
   // No task/PR inventory is loaded from disk to manufacture action context.
   if(!identity) {
     const snapshot=model(), state=shared(FLEET_KEY);
     if(state?.version===1)for(const [key,entry] of Object.entries(state.entries??{}))
-      if(locallyVerified(key,entry) && entry.identity?.child===null && entry.identity.parent===space && inMachine(snapshot,space,entry.machine))identity=withScopes(entry.identity);
+      if(locallyVerified(key,entry) && entry.identity?.parent===space) {
+        const retained=withScopes(entry.identity), owner=bindFleet({...entry.status,tasks:[]},entry.machine,snapshot);
+        if(owner?.pullScope===retained.pullScope)identity=retained;
+      }
   }
   return identity ? {...identity,kind:'tasks',scope:identity.pullScope,stale:true,links:[]} : null;
 }
