@@ -126,7 +126,7 @@ delete pane.mod; pane.terminal = correctFocus.terminal; focus = correctFocus;
 selectedTab.named = false;
 
 const view = new main.namespace.default();
-const cx = {spawn:fn=>tasks.push(fn(cx)),notify:()=>assert.equal(rendering,false,'No synchronous notify from render'),timer:{every(){}}};
+const cx = {focus_handle(){assert.equal(rendering,false,'No focus allocation from render');return {};},spawn:fn=>tasks.push(fn(cx)),notify:()=>assert.equal(rendering,false,'No synchronous notify from render'),timer:{every(){}}};
 const render = () => {rendering=true;try{return view.render(cx);}finally{rendering=false;}};
 const tick = async () => {for(let i=0;i<16;i++) await Promise.resolve();};
 function take(cmd,subcommand) {

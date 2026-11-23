@@ -96,7 +96,7 @@ async function harness(feature, pluginOn = true) {
   await main.evaluate();
   const view = new main.namespace.default();
   const cx = {spawn: fn => tasks.push(fn(cx)), notify: () => { assert.equal(rendering,false,'Never notify synchronously during native render'); notify++; },
-    focus_handle: () => ({}), timer: {every() {}, after: (ms, fn) => timers.push({ms,fn})}, stop_propagation() {}};
+    focus_handle: () => { assert.equal(rendering,false,'Never allocate focus during native render'); return {}; }, timer: {every() {}, after: (ms, fn) => timers.push({ms,fn})}, stop_propagation() {}};
   view.init({}, cx);
   await tasks.shift();
   view.headerHovered = true;
