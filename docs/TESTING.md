@@ -82,7 +82,10 @@ idle, checking, available, launching/running, failed, partial and unknown-outcom
 states. Unknown revisions show only `herdr-app-custom` with no trailing space;
 known revisions retain their seven-character suffix. Missing evidence cannot claim
 current even with a cached no-update result. The check fixture separately confirms
-that changed ownership evidence still offers Update after a successful main read. Fresh
+that changed ownership evidence still offers Update after a successful main read.
+Focused Settings copy assertions distinguish native hourly checks from Custom's
+normal mounted 2–3 minute cadence and conditional configured-relay merge hints,
+while preserving corner indicators and herdr-core terminal-continuity guidance. Fresh
 module graphs and owners simulate replacement before the launch receipt, during
 running work and just after completion. Shared provisional launch feedback stays
 Updating until durable status acknowledges it, or becomes unknown after the

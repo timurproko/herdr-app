@@ -1075,6 +1075,8 @@ catch up automatically. Offline failures persist jittered retry delays of roughl
 5, 10, 20 and then at most 30 minutes, reset on success; Check now still bypasses
 the cache under the same single-flight lease. No public network-return event is
 assumed: timer retry and supported activation signals are the fallback.
+The native Herdr and herdr-core rows retain their hourly update checks; that
+schedule does not apply to Custom.
 
 For near-immediate discovery, the updater independently subscribes to the shared
 Git relay while Git is enabled: only `timurproko/herdr-app` main pushes or closed,

@@ -9,6 +9,6 @@
 
 ## 2. Update explanations distinguish native hourly checks from Custom discovery
 
-- [ ] 2.1 Replace the Settings paragraph's ambiguous hourly claim with native Herdr/herdr-core hourly checks, Custom's normal 2–3 minute mounted cadence and optional configured merge hints, preserving corner indicators and terminal-continuity guidance; add focused copy assertions in tests/update-row.test.mjs.
-- [ ] 2.2 Keep maintained update documentation consistent with the paragraph and existing failure backoff; run the focused row fixture and inspect the rendered-text inputs for accurate native versus Custom timing.
-- [ ] 2.3 Run CI=true npm run test:ci before handoff and record its actual result, plus the unchanged source-inspected 0.1.17 host-review refusal; git diff must contain no host profile, detection, scheduling or deployment changes.
+- [x] 2.1 Replace the Settings paragraph's ambiguous hourly claim with native Herdr/herdr-core hourly checks, Custom's normal 2–3 minute mounted cadence and optional configured merge hints, preserving corner indicators and terminal-continuity guidance; add focused copy assertions in tests/update-row.test.mjs.
+- [x] 2.2 Keep maintained update documentation consistent with the paragraph and existing failure backoff; run the focused row fixture and inspect the rendered-text inputs for accurate native versus Custom timing.
+- [x] 2.3 Run CI=true npm run test:ci before handoff and record its actual result, plus the unchanged source-inspected 0.1.17 host-review refusal; git diff must contain no host profile, detection, scheduling or deployment changes.
