@@ -12,7 +12,7 @@ export function nextRelayEvent(record, event) {
   repositories[name] = { sequence, push: event.event === 'push' ? sequence : previous?.push || 0 };
   const names = Object.keys(repositories);
   if (names.length > 128) delete repositories[names[0]];
-  return { ...record, sequence, repositories };
+  return { ...record, connected: true, sequence, repositories };
 }
 export function requestRelayRetry() {
   const record = relayEvents();

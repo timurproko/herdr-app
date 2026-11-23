@@ -102,5 +102,21 @@ relay = 'https://relay.test'; keys = 'invalid'; await sync(); await sync(); asse
 keys = JSON.stringify({ token: 'a'.repeat(64), secret: 'b'.repeat(64) });
 api.requestRelayRetry(); await sync(); assert.equal(sockets.length, 3, 'Manual retry reaches only the chrome owner');
 eager = true; await sync(); assert.equal(sockets[2].closed, true, 'Eager checking stops the owner');
+// Separate windows have separate chrome owners, but share one configuration
+// generation and merge counters. Unrelated CI must not look like a reconnect.
+eager = false; await sync(); const firstWindow = sockets.at(-1);
+firstWindow.resolve(JSON.stringify({ type: 'ready', protocol: 1 })); await tick();
+const generation = api.relayEvents().generation, otherOwner = {};
+api.syncRelay({ ...context(), owner: otherOwner }); await tick(); const secondWindow = sockets.at(-1);
+secondWindow.resolve(JSON.stringify({ type: 'ready', protocol: 1 })); await tick();
+const readyCount = api.relayEvents().ready;
+firstWindow.resolve(JSON.stringify({ type: 'github', event: 'push', repository: 'timurproko/herdr-app', delivery: 'window-one' })); await tick();
+const latchedPush = api.relayEvents().repositories['timurproko/herdr-app'].push;
+secondWindow.resolve(JSON.stringify({ type: 'github', event: 'workflow_run', repository: 'other/repo', delivery: 'window-two' })); await tick();
+assert.equal(api.relayEvents().generation, generation, 'Two windows cannot alternate public generations');
+assert.equal(api.relayEvents().ready, readyCount, 'Unrelated notice in the other window is not a reconnect');
+assert.equal(api.relayEvents().repositories['timurproko/herdr-app'].push, latchedPush, 'Other window preserves a latched target push');
+enabled = false; await sync(); api.syncRelay({ ...context(), owner: otherOwner }); await tick();
+assert.equal(firstWindow.closed, true); assert.equal(secondWindow.closed, true);
 await Promise.all(jobs);
-console.log('PASS: one shared chrome socket, real Git panel visible/hidden/shown and reconnect refresh, unchanged expanded pages, public bounded hints and disable guards');
+console.log('PASS: chrome-owned sockets, actual Git panel visible/hidden/shown and reconnect refresh, expanded pages, bounded hints, two-window counter merging and disable guards');

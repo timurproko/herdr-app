@@ -3,6 +3,9 @@ import { shared, setShared, checking } from '../api.js';
 import { GitWebhooks } from './relay-socket.js';
 import { relayURL } from './relay-config.js';
 import { RELAY_EVENTS, RELAY_RETRY, nextRelayEvent } from './relay-events.js';
+// Public configuration identity, not authentication or a credential fingerprint.
+// All windows must merge into the same generation instead of alternating epochs.
+const generationFor = scope => `relay-${[...scope].reduce((hash, c) => Math.imul(hash ^ c.charCodeAt(0), 16777619) >>> 0, 2166136261).toString(16)}`;
 
 export function syncRelay(context) {
   const { owner, cx } = context;
@@ -23,9 +26,10 @@ export function syncRelay(context) {
     if (owner.gitRelayScope !== scope) {
       socket.stop();
       owner.gitRelayScope = scope;
-      owner.gitRelayRecord = { version: 1, generation: `${Date.now()}-${Math.random()}`, active: Boolean(scope),
-        connected: false, ready: 0, sequence: 0, repositories: {} };
-      setShared(RELAY_EVENTS, owner.gitRelayRecord);
+      const generation = scope ? generationFor(scope) : 'inactive', previous = shared(RELAY_EVENTS);
+      owner.gitRelayRecord = previous?.version === 1 && previous.generation === generation ? previous
+        : { version: 1, generation, active: Boolean(scope), connected: false, ready: 0, sequence: 0, repositories: {} };
+      if (owner.gitRelayRecord !== previous) setShared(RELAY_EVENTS, owner.gitRelayRecord);
     }
     if (!scope) return;
     const record = owner.gitRelayRecord;
@@ -35,7 +39,8 @@ export function syncRelay(context) {
       && owner.gitRelayContext.enabled && owner.gitRelayContext.setting('relay') === configured;
     const publish = patch => {
       if (!current()) return;
-      owner.gitRelayRecord = patch(owner.gitRelayRecord);
+      const previous = shared(RELAY_EVENTS);
+      owner.gitRelayRecord = patch(previous?.version === 1 && previous.generation === record.generation ? previous : owner.gitRelayRecord);
       setShared(RELAY_EVENTS, owner.gitRelayRecord);
     };
     const retry = shared(RELAY_RETRY);

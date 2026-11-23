@@ -140,7 +140,9 @@ shell wiring, live SSH/core permissions, provider refreshes or relay hardening.
 `tests/git-relay-stream.test.mjs` uses fake native sockets and the actual Git
 panel's visibility/queue/flush methods: visible notices refresh loaded pages,
 hidden notices keep the socket alive without panel reads, showing again catches
-up and later notices still refresh, and reconnect retains expanded depth. All
+up and later notices still refresh, and reconnect retains expanded depth. Two
+chrome owners merge public counters within one configuration generation, so an
+unrelated notice in another window cannot erase a push or imitate a reconnect. All
 pre-existing Git assertions remain; the transport fixture's loader/import stubs
 follow its move to the chrome owner. Its disabling-owner socket-close and
 no-retry assertions now apply to that owner, complemented by the new assertion
