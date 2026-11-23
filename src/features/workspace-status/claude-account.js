@@ -1,6 +1,7 @@
 // Session switching is deliberately separate from Usage's statistics-only selection.
 import { div, svg } from 'gpui-kit';
-import { U, PILL, slot, menuSurface, menuRow, dropdown, pillTrigger, pillMenu } from './ui.js';
+import { U, PILL, slot } from './ui.js';
+import { choiceDropdown } from './choice-menu.js';
 import { terminals, appHome, readTextFile, exec, notify } from './host.js';
 import { claudeContext } from './claude-context.js';
 const nonce = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
@@ -96,27 +97,21 @@ export class ClaudeAccount {
     const canSwitch=Boolean(account?.session && !this.pending && this.focus);
     const label=`Claude session account: ${email}${pending?', switching':''}`;
     const content=[slot(svg('mods/custom-workspace-status/claude.svg').size(U.smallIcon)),pending?'Switching…':email];
-    // The shared pill (ui.js); it also hangs out on the right here, so the chevron keeps the bar's edge.
     if(!canSwitch)return div().id('status-claude-account').h(U.control).px(PILL.inset).mx(-PILL.inset).flex().gap(6).items_center().rounded(U.radius)
       .text_color(t.muted).role('label').accessibility_label(label).children(content);
-    const trigger=pillTrigger(t,'status-claude-account',{label,open:Boolean(this.opened),children:content,chevronSize:12}).mr(-PILL.inset)
-      // Popover opens on its wrapper's left mouse-down. Let that press bubble.
-      .on_mouse_down('right',(_e,cx)=>cx.stop_propagation());
-    const menu=menuSurface(t).min_w(180).max_w(360).max_h(280).flex().flex_col().overflow_y_scroll().track_focus(this.focus)
-      .on_key_down((event,cx)=>{
+    return choiceDropdown(t,{id:'status-claude-account',popupId:'status-claude-account-popup',label,content,edge:true,
+      open:Boolean(this.opened),focus:this.focus,
+      onKeyDown:(event,cx)=>{
         if(event.key==='escape')this.opened=false;
         else if(event.key==='enter')this.choose(target,this.rows?.[this.index],cx);
         else if((event.key==='up'||event.key==='down')&&this.rows?.length)this.index=(this.index+(event.key==='up'?this.rows.length-1:1))%this.rows.length;
         else return;
         cx.stop_propagation();cx.notify();
-      })
-      .when(Boolean(this.error)&&!this.rows,e=>e.child(div().px(8).py(6).text_color(t.muted).child(this.error)))
-      .when(this.rows?.length===0,e=>e.child(div().px(8).py(6).text_color(t.muted).child('No saved logins. Use /login in Claude.')))
-      // The shared popup-menu row (ui.js), with the current login ticked.
-      .children((this.rows??[]).map((choice,index)=>menuRow(t,{id:`status-claude-choice-${index}`,label:choice.email,accessibility:`Switch Claude session to ${choice.email}`,
-        highlighted:index===this.index,onHover:(hovered,cx)=>{if(hovered){this.index=index;cx.notify();}},onClick:(_e,cx)=>this.choose(target,choice,cx),
-        trailing:div().size(U.smallIcon).flex_none().when(same(choice,account.current),e=>e.child(svg('mods/custom-workspace-status/check.svg').size(U.smallIcon)))})));
-    return dropdown('status-claude-account-popup',trigger,pillMenu(menu),{above:true,open:Boolean(this.opened),focus:this.focus,
+      },
+      messages:[...(this.error&&!this.rows?[this.error]:[]),...(this.rows?.length===0?['No saved logins. Use /login in Claude.']:[])],
+      index:this.index,rows:(this.rows??[]).map((choice,index)=>({id:`status-claude-choice-${index}`,label:choice.email,accessibility:`Switch Claude session to ${choice.email}`,
+        onHover:(hovered,cx)=>{if(hovered){this.index=index;cx.notify();}},onClick:(_e,cx)=>this.choose(target,choice,cx),
+        selected:same(choice,account.current),selectedIcon:'mods/custom-workspace-status/check.svg'})),
       onOpen:(open,cx)=>{if(!open){this.opened=false;this.awaitingRows=false;}else if(!this.opened&&!this.awaitingRows)this.open(target,account,cx);cx.notify();}});
   }
 }

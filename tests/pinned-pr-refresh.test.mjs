@@ -23,6 +23,7 @@ async function harness() {
     exec:(cmd,args,options)=>new Promise(resolve=>pending.push({cmd,args,options,resolve})),
     settings:()=>({zoom:1}),theme:()=>({dim:'dim'}),run(){},openOverlay:spec=>opened.push(spec),closeOverlay(){},props(){},notify(){},nextCommand(){},window(){},hc:async()=>({code:1})};
   const modules={
+    './enrollment-picker.js':{EnrollmentPicker:class{}},
     './label-colors.js':labelColors,
     './aggregate.js':{AggregatePulls:class {sync(){return false;}stop(){}}},
     'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{}},'gpui-base':{h_flex:element,v_flex:element},

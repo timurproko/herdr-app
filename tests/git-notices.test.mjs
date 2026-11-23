@@ -48,4 +48,14 @@ async function harness(){let relay='',account='',snapshot=null;const pending=[],
  assert.equal(h.sync('owner/late'),'repository','The late result remains cached for its own repository');
  assert.equal(h.sync(null,false),null,'Non-repository folders clear enrollment notices too');
 }
+{
+ const h=await harness();h.setRelay('https://relay.example');h.setState({version:1,relay:'https://relay.example',revision:1,members:{'owner/a':false,'owner/b':false,'owner/c':true}});
+ h.sync('owner/a');await h.reply({setup:'ready'});h.sync('owner/a');
+ const before=h.pending.length,p=h.n.presentation(['Owner/B','owner/a','owner/b','owner/c','owner/unknown']);
+ assert.deepEqual([...p.choices],['owner/b','owner/a']);assert.equal(h.pending.length,before,'Pure picker snapshot adds no membership check');
+ h.setState({version:1,relay:'https://relay.example',revision:2,members:{'owner/a':true}});assert.equal(h.n.presentation(['owner/a']),null,'Settings revision invalidates before sync/render');
+ h.sync('owner/a');await h.reply({setup:'ready'});assert.equal(h.n.presentation(['owner/a']).choices.length,0);
+ h.n.retryNow();assert.equal(h.n.presentation(['owner/a']),null,'Refresh invalidates a captured menu synchronously');
+ h.sync('owner/a',false,false);assert.equal(h.n.presentation(['owner/a']),null,'Stopped controller has no eligible presentation');
+}
 console.log('PASS: stable global setup, immediate repo-switch dismissal, quiet pending enrollment, cached repo results, Settings updates and stale/disabled guards');

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {loadMod} from '../tools/plugin-harness.mjs';
 import {projectLinkedRows} from '../src/shared/workspace-links.js';
 const element=()=>{const o={kids:[],attrs:{}};let p;p=new Proxy(o,{get(t,k){if(k in t)return t[k];if(k==='then')return undefined;if(k==='when')return(yes,fn)=>yes?fn(p):p;if(k==='child')return c=>{o.kids.push(c);return p;};if(k==='children')return cs=>{o.kids.push(...cs);return p;};return(...args)=>{o.attrs[k]=args;return p;};}});return p;};
-const find=(n,id)=>n?.attrs?.id?.[0]===id?n:n?.kids?.map(c=>find(c,id)).find(Boolean);
+const find=(n,id)=>n?.attrs?.id?.[0]===id?n:[...(n?.kids??[]),...(n?.attrs?.trigger??[]),...(n?.attrs?.content??[])].map(c=>find(c,id)).find(Boolean);
 const state={'custom.plugins':{crew:{enabled:true},git:{enabled:true}},'custom.spaces.preferences':{connectFleetToCoordinator:true}};
 let selected={space:'coordinator',cwd:'/not-a-repository',on:null,terminal:'t1'},shown=true,failRepo=null,defer=false,pendingCI=false,bClosed=true;
 const waiting=[],settingsOpened=[],noticeModes={};
@@ -14,7 +14,7 @@ const list=[{address:'t1',state:'live',labels:{'custom.crew.home':'1'}},...['a',
 const url=repo=>`https://github.com/example/${repo}/pull/12`;
 const status={home:'C:/fixture/.crew',owner:{terminal:'t1',live:true},tasks:[{id:'a',terminal:'t2',state:'reported',pr:url('a')},{id:'b',terminal:'t3',state:'working',pr:url('b')},{id:'dup',terminal:'t4',state:'reported',pr:url('a')}]};
 let rendering=false;
-const calls=[],focus=[],jobs=[];const cx={notify(){assert.equal(rendering,false,'No synchronous notify from fleet render');},stop_propagation(){},spawn(fn){const p=Promise.resolve().then(()=>fn(cx));jobs.push(p);},timer:{every(){},after(){} }};
+const calls=[],focus=[],jobs=[];const cx={focus_handle:()=>({}),notify(){assert.equal(rendering,false,'No synchronous notify from fleet render');},stop_propagation(){},spawn(fn){const p=Promise.resolve().then(()=>fn(cx));jobs.push(p);},timer:{every(){},after(){} }};
 const drain=async()=>{while(jobs.length)await Promise.all(jobs.splice(0));};
 const host={closeOverlay(){},openOverlay(){},nextCommand(){return new Promise(()=>{});},shared:k=>state[k],setShared:(k,v)=>{assert.equal(rendering,false,'No shared-state writes from fleet render');state[k]=v;},spaces:()=>groups,panes:()=>all,terminals:()=>list,machines:()=>[{name:null,layout:'ready'}],checking:()=>false,
   props:()=>null,layout:()=>({id:'panel',hidden:!shown,children:[{id:'panel-body',active:'changes'}]}),settings:()=>({zoom:1}),theme:()=>({}),window:()=>({platform:'windows'}),notify(){},run:(...args)=>focus.push(args),
@@ -26,12 +26,12 @@ const text=n=>typeof n==='string'?n:(n?.kids??[]).map(text).join(' ');
 let websocket;
 const modules={
  'label-colors.js':'src/plugins/git/mod/label-colors.js',
- 'space-color-state.js':{currentSpaceColor:()=>null},'main.js':'src/plugins/git/mod/main.js','aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js',
- 'location.js':{location:()=>selected},'gpui-kit':{View:class{},div:element,svg:asset=>element().asset(asset),PathBuilder:{}},'gpui-base':{v_flex:element,h_flex:element,Popover:{},Input:{}},'ui.js':'src/ui/ui.js',
+ 'space-color-state.js':{currentSpaceColor:()=>null},'main.js':'src/plugins/git/mod/main.js','enrollment-picker.js':'src/plugins/git/mod/enrollment-picker.js','choice-menu.js':'src/ui/choice-menu.js','aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js',
+ 'location.js':{location:()=>selected},'gpui-kit':{View:class{},div:element,svg:asset=>element().asset(asset),PathBuilder:{}},'gpui-base':{v_flex:element,h_flex:element,Popover:{new:id=>element().id(id)},Input:{}},'ui.js':'src/ui/ui.js',
  'agent-links.js':{AgentLinks:class{}},'pin-swap.js':{PinSwap:class{cancel(){}},PIN_SWAP_MS:320},'panel-pin.js':{panelPin:(_t,o)=>element().id(o.id)},'sidebar-title.js':{sidebarTitle:element},'settings-dialog.js':{openSettings:options=>settingsOpened.push(options)},'panel-state.js':{changePanel(){}},
  'panel-kit.js':{headerTool:(_t,o)=>element().id(o.id).on_click(o.onClick),contextMenu:element,tag:element,panelMessage:(_t,id,o)=>element().id(id).child(o.text)},
  'relay-consumer.js':'src/plugins/git/mod/webhooks.js',
- 'webhooks.js':{GitWebhooks:class{sync(_cx,options){websocket=options;}stop(){}retryNow(){}}},'notices.js':{GitNotices:class{sync(_cx,{enabled,repository}){return enabled?noticeModes[repository]??null:null;}stop(){}retryNow(){}}},
+ 'webhooks.js':{GitWebhooks:class{sync(_cx,options){websocket=options;}stop(){}retryNow(){}}},'notices.js':{GitNotices:class{sync(_cx,{enabled,repository}){this.active=enabled;return enabled?noticeModes[repository]??null:null;}presentation(repos){if(!this.active)return null;const choices=[...new Set(repos)].filter(repo=>noticeModes[repo]==='repository');return {choices,key:JSON.stringify([this.force,noticeModes,choices])};}stop(){this.active=false;}retryNow(){this.force=(this.force??0)+1;}}},
 };
 const {Main,f,A,r,GitWebhooks}=await loadMod({host,modules,globals:{URL,localStorage,Date:class extends Date{static now(){return now;}}},mod:'custom-changes',entry:'export {default as Main} from "./main.js";export * as f from "./plugins/crew/fleet.js";export * as A from "./aggregate.js";export * as r from "./plugins.js";export {GitWebhooks} from "./relay-consumer.js";'});
 f.refreshFleets(cx,async()=>JSON.stringify(status));await drain();
@@ -54,15 +54,14 @@ assert.ok(find(tree,'pr-example/a#12'));assert.equal(find(tree,'pr-example/b#12'
 assert.doesNotMatch(text(tree),/Recorded task PRs|possibly incomplete until tasks report/);
 assert.ok(find(tree,'git-actions'));assert.ok(find(tree,'git-views'));
 const header=(repo,root=tree)=>find(root,`task-repo-header-example/${repo}`);
-const counts=(repo,root=tree)=>find(root,`task-repo-counts-example/${repo}`).kids.map(child=>child.attrs?.size?.[0]===3?'·':text(child)).join(' ');
+const nameOnly=(repo,root=tree)=>{assert.equal(find(root,`task-repo-counts-example/${repo}`),undefined);const row=header(repo,root);assert.equal(row.kids.length,2,'Name plus shared chevron only');assert.doesNotMatch(text(row),/Open|Closed/);assert.ok(text(row).includes(`example/${repo}`));};
 const toggle=repo=>{header(repo).attrs.on_click[0]({},cx);tree=panel.render(cx);};
 assert.ok(find(tree,'task-repo-body-example/a'));assert.ok(find(tree,'task-repo-body-example/b'),'Default expanded, including a zero-row current tab');
-assert.equal(counts('a'),'Open 1 · Closed 0');assert.equal(counts('b'),'Open 0 · Closed 1');
-const countStrip=find(tree,'task-repo-counts-example/a');assert.equal(countStrip.attrs.gap[0],6);assert.ok(countStrip.attrs.items_center);assert.equal(countStrip.kids[1].attrs.size[0],3);assert.ok(countStrip.kids[1].attrs.rounded_full,'Collapsible sections reuse the shared metadata separator');
+nameOnly('a');nameOnly('b');assert.equal(text(find(tree,'git-view-open')),'Open 1');assert.equal(text(find(tree,'git-view-closed')),'Closed 1');
 const aHeader=header('a');assert.equal(aHeader.attrs.h[0],28);assert.equal(aHeader.attrs.pr[0],4);assert.equal(aHeader.kids.at(-1).attrs.size[0],16);
 assert.match(aHeader.kids.at(-1).kids[0].attrs.asset[0],/chevron-down.svg$/);assert.equal(aHeader.attrs.accessibility_label[0],'Collapse example/a');
 let foldCalls=calls.length;const foldWrites=writes.length;
-toggle('a');assert.equal(find(tree,'pr-example/a#12'),undefined);assert.ok(find(tree,'task-repo-body-example/b'));assert.equal(counts('a'),'Open 1 · Closed 0');
+toggle('a');assert.equal(find(tree,'pr-example/a#12'),undefined);assert.ok(find(tree,'task-repo-body-example/b'));nameOnly('a');
 assert.match(header('a').kids.at(-1).kids[0].attrs.asset[0],/chevron-right.svg$/);assert.equal(header('a').attrs.accessibility_label[0],'Expand example/a');
 assert.equal(find(tree,'git-task-empty'),undefined,'All open PRs hidden by folding is not an empty data set');
 assert.equal(calls.length,foldCalls,'Folding does no GitHub read');assert.deepEqual(writes.slice(foldWrites),['custom.git.task-repositories.folded']);
@@ -71,7 +70,7 @@ toggle('b');assert.equal(find(tree,'task-repo-body-example/b'),undefined);assert
 panel.setView('closed',cx);tree=panel.render(cx);assert.equal(find(tree,'task-repo-body-example/a'),undefined);assert.equal(find(tree,'task-repo-body-example/b'),undefined,'Tab switches preserve independent folds');
 // A recreated panel restores local state without loading a new source or altering preferences.
 const restored=new Main();restored.init({},cx);await drain();restored.render(cx);await drain();const restoredTree=restored.render(cx);
-assert.equal(find(restoredTree,'task-repo-body-example/a'),undefined);assert.equal(find(restoredTree,'task-repo-body-example/b'),undefined);assert.equal(counts('b',restoredTree),'Open 0 · Closed 1');restored.close();
+assert.equal(find(restoredTree,'task-repo-body-example/a'),undefined);assert.equal(find(restoredTree,'task-repo-body-example/b'),undefined);nameOnly('b',restoredTree);restored.close();
 // Restore original panel presentation; both toggles are independent and only affect UI.
 toggle('a');toggle('b');panel.setView('open',cx);tree=panel.render(cx);
 assert.equal(state['custom.spaces.preferences'].connectFleetToCoordinator,true);
@@ -84,11 +83,11 @@ status.tasks[1].pr=null;f.refreshFleets(cx,async()=>JSON.stringify(status),true)
 status.tasks[1].pr=url('b');f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();panel.render(cx);await drain();assert.equal(panel.aggregate.rows('closed').length,1,'A newly recorded link enters without changing coordinator cwd');tree=panel.render(cx);assert.ok(header('b'));assert.equal(find(tree,'task-repo-body-example/b'),undefined,'A temporarily absent repository keeps its fold');toggle('b');
 failRepo='example/b';panel.aggregate.refresh(cx);await drain();assert.equal(panel.aggregate.rows('closed').length,1,'A read failure retains same-binding facts');assert.ok([...panel.aggregate.entries.values()].find(e=>e.link.repo===failRepo).error);
 noticeModes['example/b']='repository';panel.setView('open',cx);tree=panel.render(cx);assert.equal(find(tree,'task-error-example/b'),undefined,'A cached Closed failure never appears under Open');
-panel.setView('closed',cx);tree=panel.render(cx);assert.ok(find(tree,'task-error-example/b'));assert.ok(find(tree,'git-live-ci-example/b-settings'));
-toggle('b');assert.equal(find(tree,'task-error-example/b'),undefined);assert.equal(find(tree,'git-live-ci-example/b-settings'),undefined);assert.equal(counts('b'),'Open 0 · Closed 1');
+panel.setView('closed',cx);tree=panel.render(cx);assert.ok(find(tree,'task-error-example/b'));assert.ok(find(tree,'git-enrollment-footer'));
+toggle('b');assert.equal(find(tree,'task-error-example/b'),undefined);assert.ok(find(tree,'git-enrollment-footer'),'Folding cannot hide enrollment');nameOnly('b');
 failRepo=null;bClosed=false;panel.aggregate.refresh(cx);await drain();tree=panel.render(cx);
-assert.equal(counts('b'),'Open 1 · Closed 0','Counts update while folded');assert.equal(panel.aggregate.counts().open,2);assert.equal(find(tree,'task-repo-body-example/b'),undefined);
-bClosed=true;panel.aggregate.refresh(cx);await drain();tree=panel.render(cx);toggle('b');assert.ok(find(tree,'git-live-ci-example/b-settings'),'Reopening restores scoped body notices');delete noticeModes['example/b'];
+nameOnly('b');assert.equal(text(find(tree,'git-view-open')),'Open 2','Top-level totals update while folded');assert.equal(panel.aggregate.counts().open,2);assert.equal(find(tree,'task-repo-body-example/b'),undefined);
+bClosed=true;panel.aggregate.refresh(cx);await drain();tree=panel.render(cx);toggle('b');assert.ok(find(tree,'git-enrollment-footer'),'Reopening keeps the one footer');delete noticeModes['example/b'];
 assert.equal(A.taskPullLink('https://github.com/example/a/pull/12').key,'example/a#12');for(const bad of ['https://evil.test/a/b/pull/12','https://github.com/a/b/pull/0','https://github.com/a/b/pull/1?x=1'])assert.equal(A.taskPullLink(bad),null);
 // The same authenticated subscription routes only relevant repositories, coalescing bursts.
 failRepo=null;pendingCI=true;defer=true;
@@ -123,7 +122,7 @@ for(const change of ['disable','hide','context']){
  state['custom.plugins'].git.enabled=true;shown=true;panel.context=context;panel.webhooks.stop();
 }
 panel.webhooks=savedWebhooks;defer=true;
-noticeModes['example/b']='repository';tree=panel.render(cx);find(tree,'git-live-ci-example/b-settings').attrs.on_click[0]({},cx);assert.equal(settingsOpened.at(-1).pluginSearch,'example/b');assert.equal(settingsOpened.at(-1).pluginSection,'repository');
+noticeModes['example/b']='repository';tree=panel.render(cx);find(tree,'git-enrollment-popup').attrs.on_open_change[0](true,cx);tree=panel.render(cx);find(tree,'git-enrollment-choice-0').attrs.on_click[0]({},cx);assert.equal(settingsOpened.at(-1).pluginSearch,'example/b');assert.equal(settingsOpened.at(-1).pluginSection,'repository');
 // Label add/remove invalidates the same targeted reads in both tabs.
 defer=false;pendingCI=false;
 for(const action of ['unlabeled','labeled']) {
