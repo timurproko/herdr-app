@@ -6,7 +6,7 @@ The completed fleet presentation fixes in PR #18 do not address a reproduced ref
 
 ## What Changes
 
-- Preserve the four implemented PR outcomes and their finalized `fleet-link-look` archive unchanged; add fifth and sixth outcomes on the same branch and PR, not a separate delivery.
+- Preserve the four implemented PR outcomes and their finalized `fleet-link-look` archive unchanged; preserve the implemented fifth/sixth outcomes and add a seventh enrollment-picker outcome on the same branch and PR, not a separate delivery.
 - Keep the last verified fleet presentation through Git manual refresh, relay events, focus changes and periodic Crew status reads. Do not treat a pending read or unrelated pane changes as a completed negative result.
 - Publish successful binding changes atomically, remove an attachment on a completed authoritative negative result, and immediately honor disabling Crew or attachment and definitive removal/replacement of its native spaces.
 - Supersede the original 60-second display expiry with an identity-lifetime bound: at most one persisted verified pair per machine/home, valid only for its exact existing native spaces until a completed read disproves it or the feature is disabled. Failed/timed-out reads and unrelated topology changes never erase an unchanged pair.
@@ -17,7 +17,10 @@ The completed fleet presentation fixes in PR #18 do not address a reproduced ref
 - Read `crew status --all --json` through the existing bounded reader seam. Add only recorded PRs of closed tasks from the currently verified coordinator's crew home, without requiring their former terminals to remain live.
 - Conservative history policy: retain finished-task PRs while GitHub says Open/Draft; show their merged/closed PRs only for 24 hours after GitHub's merge/close timestamp. Exclude undated historical closed PRs. Live-task PRs keep their existing eligibility regardless of age.
 - Deduplicate full repository/PR identities across all tasks; a live task wins and keeps its robot. A historical-only PR has no robot or worker navigation. Tasks without a recorded PR add nothing.
-- Add deterministic refresh-cycle projection/tag regressions and historical eligibility/deduplication tests through real Git/Crew paths, plus matching README/testing/architecture/spec updates. No deployment.
+- The approved persistence/history work is implemented: deterministic refresh, restart, stale-Git, history and merged relay/shared-row regressions pass. No deployment.
+- Proposed seventh outcome: replace coordinator-only repeated unenrolled-repository banners with one pinned bottom banner showing the same message/look as ordinary Git, opening an upward repository dropdown in section order.
+- Reuse the status-bar account control's presentation components exactly: shared 12px chevron, inherited muted colour/placement, pill trigger, upward popover and menu row padding/height/hover/highlight treatment. Keep a dropdown even for a single choice; zero unenrolled repositories hides it. Picking a repository only opens the existing pre-populated Settings route, never enrolls it.
+- Keep ordinary single-repository Git, global setup notices and genuine per-repository errors/stale facts unchanged. Add focused keyboard/layout/style/eligibility tests and docs/spec updates before the final CI-selected run.
 
 ## Capabilities
 
@@ -28,13 +31,13 @@ None.
 ### Modified Capabilities
 
 - `workspace-experience`: Define persistent first-frame fleet presentation, identity-lifetime rather than time-only retention, and no detached frames across unrelated topology changes or refresh uncertainty.
-- `plugin-integrations`: Clarify that cached presentation is not authorization; distinguish failed reads from absence and support same-home closed-task PRs with bounded Closed history and live-target precedence.
+- `plugin-integrations`: Clarify that cached presentation is not authorization; distinguish failed reads from absence and support same-home closed-task PRs with bounded Closed history and live-target precedence, and add the coordinator's single pinned account-style enrollment picker.
 
 ## Impact
 
 - Primary owner: `src/plugins/crew/fleet.js`; audit the existing registry/workspace-link consumers so retained presentation cannot weaken action guards.
 - Regression coverage: packaged Crew provider, `tests/fleet-git.test.mjs`, and actual Spaces projection/render fixtures using deferred status replies and a fake clock.
-- Documentation: README, docs/TESTING.md and docs/ARCHITECTURE.md; OpenSpec deltas refine the active cache/identity contract. The first implementation of outcomes 5 and 6 is already committed and passed all 143 Windows CI-selected entries; the stronger persistence/retention extension is planned but not implemented.
+- Documentation: README, docs/TESTING.md and docs/ARCHITECTURE.md; OpenSpec deltas refine the active cache/identity contract. The approved identity-lifetime extension and history work are implemented. After merging origin/main's shared relay/render guards and shared PR row/labels, all 146 Windows CI-selected entries passed. The new bottom enrollment-picker outcome is planned but not implemented.
 - The existing status command gains `--all`; no new Crew capability, process, polling loop, portable preference, native patch or installed-app change. Run the full Node 24 CI-selected suite after implementation, including git-location, pr-agent-links and sidebar-refresh.
 
 ## Investigation evidence
