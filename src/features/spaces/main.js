@@ -455,6 +455,7 @@ export default class Spaces extends View {
     const fromIndex = d ? this.ordered().findIndex(r => r.w.id === d.id) : -1;
     const fill = spaceBadgeColor(t, w, shared("space.colors") ?? {});
     const worktree = !edit && Boolean(g?.linked || tree) && shows("spaces.show.worktree");
+    const tags = edit ? [] : pluginSpaceTags(w);
     return drag.item(v_flex()
       .relative()
       .id(`space-${w.id}`)
@@ -510,16 +511,14 @@ export default class Spaces extends View {
           .when(!edit, el => el
             .child(spaceTitle(t,w).when(linked, el => el.text_color(t.muted)).min_w(0).max_w(150).truncate().child(w.name))
             .child(g ? this.gitTail(g, tree, w.name, t, w.named === true) : div().flex_1()))
-          // Keep tags to the left of the fixed trailing icon. Without an icon,
-          // retain the tag-only row's existing right edge beside the Agents pills.
-          .when(!edit, el => el.children(pluginSpaceTags(w).map((tag, k, all) =>
-            rolePill(t, tag.label, { status: true }).id(`space-tag-${w.id}-${tag.plugin}-${k}`)
-              .when(!worktree && k === all.length - 1, e => e.mr(-5))
-              .when(Boolean(tag.tooltip), e => e.tooltip(tag.tooltip)))))
-          // 8px row padding minus 4px puts this 16px slot on the machine
-          // chevron's axis (4px right inset), independent of child indentation.
+          // Untagged markers retain the machine chevron's axis (4px right inset).
+          // With tags, metadata precedes the shared trailing tag edge instead.
           .when(worktree, el => el.child(slot(svg("mods/custom-workspace-chrome/branch.svg").size(U.smallIcon).text_color(t.muted))
-            .id(`space-worktree-${w.id}`).mr(-4).tooltip('Git worktree'))),
+            .id(`space-worktree-${w.id}`).when(!tags.length, e => e.mr(-4)).tooltip('Git worktree')))
+          .when(!edit, el => el.children(tags.map((tag, k, all) =>
+            rolePill(t, tag.label, { status: true }).id(`space-tag-${w.id}-${tag.plugin}-${k}`)
+              .when(k === all.length - 1, e => e.mr(-5))
+              .when(Boolean(tag.tooltip), e => e.tooltip(tag.tooltip))))),
       );
   }
 

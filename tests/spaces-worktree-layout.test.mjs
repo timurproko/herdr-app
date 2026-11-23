@@ -25,7 +25,7 @@ view.rename={id:w.id};view.renameField=()=>element().child('editing');const edit
  const crewRow=view.row({w,i:5,g:{name:'repo',linked:true},tree:null},theme),[pill]=tagsOf(crewRow);
  assert.equal(pill?.attrs.id[0],'space-tag-worktree-crew-0','The plugin’s tag is on the row');assert.deepEqual(pill.kids,['Crew']);assert.equal(pill.attrs.tooltip[0],'Crew coordinator');
  const crewContent=find(crewRow,'space-content-worktree'),branch=find(crewRow,'space-worktree-worktree');
- assert.equal(crewContent.kids.at(-1),branch,'Worktree marker stays rightmost, after pills');assert.ok(crewContent.kids.indexOf(pill)<crewContent.kids.indexOf(branch));assert.equal(pill.attrs.mr,undefined,'No negative pill margin beside a marker');assert.ok(asked.includes('worktree'),'Asked for this space');
+ assert.equal(crewContent.kids.at(-1),pill,'Plugin tags stay rightmost, after the marker');assert.ok(crewContent.kids.indexOf(branch)<crewContent.kids.indexOf(pill));assert.equal(pill.attrs.mr[0],-5,'Tagged worktrees use the tag-only edge');assert.equal(branch.attrs.mr,undefined,'No negative marker margin before tags');assert.equal(asked.filter(id=>id==='worktree').length,1,'Read tags once for this row');
  view.rename={id:w.id};view.renameField=()=>element().child('editing');assert.equal(tagsOf(view.row({w,i:5,g:{linked:true},tree:null},theme)).length,0,'Not while renaming');view.rename=null;
  context.__tags=[];assert.equal(tagsOf(view.row({w,i:5,g:{name:'repo',linked:true},tree:null},theme)).length,0,'No tag, no pill');
 }
@@ -110,9 +110,10 @@ for(const machine of [null,'pc2']) {
   const row=view.row({...record,w:{...record.w,machine},g:{linked:true}},theme);
   const content=find(row,`space-content-${record.w.id}`),pill=find(row,`space-tag-${record.w.id}-crew-0`),marker=find(row,`space-worktree-${record.w.id}`);
   assert.deepEqual(pill.kids,['Crew']);assert.equal(pill.attrs.tooltip[0],tooltip);
-  assert.equal(content.kids.at(-2),pill,'Both Crew pills occupy the same trailing slot before the worktree marker');
-  assert.equal(content.kids.at(-1),marker);
-  assert.equal(row.attrs.px[0]+marker.attrs.mr[0]+marker.attrs.size[0]/2,12,'The fleet pill does not shift the machine-chevron axis');
+  assert.equal(content.kids.at(-2),marker,'Worktree metadata precedes both Crew pills');
+  assert.equal(content.kids.at(-1),pill);
+  assert.equal(row.attrs.px[0]+pill.attrs.mr[0],3,'Both Crew pills share the existing tag-only right edge');
+  assert.equal(marker.attrs.mr,undefined,'Tagged marker keeps the full gap before its pill');
   assert.equal(pill.attrs.h[0],18);assert.equal(pill.attrs.rounded[0],5);assert.equal(pill.attrs.bg[0],`${theme.muted}26`);
   const {id,tooltip:tip,...style}=pill.attrs;pills.push(JSON.parse(JSON.stringify(style)));
  }
@@ -179,10 +180,37 @@ for(const machine of [null,'pc2']) {
   context.__tags=tags;
   const row=view.row({w:{...w,machine,name:'very-long-space-name-that-must-not-move-trailing-tools'},i:0,g:{linked:true},linked},theme);
   const content=find(row,'space-content-worktree'),marker=find(row,'space-worktree-worktree');
-  assert.equal(content.kids.at(-1),marker);assert.equal(marker.attrs.size[0],16);
-  assert.equal(row.attrs.px[0]+marker.attrs.mr[0]+marker.attrs.size[0]/2,axis,'Tagged and untagged worktrees align with the chevron');
-  for(const pill of content.attrs.children[0]){assert.ok(content.kids.indexOf(pill)<content.kids.indexOf(marker));assert.equal(pill.attrs.mr,undefined);}
+  assert.equal(marker.attrs.size[0],16);
+  if(!tags.length) {
+   assert.equal(content.kids.at(-1),marker);
+   assert.equal(row.attrs.px[0]+marker.attrs.mr[0]+marker.attrs.size[0]/2,axis,'Untagged worktrees still align with the chevron');
+  } else {
+   const pills=content.attrs.children[0];assert.equal(content.kids.at(-1),pills.at(-1));
+   assert.equal(row.attrs.px[0]+pills.at(-1).attrs.mr[0],3,'Last tag uses the tag-only edge for ordinary and attached worktrees');
+   assert.equal(marker.attrs.mr,undefined);
+   for(const [k,pill] of pills.entries()) {
+    assert.ok(content.kids.indexOf(marker)<content.kids.indexOf(pill));
+    assert.equal(pill.attrs.mr?.[0],k===pills.length-1?-5:undefined);
+   }
+  }
  }
+}
+// Reproduce the screenshot: tag-only coordinator, counts + marker + tag on fleet.
+for(const machine of [null,'pc2'])for(const active of [false,true]) {
+ context.__tags=[{plugin:'crew',label:'Crew'}];
+ const parent=view.row({w:{id:'parent',name:'coordinator',machine},i:0},theme);
+ const fleet=view.row({w:{id:'worktree-a',name:'long-fleet-name-that-truncates',machine,active},i:1,linked:true,g:{linked:true,ahead:2,behind:1}},theme);
+ const content=find(fleet,'space-content-worktree-a'),tail=content.kids[2],marker=find(fleet,'space-worktree-worktree-a');
+ assert.deepEqual(tail.kids.map(n=>n.kids[0]),['↑2','↓1'],'Counts stay together before the marker');
+ assert.equal(content.kids.indexOf(tail)+1,content.kids.indexOf(marker));
+ assert.equal(content.kids.at(-1).attrs.id[0],'space-tag-worktree-a-crew-0');
+ const parentContent=find(parent,'space-content-parent');
+ assert.equal(parent.attrs.px[0]+parentContent.kids.at(-1).attrs.mr[0],fleet.attrs.px[0]+content.kids.at(-1).attrs.mr[0],'Screenshot Crew pills have exactly the same right inset');
+ context.__store.set('spaces.show.worktree',false);
+ const hidden=view.row({w:{id:'worktree-a',name:'fleet',machine},i:1,linked:true,g:{linked:true,ahead:2}},theme);
+ assert.equal(find(hidden,'space-worktree-worktree-a'),undefined);
+ assert.equal(find(hidden,'space-content-worktree-a').kids.at(-1).attrs.mr[0],-5,'Hiding a marker cannot move the tag');
+ context.__store.clear();
 }
 context.__tags=[{plugin:'crew',label:'Crew'}];
 const tagOnly=find(view.row({w,i:0,g:null},theme),'space-content-worktree');assert.equal(tagOnly.kids.at(-1).attrs.mr[0],-5,'Tag-only rows retain their old edge');

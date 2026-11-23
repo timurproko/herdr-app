@@ -2,9 +2,9 @@
 
 ## 1. Right-aligned space tags after worktree metadata
 
-- [ ] 1.1 Reorder expanded row content to name, ahead/behind counts, worktree marker and tags; compare rendered child order and the final tag edge against a tag-only coordinator row.
-- [ ] 1.2 Preserve the chevron-axis inset only for untagged markers; cover ordinary/attached local and remote rows, multiple/no tags, hidden markers, long names and rename with `node tests/spaces-worktree-layout.test.mjs`.
-- [ ] 1.3 Update README's worktree/tag placement text and the relevant TESTING.md coverage description; check that documentation and the spec delta agree about tagged versus untagged rows.
+- [x] 1.1 Reorder expanded row content to name, ahead/behind counts, worktree marker and tags; compare rendered child order and the final tag edge against a tag-only coordinator row.
+- [x] 1.2 Preserve the chevron-axis inset only for untagged markers; cover ordinary/attached local and remote rows, multiple/no tags, hidden markers, long names and rename with `node tests/spaces-worktree-layout.test.mjs`.
+- [x] 1.3 Update README's worktree/tag placement text and the relevant TESTING.md coverage description; check that documentation and the spec delta agree about tagged versus untagged rows.
 
 ## 2. Coordinator-coloured chain badges in both sidebar modes
 

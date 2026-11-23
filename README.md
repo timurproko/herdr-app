@@ -583,10 +583,10 @@ motion are implemented once, not copied into each feature. See
 
 ## Spaces and the last tab
 
-Worktree spaces keep normal avatar/title alignment, with a Git worktree icon at
-the right. Its fixed icon slot shares the machine-header chevron's right inset
-and centre line, including attached fleet rows; Crew and other pills sit to its
-left without shifting the icon. Drag them like other spaces within their machine: repository discovery
+Worktree spaces keep normal avatar/title alignment. Rows with plugin tags show
+name, ahead/behind counts, worktree icon, then tags at the existing right edge,
+so Crew pills line up on coordinator and fleet rows. Untagged worktree icons
+keep the machine-header chevron's right inset and centre line. Drag them like other spaces within their machine: repository discovery
 never regroups them or overrides the saved order. This is Spaces presentation and
 works independently of the Git plugin.
 
@@ -604,8 +604,8 @@ fleet attaches below its coordinator with a muted outlined chain icon in the nor
 numbered-badge slot: the same 16px box and vertical centre. No elbow or connector
 lines remain. The fleet name starts at the same left edge as all other space names;
 its existing muted text alone keeps it visually subordinate.
-Both expanded rows show the same Crew pill at the right, to the left of any
-worktree icon without shifting its alignment with the machine chevron.
+Both expanded rows show the same Crew pill at the right, after any ahead/behind
+counts and worktree icon; the pills share the same right edge.
 Unrelated plugin tags remain; the compact rail stays badge-only. Refreshing Git or
 Crew, relay events, focus changes and unrelated pane changes do not temporarily turn a verified fleet back into an
 ordinary numbered row. The pair is a persisted property of its exact native
