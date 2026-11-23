@@ -3,6 +3,7 @@ import {kitModule,withKitUi} from './support/panel-kit.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
+import * as labelColors from '../src/plugins/git/mod/label-colors.js';
 import {fileURLToPath} from 'node:url';
 import {PinSwap,PIN_SWAP_MS} from '../src/plugins/git/mod/pin-swap.js';
 
@@ -37,6 +38,7 @@ async function harness(state) {
   };
   const modules = {
     './enrollment-picker.js':{EnrollmentPicker:class{}},
+    './label-colors.js':labelColors,
     './aggregate.js':{AggregatePulls:class {sync(){return false;}stop(){}}},
     './ci-fix.js':{CIFix:class {sync(){}stop(){}}},
     './notices.js':{GitNotices:class {sync(){return null;}stop(){}retryNow(){}}},

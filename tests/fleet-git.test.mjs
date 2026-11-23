@@ -25,6 +25,7 @@ const localStorage={getItem:key=>storage.get(key)??null,setItem:(key,value)=>{st
 const text=n=>typeof n==='string'?n:(n?.kids??[]).map(text).join(' ');
 let websocket;
 const modules={
+ 'label-colors.js':'src/plugins/git/mod/label-colors.js',
  'space-color-state.js':{currentSpaceColor:()=>null},'main.js':'src/plugins/git/mod/main.js','enrollment-picker.js':'src/plugins/git/mod/enrollment-picker.js','choice-menu.js':'src/ui/choice-menu.js','aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js',
  'location.js':{location:()=>selected},'gpui-kit':{View:class{},div:element,svg:asset=>element().asset(asset),PathBuilder:{}},'gpui-base':{v_flex:element,h_flex:element,Popover:{new:id=>element().id(id)},Input:{}},'ui.js':'src/ui/ui.js',
  'agent-links.js':{AgentLinks:class{}},'pin-swap.js':{PinSwap:class{cancel(){}},PIN_SWAP_MS:320},'panel-pin.js':{panelPin:(_t,o)=>element().id(o.id)},'sidebar-title.js':{sidebarTitle:element},'settings-dialog.js':{openSettings:options=>settingsOpened.push(options)},'panel-state.js':{changePanel(){}},

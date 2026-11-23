@@ -14,7 +14,7 @@ const drain=async()=>{while(jobs.length)await Promise.all(jobs.splice(0));};
 const host={checking:()=>false,props:()=>null,closeOverlay(){},openOverlay(){},nextCommand(){},notify(){},settings:()=>({zoom:1}),theme:()=>t,run(){},layout:()=>({id:'panel',hidden:!visible,children:[{id:'panel-body',active:'changes'}]}),
  appHome:()=>'/fixture',shared:()=>snapshot,setShared(){throw Error('No shared writes from presentation');},
  exec:async(command,args)=>{assert.equal(rendering,false);reads.push([command,args]);assert.equal(command,'node','No GitHub read or enrollment');assert.ok(['notice','notice-repository'].includes(args[1]),'Only existing readiness reads, never enrollment');return {code:0,stdout:JSON.stringify(args[1]==='notice'?{setup:'ready'}:{status:snapshot.members[args[4]]===false?'missing':snapshot.members[args[4]]===true?'ready':'error'})};}};
-const modules={...choiceModules,'gpui-kit':{View:class{},div:element,svg,PathBuilder:{}},'gpui-base':{Popover,Input:{},h_flex:element,v_flex:element},
+const modules={...choiceModules,'label-colors.js':'src/plugins/git/mod/label-colors.js','gpui-kit':{View:class{},div:element,svg,PathBuilder:{}},'gpui-base':{Popover,Input:{},h_flex:element,v_flex:element},
  'main.js':'src/plugins/git/mod/main.js','enrollment-picker.js':'src/plugins/git/mod/enrollment-picker.js','notices.js':'src/plugins/git/mod/notices.js','pulls.js':'src/plugins/git/mod/pulls.js',
  'location.js':{location:()=>selected},'plugins.js':{sidebarPanelEnabled:()=>enabled,pluginById:()=>({}),pluginSetting:(_p,key)=>key==='relay'?raw:account},
  'aggregate.js':{AggregatePulls:class{}},'agent-links.js':{AgentLinks:class{}},'webhooks.js':{GitWebhooks:class{}},'pin-swap.js':{PinSwap:class{},PIN_SWAP_MS:320},

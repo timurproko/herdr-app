@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {kitModule,withKitUi} from './support/panel-kit.mjs';
 import vm from 'node:vm';
+import * as labelColors from '../src/plugins/git/mod/label-colors.js';
 import {PinSwap,PIN_SWAP_MS} from '../src/plugins/git/mod/pin-swap.js';
 import {loadMod} from '../tools/plugin-harness.mjs';
 const pulls=await loadMod({host:{},modules:{'pulls.js':'src/plugins/git/mod/pulls.js'},entry:"export * from './pulls.js';"});
@@ -23,6 +24,7 @@ async function harness() {
     settings:()=>({zoom:1}),theme:()=>({dim:'dim'}),run(){},openOverlay:spec=>opened.push(spec),closeOverlay(){},props(){},notify(){},nextCommand(){},window(){},hc:async()=>({code:1})};
   const modules={
     './enrollment-picker.js':{EnrollmentPicker:class{}},
+    './label-colors.js':labelColors,
     './aggregate.js':{AggregatePulls:class {sync(){return false;}stop(){}}},
     'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{}},'gpui-base':{h_flex:element,v_flex:element},
     './host.js':host,'./location.js':{location:()=>place},'./pulls.js':pulls,'./pin-swap.js':{PinSwap,PIN_SWAP_MS},

@@ -1,6 +1,50 @@
 import assert from 'node:assert/strict';
 import {loadMod} from '../tools/plugin-harness.mjs';
 import {withKitUi} from './support/panel-kit.mjs';
+import {labelColors} from '../src/plugins/git/mod/label-colors.js';
+
+// Independent oracle: Python colorsys HLS conversion with Primer's rounded inputs,
+// cross-checked in Chrome against the upstream CSS for green, amber and purple.
+// Columns: original hex, dark text, light text, light border (including alpha).
+const colorCases=[
+  ['#1a7f37','#2ed45d','#ffffff','#04150900'],
+  ['#9a6700','#f6a400','#ffffff','#1a110000'],
+  ['#840479','#fb72ef','#ffffff','#0a000900'],
+  ['#ff0000','#ffc6c6','#ffffff','#80000000'],
+  ['#0000ff','#ffffff','#ffffff','#00008000'],
+  ['#000000','#999999','#ffffff','#00000000'],
+  ['#010101','#989898','#ffffff','#00000000'],
+  ['#ffffff','#ffffff','#000000','#bfbfbfff'],
+  ['#fefefe','#ffffff','#000000','#bfbfbfff'],
+  ['#ffff00','#ffff00','#000000','#7f800000'],
+  ['#737373','#999999','#ffffff','#33333300'],
+  ['#747474','#989898','#000000','#33333300'],
+  ['#989898','#9a9a9a','#000000','#59595900'],
+  ['#999999','#999999','#000000','#59595900'],
+  ['#9a9a9a','#999999','#000000','#59595900'],
+  ['#f4f4f4','#f5f5f5','#000000','#b5b5b500'],
+  ['#f5f5f5','#f5f5f5','#000000','#b5b5b514'],
+  ['#f6f6f6','#f5f5f5','#000000','#b5b5b578'],
+];
+function assertColor(actual,expected) {
+  assert.match(actual,/^#[a-f\d]{6}(?:[a-f\d]{2})?$/i);
+  assert.equal(actual.length,expected.length);
+  for(const at of [1,3,5])assert.ok(Math.abs(parseInt(actual.slice(at,at+2),16)-parseInt(expected.slice(at,at+2),16))<=1,`${actual} differs from independent expected ${expected}`);
+  assert.equal(actual.slice(7),expected.slice(7),'Only RGB conversion may round by one; alpha is exact');
+}
+for(const [color,darkText,lightText,lightBorder] of colorCases)for(const dark of [true,false]) {
+  const result=labelColors({background:dark?'#191d28':'#ffffff'},color);
+  assert.equal(result.background,dark?`${color}2e`:color);
+  assertColor(result.foreground,dark?darkText:lightText);
+  assertColor(result.border,dark?`${darkText}4d`:lightBorder);
+}
+const neutral={raised:'#222222',foreground:'#eeeeee'};
+for(const color of [undefined,null,'','#fff','#12345678','red;bad',{},123456]) {
+  assert.deepEqual(labelColors(neutral,color),{background:neutral.raised,foreground:neutral.foreground,border:'#00000000'});
+}
+for(const background of [undefined,null,'bad','#7f7f7f'])assert.deepEqual(labelColors({background},'#840479'),labelColors({background:'#191d28'},'#840479'));
+for(const background of ['#808080','#ffffff'])assert.deepEqual(labelColors({background},'#840479'),labelColors({background:'#ffffff'},'#840479'));
+assert.deepEqual(labelColors({},'#1A7F37'),labelColors({},'#1a7f37'),'Uppercase hex stays valid');
 
 function element() {
   const node={attrs:{},kids:[]};let proxy;
@@ -22,6 +66,7 @@ const host={props:()=>null,closeOverlay(){},openOverlay(){},nextCommand(){},sett
 const modules={
   'enrollment-picker.js':{EnrollmentPicker:class{}},
   'main.js':'src/plugins/git/mod/main.js','pulls.js':'src/plugins/git/mod/pulls.js',
+  'label-colors.js':'src/plugins/git/mod/label-colors.js',
   'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{}},'gpui-base':{h_flex:element,v_flex:element},
   'ui.js':withKitUi({U,headerTools:e=>e,reveal:e=>e,subtleActionFill:()=>'',refreshButton:element},element),
   'aggregate.js':{AggregatePulls:class{}},'agent-links.js':{AgentLinks:class{}},'pin-swap.js':{PinSwap:class{},PIN_SWAP_MS:320},
@@ -32,10 +77,11 @@ const modules={
 };
 const {Main,facts}=await loadMod({host,modules,mod:'custom-changes',entry:'export {default as Main} from "./main.js"; export * as facts from "./pulls.js";'});
 const panel=new Main();panel.agentLinks={related:()=>null};
-const t={foreground:'#eeeeee',muted:'#999999',dim:'#666666',raised:'#222222',ansi1:'red',ansi2:'green',ansi3:'yellow',ansi5:'purple'};
-const labels=[{name:'🤖 Under review',color:'840479'},{name:'🚀 Ready · with a deliberately long label name',color:'ffffff'}];
+const t={background:'#191d28',foreground:'#eeeeee',muted:'#999999',dim:'#666666',raised:'#222222',ansi1:'red',ansi2:'green',ansi3:'yellow',ansi5:'purple'};
+const labels=[{name:'🤖 Under review',color:'840479'},{name:'🚀 Ready · with a deliberately long label name',color:'ffffff'},
+  ...colorCases.filter(([color])=>!['#840479','#ffffff'].includes(color)).map(([color])=>({name:`Hue ${color}`,color:color.slice(1)}))];
 const source={number:17,title:'Shared row',url:'https://github.com/example/repo/pull/17',author:{login:'owner'},createdAt:'2026-11-20T10:00:00Z',body:'- [x] done',statusCheckRollup:[{name:'CI',conclusion:'SUCCESS',status:'COMPLETED'}],labels,reviewDecision:'APPROVED'};
-for(zoom of [0.75,1,1.25,1.5,2])for(const state of ['OPEN','CLOSED','MERGED'])for(const coordinator of [false,true])for(const ghost of [false,true]) {
+for(t.background of ['#191d28','#ffffff','#191d28'])for(zoom of [0.75,1,1.25,1.5,2])for(const state of ['OPEN','CLOSED','MERGED'])for(const coordinator of [false,true])for(const ghost of [false,true]) {
   const pr=facts.pullRow({...source,state},'owner');if(coordinator)pr.key='example/repo#17';
   const prefix=ghost?'swap-':'',id=pr.key??17;
   const row=panel.pullRow(t,pr,ghost),meta=find(row,`${prefix}pr-meta-${id}`),byline=find(row,`${prefix}pr-byline-${id}`);
@@ -48,8 +94,11 @@ for(zoom of [0.75,1,1.25,1.5,2])for(const state of ['OPEN','CLOSED','MERGED'])fo
   assert.equal(meta.attrs.tooltip[0],strip.attrs.tooltip[0],'Completely clipped strips retain a metadata hover target');
   for(const [index,label] of labels.entries()) {
     const pill=find(row,`${prefix}pr-label-${id}-${index}`);
-    assert.equal(text(pill),label.name);assert.equal(pill.attrs.tooltip[0],label.name);assert.equal(pill.attrs.bg[0],`#${label.color}`);
-    assert.equal(pill.attrs.text_color[0],index?'#000000':'#ffffff');assert.equal(pill.attrs.h[0],18);
+    const [color,darkText,lightText,lightBorder]=colorCases.find(([color])=>color===`#${label.color}`),dark=t.background!=='#ffffff';
+    assert.equal(text(pill),label.name);assert.equal(pill.attrs.tooltip[0],label.name);assert.equal(pill.attrs.bg[0],dark?`${color}2e`:color);
+    assertColor(pill.attrs.text_color[0],dark?darkText:lightText);assertColor(pill.attrs.border_color[0],dark?`${darkText}4d`:lightBorder);
+    assert.equal(pill.attrs.h[0],18);assert.ok(pill.attrs.border_1);assert.ok(pill.attrs.rounded_full);
+    assert.equal(pill.attrs.px[0]+1,5,'Border plus padding retains the original content inset/width');
     assert.equal(pill.attrs.min_w[0],0);assert.ok(pill.attrs.max_w_full);assert.ok(pill.attrs.overflow_hidden);assert.ok(pill.kids[0].attrs.truncate);
   }
   assert.equal(text(find(row,`${prefix}pr-review-${id}`)),'Approved');
@@ -104,4 +153,5 @@ assert.equal(find(changes,'pr-review-17').attrs.text_color[0],t.ansi1);
 const fallback=panel.labelPill(t,{name:'Untrusted colour',color:'red;bad'},'fallback');
 assert.equal(fallback.attrs.bg[0],t.raised);assert.equal(fallback.attrs.text_color[0],t.foreground);
 assert.equal(facts.pullRow({...source,author:null},'owner').byline.startsWith('opened '),true);
-console.log('PASS shared ordinary/coordinator Open/Closed/pinned-compatible/ghost PR row structure, no Owner, tasks/checks/labels order, exact emoji colours, contrasting text, bounded-height truncation, complete tooltips and identical 3px optically lowered muted dots/even gaps across zoom levels with unchanged neighbour/row geometry (render-tree constraints, not native pixel proof)');
+assert.equal(fallback.attrs.border_color[0],'#00000000');
+console.log('PASS Primer dark/light label formula over 18 independent hue/extreme/threshold samples, palette transitions, native alpha and border inset; shared ordinary/coordinator Open/Closed/pinned-compatible/ghost rows, exact emoji names/tooltips, bounded height/truncation, unchanged order/actions/separators across zoom levels (render-tree constraints, not native pixel proof)');
