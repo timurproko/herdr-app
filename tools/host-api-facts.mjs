@@ -9,7 +9,7 @@ export function hostSourceFacts(files) {
     if(!file.endsWith('/host.js')&&file!=='host.js'&&/from\s+["']herdr["']/.test(text))directImports.push(file);
   }
   const commands=[...used].filter(n=>!stateKeys.has(n)).sort();
-  const consumers=Object.fromEntries([...HOST_CONTRACT.api,...commands].map(name=>[name,Object.entries(files).filter(([,text])=>text.includes(name)).map(([file])=>file)]));
+  const consumers=Object.fromEntries([...HOST_CONTRACT.api,...commands].map(name=>[name,Object.entries(files).filter(([file,text])=>file.endsWith('.js')&&!/(?:^|\/)original(?:-[^/]*)?\.js$/.test(file)&&text.includes(name)).map(([file])=>file)]));
   return {commands,directImports,consumers};
 }
 export function checkHostFacts({version,declarations,commands,files}) {

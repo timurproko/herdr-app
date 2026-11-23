@@ -15,6 +15,7 @@ try {
   assert.throws(()=>parseCommands(''),/syntax/);
   assert.deepEqual(Object.keys(sdkSurface('export function run(): Info;\nexport interface Info { x: string }\nexport function unused(): void;', ['run'])),['Info','run']);
   assert.equal(surfaceChanges({x:'a'},{x:'b'})[0].name,'x');
+  assert.deepEqual(hostSourceFacts({'src/feature.js':'run("tab.new")','src/native/original.js':'run("tab.new")'}).consumers.run,['src/feature.js']);
   assert.match(sdkSurface('export function url(): "https://example/a"; // note',['url']).url,/https:\/\/example\/a/);
   assert.equal(sdkSurface('/*\nexport function fake(): void;\n*/',['fake']).fake,null);
   assert.equal(testEnvironment({GH_TOKEN:'secret',DELIVERY_BOT_PRIVATE_KEY:'secret',PATH:'a',CUSTOM_SECRET:'secret'}).GH_TOKEN,undefined);
