@@ -91,8 +91,8 @@ Enter selects. If terminal labels need attention after a committed move,
 reopen that tab's submenu and choose **Repair move metadata**.
 
 This feature is a user-authorized, narrowly scoped Core-document compatibility
-adapter, not a native rebuild. Reviewed for Apps **0.1.15** and **0.1.16** / Core **0.1.19** and
-**0.1.21**; unknown versions/shapes fail closed. Moving between different machines,
+adapter, not a native rebuild. Reviewed for Apps **0.1.15** and **0.1.16** / Core **0.1.19**,
+**0.1.21** and **0.1.22**; unknown versions/shapes fail closed. Moving between different machines,
 floating panes, Start pages and detected space-bound mod props are unsupported.
 Remote identity verification uses the existing Node.js/hc on that machine; it does
 not require installing the App or a companion there. A timeout can mean

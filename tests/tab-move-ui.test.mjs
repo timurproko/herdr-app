@@ -2,8 +2,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {withKitUi} from './support/panel-kit.mjs';
+import {createRequire} from 'node:module';
+import {build} from '../tools/build.mjs';
+const {operate} = createRequire(import.meta.url)(`${build().output}/mods/custom-tabs/move-tab.cjs`);
 const states = {}, calls = [], notices = [], executions = [], tasks = [];
-let world, focus, keepSource = false, replyStatus = 'moved', navigate = false, acknowledge = true;
+let world, focus, keepSource = false, replyStatus = 'moved', navigate = false, acknowledge = true, inspectWorker = null;
 const capability = {ok: true, coreId: 'core-one', fingerprint: 'a'.repeat(64)};
 function reset() {
   world = [
@@ -23,13 +26,13 @@ const lifecycle = {isStartTab: t => t.id === 'start', ensureSpaceStart: id => {
 }};
 const host = {
   spaces: () => world, panes: () => [], machines: () => [{name: null, layout: 'ready'},{name:'remote',layout:'ready'}], focused: () => focus,
-  run: (...args) => calls.push(args), appHome: () => 'C:/fixture', hostVersion: () => '0.1.15',
+  run: (...args) => calls.push(args), appHome: () => 'C:/fixture', hostVersion: () => '0.1.16',
   window: () => ({active: true}), shared: key => states[key], setShared: (key, value) => states[key] = value,
   notify: n => notices.push(n),
   exec: async (_command, args) => {
     const request = JSON.parse(args[1]); executions.push(request);
     assert.equal(args[0], 'C:/fixture/mods/custom-tabs/move-tab.cjs', 'Run a packaged file, never source-checkout code');
-    if (request.action === 'inspect') return {code: 0, stdout: JSON.stringify(capability)};
+    if (request.action === 'inspect') return {code: 0, stdout: JSON.stringify(inspectWorker ? await inspectWorker(request) : capability)};
     if (acknowledge && request.action === 'move' && ['moved', 'partial'].includes(replyStatus)) {
       const s = world.find(s => s.id === request.sourceSpaceId), t = s.tabs.find(t => t.id === request.tabId);
       s.tabs = s.tabs.filter(candidate => candidate !== t); if (!s.tabs.length) world = world.filter(w => w !== s);
@@ -119,7 +122,7 @@ function element(asset) {
 }
 let menuSpaces = [{id: 's1', index: 1, name: 'Source', machine: null, tabs:[{id:'tb1'}]}, {id: 's2', index: 2, name: 'Target', machine: null, tabs:[]}];
 const closed = [], selected = [], colors = [], opened = [], legacyActions = [], p = {tab: 'tab', target, overlay: 'menu'};
-let menuActions = [];
+let menuActions = [], menuInspect = async () => capability, integratedMenu = false;
 const menuContext = vm.createContext({});
 const modules = {
   'gpui-kit': {View: class {}, div: element, svg: element}, 'gpui-base': {v_flex: element, h_flex: element},
@@ -132,7 +135,7 @@ const modules = {
   './customization-updates.js': {customizationUpdateAvailable:()=>false},
   './agent-rename.js': {requestInlineAgentRename:()=>true},
   './tab-rename.js': {requestInlineTabRename:()=>true}, './space-rename.js': {requestInlineSpaceRename:()=>true}, './close-space.js': {closeWithConfirmation(...args){legacyActions.push(args);}},
-  './tab-moves.js': {inspectTabMove:async()=>capability,tabMoveDestinations:()=>menuSpaces.filter(s=>s.id!=='s1'),requestTabMove:(...args)=>{selected.push(args);return true;}},
+  './tab-moves.js': {inspectTabMove:target=>menuInspect(target),tabMoveDestinations:()=>menuSpaces.filter(s=>s.id!=='s1'),requestTabMove:(...args)=>{selected.push(args);return integratedMenu ? api.requestTabMove(...args) : true;}},
   './host.js': {updates:()=>({app:{}}),run(){},props:()=>p,closeOverlay:id=>closed.push(id),openOverlay:spec=>opened.push(spec),theme:()=>({}),keys:()=>[],terminals:()=>[],spaces:()=>menuSpaces,panes:()=>[],exec:async()=>({}),agents:()=>[],shared:()=>({s2:'#abcdef'}),notify(){}},
 };
 withKitUi(modules['./ui.js'],element);
@@ -200,4 +203,40 @@ agentMenu.choose(1,mcx);assert.equal(renamed,1);
 agentMenu.choose(0,mcx);assert.equal(legacyActions.at(-1)[0],'terminal.pin');assert.equal(legacyActions.at(-1)[1].terminal,'pc2/t1');
 agentMenu.choose(2,mcx);assert.equal(legacyActions.at(-1)[0],'terminal.kill');assert.equal(legacyActions.at(-1)[1].terminal,'pc2/t1');
 const ordinary=new menuModule.namespace.default();ordinary.init({},mcx);assert.deepEqual(labels(ordinary),['Pin to the top','Close']);
+// Real menu -> domain bridge -> worker -> profile, with synthetic RPC only.
+reset(); p.tab='tab'; p.target=target; menuSpaces=world; menuInspect=api.inspectTabMove; integratedMenu=true;
+const rawTab = id => ({id,name:'Work',root:{id,type:'row',children:[{id:'pane-'+id,type:'block',content:{mod:'custom-files',props:{path:'/fixture'}}}]}});
+const snapshot = {version:7,value:{spaces:[{id:'s1',name:'Source',folder:'/source',tabs:[rawTab('tb1')]},{id:'s2',name:'Target',folder:'/target',tabs:[rawTab('tb2')]}]}};
+for (const coreVersion of ['0.1.22','0.1.23']) {
+  const rpcCalls=[];
+  const rpc=async method=>{
+    rpcCalls.push(method);
+    if(method==='hello') return {version:coreVersion,generation:1,core:{id:'fixture-core'},methods:['doc.get','doc.set','terminal.get','terminal.list','terminal.label']};
+    if(method==='doc.get') return structuredClone(snapshot);
+    if(method==='terminal.list') return {terminals:[]};
+    assert.fail('Preflight must never mutate: '+method);
+  };
+  inspectWorker=request=>operate(request,rpc,{appVersion:()=> '0.1.16'});
+  const instance=new menuModule.namespace.default();instance.init({},mcx);
+  await preflights.shift()(mcx);instance.choose(2,mcx);
+  const before=calls.length, beforeClosed=closed.length;
+  if(coreVersion==='0.1.22') {
+    assert.equal(instance.moveCapability.ok,true);
+    assert.equal(instance.list()[1][1],'custom.move-tab');
+    instance.choose(1,mcx);
+    assert.equal(calls.length,before+1,'Verified destination hands off one fresh domain request');
+    const handedOff=JSON.parse(calls.at(-1)[0].split('tab-move:')[1]);
+    assert.equal(handedOff.appVersion,'0.1.16');assert.equal(handedOff.destinationSpaceId,'s2');
+    assert.equal(handedOff.coreId,'fixture-core');assert.match(handedOff.fingerprint,/^[a-f0-9]{64}$/);
+  } else {
+    assert.equal(instance.moveCapability.ok,false);
+    assert.equal(instance.list()[1][1],'custom.move-empty');
+    assert.match(instance.list()[1][0],/Detected App: 0\.1\.16; Core: 0\.1\.23/);
+    instance.choose(1,mcx);instance.at=1;instance.render(mcx).events.on_key_down({key:'enter'},mcx);
+    assert.equal(calls.length,before);assert.equal(closed.length,beforeClosed,'Unsupported row is inert');
+    assert.deepEqual(rpcCalls,['hello'],'Unknown Core fails before reading or writing documents');
+  }
+  assert.ok(!rpcCalls.includes('doc.set')&&!rpcCalls.includes('terminal.label'));
+}
+inspectWorker=null;
 console.log('PASS: stable first-frame worktree and plugin-owned agent menu actions, preserved Pin/Close; same-machine moves, keyboard navigation, expiry, unknown outcomes and repair (no live Core)');

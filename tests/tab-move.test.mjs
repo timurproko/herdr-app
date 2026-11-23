@@ -44,7 +44,7 @@ function fixture(appVersion = '0.1.15') {
 let assertions = 0;
 // Exact reviewed pairs, not a semver range. Inspection is read-only; moves retain
 // the newly reviewed 0.1.16 typography fields without rebuilding the tab payload.
-for (const app of ['0.1.15', '0.1.16']) for (const core of ['0.1.19', '0.1.21']) {
+for (const app of ['0.1.15', '0.1.16']) for (const core of ['0.1.19', '0.1.21', '0.1.22']) {
   const f = fixture(app); f.state.hello.version = core;
   Object.assign(f.state.doc.spaces[0].tabs[0].root, {
     font_weight: 400, terminal_line_height: 1.1, terminal_cell_width: 0.95, terminal_scroll_speed: 2,
@@ -120,8 +120,50 @@ for (const patch of [{machine: 'remote'}, {expiresAt: 1}, {appVersion: '0.1.16'}
   assert.equal((await f.run()).status, 'failed'); assert.equal(f.state.calls.some(([m]) => m === 'doc.set'), false); assertions += 2;
 }
 {
-  const f = fixture(); f.state.hello.version = '0.1.22';
-  assert.equal((await f.run()).status, 'failed'); assert.equal(f.state.calls.some(([m]) => m === 'doc.set'), false); assertions += 2;
+  const f = fixture('0.1.16'); f.state.hello.version = '0.1.23';
+  const result = await f.run();
+  assert.equal(result.status, 'failed');
+  assert.match(result.message, /Detected App: 0\.1\.16; Core: 0\.1\.23; generation: 1/);
+  assert.match(result.message, /Reviewed Apps: 0\.1\.15, 0\.1\.16; Cores: 0\.1\.19, 0\.1\.21, 0\.1\.22; generation: 1/);
+  assert.equal(f.state.calls.some(([m]) => m !== 'hello'), false); assertions += 4;
+}
+for (const patch of [
+  {generation: 2}, {core: {}},
+  ...['doc.get', 'doc.set', 'terminal.get', 'terminal.list', 'terminal.label'].map(missing => ({methods: ['doc.get', 'doc.set', 'terminal.get', 'terminal.list', 'terminal.label'].filter(m => m !== missing)})),
+]) {
+  const f = fixture('0.1.16'); Object.assign(f.state.hello, {version: '0.1.22'}, patch);
+  const result = await f.run({...f.request, action: 'inspect'});
+  assert.equal(result.ok, false);
+  assert.equal(f.state.calls.some(([m]) => m !== 'hello'), false, 'Refused profiles cannot even read a document');
+  if (patch.generation) assert.match(result.message, /generation: 2.*generation: 1/);
+  if (patch.methods) assert.match(result.message, /Core is missing/);
+  if (patch.core) assert.match(result.message, /Core identity is unavailable/);
+  assertions += 3;
+}
+{
+  const f = fixture('0.1.16'); f.state.hello.version = '0.1.22';
+  const before = clone(f.state.doc);
+  f.state.onSet = () => { throw Object.assign(Error('cannot save document: disk full'), {kind: 'internal', code: -32603}); };
+  const result = await f.run();
+  assert.equal(result.status, 'unknown', 'Non-conflict save errors retain conservative readback/unknown semantics');
+  assert.deepEqual(f.state.doc, before, 'Core rolls back the document on failed persistence');
+  assert.equal(f.state.calls.filter(([m]) => m === 'doc.set').length, 1, 'An internal error is never a CAS retry');
+  assert.equal(f.state.calls.some(([m]) => m === 'terminal.label'), false); assertions += 4;
+}
+for (const applied of [false, true]) {
+  const f = fixture('0.1.16'); f.state.hello.version = '0.1.22';
+  f.state.onLabel = args => {
+    if (applied) Object.assign(f.state.records.get(args.terminal).labels, args.labels);
+    throw Object.assign(Error('cannot save terminals; the operation may already have completed'), {kind: 'unavailable'});
+  };
+  const result = await f.run();
+  assert.equal(result.status, 'partial', 'Unavailable labels are partial success even if already applied in memory');
+  assert.equal(f.state.doc.spaces.find(s => s.id === 's2').tabs.some(t => t.id === 'tb1'), true);
+  assert.equal(f.state.calls.filter(([m]) => m === 'doc.set').length, 1, 'Never roll back a committed move');
+  f.state.onLabel = null;
+  assert.equal((await f.run({...f.request, action: 'repair', sourceSpaceId: 's2'})).status, 'repaired');
+  assert.equal(f.state.calls.filter(([m]) => m === 'doc.set').length, 1);
+  assert.equal(f.state.records.get('t1').labels.unrelated, 'keep'); assertions += 6;
 }
 {
   const f = fixture(); let count = 0;
@@ -171,14 +213,18 @@ for (const patch of [{machine: 'remote'}, {expiresAt: 1}, {appVersion: '0.1.16'}
   assert.equal(f.state.calls.some(([m]) => m === 'doc.set'), false, 'A handshake crossing the deadline cannot authorize a stale write'); assertions += 2;
 }
 // Remote routing is a separate adapter layer; the planner still sees raw local IDs.
-for (const appVersion of ['0.1.15', '0.1.16']) {
+for (const appVersion of ['0.1.15', '0.1.16']) for (const localVersion of ['0.1.21', '0.1.22']) {
+  let routingVersion = localVersion;
   const f = fixture(appVersion); f.state.hello.version = '0.1.19';
+  f.state.doc.spaces[0].tabs[0].root.children.push({id:'mod-pane',type:'block',content:{mod:'custom-files',props:{path:'pc2/t1',opaque:{'pc2/s1':'pc2/tb1'}}}});
+  const originalTab = clone(f.state.doc.spaces[0].tabs[0]);
+  f.request.fingerprint = contract.fingerprint(originalTab);
   const binding = {name:'pc2',id:'core-one',version:'0.1.19',session:'work',state:'connected',temporary:false};
   const wire = []; let changeSession = false;
   const qualify = t => ({...t,address:'pc2/'+t.address,...(t.parent ? {parent:'pc2/'+t.parent} : {})});
   const base = async (method,args) => {
     wire.push([method,clone(args)]);
-    if (method === 'hello') return {...clone(f.state.hello),version:'0.1.21',core:{id:'local-core'},methods:[...f.state.hello.methods,'machine.list','machine.exec']};
+    if (method === 'hello') return {...clone(f.state.hello),version:routingVersion,core:{id:'local-core'},methods:[...f.state.hello.methods,'machine.list','machine.exec']};
     if (method === 'machine.list') return {machines:[{...binding,session:changeSession?'replaced':binding.session}]};
     if (method === 'machine.exec') {
       assert.equal(args.on,'pc2');assert.deepEqual(args.argv.slice(0,2),['node','-e']);
@@ -194,8 +240,17 @@ for (const appVersion of ['0.1.15', '0.1.16']) {
   };
   const ui = {...f.request,machine:'pc2',tabId:'pc2/tb1',sourceSpaceId:'pc2/s1',destinationSpaceId:'pc2/s2'};
   const scoped = contract.scopeRequest(ui), rpc = contract.machineRpc(base,'pc2');
+  for (const versions of [{local:'0.1.23',remote:'0.1.19'}, {local:localVersion,remote:'0.1.23'}]) {
+    routingVersion = versions.local; binding.version = f.state.hello.version = versions.remote;
+    const rejected = await operate({...scoped,action:'inspect'},contract.machineRpc(base,'pc2'),{now,appVersion:()=>appVersion});
+    assert.equal(rejected.ok,false);
+    assert.match(rejected.message,/Core: 0\.1\.23/);
+    assert.equal(wire.some(([m])=>m.startsWith('doc.')||m==='terminal.label'),false,'Unknown routing or target versions fail before forwarding layout calls'); assertions+=3;
+  }
+  routingVersion = localVersion; binding.version = f.state.hello.version = '0.1.19';
   assert.equal(scoped.machine,null);assert.equal(scoped.tabId,'tb1');assert.equal(ui.tabId,'pc2/tb1');
   assert.equal((await operate(scoped,rpc,{now,appVersion:()=> appVersion})).status,'moved');
+  assert.deepEqual(f.state.doc.spaces.find(s=>s.id==='s2').tabs.find(t=>t.id==='tb1'),originalTab,'Qualified-looking mod props remain opaque and unchanged'); assertions++;
   assert.equal(f.state.records.get('t1').labels['herdr.space'],'s2','Remote adoption labels stay unqualified');
   assert.equal(f.state.records.get('t4').labels['herdr.space'],'s3','Unrelated remote panes stay untouched');
   assert.throws(()=>contract.scopeRequest({...ui,destinationSpaceId:'other/s2'}),/same machine/);

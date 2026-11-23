@@ -108,6 +108,16 @@ interaction check; fixture coverage is not a claim of live move continuity.
 Release source base: `https://raw.githubusercontent.com/herdrdev/herdr-app/v0.1.16/`.
 See also [the public compatibility review](HERDR-0.1.16-REVIEW.md).
 
+## Core 0.1.22 review
+
+Explicitly permit Core **0.1.22** in addition to **0.1.19/0.1.21**, with all
+existing exact App-version, protocol, identity, method, shape and CAS gates intact.
+The [pinned Core review](TAB-MOVE-CORE-0.1.22-REVIEW.md) records routing,
+persistence, document-event and label-error compatibility and its regression
+coverage. In particular, a label persistence error can follow an in-memory update:
+it remains metadata partial success, never a reason to roll back the layout.
+This approval is not live multi-client/session continuity evidence.
+
 ## Boundaries and proposed files
 
 Paths below are relative to the standalone repository root. `src/shared/tab-moves.js` uses the existing

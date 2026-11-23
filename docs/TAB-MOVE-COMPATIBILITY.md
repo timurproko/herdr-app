@@ -67,6 +67,13 @@ unknown releases. The full repository comparison is intentionally conservative:
 documentation-only changes can appear, rather than guessing which changed code
 could affect layout safety.
 
+## Core 0.1.22 review
+
+The exact Core 0.1.22 approval, regression cause, immutable source hashes and
+routing/persistence/label-error findings are recorded in
+[the Core review](TAB-MOVE-CORE-0.1.22-REVIEW.md). This is separate from the
+App-source audit above; that CLI does not automatically approve new Core versions.
+
 ## Reviewing an update
 
 Use the report's pinned compare link, review affected layout/reconciliation and
