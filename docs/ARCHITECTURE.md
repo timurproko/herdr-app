@@ -497,10 +497,16 @@ missing. Settings publishes public membership facts via `notice-state.js` in the
 runtime-only `custom.git.webhook-state` key; no credentials or secret hashes are
 shared/exported. Configured non-Git contexts and enrolled repos have no prompt.
 
-The shown panel's `mod/webhooks.js` owns one native WSS subscription, closes it on
-hidden/disabled/context changes, and uses transport-only reconnect backoff.
-GitHub events and successful reconnection invalidate every loaded page rather than
-just the pinned PR. Snapshot refreshes are single-flight with one coalesced dirty
+Git's `relay-stream.js` owns one native WSS subscription from the existing
+non-footer chrome `sidebar.sync` lifecycle. It closes on plugin disable or relay
+configuration change, not on panel visibility or folder changes, and retains
+transport-only reconnect backoff. `relay-socket.js` owns authentication, message
+bounds and delivery deduplication across reconnects. Public bounded repository/push
+counters and ready generations are published in runtime-only
+`custom.git.webhook-events`; no credentials or webhook bodies are shared.
+The panel's `mod/webhooks.js` only consumes these invalidations; hiding it stops
+panel reads without closing transport. GitHub events and successful reconnection
+invalidate every loaded page rather than just the pinned PR. Snapshot refreshes are single-flight with one coalesced dirty
 flag, retain expanded depth, renew cursors, and guard repository/machine/request
 identity before reads and writes. No periodic CI/list polling remains. The local
 branch/footer and agent-link discovery lifecycle is separate.

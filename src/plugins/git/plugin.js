@@ -1,5 +1,6 @@
 // The stable changes stack/mod IDs preserve existing layouts and tab pins.
 import {exec} from '../api.js';
+import {syncRelay} from './relay-stream.js';
 import {DEFAULT_CI_MESSAGE,effectiveCIMessage,validCIMessage,CI_MESSAGE_RULES,CI_MESSAGE_LIMIT,
   DEFAULT_CONFLICT_MESSAGE,effectiveConflictMessage,validConflictMessage,CONFLICT_MESSAGE_RULES,
   DEFAULT_MERGED_MESSAGE,effectiveMergedMessage,validMergedMessage,MERGED_MESSAGE_RULES} from './ci-message.js';
@@ -10,7 +11,7 @@ export default {
   id:'git',name:'Git',category:'Sidebar',version:'2.2.0',icon:'mods/custom-changes/git-pull-request.svg',
   description:'View repository pull requests, agent links, checklists, and CI status.',defaultEnabled:true,
   advancedSettings:true,
-  lifecycle:{'sidebar.sync':ensureMonitors},
+  lifecycle:{'sidebar.sync'(context){syncRelay(context);ensureMonitors(context);}},
   onEnabledChange(_next,cx){return syncMonitors(cx);},
   onSettingChange(key,cx){if(['autoFixCI','ciFixStates','ciFixMessage','ciFixEnabled','conflictFixMessage','conflictFixEnabled','mergedMessage','mergedEnabled','ciMonitorRepositories'].includes(key))return syncMonitors(cx);},
   settings:[

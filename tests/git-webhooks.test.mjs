@@ -65,13 +65,13 @@ await hub.webSocketMessage(socket,JSON.stringify({type:'authenticate',token}));a
       const s={url,writes:[],write:async text=>s.writes.push(text),read:()=>new Promise((resolve,reject)=>{s.resolve=resolve;s.reject=reject;}),close:async()=>{s.closed=true;s.reject?.(Error('closed'));}};
       sockets.push(s);return s;
     }}},
-    './host.js':{appHome:()=>'/fixture',checking:()=>checking,readTextFile:async()=>{reads++;return keyText;}},
-    './plugins.js':{pluginById:()=>({id:'git'}),pluginSetting:()=>relay},'./plugins/git/relay-config.js':config,
+    '../api.js':{appHome:()=>'/fixture',checking:()=>checking,readTextFile:async()=>{reads++;return keyText;}},
+    './relay-config.js':config,
   };
-  const context=vm.createContext({});const main=new vm.SourceTextModule(await fs.readFile(new URL('../src/plugins/git/mod/webhooks.js',import.meta.url),'utf8'),{context});
+  const context=vm.createContext({});const main=new vm.SourceTextModule(await fs.readFile(new URL('../src/plugins/git/relay-socket.js',import.meta.url),'utf8'),{context});
   await main.link(name=>new vm.SyntheticModule(Object.keys(modules[name]),function(){for(const[k,v]of Object.entries(modules[name]))this.setExport(k,v);},{context}));await main.evaluate();
   const client=new main.namespace.GitWebhooks();
-  const sync=(enabled=true,scope='repo')=>client.sync(cx,{enabled,scope,onChange:e=>changes.push(e)});
+  const sync=(enabled=true,scope='repo')=>client.sync(cx,{enabled,scope,relay,onChange:e=>changes.push(e)});
   sync();await tick();assert.equal(sockets.length,1);assert.equal(sockets[0].url,'wss://relay.test/events');
   assert.equal(JSON.parse(sockets[0].writes[0]).token,token);assert.ok(!sockets[0].url.includes(token));
   sockets[0].resolve(JSON.stringify({type:'ready',protocol:1}));await tick();assert.deepEqual(changes,[null],'Connect performs catch-up');

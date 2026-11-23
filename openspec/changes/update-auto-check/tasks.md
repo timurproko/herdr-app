@@ -2,10 +2,10 @@
 
 ## 1. Git and Custom consumers share one chrome-owned relay stream independent of panel visibility
 
-- [ ] 1.1 Move the existing native socket controller into Git's integration lifecycle alongside monitor coordination, preserving authentication, timeout/backoff, configuration guards and disable/checking behavior; fake-socket fixtures assert only non-footer chrome owns a connection.
-- [ ] 1.2 Publish versioned, bounded public repository/push and ready counters with generation invalidation and cross-reconnect delivery dedup; fixtures cover coalesced redraws, stale state, 128-entry bounds and absence of credentials/body fields.
-- [ ] 1.3 Replace the panel's socket ownership with the public signal consumer and a bounded retry request to the owner, retaining queue/flush filtering and hidden-read gates; fixtures cover hidden/non-repository context, opening catch-up, pagination, repository switching and reconnects without a second connection.
-- [ ] 1.4 Update the architecture/webhook runtime ownership guidance and any required packaging mappings with this outcome; a fresh customization build and architecture/webhook fixtures demonstrate dependency closure and no feature-to-plugin-file imports.
+- [x] 1.1 Move the existing native socket controller into Git's integration lifecycle alongside monitor coordination, preserving authentication, timeout/backoff, configuration guards and disable/checking behavior; fake-socket fixtures assert only non-footer chrome owns a connection.
+- [x] 1.2 Publish versioned, bounded public repository/push and ready counters with generation invalidation and cross-reconnect delivery dedup; fixtures cover coalesced redraws, stale state, 128-entry bounds and absence of credentials/body fields.
+- [x] 1.3 Replace the panel's socket ownership with the public signal consumer and a bounded retry request to the owner, retaining queue/flush filtering and hidden-read gates; fixtures cover hidden/non-repository context, opening catch-up, pagination, repository switching and reconnects without a second connection.
+- [x] 1.4 Update the architecture/webhook runtime ownership guidance and any required packaging mappings with this outcome; a fresh customization build and architecture/webhook fixtures demonstrate dependency closure and no feature-to-plugin-file imports.
 
 ## 2. Debounced fixed-repository hints publish update availability while manual actions and fallbacks remain unchanged
 

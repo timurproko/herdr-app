@@ -23,6 +23,9 @@ export async function loadMod({ host, modules = {}, entry, mod = 'custom-setting
   const stub = name => () => { throw Error(`host.${name} is not faked in this test`); };
   const HOST = ['exec', 'hc', 'window', 'spaces', 'panes', 'terminals', 'machines', 'shared', 'setShared', 'appHome', 'readTextFile', 'notify', 'layout', 'run', 'checking'];
   const cache = new Map([['host.js', synthetic({ ...Object.fromEntries(HOST.map(n => [n, stub(n)])), checking:()=>true, ...host })]]);
+  // Native package imports are linked during declaration loading, even when eager
+  // checking prevents runtime work. Tests must explicitly supply transport to use it.
+  cache.set('websocket', synthetic({ WebSocket: { connect() { throw Error('WebSocket transport is not faked in this test'); } } }));
   for (const [name, value] of Object.entries(modules)) {
     if (typeof value === 'string') sources.set(name, fs.readFileSync(path.join(root, value), 'utf8'));
     else cache.set(name, synthetic(value));
@@ -35,7 +38,8 @@ export async function loadMod({ host, modules = {}, entry, mod = 'custom-setting
     return cache.get(rel);
   };
   const main = new vm.SourceTextModule(entry, { context, identifier: '__entry__.js' });
-  await main.link((specifier, from) => load(path.posix.normalize(path.posix.join(path.posix.dirname(from.identifier), specifier))));
+  await main.link((specifier, from) => load(specifier.startsWith('.')
+    ? path.posix.normalize(path.posix.join(path.posix.dirname(from.identifier), specifier)) : specifier));
   await main.evaluate();
   return main.namespace;
 }

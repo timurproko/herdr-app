@@ -114,10 +114,13 @@ Configure safely verifies/finishes the same dedicated relay.
 
 ## Runtime behavior
 
-The enabled, shown Git panel maintains one authenticated native WebSocket. Hidden,
-disabled and changed-repository contexts close it. Reconnection has bounded
-transport-only backoff; there is **no periodic CI polling fallback**. Opening or
-reconnecting catches up using authoritative GitHub reads.
+Enabled Git uses one authenticated native WebSocket owned by the mounted
+non-footer Custom chrome, shared through public runtime invalidation counters.
+Hiding Git or changing folders does not close that stream; disabled Git and relay
+configuration changes do. Hidden panels still do no PR, CI or agent-link reads.
+Reconnection has bounded transport-only backoff; there is **no periodic CI polling
+fallback**. Opening the panel or reconnecting catches up using authoritative
+GitHub reads. Settings/footer/menu copies never open extra sockets.
 
 `check_run`, `check_suite`, `status`, `workflow_run`, `pull_request` and `push` events
 invalidate every loaded Open/Closed page and an explicitly linked beyond-page PR.
