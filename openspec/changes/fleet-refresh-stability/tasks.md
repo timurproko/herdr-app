@@ -20,10 +20,10 @@ The first four groups carry forward the implemented outcomes and their tests/doc
 
 ## 5. Verified fleet presentation remains stable through refresh uncertainty with bounded failure retention
 
-- [ ] 5.1 Replace destructive pending/error cache eligibility with separate successful verification, last-attempt/retry and pending bookkeeping; deterministic provider tests retain the last verified snapshot on failure without resetting verification age or creating render-triggered retry loops.
-- [ ] 5.2 Resolve unrelated topology changes without detaching a valid pair and expose bounded presentation independently from strict live action context; projection/tag and stale-gesture tests prove that retained visuals authorize no standalone pair move, stale Git follow-up or worker focus.
-- [ ] 5.3 Add deferred-read/fake-clock regressions through real Crew/Git entrypoints and Spaces projection covering manual/periodic/relay/focus refreshes, old expiry crossing, errors/timeouts/malformed responses, the 60-second limit, confirmed removal/change, no history, disablement and obsolete generations; every same-binding refresh frame stays attached.
-- [ ] 5.4 Document transactional refresh, the hard last-successful-verification deadline and action authority in README/docs/TESTING.md/docs/ARCHITECTURE.md; focused tests and spec validation agree with the documented contract.
+- [x] 5.1 Replace destructive pending/error cache eligibility with separate successful verification, last-attempt/retry and pending bookkeeping; deterministic provider tests retain the last verified snapshot on failure without resetting verification age or creating render-triggered retry loops.
+- [x] 5.2 Resolve unrelated topology changes without detaching a valid pair and expose bounded presentation independently from strict live action context; projection/tag and stale-gesture tests prove that retained visuals authorize no standalone pair move, stale Git follow-up or worker focus.
+- [x] 5.3 Add deferred-read/fake-clock regressions through real Crew/Git entrypoints and Spaces projection covering manual/periodic/relay/focus refreshes, old expiry crossing, errors/timeouts/malformed responses, the 60-second limit, confirmed removal/change, no history, disablement and obsolete generations; every same-binding refresh frame stays attached.
+- [x] 5.4 Document transactional refresh, the hard last-successful-verification deadline and action authority in README/docs/TESTING.md/docs/ARCHITECTURE.md; focused tests and spec validation agree with the documented contract.
 
 ## 6. Same-home finished-task PRs remain visible without worker navigation, with live-task precedence and bounded Closed history
 

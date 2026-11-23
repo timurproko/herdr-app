@@ -164,6 +164,18 @@ Spaces lifecycle, a 10-second TTL and expiring sanitized runtime facts under
 Only the default-off Spaces boolean is portable. Raw reports, task files and
 pending ordering operations are not exported or replayed.
 
+Successful status publication atomically records verified display facts separately
+from pending tokens and retry timestamps. Broad topology signatures schedule reads,
+not detachment: exact live joins govern action contributions. Spaces requests
+`pluginWorkspaceLinks({presentation:true})`, and Crew tags use that same verified
+display for up to 60 seconds from successful verification, including failed or
+pending refreshes. Errors never replace it with `status:null` or renew its age;
+attempt timestamps preserve retry backoff without a render-triggered request loop.
+Successful negative results and explicit disablement remove it; absent native
+spaces cannot become ghost rows. Ordinary link queries and Git action context
+retain 30-second freshness and exact live membership. Drops on/from a retained
+unverified block refuse to move, never fall back to a single-space reorder.
+
 `plugins/git/mod/aggregate.js` consumes the registry's explicit task context only
 for the selected coordinator. It reads exact recorded PR URLs on that machine with
 three bounded concurrent requests, keys rows by repository plus PR number, and

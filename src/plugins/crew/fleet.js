@@ -1,11 +1,21 @@
 // Crew owns identity and recorded PR sourcing. Consumers use registry contributions only.
 import { shared, setShared, spaces, panes, terminals, machines, checking } from '../api.js';
 export const FLEET_KEY = 'custom.fleet.links';
-const READS = 'custom.fleet.reads', TTL = 10000, EXPIRY = 30000;
+const READS = 'custom.fleet.reads', TTL = 10000, EXPIRY = 30000, DISPLAY_EXPIRY = 60000;
 const enabled = () => shared('custom.spaces.preferences')?.connectFleetToCoordinator === true && shared('custom.plugins')?.crew?.enabled === true;
 const machineOf = address => address?.includes('/') ? address.split('/')[0] : null;
 const qualify = (address, machine) => typeof address !== 'string' || !address || (address.includes('/') && machineOf(address) !== machine) ? null : machine && !address.includes('/') ? `${machine}/${address}` : address;
 const model = () => ({groups:spaces(), all:panes(), list:terminals()});
+// A valid status reply can race a partially published native snapshot. Missing
+// live membership is uncertainty, unlike a finished terminal or conflicting join.
+const incompleteMembership = (status, machine, snapshot) => status.owner.live &&
+  [status.owner.terminal,...status.tasks.filter(t=>['working','reported'].includes(t.state)).map(t=>t.terminal)].some(address=>{
+    const id=qualify(address,machine);if(!id)return false;
+    const terminal=snapshot.list.find(t=>t.address===id);if(!terminal)return true;
+    if(terminal.state!=='live')return false;
+    const members=snapshot.all.filter(p=>p.terminal===id && !p.mod);
+    return !members.length || members.length===1 && !snapshot.groups.some(s=>(s.machine??null)===machine && s.tabs?.some(t=>t.id===members[0].tab));
+  });
 export function recordedSource(stdout) {
   if(typeof stdout !== 'string' || stdout.length > 1048576) throw Error('Crew status is too large');
   const value = JSON.parse(stdout);
@@ -42,14 +52,26 @@ export function bindFleet(status, machine, {groups, all, list}) {
   return {parent:owner.space,child,machine,binding,home:status.home,owner:owner.terminal.address,tasks:workers,incomplete:workers.some(t=>t.state==='working')};
 }
 const signature = (machine,m=model()) => JSON.stringify([m.groups.filter(s=>(s.machine??null)===machine).map(s=>[s.id,s.tabs?.map(t=>t.id)]).sort((a,b)=>a[0].localeCompare(b[0])),m.all.filter(p=>machineOf(p.terminal)===machine).map(p=>[p.pane,p.tab,p.terminal]).sort((a,b)=>String(a[0]).localeCompare(String(b[0]))),m.list.filter(t=>machineOf(t.address)===machine && (t.labels?.['crew.task'] || t.labels?.['custom.crew.home'])).map(t=>[t.address,t.state,t.labels?.['crew.task'],t.labels?.['crew.home'],t.labels?.['herdr.space'],t.labels?.['custom.crew.home']]).sort((a,b)=>a[0].localeCompare(b[0]))]);
-export function fleetContexts() {
+export function fleetContexts({presentation = false} = {}) {
   if(!enabled()) return [];
-  const state=shared(FLEET_KEY), now=Date.now();
+  const state=shared(FLEET_KEY), now=Date.now(), snapshot=model(), hosts=machines();
   if(state?.version!==1) return [];
   return Object.values(state.entries??{}).flatMap(entry=> {
-    const layout=machines().find(m=>(m.name??null)===entry.machine)?.layout;
-    if((layout && layout!=='ready') || (entry.machine && !layout) || now-entry.at>EXPIRY || signature(entry.machine)!==entry.signature) return [];
-    const bound=bindFleet(entry.status,entry.machine,model());return bound?[bound]:[];
+    const age=now-entry.at;
+    if(!Number.isFinite(age) || age<0 || age>=(presentation?DISPLAY_EXPIRY:EXPIRY)) return [];
+    if(presentation) {
+      // Display is a completed verified fact, not a re-join of a partial frame.
+      // Missing native spaces cannot become ghost rows; loading terminals alone
+      // do not erase the previously verified badge/tag projection.
+      const display=entry.display;
+      return display && [display.parent,display.child].every(id=>snapshot.groups.some(s=>s.id===id && (s.machine??null)===entry.machine)) ? [display] : [];
+    }
+    const layout=hosts.find(m=>(m.name??null)===entry.machine)?.layout;
+    if((layout && layout!=='ready') || (entry.machine && !layout)) return [];
+    const bound=bindFleet(entry.status,entry.machine,snapshot);
+    // Broad topology changes only schedule discovery. They are not proof that
+    // this exact live pair changed, nor permission to adopt a different pair.
+    return bound && bound.binding===entry.binding ? [bound] : [];
   });
 }
 // Injected source is a seam: future discover-prs can be implemented here, not in consumers.
@@ -60,19 +82,29 @@ export function refreshFleets(cx, readStatus, force = false) {
     if(machine && !machines().some(m=>m.name===machine && m.layout==='ready')) continue;
     const key=machine??'local', state=shared(FLEET_KEY), entry=state?.entries?.[key], sig=signature(machine), now=Date.now();
     const pending=shared(READS)?.[key];
-    if(pending?.until>now || !force && entry?.signature===sig && now-entry.at<TTL) continue;
+    if(pending?.until>now || !force && entry?.signature===sig && now-(entry.attemptAt??entry.at)<TTL) continue;
     const token=`${now}-${Math.random()}`, generation=shared('custom.fleet.generation');
     setShared(READS,{...shared(READS),[key]:{token,until:now+20000}});
     cx.spawn(async view=> {
-      const current=()=>enabled() && shared('custom.fleet.generation')===generation && shared(READS)?.[key]?.token===token && shared(READS)[key].until>Date.now() && signature(machine)===sig;
+      const current=()=>enabled() && shared('custom.fleet.generation')===generation && shared(READS)?.[key]?.token===token && shared(READS)[key].until>Date.now();
       try {
         await Promise.resolve();if(!current()) return;
         const status=recordedSource(await readStatus(machine));
         if(!current()) return;
-        const latest=shared(FLEET_KEY);
-        setShared(FLEET_KEY,{version:1,entries:{...(latest?.version===1?latest.entries:{}),[key]:{machine,at:Date.now(),signature:sig,status}}});
+        const latest=shared(FLEET_KEY), snapshot=model();
+        if(incompleteMembership(status,machine,snapshot)) throw Error('Live membership is not yet available');
+        const bound=bindFleet(status,machine,snapshot), at=Date.now();
+        const display=bound?.child ? {parent:bound.parent,child:bound.child,machine,binding:bound.binding} : null;
+        setShared(FLEET_KEY,{version:1,entries:{...(latest?.version===1?latest.entries:{}),[key]:{
+          machine,at,attemptAt:at,signature:signature(machine,snapshot),status,binding:bound?.binding??null,display}}});
       } catch {
-        if(current()) {const latest=shared(FLEET_KEY);setShared(FLEET_KEY,{version:1,entries:{...latest?.entries,[key]:{machine,at:Date.now(),signature:sig,status:null}}});}
+        if(current()) {
+          const latest=shared(FLEET_KEY);
+          // Failed transport is not a negative relationship result. Back off
+          // using attempt age without renewing successful verification age.
+          setShared(FLEET_KEY,{version:1,entries:{...latest?.entries,[key]:{
+            ...latest?.entries?.[key],machine,attemptAt:Date.now(),signature:signature(machine)}}});
+        }
       } finally {
         if(shared(READS)?.[key]?.token===token) {const reads={...shared(READS)};delete reads[key];setShared(READS,reads);}
         view.notify();

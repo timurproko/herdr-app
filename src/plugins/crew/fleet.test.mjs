@@ -30,7 +30,7 @@ const savedState=JSON.stringify(state),savedCalls=calls;
 for(let i=0;i<3;i++){tags(groups[0]);tags(groups[1]);}
 assert.equal(JSON.stringify(state),savedState);assert.equal(calls,savedCalls,'Reading tags starts no discovery');
 all[1].terminal='replacement';assert.equal(f.fleetContexts().length,0);assert.deepEqual(tags(groups[0]),[['Crew','Crew coordinator']]);all[1].terminal='t2';
-state[f.FLEET_KEY].entries.local.at-=31000;assert.equal(f.fleetContexts().length,0);assert.deepEqual(tags(groups[1]),[['Crew','Crew worker']],'Expired binding restores the worker tag');
+state[f.FLEET_KEY].entries.local.at-=61000;assert.equal(f.fleetContexts().length,0);assert.deepEqual(tags(groups[1]),[['Crew','Crew worker']],'Expired binding restores the worker tag');
 state['custom.spaces.preferences'].connectFleetToCoordinator=false;f.refreshFleets(cx,read);assert.equal(calls,1);assert.equal(r.pluginWorkspaceLinks().length,0);
 assert.deepEqual(tags(groups[0]),[['Crew','Crew coordinator']]);assert.deepEqual(tags(groups[1]),[['Crew','Crew worker']]);
 state['custom.spaces.preferences'].connectFleetToCoordinator=true;f.invalidateFleet();

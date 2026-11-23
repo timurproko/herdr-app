@@ -26,6 +26,7 @@ export const SPACE_OPTIONS = Object.freeze([
   { key: "spaces.show.worktree", label: "Worktree icon", icon: "branch" },
 ]);
 export const shows = key => shared(key) !== false;
+const displayLinks = () => pluginWorkspaceLinks({presentation:true});
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -305,7 +306,7 @@ export default class Spaces extends View {
     return projectLinkedRows(sp.map((w, i) => {
       const g = this.git[where(w, ps)] ?? null;
       return { w, i, g, tree: g?.linked ? true : null };
-    }).filter(r => this.shown.has(r.w.id)), pluginWorkspaceLinks());
+    }).filter(r => this.shown.has(r.w.id)), displayLinks());
   }
 
   // The rows, under a header per machine once one isn't this computer.
@@ -412,6 +413,11 @@ export default class Spaces extends View {
     if (!source) return;
     if (this.blockCommit?.pending) return;
     const links = pluginWorkspaceLinks();
+    // A retained visual pair must never fall through to a one-space move while
+    // live verification is unavailable. Click selection still works normally.
+    if (result.kind === 'drop' && displayLinks().some(link =>
+      [link.parent,link.child].some(id=>id===result.id || id===result.target) &&
+      !links.some(l=>l.parent===link.parent && l.child===link.child && l.binding===link.binding))) return;
     if (result.kind === 'drop' && (result.meta?.sources?.length > 1 || links.length)) {
       const captured = result.meta;
       const wanted = planBlockDrop(all, links, result.id, result.target, captured);
@@ -473,7 +479,7 @@ export default class Spaces extends View {
         if (this.rename?.id === w.id) { cx.stop_propagation();return; }
         if (e?.click_count === 2) { cx.stop_propagation();beginSpaceRename(this, w.id, cx);return; }
         drag.begin(w.id, e, cx, {scale: settings()?.zoom, scrollOffset: this.sidebarScroll?.offset ?? 0,
-          meta: captureSpaceBlock(spaces(), pluginWorkspaceLinks(), w.id)});
+          meta: captureSpaceBlock(spaces(), displayLinks(), w.id)});
       })
       .on_mouse_move((e, cx) => {
         if (this.rename) return;
@@ -488,7 +494,7 @@ export default class Spaces extends View {
           const mine = all.filter(s => (s.machine ?? null) === machine);
           over = (i > from ? mine.at(-1) : mine[0])?.id ?? null;
         }
-        drag.over(e, blockTarget(all, pluginWorkspaceLinks(), drag.current?.id, over), cx);
+        drag.over(e, blockTarget(all, displayLinks(), drag.current?.id, over), cx);
       })
       .on_mouse_up("left", (_e, cx) => {
         if (this.rename) { this.cancelDrag();cx.stop_propagation();return; }
@@ -563,7 +569,7 @@ export default class Spaces extends View {
     const sp = spaces();
     reconcileSpaceColors(sp);
     if (this.drag.current && !sp.some(s => s.id === this.drag.current.id)) this.drag.reset();
-    if (this.drag.view?.meta && JSON.stringify(this.drag.view.meta) !== JSON.stringify(captureSpaceBlock(sp,pluginWorkspaceLinks(),this.drag.view.id))) this.drag.reset();
+    if (this.drag.view?.meta && JSON.stringify(this.drag.view.meta) !== JSON.stringify(captureSpaceBlock(sp,displayLinks(),this.drag.view.id))) this.drag.reset();
     const preview = this.dragPreview(t);
     return this.drag.surface(v_flex().id("spaces-panel").relative().size_full().min_h(0).bg(t.chrome).text_size(U.font),
       {release: (id, cx) => this.drop(id, cx), enabled: () => !this.rename, scrollOffset: () => this.sidebarScroll?.offset ?? 0})

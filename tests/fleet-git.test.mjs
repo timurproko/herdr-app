@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import {loadMod} from '../tools/plugin-harness.mjs';
+import {projectLinkedRows} from '../src/shared/workspace-links.js';
 const element=()=>{const o={kids:[],attrs:{}};let p;p=new Proxy(o,{get(t,k){if(k in t)return t[k];if(k==='then')return undefined;if(k==='when')return(yes,fn)=>yes?fn(p):p;if(k==='child')return c=>{o.kids.push(c);return p;};if(k==='children')return cs=>{o.kids.push(...cs);return p;};return(...args)=>{o.attrs[k]=args;return p;};}});return p;};
 const find=(n,id)=>n?.attrs?.id?.[0]===id?n:n?.kids?.map(c=>find(c,id)).find(Boolean);
 const state={'custom.plugins':{crew:{enabled:true},git:{enabled:true}},'custom.spaces.preferences':{connectFleetToCoordinator:true}};
 let selected={space:'coordinator',cwd:'/not-a-repository',on:null,terminal:'t1'},shown=true,failRepo=null,defer=false,pendingCI=false,bClosed=true;
 const waiting=[],settingsOpened=[],noticeModes={};
+let holdStatus=false,releaseStatus;
 const groups=[{id:'coordinator',tabs:[{id:'c'}]},{id:'fm-crew-home',tabs:[{id:'a'},{id:'b'},{id:'dup'}]}];
 const all=[{pane:'cp',tab:'c',terminal:'t1'},...['a','b','dup'].map((id,i)=>({pane:id+'p',tab:id,terminal:'t'+(i+2)}))];
 const list=[{address:'t1',state:'live',labels:{'custom.crew.home':'1'}},...['a','b','dup'].map((id,i)=>({address:'t'+(i+2),state:'live',labels:{'crew.task':id,'crew.home':'home','herdr.space':'fm-crew-home'}}))];
@@ -14,7 +16,7 @@ const calls=[],focus=[],jobs=[];const cx={notify(){},stop_propagation(){},spawn(
 const drain=async()=>{while(jobs.length)await Promise.all(jobs.splice(0));};
 const host={closeOverlay(){},openOverlay(){},nextCommand(){return new Promise(()=>{});},shared:k=>state[k],setShared:(k,v)=>state[k]=v,spaces:()=>groups,panes:()=>all,terminals:()=>list,machines:()=>[],checking:()=>false,
   props:()=>null,layout:()=>({id:'panel',hidden:!shown,children:[{id:'panel-body',active:'changes'}]}),settings:()=>({zoom:1}),theme:()=>({}),window:()=>({platform:'windows'}),notify(){},run:(...args)=>focus.push(args),
-  hc:async args=>{assert.match(args.at(-1),/status '--json'/);return {code:0,stdout:JSON.stringify({code:0,stdout:Buffer.from(JSON.stringify(status)).toString('base64'),stderr:'',timed_out:false})};},
+  hc:async args=>{assert.match(args.at(-1),/status '--json'/);if(holdStatus)await new Promise(resolve=>releaseStatus=resolve);return {code:0,stdout:JSON.stringify({code:0,stdout:Buffer.from(JSON.stringify(status)).toString('base64'),stderr:'',timed_out:false})};},
   exec:async(cmd,args)=>{assert.equal(cmd,'gh','Coordinator cwd must not be probed as Git');calls.push(args);if(defer)await new Promise(resolve=>waiting.push(resolve));const repo=args[args.indexOf('--repo')+1];if(repo===failRepo)return {code:1,stderr:'unreachable'};return {code:0,stdout:JSON.stringify({number:12,title:repo,url:`https://github.com/${repo}/pull/12`,state:repo==='example/b'&&bClosed?'CLOSED':'OPEN',author:{login:'fixture'},body:'',statusCheckRollup:pendingCI?[{name:'build',status:'IN_PROGRESS'}]:[]})};}};
 const storage=new Map(),writes=[];
 const localStorage={getItem:key=>storage.get(key)??null,setItem:(key,value)=>{storage.set(key,value);writes.push(key);}};
@@ -27,10 +29,21 @@ const modules={
  'panel-kit.js':{headerTool:(_t,o)=>element().id(o.id).on_click(o.onClick),contextMenu:element,tag:element,panelMessage:(_t,id,o)=>element().id(id).child(o.text)},
  'webhooks.js':{GitWebhooks:class{sync(_cx,options){websocket=options;}stop(){}retryNow(){}}},'notices.js':{GitNotices:class{sync(_cx,{enabled,repository}){return enabled?noticeModes[repository]??null:null;}stop(){}retryNow(){}}},
 };
-const {Main,f,A}=await loadMod({host,modules,globals:{localStorage},mod:'custom-changes',entry:'export {default as Main} from "./main.js";export * as f from "./plugins/crew/fleet.js";export * as A from "./aggregate.js";'});
+const {Main,f,A,r}=await loadMod({host,modules,globals:{localStorage},mod:'custom-changes',entry:'export {default as Main} from "./main.js";export * as f from "./plugins/crew/fleet.js";export * as A from "./aggregate.js";export * as r from "./plugins.js";'});
 f.refreshFleets(cx,async()=>JSON.stringify(status));await drain();
 const panel=new Main();panel.init({},cx);await drain();let tree=panel.render(cx);await drain();tree=panel.render(cx);
 assert.equal(calls.length,2,'Duplicate task PR is fetched once');assert.equal(panel.aggregate.counts().open,1);assert.equal(panel.aggregate.counts().closed,1);
+// Real aggregate Refresh/relay/render lifecycle never emits an ordinary fleet row.
+const refreshFrames=[],sample=()=>{
+ const projected=projectLinkedRows(groups.map(w=>({w})),r.pluginWorkspaceLinks({presentation:true}));
+ refreshFrames.push(projected.find(row=>row.w.id==='fm-crew-home').linked);
+ assert.equal(r.pluginSpaceTags(groups[1]).length,0);assert.equal(r.pluginSpaceTags(groups[0])[0].label,'Crew');
+};
+holdStatus=true;sample();panel.aggregate.refresh(cx);for(let i=0;i<20;i++)await Promise.resolve();sample();
+all.push({pane:'unrelated',tab:'c',terminal:'t9'});selected={...selected,terminal:'t2'};panel.render(cx);sample();
+websocket.onChange({repository:'example/a'},cx);panel.render(cx);sample();
+releaseStatus();holdStatus=false;await drain();panel.render(cx);sample();all.pop();selected={...selected,terminal:'t1'};
+assert.ok(refreshFrames.every(Boolean),'Refresh, relay and focus/topology changes preserve every sidebar projection');tree=panel.render(cx);
 assert.ok(find(tree,'pr-example/a#12'));assert.equal(find(tree,'pr-example/b#12'),undefined);assert.equal(find(tree,'git-task-incomplete'),undefined);assert.equal(find(tree,'active-pull'),undefined);
 assert.doesNotMatch(text(tree),/Recorded task PRs|possibly incomplete until tasks report/);
 assert.ok(find(tree,'git-actions'));assert.ok(find(tree,'git-views'));

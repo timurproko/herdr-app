@@ -106,10 +106,10 @@ export function pluginSpaceTags(space, context = {}) {
 
 // Read-only contextual contributions. Plugins own their identity/source policy;
 // features never import a provider's implementation or start work during render.
-export function pluginWorkspaceLinks() {
+export function pluginWorkspaceLinks({presentation = false} = {}) {
   return PLUGINS.flatMap(plugin => {
     if(!pluginEnabled(plugin) || !plugin.workspaceLinks) return [];
-    try { return (plugin.workspaceLinks(pluginContext(plugin))??[]).filter(link=>typeof link?.parent==='string' && typeof link?.child==='string' && link.parent!==link.child && typeof link.binding==='string'); }
+    try { return (plugin.workspaceLinks({...pluginContext(plugin),presentation})??[]).filter(link=>typeof link?.parent==='string' && typeof link?.child==='string' && link.parent!==link.child && typeof link.binding==='string'); }
     catch(e) { failed(plugin,'workspaceLinks',e);return []; }
   });
 }

@@ -132,4 +132,12 @@ for(const machine of [null,'pc2']) {
 context.__tags=[{plugin:'crew',label:'Crew'}];
 const tagOnly=find(view.row({w,i:0,g:null},theme),'space-content-worktree');assert.equal(tagOnly.kids.at(-1).attrs.mr[0],-5,'Tag-only rows retain their old edge');
 view.rename={id:w.id};assert.equal(find(view.row({w,i:0,g:{linked:true}},theme),'space-worktree-worktree'),undefined);view.rename=null;
-console.log('PASS: first-frame local/remote checkout snapshots; aligned tagged/child worktrees, vector elbows, preserved user order and cross-machine drag guards (dummy Core only)');
+// A visually retained pair cannot fall through to an independent one-space move.
+context.pluginWorkspaceLinks=options=>options?.presentation?[{parent:'parent',child:'worktree-a',binding:'cached'}]:[];
+const retained=view.ordered().find(r=>r.w.id==='worktree-a');assert.equal(retained.linked,true);
+const guardedCalls=[];context.run=(...args)=>guardedCalls.push(args);
+drag.take=()=>({kind:'drop',id:'worktree-a',target:'other',meta:{sources:['worktree-a']}});view.drop('other',{});
+drag.take=()=>({kind:'drop',id:'other',target:'parent',meta:{sources:['other']}});view.drop('parent',{});
+assert.equal(guardedCalls.length,0,'Neither grabbing nor targeting a retained unverified pair authorizes a move');
+drag.take=()=>({kind:'click',id:'worktree-a'});view.drop('worktree-a',{});assert.equal(guardedCalls[0][0],'space.select','Ordinary click selection remains available');
+console.log('PASS: first-frame local/remote checkout snapshots; aligned tagged/child worktrees, vector elbows, retained-pair action guards, preserved user order and cross-machine drag guards (dummy Core only)');

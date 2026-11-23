@@ -586,7 +586,13 @@ selected terminal's folder.
 fleet attaches below its coordinator with a thin muted vector elbow descending
 from beneath the coordinator's number badge toward the inset, muted fleet name.
 The coordinator keeps its Crew tag and only the attached fleet omits it.
-Unrelated plugin tags remain.
+Unrelated plugin tags remain. Refreshing Git or Crew, relay events, focus changes
+and unrelated pane changes do not temporarily turn a verified fleet back into an
+ordinary numbered row. A pending/failed status read retains the last verified
+display for at most **60 seconds from successful verification**; retries never
+renew that deadline. Completed relationship changes, disabling the feature and
+removed native spaces clear it. Retained visuals are not action permission:
+pair moves and Git/worker actions still require fresh exact live identity.
 Dragging either expanded row moves the pair, with both rows dimmed and a paired
 preview. Public ordering commands wait for acknowledgements; the two-space move is
 not atomic and an uncertain result is never replayed. The compact rail remains

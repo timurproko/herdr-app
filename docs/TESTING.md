@@ -125,6 +125,15 @@ switch, old/new snapshot round trips and runtime-identity exclusion in disposabl
 checkout artifacts. `src/plugins/crew/fleet.test.mjs` loads packaged plugin sources
 with fake status/Core snapshots: exact owner/task joins, moved/conflicting/remote
 identities, TTL/coalescing, order-independent binding, expiry and disable generations.
+`src/plugins/crew/fleet-refresh.test.mjs` drives the real provider/registry with
+fake clocks and deferred status reads. Every sampled Spaces projection and Crew
+tag frame remains attached through Git/Spaces refresh, focus/unrelated topology
+changes and the old expiry boundary. Errors/malformed responses/timeouts preserve
+successful verification age, retries back off, display expires at 60 seconds,
+actions expire independently, and negative results/disablement/expired leases or
+generations cannot resurrect old bindings. Spaces drop fixtures refuse standalone
+moves on retained unverified pairs; the real Git aggregate/relay refresh fixture
+also samples actual sidebar projection across its in-flight status read.
 `tests/fleet-reorder.test.mjs` exercises pure display blocks and queued public move
 acknowledgements, either grabbed member, pair edges, timeout and no replay. Shared
 reorder and Spaces render fixtures cover both-source dimming, stacked preview and
