@@ -152,19 +152,35 @@ been retired; third-party license notices retain their original attribution.
 
 ## Fleet context contributions
 
-Crew owns `plugins/crew/fleet.js`: installed `crew status --all --json` supplies
-owner/task terminals and recorded PRs. `custom.crew.home=1` is only a role hint;
+Crew owns `plugins/crew/fleet.js`: installed `crew status --all --json --discover-prs` supplies
+owner/task terminals and task PRs. `custom.crew.home=1` is only a role hint;
 `crew.home` is a worker home tag. The resolver joins exact live machine-qualified
 terminals to actual panes/spaces and verifies the fleet adoption identity. Missing,
 ambiguous, moved or cross-machine identities fail closed. Unrouted custom homes
 remain ordinary spaces. No Crew record is changed and no new companion is needed.
 
 Registry `pluginWorkspaceLinks()` and `pluginPullContext(space)` expose read-only
-contributions; lifecycle events refresh them after yielding. The source adapter
-`recordedSource` and injected status reader are the future-discovery seam, not a
-promise or call to discover-prs. Coalesced per-machine reads use the existing
+contributions; lifecycle events refresh them after yielding. Crew's `recordedSource`
+adapter accepts discovery version 1 only with complete, valid status/URL/source/reason
+combinations on every task. Known canonical HTTPS GitHub URLs become sanitized task
+PRs. None means no PR on that read; unavailable (including budget-exhausted) means
+unknown. Both survive live/history binding and the generic pull context's
+`discovery: {version:1,tasks:[{task,historical,status,url,source,reason}]}` alongside
+links. No-link diagnostics add no row or worker authority. Unsupported/missing versions
+retain recorded-only links without asserting none; malformed v1 results fail the read
+rather than publishing absence. Discovery never changes pair identity, live membership
+checks or durable display records. The removed generic incomplete-list notice stays
+absent for both new and older Crew. Coalesced per-machine reads use the existing
 Spaces lifecycle, a 10-second TTL and expiring sanitized runtime facts under
 `custom.fleet.links`; preference/plugin generations invalidate late responses.
+The installed-tool reader uses the existing read-only machine transport with a
+25-second discovery timeout (the former 15-second allowance plus Crew's ten-second
+discovery budget). Only an explicit unsupported `--discover-prs` usage refusal allows
+one 15-second recorded-only fallback. Authentication, transport and timeout failures
+never trigger it or mean none. Missing/unknown discovery versions reuse the first
+payload, with no extra call. A 45-second shared read lease covers both bounded calls
+without overlapping mod readers; it does not extend action freshness. There is no
+new retry or polling loop; the existing 10-second TTL/refresh cadence is unchanged.
 Only the default-off Spaces boolean is portable. Raw reports, task files and
 pending ordering operations are not exported or replayed.
 
@@ -205,10 +221,10 @@ closed record. A working/finished mismatch remains unverified rather than renewi
 action freshness, while existing same-home rows stay explicitly stale.
 
 `plugins/git/mod/aggregate.js` consumes the registry's explicit task context only
-for the selected coordinator. It reads exact recorded PR URLs on that machine with
+for the selected coordinator. It reads exact validated task PR URLs on that machine with
 three bounded concurrent requests, keys rows by repository plus PR number, and
 never probes the coordinator's directory. Working/reported live terminals are
-eligible. Same-home closed-task records contribute recorded links without live
+eligible. Same-home closed-task records contribute validated links without live
 worker authority; they cannot establish a fleet child. The verified owner/home
 PR scope excludes the optional child so last-worker exit does not discard PR facts.
 Full PR identities deduplicate before reads/counts; current live sources win robot
@@ -221,10 +237,11 @@ invalid or future completion dates do not admit historical Closed rows. Live-tas
 rows retain normal eligibility. Repository/global counts use the same eligible
 rows, and repositories containing only excluded history have no empty headers.
 Candidate facts remain bounded for webhook reopen/merge events; aging does not poll
-GitHub. The existing 1 MiB/4096-task source limits, 15-second status timeout and
-three concurrent targeted GitHub reads remain. No private task timestamps are read. There is no extra task heading or generic incomplete-list notice, single
-active pin or repository-wide PR inventory in this mode. Missing recorded links
-still cannot be inferred from transcripts or branches.
+GitHub. The existing 1 MiB/4096-task source limits and three concurrent targeted GitHub
+reads remain; status uses the 25-second discovery / 15-second capability fallback
+bounds described above. No private task timestamps are read. There is no extra task heading or generic incomplete-list notice, single
+active pin or repository-wide PR inventory in this mode. Missing task links
+still cannot be inferred by the app from transcripts or branches.
 
 `ui/ui.js` owns `sidebarSectionHeader`, the common machine/repository header shell
 and right-edge chevron; Spaces retains its own actions and guarded folding.
@@ -256,7 +273,7 @@ ordinary Git's card is unchanged. No picker action enrolls or changes account.
 
 The existing single authenticated WebSocket routes repository invalidations into
 the aggregate index. Bursts coalesce behind each in-flight PR read; reconnect/show
-catches up. Local status refreshes fetch newly recorded links only, not unchanged
+catches up. Local status refreshes fetch newly linked PRs only, not unchanged
 GitHub facts or CI. Repository failures retain same-binding rows with one applicable notice per
 repository and selected tab. Known Closed failures never leak into Open; expired
 historical rows and their errors cannot leave empty sections. Cold historical-only
