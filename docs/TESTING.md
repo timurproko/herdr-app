@@ -199,7 +199,14 @@ A real hosted no-write probe remains a distinct activation prerequisite.
 `tests/choice-menu.test.mjs` loads the actual account caller, `ui/choice-menu.js`
 and `ui/ui.js` with instrumented native elements. It checks the inherited muted
 12px chevron, gap, upward Popover, surface bounds/padding, row hover/highlight and
-fixed selected slot through both actual account and enrollment callers.
+fixed selected slot through both actual account and enrollment callers. It also
+loads the real ordinary Git notice renderer and compares complete card padding,
+height, icon dimensions, icon-to-text/Settings gaps and icon/text/Settings/chevron
+vertical centres against enrollment at 75–200% zoom. The single-line geometry
+model uses the panel's 20px text line box and popup trigger layout (not its menu);
+it would catch the former 28px nested pill increasing the card from 32px to 40px.
+Account trigger height remains pinned at 28px, while enrollment uses 20px without
+wrapping. These synthetic geometry assertions are not native pixel evidence.
 `tests/fleet-enrollment.test.mjs` runs the coordinator renderer with real notices,
 picker and UI: zero/one/multiple choices, section-order deduplication, enrollment
 completion, quiet pending/unknown state, global setup precedence, fold/long-scroll
@@ -290,7 +297,9 @@ failures say **GitHub is unreachable**. A known Closed failure never appears in
 Open; each applicable repository section gets at most one notice, including mixed
 causes and partial recovery. Cold historical failures use a Closed history-load
 notice without inventing state/counts. Expired history cannot leave error-only
-headers. Folds, unenrolled repositories and hidden/stale/disabled contexts retain
+headers. Notice-only sections remain visible without an empty state; other-tab
+rows/errors cannot keep empty headers, and settled empty tabs reuse ordinary Git's
+wording. Folds, unenrolled repositories and hidden/stale/disabled contexts retain
 the existing read and refresh boundaries. Folder-Git pagination tests also preserve
 execution result facts and healthy rows on these failures. These are synthetic
 process/provider responses, not proof that the original installed-app incident was
@@ -353,6 +362,9 @@ restore after panel recreation, temporary repository absence, tab/refresh change
 count-free expanded/collapsed headers, unchanged top-level totals while folded,
 hidden/restored scoped body errors, fixed enrollment visibility, stale toggle
 guards, no fold-triggered reads and no false empty state when all sections fold.
+Open/Closed switches omit other-tab-only headers, restore saved folds on reappearance,
+and retain unchanged totals. Enrollment fixtures keep hidden-tab repositories in
+full-inventory picker order, independent of section visibility.
 The merged fixture retains the real shared-relay deferred-delivery/render guards,
 PR label add/remove assertions and new shared row/separators. The enrollment fixture
 also feeds header available/intrinsic layout widths across 75–200% scales: fitting
