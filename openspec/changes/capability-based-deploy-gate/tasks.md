@@ -15,9 +15,9 @@
 
 ## 3. Settings reports the concrete failed deployment stage and cause
 
-- [ ] 3.1 Preserve bounded host version/refusal and build/install/patch causes in deploy-all-worker results, with focused fixtures for npm banners/multiple JSON objects, missing capabilities, ownership conflicts and malformed output.
-- [ ] 3.2 Carry those reasons through durable results, update runner and Settings row; exercise actual projection/row functions and retain backup IDs, matching log/details paths, manual rollback guidance and timeout/missing-result unknown locks.
-- [ ] 3.3 Document the new short failure messages and existing retry safeguards; verify successful advisory patch skips preserve desktop revision evidence without becoming a failed or partial peer outcome.
+- [x] 3.1 Preserve bounded host version/refusal and build/install/patch causes in deploy-all-worker results, with focused fixtures for npm banners/multiple JSON objects, missing capabilities, ownership conflicts and malformed output.
+- [x] 3.2 Carry those reasons through durable results, update runner and Settings row; exercise actual projection/row functions and retain backup IDs, matching log/details paths, manual rollback guidance and timeout/missing-result unknown locks.
+- [x] 3.3 Document the new short failure messages and existing retry safeguards; verify successful advisory patch skips preserve desktop revision evidence without becoming a failed or partial peer outcome.
 
 ## 4. Deployment entrypoints and stock coverage remain usable on unreviewed hosts
 

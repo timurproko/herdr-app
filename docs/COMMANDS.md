@@ -28,6 +28,11 @@ owned feedback patch may still be present: it is retained, not refreshed or newl
 certified. Restoring supported patches needs a reviewed native-source/binary rebase,
 not a public version allowlist. See [exact behavior and recovery](../src/integration/native-patches/README.md#unreviewed-native-bytes-including-app-0117).
 
+Definite update failures keep their stage/cause in the Settings row, for example
+**host check refused Herdr 0.1.17: missing command tab.new**, **build failed** or
+**install failed: Personal file conflict**. Details still link the matching log or
+result; timeout/missing-result outcomes remain unknown and block replay.
+
 ## Build and install
 
 ```powershell

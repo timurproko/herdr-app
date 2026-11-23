@@ -179,5 +179,5 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1]
   else if(action==='remove')result=remove(home);
   else throw Error('Use deploy, deploy-shell, doctor, check, enable, disable or remove.');
   console.log(typeof result==='string'?result:JSON.stringify(result,null,2));if(result?.ok===false||result?.patches?.ok===false)process.exitCode=1;
- }catch(e){console.error(e.message);process.exitCode=1;}
+ }catch(e){console.error(JSON.stringify({deploymentFailure:{stage:'install',reason:e.message}}));process.exitCode=1;}
 }

@@ -28,10 +28,12 @@ export function checkHostApi(home=defaultHome(), {exec=cp.execFileSync, source=p
  return {ok:versionStatus.supported&&!missingApi.length&&!missingCommands.length&&!directImports.length,version,reviewed:Boolean(HOST_PROFILES[version]),versionStatus,missingApi,missingCommands,directImports,tabMove:tabMoveVersionStatus(version)};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href){
+ try {
  const publicResult=checkHostApi(process.argv[2]??defaultHome());
  // An upgrade audit is advisory for this feature, never a global deployment gate.
  // Known releases stay offline/fast; a new one gets a bounded public-source diff
  // and synthetic regressions automatically on the ordinary host/deploy check.
  const result=await auditHostTabMove(publicResult);
  console.log(JSON.stringify(result,null,2));if(!result.ok)process.exitCode=1;
+ }catch(error){console.error(JSON.stringify({deploymentFailure:{stage:'host check',reason:error.message}}));process.exitCode=1;}
 }
