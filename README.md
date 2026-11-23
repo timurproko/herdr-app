@@ -1061,7 +1061,9 @@ adopt unknown files, replay old shell/core actions, or copy live session state.
 ## Update all machines
 
 **Settings → Updates → herdr-app-custom** is one row beside Herdr and herdr-core,
-showing a short installed revision and **Check now** or **Update**. Update uses the
+showing a short installed revision when known and **Check now** or **Update**.
+Without trustworthy revision evidence, the title is just **herdr-app-custom**;
+a successful check still offers **Update**. Update uses the
 existing all-machine command through an independent, finite runner: full deploy
 on this desktop and shell deploy on eligible peers. Its desktop source is only
 `~/.local/share/herdr-app` (created on first Update if absent), never the developer
@@ -1082,7 +1084,7 @@ events never decide availability or install anything. Git disabled, missing rela
 setup, legacy notices or no repository enrollment leave **updater-owned polling**
 working independently. After merge, install the observer on each desktop, explicitly
 upgrade the relay with Configure, and enroll the repository through Account → Add
-repo → select → Add. Do not sync private keys. See [setup and limits](docs/GIT-WEBHOOKS.md#customization-update-discovery). Unknown/changed revision evidence is shown honestly as revision unknown.
+repo → select → Add. Do not sync private keys. See [setup and limits](docs/GIT-WEBHOOKS.md#customization-update-discovery). Unknown or changed revision evidence never displays a stale SHA or claims Up to date.
 
 The latest status, result and log live under the selected Herdr home's
 `.customizations/`: `update-status.json`, `deploy-all-result.json`,

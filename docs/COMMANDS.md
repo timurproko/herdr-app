@@ -115,8 +115,9 @@ installed Git provenance. Real runs additionally write the latest atomic
 peer, including source refusals, machine outcomes and printed backup IDs. A
 successful full desktop result records its source SHA and ownership-manifest
 digest; only matching evidence without a later local failure identifies an
-installed revision. Old or changed installations show revision unknown, never
-checkout HEAD. Peer skips/failures preserve a successful desktop revision;
+installed revision. Old or changed installations omit the revision from the
+Settings title, showing only `herdr-app-custom`, never checkout HEAD or a stale
+SHA. A successful main check still offers Update when the revision is unknown. Peer skips/failures preserve a successful desktop revision;
 dry-run writes no result sidecar. Main can advance between peers, so SHAs may differ.
 Any failed machine, unsafe source, inventory or option error exits 1; only deployed,
 current and stated-skip outcomes exit 0. Calls have tool/fetch bounds of 15/60 seconds,
