@@ -7,5 +7,5 @@
 
 ## 2. Folder-change failures identify Crew as the refusal source
 
-- [ ] 2.1 Replace ambiguous folder-prefix formatting in the generic folder-list action handler with explicit operation context and plugin-name attribution; cover older-Crew and home-lock add refusals, remove refusals, successful siblings and list refresh in `node tests/crew-projects-ui.test.mjs`.
-- [ ] 2.2 Document the generic refusal presentation in `docs/PLUGIN-UI.md` and keep plugin-specific wording out of the renderer; verify `node tests/plugin-ui-contract.test.mjs` and inspect the changed documentation against the fixture expectations.
+- [x] 2.1 Replace ambiguous folder-prefix formatting in the generic folder-list action handler with explicit operation context and plugin-name attribution; cover older-Crew and home-lock add refusals, remove refusals, successful siblings and list refresh in `node tests/crew-projects-ui.test.mjs`.
+- [x] 2.2 Document the generic refusal presentation in `docs/PLUGIN-UI.md` and keep plugin-specific wording out of the renderer; verify `node tests/plugin-ui-contract.test.mjs` and inspect the changed documentation against the fixture expectations.

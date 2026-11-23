@@ -444,6 +444,9 @@ function runListAction(view, cx, plugin, item, action, everything = false) {
   cx.notify();
 }
 const scopeSetting = (plugin, item) => (plugin.settings ?? []).find(d => d.key === item.list.scope?.setting && d.type === 'machine');
+// The folder is the attempted target, not necessarily the resource the plugin refused.
+const folderRefusal = (plugin, operation, path, error) =>
+  `Could not ${operation} folder “${path}”. ${plugin.name} reported: ${String(error?.message ?? error)}`;
 
 // The folders picker: the folder browser on the scope's machine. Folders already added
 // start ticked and unticking one removes it; each change is tried and the refused ones
@@ -462,8 +465,8 @@ function foldersAdd(view, t, plugin, item, canAdd, loading) {
       view.pluginOpen[`${plugin.id}-${item.id}`] = true;
       runListAction(view, cx, plugin, item, async context => {
         const refused = [];
-        for (const path of remove) { try { await spec.remove(context, known.find(row => row.path === path).id); } catch (e) { refused.push(`${path}: ${String(e?.message ?? e)}`); } }
-        for (const path of add) { try { await spec.add(context, path); } catch (e) { refused.push(`${path}: ${String(e?.message ?? e)}`); } }
+        for (const path of remove) { try { await spec.remove(context, known.find(row => row.path === path).id); } catch (e) { refused.push(folderRefusal(plugin, 'remove', path, e)); } }
+        for (const path of add) { try { await spec.add(context, path); } catch (e) { refused.push(folderRefusal(plugin, 'add', path, e)); } }
         if (refused.length) throw new Error(refused.join(' · '));
       }, moved);
     } });
@@ -557,7 +560,13 @@ function listSection(view, t, plugin, item, loading) {
     // A row's note (an incomplete webhook) follows its name: one line per item.
     .child(v_flex().id(id).w_full().gap(U.rowGap)
       .children(rows.map((row, index) => removableRow(view, t, `${id}-row-${index}`, row.detail ? `${row.label} · ${row.detail}` : row.label,
-        (_e, cx) => runListAction(view, cx, plugin, item, context => spec.remove(context, row.id)), enabled))));
+        (_e, cx) => runListAction(view, cx, plugin, item, async context => {
+          try { await spec.remove(context, row.id); }
+          catch (e) {
+            if (spec.picker?.kind !== 'folders') throw e;
+            throw new Error(folderRefusal(plugin, 'remove', row.path ?? row.label, e));
+          }
+        }), enabled))));
 }
 
 function prerequisiteSections(view,t,plugin) {
