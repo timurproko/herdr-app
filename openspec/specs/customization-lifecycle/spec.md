@@ -409,12 +409,12 @@ With an enabled, configured Git relay, mounted Custom updates SHALL subscribe in
 - **AND** installation still requires the person's explicit Update action with every existing source, ownership, lock and uncertain-outcome gate intact
 
 ### Requirement: Accurate update cadence explanation
-The Settings Updates explanation SHALL distinguish the native Herdr and herdr-core hourly checks from Custom's healthy 2–3 minute checks while mounted and optional configured merge hints. It SHALL NOT imply that all three rows check hourly or promise that merge hints always operate. Existing terminal-continuity guidance SHALL remain accurate.
+The Settings Updates explanation SHALL use exactly: “Herdr looks for both every hour and tells you in the corner. herdr-core runs your terminals, so they keep running through its updates.” It SHALL NOT mention Custom's check cadence or the Git relay. Detailed cadence documentation and actual update behavior SHALL remain unchanged.
 
 #### Scenario: Reading the Updates explanation
 - **WHEN** a person opens Settings Updates
-- **THEN** the explanation identifies Herdr and herdr-core as hourly checks and Custom as normally checking every 2–3 minutes while mounted
-- **AND** any mention of faster merge hints is conditional on an enabled, configured relay
+- **THEN** the paragraph beneath the three rows reads exactly “Herdr looks for both every hour and tells you in the corner. herdr-core runs your terminals, so they keep running through its updates.”
+- **AND** it contains no Custom check cadence or relay explanation
 - **AND** herdr-core's role running terminals and their continuity through its updates remains explained
 
 ### Requirement: Capability-based desktop host compatibility
