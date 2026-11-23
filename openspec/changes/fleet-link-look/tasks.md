@@ -25,7 +25,7 @@
 - [x] 4.2 Extract a shared expanded section-header presentation helper in `src/ui/ui.js` and use it for Spaces machine headers and Git repository headers; regressions compare chevron geometry/style and retain machine plus/status controls, fold actions and drag guards.
 - [x] 4.3 Add default-expanded per-repository folding backed by a dedicated localStorage JSON set like `machines.folded`, with visible repository name and task-scoped Open/Closed counts; assertions cover independent toggles, tab/context/refresh changes, panel recreation and no preference export.
 - [x] 4.4 Extend `tests/fleet-git.test.mjs` for live counts while collapsed, zero counts, hidden/restored scoped body notices, no extra fetches and no false empty state when all sections fold; update README, docs/TESTING.md and docs/ARCHITECTURE.md to describe folding and remove the promised generic incomplete notice.
-- [ ] 4.5 Run the complete CI-selected suite once with `CI=true npm run test:ci` on Node 24, including git-location, pr-agent-links and sidebar-refresh; record actual results and repair affected shared-header stand-in exports without weakening or excluding coverage.
+- [x] 4.5 Run the complete CI-selected suite once with `CI=true npm run test:ci` on Node 24, including git-location, pr-agent-links and sidebar-refresh; record actual results and repair affected shared-header stand-in exports without weakening or excluding coverage.
 
 ## Workflow follow-up
 
