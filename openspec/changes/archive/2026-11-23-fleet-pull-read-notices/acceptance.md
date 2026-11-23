@@ -19,7 +19,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-23-fleet-pull-read-notices/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-23-fleet-pull-read-notices/acceptance.md",
   "finalizedDate": "2026-11-23",
-  "specBaseSha": "771fbb2eb83265156e321ccf69a8423fcfc30c91",
+  "specBaseSha": "113e9031f90b31e4ca34255fb9a8ac7dce34a33d",
   "acceptanceScenarios": [
     "One live draft and three recent finished merged PRs retain Open 1 and Closed 3 with no historical error notice under Open.",
     "Each repository section shows at most one applicable read notice while healthy rows and last-good eligible facts remain visible.",
