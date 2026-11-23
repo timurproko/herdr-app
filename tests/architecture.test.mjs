@@ -85,7 +85,10 @@ for(const id of plugins.ids)for(const file of walk(path.join(project,PLUGIN_SOUR
   assert.ok((target==='../api.js'||target==='../api.cjs')&&inside==='.'||target==='../'.repeat(inside.split('/').length)+'api.js'||!target.startsWith('..'),`Plugin ${id} reaches outside its folder: ${rel} -> ${spec}`);
  }
 }
-assert.deepEqual(importsOf(fs.readFileSync(path.join(project,PLUGIN_SOURCE,'api.js'),'utf8')).sort(),['../host.js','../host.js','../space-color-state.js','./where.js','websocket'],'The plugin API exposes the host facade, space colors and native socket factory');
+assert.deepEqual(importsOf(fs.readFileSync(path.join(project,PLUGIN_SOURCE,'api.js'),'utf8')).sort(),['../fleet-display.js','../host.js','../host.js','../space-color-state.js','./where.js','websocket'],'The plugin API exposes the host facade, guarded fleet persistence, space colors and native socket factory');
+const fleetDisplay=fs.readFileSync(path.join(project,'src/shared/fleet-display.js'));
+for(const mod of config.plugins.mods)assert.equal(digest(fs.readFileSync(path.join(output,`mods/${mod}/fleet-display.js`))),digest(fleetDisplay),'Every plugin uses the same canonical display guard');
+for(const source of ['src/plugins/crew/fleet.js','src/shared/space-preferences.js'])assert.doesNotMatch(fs.readFileSync(path.join(project,source),'utf8'),/setShared\(\s*(?:DISPLAY_KEY|FLEET_DISPLAY_KEY|['"]custom\.fleet\.display)/,'Provider/preferences cannot bypass guarded display persistence');
 for(const file of walk(path.join(project,'src')).filter(p=>/\.(?:js|mjs|cjs)$/.test(p))) {
  const rel=path.relative(project,file).replaceAll('\\','/');
  if(rel.startsWith(`${PLUGIN_SOURCE}/`))continue;

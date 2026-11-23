@@ -4,7 +4,7 @@ const state={'custom.plugins':{crew:{enabled:true}},'custom.spaces.preferences':
 let groups=[{id:'coordinator',tabs:[{id:'c'}]},{id:'fm-crew-home1',tabs:[{id:'w'}]}];
 let all=[{tab:'c',pane:'cp',terminal:'t1'},{tab:'w',pane:'wp',terminal:'t2'}];
 let list=[{address:'t1',state:'live',labels:{'custom.crew.home':'1'}},{address:'t2',state:'live',labels:{'crew.task':'ship','crew.home':'home1','herdr.space':'fm-crew-home1'}}];
-const host={shared:k=>state[k],setShared:(k,v)=>state[k]=v,spaces:()=>groups,panes:()=>all,terminals:()=>list,machines:()=>[{name:'pc2',layout:'ready'}],checking:()=>false,notify(){}};
+const host={shared:k=>state[k],setShared:(k,v)=>state[k]=v,spaces:()=>groups,panes:()=>all,terminals:()=>list,machines:()=>[{name:null,layout:'ready'},{name:'pc2',layout:'ready'}],checking:()=>false,notify(){}};
 const {f,r}=await loadMod({host,modules:{'space-color-state.js':'src/shared/space-color-state.js'},entry:'import * as f from "./plugins/crew/fleet.js";import * as r from "./plugins.js";export {f,r};'});
 const status={home:'C:/home/.crew',owner:{terminal:'t1',live:true,mine:false},tasks:[{id:'ship',terminal:'t2',state:'reported',pr:'https://github.com/example/a/pull/12',report:'MUST NOT SHARE'}]};
 const model=()=>({groups,all,list}), copy=v=>JSON.parse(JSON.stringify(v));

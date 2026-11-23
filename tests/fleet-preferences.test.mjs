@@ -8,7 +8,7 @@ const element = () => {const target={children:[]};let proxy;proxy=new Proxy(targ
 async function load(name) {
   if(cache.has(name)) return cache.get(name);
   const values = name === './host.js' ? {shared:k=>state[k],setShared:(k,v)=>state[k]=v} : name === 'gpui-base' ? {v_flex:element} : null;
-  const file = name === './spaces-ui.js' ? 'features/settings/spaces-ui.js' : 'shared/space-preferences.js';
+  const file = name === './spaces-ui.js' ? 'features/settings/spaces-ui.js' : name === './fleet-display.js' ? 'shared/fleet-display.js' : 'shared/space-preferences.js';
   const mod = values ? new vm.SyntheticModule(Object.keys(values),function(){for(const [k,v]of Object.entries(values))this.setExport(k,v);},{context}) : new vm.SourceTextModule(fs.readFileSync('src/'+file,'utf8'),{context});
   cache.set(name,mod);await mod.link(load);return mod;
 }

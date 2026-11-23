@@ -1,6 +1,6 @@
 // Crew owns identity and recorded PR sourcing. Consumers use registry contributions only.
-import { shared, setShared, spaces, panes, terminals, machines, checking } from '../api.js';
-export const FLEET_KEY = 'custom.fleet.links', DISPLAY_KEY = 'custom.fleet.display';
+import { shared, setShared, spaces, panes, terminals, machines, checking, FLEET_DISPLAY_KEY, fleetDisplayChangeAllowed, updateFleetDisplay } from '../api.js';
+export const FLEET_KEY = 'custom.fleet.links', DISPLAY_KEY = FLEET_DISPLAY_KEY;
 const READS = 'custom.fleet.reads', TTL = 10000, EXPIRY = 30000;
 // Only reads witnessed by this running mod can authorize actions. Persisted
 // timestamps/tokens alone are display history, not cold-start verification.
@@ -9,6 +9,7 @@ const enabled = () => shared('custom.spaces.preferences')?.connectFleetToCoordin
 const machineOf = address => address?.includes('/') ? address.split('/')[0] : null;
 const qualify = (address, machine) => typeof address !== 'string' || !address || (address.includes('/') && machineOf(address) !== machine) ? null : machine && !address.includes('/') ? `${machine}/${address}` : address;
 const model = () => ({groups:spaces(), all:panes(), list:terminals()});
+const readyLayout = (machine, hosts=machines()) => hosts.some(h=>(h.name??null)===machine && h.layout==='ready');
 // A status reply can race native membership or crew finish's record update.
 // Missing workers remain uncertain; a finished owner or conflicting join is not.
 const incompleteMembership = (status, machine, snapshot) => status.owner.live &&
@@ -78,11 +79,12 @@ function savedDisplays() {
   const value=shared(DISPLAY_KEY);
   if(value?.version!==1 || !value.entries || typeof value.entries!=='object' || Array.isArray(value.entries) || Object.keys(value.entries).length>256) return [];
   const unique=new Map();
-  for(const item of Object.values(value.entries)) {const record=displayRecord(item);if(record)unique.set(record.machine,record);}
+  for(const [key,item] of Object.entries(value.entries)) {const record=displayRecord(item);if(record && key===JSON.stringify(record.machine))unique.set(record.machine,record);}
   return [...unique.values()];
 }
 function nextDisplay(machine, bound, snapshot) {
   const fresh=displayRecord(identityOf(bound));if(fresh || !bound)return fresh;
+  if(bound.child!==null)throw Error('Fleet display identity is not coherent');
   const prior=savedDisplays().find(d=>d.machine===machine);
   if(!prior || prior.home!==bound.home || prior.owner!==bound.owner || prior.parent!==bound.parent ||
     ![prior.parent,prior.child].every(id=>inMachine(snapshot,id,machine)))return null;
@@ -92,29 +94,23 @@ function nextDisplay(machine, bound, snapshot) {
     (t.labels?.['crew.home']!==prior.adoption || t.labels?.['herdr.space']!==prior.child.split('/').at(-1)));
   // Keep only the extant fleet's child/adoption identity; fresh owner membership
   // must also drive the retained scopes after successful verification.
-  return conflict?null:displayRecord({...identityOf(bound),child:prior.child,adoption:prior.adoption});
+  if(conflict)return null;
+  const retained=displayRecord({...identityOf(bound),child:prior.child,adoption:prior.adoption});
+  if(!retained)throw Error('Retained owner membership is not coherent');
+  return retained;
 }
-function publishDisplay(machine, bound) {
-  const raw=shared(DISPLAY_KEY);if(raw && raw.version!==1)return;
-  const entries={};
-  for(const record of savedDisplays()) if(record.machine!==machine)entries[JSON.stringify(record.machine)]=identityOf(record);
+function publishDisplay(machine, bound, evidence) {
   const record=displayRecord(identityOf(bound));
-  if(record)entries[JSON.stringify(machine)]=identityOf(record);
-  const next={version:1,entries};
-  if(JSON.stringify(raw)!==JSON.stringify(next))setShared(DISPLAY_KEY,next);
+  updateFleetDisplay(machine,record?identityOf(record):null,evidence);
 }
 function pruneDisplays(snapshot, hosts) {
-  const raw=shared(DISPLAY_KEY);if(raw?.version!==1)return;
-  const entries={}, removed=[];
+  const removed=[];
   for(const record of savedDisplays()) {
-    // Do not erase another machine's persisted pair during initial layout load.
-    const layout=hosts.find(h=>(h.name??null)===record.machine)?.layout;
-    const ready=layout==='ready';
-    if(!ready || [record.parent,record.child].every(id=>inMachine(snapshot,id,record.machine)))entries[JSON.stringify(record.machine)]=identityOf(record);
+    const missing=![record.parent,record.child].every(id=>inMachine(snapshot,id,record.machine));
     // Losing the optional child ends attachment, not the live owner's Git scope.
-    else if(!inMachine(snapshot,record.parent,record.machine))removed.push(record.machine??'local');
+    if(updateFleetDisplay(record.machine,null,{ready:readyLayout(record.machine,hosts),missing}) &&
+      !inMachine(snapshot,record.parent,record.machine))removed.push(record.machine??'local');
   }
-  const next={version:1,entries};if(JSON.stringify(raw)!==JSON.stringify(next))setShared(DISPLAY_KEY,next);
   if(removed.length) {
     const cached=shared(FLEET_KEY), reads={...shared(READS)};
     const cachedEntries={...cached?.entries};
@@ -150,8 +146,7 @@ export function fleetContexts({presentation = false} = {}) {
   return Object.entries(state.entries??{}).flatMap(([key,entry])=> {
     const age=now-entry.at;
     if(!locallyVerified(key,entry) || !Number.isFinite(age) || age<0 || age>=EXPIRY) return [];
-    const layout=hosts.find(m=>(m.name??null)===entry.machine)?.layout;
-    if((layout && layout!=='ready') || (entry.machine && !layout) || signature(entry.machine,snapshot,entry.identity)!==entry.signature) return [];
+    if(!readyLayout(entry.machine,hosts) || signature(entry.machine,snapshot,entry.identity)!==entry.signature) return [];
     const bound=bindFleet(entry.status,entry.machine,snapshot);
     return bound && bound.binding===entry.binding ? [{...bound,taskMembershipVerified:taskMembership(bound)===entry.members}] : [];
   });
@@ -183,13 +178,15 @@ export function refreshFleets(cx, readStatus, force = false) {
         const status=recordedSource(await readStatus(machine));
         if(!current()) return;
         const latest=shared(FLEET_KEY), snapshot=model(), prior=latest?.entries?.[key]?.status;
+        const evidence={ready:readyLayout(machine),verified:true};
+        if(!fleetDisplayChangeAllowed(evidence))throw Error('Fleet layout is not ready');
         const changedOwner=prior && (prior.home!==status.home || prior.owner.terminal!==status.owner.terminal);
         if(!changedOwner && incompleteMembership(status,machine,snapshot)) throw Error('Live membership is not yet available');
         const bound=bindFleet(status,machine,snapshot), identity=identityOf(bound), at=Date.now();
         const display=nextDisplay(machine,bound,snapshot), verifiedSignature=signature(machine,snapshot,identity);
         setShared(FLEET_KEY,{version:1,entries:{...(latest?.version===1?latest.entries:{}),[key]:{
           machine,at,attemptAt:at,token,attemptToken:token,signature:verifiedSignature,attemptSignature:signature(machine,snapshot,display??identity),status,binding:bound?.binding??null,identity,members:taskMembership(bound)}}});
-        verifiedTokens.set(key,token);publishDisplay(machine,display);
+        verifiedTokens.set(key,token);publishDisplay(machine,display,evidence);
       } catch {
         if(current()) {
           const latest=shared(FLEET_KEY);
@@ -207,7 +204,7 @@ export function refreshFleets(cx, readStatus, force = false) {
 }
 export function invalidateFleet() {
   setShared('custom.fleet.generation',(shared('custom.fleet.generation')??0)+1);
-  setShared(FLEET_KEY,null);setShared(READS,{});setShared(DISPLAY_KEY,null);
+  setShared(FLEET_KEY,null);setShared(READS,{});updateFleetDisplay(null,null,{disabled:!enabled()});
   verifiedTokens.clear();pendingTokens.clear();
 }
 export function fleetPullContext(space, {presentation = false} = {}) {
