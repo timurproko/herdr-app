@@ -614,8 +614,10 @@ its loaded rows and folds with **Stale**, or shows **Verifying** on cold start;
 it starts no new GitHub reads or worker navigation until verification succeeds.
 Only sanitized pair identity is persisted for restoration, not task/PR inventory,
 reports or credentials; it is never exported as a portable preference.
-Dragging either expanded row moves the pair, with both rows dimmed and a paired
-preview. Public ordering commands wait for acknowledgements; the two-space move is
+Dragging either expanded row moves the pair, with both rows dimmed and one ordinary
+coordinator chip (its numbered badge and name), whichever row is grabbed. The floating
+preview has no fleet row or chain icon; the insertion indicator still treats the pair
+as one block. Public ordering commands wait for acknowledgements; the two-space move is
 not atomic and an uncertain result is never replayed. The compact rail remains
 selection-only and shows the same badge-sized chain icon in the fleet's badge slot, with its usual
 name/directory tooltip. They remain separate selectable native

@@ -204,8 +204,10 @@ moves on retained unverified pairs; the real Git aggregate/relay refresh fixture
 also samples actual sidebar projection across its in-flight status read.
 `tests/fleet-reorder.test.mjs` exercises pure display blocks and queued public move
 acknowledgements, either grabbed member, pair edges, timeout and no replay. Shared
-reorder and Spaces render fixtures cover both-source dimming, stacked preview and
-expanded/compact chain badges while preserving ordinary worktree order. Geometry
+reorder and Spaces render fixtures cover both-source dimming, a single ordinary
+coordinator chip from either grabbed member (including return/fade), no stacked
+preview or floating chain icon, and expanded/compact chain badges while preserving
+ordinary worktree order. Geometry
 assertions compare the muted vector's 16px box, slot width and vertical centering
 with real numbered badges; fleet names share ordinary names' left edge while
 retaining muted text, without connector lines. Rail selection, name/directory

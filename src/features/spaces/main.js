@@ -432,17 +432,15 @@ export default class Spaces extends View {
   }
 
   dragPreview(t) {
-    const all = spaces(), i = all.findIndex(s => s.id === this.drag.view?.id);
+    const all = spaces(), d = this.drag.view, block = d?.meta?.sources;
+    if (!all.some(s => s.id === d?.id)) return null;
+    // Both sources still dim/move together; only the chip represents the parent.
+    const id = block?.length > 1 ? block[0] : d.id;
+    const i = all.findIndex(s => s.id === id);
     if (i === -1) return null;
     const w = displaySpace(all[i], panes());
-    const block = this.drag.view?.meta?.sources;
-    const rows = block?.length > 1 ? block.map((id,k)=> {
-      const at=all.findIndex(s=>s.id===id),space=displaySpace(all[at],panes());
-      return {icon:k ? this.fleetBadge(t) : badge(String(at+1),spaceBadgeColor(t,space,shared('space.colors')??{})),
-        label:k ? div().text_color(t.muted).child(space.name) : space.name};
-    }) : null;
     return this.drag.preview('space-drag', t, {
-      icon: badge(String(i + 1), spaceBadgeColor(t, w, shared('space.colors') ?? {})), label: w.name, rows});
+      icon: badge(String(i + 1), spaceBadgeColor(t, w, shared('space.colors') ?? {})), label: w.name});
   }
 
   // Match the numbered badge's box so fleet names share the normal text anchor.

@@ -118,11 +118,29 @@ assert.equal(compact.attrs.w[0],28);assert.equal(compact.attrs.h[0],28);assert.e
 assert.ok(compact.attrs.on_click);assert.equal(find(view.compact(projected[parentAt],theme),'space-badge-parent').kids[0],String(projected[parentAt].i+1));
 const oldRun=context.run,selected=[];context.run=(name,args)=>selected.push([name,args]);
 compact.attrs.on_click[0]();assert.deepEqual(JSON.parse(JSON.stringify(selected)),[['space.select',{id:'worktree-a'}]]);context.run=oldRun;
-drag.view={id:'parent',meta:{sources:['parent','worktree-a']}};drag.preview=(_id,_t,data)=>data;
-const preview=view.dragPreview(theme);assert.equal(preview.rows[1].icon.attrs.asset[0],'mods/custom-spaces/link.svg');
-assert.equal(preview.rows[1].label.attrs.text_color[0],theme.muted);assert.equal(preview.rows[0].label,'parent');drag.view=null;
+// Either grabbed member yields the same ordinary coordinator chip, not two rows.
+drag.preview=(_id,_t,data)=>data;
+const parentBadge=parentContent.kids[0];
+for(const id of ['parent','worktree-a'])for(const phase of [undefined,'arm','return','fade']) {
+ drag.view={id,phase,meta:{sources:['parent','worktree-a'],binding:'pair'}};
+ const captured=JSON.stringify(drag.view),preview=view.dragPreview(theme);
+ assert.equal(preview.label,'parent');assert.deepEqual(preview.icon.kids,parentBadge.kids,'Coordinator number, not the grabbed fleet number');
+ assert.deepEqual(preview.icon.attrs,parentBadge.attrs,'Exactly the ordinary coordinator badge, including size and color');
+ assert.equal(Object.hasOwn(preview,'rows'),false,'No stacked-row preview data');
+ assert.equal(preview.icon.attrs.asset,undefined,'No fleet chain in the floating chip');
+ assert.equal(JSON.stringify(drag.view),captured,'Preview normalization never rewrites the pressed ID or paired sources');
+}
+for(const id of ['other','worktree-a']) {
+ drag.view={id,meta:{sources:[id]}};
+ const preview=view.dragPreview(theme);
+ assert.equal(preview.label,id);assert.equal(preview.icon.kids[0],String(hostSpaces.findIndex(s=>s.id===id)+1),'Unlinked previews keep their own badge and name');
+ assert.equal(Object.hasOwn(preview,'rows'),false);
+}
+drag.view={id:'missing'};assert.equal(view.dragPreview(theme),null);
+drag.view={id:'worktree-a',meta:{sources:['missing-parent','worktree-a']}};assert.equal(view.dragPreview(theme),null,'A missing coordinator cannot produce a mismatched chip');
+drag.view=null;assert.equal(view.dragPreview(theme),null);
 context.pluginWorkspaceLinks=()=>[];assert.equal(view.ordered().find(r=>r.w.id==='worktree-a').linked,false);
-// Compare actual machine header and row trailing slots, including tags and child inset.
+// Compare actual machine header and row trailing slots, including tags and the left-aligned fleet name.
 view.machines=[{name:'pc2',state:'connected'}];view.reconnecting={};view.folded=new Set();view.rebuilt=()=>false;
 const machineWrites=new Map();context.localStorage={setItem:(key,value)=>machineWrites.set(key,value)};
 Object.assign(context,{machines:()=>[{name:'pc2',layout:'ready'}],iconButton:(_t,o)=>element().id(o.id).on_click(o.onClick),sidebarSectionHeader:realUi(element).sidebarSectionHeader});
@@ -154,4 +172,4 @@ drag.take=()=>({kind:'drop',id:'worktree-a',target:'other',meta:{sources:['workt
 drag.take=()=>({kind:'drop',id:'other',target:'parent',meta:{sources:['other']}});view.drop('parent',{});
 assert.equal(guardedCalls.length,0,'Neither grabbing nor targeting a retained unverified pair authorizes a move');
 drag.take=()=>({kind:'click',id:'worktree-a'});view.drop('worktree-a',{});assert.equal(guardedCalls[0][0],'space.select','Ordinary click selection remains available');
-console.log('PASS: first-frame local/remote checkout snapshots; aligned tagged/child worktrees, badge-sized vector chains and left-aligned names, retained-pair action guards, preserved user order and cross-machine drag guards (dummy Core only)');
+console.log('PASS: first-frame local/remote checkout snapshots; aligned tagged/child worktrees, badge-sized vector chains and left-aligned names, single coordinator drag chip, retained-pair action guards, preserved user order and cross-machine drag guards (dummy Core only)');
