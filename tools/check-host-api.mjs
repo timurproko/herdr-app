@@ -5,27 +5,17 @@ import cp from 'node:child_process';
 import {pathToFileURL} from 'node:url';
 import {project} from './build.mjs';
 import {defaultHome} from './deploy.mjs';
-import {HOST_CONTRACT,HOST_PROFILES,hostVersionStatus,apiCandidates,nativeCommand} from '../src/integration/herdr/compatibility.js';
+import {checkHostFacts} from './host-api-facts.mjs';
 import {tabMoveVersionStatus, auditHostTabMove} from './check-tab-move.mjs';
 function walk(dir){return fs.readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(path.join(dir,e.name)):[path.join(dir,e.name)]);}
 export function checkHostApi(home=defaultHome(), {exec=cp.execFileSync, source=path.join(project,'src')}={}) {
  const executable=process.env.HERDR_APP_BIN||path.join(process.env.LOCALAPPDATA??'','Programs/herdr-app/herdr-app.exe');
  const version=exec(executable,['--version'],{encoding:'utf8',timeout:15000,windowsHide:true}).trim().replace(/^herdr-app\s+/,'');
  const declarations=fs.readFileSync(path.join(home,'herdr.d.ts'),'utf8');
- const exported=new Set([...declarations.matchAll(/^export function\s+([A-Za-z0-9_]+)/gm)].map(m=>m[1]));
- const missingApi=HOST_CONTRACT.api.filter(name=>!apiCandidates(name,version).some(candidate=>exported.has(candidate)));
  const commandCatalog=JSON.parse(exec(executable,['commands'],{encoding:'utf8',timeout:30000,windowsHide:true,env:{...process.env,HERDR_APP_HOME:home}}));
- const commands=new Set(commandCatalog.map(entry=>entry.name));
- const used=new Set(),stateKeys=new Set();
- for(const file of walk(source).filter(file=>file.endsWith('.js')&&!/[\\/]original(?:-[^\\/]*)?\.js$/.test(file))) {
-  const text=fs.readFileSync(file,'utf8');
-  for(const match of text.matchAll(/(?:shared|setShared)\(\s*["']([^"']+)["']/g))stateKeys.add(match[1]);
-  for(const match of text.matchAll(/["']((?:space|tab|pane|terminal|agent|layout|app|window|mod|overlay)\.[a-zA-Z0-9_.-]+)["']/g))used.add(match[1]);
- }
- const missingCommands=[...used].filter(name=>!stateKeys.has(name)&&!commands.has(nativeCommand(name,version))).sort();
- const directImports=walk(source).filter(file=>file.endsWith('.js')&&!file.endsWith(`${path.sep}host.js`)&&!/[\\/]original(?:-[^\\/]*)?\.js$/.test(file)&&/from\s+["']herdr["']/.test(fs.readFileSync(file,'utf8'))).map(file=>path.relative(project,file));
- const versionStatus=hostVersionStatus(version);
- return {ok:versionStatus.supported&&!missingApi.length&&!missingCommands.length&&!directImports.length,version,reviewed:Boolean(HOST_PROFILES[version]),versionStatus,missingApi,missingCommands,directImports,tabMove:tabMoveVersionStatus(version)};
+ const files=Object.fromEntries(walk(source).filter(file=>file.endsWith('.js')).map(file=>[path.relative(project,file).replaceAll('\\','/'),fs.readFileSync(file,'utf8')]));
+ const result=checkHostFacts({version,declarations,commands:commandCatalog.map(entry=>entry.name),files});
+ return {...result,tabMove:tabMoveVersionStatus(version)};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href){
  try {

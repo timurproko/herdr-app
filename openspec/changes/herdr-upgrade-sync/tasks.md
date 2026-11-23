@@ -8,11 +8,11 @@
 
 ## 2. Scoped compatibility evaluation and candidate-only evidence
 
-- [ ] 2.1 Reuse or extract pure host API/command/import checks without changing installed-host policy; tests compare candidate SDK signatures and safely parsed command contracts, list consumers, and block unsupported source syntax.
-- [ ] 2.2 Generate pinned App/Core document-source diffs and run existing tab-move synthetic regressions; fixtures retain needs-review, generation/CAS/routing risks and whole-tree scope warnings independently of runtime eligibility.
-- [ ] 2.3 Compare every registry original with its candidate frame source and emit exact hunks plus stock-to-custom overlap evidence; fake palette/feedback cases cover identical, changed, missing and multiple originals and retained-but-unreviewed behavior.
-- [ ] 2.4 Emit candidate-only baseline/API/command manifests and provenance under upstream/migrations identity paths; byte-preservation tests prove no profile, reviewed original, approved baseline, native opt-in or installed file is adopted or changed.
-- [ ] 2.5 Add an ordered continue-after-failure runner for build, focused regressions and supported CI tests; fake process tests cover pass/fail/block/skip, exit codes, prerequisite isolation, bounded logs and explicit unavailable binary/native checks. Document these limits alongside the checks.
+- [x] 2.1 Reuse or extract pure host API/command/import checks without changing installed-host policy; tests compare candidate SDK signatures and safely parsed command contracts, list consumers, and block unsupported source syntax.
+- [x] 2.2 Generate pinned App/Core document-source diffs and run existing tab-move synthetic regressions; fixtures retain needs-review, generation/CAS/routing risks and whole-tree scope warnings independently of runtime eligibility.
+- [x] 2.3 Compare every registry original with its candidate frame source and emit exact hunks plus stock-to-custom overlap evidence; fake palette/feedback cases cover identical, changed, missing and multiple originals and retained-but-unreviewed behavior.
+- [x] 2.4 Emit candidate-only baseline/API/command manifests and provenance under upstream/migrations identity paths; byte-preservation tests prove no profile, reviewed original, approved baseline, native opt-in or installed file is adopted or changed.
+- [x] 2.5 Add an ordered continue-after-failure runner for build, focused regressions and supported CI tests; fake process tests cover pass/fail/block/skip, exit codes, prerequisite isolation, bounded logs and explicit unavailable binary/native checks. Document these limits alongside the checks.
 
 ## 3. Agent-ready reports and migration planning artifacts
 

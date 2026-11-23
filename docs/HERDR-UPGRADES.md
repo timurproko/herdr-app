@@ -33,3 +33,28 @@ process restart or live session test is part of this tooling. Newer capable host
 continue working; unknown native bytes skip optional patches with advisories.
 Palette styling/routing and feedback presentation can degrade pending migration.
 An older owned feedback patch can be retained but is not thereby certified.
+
+## What the compatibility report proves
+
+Evaluation reads complete Git trees, verifies reviewed tree/blob pins, and fetches
+hash-verified source blobs. Primary unified diffs contain only consumed SDK
+exports and referenced types, command argument contracts, reviewed document
+sources and every registry-native surface. A separate full-tree change inventory
+warns about dependency, submodule, mode and scope changes outside those paths.
+Command source must match the understood declaration grammar; a partial parse is
+an explicit failure, never an empty successful catalog.
+
+Each native surface compares **every** reviewed original byte-for-byte and records
+both original-to-candidate and original-to-Custom hunks. Candidate stock hashes
+are marked candidate-only and cannot substitute for an installed executable's
+reviewed embedded-stock provenance. Missing source, missing baseline coverage,
+unknown document versions and native proof stay visible independently.
+
+Every ordered step records passed, failed, blocked or skipped, its operation,
+prerequisites, detail and complete bounded log. Independent checks continue after
+failure. The tools run only this checkout's customization build and fixture/CI
+suites, with credential-free child environments. They do not execute downloaded
+source or a native release binary. Source API/command checks are **static**, not a
+live `herdr-app commands` invocation. Synthetic tab-move tests do not establish
+native CAS persistence, multi-client continuity or pixels. Those checks need a
+separately authorized disposable native host.

@@ -1,0 +1,63 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {HOST_CONTRACT} from '../src/integration/herdr/compatibility.js';
+import {hostSourceFacts} from '../tools/host-api-facts.mjs';
+import {inventoryHash} from '../tools/check-tab-move.mjs';
+import {reviewInventory,gitBlob,sha256} from '../tools/herdr-upgrade-releases.mjs';
+import {parseCommands,sdkSurface,surfaceChanges,sourceRepository,StepRunner,testEnvironment,runCheck,evaluateCandidate,walkSources} from '../tools/herdr-upgrade-evaluate.mjs';
+const root=process.cwd(),scratch=fs.mkdtempSync(path.resolve('.artifacts/herdr-eval-'));
+try {
+  const text='pub const COMMANDS: &[Command] = &[\n cmd("tab.new", &[opt("space"), req("id")], "About"),\n];';
+  assert.deepEqual(parseCommands(text)['tab.new'],[{name:'space',required:false},{name:'id',required:true}]);
+  assert.throws(()=>parseCommands(text.replace('opt("space")','newArg()')),/arguments/);
+  assert.throws(()=>parseCommands(text.replace('cmd("tab.new"','unknown("tab.new"')),/partial catalog/);
+  assert.throws(()=>parseCommands(''),/syntax/);
+  assert.deepEqual(Object.keys(sdkSurface('export function run(): Info;\nexport interface Info { x: string }\nexport function unused(): void;', ['run'])),['Info','run']);
+  assert.equal(surfaceChanges({x:'a'},{x:'b'})[0].name,'x');
+  assert.equal(testEnvironment({GH_TOKEN:'secret',DELIVERY_BOT_PRIVATE_KEY:'secret',PATH:'a',CUSTOM_SECRET:'secret'}).GH_TOKEN,undefined);
+  assert.deepEqual(Object.keys(testEnvironment({GH_TOKEN:'secret',PATH:'a'})).sort(),['CI','PATH']);
+  let options;const failed=runCheck(root,['x'],{spawn:(_cmd,_args,opts)=>{options=opts;return {status:2,stdout:'all errors',stderr:'failure'};}});
+  assert.equal(failed.status,'failed');assert.equal(failed.exitCode,2);assert.match(failed.log,/all errors/);assert.equal(options.env.GH_TOKEN,undefined);
+  const runner=new StepRunner();await runner.step('a','fake',()=>{throw Error('no');});await runner.step('b','fake',()=>assert.fail(),{requires:['a']});await runner.step('c','fake',()=>({detail:'ok',log:'complete output'}));await runner.step('d','fake',()=>assert.fail(),{skip:'native absent'});
+  assert.deepEqual(runner.steps.map(s=>s.status),['failed','blocked','passed','skipped']);assert.equal(runner.evidence['logs/c.txt'],'complete output');
+  const inventory=structuredClone(reviewInventory(root));
+  const files=walkSources(root),facts=hostSourceFacts(files);
+  const sdk=HOST_CONTRACT.api.map(n=>`export function ${n}(): void;`).join('\n');
+  const commands=`pub const COMMANDS: &[Command] = &[\n${facts.commands.map(n=>`cmd("${n}", &[], "About"),`).join('\n')}\n];`;
+  const baseFiles={'src/layout.rs':'reviewed layout','defaults/herdr.d.ts':sdk,'src/commands.rs':commands};
+  const nextFiles={...baseFiles,'src/layout.rs':'changed layout','defaults/herdr.d.ts':sdk.replace('export function run(): void;','')};
+  inventory.baselines={'0.1.16':{'mods/tabs/main.js':sha256('old stock')}};
+  baseFiles['defaults/mods/tabs/main.js']='old stock';nextFiles['defaults/mods/tabs/main.js']='new stock';
+  for(const patch of inventory.patches){const text=fs.readFileSync(path.join(root,patch.originals[0].file),'utf8');baseFiles[`defaults/${patch.target}/main.js`]=text;nextFiles[`defaults/${patch.target}/main.js`]=text+'\n// new upstream hunk\n';}
+  const coreFiles={'schema/hc.openrpc.json':JSON.stringify({methods:['hello','doc.get','doc.set','terminal.get','terminal.list','terminal.label','machine.list','machine.exec'].map(name=>({name}))})};
+  const trees={},blobs={};
+  function add(commit,contents){const tree=Object.entries(contents).map(([name,text])=>{const bytes=Buffer.from(text),sha=gitBlob(bytes);blobs[sha]={sha,encoding:'base64',content:bytes.toString('base64')};return [name,'100644','blob',sha];}).sort((a,b)=>a[0]<b[0]?-1:1);trees[commit]=tree;return tree;}
+  const base=add(inventory.appSource.commit,baseFiles),appCommit='a'.repeat(40),coreCommit='b'.repeat(40);add(appCommit,nextFiles);const coreTree=add(inventory.coreSource.commit,coreFiles);add(coreCommit,coreFiles);
+  inventory.appSource.criticalFiles={'src/layout.rs':gitBlob('reviewed layout')};inventory.appSource.inventorySha256=inventoryHash(base);
+  inventory.coreSource.criticalFiles={'schema/hc.openrpc.json':coreTree[0][3]};
+  const get=async url=>{const tree=/git\/trees\/([a-f0-9]+)/.exec(url);if(tree)return {truncated:false,tree:trees[tree[1]].map(([path,mode,type,sha])=>({path,mode,type,sha}))};const blob=/git\/blobs\/([a-f0-9]+)/.exec(url);if(blob)return blobs[blob[1]];if(url.includes('git/ref'))return {ref:'refs/tags/v0.1.17',object:{type:'commit',sha:appCommit}};throw Error(url);};
+  const discovery={releases:{app:{version:'0.1.17',commit:appCommit,feed:{version:'0.1.17'},feedSha256:'f'},core:{version:'0.1.23',commit:coreCommit,feed:{version:'0.1.23',generation:1},feedSha256:'g'}},errors:{},candidates:{app:'0.1.17',core:'0.1.23'}};
+  const protectedFiles=['src/integration/herdr/compatibility.js',...inventory.patches.flatMap(p=>p.originals.map(o=>o.file)),'upstream/baselines/0.1.16.json'];
+  const before=protectedFiles.map(f=>sha256(fs.readFileSync(f)));
+  const evaluated=await evaluateCandidate({root,inventory,discovery,get,baseSha:'c'.repeat(40),headSha:'d'.repeat(40),scratch,run:()=>({status:'passed',exitCode:0,detail:'fixture pass'}),runScript:()=>({status:'passed',exitCode:0,detail:'fixture pass'})});
+  const step=name=>evaluated.steps.find(s=>s.name===name);
+  assert.equal(step('app-source').status,'passed');assert.equal(step('core-source').status,'passed');
+  assert.equal(step('host-api').status,'failed');assert.deepEqual(evaluated.checks.host.missingApi,['run']);
+  assert.equal(step('app-documents').status,'failed');assert.match(step('app-documents').detail,/needs-review/);
+  assert.equal(step('patch-palette').status,'failed');assert.equal(step('patch-feedback').status,'failed');
+  assert.match(evaluated.evidence[evaluated.checks.palette.originals[0].candidateDiff],/\+\/\/ new upstream hunk/);
+  assert.equal(step('core-contract').status,'passed');assert.equal(step('baselines').status,'failed');
+  assert.equal(step('native-binary').status,'skipped');assert.equal(step('test-ci').status,'passed');
+  assert.equal(JSON.parse(evaluated.evidence['candidate-stock-baseline.json']).candidateOnly,true);
+  assert.ok(evaluated.actions.some(a=>a.files.includes('src/integration/native-patches/feedback/main.js')));
+  assert.deepEqual(protectedFiles.map(f=>sha256(fs.readFileSync(f))),before);
+  // Source equality permits only the source verdict, never binary applicability.
+  nextFiles['defaults/frame/feedback/main.js']=baseFiles['defaults/frame/feedback/main.js'];add(appCommit,nextFiles);
+  const equal=await evaluateCandidate({root,inventory,discovery,get,baseSha:'c'.repeat(40),headSha:'d'.repeat(40),scratch,skipTests:true});
+  assert.equal(equal.checks.feedback.sourceMatch,true);assert.match(equal.checks.feedback.binaryApplicability,/blocked/);
+  assert.equal(equal.steps.find(s=>s.name==='test-ci').status,'skipped');
+  await assert.rejects(sourceRepository('app',appCommit,async()=>({truncated:true,tree:[]})),/truncated/);
+  const source=await sourceRepository('app',appCommit,get);await assert.rejects(source.read('absent'),/Missing/);
+  console.log('PASS source-only evaluation: exact native hunks, candidate baseline provenance, static host contracts, advisory documents, honest step failures and protected bytes');
+} finally {fs.rmSync(scratch,{recursive:true,force:true});}
