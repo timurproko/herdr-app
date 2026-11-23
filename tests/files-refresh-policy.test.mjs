@@ -33,7 +33,7 @@ const context=vm.createContext({}),cache=new Map();
 function synthetic(values){return new vm.SyntheticModule(Object.keys(values),function(){for(const[k,v]of Object.entries(values))this.setExport(k,v);},{context});}
 function moduleFor(file){if(!cache.has(file))cache.set(file,new vm.SourceTextModule(fs.readFileSync(file,'utf8'),{context,identifier:file}));return cache.get(file);}
 const main=moduleFor(path.join(root,'main.js'));
-await main.link((name,ref)=>name==='herdr'?synthetic(native):name==='gpui-kit'?synthetic({View:class{},div:()=>element(),svg:asset=>element(asset),image:asset=>element(asset)}):name==='gpui-base'?synthetic({h_flex:()=>element(),v_flex:()=>element(),Editor:{},EditorState:{},Popover:{},Input:{},Toggle:{new:id=>element('toggle').id(id)}}):moduleFor(path.resolve(path.dirname(ref.identifier),name)));
+await main.link((name,ref)=>name==='websocket'?synthetic({WebSocket:{connect:()=>assert.fail('Files must not open relay transport')}}):name==='herdr'?synthetic(native):name==='gpui-kit'?synthetic({View:class{},div:()=>element(),svg:asset=>element(asset),image:asset=>element(asset)}):name==='gpui-base'?synthetic({h_flex:()=>element(),v_flex:()=>element(),Editor:{},EditorState:{},Popover:{},Input:{},Toggle:{new:id=>element('toggle').id(id)}}):moduleFor(path.resolve(path.dirname(ref.identifier),name)));
 await main.evaluate();
 const view=new main.namespace.default();
 const cx={spawn:fn=>jobs.push(fn(cx)),stop_propagation(){},notify:()=>assert.equal(rendering,false,'Render must not notify synchronously'),
