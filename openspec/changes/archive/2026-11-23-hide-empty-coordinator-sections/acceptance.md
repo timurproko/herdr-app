@@ -18,7 +18,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-23-hide-empty-coordinator-sections/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-23-hide-empty-coordinator-sections/acceptance.md",
   "finalizedDate": "2026-11-23",
-  "specBaseSha": "b6b39624f26c70c7e3ef98f8165eb43ebfa4eed8",
+  "specBaseSha": "b818c15d4da9b56c89774d361d008dbe8bc4e564",
   "acceptanceScenarios": [
     "Repository headers appear only for eligible rows or scoped read notices in the selected tab, without changing totals or history bounds.",
     "Empty settled tabs use ordinary Git wording, while folded sections and notice-only sections avoid false empty states.",
