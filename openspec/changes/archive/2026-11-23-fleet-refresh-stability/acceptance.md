@@ -22,7 +22,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-23-fleet-refresh-stability/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-23-fleet-refresh-stability/acceptance.md",
   "finalizedDate": "2026-11-23",
-  "specBaseSha": "25b0fa9a3adb6ce05c12b7042c91e2db09610ad9",
+  "specBaseSha": "278e78531a5d23164cfce750c1c1710451ad7db3",
   "acceptanceScenarios": [
     "The attached coordinator keeps its Crew tag; only the verified fleet child omits Crew, with unrelated plugin tags preserved.",
     "A thin muted vector elbow hangs beneath the coordinator badge toward the inset fleet name and also identifies the fleet in the compact rail and paired preview.",
