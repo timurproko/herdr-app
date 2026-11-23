@@ -87,12 +87,17 @@ unacknowledged and metadata-only repair operations do not animate an arrival.
 You stay in the source space: the moved tab is not opened, and a final-tab move
 leaves a Start page rather than closing that space. Ordinary close preferences are unchanged. There are no menu
 item tooltips or loading text. Left/Escape returns from the destination list;
-Enter selects. If terminal labels need attention after a committed move,
-reopen that tab's submenu and choose **Repair move metadata**.
+Enter selects. Move to uses a leading outline right-chevron aligned with Back's
+left-chevron. Unavailable/empty explanations wrap instead of being ellipsized,
+with scrolling for long messages. Compatibility refusals identify the unmet method/command, minimum version,
+generation or document-shape requirement. If terminal labels need attention after
+a committed move, reopen that tab's submenu and choose **Repair move metadata**.
 
 This feature is a user-authorized, narrowly scoped Core-document compatibility
-adapter, not a native rebuild. Reviewed for Apps **0.1.15** and **0.1.16** / Core **0.1.19** and
-**0.1.21**; unknown versions/shapes fail closed. Moving between different machines,
+adapter, not a native rebuild. It requires **App 0.1.15+ / Core 0.1.19+**, protocol
+generation **1**, the required methods/commands and a recognized document shape.
+Newer unreviewed App/Core versions work when those checks pass; review-list
+membership is not runtime permission. Unknown structural shapes still fail closed. Moving between different machines,
 floating panes, Start pages and detected space-bound mod props are unsupported.
 Remote identity verification uses the existing Node.js/hc on that machine; it does
 not require installing the App or a companion there. A timeout can mean
@@ -101,7 +106,8 @@ an unknown outcome: check the tab's actual location before retrying. See
 
 `npm run check:tab-move` automates pinned release-source comparison and synthetic
 move/menu regressions. Host/deploy checks automatically run that audit for an
-unknown App version; it reports the review delta, never bypasses the safety gate.
+unknown App version; it reports the review delta independently of runtime eligibility.
+The optional source audit can still report `needs-review` for a capable newer host.
 See [commands, provenance and limits](docs/TAB-MOVE-COMPATIBILITY.md).
 
 ## Daily development

@@ -41,10 +41,12 @@ for (const tree of [null, {}, {truncated: true, tree: base.tree}, {...base, tree
   assert.equal(report.compareUrl, `https://github.com/herdrdev/herdr-app/compare/${baseCommit}...${targetCommit}`);
   const gateBefore = [...PROFILE.apps];
   const result = await checkTabMove({appVersion: '0.1.17', contract, get: fake.get, regressions: () => ({ok: true})});
-  assert.equal(result.ok, false); assert.equal(result.status, 'needs-review', 'Identical sources do NOT authorize an unknown installed binary');
+  assert.equal(result.ok, false); assert.equal(result.status, 'needs-review', 'The optional source audit remains independent of runtime capability eligibility');
   assert.deepEqual(PROFILE.apps, gateBefore); assert.equal(tabMoveVersionStatus('0.1.17').reviewed, false);
-  assert.throws(() => validateProfile('0.1.17', {version: '0.1.21', generation: 1}), /reviewed/);
-  assertions += 10;
+  const hello={version:'0.1.23',generation:1,core:{id:'fixture'},methods:['doc.get','doc.set','terminal.get','terminal.list','terminal.label']};
+  assert.doesNotThrow(()=>validateProfile('0.1.17',hello),'Unknown newer releases need capabilities, not review-list membership');
+  assert.throws(()=>validateProfile('0.1.17',{...hello,methods:hello.methods.filter(m=>m!=='doc.set')}),/missing doc.set/);
+  assertions += 11;
 }
 {
   const changed = {...base, tree: [entry('src/mirror.rs', hex('4')), entry('src/hidden-dependency.rs', hex('5')), entry('Cargo.lock', hex('6'))]};
@@ -108,4 +110,4 @@ const hash = () => createHash('sha256').update(fs.readFileSync(adapterFile)).dig
 const before = hash();
 await checkTabMove({appVersion:'0.1.17',contract,get:upstream().get,regressions:()=>({ok:true})});
 assert.equal(hash(),before); assertions++;
-console.log(`PASS: ${assertions} tab-move upgrade-audit assertions: pinned provenance, complete tree diffs, fail-closed unknown versions, offline/failure handling and advisory automatic host checks (no network/Core)`);
+console.log(`PASS: ${assertions} tab-move upgrade-audit assertions: pinned provenance, complete tree diffs, advisory review status versus runtime capabilities, offline/failure handling and advisory automatic host checks (no network/Core)`);

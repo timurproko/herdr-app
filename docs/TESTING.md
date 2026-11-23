@@ -141,6 +141,28 @@ Recorded links deliberately do not guarantee pre-report PR discovery. Native pix
 actual drag motion and real remote execution remain unverified without separate
 authorization; fixture success is not deployment evidence.
 
+## Tab-move compatibility and menu regressions
+
+`node tests/tab-move.test.mjs` builds only customization output and uses a synthetic
+Core. It covers reviewed and unknown newer App/Core releases, local routing and
+remote targets, minimum-version/generation/method/identity refusals, opaque
+payload preservation, CAS conflicts, failed document persistence and uncertain
+replies. Label-unavailable cases both before and after in-memory application must
+remain partial success with explicit repair and no layout rollback.
+
+`node --experimental-vm-modules tests/tab-move-ui.test.mjs` connects real menu,
+bridge and worker preflight through synthetic RPC. Newer unreviewed App/Core
+versions expose destinations and hand off captured requests; missing methods or
+App preparation commands yield complete inert refusals before layout reads.
+Command availability is rechecked when the mounted owner consumes the request. Render assertions cover the leading 14px muted
+SVG chevron in Back's 16px slot, absent trailing glyph, retained badges and ordinary
+rows, wrapping explanation text, initial height reservation, measured multiline
+height/resize, 320px scrolling bound, stale measurement callbacks and Back/Left/Escape.
+These are render-tree and simulated native-layout callback checks, not proof of
+GPUI pixels or actual scroll gestures. No installed mod, live layout, label,
+terminal or process is changed. The pinned Core review and outstanding disposable
+native continuity/concurrency checks are in `TAB-MOVE-CORE-0.1.22-REVIEW.md`.
+
 ## Terminal copy-on-select controller
 
 `node --experimental-vm-modules tests/copy-toast.test.mjs` loads the actual observer

@@ -11,7 +11,7 @@ or for Custom to rebuild/patch native Herdr.
 
 Implement an explicit **Move to...** action behind one replaceable tab-move
 service. Prefer a reviewed native command if Herdr eventually supplies one;
-until then use a tightly restricted, version-gated Core-document adapter.
+until then use a tightly restricted, capability-gated Core-document adapter.
 The UI must not know document shapes or call document RPCs.
 
 Scope: tabs between existing spaces on the **same machine**, including remote
@@ -26,8 +26,14 @@ source space open with a normal Start page when moving its final tab. This is a
 move-specific policy, not a change to the ordinary close-on-last-tab preference.
 No hover tooltips or loading text in the menu. Start compatibility preflight when
 the parent context menu opens, with hover/entry as fallbacks; destination names
-come immediately from the existing native snapshot. Use the Spaces icon for Move,
-a divider below Back, distinct submenu row IDs, and mutually exclusive keyboard
+come immediately from the existing native snapshot. Move uses a leading 14px muted
+SVG right-chevron in the same centered 16px icon slot as Back's left-chevron,
+without a trailing text arrow; destination rows keep their colored badges.
+Refusal and empty-destination explanations are inert, wrapping notes with a muted
+leading right-chevron. Their intrinsic non-shrinking height is measured in logical
+pixels to size the menu's at-most-320px scroll viewport; they are not ellipsized
+single-line actions. The first unmeasured note reserves the full bounded viewport.
+Use a divider below Back, distinct submenu row IDs, and mutually exclusive keyboard
 selection/pointer hover (no first-row selection on mouse-open).
 
 This reduces update maintenance to a small compatibility boundary. It does not
@@ -108,6 +114,20 @@ interaction check; fixture coverage is not a claim of live move continuity.
 Release source base: `https://raw.githubusercontent.com/herdrdev/herdr-app/v0.1.16/`.
 See also [the public compatibility review](HERDR-0.1.16-REVIEW.md).
 
+## Core 0.1.22 review
+
+Core **0.1.22** was reviewed against **0.1.21**. Following the explicitly requested
+policy revision, runtime permission does not depend on an exact reviewed release:
+require App **0.1.15+**, Core **0.1.19+**, generation **1**, required methods/App
+commands and the recognized v1 document shape. Newer unreviewed versions work when
+those checks pass, including routing/remote targets. Unreadable or below-minimum
+versions and real capability/generation/shape failures still refuse.
+The [pinned Core review](TAB-MOVE-CORE-0.1.22-REVIEW.md) records routing,
+persistence, document-event and label-error compatibility and its regression
+coverage. In particular, a label persistence error can follow an in-memory update:
+it remains metadata partial success, never a reason to roll back the layout.
+This approval is not live multi-client/session continuity evidence.
+
 ## Boundaries and proposed files
 
 Paths below are relative to the standalone repository root. `src/shared/tab-moves.js` uses the existing
@@ -119,7 +139,7 @@ consumer competes with keyboard handling.
 | `src/features/menu/main.js` | Destination list, existing sidebar badges/names, disabled/error states |
 | `src/shared/tab-moves.js` | Mounted-view controller, request lifetime, selection acknowledgement |
 | `src/services/tabs/move-tab.cjs` | One explicit operation: validate, plan, commit, verify, repair metadata |
-| `src/integration/herdr/documents/` | Reviewed version profiles, document schema/identity rules, pure move planner, restricted RPC transport |
+| `src/integration/herdr/documents/` | Minimum versions/capabilities, document schema/identity rules, pure move planner, restricted RPC transport |
 | `tests/tab-move.test.mjs`, `tests/tab-move-ui.test.mjs` | Synthetic document, conflict, failure, compatibility and UI fixtures |
 
 Expose a domain operation such as:
@@ -149,8 +169,9 @@ against other processes/screens. A Custom-only lock cannot lock native Herdr.
 ### 1. Prepare and validate
 
 - Require the user's feature authorization and a fresh explicit per-click request,
-  plus a reviewed running App/Core profile,
-  protocol/method support, matching target Core identity/session and a ready layout.
+  plus minimum supported running App/Core versions,
+  understood protocol/document shape, method/command support, matching target Core
+  identity/session and a ready layout.
 - Do not confuse `hc --version` with the running server version: inspect `hello`.
 - Resolve the clicked IDs, not whatever happens to be focused when execution starts.
 - Reject the same space, missing/duplicate IDs, a moved/stale source tab, unsafe
@@ -235,15 +256,17 @@ gate. See [audit commands, provenance and limits](TAB-MOVE-COMPATIBILITY.md).
 Use a separate document-contract profile, not a blanket “App API is compatible” flag.
 The existing `check:host-api` does not check private document formats or CAS behavior.
 
-- Key profiles by reviewed App version, running Core protocol/capabilities/version,
-  and supported document shape. Start with the inspected versions only after tests.
-- Revalidate runtime capabilities/shape per operation. Never cache permission for an
-  unknown new version or infer compatibility from matching field names alone.
-- An unknown profile disables ONLY **Move to...**, with an actionable explanation.
-  The rest of Custom continues working. No forced downgrades or update suppression.
-- After an update: review the release's mirror/layout/reconciliation changes, capture
-  sanitized synthetic fixtures, run contract/failure tests and disposable two-client
-  integration checks, then add the new reviewed profile. UI should stay untouched.
+- Require minimum App/Core versions, understood generation, actual capabilities and
+  supported document shape; reviewed releases are source evidence, not permission.
+- Revalidate runtime capabilities/shape per operation, including local routing and
+  the remote target. Missing requirements disable ONLY **Move to...**, with an
+  actionable explanation. No forced downgrades or update suppression.
+- After an update, source review and disposable continuity checks remain useful
+  evidence, but newer capable versions do not wait for review-list membership.
+- A silent generation-1 semantic change to `doc.set` could stop honoring expected
+  versions and overwrite concurrent newer tabs, or acknowledge before atomic
+  persistence. Method-name discovery cannot prove those semantics; the requested
+  capability policy retains CAS calls and checks without an exact-version pin.
 - If a compatible native move API appears, implement/review that backend behind the
   same domain operation. Do not select it merely because a similarly named command
   exists; validate argument and behavior contracts. Retire the fallback independently.
@@ -274,8 +297,10 @@ jobs and other document names. The generic ban was not globally removed.
 6. Disposable App/Core integration: two clients editing concurrently, observe a
    committed external move, restart clients, verify no loss/duplication/session
    restart, stable pane/mod instances and focus rules. No tests on live workspaces.
-7. Compatibility: unknown App/Core versions/structural fields fail closed; a fixture
-   native backend can replace the document backend without changing menu code.
+7. Compatibility: newer unreviewed App/Core versions with capabilities pass;
+   missing capabilities, unknown generation/structural fields and below-minimum
+   versions fail closed. A fixture native backend can replace the document backend
+   without changing menu code.
 8. UI: correct same-machine destination list/order/badges, stale menu, no destination,
    keyboard navigation, no loading text/tooltips, no automatic follow, final-tab
    source retention and partial-success text.
