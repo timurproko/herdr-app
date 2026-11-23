@@ -164,6 +164,22 @@ Spaces lifecycle, a 10-second TTL and expiring sanitized runtime facts under
 Only the default-off Spaces boolean is portable. Raw reports, task files and
 pending ordering operations are not exported or replayed.
 
+`plugins/git/mod/aggregate.js` consumes the registry's explicit task context only
+for the selected coordinator. It reads exact recorded PR URLs on that machine with
+three bounded concurrent requests, keys rows by repository plus PR number, and
+never probes the coordinator's directory. Working/reported live terminals are
+eligible; unreported tasks trigger the possibly-incomplete label. There is no
+single active pin or repository-wide PR inventory in this mode.
+
+The existing single authenticated WebSocket routes repository invalidations into
+the aggregate index. Bursts coalesce behind each in-flight PR read; reconnect/show
+catches up. Local status refreshes fetch newly recorded links only, not unchanged
+GitHub facts or CI. Repository failures retain same-binding rows with scoped errors;
+setup is global and enrollment links capture each repository. Hidden/disabled or
+superseded contexts cannot start follow-ups or publish stale results. Neither
+presentation nor setup notices enroll repositories or grant auto-fix authority.
+Ordinary folder Git retains its pin motion, pagination and existing agent matching.
+
 ## Right-sidebar tab pins
 
 `shared/panel-state.js` is the single owner of `custom.panel.tabs` (version 1):
@@ -707,7 +723,8 @@ Unavailable identity/control is silently skipped, with no warning toasts. No pri
 ## Empty spaces and close policy
 
 `shared/space-preferences.js` owns the version-1 `custom.spaces.preferences`
-switches (`confirmLastTab: false`, `closeOnLastTab: true` by default). Settings'
+switches (`confirmLastTab: false`, `closeOnLastTab: true`, and optional
+`connectFleetToCoordinator: false` by default). Settings'
 Spaces page edits only those switches through the host facade; the preference
 exporter allowlists and type-checks them without exporting runtime identities.
 

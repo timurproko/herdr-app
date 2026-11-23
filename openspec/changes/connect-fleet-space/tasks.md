@@ -32,11 +32,11 @@ Implementation approved for recorded links only. These five groups match the PR'
 
 ## 5. Coordinator Git keeps repository-scoped live updates and safe lifecycle behavior
 
-- [ ] 5.1 Route the existing authenticated webhook subscription to the aggregate's repository index with coalesced per-repository invalidation and reconnect catch-up; cover repository collisions, irrelevant events, new/removed links and no periodic known-PR/CI refetch using fake sockets and deterministic timers.
-- [ ] 5.2 Preserve scoped last-good rows/errors and render captured per-repository setup links without changing enrollment or automation authority; cover inaccessible repos, unconfigured setup, transient failure, disabled plugins, hidden panel, switched owner and obsolete completions.
-- [ ] 5.3 Extend architecture/README/testing guidance for aggregate lifecycle and explicit Crew missing-link discovery limits; run the focused webhook/lifecycle, ordinary Git, preference and architecture fixture checks plus a customization-only build, recording the intentionally limited recorded-link source.
+- [x] 5.1 Route the existing authenticated webhook subscription to the aggregate's repository index with coalesced per-repository invalidation and reconnect catch-up; cover repository collisions, irrelevant events, new/removed links and no periodic known-PR/CI refetch using fake sockets and deterministic timers.
+- [x] 5.2 Preserve scoped last-good rows/errors and render captured per-repository setup links without changing enrollment or automation authority; cover inaccessible repos, unconfigured setup, transient failure, disabled plugins, hidden panel, switched owner and obsolete completions.
+- [x] 5.3 Extend architecture/README/testing guidance for aggregate lifecycle and explicit Crew missing-link discovery limits; run the focused webhook/lifecycle, ordinary Git, preference and architecture fixture checks plus a customization-only build, recording the intentionally limited recorded-link source.
 
 ## Workflow follow-up
 
 - Future pre-report discovery can replace the source adapter in a separately approved change; this implementation uses recorded links only and has no Crew release dependency.
-- Planning validation and future fixture tests do not demonstrate native pixels, actual drag motion, remote latency or live session preservation. Separately authorize native inspection/deployment if wanted; do not start real terminals, restart agents or deploy as part of planning.
+- Fixture validation does not demonstrate native pixels, actual drag motion, remote latency or live session preservation. Those remain unverified without separate native authorization; no deployment, real-terminal startup or agent restart is included.

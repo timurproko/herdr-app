@@ -2,7 +2,7 @@
 
 ## Context
 
-See `proposal.md` for motivation and the decisions requiring approval. Implementation is approved for recorded links only. Deployment and live native interaction checks are not authorized.
+See `proposal.md` for motivation and the approved decisions. Implementation is approved for recorded links only. Deployment and live native interaction checks are not authorized.
 
 Observed sources:
 

@@ -6,10 +6,10 @@ import { PR_FIELDS, pullRow, pullError } from './pulls.js';
 export function taskPullLink(url) {
   const match=/^https:\/\/github\.com\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\/pull\/([1-9]\d*)\/?$/.exec(url??'');
   const number=Number(match?.[2]);
-  return match && Number.isSafeInteger(number) ? {repo:match[1].toLowerCase(),number,key:`${match[1].toLowerCase()}#${number}`,url:`https://github.com/${match[1]}/pull/${number}`} : null;
+  return match && !match[1].split('/').some(part=>part==='.' || part==='..') && Number.isSafeInteger(number) ? {repo:match[1].toLowerCase(),number,key:`${match[1].toLowerCase()}#${number}`,url:`https://github.com/${match[1]}/pull/${number}`} : null;
 }
 export class AggregatePulls {
-  constructor({shown}) {this.shown=shown;this.entries=new Map();this.pending=new Map();this.serial=0;}
+  constructor({shown,onUpdate}) {this.shown=shown;this.onUpdate=onUpdate;this.entries=new Map();this.pending=new Map();this.serial=0;}
   currentContext() {return sidebarPanelEnabled('changes') ? pluginPullContext(location().space) : null;}
   sync(cx) {
     if(this.shown()) pluginEvent('workspace.context.refresh',{cx});
@@ -48,7 +48,7 @@ export class AggregatePulls {
           if(result.code!==0)throw Error(pullError('',result.stderr));
           const value=JSON.parse(result.stdout);
           if(value.number!==entry.link.number || taskPullLink(value.url)?.key!==key)throw Error('Pull request identity mismatch');
-          entry.pr={...pullRow(value,entry.link.repo.split('/')[0]),key,repo:entry.link.repo};entry.error=null;
+          entry.pr={...pullRow(value,entry.link.repo.split('/')[0]),key,repo:entry.link.repo};entry.error=null;this.onUpdate?.(view);
         }catch(e){if(current())entry.error=pullError(e);}
         finally {
           if(this.pending.get(key)===token)this.pending.delete(key);

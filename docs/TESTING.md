@@ -118,6 +118,29 @@ deploy/enable/disable/remove/rollback/preference-import operational commands.
 The real gh CLI fixture uses synthetic auth and a GET-only localhost server.
 Provider/relay/Cloudflare unit transports are mocks, not live requests.
 
+## Connected fleet fixtures
+
+`tests/fleet-preferences.test.mjs` covers the actual Spaces preference and Settings
+switch, old/new snapshot round trips and runtime-identity exclusion in disposable
+checkout artifacts. `src/plugins/crew/fleet.test.mjs` loads packaged plugin sources
+with fake status/Core snapshots: exact owner/task joins, moved/conflicting/remote
+identities, TTL/coalescing, order-independent binding, expiry and disable generations.
+`tests/fleet-reorder.test.mjs` exercises pure display blocks and queued public move
+acknowledgements, either grabbed member, pair edges, timeout and no replay. Shared
+reorder and Spaces render fixtures cover both-source dimming, stacked preview and
+expanded/compact link glyphs while preserving ordinary worktree order.
+
+`tests/fleet-git.test.mjs` loads the actual Git controller, aggregate source and Crew
+provider through the package harness. Synthetic tasks/gh results cover coordinator
+non-repo routing, recorded working/reported links, missing/new links, duplicate
+cross-repository PR numbers, shared PR deduplication, scoped counts/errors, exact
+worker robots, incomplete wording, repository enrollment links, webhook burst
+coalescing, no periodic GitHub reads, hide/show catch-up and stale completions.
+No fixture uses real Core, credentials, GitHub, terminals, native input or deployment.
+Recorded links deliberately do not guarantee pre-report PR discovery. Native pixels,
+actual drag motion and real remote execution remain unverified without separate
+authorization; fixture success is not deployment evidence.
+
 ## Terminal copy-on-select controller
 
 `node --experimental-vm-modules tests/copy-toast.test.mjs` loads the actual observer

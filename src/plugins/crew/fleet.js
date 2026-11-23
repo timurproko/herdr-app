@@ -41,19 +41,20 @@ export function bindFleet(status, machine, {groups, all, list}) {
   const binding=JSON.stringify([machine,status.home,owner.terminal.address,owner.space,owner.tab,owner.pane,child]);
   return {parent:owner.space,child,machine,binding,home:status.home,owner:owner.terminal.address,tasks:workers,incomplete:workers.some(t=>t.state==='working')};
 }
-const signature = (machine,m=model()) => JSON.stringify([m.groups.filter(s=>(s.machine??null)===machine).map(s=>[s.id,s.tabs?.map(t=>t.id)]).sort((a,b)=>a[0].localeCompare(b[0])),m.all.filter(p=>machineOf(p.terminal)===machine).map(p=>[p.pane,p.tab,p.terminal]),m.list.filter(t=>machineOf(t.address)===machine && (t.labels?.['crew.task'] || t.labels?.['custom.crew.home'])).map(t=>[t.address,t.state,t.labels?.['crew.task'],t.labels?.['crew.home'],t.labels?.['herdr.space'],t.labels?.['custom.crew.home']])]);
+const signature = (machine,m=model()) => JSON.stringify([m.groups.filter(s=>(s.machine??null)===machine).map(s=>[s.id,s.tabs?.map(t=>t.id)]).sort((a,b)=>a[0].localeCompare(b[0])),m.all.filter(p=>machineOf(p.terminal)===machine).map(p=>[p.pane,p.tab,p.terminal]).sort((a,b)=>String(a[0]).localeCompare(String(b[0]))),m.list.filter(t=>machineOf(t.address)===machine && (t.labels?.['crew.task'] || t.labels?.['custom.crew.home'])).map(t=>[t.address,t.state,t.labels?.['crew.task'],t.labels?.['crew.home'],t.labels?.['herdr.space'],t.labels?.['custom.crew.home']]).sort((a,b)=>a[0].localeCompare(b[0]))]);
 export function fleetContexts() {
   if(!enabled()) return [];
   const state=shared(FLEET_KEY), now=Date.now();
   if(state?.version!==1) return [];
   return Object.values(state.entries??{}).flatMap(entry=> {
-    if(now-entry.at>EXPIRY || signature(entry.machine)!==entry.signature) return [];
+    const layout=machines().find(m=>(m.name??null)===entry.machine)?.layout;
+    if((layout && layout!=='ready') || (entry.machine && !layout) || now-entry.at>EXPIRY || signature(entry.machine)!==entry.signature) return [];
     const bound=bindFleet(entry.status,entry.machine,model());return bound?[bound]:[];
   });
 }
 // Injected source is a seam: future discover-prs can be implemented here, not in consumers.
 export function refreshFleets(cx, readStatus, force = false) {
-  if(!enabled() || checking()) return;
+  if(!enabled() || checking() || (shared(FLEET_KEY) && shared(FLEET_KEY).version!==1)) return;
   const relevant=new Set(terminals().filter(t=>t.state==='live' && (t.labels?.['custom.crew.home']==='1' || t.labels?.['crew.task'])).map(t=>machineOf(t.address)));
   for(const machine of relevant) {
     if(machine && !machines().some(m=>m.name===machine && m.layout==='ready')) continue;
@@ -63,7 +64,7 @@ export function refreshFleets(cx, readStatus, force = false) {
     const token=`${now}-${Math.random()}`, generation=shared('custom.fleet.generation');
     setShared(READS,{...shared(READS),[key]:{token,until:now+20000}});
     cx.spawn(async view=> {
-      const current=()=>enabled() && shared('custom.fleet.generation')===generation && shared(READS)?.[key]?.token===token && signature(machine)===sig;
+      const current=()=>enabled() && shared('custom.fleet.generation')===generation && shared(READS)?.[key]?.token===token && shared(READS)[key].until>Date.now() && signature(machine)===sig;
       try {
         await Promise.resolve();if(!current()) return;
         const status=recordedSource(await readStatus(machine));

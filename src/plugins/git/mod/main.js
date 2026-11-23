@@ -52,6 +52,11 @@ export default class Changes extends View {
     });
   }
 
+  close() {
+    this.aggregate?.stop();this.webhooks?.stop();this.notices?.stop();
+    this.rootRequest=null;this.pullRequest=null;this.relatedRequest=null;
+  }
+
   resetRepository() {
     this.ciRevision=(this.ciRevision??0)+1;
     // Native size callbacks fire on size changes, not data resets. Keep the
@@ -118,13 +123,13 @@ export default class Changes extends View {
   }
 
   syncAggregate(cx) {
-    this.aggregate ??= new AggregatePulls({shown:()=>this.shown()});
+    this.aggregate ??= new AggregatePulls({shown:()=>this.shown(),onUpdate:view=>this.startCISweep(view)});
     if(!this.aggregate.sync(cx)) return false;
     const scope=`tasks:${this.aggregate.context.scope}`;
     if(this.context!==scope) {
       this.resetRepository();this.rootRequest=null;this.loading=false;this.context=scope;
     }
-    this.webhooks?.stop();this.notices?.stop();
+    this.syncTaskWebhooks(cx);
     return true;
   }
 
@@ -247,6 +252,18 @@ export default class Changes extends View {
     });
   }
 
+  syncTaskWebhooks(cx) {
+    this.webhooks ??= new GitWebhooks();
+    const aggregate=this.aggregate,scope=aggregate.context.scope;
+    const repositories=[...new Set([...aggregate.entries.values()].map(e=>e.link.repo))].sort();
+    this.webhooks.sync(cx,{enabled:this.shown() && repositories.length>0,scope:JSON.stringify(['tasks',scope,repositories]),
+      onChange:(event,view)=> {
+        if(!this.shown() || aggregate.currentContext()?.scope!==scope || this.context!==`tasks:${scope}`)return;
+        aggregate.invalidate(event?.repository??null);aggregate.pump(view);this.startCISweep(view);
+      }});
+    if(!this.shown())this.ciSweep=null;
+  }
+
   syncWebhooks(cx) {
     this.webhooks ??= new GitWebhooks();
     const shown = this.shown();
@@ -327,7 +344,8 @@ export default class Changes extends View {
 
   // One native pass for an event-driven read when ANY loaded PR has running CI.
   startCISweep(cx) {
-    if (!this.shown() || this.ciSweep || ![...(this.pulls.open ?? []),this.relatedPull].some(ciPending)) return;
+    const rows=this.aggregate?.context ? this.aggregate.rows('open') : [...(this.pulls.open ?? []),this.relatedPull];
+    if (!this.shown() || this.ciSweep || !rows.some(ciPending)) return;
     const sweep = this.ciSweep = {id:this.ciSweepSerial = (this.ciSweepSerial ?? 0) + 1,
       context:this.context,phase:'arm',width:this.pinMotion?.bodySize?.width ?? 320};
     cx.timer.after(CI_SWEEP_MS + 100, cx => {
@@ -605,10 +623,21 @@ export default class Changes extends View {
       .when(Boolean(swap), el => el.child(this.swapOverlay(t,swap)));
   }
 
+  sweepLayer(t,sweep) {
+    return div().id(`git-ci-track-${sweep.id}`).absolute().left(0).right(0).top(0).h(1).overflow_hidden()
+      .on_size_change((size,cx)=>{if(size.width>0)sweep.width=size.width;this.armCISweep(sweep,cx);})
+      .child(div().id('git-ci-line').absolute().top(0).h(1).w(CI_SWEEP_WIDTH).rounded_full().bg(t.accent).opacity(0.75)
+        .left(sweep.phase==='moving'?sweep.width:-CI_SWEEP_WIDTH).transition('left',{duration:CI_SWEEP_MS,easing:'ease-in-out'}));
+  }
+
   renderAggregate(cx,t) {
     const aggregate=this.aggregate,counts=aggregate.counts(),scope=aggregate.context.scope;
     const repositories=[...new Set([...aggregate.entries.values()].map(e=>e.link.repo))].sort();
-    return v_flex().id('changes').size_full().min_h(0).rounded(8).overflow_hidden().bg(t.background).border_1().border_color(t.input).text_color(t.foreground).text_size(U.font)
+    this.notices ??= new GitNotices();
+    const notices=new Map(repositories.map(repo=>[repo,this.notices.sync(cx,{enabled:this.shown(),repository:repo})]));
+    const setup=repositories.length ? [...notices.values()].includes('setup') : this.notices.sync(cx,{enabled:this.shown(),repository:null})==='setup';
+    const sweep=this.shown() && this.ciSweep?.context===this.context ? this.ciSweep : null;
+    return v_flex().id('changes').relative().size_full().min_h(0).rounded(8).overflow_hidden().bg(t.background).border_1().border_color(t.input).text_color(t.foreground).text_size(U.font)
       .child(h_flex().id('changes-header').relative().bg(t.surface).h(U.section).flex_none().pl(4).pr(U.gutter).gap(U.gap).items_center().border_b(1).border_color(t.border)
         .on_hover((hovered,view)=>{this.headerHovered=hovered;view.notify();})
         .child(sidebarTitle(t,'changes','git-title'))
@@ -616,7 +645,7 @@ export default class Changes extends View {
         .child(reveal(headerTools(h_flex()).id('git-actions').bg(t.surface),this.headerHovered)
           .child(refreshButton(t,{id:'git-refresh',icon:'mods/custom-changes/refresh.svg',label:'Refresh',busy:aggregate.busy,spinning:aggregate.busy,
             owner:this,scope:this.context,enabled:this.headerHovered,size:U.insetControl,iconSize:U.tinyIcon,radius:U.insetRadius,color:t.dim,hover:subtleActionFill(t),
-            onClick:(_e,view)=>{if(aggregate.context?.scope===scope && !aggregate.busy)aggregate.refresh(view);}}))
+            onClick:(_e,view)=>{if(aggregate.context?.scope===scope && !aggregate.busy) {this.webhooks?.retryNow();this.notices?.retryNow();aggregate.refresh(view);}}}))
           .child(panelPin(t,{id:'git-pin',enabled:this.headerHovered}))
           .child(headerTool(t,{id:'git-close',icon:'mods/custom-pane/close.svg',label:'Close Git panel',enabled:this.headerHovered,onClick:()=>changePanel({open:false})}))))
       .child(h_flex().id('git-views').h(40).flex_none().px(4).gap(2).items_center().border_b(1).border_color(t.border)
@@ -628,21 +657,25 @@ export default class Changes extends View {
         .children(repositories.map(repo=>v_flex().id(`task-repo-${repo}`).w_full().flex_none().gap(U.rowGap)
           .child(div().px(8).py(6).text_size(U.meta).text_color(t.muted).child(repo))
           .children(aggregate.rows(this.view).filter(pr=>pr.repo===repo).map(pr=>this.pullRow(t,pr)))
-          .children([...aggregate.entries.values()].filter(e=>e.link.repo===repo && e.error).map(e=>div().id(`task-error-${e.link.key}`).px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(e.error)))))
-        .when(!aggregate.rows(this.view).length,el=>el.child(panelMessage(t,'git-task-empty',{text:aggregate.busy?'Loading…':`No recorded ${this.view} task pull requests`,loading:aggregate.busy,rowInset:2}))));
+          .children([...aggregate.entries.values()].filter(e=>e.link.repo===repo && e.error).map(e=>div().id(`task-error-${e.link.key}`).px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(e.error)))
+          .when(notices.get(repo)==='repository',el=>el.child(this.liveCIInfo(t,'repository',repo)))))
+        .when(!aggregate.rows(this.view).length,el=>el.child(panelMessage(t,'git-task-empty',{text:aggregate.busy?'Loading…':`No recorded ${this.view} task pull requests`,loading:aggregate.busy,rowInset:2}))))
+      .when(setup,el=>el.child(this.liveCIInfo(t)))
+      .when(Boolean(sweep),el=>el.child(this.sweepLayer(t,sweep).top(U.section)));
   }
 
-  liveCIInfo(t,kind='setup') {
+  liveCIInfo(t,kind='setup',capturedRepository=null) {
     const text=kind==='repository'?'Add this repo in':'Set up Git in';
-    const repository=kind==='repository'&&typeof this.repo?.name==='string'?this.repo.name:null;
-    return div().id('git-live-ci-footer').flex_none().p(4).border_t(1).border_color(t.border)
-      .child(h_flex().id('git-live-ci-info').w_full().px(8).py(6).gap(U.gap).items_start().rounded(U.radius).bg(t.raised)
+    const repository=kind==='repository' ? capturedRepository ?? this.repo?.name ?? null : null;
+    const id=capturedRepository ? `git-live-ci-${capturedRepository}` : 'git-live-ci';
+    return div().id(`${id}-footer`).flex_none().p(4).border_t(1).border_color(t.border)
+      .child(h_flex().id(`${id}-info`).w_full().px(8).py(6).gap(U.gap).items_start().rounded(U.radius).bg(t.raised)
         .accessibility_label(`${text} Settings`)
         .child(div().h(20).flex_none().flex().items_center()
-          .child(svg('mods/custom-changes/info.svg').id('git-live-ci-icon').size(U.icon).flex_none().text_color(t.accent)))
-        .child(h_flex().id('git-live-ci-title').flex_1().min_w(0).flex_wrap().items_center().gap_x(3).text_size(U.meta).font_normal().text_color(t.dim)
+          .child(svg('mods/custom-changes/info.svg').id(`${id}-icon`).size(U.icon).flex_none().text_color(t.accent)))
+        .child(h_flex().id(`${id}-title`).flex_1().min_w(0).flex_wrap().items_center().gap_x(3).text_size(U.meta).font_normal().text_color(t.dim)
             .child(div().child(text))
-            .child(div().id('git-live-ci-settings').text_color(t.accent).underline().cursor_pointer().role('button')
+            .child(div().id(`${id}-settings`).text_color(t.accent).underline().cursor_pointer().role('button')
               .accessibility_label('Open Git plugin settings').hover(s => s.text_color(t.foreground))
               .on_click((_event, cx) => {
                 cx.stop_propagation();
@@ -702,10 +735,6 @@ export default class Changes extends View {
         .child(this.segment(t, 'git-view-closed', 'Closed', this.counts?.closed ?? null, this.view === 'closed', cx => this.setView('closed', cx))))
       .child(this.renderPulls(t))
       .when(Boolean(notice), el => el.child(this.liveCIInfo(t,notice)))
-      .when(Boolean(sweep), el => el.child(div().id(`git-ci-track-${sweep.id}`).absolute().left(0).right(0).top(0).h(1).overflow_hidden()
-        .on_size_change((size, cx) => { if (size.width > 0) sweep.width = size.width; this.armCISweep(sweep,cx); })
-        .child(div().id('git-ci-line').absolute().top(0).h(1).w(CI_SWEEP_WIDTH).rounded_full().bg(t.accent).opacity(0.75)
-          .left(sweep.phase === 'moving' ? sweep.width : -CI_SWEEP_WIDTH)
-          .transition('left', {duration:CI_SWEEP_MS,easing:'ease-in-out'})))));
+      .when(Boolean(sweep), el => el.child(this.sweepLayer(t,sweep))));
   }
 }

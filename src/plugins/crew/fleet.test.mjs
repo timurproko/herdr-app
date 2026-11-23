@@ -21,16 +21,21 @@ const tasks=[];const cx={spawn(fn){tasks.push(Promise.resolve().then(()=>fn(cx))
 const read=async()=>{calls++;return JSON.stringify(status);};
 f.refreshFleets(cx,read);f.refreshFleets(cx,read);await Promise.all(tasks.splice(0));assert.equal(calls,1);
 assert.ok(!JSON.stringify(state[f.FLEET_KEY]).includes('MUST NOT SHARE'));assert.equal(r.pluginWorkspaceLinks().length,1);assert.equal(r.pluginPullContext('coordinator').links.length,1);assert.equal(r.pluginPullContext('fm-crew-home1'),null);
+groups.reverse();all.reverse();list.reverse();assert.equal(f.fleetContexts().length,1,'Native ordering does not change identity or abort block acknowledgements');groups.reverse();all.reverse();list.reverse();
 assert.equal(r.pluginSpaceTags(groups[0]).length,0);
 all[1].terminal='replacement';assert.equal(f.fleetContexts().length,0);all[1].terminal='t2';
 state[f.FLEET_KEY].entries.local.at-=31000;assert.equal(f.fleetContexts().length,0);
 state['custom.spaces.preferences'].connectFleetToCoordinator=false;f.refreshFleets(cx,read);assert.equal(calls,1);assert.equal(r.pluginWorkspaceLinks().length,0);
 state['custom.spaces.preferences'].connectFleetToCoordinator=true;f.invalidateFleet();
 let release;f.refreshFleets(cx,()=>new Promise(r=>release=r));await Promise.resolve();await Promise.resolve();f.invalidateFleet();release(JSON.stringify(status));await Promise.all(tasks.splice(0));assert.equal(f.fleetContexts().length,0,'Disable generations reject obsolete responses');
+f.refreshFleets(cx,()=>new Promise(r=>release=r));await Promise.resolve();await Promise.resolve();state['custom.fleet.reads'].local.until=0;release(JSON.stringify(status));await Promise.all(tasks.splice(0));assert.equal(f.fleetContexts().length,0,'Expired read leases cannot publish a late snapshot');
 // Same local IDs on a remote Core are qualified once and never borrow local members.
 groups=groups.map(s=>({...s,id:'pc2/'+s.id,machine:'pc2',tabs:s.tabs.map(t=>({id:'pc2/'+t.id}))}));all=all.map(p=>({...p,tab:'pc2/'+p.tab,terminal:'pc2/'+p.terminal}));list=list.map(t=>({...t,address:'pc2/'+t.address}));
 assert.equal(f.bindFleet(status,'pc2',model()).parent,'pc2/coordinator');assert.equal(f.bindFleet({...status,owner:{terminal:'other/t1',live:true}},'pc2',model()),null);
 list[1].state='finished';assert.equal(f.bindFleet(status,'pc2',model()).tasks.length,0);
 assert.throws(()=>f.recordedSource('{bad'));assert.throws(()=>f.recordedSource(JSON.stringify({home:'x',tasks:{}})));
 assert.ok(!JSON.stringify(f.recordedSource(JSON.stringify(status))).includes('MUST NOT SHARE'));
+const declaration=r.pluginById('crew'),workspace=declaration.workspaceLinks,pulls=declaration.pullContext;
+declaration.workspaceLinks=()=>{throw Error('fixture provider failure');};declaration.pullContext=()=>{throw Error('fixture provider failure');};assert.equal(r.pluginWorkspaceLinks().length,0);assert.equal(r.pluginPullContext('coordinator'),null);declaration.workspaceLinks=workspace;declaration.pullContext=pulls;
+r.setPluginEnabled(declaration,false);assert.equal(r.pluginWorkspaceLinks().length,0);assert.equal(r.pluginPullContext('coordinator'),null);
 console.log('PASS Crew fleet exact identities, registry seam, source filtering, read coalescing, expiry, generations and remote qualification');
