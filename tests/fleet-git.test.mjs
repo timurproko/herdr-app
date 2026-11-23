@@ -6,7 +6,7 @@ const find=(n,id)=>n?.attrs?.id?.[0]===id?n:n?.kids?.map(c=>find(c,id)).find(Boo
 const state={'custom.plugins':{crew:{enabled:true},git:{enabled:true}},'custom.spaces.preferences':{connectFleetToCoordinator:true}};
 let selected={space:'coordinator',cwd:'/not-a-repository',on:null,terminal:'t1'},shown=true,failRepo=null,defer=false,pendingCI=false,bClosed=true;
 const waiting=[],settingsOpened=[],noticeModes={};
-let holdStatus=false,releaseStatus;
+let holdStatus=false,releaseStatus,failStatus=false,now=Date.now();
 let assignedLabels=[{name:'🤖 Under review',color:'840479'}];
 const groups=[{id:'coordinator',tabs:[{id:'c'}]},{id:'fm-crew-home',tabs:[{id:'a'},{id:'b'},{id:'dup'}]}];
 const all=[{pane:'cp',tab:'c',terminal:'t1'},...['a','b','dup'].map((id,i)=>({pane:id+'p',tab:id,terminal:'t'+(i+2)}))];
@@ -16,10 +16,10 @@ const status={home:'C:/fixture/.crew',owner:{terminal:'t1',live:true},tasks:[{id
 let rendering=false;
 const calls=[],focus=[],jobs=[];const cx={notify(){assert.equal(rendering,false,'No synchronous notify from fleet render');},stop_propagation(){},spawn(fn){const p=Promise.resolve().then(()=>fn(cx));jobs.push(p);},timer:{every(){},after(){} }};
 const drain=async()=>{while(jobs.length)await Promise.all(jobs.splice(0));};
-const host={closeOverlay(){},openOverlay(){},nextCommand(){return new Promise(()=>{});},shared:k=>state[k],setShared:(k,v)=>state[k]=v,spaces:()=>groups,panes:()=>all,terminals:()=>list,machines:()=>[],checking:()=>false,
+const host={closeOverlay(){},openOverlay(){},nextCommand(){return new Promise(()=>{});},shared:k=>state[k],setShared:(k,v)=>{assert.equal(rendering,false,'No shared-state writes from fleet render');state[k]=v;},spaces:()=>groups,panes:()=>all,terminals:()=>list,machines:()=>[],checking:()=>false,
   props:()=>null,layout:()=>({id:'panel',hidden:!shown,children:[{id:'panel-body',active:'changes'}]}),settings:()=>({zoom:1}),theme:()=>({}),window:()=>({platform:'windows'}),notify(){},run:(...args)=>focus.push(args),
-  hc:async args=>{assert.match(args.at(-1),/status '--all' '--json'/);if(holdStatus)await new Promise(resolve=>releaseStatus=resolve);return {code:0,stdout:JSON.stringify({code:0,stdout:Buffer.from(JSON.stringify(status)).toString('base64'),stderr:'',timed_out:false})};},
-  exec:async(cmd,args)=>{assert.equal(cmd,'gh','Coordinator cwd must not be probed as Git');calls.push(args);if(defer)await new Promise(resolve=>waiting.push(resolve));const repo=args[args.indexOf('--repo')+1];if(repo===failRepo)return {code:1,stderr:'unreachable'};return {code:0,stdout:JSON.stringify({number:12,title:repo,url:`https://github.com/${repo}/pull/12`,state:repo==='example/b'&&bClosed?'CLOSED':'OPEN',author:{login:'fixture'},body:'',labels:assignedLabels,statusCheckRollup:pendingCI?[{name:'build',status:'IN_PROGRESS'}]:[]})};}};
+  hc:async args=>{assert.equal(rendering,false,'Status reads yield out of render');if(failStatus)throw Error('Crew status unavailable');assert.match(args.at(-1),/status '--all' '--json'/);if(holdStatus)await new Promise(resolve=>releaseStatus=resolve);return {code:0,stdout:JSON.stringify({code:0,stdout:Buffer.from(JSON.stringify(status)).toString('base64'),stderr:'',timed_out:false})};},
+  exec:async(cmd,args)=>{assert.equal(rendering,false,'GitHub reads never start during render');assert.equal(cmd,'gh','Coordinator cwd must not be probed as Git');calls.push(args);if(defer)await new Promise(resolve=>waiting.push(resolve));const repo=args[args.indexOf('--repo')+1];if(repo===failRepo)return {code:1,stderr:'unreachable'};return {code:0,stdout:JSON.stringify({number:12,title:repo,url:`https://github.com/${repo}/pull/12`,state:repo==='example/b'&&bClosed?'CLOSED':'OPEN',author:{login:'fixture'},body:'',labels:assignedLabels,statusCheckRollup:pendingCI?[{name:'build',status:'IN_PROGRESS'}]:[]})};}};
 const storage=new Map(),writes=[];
 const localStorage={getItem:key=>storage.get(key)??null,setItem:(key,value)=>{storage.set(key,value);writes.push(key);}};
 const text=n=>typeof n==='string'?n:(n?.kids??[]).map(text).join(' ');
@@ -32,7 +32,7 @@ const modules={
  'relay-consumer.js':'src/plugins/git/mod/webhooks.js',
  'webhooks.js':{GitWebhooks:class{sync(_cx,options){websocket=options;}stop(){}retryNow(){}}},'notices.js':{GitNotices:class{sync(_cx,{enabled,repository}){return enabled?noticeModes[repository]??null:null;}stop(){}retryNow(){}}},
 };
-const {Main,f,A,r,GitWebhooks}=await loadMod({host,modules,globals:{URL,localStorage},mod:'custom-changes',entry:'export {default as Main} from "./main.js";export * as f from "./plugins/crew/fleet.js";export * as A from "./aggregate.js";export * as r from "./plugins.js";export {GitWebhooks} from "./relay-consumer.js";'});
+const {Main,f,A,r,GitWebhooks}=await loadMod({host,modules,globals:{URL,localStorage,Date:class extends Date{static now(){return now;}}},mod:'custom-changes',entry:'export {default as Main} from "./main.js";export * as f from "./plugins/crew/fleet.js";export * as A from "./aggregate.js";export * as r from "./plugins.js";export {GitWebhooks} from "./relay-consumer.js";'});
 f.refreshFleets(cx,async()=>JSON.stringify(status));await drain();
 const panel=new Main();panel.init({},cx);await drain();let tree=panel.render(cx);await drain();tree=panel.render(cx);
 assert.equal(calls.length,2,'Duplicate task PR is fetched once');assert.equal(panel.aggregate.counts().open,1);assert.equal(panel.aggregate.counts().closed,1);
@@ -137,6 +137,23 @@ before=calls.length;panel.aggregate.refresh(cx);await tick();shown=false;panel.r
 shown=true;defer=false;panel.render(cx);await drain();assert.equal(calls.length,before+4,'Showing again catches up both linked repositories');
 before=calls.length;websocket.onChange(null,cx);await drain();assert.equal(calls.length,before+2,'Socket ready/reconnect catches up all task repositories');
 noticeModes['example/a']='setup';noticeModes['example/b']='setup';tree=panel.render(cx);assert.ok(find(tree,'git-live-ci-footer'));assert.equal(find(tree,'git-live-ci-example/b-footer'),undefined,'Missing global setup has one shared prompt, not per-repository enrollment');
+// Long status outages retain rows/folds with an explicit stale state, never IO or robots.
+failStatus=true;now+=2*86400000;defer=false;const staleCalls=calls.length,foldBefore=panel.foldedRepositories.has('example/a'),countsBefore=JSON.stringify(panel.aggregate.counts());
+const lastRobot=find(tree,'pr-agent-example/b#12'),lateRelay=websocket.onChange;
+rendering=true;try{tree=panel.render(renderCx);}finally{rendering=false;}
+assert.equal(find(tree,'git-task-stale').kids[0],'Stale');assert.ok(find(tree,'pr-example/b#12'));assert.equal(find(tree,'pr-agent-example/b#12'),undefined);assert.equal(JSON.stringify(panel.aggregate.counts()),countsBefore);sample();
+assert.equal(websocket.enabled,false,'Stale presentation cannot subscribe for task reads');assert.equal(panel.ciSweep,null);
+lastRobot.attrs.on_click[0]({},cx);lateRelay({repository:'example/a'},cx);panel.aggregate.refresh(cx);await drain();assert.equal(calls.length,staleCalls);assert.equal(focus.length,1,'Stale callbacks cannot navigate');
+toggle('a');assert.equal(panel.foldedRepositories.has('example/a'),!foldBefore);assert.equal(calls.length,staleCalls,'Read-only folding still works while verification is unavailable');
+// A cold controller/module gets the attached first frame, but no persisted PR inventory or authority.
+const coldState=JSON.parse(JSON.stringify(state));delete coldState[f.FLEET_KEY];
+const cold=await loadMod({host:{...host,shared:k=>coldState[k],setShared:(k,v)=>{assert.equal(rendering,false);coldState[k]=v;}},modules,globals:{URL,localStorage,Date:class extends Date{static now(){return now;}}},mod:'custom-changes',entry:'export {default as Main} from "./main.js";export * as r from "./plugins.js";'});
+const coldPanel=new cold.Main();coldPanel.init({},cx);const first=coldPanel.render(cx);
+assert.equal(find(first,'git-task-stale').kids[0],'Verifying');assert.equal(find(first,'git-task-empty').kids[0],'Waiting for fleet verification');assert.equal(coldPanel.aggregate.entries.size,0);assert.equal(cold.r.pluginWorkspaceLinks({presentation:true}).length,1);
+await drain();assert.equal(calls.length,staleCalls);coldPanel.close();
+// Fresh same-home verification restores reads/robots, not a new folder/pin context.
+failStatus=false;f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();tree=panel.render(cx);await drain();tree=panel.render(cx);
+assert.equal(find(tree,'git-task-stale'),undefined);assert.ok(find(tree,'pr-agent-example/b#12'));assert.equal(panel.foldedRepositories.has('example/a'),!foldBefore);assert.equal(JSON.stringify(panel.aggregate.counts()),countsBefore);toggle('a');defer=true;
 // A slow old context cannot publish after the preference or selected space changes.
 const staleHeader=header('a',tree),savedFolds=storage.get('custom.git.task-repositories.folded');
 defer=true;before=calls.length;panel.aggregate.refresh(cx);await tick();selected={...selected,space:'other'};staleHeader.attrs.on_click[0]({},cx);assert.equal(storage.get('custom.git.task-repositories.folded'),savedFolds,'Stale headers cannot change fold state after context replacement');assert.equal(panel.aggregate.currentContext(),null);assert.equal(panel.aggregate.sync(cx),false);while(waiting.length)waiting.shift()();await drain();assert.equal(calls.length,before+2,'Old context starts no follow-up reads');assert.equal(panel.aggregate.entries.size,0,'Old replies cannot populate another selected space');captured.attrs.on_click[0]({},cx);assert.equal(focus.length,1);

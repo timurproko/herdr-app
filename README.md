@@ -597,11 +597,19 @@ from beneath the coordinator's number badge toward the inset, muted fleet name.
 The coordinator keeps its Crew tag and only the attached fleet omits it.
 Unrelated plugin tags remain. Refreshing Git or Crew, relay events, focus changes
 and unrelated pane changes do not temporarily turn a verified fleet back into an
-ordinary numbered row. A pending/failed status read retains the last verified
-display for at most **60 seconds from successful verification**; retries never
-renew that deadline. Completed relationship changes, disabling the feature and
-removed native spaces clear it. Retained visuals are not action permission:
-pair moves and Git/worker actions still require fresh exact live identity.
+ordinary numbered row. The pair is a persisted property of its exact native
+space IDs and verified coordinator home/owner/adoption identity, not a temporary
+mode with a display timeout. Adding, renaming, removing or reordering unrelated
+spaces/tabs/panes on either machine cannot detach it. App restart, mod reload and
+layout changes restore the attached first frame while verification runs in the
+background. Only completed contradictory evidence, disabling the feature or
+missing native spaces clears it; transport failures alone do not.
+Retained visuals are not action permission: pair moves and Git/worker actions
+still require fresh exact live identity. An unverified coordinator Git panel keeps
+its loaded rows and folds with **Stale**, or shows **Verifying** on cold start;
+it starts no new GitHub reads or worker navigation until verification succeeds.
+Only sanitized pair identity is persisted for restoration, not task/PR inventory,
+reports or credentials; it is never exported as a portable preference.
 Dragging either expanded row moves the pair, with both rows dimmed and a paired
 preview. Public ordering commands wait for acknowledgements; the two-space move is
 not atomic and an uncertain result is never replayed. The compact rail remains

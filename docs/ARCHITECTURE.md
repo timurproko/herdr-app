@@ -164,17 +164,37 @@ Spaces lifecycle, a 10-second TTL and expiring sanitized runtime facts under
 Only the default-off Spaces boolean is portable. Raw reports, task files and
 pending ordering operations are not exported or replayed.
 
-Successful status publication atomically records verified display facts separately
-from pending tokens and retry timestamps. Broad topology signatures schedule reads,
-not detachment: exact live joins govern action contributions. Spaces requests
-`pluginWorkspaceLinks({presentation:true})`, and Crew tags use that same verified
-display for up to 60 seconds from successful verification, including failed or
-pending refreshes. Errors never replace it with `status:null` or renew its age;
-attempt timestamps preserve retry backoff without a render-triggered request loop.
-Successful negative results and explicit disablement remove it; absent native
-spaces cannot become ghost rows. Ordinary link queries and Git action context
-retain 30-second freshness and exact live membership. Drops on/from a retained
-unverified block refuse to move, never fall back to a single-space reorder.
+Successful publication separates durable identity (`custom.fleet.display`, version
+1) from expiring status facts, pending leases and retry timestamps. The durable
+record contains only bounded machine/space/home/owner references and adoption facts,
+with one pair per machine; no task/PR inventory, reports, transcripts or credentials.
+Public shared values are persisted by the SDK. Pure Spaces projection and Crew tag
+reads restore that record in the first available native-space frame after a cold
+start, mod replacement or layout switch, without render-time writes or IO. It is
+excluded from portable preferences. Explicit preference/plugin disablement clears
+it, and completed negative results or ready native-space absence prune it; another
+machine's loading layout cannot erase its record.
+
+Presentation has no wall-clock expiry. Its bound is the lifetime of the exact pair
+identities, not repeated re-earning after unrelated topology events. Fingerprints
+include only parent/child presence, coordinator owner/home membership and fleet
+adoption facts, never unrelated names/order/selection/tabs/panes. Errors do not
+publish `status:null` or renew success age; independent attempt timestamps back off
+retries. Crew lifecycle hooks explicitly yield before persistence, leases or reads,
+including when native spawn begins inline.
+
+Strict action queries still require a current-runtime witnessed status result,
+30-second freshness, matching dependency fingerprints and exact live membership.
+Persisted timestamps/tokens cannot authorize a cold module. Consumers can witness a
+shared in-flight read, preserving coalescing across mod copies, but completed crash
+leases are not fresh verification. Drops on/from a retained unverified block refuse
+to move, never fall back to a single-space reorder. Git requests presentation context
+only to retain already-loaded same-home rows/counts/folds with a Stale badge, or a
+Verifying/waiting state with no restored inventory on cold start. It starts no task
+GitHub reads or worker navigation from stale context, and pauses its relay consumer,
+not the chrome-owned shared broker or independent update checks. Fresh verification
+resumes targeted reads and controls; different selected spaces or confirmed ownership
+changes cannot inherit those rows.
 
 `plugins/git/mod/aggregate.js` consumes the registry's explicit task context only
 for the selected coordinator. It reads exact recorded PR URLs on that machine with
@@ -201,7 +221,7 @@ still cannot be inferred from transcripts or branches.
 `ui/ui.js` owns `sidebarSectionHeader`, the common machine/repository header shell
 and right-edge chevron; Spaces retains its own actions and guarded folding.
 Aggregate repository headers start expanded, retain both task-scoped Open/Closed
-counts when folded, and persist a canonical repository-key set in localStorage
+counts when folded using the shared row's 3px centred metadata separator, and persist a canonical repository-key set in localStorage
 (`custom.git.task-repositories.folded`), like Spaces' `machines.folded` set.
 Explicit toggles are UI-only: no preference export or Crew/host-document writes,
 and no new fetch or cancellation. Fold state survives tab/context changes and

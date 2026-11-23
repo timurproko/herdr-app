@@ -12,7 +12,7 @@ const tasks=[],cx={spawn:fn=>tasks.push(Promise.resolve().then(()=>fn(cx))),noti
 const drain=async()=>{while(tasks.length)await Promise.all(tasks.splice(0));};
 const tick=async()=>{for(let i=0;i<20;i++)await Promise.resolve();};
 const clone=value=>JSON.parse(JSON.stringify(value));
-const host={shared:k=>state[k],setShared:(k,v)=>state[k]=v,spaces:()=>groups,panes:()=>all,terminals:()=>list,machines:()=>[],checking:()=>false,notify(){},
+const host={shared:k=>state[k],setShared:(k,v)=>state[k]=v,spaces:()=>groups,panes:()=>all,terminals:()=>list,machines:()=>[{name:null,layout:'ready'}],checking:()=>false,notify(){},
  hc:async args=>{
   assert.match(args.at(-1),/status '--all' '--json'/);requests++;
   if(mode==='defer')await new Promise(resolve=>release=resolve);
@@ -78,7 +78,8 @@ event('workspace.context.refresh',true);await drain();frame();assert.equal(state
 // Dependent adoption changes immediately refuse actions, then detach on completed proof.
 mode='defer';list[1].labels['crew.home']='changed';event();await tick();frame();assert.equal(r.pluginWorkspaceLinks().length,0);release();await drain();frame(false);
 list[1].labels['crew.home']='home';await prime();
-status.tasks=[];event('workspace.context.refresh',true);await drain();frame(false);status.tasks=[{id:'task',terminal:'t2',state:'working',pr:null}];frame(false);await prime();
+status.tasks=[];event('workspace.context.refresh',true);await drain();frame();assert.equal(r.pluginWorkspaceLinks().length,0,'An extant finished fleet retains identity, never actionable worker membership');
+status.tasks=[{id:'task',terminal:'t2',state:'working',pr:null}];frame();await prime();
 mode='defer';event('workspace.context.refresh',true);await tick();frame();status.owner.live=false;release();await drain();frame(false);await prime();
 const removed=groups.splice(1,1)[0];assert.equal(links().length,0);event('spaces.refresh',true);await drain();assert.equal(Object.keys(state[f.DISPLAY_KEY].entries).length,0,'Confirmed native absence prunes durable identity');groups.splice(1,0,removed);frame(false);await prime();
 // True cold restarts, hot reload and layout copies have only persisted identity in first frame.
@@ -95,6 +96,25 @@ for(const restart of ['cold','hot','layout']){
  now+=86400000;mode='error';boot.r.pluginEvent('spaces.refresh',{cx});await drain();frame(true,boot.r);assert.equal(boot.r.pluginPullContext('coordinator'),null);
  boot.p.updateSpacePreferences({connectFleetToCoordinator:false});frame(false,boot.r);assert.equal(store[f.DISPLAY_KEY],null,'Explicit preference disable clears persistence');
  boot.p.updateSpacePreferences({connectFleetToCoordinator:true});frame(false,boot.r);
+}
+// Partial startup documents must not prune identity before the pair's first frame.
+{
+ const store=clone(savedState);let ready=false;
+ const boot=await load({...host,shared:k=>store[k],setShared:(k,v)=>store[k]=v,spaces:()=>ready?groups:[groups[2]],machines:()=>[{name:null,layout:ready?'ready':'loading'}]});
+ mode='success';boot.r.pluginEvent('spaces.refresh',{cx});await drain();assert.equal(Object.keys(store[f.DISPLAY_KEY].entries).length,1);
+ ready=true;frame(true,boot.r);assert.equal(boot.r.pluginWorkspaceLinks().length,0,'Loading documents never grant action authority');
+}
+// A local verification must not erase another machine's pair while its layout loads.
+{
+ const store=clone(savedState), sourceRecord=Object.values(store[f.DISPLAY_KEY].entries)[0];
+ store[f.DISPLAY_KEY].entries[JSON.stringify('pc2')]={...sourceRecord,machine:'pc2',parent:'pc2/coordinator',child:'pc2/fm-crew-remote',owner:'pc2/t1',ownerTab:'pc2/c',ownerPane:'pc2/cp',adoption:'remote'};
+ const remoteGroups=[{id:'pc2/coordinator',machine:'pc2',tabs:[{id:'pc2/c'}]},{id:'pc2/fm-crew-remote',machine:'pc2',tabs:[{id:'pc2/w'}]}];
+ let visible=false,ready=false;
+ const boot=await load({...host,shared:k=>store[k],setShared:(k,v)=>store[k]=v,spaces:()=>visible?[...groups,...remoteGroups]:groups,machines:()=>[{name:'pc2',layout:ready?'ready':'loading'}]});
+ mode='success';boot.r.pluginEvent('spaces.refresh',{cx,force:true});await drain();assert.equal(Object.keys(store[f.DISPLAY_KEY].entries).length,2,'Local publication preserves the loading remote identity');
+ visible=true;ready=true;const both=projectLinkedRows([...groups,...remoteGroups].map(w=>({w})),links(boot.r));
+ assert.equal(both.find(row=>row.w.id==='pc2/fm-crew-remote').linked,true,'Remote first frame restores its own qualified pair');assert.equal(boot.r.pluginWorkspaceLinks().length,1,'Persisted remote identity grants no cross-machine authority');
+ visible=false;boot.r.pluginEvent('spaces.refresh',{cx,force:true});await drain();assert.equal(Object.keys(store[f.DISPLAY_KEY].entries).length,1,'Ready native absence prunes just that machine');
 }
 // Corrupt/unknown records never manufacture a pair from names or role hints.
 for(const invalid of [{version:999,entries:savedState[f.DISPLAY_KEY].entries},{version:1,entries:{bad:{...Object.values(savedState[f.DISPLAY_KEY].entries)[0],adoption:'wrong'}}},{version:1,entries:[]}]){

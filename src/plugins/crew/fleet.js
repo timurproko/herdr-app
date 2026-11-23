@@ -80,7 +80,20 @@ function savedDisplays() {
   for(const item of Object.values(value.entries)) {const record=displayRecord(item);if(record)unique.set(record.machine,record);}
   return [...unique.values()];
 }
-function publishDisplay(machine, bound, snapshot) {
+function nextDisplay(machine, bound, snapshot) {
+  const fresh=displayRecord(identityOf(bound));if(fresh || !bound)return fresh;
+  const prior=savedDisplays().find(d=>d.machine===machine);
+  if(!prior || prior.home!==bound.home || prior.owner!==bound.owner || prior.parent!==bound.parent ||
+    ![prior.parent,prior.child].every(id=>inMachine(snapshot,id,machine)))return null;
+  const tabs=new Set(snapshot.groups.find(s=>s.id===prior.child)?.tabs?.map(t=>t.id)??[]);
+  const members=new Set(snapshot.all.filter(p=>tabs.has(p.tab) && !p.mod).map(p=>p.terminal));
+  const conflict=snapshot.list.some(t=>members.has(t.address) && t.state==='live' && (t.labels?.['crew.task'] || t.labels?.['crew.home']) &&
+    (t.labels?.['crew.home']!==prior.adoption || t.labels?.['herdr.space']!==prior.child.split('/').at(-1)));
+  // Finished tasks do not disown an extant native fleet. Keep its previously
+  // verified identity until disappearance or completed contradictory evidence.
+  return conflict?null:prior;
+}
+function publishDisplay(machine, bound) {
   const raw=shared(DISPLAY_KEY);if(raw && raw.version!==1)return;
   const entries={};
   for(const record of savedDisplays()) if(record.machine!==machine)entries[JSON.stringify(record.machine)]=identityOf(record);
@@ -95,7 +108,7 @@ function pruneDisplays(snapshot, hosts) {
   for(const record of savedDisplays()) {
     // Do not erase another machine's persisted pair during initial layout load.
     const layout=hosts.find(h=>(h.name??null)===record.machine)?.layout;
-    const ready=layout==='ready' || !record.machine && !layout && snapshot.groups.some(s=>!s.machine);
+    const ready=layout==='ready';
     if(!ready || [record.parent,record.child].every(id=>inMachine(snapshot,id,record.machine)))entries[JSON.stringify(record.machine)]=identityOf(record);
     else removed.push(record.machine??'local');
   }
@@ -150,7 +163,7 @@ export function refreshFleets(cx, readStatus, force = false) {
   for(const machine of relevant) {
     if(machine && !hosts.some(m=>m.name===machine && m.layout==='ready')) continue;
     const key=machine??'local', state=shared(FLEET_KEY), entry=state?.entries?.[key];
-    const reference=entry?.identity??displays.find(d=>d.machine===machine), sig=signature(machine,snapshot,reference), now=Date.now();
+    const reference=displays.find(d=>d.machine===machine)??entry?.identity, sig=signature(machine,snapshot,reference), now=Date.now();
     locallyVerified(key,entry);
     const pending=shared(READS)?.[key];
     if(pending?.until>now) {
@@ -171,17 +184,17 @@ export function refreshFleets(cx, readStatus, force = false) {
         const changedOwner=prior && (prior.home!==status.home || prior.owner.terminal!==status.owner.terminal);
         if(!changedOwner && incompleteMembership(status,machine,snapshot)) throw Error('Live membership is not yet available');
         const bound=bindFleet(status,machine,snapshot), identity=identityOf(bound), at=Date.now();
-        const verifiedSignature=signature(machine,snapshot,identity);
+        const display=nextDisplay(machine,bound,snapshot), verifiedSignature=signature(machine,snapshot,identity);
         setShared(FLEET_KEY,{version:1,entries:{...(latest?.version===1?latest.entries:{}),[key]:{
-          machine,at,attemptAt:at,token,attemptToken:token,signature:verifiedSignature,attemptSignature:verifiedSignature,status,binding:bound?.binding??null,identity}}});
-        verifiedTokens.set(key,token);publishDisplay(machine,bound,snapshot);
+          machine,at,attemptAt:at,token,attemptToken:token,signature:verifiedSignature,attemptSignature:signature(machine,snapshot,display??identity),status,binding:bound?.binding??null,identity}}});
+        verifiedTokens.set(key,token);publishDisplay(machine,display);
       } catch {
         if(current()) {
           const latest=shared(FLEET_KEY);
           // Failed transport is not a negative relationship result. Back off
           // using attempt age without renewing successful verification age.
           setShared(FLEET_KEY,{version:1,entries:{...latest?.entries,[key]:{
-            ...latest?.entries?.[key],machine,attemptAt:Date.now(),attemptToken:token,attemptSignature:signature(machine,model(),latest?.entries?.[key]?.identity??reference)}}});
+            ...latest?.entries?.[key],machine,attemptAt:Date.now(),attemptToken:token,attemptSignature:signature(machine,model(),savedDisplays().find(d=>d.machine===machine)??latest?.entries?.[key]?.identity??reference)}}});
         }
       } finally {
         if(shared(READS)?.[key]?.token===token) {const reads={...shared(READS)};delete reads[key];setShared(READS,reads);}
