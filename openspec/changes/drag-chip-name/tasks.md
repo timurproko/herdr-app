@@ -2,11 +2,11 @@
 
 ## 1. Numbered attached rows, coordinator chain and ordinary name states
 
-- [ ] 1.1 Update `src/features/spaces/main.js` so fleet badges retain their own list number and coordinator-derived display fill in expanded and compact views; assert distinct saved fleet colours are never overwritten and reappear on detachment.
-- [ ] 1.2 Move the outline chain to the coordinator's trailing metadata slot, immediately before Crew, with fixed counts/worktree/chain/tag order, worktree-matching geometry and muted colour; assert no chain badge, fleet chain, rail chain or chain during rename and unchanged trailing tag alignment with multiple tags.
-- [ ] 1.3 Remove the unconditional fleet name tint and use the real shared title helper in rendering tests; compare ordinary/fleet active colour and weight, inactive muted text, selected background, hover treatment, tooltip and compact control states.
-- [ ] 1.4 Replace superseded #35 assertions in `tests/spaces-worktree-layout.test.mjs` and affected retained-presentation fixtures; cover local/remote, counts/worktree combinations, worktree-hidden and rename states, then pass the focused rendering and fleet-refresh fixtures.
-- [ ] 1.5 Update the attached-row and retained-presentation descriptions in `README.md` and `docs/TESTING.md`; confirm they describe own numbered badges, shared coordinator fill, coordinator metadata chain and ordinary selected fleet text rather than the superseded fleet chain badge.
+- [x] 1.1 Update `src/features/spaces/main.js` so fleet badges retain their own list number and coordinator-derived display fill in expanded and compact views; assert distinct saved fleet colours are never overwritten and reappear on detachment.
+- [x] 1.2 Move the outline chain to the coordinator's trailing metadata slot, immediately before Crew, with fixed counts/worktree/chain/tag order, worktree-matching geometry and muted colour; assert no chain badge, fleet chain, rail chain or chain during rename and unchanged trailing tag alignment with multiple tags.
+- [x] 1.3 Remove the unconditional fleet name tint and use the real shared title helper in rendering tests; compare ordinary/fleet active colour and weight, inactive muted text, selected background, hover treatment, tooltip and compact control states.
+- [x] 1.4 Replace superseded #35 assertions in `tests/spaces-worktree-layout.test.mjs` and affected retained-presentation fixtures; cover local/remote, counts/worktree combinations, worktree-hidden and rename states, then pass the focused rendering and fleet-refresh fixtures.
+- [x] 1.5 Update the attached-row and retained-presentation descriptions in `README.md` and `docs/TESTING.md`; confirm they describe own numbered badges, shared coordinator fill, coordinator metadata chain and ordinary selected fleet text rather than the superseded fleet chain badge.
 
 ## 2. Pair colour controls preserve independent fleet preferences
 

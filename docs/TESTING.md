@@ -314,14 +314,20 @@ also samples actual sidebar projection across its in-flight status read.
 acknowledgements, either grabbed member, pair edges, timeout and no replay. Shared
 reorder and Spaces render fixtures cover both-source dimming, a single ordinary
 coordinator chip from either grabbed member (including return/fade), no stacked
-preview or floating chain icon, and expanded/compact chain badges while preserving
-ordinary worktree order. Geometry
-assertions compare the filled chain badge's 16px box, 4px rounding, slot width and
-vertical centering with real numbered badges, with an inset 12px white outline glyph.
+preview or floating chain icon, and each expanded/compact row's own numbered badge
+while preserving ordinary worktree order. Geometry assertions compare numbered badge
+boxes (16px, 4px rounding) and the coordinator's trailing chain slot with the worktree
+marker: a 14px muted outline glyph in the ordinary centred slot, without a filled
+background. Counts precede worktree, then chain/Crew; unrelated tags retain their
+relative order before the trailing chain/Crew group.
 The real colour resolver covers distinct coordinator/fleet colours, named and hex
 overrides, recolouring between renders, and retained display identity in both modes;
 missing/cross-machine parents cannot lend colour. Fleet names share ordinary names'
-left edge while retaining muted text, without connector lines. Rail selection, name/directory
+left edge, without connector lines. The real shared title helper proves that only
+inactive fleet names are muted; active names match ordinary selected foreground and
+normal weight. Expanded and compact hover/selection treatments match ordinary rows,
+and rename hides chain, worktree and tags while the Worktree switch hides only its
+own marker. Rail selection, name/directory
 tooltips and ordinary numbering stay unchanged. Packaged Crew
 fixtures retain Crew tags on both attached rows through refresh, finished fleets
 and cold restoration, restore ordinary worker tag rules on confirmed detach/attachment-off,

@@ -447,9 +447,7 @@ export default class Spaces extends View {
   spaceBadge({ w, i, linked = false, block }, t) {
     const parent = linked && spaces().find(s => s.id === block?.[0] && (s.machine ?? null) === (w.machine ?? null));
     const fill = spaceBadgeColor(t, parent || w, shared('space.colors') ?? {});
-    return parent
-      ? badge(svg('mods/custom-spaces/link.svg').size(12).flex_none().text_color('#ffffff'), fill)
-      : badge(String(i + 1), fill);
+    return badge(String(i + 1), fill);
   }
 
   row({ w, i, g, tree, linked = false, block, position = i }, t) {
@@ -458,7 +456,10 @@ export default class Spaces extends View {
     const drag = this.drag, d = drag.view;
     const fromIndex = d ? this.ordered().findIndex(r => r.w.id === d.id) : -1;
     const worktree = !edit && Boolean(g?.linked || tree) && shows("spaces.show.worktree");
-    const tags = edit ? [] : pluginSpaceTags(w);
+    const coordinator = !edit && block?.length > 1 && block[0] === w.id;
+    const tags = (edit ? [] : pluginSpaceTags(w)).map((tag, index) => ({...tag, index}));
+    // Keep unrelated tags stable; the chain/Crew group stays at the trailing edge.
+    const trailing = coordinator ? [...tags.filter(tag => tag.plugin !== 'crew'), ...tags.filter(tag => tag.plugin === 'crew')] : tags;
     return drag.item(v_flex()
       .relative()
       .id(`space-${w.id}`)
@@ -512,16 +513,18 @@ export default class Spaces extends View {
           .child(this.spaceBadge({ w, i, linked, block }, t))
           .when(Boolean(edit), el => el.child(this.renameField(w, t)))
           .when(!edit, el => el
-            .child(spaceTitle(t,w).when(linked, el => el.text_color(t.muted)).min_w(0).max_w(150).truncate().child(w.name))
+            .child(spaceTitle(t,w).min_w(0).max_w(150).truncate().child(w.name))
             .child(g ? this.gitTail(g, tree, w.name, t, w.named === true) : div().flex_1()))
           // Untagged markers retain the machine chevron's axis (4px right inset).
           // With tags, metadata precedes the shared trailing tag edge instead.
           .when(worktree, el => el.child(slot(svg("mods/custom-workspace-chrome/branch.svg").size(U.smallIcon).text_color(t.muted))
             .id(`space-worktree-${w.id}`).when(!tags.length, e => e.mr(-4)).tooltip('Git worktree')))
-          .when(!edit, el => el.children(tags.map((tag, k, all) =>
-            rolePill(t, tag.label, { status: true }).id(`space-tag-${w.id}-${tag.plugin}-${k}`)
+          .when(!edit, el => el.children(trailing.flatMap((tag, k, all) => [
+            ...(coordinator && tag.plugin === 'crew' ? [slot(svg('mods/custom-spaces/link.svg').size(U.smallIcon).text_color(t.muted))
+              .id(`space-link-${w.id}`)] : []),
+            rolePill(t, tag.label, { status: true }).id(`space-tag-${w.id}-${tag.plugin}-${tag.index}`)
               .when(k === all.length - 1, e => e.mr(-5))
-              .when(Boolean(tag.tooltip), e => e.tooltip(tag.tooltip))))),
+              .when(Boolean(tag.tooltip), e => e.tooltip(tag.tooltip))]))),
       );
   }
 

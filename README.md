@@ -600,17 +600,22 @@ selected terminal's folder.
 
 **Settings → Spaces → Connect fleet space to coordinator** is off by default
 (`connectFleetToCoordinator`). When on with Crew enabled, a verified same-machine
-fleet attaches below its coordinator with a white outline chain inside a filled
-badge in the normal numbered-badge slot: the same 16px rounded box and vertical
-centre. Its fill uses the coordinator's actual badge colour and follows recolouring,
-not the fleet's saved colour. No elbow or connector lines remain. The fleet name
-starts at the same left edge as all other space names; its existing muted text alone
-keeps it visually subordinate.
-Both expanded rows show the same Crew pill at the right, after any ahead/behind
-counts and worktree icon; the pills share the same right edge.
+fleet attaches below its coordinator with its own ordinary numbered badge (for
+example, **2 crew** below **1 coordinator**), in the same 16px rounded slot. Its fill
+uses the coordinator's actual badge colour and follows recolouring without changing
+the fleet's saved colour. The expanded coordinator shows a small muted outline chain
+immediately before its Crew pill, matching the worktree marker's size and alignment,
+not a filled badge. Metadata order is counts, worktree, chain, then tags; with multiple
+tags, the chain/Crew group stays last and unrelated tags retain their relative order.
+No elbow or connector lines remain. The fleet name starts at the ordinary left edge;
+only inactive names are muted. Selected fleet names use the same foreground and normal
+weight as other selected spaces, with ordinary hover and selection backgrounds.
+Both expanded rows show the same Crew pill at the right; the pills share the same
+right edge. Renaming hides markers and tags; the Worktree icon switch hides only
+worktree markers, not the independent coordinator chain.
 Unrelated plugin tags remain; the compact rail stays badge-only. Refreshing Git or
-Crew, relay events, focus changes and unrelated pane changes do not temporarily turn a verified fleet back into an
-ordinary numbered row. The pair is a persisted property of its exact native
+Crew, relay events, focus changes and unrelated pane changes do not temporarily remove
+the coordinator chain, shared badge colour or attached row order. The pair is a persisted property of its exact native
 space IDs and verified coordinator home/owner/adoption identity, not a temporary
 mode with a display timeout. Adding, renaming, removing or reordering unrelated
 spaces/tabs/panes on either machine cannot detach it. App restart, mod reload and
@@ -628,8 +633,8 @@ coordinator chip (its numbered badge and name), whichever row is grabbed. The fl
 preview has no fleet row or chain icon; the insertion indicator still treats the pair
 as one block. Public ordering commands wait for acknowledgements; the two-space move is
 not atomic and an uncertain result is never replayed. The compact rail remains
-selection-only and shows the same filled coordinator-coloured chain badge in the
-fleet's badge slot, with its usual name/directory tooltip. They remain separate selectable native
+selection-only and shows each space's own numbered badge with the shared coordinator
+colour, no chain or tags, and its usual name/directory tooltip. They remain separate selectable native
 spaces; no terminals or tabs are relocated. The coordinator's Git panel shows only
 linked task PRs across projects, with task-scoped counts and no single active pin.
 With discovery-capable Crew, a working worker's first draft appears before its first
