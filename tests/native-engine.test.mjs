@@ -38,6 +38,9 @@ try {
     assert.throws(()=>mutateNative('apply',f.home,f.root,patch,transform,{...f.options,fault}),/previous graph restored/);
     assert.deepEqual(snapshot(f.home),before);
   }
+  const vanished=fixture(),vanishedBefore=snapshot(vanished.home);
+  assert.throws(()=>mutateNative('apply',vanished.home,vanished.root,patch,transform,{...vanished.options,fault:(phase)=>{if(phase==='before-commit'){const record=JSON.parse(fs.readFileSync(path.join(vanished.home,'.customizations/frame-palette.json')));fs.unlinkSync(path.join(vanished.home,patch.target,record.generation,'helper.js'));}}}),/previous graph restored/);
+  assert.deepEqual(snapshot(vanished.home),vanishedBefore,'A reset after individual readbacks cannot silently certify a missing helper');
   const restoreFault=fixture();mutateNative('apply',restoreFault.home,restoreFault.root,patch,transform,restoreFault.options);
   const restoreMain=path.join(restoreFault.home,patch.target,'main.js'),restoreBefore=snapshot(restoreFault.home),rename=fs.renameSync;
   fs.renameSync=(from,to)=>{rename(from,to);if(to===restoreMain){const body=fs.readFileSync(to,'utf8'),gen=body.match(/custom-[a-f0-9]{24}/)?.[0];if(gen)assert.ok(fs.existsSync(path.join(restoreFault.home,patch.target,gen,'helper.js')),'Rollback must recreate prior dependencies before reactivating main');}};

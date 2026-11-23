@@ -142,6 +142,10 @@ function transact(home,patch,c,changes,options) {
       if(!equal(read(safe(home,e.file)),e.after))throw Error(`Readback failed: ${e.file}`);
     }
     options.fault?.('before-commit',c.journalFile);
+    // A native reset can remove an earlier helper after its individual readback.
+    // Check the complete activated graph and record again before certifying success.
+    for(const e of changes)if(!equal(read(safe(home,e.file)),e.after))throw Error(`Final readback failed: ${e.file}`);
+    for(const [n,b]of Object.entries(c.files??{}))if(!equal(read(safe(home,`${c.dir}/${n}`)),b))throw Error(`Activated dependency graph changed: ${n}`);
     fs.unlinkSync(journal);
   } catch(e) {
     if(e.crash)throw e; // Fixture seam: a killed process likewise leaves the journal.
