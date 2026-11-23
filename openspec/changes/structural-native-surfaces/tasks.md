@@ -10,9 +10,9 @@
 
 ## 2. Custom palette with current native catalog and actions
 
-- [ ] 2.1 Factor Custom palette UI/lifecycle into owned helpers and add uniquely checked native row/initialization/render hooks; exercise fixed group/results headings, scroll fade, search/selection resets, keyboard navigation, empty states and cancellation through the transformed actual stock in both layouts.
-- [ ] 2.2 Extend native entries with plugin-gated Usage and narrowly wrap activation routing without copying native catalog/search/history/dispatch; assert Custom Settings/pickers/worktree/machine routes, inline rename, last-tab close and explicit-target preservation, plus native clone branches and stable IDs/key labels.
-- [ ] 2.3 Add 0.1.16/0.1.17/future palette behavior fixtures, including dynamic themes with light/dark/layout filtering and added named/generic commands/dispatch branches; compare available native actions and invoke retained callbacks, then document the version-independent behavior and remaining structural dependency.
+- [x] 2.1 Factor Custom palette UI/lifecycle into owned helpers and add uniquely checked native row/initialization/render hooks; exercise fixed group/results headings, scroll fade, search/selection resets, keyboard navigation, empty states and cancellation through the transformed actual stock in both layouts.
+- [x] 2.2 Extend native entries with plugin-gated Usage and narrowly wrap activation routing without copying native catalog/search/history/dispatch; assert Custom Settings/pickers/worktree/machine routes, inline rename, last-tab close and explicit-target preservation, plus native clone branches and stable IDs/key labels.
+- [x] 2.3 Add 0.1.16/0.1.17/future palette behavior fixtures, including dynamic themes with light/dark/layout filtering and added named/generic commands/dispatch branches; compare available native actions and invoke retained callbacks, then document the version-independent behavior and remaining structural dependency.
 
 ## 3. Custom feedback with preserved native controller and authority
 

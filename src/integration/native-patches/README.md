@@ -29,6 +29,17 @@ recovery-required error; they are never harmless optional skips. Native startup
 and other editors do not honor our lock: compare/readback checks cannot provide a
 native CAS or guarantee rollback against a racing external writer.
 
+## Palette bridge
+
+`palette/ui.js` owns the Custom virtual list/search header, pinned group/results
+heading, passive bottom fade and focus/reset/close lifecycle. The structural
+bridge keeps the current stock entries, fuzzy ranking, history, key labels and
+special dispatch branches. This preserves 0.1.17's dynamic light/dark/layout-aware
+themes and compatible future named/generic actions. Usage follows its plugin switch.
+Only Custom activation routes Settings/pickers, inline rename and untargeted close;
+explicit close arguments and all non-Custom behavior stay native. Stable row,
+input and activation hooks are still required; this is not a public frame API.
+
 ## Maintenance
 
 1. Run `npm run check:host-api`; update the central compatibility profile for public API/command changes.
