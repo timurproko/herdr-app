@@ -1172,7 +1172,13 @@ and peers deliberately excluded as **needs its own full deploy** do not make a s
 desktop update partial: after reconciliation the row is normally Up to date, without a
 warning or log pointer, and Custom badges clear when the desktop matches main. Their
 plain skip reasons remain in the log/result. Desktop-equipped peers still need their
-own full Update. Other peer skips, failures and inventory errors retain the successful
+own full Update. Offline peers are remembered only in private update runtime bookkeeping,
+not portable preferences. While this desktop is current, the row keeps its normal Up to
+date description and quietly offers **Update** for that deferred work, without a badge.
+pc2 receives then-current main on the **next explicit Update while it is reachable and
+eligible**, even if this desktop/main has not changed. Turning pc2 on, Check now and
+background availability checks do not install anything; no special retry command is
+needed. Other peer skips, failures and inventory errors retain the successful
 desktop revision and show one short matching-details warning (`update.log` for Settings runs,
 `deploy-all-result.json` for ordinary CLI runs without a captured log); desktop
 failure names the cause and documented

@@ -14,9 +14,9 @@
 
 ## 3. The current desktop quietly offers Update until eligible deferred peers catch up
 
-- [ ] 3.1 Expose deferred work separately from published-main availability and allow the row's existing Update action after a successful check, preserving busy, stale-click, check-error, failure-freshness, lock and unknown guards; verify model/row fixtures show normal Up to date text without a warning/details pointer or disabled recent-check confirmation.
-- [ ] 3.2 Add integrated offline-then-online equal-main fixtures through real result recording, inspection, check, projection and Settings/marker consumers; verify pc2 is revisited by the next explicit Update, all Custom badges clear while desktop-current, pending state survives replacement/restart, and successful peer deployment clears it without automatic replay or peer probes during checks.
-- [ ] 3.3 Finish README, COMMANDS and TESTING explanations of practical catch-up timing and the current-description plus Update action; verify they state that powering on pc2 alone does nothing and its next reachable eligible explicit update installs then-current main without a special command.
+- [x] 3.1 Expose deferred work separately from published-main availability and allow the row's existing Update action after a successful check, preserving busy, stale-click, check-error, failure-freshness, lock and unknown guards; verify model/row fixtures show normal Up to date text without a warning/details pointer or disabled recent-check confirmation.
+- [x] 3.2 Add integrated offline-then-online equal-main fixtures through real result recording, inspection, check, projection and Settings/marker consumers; verify pc2 is revisited by the next explicit Update, all Custom badges clear while desktop-current, pending state survives replacement/restart, and successful peer deployment clears it without automatic replay or peer probes during checks.
+- [x] 3.3 Finish README, COMMANDS and TESTING explanations of practical catch-up timing and the current-description plus Update action; verify they state that powering on pc2 alone does nothing and its next reachable eligible explicit update installs then-current main without a special command.
 
 ## Workflow follow-up
 

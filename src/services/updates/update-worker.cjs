@@ -26,6 +26,11 @@ const success = row => row && ['deployed', 'already current'].includes(row.actio
 const peerSkipKind = row => row?.action !== 'skipped' || row.outcome === 'unknown' ? null
   : /^offline \((?:offline|unreachable|disconnected)\)$/.test(row.reason) ? 'offline'
   : row.reason === 'needs its own full deploy' ? 'desktop' : null;
+function deferredPeers(result) {
+  const saved = Array.isArray(result?.deferredPeers) ? result.deferredPeers
+    : (Array.isArray(result?.results) ? result.results : []).filter(row => peerSkipKind(row) === 'offline').map(row => row.machine);
+  return [...new Set(saved.filter(name => typeof name === 'string' && name !== 'local' && !name.startsWith('(') && name.length <= 200 && name.trim() === name && name.length > 0 && !/[\x00-\x1f\x7f]/.test(name)).slice(0, 256))];
+}
 const read = file => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
 function files(home) {
   const dir = path.join(path.resolve(home), '.customizations');
@@ -97,7 +102,9 @@ function inspect(home, { now = Date.now, isAlive = alive } = {}) {
   let check = read(p.check);
   if (check) check = { ...check, nextAttempt: nextAttempt(check, now()) };
   if (check?.target) check = { ...check, available: revision !== check.target && (!check.error || check.available === true) };
-  return { job, lastRun, result, check, checking: (read(p.checkLock)?.until || 0) > now(), revision, locked: fs.existsSync(p.lock), details, log: details?.kind === 'log' ? details.path : '' };
+  const peerPending = deferredPeers(result).length > 0;
+  const peerUnknown = Boolean(result?.results?.some(row => row.machine !== 'local' && (row.outcome === 'unknown' || /\boutcome unknown\b/i.test(row.reason || ''))));
+  return { job, lastRun, result, peerPending, peerUnknown, check, checking: (read(p.checkLock)?.until || 0) > now(), revision, locked: fs.existsSync(p.lock), details, log: details?.kind === 'log' ? details.path : '' };
 }
 function checkMain(home, { force = false, invalidate = false, now = Date.now, random = Math.random, run = command, env = process.env } = {}) {
   const p = files(home), snapshot = inspect(home, { now });
@@ -250,7 +257,7 @@ async function launch(home, { spawn = cp.spawn, source = fs.readFileSync(__filen
   const p = files(home), current = inspect(home);
   // Enforce this at the process boundary too: a stale UI or absent Settings lock
   // cannot replay a tokenless CLI timeout whose descendants may still be alive.
-  if (current.job?.state === 'unknown' || current.lastRun?.state === 'unknown') return current;
+  if (current.job?.state === 'unknown' || current.lastRun?.state === 'unknown' || current.peerUnknown) return current;
   fs.mkdirSync(p.dir, { recursive: true });
   let fd;
   try { fd = fs.openSync(p.lock, 'wx'); }
@@ -285,7 +292,7 @@ async function launch(home, { spawn = cp.spawn, source = fs.readFileSync(__filen
     return inspect(home);
   }
 }
-module.exports = { REPOSITORY, DEADLINE, CHECK_MIN, CHECK_MAX, RETRY_MAX, INVALIDATE_MIN, BUSY_CHECK_RETRY, nextAttempt, checkDelay, files, read, atomic, command, installedRevision, inspect, checkMain, prepareClone, peerSkipKind, outcome, launch, runUpdate };
+module.exports = { REPOSITORY, DEADLINE, CHECK_MIN, CHECK_MAX, RETRY_MAX, INVALIDATE_MIN, BUSY_CHECK_RETRY, nextAttempt, checkDelay, files, read, atomic, command, installedRevision, inspect, checkMain, prepareClone, peerSkipKind, deferredPeers, outcome, launch, runUpdate };
 if (require.main === module) {
   if (process.argv[2] === '--run') runUpdate(process.argv[3], process.argv[4]).catch(error => { console.error(shortError(error)); process.exitCode = 1; });
   else {

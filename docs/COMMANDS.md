@@ -206,7 +206,13 @@ When the desktop succeeds, positively identified offline/unreachable skips and t
 deliberate **needs its own full deploy** exclusion are benign: after checking, the
 current desktop row shows Up to date without a warning or details pointer, and Custom
 badges clear. The log/result still records each skip plainly. A desktop-equipped peer
-still needs its own full Update. Unknown inventory states, other ineligibility skips,
+still needs its own full Update. With deferred offline peers, the current desktop's
+normal Up to date description quietly keeps an **Update** action, not an availability
+badge or warning. pc2 gets then-current main on the next explicit Update while it is
+reachable, eligible and passes the normal safety gates, even if main/desktop is already
+current. No special retry command is needed. Turning pc2 on, Check now, timer checks
+and relay hints alone do not deploy it; deploy-all revisits peers only when Update runs.
+Unknown inventory states, other ineligibility skips,
 reachable deployment errors, locks and post-dispatch unknown outcomes are not benign.
 For these partial outcomes the single row retains the existing warning and its matching
 details path: **Log:** points to `update.log` for a detached Settings
@@ -218,8 +224,10 @@ Settings and ordinary CLI runs, even after a successful version check. A definit
 failure may offer an explicit retry after a fresh successful check, without hiding
 the failure line. A CLI installer timeout remains unknown and blocks Settings
 launches at the worker boundary too, even when no Settings job/lock was created;
-its durable result itself carries the unresolved outcome. There
-is **no automatic rollback**: from the managed clone with the same HERDR_APP_HOME,
+its durable result itself carries the unresolved outcome. Deferred peer work also
+cannot authorize replay of a dispatched remote unknown outcome: its partial diagnostics
+remain, and both the row and worker refuse another launch until manual resolution.
+There is **no automatic rollback**: from the managed clone with the same HERDR_APP_HOME,
 use the existing `npm run disable` then `npm run rollback -- <backup-id>` sequence
 below. If a failure produced no printed ID, inspect `.customizations/backups/` and
 the log to identify the matching journal; do not guess or bypass refusal gates.

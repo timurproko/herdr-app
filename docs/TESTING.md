@@ -75,8 +75,9 @@ main-only checks/coalescing, one-button states, dots, packaging and preference
 exclusion. The runner fixture also upgrades a pre-feature clean clone through a local bare
 origin and a fresh protocol-capable CLI, and simulates the installer's eight-minute
 Windows timeout to verify unknown status/lock retention after Check. The pipeline
-fixture runs ordinary npm deploy:all with a skipped peer and verifies that the row
-links its matching result, not a missing/stale Settings log. It also runs the real
+fixture runs ordinary npm deploy:all with an offline peer and verifies successful,
+warning-free desktop presentation after checking, while its matching result still
+records the skip and an unrelated old Settings log is not advertised. It also runs the real
 CLI with mocked definite installer failure and eight-minute timeout, then checks
 failure/recovery details and launch blocking after a successful main check.
 `tests/update-row.test.mjs` also covers the shared native/Custom 300 ms/3000 ms
@@ -117,9 +118,20 @@ runtime scheduling. `tests/update-marker-inspection.test.mjs` exercises the
 read-only capture with fixture homes and a mocked status/shot CLI, proving no
 live-home writes or invented last-render facts. See the read-only capture in
 COMMANDS.md for the next real occurrence; no native app is launched by these tests.
-The check suite enumerates every Settings-job/plain-CLI by success/partial/failed/
-unknown combination using the real result writer, worker, check, projection and
-row functions; all eight cells assert truthful text and source-matching details.
+The check suite enumerates Settings-job/plain-CLI by success/offline/full-desktop/
+partial/failed/unknown combinations using the real result writer, worker, check,
+projection and row functions; all twelve cells assert truthful text and matching
+source details only when needed. The narrow benign classifier matrix retains warnings
+for unknown inventory states, missing tools, unsafe source, locks and remote uncertainty.
+Legacy completed Settings partial receipts refine only from matching final results,
+never across live locks, unknown jobs, unfinished results or foreign tokens.
+An offline-then-online fixture runs deploy-all again at equal main and proves deferred
+peer deployment and clearance through the real recorder/inspection/check/row pipeline.
+Checks remain main-only; simply restoring connectivity never dispatches work. Row
+module replacement and all four mounted indicator surfaces retain badge-free Up to
+date text plus actionable Update for pending peers, including stale-click lock and
+unknown guards. Deferred work cannot replay a remote unknown result at the worker
+boundary. All transports/installers are synthetic; no live pc2 or native UI is used.
 Unknown CLI receipts block even before peers finish and when no Settings lock
 exists; stale completed Settings jobs cannot hide the latest CLI outcome. The detach fixture
 runs actual detached Node supervision with synthetic Git and deploy CLI; it does

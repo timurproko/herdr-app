@@ -57,7 +57,7 @@ try {
   // without a warning/details pointer once the desktop's check reconciles.
   const [npmProgram,npmArgs]=worker.npmCommand('deploy:all');
   const bootstrap=cp.spawnSync(npmProgram,npmArgs,{cwd:f.root,env:{...f.env,HERDR_FIXTURE_OFFLINE_PEER:'1',NODE_OPTIONS:`--require ${JSON.stringify(preload.replace(/\\/g,'/'))}`},encoding:'utf8',timeout:60000});
-  assert.equal(bootstrap.status,0,bootstrap.stderr+'\n'+bootstrap.stdout); assert.match(bootstrap.stdout,/offline-fixture \| skipped/);
+  assert.equal(bootstrap.status,0,bootstrap.stderr+'\n'+bootstrap.stdout); assert.match(bootstrap.stdout,/offline-fixture \| skipped: offline \(offline\)/);
   const updatePaths=updater.files(home);
   assert.equal(fs.existsSync(updatePaths.log),false);
   let shown=updater.checkMain(home,{force:true,run:()=>({code:0,stdout:`${target}\trefs/heads/main\n`})}),row=customizationRowState(updateProjection(shown));
