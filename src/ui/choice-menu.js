@@ -3,8 +3,10 @@ import { div, svg } from 'gpui-kit';
 import { U, PILL, menuSurface, menuRow, dropdown, pillTrigger, pillMenu } from './ui.js';
 
 export function choiceDropdown(t, { id, popupId = `${id}-popup`, label, content, open, focus, onOpen,
-  rows = [], index = 0, onKeyDown, messages = [], edge = false }) {
+  rows = [], index = 0, onKeyDown, messages = [], edge = false, compact = false }) {
   const trigger = pillTrigger(t, id, { label, open, children: content, chevronSize: 12 })
+    // Notice cards have a 20px inline/icon row, not the account control's 28px pill.
+    .when(compact, el => el.h(20))
     .when(edge, el => el.mr(-PILL.inset))
     // Native Popover opens on its wrapper's left mouse-down; let that press bubble.
     .on_mouse_down('right', (_e, cx) => cx.stop_propagation());

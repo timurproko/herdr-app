@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {loadMod} from '../tools/plugin-harness.mjs';
-import {choiceModules,element,nodes,find,theme as t} from './support/choice-menu.mjs';
+import {choiceModules,element,svg,Popover,nodes,find,inlineGeometry,theme as t} from './support/choice-menu.mjs';
 const current={email:'one@example.test',account:'one',organization:'org'};
 const terminal={address:'t1',program:{key:'claude'},labels:{'custom.claude.at':String(Date.now()),'custom.claude.email':current.email,'custom.claude.account':current.account,'custom.claude.organization':current.organization,'custom.claude.session':'fixture-session','custom.claude.control':'1'}};
 const host={terminals:()=>[terminal]};
@@ -37,7 +37,8 @@ const snapshot={key:'scope',choices:['owner/repo','owner/second']},picker=new En
 let footer=render(()=>picker.render(t,snapshot));find(footer,'git-enrollment-popup').attrs.on_open_change[0](true,cx);footer=render(()=>picker.render(t,snapshot));
 const enrollment=find(footer,'git-enrollment-popup'),enrollmentTrigger=enrollment.attrs.trigger[0],enrollmentMenu=enrollment.attrs.content[0].kids[0];
 for(const key of ['anchor','overlay_closable'])assert.deepEqual(enrollment.attrs[key],actual.attrs[key]);
-for(const key of ['gap','text_color','px','ml','h','rounded'])assert.deepEqual(enrollmentTrigger.attrs[key],trigger.attrs[key]);
+for(const key of ['gap','text_color','px','ml','rounded'])assert.deepEqual(enrollmentTrigger.attrs[key],trigger.attrs[key]);
+assert.equal(trigger.attrs.h[0],28,'Account pill height remains unchanged');assert.equal(enrollmentTrigger.attrs.h[0],20,'Enrollment uses the ordinary notice line height');
 assert.deepEqual(enrollmentTrigger.kids.at(-1).attrs,trigger.kids.at(-1).attrs,'Both actual callers emit the identical chevron');assert.equal(enrollmentTrigger.mouse.left,undefined);
 for(const key of ['min_w','max_w','max_h','p','pt','pb','rounded','ml','bg','border_color','shadow_md','overflow_y_scroll'])assert.deepEqual(enrollmentMenu.attrs[key],menu.attrs[key]);
 for(let i=0;i<2;i++){
@@ -48,4 +49,29 @@ for(let i=0;i<2;i++){
 }
 assert.equal(find(enrollmentMenu,'git-enrollment-choice-0').attrs.bg[0],t.hover);
 find(enrollmentMenu,'git-enrollment-choice-1').attrs.on_hover[0](true,cx);assert.equal(find(render(()=>picker.render(t,snapshot)),'git-enrollment-choice-1').attrs.bg[0],t.hover);
-console.log('PASS actual account/enrollment shared choice presentation, inherited 12px chevron, upward native anchor, row states and selected slots');
+// Compare against the actual ordinary-panel card, not a reconstructed reference.
+const {Main}=await loadMod({host:{...host,props(){},settings:()=>({zoom:1}),theme:()=>t,closeOverlay(){},openOverlay(){},nextCommand(){}},modules:{...choiceModules,
+ 'gpui-kit':{View:class{},div:element,svg,PathBuilder:{}},'gpui-base':{Popover,Input:{},h_flex:()=>element().flex(),v_flex:()=>element().flex().flex_col()},
+ 'main.js':'src/plugins/git/mod/main.js','enrollment-picker.js':'src/plugins/git/mod/enrollment-picker.js','pulls.js':'src/plugins/git/mod/pulls.js','label-colors.js':'src/plugins/git/mod/label-colors.js',
+ 'location.js':{location:()=>({})},'plugins.js':{sidebarPanelEnabled:()=>true},'agent-links.js':{AgentLinks:class{}},'aggregate.js':{AggregatePulls:class{}},'webhooks.js':{GitWebhooks:class{}},'notices.js':{GitNotices:class{}},
+ 'pin-swap.js':{PinSwap:class{},PIN_SWAP_MS:320},'panel-pin.js':{panelPin:element},'sidebar-title.js':{sidebarTitle:element},'panel-state.js':{changePanel(){}},'settings-dialog.js':{openSettings(){}},'space-color-state.js':{currentSpaceColor:()=>null},
+ 'panel-kit.js':{headerTool:element,contextMenu:element,panelMessage:element}},entry:'export {default as Main} from "./main.js";'});
+const ordinary=render(()=>new Main().liveCIInfo(t,'repository','owner/repo'));
+const ordinaryCard=find(ordinary,'git-live-ci-owner/repo-info'),coordinatorCard=find(footer,'git-enrollment-info');
+for(const key of ['px','py','gap','rounded','bg','w_full'])assert.deepEqual(coordinatorCard.attrs[key],ordinaryCard.attrs[key],`Card ${key}`);
+assert.deepEqual(find(footer,'git-enrollment-icon').attrs.size,find(ordinary,'git-live-ci-owner/repo-icon').attrs.size);
+const ordinaryTitle=find(ordinary,'git-live-ci-owner/repo-title');
+const coordinatorTitle=enrollmentTrigger.kids[0];
+assert.equal(coordinatorTitle.attrs.flex_wrap,undefined,'The compact message stays on one line');assert.ok(coordinatorTitle.attrs.whitespace_nowrap);
+for(const zoom of [0.75,1,1.25,1.5,2]){
+ const a=inlineGeometry(ordinary,zoom),b=inlineGeometry(footer,zoom),iconA=a.get(find(ordinary,'git-live-ci-owner/repo-icon')),iconB=b.get(find(footer,'git-enrollment-icon'));
+ assert.equal(a.get(ordinaryCard).height,32*zoom,'Ordinary card retains its compact height');assert.equal(b.get(coordinatorCard).height,a.get(ordinaryCard).height,'Coordinator card matches ordinary height');
+ assert.equal(b.get(footer).height,a.get(ordinary).height,'No outer wrapper adds height');assert.equal(iconB.height,iconA.height);
+ const lineA=a.get(ordinaryTitle.kids[0]),lineB=b.get(coordinatorTitle.kids[0]);
+ assert.equal(iconB.cy,iconA.cy);assert.equal(lineB.cy,lineA.cy,'Text vertical centre matches ordinary');
+ for(const node of [coordinatorTitle.kids[0],coordinatorTitle.kids[1],enrollmentTrigger.kids.at(-1)])assert.equal(b.get(node).cy,iconB.cy,'Icon, text, Settings and chevron share one centre');
+ assert.equal(lineB.x-iconB.x-iconB.width,lineA.x-iconA.x-iconA.width,'Icon-to-message gap matches ordinary');
+ assert.equal(b.get(coordinatorTitle.kids[1]).x-(lineB.x+lineB.width),a.get(ordinaryTitle.kids[1]).x-(lineA.x+lineA.width),'Settings gap matches ordinary');
+ const label=b.get(coordinatorTitle),chevron=b.get(enrollmentTrigger.kids.at(-1));assert.equal(chevron.x-label.x-label.width,6*zoom,'Only the trailing chevron is added');
+}
+console.log('PASS actual account/enrollment choice presentation, ordinary/coordinator card height and vertical centres at 75–200% zoom, unchanged account, upward native anchor and row states');

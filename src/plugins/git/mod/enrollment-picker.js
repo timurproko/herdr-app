@@ -18,13 +18,13 @@ export class EnrollmentPicker {
     if(!presentation?.choices.length)return null;
     const opening=this.opening,rows=opening?.choices??presentation.choices;
     return div().id('git-enrollment-footer').flex_none().p(4).border_t(1).border_color(t.border)
-      .child(div().id('git-enrollment-info').flex().w_full().px(8).py(6).gap(U.gap).items_start().rounded(U.radius).bg(t.raised)
+      .child(div().id('git-enrollment-info').flex().w_full().px(8).py(6).gap(U.gap).items_center().rounded(U.radius).bg(t.raised)
         .accessibility_label('Add this repo in Settings')
         .child(div().h(20).flex_none().flex().items_center()
           .child(svg('mods/custom-changes/info.svg').id('git-enrollment-icon').size(U.icon).flex_none().text_color(t.accent)))
         .child(div().flex_1().min_w(0).text_size(U.meta).font_normal()
-          .child(choiceDropdown(t,{id:'git-enrollment',label:'Add this repo in Settings',open:Boolean(opening),focus:this.focus,
-            content:[div().min_w(0).flex().flex_wrap().items_center().gap_x(3).text_color(t.dim)
+          .child(choiceDropdown(t,{id:'git-enrollment',label:'Add this repo in Settings',open:Boolean(opening),focus:this.focus,compact:true,
+            content:[div().min_w(0).flex().whitespace_nowrap().items_center().gap_x(3).text_color(t.dim)
               .child(div().child('Add this repo in')).child(div().text_color(t.accent).underline().child('Settings'))],
             onOpen:(open,cx)=>{
               if(!open){if(this.opening===opening)this.stop();}
