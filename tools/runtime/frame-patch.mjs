@@ -20,7 +20,8 @@ export function inspectFramePatch(home, root = bundle, frame, { binary } = {}) {
   const raw = read(path.join(home, `.customizations/frame-${frame}.json`));
   const state = raw === null ? null : JSON.parse(raw);
   if (state && (state.version !== 1 || !state.original || !state.installed
-      || typeof state.original !== 'object' || typeof state.installed !== 'object'))
+      || typeof state.original !== 'object' || typeof state.installed !== 'object'
+      || (state.previousOriginals !== undefined && (!Array.isArray(state.previousOriginals) || !state.previousOriginals.every(text => typeof text === 'string')))))
     throw Error(`Unrecognized ${frame} patch record; nothing changed.`);
   const current = Object.fromEntries(Object.keys(patch.files).map(n => [n, read(path.join(home, patch.target, n))]));
   const originals = patch.originals.map(source => read(path.join(root, source)));
@@ -33,28 +34,34 @@ export function inspectFramePatch(home, root = bundle, frame, { binary } = {}) {
       throw Error(`Personal ${frame} dependency conflict: ${n}; nothing changed.`);
   }
   const active = Boolean(state && Object.keys(patch.files).every(n => hash(current[n]) === state.installed[n]));
-  const stock = originals.includes(current['main.js']);
-  let nativeReviewed = stock;
+  let reviewed = originals.indexOf(current['main.js']);
+  const stock = reviewed !== -1;
   if (!stock && recognized('main.js')) {
     if (binary === undefined) {
       const exe = process.env.HERDR_APP_BIN || path.join(process.env.LOCALAPPDATA ?? '', 'Programs/herdr-app/herdr-app.exe');
       try { binary = fs.readFileSync(exe); } catch { binary = null; }
     }
-    nativeReviewed = Buffer.isBuffer(binary) && originals.some(text => binary.includes(Buffer.from(text)));
+    const matches = originals.flatMap((text, index) => Buffer.isBuffer(binary) && binary.includes(Buffer.from(text)) ? [index] : []);
+    // LF/CRLF aliases may select one payload, but conflicting native evidence
+    // must never silently choose a release by registry order.
+    const mains = new Set(matches.map(index => patch.mainByOriginal?.[patch.originals[index]] ?? patch.files['main.js']));
+    reviewed = mains.size === 1 ? matches[0] : -1;
   }
-  if ((!stock && !recognized('main.js')) || !nativeReviewed) {
+  if (reviewed === -1) {
     const retained = Boolean(recognized('main.js') && !stock);
     return {ok:true, status:'skipped', active, retained,
       advisory:`Optional ${frame} patch skipped: ${retained ? 'retained owned patch, current host native original unreviewed' : 'unsupported original/unknown target'}; bytes and opt-in unchanged. Review/rebase the native patch to restore supported customization.`};
   }
-  return {ok:true, status:'ready', active};
+  const original = patch.originals[reviewed];
+  return {ok:true, status:'ready', active, original, main:patch.mainByOriginal?.[original] ?? patch.files['main.js']};
 }
 export function framePatch(action, home, root = bundle, frame, options = {}) {
   if (!['apply', 'check', 'restore', 'inspect'].includes(action)) throw Error(`Unknown frame patch action: ${action}`);
   if (action === 'inspect') return inspectFramePatch(home, root, frame, options);
-  if (action === 'apply') {
-    const inspection = inspectFramePatch(home, root, frame, options);
-    if (inspection.status === 'skipped') throw Error(inspection.advisory);
+  const inspection = ['apply', 'check'].includes(action) ? inspectFramePatch(home, root, frame, options) : null;
+  if (inspection?.status === 'skipped') {
+    if (action === 'apply') throw Error(inspection.advisory);
+    return inspection.advisory;
   }
   const patch = loadFrameRegistry(root).find(patch => patch.id === frame);
   if (!patch) throw Error(`Unregistered frame patch: ${frame}`);
@@ -62,8 +69,9 @@ export function framePatch(action, home, root = bundle, frame, options = {}) {
   const stateFile = path.join(home, `.customizations/frame-${frame}.json`);
   const stateRaw = read(stateFile);
   const state = stateRaw === null ? null : JSON.parse(stateRaw);
-  if (state && (state.version !== 1 || !state.original || !state.installed)) throw Error(`Unrecognized ${frame} patch record; nothing changed.`);
-  const sources = patch.files;
+  if (state && (state.version !== 1 || !state.original || !state.installed
+    || (state.previousOriginals !== undefined && (!Array.isArray(state.previousOriginals) || !state.previousOriginals.every(text => typeof text === 'string'))))) throw Error(`Unrecognized ${frame} patch record; nothing changed.`);
+  const sources = { ...patch.files, ...(inspection ? { 'main.js': inspection.main } : {}) };
   // Dependencies first on apply, entrypoint first on restore, regardless of JSON order.
   const names = [...Object.keys(sources).filter(name => name !== 'main.js'), 'main.js'];
   const current = Object.fromEntries(names.map(n => [n, read(path.join(dir, n))]));
@@ -82,8 +90,13 @@ export function framePatch(action, home, root = bundle, frame, options = {}) {
     if (!changed && names.every(n => state?.installed[n] === hash(payload[n]))) return `Custom ${frame} frame already current.`;
     const next = { version: 1, original: { ...current, ...(state?.original ?? {}) },
       installed: Object.fromEntries(names.map(n => [n, hash(payload[n])])), previousInstalled: Object.fromEntries(names.map(n => [n, hash(current[n])])) };
-    // A reviewed reset/update rebases the backup rather than downgrading on removal.
-    if (supportedStock) next.original['main.js'] = current['main.js'];
+    // A reviewed reset/update rebases recovery to actual current native stock,
+    // including when old owned code masks it. Keep earlier raw backups too.
+    const native = supportedStock ? current['main.js'] : read(path.join(root, inspection.original));
+    next.previousOriginals = [...(state?.previousOriginals ?? [])];
+    const prior = state?.original['main.js'];
+    if (prior != null && prior !== native && !next.previousOriginals.includes(prior)) next.previousOriginals.push(prior);
+    next.original['main.js'] = native;
     atomic(stateFile, JSON.stringify(next, null, 2) + '\n');
     for (const n of names) if ((n === 'main.js' && changed) || current[n] !== payload[n]) {
       if (read(path.join(dir, n)) !== current[n]) throw Error(`${frame} file changed during apply: ${n}; stopped safely.`);
@@ -93,9 +106,8 @@ export function framePatch(action, home, root = bundle, frame, options = {}) {
   }
   if (!state) return `No ${frame} frame patch is installed.`;
   if (action === 'check') {
-    const inspection = inspectFramePatch(home, root, frame, options);
-    if (inspection.status === 'skipped') return inspection.advisory;
-    for (const n of names) if (hash(current[n]) !== state.installed[n]) throw Error(`${frame} patch is inactive or changed: ${n}. Herdr may have restored its frame on startup; reapply explicitly.`);
+    for (const n of names) if (hash(current[n]) !== state.installed[n]
+      || (n === 'main.js' && patch.mainByOriginal && current[n] !== read(path.join(root, sources[n])))) throw Error(`${frame} patch is inactive or changed: ${n}. Herdr may have restored its frame on startup; reapply explicitly.`);
     return `${frame} frame patch and dependencies match.`;
   }
   // Preserve unknown newer stock on removal, never replace it with an old backup.
