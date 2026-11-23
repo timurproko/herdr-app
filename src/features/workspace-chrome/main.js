@@ -2,6 +2,7 @@
 import { View, div, image, svg } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import { U, slot, interactionFill, menuSurface } from "./ui.js";
+import { openSettings } from './settings-dialog.js';
 import { FOOTER_ITEMS, footerItems, footerVisible, moveFooter } from './sidebar-footer.js';
 import { enterCustom } from "./look.js";
 import { restoreFrames } from "./startup.js";
@@ -77,8 +78,7 @@ export default class WorkspaceChrome extends View {
   }
   chooseFooter(item) {
     closeOverlay(props().overlay);
-    openOverlay({ mod: 'custom-settings', kind: 'dialog', frame: 'none', width: 900,
-      props: { section: 'look', lookPage: 'sidebar' } });
+    openSettings({ section: 'look', lookPage: 'sidebar' });
   }
   get drag() { return reorder(this, 'icons'); }
   openFooterMenu() {
@@ -89,8 +89,7 @@ export default class WorkspaceChrome extends View {
   openFooter(id) {
     const action = footerItems().find(item => item.id === id)?.action;
     if (!action) return;
-    if (action.command === 'custom.settings') openOverlay({ mod: 'custom-settings', kind: 'dialog', frame: 'none', width: 900,
-      props: action.args });
+    if (action.command === 'custom.settings') openSettings(action.args);
     else run(action.command, action.args);
   }
   footerUnit() {

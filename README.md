@@ -1012,8 +1012,18 @@ peers. Unknown/changed revision evidence is shown honestly as revision unknown.
 
 The latest status, result and log live under the selected Herdr home's
 `.customizations/`: `update-status.json`, `deploy-all-result.json`,
-`update-check.json` and `update.log`. Reload/closing Settings does not cancel or
-repeat an update. Peer skips/failures retain the successful desktop revision and
+`update-check.json` and `update.log`. An update started from Updates keeps that
+page visible through mod replacement while its job is active or for two minutes
+after completion. Custom's Settings openers attach a fresh per-opening identity
+in supported overlay props; native/backdrop dismissal or a Desktop restart cannot
+reuse a prior opening's hint, even when Herdr reuses its native overlay ID.
+Ordinary navigation is not remembered. A new opening honors its requested page or
+starts on Look; unqualified direct mod opens also keep that default rather than
+trusting an overlay ID. The update-only resume hint is runtime state, never a
+portable preference.
+Shared launch feedback keeps the row on Updating before the detached runner's
+receipt arrives; a lost receipt becomes outcome unknown, not stale Up to date.
+Reload/closing Settings does not cancel or repeat an update. Peer skips/failures retain the successful desktop revision and
 show one short matching-details warning (`update.log` for Settings runs,
 `deploy-all-result.json` for ordinary CLI runs without a captured log); desktop
 failure names the cause and documented

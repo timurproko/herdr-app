@@ -82,6 +82,7 @@ async function harness(feature, pluginOn = true) {
   await main.link(specifier => {
     if (specifier === './ui.js') return new vm.SourceTextModule(fs.readFileSync(path.join(root, 'src/ui/ui.js'), 'utf8'), {context});
     if (specifier === './panel-kit.js') return new vm.SourceTextModule(fs.readFileSync(path.join(root, 'src/ui/panel-kit.js'), 'utf8'), {context});
+    if (specifier === './settings-dialog.js') return new vm.SourceTextModule(fs.readFileSync(path.join(root, 'src/ui/settings-dialog.js'), 'utf8'), {context});
     if (exports[specifier]) return new vm.SyntheticModule(Object.keys(exports[specifier]), function () {
       for (const [key, value] of Object.entries(exports[specifier])) this.setExport(key, value);
     }, {context});

@@ -137,7 +137,7 @@ const modules = {
 };
 withKitUi(modules['./ui.js'],element);
 const menuModule = new vm.SourceTextModule(fs.readFileSync(new URL('../src/features/menu/main.js',import.meta.url),'utf8'),{context:menuContext});
-await menuModule.link(name => new vm.SyntheticModule(Object.keys(modules[name]),function(){for(const [k,v]of Object.entries(modules[name]))this.setExport(k,v);},{context:menuContext}));
+await menuModule.link(name => name==='./settings-dialog.js'?new vm.SourceTextModule(fs.readFileSync(new URL('../src/ui/settings-dialog.js',import.meta.url),'utf8'),{context:menuContext}):new vm.SyntheticModule(Object.keys(modules[name]),function(){for(const [k,v]of Object.entries(modules[name]))this.setExport(k,v);},{context:menuContext}));
 await menuModule.evaluate();const menu = new menuModule.namespace.default();
 const preflights=[];
 const mcx = {spawn:fn=>preflights.push(fn),focus_handle:()=>({focus(){}}),notify(){},stop_propagation(){}};menu.init({},mcx);

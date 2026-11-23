@@ -21,8 +21,8 @@ const find = (tree, id) => nodes(tree).find(el => el.attrs.id?.[0] === id);
 const marker = (tree, size) => nodes(tree).find(el => el.attrs.bg?.[0] === '#8844cc' && (el.attrs.size?.[0] === size || el.attrs.w?.[0] === size));
 const signature = node => JSON.stringify(node?.attrs);
 const store = new Map(), copies = [], refreshes = new Set(), jobs = [], calls = [];
-let width = 248, nativeReady = false, coreReady = false, managed = false, failExec = false;
-const clock = Date.now();
+let width = 248, nativeReady = false, coreReady = false, managed = false, failExec = false, transport = null;
+let clock = Date.now();
 class Clock extends Date { static now() { return clock; } }
 let next = { revision: 'a'.repeat(40), check: { checked: 1000, available: false } };
 const theme = Object.fromEntries(['accent', 'chrome', 'muted', 'foreground', 'dim', 'border', 'selected', 'solid', 'solid_foreground'].map((key, i) => [key, i === 0 ? '#8844cc' : `#${String(i).repeat(6)}`]));
@@ -30,6 +30,7 @@ const realFiles = {
   './ui.js': 'src/ui/ui.js', './reorder.js': 'src/ui/reorder.js',
   './sidebar-footer.js': 'src/ui/sidebar-footer.js', './settings-sections.js': 'src/ui/settings-sections.js',
   './settings-back.js': 'src/ui/settings-back.js',
+  './settings-dialog.js': 'src/ui/settings-dialog.js',
   './customization-updates.js': 'src/shared/customization-updates.js',
   './customization-update-model.js': 'src/shared/customization-update-model.js',
   './customization-update-row.js': 'src/features/settings/customization-update-row.js',
@@ -37,7 +38,7 @@ const realFiles = {
 };
 async function mount(kind, props) {
   const context = vm.createContext({ Date: Clock, console }), cache = new Map(), requested = new Map();
-  const copy = { kind, props, renders: 0, timers: [] };
+  const copy = { kind, props, renders: 0, timers: [], openings: [] };
   const clone = value => value === undefined ? undefined : vm.runInContext(`JSON.parse(${JSON.stringify(JSON.stringify(value))})`, context);
   const noop = () => null;
   const host = {
@@ -50,12 +51,14 @@ async function mount(kind, props) {
       store.set(key, JSON.parse(encoded));
       for (const root of copies) refreshes.add(root);
     },
-    exec: async (_command, args) => { const request = JSON.parse(args[1]); calls.push({ kind, ...request }); if (failExec) throw Error('fixture transport unavailable'); return { code: 0, stdout: JSON.stringify(next) }; },
+    exec: async (_command, args) => { const request = JSON.parse(args[1]); calls.push({ kind, ...request }); if (failExec) throw Error('fixture transport unavailable'); return transport ? transport(request) : { code: 0, stdout: JSON.stringify(next) }; },
     keys: () => [], spaces: () => [], terminals: () => [], panes: () => [], agents: () => [],
-    run: noop, openOverlay: noop, closeOverlay: noop,
+    readTextFile: async () => null,
+    run: noop, openOverlay: spec => { copy.openings.push(clone(spec)); return 'o1'; },
+    closeOverlay: id => calls.push({ kind, action: 'closeOverlay', id }),
   };
   const primitives = { View: class {}, div: element, svg: element, image: element, h_flex: element, v_flex: element,
-    Input: {}, InputState: {}, Popover: {}, Scrollbar: { vertical: element }, ScrollHandle: { new: () => ({ scroll_to_item() {} }) },
+    Input: {}, InputState: { new: () => ({ on() {}, value: () => '' }) }, Popover: {}, Scrollbar: { vertical: element }, ScrollHandle: { new: () => ({ scroll_to_item() {} }) },
     Popup: { new: (id, trigger) => element().id(id).child(trigger) } };
   const values = { liveTheme: host.theme, pluginIsEnabled: () => true, pluginTextOpen: () => false,
     M: { bodyInset: 16 }, sectionRow: (_t, el) => el, sectionStack: (_t, el) => el, divider: () => element(), dividerHeight: () => 1 };
@@ -87,10 +90,10 @@ async function mount(kind, props) {
   copy.render = () => { copy.tree = copy.view.render(copy.cx); copy.renders++; };
   copies.push(copy);
   if (kind === 'settings') {
-    copy.view.section = 'updates'; copy.view.handle = copy.cx.focus_handle();
-    // Unrelated page initialization is excluded, not the real Updates renderer,
-    // controller, shared helper, host facade contract or publication path.
-    cache.get('./customization-updates.js').namespace.initCustomizationUpdates(copy.view, copy.cx, 'custom-settings');
+    // Only unrelated page bodies are stubbed, not Settings init/navigation,
+    // Updates, the controller or the shared-state publication path.
+    copy.view.look = copy.view.privacy = () => element();
+    copy.view.init({}, copy.cx);
   } else copy.view.init({}, copy.cx);
   copy.api = cache.get('./customization-updates.js')?.namespace;
   copy.render(); return copy;
@@ -102,7 +105,10 @@ async function settle() {
     for (const copy of dirty) copy.render();
   }
 }
-const settings = await mount('settings', {});
+const openingA = 'settings-first-opening-123456789';
+const settings = await mount('settings', { overlay: 'o1', section: 'look', settingsOpening: openingA });
+assert.equal(settings.view.section, 'look');
+find(settings.tree, 'st-s-updates').attrs.on_click[0]({}, settings.cx);
 const header = await mount('workspace-chrome', {});
 const footer = await mount('workspace-chrome', { footer: true });
 const compact = await mount('workspace-chrome', { footer: true });
@@ -169,4 +175,119 @@ managed = true; for (const copy of copies) refreshes.add(copy); await settle();
 assert.deepEqual(markers().map(Boolean), [false, false, false, false], 'managed Core does not light navigation');
 assert.equal(find(footer.tree, 'settings').attrs.accessibility_label[0], 'Settings');
 assert.ok(!markers().some(Boolean));
-console.log('PASS: separate Settings/header/footer/menu sandboxes, real manual publication and queued host refresh; all marker combinations and native markup parity. Expanded-footer failure NOT reproduced; no native UI exercised.');
+// A fresh module graph/owner, original overlay props and shared host store model
+// host replacement. Removed generations no longer have timers or redraws.
+function retire(copy) {
+  copy.view.close();
+  copy.timers.length = 0;
+  copies.splice(copies.indexOf(copy), 1); refreshes.delete(copy);
+}
+const navKey = 'custom.settings.navigation'; // ignored legacy runtime records
+const closes = () => calls.filter(call => call.action === 'closeOverlay').length;
+const beforeReplacement = closes();
+retire(settings); // native/backdrop dismissal or shutdown: no dismiss() call
+store.set(navKey, { version: 1, dialogs: [{ overlay: 'o1', section: 'updates' }] });
+for (const section of [undefined, 'privacy']) {
+  const reused = await mount('settings', { overlay: 'o1', section }); await settle();
+  assert.equal(reused.view.section, section || 'look', 'persisted native o1 must not override a new opening'); retire(reused);
+}
+const replacement = await mount('settings', settings.props); await settle();
+assert.equal(replacement.view.section, 'look', 'ordinary section navigation is not persisted, even for the same opening');
+assert.equal(closes(), beforeReplacement, 'lifecycle teardown does not close/reopen a retained overlay');
+retire(replacement);
+const directed = await mount('settings', { overlay: 'o1', section: 'updates' }); await settle();
+assert.equal(directed.view.section, 'updates', 'explicit Updates entry remains supported without an opening identity'); retire(directed);
+// The actual opener supplies a fresh nonce at the event, not when a menu is
+// built. Frozen time and a new VM still cannot reuse the process-local o1 id.
+footer.view.openFooter('settings'); footer.view.openFooter('settings');
+const firstOpen = footer.openings.at(-2), secondOpen = footer.openings.at(-1);
+assert.notEqual(firstOpen.props.settingsOpening, secondOpen.props.settingsOpening);
+const restartedFooter = await mount('workspace-chrome', { footer: true }); await settle();
+restartedFooter.view.openFooter('settings');
+const restartProps = restartedFooter.openings.at(-1).props;
+assert.notEqual(firstOpen.props.settingsOpening, restartProps.settingsOpening, 'opening identity survives neither native dismissal nor a desktop restart');
+// Actual Settings + row callbacks survive an update's replacement, including
+// the interval before the old launch call has delivered its receipt.
+const available = { revision: 'a'.repeat(40), check: { attempted: clock - 10, checked: clock - 10, available: true } };
+store.set(KEY, available); next = available;
+const initiating = await mount('settings', settings.props); await settle();
+assert.equal(initiating.view.section, 'look');
+find(initiating.tree, 'st-s-updates').attrs.on_click[0]({}, initiating.cx); await settle();
+let resolveLaunch;
+const launchReceipt = new Promise(resolve => { resolveLaunch = resolve; });
+transport = request => request.action === 'launch' ? launchReceipt : { code: 0, stdout: JSON.stringify(next) };
+find(initiating.tree, 'st-check-customizations').attrs.on_click[0](null, initiating.cx);
+const discardedJobs = jobs.splice(0); retire(initiating);
+const replacing = await mount('settings', settings.props); await settle();
+const rowButton = copy => find(copy.tree, 'st-check-customizations');
+const text = copy => nodes(copy.tree).flatMap(node => node.kids).filter(value => typeof value === 'string').join(' ');
+assert.equal(replacing.view.section, 'updates');
+assert.ok(rowButton(replacing).kids.includes('Updating…'));
+assert.equal(rowButton(replacing).attrs.disabled[0], true);
+const launchCount = calls.filter(call => call.action === 'launch').length;
+rowButton(replacing).attrs.on_click[0](null, replacing.cx); await settle();
+assert.equal(calls.filter(call => call.action === 'launch').length, launchCount);
+const running = { ...available, locked: true, job: { token: 'settings-update', started: clock, state: 'running', deadline: clock + 1800000 } };
+next = running; resolveLaunch({ code: 0, stdout: JSON.stringify(running) }); await Promise.all(discardedJobs);
+replacing.timers.find(timer => timer.ms === 1000).fn(replacing.cx); await settle();
+assert.ok(rowButton(replacing).kids.includes('Updating…'));
+retire(replacing);
+const during = await mount('settings', settings.props); await settle();
+assert.equal(during.view.section, 'updates'); assert.ok(rowButton(during).kids.includes('Updating…'));
+const resume = store.get(KEY).resume;
+assert.equal(resume.opening, openingA);
+retire(during); // host/native dismissal leaves the durable hint, not a live view
+// Native dismissal leaves the resume hint behind; another opening, even after
+// restarting Desktop with a reused o1 while the old runner is active, cannot use it.
+for (const destination of [undefined, 'privacy']) {
+  const newOpening = await mount('settings', { ...restartProps, overlay: 'o1', section: destination }); await settle();
+  assert.equal(newOpening.view.section, destination || 'look', 'active job belongs to its original opening, not reused o1'); retire(newOpening);
+  const unqualified = await mount('settings', { overlay: 'o1', section: destination }); await settle();
+  assert.equal(unqualified.view.section, destination || 'look', 'missing identity fails closed even with an active old job'); retire(unqualified);
+}
+const final = { revision: 'b'.repeat(40), job: { ...running.job, state: 'complete', finished: clock }, check: { attempted: clock + 1, checked: clock + 1, available: false } };
+next = final;
+const completing = await mount('settings', settings.props); await settle();
+assert.equal(completing.view.section, 'updates');
+assert.match(text(completing), /herdr-app-custom bbbbbbb/); assert.match(text(completing), /Up to date\. Checked at/);
+retire(completing);
+const justFinished = await mount('settings', settings.props); await settle();
+assert.equal(justFinished.view.section, 'updates'); assert.match(text(justFinished), /herdr-app-custom bbbbbbb/);
+assert.match(text(justFinished), /Up to date/); retire(justFinished);
+for (const destination of [undefined, 'privacy']) {
+  const reopened = await mount('settings', { ...restartProps, overlay: 'o1', section: destination }); await settle();
+  assert.equal(reopened.view.section, destination || 'look', 'a recent result cannot retarget a new opening'); retire(reopened);
+}
+for (const [state, expected] of [['partial', /some machines skipped or failed/], ['failed', /Update failed.*documented rollback/], ['unknown', /outcome unknown/]]) {
+  store.set(KEY, { ...running, resume }); next = { ...final, job: { ...final.job, state, error: 'fixture result' } };
+  const result = await mount('settings', settings.props);
+  assert.equal(result.view.section, 'updates'); assert.ok(rowButton(result).kids.includes('Updating…'));
+  await settle(); assert.match(text(result), expected); assert.ok(!text(result).includes('Up to date'));
+  retire(result);
+}
+store.set(KEY, { ...running, resume }); next = running;
+const navigating = await mount('settings', settings.props); await settle();
+assert.equal(navigating.view.section, 'updates');
+find(navigating.tree, 'st-s-privacy').attrs.on_click[0]({}, navigating.cx); await settle();
+assert.equal(store.get(KEY).resume, null, 'deliberate navigation disarms update restoration'); retire(navigating);
+const navigated = await mount('settings', settings.props); await settle();
+assert.equal(navigated.view.section, 'look'); retire(navigated);
+store.set(KEY, { ...running, resume });
+const dismissing = await mount('settings', settings.props); await settle();
+dismissing.tree.attrs.on_key_down[0]({ key: 'escape' }, dismissing.cx); retire(dismissing);
+assert.equal(store.get(KEY).resume, null, 'explicit dismissal disarms the resume hint');
+assert.equal(closes(), beforeReplacement + 1, 'only the explicit user dismissal closes an overlay');
+store.set(KEY, { ...final, resume }); next = final;
+clock += 120000;
+const boundary = await mount('settings', settings.props); await settle();
+assert.equal(boundary.view.section, 'updates', 'completion resume lasts at most two minutes'); retire(boundary);
+clock++;
+const expired = await mount('settings', settings.props); await settle();
+assert.equal(expired.view.section, 'look', 'finished-job restoration ends after two minutes'); retire(expired);
+for (const badResume of [null, { opening: openingA, started: 'invalid' }, { opening: 'different-opening', started: clock }]) {
+  store.set(KEY, { ...running, resume: badResume }); next = running;
+  const invalid = await mount('settings', settings.props); await settle();
+  assert.equal(invalid.view.section, 'look', 'invalid/mismatching resume hints never choose a section'); retire(invalid);
+}
+transport = null;
+console.log('PASS: real Settings init/row/controller replacement; per-opening update-only resume, reused o1 native dismissal/restart, expiry/destination guards and marker parity. No native UI exercised.');

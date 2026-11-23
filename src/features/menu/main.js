@@ -8,6 +8,7 @@ import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { U, slot, menuSurface, menuRow, hotkey, badge, spaceBadgeColor, menuHeading } from "./ui.js";
 import { displaySpace } from './directory.js';
+import { openSettings } from './settings-dialog.js';
 import { inspectTabMove, tabMoveDestinations, requestTabMove } from './tab-moves.js';
 import { footerItems } from './sidebar-footer.js';
 import { customizationUpdateAvailable } from './customization-updates.js';
@@ -193,7 +194,7 @@ export default class Menu extends View {
       it[6](cx);
       return;
     }
-    if (it[1] === "custom.settings") openOverlay({ mod: "custom-settings", kind: "dialog", frame: "none", width: 900, props: it[2] });
+    if (it[1] === "custom.settings") openSettings(it[2]);
     else if (it[1] === "worktree") openOverlay({ mod: "custom-worktree", kind: "dialog", frame: "none", ...(it[2].action === "open" ? { width: 560, height: 480 } : { width: 440, height: 300 }), props: it[2] });
     else if (it[1] === 'tab.rename' && requestInlineTabRename({ command: { name: it[1], args: it[2] } })) return;
     else if (it[1] === 'space.rename' && requestInlineSpaceRename({ command: { name: it[1], args: it[2] } })) return;

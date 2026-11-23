@@ -20,7 +20,8 @@ function fixture(machine=null){
   run:(...args)=>calls.push(plain(args)),closeOverlay:id=>closed.push(id),openOverlay:s=>overlays.push(plain(s)),
   shared:()=>({phase:'queued',expiresAt:Date.now()+60000}),setShared:()=>{throw Error('No shell replacement state allowed');},exec:()=>{throw Error('No replacement worker allowed');}};
  {const real=uiReal(element);for(const name of ['menuRow','menuSeparator','iconButton'])if(!(name in context))context[name]=real[name];}
- vm.runInNewContext(source,context);
+ const opening=fs.readFileSync(new URL('./settings-dialog.js',import.meta.url),'utf8').replace(/^import .*;\r?\n/gm,'').replace(/export /g,'');
+ vm.runInNewContext(opening+'\n'+source,context);
  const cx={focus_handle:()=>({focus(){}}),notify(){},stop_propagation(){},spawn:fn=>tasks.push(fn)};
  const menu=new context.api.ShellSwitch();menu.init({switchPane:pane.pane,switchTerminal:pane.terminal,overlay:'menu'},cx);
  return {state,pane,space,choices,calls,closed,overlays,tasks,menu,cx,context};
@@ -31,7 +32,7 @@ for(const machine of [null,'pc2']){
  f.menu.choose(f.choices[0],f.cx);f.menu.choose(f.choices[0],f.cx);
  assert.deepEqual(f.calls,[['tab.new',{space:f.space.id,folder:'D:/work folder',argv:f.choices[0].run}]],'One public native command with qualified target and literal argv');
  assert.deepEqual(f.closed,['menu']);assert.deepEqual(plain(f.state),before,'Source terminal, tab and topology are not modified');assert.equal(f.tasks.length,0);
- const edit=fixture(machine);edit.menu.editTerminals();assert.equal(edit.overlays[0].props.terminalsMachine,machine);
+ const edit=fixture(machine);edit.menu.editTerminals();assert.equal(edit.overlays[0].props.terminalsMachine,machine);assert.match(edit.overlays[0].props.settingsOpening,/^settings-/);
 }
 for(const mutate of [f=>f.state.panes=[],f=>f.state.spaces=[],f=>f.state.machines[0].layout='unavailable',f=>f.pane.terminal='other',f=>f.pane.tab='other',f=>f.pane.program.agent=true,f=>f.pane.status='working',f=>f.state.choices=[],f=>f.state.choices=[{...f.choices[0],run:['different']}],f=>f.state.terminals.push({address:'child',parent:f.pane.terminal,state:'live'})]){
  const f=fixture();mutate(f);f.menu.choose(f.choices[0],f.cx);assert.equal(f.calls.length,0,'Stale targets/settings cannot launch elsewhere');assert.ok(f.menu.error);

@@ -76,11 +76,28 @@ links its matching result, not a missing/stale Settings log. It also runs the re
 CLI with mocked definite installer failure and eight-minute timeout, then checks
 failure/recovery details and launch blocking after a successful main check.
 `tests/update-row.test.mjs` also covers the shared native/Custom 300 ms/3000 ms
-confirmation path, success/expiry and unchanged busy/error/unknown states.
+confirmation path, success/expiry and unchanged busy/error/unknown states. Fresh
+module graphs and owners simulate replacement before the launch receipt, during
+running work and just after completion. Shared provisional launch feedback stays
+Updating until durable status acknowledges it, or becomes unknown after the
+22-second transport bound; obsolete replies cannot overwrite newer receipts.
+The real Settings controller harness covers the same section-and-row flow together,
+including final success, partial, failure and unknown outcomes. No fixture launches
+a real update or demonstrates native process survival.
 `tests/update-markers.test.mjs` uses separate Settings/header/footer/menu VM
 contexts, the real controller/helper and a changed-shared-value refresh queue:
 manual checks reach already-mounted roots, and all native/Custom combinations
-produce the same marker markup. The original-source comparison exposes the missing
+produce the same marker markup. The Settings harness also runs real initialization
+and navigation, replacing the complete module graph with original overlay props
+and retained shared state to check update-only restoration and lifecycle teardown.
+The actual Settings opener supplies fresh per-opening identities: native/backdrop
+retirement without dismiss, a new VM with the same native `o1` ID, default/explicit
+destinations, missing identities, ignored legacy navigation records and active or
+recently finished jobs are covered together. Only the initiating opening can
+resume Updates, and completed-job hints expire after two minutes. Deliberate
+navigation and explicit dismissal disarm the hint. The update-check fixture
+confirms opening identities/hints are not exported as portable preferences.
+These are VM fixtures, not live GPUI reload evidence. The original-source comparison exposes the missing
 More-popup Settings marker, but **does not reproduce** the reported real-app
 expanded-footer missing dot. It proves neither GPUI pixel visibility nor native
 runtime scheduling. `tests/update-marker-inspection.test.mjs` exercises the

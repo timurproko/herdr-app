@@ -1,11 +1,12 @@
 // Open a new shell tab through Herdr's public command. Never replace the source pane.
 import { div, svg } from 'gpui-kit';
 import { h_flex, v_flex } from 'gpui-base';
-import { panes, spaces, terminals, machines, closeOverlay, openOverlay, theme, run, readTextFile } from './host.js';
+import { panes, spaces, terminals, machines, closeOverlay, theme, run, readTextFile } from './host.js';
 import { U, menuSurface, menuHeading, menuRow, emptyState } from './ui.js';
 import { cachedTerminalShells, warmTerminalShells, composeTerminals } from './profiles.js';
 import { paneStartFolder, warmPaneStartFolder } from './directory.js';
 import { divider } from './modal-layout.js';
+import { openSettings } from './settings-dialog.js';
 
 export function shellTarget(pane, terminal, allPanes, allSpaces, allTerminals) {
   const p = allPanes.find(p => p.pane === pane && p.terminal === terminal);
@@ -76,8 +77,7 @@ export class ShellSwitch {
   editTerminals() {
     if (this.busy || this.machine === undefined) return;
     closeOverlay(this.overlay);
-    openOverlay({mod:'custom-settings',kind:'dialog',frame:'none',width:900,height:620,
-      props:{section:'terminals',terminalsMachine:this.machine}});
+    openSettings({section:'terminals',terminalsMachine:this.machine},{height:620});
   }
 
   render() {

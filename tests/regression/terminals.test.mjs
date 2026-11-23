@@ -68,7 +68,8 @@ const closed=[],jobs=[],tabCalls=[];Object.assign(context,{run:(...args)=>tabCal
  paneDirectory:()=>({cwd:'D:/work folder'}),paneStartFolder:()=>'D:/work folder',warmPaneStartFolder:async()=>{},readTextFile:async()=>null,closeOverlay:id=>closed.push(id),openOverlay:()=>{}});
 {const real=uiReal(el);for(const name of ['menuRow','menuSeparator'])if(!(name in context))context[name]=real[name];}
 const popup=fs.readFileSync(new URL('../mods/custom-new-menu/shell-switch.js',import.meta.url),'utf8').replace(/^import .*;\r?\n/gm,'').replace(/export /g,'')+'\nglobalThis.Switch=ShellSwitch;';
-vm.runInNewContext(popup,context);
+const opening=fs.readFileSync(new URL('../mods/custom-new-menu/settings-dialog.js',import.meta.url),'utf8').replace(/^import .*;\r?\n/gm,'').replace(/export /g,'');
+vm.runInNewContext(opening+'\n'+popup,context);
 const cx={focus_handle:()=>({focus(){}}),notify(){},spawn(fn){jobs.push(fn);}};
 let menu=new context.Switch();menu.init({switchPane:'pane',switchTerminal:'old',overlay:'menu'},cx);
 assert.deepEqual(plain(menu.choices.map(x=>x.key)),['installed:bash','installed:cmd']);

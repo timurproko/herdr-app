@@ -60,6 +60,7 @@ const mocks = {
 withKitUi(mocks['./ui.js'],element);
 const sources = {
   './settings-sections.js': catalogSource,
+  './settings-dialog.js': read('src/ui/settings-dialog.js'),
   './sidebar-footer.js': read('src/ui/sidebar-footer.js'),
   './reorder.js': read('src/ui/reorder.js'),
   './sidebar-ui.js': read('src/features/settings/sidebar-ui.js'),

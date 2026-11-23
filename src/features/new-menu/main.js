@@ -4,6 +4,7 @@ import { h_flex, v_flex } from 'gpui-base';
 import { U, slot, menuSurface, menuRow, hotkey, menuHeading, ROLE_LABELS, ROLE_ACTIONS, rolePillButton } from './ui.js';
 import { theme, spaces, run, openOverlay, closeOverlay, props, keys, readTextFile } from './host.js';
 import { launchSpaceProfile } from './profile-actions.js';
+import { openSettings } from './settings-dialog.js';
 import { divider } from './modal-layout.js';
 import { cachedProfiles, composeProfiles, loadProfiles, PROFILE_ROLES, plainProfile, launchList } from './profiles.js';
 import { pluginGateReady } from './plugins.js';
@@ -61,7 +62,7 @@ export default class NewMenu extends View {
    .child(v_flex().flex_1().min_h(0).gap(U.rowGap).overflow_y_scrollbar().children(profiles.map(p=>profileRow(p.key,p)))
     .when(!profiles.length,el=>el.child(div().px(9).py(6).text_color(t.dim).child(this.loading?'Checking profiles…':this.failed?'Could not load profiles':'No visible profiles. Use Edit profiles.'))))
    .child(divider(t,{compact:true,inset:4}))
-   .child(this.row('edit-profiles',svg('mods/custom-settings/pencil.svg').size(U.smallIcon),'Edit profiles',()=>openOverlay({mod:'custom-settings',kind:'dialog',frame:'none',width:900,height:620,props:{section:'profiles',profilesMachine:this.machine}})))
+   .child(this.row('edit-profiles',svg('mods/custom-settings/pencil.svg').size(U.smallIcon),'Edit profiles',()=>openSettings({section:'profiles',profilesMachine:this.machine},{height:620})))
    .child(divider(t,{compact:true,inset:4}))
    .child(this.row('space',svg('mods/custom-workspace-chrome/plus.svg').size(U.smallIcon),'New space',()=>{if(this.scopeValid())run('space.new',{machine:this.machine??''});},shortcut('space.new')))
    .child(this.row('worktree',svg('mods/custom-workspace-chrome/branch.svg').size(U.smallIcon),'New worktree…',()=>{if(this.activeSpace())openOverlay({mod:'custom-worktree',kind:'dialog',frame:'none',width:460,height:300,props:{space:this.space,folder:spaceDirectory(this.activeSpace()).cwd,action:'new'}});},'',Boolean(space)))

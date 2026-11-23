@@ -33,7 +33,7 @@ async function harness() {
   };
   const main=new vm.SourceTextModule(fs.readFileSync(new URL('../src/plugins/git/mod/main.js',import.meta.url),'utf8'),{context});
   const panelKit=kitModule(context);withKitUi(modules['./ui.js'],element);
-  await main.link(name=>name==='./panel-kit.js'?panelKit:new vm.SyntheticModule(Object.keys(modules[name]),function(){for(const [k,v]of Object.entries(modules[name]))this.setExport(k,v);},{context}));
+  await main.link(name=>name==='./settings-dialog.js'?new vm.SourceTextModule(fs.readFileSync(new URL('../src/ui/settings-dialog.js',import.meta.url),'utf8'),{context}):name==='./panel-kit.js'?panelKit:new vm.SyntheticModule(Object.keys(modules[name]),function(){for(const [k,v]of Object.entries(modules[name]))this.setExport(k,v);},{context}));
   await main.evaluate();
   const view=new main.namespace.default(),cx={notify(){},stop_propagation(){},spawn:fn=>tasks.push(fn(cx)),timer:{every:(ms,fn)=>timers.push({ms,fn}),after:(ms,fn)=>phases.push({ms,fn})}};
   view.resetRepository();view.view='open';view.root='/repo';view.on=place.on;view.context=JSON.stringify([place.cwd,place.on]);
