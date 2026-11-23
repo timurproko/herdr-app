@@ -30,7 +30,13 @@ const frames=[];
 function frame(expected=true,registry=r){
  const rows=projectLinkedRows(groups.map((w,i)=>({w,i})),links(registry)),child=rows.find(row=>row.w.id==='fm-crew-home');
  const attached=child?.linked??false;frames.push(attached);assert.equal(attached,expected);
- if(expected){assert.equal(rows[rows.indexOf(child)-1].w.id,'coordinator');assert.equal(registry.pluginSpaceTags(groups.find(s=>s.id==='fm-crew-home')).length,0);assert.equal(registry.pluginSpaceTags(groups.find(s=>s.id==='coordinator'))[0].label,'Crew');}
+ if(expected){
+  assert.equal(rows[rows.indexOf(child)-1].w.id,'coordinator');
+  for(const [id,tooltip] of [['coordinator','Crew coordinator'],['fm-crew-home','Crew worker']]) {
+   const tags=Array.from(registry.pluginSpaceTags(groups.find(s=>s.id===id)),tag=>[tag.label,tag.tooltip]);
+   assert.deepEqual(tags,[['Crew',tooltip]],'Both attached roles retain their Crew pill in every sampled frame');
+  }
+ }
  return rows;
 }
 const prime=async()=>{mode='success';status.owner.live=true;status.tasks=[{id:'task',terminal:'t2',state:'working',pr:'https://github.com/example/repo/pull/1'}];event('spaces.refresh',true);await drain();frame();};

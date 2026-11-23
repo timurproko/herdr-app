@@ -31,13 +31,13 @@ assert.ok(!JSON.stringify(state[f.FLEET_KEY]).includes('MUST NOT SHARE'));assert
 groups.reverse();all.reverse();list.reverse();assert.equal(f.fleetContexts().length,1,'Native ordering does not change identity or abort block acknowledgements');groups.reverse();all.reverse();list.reverse();
 const tags=space=>Array.from(r.pluginSpaceTags(space),tag=>[tag.label,tag.tooltip]);
 assert.deepEqual(tags(groups[0]),[['Crew','Crew coordinator']],'The attached coordinator keeps its role tag');
-assert.deepEqual(tags(groups[1]),[],'Only the attached fleet omits Crew');
+assert.deepEqual(tags(groups[1]),[['Crew','Crew worker']],'The attached fleet keeps the same Crew pill with its worker tooltip');
 assert.deepEqual(tags({id:'unrelated-worker',tabs:[{id:'w'}]}),[['Crew','Crew worker']],'A worker outside the bound child keeps its tag');
 const savedState=JSON.stringify(state),savedCalls=calls;
 for(let i=0;i<3;i++){tags(groups[0]);tags(groups[1]);}
 assert.equal(JSON.stringify(state),savedState);assert.equal(calls,savedCalls,'Reading tags starts no discovery');
 all[1].terminal='replacement';assert.equal(f.fleetContexts().length,0);assert.deepEqual(tags(groups[0]),[['Crew','Crew coordinator']]);all[1].terminal='t2';
-state[f.FLEET_KEY].entries.local.at-=61000;assert.equal(f.fleetContexts().length,0);assert.deepEqual(tags(groups[1]),[],'Expired action freshness never detaches the persisted display');
+state[f.FLEET_KEY].entries.local.at-=61000;assert.equal(f.fleetContexts().length,0);assert.deepEqual(tags(groups[1]),[['Crew','Crew worker']],'Expired action freshness never hides the persisted fleet tag');
 state['custom.spaces.preferences'].connectFleetToCoordinator=false;f.refreshFleets(cx,read);assert.equal(calls,1);assert.equal(r.pluginWorkspaceLinks().length,0);
 assert.deepEqual(tags(groups[0]),[['Crew','Crew coordinator']]);assert.deepEqual(tags(groups[1]),[['Crew','Crew worker']]);
 state['custom.spaces.preferences'].connectFleetToCoordinator=true;f.invalidateFleet();

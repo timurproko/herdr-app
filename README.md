@@ -604,9 +604,10 @@ fleet attaches below its coordinator with a muted outlined chain icon in the nor
 numbered-badge slot: the same 16px box and vertical centre. No elbow or connector
 lines remain. The fleet name starts at the same left edge as all other space names;
 its existing muted text alone keeps it visually subordinate.
-The coordinator keeps its Crew tag and only the attached fleet omits it.
-Unrelated plugin tags remain. Refreshing Git or Crew, relay events, focus changes
-and unrelated pane changes do not temporarily turn a verified fleet back into an
+Both expanded rows show the same Crew pill at the right, to the left of any
+worktree icon without shifting its alignment with the machine chevron.
+Unrelated plugin tags remain; the compact rail stays badge-only. Refreshing Git or
+Crew, relay events, focus changes and unrelated pane changes do not temporarily turn a verified fleet back into an
 ordinary numbered row. The pair is a persisted property of its exact native
 space IDs and verified coordinator home/owner/adoption identity, not a temporary
 mode with a display timeout. Adding, renaming, removing or reordering unrelated

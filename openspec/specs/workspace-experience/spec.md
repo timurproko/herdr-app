@@ -127,7 +127,7 @@ Settings → Spaces SHALL expose **Connect fleet space to coordinator**, default
 - **THEN** the fleet is displayed directly below the coordinator with an outlined vector chain/link icon in the numbered-badge slot, using the same slot width, icon-box size and vertical centre as an ordinary numbered badge
 - **AND** the icon uses the app's muted icon color and no elbow or connector lines are drawn
 - **AND** the fleet name begins at the same left edge as the coordinator and ordinary space names, retaining its existing muted text style without indentation
-- **AND** the coordinator retains its Crew tag, only the attached fleet omits its Crew tag, and unrelated plugin tags remain
+- **AND** both expanded rows display the same Crew pill styling in the existing right-side tag position, left of any worktree marker, and unrelated plugin tags remain
 - **AND** the existing fleet worktree icon remains at the row's right edge when enabled
 
 #### Scenario: Compact rail attachment
@@ -135,6 +135,7 @@ Settings → Spaces SHALL expose **Connect fleet space to coordinator**, default
 - **THEN** the coordinator retains its numbered badge and the fleet shows the same muted vector chain/link icon in its badge slot, with the same box size and centering as a numbered badge
 - **AND** no elbow or connector lines are drawn
 - **AND** the fleet remains separately selectable with its existing name or directory tooltip
+- **AND** the rail remains badge-only without added Crew pills
 
 #### Scenario: Independent navigation
 - **WHEN** the user clicks the attached fleet rather than dragging it
@@ -203,8 +204,8 @@ Verified fleet presentation SHALL be a persisted property of exact pair identity
 
 #### Scenario: Successful refresh cycle
 - **WHEN** an attached fleet undergoes a delayed Crew status refresh from Git or Spaces and the completed result verifies the same pair
-- **THEN** every intermediate sidebar projection retains the same coordinator/fleet block, fleet chain badge and Crew-tag visibility
-- **AND** no intermediate frame shows the fleet's ordinary numbered badge, independent position or Crew tag
+- **THEN** every intermediate sidebar projection retains the same coordinator/fleet block, fleet chain badge and visible Crew pills on both expanded rows
+- **AND** no intermediate frame shows the fleet's ordinary numbered badge, independent position or missing attached-row Crew pill
 
 #### Scenario: Unrelated model and focus changes
 - **WHEN** spaces, tabs or panes unrelated to the pair are added, removed, renamed, reordered or selected on this or another machine, or focus/relay/Git refresh events occur
@@ -229,7 +230,7 @@ Verified fleet presentation SHALL be a persisted property of exact pair identity
 
 #### Scenario: Restart, mod reload or layout switch
 - **WHEN** a previously verified pair's two native spaces still exist after app restart, mod hot reload or a layout switch
-- **THEN** the first available native-space frame restores its attached block, chain badge and Crew-tag treatment from persisted sanitized identity facts before a status read completes
+- **THEN** the first available native-space frame restores its attached block, chain badge and Crew pills on both expanded rows from persisted sanitized identity facts before a status read completes
 - **AND** background verification can update or disprove that pair without an intermediate ordinary-space frame
 - **AND** persisted facts contain no reports, task records, PR inventory, credentials or transcripts and are not exported as portable preferences
 
@@ -239,12 +240,13 @@ Verified fleet presentation SHALL be a persisted property of exact pair identity
 - **AND** missing native space identities or explicit disablement detach immediately rather than leaving ghost rows
 
 ### Requirement: Independent attached-space identity and tags
-Attached coordinator and fleet rows SHALL remain independently selectable native spaces with distinct tabs and terminals. Only the attached fleet SHALL omit its Crew tag; the coordinator SHALL retain its Crew tag and unrelated plugin tags SHALL remain.
+Attached coordinator and fleet rows SHALL remain independently selectable native spaces with distinct tabs and terminals. Both expanded rows SHALL display the existing Crew pill with matching styling and trailing placement, left of any worktree marker without shifting its machine-chevron alignment. Unrelated plugin tags SHALL remain.
 
 #### Scenario: Attached row selection and tags
 - **WHEN** a verified coordinator and fleet are attached in Spaces
 - **THEN** clicking either row selects that native space without relocating tabs or terminals
-- **AND** the coordinator retains its Crew tag, only the attached fleet omits its Crew tag, and unrelated plugin tags remain
+- **AND** both expanded rows display their Crew pill and unrelated plugin tags remain
+- **AND** the coordinator retains its coordinator tooltip and the fleet uses its worker tooltip
 
 #### Scenario: Attachment removed
 - **WHEN** the relationship is confirmed broken or attachment is disabled

@@ -43,7 +43,7 @@ assert.ok(find(tree,'pr-labels-example/a#12'),'Coordinator rows use the shared l
 const refreshFrames=[],sample=()=>{
  const projected=projectLinkedRows(groups.map(w=>({w})),r.pluginWorkspaceLinks({presentation:true}));
  refreshFrames.push(projected.find(row=>row.w.id==='fm-crew-home').linked);
- assert.equal(r.pluginSpaceTags(groups[1]).length,0);assert.equal(r.pluginSpaceTags(groups[0])[0].label,'Crew');
+ assert.deepEqual(Array.from(r.pluginSpaceTags(groups[1]),tag=>[tag.label,tag.tooltip]),[['Crew','Crew worker']]);assert.equal(r.pluginSpaceTags(groups[0])[0].label,'Crew');
 };
 holdStatus=true;sample();panel.aggregate.refresh(cx);for(let i=0;i<20;i++)await Promise.resolve();sample();
 all.push({pane:'unrelated',tab:'c',terminal:'t9'});selected={...selected,terminal:'t2'};panel.render(cx);sample();
