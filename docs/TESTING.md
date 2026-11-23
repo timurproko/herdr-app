@@ -64,22 +64,29 @@ fixture runs actual npm scripts and the existing full/shell installers only agai
 its disposable home, with a fake host check and synthetic bundle; no real machine,
 Core, native app or account is contacted. Cases include source refusal, peer skips,
 independent failures, selection, dry-run byte preservation, backup IDs and exit codes.
-`tests/deploy-all-result.test.mjs` additionally covers incremental result sidecars
-and revision evidence. `tests/update-{runner,detach,check,row}.test.mjs` cover
+`tests/deploy-all-result.test.mjs` additionally covers incremental result sidecars,
+revision evidence and bounded host-local deferred-peer identities. Offline repetition,
+selection omissions, failed inventory, reachable failure, successful/current clearance,
+full-desktop exclusion, confirmed removal, legacy receipts, explicit empty sets and
+dry-run preservation are exercised. Preference export excludes deferred identities
+alongside other updater runtime state. `tests/update-{runner,detach,check,row}.test.mjs` cover
 managed-source refusal, clone-on-Update, deadlines, reload/late-result recovery,
 main-only checks/coalescing, one-button states, dots, packaging and preference
 exclusion. The runner fixture also upgrades a pre-feature clean clone through a local bare
 origin and a fresh protocol-capable CLI, and simulates the installer's eight-minute
 Windows timeout to verify unknown status/lock retention after Check. The pipeline
-fixture runs ordinary npm deploy:all with a skipped peer and verifies that the row
-links its matching result, not a missing/stale Settings log. It also runs the real
+fixture runs ordinary npm deploy:all with an offline peer and verifies successful,
+warning-free desktop presentation after checking, while its matching result still
+records the skip and an unrelated old Settings log is not advertised. It also runs the real
 CLI with mocked definite installer failure and eight-minute timeout, then checks
 failure/recovery details and launch blocking after a successful main check.
 `tests/update-row.test.mjs` also covers the shared native/Custom 300 ms/3000 ms
 confirmation path, success/expiry and unchanged busy/error/unknown states. Its
 known/missing-revision matrix exercises the real model and row renderer across
 idle, checking, available, launching/running, failed, partial and unknown-outcome
-states. Unknown revisions show only `herdr-app-custom` with no trailing space;
+states. Launching, pending-receipt, active-running and replacement cases assert the
+exact **Updating…** description with the unchanged disabled **Updating…** button;
+other state wording stays unchanged. Unknown revisions show only `herdr-app-custom` with no trailing space;
 known revisions retain their seven-character suffix. Missing evidence cannot claim
 current even with a cached no-update result. The check fixture separately confirms
 that changed ownership evidence still offers Update after a successful main read.
@@ -113,9 +120,20 @@ runtime scheduling. `tests/update-marker-inspection.test.mjs` exercises the
 read-only capture with fixture homes and a mocked status/shot CLI, proving no
 live-home writes or invented last-render facts. See the read-only capture in
 COMMANDS.md for the next real occurrence; no native app is launched by these tests.
-The check suite enumerates every Settings-job/plain-CLI by success/partial/failed/
-unknown combination using the real result writer, worker, check, projection and
-row functions; all eight cells assert truthful text and source-matching details.
+The check suite enumerates Settings-job/plain-CLI by success/offline/full-desktop/
+partial/failed/unknown combinations using the real result writer, worker, check,
+projection and row functions; all twelve cells assert truthful text and matching
+source details only when needed. The narrow benign classifier matrix retains warnings
+for unknown inventory states, missing tools, unsafe source, locks and remote uncertainty.
+Legacy completed Settings partial receipts refine only from matching final results,
+never across live locks, unknown jobs, unfinished results or foreign tokens.
+An offline-then-online fixture runs deploy-all again at equal main and proves deferred
+peer deployment and clearance through the real recorder/inspection/check/row pipeline.
+Checks remain main-only; simply restoring connectivity never dispatches work. Row
+module replacement and all four mounted indicator surfaces retain badge-free Up to
+date text plus actionable Update for pending peers, including stale-click lock and
+unknown guards. Deferred work cannot replay a remote unknown result at the worker
+boundary. All transports/installers are synthetic; no live pc2 or native UI is used.
 Unknown CLI receipts block even before peers finish and when no Settings lock
 exists; stale completed Settings jobs cannot hide the latest CLI outcome. The detach fixture
 runs actual detached Node supervision with synthetic Git and deploy CLI; it does

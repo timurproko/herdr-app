@@ -189,8 +189,12 @@ webhook operation runs just because you install this code or open Settings. See
 The selected Herdr home's `.customizations/` holds only the latest operation:
 `update-status.json`, `deploy-all-result.json`, `update-check.json`, `update.log`,
 `update-runner.cjs` and the active `update.lock` (plus a short check lock). These
-are private runtime files, not portable preferences. Reload/reopen reads the same
-status. The update has a 30-minute deadline in addition to existing subprocess
+are private runtime files, not portable preferences. The result sidecar also carries
+bounded `deferredPeers` identities for peers skipped offline, preserving them across
+later selected runs or failed inventories. Successful/current peer deployment, a
+confirmed full-desktop exclusion or a successful inventory proving removal clears
+the fact; it is not an installed-peer revision claim. Dry-run leaves it unchanged,
+and preference export never includes it. Reload/reopen reads the same status. The update has a 30-minute deadline in addition to existing subprocess
 limits; a deadline/crash/missing result reports outcome unknown, never success or
 automatic retry. The installer's own eight-minute npm timeout is also unknown:
 especially on Windows, termination of cmd.exe does not prove npm/installer
@@ -198,8 +202,20 @@ descendants stopped. Its structured unknown result retains update.lock even
 when the CLI exits and a fresh Check succeeds. Remote work already dispatched
 might still finish.
 
-When the desktop succeeds but peers skip/fail, the single row names that fact and
-its matching details path: **Log:** points to `update.log` for a detached Settings
+When the desktop succeeds, positively identified offline/unreachable skips and the
+deliberate **needs its own full deploy** exclusion are benign: after checking, the
+current desktop row shows Up to date without a warning or details pointer, and Custom
+badges clear. The log/result still records each skip plainly. A desktop-equipped peer
+still needs its own full Update. With deferred offline peers, the current desktop's
+normal Up to date description quietly keeps an **Update** action, not an availability
+badge or warning. pc2 gets then-current main on the next explicit Update while it is
+reachable, eligible and passes the normal safety gates, even if main/desktop is already
+current. No special retry command is needed. Turning pc2 on, Check now, timer checks
+and relay hints alone do not deploy it; deploy-all revisits peers only when Update runs.
+Unknown inventory states, other ineligibility skips,
+reachable deployment errors, locks and post-dispatch unknown outcomes are not benign.
+For these partial outcomes the single row retains the existing warning and its matching
+details path: **Log:** points to `update.log` for a detached Settings
 run; **Details:** points to `deploy-all-result.json` for an ordinary CLI run that
 captured no log. A missing or unrelated earlier Settings log is never advertised.
 Inspect the matching file for individual reasons and backup IDs.
@@ -208,8 +224,10 @@ Settings and ordinary CLI runs, even after a successful version check. A definit
 failure may offer an explicit retry after a fresh successful check, without hiding
 the failure line. A CLI installer timeout remains unknown and blocks Settings
 launches at the worker boundary too, even when no Settings job/lock was created;
-its durable result itself carries the unresolved outcome. There
-is **no automatic rollback**: from the managed clone with the same HERDR_APP_HOME,
+its durable result itself carries the unresolved outcome. Deferred peer work also
+cannot authorize replay of a dispatched remote unknown outcome: its partial diagnostics
+remain, and both the row and worker refuse another launch until manual resolution.
+There is **no automatic rollback**: from the managed clone with the same HERDR_APP_HOME,
 use the existing `npm run disable` then `npm run rollback -- <backup-id>` sequence
 below. If a failure produced no printed ID, inspect `.customizations/backups/` and
 the log to identify the matching journal; do not guess or bypass refusal gates.
