@@ -124,11 +124,17 @@ Provider/relay/Cloudflare unit transports are mocks, not live requests.
 and real selection model with synthetic host snapshots, a fake clipboard and
 one-shot timers. It covers initially null/undefined/empty window facts followed by
 Windows publication, simulated mouse selection and release-time clipboard updates,
-standard success-toast payloads, same-text selection inference, eligibility changes,
-clearing/focus switches/close, stale callbacks, Unicode counts and bounded failed reads.
+custom centered terminal-font popup rendering, same-text selection inference,
+eligibility changes, clearing/focus switches/close, stale callbacks, Unicode counts
+and bounded failed reads. The recorded popup tree checks the original bottom-center
+anchor, zero-size layout block, terminal-font fallback, white text, theme colors,
+geometry and wording. Deterministic timers check the 16ms arming delay, 180ms
+fade/6px slide, 2000ms hold, repeated-copy renewal, source-tab suppression and
+animation cleanup, including already-queued callbacks after disable or close.
+Standard notifications, clipboard writes and process launches fail the fixture.
 It never accesses real clipboard contents, sends terminal input or starts processes.
-This is controller coverage, not proof of a real mouse release or toast pixels;
-explicit/repeated shortcut detection remains outside the best-effort scope.
+This is controller/render-tree coverage, not proof of a real mouse release or native
+popup pixels; explicit/repeated shortcut detection remains outside the best-effort scope.
 
 ## Exclusions (whole suites, not rewritten assertions)
 
