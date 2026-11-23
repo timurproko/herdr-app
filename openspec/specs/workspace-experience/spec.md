@@ -115,7 +115,7 @@ On supported Windows hosts, Custom SHALL observe terminal selections once window
 - **AND** a held drag or unrelated clipboard activity can still be mistaken for a completed copy
 
 ### Requirement: Optional coordinator fleet attachment
-Settings → Spaces SHALL expose **Connect fleet space to coordinator**, defaulting off and portable as a boolean. When enabled with Crew, a verified same-machine fleet SHALL appear below its coordinator with a muted vector elbow replacing its numbered badge. Only the attached fleet SHALL omit its Crew tag; the coordinator SHALL retain its Crew tag. Both rows SHALL remain independently selectable. Native spaces, tabs and terminals SHALL remain distinct.
+Settings → Spaces SHALL expose **Connect fleet space to coordinator**, defaulting off and portable as a boolean. When enabled with Crew, a verified same-machine fleet SHALL appear below its coordinator with a muted vector chain icon replacing its numbered badge and its name aligned with ordinary space names.
 
 #### Scenario: First use and disabled setting
 - **WHEN** the preference is absent or false
@@ -124,15 +124,17 @@ Settings → Spaces SHALL expose **Connect fleet space to coordinator**, default
 
 #### Scenario: Connected fleet
 - **WHEN** the preference is true, Crew is enabled and live ownership identifies one coordinator and one fleet on the same machine
-- **THEN** the fleet is displayed directly below the coordinator with a thin muted elbow line descending from beneath the coordinator's numbered badge and turning right toward the inset muted fleet name
-- **AND** the elbow is a vector line in the badge position, not a chain/link glyph or text character
+- **THEN** the fleet is displayed directly below the coordinator with an outlined vector chain/link icon in the numbered-badge slot, using the same slot width, icon-box size and vertical centre as an ordinary numbered badge
+- **AND** the icon uses the app's muted icon color and no elbow or connector lines are drawn
+- **AND** the fleet name begins at the same left edge as the coordinator and ordinary space names, retaining its existing muted text style without indentation
 - **AND** the coordinator retains its Crew tag, only the attached fleet omits its Crew tag, and unrelated plugin tags remain
 - **AND** the existing fleet worktree icon remains at the row's right edge when enabled
 
 #### Scenario: Compact rail attachment
 - **WHEN** the verified pair is shown in the compact rail
-- **THEN** the coordinator retains its numbered badge and the fleet shows the same thin muted vector elbow motif in its badge slot
-- **AND** the fleet remains separately selectable with its existing name or directory tooltip and no chain/link glyph
+- **THEN** the coordinator retains its numbered badge and the fleet shows the same muted vector chain/link icon in its badge slot, with the same box size and centering as a numbered badge
+- **AND** no elbow or connector lines are drawn
+- **AND** the fleet remains separately selectable with its existing name or directory tooltip
 
 #### Scenario: Independent navigation
 - **WHEN** the user clicks the attached fleet rather than dragging it
@@ -156,7 +158,8 @@ Dragging either member of a verified coordinator/fleet pair SHALL reorder both a
 #### Scenario: Drag the coordinator or the fleet
 - **WHEN** the user drags either linked row to a valid position in its own machine group
 - **THEN** the final displayed and acknowledged native order puts coordinator then fleet at that position
-- **AND** both source rows share drag feedback, with one block preview and one external insertion marker
+- **AND** both source rows remain dimmed with one external block insertion marker
+- **AND** whichever row is grabbed, the floating preview is one ordinary coordinator chip with its numbered badge and name, not stacked rows, a fleet chip or a chain icon
 - **AND** the active space and running terminals are unchanged
 
 #### Scenario: Drop beside another linked pair
@@ -184,7 +187,7 @@ In the expanded Spaces sidebar, visible Git worktree markers SHALL occupy the sa
 #### Scenario: Ordinary and attached worktree rows
 - **WHEN** a local or remote machine group shows ordinary worktree spaces or an attached fleet with its worktree marker enabled
 - **THEN** every visible worktree marker is centred on the header chevron's vertical axis with the same right inset
-- **AND** the fleet's child inset does not move the marker away from that axis
+- **AND** the fleet's left-aligned name and chain badge do not move the marker away from that axis
 
 #### Scenario: Worktree marker beside plugin tags
 - **WHEN** a worktree space also displays a Crew tag or another plugin tag
@@ -200,7 +203,7 @@ Verified fleet presentation SHALL be a persisted property of exact pair identity
 
 #### Scenario: Successful refresh cycle
 - **WHEN** an attached fleet undergoes a delayed Crew status refresh from Git or Spaces and the completed result verifies the same pair
-- **THEN** every intermediate sidebar projection retains the same coordinator/fleet block, fleet elbow and Crew-tag visibility
+- **THEN** every intermediate sidebar projection retains the same coordinator/fleet block, fleet chain badge and Crew-tag visibility
 - **AND** no intermediate frame shows the fleet's ordinary numbered badge, independent position or Crew tag
 
 #### Scenario: Unrelated model and focus changes
@@ -226,7 +229,7 @@ Verified fleet presentation SHALL be a persisted property of exact pair identity
 
 #### Scenario: Restart, mod reload or layout switch
 - **WHEN** a previously verified pair's two native spaces still exist after app restart, mod hot reload or a layout switch
-- **THEN** the first available native-space frame restores its attached block, elbow and Crew-tag treatment from persisted sanitized identity facts before a status read completes
+- **THEN** the first available native-space frame restores its attached block, chain badge and Crew-tag treatment from persisted sanitized identity facts before a status read completes
 - **AND** background verification can update or disprove that pair without an intermediate ordinary-space frame
 - **AND** persisted facts contain no reports, task records, PR inventory, credentials or transcripts and are not exported as portable preferences
 
@@ -234,3 +237,16 @@ Verified fleet presentation SHALL be a persisted property of exact pair identity
 - **WHEN** the pair's owner/home or adoption evidence changes while verification is pending
 - **THEN** actions lose eligibility immediately but the previous verified display remains until the new read completes
 - **AND** missing native space identities or explicit disablement detach immediately rather than leaving ghost rows
+
+### Requirement: Independent attached-space identity and tags
+Attached coordinator and fleet rows SHALL remain independently selectable native spaces with distinct tabs and terminals. Only the attached fleet SHALL omit its Crew tag; the coordinator SHALL retain its Crew tag and unrelated plugin tags SHALL remain.
+
+#### Scenario: Attached row selection and tags
+- **WHEN** a verified coordinator and fleet are attached in Spaces
+- **THEN** clicking either row selects that native space without relocating tabs or terminals
+- **AND** the coordinator retains its Crew tag, only the attached fleet omits its Crew tag, and unrelated plugin tags remain
+
+#### Scenario: Attachment removed
+- **WHEN** the relationship is confirmed broken or attachment is disabled
+- **THEN** the rows retain their separate native identities and ordinary plugin tag rules
+- **AND** disabling Crew still hides Crew tags without closing or relocating either space
