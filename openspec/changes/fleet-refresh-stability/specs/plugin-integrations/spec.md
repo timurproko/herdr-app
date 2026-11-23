@@ -64,11 +64,11 @@ With attachment and Git enabled, selecting a verified coordinator SHALL show ded
 ## ADDED Requirements
 
 ### Requirement: Non-destructive fleet status refresh
-Refreshing fleet status SHALL distinguish pending or failed transport from a completed relationship result. Starting a read or receiving a read error SHALL NOT overwrite a previously verified binding with an authoritative absence. Successful status/binding replacement SHALL publish atomically, and obsolete read completions SHALL NOT replace newer facts. Failure retention SHALL obey the bounded successful-verification deadline.
+Refreshing fleet status SHALL distinguish pending or failed transport from a completed relationship result. Starting a read or receiving a read error SHALL NOT overwrite a previously verified binding with an authoritative absence. Successful status/binding replacement SHALL publish atomically, and obsolete read completions SHALL NOT replace newer facts. Retained display SHALL be bounded to persisted exact pair identities, not renewed action freshness.
 
 #### Scenario: Error after a verified result
 - **WHEN** a refresh fails after the same machine published a verified pair
-- **THEN** the last verified snapshot remains available for bounded presentation without being replaced by a fresh empty binding
+- **THEN** the persisted verified pair remains available for identity-scoped presentation without being replaced by a fresh empty binding or expiring merely due to elapsed time
 - **AND** the failure does not reset verification age or bypass live identity checks
 
 #### Scenario: Fresh negative result
@@ -80,6 +80,25 @@ Refreshing fleet status SHALL distinguish pending or failed transport from a com
 - **WHEN** Git manual refresh, existing relay invalidation, Spaces lifecycle or periodic Crew refresh runs
 - **THEN** all consumers observe the same non-destructive refresh policy
 - **AND** no extra polling loop, companion or cross-machine inference is introduced
+
+### Requirement: Stale coordinator presentation without action authority
+When strict fleet action context is unavailable, the selected persisted coordinator SHALL retain its already-loaded same-home Git rows with an explicit stale or waiting state. Retained context SHALL NOT start new GitHub reads or authorize worker navigation. Fresh verified status SHALL restore normal operation or replace invalid context. No PR/task inventory SHALL be persisted for restart merely to retain presentation.
+
+#### Scenario: Status unavailable beyond action freshness
+- **WHEN** a status read fails or times out after strict action freshness expires while the verified pair's native spaces still exist
+- **THEN** the sidebar stays attached and the selected coordinator's previously loaded Git rows, counts and fold state remain presented as stale
+- **AND** no new aggregate read or robot navigation uses the retained context as authorization
+- **AND** the removed task heading and generic incomplete-list notice do not reappear
+
+#### Scenario: Cold restart before verification
+- **WHEN** the selected coordinator is restored from durable pair identity but no task/PR facts have been verified in this runtime
+- **THEN** Git shows its coordinator waiting/unverified state rather than switching to folder-based non-repository mode
+- **AND** only a fresh verified same-home status result can start task-linked GitHub reads
+
+#### Scenario: Different selected space or confirmed home change
+- **WHEN** the user selects another space or a completed read disproves or changes coordinator/home ownership
+- **THEN** stale rows are not displayed or reused as facts for the unrelated destination
+- **AND** ordinary folder Git and existing stale-generation guards remain intact
 
 ### Requirement: Bounded finished-task pull request history
 Closed tasks from the verified coordinator's crew home SHALL contribute their recorded Open/Draft PRs without live workers. Historical-only Merged/Closed PRs SHALL appear only within 24 hours of GitHub's merge/close timestamp; undated closed history SHALL be excluded. Live sources SHALL win deduplication and keep worker navigation. Historical-only rows SHALL have no robot or worker action. Status and targeted-read bounds SHALL remain enforced.

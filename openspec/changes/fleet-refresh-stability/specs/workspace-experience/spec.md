@@ -41,7 +41,7 @@ Settings → Spaces SHALL expose **Connect fleet space to coordinator**, default
 ## ADDED Requirements
 
 ### Requirement: Stable verified fleet presentation during refresh
-An existing verified attachment SHALL retain its expanded and compact presentation during refresh uncertainty. Git refresh, relay events, focus changes, periodic status reads and unrelated live-model changes SHALL NOT create intermediate detached frames. Failed or timed-out reads SHALL retain last-verified presentation for at most 60 seconds from successful verification, never extended by failures. Completed negative evidence and explicit disablement SHALL remove it.
+Verified fleet presentation SHALL be a persisted property of exact pair identity, not a temporary refresh mode. Unrelated changes SHALL NOT emit detached frames. Persisted facts SHALL restore the first native-space frame after restart or reload while background verification runs. Failures SHALL retain the pair while both native spaces exist; only completed contradictory evidence, explicit disablement or missing native spaces SHALL detach it. Retained display SHALL NOT authorize actions.
 
 #### Scenario: Successful refresh cycle
 - **WHEN** an attached fleet undergoes a delayed Crew status refresh from Git or Spaces and the completed result verifies the same pair
@@ -49,14 +49,16 @@ An existing verified attachment SHALL retain its expanded and compact presentati
 - **AND** no intermediate frame shows the fleet's ordinary numbered badge, independent position or Crew tag
 
 #### Scenario: Unrelated model and focus changes
-- **WHEN** an unrelated pane or tab changes, selection changes, or a relevant relay event arrives while the pair remains valid
-- **THEN** that change does not invalidate the verified attachment merely because the surrounding model changed
+- **WHEN** spaces, tabs or panes unrelated to the pair are added, removed, renamed, reordered or selected on this or another machine, or focus/relay/Git refresh events occur
+- **THEN** none of those changes emits even one detached projection of the verified pair
+- **AND** only the two spaces' identities, coordinator home/owner and fleet adoption facts participate in binding-dependent invalidation
 - **AND** a pending or subsequent successful same-binding refresh emits no detached sidebar projection
 
 #### Scenario: Failed or timed-out refresh
 - **WHEN** a previously verified pair's next status read fails, is malformed or times out
-- **THEN** its prior verified presentation remains until a successful replacement, explicit disablement, definitive native-space removal or the 60-second verification deadline
-- **AND** repeated attempts or errors never refresh the successful-verification timestamp or retain the presentation indefinitely
+- **THEN** its prior verified presentation remains while its two native spaces exist, until a completed read disproves it or the setting/plugin is turned off
+- **AND** elapsed time alone does not detach an unchanged pair, including long outages beyond the former 60-second window
+- **AND** retention is bounded to the exact machine/space/home identities with at most one verified pair per known machine, never fresh action authorization
 
 #### Scenario: Completed relationship change
 - **WHEN** a successful completed read establishes that the fleet or coordinator is gone or ownership identifies a different valid pair
@@ -64,5 +66,16 @@ An existing verified attachment SHALL retain its expanded and compact presentati
 - **AND** a late result from an older read cannot resurrect it
 
 #### Scenario: No verified history
-- **WHEN** the first read is pending, fails or produces ambiguous evidence and no verified pair has been published
+- **WHEN** the first read is pending, fails or produces ambiguous evidence and no previously verified pair exists in memory or durable local identity facts
 - **THEN** the sidebar remains unattached rather than creating a relationship from names, role hints or an unverified snapshot
+
+#### Scenario: Restart, mod reload or layout switch
+- **WHEN** a previously verified pair's two native spaces still exist after app restart, mod hot reload or a layout switch
+- **THEN** the first available native-space frame restores its attached block, elbow and Crew-tag treatment from persisted sanitized identity facts before a status read completes
+- **AND** background verification can update or disprove that pair without an intermediate ordinary-space frame
+- **AND** persisted facts contain no reports, task records, PR inventory, credentials or transcripts and are not exported as portable preferences
+
+#### Scenario: Relevant identity changes during a read
+- **WHEN** the pair's owner/home or adoption evidence changes while verification is pending
+- **THEN** actions lose eligibility immediately but the previous verified display remains until the new read completes
+- **AND** missing native space identities or explicit disablement detach immediately rather than leaving ghost rows

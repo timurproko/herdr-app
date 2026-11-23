@@ -4,7 +4,7 @@
 
 See proposal.md for the three reproduced failures. `fleetContexts()` currently requires equality with a signature of all machine spaces, panes and relevant terminals before it even attempts an exact pair join. The status error handler publishes `status:null` with a new timestamp, while a 30-second expiry rejects a prior snapshot independently of a pending replacement. Both Spaces row projection and Crew tag suppression consume that eligibility decision.
 
-The original `fleet-link-look` change has already been finalized automatically on this branch as `openspec/changes/archive/2026-11-23-fleet-link-look/`; retain that commit and archive. This follow-up uses a new active change in the same PR, with the first four outcomes carried forward as complete and pending stability and finished-task PR outcomes.
+The original `fleet-link-look` change has already been finalized automatically on this branch as `openspec/changes/archive/2026-11-23-fleet-link-look/`; retain that commit and archive. This follow-up uses a new active change in the same PR, with the first four outcomes carried forward as complete. Baseline refresh stability and finished-task PR retention are now implemented and passed all 143 Windows CI-selected entries; the strengthened persistent pair outcome remains planned and requires approval.
 
 ## Goals / Non-Goals
 
@@ -20,11 +20,19 @@ Retain sanitized last-successful status and verified pair facts separately from 
 
 Preserve the existing retry cadence using attempt/retry timestamps rather than refreshing successful verification age on errors. Otherwise keeping an old success timestamp after failure would make every subsequent render launch another status request. Explicit manual refresh may bypass the normal freshness delay, never an already-live request lease.
 
-### Stop treating unrelated topology as pair invalidity
+### Bind presentation to pair identity, not unrelated topology or wall-clock age
 
-A broad machine signature can remain a discovery/supersession hint, but cannot by itself decide that a previously verified pair should be drawn detached. Rejoin the cached sanitized status against the relevant live owner/worker membership before rejecting an actionable pair. Selection and ordering alone never change identity. Prefer one captured model per resolution rather than comparing one snapshot and joining another.
+The committed baseline removed the broad signature from render eligibility, but the strengthened contract also narrows the binding-dependent fingerprint itself. Include only native machine/parent/child identities, the verified coordinator home/owner terminal and its membership, and the fleet adoption labels that prove this pair. Unrelated spaces, their names/order/selection, and unrelated tabs/panes on any machine are not binding dependencies. Capture one coherent model per resolution. Broad inventory changes may schedule existing discovery, never erase the display or supersede a valid same-pair read merely because another space changed.
 
-Store the verified parent/child/machine/binding needed for presentation when a successful read and exact join agree. While the next read is pending or fails, retain that display for up to 60 seconds from successful verification. This is a hard maximum, not a sliding deadline: attempts, timeouts and failures never renew it. Expired lease completions cannot make old facts fresh. Completed valid absence/changed ownership and explicit preference/plugin disablement remove or replace the old display immediately; definitively removed/replaced native spaces cannot remain as ghost rows.
+The 60-second display cutoff is superseded. The justified bound is structural: one last-verified pair per known machine, scoped to its exact home/owner/adoption identity and the lifetime of both native space IDs. Keep that already-verified presentation across transport failure, timeout and partial snapshots, regardless of elapsed time. Clear only on explicit disablement, absence of either native space, or a completed coherent status read proving owner/home release, ended coordinator, incompatible adoption labels or a different pair. Relevant identity changes invalidate action eligibility immediately and trigger verification; until that read completes, presentation remains last known rather than publishing unknown. No unverified first read creates a pair.
+
+This does not allow unbounded record accumulation or control: prune records whose native spaces no longer exist, keep at most one per known machine, and require strict fresh live verification for all actions. Retry attempts do not become successful verification or extend action freshness. Expired/obsolete read leases still cannot publish.
+
+### Restore the verified pair from durable local identity facts
+
+Use a dedicated versioned `custom.fleet.display` record through public namespaced shared-state persistence, separate from expiring status/PR data and pending tokens. The installed read-only SDK explicitly documents `shared` values as persisted; this is the same boundary used for durable Custom workspace facts. Do not directly edit native files. Persist only bounded machine-qualified space IDs, crew home, owner identity and minimal adoption-label facts needed to recognize the verified pair; never reports, PR inventories, task records, credentials or session content/transcripts.
+
+Read the sanitized record on cold module/view startup so projection and tags draw the attached pair in the first available native-space frame, before any asynchronous status result. Reverify in the existing background lifecycle. Mod hot reload/layout changes must not clear the record. Explicit attachment/Crew disablement clears it via the preference/plugin transition boundary; successful negative reads and absent native IDs prune it. Keep it out of portable preference snapshots and reject malformed/unknown-version records conservatively. Test fresh VM/module graphs with only persisted identity facts and live native spaces, not warmed provider state.
 
 ### Retained presentation is not action authority
 
@@ -32,7 +40,9 @@ Expose bounded display facts through the existing plugin contribution boundary, 
 
 Do not let a visible pair degrade into a standalone reorder when live verification is temporarily unavailable. Keep the displayed block's captured metadata for a gesture, but require the existing strict binding check before public move commands and throughout their acknowledgements. Reject unsafe actions rather than treating retained row geometry as proof. Existing Git reads and robot focus callbacks continue checking current exact terminal/task/binding identity; ambiguous or expired action contexts start no follow-up work.
 
-This is preferable to caching a raw full UI tree, ignoring identity errors, extending every cache timestamp indefinitely or adding a delay before all detachments. Those alternatives either hide real relationship changes or authorize stale state.
+Git additionally needs a read-only stale presentation context to retain its already-loaded coordinator rows when strict action context expires. Mark it visibly stale/unverified (without restoring the removed task heading or generic incomplete-list notice), preserve same-home row/count/fold presentation, and start no fresh GitHub work or worker navigation from that retained context. On restart no PR inventory is persisted: show the coordinator's waiting/stale state until actual verified task facts arrive. Current exact owner/home/terminal checks still gate new reads and callbacks.
+
+This is preferable to caching a raw UI tree, treating retained facts as fresh authorization, or adding arbitrary detach delays. Durable presentation can outlive action freshness without granting control.
 
 ### Retain same-home finished-task PRs without retaining worker authority
 
@@ -48,9 +58,9 @@ Use the existing `PR_FIELDS` timestamps and the aggregate's three-read concurren
 
 ### Regression coverage follows the actual refresh/projection boundary
 
-Turn the read-only repro into deterministic packaged-provider regressions with a fake clock and deferred source promises. Sample `pluginWorkspaceLinks` in presentation mode, actual `projectLinkedRows`, and Crew tags before starting, while pending, across the old 30-second boundary, and after same-binding completion. Every sampled frame must remain attached, with no fleet badge/tag fallback.
+Extend the existing deterministic packaged-provider regressions with fake clocks, deferred source promises and fresh VM restarts. Sample `pluginWorkspaceLinks` in presentation mode, actual `projectLinkedRows`, and Crew tags before starting, while pending, across the old 30-second boundary, and after same-binding completion. Every sampled frame must remain attached, with no fleet badge/tag fallback.
 
-Exercise forced Git manual refresh and the existing aggregate/relay lifecycle, periodic status refresh, focus/selection and unrelated pane changes, coalesced reads, malformed/error/timeout outcomes, retries without timestamp extension, successful negative/change results, no verified history, the 60-second cutoff, disablement, cross-machine collisions, moved/replaced terminals and obsolete generations. Add action tests showing a retained visual pair cannot start a standalone reorder or stale Git read/worker focus action.
+Exercise forced Git manual refresh and the existing aggregate/relay lifecycle, periodic status refresh, focus/selection, adding/removing/reordering/renaming unrelated spaces, adding/removing panes/tabs and other-machine changes. Cover coalesced reads, malformed/error/timeout results, unchanged-identity retention far beyond 60 seconds, successful negative/change results, cold restart/mod reload/layout switch with persisted facts, no verified history, explicit disablement, corrupt persistence, cross-machine collisions, moved/replaced terminals and obsolete generations. Add action tests showing a retained visual pair cannot start a standalone reorder or stale Git read/worker focus action.
 
 Also cover a finished worker whose PR stays Open, recent versus old/undated historical Closed/Merged PRs, live/historical duplicate precedence, several closed tasks sharing one PR, no-PR reviewer/scout records, another home/machine, last-worker exit, re-open/merge webhook transitions, scoped counts/empty repository headers and stale robot callbacks.
 
@@ -58,7 +68,7 @@ Update README/docs/TESTING.md/docs/ARCHITECTURE.md with the bounded display poli
 
 ## Risks / Trade-offs
 
-- [A short outage can display last-known structure] → Limit it to 60 seconds from verified success; honor confirmed changes and explicit disablement immediately, and refuse unverified actions.
+- [An outage can display last-known structure for a long-lived pair] → Bound it to exact extant native identities and one record per known machine; honor completed contradictory evidence/disablement, show stale Git state and refuse unverified actions.
 - [Keeping successful timestamps could create immediate retry loops] → Track attempts/retry cadence independently from successful verification age.
 - [A stale display pair could accidentally become a single-space move] → Preserve block metadata for rendering/gestures but use strict live binding at commit and acknowledgement boundaries; assert no commands in the regression.
 - [Historical status JSON has no task lifecycle timestamps] → Use GitHub close/merge time for the explicit 24-hour Closed cutoff; exclude undated closed history and do not read private task files.
@@ -67,4 +77,4 @@ Update README/docs/TESTING.md/docs/ARCHITECTURE.md with the bounded display poli
 
 ## Migration Plan
 
-Continue the same branch and PR. Do not edit or revert the bot's finalized archive; link this active follow-up change for later finalization. Existing runtime snapshots may lack new optional display/attempt fields and must be handled conservatively without a portable schema migration. No deployment is authorized. Rollback is a normal source revert, never a live-document rewrite.
+Continue the same branch and PR. Do not edit or revert the bot's finalized archive; link this active follow-up change for later finalization. Existing runtime snapshots may lack the new durable identity record and must not be treated as persisted verification merely because a role hint exists. Populate durable facts only from an actual verified pair, with no portable schema migration or copied PR/task history. No deployment is authorized. Rollback is a normal source revert, never a live-document rewrite.
