@@ -61,33 +61,6 @@ With attachment and Git enabled, selecting a verified coordinator SHALL show ded
 - **WHEN** attachment is disabled or a non-coordinator space is selected
 - **THEN** aggregate work stops and Git resumes its existing selected-folder behavior, including its ordinary pin, pagination and repository actions
 
-### Requirement: Collapsible coordinator repository sections
-Each repository section in the consolidated coordinator Git panel SHALL have a collapsible header using the Spaces machine-header control and style. Sections SHALL default expanded and retain independent per-repository fold state locally, using the same persistence mechanism as Spaces machine sections. Headers SHALL retain the repository name, task-scoped Open/Closed counts and chevron while collapsed.
-
-#### Scenario: First display
-- **WHEN** a repository has no saved folded state and appears in the coordinator overview
-- **THEN** its section is expanded with a machine-style header and expanded chevron
-- **AND** its header shows that repository's distinct Open and Closed task-PR counts, not repository-wide totals
-
-#### Scenario: Collapse and expand one repository
-- **WHEN** the user clicks a repository header or its chevron
-- **THEN** only that repository section toggles, using the same interaction and visual style as a Spaces machine header
-- **AND** its name, counts and chevron remain visible while its PR body and genuine repository-specific errors or stale notices are hidden when folded
-- **AND** reopening restores its current rows and scoped body notices without changing the Open/Closed tab or selecting a PR
-- **AND** the single bottom repository-enrollment picker remains visible independently of section folding
-
-#### Scenario: Fold state survives panel changes
-- **WHEN** a repository is collapsed and the user changes Open/Closed tabs, refreshes, changes coordinator selection, or closes and reopens the panel
-- **THEN** the repository retains its local folded state independently of other repositories
-- **AND** panel recreation restores saved state through the same local persistence mechanism as Spaces machine folding
-- **AND** that UI state is not exported as a portable preference or written to Crew records
-
-#### Scenario: Counts update while collapsed
-- **WHEN** the normal aggregate lifecycle updates PR facts or task links for a folded repository
-- **THEN** its visible header counts update without expanding the section
-- **AND** global Open/Closed counts still include eligible task PRs in collapsed sections
-- **AND** folding itself performs no extra GitHub read, stops no existing webhook update, and does not create an empty-list message solely because all sections are folded
-
 ## ADDED Requirements
 
 ### Requirement: Non-destructive fleet status refresh
@@ -126,37 +99,6 @@ When strict fleet action context is unavailable, the selected persisted coordina
 - **WHEN** the user selects another space or a completed read disproves or changes coordinator/home ownership
 - **THEN** stale rows are not displayed or reused as facts for the unrelated destination
 - **AND** ordinary folder Git and existing stale-generation guards remain intact
-
-### Requirement: Consolidated repository enrollment picker
-The coordinator Git panel SHALL use one pinned bottom enrollment banner instead of repeated per-repository banners. Its upward picker SHALL reuse the status-bar account control's chevron, trigger, popup and row styling. Confirmed unenrolled repositories SHALL appear in section order. Choosing one SHALL open captured pre-populated Settings without enrolling it. Ordinary Git SHALL remain unchanged.
-
-#### Scenario: Several repositories require enrollment
-- **WHEN** at least one displayed coordinator repository is confirmed unenrolled and global Git setup is ready
-- **THEN** exactly one bottom banner shows `Add this repo in Settings` with a chevron, not one banner per section
-- **AND** its info icon, message and card surface retain the ordinary single-repository banner's appearance
-- **AND** it remains visible when sections are folded or the PR list scrolls
-- **AND** its dropdown lists distinct owner/name choices in the same order as the rendered repository sections
-
-#### Scenario: Exactly one or no unenrolled repositories
-- **WHEN** exactly one displayed repository is confirmed unenrolled
-- **THEN** the banner still opens the same dropdown containing one choice rather than changing to a direct action
-- **AND** once all displayed repositories are enrolled the banner and its obsolete popup disappear
-
-#### Scenario: Account-style control and keyboard behavior
-- **WHEN** the user opens the bottom banner's repository picker
-- **THEN** the same shared presentation as the status-bar account control supplies the chevron glyph, 12px size, muted colour, placement, upward popup, row height/padding and hover/highlight treatment
-- **AND** Up/Down selects a highlighted row, Enter chooses it, and Escape or outside dismissal closes the popup
-
-#### Scenario: Captured repository Settings action
-- **WHEN** the user chooses an eligible repository from the opened picker
-- **THEN** the popup closes and the existing Git Settings Repositories dialog opens with that captured owner/name pre-populated
-- **AND** the picker performs no enrollment writes or discovery reads beyond the unchanged existing Settings-opening action
-- **AND** a changed coordinator/view or obsolete membership cannot retarget a stale choice to another repository
-
-#### Scenario: Other notices and ordinary Git
-- **WHEN** a repository has a genuine scoped error or stale-data notice, global Git setup is missing, or ordinary single-repository Git is selected
-- **THEN** scoped notices and the existing global setup behavior retain their purpose and placement
-- **AND** the ordinary single-repository banner and its direct Settings action are unchanged
 
 ### Requirement: Bounded finished-task pull request history
 Closed tasks from the verified coordinator's crew home SHALL contribute their recorded Open/Draft PRs without live workers. Historical-only Merged/Closed PRs SHALL appear only within 24 hours of GitHub's merge/close timestamp; undated closed history SHALL be excluded. Live sources SHALL win deduplication and keep worker navigation. Historical-only rows SHALL have no robot or worker action. Status and targeted-read bounds SHALL remain enforced.

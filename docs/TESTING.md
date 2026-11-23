@@ -360,7 +360,7 @@ only the demonstrated Windows Git-sh fixture remains an observed suite exclusion
 ## Exact selected source entries
 
 The list below is generated from CI selection, not inferred from naming. On Node
-24 the current selection is **147 Ubuntu / 146 Windows entries**, with two/three
+24 the current selection is **152 Ubuntu / 151 Windows entries**, with two/three
 explicit exclusions respectively. The installed directory-loader fixture now runs
 on both; the preference-home and four runtime-contract suites are included. It includes scaffold/aggregator tests. Earlier Node 20 attempts selected
 122/121 and then 119/119 entries while diagnosing the crashes; those temporary
@@ -433,6 +433,8 @@ tests/deploy-all-pipeline.test.mjs
 tests/deploy-all-remote.test.mjs
 tests/deploy-all-result.test.mjs
 tests/deploy-all.test.mjs
+tests/deploy-failure.test.mjs
+tests/deploy-gate-pipeline.test.mjs
 tests/deployment.test.mjs
 tests/empty-state.test.mjs
 tests/file-refresh.test.mjs
@@ -446,6 +448,7 @@ tests/fleet-preferences.test.mjs
 tests/fleet-reorder.test.mjs
 tests/folder-browser-multi.test.mjs
 tests/folder-content.test.mjs
+tests/frame-upgrade.test.mjs
 tests/git-ci-fix.test.mjs
 tests/git-context-menu.test.mjs
 tests/git-core-monitor.test.mjs
@@ -459,6 +462,7 @@ tests/git-repository-cli.test.mjs
 tests/git-row-labels.test.mjs
 tests/git-webhooks.test.mjs
 tests/host-facade.test.mjs
+tests/host-gate.test.mjs
 tests/installed-export.test.mjs
 tests/native-selection.test.mjs
 tests/ownership-report.test.mjs
@@ -494,6 +498,7 @@ tests/spaces-settings.test.mjs
 tests/spaces-startup.test.mjs
 tests/spaces-worktree-layout.test.mjs
 tests/status-reveal.test.mjs
+tests/stock-baseline.test.mjs
 tests/tab-arrival.test.mjs
 tests/tab-move-compatibility.test.mjs
 tests/tab-move-ui.test.mjs
