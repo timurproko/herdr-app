@@ -1,6 +1,6 @@
 # Tasks
 
-Design is intentionally omitted: this is a literal-copy restoration with no architectural, dependency, data-model or migration decisions. Exact wording was verified in `5f40e05^:src/features/settings/main.js`, line 912.
+This is a literal-copy restoration with no architectural, dependency, data-model or migration changes. A minimal design artifact records the approach because Delivery automation requires the complete artifact set. Exact wording was verified in `5f40e05^:src/features/settings/main.js`, line 912.
 
 ## 1. Settings Updates restores the exact short paragraph without changing update behavior
 
