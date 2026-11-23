@@ -1236,6 +1236,15 @@ restart agents. Install on every peer before changing dotfiles or deleting old
 source. The optional private Claude shell initializer remains separately managed;
 its own updates do not change this deploy-owned revision.
 
+## Herdr release migration proposals
+
+The separate [Herdr migration workflow](docs/HERDR-UPGRADES.md) discovers App and
+Core releases and prepares a draft migration PR with scoped source hunks, check
+results and file-specific agent tasks. It never deploys or blocks native updates.
+Publication is off until an explicitly authorized hosted no-write probe succeeds;
+`🤖 Skip` is this repository's closing-to-skip label, not a shared review label.
+A local no-write preview is `node tools/propose-herdr-upgrade.mjs --probe`.
+
 ## Native updates and compatibility exceptions
 
 Ordinary Custom mods/layouts are unshipped private files, so native updates do not

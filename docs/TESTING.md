@@ -155,6 +155,29 @@ stock mismatches and malformed baseline records still fail. The new
 reviewed/mismatching and missing-0.1.17 fixtures. Existing reviewed hashes remain
 unchanged; a passing public capability gate is not a stock/native source review.
 
+## Herdr migration tooling fixtures
+
+`tests/herdr-upgrade-{releases,evaluate,refresh,report,publish}.test.mjs` are automatically discovered
+by the existing hosted runner. They use fake release feeds, hash-verified synthetic
+Git trees/blobs, fake process results and ignored preview directories. They cover
+independent versions, invalid evidence and rate limits, consumed SDK/command
+changes, exact palette/feedback hunks, missing stock/native proof, step verdicts,
+protected reviewed bytes, agent handoff and delivery/OpenSpec rendering. They never
+open a live proposal, execute downloaded code, contact a Core or certify pixels.
+The publisher fixtures additionally use fake paginated GitHub state and Git objects:
+local Skip creation, closed/skipped/merged deduplication, component overlap,
+agent-owned branches/checklists, supersession, interrupted initial publication,
+freeze/activation refusal, stale heads and malicious evidence paths. Static workflow
+assertions protect no-write defaults, credential separation and minimal permissions.
+The refresh fixture creates a disposable Git proposal branch, observes missing API
+and command contracts, commits real adapter aliases and an added contract, then
+runs the trusted evaluator again. A credential-free child reads the evaluated
+checkout's adapters, while the trusted baseline mappings remain separate. The
+refreshed host verdict passes without losing historical upstream deltas. SDK
+overloads/merged declarations, unavailable generation evidence for an exact older
+Core, and retried supersession/cross-link comments have dedicated regressions.
+A real hosted no-write probe remains a distinct activation prerequisite.
+
 ## Shared account-style choice menus
 
 `tests/choice-menu.test.mjs` loads the actual account caller, `ui/choice-menu.js`
