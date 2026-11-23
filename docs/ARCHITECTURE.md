@@ -153,16 +153,24 @@ been retired; third-party license notices retain their original attribution.
 ## Fleet context contributions
 
 Crew owns `plugins/crew/fleet.js`: installed `crew status --all --json` supplies
-owner/task terminals and recorded PRs. `custom.crew.home=1` is only a role hint;
+owner/task terminals and task PRs. `custom.crew.home=1` is only a role hint;
 `crew.home` is a worker home tag. The resolver joins exact live machine-qualified
 terminals to actual panes/spaces and verifies the fleet adoption identity. Missing,
 ambiguous, moved or cross-machine identities fail closed. Unrouted custom homes
 remain ordinary spaces. No Crew record is changed and no new companion is needed.
 
 Registry `pluginWorkspaceLinks()` and `pluginPullContext(space)` expose read-only
-contributions; lifecycle events refresh them after yielding. The source adapter
-`recordedSource` and injected status reader are the future-discovery seam, not a
-promise or call to discover-prs. Coalesced per-machine reads use the existing
+contributions; lifecycle events refresh them after yielding. Crew's `recordedSource`
+adapter accepts discovery version 1 only with complete, valid status/URL/source/reason
+combinations on every task. Known canonical HTTPS GitHub URLs become sanitized task
+PRs. None means no PR on that read; unavailable (including budget-exhausted) means
+unknown. Both survive live/history binding and the generic pull context's
+`discovery: {version:1,tasks:[{task,historical,status,url,source,reason}]}` alongside
+links. No-link diagnostics add no row or worker authority. Unsupported/missing versions
+retain recorded-only links without asserting none; malformed v1 results fail the read
+rather than publishing absence. Discovery never changes pair identity, live membership
+checks or durable display records. The removed generic incomplete-list notice stays
+absent for both new and older Crew. Coalesced per-machine reads use the existing
 Spaces lifecycle, a 10-second TTL and expiring sanitized runtime facts under
 `custom.fleet.links`; preference/plugin generations invalidate late responses.
 Only the default-off Spaces boolean is portable. Raw reports, task files and
@@ -205,10 +213,10 @@ closed record. A working/finished mismatch remains unverified rather than renewi
 action freshness, while existing same-home rows stay explicitly stale.
 
 `plugins/git/mod/aggregate.js` consumes the registry's explicit task context only
-for the selected coordinator. It reads exact recorded PR URLs on that machine with
+for the selected coordinator. It reads exact validated task PR URLs on that machine with
 three bounded concurrent requests, keys rows by repository plus PR number, and
 never probes the coordinator's directory. Working/reported live terminals are
-eligible. Same-home closed-task records contribute recorded links without live
+eligible. Same-home closed-task records contribute validated links without live
 worker authority; they cannot establish a fleet child. The verified owner/home
 PR scope excludes the optional child so last-worker exit does not discard PR facts.
 Full PR identities deduplicate before reads/counts; current live sources win robot
@@ -223,8 +231,8 @@ rows, and repositories containing only excluded history have no empty headers.
 Candidate facts remain bounded for webhook reopen/merge events; aging does not poll
 GitHub. The existing 1 MiB/4096-task source limits, 15-second status timeout and
 three concurrent targeted GitHub reads remain. No private task timestamps are read. There is no extra task heading or generic incomplete-list notice, single
-active pin or repository-wide PR inventory in this mode. Missing recorded links
-still cannot be inferred from transcripts or branches.
+active pin or repository-wide PR inventory in this mode. Missing task links
+still cannot be inferred by the app from transcripts or branches.
 
 `ui/ui.js` owns `sidebarSectionHeader`, the common machine/repository header shell
 and right-edge chevron; Spaces retains its own actions and guarded folding.

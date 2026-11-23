@@ -2,10 +2,10 @@
 
 ## 1. Strict discovery facts through unchanged fleet bindings
 
-- [ ] 1.1 Extend the bounded Crew source adapter for top-level discovery version 1 and the complete known/none/unavailable field combinations; cover missing/unknown versions, malformed fields, canonical URLs, private-field exclusion and existing size/task limits in adapter fixtures.
-- [ ] 1.2 Carry sanitized per-task discovery through binding and generic pull context, including eligible closed no-link diagnostics; assert none differs from unavailable and partial budget results retain known links without inventing rows or worker targets.
-- [ ] 1.3 Preserve all home/owner/task-terminal/adoption checks and binding/pullScope/membership identity; compare discovery-only transitions in local and remote fixtures, including historical-only records and unchanged worker navigation authority.
-- [ ] 1.4 Update architecture source-adapter and generic-context guidance for v1 and legacy compatibility; check it agrees with the fixtures and retains the no-generic-notice contract.
+- [x] 1.1 Extend the bounded Crew source adapter for top-level discovery version 1 and the complete known/none/unavailable field combinations; cover missing/unknown versions, malformed fields, canonical URLs, private-field exclusion and existing size/task limits in adapter fixtures.
+- [x] 1.2 Carry sanitized per-task discovery through binding and generic pull context, including eligible closed no-link diagnostics; assert none differs from unavailable and partial budget results retain known links without inventing rows or worker targets.
+- [x] 1.3 Preserve all home/owner/task-terminal/adoption checks and binding/pullScope/membership identity; compare discovery-only transitions in local and remote fixtures, including historical-only records and unchanged worker navigation authority.
+- [x] 1.4 Update architecture source-adapter and generic-context guidance for v1 and legacy compatibility; check it agrees with the fixtures and retains the no-generic-notice contract.
 
 ## 2. Bounded discovery transport and capability compatibility
 
