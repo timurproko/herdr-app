@@ -48,7 +48,9 @@ async function load(name) {
   return m;
 }
 const m=await load('features/workspace-status/claude-account.js');await m.evaluate();
-const {ClaudeAccount,sessionAccount}=m.namespace,view=new ClaudeAccount(),cx={focus_handle:()=>({}),notify:()=>{},stop_propagation:()=>{},spawn:fn=>{const task=fn(cx);tasks.push(task);return task;}};
+let rendering=false;
+const {ClaudeAccount,sessionAccount}=m.namespace,view=new ClaudeAccount(),cx={focus_handle(){assert.equal(rendering,false,'Never create a focus handle inside render');return {};},notify(){assert.equal(rendering,false,'Never notify inside render');},stop_propagation:()=>{},spawn:fn=>{const task=fn(cx);tasks.push(task);return task;}};
+const render=target=>{rendering=true;try{return view.render(target,t,cx);}finally{rendering=false;}};
 view.init(cx);const target={terminal:'pc2/t42',on:'pc2'},t={};
 assert.equal(sessionAccount(target).email,one.email);
 function pressTrigger(tree){
@@ -57,7 +59,7 @@ function pressTrigger(tree){
   assert.equal(stopped,false,'Trigger left mouse-down must reach the native Popover wrapper');
   if(!stopped)tree.options.onOpen(true,cx);
 }
-let tree=view.render(target,t,cx);pressTrigger(tree);await new Promise(resolve=>setImmediate(resolve));
+let tree=render(target);pressTrigger(tree);await new Promise(resolve=>setImmediate(resolve));
 assert.equal(view.opened,false,'Cold open waits for identities instead of showing a loading frame');
 assert.equal(view.awaitingRows,true);
 assert.equal(pending[0].options.on,'pc2');assert.equal(pending[0].command,'node');assert.equal(JSON.parse(pending[0].args.at(-1)).terminal,'t42','Remote worker uses a local terminal ID');
@@ -66,7 +68,7 @@ assert.equal(view.rows.length,2);assert.equal(view.opened,true,'The menu opens w
 view.choose(target,two,cx);await new Promise(resolve=>setImmediate(resolve));
 const write=pending.shift(),payload=JSON.parse(write.args.at(-1));assert.equal(payload.action,'switch');assert.equal(payload.session,session);assert.deepEqual({...payload.target},two);
 // Switching UI focus never redirects the captured operation to another terminal.
-view.render({terminal:'t99',on:null},t,cx);write.resolve({code:0,stdout:'{"queued":true}'});await tasks.at(-1);
+render({terminal:'t99',on:null});write.resolve({code:0,stdout:'{"queued":true}'});await tasks.at(-1);
 assert.equal(view.pending.opening.address,'pc2/t42');
 labels=terminals[0].labels;labels['custom.claude.reply']=JSON.stringify({id:payload.id,state:'accepted'});labels['custom.claude.state']='switching';
 view.tick(cx);assert.ok(view.pending,'Queued/accepted is not a verified switch');
@@ -82,7 +84,7 @@ labels['custom.claude.session']='replacement-instance-12345';view.choose(target,
 // The worker also validates instance changes; the UI should avoid even sending one.
 assert.equal(pending.length,0,'A stale menu cannot address a replacement session');
 labels['custom.claude.control']='';
-const sharedMenu=view.render(target,t,cx),trigger=sharedMenu.kids[0];
+const sharedMenu=render(target),trigger=sharedMenu.kids[0];
 assert.equal(trigger.style.tooltip,undefined,'Shared Claude accounts have no hover tooltip');
 assert.ok(trigger.style.accessibility_label[0].includes(two.email),'Account identity remains accessible');
 assert.ok(trigger.kids.some(k=>k?.style?.size?.[0]===12),'Shared account trigger has a dropdown chevron');
@@ -90,7 +92,7 @@ pressTrigger(sharedMenu);await new Promise(resolve=>setImmediate(resolve));
 assert.equal(JSON.parse(pending[0].args.at(-1)).scope,'shared');
 pending.shift().resolve({code:0,stdout:JSON.stringify({accounts:[one,two]})});await tasks.at(-1);
 const strings=n=>typeof n==='string'?[n]:(n?.kids??[]).flatMap(strings);
-const visible=strings(view.render(target,t,cx));
+const visible=strings(render(target));
 assert.ok(visible.includes(one.email)&&visible.includes(two.email));
 assert.ok(!visible.some(s=>/Loading|Switch shared Claude account/.test(s)),'Only account choices, no loading or confirmation surface');
 view.choose(target,one,cx);await new Promise(resolve=>setImmediate(resolve));
@@ -102,5 +104,5 @@ sharedWrite.resolve({code:0,stdout:'{"applied":"shared","nextRequest":true}'});a
 Object.assign(labels,{'custom.claude.email':one.email,'custom.claude.account':one.account,'custom.claude.organization':one.organization,'custom.claude.state':'file'});
 view.tick(cx);assert.equal(view.pending,null,'Shared login selection is reported separately from API verification');
 assert.equal(notices.length,1,'Successful selection adds no toast or modal');
-terminals[0].program.key='a1';assert.equal(sessionAccount(target),null);assert.equal(view.render(target,t,cx),null);
+terminals[0].program.key='a1';assert.equal(sessionAccount(target),null);assert.equal(render(target),null);
 console.log('PASS: safe saved-account identities, explicit label-only switch, organization/session/freshness guards, remote targeting, verified completion, rejection and stale menus');
