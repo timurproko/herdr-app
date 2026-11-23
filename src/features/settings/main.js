@@ -28,20 +28,14 @@ import { initPermissions, reloadPermissions, corePage, coreHasChanges, coreEdito
 import { M, sectionAction, sectionRow, modalFooter } from './modal-layout.js';
 import { initCustomizationUpdates, refreshCustomizationUpdates, customizationUpdateAvailable, customizationUpdateSnapshot } from './customization-updates.js';
 import { customizationUpdateRow } from './customization-update-row.js';
+import { CUSTOMIZATION_UPDATE_KEY } from './customization-update-model.js';
 import { initUpdateCheckFeedback, updateCheckSlot } from './update-check-feedback.js';
 
 const I = (name) => `mods/custom-settings/${name}.svg`;
 const SETTINGS_NAV_WIDTH = 176;
 const SETTINGS_CONTENT_INSET = 16;
-// Host runtime only: never a portable preference. Keep at most eight dialogs.
-const SETTINGS_NAV_KEY = 'custom.settings.navigation';
-const navigationRecords = () => {
-  const value = shared(SETTINGS_NAV_KEY);
-  return value?.version === 1 && Array.isArray(value.dialogs) ? value.dialogs.slice(-8)
-    .filter(record => typeof record?.overlay === 'string' && record.overlay.length > 0 && record.overlay.length <= 128 &&
-      typeof record?.section === 'string' && record.section.length <= 64)
-    .map(({ overlay, section }) => ({ overlay, section })) : [];
-};
+const UPDATE_RESUME_MS = 2 * 60 * 1000;
+const openingIdentity = value => typeof value === 'string' && /^settings-[a-z0-9-]{16,120}$/.test(value) ? value : null;
 
 const SECTIONS = settingsSections(window()?.platform);
 const sectionAvailable = section => !section.plugin || pluginIsEnabled(section.plugin);
@@ -72,12 +66,17 @@ export default class Settings extends View {
   init(_props, cx) {
     // A plugin's role list (Crew › Settings › Profiles) reads and changes the app's profiles through this.
     provideProfiles({ list: warmProfiles, setRole: setProfileRole, order: roleOrder, setOrder: setRoleOrder });
-    const overlay = props()?.overlay;
-    this.settingsOverlay = typeof overlay === 'string' && overlay.length > 0 && overlay.length <= 128 ? overlay : null;
-    const remembered = this.settingsOverlay && navigationRecords().find(record => record?.overlay === this.settingsOverlay)?.section;
-    const valid = id => SECTIONS.some(s => s.id === id && sectionAvailable(s));
+    this.settingsOpening = openingIdentity(props()?.settingsOpening);
+    const snapshot = customizationUpdateSnapshot(), resume = snapshot?.resume, job = snapshot?.job, now = Date.now();
+    // Native overlay IDs are reused after Desktop restarts. Only a launch from
+    // this exact opening can restore Updates; ordinary navigation is not saved.
+    const sameOpening = this.settingsOpening && resume?.opening === this.settingsOpening && Number.isFinite(resume.started);
+    const pending = snapshot?.launch?.started === resume?.started && snapshot?.launch?.deadline >= now;
+    const running = job?.state === 'running' && job.started >= resume?.started && job.deadline >= now;
+    const finished = job?.finished >= resume?.started && job.finished <= now && now - job.finished <= UPDATE_RESUME_MS;
     const asked = props()?.section;
-    this.section = valid(remembered) ? remembered : valid(asked) ? asked : 'look';
+    this.section = sameOpening && (pending || running || finished) ? 'updates'
+      : SECTIONS.some(s => s.id === asked && sectionAvailable(s)) ? asked : 'look';
     this.lookPage = this.section === 'look' && props()?.lookPage === 'sidebar' ? 'sidebar' : null;
     const requestedMachine = this.section === 'profiles' ? props()?.profilesMachine
       : this.section === 'terminals' ? (props()?.terminalsMachine === null || typeof props()?.terminalsMachine === 'string' ? props().terminalsMachine : props()?.profilesMachine)
@@ -197,10 +196,13 @@ export default class Settings extends View {
   selectSection(section) {
     if (this.pluginClosed || !SECTIONS.some(s => s.id === section && sectionAvailable(s))) return;
     this.section = section;
-    if (this.settingsOverlay) setShared(SETTINGS_NAV_KEY, { version: 1, dialogs: [
-      ...navigationRecords().filter(record => record.overlay !== this.settingsOverlay).slice(-7),
-      { overlay: this.settingsOverlay, section },
-    ] });
+    if (section !== 'updates') this.clearUpdateResume();
+  }
+
+  clearUpdateResume() {
+    const snapshot = customizationUpdateSnapshot();
+    if (this.settingsOpening && snapshot?.resume?.opening === this.settingsOpening)
+      setShared(CUSTOMIZATION_UPDATE_KEY, { ...snapshot, resume: null });
   }
 
   // View.close is also called by host VM teardown; it must not dismiss the
@@ -211,8 +213,7 @@ export default class Settings extends View {
   }
 
   dismiss() {
-    if (this.settingsOverlay) setShared(SETTINGS_NAV_KEY, { version: 1,
-      dialogs: navigationRecords().filter(record => record?.overlay !== this.settingsOverlay) });
+    this.clearUpdateResume();
     this.close();
     closeOverlay(props()?.overlay);
   }

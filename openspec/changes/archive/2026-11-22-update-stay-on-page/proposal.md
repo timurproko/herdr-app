@@ -6,7 +6,7 @@ Updating herdr-app-custom replaces the Settings view, losing its in-memory secti
 
 ## What Changes
 
-- Remember the selected section for the current Settings overlay through supported namespaced shared state, restoring it on mod replacement and clearing it on explicit dismissal; explicit new-dialog destinations and ordinary Look defaults remain unchanged.
+- Restore Updates only for an update started from that Settings opening, while pending/running or within two minutes after completion. A fresh per-opening identity in supported overlay props prevents persisted native overlay IDs from overriding new-dialog destinations or Look defaults; navigation away and explicit dismissal disarm restoration.
 - Preserve truthful update-in-progress feedback across replacement, then reconcile the existing detached runner's status and verified revision through the existing controller.
 - Extend the row/controller VM fixtures with fresh-mod replacement, pending launch, running and completed/failed/unknown results; no native changes or deployment.
 
@@ -22,4 +22,4 @@ None.
 
 ## Impact
 
-Settings section initialization/navigation/dismissal in `src/features/settings/main.js`, the existing shared update projection/controller and row fixtures (`tests/update-row.test.mjs`, `tests/update-markers.test.mjs`). Shared navigation state is runtime-only and excluded from portable preferences. No new dependencies, worker/deployment policy, native frame patches, live-home access or other behavior changes.
+Settings initialization/navigation/dismissal in `src/features/settings/main.js`, a shared Settings opener used by existing UI entrypoints, the existing shared update projection/controller and row fixtures (`tests/update-row.test.mjs`, `tests/update-markers.test.mjs`). Shared navigation state is runtime-only and excluded from portable preferences. No new dependencies, worker/deployment policy, native frame patches, live-home access or other behavior changes.

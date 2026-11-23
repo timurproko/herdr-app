@@ -243,6 +243,8 @@ assert.equal((settings.match(/\.child\(customizationUpdateRow\(this, t\)\)/g) ||
 assert.match(settings, /initUpdateCheckFeedback\(this, cx/);
 assert.match(settings, /updateCheckSlot\(this, t/);
 const { output } = build();
+for (const mod of ['custom-menu', 'custom-workspace-chrome', 'custom-new-menu', 'custom-changes'])
+  assert.equal(fs.readFileSync(path.join(output, 'mods', mod, 'settings-dialog.js'), 'utf8'), fs.readFileSync('src/ui/settings-dialog.js', 'utf8'));
 assert.equal(fs.readFileSync(path.join(output, 'mods/custom-settings/update-check-feedback.js'), 'utf8'), fs.readFileSync('src/features/settings/update-check-feedback.js', 'utf8'));
 for (const mod of ['custom-settings', 'custom-workspace-chrome', 'custom-menu']) {
   for (const file of ['customization-updates.js', 'customization-update-model.js']) assert.equal(fs.readFileSync(path.join(output, 'mods', mod, file), 'utf8'), fs.readFileSync(path.join('src/shared', file), 'utf8'));

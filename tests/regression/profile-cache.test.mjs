@@ -91,7 +91,7 @@ async function menuClass(profiles, getMachine) {
     './directory.js':{spaceDirectory:()=>({cwd:'/work'}),warmSpaceStartFolder:async()=>{}},'./shell-switch.js':{ShellSwitch:class{}},'./panel-switch.js':{PanelSwitch:class{}},
   };
   const module=new vm.SourceTextModule(read('custom-new-menu/main.js'),{context});
-  await module.link(specifier=>new vm.SyntheticModule(Object.keys(modules[specifier]),function(){for(const[k,v]of Object.entries(modules[specifier]))this.setExport(k,v);},{context}));
+  await module.link(specifier=>specifier==='./settings-dialog.js'?new vm.SourceTextModule(read('custom-new-menu/settings-dialog.js'),{context}):new vm.SyntheticModule(Object.keys(modules[specifier]),function(){for(const[k,v]of Object.entries(modules[specifier]))this.setExport(k,v);},{context}));
   await module.evaluate();return module.namespace.default;
 }
 let machine=null, menuLookups=0;

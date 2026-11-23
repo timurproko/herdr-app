@@ -53,6 +53,7 @@ async function harness(state) {
   const panelKit=kitModule(context);withKitUi(modules['./ui.js'],element);
   await main.link(specifier=> {
     if(specifier==='./panel-kit.js')return panelKit;
+    if(specifier==='./settings-dialog.js')return new vm.SourceTextModule(fs.readFileSync(path.join(root,'src/ui/settings-dialog.js'),'utf8'),{context});
     if (modules[specifier]) return new vm.SyntheticModule(Object.keys(modules[specifier]),function(){
       for(const [key,value] of Object.entries(modules[specifier]))this.setExport(key,value);
     },{context});

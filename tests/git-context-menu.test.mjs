@@ -42,7 +42,7 @@ const modules={
 const context=vm.createContext({});
 const main=new vm.SourceTextModule(fs.readFileSync(new URL('../src/plugins/git/mod/main.js',import.meta.url),'utf8'),{context});
 const panelKit=kitModule(context);withKitUi(modules['./ui.js'],element);
-await main.link(specifier=>specifier==='./panel-kit.js'?panelKit:new vm.SyntheticModule(Object.keys(modules[specifier]),function(){
+await main.link(specifier=>specifier==='./settings-dialog.js'?new vm.SourceTextModule(fs.readFileSync(new URL('../src/ui/settings-dialog.js',import.meta.url),'utf8'),{context}):specifier==='./panel-kit.js'?panelKit:new vm.SyntheticModule(Object.keys(modules[specifier]),function(){
   for (const [key,value] of Object.entries(modules[specifier])) this.setExport(key,value);
 },{context}));
 await main.evaluate();

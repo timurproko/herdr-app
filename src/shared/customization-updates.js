@@ -21,6 +21,7 @@ export function refreshCustomizationUpdates(owner, cx, action = 'status', force 
   // copy before its receipt. The transport bound becomes unknown, never success.
   const launch = action === 'launch' ? { ticket, started: Date.now(), deadline: Date.now() + 22000, previousToken: before?.job?.token || null } : before?.launch;
   setShared(CUSTOMIZATION_UPDATE_KEY, { ...before, request: ticket,
+    ...(action === 'launch' ? { resume: owner.settingsOpening ? { opening: owner.settingsOpening, started: launch.started } : null } : {}),
     ...(launch ? { launch } : {}), ...(action === 'check' ? { checking: true } : {}) });
   // Shared tickets reject pre-launch/older reads across independent mod copies.
   // A launch receipt may still settle its intent after a newer empty status read.
@@ -31,7 +32,7 @@ export function refreshCustomizationUpdates(owner, cx, action = 'status', force 
         (launch && action !== 'launch' && !current?.launch && !observesLaunch(snapshot, launch))) return false;
     const pending = current?.launch;
     setShared(CUSTOMIZATION_UPDATE_KEY, { ...updateProjection(snapshot), request: current?.request,
-      observed: Math.max(ticket, current?.observed || 0),
+      resume: current?.resume || null, observed: Math.max(ticket, current?.observed || 0),
       ...(pending && action !== 'launch' && !observesLaunch(snapshot, pending) ? { launch: pending } : {}) });
     return true;
   };

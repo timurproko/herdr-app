@@ -89,10 +89,15 @@ contexts, the real controller/helper and a changed-shared-value refresh queue:
 manual checks reach already-mounted roots, and all native/Custom combinations
 produce the same marker markup. The Settings harness also runs real initialization
 and navigation, replacing the complete module graph with original overlay props
-and retained shared state to check section restoration, lifecycle teardown,
-explicit dismissal, deliberate navigation, destination defaults and bounded/invalid
-runtime records. The update-check fixture confirms navigation is not exported as a
-portable preference. These are VM fixtures, not live GPUI reload evidence. The original-source comparison exposes the missing
+and retained shared state to check update-only restoration and lifecycle teardown.
+The actual Settings opener supplies fresh per-opening identities: native/backdrop
+retirement without dismiss, a new VM with the same native `o1` ID, default/explicit
+destinations, missing identities, ignored legacy navigation records and active or
+recently finished jobs are covered together. Only the initiating opening can
+resume Updates, and completed-job hints expire after two minutes. Deliberate
+navigation and explicit dismissal disarm the hint. The update-check fixture
+confirms opening identities/hints are not exported as portable preferences.
+These are VM fixtures, not live GPUI reload evidence. The original-source comparison exposes the missing
 More-popup Settings marker, but **does not reproduce** the reported real-app
 expanded-footer missing dot. It proves neither GPUI pixel visibility nor native
 runtime scheduling. `tests/update-marker-inspection.test.mjs` exercises the

@@ -9,6 +9,7 @@ import { GitWebhooks } from './webhooks.js';
 import { GitNotices } from './notices.js';
 import { PinSwap, PIN_SWAP_MS } from './pin-swap.js';
 import { panelPin } from './panel-pin.js';
+import { openSettings } from './settings-dialog.js';
 import { headerTool, contextMenu, tag, panelMessage } from './panel-kit.js';
 import { changePanel } from './panel-state.js';
 import { sidebarPanelEnabled } from './plugins.js';
@@ -598,8 +599,8 @@ export default class Changes extends View {
               .on_click((_event, cx) => {
                 cx.stop_propagation();
                 if (!sidebarPanelEnabled('changes')) return;
-                openOverlay({mod:'custom-settings',kind:'dialog',frame:'none',width:900,props:{section:'plugins',plugin:'git',
-                  ...(repository?{pluginSection:'repository',pluginSearch:repository}:{})}});
+                openSettings({section:'plugins',plugin:'git',
+                  ...(repository?{pluginSection:'repository',pluginSearch:repository}:{})});
               }).child('Settings'))));
   }
 

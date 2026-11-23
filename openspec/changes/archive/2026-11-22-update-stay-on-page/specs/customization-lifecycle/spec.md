@@ -22,6 +22,12 @@ An update SHALL run independently of the mod it replaces, with a finite deadline
 - **AND** a new dialog honors its requested destination or the ordinary Look default
 - **AND** remembered navigation is not included in portable preference snapshots
 
+#### Scenario: Reused native overlay ID
+- **WHEN** native or backdrop dismissal or a Desktop restart reuses a previous Settings overlay ID
+- **THEN** a new opening honors its requested destination or the Look default rather than borrowing the old opening's selection
+- **AND** only the initiating opening's distinct identity permits update-triggered restoration while its job is pending or running, or for two minutes after completion
+- **AND** openings without that identity do not restore a section from the native overlay ID
+
 #### Scenario: Deadline or lost completion
 - **WHEN** the update exceeds its deadline, crashes or leaves no final result
 - **THEN** the row reports outcome unknown with a log path and does not replay the update

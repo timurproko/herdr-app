@@ -32,3 +32,13 @@ The memory-pressure path (`window.rs:4156–4210`) rebuilds VMs and reloads open
 ## Migration Plan
 
 No migration or native change. After approval, implement in source and run focused fixture checks only; normal future deployment supplies the fix. Existing guarded rollback remains unchanged.
+
+## Approved review correction: update-only, per-opening restoration
+
+This supersedes Decision 1's general overlay-qualified section memory. Herdr v0.1.16 `src/mods.rs:781–785` generates `o1`, `o2`, etc. from a process-local counter; persistent shared records therefore cannot establish an opening's identity. Native/backdrop dismissal and shutdown also do not run the explicit dismissal handler.
+
+`src/ui/settings-dialog.js` now owns Custom's Settings opening path. Each invocation adds a fresh timestamp/random nonce in supported overlay props; replacement preserves those original props, whereas a new opening receives a different nonce, including after Desktop restarts. Existing footer/menu, profiles/terminals and Git setup entrypoints call this helper, preserving their dimensions, destination and machine/plugin props. No facade or native frame is patched.
+
+There is no general navigation store. Only pressing Update records `{opening, started}` alongside the existing runtime update projection. Settings restores Updates only if the opening nonce matches and that launch is pending/running, or the result finished within two minutes. Navigation away and explicit dismissal disarm this hint. Native dismissal/shutdown need no cleanup for correctness because new openings cannot reuse its identity. Old `custom.settings.navigation` records are ignored, not migrated or exported. Direct mod opens without an opening nonce fail closed to their requested section or Look.
+
+Fixtures retain the shared store, retire the old `o1` without calling dismiss, recreate the opener in a fresh VM and mount a new `o1` with default and explicit Privacy destinations. They cover the same collision with an active/recent job, missing/invalid identities, matching-opening replacement, two-minute expiry, explicit navigation/dismissal, helper packaging and unchanged entrypoint props.

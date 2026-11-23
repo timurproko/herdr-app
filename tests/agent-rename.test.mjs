@@ -30,7 +30,7 @@ const mocks={
  './customization-updates.js':{customizationUpdateAvailable:()=>false},
 };
 const context=vm.createContext({}),mod=new vm.SourceTextModule(read('src/features/menu/main.js'),{context});
-await mod.link(name=>{assert.ok(mocks[name],`Unexpected dependency ${name}`);return new vm.SyntheticModule(Object.keys(mocks[name]),function(){for(const [key,value]of Object.entries(mocks[name]))this.setExport(key,value);},{context});});
+await mod.link(name=>{if(name==='./settings-dialog.js')return new vm.SourceTextModule(read('src/ui/settings-dialog.js'),{context});assert.ok(mocks[name],`Unexpected dependency ${name}`);return new vm.SyntheticModule(Object.keys(mocks[name]),function(){for(const [key,value]of Object.entries(mocks[name]))this.setExport(key,value);},{context});});
 await mod.evaluate();
 const cx={focus_handle:()=>({focus(){}})},menu=new mod.namespace.default();
 menu.init({},cx);
