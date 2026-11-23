@@ -1,7 +1,7 @@
-// Crew owns identity and recorded PR sourcing. Consumers use registry contributions only.
+// Crew owns identity and versioned task PR sourcing. Consumers use registry contributions only.
 import { shared, setShared, spaces, panes, terminals, machines, checking, FLEET_DISPLAY_KEY, fleetDisplayChangeAllowed, updateFleetDisplay } from '../api.js';
 export const FLEET_KEY = 'custom.fleet.links', DISPLAY_KEY = FLEET_DISPLAY_KEY;
-const READS = 'custom.fleet.reads', TTL = 10000, EXPIRY = 30000;
+const READS = 'custom.fleet.reads', TTL = 10000, EXPIRY = 30000, READ_LEASE = 45000;
 // Only reads witnessed by this running mod can authorize actions. Persisted
 // timestamps/tokens alone are display history, not cold-start verification.
 const verifiedTokens = new Map(), pendingTokens = new Map();
@@ -20,6 +20,19 @@ const incompleteMembership = (status, machine, snapshot) => status.owner.live &&
     const members=snapshot.all.filter(p=>p.terminal===id && !p.mod);
     return !members.length || members.length===1 && !snapshot.groups.some(s=>(s.machine??null)===machine && s.tabs?.some(t=>t.id===members[0].tab));
   });
+const canonicalPull = url => {
+  if(!text(url,2048)) return false;
+  const match=/^https:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\/pull\/([1-9]\d*)$/.exec(url);
+  return Boolean(match && ![match[1],match[2]].some(part=>part==='.' || part==='..') && Number.isSafeInteger(Number(match[3])));
+};
+function discoveryResult(value) {
+  if(!value || typeof value!=='object' || Array.isArray(value) || !(
+    value.status==='known' && canonicalPull(value.url) && ['recorded','github'].includes(value.source) && value.reason===null ||
+    value.status==='none' && value.url===null && value.source===null && value.reason===null ||
+    value.status==='unavailable' && value.url===null && value.source===null && text(value.reason,128) && /^[a-z][a-z0-9-]*$/.test(value.reason)
+  )) throw Error('Invalid Crew PR discovery');
+  return {status:value.status,url:value.url,source:value.source,reason:value.reason};
+}
 export function recordedSource(stdout) {
   if(typeof stdout !== 'string' || stdout.length > 1048576) throw Error('Crew status is too large');
   const value = JSON.parse(stdout);
@@ -32,7 +45,16 @@ export function recordedSource(stdout) {
     !Array.isArray(value.tasks) || value.tasks.length>4096 || value.tasks.some(t=>!object(t) || !text(t.id,128) ||
       !['preparing','working','reported','stopped','failed','closed'].includes(t.state) ||
       !(text(t.terminal) || t.terminal===null && !['working','reported'].includes(t.state)))) throw Error('Invalid Crew status');
-  return {home:value.home,owner:value.owner===null?{terminal:null,live:false}:{terminal:value.owner.terminal,live:value.owner.live},tasks:value.tasks.map(t=>({id:t.id,terminal:t.terminal,state:t.state,pr:typeof t.pr==='string'?t.pr:null}))};
+  // Missing/unknown versions are recorded-only, never confirmed none. A v1
+  // result must be complete: malformed discovery is a failed read, not absence.
+  const supported=object(value.prDiscovery) && value.prDiscovery.version===1;
+  const tasks=value.tasks.map(t=> {
+    const discovery=supported?discoveryResult(t.prDiscovery):null;
+    return {id:t.id,terminal:t.terminal,state:t.state,pr:discovery?discovery.url:typeof t.pr==='string'?t.pr:null,
+      ...(discovery?{discovery}: {})};
+  });
+  return {home:value.home,owner:value.owner===null?{terminal:null,live:false}:{terminal:value.owner.terminal,live:value.owner.live},tasks,
+    ...(supported?{discovery:{version:1}}:{})};
 }
 export function bindFleet(status, machine, {groups, all, list}) {
   if(!status?.owner?.live || !Array.isArray(status.tasks)) return null;
@@ -56,7 +78,8 @@ export function bindFleet(status, machine, {groups, all, list}) {
     const fleet=`fm-crew-${tag}`;
     if(member.space.split('/').at(-1)!==fleet || labels['herdr.space']!==fleet || member.space===owner.space) return null;
     fleets.add(member.space);tags.add(tag);
-    if(['working','reported'].includes(task.state)) workers.push({id:task.id,terminal:member.terminal.address,space:member.space,tab:member.tab,pane:member.pane,state:task.state,pr:task.pr});
+    if(['working','reported'].includes(task.state)) workers.push({id:task.id,terminal:member.terminal.address,space:member.space,tab:member.tab,pane:member.pane,state:task.state,pr:task.pr,
+      ...(task.discovery?{discovery:task.discovery}:{})});
   }
   if(fleets.size>1 || tags.size>1) return null;
   const child=[...fleets][0]??null;
@@ -64,10 +87,13 @@ export function bindFleet(status, machine, {groups, all, list}) {
   const binding=JSON.stringify([...identity,child]), pullScope=JSON.stringify(identity);
   // --all records belong to this verified status home, not to a former live
   // terminal. They contribute links only: never adoption identity or navigation.
-  const history=status.tasks.filter(t=>t.state==='closed' && typeof t.id==='string' && t.id.length>0 && t.id.length<=128 && typeof t.pr==='string' && t.pr.length>0)
-    .map(t=>({id:t.id,state:'closed',pr:t.pr,terminal:null,historical:true}));
+  const history=status.tasks.filter(t=>t.state==='closed' && typeof t.id==='string' && t.id.length>0 && t.id.length<=128 && (typeof t.pr==='string' && t.pr.length>0 || t.discovery))
+    .map(t=>({id:t.id,state:'closed',pr:t.pr,terminal:null,historical:true,...(t.discovery?{discovery:t.discovery}:{})}));
+  const tasks=[...workers,...history];
   return {parent:owner.space,child,machine,binding,pullScope,home:status.home,owner:owner.terminal.address,
-    ownerTab:owner.tab??null,ownerPane:owner.pane??null,adoption:[...tags][0]??null,tasks:[...workers,...history],incomplete:workers.some(t=>t.state==='working')};
+    ownerTab:owner.tab??null,ownerPane:owner.pane??null,adoption:[...tags][0]??null,tasks,
+    ...(status.discovery?.version===1?{discovery:{version:1,tasks:tasks.map(t=>({task:t.id,historical:t.historical===true,...t.discovery}))}}:{}),
+    incomplete:status.discovery?.version===1?tasks.some(t=>t.discovery?.status==='unavailable'):workers.some(t=>t.state==='working')};
 }
 const identityOf = bound => bound ? Object.fromEntries(['machine','parent','child','home','owner','ownerTab','ownerPane','adoption'].map(key=>[key,bound[key]])) : null;
 const identityParts = identity => [identity.machine,identity.home,identity.owner,identity.parent,identity.ownerTab,identity.ownerPane];
@@ -159,7 +185,7 @@ export function fleetContexts({presentation = false} = {}) {
     return bound && bound.binding===entry.binding ? [{...bound,taskMembershipVerified:taskMembership(bound)===entry.members}] : [];
   });
 }
-// Injected source is a seam: future discover-prs can be implemented here, not in consumers.
+// The injected bounded status reader owns capability fallback, never consumers.
 export function refreshFleets(cx, readStatus, force = false) {
   if(!enabled() || checking() || (shared(FLEET_KEY) && shared(FLEET_KEY).version!==1)) return;
   const snapshot=model(), hosts=machines();pruneDisplays(snapshot,hosts);
@@ -178,12 +204,12 @@ export function refreshFleets(cx, readStatus, force = false) {
     if(!force && witnessed(key,entry?.attemptToken) && (entry.attemptSignature??entry.signature)===sig && now-(entry.attemptAt??entry.at)<TTL) continue;
     const token=`${now}-${Math.random()}`, generation=shared('custom.fleet.generation');
     pendingTokens.set(key,token);
-    setShared(READS,{...shared(READS),[key]:{token,until:now+20000}});
+    setShared(READS,{...shared(READS),[key]:{token,until:now+READ_LEASE}});
     cx.spawn(async view=> {
       const current=()=>enabled() && (!shared(FLEET_KEY) || shared(FLEET_KEY).version===1) && shared('custom.fleet.generation')===generation && shared(READS)?.[key]?.token===token && shared(READS)[key].until>Date.now();
       try {
         await Promise.resolve();if(!current()) return;
-        const status=recordedSource(await readStatus(machine));
+        const status=recordedSource(await readStatus(machine,{current:()=>current() && signature(machine,model(),reference)===sig}));
         if(!current()) return;
         const latest=shared(FLEET_KEY), snapshot=model(), prior=latest?.entries?.[key]?.status;
         const evidence={ready:readyLayout(machine),verified:true};
