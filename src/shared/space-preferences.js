@@ -11,6 +11,7 @@ export function updateSpacePreferences(change) {
   if (next.connectFleetToCoordinator !== spacePreferences().connectFleetToCoordinator) {
     setShared('custom.fleet.generation', (shared('custom.fleet.generation') ?? 0) + 1);
     setShared('custom.fleet.links', null);
+    setShared('custom.fleet.display', null);
     setShared('custom.fleet.reads', {});
   }
   setShared(SPACE_PREFERENCES, next);

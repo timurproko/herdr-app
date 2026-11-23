@@ -11,13 +11,22 @@ export function taskPullLink(url) {
 const HISTORY_MS = 24 * 60 * 60 * 1000;
 export class AggregatePulls {
   constructor({shown,onUpdate}) {this.shown=shown;this.onUpdate=onUpdate;this.entries=new Map();this.pending=new Map();this.serial=0;}
-  currentContext() {return sidebarPanelEnabled('changes') ? pluginPullContext(location().space) : null;}
+  currentContext({presentation = false} = {}) {
+    const context=sidebarPanelEnabled('changes') ? pluginPullContext(location().space,{presentation}) : null;
+    return !presentation && context?.stale ? null : context;
+  }
   sync(cx) {
     if(this.shown()) pluginEvent('workspace.context.refresh',{cx});
-    const context=this.currentContext();
-    if(context?.scope!==this.context?.scope) {this.serial++;this.entries.clear();this.pending.clear();}
+    const context=this.currentContext({presentation:true}), previous=this.context;
+    if(context?.scope!==previous?.scope) {this.serial++;this.entries.clear();this.pending.clear();}
     this.context=context;
     if(!context) return false;
+    if(context.stale) {
+      if(!previous?.stale) {this.serial++;this.pending.clear();for(const entry of this.entries.values())entry.dirty=true;}
+      // Retain only already-loaded same-home rows. Empty stale links are not
+      // an authoritative deletion, nor permission to read or navigate.
+      return true;
+    }
     const links=new Map();
     for(const source of context.links) {const link=taskPullLink(source.url);if(!link)continue;const entry=links.get(link.key)??{...link,targets:[]};entry.targets.push({terminal:source.terminal,task:source.task,historical:source.historical===true});links.set(link.key,entry);}
     for(const key of this.entries.keys()) if(!links.has(key)) {this.entries.delete(key);this.pending.delete(key);}
@@ -43,7 +52,7 @@ export class AggregatePulls {
   invalidate(repository=null) {for(const e of this.entries.values())if(!repository || e.link.repo===repository.toLowerCase())e.dirty=true;}
   refresh(cx) {pluginEvent('workspace.context.refresh',{cx,force:true});this.invalidate();this.pump(cx);}
   pump(cx) {
-    if(!this.context || !this.shown() || this.currentContext()?.scope!==this.context.scope)return;
+    if(!this.context || this.context.stale || !this.shown() || this.currentContext()?.scope!==this.context.scope)return;
     const context=this.context,serial=this.serial;
     for(const [key,entry]of this.entries) {
       if(this.pending.size>=3)break;

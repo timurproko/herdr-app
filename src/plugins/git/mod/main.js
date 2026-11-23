@@ -262,12 +262,12 @@ export default class Changes extends View {
     this.webhooks ??= new GitWebhooks();
     const aggregate=this.aggregate,scope=aggregate.context.scope;
     const repositories=[...new Set([...aggregate.entries.values()].map(e=>e.link.repo))].sort();
-    this.webhooks.sync(cx,{enabled:this.shown() && repositories.length>0,scope:JSON.stringify(['tasks',scope,repositories]),
+    this.webhooks.sync(cx,{enabled:this.shown() && !aggregate.context.stale && repositories.length>0,scope:JSON.stringify(['tasks',scope,repositories]),
       onChange:(event,view)=> {
         if(!this.shown() || aggregate.currentContext()?.scope!==scope || this.context!==`tasks:${scope}`)return;
         aggregate.invalidate(event?.repository??null);aggregate.pump(view);this.startCISweep(view);
       }});
-    if(!this.shown())this.ciSweep=null;
+    if(!this.shown() || aggregate.context.stale)this.ciSweep=null;
   }
 
   syncWebhooks(cx) {
@@ -662,13 +662,16 @@ export default class Changes extends View {
     const aggregate=this.aggregate,counts=aggregate.counts(),scope=aggregate.context.scope;
     const repositories=aggregate.repositories();
     this.notices ??= new GitNotices();
-    const notices=new Map(repositories.map(repo=>[repo,this.notices.sync(cx,{enabled:this.shown(),repository:repo})]));
-    const setup=repositories.length ? [...notices.values()].includes('setup') : this.notices.sync(cx,{enabled:this.shown(),repository:null})==='setup';
-    const sweep=this.shown() && this.ciSweep?.context===this.context ? this.ciSweep : null;
+    const notices=new Map(repositories.map(repo=>[repo,this.notices.sync(cx,{enabled:this.shown() && !aggregate.context.stale,repository:repo})]));
+    const setup=repositories.length ? [...notices.values()].includes('setup') : this.notices.sync(cx,{enabled:this.shown() && !aggregate.context.stale,repository:null})==='setup';
+    const sweep=!aggregate.context.stale && this.shown() && this.ciSweep?.context===this.context ? this.ciSweep : null;
     return v_flex().id('changes').relative().size_full().min_h(0).rounded(8).overflow_hidden().bg(t.background).border_1().border_color(t.input).text_color(t.foreground).text_size(U.font)
       .child(h_flex().id('changes-header').relative().bg(t.surface).h(U.section).flex_none().pl(4).pr(U.gutter).gap(U.gap).items_center().border_b(1).border_color(t.border)
         .on_hover((hovered,view)=>{this.headerHovered=hovered;view.notify();})
         .child(sidebarTitle(t,'changes','git-title'))
+        .when(aggregate.context.stale, el=>el.child(div().id('git-task-stale').flex_none().text_size(U.meta).text_color(t.dim)
+          .child([...aggregate.entries.values()].some(e=>e.pr)?'Stale':'Verifying')
+          .tooltip('Fleet status is unverified; actions are paused until fresh verification')))
         .child(reveal(headerTools(h_flex()).id('git-actions').bg(t.surface),this.headerHovered)
           .child(refreshButton(t,{id:'git-refresh',icon:'mods/custom-changes/refresh.svg',label:'Refresh',busy:aggregate.busy,spinning:aggregate.busy,
             owner:this,scope:this.context,enabled:this.headerHovered,size:U.insetControl,iconSize:U.tinyIcon,radius:U.insetRadius,color:t.dim,hover:subtleActionFill(t),
@@ -680,7 +683,7 @@ export default class Changes extends View {
         .child(this.segment(t,'git-view-closed','Closed',counts.closed,this.view==='closed',view=>this.setView('closed',view))))
       .child(v_flex().id('task-pulls-scroll').flex_1().min_h(0).overflow_y_scrollbar().p(4)
         .children(repositories.map(repo => this.repositorySection(t, repo, notices.get(repo), scope)))
-        .when(!aggregate.rows(this.view).length,el=>el.child(panelMessage(t,'git-task-empty',{text:aggregate.busy?'Loading…':`No recorded ${this.view} task pull requests`,loading:aggregate.busy,rowInset:2}))))
+        .when(!aggregate.rows(this.view).length,el=>el.child(panelMessage(t,'git-task-empty',{text:aggregate.context.stale?'Waiting for fleet verification':aggregate.busy?'Loading…':`No recorded ${this.view} task pull requests`,loading:!aggregate.context.stale && aggregate.busy,rowInset:2}))))
       .when(setup,el=>el.child(this.liveCIInfo(t)))
       .when(Boolean(sweep),el=>el.child(this.sweepLayer(t,sweep).top(U.section)));
   }

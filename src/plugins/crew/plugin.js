@@ -776,13 +776,13 @@ export default {
   hooks: {},
   events: { 'spaces.refresh': refreshFleetContext, 'workspace.context.refresh': refreshFleetContext },
   workspaceLinks: ({presentation = false} = {}) => fleetContexts({presentation}).filter(c=>c.child),
-  pullContext: ({space}) => fleetPullContext(space),
+  pullContext: ({space,presentation = false}) => fleetPullContext(space,{presentation}),
   onEnabledChange: invalidateFleet,
   // The Spaces sidebar's tag for a space the coordinator or crew workers run in.
   spaceTags: space => {
     const display = fleetContexts({presentation:true});
     if (display.some(c=>c.child===space.id)) return [];
-    const kind = crewInSpace(space) ?? (display.some(c=>c.parent===space.id) ? 'coordinator' : null);
+    const kind = display.some(c=>c.parent===space.id) ? 'coordinator' : crewInSpace(space);
     return kind ? [{ label: 'Crew', tooltip: kind === 'coordinator' ? 'Crew coordinator' : 'Crew worker' }] : [];
   },
   // Required moment behind a profile's role: prepare the launch or refuse. The role id stays
