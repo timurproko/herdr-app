@@ -130,8 +130,9 @@ installed Git provenance. Real runs additionally write the latest atomic
 peer, including source refusals, machine outcomes and printed backup IDs. A
 successful full desktop result records its source SHA and ownership-manifest
 digest; only matching evidence without a later local failure identifies an
-installed revision. Old or changed installations show revision unknown, never
-checkout HEAD. Peer skips/failures preserve a successful desktop revision;
+installed revision. Old or changed installations omit the revision from the
+Settings title, showing only `herdr-app-custom`, never checkout HEAD or a stale
+SHA. A successful main check still offers Update when the revision is unknown. Peer skips/failures preserve a successful desktop revision;
 dry-run writes no result sidecar. Main can advance between peers, so SHAs may differ.
 Any failed machine, unsafe source, inventory or option error exits 1; only deployed,
 current and stated-skip outcomes exit 0. Calls have tool/fetch bounds of 15/60 seconds,
@@ -154,6 +155,10 @@ row instead of keeping their old CLI loaded through its own fast-forward. Only
 then does a fresh deploy:all CLI run with the captured Herdr home; it repeats its
 normal source gates. No developer checkout, npm install/prepare, daemon or
 scheduled task is involved.
+
+The native Herdr and herdr-core update rows check hourly. Custom uses its own
+cadence, as the Settings explanation distinguishes; it does not change native
+checking or herdr-core's terminal continuity through updates.
 
 Automatic availability checks run independently on each Desktop/Custom machine
 while its chrome is mounted: a jittered 120–180 second healthy cadence in both

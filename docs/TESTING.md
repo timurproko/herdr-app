@@ -76,7 +76,16 @@ links its matching result, not a missing/stale Settings log. It also runs the re
 CLI with mocked definite installer failure and eight-minute timeout, then checks
 failure/recovery details and launch blocking after a successful main check.
 `tests/update-row.test.mjs` also covers the shared native/Custom 300 ms/3000 ms
-confirmation path, success/expiry and unchanged busy/error/unknown states. Fresh
+confirmation path, success/expiry and unchanged busy/error/unknown states. Its
+known/missing-revision matrix exercises the real model and row renderer across
+idle, checking, available, launching/running, failed, partial and unknown-outcome
+states. Unknown revisions show only `herdr-app-custom` with no trailing space;
+known revisions retain their seven-character suffix. Missing evidence cannot claim
+current even with a cached no-update result. The check fixture separately confirms
+that changed ownership evidence still offers Update after a successful main read.
+Focused Settings copy assertions distinguish native hourly checks from Custom's
+normal mounted 2–3 minute cadence and conditional configured-relay merge hints,
+while preserving corner indicators and herdr-core terminal-continuity guidance. Fresh
 module graphs and owners simulate replacement before the launch receipt, during
 running work and just after completion. Shared provisional launch feedback stays
 Updating until durable status acknowledges it, or becomes unknown after the

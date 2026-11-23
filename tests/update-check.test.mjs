@@ -44,7 +44,12 @@ try {
   clock += 21000; fail = false; worker.checkMain(home, { ...options, force: true }); assert.equal(calls, 4);
   worker.atomic(p.manifest, JSON.stringify({ version: 2, id: 'custom', files: { changed: 'hash' } }));
   assert.equal(worker.inspect(home).revision, null);
-  assert.match(customizationRowState(updateProjection(worker.inspect(home))).title, /revision unknown/);
+  assert.equal(customizationRowState(updateProjection(worker.inspect(home))).title, 'herdr-app-custom');
+  row = customizationRowState(updateProjection(worker.checkMain(home, { ...options, force: true })));
+  assert.equal(row.title, 'herdr-app-custom');
+  assert.equal(row.label, 'Update', 'unknown installed evidence still offers Update after a successful check');
+  assert.equal(row.action, 'launch');
+  assert.equal(row.enabled, true);
   fs.rmSync(p.check); fail = true;
   assert.equal(updateAvailable(worker.checkMain(home, { ...options, force: true })), false, 'failed first check never invents availability');
   // Separate desktops, legacy caches, failures, invalidation and clock skew.

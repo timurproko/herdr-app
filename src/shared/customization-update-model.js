@@ -14,7 +14,8 @@ export function updateProjection(snapshot) {
 export const updateAvailable = snapshot => snapshot?.check?.available === true;
 const at = millis => { const date = new Date(millis); return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`; };
 export function customizationRowState(snapshot, { busy = null, error = null, now = Date.now() } = {}) {
-  const title = `${CUSTOMIZATION_LABEL} ${snapshot?.revision?.slice(0, 7) || 'revision unknown'}`;
+  const revision = snapshot?.revision?.slice(0, 7);
+  const title = revision ? `${CUSTOMIZATION_LABEL} ${revision}` : CUSTOMIZATION_LABEL;
   const job = snapshot?.job, check = snapshot?.check;
   const details = snapshot?.details || (snapshot?.log ? { kind: 'log', path: snapshot.log } : null);
   const log = details ? ` ${details.kind === 'log' ? 'Log' : 'Details'}: ${details.path}` : '';
