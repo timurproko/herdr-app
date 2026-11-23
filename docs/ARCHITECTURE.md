@@ -239,8 +239,16 @@ setup stays visible. Counts and webhook-driven facts continue updating while fol
 The existing single authenticated WebSocket routes repository invalidations into
 the aggregate index. Bursts coalesce behind each in-flight PR read; reconnect/show
 catches up. Local status refreshes fetch newly recorded links only, not unchanged
-GitHub facts or CI. Repository failures retain same-binding rows with scoped errors;
-setup is global and enrollment links capture each repository. Hidden/disabled or
+GitHub facts or CI. Repository failures retain same-binding rows with one applicable notice per
+repository and selected tab. Known Closed failures never leak into Open; expired
+historical rows and their errors cannot leave empty sections. Cold historical-only
+failures are a Closed history-load notice, not invented PR state. Execution results
+retain exit/signal/timeout facts: local spawn failures, abnormal Windows NTSTATUS
+and process timeouts offer Refresh to retry, not an automatic retry promise or a
+GitHub outage claim. GitHub account/resource refusals identify current-account
+access; only explicit DNS/connection failures mean GitHub is unreachable. Mixed
+causes reduce to one truthful summary; partial recovery removes only recovered
+failures. Setup is global and enrollment links capture each repository. Hidden/disabled or
 superseded contexts cannot start follow-ups or publish stale results. Neither
 presentation nor setup notices enroll repositories or grant auto-fix authority.
 Ordinary folder Git retains its pin motion, pagination and existing agent matching.
