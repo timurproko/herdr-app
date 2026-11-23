@@ -17,7 +17,8 @@ const all=node=>node&&typeof node==='object'?[node,...node.kids.flatMap(all)]:[]
 const find=(node,id)=>all(node).find(n=>n.attrs.id?.[0]===id);
 const text=node=>typeof node==='string'?node:(node?.kids??[]).map(text).join('');
 const U={font:12,meta:11,icon:16,tinyIcon:12,gap:8,radius:6};
-const host={props:()=>null,closeOverlay(){},openOverlay(){},nextCommand(){},settings:()=>({zoom:1}),theme:()=>({})};
+let zoom=1;
+const host={props:()=>null,closeOverlay(){},openOverlay(){},nextCommand(){},settings:()=>({zoom}),theme:()=>({})};
 const modules={
   'main.js':'src/plugins/git/mod/main.js','pulls.js':'src/plugins/git/mod/pulls.js',
   'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{}},'gpui-base':{h_flex:element,v_flex:element},
@@ -33,7 +34,7 @@ const panel=new Main();panel.agentLinks={related:()=>null};
 const t={foreground:'#eeeeee',muted:'#999999',dim:'#666666',raised:'#222222',ansi1:'red',ansi2:'green',ansi3:'yellow',ansi5:'purple'};
 const labels=[{name:'🤖 Under review',color:'840479'},{name:'🚀 Ready · with a deliberately long label name',color:'ffffff'}];
 const source={number:17,title:'Shared row',url:'https://github.com/example/repo/pull/17',author:{login:'owner'},createdAt:'2026-11-20T10:00:00Z',body:'- [x] done',statusCheckRollup:[{name:'CI',conclusion:'SUCCESS',status:'COMPLETED'}],labels,reviewDecision:'APPROVED'};
-for(const state of ['OPEN','CLOSED','MERGED'])for(const coordinator of [false,true])for(const ghost of [false,true]) {
+for(zoom of [0.75,1,1.25,1.5,2])for(const state of ['OPEN','CLOSED','MERGED'])for(const coordinator of [false,true])for(const ghost of [false,true]) {
   const pr=facts.pullRow({...source,state},'owner');if(coordinator)pr.key='example/repo#17';
   const prefix=ghost?'swap-':'',id=pr.key??17;
   const row=panel.pullRow(t,pr,ghost),meta=find(row,`${prefix}pr-meta-${id}`),byline=find(row,`${prefix}pr-byline-${id}`);
@@ -56,11 +57,26 @@ for(const state of ['OPEN','CLOSED','MERGED'])for(const coordinator of [false,tr
   for(const dot of separators) {
     assert.equal(dot.attrs.size[0],3);assert.equal(dot.attrs.bg[0],t.muted);assert.ok(dot.attrs.flex_none);assert.ok(dot.attrs.rounded_full);
     assert.equal(dot.kids.length,0,'A shape has no font-baseline-dependent glyph');
+    assert.deepEqual(dot.attrs.relative,[],'Optical offset must not change the flex layout slot');
+    assert.deepEqual(dot.attrs.top,[1.5],'Drop 1.5 logical pixels toward the lowercase x-height centre at every zoom');
+    assert.deepEqual(Object.keys(dot.attrs).sort(),['size','flex_none','relative','top','rounded_full','bg'].sort(),'No margins, padding or size changes');
   }
   for(const line of [byline,meta]) {
     assert.ok(line.attrs.items_center);assert.equal(line.attrs.gap[0],6,'Equal left/right separator spacing');
     assert.equal(line.attrs.flex_wrap,undefined,'Separators cannot orphan onto wrapped lines');
   }
+  // Compare against the old separator: no neighbouring text, icon, pill or row
+  // geometry may change. Function bodies are irrelevant to this tree comparison.
+  const separator=panel.metaSeparator;
+  panel.metaSeparator=()=>element().size(3).flex_none().rounded_full().bg(t.muted);
+  const before=panel.pullRow(t,pr,ghost);
+  panel.metaSeparator=separator;
+  const geometry=node=>JSON.stringify(node,(key,value)=>typeof value==='function'?'callback':value);
+  const normalized=JSON.parse(geometry(row));
+  for(const dot of [find(normalized,`${prefix}pr-byline-${id}`).kids[1],...find(normalized,`${prefix}pr-meta-${id}`).kids.filter(n=>!n.attrs.id)]) {
+    delete dot.attrs.relative;delete dot.attrs.top;
+  }
+  assert.equal(geometry(normalized),geometry(before),'Only separator paint position changes; row height and neighbours stay identical');
   assert.equal(Boolean(row.attrs.on_mouse_down),!ghost);assert.equal(Boolean(row.attrs.on_click),!ghost);
   assert.equal(Boolean(row.attrs.on_size_change),!ghost&&!coordinator,'Ordinary measured row callbacks survive');
 }
@@ -87,4 +103,4 @@ assert.equal(find(changes,'pr-review-17').attrs.text_color[0],t.ansi1);
 const fallback=panel.labelPill(t,{name:'Untrusted colour',color:'red;bad'},'fallback');
 assert.equal(fallback.attrs.bg[0],t.raised);assert.equal(fallback.attrs.text_color[0],t.foreground);
 assert.equal(facts.pullRow({...source,author:null},'owner').byline.startsWith('opened '),true);
-console.log('PASS shared ordinary/coordinator Open/Closed/pinned-compatible/ghost PR row structure, no Owner, tasks/checks/labels order, exact emoji colours, contrasting text, bounded-height truncation, complete tooltips and identical 3px centred muted dots/even gaps (render-tree constraints, not native pixel proof)');
+console.log('PASS shared ordinary/coordinator Open/Closed/pinned-compatible/ghost PR row structure, no Owner, tasks/checks/labels order, exact emoji colours, contrasting text, bounded-height truncation, complete tooltips and identical 3px optically lowered muted dots/even gaps across zoom levels with unchanged neighbour/row geometry (render-tree constraints, not native pixel proof)');

@@ -169,8 +169,11 @@ host/elements. It covers ordinary/coordinator Open/Closed/merged and ghost rows,
 Owner removal, tasks/checks/labels ordering with missing groups, exact emoji names,
 light/dark/fallback colours, bounded strip/pill sizes, truncation and full-name
 individual/strip/metadata tooltips. The same fixture checks 3px muted round separators,
-centred by their parent rows with equal 6px gaps, in bylines and every status/review/label
-boundary, including missing-group combinations without leading/trailing or orphan dots.
+optically lowered 1.5 logical pixels from the parent line-box centre with equal 6px gaps,
+in bylines and every status/review/label boundary. Zoom cases from 75% to 200% retain
+the same logical offset; comparison with the old separator tree protects neighbouring
+text, icons, pills and row geometry. Missing-group combinations have no leading/trailing
+or orphan dots.
 Pagination/fleet fixtures also assert labels
 in actual pinned/scrolling and coordinator render paths; existing menu and pin-swap
 fixtures protect captured URLs, callbacks and measured motion. These prove render-tree

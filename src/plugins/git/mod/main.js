@@ -526,9 +526,11 @@ export default class Changes extends View {
     return this.taskRing(t, task.done, task.total);
   }
 
-  // Shapes avoid font-baseline drift; parent rows own equal gaps on both sides.
+  // Centre optically on the 11px lowercase text, not the line box/icons.
+  // Relative positioning keeps the 3px layout slot and 6px gaps unchanged;
+  // the 1.5 logical-pixel drop scales with native app zoom.
   metaSeparator(t) {
-    return div().size(3).flex_none().rounded_full().bg(t.muted);
+    return div().size(3).flex_none().relative().top(1.5).rounded_full().bg(t.muted);
   }
 
   labelPill(t, label, id) {
