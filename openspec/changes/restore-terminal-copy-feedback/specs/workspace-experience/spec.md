@@ -2,28 +2,29 @@
 
 ## ADDED Requirements
 
-### Requirement: Confirmed terminal copy feedback
-The Custom workspace SHALL show standard success-toast feedback for each confirmed native terminal text copy, including repeated identical copies. Selection changes alone SHALL NOT count as copy success. Feedback SHALL NOT expose copied contents or change clipboard, terminal input, focus, or selection behavior.
+### Requirement: Best-effort terminal copy-on-select feedback
+On supported Windows hosts, Custom SHALL observe terminal selections once window facts become available and provide best-effort copy-on-select feedback through the app's standard success toast. Missing startup facts SHALL NOT permanently disable observation. Feedback SHALL NOT expose copied contents or change terminal input, focus, selection, or clipboard contents.
 
-#### Scenario: Mouse copy on select
-- **WHEN** a mouse selection is released with copy-on-select enabled and native copying succeeds
-- **THEN** one standard success toast confirms the copy
-- **AND** the selection remains highlighted as native copying dictates
+#### Scenario: Cold startup
+- **WHEN** window/platform facts are initially unavailable and Windows facts are later published
+- **THEN** the observer begins tracking selections without a reload or restart
 
-#### Scenario: Explicit or repeated copy
-- **WHEN** an explicit native copy action successfully copies selected text, including a repeated copy without changing the selection
-- **THEN** each successful copy produces confirmation even when the clipboard already contains identical text
-- **AND** turning copy-on-select off does not suppress explicit-copy feedback
+#### Scenario: Mouse selection copy
+- **WHEN** copy-on-select is enabled and a settled terminal selection is followed by a readable nonempty clipboard update
+- **THEN** the observer shows one standard success toast with the copied character count
+- **AND** the native selection and clipboard remain unchanged by the observer
 
-#### Scenario: Selection without a copy
-- **WHEN** a selection changes without a successful copy, including a held drag or copy-on-select being disabled
-- **THEN** no success toast is inferred from the selection or previous clipboard contents
+#### Scenario: Copy-on-select disabled
+- **WHEN** copy-on-select is disabled while a selection is pending
+- **THEN** pending feedback is canceled and no new selection feedback is scheduled
+- **AND** re-enabling resumes observation with a fresh clipboard baseline
 
-#### Scenario: Empty or failed copy
-- **WHEN** a copy action has no selected text or fails before completing the clipboard write
-- **THEN** no successful-copy toast is shown
+#### Scenario: Canceled or stale selection
+- **WHEN** a pending selection is cleared, superseded, or no longer belongs to the focused terminal/tab
+- **THEN** the observer does not emit its stale success toast
 
-#### Scenario: Cold startup and stale delivery
-- **WHEN** window context arrives after the copy-feedback controller is initialized
-- **THEN** valid later copies still receive confirmation
-- **AND** a stale or previously handled notification cannot be replayed against another terminal
+#### Scenario: Best-effort limitations
+- **WHEN** no copy-success event is available from the host
+- **THEN** feedback remains explicitly documented as selection-and-clipboard inference, not guaranteed copy confirmation
+- **AND** explicit or repeated shortcut copies with unchanged selections are not promised reliable notifications
+- **AND** a held drag or unrelated clipboard activity can still be mistaken for a completed copy

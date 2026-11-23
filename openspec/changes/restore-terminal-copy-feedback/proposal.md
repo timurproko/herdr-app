@@ -2,14 +2,15 @@
 
 ## Why
 
-Terminal text reaches the clipboard but Custom can show no copy confirmation: its existing observer permanently disables itself when the host's window snapshot is unavailable during cold startup. Its selection/clipboard heuristic also cannot reliably distinguish completed copies, repeated shortcut copies, and a selection still being dragged.
+Terminal text reaches the clipboard but Custom's copy observer permanently disables itself when window/platform facts are unavailable during cold startup. The approved narrowed scope restores best-effort mouse copy-on-select feedback without requiring a native host change.
 
 ## What Changes
 
-- Make successful terminal copies produce the same standard success toast used by other Custom copy actions, including mouse copy-on-select, explicit shortcuts, and repeated copies of unchanged text.
-- Replace selection/clipboard inference with a confirmed native copy-success signal; never display clipboard contents in feedback or read arbitrary clipboard text to infer success.
-- Cover startup, repeated copies, disabled copy-on-select, empty selections, and stale terminal bindings with controller-level regressions, not just label/helper assertions.
-- Gate implementation on a separately approved supported host copy-success capability. Herdr 0.1.16 exposes selection changes but no copy-success event; this repository must not patch or rebuild the native host to obtain one.
+- Wait for published Windows window facts instead of permanently opting out during initialization; resume observation when copy-on-select becomes enabled.
+- Retain bounded selection-settle/clipboard inference for native mouse copy-on-select, using the supported GPUI clipboard reader rather than launching PowerShell.
+- Send the existing character-count wording through the app's standard success toast instead of drawing a private floating popup.
+- Add controller regressions for missing-then-published window facts, simulated mouse selection/copy, unchanged text, disabled copy-on-select, and canceled/stale work.
+- Document that explicit/repeated shortcut copies with unchanged selections cannot be detected reliably without an upstream copy-success capability. The heuristic is best effort, not a confirmed-copy guarantee.
 
 ## Capabilities
 
@@ -19,11 +20,10 @@ None.
 
 ### Modified Capabilities
 
-- `workspace-experience`: Successful terminal copies receive standard, success-driven feedback without changing native copy or terminal behavior.
+- `workspace-experience`: Best-effort standard terminal copy-on-select feedback recovers after cold startup while preserving native terminal and clipboard ownership.
 
 ## Impact
 
-- Custom copy controller/model, its tests, layout slot and manifest packaging; host facade/compatibility contract if an approved copy event becomes available.
-- Current observed host: Herdr 0.1.16. Its common native copy routine writes the clipboard without notifying; its SDK cannot report completion to a mod.
-- **Blocking dependency:** maintainer approval of an upstream native copy-success API and availability of a reviewed host release. That native work is outside this checkout and is not authorized by this proposal. Alternatively, explicitly approve narrower best-effort selection-only scope; that is not equivalent to the requested every-copy guarantee.
-- No implementation, deployment, native patch, terminal input, process restart, or keybinding changes in this planning PR.
+- `src/features/copy-toast/`, its controller tests, and user documentation. Existing layout/manifest mounting remains stable.
+- Uses only the installed host's public selection snapshots, GPUI clipboard reader and standard `notify` API; no upstream dependency, native edits, keybinding changes, or terminal input.
+- Approval explicitly accepts selection-only best-effort scope, including uncertainty while a drag remains held or unrelated clipboard contents change. OSC 52 and reliable explicit/repeated shortcut notifications are out of scope.

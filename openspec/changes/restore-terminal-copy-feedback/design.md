@@ -2,66 +2,49 @@
 
 ## Context
 
-See proposal.md for motivation and specs/workspace-experience/spec.md for the behavior contract.
+The approved scope is best-effort mouse copy-on-select feedback inside this checkout, not guaranteed notification of every native copy.
 
-### Findings
+`src/features/copy-toast/main.js` originally permanently set `off` when `window()?.platform` was not `windows` during init. The facade normalizes missing native window facts to `{}`. Native Herdr 0.1.16 synchronously loads initial mods before publishing window facts in its first render. Later renders therefore never observed selections. A scratch VM reproduction of the original controller confirmed `permanentlyDisabled: true` and `selectionReads: 0` after Windows facts arrived.
 
-- `src/features/copy-toast/main.js:32` permanently sets `off` if `window()?.platform` is not `windows` at init. The facade normalizes unavailable native window data to an empty object. Herdr 0.1.16 starts with a null window snapshot, synchronously loads layout mods during initial `sync`, and publishes window facts in the first render. The observer therefore treats transient unavailability as permanent incompatibility; later renders never read terminal selections.
-- The same init guard permanently suppresses even explicit-copy feedback when copy-on-select is off. The observer only schedules on changed selection endpoints; unchanged repeated copies cannot trigger it.
-- `model.js:copyDecision` assumes success when the clipboard stays unchanged after one retry. That cannot distinguish recopy from a held drag, failed copy, or unrelated clipboard contents.
-- Native `TerminalView::select(Release)` calls the common `copy` routine when copy-on-select is enabled. Explicit `terminal.copy` reaches that same routine. `copy` obtains selection text, writes the clipboard, and returns true without raising a toast or exposing a copy event. Programmatic selection alone does not copy.
-- The shipped terminal pane context menu has split/zoom/right-click-routing/close actions, not Copy. The reviewed palette and standard shortcut invoke `terminal.copy`; Custom's optional Ctrl+C broker queues the same native command.
-- Files and Git copy actions explicitly call `notify({title:'Path copied', body:..., level:'success', timeout:3000})` after writing. The terminal observer instead draws a private zero-sized-anchor popup. A highlighted selection is not a notification source in the stock toast mod.
+Native mouse-release copy-on-select and explicit `terminal.copy` share a copy routine which writes the clipboard without notifying. The SDK exposes selection endpoints but no copy-success event. Files/Git copy actions explicitly call standard success `notify`; the original terminal observer instead drew a private popup and sampled the clipboard through PowerShell. Its tests covered only helpers, not controller startup.
 
-Native-source references are the read-only `herdrdev/herdr-app` tag `v0.1.16`: `src/mods.rs` (Snapshot default; publish_window), `src/window.rs` (new/sync/load and render), and `src/terminal.rs` (copy/select). No native source or binary was modified.
-
-### Actual verification
-
-The original Bash tab disappeared during inspection; no replacement terminal was created. In an existing local A1 terminal, the supported `terminal.select` command selected the visible word `yes`, then `terminal.copy` copied it. A local PowerShell clipboard equality check returned true and length 3. An app screenshot captured the highlighted word with no copy toast. Selection was subsequently cleared. This proves the explicit native copy path writes the clipboard; it is not a mouse-release reproduction or live instrumentation of the initial `off` value.
-
-A scratch VM reproduction loaded the actual controller with an initially unavailable window snapshot, then supplied `platform: windows` and rendered again: `permanentlyDisabled: true`, `selectionReads: 0`. This reproduces the startup latch without modifying project code or the installed mod. It does not instrument the live instance's init.
-
-Existing tests cover signatures, counts, labels and the heuristic's assumptions, not the controller's initialization or successful-copy delivery. `node tests/copy-toast.test.mjs` passed unchanged; new coverage must exercise the real controller against mocked native delivery.
+In the first investigation, a supported selection command selected the visible word `yes` in an existing local A1 terminal; native Copy put exactly `yes` (length 3) on the clipboard, with no toast in the screenshot. Selection was cleared afterward. That established the explicit native clipboard path, not a mouse-release reproduction. The person subsequently confirmed the missing toast immediately after a machine restart, consistent with the cold-start defect.
 
 ## Goals / Non-Goals
 
-**Goals:** truthful every-copy confirmation using the existing standard toast renderer; no clipboard-content sampling; safe cold startup and duplicate/stale-event handling.
+**Goals:** dynamic readiness after missing startup data; best-effort feedback for settled mouse selections; standard success-toast appearance; deterministic controller regression coverage.
 
-**Non-Goals:** native implementation in this checkout, terminal input injection, automatic keybinding edits, OSC 52 program writes, changing selection semantics, deployment or host restart during planning. No new native-file patch exception.
+**Non-Goals:** native changes or new host events; reliable explicit/repeated shortcut-copy detection; modifying clipboard contents, keybindings or selection semantics; creating/restarting terminals or injecting input for verification.
 
 ## Decisions
 
-### Require a supported success boundary before implementation
+### Observe readiness rather than latch it at initialization
 
-Herdr 0.1.16 cannot meet the full contract at the mod layer: there is no mouse-release or copy-success event, copied-text API, or native command completion receipt. A native selection snapshot is insufficient. The implementation is **blocked** until the maintainer approves a separate upstream API effort and a reviewed release provides a successful-copy signal.
+Initialize controller fields without consulting transient platform facts. Each render reads the live window/settings APIs. If Windows facts are unavailable, copy-on-select is off, or native checking is active, cancel pending work and return an empty element. These are current eligibility facts, not permanent disable flags. When published facts make observation eligible, capture a clipboard baseline once and begin tracking selections.
 
-The required contract is a per-window, non-persistent, uniquely identified event from the common native copy routine after its clipboard operation succeeds. It identifies the source terminal and optionally a character count, never the copied contents. Identical recopy actions produce distinct events; empty/failed copies produce none. Final API spelling and delivery mechanics require upstream review before any consumer code is written. Plan approval alone does not authorize editing a different checkout or native binaries.
+Preserve the existing Windows support boundary; adding other-platform behavior is not part of this fix. Toggling copy-on-select off and back on takes a new baseline. Cancellation and close invalidate timers so an obsolete selection cannot show feedback later.
 
-Rejected alternatives:
+### Keep bounded inference, use the supported clipboard reader
 
-- Fixing only the startup guard: restores best-effort selection feedback but cannot cover repeated explicit copies or prevent false success while dragging.
-- Reading the clipboard through GPUI instead of PowerShell: avoids subprocess overhead but still does not establish a copy happened or identify its source.
-- Intercepting shortcuts/context menus: misses native mouse selection, palette/CLI actions, user-defined bindings, and repeated identical copy completion.
-- Polling clipboard sequence numbers: OS-specific, misses identical writes the host skips, and misattributes unrelated application writes.
+Keep the existing 300 ms selection-settle delay and bounded 400 ms retries. Use `cx.read_from_clipboard()` in the callback instead of starting PowerShell. This removes process latency and async read races while keeping clipboard access local, read-only and scoped to observed selections.
 
-### One Custom toast owner
+Changed nonempty clipboard text suggests a completed copy. An unchanged nonempty clipboard after the existing retry delay remains a best-effort recopy assumption. At most one toast is emitted per settled selection; later retries must not create duplicate standard toasts. Clearing/changing selection, disabling observation or switching away from its captured terminal/tab cancels or suppresses feedback. No copied contents are displayed or persisted.
 
-Once the supported event exists, adapt it through `src/integration/herdr/host.js` and the reviewed compatibility profile. Keep one layout-owned controller, consume each event once without persistent replay, and call the existing `notify` API with success level and the existing 3000 ms copy-toast duration. Use the existing character-count wording if the host provides an authoritative count; otherwise use `Text copied`. Never include clipboard contents in the toast.
+This cannot establish that mouse release happened: a held drag or unrelated clipboard change can still fool inference. Reliable repeated shortcut copies with unchanged selection endpoints remain undetectable. These are accepted and documented limits, not native-copy guarantees.
 
-Remove the PowerShell clipboard reads, selection settle/retry assumptions and private popup/animation path. Retain or simplify the layout slot/manifest only as required to mount the controller once. Do not latch unavailable startup facts as unsupported, and do not gate explicit-copy feedback on copy-on-select.
+### Reuse standard notification rendering
 
-The event consumer must validate event/source identity and reject duplicate, pre-mount and stale events. Copying remains entirely native. A newer host that already owns a standard native copy toast must not also enable this consumer; select one owner in the reviewed contract to prevent duplication.
+Replace private Popup/font/color/fade/slide code with `notify({title: copiedLabel(count), level: 'success', timeout: 3000})`, matching Files/Git's success-notification route and lifetime. Keep the existing layout-owned mod mounted as an empty observer so the feature ID and layout remain stable. No native toast mod edits or new facade API are needed.
 
 ## Risks / Trade-offs
 
-- [Unsupported installed host] → Block implementation pending the supported event contract, rather than invent a current API or silently weaken the requirement.
-- [Copy event and window focus change race] → Capture source identity, bound event lifetime and reject stale delivery; never read a later terminal's clipboard or selection to fill missing facts.
-- [Duplicate native and Custom feedback] → Review single-owner behavior with the host capability before enabling the consumer.
-- [Synthetic tests do not prove mouse release or rendering] → After separately authorized deployment, inspect actual local Bash mouse selection and explicit/repeated Copy with screenshots and clipboard equality checks; do not inject terminal input.
+- [Selection is not a copy-success event] → Document the best-effort scope, retain bounded checks and never promise every-copy confirmation.
+- [Focus, selection or eligibility changes during a timer] → Capture the selection generation and terminal/tab; recheck before reading or notifying; invalidate pending work on cancellation and close.
+- [Clipboard missing or unreadable] → Bound retries and show nothing for empty/failed reads; never change clipboard contents to test it.
+- [Synthetic selection snapshots do not prove mouse gestures or GPUI pixels] → Verify the real controller under deterministic fixtures and run native rendering checks in a disposable checkout-local app home. Inspect the running app read-only when a live interaction would disturb the person's terminals; state any remaining real-mouse gap explicitly.
 
-## Migration Plan
+## Verification / Rollout
 
-1. Obtain plan approval and resolve the separately authorized upstream API dependency. If only a small selection-only fix is desired instead, revise the scope/spec/outcome before implementation.
-2. On the reviewed supporting host, implement the facade consumer and focused controller regressions together; retire heuristic code and stale packaging in the same outcome.
-3. Use targeted unit tests and build/package validation; request authorization for real-app deployment and interaction checks. Do not change the currently installed app as part of this plan.
-4. Roll back through existing guarded deployment tooling if authorized rollout fails. No persistent copy-event history or clipboard snapshots require migration.
+Controller tests load the actual source and real model with synthetic host snapshots, a fake clipboard and deterministic timers; they simulate a mouse press/drag selection followed by the host's release-time clipboard update. Include initially missing window facts, resumption, normal/repeated mouse selection, disabled/checking states, clearing, focus switch and close. Assert the standard success payload and that the observer never writes the clipboard or starts processes.
+
+Run the focused suite, strict OpenSpec validation and customization-only build. For a live-safe native check, use the guarded temporary-mod/test helpers only against a disposable home inside `.artifacts/`; do not deploy to the person's home under the checkout-only restriction. A read-only shot/status of the running app is allowed but is not proof of the new controller being installed. Real mouse-copy validation after deployment remains a handoff step if it cannot be performed without disturbing existing sessions.
