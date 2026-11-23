@@ -14,9 +14,19 @@ npm run test:integration
 npm run test:native
 ```
 
-`check:host-api` verifies that the installed Herdr version has a reviewed facade
-profile, required APIs and commands still exist, and feature code does not import
-`herdr` directly.
+`check:host-api` requires App 0.1.13+, required APIs/commands and the direct-import
+boundary. Newer unreviewed hosts pass with a **newer than last reviewed** advisory.
+The tab-move source audit is advisory, not a deploy gate.
+
+Optional palette/feedback refreshes skip unknown native bytes with a clear
+advisory; `doctor` distinguishes those skips from real ownership/conflict errors.
+No unknown target, helper or backup is overwritten. On 0.1.17 this means the
+standard Herdr palette rather than Custom's styling, Usage entry and Custom
+Settings/rename/close routing. Stock feedback keeps its standard form and success
+view instead of Custom's compact attachments and thank-you layout. A previously
+owned feedback patch may still be present: it is retained, not refreshed or newly
+certified. Restoring supported patches needs a reviewed native-source/binary rebase,
+not a public version allowlist. See [exact behavior and recovery](../src/integration/native-patches/README.md#unreviewed-native-bytes-including-app-0117).
 
 ## Build and install
 

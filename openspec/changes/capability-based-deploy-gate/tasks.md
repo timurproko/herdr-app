@@ -8,10 +8,10 @@
 
 ## 2. Unsupported optional native patches skip safely without blocking deployment
 
-- [ ] 2.1 Add shared typed patch inspection and reviewed native-byte provenance checks, including the old-owned-target masking case; verify synthetic binaries/originals classify reviewed support, unknown targets, missing evidence, corrupt records and dependency conflicts distinctly.
-- [ ] 2.2 Make automatic palette/feedback refresh return clear nonfatal skip advisories for unsupported native bytes while preserving every target/helper/opt-in/backup byte; cover recognized repair, no opt-in, concurrency and genuine conflicts in frame/startup/deploy tests.
-- [ ] 2.3 Expose advisory versus failure severity in doctor and deployment results; cover normal full deploy success with skipped patches and unchanged shell-only behavior using disposable homes.
-- [ ] 2.4 Update native-patch and command documentation with exact observed 0.1.17 palette/retained-feedback behavior, binary provenance limits and safe restore boundaries; verify no live patched bytes are recorded as stock and no allowlist or registry opt-in is fabricated.
+- [x] 2.1 Add shared typed patch inspection and reviewed native-byte provenance checks, including the old-owned-target masking case; verify synthetic binaries/originals classify reviewed support, unknown targets, missing evidence, corrupt records and dependency conflicts distinctly.
+- [x] 2.2 Make automatic palette/feedback refresh return clear nonfatal skip advisories for unsupported native bytes while preserving every target/helper/opt-in/backup byte; cover recognized repair, no opt-in, concurrency and genuine conflicts in frame/startup/deploy tests.
+- [x] 2.3 Expose advisory versus failure severity in doctor and deployment results; cover normal full deploy success with skipped patches and unchanged shell-only behavior using disposable homes.
+- [x] 2.4 Update native-patch and command documentation with exact observed 0.1.17 palette/retained-feedback behavior, binary provenance limits and safe restore boundaries; verify no live patched bytes are recorded as stock and no allowlist or registry opt-in is fabricated.
 
 ## 3. Settings reports the concrete failed deployment stage and cause
 

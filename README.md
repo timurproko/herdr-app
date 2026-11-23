@@ -1232,8 +1232,14 @@ implicit pane-close requests retain native validation. Direct native/CLI command
 outside these Custom entry points still use Herdr's stock confirmation; no
 supported global confirmation override exists, and the shipped Confirm mod is
 never patched.
-Install/layout entry repairs only prior opt-ins. Unknown stock or personal edits
-are refused per patch. The worker is deployed with the customization and does not
+Install/layout entry repairs only prior opt-ins. Unknown native bytes are skipped
+with an advisory, not a failed deploy; personal dependency conflicts and corrupt
+records still fail. On 0.1.17 the standard palette remains instead of Custom's
+styling and command routing. New stock feedback uses Herdr's standard form and
+success view; an old owned feedback patch is retained but not refreshed or
+certified. Restoring supported styling needs reviewed native originals and a
+patch rebase, not a version allowlist. See the native patch policy for the exact
+lost features and provenance safeguards. The worker is deployed with the customization and does not
 need this source folder.
 
 ```powershell

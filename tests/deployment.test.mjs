@@ -9,6 +9,9 @@ import {digest,json,put} from '../tools/files.mjs';
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'herdr-custom-deploy-')),home=path.join(temp,'home');
 const {output}=build();
 const hash=p=>digest(fs.readFileSync(p));
+const previousBin=process.env.HERDR_APP_BIN;
+process.env.HERDR_APP_BIN=path.join(temp,'synthetic-host');
+fs.writeFileSync(process.env.HERDR_APP_BIN,Buffer.concat(['palette','feedback'].map(id=>fs.readFileSync(path.join(output,`frame-patches/${id}/original.js`)))));
 try {
  fs.mkdirSync(home);put(path.join(home,'.migration-fixture'),'fixture');
  put(path.join(home,'settings.json'),'{"zoom":1.3}');put(path.join(home,'shared.json'),'{"unrelated":"keep"}');put(path.join(home,'mods/stock/main.js'),'stock');
@@ -30,7 +33,7 @@ try {
  const runtime=path.join(home,'.customizations/runtime');const {framePatch}=await import(new URL('../dist/scripts/frame-patch.mjs',import.meta.url));
  const patch=json(path.join(runtime,'frame-patches/registry.json')).patches[0];const stock=fs.readFileSync(path.join(runtime,patch.originals[0]),'utf8');const main=path.join(home,patch.target,'main.js');put(main,stock);
  framePatch('apply',home,runtime,patch.id);put(main,stock);assert.ok(!doctor(home).ok);assert.equal(deploy(output,home).patches.ok,true);assert.ok(doctor(home).ok);
- put(main,'unknown newer upstream');const unsupported=deploy(output,home);assert.equal(unsupported.patches.ok,false);assert.equal(fs.readFileSync(main,'utf8'),'unknown newer upstream');
+ put(main,'unknown newer upstream');const unsupported=deploy(output,home);assert.equal(unsupported.patches.ok,true);assert.equal(unsupported.patches.frames[patch.id].status,'skipped');assert.equal(doctor(home).ok,true);assert.match(doctor(home).advisories[0],/skipped/);assert.equal(fs.readFileSync(main,'utf8'),'unknown newer upstream');
  framePatch('restore',home,runtime,patch.id);assert.equal(fs.readFileSync(main,'utf8'),'unknown newer upstream','Restore must not downgrade new stock');
  // Update a disposable bundle, then roll it back without removing preferences.
  const bundle=path.join(temp,'bundle');fs.cpSync(output,bundle,{recursive:true});const rel='mods/custom-tabs/main.js';fs.appendFileSync(path.join(bundle,rel),'\n// fixture update\n');
@@ -39,4 +42,4 @@ try {
  rollback(home,update.backup,{fixture:true});assert.equal(hash(file),digest(original));assert.deepEqual(json(layoutFile).terminal_padding,[7,7]);
  const update2=deploy(bundle,home);fs.appendFileSync(file,'\n// later personal edit');assert.throws(()=>rollback(home,update2.backup,{fixture:true}),/Personal edit/);
  console.log('PASS: deployment isolation, no-op timestamps, preferences, conflict preflight, paths, opt-in update repair, unknown-stock refusal, independent workers and guarded rollback');
-}finally{fs.rmSync(temp,{recursive:true,force:true});}
+}finally{if(previousBin===undefined)delete process.env.HERDR_APP_BIN;else process.env.HERDR_APP_BIN=previousBin;fs.rmSync(temp,{recursive:true,force:true});}

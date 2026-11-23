@@ -2,11 +2,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { framePatch } from './frame-patch.mjs';
+import { framePatch, inspectFramePatch } from './frame-patch.mjs';
 import { loadFrameRegistry } from './frame-registry.mjs';
 const bundle = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-export function restoreStartupFrames(home, root = bundle) {
+export function restoreStartupFrames(home, root = bundle, options = {}) {
   const owner = path.join(home, '.customizations');
   const frames = loadFrameRegistry(root).map(patch => patch.id).filter(frame => fs.existsSync(path.join(owner, `frame-${frame}.json`)));
   if (!frames.length) return { ok: true, frames: {} }; // Never opt a user in.
@@ -29,7 +29,11 @@ export function restoreStartupFrames(home, root = bundle) {
     fs.writeFileSync(fd, String(process.pid));
     const results = Object.create(null);
     for (const frame of frames) {
-      try { results[frame] = { ok: true, message: framePatch('apply', home, root, frame) }; }
+      try {
+        const inspection = inspectFramePatch(home, root, frame, options);
+        results[frame] = inspection.status === 'skipped' ? inspection
+          : { ok: true, message: framePatch('apply', home, root, frame, options) };
+      }
       catch (error) { results[frame] = { ok: false, error: error.message }; }
     }
     return { ok: Object.values(results).every(result => result.ok), frames: results };

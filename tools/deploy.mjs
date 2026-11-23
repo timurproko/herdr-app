@@ -124,13 +124,18 @@ export function doctor(home=defaultHome()) {
   const prefs=json(contained(home,'.customizations/layout-preferences.json'));if(prefs)try{projectLayout(state.layoutBase,prefs.overrides);}catch(e){issues.push(e.message);}
   let version=null;try{version=app(['--version'],home).replace(/^herdr-app\s+/,'');}catch{}
   const registry=json(path.join(home,'.customizations/runtime/frame-patches/registry.json'));
-  const patches=[];
+  const patches=[],advisories=[];
   for(const patch of registry?.patches??[]) {
     const record=json(path.join(home,`.customizations/frame-${patch.id}.json`));if(!record)continue;
-    const inactive=Object.entries(record.installed??{}).filter(([name,hash])=>digest(read(path.join(home,patch.target,name)))!==hash).map(([name])=>name);
-    patches.push({id:patch.id,ok:inactive.length===0});if(inactive.length)issues.push(`Compatibility patch ${patch.id} reset/modified: ${inactive.join(', ')}`);
+    try {
+      const worker=path.join(home,'.customizations/runtime/scripts/frame-patch.mjs');
+      const inspection=JSON.parse(cp.execFileSync(process.execPath,[worker,'inspect',patch.id,home],{encoding:'utf8',timeout:30000,windowsHide:true}));
+      patches.push({id:patch.id,...inspection});
+      if(inspection.status==='skipped')advisories.push(inspection.advisory);
+      else if(!inspection.active)issues.push(`Compatibility patch ${patch.id} reset/modified; reviewed repair required.`);
+    }catch(error){issues.push(`Compatibility patch ${patch.id}: ${error.stderr?.toString().trim()||error.message}`);}
   }
-  return {ok:issues.length===0,version,reviewedVersion:state.supportedHerdr?.includes(version)??false,issues,patches,ownedFiles:Object.keys(state.files).length};
+  return {ok:issues.length===0,version,reviewedVersion:state.supportedHerdr?.includes(version)??false,issues,advisories,patches,ownedFiles:Object.keys(state.files).length};
 }
 export function nativeCheck(home=defaultHome()) {
   const state=json(contained(home,'.customizations/manifest.json'));if(!state)throw Error('No Custom deployment.');
