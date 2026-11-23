@@ -12,6 +12,23 @@ helpers. Every patch receives the same `host.js` facade and versioned
 `herdr-app/.customizations/runtime/`. Startup repair and deployment use that same
 catalog. Only entries with an existing local opt-in record are repaired.
 
+## Structural engine contract
+
+The structural engine (`tools/runtime/native-frame.mjs`) separates stock discovery
+from transform permission. Only the existing palette/feedback targets are eligible.
+Raw source must be proven in the current executable, either directly, from a saved
+raw original, or through bounded unique embedded-file boundaries. Release fixtures
+are evidence, never an allowlist. Parsing uses offline packaged Acorn 8.15.0 (MIT).
+
+A transform stages immutable content-addressed helpers before a single atomic main
+activation. Durable journals retain original bytes and permit ownership-checked
+rollback/recovery; a v1 record migrates only after ownership/provenance checks.
+All mutation paths share a lock. Read-only inspection does not recover or write.
+Detected external edits or obstructed recovery retain backups and report a hard
+recovery-required error; they are never harmless optional skips. Native startup
+and other editors do not honor our lock: compare/readback checks cannot provide a
+native CAS or guarantee rollback against a racing external writer.
+
 ## Maintenance
 
 1. Run `npm run check:host-api`; update the central compatibility profile for public API/command changes.

@@ -2,11 +2,11 @@
 
 ## 1. Current-stock structural engine and recoverable activation
 
-- [ ] 1.1 Add pinned raw 0.1.16/0.1.17 palette/feedback fixtures with source/license/digest provenance, correcting the distinction between stock and facade-rewritten originals; assert the feedback equality and palette theme diff recorded in investigation.md.
-- [ ] 1.2 Add bounded current-stock discovery for disk/reset and owned-over-new-host cases, with executable provenance, raw backups and path/encoding validation; exercise unique/missing/ambiguous boundaries, changed binaries, personal edits, CRLF/LF/BOM and absent evidence using disposable synthetic binaries only.
-- [ ] 1.3 Package the pinned parser/license and generic anchored range-transform/self-check contract without runtime downloads; assert offline dependency closure, unique anchors, invalid output refusal, unchanged AST regions and read-only inspection byte/timestamp preservation.
-- [ ] 1.4 Implement immutable helper generations, shared mutation locking, durable v2 journal/state and ownership-checked v1 migration with atomic main activation; fault-inject staging/write/rename/readback/state publication/crash and rollback failures, asserting complete previous graph or explicit recovery-required state with retained backups.
-- [ ] 1.5 Implement guarded current-stock restore and quiet idempotence; cover external edits, newer stock, reseeded missing helpers, stale/live locks and interrupted transactions, and document the source/transaction contracts and native-writer race limits in the native patch policy.
+- [x] 1.1 Add pinned raw 0.1.16/0.1.17 palette/feedback fixtures with source/license/digest provenance, correcting the distinction between stock and facade-rewritten originals; assert the feedback equality and palette theme diff recorded in investigation.md.
+- [x] 1.2 Add bounded current-stock discovery for disk/reset and owned-over-new-host cases, with executable provenance, raw backups and path/encoding validation; exercise unique/missing/ambiguous boundaries, changed binaries, personal edits, CRLF/LF/BOM and absent evidence using disposable synthetic binaries only.
+- [x] 1.3 Package the pinned parser/license and generic anchored range-transform/self-check contract without runtime downloads; assert offline dependency closure, unique anchors, invalid output refusal, unchanged AST regions and read-only inspection byte/timestamp preservation.
+- [x] 1.4 Implement immutable helper generations, shared mutation locking, durable v2 journal/state and ownership-checked v1 migration with atomic main activation; fault-inject staging/write/rename/readback/state publication/crash and rollback failures, asserting complete previous graph or explicit recovery-required state with retained backups.
+- [x] 1.5 Implement guarded current-stock restore and quiet idempotence; cover external edits, newer stock, reseeded missing helpers, stale/live locks and interrupted transactions, and document the source/transaction contracts and native-writer race limits in the native patch policy.
 
 ## 2. Custom palette with current native catalog and actions
 
