@@ -8,10 +8,10 @@
 
 ## 2. Attached fleet rows use a muted vector elbow in expanded and compact sidebars
 
-- [ ] 2.1 Add and package a thin no-fill elbow SVG, replace Spaces chain-badge consumers in expanded rows, compact rail and paired previews, and remove obsolete Spaces-only chain mapping; build output resolves the SVG with the intended thin stroke and no text connector.
-- [ ] 2.2 Anchor the expanded elbow's vertical stroke beneath the parent badge centre, bend toward an inset muted child name and retain normal row height/hover/selection; render-tree assertions compare leading geometry and theme colour with the supplied mockup's layout.
-- [ ] 2.3 Add compact/paired-preview regression assertions for the elbow, ordinary numbered badges and unchanged fleet selection/tooltip and paired dragging; focused rendering/reorder fixtures pass without native input or deployment.
-- [ ] 2.4 Replace README and docs/TESTING.md link-glyph descriptions with expanded elbow and compact-rail behavior; documentation and the delta specification describe the same presentation.
+- [x] 2.1 Add and package a thin no-fill elbow SVG, replace Spaces chain-badge consumers in expanded rows, compact rail and paired previews, and remove obsolete Spaces-only chain mapping; build output resolves the SVG with the intended thin stroke and no text connector.
+- [x] 2.2 Anchor the expanded elbow's vertical stroke beneath the parent badge centre, bend toward an inset muted child name and retain normal row height/hover/selection; render-tree assertions compare leading geometry and theme colour with the supplied mockup's layout.
+- [x] 2.3 Add compact/paired-preview regression assertions for the elbow, ordinary numbered badges and unchanged fleet selection/tooltip and paired dragging; focused rendering/reorder fixtures pass without native input or deployment.
+- [x] 2.4 Replace README and docs/TESTING.md link-glyph descriptions with expanded elbow and compact-rail behavior; documentation and the delta specification describe the same presentation.
 
 ## 3. Worktree markers align with machine chevrons even beside Crew tags
 

@@ -581,12 +581,15 @@ selected terminal's folder.
 
 **Settings → Spaces → Connect fleet space to coordinator** is off by default
 (`connectFleetToCoordinator`). When on with Crew enabled, a verified same-machine
-fleet attaches below its coordinator with a link badge; the coordinator keeps its
-Crew tag and only the attached fleet omits it. Unrelated plugin tags remain.
+fleet attaches below its coordinator with a thin muted vector elbow descending
+from beneath the coordinator's number badge toward the inset, muted fleet name.
+The coordinator keeps its Crew tag and only the attached fleet omits it.
+Unrelated plugin tags remain.
 Dragging either expanded row moves the pair, with both rows dimmed and a paired
 preview. Public ordering commands wait for acknowledgements; the two-space move is
 not atomic and an uncertain result is never replayed. The compact rail remains
-selection-only and shows the same link glyph. They remain separate selectable native
+selection-only and shows the same elbow in the fleet's badge slot, with its usual
+name/directory tooltip. They remain separate selectable native
 spaces; no terminals or tabs are relocated. The coordinator's Git panel shows only
 recorded task PRs across projects, with task-scoped counts and no single active pin.
 Live working and reported tasks (including plans awaiting approval) are included.

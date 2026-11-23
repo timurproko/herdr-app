@@ -128,7 +128,10 @@ identities, TTL/coalescing, order-independent binding, expiry and disable genera
 `tests/fleet-reorder.test.mjs` exercises pure display blocks and queued public move
 acknowledgements, either grabbed member, pair edges, timeout and no replay. Shared
 reorder and Spaces render fixtures cover both-source dimming, stacked preview and
-expanded/compact link glyphs while preserving ordinary worktree order. Packaged Crew
+expanded/compact vector elbows and paired previews while preserving ordinary
+worktree order. Geometry assertions put the thin 1px muted stem under the parent
+badge centre, the bend on the child name's centre line, and only the name at its
+8px child inset; rail selection and ordinary numbering stay unchanged. Packaged Crew
 fixtures retain the coordinator's Crew tag, omit only the verified attached fleet's
 tag, restore ordinary worker tags on stale/disabled attachment, and hide all Crew
 tags when the plugin is disabled; tag reads start no discovery or state writes.

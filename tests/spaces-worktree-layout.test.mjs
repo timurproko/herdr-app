@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 
 function element(){const n={attrs:{},kids:[]};let p;return p=new Proxy(n,{get:(o,k)=>k in o?o[k]:k==='when'?(yes,fn)=>yes?fn(p):p:k==='child'?child=>{o.kids.push(child);return p;}:(...args)=>{o.attrs[k]=args;return p;}});}
 const find=(n,id)=>n?.attrs?.id?.[0]===id?n:n?.kids?.map(child=>find(child,id)).find(Boolean);
 const drag={view:null,item:e=>e,sourceLayer:e=>e,guard:fn=>fn};let hostSpaces=[];
-const context={...links,pluginWorkspaceLinks:()=>[],View:class{},div:element,h_flex:element,v_flex:element,svg:path=>element().asset(path),slot:child=>element().size(16).child(child),badge:(number,color)=>element().color(color).child(number),spaceTitle:()=>element(),itemHover:()=> 'hover',spaceBadgeColor:()=> 'avatar-color',reorder:()=>drag,spaces:()=>hostSpaces,panes:()=>[],pluginSpaceTags:()=>[],rolePill:(_t,label)=>element().child(label),displaySpace:s=>s,spaceDirectory:s=>({cwd:s.folder}),shared:key=>key==='custom.plugins'?{git:{enabled:false}}:{},run(){assert.fail('Rendering must not navigate or move spaces');},U:{row:28,gap:8,radius:6,smallIcon:14}};
+const context={...links,pluginWorkspaceLinks:()=>[],View:class{},div:element,h_flex:element,v_flex:element,svg:path=>element().asset(path),slot:child=>element().size(16).child(child),badge:(number,color)=>element().color(color).child(number),spaceTitle:()=>element(),itemHover:()=> 'hover',spaceBadgeColor:()=> 'avatar-color',reorder:()=>drag,spaces:()=>hostSpaces,panes:()=>[],pluginSpaceTags:()=>[],rolePill:(_t,label)=>element().child(label),displaySpace:s=>s,spaceDirectory:s=>({cwd:s.folder}),shared:key=>key==='custom.plugins'?{git:{enabled:false}}:{},run(){assert.fail('Rendering must not navigate or move spaces');},U:{row:28,control:28,icon:16,gap:8,radius:6,smallIcon:14}};
 const source=fs.readFileSync(new URL('../src/features/spaces/main.js',import.meta.url),'utf8').replace(/^import .*;\r?\n/gm,'').replace('export default class Spaces','class Spaces').replace(/export /g,'')+'\nglobalThis.Spaces=Spaces;';vm.runInNewContext(source,context);
 const view=new context.Spaces(),theme={muted:'muted',dim:'dim',selected:'selected',ansi2:'green',ansi1:'red'},w={id:'worktree',name:'session-name-dialog-editing',active:true};
 for(const tree of ['└─',null]){
@@ -73,13 +73,37 @@ for (const machine of [null,'pc2']) {
  view.git={[key(s)]:{linked:true}};s.folder='/new/unknown';view.menu(s);
  assert.equal(overlays.at(-1).props.target.checkout,'unknown');
 }
-// The actual row builders retain original native indexes but use a link glyph/inset.
+// A vector elbow hangs from the parent badge centre; only the child text is inset.
 context.pluginWorkspaceLinks=()=>[{parent:'parent',child:'worktree-a',binding:'pair'}];
 const projected=view.ordered(),parentAt=projected.findIndex(r=>r.w.id==='parent');
 assert.equal(projected[parentAt+1].w.id,'worktree-a');assert.equal(projected[parentAt+1].linked,true);
 const fleetRow=view.row(projected[parentAt+1],theme),fleetContent=find(fleetRow,'space-content-worktree-a');
-assert.equal(fleetContent.attrs.pl[0],8);assert.equal(fleetContent.kids[0].kids[0].attrs.asset[0],'mods/custom-spaces/link.svg');
+const connector=fleetContent.kids[0],elbow=connector.kids[0];
+assert.equal(fleetContent.attrs.pl,undefined,'No child padding moves the stem away from the parent badge');
+assert.equal(connector.attrs.w[0],24);assert.equal(connector.attrs.h[0],28);
+assert.equal(elbow.attrs.asset[0],'mods/custom-spaces/fleet-elbow.svg');assert.equal(elbow.attrs.size[0],24);
+assert.equal(elbow.attrs.left[0],0);assert.equal(elbow.attrs.top[0],2);assert.equal(elbow.attrs.text_color[0],theme.muted);
+assert.equal(fleetContent.kids[1].attrs.text_color[0],theme.muted,'Even an active child name stays muted');
+const vector=fs.readFileSync(new URL('../src/shared/fleet-elbow.svg',import.meta.url),'utf8');
+assert.match(vector,/fill="none"/);assert.match(vector,/stroke="currentColor"/);assert.match(vector,/stroke-width="1"/);
+assert.match(vector,/stroke-linecap="round"/);assert.match(vector,/d="M8 2v10h12"/);
+const outerInset=8,parentBadgeCentre=outerInset+16/2;
+assert.equal(outerInset+elbow.attrs.left[0]+8,parentBadgeCentre,'Stem uses the coordinator badge centre');
+assert.equal(elbow.attrs.top[0]+2+10,28/2,'Bend is vertically centred on the child name');
+assert.equal(connector.attrs.w[0]+8-(16+8),8,'Only the child label gains an 8px inset');
+const manifest=JSON.parse(fs.readFileSync(new URL('../customization.json',import.meta.url),'utf8'));
+assert.equal(manifest.files['mods/custom-spaces/fleet-elbow.svg'],'src/shared/fleet-elbow.svg');
+assert.equal(manifest.files['mods/custom-spaces/link.svg'],undefined);
 drag.control=e=>e;
-assert.equal(find(view.compact(projected[parentAt+1],theme),'space-badge-worktree-a').kids[0].attrs.asset[0],'mods/custom-spaces/link.svg');
+const compact=view.compact(projected[parentAt+1],theme),rail=find(compact,'space-badge-worktree-a');
+assert.equal(rail.attrs.w[0],16);assert.equal(rail.kids[0].attrs.asset[0],'mods/custom-spaces/fleet-elbow.svg');
+assert.equal((28-rail.attrs.w[0])/2+8,28/2,'Rail stem aligns with the parent badge, not the wider SVG centre');
+assert.equal(compact.attrs.w[0],28);assert.equal(compact.attrs.h[0],28);assert.equal(compact.attrs.tooltip,undefined,'Tooltip is delegated to the existing drag control');
+assert.ok(compact.attrs.on_click);assert.equal(find(view.compact(projected[parentAt],theme),'space-badge-parent').kids[0],String(projected[parentAt].i+1));
+const oldRun=context.run,selected=[];context.run=(name,args)=>selected.push([name,args]);
+compact.attrs.on_click[0]();assert.deepEqual(JSON.parse(JSON.stringify(selected)),[['space.select',{id:'worktree-a'}]]);context.run=oldRun;
+drag.view={id:'parent',meta:{sources:['parent','worktree-a']}};drag.preview=(_id,_t,data)=>data;
+const preview=view.dragPreview(theme);assert.equal(preview.rows[1].icon.kids[0].attrs.asset[0],'mods/custom-spaces/fleet-elbow.svg');
+assert.equal(preview.rows[1].label.attrs.text_color[0],theme.muted);assert.equal(preview.rows[0].label,'parent');drag.view=null;
 context.pluginWorkspaceLinks=()=>[];assert.equal(view.ordered().find(r=>r.w.id==='worktree-a').linked,false);
 console.log('PASS: first-frame local/remote checkout snapshots; aligned worktrees, preserved user order and cross-machine drag guards (dummy Core only)');

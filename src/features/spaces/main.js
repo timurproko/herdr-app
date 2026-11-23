@@ -434,13 +434,19 @@ export default class Spaces extends View {
     const block = this.drag.view?.meta?.sources;
     const rows = block?.length > 1 ? block.map((id,k)=> {
       const at=all.findIndex(s=>s.id===id),space=displaySpace(all[at],panes());
-      return {icon:k ? this.linkBadge(t) : badge(String(at+1),spaceBadgeColor(t,space,shared('space.colors')??{})),label:space.name};
+      return {icon:k ? this.fleetConnector(t) : badge(String(at+1),spaceBadgeColor(t,space,shared('space.colors')??{})),
+        label:k ? div().text_color(t.muted).child(space.name) : space.name};
     }) : null;
     return this.drag.preview('space-drag', t, {
       icon: badge(String(i + 1), spaceBadgeColor(t, w, shared('space.colors') ?? {})), label: w.name, rows});
   }
 
-  linkBadge(t) { return slot(svg('mods/custom-spaces/link.svg').size(U.icon).text_color(t.muted)); }
+  // The stem stays at x=8, directly below the parent's badge centre. The extra
+  // expanded width insets the child name, not the stem. Rail targets stay 28px.
+  fleetConnector(t, compact = false) {
+    return div().relative().w(compact ? U.icon : U.icon + U.gap).h(U.row).flex_none()
+      .child(svg('mods/custom-spaces/fleet-elbow.svg').size(24).absolute().left(0).top((U.row - 24) / 2).text_color(t.muted));
+  }
 
   row({ w, i, g, tree, linked = false, position = i }, t) {
     const on = w.active;
@@ -494,14 +500,13 @@ export default class Spaces extends View {
       .child(
         h_flex()
           .id(`space-content-${w.id}`)
-          .when(linked, el => el.pl(8))
           .gap(U.gap)
           .items_center()
           .when(this.tabArrival?.spaceId === w.id && !edit, el => tabArrivalMotion(this, el))
-          .child(linked ? this.linkBadge(t) : badge(String(i + 1), fill))
+          .child(linked ? this.fleetConnector(t) : badge(String(i + 1), fill))
           .when(Boolean(edit), el => el.child(this.renameField(w, t)))
           .when(!edit, el => el
-            .child(spaceTitle(t,w).min_w(0).max_w(150).truncate().child(w.name))
+            .child(spaceTitle(t,w).when(linked, el => el.text_color(t.muted)).min_w(0).max_w(150).truncate().child(w.name))
             .child(g ? this.gitTail(g, tree, w.name, t, w.named === true) : div().flex_1()))
           .when(!edit && Boolean(g?.linked || tree) && shows("spaces.show.worktree"), el => el.child(slot(svg("mods/custom-workspace-chrome/branch.svg").size(U.smallIcon).text_color(t.muted)).id(`space-worktree-${w.id}`).tooltip('Git worktree')))
           // Tags enabled plugins add to a space (Crew: it runs the coordinator), as pills at the
@@ -528,7 +533,7 @@ export default class Spaces extends View {
       .when(w.active, (el) => el.bg(t.selected)), {hover: s => s.bg(itemHover(t, w.active)), tooltip: w.directory || w.name})
       .on_click(this.drag.guard(() => run("space.select", { id: w.id })))
       .on_mouse_down("right", this.drag.guard((_e, cx) => { cx.stop_propagation(); this.menu(w); }))
-      .child((linked ? this.linkBadge(t) : badge(String(i + 1), fill)).id(`space-badge-${w.id}`)
+      .child((linked ? this.fleetConnector(t, true) : badge(String(i + 1), fill)).id(`space-badge-${w.id}`)
         .when(this.tabArrival?.spaceId === w.id, el => tabArrivalMotion(this, el)));
   }
 
