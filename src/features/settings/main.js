@@ -909,7 +909,7 @@ export default class Settings extends View {
         .when(Boolean(app[1]), (el) => el.child(app[1]))))
       .child(this.row(t, `herdr-core ${c.version ?? ""}`, core[0], core[1] ?? div()))
       .child(customizationUpdateRow(this, t))
-      .child(div().pt(12).text_size(12.5).line_height("18px").text_color(t.dim).child("Herdr and herdr-core look for updates every hour. Custom normally checks every 2–3 minutes while mounted, and sooner on merge hints when the Git relay is enabled and configured. Available updates appear in the corner. herdr-core runs your terminals, so they keep running through its updates."));
+      .child(div().pt(12).text_size(12.5).line_height("18px").text_color(t.dim).child("Herdr looks for both every hour and tells you in the corner. herdr-core runs your terminals, so they keep running through its updates."));
   }
 
 

@@ -324,14 +324,8 @@ assert.match(settings, /u\.app\.ready \|\| \(u\.core\.ready && !u\.core\.managed
 assert.equal((chromeSource.match(/updates\(\)\.app\.ready \|\| customizationUpdateAvailable\(\)/g) || []).length, 2, 'expanded Settings and compact More preserve native predicates');
 for (const command of ['app.check_updates', 'app.update', 'app.update_core', 'app.whats_new']) assert.ok(settings.includes(command));
 assert.equal((settings.match(/\.child\(customizationUpdateRow\(this, t\)\)/g) || []).length, 1);
-const updateExplanation = settings.match(/\.child\("(Herdr and herdr-core[^"\n]*)"\)/)?.[1];
-assert.ok(updateExplanation, 'Updates retains an explanatory paragraph');
-assert.match(updateExplanation, /Herdr and herdr-core look for updates every hour\./);
-assert.match(updateExplanation, /Custom normally checks every 2–3 minutes while mounted/);
-assert.match(updateExplanation, /sooner on merge hints when the Git relay is enabled and configured/);
-assert.match(updateExplanation, /Available updates appear in the corner\./);
-assert.match(updateExplanation, /herdr-core runs your terminals, so they keep running through its updates\./);
-assert.doesNotMatch(settings, /Herdr looks for both every hour/);
+const updateExplanation = settings.match(/\.child\("(Herdr [^"\n]*)"\)/)?.[1];
+assert.equal(updateExplanation, 'Herdr looks for both every hour and tells you in the corner. herdr-core runs your terminals, so they keep running through its updates.', 'Updates retains the exact short paragraph from before PR 20');
 assert.match(settings, /initUpdateCheckFeedback\(this, cx/);
 assert.match(settings, /updateCheckSlot\(this, t/);
 const { output } = build();
