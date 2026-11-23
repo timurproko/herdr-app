@@ -2,7 +2,7 @@
 
 ## Context
 
-See `proposal.md` for motivation and the decisions requiring approval. This is a plan only; implementation, deployment and native interaction checks are not authorized yet.
+See `proposal.md` for motivation and the decisions requiring approval. Implementation is approved for recorded links only. Deployment and live native interaction checks are not authorized.
 
 Observed sources:
 
@@ -77,22 +77,15 @@ Initial links, explicit Refresh and newly discovered links trigger exact PR fetc
 
 Hide/disable stops new aggregate work and closes unused subscriptions. Preserve last good same-binding metadata with an explicit repository-scoped error after a transient fetch failure; do not preserve a previous coordinator's rows. Global missing setup uses the existing Settings link; unenrolled repositories get scoped setup links with their captured repository, not automatic enrollment or one misleading single-repo footer. Aggregate visibility never changes auto-fix settings, monitor scope or repository selections.
 
-### 6. Separate Crew prerequisite for complete pre-report PR discovery
+### 6. Recorded-link source with a future discovery seam
 
-**No Crew change is required for attachment, pair dragging or already recorded PRs.** Current status already gives the owner/task terminal join and recorded `tasks[].pr`. It cannot guarantee every newly opened PR while a first report is still in progress: those task records can legitimately have `pr: null` until `done`/`land`.
+The approved source is only `tasks[].pr` from plain `crew status --json`. A Crew-owned source adapter owns the command and conversion into sanitized task facts; generic consumers never construct Crew commands. A later `crew status --json --discover-prs` can replace that adapter without changing Spaces or Git, but is not called, implemented, awaited or required here.
 
-For the full request, create a separate task in Crew (do not implement it here):
-
-- Add an opt-in read-only `crew status --json --discover-prs` contract while preserving existing status behavior for callers without that flag.
-- Expose each task's recorded `worktree` and `branch`, and a per-task `prDiscovery` of `known`, `none` or `unavailable`. Existing recorded `pr` remains primary; if absent, resolve only that exact task's repository and recorded ship/review branch through read-only Git/GitHub calls. Follow a review's recorded reviewed-task relationship rather than guessing its cwd branch. Return the canonical PR URL as `pr` for this response, including before report/land.
-- `none` means an authoritative lookup found no PR; missing branch, ambiguous results, missing gh/login or read failures mean `unavailable`, not none. Bound timeout and concurrency and retain the existing owner/home/terminal fields. Do not mutate task records, owner state, reports, branches, native labels, terminal input or recovery state. Add fixture tests for pre-report PRs, reviewed tasks, duplicate branch names across repos and unavailable reads.
-- Return an explicit discovery contract version so an old CLI that ignores an unknown flag cannot be mistaken for complete discovery. Proposed top-level `prDiscoveryVersion: 1`; older responses without it remain recorded-links-only and visibly incomplete.
-
-App outcome 4 consumes and fixture-tests this additive response contract only while the aggregate Git panel is shown; Spaces' identity refresh uses plain status and never starts GitHub discovery. The optional lookup is bounded missing-link discovery for exact task branches, not a periodic repository list/CI refresh: already recorded links do not trigger GitHub reads inside Crew. This additional read behavior belongs in the companion's approved contract and documentation. Until the separate Crew change is available on the relevant machine, show recorded links and a compact incomplete-discovery indication; do not claim full acceptance for pre-report discovery. The person may instead explicitly approve narrower recorded-links-only semantics, requiring the proposal/specs/tasks to be reconciled before implementation.
+Current status can have `pr: null` until `done`/`land`. When any eligible task is still working/unreported, show **Recorded PRs · possibly incomplete until tasks report** even if it already has a recorded PR. Missing links are not guessed through branches, footer/transcript searches or GitHub inventory. Newly recorded links enter at the next local status refresh. No separate Crew task is needed for this implementation.
 
 ## Risks / Trade-offs
 
-- **Companion completeness is a real dependency** → coordinate the separate Crew task; unknown links remain unknown, never inferred from transcripts or called complete.
+- **Recorded links can lag PR creation** → explicit possibly-incomplete wording for unreported tasks and an isolated future source adapter; no companion dependency.
 - **Public ordering is not a two-space transaction** → finite acknowledgement-bound sequence, one active commit, no document writer, no blind rollback/replay; concurrent clients can require another deliberate drag.
 - **Owner changes and reused terminal/task IDs** → machine/home/owner generation plus exact live membership at publication and action time; no persisted authoritative IDs.
 - **Remote hc/status and GH latency** → coalesced local-context reads, bounded concurrency/timeouts, scoped errors and stale reply guards. No source checkout required remotely; use the installed Crew tool.
@@ -101,7 +94,7 @@ App outcome 4 consumes and fixture-tests this additive response contract only wh
 
 ## Migration Plan
 
-1. Obtain approval for the explicit product choices in `proposal.md` and coordinate the Crew discovery prerequisite if full completeness is retained.
+1. Apply the approved recorded-links-only choices in `proposal.md`; no deployment or Crew modification.
 2. Implement only this repository's five outcomes, each with fixture coverage; update README and relevant architecture/command guidance alongside code.
 3. Build/package and run quick targeted tests without touching real homes, Core, accounts or terminals. No deployment in this task unless separately authorized later.
 4. After a separately authorized rollout, the absent preference remains off. Switching off is the immediate feature rollback; normal guarded package rollback remains available without restoring live documents. No migration of old task or session state.

@@ -51,14 +51,15 @@ With attachment and Git enabled, selecting a verified coordinator space SHALL sh
 - **THEN** its known PR remains eligible, including a plan awaiting approval
 - **AND** stopped, failed, closed or absent workers do not contribute rows
 
-#### Scenario: Unknown PR discovery
-- **WHEN** a worker has no recorded PR and the companion cannot establish whether a pre-report PR exists
-- **THEN** the overview identifies discovery as incomplete rather than claiming there are no PRs
-- **AND** it does not guess links from transcript mentions, unrelated branches or another worker
+#### Scenario: Unreported tasks
+- **WHEN** an eligible task has not reported yet
+- **THEN** the overview labels its recorded-link list as possibly incomplete until tasks report
+- **AND** only recorded task PR links are used, without branch guesses, transcript searches or a new Crew capability
 
-#### Scenario: Newly opened pre-report PR
-- **WHEN** the companion's read-only discovery provides a PR for an eligible task before its next report
-- **THEN** the next local-context refresh adds that PR without requiring land, done, a terminal restart or a coordinator folder change
+#### Scenario: Newly recorded PR
+- **WHEN** plain Crew status supplies a newly recorded PR for an eligible task
+- **THEN** the next local-context refresh adds that PR without a terminal restart or coordinator folder change
+- **AND** the source remains isolated behind an adapter for future discovery without depending on it
 
 #### Scenario: Ordinary mode restored
 - **WHEN** attachment is disabled or a non-coordinator space is selected
