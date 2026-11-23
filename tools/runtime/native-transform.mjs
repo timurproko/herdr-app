@@ -12,8 +12,9 @@ function requireFields(init,names) {
   for(const name of names)one(init.body.body.map(n=>n.expression).filter(n=>n?.type==='AssignmentExpression'&&n.left.type==='MemberExpression'&&n.left.object.type==='ThisExpression'&&n.left.property.name===name),`native state ${name}`);
 }
 function hookConflicts(klass,init,names) {
-  if(nodes(klass,n=>(n.type==='AssignmentExpression'&&n.left.object?.type==='ThisExpression'&&names.includes(n.left.property?.name))||(n.type==='MethodDefinition'&&names.includes(n.key?.name))).length)throw new Incompatible('native state collides with Custom lifecycle hooks');
-  if(nodes(init,n=>call(n,'on')&&['focus','blur'].includes(n.arguments[0]?.value)).length)throw new Incompatible('native focus/blur hooks cannot be safely replaced');
+  const property=n=>n.computed?n.property?.value:n.property?.name;
+  if(nodes(klass,n=>(n.type==='AssignmentExpression'&&n.left.object?.type==='ThisExpression'&&(names.includes(property(n.left))||(n.left.computed&&n.left.property.type!=='Literal')))||(n.type==='MethodDefinition'&&(names.includes(n.computed?n.key.value:n.key.name)||(n.computed&&n.key.type!=='Literal')))).length)throw new Incompatible('native state collides with or ambiguously aliases Custom lifecycle hooks');
+  if(nodes(init,n=>call(n,'on')&&(n.arguments[0]?.type!=='Literal'||['focus','blur'].includes(n.arguments[0]?.value))).length)throw new Incompatible('native focus/blur hooks or dynamic event names cannot be safely replaced');
 }
 // Replaced presentation may change styling, but must not hide an unrecognized
 // factory, callback, sibling, computed call or wrapper. Retained nodes are copied

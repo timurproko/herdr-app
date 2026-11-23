@@ -49,7 +49,7 @@ for(const [name,source]of [
  assert.throws(()=>transformPalette(source,'./custom-test'),/palette (?:root|render)/,`${name}: unsupported content must not disappear in Custom`);
 }
 const focus=auditStock.replace('this.input.focus();','this.input.on("focus",()=>this.nativeExtra=true); this.input.focus();');const nativeFocus=await harness(focus,paletteFiles()),focused=new nativeFocus.View();focused.init({},nativeFocus.cx);focused.input.events.focus();assert.equal(focused.nativeExtra,true);assert.throws(()=>transformPalette(focus,'./custom-test'),/native focus\/blur hooks/);
-assert.throws(()=>transformPalette(auditStock.replace('init(_props, cx) {','init(_props, cx) { this.headingSync = null;'),'./custom-test'),/native state collides/);
+for(const assignment of ['this.headingSync = null;','this["headingSync"] = null;'])assert.throws(()=>transformPalette(auditStock.replace('init(_props, cx) {',`init(_props, cx) { ${assignment}`),'./custom-test'),/native state collides/);
 assert.throws(()=>transformPalette(auditStock.replace('placeholder: "Type a command…"','placeholder: (this.nativeExtra = true, "Type a command…")'),'./custom-test'),/placeholder gained behavior/);
 const computed=auditStock.replace(' : e.args);',' : (this.argumentEvaluations = (this.argumentEvaluations ?? 0) + 1, e.args));');assert.notEqual(computed,auditStock);
 const h=await harness(transformPalette(computed,'./custom-test'),paletteFiles()),p=new h.View();p.init({},h.cx);
