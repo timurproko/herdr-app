@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 
 function element(){const n={attrs:{},kids:[]};let p;return p=new Proxy(n,{get:(o,k)=>k in o?o[k]:k==='when'?(yes,fn)=>yes?fn(p):p:k==='child'?child=>{o.kids.push(child);return p;}:k==='children'?children=>{o.attrs.children=[children];o.kids.push(...children);return p;}:(...args)=>{o.attrs[k]=args;return p;}});}
 const find=(n,id)=>n?.attrs?.id?.[0]===id?n:n?.kids?.map(child=>find(child,id)).find(Boolean);
 const drag={view:null,item:e=>e,sourceLayer:e=>e,guard:fn=>fn};let hostSpaces=[];
-const context={...links,pluginWorkspaceLinks:()=>[],View:class{},div:element,h_flex:element,v_flex:element,svg:path=>element().asset(path),slot:child=>element().size(16).child(child),badge:realUi(element).badge,spaceTitle:()=>element(),itemHover:()=> 'hover',spaceBadgeColor:()=> 'avatar-color',reorder:()=>drag,spaces:()=>hostSpaces,panes:()=>[],pluginSpaceTags:()=>[],rolePill:(_t,label)=>element().child(label),displaySpace:s=>s,spaceDirectory:s=>({cwd:s.folder}),shared:key=>key==='custom.plugins'?{git:{enabled:false}}:{},run(){assert.fail('Rendering must not navigate or move spaces');},U:{row:28,control:28,icon:16,gap:8,radius:6,smallIcon:14}};
+const context={...links,pluginWorkspaceLinks:()=>[],View:class{},div:element,h_flex:element,v_flex:element,svg:path=>element().asset(path),slot:child=>element().size(16).child(child),badge:realUi(element).badge,spaceTitle:()=>element(),itemHover:()=> 'hover',spaceBadgeColor:()=> 'avatar-color',reorder:()=>drag,spaces:()=>hostSpaces,panes:()=>[],pluginSpaceTags:()=>[],rolePill:realUi(element).rolePill,displaySpace:s=>s,spaceDirectory:s=>({cwd:s.folder}),shared:key=>key==='custom.plugins'?{git:{enabled:false}}:{},run(){assert.fail('Rendering must not navigate or move spaces');},U:{row:28,control:28,icon:16,gap:8,radius:6,smallIcon:14}};
 const source=fs.readFileSync(new URL('../src/features/spaces/main.js',import.meta.url),'utf8').replace(/^import .*;\r?\n/gm,'').replace('export default class Spaces','class Spaces').replace(/export /g,'')+'\nglobalThis.Spaces=Spaces;';vm.runInNewContext(source,context);
 const view=new context.Spaces(),theme={muted:'muted',dim:'dim',selected:'selected',ansi2:'green',ansi1:'red'},w={id:'worktree',name:'session-name-dialog-editing',active:true};
 for(const tree of ['└─',null]){
@@ -79,6 +79,11 @@ for (const machine of [null,'pc2']) {
 context.pluginWorkspaceLinks=()=>[{parent:'parent',child:'worktree-a',binding:'pair'}];
 const projected=view.ordered(),parentAt=projected.findIndex(r=>r.w.id==='parent');
 assert.equal(projected[parentAt+1].w.id,'worktree-a');assert.equal(projected[parentAt+1].linked,true);
+const ordinaryTags=context.pluginSpaceTags,tagReads=[];
+context.pluginSpaceTags=space=>{
+ tagReads.push(space.id);
+ return ['parent','worktree-a'].includes(space.id)?[{plugin:'crew',label:'Crew',tooltip:space.id==='parent'?'Crew coordinator':'Crew worker'}]:[];
+};
 const fleetRow=view.row(projected[parentAt+1],theme),fleetContent=find(fleetRow,'space-content-worktree-a');
 const chain=fleetContent.kids[0];
 const parentRow=view.row(projected[parentAt],theme),parentContent=find(parentRow,'space-content-parent');
@@ -99,6 +104,20 @@ for(const active of [false,true]) {
  assert.equal(content.kids[1].attrs.text_color[0],theme.muted,'The left-aligned fleet name stays subordinate, including when active');
 }
 assert.equal(parentContent.kids[1].attrs.text_color,undefined,'The coordinator keeps its ordinary name style');
+for(const machine of [null,'pc2']) {
+ const pills=[];
+ for(const [record,tooltip] of [[projected[parentAt],'Crew coordinator'],[projected[parentAt+1],'Crew worker']]) {
+  const row=view.row({...record,w:{...record.w,machine},g:{linked:true}},theme);
+  const content=find(row,`space-content-${record.w.id}`),pill=find(row,`space-tag-${record.w.id}-crew-0`),marker=find(row,`space-worktree-${record.w.id}`);
+  assert.deepEqual(pill.kids,['Crew']);assert.equal(pill.attrs.tooltip[0],tooltip);
+  assert.equal(content.kids.at(-2),pill,'Both Crew pills occupy the same trailing slot before the worktree marker');
+  assert.equal(content.kids.at(-1),marker);
+  assert.equal(row.attrs.px[0]+marker.attrs.mr[0]+marker.attrs.size[0]/2,12,'The fleet pill does not shift the machine-chevron axis');
+  assert.equal(pill.attrs.h[0],18);assert.equal(pill.attrs.rounded[0],5);assert.equal(pill.attrs.bg[0],`${theme.muted}26`);
+  const {id,tooltip:tip,...style}=pill.attrs;pills.push(JSON.parse(JSON.stringify(style)));
+ }
+ assert.deepEqual(pills[1],pills[0],'The real shared rolePill styling matches on both attached rows');
+}
 const vector=fs.readFileSync(new URL('../src/shared/link.svg',import.meta.url),'utf8');
 assert.match(vector,/fill="none"/);assert.match(vector,/stroke="currentColor"/);assert.match(vector,/stroke-width="1.5"/);
 assert.match(vector,/stroke-linecap="round"/);assert.match(vector,/stroke-linejoin="round"/);assert.match(vector,/d="M10 13a4/);
@@ -108,8 +127,12 @@ assert.equal(manifest.files['mods/custom-spaces/fleet-elbow.svg'],undefined);
 assert.equal(fs.existsSync(new URL('../src/shared/fleet-elbow.svg',import.meta.url)),false);
 assert.doesNotMatch(source,/fleet-elbow|fleetConnector/);
 drag.control=(e,options)=>{e.controlOptions=options;return e;};
+const beforeRailReads=tagReads.length;
 const compact=view.compact(projected[parentAt+1],theme),rail=find(compact,'space-badge-worktree-a');
 const parentRail=view.compact(projected[parentAt],theme),parentRailBadge=find(parentRail,'space-badge-parent');
+assert.equal(tagReads.length,beforeRailReads,'Compact rail does not query plugin tags');
+for(const row of [compact,parentRail])assert.equal(row.kids.length,1,'Compact rail remains badge-only, without Crew pills');
+context.pluginSpaceTags=ordinaryTags;
 assert.equal(rail.attrs.size[0],parentRailBadge.attrs.size[0]);assert.equal(rail.attrs.size[0],16);
 assert.equal(rail.attrs.asset[0],'mods/custom-spaces/link.svg');assert.equal(rail.attrs.text_color[0],theme.muted);
 assert.equal(compact.attrs.items_center.length,0);assert.equal(compact.attrs.justify_center.length,0);

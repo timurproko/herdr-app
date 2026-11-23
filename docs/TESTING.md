@@ -308,12 +308,14 @@ assertions compare the muted vector's 16px box, slot width and vertical centerin
 with real numbered badges; fleet names share ordinary names' left edge while
 retaining muted text, without connector lines. Rail selection, name/directory
 tooltips and ordinary numbering stay unchanged. Packaged Crew
-fixtures retain the coordinator's Crew tag, omit only the verified attached fleet's
-tag, restore ordinary worker tags on confirmed detach/attachment-off, and hide all Crew
-tags when the plugin is disabled; tag reads start no discovery or state writes.
-Worktree layout fixtures compare actual local/remote machine-chevron and trailing
+fixtures retain Crew tags on both attached rows through refresh, finished fleets
+and cold restoration, restore ordinary worker tag rules on confirmed detach/attachment-off,
+and hide all Crew tags when the plugin is disabled; tag reads start no discovery or state writes.
+Worktree layout fixtures compare the real shared Crew pill styling and trailing
+placement on both attached rows, plus actual local/remote machine-chevron and
 branch-slot right axes for ordinary/attached rows, Crew and multiple plugin pills,
-long names, tag-only edges, hidden icons and rename mode.
+long names, tag-only edges, hidden icons and rename mode. Compact rail fixtures
+remain badge-only and never query plugin tags.
 
 `tests/fleet-git.test.mjs` loads the actual Git controller, aggregate source and Crew
 provider through the package harness. Synthetic tasks/gh results cover coordinator
