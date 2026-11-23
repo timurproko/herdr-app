@@ -18,7 +18,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-23-discover-fleet-task-prs/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-23-discover-fleet-task-prs/acceptance.md",
   "finalizedDate": "2026-11-23",
-  "specBaseSha": "a1e4fc1a1385724ed31887e8aeae51c73a2d738e",
+  "specBaseSha": "d823d5ebac2cfd664fe3a61bfa2ec13476d5393f",
   "acceptanceScenarios": [
     "Working tasks with no recorded PR contribute validated discovered drafts before their first report, using exact live worker identity.",
     "Known, none and unavailable results retain their meaning through bounded sanitized task facts and generic pull context.",
@@ -27,7 +27,7 @@ The maintainer integration decision accepts these scenarios:
     "Coordinator history, counts, folds, exact navigation and uncluttered headers remain unchanged, with no enrollment or label renderer changes."
   ],
   "archiveDigest": "ebbb50834210343585969b0028618755de693a9e8db3c9916e607450c2d623eb",
-  "specDigest": "05595d5192118522f818f31e4335a83e1b71d811b13c6b047b62ea0df2996182",
+  "specDigest": "c74fe92b31a9e1679f8ee7d0d0dc0a4f7f9ce366ffba798f435f2390e873572e",
   "tasksDigest": "705881b18b58bb0282be333615f1dd85d7ac7eab856713f7a5373aee574c5a6f",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []
