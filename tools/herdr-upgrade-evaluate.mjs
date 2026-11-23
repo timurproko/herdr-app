@@ -33,7 +33,7 @@ export function sdkSurface(text,required=HOST_CONTRACT.api) {
   // Preserve string/template literal types while stripping comments, then retain
   // complete top-level declarations and their transitive referenced types.
   text=text.replace(/("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`)|(\/\*[\s\S]*?\*\/|\/\/[^\n]*)/g,(_m,literal)=>literal??'');
-  const declarations={};const matches=[...text.matchAll(/^export (?:declare )?(function|interface|type|class|const|enum)\s+(\w+)/gm)];
+  const declarations=Object.create(null);const matches=[...text.matchAll(/^export (?:declare )?(function|interface|type|class|const|enum|namespace)\s+(\w+)/gm)];
   for(let i=0;i<matches.length;i++) {
     const name=matches[i][2],declaration=text.slice(matches[i].index,matches[i+1]?.index??text.length).trim();
     // TypeScript overloads and declaration merging share a name. Keep every

@@ -20,10 +20,13 @@ try {
   assert.equal(surfaceChanges(sdkSurface(overloads,['run']),sdkSurface(onlyNumber,['run']))[0].name,'run');
   assert.match(sdkSurface(overloads,['run']).run,/x: string/);assert.match(sdkSurface(overloads,['run']).run,/x: number/);
   const merged='export interface Info { first: Extra }\nexport interface Info { second: string }\nexport interface Extra { n: number }\nexport function run(): Info;';
+  const functionNamespace='export function run(): void;\nexport namespace run { export const version: string; }';
+  assert.match(sdkSurface(functionNamespace,['run']).run,/export function run/);assert.match(sdkSurface(functionNamespace,['run']).run,/export namespace run/);
   assert.match(sdkSurface(merged,['run']).Info,/first: Extra/);assert.match(sdkSurface(merged,['run']).Info,/second: string/);assert.ok(sdkSurface(merged,['run']).Extra);
   assert.deepEqual(hostSourceFacts({'src/feature.js':'run("tab.new")','src/native/original.js':'run("tab.new")'}).consumers.run,['src/feature.js']);
   assert.match(sdkSurface('export function url(): "https://example/a"; // note',['url']).url,/https:\/\/example\/a/);
   assert.equal(sdkSurface('/*\nexport function fake(): void;\n*/',['fake']).fake,null);
+  assert.deepEqual(Object.keys(sdkSurface('export interface Info { constructor: string; toString: string; }\nexport function run(): Info;',['run'])),['Info','run']);
   assert.equal(testEnvironment({GH_TOKEN:'secret',DELIVERY_BOT_PRIVATE_KEY:'secret',PATH:'a',CUSTOM_SECRET:'secret'}).GH_TOKEN,undefined);
   assert.deepEqual(Object.keys(testEnvironment({GH_TOKEN:'secret',PATH:'a'})).sort(),['CI','PATH']);
   let options;const failed=runCheck(root,['x'],{spawn:(_cmd,_args,opts)=>{options=opts;return {status:2,stdout:'all errors',stderr:'failure'};}});

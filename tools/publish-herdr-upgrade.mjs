@@ -103,18 +103,25 @@ export function boundedComment(body) {
   const excerpt=Buffer.from(body).subarray(0,48000).toString('utf8');
   return excerpt.slice(0,excerpt.lastIndexOf('\n'))+'\n\nComment excerpt truncated for GitHub size limits. The complete report, hunks and migration checklist remain in the linked Actions artifact and committed proposal evidence.\n';
 }
-export async function commentOnce(api,number,marker,body) {
-  const comments=await pages(api,`issues/${number}/comments`);
-  if(!comments.some(c=>c.body?.includes(marker)))await api('POST',`issues/${number}/comments`,{body:`${marker}\n${boundedComment(body)}`});
+export async function commentOnce(api,number,marker,body,comments) {
+  comments??=await pages(api,`issues/${number}/comments`);
+  if(!comments.some(c=>c.body?.includes(marker))) {
+    const text=`${marker}\n${boundedComment(body)}`;
+    await api('POST',`issues/${number}/comments`,{body:text});
+    comments.push({body:text});
+  }
 }
 export async function reconcileProposalLinks(api,proposals) {
-  const open=proposals.filter(pr=>pr.state==='open');
+  const open=proposals.filter(pr=>pr.state==='open'),commentsByProposal=new Map();
   for(const newer of open)for(const older of open) {
     if(newer.number===older.number)continue;
     const identity=releaseIdentity(newer.versions),versions=newer.versions;
     const shared=Object.keys(versions).filter(c=>older.versions[c]);
     const advanced=shared.filter(c=>compareVersions(versions[c],older.versions[c])>0),supersedes=advanced.length>0;
-    if(supersedes||!shared.length)await commentOnce(api,older.number,`<!-- herdr-${supersedes?'superseded':'related'}:${identity} -->`,`${supersedes?`A newer Herdr migration supersedes the ${advanced.join(', ')} release review in this proposal`:'A related independent-component migration is available'}: ${newer.html_url}. Existing commits and checklist are preserved; neither proposal was closed or merged.`);
+    if(supersedes||!shared.length) {
+      if(!commentsByProposal.has(older.number))commentsByProposal.set(older.number,await pages(api,`issues/${older.number}/comments`));
+      await commentOnce(api,older.number,`<!-- herdr-${supersedes?'superseded':'related'}:${identity} -->`,`${supersedes?`A newer Herdr migration supersedes the ${advanced.join(', ')} release review in this proposal`:'A related independent-component migration is available'}: ${newer.html_url}. Existing commits and checklist are preserved; neither proposal was closed or merged.`,commentsByProposal.get(older.number));
+    }
   }
 }
 const prefixAllowed=(file,identity)=>file.startsWith(`upstream/migrations/${identity}/`)||file.startsWith(`openspec/changes/${migrationChange(identity)}/`);
