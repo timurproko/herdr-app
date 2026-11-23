@@ -34,9 +34,9 @@ The maintainer integration decision accepts these scenarios:
     "Verified pair identity survives unrelated changes, long outages and cold reloads; only confirmed loss, missing native spaces or explicit disablement detaches it.",
     "Unverified coordinator Git retains rows as Stale or waits as Verifying, without fresh reads or worker navigation; merged relay guards and shared row labels/separators remain intact."
   ],
-  "archiveDigest": "e323e9820d7c47934cb44e385c136e613a7c4b01bdc5b82b78e366e1a4ce52e6",
+  "archiveDigest": "84f257ff1a2c4f111c599039cdde3b5131073b03c883b6092cf505216c0af6b7",
   "specDigest": "7f773c7f98cae47d28feacdd3d881a110156cd5fbde0249d88206568980fd54c",
-  "tasksDigest": "cffea93f29a858664b16bcf8c535293862b6c7465fd0b01c00f64b334d181e6f",
+  "tasksDigest": "57983a3d72834ac9e6c60cf0654d4a740a7429dcadeb0d781f03e671c7394ec1",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []
 }
