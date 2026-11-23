@@ -7,15 +7,28 @@ import { RELAY_EVENTS, RELAY_RETRY, nextRelayEvent } from './relay-events.js';
 // All windows must merge into the same generation instead of alternating epochs.
 const generationFor = scope => `relay-${[...scope].reduce((hash, c) => Math.imul(hash ^ c.charCodeAt(0), 16777619) >>> 0, 2166136261).toString(16)}`;
 
+export function stopRelay({ owner }) {
+  if (!owner) return;
+  owner.gitRelayClosed = true;
+  owner.gitRelayQueued = false;
+  owner.gitRelayContext = null;
+  owner.gitRelayScope = null;
+  owner.gitRelayRecord = null;
+  owner.gitRelaySocket?.stop();
+  // Do not clear shared counters: another window can still own a live stream.
+}
+
 export function syncRelay(context) {
   const { owner, cx } = context;
-  if (!owner) return;
+  if (!owner || owner.sidebarClosed || owner.gitRelayClosed) return;
   if (checking()) { owner.gitRelaySocket?.stop(); owner.gitRelayScope = undefined; return; }
   owner.gitRelayContext = context;
   if (owner.gitRelayQueued) return;
   owner.gitRelayQueued = true;
   cx.spawn(async cx => {
+    if (owner.sidebarClosed || owner.gitRelayClosed) return;
     await Promise.resolve(); // shared publication and socket work must yield out of render
+    if (owner.sidebarClosed || owner.gitRelayClosed) return;
     owner.gitRelayQueued = false;
     const latest = owner.gitRelayContext;
     const configured = latest.setting('relay'), relay = relayURL(configured);
@@ -33,7 +46,8 @@ export function syncRelay(context) {
     }
     if (!scope) return;
     const record = owner.gitRelayRecord;
-    const current = () => !checking() && owner.gitRelayRecord?.generation === record.generation
+    const current = () => !owner.sidebarClosed && !owner.gitRelayClosed && !checking()
+      && owner.gitRelayRecord?.generation === record.generation
       && (shared('custom.git.webhook-state')?.revision || 0) === revision
       && owner.gitRelayScope === scope && shared('custom.plugins')?.git?.enabled !== false
       && owner.gitRelayContext.enabled && owner.gitRelayContext.setting('relay') === configured;

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { loadMod } from '../tools/plugin-harness.mjs';
 let clock = 100000, enabled = true, relay = 'https://relay.test', visible = true, eager = false;
 let keys = JSON.stringify({ token: 'a'.repeat(64), secret: 'b'.repeat(64) });
+let keyGate = null, connectGate = null, keyReads = 0, holdCloseRead = false;
 class Clock extends Date { static now() { return clock; } }
 const state = new Map(), sockets = [], jobs = [], timers = [], calls = [];
 const tick = async () => { for (let i = 0; i < 100; i++) await Promise.resolve(); };
@@ -13,7 +14,7 @@ const target = { cwd: '/fixture/repo', on: null };
 let facts = 0;
 const host = {
   appHome: () => '/fixture', checking: () => eager,
-  readTextFile: async () => keys,
+  readTextFile: async () => { keyReads++; return keyGate || keys; },
   shared: key => key === 'custom.plugins' ? { git: { enabled } } : state.get(key),
   setShared: (key, value) => state.set(key, JSON.parse(JSON.stringify(value))),
   layout: () => ({ id: 'panel', hidden: !visible, children: [{ id: 'panel-body', active: 'changes' }] }),
@@ -30,27 +31,40 @@ const host = {
     }
     return { code: 0, stdout: JSON.stringify({ data: { repository: { open: { totalCount: 20 }, closed: { totalCount: 10 } } } }) };
   },
-  hc: noop, theme: noop, run: noop, openOverlay: noop, closeOverlay: noop, props: noop, notify: noop, nextCommand: noop, window: noop, settings: noop,
+  hc: noop, theme: noop, run: noop, openOverlay: noop, closeOverlay: noop, props: noop, notify: noop, nextCommand: noop, window: noop, settings: noop, updates: noop,
 };
-const uiNames = ['headerTools', 'reveal', 'subtleActionFill', 'refreshButton'];
-const api = await loadMod({ host, mod: 'custom-changes', globals: { Date: Clock, URL }, modules: {
+const uiNames = ['headerTools', 'reveal', 'subtleActionFill', 'refreshButton', 'slot', 'interactionFill', 'menuSurface'];
+async function loadFixture() {
+let api;
+api = await loadMod({ host, mod: 'custom-changes', globals: { Date: Clock, URL }, modules: {
   websocket: { WebSocket: { async connect(url) {
     const socket = { url, closed: false, write: async () => {}, read: () => new Promise((resolve, reject) => { socket.resolve = resolve; socket.reject = reject; }),
-      async close() { socket.closed = true; socket.reject?.(Error('closed')); } };
-    sockets.push(socket); return socket;
+      async close() { socket.closed = true; if (!holdCloseRead) socket.reject?.(Error('closed')); } };
+    sockets.push(socket); if (connectGate) await connectGate; return socket;
   } } },
+  'chrome-main.js': 'src/features/workspace-chrome/main.js',
+  'sidebar-footer.js': { FOOTER_ITEMS: [], footerItems: () => [], footerVisible: () => false, moveFooter: noop },
+  'look.js': { enterCustom: noop }, 'startup.js': { restoreFrames: noop },
+  'reorder.js': { reorder: noop, groupedInsertion: noop },
+  'customization-updates.js': { initCustomizationUpdates: noop, customizationUpdateAvailable: () => false, syncCustomizationUpdateHints: noop },
   'panel-main.js': 'src/plugins/git/mod/main.js', 'webhooks.js': 'src/plugins/git/mod/webhooks.js', 'pulls.js': 'src/plugins/git/mod/pulls.js',
-  'gpui-kit': { View: class {}, div: noop, svg: noop, PathBuilder: {} }, 'gpui-base': { v_flex: noop, h_flex: noop },
+  'gpui-kit': { View: class {}, div: noop, svg: noop, image: noop, PathBuilder: {} }, 'gpui-base': { v_flex: noop, h_flex: noop },
   'ui.js': { U: {}, ...Object.fromEntries(uiNames.map(name => [name, noop])) },
   'location.js': { location: () => target }, 'agent-links.js': { AgentLinks: class {} },
   'space-color-state.js': { currentSpaceColor: noop }, 'settings-dialog.js': { openSettings: noop },
   'notices.js': { GitNotices: class {} }, 'pin-swap.js': { PinSwap: class { cancel() {} }, PIN_SWAP_MS: 320 },
   'panel-pin.js': { panelPin: noop }, 'panel-state.js': { changePanel: noop }, 'sidebar-title.js': { sidebarTitle: noop },
   'panel-kit.js': { headerTool: noop, contextMenu: noop, tag: noop, panelMessage: noop },
-  'plugins.js': { sidebarPanelEnabled: () => enabled },
+  'plugins.js': { sidebarPanelEnabled: () => enabled, pluginIsEnabled: () => enabled,
+    pluginEvent(name, event) { api.git.lifecycle[name]?.({ ...event, enabled, setting: context().setting }); } },
 }, entry: `export {syncRelay} from './plugins/git/relay-stream.js';
 export {relayEvents,nextRelayEvent,RELAY_EVENTS,requestRelayRetry} from './plugins/git/relay-events.js';
+export {default as git} from './plugins/git/plugin.js';
+export {default as Chrome} from './chrome-main.js';
 export {default as Changes} from './panel-main.js';` });
+return api;
+}
+const api = await loadFixture();
 const sync = async () => { api.syncRelay(context()); await tick(); };
 const panel = new api.Changes(); panel.resetRepository();
 panel.context = JSON.stringify([target.cwd, target.on]); panel.root = target.cwd;
@@ -118,5 +132,54 @@ assert.equal(api.relayEvents().ready, readyCount, 'Unrelated notice in the other
 assert.equal(api.relayEvents().repositories['timurproko/herdr-app'].push, latchedPush, 'Other window preserves a latched target push');
 enabled = false; await sync(); api.syncRelay({ ...context(), owner: otherOwner }); await tick();
 assert.equal(firstWindow.closed, true); assert.equal(secondWindow.closed, true);
+// Actual WorkspaceChrome.close -> Git declaration lifecycle cleanup, including
+// callbacks created in the old module graph during customization replacement.
+enabled = true;
+const startChrome = (graph, chrome, at = cx) => graph.git.lifecycle['sidebar.sync']({ ...context(), owner: chrome, cx: at });
+const queued = new api.Chrome(), beforeQueued = sockets.length;
+startChrome(api, queued); queued.close(); await tick();
+assert.equal(sockets.length, beforeQueued, 'Teardown during the queued yield cannot start transport');
+assert.equal(queued.gitRelaySocket, undefined);
+const queuedTasks = [], queuedCx = { ...cx, spawn: fn => queuedTasks.push(fn) };
+const notStarted = new api.Chrome(); startChrome(api, notStarted, queuedCx); notStarted.close();
+await queuedTasks.shift()(queuedCx); await tick();
+assert.equal(sockets.length, beforeQueued, 'Teardown before the queued callback starts is also guarded');
+const socketQueued = new api.Chrome(); startChrome(api, socketQueued, queuedCx);
+await queuedTasks.shift()(queuedCx); await tick();
+assert.equal(queuedTasks.length, 1); const readsBeforeClose = keyReads;
+socketQueued.close(); await queuedTasks.shift()(queuedCx); await tick();
+assert.equal(keyReads, readsBeforeClose, 'A queued socket task cannot even read credentials after owner teardown');
+let resolveKeys; keyGate = new Promise(resolve => { resolveKeys = resolve; });
+const reading = new api.Chrome(); startChrome(api, reading); await tick(); reading.close();
+resolveKeys(keys); keyGate = null; await tick();
+assert.equal(sockets.length, beforeQueued, 'Teardown while credentials are pending cannot connect afterward');
+const mounted = new api.Chrome(); startChrome(api, mounted); await tick(); const oldSocket = sockets.at(-1);
+oldSocket.resolve(JSON.stringify({ type: 'ready', protocol: 1 })); await tick();
+mounted.customUpdateHint = { enabled: true, pending: 'hint', timer: {} };
+const beforeClose = JSON.stringify(api.relayEvents()), timerCount = timers.length;
+holdCloseRead = true; mounted.close();
+assert.equal(oldSocket.closed, true, 'Authenticated chrome teardown closes the socket immediately');
+assert.equal(mounted.customUpdateClosed, true); assert.equal(mounted.customUpdateHint.pending, null); assert.equal(mounted.customUpdateHint.timer, null);
+oldSocket.resolve(JSON.stringify({ type: 'github', event: 'push', repository: 'timurproko/herdr-app', delivery: 'after-close' })); await tick();
+holdCloseRead = false;
+assert.equal(JSON.stringify(api.relayEvents()), beforeClose, 'A buffered push after owner teardown cannot publish');
+assert.equal(timers.length, timerCount, 'Teardown does not schedule transport retries');
+startChrome(api, mounted); await tick(); assert.equal(sockets.filter(socket => !socket.closed).length, 0, 'A closed chrome owner cannot restart');
+const replacementGraph = await loadFixture(), replacement = new replacementGraph.Chrome();
+startChrome(replacementGraph, replacement); await tick(); const replacementSocket = sockets.at(-1);
+replacementSocket.resolve(JSON.stringify({ type: 'ready', protocol: 1 })); await tick();
+assert.equal(sockets.filter(socket => !socket.closed).length, 1, 'Mod replacement leaves exactly one live socket');
+const replacementSequence = replacementGraph.relayEvents().sequence;
+replacementSocket.resolve(JSON.stringify({ type: 'github', event: 'push', repository: 'timurproko/herdr-app', delivery: 'replacement-push' })); await tick();
+assert.equal(replacementGraph.relayEvents().sequence, replacementSequence + 1, 'Only the replacement graph publishes new notices');
+enabled = false; replacement.close(); await tick();
+assert.equal(replacementSocket.closed, true, 'Disabled Git still receives chrome lifecycle cleanup');
+enabled = true;
+// A connect promise already dispatched before close must close on resolution too.
+let resolveConnect; connectGate = new Promise(resolve => { resolveConnect = resolve; });
+const connecting = new api.Chrome(); startChrome(api, connecting); await tick(); const pendingSocket = sockets.at(-1);
+connecting.close(); resolveConnect(); connectGate = null; await tick();
+assert.equal(pendingSocket.closed, true, 'Late connection resolution cannot leak a socket after teardown');
+assert.equal(sockets.filter(socket => !socket.closed).length, 0);
 await Promise.all(jobs);
-console.log('PASS: chrome-owned sockets, actual Git panel visible/hidden/shown and reconnect refresh, expanded pages, bounded hints, two-window counter merging and disable guards');
+console.log('PASS: actual chrome teardown before/after async startup and authentication, one live replacement socket, visible/hidden/shown panel refresh, bounded shared hints and two-window merging');

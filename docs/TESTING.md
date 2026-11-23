@@ -142,7 +142,12 @@ panel's visibility/queue/flush methods: visible notices refresh loaded pages,
 hidden notices keep the socket alive without panel reads, showing again catches
 up and later notices still refresh, and reconnect retains expanded depth. Two
 chrome owners merge public counters within one configuration generation, so an
-unrelated notice in another window cannot erase a push or imitate a reconnect. All
+unrelated notice in another window cannot erase a push or imitate a reconnect.
+The same fixture loads the actual WorkspaceChrome and Git declaration: close
+before queued startup, during the yielded callback, with credential/connect
+promises pending and after authentication prevents late work/publication. It
+loads a fresh module graph to simulate replacement and asserts exactly one live
+socket, with only that replacement publishing. No native update is performed. All
 pre-existing Git assertions remain; the transport fixture's loader/import stubs
 follow its move to the chrome owner. Its disabling-owner socket-close and
 no-retry assertions now apply to that owner, complemented by the new assertion

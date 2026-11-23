@@ -145,8 +145,10 @@ or GPUI pixel visibility; no live enrollment was performed during development.
 
 Enabled Git uses one authenticated native WebSocket owned by the mounted
 non-footer Custom chrome, shared through public runtime invalidation counters.
-Hiding Git or changing folders does not close that stream; disabled Git and relay
-configuration changes do. Hidden panels still do no PR, CI or agent-link reads.
+Hiding Git or changing folders does not close that stream; disabled Git, relay
+configuration changes and chrome teardown/replacement do. Closing chrome also
+invalidates queued startup and late socket callbacks, so updates cannot leave
+old subscriptions running. Hidden panels still do no PR, CI or agent-link reads.
 Reconnection has bounded transport-only backoff; there is **no periodic CI polling
 fallback**. Opening the panel or reconnecting catches up using authoritative
 GitHub reads. Settings/footer/menu copies never open extra sockets.

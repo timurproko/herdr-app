@@ -46,6 +46,16 @@ export default class WorkspaceChrome extends View {
       initCustomizationUpdates(this, cx, 'custom-workspace-chrome', { chrome: true });
     }
   }
+  close() {
+    this.sidebarClosed = true;
+    this.customUpdateClosed = true;
+    if (this.customUpdateHint) {
+      this.customUpdateHint.enabled = false;
+      this.customUpdateHint.pending = null;
+      this.customUpdateHint.timer = null;
+    }
+    pluginEvent('sidebar.close', { owner: this });
+  }
   button(id, label, action) {
     const t = theme();
     return div().id(id).size(U.control).flex_none().flex().items_center().justify_center().rounded(U.radius).text_color(t.muted).hover(s => s.bg(interactionFill(t)).text_color(t.foreground))
@@ -147,6 +157,7 @@ export default class WorkspaceChrome extends View {
       .when(Boolean(this.drag.view), el => el.child(this.footerPreview(t)));
   }
   render(cx) {
+    if (this.sidebarClosed) return div();
     if (props()?.footerMenu) return this.footerMenu(theme());
     if (!props()?.footer) {
       pluginEvent('sidebar.sync',{owner:this,cx});

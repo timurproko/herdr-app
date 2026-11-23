@@ -23,6 +23,7 @@ export class GitWebhooks {
     cx.spawn(async cx=>{
       let socket;
       try {
+        if(!current())return;
         const keys=credentials(await readTextFile(credentialPath(appHome())));
         if(!current())return;
         if(!keys){this.state='setup';this.status='Live CI: create credentials in Settings › Plugins › Git';this.blocked=true;changed();return;}
@@ -31,6 +32,7 @@ export class GitWebhooks {
         if(!current()){await socket.close();return;}
         this.socket=socket;
         await socket.write(JSON.stringify({type:'authenticate',token:keys.token}));
+        if(!current())return;
         let ready=false;const seen=this.seen;
         cx.timer.after(10000,()=>{if(current() && !ready)Promise.resolve(socket.close()).catch(()=>{});});
         while(current()) {

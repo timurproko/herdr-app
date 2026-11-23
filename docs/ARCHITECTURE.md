@@ -499,9 +499,14 @@ runtime-only `custom.git.webhook-state` key; no credentials or secret hashes are
 shared/exported. Configured non-Git contexts and enrolled repos have no prompt.
 
 Git's `relay-stream.js` owns one native WSS subscription from the existing
-non-footer chrome `sidebar.sync` lifecycle. It closes on plugin disable or relay
-configuration change, not on panel visibility or folder changes, and retains
-transport-only reconnect backoff. `relay-socket.js` owns authentication, message
+non-footer chrome `sidebar.sync` lifecycle. `WorkspaceChrome.close()` marks the
+owner closed, cancels its pending update hints and emits `sidebar.close`; Git's
+lifecycle handler stops its socket and invalidates queued startup/callbacks even
+when Git is disabled. Closed-owner guards run before/after the render yield and
+at async transport boundaries. Mod replacement therefore cannot accumulate old
+subscriptions. Other windows' shared counters remain intact. Plugin disable or
+relay configuration change also closes transport, but panel visibility/folder
+changes do not. Transport-only reconnect backoff is retained. `relay-socket.js` owns authentication, message
 bounds and delivery deduplication across reconnects. Public bounded repository/push
 counters and ready generations are published in runtime-only
 `custom.git.webhook-events`; no credentials or webhook bodies are shared.
