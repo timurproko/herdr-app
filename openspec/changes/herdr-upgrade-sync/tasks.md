@@ -2,9 +2,9 @@
 
 ## 1. Independent release discovery and reviewed-evidence inventory
 
-- [ ] 1.1 Add injectable, bounded fixed-origin App/Core feed and immutable-tag resolution helpers; fake-feed tests cover current/new independent versions, combined advances, malformed/prerelease input, missing tags, annotated tags, rate limits, partial outages and moved provenance.
-- [ ] 1.2 Inventory host/document reviewed versions, source pins, stock baselines and registry originals without changing their meaning; fixture tests cover divergent evidence and unavailable baseline/provenance, including the existing Core 0.1.22 record.
-- [ ] 1.3 Document the observed release sources, GitHub Releases 404, anonymous API rate limit and distinction between local and hosted reachability in docs/HERDR-UPGRADES.md; confirm source fixtures match recorded public schema fields.
+- [x] 1.1 Add injectable, bounded fixed-origin App/Core feed and immutable-tag resolution helpers; fake-feed tests cover current/new independent versions, combined advances, malformed/prerelease input, missing tags, annotated tags, rate limits, partial outages and moved provenance.
+- [x] 1.2 Inventory host/document reviewed versions, source pins, stock baselines and registry originals without changing their meaning; fixture tests cover divergent evidence and unavailable baseline/provenance, including the existing Core 0.1.22 record.
+- [x] 1.3 Document the observed release sources, GitHub Releases 404, anonymous API rate limit and distinction between local and hosted reachability in docs/HERDR-UPGRADES.md; confirm source fixtures match recorded public schema fields.
 
 ## 2. Scoped compatibility evaluation and candidate-only evidence
 
@@ -27,10 +27,10 @@
 - [ ] 4.2 Implement paginated identity lookup and initial-only branch/PR publication with fake GitHub/Git; cases cover component overlap, open/closed/merged duplicates, interrupted branch creation, unknown branch collisions and agent-owned head preservation.
 - [ ] 4.3 Add exact skipped-version recognition, manual same-PR reconsideration and marker-deduplicated supersession/cross-link comments; fake GitHub tests cover combined identities, absent labels, malformed freezes, newer versions and failing/uncertain writes without merging, readiness changes or body rewrites.
 - [ ] 4.4 Validate and stage only bounded generated evidence/OpenSpec paths, and publish reports with the existing delivery App token only in the writer; malicious artifact/path/input fixtures demonstrate refusal and no writer secret exposure to evaluation or test children.
-- [ ] 4.5 Document activation, read-only hosted reachability probe, freeze/skip/reconsideration and rollback, including the separate MyWorkflows shared-label manifest action; dry-run fixtures assert zero writes and leave the actual hosted probe explicitly pending if unavailable before merge. Open no live migration proposal in this task.
+- [ ] 4.5 Document activation, read-only hosted reachability probe, freeze/skip/reconsideration and rollback, including publisher-created repository-local 🤖 Skip with neutral colour and closing-to-skip description, without changing MyWorkflows; dry-run fixtures assert zero writes and leave the actual hosted probe explicitly pending if unavailable before merge. Open no live migration proposal in this task.
 
 ## Workflow follow-up
 
-- Implementation requires approval of this plan; this task stops after opening its draft planning PR.
+- Plan approved by the coordinator with the repository-local 🤖 Skip label amendment; implementation continues in PR #27.
 - Keep the task PR draft and never merge or arm auto-merge; readiness/finalization and merge authority remain with the shared workflow and maintainer.
-- After an authorized merge, a maintainer runs the no-write hosted probe, reconciles the separate 0.1.17 migration work, arranges the shared skip-label entry and explicitly activates proposal writes.
+- After an authorized merge, a maintainer runs the no-write hosted probe, reconciles the separate 0.1.17 migration work and explicitly activates proposal writes; the publisher creates the local skip label if missing.

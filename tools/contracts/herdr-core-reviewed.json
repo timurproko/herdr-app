@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "repository": "herdrdev/herdr-core",
+  "coreVersion": "0.1.22",
+  "commit": "6e2984629fcd600b0165f69b2e5b0bda5985ec1c",
+  "review": "docs/TAB-MOVE-CORE-0.1.22-REVIEW.md",
+  "criticalFiles": {
+    "crates/herdr-core/src/api.rs": "06889e5d4f69918321920078e04a05c80ae856a5",
+    "crates/herdr-core/src/api/doc.rs": "b9fcbf3dd239e4c40f756766308cac090987ff55",
+    "crates/herdr-core/src/api/types.rs": "ce42234d2ab1843ad90de77d74edcf14c5fa80eb",
+    "crates/herdr-core/src/events.rs": "1a6071f5c8b78ecd5a8df5e2506179b6d6143009",
+    "crates/herdr-core/src/remote.rs": "b03cef1ac058d19bd4f647870ef4cdbb75e8045e",
+    "crates/herdr-core/src/remote/run.rs": "d6e30224cdf0209eb1b09581594e7cd7ba5abe20",
+    "crates/herdr-core/src/runtime.rs": "9e287161a97303c21d66d247117794e9026ba22b",
+    "crates/herdr-core/src/runtime/persistence.rs": "e3b44839c777c9b6282e41eb2aedb8054dece75a",
+    "crates/herdr-core/src/paths.rs": "6889a1b618227d2459bbb8a500a2aa1969dce53b",
+    "crates/herdr-core/src/server.rs": "3505629c7c913ee47825ff3ff2788fd0b273830b",
+    "crates/herdr-core/src/cli.rs": "87a9e7bf072db1595ddf80621bcc7cec4e22b965",
+    "crates/herdr-core/src/platform/windows.rs": "6960044c93ce3805df543ab8daaf6ec03ce635b5",
+    "schema/hc.openrpc.json": "a670005d2d90a52dbc9d47181a9a8c3406b4b8ab"
+  }
+}

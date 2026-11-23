@@ -64,7 +64,12 @@ Automation SHALL open at most one draft proposal per candidate release identity 
 - **AND** its commits, checklist, draft status and open state remain untouched
 
 ### Requirement: Skip and freeze controls
-An unmerged proposal closed with `🤖 Herdr upgrade skipped` SHALL suppress its exact release identity on scheduled runs. Closure without that label SHALL NOT authorize another proposal for the same identity; explicit manual reconsideration SHALL reuse the closed proposal. `HERDR_UPGRADE_FREEZE_UNTIL` SHALL suppress scheduled writes until its UTC deadline; manual dispatch SHALL remain available.
+An unmerged proposal closed with `🤖 Skip` SHALL suppress its exact release identity on scheduled runs. Closure without that label SHALL NOT authorize another proposal for the same identity; explicit manual reconsideration SHALL reuse the closed proposal. `HERDR_UPGRADE_FREEZE_UNTIL` SHALL suppress scheduled writes until its UTC deadline; manual dispatch SHALL remain available.
+
+#### Scenario: Repository-local skip label
+- **WHEN** publication is activated and this repository lacks `🤖 Skip`
+- **THEN** the publisher creates that exact U+1F916 plus space plus one-word name with colour 6e7781 and a description explaining closing a Herdr migration proposal skips that version
+- **AND** it neither modifies MyWorkflows' shared review-label manifest nor writes labels during no-write probes
 
 #### Scenario: Skipped candidate and newer release
 - **WHEN** a skipped proposal exists and a different newer release appears
@@ -78,6 +83,11 @@ An unmerged proposal closed with `🤖 Herdr upgrade skipped` SHALL suppress its
 
 ### Requirement: Non-invasive safe automation
 Discovery and proposals SHALL NOT deploy, change update channels, restart native processes, alter runtime eligibility or automatically approve new originals. Proposal writes SHALL use existing delivery credentials with narrowly scoped repository permissions. Candidate source SHALL be treated as data, never executed with write credentials. A read-only mode SHALL perform no GitHub or branch writes.
+
+#### Scenario: Publication requires a hosted probe
+- **WHEN** publication has not been explicitly activated using a successful hosted no-write probe of the current workflow revision
+- **THEN** scheduled and manual runs cannot write proposals or labels
+- **AND** maintainers can still run the hosted no-write probe
 
 #### Scenario: Migration remains pending
 - **WHEN** a newly detected version has an unresolved proposal

@@ -9,7 +9,7 @@ Herdr App and Core can update before Custom's compatibility evidence has been re
 - Add scheduled and manual public-release discovery for App and Core, compared independently with existing reviewed profiles, pinned source contracts, stock baselines and native patch originals.
 - Generate one draft migration proposal per candidate App/Core identity, including scoped upstream diffs, every check's passed/failed/blocked/skipped result, candidate evidence and file-specific migration actions.
 - Carry over a1's report-first, continue-after-failure, skip/freeze, idempotency and agent-owned-branch protections; use Herdr's release feeds and source tags instead of npm pins and vendored-source merges.
-- Add a proposed `🤖 Herdr upgrade skipped` control label, a scheduled freeze variable, supersession comments and an explicit agent/Crew handoff. The shared label manifest belongs to `timurproko/MyWorkflows`; this task will not edit that repository or apply live labels/variables.
+- Add the repository-local `🤖 Skip` control label, created by the publisher if missing with grey colour and a closing-to-skip description, plus a scheduled freeze variable, supersession comments and an explicit agent/Crew handoff. Do not change MyWorkflows' shared review-label manifest or apply live labels/variables during this task.
 - Preserve #21's capability gate, advisory source audits and reviewed-byte native patch skips. Do not perform the separate 0.1.17 patch rebase or adopt #23's structural transforms.
 
 ## Capabilities
