@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import {realUi} from './support/panel-kit.mjs';
 
 function element() {
   const data = {kids: [], style: {}, transitions: {} }; let el;
@@ -65,8 +66,8 @@ const source = fs.readFileSync(new URL('../src/features/spaces/main.js', import.
 const reorderSource = fs.readFileSync(new URL('../src/ui/reorder.js', import.meta.url), 'utf8')
   .replace(/^import .*;\r?\n/gm, '').replace(/^export /gm, '');
 const reorder = new Function('div', 'h_flex', 'Popup', 'U', reorderSource + '; return reorder;')(element, element, {}, {section:36, control:28});
-const Spaces = new Function('View', 'div', 'svg', 'h_flex', 'v_flex', 'U', 'spaces', 'shared', 'spaceBadgeColor', 'badge', 'spaceTitle', 'tabArrivalMotion', 'machines', 'slot', 'chevron', 'itemHover', 'reorder', 'pluginSpaceTags', 'rolePill',
-  source + '; return Spaces;')(class {}, element, element, element, element, {row:28,control:28,radius:6,gap:8}, () => world, () => ({}), () => '#123456', element, element, tabArrivalMotion, () => [], x => x, element, () => '#222222', reorder, () => [], element);
+const Spaces = new Function('View', 'div', 'svg', 'h_flex', 'v_flex', 'U', 'spaces', 'shared', 'spaceBadgeColor', 'badge', 'spaceTitle', 'tabArrivalMotion', 'machines', 'slot', 'sidebarSectionHeader', 'itemHover', 'reorder', 'pluginSpaceTags', 'rolePill',
+  source + '; return Spaces;')(class {}, element, element, element, element, {row:28,control:28,radius:6,gap:8}, () => world, () => ({}), () => '#123456', element, element, tabArrivalMotion, () => [], x => x, realUi(element).sidebarSectionHeader, () => '#222222', reorder, () => [], element);
 const view = new Spaces(); view.pressed = null; view.folded = new Set(['remote']); view.machines = []; view.reconnecting = {};
 view.tabArrival = {spaceId: 'remote/dest', machine: 'remote', phase: 'hop'};
 const w = {...world[0], name: 'Destination'};

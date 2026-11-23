@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {loadMod} from '../tools/plugin-harness.mjs';
+import {withKitUi} from './support/panel-kit.mjs';
 
 function element() {
   const node={attrs:{},kids:[]};let proxy;
@@ -21,7 +22,7 @@ const host={props:()=>null,closeOverlay(){},openOverlay(){},nextCommand(){},sett
 const modules={
   'main.js':'src/plugins/git/mod/main.js','pulls.js':'src/plugins/git/mod/pulls.js',
   'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{}},'gpui-base':{h_flex:element,v_flex:element},
-  'ui.js':{U,headerTools:e=>e,reveal:e=>e,subtleActionFill:()=>'',refreshButton:element},
+  'ui.js':withKitUi({U,headerTools:e=>e,reveal:e=>e,subtleActionFill:()=>'',refreshButton:element},element),
   'aggregate.js':{AggregatePulls:class{}},'agent-links.js':{AgentLinks:class{}},'pin-swap.js':{PinSwap:class{},PIN_SWAP_MS:320},
   'webhooks.js':{GitWebhooks:class{}},'notices.js':{GitNotices:class{}},'location.js':{location:()=>({})},
   'panel-pin.js':{panelPin:element},'panel-state.js':{changePanel(){}},'sidebar-title.js':{sidebarTitle:element},
