@@ -30,8 +30,8 @@ The maintainer integration decision accepts these scenarios:
     "Deferred identities survive selection and inventory failures but never enter portable preferences.",
     "Launching and running descriptions say Updating… while the button and every other state's wording stay unchanged."
   ],
-  "archiveDigest": "96ab1743972ecb3f9bb22c58c3382fb266dd9530d0ac2c5a3020d0301e433eef",
-  "specDigest": "eaeb3f675ad91774686e128b5103db03f00ea00c677082c1ac0e5c4983ef504e",
+  "archiveDigest": "50ef40fbe53b783ed59bf3bd049423794c9aba661cd20b815de17b963c9094ad",
+  "specDigest": "9e084ba171c5f62826a4e2de2b4bb2a28d16a59f1d2c337cdd044b989a896d77",
   "tasksDigest": "9dffe8c9df3e17efdcf2c4f8e8e8564f0db56492a62ba875e45509cb39a3bd73",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []
