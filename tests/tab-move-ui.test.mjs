@@ -2,8 +2,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {withKitUi} from './support/panel-kit.mjs';
+import {createRequire} from 'node:module';
+import {build} from '../tools/build.mjs';
+const {operate} = createRequire(import.meta.url)(`${build().output}/mods/custom-tabs/move-tab.cjs`);
 const states = {}, calls = [], notices = [], executions = [], tasks = [];
-let world, focus, keepSource = false, replyStatus = 'moved', navigate = false, acknowledge = true;
+const requiredCommands=['tab.new','tab.move','tab.settle','tab.select','pane.focus'];
+let availableCommands=requiredCommands, appVersion='0.1.16';
+let world, focus, keepSource = false, replyStatus = 'moved', navigate = false, acknowledge = true, inspectWorker = null;
 const capability = {ok: true, coreId: 'core-one', fingerprint: 'a'.repeat(64)};
 function reset() {
   world = [
@@ -15,6 +20,7 @@ function reset() {
   for (const k of Object.keys(states)) delete states[k];
   calls.length = notices.length = executions.length = tasks.length = 0;
   keepSource = false; replyStatus = 'moved'; navigate = false; acknowledge = true;
+  availableCommands=requiredCommands; appVersion='0.1.16';
 }
 reset();
 const cx = {spawn: fn => tasks.push(fn), sleep: async () => {}, notify() {}};
@@ -23,13 +29,13 @@ const lifecycle = {isStartTab: t => t.id === 'start', ensureSpaceStart: id => {
 }};
 const host = {
   spaces: () => world, panes: () => [], machines: () => [{name: null, layout: 'ready'},{name:'remote',layout:'ready'}], focused: () => focus,
-  run: (...args) => calls.push(args), appHome: () => 'C:/fixture', hostVersion: () => '0.1.15',
+  run: (...args) => calls.push(args), commands:()=>availableCommands.map(name=>({name})), appHome: () => 'C:/fixture', hostVersion: () => appVersion,
   window: () => ({active: true}), shared: key => states[key], setShared: (key, value) => states[key] = value,
   notify: n => notices.push(n),
   exec: async (_command, args) => {
     const request = JSON.parse(args[1]); executions.push(request);
     assert.equal(args[0], 'C:/fixture/mods/custom-tabs/move-tab.cjs', 'Run a packaged file, never source-checkout code');
-    if (request.action === 'inspect') return {code: 0, stdout: JSON.stringify(capability)};
+    if (request.action === 'inspect') return {code: 0, stdout: JSON.stringify(inspectWorker ? await inspectWorker(request) : capability)};
     if (acknowledge && request.action === 'move' && ['moved', 'partial'].includes(replyStatus)) {
       const s = world.find(s => s.id === request.sourceSpaceId), t = s.tabs.find(t => t.id === request.tabId);
       s.tabs = s.tabs.filter(candidate => candidate !== t); if (!s.tabs.length) world = world.filter(w => w !== s);
@@ -119,11 +125,11 @@ function element(asset) {
 }
 let menuSpaces = [{id: 's1', index: 1, name: 'Source', machine: null, tabs:[{id:'tb1'}]}, {id: 's2', index: 2, name: 'Target', machine: null, tabs:[]}];
 const closed = [], selected = [], colors = [], opened = [], legacyActions = [], p = {tab: 'tab', target, overlay: 'menu'};
-let menuActions = [];
+let menuActions = [], menuInspect = async () => capability, integratedMenu = false;
 const menuContext = vm.createContext({});
 const modules = {
   'gpui-kit': {View: class {}, div: element, svg: element}, 'gpui-base': {v_flex: element, h_flex: element},
-  './ui.js': {U: {row:28,gap:8,radius:6,smallIcon:14}, slot: x => x, menuSurface: (_t,x) => x, hotkey: x => x,
+  './ui.js': {U: {row:28,gap:8,radius:6,smallIcon:14}, menuSurface: (_t,x) => x, hotkey: x => x,
     menuHeading: (_t,text,el=element()) => el.child(text),
     badge: (label,fill) => {colors.push([label,fill]);return element();}, spaceBadgeColor: (_t,s,c) => c[s.id]},
   './directory.js': {displaySpace: x => x}, './sidebar-footer.js': {footerItems: () => []}, './modal-layout.js': {divider: element, dividerHeight: () => 17},
@@ -132,8 +138,8 @@ const modules = {
   './customization-updates.js': {customizationUpdateAvailable:()=>false},
   './agent-rename.js': {requestInlineAgentRename:()=>true},
   './tab-rename.js': {requestInlineTabRename:()=>true}, './space-rename.js': {requestInlineSpaceRename:()=>true}, './close-space.js': {closeWithConfirmation(...args){legacyActions.push(args);}},
-  './tab-moves.js': {inspectTabMove:async()=>capability,tabMoveDestinations:()=>menuSpaces.filter(s=>s.id!=='s1'),requestTabMove:(...args)=>{selected.push(args);return true;}},
-  './host.js': {updates:()=>({app:{}}),run(){},props:()=>p,closeOverlay:id=>closed.push(id),openOverlay:spec=>opened.push(spec),theme:()=>({}),keys:()=>[],terminals:()=>[],spaces:()=>menuSpaces,panes:()=>[],exec:async()=>({}),agents:()=>[],shared:()=>({s2:'#abcdef'}),notify(){}},
+  './tab-moves.js': {inspectTabMove:target=>menuInspect(target),tabMoveDestinations:()=>menuSpaces.filter(s=>s.id!=='s1'),requestTabMove:(...args)=>{selected.push(args);return integratedMenu ? api.requestTabMove(...args) : true;}},
+  './host.js': {updates:()=>({app:{}}),run(){},props:()=>p,closeOverlay:id=>closed.push(id),openOverlay:spec=>opened.push(spec),theme:()=>({muted:'#aaaaaa',dim:'#777777',foreground:'#eeeeee'}),keys:()=>[],terminals:()=>[],spaces:()=>menuSpaces,panes:()=>[],exec:async()=>({}),agents:()=>[],shared:()=>({s2:'#abcdef'}),notify(){}},
 };
 withKitUi(modules['./ui.js'],element);
 const menuModule = new vm.SourceTextModule(fs.readFileSync(new URL('../src/features/menu/main.js',import.meta.url),'utf8'),{context:menuContext});
@@ -146,10 +152,23 @@ menu.moveTo = true; assert.equal(menu.list()[1][0],'Target','Spaces appear immed
 assert.equal(menu.unavailable(menu.list()[1]), true, 'Unverified destinations cannot write'); menu.moveTo = false;
 await preflights.shift()(mcx);assert.equal(menu.moveCapability.ok,true);menu.at = 2;
 let tree = menu.render(mcx);
-{const all=n=>n&&typeof n==='object'?[n,...(n.kids??[]).flatMap(all)]:[];assert.ok(all(tree.kids[0].kids[2]).some(n=>n.asset==='mods/custom-workspace-chrome/layers.svg'),'Move to uses the Spaces icon');}
+const nodes=n=>n&&typeof n==='object'?[n,...(n.kids??[]).flatMap(nodes)]:[];
+const moveParent=tree.kids[0].kids[2].kids.at(-1), moveIcon=moveParent.kids[0].kids[0];
+assert.equal(moveIcon.asset,'mods/custom-workspace-chrome/chevron-right.svg');
+assert.equal(moveIcon.style.size[0],14);assert.equal(moveIcon.style.text_color[0],'#aaaaaa');
+assert.equal(moveParent.kids[0].style.size[0],16,'Leading chevron uses the shared icon column');
+assert.equal(moveParent.kids.length,2,'No duplicate trailing hint');
+assert.ok(!nodes(moveParent).some(n=>n.asset?.endsWith('layers.svg')||n.kids.includes('›')));
 tree.events.on_key_down({key:'right'},mcx);
 assert.equal(menu.moveTo,true);tree=menu.render(mcx);
 const keyboardRows=tree.kids[0].kids.map(group=>group.kids.at(-1));
+const back=keyboardRows[0],backIcon=back.kids[0].kids[0];
+assert.equal(backIcon.asset,'mods/custom-workspace-chrome/chevron-left.svg');
+assert.equal(backIcon.style.size[0],moveIcon.style.size[0]);
+assert.equal(backIcon.style.text_color[0],moveIcon.style.text_color[0]);
+for(const property of ['size','flex_none','items_center','justify_center']) assert.deepEqual(back.kids[0].style[property],moveParent.kids[0].style[property]);
+for(const property of ['px','gap','items_center']) assert.deepEqual(back.style[property],moveParent.style[property]);
+assert.ok(!nodes(keyboardRows[1]).some(n=>n.asset?.endsWith('chevron-right.svg')),'Real destinations retain colored badges, not navigation arrows');
 assert.equal(tree.kids[0].kids[1].kids.length,3,'A divider and heading separate Back from destination spaces');
 const heading=tree.kids[0].kids[1].kids[1];
 assert.equal(heading.style.id[0],'move-spaces-heading');assert.equal(heading.kids[0],'Available spaces');
@@ -164,6 +183,41 @@ menu.choose(2,mcx);assert.equal(menu.at,-1,'Mouse-open does not highlight the fi
 assert.equal(menu.keyboard,false);menu.choose(1,mcx);assert.equal(selected[0][1],'s2');assert.equal(closed[0],'menu');
 menu.moveTo=false;menu.moveCapability={...capability,repairNeeded:true};assert.ok(menu.list().some(it=>it[1]==='custom.repair-tab'));menu.moveTo=true;assert.equal(menu.list()[1][1],'custom.repair-tab');menu.moveTo=false;
 menuSpaces=[menuSpaces[0]];menu.moveCapability=capability;menu.moveTo=true;assert.equal(menu.list()[1][0],'No other spaces on this machine');assert.equal(menu.unavailable(menu.list()[1]),true);
+// Explanations use intrinsic wrapping height inside a bounded scroll viewport.
+const longMessage='Core is missing doc.set; tab moving is unavailable. Detected App: 0.1.17; Core: 0.1.23; generation: 1. '.repeat(8);
+menu.moveCapability={ok:false,message:longMessage}; menu.moveTo=true;
+let messageTree=menu.render(mcx),viewport=messageTree.kids[0];
+const noteOf=tree=>nodes(tree).find(n=>n.style.id?.[0]==='move-explanation-1');
+let note=noteOf(messageTree),textNode=note.kids[1];
+assert.equal(viewport.style.h[0],320,'First frame reserves room for an unmeasured note');
+assert.ok(viewport.style.overflow_y_scrollbar,'Long content remains scrollable');
+assert.ok(note.style.h_auto);assert.ok(note.style.flex_none);assert.equal(note.style.h,undefined,'No fixed row height clips wrapped content');
+assert.ok(viewport.kids[1].style.flex_none,'The group cannot shrink a tall note to the viewport');
+assert.equal(note.style.role[0],'note');assert.equal(note.events.on_click,undefined);
+assert.equal(note.style.accessibility_label[0],longMessage);assert.equal(note.style.text_color[0],'#aaaaaa');
+assert.ok(textNode.style.whitespace_normal);assert.equal(textNode.style.truncate,undefined);assert.equal(textNode.kids[0],longMessage);
+assert.equal(note.kids[0].kids[0].asset,'mods/custom-workspace-chrome/chevron-right.svg');
+assert.equal(note.kids[0].style.size[0],16,'Explanation aligns with Back and Move to');
+const beforeInert=selected.length;
+menu.at=1;messageTree.events.on_key_down({key:'enter'},mcx);menu.choose(1,mcx);
+assert.equal(selected.length,beforeInert,'An explanation cannot submit a move');
+note.events.on_size_change({width:220,height:126},mcx);
+assert.equal(menu.render(mcx).kids[0].style.h[0],28+17+126,'Logical measured height replaces the single-row budget');
+note.events.on_size_change({width:140,height:700},mcx);
+assert.equal(menu.render(mcx).kids[0].style.h[0],320,'Narrow/long notes overflow by scrolling, not by shortening their content');
+assert.equal(noteOf(menu.render(mcx)).kids[1].kids[0],longMessage);
+menu.moveCapability={ok:false,message:'Different explanation'};
+note.events.on_size_change({width:220,height:24},mcx);
+assert.equal(menu.moveExplanationHeight,700,'A late callback for old text is ignored');
+note=noteOf(menu.render(mcx));note.events.on_size_change({width:220,height:48},mcx);
+assert.equal(menu.render(mcx).kids[0].style.h[0],28+17+48,'A shorter replacement releases excess height');
+for(const key of ['left','escape']) {menu.moveTo=true;menu.render(mcx).events.on_key_down({key},mcx);assert.equal(menu.moveTo,false);}
+menu.moveTo=true;menu.choose(0,mcx);assert.equal(menu.moveTo,false,'Back remains clickable');
+menu.moveCapability=capability;menu.moveTo=true;
+messageTree=menu.render(mcx);note=noteOf(messageTree);
+assert.equal(note.kids[1].kids[0],'No other spaces on this machine');
+assert.ok(note.kids[1].style.whitespace_normal,'Empty-destination explanations also wrap');
+assert.ok(messageTree.kids[0].kids[0].kids[0].kids[1].style.truncate,'Ordinary Back/destination labels keep the shared compact row behavior');
 assert.ok(!fs.readFileSync(new URL('../src/features/menu/main.js',import.meta.url),'utf8').includes('.tooltip('),'Menu items have no hover tooltips');
 assert.ok(!fs.readFileSync(new URL('../src/features/menu/main.js',import.meta.url),'utf8').includes('Checking move compatibility'),'No loading text in the destination list');
 // Space menu rows are complete in the first frame, with no deferred Git work.
@@ -200,4 +254,51 @@ agentMenu.choose(1,mcx);assert.equal(renamed,1);
 agentMenu.choose(0,mcx);assert.equal(legacyActions.at(-1)[0],'terminal.pin');assert.equal(legacyActions.at(-1)[1].terminal,'pc2/t1');
 agentMenu.choose(2,mcx);assert.equal(legacyActions.at(-1)[0],'terminal.kill');assert.equal(legacyActions.at(-1)[1].terminal,'pc2/t1');
 const ordinary=new menuModule.namespace.default();ordinary.init({},mcx);assert.deepEqual(labels(ordinary),['Pin to the top','Close']);
+// Real menu -> domain bridge -> worker -> profile, with synthetic RPC only.
+reset(); appVersion='0.1.17'; p.tab='tab'; p.target=target; menuSpaces=world; menuInspect=api.inspectTabMove; integratedMenu=true;
+const rawTab = id => ({id,name:'Work',root:{id,type:'row',children:[{id:'pane-'+id,type:'block',content:{mod:'custom-files',props:{path:'/fixture'}}}]}});
+const snapshot = {version:7,value:{spaces:[{id:'s1',name:'Source',folder:'/source',tabs:[rawTab('tb1')]},{id:'s2',name:'Target',folder:'/target',tabs:[rawTab('tb2')]}]}};
+for (const scenario of [{core:'0.1.22'},{core:'0.1.23'},{core:'0.1.23',missingMethod:'doc.set'},...requiredCommands.map(missingCommand=>({core:'0.1.23',missingCommand}))]) {
+  const coreVersion=scenario.core, rpcCalls=[];
+  availableCommands=requiredCommands.filter(name=>name!==scenario.missingCommand);
+  const rpc=async method=>{
+    rpcCalls.push(method);
+    if(method==='hello') return {version:coreVersion,generation:1,core:{id:'fixture-core'},methods:['doc.get','doc.set','terminal.get','terminal.list','terminal.label'].filter(name=>name!==scenario.missingMethod)};
+    if(method==='doc.get') return structuredClone(snapshot);
+    if(method==='terminal.list') return {terminals:[]};
+    assert.fail('Preflight must never mutate: '+method);
+  };
+  inspectWorker=request=>operate(request,rpc,{appVersion:()=> appVersion});
+  const instance=new menuModule.namespace.default();instance.init({},mcx);
+  await preflights.shift()(mcx);instance.choose(2,mcx);
+  const before=calls.length, beforeClosed=closed.length;
+  if(!scenario.missingMethod&&!scenario.missingCommand) {
+    assert.equal(instance.moveCapability.ok,true);
+    assert.equal(instance.list()[1][1],'custom.move-tab');
+    instance.choose(1,mcx);
+    assert.equal(calls.length,before+1,'Verified destination hands off one fresh domain request');
+    const handedOff=JSON.parse(calls.at(-1)[0].split('tab-move:')[1]);
+    assert.equal(handedOff.appVersion,'0.1.17');assert.equal(handedOff.destinationSpaceId,'s2');
+    assert.equal(handedOff.coreId,'fixture-core');assert.match(handedOff.fingerprint,/^[a-f0-9]{64}$/);
+  } else {
+    assert.equal(instance.moveCapability.ok,false);
+    assert.equal(instance.list()[1][1],'custom.move-empty');
+    assert.ok(instance.list()[1][0].includes(`missing ${scenario.missingMethod??scenario.missingCommand}`));
+    const refusal=noteOf(instance.render(mcx));
+    assert.equal(refusal.kids[1].kids[0],instance.moveCapability.message,'The actual worker diagnostic reaches the complete wrapping label');
+    assert.equal(refusal.kids[1].style.truncate,undefined);
+    instance.choose(1,mcx);instance.at=1;instance.render(mcx).events.on_key_down({key:'enter'},mcx);
+    assert.equal(calls.length,before);assert.equal(closed.length,beforeClosed,'Unsupported row is inert');
+    assert.deepEqual(rpcCalls,scenario.missingCommand?[]:['hello'],'Actual incompatibility refuses before reading or writing documents');
+  }
+  assert.ok(!rpcCalls.includes('doc.set')&&!rpcCalls.includes('terminal.label'));
+}
+// Recheck commands when the mounted Tabs owner consumes an already-verified request.
+const pending=calls.at(-1)[0].slice('custom-tabs.'.length),beforeExecution=executions.length;
+availableCommands=requiredCommands.filter(name=>name!=='tab.new');
+assert.equal(api.routeTabMove(pending,cx),true);await flush();
+assert.equal(executions.length,beforeExecution,'Removed command stops the handoff before worker mutation');
+assert.match(notices.at(-1).body,/App is missing tab.new/);
+assert.equal(world[0].tabs.some(tab=>tab.id==='start'),false,'Do not prepare a Start page after losing a command');
+inspectWorker=null;
 console.log('PASS: stable first-frame worktree and plugin-owned agent menu actions, preserved Pin/Close; same-machine moves, keyboard navigation, expiry, unknown outcomes and repair (no live Core)');

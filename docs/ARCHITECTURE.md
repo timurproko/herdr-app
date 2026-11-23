@@ -776,14 +776,17 @@ App/Core profile and **sole CAS write site** live in
 native rebuild/patch or new remote companion is used. This exception is explicitly
 authorized for tab moves only; it does not apply to shell replacement or other docs.
 
-The adapter requires App 0.1.15 or 0.1.16 / running Core 0.1.19 or 0.1.21 / generation 1.
+The adapter requires App 0.1.15+ / running Core 0.1.19+ / generation 1, required
+Core methods and App preparation commands. Newer unreviewed versions remain
+eligible; the review list records evidence, not runtime permission.
 Remote routing remains in that same adapter: validate the connected machine's
 identity/session/version, verify its live hello using a fixed read-only Node/hc
 probe, then route document calls with `on` and terminal calls with the exact
 machine prefix. Normalize only terminal address/parent and clicked UI IDs, never
 mod props or adoption-label values. Recheck the pinned binding around each call.
 No remote App installation, new companion or cross-machine terminal migration.
-Unknown versions/shapes disable moving, not Custom. Whole tab objects and stable
+Below-minimum/unreadable versions, missing capabilities and unknown generations/shapes
+disable moving, not Custom. Whole tab objects and stable
 pane/terminal IDs are retained; unrelated fields are not reconstructed from UI
 projections. Unknown structural data, floating panes/custom pane headers/previews,
 Start pages and detected space-bound mod props are refused. Moving never opens the
@@ -813,9 +816,11 @@ Failures, unknown outcomes, missing acknowledgements and repairs send no arrival
 
 CAS cannot protect a native client's unflushed model edits; labels have no CAS or
 transaction with the document. No competing watcher tries to make this atomic.
-The exact-version gate and synthetic failure tests reduce coupling but do not
-promise compatibility with future or mixed-version peers. Review/update this small
-adapter after an upgrade. `check:host-api` reports the separate tab-move gate and,
+Capability/shape checks and synthetic failure tests reduce coupling but cannot
+prove silent semantic compatibility: a generation-1 `doc.set` that stopped
+honoring its expected-version CAS could overwrite another client's newer tabs,
+even while its method name still exists. No exact-version pin is retained to
+avoid that risk; native CAS/atomic semantics remain an explicit dependency. `check:host-api` reports the separate tab-move gate and,
 for unknown App versions, automatically runs the development-only pinned-source
 and synthetic regression audit. Known versions stay offline in that ordinary check;
 `npm run check:tab-move` explicitly audits upstream evidence. No audit rewrites a

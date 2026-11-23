@@ -10,7 +10,7 @@
 - Existing native-file compatibility patches are a narrow, explicit exception, not a pattern for new features. Preserve opt-ins; unknown upstream code must fail safely. Never opt in another patch without approval.
 - Never edit the Herdr home's generated AGENTS.md, SDK declarations, installed.json, core documents, or layouts/.state/ by hand. The Herdr home is HERDR_APP_HOME or ~/.config/herdr-app, not this checkout's parent.
 - Shell selection opens a new tab via native `tab.new`, leaving the existing terminal intact. The document-mutating replacement worker is retired; never reintroduce it or replay legacy shell-switch jobs. Profile startup is separate; see `docs/ARCHITECTURE.md`.
-- Explicitly authorized exception: **Move to...** may relocate a tab in the `herdr-app` document only through `src/integration/herdr/documents/tab-move-v1.cjs`'s validated CAS boundary. No other document writers, general JSON editor, native rebuild, startup mutation/replay or live-session tests. Keep the App/Core version gate, ephemeral requests, preservation checks and partial-success handling; see `docs/TAB-MOVE-ADR.md`.
+- Explicitly authorized exception: **Move to...** may relocate a tab in the `herdr-app` document only through `src/integration/herdr/documents/tab-move-v1.cjs`'s validated CAS boundary. No other document writers, general JSON editor, native rebuild, startup mutation/replay or live-session tests. Keep the App/Core minimum-version, capability, generation and shape checks, ephemeral requests, preservation checks and partial-success handling; see `docs/TAB-MOVE-ADR.md`.
 
 ## Source ownership
 

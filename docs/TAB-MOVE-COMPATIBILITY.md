@@ -56,8 +56,8 @@ The baseline is retrieved by its immutable commit, not a movable tag. A changed
 - The automatic host/deploy report keeps this private feature's result separate
   from public host-API compatibility. A tab-move-only failure does not disable
   unrelated Custom features. Public API failures retain their existing gate.
-- All runtime App/Core exact-version, generation, identity, capability, document
-  shape, expiry and CAS checks remain unchanged. The CLI does not connect to a
+- Runtime eligibility uses App 0.1.15+/Core 0.1.19+, understood generation/shape,
+  required methods/commands, identity, expiry and CAS—not the audit's review list. The CLI does not connect to a
   Core or confuse the `hc` executable version with the running server version.
   Each real Move preflight still checks the target's running Core.
 
@@ -67,14 +67,22 @@ unknown releases. The full repository comparison is intentionally conservative:
 documentation-only changes can appear, rather than guessing which changed code
 could affect layout safety.
 
+## Core 0.1.22 review
+
+The Core 0.1.22 source review, regression cause, immutable source hashes and
+routing/persistence/label-error findings are recorded in
+[the Core review](TAB-MOVE-CORE-0.1.22-REVIEW.md). This is separate from the
+App-source audit above; that CLI does not automatically approve new Core versions.
+
 ## Reviewing an update
 
 Use the report's pinned compare link, review affected layout/reconciliation and
 Core contracts, verify installed-release provenance, add sanitized regression
 fixtures for changed shapes, and perform disposable native continuity/concurrency
-checks where needed. Only then explicitly add the reviewed exact version to
-`src/integration/herdr/documents/tab-move-v1.cjs` and, if appropriate, establish a
-new pinned baseline with recorded evidence. There is deliberately no `--approve`
-flag. Never test document mutations on live sessions.
+checks where needed. Record review evidence or establish a new pinned audit
+baseline where appropriate. This optional audit's `needs-review` result and exact
+review list are not a runtime refusal: newer capable versions work without
+extending that list. There is deliberately no `--approve` flag. Never test
+document mutations on live sessions.
 
 See [the tab-move ADR](TAB-MOVE-ADR.md) for the native transaction/concurrency limits.
