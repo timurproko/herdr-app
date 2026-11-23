@@ -66,3 +66,9 @@ non-hardcoded themes and dispatch. Both Custom palette variants run the native-l
 VM regression. Feedback retains its existing simulated attachment/send/view tests.
 These are source/fixture results, not proof of real GPUI pixels or interaction;
 live inspection remains for a separately authorized installation.
+
+`CI=true npm run test:ci` passed after integration with current main: 153 supported
+Windows suite entries, 3 documented exclusions. Read-only before/after SHA-256
+inventories also confirmed the installed executable, both frame trees and their
+opt-in records were byte-for-byte unchanged. Both live read-only inspections now
+resolve to reviewed originals; no apply/repair operation was run on the live home.
