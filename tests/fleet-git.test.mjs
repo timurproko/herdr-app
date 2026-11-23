@@ -21,6 +21,7 @@ const host={closeOverlay(){},openOverlay(){},nextCommand(){return new Promise(()
 const ui={U:{row:28,section:36,control:28,insetControl:24,gutter:8,gap:8,rowGap:2,font:12,meta:11,icon:16,tinyIcon:12,radius:6,insetRadius:4},headerTools:e=>e,reveal:e=>e,subtleActionFill:()=>'',refreshButton:(_t,opts)=>element().id(opts.id).on_click(opts.onClick)};
 let websocket;
 const modules={
+ 'label-colors.js':'src/plugins/git/mod/label-colors.js',
  'space-color-state.js':{currentSpaceColor:()=>null},'main.js':'src/plugins/git/mod/main.js','aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js',
  'location.js':{location:()=>selected},'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{}},'gpui-base':{v_flex:element,h_flex:element},'ui.js':ui,
  'agent-links.js':{AgentLinks:class{}},'pin-swap.js':{PinSwap:class{cancel(){}},PIN_SWAP_MS:320},'panel-pin.js':{panelPin:(_t,o)=>element().id(o.id)},'sidebar-title.js':{sidebarTitle:element},'settings-dialog.js':{openSettings:options=>settingsOpened.push(options)},'panel-state.js':{changePanel(){}},

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {kitModule,withKitUi} from './support/panel-kit.mjs';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import * as labelColors from '../src/plugins/git/mod/label-colors.js';
 const U={row:28,gap:8,radius:6,smallIcon:14};
 
 function element() {
@@ -27,6 +28,7 @@ const host={props:()=>properties,openOverlay:spec=>opened.push(spec),closeOverla
   hc(){},run(command){assert.ok(['custom-changes.open-external','custom-changes.open-code','custom-changes.open-actions'].includes(command));receive(command.slice('custom-changes.'.length));},
   nextCommand:()=>{commandReads++;return new Promise(resolve=>{receive=resolve;});},layout(){},settings:()=>({zoom:1})};
 const modules={
+  './label-colors.js':labelColors,
   './aggregate.js':{AggregatePulls:class {sync(){return false;}stop(){}}},
   './ci-fix.js':{CIFix:class {sync(){}stop(){}}},
   './notices.js':{GitNotices:class {sync(){return null;}stop(){}retryNow(){}}},
