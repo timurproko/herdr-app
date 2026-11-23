@@ -97,8 +97,14 @@ With attachment and Git enabled, selecting a verified coordinator space SHALL sh
 
 #### Scenario: Unreported tasks
 - **WHEN** an eligible task has not reported yet
-- **THEN** the overview labels its recorded-link list as possibly incomplete until tasks report
-- **AND** only recorded task PR links are used, without branch guesses, transcript searches or a new Crew capability
+- **THEN** only recorded task PR links are used, without branch guesses, transcript searches or a new Crew capability
+- **AND** the panel shows no generic incomplete-list notice or replacement explanation
+
+#### Scenario: Uncluttered aggregate header
+- **WHEN** the consolidated coordinator Git panel is displayed
+- **THEN** its normal Git title and controls remain without the heading text `Recorded task PRs`
+- **AND** the notice `Recorded PRs · possibly incomplete until tasks report` is absent entirely, with no replacement text
+- **AND** repository-specific errors and setup or enrollment controls retain their existing purpose
 
 #### Scenario: Newly recorded PR
 - **WHEN** plain Crew status supplies a newly recorded PR for an eligible task
@@ -126,3 +132,29 @@ Aggregate reads SHALL be read-only, machine-bound and limited to a shown enabled
 - **WHEN** one linked repository is inaccessible to that machine's GitHub login
 - **THEN** the panel preserves other repositories' valid rows and reports a scoped incomplete result
 - **AND** it does not switch accounts, install companions or enroll webhook repositories automatically
+
+### Requirement: Collapsible coordinator repository sections
+Each repository section in the consolidated coordinator Git panel SHALL have a collapsible header using the Spaces machine-header control and style. Sections SHALL default expanded and retain independent per-repository fold state locally, using the same persistence mechanism as Spaces machine sections. Headers SHALL retain the repository name, task-scoped Open/Closed counts and chevron while collapsed.
+
+#### Scenario: First display
+- **WHEN** a repository has no saved folded state and appears in the coordinator overview
+- **THEN** its section is expanded with a machine-style header and expanded chevron
+- **AND** its header shows that repository's distinct Open and Closed task-PR counts, not repository-wide totals
+
+#### Scenario: Collapse and expand one repository
+- **WHEN** the user clicks a repository header or its chevron
+- **THEN** only that repository section toggles, using the same interaction and visual style as a Spaces machine header
+- **AND** its name, counts and chevron remain visible while its body rows, scoped errors and enrollment prompt are hidden when folded
+- **AND** reopening restores its current rows and scoped body notices without changing the Open/Closed tab or selecting a PR
+
+#### Scenario: Fold state survives panel changes
+- **WHEN** a repository is collapsed and the user changes Open/Closed tabs, refreshes, changes coordinator selection, or closes and reopens the panel
+- **THEN** the repository retains its local folded state independently of other repositories
+- **AND** panel recreation restores saved state through the same local persistence mechanism as Spaces machine folding
+- **AND** that UI state is not exported as a portable preference or written to Crew records
+
+#### Scenario: Counts update while collapsed
+- **WHEN** the normal aggregate lifecycle updates PR facts or task links for a folded repository
+- **THEN** its visible header counts update without expanding the section
+- **AND** global Open/Closed counts still include eligible task PRs in collapsed sections
+- **AND** folding itself performs no extra GitHub read, stops no existing webhook update, and does not create an empty-list message solely because all sections are folded
