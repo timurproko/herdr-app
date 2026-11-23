@@ -2,10 +2,10 @@
 
 ## 1. Byte-faithful feedback originals restore opted-in refresh on 0.1.16 and 0.1.17
 
-- [ ] 1.1 Obtain feedback stock from the two pinned release commits, compare installed 0.1.17 embedded stock read-only, and record raw originals with tag/commit/source/digest/newline provenance; verify equality and SHA-256 checks without installed-app writes.
-- [ ] 1.2 Correct feedback canonical originals and any raw packaging/import-boundary treatment needed while retaining the existing Custom feedback source and opt-in mechanism; verify fresh apply and owned refresh/check/no-op/restore against both releases' stock fixtures and synthetic embedded bytes.
-- [ ] 1.3 Extend feedback regressions to preserve native sending, compact attachments, drag/add guidance, JSON disclosure and sent view, plus unknown-stock byte-preserving advisory skips and existing hard conflict failures; run focused feedback/frame/startup checks.
-- [ ] 1.4 Update feedback compatibility/provenance documentation to identify the false-negative cause and exact post-install appearance; verify it distinguishes source comparison from live UI evidence and does not claim a feedback source change.
+- [x] 1.1 Obtain feedback stock from the two pinned release commits, compare installed 0.1.17 embedded stock read-only, and record raw originals with tag/commit/source/digest/newline provenance; verify equality and SHA-256 checks without installed-app writes.
+- [x] 1.2 Correct feedback canonical originals and any raw packaging/import-boundary treatment needed while retaining the existing Custom feedback source and opt-in mechanism; verify fresh apply and owned refresh/check/no-op/restore against both releases' stock fixtures and synthetic embedded bytes.
+- [x] 1.3 Extend feedback regressions to preserve native sending, compact attachments, drag/add guidance, JSON disclosure and sent view, plus unknown-stock byte-preserving advisory skips and existing hard conflict failures; run focused feedback/frame/startup checks.
+- [x] 1.4 Update feedback compatibility/provenance documentation to identify the false-negative cause and exact post-install appearance; verify it distinguishes source comparison from live UI evidence and does not claim a feedback source change.
 
 ## 2. Reviewed per-original palettes retain Custom behavior and 0.1.17 dynamic themes
 

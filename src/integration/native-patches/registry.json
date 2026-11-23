@@ -19,7 +19,7 @@
     {
       "id": "feedback",
       "target": "frame/feedback",
-      "originals": ["frame-patches/feedback/original.js"],
+      "originals": ["frame-patches/feedback/original.js", "frame-patches/feedback/original-windows.js"],
       "files": {
         "custom-ui.js": "lib/ui.js",
         "custom-look.js": "lib/look.js",

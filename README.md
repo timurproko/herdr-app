@@ -1239,9 +1239,10 @@ never patched.
 Install/layout entry repairs only prior opt-ins. Unknown native bytes are skipped
 with an advisory, not a failed deploy; personal dependency conflicts and corrupt
 records still fail. On 0.1.17 the standard palette remains instead of Custom's
-styling and command routing. New stock feedback uses Herdr's standard form and
-success view; an old owned feedback patch is retained but not refreshed or
-certified. Restoring supported styling needs reviewed native originals and a
+styling and command routing. Feedback's corrected byte-faithful originals support
+0.1.16/0.1.17 refresh for prior opt-ins: its JavaScript did not change, and the old
+rejection was a false negative. Unknown future feedback remains native, or an old
+owned patch is retained without refresh. Restoring unsupported styling needs reviewed native originals and a
 patch rebase, not a version allowlist. See the native patch policy for the exact
 lost features and provenance safeguards. The worker is deployed with the customization and does not
 need this source folder.

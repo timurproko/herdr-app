@@ -33,7 +33,23 @@ node "$HerdrHome/.customizations/runtime/scripts/frame-patch.mjs" check palette
 node "$HerdrHome/.customizations/runtime/scripts/frame-patch.mjs" restore palette
 ```
 
-## Unreviewed native bytes (including App 0.1.17)
+## Reviewed feedback stock
+
+`feedback/provenance.json` records pinned v0.1.16/v0.1.17 commits and raw LF and
+Windows CRLF originals with SHA-256 digests. Their feedback JavaScript is unchanged.
+The previous original had a facade-rewritten import and different byte formatting;
+its 0.1.17 rejection was a false negative, not a new native feedback form. The
+Windows original was compared byte-for-byte with installed v0.1.17 embedded stock,
+read-only. Canonical originals retain native imports and are never executable
+Custom replacements; authored patch code continues to use the facade.
+
+Existing feedback opt-ins can refresh on these reviewed bytes. With Custom active,
+the person sees compact thumbnails, **+ Add image**, muted **Drag or add images to
+attach them.** guidance, expandable JSON details and the simplified **Feedback
+sent** thank-you view. Sending remains native. This source review is not live UI
+validation and does not enable a new opt-in or deploy anything.
+
+## Unreviewed native bytes
 
 Public API compatibility does not authorize either native patch. Automatic refresh
 checks reviewed target bytes; when an old owned patch masks current stock, a
@@ -53,12 +69,11 @@ helpers, opt-in or recovery record. This is not a version allowlist.
   the person sees Herdr's standard feedback form/attachments/success view;
   sending feedback itself is still native and available.
 
-On the observed 0.1.17 installation, palette is already unknown stock, while
-feedback still matches a previously owned patch. Neither canonical reviewed
-original is embedded in the installed binary. Palette is left stock; feedback is
-**retained, not refreshed**, so the old Custom appearance may remain until Herdr
-resets it. Skipping does not uninstall it or certify that old patch for 0.1.17.
-Both are reported explicitly. No native files are rewritten to hide this state.
+The 0.1.17 palette still requires a reviewed rebase; its unknown stock is left
+untouched. Feedback's corrected reviewed original matches the installed native
+bytes, including when a previously owned patch masks them. Unknown future bytes
+still skip without uninstalling or certifying an old owned patch. No native files
+are rewritten to hide an unreviewed state.
 
 To restore supported customizations, review the new unmodified native source and
 binary provenance, rebase the patch while preserving native actions, add its
