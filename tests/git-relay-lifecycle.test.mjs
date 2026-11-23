@@ -20,14 +20,16 @@ assert.deepEqual(notice({ repository:{ full_name:repo }, action:'closed', pull_r
 for (const ref of ['refs/heads/a\nb', 'x'.repeat(500), 'refs/heads/a..b', 4]) assert.equal(relayNotice({ ...push, ref }).ref, undefined);
 assert.deepEqual(relayNotice({ ...push, ref:undefined }), { type:'github', repository:repo, event:'push', delivery:'push-1' }, 'legacy notices stay valid CI hints, not main hints');
 
+let rendering = false;
+const duringRender = fn => { rendering = true; try { return fn(); } finally { rendering = false; } };
 let clock = 1000000, eager = false, relay = 'https://relay.test', keyText = JSON.stringify({ token:'a'.repeat(64), secret:'b'.repeat(64) });
 const store = new Map(), sockets = [], tasks = [], timers = [];
 let reads = 0, invalidations = 0;
-const host = { shared:key=>store.get(key), setShared:(key,value)=>store.set(key,value), checking:()=>eager, appHome:()=>'/fixture' };
+const host = { shared:key=>store.get(key), setShared:(key,value)=>{assert.equal(rendering,false,'No shared publication during render');store.set(key,value);}, checking:()=>eager, appHome:()=>'/fixture' };
 const api = await loadMod({ host, globals:{ URL }, modules:{ 'space-color-state.js':{ currentSpaceColor:()=>null } },
   entry:"export { RelayClient, watchUpdates, stopRelay, syncRelay, closeRelay } from './plugins/git/relay-client.js';" });
 const tick = async () => { for (let i=0;i<40;i++) await Promise.resolve(); };
-const cx = { notify(){}, spawn(fn){ tasks.push(fn(cx)); }, timer:{ after(ms,fn){ timers.push({ at:clock+ms, fn }); } } };
+const cx = { notify(){assert.equal(rendering,false,'No synchronous notify during render');}, spawn(fn){ tasks.push(fn(cx)); }, timer:{ after(ms,fn){ timers.push({ at:clock+ms, fn }); } } };
 async function advance(ms) {
   const end = clock + ms;
   for (;;) {
@@ -38,8 +40,9 @@ async function advance(ms) {
   clock = end; await tick();
 }
 const io = { ...host, now:()=>clock, random:()=>0.5,
-  readTextFile:async()=>{ reads++; if(keyText===null)throw Error('missing'); return keyText; },
+  readTextFile:async()=>{ assert.equal(rendering,false,'No credential reads during render'); reads++; if(keyText===null)throw Error('missing'); return keyText; },
   connect:async url=>{
+    assert.equal(rendering,false,'No socket connection during render');
     assert.equal(sockets.filter(socket=>!socket.closed).length, 0, 'never a second socket for overlapping consumers/owners');
     const socket = { url, writes:[], write:async text=>socket.writes.push(text),
       read:()=>new Promise((resolve,reject)=>{ socket.resolve=resolve; socket.reject=reject; }),
@@ -69,21 +72,36 @@ assert.ok(store.get(runtime.RELAY_STATE).repositories[repo], 'retain update subs
 
 // The panel consumes public revisions; it cannot own or retarget the transport.
 const changes = [], context = vm.createContext({});
-const modules = { './host.js':host, './plugins.js':{ pluginById:()=>({}), pluginSetting:()=>relay },
+const modules = { './host.js':host, './plugins.js':{ pluginById:()=>({}), pluginSetting:()=>relay, sidebarPanelEnabled:()=>store.get('custom.plugins')?.git?.enabled!==false },
   './plugins/git/relay-config.js':config, './plugins/git/relay-state.js':runtime };
 const panel = new vm.SourceTextModule(await fs.readFile(new URL('../src/plugins/git/mod/webhooks.js',import.meta.url),'utf8'),{context});
 await panel.link(name=>new vm.SyntheticModule(Object.keys(modules[name]),function(){for(const[k,v]of Object.entries(modules[name]))this.setExport(k,v);},{context})); await panel.evaluate();
 const consumer = new panel.namespace.GitWebhooks();
-const consume = (enabled=true, repository=repo) => consumer.sync(cx,{ enabled, repository, scope:repository, onChange:()=>changes.push(repository) });
-consume(); consume(); assert.equal(changes.length,1);
-consume(true,'someone/else'); consume(false); await tick(); assert.equal(sockets.at(-1).closed,undefined,'hiding a panel leaves update transport active');
+const consume = (enabled=true, repository=repo) => consumer.sync(cx,{ enabled, repository, scope:repository, onChange:()=>{cx.notify();changes.push(repository);} });
+duringRender(()=>{consume();consume();});assert.equal(changes.length,0,'panel notifications yield even with immediate cx.spawn');await tick();assert.equal(changes.length,1);
+consume(true,'someone/else'); consume(false); await tick();assert.equal(changes.length,1,'hiding cancels queued panel delivery'); assert.equal(sockets.at(-1).closed,undefined,'hiding a panel leaves update transport active');
 await send({ ...push, delivery:'hidden-main' }); assert.equal(invalidations,4);
-consume(); assert.equal(changes.length,3,'showing catches up independent of selected repo');
+consume();await tick();assert.equal(changes.length,2,'showing catches up independent of selected repo');
 const grouped=new panel.namespace.GitWebhooks();let groupChanges=0;
 const groupSync=()=>grouped.sync(cx,{enabled:true,scope:'tasks',repositories:[repo,'someone/else'],onChange(){groupChanges++;}});
-groupSync();await send({...push,event:'check_run',repository:'someone/else',delivery:'group-notice'});groupSync();
+groupSync();await tick();await send({...push,event:'check_run',repository:'someone/else',delivery:'group-notice'});groupSync();await tick();
 assert.equal(groupChanges,2,'merged task/fleet multi-repository panel consumes notices for every linked repo');
 await send({...push,event:'check_run',repository:'unrelated/repo',delivery:'group-unrelated'});groupSync();assert.equal(groupChanges,2);
+// Ordinary panel delivery also coalesces and rejects stale asynchronous work.
+const racing=new panel.namespace.GitWebhooks(),delivered=[];
+const queue=scope=>racing.sync(cx,{enabled:true,scope,repository:repo,onChange(){cx.notify();delivered.push(scope);}});
+duringRender(()=>{queue('old');queue('new');queue('new');});assert.deepEqual(delivered,[]);await tick();assert.deepEqual(delivered,['new']);
+queue('stopped');racing.stop();await tick();assert.deepEqual(delivered,['new']);
+for(const change of ['disabled','relay','checking','transport']){
+ duringRender(()=>queue(change));
+ const saved=store.get(runtime.RELAY_STATE);
+ if(change==='disabled')store.set('custom.plugins',{git:{enabled:false}});
+ if(change==='relay')relay='';
+ if(change==='checking')eager=true;
+ if(change==='transport')store.set(runtime.RELAY_STATE,{...saved,scope:'replaced'});
+ await tick();assert.deepEqual(delivered,['new'],`${change} invalidates queued panel callbacks`);
+ store.set('custom.plugins',{git:{enabled:true}});relay='https://relay.test';eager=false;store.set(runtime.RELAY_STATE,saved);
+}
 const before = sockets.length; client.sync(cx,options); duplicate.sync(cx,options); await tick(); assert.equal(sockets.length,before);
 
 sockets.at(-1).reject(Error('offline')); await tick();
@@ -137,6 +155,17 @@ store.set(runtime.RELAY_STATE,{...store.get(runtime.RELAY_STATE),owner:'lost-own
 const takeover=new api.RelayClient(io),beforeTakeover=sockets.length;
 takeover.sync(cx,options);await tick();assert.equal(sockets.length,beforeTakeover,'expired-owner handoff waits for old heartbeat cleanup');
 await advance(2000);assert.equal(sockets.length,beforeTakeover+1);takeover.stop();await tick();
+// Audit both new chrome render moments with immediate spawn: the real broker
+// may publish leases/read keys/connect only after syncRelay's explicit yield.
+const renderOwner={};renderOwner.gitRelay=new api.RelayClient({...io,isClosed:()=>renderOwner.gitRelayClosed});
+const readsBeforeRender=reads;
+duringRender(()=>api.syncRelay({...options,owner:renderOwner,cx}));assert.equal(reads,readsBeforeRender);
+await tick();assert.equal(reads,readsBeforeRender+1);
+sockets.at(-1).resolve(JSON.stringify({type:'ready',protocol:1}));await tick();
+let renderInvalidations=0;
+duringRender(()=>api.watchUpdates({...options,owner:renderOwner,cx,repository:repo,onInvalidate(){cx.notify();renderInvalidations++;}}));
+assert.equal(renderInvalidations,0);await tick();assert.equal(renderInvalidations,1,'update invalidation also yields out of render');
+api.closeRelay({owner:renderOwner});await tick();assert.equal(sockets.at(-1).closed,true);
 relay=''; client.sync(cx,options); await tick(); const socketCount=sockets.length;
 relay='https://relay.test'; eager=true; client.sync(cx,options); await tick(); assert.equal(sockets.length,socketCount,'eager checks never connect');
 await Promise.all(tasks);

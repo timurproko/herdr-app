@@ -543,8 +543,12 @@ keys block until explicit retry or configuration change.
 
 `mod/webhooks.js` consumes bounded public per-repository invalidation revisions and
 ready generations from runtime-only `custom.git.relay-runtime`. A small retry key
-requests the owner's retry, never creates a panel socket. Hidden panels still do
-no PR/agent reads. GitHub events and successful reconnection invalidate every
+requests the owner's retry, never creates a panel socket. The render-facing
+consumer coalesces revision changes behind `cx.spawn` and an explicit microtask;
+only then can it invoke panel callbacks, arm a CI sweep or start reads. Delivery
+rechecks view scope, visibility, plugin enablement, relay configuration and
+transport scope; stop/replacement invalidates queued callbacks. Hidden panels still
+do no PR/agent reads. GitHub events and successful reconnection invalidate every
 loaded page rather than just the pinned PR. Snapshot refreshes are single-flight with one coalesced dirty
 flag, retain expanded depth, renew cursors, and guard repository/machine/request
 identity before reads and writes. No periodic CI/list polling remains. The local

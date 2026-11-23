@@ -206,7 +206,13 @@ keys, disabled Git and close during queued startup or credential/connect promise
 with a disposable home and fake Git/time: deferred rate/lease hints, authoritative
 availability, burst backoff, manual bypass and Git-independent polling. A running
 deployment spanning the check deadline keeps worker retries at a bounded 30-second
-cadence, retains one pending hint and performs one authoritative check on completion. Existing
+cadence, retains one pending hint and performs one authoritative check on completion.
+The fleet fixture also uses the real relay consumer and pending-CI sweep under an
+immediate-spawn render guard. Ordinary/fleet notifications coalesce after a
+microtask, and disabled, hidden or replaced scopes cancel pending delivery. Relay
+lifecycle, update-row and update-markers fixtures guard notify/shared publication
+and new I/O against synchronous render work, including the chrome broker,
+update subscription, idle activation and already-mounted marker roots. Existing
 update-markers now covers a real registry subscriber through chrome publication
 into already-mounted Settings/footer/menu markers without Check now. These are
 fixture contracts, not live delivery, pixel or installed-host evidence; they never

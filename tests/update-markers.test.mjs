@@ -25,6 +25,8 @@ const signature = node => JSON.stringify(node?.attrs);
 const store = new Map(), copies = [], refreshes = new Set(), jobs = [], calls = [];
 const subscription = await loadMod({host:{shared:key=>store.get(key),checking:()=>false},globals:{URL},
   modules:{'space-color-state.js':{currentSpaceColor:()=>null}},entry:"export {watchUpdates} from './plugins/git/relay-client.js';"});
+let rendering = false;
+const duringRender = fn => { const before=rendering; rendering=true; try{return fn();}finally{rendering=before;} };
 let width = 248, nativeReady = false, coreReady = false, managed = false, failExec = false, transport = null;
 let clock = Date.now();
 class Clock extends Date { static now() { return clock; } }
@@ -50,12 +52,13 @@ async function mount(kind, props) {
     window: () => clone({ platform: 'windows' }), layout: () => clone({ id: 'sidebar', size: { px: width } }),
     appHome: () => '/fixture', checking: () => false, shared: key => clone(store.get(key)),
     setShared(key, value) {
+      assert.equal(rendering,false,'No shared publication from Settings/chrome/menu render');
       const encoded = JSON.stringify(value);
       if (encoded === JSON.stringify(store.get(key))) return;
       store.set(key, JSON.parse(encoded));
       for (const root of copies) refreshes.add(root);
     },
-    exec: async (_command, args) => { const request = JSON.parse(args[1]); calls.push({ kind, ...request }); if (failExec) throw Error('fixture transport unavailable'); return transport ? transport(request) : { code: 0, stdout: JSON.stringify(next) }; },
+    exec: async (_command, args) => { assert.equal(rendering,false,'No worker request during render'); const request = JSON.parse(args[1]); calls.push({ kind, ...request }); if (failExec) throw Error('fixture transport unavailable'); return transport ? transport(request) : { code: 0, stdout: JSON.stringify(next) }; },
     keys: () => [], spaces: () => [], terminals: () => [], panes: () => [], agents: () => [],
     readTextFile: async () => null,
     run: noop, openOverlay: spec => { copy.openings.push(clone(spec)); return 'o1'; },
@@ -90,9 +93,9 @@ async function mount(kind, props) {
   }
   const main = await load('./main.js'); await main.link(load); await main.evaluate();
   copy.view = new main.namespace.default();
-  copy.cx = { notify: () => refreshes.add(copy), stop_propagation() {}, focus_handle: () => ({ focus() {} }),
+  copy.cx = { notify: () => {assert.equal(rendering,false,'No synchronous notify from Settings/chrome/menu render');refreshes.add(copy);}, stop_propagation() {}, focus_handle: () => ({ focus() {} }),
     spawn: fn => jobs.push(fn(copy.cx)), timer: { every: (ms, fn) => copy.timers.push({ ms, fn }), after: (ms,fn)=>copy.afters.push({at:clock+ms,fn}) } };
-  copy.render = () => { copy.tree = copy.view.render(copy.cx); copy.renders++; };
+  copy.render = () => duringRender(() => { copy.tree = copy.view.render(copy.cx); copy.renders++; });
   copies.push(copy);
   if (kind === 'settings') {
     // Only unrelated page bodies are stubbed, not Settings init/navigation,
@@ -120,7 +123,7 @@ const compact = await mount('workspace-chrome', { footer: true });
 const menu = await mount('menu', { tab: 'footer' });
 await settle();
 // Different live layout widths for the two footer roots, as two windows could use.
-compact.render = () => { const before = width; width = 44; compact.tree = compact.view.render(compact.cx); compact.renders++; width = before; };
+compact.render = () => duringRender(() => { const before = width; width = 44; compact.tree = compact.view.render(compact.cx); compact.renders++; width = before; });
 compact.render();
 const settingsEntry = () => {
   const index = menu.view.list().findIndex(it => it[7] === 'settings');
