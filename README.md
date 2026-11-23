@@ -370,8 +370,14 @@ progress keeps its ring; completed lists keep their purple check and done label.
 All PR rows, including coordinator/fleet rows and both Open/Closed tabs, omit the
 Owner badge. Below the number/author/time line, metadata starts at the same left
 edge with **tasks · checks · assigned GitHub labels**, omitting absent groups.
-Labels are compact pills in their exact GitHub colours and names (including emoji),
-with contrasting text. Multiple/long labels stay in a bounded single-height strip:
+Labels keep their exact GitHub names (including emoji) in fully rounded 18px pills.
+Dark palettes use GitHub's 18% colour tint, lightness-adjusted coloured text and thin
+30% text-colour border rather than solid blocks. Light palettes use solid label
+colours with contrasting black/white text and GitHub's near-white border rule.
+Colours follow the live panel background (weighted RGB lightness below 0.5 is dark;
+otherwise light), including custom palettes, not the system appearance preference.
+The formula comes from [Primer's IssueLabelToken](https://github.com/primer/react/blob/2128032dca65a1bd565fe382c2e91c638c6473a4/packages/react/src/Token/IssueLabelToken.module.css).
+Multiple/long labels stay in a bounded single-height strip:
 pill text truncates, and hovering the pills or metadata exposes complete names,
 including clipped labels. No labels means no placeholder or extra separator;
 label refreshes never add extra row lines or horizontal overflow. Metadata separators,
