@@ -257,11 +257,18 @@ Explicit toggles are UI-only: no preference export or Crew/host-document writes,
 and no new fetch or cancellation. Fold state survives tab/context changes and
 panel recreation. Scoped rows/errors and repository-specific diagnostics fold with
 the body; global setup stays visible. Counts and webhook-driven facts continue
-updating while folded.
+updating while folded. Rendering derives selected-tab sections from eligible rows
+or an applicable `readNotice`, before applying folds. Empty sections have no header,
+but disappearing sections retain saved fold keys. A settled tab with no qualifying
+sections uses ordinary Git's **No open pull requests** / **No closed pull requests**;
+notice-only and folded eligible sections are not empty. Pending/unverified feedback
+is unchanged. The cross-tab repository inventory remains separate from this render
+projection so membership reads, enrollment and webhook updates do not lose hidden sections.
 
 Coordinator enrollment uses one non-shrinking footer after `task-pulls-scroll`.
 `GitNotices.presentation` is a pure cached snapshot of confirmed unenrolled
-canonical names, deduplicated in rendered section order; pending/unknown is quiet.
+canonical names, deduplicated in full repository inventory order, including sections
+hidden in the selected tab; pending/unknown is quiet.
 `EnrollmentPicker` uses the shared `ui/choice-menu.js` presentation even for one
 choice. It captures choices plus coordinator/home, selected location, view and
 notice configuration/refresh generation. Opening starts no read. Revalidation

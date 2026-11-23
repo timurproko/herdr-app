@@ -651,6 +651,11 @@ only the canonical repository name and chevron, without per-repository counts.
 Names use the released width and truncate with a full-name tooltip only when they
 do not fit. Open and Closed totals remain in the panel's top tabs and still include
 folded sections. These counts cover distinct linked PRs only, never all repository PRs.
+A repository header appears only when the selected tab has an eligible PR row or
+an applicable read notice. Switching tabs re-evaluates visibility without losing
+saved folds; folded eligible sections still keep their header. With no qualifying
+sections, settled tabs show **No open pull requests** or **No closed pull requests**,
+matching ordinary Git. Loading and unverified waiting feedback remain unchanged.
 Folding only hides section bodies: it does not fetch, cancel reads or stop updates.
 Discovery is a bounded snapshot, not a completeness promise or a persistent PR
 record. Older Crew without discovery, or an unknown discovery version, keeps the
@@ -668,7 +673,8 @@ The existing webhook connection refreshes only relevant linked repositories; unc
 facts are not polled. Manual Refresh remains available. Repository errors stay in their sections. Confirmed unenrolled repositories share
 one **Add this repo in Settings** card pinned below the scrolling list, so folding
 or scrolling cannot hide it. Its account-style dropdown opens upward with canonical
-repository names in section order, even for one choice. Selecting a name opens Git
+repository names in inventory order, even for one choice, including repositories
+whose sections are hidden in the selected tab. Selecting a name opens Git
 Settings with that captured repository prefilled; it does not enroll anything.
 Unknown membership stays quiet, the final enrollment removes the card, and missing
 global setup takes precedence. Changed context or membership closes an obsolete

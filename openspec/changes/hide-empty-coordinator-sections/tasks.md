@@ -2,10 +2,10 @@
 
 ## 1. Tab-specific repository sections and ordinary empty states
 
-- [ ] 1.1 Filter rendered sections using selected-tab eligible rows or applicable read notices before folding, while retaining the full repository inventory for enrollment and updates; verify with mixed Open/Draft and Merged/Closed renderer fixtures.
-- [ ] 1.2 Base empty presentation on qualifying sections and reuse ordinary Git's settled tab wording while retaining loading/unverified feedback; verify both empty tabs, notice-only sections and all-folded eligible sections.
-- [ ] 1.3 Extend fleet renderer/read-notice/history/enrollment regressions for tab switching, saved-fold reappearance, expired history and hidden-tab enrollment choices; retain render-phase focus/notify guards and run the targeted fixtures.
-- [ ] 1.4 Update README, docs/ARCHITECTURE.md and docs/TESTING.md for visibility, unchanged totals, retained folds and inventory-based enrollment; verify descriptions match the spec delta and fixture assertions.
+- [x] 1.1 Filter rendered sections using selected-tab eligible rows or applicable read notices before folding, while retaining the full repository inventory for enrollment and updates; verify with mixed Open/Draft and Merged/Closed renderer fixtures.
+- [x] 1.2 Base empty presentation on qualifying sections and reuse ordinary Git's settled tab wording while retaining loading/unverified feedback; verify both empty tabs, notice-only sections and all-folded eligible sections.
+- [x] 1.3 Extend fleet renderer/read-notice/history/enrollment regressions for tab switching, saved-fold reappearance, expired history and hidden-tab enrollment choices; retain render-phase focus/notify guards and run the targeted fixtures.
+- [x] 1.4 Update README, docs/ARCHITECTURE.md and docs/TESTING.md for visibility, unchanged totals, retained folds and inventory-based enrollment; verify descriptions match the spec delta and fixture assertions.
 
 ## 2. Enrollment banner geometry matches ordinary Git without account drift
 

@@ -56,23 +56,25 @@ assert.ok(find(tree,'git-actions'));assert.ok(find(tree,'git-views'));
 const header=(repo,root=tree)=>find(root,`task-repo-header-example/${repo}`);
 const nameOnly=(repo,root=tree)=>{assert.equal(find(root,`task-repo-counts-example/${repo}`),undefined);const row=header(repo,root);assert.equal(row.kids.length,2,'Name plus shared chevron only');assert.doesNotMatch(text(row),/Open|Closed/);assert.ok(text(row).includes(`example/${repo}`));};
 const toggle=repo=>{header(repo).attrs.on_click[0]({},cx);tree=panel.render(cx);};
-assert.ok(find(tree,'task-repo-body-example/a'));assert.ok(find(tree,'task-repo-body-example/b'),'Default expanded, including a zero-row current tab');
-nameOnly('a');nameOnly('b');assert.equal(text(find(tree,'git-view-open')),'Open 1');assert.equal(text(find(tree,'git-view-closed')),'Closed 1');
+assert.ok(find(tree,'task-repo-body-example/a'));assert.equal(header('b'),undefined,'Closed-only repository has no Open header');
+nameOnly('a');assert.equal(text(find(tree,'git-view-open')),'Open 1');assert.equal(text(find(tree,'git-view-closed')),'Closed 1');
 const aHeader=header('a');assert.equal(aHeader.attrs.h[0],28);assert.equal(aHeader.attrs.pr[0],4);assert.equal(aHeader.kids.at(-1).attrs.size[0],16);
 assert.match(aHeader.kids.at(-1).kids[0].attrs.asset[0],/chevron-down.svg$/);assert.equal(aHeader.attrs.accessibility_label[0],'Collapse example/a');
 let foldCalls=calls.length;const foldWrites=writes.length;
-toggle('a');assert.equal(find(tree,'pr-example/a#12'),undefined);assert.ok(find(tree,'task-repo-body-example/b'));nameOnly('a');
+toggle('a');assert.equal(find(tree,'pr-example/a#12'),undefined);assert.equal(header('b'),undefined);nameOnly('a');
 assert.match(header('a').kids.at(-1).kids[0].attrs.asset[0],/chevron-right.svg$/);assert.equal(header('a').attrs.accessibility_label[0],'Expand example/a');
 assert.equal(find(tree,'git-task-empty'),undefined,'All open PRs hidden by folding is not an empty data set');
 assert.equal(calls.length,foldCalls,'Folding does no GitHub read');assert.deepEqual(writes.slice(foldWrites),['custom.git.task-repositories.folded']);
 assert.deepEqual(JSON.parse(storage.get('custom.git.task-repositories.folded')),['example/a']);
-toggle('b');assert.equal(find(tree,'task-repo-body-example/b'),undefined);assert.ok(header('a'));assert.ok(header('b'));assert.equal(find(tree,'git-task-empty'),undefined);
-panel.setView('closed',cx);tree=panel.render(cx);assert.equal(find(tree,'task-repo-body-example/a'),undefined);assert.equal(find(tree,'task-repo-body-example/b'),undefined,'Tab switches preserve independent folds');
+panel.setView('closed',cx);tree=panel.render(cx);assert.equal(header('a'),undefined);assert.ok(find(tree,'task-repo-body-example/b'),'Eligible section starts expanded in its own tab');
+toggle('b');assert.equal(find(tree,'task-repo-body-example/b'),undefined);assert.equal(header('a'),undefined);nameOnly('b');assert.equal(find(tree,'git-task-empty'),undefined);
+panel.setView('open',cx);tree=panel.render(cx);assert.ok(header('a'));assert.equal(find(tree,'task-repo-body-example/a'),undefined,'Tab switches retain folded state when a section returns');assert.equal(header('b'),undefined);
+panel.setView('closed',cx);tree=panel.render(cx);assert.equal(find(tree,'task-repo-body-example/b'),undefined,'Both folds remain independent');
 // A recreated panel restores local state without loading a new source or altering preferences.
 const restored=new Main();restored.init({},cx);await drain();restored.render(cx);await drain();const restoredTree=restored.render(cx);
 assert.equal(find(restoredTree,'task-repo-body-example/a'),undefined);assert.equal(find(restoredTree,'task-repo-body-example/b'),undefined);nameOnly('b',restoredTree);restored.close();
 // Restore original panel presentation; both toggles are independent and only affect UI.
-toggle('a');toggle('b');panel.setView('open',cx);tree=panel.render(cx);
+toggle('b');panel.setView('open',cx);tree=panel.render(cx);toggle('a');
 assert.equal(state['custom.spaces.preferences'].connectFleetToCoordinator,true);
 panel.setView('closed',cx);tree=panel.render(cx);assert.ok(find(tree,'pr-example/b#12'));assert.ok(find(tree,'pr-labels-example/b#12'));assert.equal(find(tree,'pr-example/a#12'),undefined);
 find(tree,'pr-agent-example/b#12').attrs.on_click[0]({},cx);assert.deepEqual(JSON.parse(JSON.stringify(focus.at(-1))),['agent.focus',{terminal:'t3'}]);
@@ -86,7 +88,8 @@ noticeModes['example/b']='repository';panel.setView('open',cx);tree=panel.render
 panel.setView('closed',cx);tree=panel.render(cx);assert.ok(find(tree,'task-error-example/b'));assert.ok(find(tree,'git-enrollment-footer'));
 toggle('b');assert.equal(find(tree,'task-error-example/b'),undefined);assert.ok(find(tree,'git-enrollment-footer'),'Folding cannot hide enrollment');nameOnly('b');
 failRepo=null;bClosed=false;panel.aggregate.refresh(cx);await drain();tree=panel.render(cx);
-nameOnly('b');assert.equal(text(find(tree,'git-view-open')),'Open 2','Top-level totals update while folded');assert.equal(panel.aggregate.counts().open,2);assert.equal(find(tree,'task-repo-body-example/b'),undefined);
+assert.equal(header('b'),undefined,'Reopened PR no longer leaves an empty Closed header');assert.ok(find(tree,'git-enrollment-footer'),'Hidden section still contributes enrollment');assert.equal(find(tree,'git-task-empty').kids[0],'No closed pull requests');
+assert.equal(text(find(tree,'git-view-open')),'Open 2','Top-level totals update while folded');assert.equal(panel.aggregate.counts().open,2);assert.equal(find(tree,'task-repo-body-example/b'),undefined);
 bClosed=true;panel.aggregate.refresh(cx);await drain();tree=panel.render(cx);toggle('b');assert.ok(find(tree,'git-enrollment-footer'),'Reopening keeps the one footer');delete noticeModes['example/b'];
 assert.equal(A.taskPullLink('https://github.com/example/a/pull/12').key,'example/a#12');for(const bad of ['https://evil.test/a/b/pull/12','https://github.com/a/b/pull/0','https://github.com/a/b/pull/1?x=1'])assert.equal(A.taskPullLink(bad),null);
 // The same authenticated subscription routes only relevant repositories, coalescing bursts.
@@ -145,7 +148,7 @@ rendering=true;try{tree=panel.render(renderCx);}finally{rendering=false;}
 assert.equal(find(tree,'git-task-stale').kids[0],'Stale');assert.ok(find(tree,'pr-example/b#12'));assert.equal(find(tree,'pr-agent-example/b#12'),undefined);assert.equal(JSON.stringify(panel.aggregate.counts()),countsBefore);sample();
 assert.equal(websocket.enabled,false,'Stale presentation cannot subscribe for task reads');assert.equal(panel.ciSweep,null);
 lastRobot.attrs.on_click[0]({},cx);lateRelay({repository:'example/a'},cx);panel.aggregate.refresh(cx);await drain();assert.equal(calls.length,staleCalls);assert.equal(focus.length,1,'Stale callbacks cannot navigate');
-toggle('a');assert.equal(panel.foldedRepositories.has('example/a'),!foldBefore);assert.equal(calls.length,staleCalls,'Read-only folding still works while verification is unavailable');
+panel.setView('open',cx);tree=panel.render(cx);toggle('a');assert.equal(panel.foldedRepositories.has('example/a'),!foldBefore);assert.equal(calls.length,staleCalls,'Read-only folding still works while verification is unavailable');panel.setView('closed',cx);tree=panel.render(cx);
 // A cold controller/module gets the attached first frame, but no persisted PR inventory or authority.
 const coldState=JSON.parse(JSON.stringify(state));delete coldState[f.FLEET_KEY];
 const cold=await loadMod({host:{...host,shared:k=>coldState[k],setShared:(k,v)=>{assert.equal(rendering,false);coldState[k]=v;}},modules,globals:{URL,localStorage,Date:class extends Date{static now(){return now;}}},mod:'custom-changes',entry:'export {default as Main} from "./main.js";export * as r from "./plugins.js";'});
@@ -154,7 +157,7 @@ assert.equal(find(first,'git-task-stale').kids[0],'Verifying');assert.equal(find
 await drain();assert.equal(calls.length,staleCalls);coldPanel.close();
 // Fresh same-home verification restores reads/robots, not a new folder/pin context.
 failStatus=false;f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();tree=panel.render(cx);await drain();tree=panel.render(cx);
-assert.equal(find(tree,'git-task-stale'),undefined);assert.ok(find(tree,'pr-agent-example/b#12'));assert.equal(panel.foldedRepositories.has('example/a'),!foldBefore);assert.equal(JSON.stringify(panel.aggregate.counts()),countsBefore);toggle('a');defer=true;
+assert.equal(find(tree,'git-task-stale'),undefined);assert.ok(find(tree,'pr-agent-example/b#12'));assert.equal(panel.foldedRepositories.has('example/a'),!foldBefore);assert.equal(JSON.stringify(panel.aggregate.counts()),countsBefore);panel.setView('open',cx);tree=panel.render(cx);toggle('a');defer=true;
 // Finished workers leave an extant fleet, but successful owner membership moves
 // must refresh the retained display before a later status outage uses its scope.
 defer=false;bClosed=false;for(const task of status.tasks)task.state='closed';for(const worker of list.slice(1))worker.state='finished';all.splice(1);groups[1].tabs=[];

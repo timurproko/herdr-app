@@ -274,7 +274,9 @@ failures say **GitHub is unreachable**. A known Closed failure never appears in
 Open; each applicable repository section gets at most one notice, including mixed
 causes and partial recovery. Cold historical failures use a Closed history-load
 notice without inventing state/counts. Expired history cannot leave error-only
-headers. Folds, unenrolled repositories and hidden/stale/disabled contexts retain
+headers. Notice-only sections remain visible without an empty state; other-tab
+rows/errors cannot keep empty headers, and settled empty tabs reuse ordinary Git's
+wording. Folds, unenrolled repositories and hidden/stale/disabled contexts retain
 the existing read and refresh boundaries. Folder-Git pagination tests also preserve
 execution result facts and healthy rows on these failures. These are synthetic
 process/provider responses, not proof that the original installed-app incident was
@@ -332,6 +334,9 @@ restore after panel recreation, temporary repository absence, tab/refresh change
 count-free expanded/collapsed headers, unchanged top-level totals while folded,
 hidden/restored scoped body errors, fixed enrollment visibility, stale toggle
 guards, no fold-triggered reads and no false empty state when all sections fold.
+Open/Closed switches omit other-tab-only headers, restore saved folds on reappearance,
+and retain unchanged totals. Enrollment fixtures keep hidden-tab repositories in
+full-inventory picker order, independent of section visibility.
 The merged fixture retains the real shared-relay deferred-delivery/render guards,
 PR label add/remove assertions and new shared row/separators. The enrollment fixture
 also feeds header available/intrinsic layout widths across 75–200% scales: fitting
