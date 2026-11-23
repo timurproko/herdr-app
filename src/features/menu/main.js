@@ -88,7 +88,7 @@ function separates(it, i, list) {
 }
 
 function menuIcon(command, args) {
-  if (command === 'custom.move-menu') return 'mods/custom-workspace-chrome/layers.svg';
+  if (command === 'custom.move-menu') return 'mods/custom-workspace-chrome/chevron-right.svg';
   if (command === 'custom.move-back') return 'mods/custom-workspace-chrome/chevron-left.svg';
   if (command.startsWith('custom.move') || command === 'custom.repair-tab') return 'mods/custom-workspace-chrome/chevron-right.svg';
   if (command === "terminal.pin") return `mods/custom-workspace-chrome/${args.pinned ? "pin" : "pin-off"}.svg`;
@@ -252,7 +252,7 @@ export default class Menu extends View {
             .child(menuRow(t, { id: this.moveTo ? `move-mi-${i}` : `mi-${i}`, label: it[0], highlighted: this.keyboard && i === this.at, pointer: !this.keyboard,
               icon: it[4] ? badge(String(it[4].index ?? spaces().findIndex(s => s.id === it[4].id) + 1), spaceBadgeColor(t, it[4], shared('space.colors') ?? {}))
                 : svg(it[3] ?? menuIcon(it[1], it[2])).size(U.smallIcon).text_color(t.muted),
-              hint: it[1] === 'custom.move-menu' ? '›' : shortcut(it[1], it[2]),
+              hint: shortcut(it[1], it[2]),
               onHover: (hovered, cx) => { if (hovered) { if (!this.keyboard) { this.at = -1;this.colorAt = -1; } if (it[1] === 'custom.move-menu') this.checkMove(cx); } cx.notify(); },
               onClick: (_e, cx) => this.choose(i, cx) })
               .text_color(this.unavailable(it) ? t.dim : t.foreground)

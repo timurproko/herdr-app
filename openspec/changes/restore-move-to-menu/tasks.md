@@ -9,8 +9,8 @@
 
 ## 2. Matching leading navigation chevrons
 
-- [ ] 2.1 Replace the parent Move to Layers icon with the existing 14 px theme-muted right-chevron SVG in Back's centered 16 px left icon slot and remove the trailing text arrow; verify asset, size, color, slot, label alignment and no duplicate hint in menu render-tree assertions.
-- [ ] 2.2 Keep Back's left-chevron, actual destination badges and keyboard behavior unchanged; update the obsolete Spaces-icon ADR/test assertions and verify the focused menu suite and relevant existing space-color menu fixture.
+- [x] 2.1 Replace the parent Move to Layers icon with the existing 14 px theme-muted right-chevron SVG in Back's centered 16 px left icon slot and remove the trailing text arrow; verify asset, size, color, slot, label alignment and no duplicate hint in menu render-tree assertions.
+- [x] 2.2 Keep Back's left-chevron, actual destination badges and keyboard behavior unchanged; update the obsolete Spaces-icon ADR/test assertions and verify the focused menu suite and relevant existing space-color menu fixture.
 
 ## 3. Readable wrapping submenu explanations
 

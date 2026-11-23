@@ -26,7 +26,9 @@ source space open with a normal Start page when moving its final tab. This is a
 move-specific policy, not a change to the ordinary close-on-last-tab preference.
 No hover tooltips or loading text in the menu. Start compatibility preflight when
 the parent context menu opens, with hover/entry as fallbacks; destination names
-come immediately from the existing native snapshot. Use the Spaces icon for Move,
+come immediately from the existing native snapshot. Move uses a leading 14px muted
+SVG right-chevron in the same centered 16px icon slot as Back's left-chevron,
+without a trailing text arrow; destination rows keep their colored badges. Use
 a divider below Back, distinct submenu row IDs, and mutually exclusive keyboard
 selection/pointer hover (no first-row selection on mouse-open).
 

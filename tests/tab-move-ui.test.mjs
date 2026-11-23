@@ -136,7 +136,7 @@ const modules = {
   './agent-rename.js': {requestInlineAgentRename:()=>true},
   './tab-rename.js': {requestInlineTabRename:()=>true}, './space-rename.js': {requestInlineSpaceRename:()=>true}, './close-space.js': {closeWithConfirmation(...args){legacyActions.push(args);}},
   './tab-moves.js': {inspectTabMove:target=>menuInspect(target),tabMoveDestinations:()=>menuSpaces.filter(s=>s.id!=='s1'),requestTabMove:(...args)=>{selected.push(args);return integratedMenu ? api.requestTabMove(...args) : true;}},
-  './host.js': {updates:()=>({app:{}}),run(){},props:()=>p,closeOverlay:id=>closed.push(id),openOverlay:spec=>opened.push(spec),theme:()=>({}),keys:()=>[],terminals:()=>[],spaces:()=>menuSpaces,panes:()=>[],exec:async()=>({}),agents:()=>[],shared:()=>({s2:'#abcdef'}),notify(){}},
+  './host.js': {updates:()=>({app:{}}),run(){},props:()=>p,closeOverlay:id=>closed.push(id),openOverlay:spec=>opened.push(spec),theme:()=>({muted:'#aaaaaa',dim:'#777777',foreground:'#eeeeee'}),keys:()=>[],terminals:()=>[],spaces:()=>menuSpaces,panes:()=>[],exec:async()=>({}),agents:()=>[],shared:()=>({s2:'#abcdef'}),notify(){}},
 };
 withKitUi(modules['./ui.js'],element);
 const menuModule = new vm.SourceTextModule(fs.readFileSync(new URL('../src/features/menu/main.js',import.meta.url),'utf8'),{context:menuContext});
@@ -149,10 +149,23 @@ menu.moveTo = true; assert.equal(menu.list()[1][0],'Target','Spaces appear immed
 assert.equal(menu.unavailable(menu.list()[1]), true, 'Unverified destinations cannot write'); menu.moveTo = false;
 await preflights.shift()(mcx);assert.equal(menu.moveCapability.ok,true);menu.at = 2;
 let tree = menu.render(mcx);
-{const all=n=>n&&typeof n==='object'?[n,...(n.kids??[]).flatMap(all)]:[];assert.ok(all(tree.kids[0].kids[2]).some(n=>n.asset==='mods/custom-workspace-chrome/layers.svg'),'Move to uses the Spaces icon');}
+const nodes=n=>n&&typeof n==='object'?[n,...(n.kids??[]).flatMap(nodes)]:[];
+const moveParent=tree.kids[0].kids[2].kids.at(-1), moveIcon=moveParent.kids[0].kids[0];
+assert.equal(moveIcon.asset,'mods/custom-workspace-chrome/chevron-right.svg');
+assert.equal(moveIcon.style.size[0],14);assert.equal(moveIcon.style.text_color[0],'#aaaaaa');
+assert.equal(moveParent.kids[0].style.size[0],16,'Leading chevron uses the shared icon column');
+assert.equal(moveParent.kids.length,2,'No duplicate trailing hint');
+assert.ok(!nodes(moveParent).some(n=>n.asset?.endsWith('layers.svg')||n.kids.includes('›')));
 tree.events.on_key_down({key:'right'},mcx);
 assert.equal(menu.moveTo,true);tree=menu.render(mcx);
 const keyboardRows=tree.kids[0].kids.map(group=>group.kids.at(-1));
+const back=keyboardRows[0],backIcon=back.kids[0].kids[0];
+assert.equal(backIcon.asset,'mods/custom-workspace-chrome/chevron-left.svg');
+assert.equal(backIcon.style.size[0],moveIcon.style.size[0]);
+assert.equal(backIcon.style.text_color[0],moveIcon.style.text_color[0]);
+for(const property of ['size','flex_none','items_center','justify_center']) assert.deepEqual(back.kids[0].style[property],moveParent.kids[0].style[property]);
+for(const property of ['px','gap','items_center']) assert.deepEqual(back.style[property],moveParent.style[property]);
+assert.ok(!nodes(keyboardRows[1]).some(n=>n.asset?.endsWith('chevron-right.svg')),'Real destinations retain colored badges, not navigation arrows');
 assert.equal(tree.kids[0].kids[1].kids.length,3,'A divider and heading separate Back from destination spaces');
 const heading=tree.kids[0].kids[1].kids[1];
 assert.equal(heading.style.id[0],'move-spaces-heading');assert.equal(heading.kids[0],'Available spaces');
