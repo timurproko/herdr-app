@@ -40,6 +40,23 @@ Settings → Spaces SHALL expose **Connect fleet space to coordinator**, default
 
 ## ADDED Requirements
 
+### Requirement: Aligned space worktree markers
+In the expanded Spaces sidebar, visible Git worktree markers SHALL occupy the same right-edge vertical axis as the machine header's fold chevron, for ordinary spaces and attached fleet rows. Any adjacent Crew or other plugin tag SHALL appear to the marker's left without shifting that axis. Worktree-icon visibility and rename behavior SHALL remain unchanged.
+
+#### Scenario: Ordinary and attached worktree rows
+- **WHEN** a local or remote machine group shows ordinary worktree spaces or an attached fleet with its worktree marker enabled
+- **THEN** every visible worktree marker is centred on the header chevron's vertical axis with the same right inset
+- **AND** the fleet's child inset does not move the marker away from that axis
+
+#### Scenario: Worktree marker beside plugin tags
+- **WHEN** a worktree space also displays a Crew tag or another plugin tag
+- **THEN** the tag appears to the left of the trailing worktree marker
+- **AND** the marker retains the same centre line as rows without tags and the machine header chevron
+
+#### Scenario: Hidden marker and renaming
+- **WHEN** worktree icons are switched off or a space is being renamed
+- **THEN** that row shows no worktree marker, preserving the existing visibility and editing behavior
+
 ### Requirement: Stable verified fleet presentation during refresh
 Verified fleet presentation SHALL be a persisted property of exact pair identity, not a temporary refresh mode. Unrelated changes SHALL NOT emit detached frames. Persisted facts SHALL restore the first native-space frame after restart or reload while background verification runs. Failures SHALL retain the pair while both native spaces exist; only completed contradictory evidence, explicit disablement or missing native spaces SHALL detach it. Retained display SHALL NOT authorize actions.
 

@@ -115,7 +115,7 @@ On supported Windows hosts, Custom SHALL observe terminal selections once window
 - **AND** a held drag or unrelated clipboard activity can still be mistaken for a completed copy
 
 ### Requirement: Optional coordinator fleet attachment
-Settings → Spaces SHALL expose **Connect fleet space to coordinator**, defaulting off and portable as a boolean. When enabled with Crew, a verified same-machine fleet SHALL appear below its coordinator with a muted vector elbow replacing its numbered badge. Only the attached fleet SHALL omit its Crew tag; the coordinator SHALL retain its Crew tag. Both rows SHALL remain independently selectable. Native spaces, tabs and terminals SHALL remain distinct.
+Settings → Spaces SHALL expose **Connect fleet space to coordinator**, defaulting off and portable as a boolean. When enabled with Crew, a verified same-machine fleet SHALL appear immediately below its coordinator with a link icon instead of its numbered badge. Both linked rows SHALL omit their Crew tags and remain independently selectable. Native spaces, tabs and terminals SHALL remain distinct.
 
 #### Scenario: First use and disabled setting
 - **WHEN** the preference is absent or false
@@ -124,15 +124,9 @@ Settings → Spaces SHALL expose **Connect fleet space to coordinator**, default
 
 #### Scenario: Connected fleet
 - **WHEN** the preference is true, Crew is enabled and live ownership identifies one coordinator and one fleet on the same machine
-- **THEN** the fleet is displayed directly below the coordinator with a thin muted elbow line descending from beneath the coordinator's numbered badge and turning right toward the inset muted fleet name
-- **AND** the elbow is a vector line in the badge position, not a chain/link glyph or text character
-- **AND** the coordinator retains its Crew tag, only the attached fleet omits its Crew tag, and unrelated plugin tags remain
-- **AND** the existing fleet worktree icon remains at the row's right edge when enabled
-
-#### Scenario: Compact rail attachment
-- **WHEN** the verified pair is shown in the compact rail
-- **THEN** the coordinator retains its numbered badge and the fleet shows the same thin muted vector elbow motif in its badge slot
-- **AND** the fleet remains separately selectable with its existing name or directory tooltip and no chain/link glyph
+- **THEN** the fleet is displayed directly below the coordinator with a child inset and a link glyph in the badge position
+- **AND** neither linked row displays its Crew tag, while unrelated plugin tags remain
+- **AND** the compact rail uses the link glyph for the fleet as well
 
 #### Scenario: Independent navigation
 - **WHEN** the user clicks the attached fleet rather than dragging it
@@ -176,20 +170,3 @@ Dragging either member of a verified coordinator/fleet pair SHALL reorder both a
 - **WHEN** attachment is off or a dragged space has no verified link
 - **THEN** the existing same-machine independent reorder behavior is preserved
 - **AND** repository discovery does not regroup unrelated worktree spaces
-
-### Requirement: Aligned space worktree markers
-In the expanded Spaces sidebar, visible Git worktree markers SHALL occupy the same right-edge vertical axis as the machine header's fold chevron, for ordinary spaces and attached fleet rows. Any adjacent Crew or other plugin tag SHALL appear to the marker's left without shifting that axis. Worktree-icon visibility and rename behavior SHALL remain unchanged.
-
-#### Scenario: Ordinary and attached worktree rows
-- **WHEN** a local or remote machine group shows ordinary worktree spaces or an attached fleet with its worktree marker enabled
-- **THEN** every visible worktree marker is centred on the header chevron's vertical axis with the same right inset
-- **AND** the fleet's child inset does not move the marker away from that axis
-
-#### Scenario: Worktree marker beside plugin tags
-- **WHEN** a worktree space also displays a Crew tag or another plugin tag
-- **THEN** the tag appears to the left of the trailing worktree marker
-- **AND** the marker retains the same centre line as rows without tags and the machine header chevron
-
-#### Scenario: Hidden marker and renaming
-- **WHEN** worktree icons are switched off or a space is being renamed
-- **THEN** that row shows no worktree marker, preserving the existing visibility and editing behavior

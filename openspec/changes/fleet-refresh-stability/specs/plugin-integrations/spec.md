@@ -63,6 +63,32 @@ With attachment and Git enabled, selecting a verified coordinator SHALL show ded
 
 ## ADDED Requirements
 
+### Requirement: Collapsible coordinator repository sections
+Each repository section in the consolidated coordinator Git panel SHALL have a collapsible header using the Spaces machine-header control and style. Sections SHALL default expanded and retain independent per-repository fold state locally, using the same persistence mechanism as Spaces machine sections. Headers SHALL retain the repository name, task-scoped Open/Closed counts and chevron while collapsed.
+
+#### Scenario: First display
+- **WHEN** a repository has no saved folded state and appears in the coordinator overview
+- **THEN** its section is expanded with a machine-style header and expanded chevron
+- **AND** its header shows that repository's distinct Open and Closed task-PR counts, not repository-wide totals
+
+#### Scenario: Collapse and expand one repository
+- **WHEN** the user clicks a repository header or its chevron
+- **THEN** only that repository section toggles, using the same interaction and visual style as a Spaces machine header
+- **AND** its name, counts and chevron remain visible while its body rows, scoped errors and enrollment prompt are hidden when folded
+- **AND** reopening restores its current rows and scoped body notices without changing the Open/Closed tab or selecting a PR
+
+#### Scenario: Fold state survives panel changes
+- **WHEN** a repository is collapsed and the user changes Open/Closed tabs, refreshes, changes coordinator selection, or closes and reopens the panel
+- **THEN** the repository retains its local folded state independently of other repositories
+- **AND** panel recreation restores saved state through the same local persistence mechanism as Spaces machine folding
+- **AND** that UI state is not exported as a portable preference or written to Crew records
+
+#### Scenario: Counts update while collapsed
+- **WHEN** the normal aggregate lifecycle updates PR facts or task links for a folded repository
+- **THEN** its visible header counts update without expanding the section
+- **AND** global Open/Closed counts still include eligible task PRs in collapsed sections
+- **AND** folding itself performs no extra GitHub read, stops no existing webhook update, and does not create an empty-list message solely because all sections are folded
+
 ### Requirement: Non-destructive fleet status refresh
 Refreshing fleet status SHALL distinguish pending or failed transport from a completed relationship result. Starting a read or receiving a read error SHALL NOT overwrite a previously verified binding with an authoritative absence. Successful status/binding replacement SHALL publish atomically, and obsolete read completions SHALL NOT replace newer facts. Retained display SHALL be bounded to persisted exact pair identities, not renewed action freshness.
 
