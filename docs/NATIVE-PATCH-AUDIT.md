@@ -54,3 +54,46 @@ frame/helper/record snapshots remain unchanged.
 `tests/native-engine.test.mjs` covers both main/record races during dependency-only
 repair and partial v1 refresh with absent or nonempty original helper backups.
 All tests use disposable homes; no live patch, native binary or user state is written.
+
+## Original-evidence retirement and disk-first discovery
+
+Second-review audit of every native evidence-deletion path:
+
+| Path checked | Evidence retained before deletion |
+| --- | --- |
+| Structural restore | Enumerates installed and original paths. Missing nonempty originals are written back; unchanged originals also participate in final checkpoints. Current/newer native stock is not downgraded, and the prior raw record survives in journal recovery evidence. |
+| Apply commit and source rebase | Full before/after journal images include the old record and its originals. The exact raw journal is copied, read back and retained immutably before its active name is removed. |
+| Rollback completion | Every before-image is verified again, not merely written. Failed readback keeps the active journal. Successful recovery retires it into the same immutable evidence store. |
+| Restore interrupted after record deletion | Disk journal discovery does not depend on a record. If all after-images are present, restore is finalized without recreating an opt-in; otherwise guarded rollback retains/reconstructs prior evidence. |
+| Legacy catalog restore/rebase | Original record bytes are archived before record replacement/deletion, including originals outside today's mapping. Restored known files and the unchanged record are checked before removing that record. |
+| Startup, doctor and uninstall | Pending journals are enumerated from disk separately from records. Startup recovery-only work does not reapply/create an opt-in. Doctor reports recordless pending work and retained archives, even without a deployment manifest. Uninstall settles journals before removing its worker. |
+| Completed backup inventory | Content-addressed journal/record archives are retained indefinitely as private data. They are reported, never replayed or treated as opt-ins. There is no automatic archive deletion path. |
+| Atomic temporary-file cleanup | A temp file is removed only if this invocation created it. Active transaction/record or original disk bytes remain until durable archival/readback succeeds; lock cleanup carries no original file payload. |
+
+Tests include valuable originals with present/missing helper files, original-only
+paths no longer in installed mappings, failed archive writes, rollback readback
+interference, and an unchanged original deleted during restore. Initial apply and
+restore crashes are exercised without records through actual startup/doctor/removal
+composition; only completed archives remain after recovery and never activate a mod.
+
+## Total source-shape boundaries and mutation matrix
+
+Both public surface transforms carry their current anchor through a whole-function
+boundary. Shared call/method/range/chain walkers check missing nodes, and callbacks
+are checked before reading their bodies. An extracted input-change identifier is
+valid native code (proved with the VM), but is a named unsupported inline-callback
+anchor, not a leaked TypeError. Pure transform sample/output and dependency checks
+plus the whole inspection and explicit-apply preflights convert unexpected source-shape exceptions to
+advisories without writes. Deliberate ownership/record/path errors and real I/O
+failures are separately typed hard safety failures; corrupt recovery evidence is
+not misreported as a harmless stock refactoring.
+
+`native-mutations.mjs` removes, wraps, renames and reorders methods, helper functions,
+imports, callback forms and child/conditional/event slots in raw 0.1.16/0.1.17
+fixtures, including absent arguments, destructured parameters and computed member
+operations. The three `native-fuzz-*.test.mjs` entries cover **1,272 variants**:
+**572** verified apply/ownership/module-graph/exact-restore outcomes and **700**
+advisory skips with complete file snapshots unchanged. Direct transforms must
+return parsed output or an anchor-named Incompatible; inspection, explicit apply
+and startup must not leak source-shape exceptions. Fuzz verification concerns structural installation/recovery,
+not proof of arbitrary synthesized controller semantics or native GPUI pixels.

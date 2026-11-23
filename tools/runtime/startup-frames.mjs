@@ -4,12 +4,14 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { framePatch, inspectFramePatch } from './frame-patch.mjs';
 import { loadFrameRegistry } from './frame-registry.mjs';
+import { nativeRecoveryInventory } from './native-recovery.mjs';
 const bundle = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 export function restoreStartupFrames(home, root = bundle, options = {}) {
   const owner = path.join(home, '.customizations');
-  const frames = loadFrameRegistry(root).map(patch => patch.id).filter(frame => fs.existsSync(path.join(owner, `frame-${frame}.json`)));
-  if (!frames.length) return { ok: true, frames: {} }; // Never opt a user in.
+  const inventory=nativeRecoveryInventory(home),pending=new Set(inventory.journals.map(j=>j.id));
+  const frames = [...new Set([...pending,...loadFrameRegistry(root).map(patch => patch.id).filter(frame => fs.existsSync(path.join(owner, `frame-${frame}.json`)))])];
+  if (!frames.length) return { ok: true, frames: {} }; // Completed backups are evidence, never opt-ins.
   const lock = path.join(owner, 'startup-frames.lock');
   let fd;
   try { fd = fs.openSync(lock, 'wx'); }
@@ -32,9 +34,13 @@ export function restoreStartupFrames(home, root = bundle, options = {}) {
     for (const frame of frames) {
       try {
         const inspection = inspections.get(frame);
+        if(pending.has(frame)||inspection?.status==='recovery-required'||fs.existsSync(path.join(owner,`native-${frame}.journal.json`))) {
+          results[frame]={ok:true,recovered:true,message:framePatch('recover',home,root,frame,options)};
+          continue; // Never turn recovery-only work into a fresh opt-in/apply.
+        }
         if(inspection instanceof Error)throw inspection;
         results[frame] = inspection.status === 'skipped' ? inspection
-          : { ok: true, message: framePatch('apply', home, root, frame, options) };
+          : { ok: true, message: framePatch('apply', home, root, frame, {...options,existingOptIn:true}) };
       }
       catch (error) { results[frame] = { ok: false, error: error.message }; }
     }

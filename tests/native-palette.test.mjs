@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import { transformPalette } from '../tools/runtime/native-transform.mjs';
 import { tree, method, text } from '../tools/runtime/native-ast.mjs';
 import { harness,paletteFiles,byId,words } from './native-harness.mjs';
+import {referenceInputChange} from './native-mutations.mjs';
 for(const version of ['0.1.16','0.1.17','future']) {
   let stock=fs.readFileSync(`tests/fixtures/native-stock/${version==='future'?'0.1.17':version}/palette.js`,'utf8');
   if(version==='future')stock=stock.replace('const NAMED = [','const NAMED = [\n ["app.future", {}, "App", "Future native action", "new"],').replace('if (e.name === "mod.clone")','if (e.name === "app.future") { run("app.future", { native: true }); } else if (e.name === "mod.clone")');
@@ -48,6 +49,7 @@ for(const [name,source]of [
  const added=byId(p.render(),'native-extra');assert.ok(added,`${name}: native action exists`);added.events.on_click({},h.cx);assert.equal(p.nativeExtra,true);
  assert.throws(()=>transformPalette(source,'./custom-test'),/palette (?:root|render)/,`${name}: unsupported content must not disappear in Custom`);
 }
+const referenced=referenceInputChange(auditStock),referenceHarness=await harness(referenced,paletteFiles()),referencePalette=new referenceHarness.View();referencePalette.init({},referenceHarness.cx);referencePalette.input.set_value('valid native refactoring');referencePalette.input.events.change({},referenceHarness.cx);assert.equal(referencePalette.query,'valid native refactoring');assert.throws(()=>transformPalette(referenced,'./custom-test'),/palette input-change callback/);
 const focus=auditStock.replace('this.input.focus();','this.input.on("focus",()=>this.nativeExtra=true); this.input.focus();');const nativeFocus=await harness(focus,paletteFiles()),focused=new nativeFocus.View();focused.init({},nativeFocus.cx);focused.input.events.focus();assert.equal(focused.nativeExtra,true);assert.throws(()=>transformPalette(focus,'./custom-test'),/native focus\/blur hooks/);
 for(const assignment of ['this.headingSync = null;','this["headingSync"] = null;'])assert.throws(()=>transformPalette(auditStock.replace('init(_props, cx) {',`init(_props, cx) { ${assignment}`),'./custom-test'),/native state collides/);
 assert.throws(()=>transformPalette(auditStock.replace('placeholder: "Type a command…"','placeholder: (this.nativeExtra = true, "Type a command…")'),'./custom-test'),/placeholder gained behavior/);

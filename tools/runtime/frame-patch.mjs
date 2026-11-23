@@ -6,14 +6,9 @@ import { pathToFileURL } from 'node:url';
 import { bundle, loadFrameRegistry } from './frame-registry.mjs';
 import { inspectNative, mutateNative } from './native-frame.mjs';
 import { transformNative } from './native-transform.mjs';
+import { retainNativeBackup, nativeAtomic as atomic } from './native-recovery.mjs';
 const hash = text => text === null ? null : crypto.createHash('sha256').update(text).digest('hex');
 const read = file => fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
-function atomic(file, text) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  const temp = `${file}.custom-${process.pid}.tmp`;
-  try { fs.writeFileSync(temp, text); fs.renameSync(temp, file); }
-  finally { if (fs.existsSync(temp)) fs.unlinkSync(temp); }
-}
 // Inspect before mutation. Exact owned bytes are not native compatibility proof
 // after a binary upgrade: the old patch can mask a newly shipped original.
 export function inspectFramePatch(home, root = bundle, frame, options = {}) {
@@ -54,17 +49,18 @@ export function inspectFramePatch(home, root = bundle, frame, options = {}) {
   return {ok:true, status:'ready', active};
 }
 export function framePatch(action, home, root = bundle, frame, options = {}) {
-  if (!['apply', 'check', 'restore', 'inspect'].includes(action)) throw Error(`Unknown frame patch action: ${action}`);
+  if (!['apply', 'check', 'restore', 'inspect', 'recover'].includes(action)) throw Error(`Unknown frame patch action: ${action}`);
   if (action === 'inspect') return inspectFramePatch(home, root, frame, options);
   const structural=loadFrameRegistry(root).find(p=>p.id===frame);
   if(structural?.transform) {
-    if(['apply','restore'].includes(action))return mutateNative(action,home,root,structural,(source,prefix,opts)=>transformNative(frame,source,prefix,opts),options);
+    if(['apply','restore','recover'].includes(action))return mutateNative(action,home,root,structural,(source,prefix,opts)=>transformNative(frame,source,prefix,opts),options);
     const result=inspectFramePatch(home,root,frame,options);
     if(!result.ok)throw Error(result.error);
     if(result.status==='skipped')return result.advisory;
     if(!result.active)throw Error(`${frame} patch is repair-needed; structural repair required.`);
     return `${frame} frame patch and dependencies match.`;
   }
+  if(action==='recover')throw Error('Journal recovery is supported only for structural frames.');
   if (action === 'apply') {
     const inspection = inspectFramePatch(home, root, frame, options);
     if (inspection.status === 'skipped') throw Error(inspection.advisory);
@@ -97,6 +93,7 @@ export function framePatch(action, home, root = bundle, frame, options = {}) {
       installed: Object.fromEntries(names.map(n => [n, hash(payload[n])])), previousInstalled: Object.fromEntries(names.map(n => [n, hash(current[n])])) };
     // A reviewed reset/update rebases the backup rather than downgrading on removal.
     if (supportedStock) next.original['main.js'] = current['main.js'];
+    if(stateRaw!==null)retainNativeBackup(home,frame,Buffer.from(stateRaw),'record');
     atomic(stateFile, JSON.stringify(next, null, 2) + '\n');
     for (const n of names) if ((n === 'main.js' && changed) || current[n] !== payload[n]) {
       if (read(path.join(dir, n)) !== current[n]) throw Error(`${frame} file changed during apply: ${n}; stopped safely.`);
@@ -124,6 +121,14 @@ export function framePatch(action, home, root = bundle, frame, options = {}) {
     if (original === null) { if (current[n] !== null) fs.unlinkSync(path.join(dir, n)); }
     else if (current[n] !== original) atomic(path.join(dir, n), original);
   }
+  // Preserve every prior original, including obsolete stock or unmapped helpers,
+  // before deleting the opt-in. Recovery archives are never scanned as opt-ins.
+  retainNativeBackup(home,frame,Buffer.from(stateRaw),'record');
+  for(const n of names) {
+    const expected=n==='main.js'&&newerStock?current[n]:state.original[n]??null;
+    if(read(path.join(dir,n))!==expected)throw Error(`${frame} restore readback failed: ${n}; backup and record retained.`);
+  }
+  if(read(stateFile)!==stateRaw)throw Error(`${frame} record changed during restore; backups retained.`);
   fs.unlinkSync(stateFile);
   return `${frame} frame restored; personal settings and shortcuts unchanged.`;
 }

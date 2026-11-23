@@ -5,6 +5,7 @@ import os from 'node:os';
 import cp from 'node:child_process';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {digest,read,put,json,contained,safeRelative} from './files.mjs';
+import {nativeRecoveryInventory} from './native-recovery.mjs';
 export const defaultHome=()=>process.env.HERDR_APP_HOME||path.join(os.homedir(),'.config/herdr-app');
 export const shellPaths=['bash-cwd-loader.sh','bash-cwd.sh','powershell-cwd.ps1','revision'].map(name=>`.customizations/runtime/shell/${name}`);
 export const shellRevisionPath=shellPaths.at(-1);
@@ -119,15 +120,21 @@ export function deploy(root,home=defaultHome(),{adopt={},repair=true,sources=nul
   });
 }
 export function doctor(home=defaultHome()) {
-  const state=json(contained(home,'.customizations/manifest.json'));if(state?.version!==2)throw Error('No Custom deployment found.');
+  const recovery=fs.existsSync(home)?nativeRecoveryInventory(home):{journals:[],backups:[]};
+  const state=json(contained(home,'.customizations/manifest.json'));
+  if(state?.version!==2) {
+    if(!recovery.journals.length&&!recovery.backups.length)throw Error('No Custom deployment found.');
+    return {ok:false,version:null,issues:['No Custom deployment found.',...recovery.journals.map(j=>`${j.id}: interrupted transaction; recovery required at ${j.file}`)],advisories:[],patches:recovery.journals.map(j=>({id:j.id,status:'recovery-required',active:false,ok:false})),recoveryBackups:recovery.backups,ownedFiles:0};
+  }
   const issues=[];
   for(const [rel,hash]of Object.entries(state.files)){allowedPath(rel);const file=contained(home,rel);if(!fs.existsSync(file))issues.push(`Missing: ${rel}`);else if(digest(fs.readFileSync(file))!==hash){if(rel==='layouts/Custom.json'){try{layoutOverrides(state.layoutBase,JSON.parse(read(file)));}catch(e){issues.push(e.message);}}else issues.push(`Modified: ${rel}`);}}
   const prefs=json(contained(home,'.customizations/layout-preferences.json'));if(prefs)try{projectLayout(state.layoutBase,prefs.overrides);}catch(e){issues.push(e.message);}
   let version=null;try{version=app(['--version'],home).replace(/^herdr-app\s+/,'');}catch{}
   const registry=json(path.join(home,'.customizations/runtime/frame-patches/registry.json'));
-  const patches=[],advisories=[];
+  const patches=recovery.journals.map(j=>({id:j.id,status:'recovery-required',active:false,ok:false})),advisories=[];
+  for(const j of recovery.journals)issues.push(`${j.id}: interrupted transaction; recovery required at ${j.file}`);
   for(const patch of registry?.patches??[]) {
-    const record=json(path.join(home,`.customizations/frame-${patch.id}.json`));if(!record)continue;
+    if(recovery.journals.some(j=>j.id===patch.id)||!fs.existsSync(path.join(home,`.customizations/frame-${patch.id}.json`)))continue;
     try {
       const worker=path.join(home,'.customizations/runtime/scripts/frame-patch.mjs');
       const inspection=JSON.parse(cp.execFileSync(process.execPath,[worker,'inspect',patch.id,home],{encoding:'utf8',timeout:30000,windowsHide:true}));
@@ -136,7 +143,7 @@ export function doctor(home=defaultHome()) {
       else if(!inspection.active)issues.push(inspection.error || `Compatibility patch ${patch.id} repair-needed; structural repair required.`);
     }catch(error){issues.push(`Compatibility patch ${patch.id}: ${error.stderr?.toString().trim()||error.message}`);}
   }
-  return {ok:issues.length===0,version,reviewedVersion:state.supportedHerdr?.includes(version)??false,issues,advisories,patches,ownedFiles:Object.keys(state.files).length};
+  return {ok:issues.length===0,version,reviewedVersion:state.supportedHerdr?.includes(version)??false,issues,advisories,patches,recoveryBackups:recovery.backups,ownedFiles:Object.keys(state.files).length};
 }
 export function nativeCheck(home=defaultHome()) {
   const state=json(contained(home,'.customizations/manifest.json'));if(!state)throw Error('No Custom deployment.');
@@ -155,7 +162,13 @@ export function remove(home=defaultHome()) {
     const runtime=path.join(home,'.customizations/runtime');
     const registry=json(path.join(runtime,'frame-patches/registry.json'));
     if(fs.existsSync(path.join(home,'.customizations/terminal-input.json')))cp.execFileSync(process.execPath,[path.join(runtime,'scripts/terminal-input.mjs'),'restore',home],{encoding:'utf8',timeout:30000});
-    for(const patch of registry?.patches??[])if(fs.existsSync(path.join(home,`.customizations/frame-${patch.id}.json`)))cp.execFileSync(process.execPath,[path.join(runtime,'scripts/frame-patch.mjs'),'restore',patch.id,home],{encoding:'utf8',timeout:30000});
+    const recovery=nativeRecoveryInventory(home);
+    if(recovery.journals.some(j=>!registry?.patches?.some(p=>p.id===j.id)))throw Error('Native recovery required; pending journal has no installed recovery adapter. Worker and backups retained.');
+    for(const patch of registry?.patches??[]) {
+      const worker=path.join(runtime,'scripts/frame-patch.mjs');
+      if(fs.existsSync(path.join(home,`.customizations/native-${patch.id}.journal.json`)))cp.execFileSync(process.execPath,[worker,'recover',patch.id,home],{encoding:'utf8',timeout:30000});
+      if(fs.existsSync(path.join(home,`.customizations/frame-${patch.id}.json`)))cp.execFileSync(process.execPath,[worker,'restore',patch.id,home],{encoding:'utf8',timeout:30000});
+    }
     for(const j of files)if(fs.existsSync(j.file)&&digest(fs.readFileSync(j.file))===j.hash)fs.unlinkSync(j.file);
     fs.unlinkSync(path.join(home,'.customizations/manifest.json'));
     return {removed:files.length-changed.length,preserved:changed.map(j=>j.rel)};

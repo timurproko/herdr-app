@@ -402,6 +402,7 @@
     "scripts/frame-patch.mjs": "tools/runtime/frame-patch.mjs",
     "scripts/native-ast.mjs": "tools/runtime/native-ast.mjs",
     "scripts/native-frame.mjs": "tools/runtime/native-frame.mjs",
+    "scripts/native-recovery.mjs": "tools/runtime/native-recovery.mjs",
     "scripts/native-transform.mjs": "tools/runtime/native-transform.mjs",
     "vendor/acorn/acorn.mjs": "tools/vendor/acorn/acorn.mjs",
     "vendor/acorn/LICENSE": "tools/vendor/acorn/LICENSE",

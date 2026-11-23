@@ -1,7 +1,13 @@
 // Non-executing, range-preserving structural edits. Acorn 8.15.0 (MIT).
 import { parse } from '../vendor/acorn/acorn.mjs';
 export class Incompatible extends Error {}
+export function incompatible(error,anchor) {
+  if(error instanceof Incompatible)return new Incompatible(`${anchor}: ${error.message}`);
+  return new Incompatible(`${anchor}: unsupported source shape (${error?.message ?? String(error)})`);
+}
+export function sourceBoundary(anchor,fn) {try{return fn();}catch(error){throw incompatible(error,anchor);}}
 export function tree(source) {
+  if(typeof source!=='string')throw new Incompatible('JavaScript source must be text');
   if (Buffer.byteLength(source) > 1024 * 1024) throw new Incompatible('source exceeds 1 MiB');
   try { return parse(source, { ecmaVersion: 'latest', sourceType: 'module' }); }
   catch (error) { throw new Incompatible(`JavaScript parse: ${error.message}`); }
@@ -18,17 +24,27 @@ export function nodes(node, predicate) {
   visit(node); return found;
 }
 export function one(items, anchor) {
-  if (items.length !== 1) throw new Incompatible(`${anchor}: expected one anchor, found ${items.length}`);
+  if (!Array.isArray(items) || items.length !== 1) throw new Incompatible(`${anchor}: expected one anchor, found ${Array.isArray(items)?items.length:'invalid collection'}`);
   return items[0];
 }
-export const method = (klass, name) => one(klass.body.body.filter(n => n.type === 'MethodDefinition' && n.key.name === name), `method ${name}`).value;
-export const call = (n, name) => n.type === 'CallExpression' && n.callee.type === 'MemberExpression' && n.callee.property.name === name;
-export const text = (source, node) => source.slice(node.start, node.end);
+export function method(klass,name) {
+  if(klass?.body?.type!=='ClassBody'||!Array.isArray(klass.body.body))throw new Incompatible(`method ${name}: missing class body`);
+  const found=one(klass.body.body.filter(n=>n.type==='MethodDefinition'&&!n.computed&&!n.static&&n.kind==='method'&&identifier(n.key)===name),`method ${name}`).value;
+  if(found?.type!=='FunctionExpression'||found.body?.type!=='BlockStatement')throw new Incompatible(`method ${name}: unsupported function body`);
+  return found;
+}
+export const identifier = node => node?.type==='Identifier' ? node.name : undefined;
+export const memberName = node => node?.type==='MemberExpression'&&!node.computed ? identifier(node.property) : undefined;
+export const call = (n, name) => n?.type==='CallExpression'&&memberName(n.callee)===name;
+export function text(source,node) {
+  if(typeof source!=='string'||!Number.isInteger(node?.start)||!Number.isInteger(node?.end)||node.start<0||node.end<node.start||node.end>source.length)throw new Incompatible('source range: missing or invalid node');
+  return source.slice(node.start,node.end);
+}
 export function edits(source, ranges) {
   const sorted = [...ranges].sort((a,b) => a.start - b.start || a.end - b.end);
   let end = 0;
   for (const e of sorted) {
-    if (e.start < end || e.start < 0 || e.end < e.start || e.end > source.length) throw new Incompatible('overlapping/invalid structural edits');
+    if (!Number.isInteger(e.start)||!Number.isInteger(e.end)||e.start < end || e.start < 0 || e.end < e.start || e.end > source.length) throw new Incompatible('overlapping/invalid structural edits');
     end = e.end;
   }
   let output = source;
@@ -47,9 +63,9 @@ export function checkGraph(main, files) {
     for(const node of tree(source).body) {
       if(node.type==='ExportDefaultDeclaration')names.add('default');
       if(node.type==='ExportNamedDeclaration') {
-        if(node.declaration?.id)names.add(node.declaration.id.name);
-        for(const d of node.declaration?.declarations??[])if(d.id.name)names.add(d.id.name);
-        for(const s of node.specifiers??[])names.add(s.exported.name);
+        if(identifier(node.declaration?.id))names.add(identifier(node.declaration.id));
+        if(node.declaration?.type==='VariableDeclaration')for(const d of node.declaration.declarations)if(identifier(d.id))names.add(identifier(d.id));
+        for(const s of node.specifiers??[])if(s.type==='ExportSpecifier')names.add(identifier(s.exported)??s.exported.value);
       }
     }
     return names;
@@ -61,7 +77,7 @@ export function checkGraph(main, files) {
     for (const n of ast.body) if (['ImportDeclaration','ExportNamedDeclaration','ExportAllDeclaration'].includes(n.type) && n.source) {
       const ref = n.source.value;
       if (['herdr','gpui-kit','gpui-base'].includes(ref)) continue;
-      if (!ref.startsWith('./') && !ref.startsWith('../')) throw new Incompatible(`unsupported module ${ref}`);
+      if (typeof ref!=='string'||(!ref.startsWith('./') && !ref.startsWith('../'))) throw new Incompatible(`unsupported module ${ref}`);
       const parts = name.split('/').slice(0,-1);
       for (const p of ref.split('/')) { if (p === '..') { if (!parts.length) throw new Incompatible('module escapes frame'); parts.pop(); } else if (p !== '.') parts.push(p); }
       const dest = parts.join('/');

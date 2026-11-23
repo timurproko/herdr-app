@@ -148,7 +148,13 @@ Review regressions additionally cover wrapped/nested native actions at each repl
 presentation site, unchanged main/record races during dependency-only repair, and
 v1 helpers recognized through previous hashes. See [the replacement-site audit](NATIVE-PATCH-AUDIT.md)
 for preserved versus specifically refused regions. Native drop additions survive
-both the root and attachment-area callbacks.
+both the root and attachment-area callbacks. Second-review regressions exercise
+missing valuable original helpers, evidence archival/readback failure and recordless
+apply/restore crashes. Disk-first doctor reporting also works without a runtime
+registry or deployment manifest. Three native-fuzz entries mutate 1,272 release
+fixture variants across methods, helpers, imports, callbacks and content anchors;
+only verified apply/graph/exact-restore or unchanged anchor-named advisory skips
+are accepted through direct transform, inspect, apply and startup paths.
 
 `tests/deploy-failure.test.mjs` carries host/build/install/patch causes through the
 actual all-machine worker, durable result writer, Update inspection and Settings
@@ -330,7 +336,7 @@ only the demonstrated Windows Git-sh fixture remains an observed suite exclusion
 ## Exact selected source entries
 
 The list below is generated from CI selection, not inferred from naming. On Node
-24 the current selection is **154 Ubuntu / 153 Windows entries**, with two/three
+24 the current selection is **157 Ubuntu / 156 Windows entries**, with two/three
 explicit exclusions respectively. The installed directory-loader fixture now runs
 on both; the preference-home and four runtime-contract suites are included. It includes scaffold/aggregator tests. Earlier Node 20 attempts selected
 122/121 and then 119/119 entries while diagnosing the crashes; those temporary
@@ -427,6 +433,9 @@ tests/host-facade.test.mjs
 tests/installed-export.test.mjs
 tests/native-engine.test.mjs
 tests/native-feedback.test.mjs
+tests/native-fuzz-feedback-16.test.mjs
+tests/native-fuzz-feedback-17.test.mjs
+tests/native-fuzz-palette.test.mjs
 tests/native-integration.test.mjs
 tests/native-palette.test.mjs
 tests/native-selection.test.mjs

@@ -2,38 +2,26 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { Incompatible, tree, one, checkGraph } from './native-ast.mjs';
+import { Incompatible, incompatible, sourceBoundary, tree, one, identifier, checkGraph } from './native-ast.mjs';
+import { NativePatchSafetyError, isNativeSafetyError, nativeRead as read, nativePath as safe, nativeAtomic as atomic, retireNativeJournal } from './native-recovery.mjs';
 export const digest = b => b === null ? null : crypto.createHash('sha256').update(b).digest('hex');
-const read = file => { try { const b=fs.readFileSync(file); if(b.length>16*1024*1024)throw Error('Patch file exceeds 16 MiB');return b; } catch(e) { if(e.code==='ENOENT')return null;throw e; } };
 const encode = b => b === null ? null : b.toString('base64');
-const decode = s => { if(s===null)return null;if(typeof s!=='string'||s.length>24*1024*1024||! /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(s))throw Error('Corrupt patch backup');return Buffer.from(s,'base64'); };
+const decode = s => { if(s===null)return null;if(typeof s!=='string'||s.length>24*1024*1024||! /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(s))throw new NativePatchSafetyError('Corrupt patch backup');return Buffer.from(s,'base64'); };
 const sourceText = bytes => {try{return new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes);}catch{throw new Incompatible('stock source is not UTF-8');}};
 const equal = (a,b) => a===null ? b===null : b!==null && a.equals(b);
 const validName = n => typeof n==='string' && /^(?:custom-[a-f0-9]{24}\/)?[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(n) && !['.','..'].includes(n);
-function safe(home, relative) {
-  const file=path.resolve(home,relative),base=path.resolve(home);
-  if(!file.startsWith(base+path.sep))throw Error('Patch path escapes home');
-  let p=file;
-  while(p!==base) { if(fs.existsSync(p)&&fs.lstatSync(p).isSymbolicLink())throw Error(`Patch symlink refused: ${relative}`);p=path.dirname(p); }
-  if(fs.lstatSync(base).isSymbolicLink())throw Error('Patch home symlink refused');
-  return file;
-}
-function atomic(file,bytes) {
-  if(bytes===null){if(fs.existsSync(file))fs.unlinkSync(file);return;}
-  fs.mkdirSync(path.dirname(file),{recursive:true});const temp=`${file}.custom-${process.pid}.tmp`;
-  let fd,created=false;try {fd=fs.openSync(temp,'wx');created=true;fs.writeFileSync(fd,bytes);fs.fsyncSync(fd);fs.closeSync(fd);fd=undefined;fs.renameSync(temp,file);}finally{if(fd!==undefined)fs.closeSync(fd);if(created&&fs.existsSync(temp))fs.unlinkSync(temp);}
-}
 function record(home,id) {
   const raw=read(safe(home,`.customizations/frame-${id}.json`));if(!raw)return {raw,state:null};
-  let state;try{state=JSON.parse(raw);}catch{throw Error(`Corrupt ${id} patch record`);}
-  if(![1,2].includes(state.version)||!state.original||!state.installed||typeof state.original!=='object'||Array.isArray(state.original)||Array.isArray(state.installed))throw Error(`Unrecognized ${id} patch record`);
-  for(const [n,h] of Object.entries(state.installed))if(!validName(n)||! /^(?:[a-f0-9]{64})$/.test(h))throw Error(`Corrupt ${id} installed hash`);
+  let state;try{state=JSON.parse(raw);}catch{throw new NativePatchSafetyError(`Corrupt ${id} patch record`);}
+  if(!state||![1,2].includes(state.version)||!state.original||!state.installed||typeof state.original!=='object'||typeof state.installed!=='object'||Array.isArray(state.original)||Array.isArray(state.installed))throw new NativePatchSafetyError(`Unrecognized ${id} patch record`);
+  for(const [n,h] of Object.entries(state.installed))if(!validName(n)||! /^(?:[a-f0-9]{64})$/.test(h))throw new NativePatchSafetyError(`Corrupt ${id} installed hash`);
   for(const [n,b] of Object.entries(state.original)) {
-    if(!validName(n)||(b!==null&&typeof b!=='string'))throw Error(`Corrupt ${id} original`);
+    if(!validName(n)||(b!==null&&typeof b!=='string'))throw new NativePatchSafetyError(`Corrupt ${id} original`);
     if(state.version===2)decode(b);
   }
-  if(!state.installed['main.js']||!Object.hasOwn(state.original,'main.js'))throw Error(`Corrupt ${id} main record`);
-  if(state.previousInstalled)for(const [n,h]of Object.entries(state.previousInstalled))if(!validName(n)||(h!==null&&!/^[a-f0-9]{64}$/.test(h)))throw Error(`Corrupt ${id} previous hash`);
+  if(!state.installed['main.js']||!Object.hasOwn(state.original,'main.js'))throw new NativePatchSafetyError(`Corrupt ${id} main record`);
+  if(state.previousInstalled&&(typeof state.previousInstalled!=='object'||Array.isArray(state.previousInstalled)))throw new NativePatchSafetyError(`Corrupt ${id} previous hashes`);
+  if(state.previousInstalled)for(const [n,h]of Object.entries(state.previousInstalled))if(!validName(n)||(h!==null&&!/^[a-f0-9]{64}$/.test(h)))throw new NativePatchSafetyError(`Corrupt ${id} previous hash`);
   return {raw,state};
 }
 const original = (state,n) => state?.version===2 ? decode(state.original[n]??null) : state?.original[n]==null ? null : Buffer.from(state.original[n]);
@@ -42,7 +30,7 @@ function binary(options) {
   const exe=process.env.HERDR_APP_BIN||path.join(process.env.LOCALAPPDATA??'','Programs/herdr-app/herdr-app.exe');
   try{return fs.readFileSync(exe);}catch{return null;}
 }
-function unique(binary,bytes) {const i=bytes?.length ? binary?.indexOf(bytes) : -1;return i>=0 && binary.indexOf(bytes,i+1)<0;}
+function unique(binary,bytes) {if(!Buffer.isBuffer(binary)||!Buffer.isBuffer(bytes)||!bytes.length)return false;const i=binary.indexOf(bytes);return i>=0&&binary.indexOf(bytes,i+1)<0;}
 export function stockSource(id,current,saved,bin) {
   if(!Buffer.isBuffer(bin))throw new Incompatible('current executable source unavailable');
   if(unique(bin,current))return current;
@@ -52,27 +40,26 @@ export function stockSource(id,current,saved,bin) {
   const start=i+begin.length,j=bin.indexOf(end,start);
   if(j<0||bin.indexOf(end,j+1)>=0||j-start>1024*1024)throw new Incompatible(`stock ${id}/mod.json boundary missing/ambiguous`);
   const source=bin.subarray(start,j);const ast=tree(sourceText(source));
-  const klass=one(ast.body.filter(n=>n.type==='ExportDefaultDeclaration'&&n.declaration.type==='ClassDeclaration'),'native default view').declaration;
+  const klass=one(ast.body.filter(n=>n.type==='ExportDefaultDeclaration'&&n.declaration?.type==='ClassDeclaration'),'native default view').declaration;
   const viewImport=ast.body.filter(n=>n.type==='ImportDeclaration'&&n.source.value==='gpui-kit').flatMap(n=>n.specifiers.filter(s=>s.imported?.name==='View'));
-  if(viewImport.length!==1||klass.superClass?.name!==viewImport[0].local.name)throw new Incompatible('embedded frame View identity mismatch');
+  if(viewImport.length!==1||identifier(klass.superClass)!==identifier(viewImport[0].local))throw new Incompatible('embedded frame View identity mismatch');
   return source;
 }
 function context(home,root,patch,options) {
-  if(!['palette','feedback'].includes(patch.id)||patch.target!==`frame/${patch.id}`)throw Error('Structural transforms are limited to palette and feedback');
+  if(!['palette','feedback'].includes(patch.id)||patch.target!==`frame/${patch.id}`)throw new NativePatchSafetyError('Structural transforms are limited to palette and feedback');
   const dir=`frame/${patch.id}`,stateFile=`.customizations/frame-${patch.id}.json`,journalFile=`.customizations/native-${patch.id}.journal.json`;
   const {state,raw}=record(home,patch.id),main=read(safe(home,`${dir}/main.js`));
   const bin=binary(options);
   const recognized=(n,b)=>state && [state.installed[n],state.previousInstalled?.[n],digest(original(state,n))].includes(digest(b));
   // Check all retained dependencies before incompatibility skips, including legacy v1 helpers.
-  for(const n of Object.keys(state?.installed??{}).filter(n=>n!=='main.js')) {
-    const b=read(safe(home,`${dir}/${n}`));if(b!==null&&!recognized(n,b))throw Error(`Personal ${patch.id} dependency conflict: ${n}`);
+  for(const n of new Set([...Object.keys(state?.installed??{}),...Object.keys(state?.original??{})].filter(n=>n!=='main.js'))) {
+    const b=read(safe(home,`${dir}/${n}`));if(b!==null&&!recognized(n,b))throw new NativePatchSafetyError(`Personal ${patch.id} dependency conflict: ${n}`);
   }
   const owned=Boolean(recognized('main.js',main));
-  if(state && !owned && !unique(bin,main) && main?.toString().includes('./custom-'))throw Error(`Personal ${patch.id} target conflict; nothing changed`);
+  if(state && !owned && !unique(bin,main) && main?.toString().includes('./custom-'))throw new NativePatchSafetyError(`Personal ${patch.id} target conflict; nothing changed`);
   return {dir,stateFile,journalFile,state,raw,main,bin,owned};
 }
-function prepare(home,root,patch,transform,options) {
-  const c=context(home,root,patch,options);
+function prepare(home,root,patch,transform,options,c=context(home,root,patch,options)) {
   const source=stockSource(patch.id,c.main,original(c.state,'main.js'),c.bin);
   if(!c.owned && !equal(c.main,source))throw new Incompatible('unsupported original/unknown target: current stock provenance absent; unknown bytes untouched');
   const text=sourceText(source),ast=tree(text);
@@ -83,29 +70,36 @@ function prepare(home,root,patch,transform,options) {
     if(missing.length)throw new Incompatible(`missing host API: ${missing.join(', ')}`);
   }
   const payload={};for(const [n,src]of Object.entries(patch.files).filter(([n])=>n!=='main.js')) {
-    if(!validName(n)||n.includes('/'))throw Error('Invalid helper mapping');
-    const b=read(path.join(root,src));if(b===null)throw Error(`Missing patch dependency: ${src}`);payload[n]=b.toString('utf8');
+    if(!validName(n)||n.includes('/'))throw new NativePatchSafetyError('Invalid helper mapping');
+    const b=read(path.join(root,src));if(b===null)throw new NativePatchSafetyError(`Missing patch dependency: ${src}`);payload[n]=b.toString('utf8');
   }
   // Transform revision participates via the generated source, not a mutable version label.
-  const sample=transform(text,'./custom-GENERATION',options);
+  const sample=sourceBoundary(`${patch.id} transform sample`,()=>transform(text,'./custom-GENERATION',options));
+  if(typeof sample!=='string')throw new Incompatible(`${patch.id} transform sample: expected JavaScript text`);
   const gen=`custom-${digest(JSON.stringify({payload,sample})).slice(0,24)}`;
-  const output=transform(text,`./${gen}`,options),files=Object.fromEntries(Object.entries(payload).map(([n,b])=>[`${gen}/${n}`,b]));
-  checkGraph(output,files);
+  const output=sourceBoundary(`${patch.id} transform output`,()=>transform(text,`./${gen}`,options)),files=Object.fromEntries(Object.entries(payload).map(([n,b])=>[`${gen}/${n}`,b]));
+  sourceBoundary(`${patch.id} dependency self-check`,()=>checkGraph(output,files));
   for(const [n,b]of Object.entries(files)) {
     const current=read(safe(home,`${c.dir}/${n}`));
-    if(current!==null&&!equal(current,Buffer.from(b)))throw Error(`Personal ${patch.id} dependency conflict: ${n}`);
+    if(current!==null&&!equal(current,Buffer.from(b)))throw new NativePatchSafetyError(`Personal ${patch.id} dependency conflict: ${n}`);
   }
   c.source=source;c.files=Object.fromEntries(Object.entries(files).map(([n,b])=>[n,Buffer.from(b)]));c.output=Buffer.from(output);c.gen=gen;c.binaryDigest=digest(c.bin);
   return c;
 }
 export function inspectNative(home,root,patch,transform,options={}) {
-  const journal=safe(home,`.customizations/native-${patch.id}.journal.json`);
-  if(fs.existsSync(journal))return {ok:false,status:'recovery-required',active:false,error:`${patch.id}: interrupted transaction; recovery required before mutation`};
+  let c;
   try {
-    const c=prepare(home,root,patch,transform,options);
+    const journal=safe(home,`.customizations/native-${patch.id}.journal.json`);
+    if(fs.existsSync(journal))return {ok:false,status:'recovery-required',active:false,error:`${patch.id}: interrupted transaction; recovery required before mutation`};
+    c=context(home,root,patch,options);
+    c=prepare(home,root,patch,transform,options,c);
     const active=Boolean(c.state?.version===2&&equal(c.main,c.output)&&Object.entries(c.files).every(([n,b])=>equal(read(safe(home,`${c.dir}/${n}`)),b)));
     return {ok:true,status:'ready',active,phase:active?'active':'repair-needed',source:digest(c.source)};
-  }catch(e){if(!(e instanceof Incompatible))throw e;const c=context(home,root,patch,options),retained=Boolean(c.owned&&!unique(c.bin,c.main));return {ok:true,status:'skipped',active:false,retained,phase:retained?'retained-unverified':'incompatible',advisory:`Optional ${patch.id} patch skipped: ${retained?'retained owned patch; ':''}${e.message}; bytes and opt-in unchanged.`};}
+  }catch(error){
+    if(isNativeSafetyError(error))throw error;
+    const e=incompatible(error,`${patch?.id??'native'} inspection preflight`),retained=Boolean(c?.owned&&!unique(c.bin,c.main));
+    return {ok:true,status:'skipped',active:false,retained,phase:retained?'retained-unverified':'incompatible',advisory:`Optional ${patch?.id??'native'} patch skipped: ${retained?'retained owned patch; ':''}${e.message}; bytes and opt-in unchanged.`};
+  }
 }
 function lock(home,fn) {
   const file=safe(home,'.customizations/native-patches.lock');fs.mkdirSync(path.dirname(file),{recursive:true});let fd;
@@ -119,8 +113,16 @@ function allowedJournalPath(p,c) {return p===c.stateFile||p.startsWith(c.dir+'/'
 function recoverNative(home,patch) {
   const c={dir:patch.target,stateFile:`.customizations/frame-${patch.id}.json`,journalFile:`.customizations/native-${patch.id}.journal.json`};
   const file=safe(home,c.journalFile),raw=read(file);if(!raw)return;
-  const j=JSON.parse(raw);if(j.version!==1||j.id!==patch.id||!Array.isArray(j.changes)||j.changes.length>256)throw Error('Corrupt native transaction journal');
-  for(const e of j.changes){if(!allowedJournalPath(e.file,c))throw Error('Unsafe native transaction path');decode(e.before);decode(e.after);}
+  let j;try{j=JSON.parse(raw);}catch{throw new NativePatchSafetyError('Corrupt native transaction journal');}
+  if(!j||j.version!==1||j.id!==patch.id||!Array.isArray(j.changes)||j.changes.length>256)throw new NativePatchSafetyError('Corrupt native transaction journal');
+  for(const e of j.changes){if(!e||typeof e.file!=='string'||!allowedJournalPath(e.file,c))throw new NativePatchSafetyError('Unsafe native transaction path');decode(e.before);decode(e.after);}
+  // A restore with all after-images present has already returned originals to
+  // disk and removed the opt-in. Finalize it, rather than recreating an opt-in.
+  const restoring=j.operation==='restore'||(j.operation===undefined&&j.changes.some(e=>e.file===c.stateFile&&e.before!==null&&e.after===null));
+  if(restoring&&j.changes.every(e=>equal(read(safe(home,e.file)),decode(e.after)))) {
+    retireNativeJournal(home,patch.id,file,raw);
+    return `${patch.id}: completed interrupted restore; no new opt-in created.`;
+  }
   // Preflight the entire rollback before its first write.
   for(const e of j.changes){const b=read(safe(home,e.file));if(!equal(b,decode(e.before))&&!equal(b,decode(e.after)))throw Error(`Recovery required: external edit at ${e.file}; backups retained`);}
   // Restore dependencies that the previous main needs BEFORE reactivating it.
@@ -128,15 +130,20 @@ function recoverNative(home,patch) {
   const rank=e=>e.file.endsWith('/main.js')?-2:e.file===c.stateFile?-1:e.before!==null?-3:0;
   const order=[...j.changes].sort((a,b)=>rank(a)-rank(b));
   for(const e of order)if(!equal(read(safe(home,e.file)),decode(e.before)))atomic(safe(home,e.file),decode(e.before));
-  fs.unlinkSync(file);
+  for(const e of j.changes)if(!equal(read(safe(home,e.file)),decode(e.before)))throw new NativePatchSafetyError(`Recovery readback failed: ${e.file}; journal retained`);
+  retireNativeJournal(home,patch.id,file,raw);
+  return `${patch.id}: previous bytes recovered; no new opt-in created.`;
 }
 function transact(home,patch,c,changes,options,expected=[]) {
   // Journal unchanged checkpoints too: dependency-only repair must still protect
   // main/record, and recovery must not clean staging behind a concurrent main.
   const checkpoints=new Map(changes.map(e=>[e.file,e]));
   for(const e of expected)if(!checkpoints.has(e.file))checkpoints.set(e.file,{file:e.file,before:e.after,after:e.after});
-  const journal=safe(home,c.journalFile),j={version:1,id:patch.id,changes:[...checkpoints.values()].map(e=>({file:e.file,before:encode(e.before),after:encode(e.after)}))};
-  atomic(journal,Buffer.from(JSON.stringify(j)));
+  const journal=safe(home,c.journalFile),j={version:1,id:patch.id,operation:c.operation??'apply',changes:[...checkpoints.values()].map(e=>({file:e.file,before:encode(e.before),after:encode(e.after)}))};
+  const journalBytes=Buffer.from(JSON.stringify(j));
+  if(j.changes.length>256)throw new NativePatchSafetyError('Native transaction exceeds 256 file checkpoints; nothing changed');
+  if(journalBytes.length>16*1024*1024)throw new NativePatchSafetyError('Native transaction journal exceeds 16 MiB; nothing changed');
+  atomic(journal,journalBytes);
   try {
     for(const [i,e]of changes.entries()) {
       options.fault?.('before-write',e.file,i);
@@ -150,7 +157,7 @@ function transact(home,patch,c,changes,options,expected=[]) {
     // Check the complete activated graph and record again before certifying success.
     for(const e of checkpoints.values())if(!equal(read(safe(home,e.file)),e.after))throw Error(`Final readback failed: ${e.file}`);
     for(const [n,b]of Object.entries(c.files??{}))if(!equal(read(safe(home,`${c.dir}/${n}`)),b))throw Error(`Activated dependency graph changed: ${n}`);
-    fs.unlinkSync(journal);
+    retireNativeJournal(home,patch.id,journal,journalBytes);
   } catch(e) {
     if(e.crash)throw e; // Fixture seam: a killed process likewise leaves the journal.
     try{recoverNative(home,patch);}catch(recovery){throw Error(`${e.message}; recovery required: ${recovery.message}`);}
@@ -158,9 +165,10 @@ function transact(home,patch,c,changes,options,expected=[]) {
   }
 }
 export function mutateNative(action,home,root,patch,transform,options={}) {
-  if(!['apply','restore'].includes(action))throw Error(`Unsupported native mutation: ${action}`);
+  if(!['apply','restore','recover'].includes(action))throw Error(`Unsupported native mutation: ${action}`);
   return lock(home,()=>{
-    recoverNative(home,patch);
+    const recovered=recoverNative(home,patch);
+    if(action==='recover')return recovered??`No ${patch.id} transaction needs recovery.`;
     if(action==='restore') {
       const c=context(home,root,patch,options);if(!c.state)return `No ${patch.id} frame patch is installed.`;
       let stock;
@@ -171,23 +179,32 @@ export function mutateNative(action,home,root,patch,transform,options={}) {
         stock=c.main; // Preserve an unfamiliar newer native reset or personal target, never downgrade it.
       } else try{stock=stockSource(patch.id,c.main,original(c.state,'main.js'),c.bin);}catch(e){throw Error(`Restore refused: ${e.message}`);}
       // Never replace unknown newer stock; context already refuses unknown edits.
-      const changes=[];
+      c.operation='restore';
+      const changes=[],expected=[{file:`${c.dir}/main.js`,after:stock},{file:c.stateFile,after:null}];
       if(!equal(c.main,stock))changes.push({file:`${c.dir}/main.js`,before:c.main,after:stock});
-      for(const n of Object.keys(c.state.installed).filter(n=>n!=='main.js')) {
+      for(const n of new Set([...Object.keys(c.state.installed),...Object.keys(c.state.original)].filter(n=>n!=='main.js'))) {
         const before=read(safe(home,`${c.dir}/${n}`)),after=original(c.state,n);
-        if(before!==null&&!equal(before,after))changes.push({file:`${c.dir}/${n}`,before,after});
+        expected.push({file:`${c.dir}/${n}`,after});
+        if(!equal(before,after))changes.push({file:`${c.dir}/${n}`,before,after});
       }
       changes.push({file:c.stateFile,before:c.raw,after:null});c.binaryDigest=digest(c.bin);
-      transact(home,patch,c,changes,options,[{file:`${c.dir}/main.js`,after:stock},{file:c.stateFile,after:null}]);
+      transact(home,patch,c,changes,options,expected);
       return `${patch.id} frame restored; personal settings and shortcuts unchanged.`;
     }
-    const c=prepare(home,root,patch,transform,options);
+    let c;
+    try{c=prepare(home,root,patch,transform,options);}
+    catch(error){
+      if(isNativeSafetyError(error))throw error;
+      const e=incompatible(error,`${patch.id} apply preflight anchor`);
+      return `Optional ${patch.id} patch skipped: ${e.message}; bytes and opt-in unchanged.`;
+    }
+    if(options.existingOptIn&&!c.state)return `No prior ${patch.id} opt-in; automatic refresh left disabled.`;
     const changes=[];
     const installed={...c.state?.installed},saved={};
     for(const n of Object.keys(c.state?.original??{}))saved[n]=encode(original(c.state,n));
     for(const [n,b]of Object.entries(c.files)) {
       const before=read(safe(home,`${c.dir}/${n}`));
-      if(before!==null&&!equal(before,b))throw Error(`Personal ${patch.id} dependency conflict: ${n}`);
+      if(before!==null&&!equal(before,b))throw new NativePatchSafetyError(`Personal ${patch.id} dependency conflict: ${n}`);
       if(!Object.hasOwn(saved,n))saved[n]=encode(before);installed[n]=digest(b);
       if(!equal(before,b))changes.push({file:`${c.dir}/${n}`,before,after:b});
     }

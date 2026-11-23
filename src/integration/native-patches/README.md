@@ -5,6 +5,8 @@ mods/layouts/themes and supported host APIs; never patch built-in mods or binari
 Native startup deletes/reseeds `frame/` from the executable, then loads the modules
 as `frame-palette` / `frame-feedback`. Custom repairs **prior opt-ins only** after
 mounting or deployment. Explicit `apply` is the only way to create an opt-in.
+Pending journals are discovered independently of opt-ins; recovery-only work never
+turns an interrupted first apply or completed restore into a fresh opt-in.
 
 ## Compatibility, not a release allowlist
 
@@ -20,7 +22,10 @@ Untouched native regions remain unchanged. Output parsing, static import/export
 closure and required capabilities are checked before activation. Missing/ambiguous
 necessary sites, unavailable current-stock evidence or failed self-checks leave
 all patch files/records untouched, with a concrete optional incompatibility advisory.
-Personal dependency edits, corrupt records and unsafe recovery remain hard errors.
+Every transform and inspection source boundary turns unexpected AST shapes into
+anchor-named incompatibility advisories, including extracted callback references.
+Personal dependency edits, corrupt records, filesystem failures and unsafe recovery
+remain explicit hard safety errors; they are not disguised as source incompatibility.
 Descendant-only matches never authorize replacing surrounding wrappers or sibling
 actions. The [replacement-site audit](../../../docs/NATIVE-PATCH-AUDIT.md) lists
 preserved regions, explicit refusal contracts and future-variant regressions.
@@ -60,13 +65,27 @@ hash evidence for retained legacy helpers survives an interrupted v1 refresh.
 Final validation includes expected main, record and the complete generated graph,
 even when only a missing helper was written. Unchanged checkpoints participate in
 journal recovery too; external changes retain a recovery-required journal.
-Identical refresh is a no-op, including main/record timestamps.
+Restore enumerates all recorded originals as well as installed paths, and restores
+nonempty originals even when the helper is missing. Unchanged original checkpoints
+are checked too. Identical refresh is a no-op, including main/record timestamps.
+
+Before a journal is retired, its complete raw bytes are durably copied and verified
+under `.customizations/recovery/native-<id>-<digest>.journal.json`. This append-only
+private evidence retains originals even when current stock supersedes an older
+native backup. Legacy record retirement/rebasing similarly retains raw record
+backups. Failed copies or rollback readbacks keep active evidence; no automatic
+archive cleanup exists. Never sync or commit these potentially personal backups.
 
 Explicit CLI, deploy, startup and restore serialize native mutations with the same
 lock. Rollback recreates dependencies needed by the previous main before
 reactivating it, then restores its record and removes new staging. A later
-mutation resolves an interrupted journal before doing new work. Doctor/inspect are
-read-only and report interrupted/recovery-required state without repairing it.
+mutation resolves an interrupted journal before doing new work. A fully written
+interrupted restore is finalized without recreating an opt-in; other interrupted
+operations roll back with complete readback before journal retirement. Startup,
+doctor and removal discover pending disk journals even without a record. Doctor
+also lists retained recovery backups (including without a deployment manifest),
+read-only. Removal settles pending work before deleting its recovery worker.
+Completed archives are evidence only, never a source of opt-ins or replay jobs.
 Obstructed rollback retains backups and reports a hard recovery-required error;
 it never overwrites another writer's edits to pretend recovery succeeded.
 
