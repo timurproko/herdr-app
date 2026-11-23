@@ -573,7 +573,18 @@ worktree**. Rows and popup height never change during an open menu; reopening pi
 up newer metadata. Worktree dialogs keep the clicked folder rather than a later
 selected terminal's folder.
 
-**Settings → Spaces** exposes two independent, persistent switches:
+**Settings → Spaces → Connect fleet space to coordinator** is off by default
+(`connectFleetToCoordinator`). When on with Crew enabled, a verified same-machine
+fleet attaches below its coordinator with a link badge; both rows omit the Crew tag.
+Dragging either expanded row moves the pair. They remain separate selectable native
+spaces; no terminals or tabs are relocated. The coordinator's Git panel shows only
+recorded task PRs across projects, with task-scoped counts and no single active pin.
+Live working and reported tasks (including plans awaiting approval) are included.
+Unreported tasks make the recorded list possibly incomplete. Off retains today's
+independent spaces and folder-based Git. Only the boolean is portable; pair bindings,
+homes, task/terminal identities and in-flight ordering are not exported.
+
+**Settings → Spaces** also exposes two independent, persistent switches:
 
 - **Confirm before closing the last tab** (off by default): Custom's tab/pane
   buttons, Agents context-menu Close, Jump, palette and close shortcuts ask before

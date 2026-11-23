@@ -4,9 +4,9 @@ Implementation approved for recorded links only. These five groups match the PR'
 
 ## 1. Spaces exposes a portable default-off fleet attachment setting
 
-- [ ] 1.1 Add the optional `connectFleetToCoordinator` boolean with false as its absent/default value to the shared Spaces preference model and setters; extend preference fixtures to cover old snapshots, true/false round trips, invalid types and unchanged unrelated fields.
-- [ ] 1.2 Render **Connect fleet space to coordinator** under Settings → Spaces with its accessible switch label and a concise explanation of sidebar attachment and coordinator Git scope; cover clicks, mounted updates and the default-off state in the Settings harness.
-- [ ] 1.3 Update README's Spaces documentation with on/off behavior and runtime-data exclusions; verify the documented default and preference key against the new fixture expectations.
+- [x] 1.1 Add the optional `connectFleetToCoordinator` boolean with false as its absent/default value to the shared Spaces preference model and setters; extend preference fixtures to cover old snapshots, true/false round trips, invalid types and unchanged unrelated fields.
+- [x] 1.2 Render **Connect fleet space to coordinator** under Settings → Spaces with its accessible switch label and a concise explanation of sidebar attachment and coordinator Git scope; cover clicks, mounted updates and the default-off state in the Settings harness.
+- [x] 1.3 Update README's Spaces documentation with on/off behavior and runtime-data exclusions; verify the documented default and preference key against the new fixture expectations.
 
 ## 2. Crew contributes verified same-machine coordinator and fleet context
 
