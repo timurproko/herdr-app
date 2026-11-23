@@ -270,7 +270,12 @@ Coordinator enrollment uses one non-shrinking footer after `task-pulls-scroll`.
 canonical names, deduplicated in full repository inventory order, including sections
 hidden in the selected tab; pending/unknown is quiet.
 `EnrollmentPicker` uses the shared `ui/choice-menu.js` presentation even for one
-choice. It captures choices plus coordinator/home, selected location, view and
+choice, with its explicit compact trigger height of 20px instead of the account
+pill's default 28px. That matches ordinary Git's 20px icon/inline row inside the
+same 8px horizontal / 6px vertical card padding: icon, message, Settings and the
+added 12px chevron share one vertical centre, without a taller nested pill. The
+message remains single-line. Account pill dimensions, gaps and popup geometry
+remain unchanged; the native popup still receives the opener press. It captures choices plus coordinator/home, selected location, view and
 notice configuration/refresh generation. Opening starts no read. Revalidation
 uses current cached facts before passing the captured repository to Settings;
 configuration, membership or scope changes close an obsolete menu rather than

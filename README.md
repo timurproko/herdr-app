@@ -676,6 +676,9 @@ or scrolling cannot hide it. Its account-style dropdown opens upward with canoni
 repository names in inventory order, even for one choice, including repositories
 whose sections are hidden in the selected tab. Selecting a name opens Git
 Settings with that captured repository prefilled; it does not enroll anything.
+The card matches ordinary Git's compact height, padding, icon size and inline
+alignment; only the trailing dropdown chevron is added. Its compact trigger does
+not change status-bar account controls or the shared upward menu.
 Unknown membership stays quiet, the final enrollment removes the card, and missing
 global setup takes precedence. Changed context or membership closes an obsolete
 picker rather than retargeting it. Ordinary Git notices and auto-fix permissions

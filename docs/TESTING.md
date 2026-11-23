@@ -183,7 +183,14 @@ A real hosted no-write probe remains a distinct activation prerequisite.
 `tests/choice-menu.test.mjs` loads the actual account caller, `ui/choice-menu.js`
 and `ui/ui.js` with instrumented native elements. It checks the inherited muted
 12px chevron, gap, upward Popover, surface bounds/padding, row hover/highlight and
-fixed selected slot through both actual account and enrollment callers.
+fixed selected slot through both actual account and enrollment callers. It also
+loads the real ordinary Git notice renderer and compares complete card padding,
+height, icon dimensions, icon-to-text/Settings gaps and icon/text/Settings/chevron
+vertical centres against enrollment at 75–200% zoom. The single-line geometry
+model uses the panel's 20px text line box and popup trigger layout (not its menu);
+it would catch the former 28px nested pill increasing the card from 32px to 40px.
+Account trigger height remains pinned at 28px, while enrollment uses 20px without
+wrapping. These synthetic geometry assertions are not native pixel evidence.
 `tests/fleet-enrollment.test.mjs` runs the coordinator renderer with real notices,
 picker and UI: zero/one/multiple choices, section-order deduplication, enrollment
 completion, quiet pending/unknown state, global setup precedence, fold/long-scroll

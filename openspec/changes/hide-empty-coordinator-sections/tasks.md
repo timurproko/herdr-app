@@ -9,9 +9,9 @@
 
 ## 2. Enrollment banner geometry matches ordinary Git without account drift
 
-- [ ] 2.1 Give enrollment an explicit compact choice-trigger presentation and align its actual card/content geometry with ordinary Git; verify equal height/padding/icon dimensions and a common icon/text/Settings/chevron centre line.
-- [ ] 2.2 Extend tests/choice-menu.test.mjs and its renderer support to compare actual ordinary/coordinator card geometry at representative zooms while retaining existing account, popup, keyboard and render-phase assertions; run choice-menu and fleet-enrollment fixtures.
-- [ ] 2.3 Update README, docs/ARCHITECTURE.md and docs/TESTING.md for the compact enrollment-only presentation and unchanged account default; verify documentation and the revised shared-choice spec agree.
+- [x] 2.1 Give enrollment an explicit compact choice-trigger presentation and align its actual card/content geometry with ordinary Git; verify equal height/padding/icon dimensions and a common icon/text/Settings/chevron centre line.
+- [x] 2.2 Extend tests/choice-menu.test.mjs and its renderer support to compare actual ordinary/coordinator card geometry at representative zooms while retaining existing account, popup, keyboard and render-phase assertions; run choice-menu and fleet-enrollment fixtures.
+- [x] 2.3 Update README, docs/ARCHITECTURE.md and docs/TESTING.md for the compact enrollment-only presentation and unchanged account default; verify documentation and the revised shared-choice spec agree.
 
 ## Workflow follow-up
 
