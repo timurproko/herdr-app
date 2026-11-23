@@ -296,18 +296,34 @@ crew.legacy = false;
 // --- Projects: the tool's own list on that machine, read and changed through `crew project` ---
 {
   same(['D:\\Git\\My App', 'D:/Git/crew/', 'C:\\x\\Unity_Project.2', 'D:\\', 'D:\\Git\\___', `D:\\Git\\${'a'.repeat(60)}`].map(f.projectName),
-    ['my-app', 'crew', 'unity-project-2', 'd', '', 'a'.repeat(40)], 'A project is named after its folder, in the form the tool accepts');
+    ['my-app', 'crew', 'unity-project.2', 'd', '', 'a'.repeat(40)], 'A project is named after its folder, in the form the tool accepts');
+  const derived = [
+    ['D:/Git/agentnumberone.dev', 'agentnumberone.dev'], ['C:\\Git\\AgentNumberOne.DEV\\', 'agentnumberone.dev'],
+    ['/git/.hidden', 'hidden'], ['/git/--..My App...v2..-', 'my-app.v2'], ['/git/a . b', 'a-.-b'],
+    ['/git/a', 'a'], ['/git/9', '9'], ['/git/...', ''], ['/git/é___', ''],
+    [`/git/${'a'.repeat(40)}`, 'a'.repeat(40)], [`/git/${'a'.repeat(41)}`, 'a'.repeat(40)],
+    [`/git/${'a'.repeat(38)}.b-more`, `${'a'.repeat(38)}.b`],
+    [`/git/${'a'.repeat(39)}.dev`, 'a'.repeat(39)], [`/git/${'a'.repeat(38)}.-dev`, 'a'.repeat(38)],
+  ];
+  for (const [folder, expected] of derived) assert.equal(f.projectName(folder), expected, folder);
+  const validNames = ['a', '0', 'a-', 'agentnumberone.dev', 'a.-.b', 'a'.repeat(40), `${'a'.repeat(38)}.b`];
+  const invalidNames = ['', '-a', '.a', 'a..b', 'a.', 'A.dev', 'a_b', 'é.dev', 'a'.repeat(41), `${'a'.repeat(39)}.`, 'a/b'];
+  for (const name of [...validNames, ...invalidNames]) {
+    same(f.parseProjects(`${name}\tD:/Git/project\r\n`).map(row => row.id), validNames.includes(name) ? [name] : [], `Listed name policy: ${name}`);
+  }
   same(f.parseProjects('fork\tD:/Git/crew\tworkflow delivery\r\napp\tC:/Users/u/app\r\nBad Name\tC:/x\r\n\r\nnote without a tab\r\n'),
     [{ id: 'fork', label: 'D:\\Git\\crew', path: 'D:\\Git\\crew' }, { id: 'app', label: 'C:\\Users\\u\\app', path: 'C:\\Users\\u\\app' }], 'Only lines the tool printed as projects become rows, each one line: its folder alone, whatever setting the tool lists beside it');
   const script = f.crewProjectScript(['add', 'my-app', "D:\\Git\\it's"]);
   assert.ok(script.includes("& node $main project 'add' 'my-app' 'D:\\Git\\it''s'") && script.includes("$main = Join-Path $tool 'crew.mjs'"), 'Arguments reach the installed tool as quoted strings');
 
-  const projects = new Map([['fork', 'D:/Git/crew\ttreehouse']]); let owned = false;
+  const projects = new Map([['fork', 'D:/Git/crew\ttreehouse']]); let owned = false, refusalOutput = null;
+  const olderRefusal = 'Invalid project name: agentnumberone.dev. Use lowercase letters, digits and dashes.';
   const rule = [/& node \$main project /, text => {
     const args = [.../& node \$main project (.*)/.exec(text)[1].matchAll(/'((?:[^']|'')*)'/g)].map(m => m[1].replaceAll("''", "'"));
     ran2.push(`project ${args.join(' ')}`);
     if (args[0] === 'list') return ran([...projects].map(([name, rest]) => `${name}\t${rest}`).join('\r\n') + '\r\n');
     if (owned) return ran('', 3, 'crew: Read-only: this home is owned by terminal t9. Only that session may change its projects.\n');
+    if (args[0] === 'add' && refusalOutput) return refusalOutput === 'stderr' ? ran('', 2, `crew: ${olderRefusal}\n`) : ran(`crew: ${olderRefusal}\n`, 2);
     if (args[0] === 'add') { projects.set(args[1], args[2].replaceAll('\\', '/')); return ran(`project ${args[1]}: ${args[2]}\n`); }
     return projects.delete(args[1]) ? ran(`project ${args[1]} removed\n`) : ran('', 2, `crew: Unknown project: ${args[1]}. See \`crew project list\`.\n`);
   }];
@@ -321,8 +337,32 @@ crew.legacy = false;
   ran2.length = 0; await section.list.add(cx(), 'D:\\Git\\My App');
   same(ran2, ['project add my-app D:\\Git\\My App'], 'Add registers the chosen folder under its own name');
   s = await statuses(); same([s.projects.statusLabel, s.projects.rows.map(row => row.id)], ['2 projects', ['fork', 'my-app']]);
-  ran2.length = 0; await assert.rejects(section.list.add(cx(), 'D:\\Git\\___'), /cannot be used as a project name/); same(ran2, [], 'An unusable name never reaches the machine');
+  ran2.length = 0; await assert.rejects(section.list.add(cx(), 'D:\\Git\\___'), e => {
+    assert.match(e.message, /cannot be used as a project name/);
+    assert.match(e.message, /1–40 lowercase ASCII letters, digits, dashes and dots/);
+    assert.match(e.message, /start with a letter or digit; no consecutive or trailing dots/);
+    return true;
+  }); same(ran2, [], 'An unusable name never reaches the machine');
+  // Older Crew remains authoritative: neither a hidden refusal nor a dash-only retry.
+  for (refusalOutput of ['stderr', 'stdout']) {
+    ran2.length = 0;
+    await assert.rejects(section.list.add(cx(), 'D:/Git/agentnumberone.dev'), e => e.message === olderRefusal);
+    same(ran2, ['project add agentnumberone.dev D:/Git/agentnumberone.dev'], 'One exact dotted request, with no alternate-name retry');
+    s = await statuses(); same(s.projects.rows.map(row => row.id), ['fork', 'my-app'], 'A refusal never registers or projects a successful add');
+  }
+  refusalOutput = null;
+  ran2.length = 0; await section.list.add(cx(), 'D:/Git/agentnumberone.dev');
+  same(ran2, ['project add agentnumberone.dev D:/Git/agentnumberone.dev']);
+  s = await statuses();
+  same([s.projects.statusLabel, s.projects.rows.at(-1)], ['3 projects', { id: 'agentnumberone.dev', label: 'D:\\Git\\agentnumberone.dev', path: 'D:\\Git\\agentnumberone.dev' }], 'A dotted registration from the tool stays visible');
+  ran2.length = 0; await section.list.remove(cx(), 'agentnumberone.dev');
+  same(ran2, ['project remove agentnumberone.dev'], 'Removal uses the exact registered dotted ID');
+  s = await statuses(); same(s.projects.rows.map(row => row.id), ['fork', 'my-app']);
   owned = true;
+  ran2.length = 0;
+  await assert.rejects(section.list.add(cx(), 'D:/Git/agentnumberone.dev'), e => e.message.startsWith('Read-only: this home is owned by terminal t9'), 'Home ownership also refuses an add, not the selected folder');
+  same(ran2, ['project add agentnumberone.dev D:/Git/agentnumberone.dev']);
+  assert.equal(projects.has('agentnumberone.dev'), false);
   await assert.rejects(section.list.remove(cx(), 'fork'), e => e.message.startsWith('Read-only: this home is owned by terminal t9'), 'A live coordinator’s list is refused in the tool’s own words');
   owned = false; await section.list.remove(cx(), 'fork');
   await assert.rejects(section.list.remove(cx(), 'fork'), /^Error: Unknown project: fork/);

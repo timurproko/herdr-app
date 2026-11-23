@@ -503,11 +503,12 @@ export function parseProjects(stdout) {
     .map(([name, folder]) => ({ id: name, label: winPath(folder), path: winPath(folder) }));
 }
 // What the tool accepts as a project name.
-const PROJECT_NAME = /^[a-z0-9][a-z0-9-]{0,39}$/;
+const PROJECT_NAME = /^(?!.*\.\.)(?!.*\.$)[a-z0-9][a-z0-9.-]{0,39}$/;
 // A project is named after its folder: 'D:\Git\My App' -> 'my-app'. '' when nothing usable is left.
 export function projectName(folder) {
   const last = String(folder ?? '').replace(/[\\/]+$/, '').split(/[\\/]/).at(-1) ?? '';
-  const name = last.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/, '');
+  const name = last.toLowerCase().replace(/[^a-z0-9.]+/g, '-').replace(/\.{2,}/g, '.')
+    .replace(/^[.-]+|[.-]+$/g, '').slice(0, 40).replace(/[.-]+$/, '');
   return PROJECT_NAME.test(name) ? name : '';
 }
 // The tool's own words for a refusal ("crew: Project x already points at …").
@@ -528,7 +529,7 @@ const PROJECTS = Object.freeze({
     picker: Object.freeze({ kind: 'folders', label: 'Add project' }),
     async add(cx, folder) {
       const name = projectName(folder);
-      if (!name) throw new Error('That folder’s name cannot be used as a project name (letters, digits and dashes).');
+      if (!name) throw new Error('That folder’s name cannot be used as a project name (1–40 lowercase ASCII letters, digits, dashes and dots; start with a letter or digit; no consecutive or trailing dots).');
       await crewProject(cx, ['add', name, folder], 'Adding the project');
     },
     async remove(cx, id) { await crewProject(cx, ['remove', id], 'Removing the project'); },
