@@ -17,7 +17,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-23-fleet-row-tag/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-23-fleet-row-tag/acceptance.md",
   "finalizedDate": "2026-11-23",
-  "specBaseSha": "6e33e4f35c63d1f672cdb309c3e0ccb07514d5c4",
+  "specBaseSha": "2fe3ef07b4fdc655a34d9df0c9bc0337a01c130f",
   "acceptanceScenarios": [
     "Both expanded rows use the same Crew pill styling to the left of the worktree marker without shifting its machine-chevron alignment.",
     "Retained, finished and cold-restored attached fleets keep their Crew pill during refresh; detached rows retain ordinary tag rules.",
