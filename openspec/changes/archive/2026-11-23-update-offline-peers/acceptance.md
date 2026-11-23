@@ -9,6 +9,7 @@ The maintainer integration decision accepts these scenarios:
 - The next explicit reachable eligible update catches peers up even when published main is unchanged.
 - Reachable failures retain matching details, while locks and unknown outcomes cannot authorize replay.
 - Deferred identities survive selection and inventory failures but never enter portable preferences.
+- Launching and running descriptions say Updating… while the button and every other state's wording stay unchanged.
 
 ```openspec-delivery
 {
@@ -19,18 +20,19 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-23-update-offline-peers/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-23-update-offline-peers/acceptance.md",
   "finalizedDate": "2026-11-23",
-  "specBaseSha": "74a9790f82d446fc297711aefc315f6127eb8c54",
+  "specBaseSha": "120643ab6941b4df91d11e2fa06f764fa926e803",
   "acceptanceScenarios": [
     "Offline and unreachable peers remain plainly logged without a partial warning after a successful desktop update.",
     "Desktop-equipped peers are quiet exclusions and still require their own full Update.",
     "A current desktop offers Update for privately remembered offline peers without raising availability badges.",
     "The next explicit reachable eligible update catches peers up even when published main is unchanged.",
     "Reachable failures retain matching details, while locks and unknown outcomes cannot authorize replay.",
-    "Deferred identities survive selection and inventory failures but never enter portable preferences."
+    "Deferred identities survive selection and inventory failures but never enter portable preferences.",
+    "Launching and running descriptions say Updating… while the button and every other state's wording stay unchanged."
   ],
-  "archiveDigest": "4b5ba8afdae5bf02519c3404ad4f9aff20bf12aeb97af01caf4581a3ec324a54",
-  "specDigest": "e5aef8732b0239d88dd246c5b8b4c2266b8685a77add8cd29b637fc15043369c",
-  "tasksDigest": "061eef867e164c2f4763b647663b10106972fa93d6a047015a11c87995af57cb",
+  "archiveDigest": "96ab1743972ecb3f9bb22c58c3382fb266dd9530d0ac2c5a3020d0301e433eef",
+  "specDigest": "eaeb3f675ad91774686e128b5103db03f00ea00c677082c1ac0e5c4983ef504e",
+  "tasksDigest": "9dffe8c9df3e17efdcf2c4f8e8e8564f0db56492a62ba875e45509cb39a3bd73",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []
 }
