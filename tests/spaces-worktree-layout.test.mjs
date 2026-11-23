@@ -1,9 +1,10 @@
 // Spaces layout/order: dummy host data only; no real navigation or Core writes.
+import * as links from '../src/shared/workspace-links.js';
 import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';
 function element(){const n={attrs:{},kids:[]};let p;return p=new Proxy(n,{get:(o,k)=>k in o?o[k]:k==='when'?(yes,fn)=>yes?fn(p):p:k==='child'?child=>{o.kids.push(child);return p;}:(...args)=>{o.attrs[k]=args;return p;}});}
 const find=(n,id)=>n?.attrs?.id?.[0]===id?n:n?.kids?.map(child=>find(child,id)).find(Boolean);
 const drag={view:null,item:e=>e,sourceLayer:e=>e,guard:fn=>fn};let hostSpaces=[];
-const context={View:class{},div:element,h_flex:element,v_flex:element,svg:path=>element().asset(path),slot:child=>element().size(16).child(child),badge:(number,color)=>element().color(color).child(number),spaceTitle:()=>element(),itemHover:()=> 'hover',spaceBadgeColor:()=> 'avatar-color',reorder:()=>drag,spaces:()=>hostSpaces,panes:()=>[],pluginSpaceTags:()=>[],rolePill:(_t,label)=>element().child(label),displaySpace:s=>s,spaceDirectory:s=>({cwd:s.folder}),shared:key=>key==='custom.plugins'?{git:{enabled:false}}:{},run(){assert.fail('Rendering must not navigate or move spaces');},U:{row:28,gap:8,radius:6,smallIcon:14}};
+const context={...links,pluginWorkspaceLinks:()=>[],View:class{},div:element,h_flex:element,v_flex:element,svg:path=>element().asset(path),slot:child=>element().size(16).child(child),badge:(number,color)=>element().color(color).child(number),spaceTitle:()=>element(),itemHover:()=> 'hover',spaceBadgeColor:()=> 'avatar-color',reorder:()=>drag,spaces:()=>hostSpaces,panes:()=>[],pluginSpaceTags:()=>[],rolePill:(_t,label)=>element().child(label),displaySpace:s=>s,spaceDirectory:s=>({cwd:s.folder}),shared:key=>key==='custom.plugins'?{git:{enabled:false}}:{},run(){assert.fail('Rendering must not navigate or move spaces');},U:{row:28,gap:8,radius:6,smallIcon:14}};
 const source=fs.readFileSync(new URL('../src/features/spaces/main.js',import.meta.url),'utf8').replace(/^import .*;\r?\n/gm,'').replace('export default class Spaces','class Spaces').replace(/export /g,'')+'\nglobalThis.Spaces=Spaces;';vm.runInNewContext(source,context);
 const view=new context.Spaces(),theme={muted:'muted',dim:'dim',selected:'selected',ansi2:'green',ansi1:'red'},w={id:'worktree',name:'session-name-dialog-editing',active:true};
 for(const tree of ['└─',null]){
@@ -72,4 +73,13 @@ for (const machine of [null,'pc2']) {
  view.git={[key(s)]:{linked:true}};s.folder='/new/unknown';view.menu(s);
  assert.equal(overlays.at(-1).props.target.checkout,'unknown');
 }
+// The actual row builders retain original native indexes but use a link glyph/inset.
+context.pluginWorkspaceLinks=()=>[{parent:'parent',child:'worktree-a',binding:'pair'}];
+const projected=view.ordered(),parentAt=projected.findIndex(r=>r.w.id==='parent');
+assert.equal(projected[parentAt+1].w.id,'worktree-a');assert.equal(projected[parentAt+1].linked,true);
+const fleetRow=view.row(projected[parentAt+1],theme),fleetContent=find(fleetRow,'space-content-worktree-a');
+assert.equal(fleetContent.attrs.pl[0],8);assert.equal(fleetContent.kids[0].kids[0].attrs.asset[0],'mods/custom-spaces/link.svg');
+drag.control=e=>e;
+assert.equal(find(view.compact(projected[parentAt+1],theme),'space-badge-worktree-a').kids[0].attrs.asset[0],'mods/custom-spaces/link.svg');
+context.pluginWorkspaceLinks=()=>[];assert.equal(view.ordered().find(r=>r.w.id==='worktree-a').linked,false);
 console.log('PASS: first-frame local/remote checkout snapshots; aligned worktrees, preserved user order and cross-machine drag guards (dummy Core only)');

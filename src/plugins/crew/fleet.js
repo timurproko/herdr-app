@@ -41,7 +41,7 @@ export function bindFleet(status, machine, {groups, all, list}) {
   const binding=JSON.stringify([machine,status.home,owner.terminal.address,owner.space,owner.tab,owner.pane,child]);
   return {parent:owner.space,child,machine,binding,home:status.home,owner:owner.terminal.address,tasks:workers,incomplete:workers.some(t=>t.state==='working')};
 }
-const signature = (machine,m=model()) => JSON.stringify([m.groups.filter(s=>(s.machine??null)===machine).map(s=>[s.id,s.tabs?.map(t=>t.id)]),m.all.filter(p=>machineOf(p.terminal)===machine).map(p=>[p.pane,p.tab,p.terminal]),m.list.filter(t=>machineOf(t.address)===machine && (t.labels?.['crew.task'] || t.labels?.['custom.crew.home'])).map(t=>[t.address,t.state,t.labels?.['crew.task'],t.labels?.['crew.home'],t.labels?.['herdr.space'],t.labels?.['custom.crew.home']])]);
+const signature = (machine,m=model()) => JSON.stringify([m.groups.filter(s=>(s.machine??null)===machine).map(s=>[s.id,s.tabs?.map(t=>t.id)]).sort((a,b)=>a[0].localeCompare(b[0])),m.all.filter(p=>machineOf(p.terminal)===machine).map(p=>[p.pane,p.tab,p.terminal]),m.list.filter(t=>machineOf(t.address)===machine && (t.labels?.['crew.task'] || t.labels?.['custom.crew.home'])).map(t=>[t.address,t.state,t.labels?.['crew.task'],t.labels?.['crew.home'],t.labels?.['herdr.space'],t.labels?.['custom.crew.home']])]);
 export function fleetContexts() {
   if(!enabled()) return [];
   const state=shared(FLEET_KEY), now=Date.now();

@@ -157,6 +157,8 @@
     "lib/reorder.js": "src/ui/reorder.js",
     "mods/custom-tabs/reorder.js": "src/ui/reorder.js",
     "mods/custom-spaces/reorder.js": "src/ui/reorder.js",
+    "mods/custom-spaces/workspace-links.js": "src/shared/workspace-links.js",
+    "mods/custom-spaces/link.svg": "src/shared/link.svg",
     "mods/custom-workspace-chrome/reorder.js": "src/ui/reorder.js",
     "lib/sidebar-scroll.js": "src/ui/sidebar-scroll.js",
     "lib/scroll-fade.js": "src/ui/scroll-fade.js",

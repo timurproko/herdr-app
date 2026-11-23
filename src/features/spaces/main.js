@@ -15,8 +15,9 @@ import { reorder } from './reorder.js';
 import { beginSpaceRename, cancelSpaceRename, saveSpaceRename, syncSpaceRename } from './space-rename.js';
 import { displaySpace, spaceDirectory } from './directory.js';
 import { reconcileSpaceColors } from './space-color-state.js';
-import { pluginEvent, pluginSpaceTags } from './plugins.js';
-import { spaces, machines, panes, run, openOverlay, exec, hc, theme, shared, setShared, props, watchFolder, window, layout, settings } from "./host.js";
+import { pluginEvent, pluginSpaceTags, pluginWorkspaceLinks } from './plugins.js';
+import { projectLinkedRows, captureSpaceBlock, blockTarget, planBlockDrop, SpaceBlockCommit } from './workspace-links.js';
+import { spaces, machines, panes, run, openOverlay, exec, hc, theme, shared, setShared, props, watchFolder, window, layout, settings, notify } from "./host.js";
 
 // What the sidebar shows, chosen in the Spaces header's ⋯ menu. Kept in shared state like the
 // Agents sort; everything is shown until it is switched off.
@@ -115,6 +116,7 @@ export default class Spaces extends View {
 
   checkNew(cx) {
     pluginEvent('spaces.refresh', { owner: this, cx });
+    this.blockCommit?.observe();
     const now = Date.now();
     const sp = spaces();
     for (const s of sp) if (!this.shown.has(s.id)) this.born[s.id] ??= now;
@@ -300,10 +302,10 @@ export default class Spaces extends View {
     const ps = panes(), sp = spaces().map(s=>displaySpace(s,ps));
     const ready = (w) => this.shown.has(w.id) || where(w, ps) in this.git || Date.now() - (this.born[w.id] ??= Date.now()) > 1500;
     for (const w of sp) if (!this.shown.has(w.id) && ready(w)) this.shown.add(w.id);
-    return sp.map((w, i) => {
+    return projectLinkedRows(sp.map((w, i) => {
       const g = this.git[where(w, ps)] ?? null;
       return { w, i, g, tree: g?.linked ? true : null };
-    }).filter(r => this.shown.has(r.w.id));
+    }).filter(r => this.shown.has(r.w.id)), pluginWorkspaceLinks());
   }
 
   // The rows, under a header per machine once one isn't this computer.
@@ -410,7 +412,16 @@ export default class Spaces extends View {
     if (!result) return;
     const all = spaces(), source = all.find(s => s.id === result.id);
     if (!source) return;
-    if (result.kind === 'drop' && result.target !== result.id) {
+    if (this.blockCommit?.pending) return;
+    const links = pluginWorkspaceLinks();
+    if (result.kind === 'drop' && (result.meta?.sources?.length > 1 || links.length)) {
+      const captured = result.meta;
+      const wanted = planBlockDrop(all, links, result.id, result.target, captured);
+      this.blockCommit ??= new SpaceBlockCommit({read: spaces, links: pluginWorkspaceLinks,
+        move: (id,index) => run('space.move',{id,index}),
+        fail: body => notify({title:'Spaces could not finish reordering',body,level:'warning'})});
+      this.blockCommit.start(result.id,captured,wanted);
+    } else if (result.kind === 'drop' && result.target !== result.id) {
       const index = all.findIndex(s => s.id === result.target);
       if (index !== -1 && (all[index].machine ?? null) === (source.machine ?? null)) run('space.move', {id: result.id, index: index + 1});
     } else if (result.kind === 'click') run('space.select', {id: result.id});
@@ -420,15 +431,22 @@ export default class Spaces extends View {
     const all = spaces(), i = all.findIndex(s => s.id === this.drag.view?.id);
     if (i === -1) return null;
     const w = displaySpace(all[i], panes());
+    const block = this.drag.view?.meta?.sources;
+    const rows = block?.length > 1 ? block.map((id,k)=> {
+      const at=all.findIndex(s=>s.id===id),space=displaySpace(all[at],panes());
+      return {icon:k ? this.linkBadge(t) : badge(String(at+1),spaceBadgeColor(t,space,shared('space.colors')??{})),label:space.name};
+    }) : null;
     return this.drag.preview('space-drag', t, {
-      icon: badge(String(i + 1), spaceBadgeColor(t, w, shared('space.colors') ?? {})), label: w.name});
+      icon: badge(String(i + 1), spaceBadgeColor(t, w, shared('space.colors') ?? {})), label: w.name, rows});
   }
 
-  row({ w, i, g, tree }, t) {
+  linkBadge(t) { return slot(svg('mods/custom-spaces/link.svg').size(U.icon).text_color(t.muted)); }
+
+  row({ w, i, g, tree, linked = false, position = i }, t) {
     const on = w.active;
     const edit = this.rename?.id === w.id ? this.rename : null;
     const drag = this.drag, d = drag.view;
-    const fromIndex = d ? spaces().findIndex(s => s.id === d.id) : -1;
+    const fromIndex = d ? this.ordered().findIndex(r => r.w.id === d.id) : -1;
     const fill = spaceBadgeColor(t, w, shared("space.colors") ?? {});
     return drag.item(v_flex()
       .relative()
@@ -443,12 +461,14 @@ export default class Spaces extends View {
       // present (transparent unless dragged), so ending a drag eases it away
       // instead of snapping the row back to its own (e.g. selected) background.
       .child(drag.sourceLayer(div().id(`space-drag-bg-${w.id}`).absolute().inset_0().rounded(U.radius).bg(itemHover(t, on)), w.id))
-      .when(Boolean(d) && d.target === w.id && d.id !== w.id, el => el.child(
-        drag.marker(`space-drop-line-${w.id}`, t.accent, {edge: fromIndex < i ? 'after' : 'before'})))
+      .when(Boolean(d) && d.target === w.id && !(d.meta?.sources ?? [d.id]).includes(w.id), el => el.child(
+        drag.marker(`space-drop-line-${w.id}`, t.accent, {edge: fromIndex < position ? 'after' : 'before'})))
       .on_mouse_down("left", (e, cx) => {
+        if (this.blockCommit?.pending) { cx.stop_propagation();return; }
         if (this.rename?.id === w.id) { cx.stop_propagation();return; }
         if (e?.click_count === 2) { cx.stop_propagation();beginSpaceRename(this, w.id, cx);return; }
-        drag.begin(w.id, e, cx, {scale: settings()?.zoom, scrollOffset: this.sidebarScroll?.offset ?? 0});
+        drag.begin(w.id, e, cx, {scale: settings()?.zoom, scrollOffset: this.sidebarScroll?.offset ?? 0,
+          meta: captureSpaceBlock(spaces(), pluginWorkspaceLinks(), w.id)});
       })
       .on_mouse_move((e, cx) => {
         if (this.rename) return;
@@ -463,7 +483,7 @@ export default class Spaces extends View {
           const mine = all.filter(s => (s.machine ?? null) === machine);
           over = (i > from ? mine.at(-1) : mine[0])?.id ?? null;
         }
-        drag.over(e, over, cx);
+        drag.over(e, blockTarget(all, pluginWorkspaceLinks(), drag.current?.id, over), cx);
       })
       .on_mouse_up("left", (_e, cx) => {
         if (this.rename) { this.cancelDrag();cx.stop_propagation();return; }
@@ -474,10 +494,11 @@ export default class Spaces extends View {
       .child(
         h_flex()
           .id(`space-content-${w.id}`)
+          .when(linked, el => el.pl(8))
           .gap(U.gap)
           .items_center()
           .when(this.tabArrival?.spaceId === w.id && !edit, el => tabArrivalMotion(this, el))
-          .child(badge(String(i + 1), fill))
+          .child(linked ? this.linkBadge(t) : badge(String(i + 1), fill))
           .when(Boolean(edit), el => el.child(this.renameField(w, t)))
           .when(!edit, el => el
             .child(spaceTitle(t,w).min_w(0).max_w(150).truncate().child(w.name))
@@ -494,7 +515,7 @@ export default class Spaces extends View {
       );
   }
 
-  compact({ w, i }, t) {
+  compact({ w, i, linked = false }, t) {
     const fill = spaceBadgeColor(t, w, shared("space.colors") ?? {});
     return this.drag.control(h_flex().relative()
       .id(`space-${w.id}`)
@@ -507,7 +528,7 @@ export default class Spaces extends View {
       .when(w.active, (el) => el.bg(t.selected)), {hover: s => s.bg(itemHover(t, w.active)), tooltip: w.directory || w.name})
       .on_click(this.drag.guard(() => run("space.select", { id: w.id })))
       .on_mouse_down("right", this.drag.guard((_e, cx) => { cx.stop_propagation(); this.menu(w); }))
-      .child(badge(String(i + 1), fill).id(`space-badge-${w.id}`)
+      .child((linked ? this.linkBadge(t) : badge(String(i + 1), fill)).id(`space-badge-${w.id}`)
         .when(this.tabArrival?.spaceId === w.id, el => tabArrivalMotion(this, el)));
   }
 
@@ -536,6 +557,7 @@ export default class Spaces extends View {
     const sp = spaces();
     reconcileSpaceColors(sp);
     if (this.drag.current && !sp.some(s => s.id === this.drag.current.id)) this.drag.reset();
+    if (this.drag.view?.meta && JSON.stringify(this.drag.view.meta) !== JSON.stringify(captureSpaceBlock(sp,pluginWorkspaceLinks(),this.drag.view.id))) this.drag.reset();
     const preview = this.dragPreview(t);
     return this.drag.surface(v_flex().id("spaces-panel").relative().size_full().min_h(0).bg(t.chrome).text_size(U.font),
       {release: (id, cx) => this.drop(id, cx), enabled: () => !this.rename, scrollOffset: () => this.sidebarScroll?.offset ?? 0})

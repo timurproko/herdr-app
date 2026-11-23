@@ -17,10 +17,10 @@ Implementation approved for recorded links only. These five groups match the PR'
 
 ## 3. Linked spaces display an attachment and drag together as one block
 
-- [ ] 3.1 Project coordinator/fleet display blocks without modifying native order on toggle; render a link glyph and child inset, suppress only the pair's Crew tags, and preserve independent selection and original native numbering; cover expanded/compact render trees, off parity, rename, colors and unrelated worktree order.
-- [ ] 3.2 Adapt shared reorder source/preview support for a captured two-row block while retaining ordinary click identity and shared cancellation policy; cover dragging each member both directions, pair-edge markers, two linked blocks, cancellation and unaffected Tabs/footer consumers in deterministic fixtures.
-- [ ] 3.3 Commit fresh same-machine block permutations through acknowledgement-bound public space moves, not Core-document writes; cover delayed/missing acknowledgements, concurrent native changes, disappearing members, disabled-during-drag, partial results, no replay and unchanged selection with an in-memory queued host.
-- [ ] 3.4 Update the reorder component documentation and README with attached-row behavior, compact rail limits and non-atomic native ordering; run focused Spaces/reorder fixtures and confirm build mappings include the shared glyph/helper.
+- [x] 3.1 Project coordinator/fleet display blocks without modifying native order on toggle; render a link glyph and child inset, suppress only the pair's Crew tags, and preserve independent selection and original native numbering; cover expanded/compact render trees, off parity, rename, colors and unrelated worktree order.
+- [x] 3.2 Adapt shared reorder source/preview support for a captured two-row block while retaining ordinary click identity and shared cancellation policy; cover dragging each member both directions, pair-edge markers, two linked blocks, cancellation and unaffected Tabs/footer consumers in deterministic fixtures.
+- [x] 3.3 Commit fresh same-machine block permutations through acknowledgement-bound public space moves, not Core-document writes; cover delayed/missing acknowledgements, concurrent native changes, disappearing members, disabled-during-drag, partial results, no replay and unchanged selection with an in-memory queued host.
+- [x] 3.4 Update the reorder component documentation and README with attached-row behavior, compact rail limits and non-atomic native ordering; run focused Spaces/reorder fixtures and confirm build mappings include the shared glyph/helper.
 
 ## 4. The coordinator Git panel groups task PRs across repositories
 
