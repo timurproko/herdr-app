@@ -1,0 +1,41 @@
+import assert from 'node:assert/strict';
+import {loadMod} from '../../../tools/plugin-harness.mjs';
+const state={'custom.plugins':{crew:{enabled:true}},'custom.spaces.preferences':{connectFleetToCoordinator:true}};
+let groups=[{id:'coordinator',tabs:[{id:'c'}]},{id:'fm-crew-home1',tabs:[{id:'w'}]}];
+let all=[{tab:'c',pane:'cp',terminal:'t1'},{tab:'w',pane:'wp',terminal:'t2'}];
+let list=[{address:'t1',state:'live',labels:{'custom.crew.home':'1'}},{address:'t2',state:'live',labels:{'crew.task':'ship','crew.home':'home1','herdr.space':'fm-crew-home1'}}];
+const host={shared:k=>state[k],setShared:(k,v)=>state[k]=v,spaces:()=>groups,panes:()=>all,terminals:()=>list,machines:()=>[{name:'pc2',layout:'ready'}],checking:()=>false,notify(){}};
+const {f,r}=await loadMod({host,modules:{'space-color-state.js':'src/shared/space-color-state.js'},entry:'import * as f from "./plugins/crew/fleet.js";import * as r from "./plugins.js";export {f,r};'});
+const status={home:'C:/home/.crew',owner:{terminal:'t1',live:true,mine:false},tasks:[{id:'ship',terminal:'t2',state:'reported',pr:'https://github.com/example/a/pull/12',report:'MUST NOT SHARE'}]};
+const model=()=>({groups,all,list}), copy=v=>JSON.parse(JSON.stringify(v));
+assert.equal(f.bindFleet(status,null,model()).child,'fm-crew-home1');
+for(const taskState of ['working','reported','stopped','failed','closed']) {
+ const result=f.bindFleet({...status,tasks:[{...status.tasks[0],state:taskState}]},null,model());
+ assert.equal(result.tasks.length,['working','reported'].includes(taskState)?1:0);
+ assert.equal(result.incomplete,taskState==='working');
+}
+assert.equal(f.bindFleet({...status,owner:{terminal:'t9',live:true}},null,model()),null);
+list[1].labels['crew.task']='wrong';assert.equal(f.bindFleet(status,null,model()),null);list[1].labels['crew.task']='ship';
+const before=copy(groups);groups[1].id='ordinary';assert.equal(f.bindFleet(status,null,model()),null);groups=before;
+const tasks=[];const cx={spawn(fn){tasks.push(Promise.resolve().then(()=>fn(cx)));},notify(){}};let calls=0;
+const read=async()=>{calls++;return JSON.stringify(status);};
+f.refreshFleets(cx,read);f.refreshFleets(cx,read);await Promise.all(tasks.splice(0));assert.equal(calls,1);
+assert.ok(!JSON.stringify(state[f.FLEET_KEY]).includes('MUST NOT SHARE'));assert.equal(r.pluginWorkspaceLinks().length,1);assert.equal(r.pluginPullContext('coordinator').links.length,1);assert.equal(r.pluginPullContext('fm-crew-home1'),null);
+groups.reverse();all.reverse();list.reverse();assert.equal(f.fleetContexts().length,1,'Native ordering does not change identity or abort block acknowledgements');groups.reverse();all.reverse();list.reverse();
+assert.equal(r.pluginSpaceTags(groups[0]).length,0);
+all[1].terminal='replacement';assert.equal(f.fleetContexts().length,0);all[1].terminal='t2';
+state[f.FLEET_KEY].entries.local.at-=31000;assert.equal(f.fleetContexts().length,0);
+state['custom.spaces.preferences'].connectFleetToCoordinator=false;f.refreshFleets(cx,read);assert.equal(calls,1);assert.equal(r.pluginWorkspaceLinks().length,0);
+state['custom.spaces.preferences'].connectFleetToCoordinator=true;f.invalidateFleet();
+let release;f.refreshFleets(cx,()=>new Promise(r=>release=r));await Promise.resolve();await Promise.resolve();f.invalidateFleet();release(JSON.stringify(status));await Promise.all(tasks.splice(0));assert.equal(f.fleetContexts().length,0,'Disable generations reject obsolete responses');
+f.refreshFleets(cx,()=>new Promise(r=>release=r));await Promise.resolve();await Promise.resolve();state['custom.fleet.reads'].local.until=0;release(JSON.stringify(status));await Promise.all(tasks.splice(0));assert.equal(f.fleetContexts().length,0,'Expired read leases cannot publish a late snapshot');
+// Same local IDs on a remote Core are qualified once and never borrow local members.
+groups=groups.map(s=>({...s,id:'pc2/'+s.id,machine:'pc2',tabs:s.tabs.map(t=>({id:'pc2/'+t.id}))}));all=all.map(p=>({...p,tab:'pc2/'+p.tab,terminal:'pc2/'+p.terminal}));list=list.map(t=>({...t,address:'pc2/'+t.address}));
+assert.equal(f.bindFleet(status,'pc2',model()).parent,'pc2/coordinator');assert.equal(f.bindFleet({...status,owner:{terminal:'other/t1',live:true}},'pc2',model()),null);
+list[1].state='finished';assert.equal(f.bindFleet(status,'pc2',model()).tasks.length,0);
+assert.throws(()=>f.recordedSource('{bad'));assert.throws(()=>f.recordedSource(JSON.stringify({home:'x',tasks:{}})));
+assert.ok(!JSON.stringify(f.recordedSource(JSON.stringify(status))).includes('MUST NOT SHARE'));
+const declaration=r.pluginById('crew'),workspace=declaration.workspaceLinks,pulls=declaration.pullContext;
+declaration.workspaceLinks=()=>{throw Error('fixture provider failure');};declaration.pullContext=()=>{throw Error('fixture provider failure');};assert.equal(r.pluginWorkspaceLinks().length,0);assert.equal(r.pluginPullContext('coordinator'),null);declaration.workspaceLinks=workspace;declaration.pullContext=pulls;
+r.setPluginEnabled(declaration,false);assert.equal(r.pluginWorkspaceLinks().length,0);assert.equal(r.pluginPullContext('coordinator'),null);
+console.log('PASS Crew fleet exact identities, registry seam, source filtering, read coalescing, expiry, generations and remote qualification');

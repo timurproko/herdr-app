@@ -49,7 +49,7 @@ const modules={
   './ci-fix.js':{CIFix:class {sync(){}stop(){}}},
   './notices.js':{GitNotices:class {sync(){return null;}stop(){}retryNow(){}}},
   './webhooks.js':{GitWebhooks:class {sync(){} stop(){}}},
-  './plugins.js':{sidebarPanelEnabled:()=>true},'./sidebar-title.js':{sidebarTitle:element},
+  './plugins.js':{pluginPullContext:()=>null,pluginEvent(){},sidebarPanelEnabled:()=>true},'./sidebar-title.js':{sidebarTitle:element},
   './panel-pin.js':{panelPin:(_t,{id})=>element().id(id)},'./panel-state.js':{changePanel(){}},
   './host.js':host,'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{}},
   'gpui-base':{h_flex:element,v_flex:element},
