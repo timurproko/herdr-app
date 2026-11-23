@@ -6,6 +6,8 @@ import {createRequire} from 'node:module';
 import {build} from '../tools/build.mjs';
 const {operate} = createRequire(import.meta.url)(`${build().output}/mods/custom-tabs/move-tab.cjs`);
 const states = {}, calls = [], notices = [], executions = [], tasks = [];
+const requiredCommands=['tab.new','tab.move','tab.settle','tab.select','pane.focus'];
+let availableCommands=requiredCommands, appVersion='0.1.16';
 let world, focus, keepSource = false, replyStatus = 'moved', navigate = false, acknowledge = true, inspectWorker = null;
 const capability = {ok: true, coreId: 'core-one', fingerprint: 'a'.repeat(64)};
 function reset() {
@@ -18,6 +20,7 @@ function reset() {
   for (const k of Object.keys(states)) delete states[k];
   calls.length = notices.length = executions.length = tasks.length = 0;
   keepSource = false; replyStatus = 'moved'; navigate = false; acknowledge = true;
+  availableCommands=requiredCommands; appVersion='0.1.16';
 }
 reset();
 const cx = {spawn: fn => tasks.push(fn), sleep: async () => {}, notify() {}};
@@ -26,7 +29,7 @@ const lifecycle = {isStartTab: t => t.id === 'start', ensureSpaceStart: id => {
 }};
 const host = {
   spaces: () => world, panes: () => [], machines: () => [{name: null, layout: 'ready'},{name:'remote',layout:'ready'}], focused: () => focus,
-  run: (...args) => calls.push(args), appHome: () => 'C:/fixture', hostVersion: () => '0.1.16',
+  run: (...args) => calls.push(args), commands:()=>availableCommands.map(name=>({name})), appHome: () => 'C:/fixture', hostVersion: () => appVersion,
   window: () => ({active: true}), shared: key => states[key], setShared: (key, value) => states[key] = value,
   notify: n => notices.push(n),
   exec: async (_command, args) => {
@@ -126,7 +129,7 @@ let menuActions = [], menuInspect = async () => capability, integratedMenu = fal
 const menuContext = vm.createContext({});
 const modules = {
   'gpui-kit': {View: class {}, div: element, svg: element}, 'gpui-base': {v_flex: element, h_flex: element},
-  './ui.js': {U: {row:28,gap:8,radius:6,smallIcon:14}, slot: x => x, menuSurface: (_t,x) => x, hotkey: x => x,
+  './ui.js': {U: {row:28,gap:8,radius:6,smallIcon:14}, menuSurface: (_t,x) => x, hotkey: x => x,
     menuHeading: (_t,text,el=element()) => el.child(text),
     badge: (label,fill) => {colors.push([label,fill]);return element();}, spaceBadgeColor: (_t,s,c) => c[s.id]},
   './directory.js': {displaySpace: x => x}, './sidebar-footer.js': {footerItems: () => []}, './modal-layout.js': {divider: element, dividerHeight: () => 17},
@@ -217,39 +220,47 @@ agentMenu.choose(0,mcx);assert.equal(legacyActions.at(-1)[0],'terminal.pin');ass
 agentMenu.choose(2,mcx);assert.equal(legacyActions.at(-1)[0],'terminal.kill');assert.equal(legacyActions.at(-1)[1].terminal,'pc2/t1');
 const ordinary=new menuModule.namespace.default();ordinary.init({},mcx);assert.deepEqual(labels(ordinary),['Pin to the top','Close']);
 // Real menu -> domain bridge -> worker -> profile, with synthetic RPC only.
-reset(); p.tab='tab'; p.target=target; menuSpaces=world; menuInspect=api.inspectTabMove; integratedMenu=true;
+reset(); appVersion='0.1.17'; p.tab='tab'; p.target=target; menuSpaces=world; menuInspect=api.inspectTabMove; integratedMenu=true;
 const rawTab = id => ({id,name:'Work',root:{id,type:'row',children:[{id:'pane-'+id,type:'block',content:{mod:'custom-files',props:{path:'/fixture'}}}]}});
 const snapshot = {version:7,value:{spaces:[{id:'s1',name:'Source',folder:'/source',tabs:[rawTab('tb1')]},{id:'s2',name:'Target',folder:'/target',tabs:[rawTab('tb2')]}]}};
-for (const coreVersion of ['0.1.22','0.1.23']) {
-  const rpcCalls=[];
+for (const scenario of [{core:'0.1.22'},{core:'0.1.23'},{core:'0.1.23',missingMethod:'doc.set'},...requiredCommands.map(missingCommand=>({core:'0.1.23',missingCommand}))]) {
+  const coreVersion=scenario.core, rpcCalls=[];
+  availableCommands=requiredCommands.filter(name=>name!==scenario.missingCommand);
   const rpc=async method=>{
     rpcCalls.push(method);
-    if(method==='hello') return {version:coreVersion,generation:1,core:{id:'fixture-core'},methods:['doc.get','doc.set','terminal.get','terminal.list','terminal.label']};
+    if(method==='hello') return {version:coreVersion,generation:1,core:{id:'fixture-core'},methods:['doc.get','doc.set','terminal.get','terminal.list','terminal.label'].filter(name=>name!==scenario.missingMethod)};
     if(method==='doc.get') return structuredClone(snapshot);
     if(method==='terminal.list') return {terminals:[]};
     assert.fail('Preflight must never mutate: '+method);
   };
-  inspectWorker=request=>operate(request,rpc,{appVersion:()=> '0.1.16'});
+  inspectWorker=request=>operate(request,rpc,{appVersion:()=> appVersion});
   const instance=new menuModule.namespace.default();instance.init({},mcx);
   await preflights.shift()(mcx);instance.choose(2,mcx);
   const before=calls.length, beforeClosed=closed.length;
-  if(coreVersion==='0.1.22') {
+  if(!scenario.missingMethod&&!scenario.missingCommand) {
     assert.equal(instance.moveCapability.ok,true);
     assert.equal(instance.list()[1][1],'custom.move-tab');
     instance.choose(1,mcx);
     assert.equal(calls.length,before+1,'Verified destination hands off one fresh domain request');
     const handedOff=JSON.parse(calls.at(-1)[0].split('tab-move:')[1]);
-    assert.equal(handedOff.appVersion,'0.1.16');assert.equal(handedOff.destinationSpaceId,'s2');
+    assert.equal(handedOff.appVersion,'0.1.17');assert.equal(handedOff.destinationSpaceId,'s2');
     assert.equal(handedOff.coreId,'fixture-core');assert.match(handedOff.fingerprint,/^[a-f0-9]{64}$/);
   } else {
     assert.equal(instance.moveCapability.ok,false);
     assert.equal(instance.list()[1][1],'custom.move-empty');
-    assert.match(instance.list()[1][0],/Detected App: 0\.1\.16; Core: 0\.1\.23/);
+    assert.ok(instance.list()[1][0].includes(`missing ${scenario.missingMethod??scenario.missingCommand}`));
     instance.choose(1,mcx);instance.at=1;instance.render(mcx).events.on_key_down({key:'enter'},mcx);
     assert.equal(calls.length,before);assert.equal(closed.length,beforeClosed,'Unsupported row is inert');
-    assert.deepEqual(rpcCalls,['hello'],'Unknown Core fails before reading or writing documents');
+    assert.deepEqual(rpcCalls,scenario.missingCommand?[]:['hello'],'Actual incompatibility refuses before reading or writing documents');
   }
   assert.ok(!rpcCalls.includes('doc.set')&&!rpcCalls.includes('terminal.label'));
 }
+// Recheck commands when the mounted Tabs owner consumes an already-verified request.
+const pending=calls.at(-1)[0].slice('custom-tabs.'.length),beforeExecution=executions.length;
+availableCommands=requiredCommands.filter(name=>name!=='tab.new');
+assert.equal(api.routeTabMove(pending,cx),true);await flush();
+assert.equal(executions.length,beforeExecution,'Removed command stops the handoff before worker mutation');
+assert.match(notices.at(-1).body,/App is missing tab.new/);
+assert.equal(world[0].tabs.some(tab=>tab.id==='start'),false,'Do not prepare a Start page after losing a command');
 inspectWorker=null;
 console.log('PASS: stable first-frame worktree and plugin-owned agent menu actions, preserved Pin/Close; same-machine moves, keyboard navigation, expiry, unknown outcomes and repair (no live Core)');

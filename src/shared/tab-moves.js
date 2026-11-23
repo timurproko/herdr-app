@@ -1,5 +1,5 @@
 // Domain bridge: ephemeral mod commands, never persisted mutation jobs/documents.
-import { spaces, panes, machines, run, exec, appHome, hostVersion, window as appWindow, shared, setShared, notify } from './host.js';
+import { spaces, panes, machines, commands, run, exec, appHome, hostVersion, window as appWindow, shared, setShared, notify } from './host.js';
 import { ensureSpaceStart, isStartTab } from './space-lifecycle.js';
 
 const PREFIX = 'tab-move:';
@@ -8,6 +8,11 @@ const machineOf = space => space?.machine ?? null;
 const ready = space => Boolean(space) && machines().some(m => m.name === machineOf(space) && m.layout === 'ready');
 const currentSpace = id => spaces().find(s => s.id === id);
 const message = error => error?.message || 'Tab moving is unavailable.';
+function requireMoveCommands() {
+  const available = new Set(commands().map(command => command.name));
+  for (const name of ['tab.new', 'tab.move', 'tab.settle', 'tab.select', 'pane.focus'])
+    if (!available.has(name)) throw Error(`App is missing ${name}; tab moving cannot safely prepare the source space.`);
+}
 async function worker(request) {
   const result = await exec('node', [`${appHome()}/mods/custom-tabs/move-tab.cjs`, JSON.stringify(request)], {timeout: 45000});
   if (result.code !== 0) throw Error('The tab-move worker did not finish. Check the current tab location before retrying.');
@@ -21,7 +26,10 @@ export async function inspectTabMove(target) {
   const space = currentSpace(target?.space), tab = space?.tabs.find(t => t.id === target?.id);
   if (!tab || !ready(space)) return {ok: false, message: 'The tab’s machine is not ready. Reconnect it before moving tabs.'};
   if (isStartTab(tab, panes())) return {ok: false, message: 'Start pages belong to their space.'};
-  try { return await worker({action: 'inspect', machine: machineOf(space), appVersion: hostVersion(), sourceSpaceId: space.id, tabId: tab.id}); }
+  try {
+    requireMoveCommands();
+    return await worker({action: 'inspect', machine: machineOf(space), appVersion: hostVersion(), sourceSpaceId: space.id, tabId: tab.id});
+  }
   catch (error) { return {ok: false, message: message(error)}; }
 }
 export function requestTabMove(target, destinationSpaceId, capability, action = 'move') {
@@ -53,6 +61,7 @@ async function execute(request, cx) {
     let source = currentSpace(request.sourceSpaceId);
     if (!source?.tabs.some(t => t.id === request.tabId) || machineOf(source) !== request.machine || !ready(source)) throw Error('The clicked tab or machine is no longer available.');
     if (request.action === 'move') {
+      requireMoveCommands(); // The catalog may have changed since menu preflight.
       if (!tabMoveDestinations(source.id).some(s => s.id === request.destinationSpaceId)) throw Error('The destination is no longer available.');
       // Moving is not closing: keep the source open, including its final tab,
       // without changing the person's normal close-on-last-tab preference.

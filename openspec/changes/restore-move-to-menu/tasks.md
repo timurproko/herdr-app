@@ -3,9 +3,9 @@
 ## 1. Capability-based local and remote tab moves with actionable incompatibility failures
 
 - [x] 1.1 Complete and record the pinned 0.1.21-to-0.1.22 Core contract review in the tab-move ADR/compatibility docs, including CAS persistence, doc event filtering, remote forwarding, label errors and source hashes; verify every approval claim against the immutable sources and retain the native continuity caveat.
-- [ ] 1.2 Replace exact reviewed-version eligibility with App 0.1.15/Core 0.1.19 minimums, required methods/commands and understood generation/shape; preserve identity/CAS/expiry checks and verify newer unreviewed versions pass while missing capabilities, malformed/below-minimum versions and unknown generations explain refusals.
-- [ ] 1.3 Cover unknown newer local App/Core and routing/remote Core versions, missing capabilities, opaque preservation, failed persistence/conflicts, unknown writes and unavailable-label partial success/repair; verify with `node tests/tab-move.test.mjs` without requiring review-list membership.
-- [ ] 1.4 Connect real preflight to menu fixtures so unreviewed newer hosts expose destinations and missing methods/commands yield inert refusals; verify handoff and pre-execution command rechecks with `node --experimental-vm-modules tests/tab-move-ui.test.mjs`.
+- [x] 1.2 Replace exact reviewed-version eligibility with App 0.1.15/Core 0.1.19 minimums, required methods/commands and understood generation/shape; preserve identity/CAS/expiry checks and verify newer unreviewed versions pass while missing capabilities, malformed/below-minimum versions and unknown generations explain refusals.
+- [x] 1.3 Cover unknown newer local App/Core and routing/remote Core versions, missing capabilities, opaque preservation, failed persistence/conflicts, unknown writes and unavailable-label partial success/repair; verify with `node tests/tab-move.test.mjs` without requiring review-list membership.
+- [x] 1.4 Connect real preflight to menu fixtures so unreviewed newer hosts expose destinations and missing methods/commands yield inert refusals; verify handoff and pre-execution command rechecks with `node --experimental-vm-modules tests/tab-move-ui.test.mjs`.
 
 ## 2. Matching leading navigation chevrons
 

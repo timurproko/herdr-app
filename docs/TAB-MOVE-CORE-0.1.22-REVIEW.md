@@ -15,9 +15,12 @@ Installed adapter, worker, bridge and menu bytes matched that head at investigat
 The regression begins when unreviewed Core 0.1.22 starts; repository history does
 not establish the exact local upgrade/start time.
 
-Review decision: explicitly permit **Core 0.1.22**, retaining exact App/Core lists,
-generation, methods, identity/session, shape, expiry and CAS checks. No range,
-automatic approval, remote companion, deployment or native changes are implied.
+Review finding: **Core 0.1.22** retains the needed semantics. The person then
+explicitly requested capability-based eligibility: App **0.1.15+**, Core
+**0.1.19+**, generation **1**, required methods/App commands and recognized v1
+document shape. Reviewed lists are evidence only; newer unreviewed versions work
+when these and identity/session, expiry and CAS checks pass. No remote companion,
+deployment or native changes are implied.
 
 ## Immutable evidence
 
@@ -87,7 +90,15 @@ not hashes of rendered GitHub responses. Paths below `src/` are relative to
   keeps stdin open for correlated JSON lines and closes only its own short-lived
   client after replies; no new framing or Core restart is required.
 
-No incompatible safety contract was found. This review concerns source/API
+A specific future risk remains: if `doc.set` silently stops checking the expected
+version while keeping generation 1 and its method name, a stale whole-document
+write could overwrite another client's newly added tabs. If it acknowledges before
+atomic durable persistence, an accepted move could be lost on crash. Capability
+checks cannot prove these semantics. The requested policy does not retain an
+exact-version pin to address that risk; the real CAS call, structural preservation,
+readback and conservative unknown/partial handling remain mandatory.
+
+No incompatible safety contract was found in 0.1.22. This review concerns source/API
 compatibility, not proof of installed binary provenance or live multi-client
 session continuity. The known whole-document/unflushed-client and non-CAS label
 races in [the ADR](TAB-MOVE-ADR.md) remain unchanged.
@@ -99,6 +110,8 @@ from 0.1.22 to 0.1.19, unchanged opaque payloads, unknown local/remote versions,
 generation/method/identity failures, CAS conflicts, failed document persistence,
 uncertain replies and label-unavailable both before and after in-memory updates.
 A menu fixture connects the real worker's preflight to the destination/refusal UI.
-These tests do not execute downloaded Rust or mutate live workspaces. No native
+Newer unreviewed versions with complete capabilities pass; missing capabilities,
+unknown generation and below-minimum versions refuse. These tests do not execute
+downloaded Rust or mutate live workspaces. No native
 continuity/concurrency or new pixel validation is claimed; those remain separate,
 explicitly authorized disposable checks. No deployment was performed.

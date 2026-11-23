@@ -2,7 +2,8 @@
 'use strict';
 const {createHash} = require('node:crypto');
 const {isDeepStrictEqual} = require('node:util');
-const PROFILE = Object.freeze({ apps: Object.freeze(['0.1.15', '0.1.16']), cores: Object.freeze(['0.1.19', '0.1.21', '0.1.22']), generation: 1 });
+// Reviewed releases are provenance for the optional audit, not runtime permission.
+const PROFILE = Object.freeze({ apps: Object.freeze(['0.1.15', '0.1.16']), cores: Object.freeze(['0.1.19', '0.1.21', '0.1.22']), minimumApp: '0.1.15', minimumCore: '0.1.19', generation: 1 });
 const ID = /^[a-zA-Z0-9_-]{1,200}$/;
 const NODE_FIELDS = new Set('id type children content active header size min max hidden title background border radius shadow padding focus theme colors font font_size font_weight ui_font terminal_line_height terminal_cell_width terminal_scroll_speed terminal_padding terminal_opacity gap divider movable closable resizable floating titlebar traffic_lights preview terminal_menu window_drag cloned_from'.split(' '));
 const object = x => x !== null && typeof x === 'object' && !Array.isArray(x);
@@ -15,11 +16,23 @@ function fingerprint(value) {
   const canonical = x => Array.isArray(x) ? x.map(canonical) : object(x) ? Object.fromEntries(Object.keys(x).sort().map(k => [k, canonical(x[k])])) : x;
   return createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
 }
+function atLeast(value, minimum) {
+  if (typeof value !== 'string' || value.length > 80) return false;
+  const match = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/.exec(value);
+  if (!match) return false;
+  const parts = match.slice(1, 4).map(Number), floor = minimum.split('.').map(Number);
+  if (!parts.every(Number.isSafeInteger)) return false;
+  for (let i = 0; i < 3; i++) if (parts[i] !== floor[i]) return parts[i] > floor[i];
+  return !match[4]; // A prerelease of the minimum is older than that stable release.
+}
 function validateProfile(app, hello) {
-  if (!PROFILE.apps.includes(app) || !PROFILE.cores.includes(hello?.version) || hello.generation !== PROFILE.generation)
-    fail(`Tab moving needs a reviewed App/Core contract. Detected App: ${app ?? 'unknown'}; Core: ${hello?.version ?? 'unknown'}; generation: ${hello?.generation ?? 'unknown'}. Reviewed Apps: ${PROFILE.apps.join(', ')}; Cores: ${PROFILE.cores.join(', ')}; generation: ${PROFILE.generation}. Other Custom features are unaffected.`);
+  const detected = `Detected App: ${app ?? 'unknown'}; Core: ${hello?.version ?? 'unknown'}; generation: ${hello?.generation ?? 'unknown'}.`;
+  if (!atLeast(app, PROFILE.minimumApp) || !atLeast(hello?.version, PROFILE.minimumCore))
+    fail(`Tab moving requires App ${PROFILE.minimumApp} or newer and Core ${PROFILE.minimumCore} or newer with readable versions. ${detected}`);
+  if (hello?.generation !== PROFILE.generation)
+    fail(`Tab moving requires protocol generation ${PROFILE.generation}. ${detected}`);
   for (const method of ['doc.get', 'doc.set', 'terminal.get', 'terminal.list', 'terminal.label'])
-    if (!hello.methods?.includes(method)) fail(`Core is missing ${method}; tab moving is unavailable.`);
+    if (!Array.isArray(hello.methods) || !hello.methods.includes(method)) fail(`Core is missing ${method}; tab moving is unavailable. ${detected}`);
   if (typeof hello.core?.id !== 'string' || !hello.core.id) fail('Core identity is unavailable.');
 }
 function validateDocument(doc) {
@@ -158,7 +171,7 @@ function machineRpc(base, machine) {
     let result;
     if (method === 'hello') {
       const local = await base('hello', {generation: 1});
-      validateProfile(PROFILE.apps[0], local);
+      validateProfile(PROFILE.minimumApp, local);
       if (!['machine.list', 'machine.exec'].every(m => local.methods.includes(m))) fail('Core cannot verify remote machine routing.');
       if (localIdentity && localIdentity !== local.core.id) { invalidated = true; fail('The routing Core changed.'); }
       localIdentity = local.core.id;
