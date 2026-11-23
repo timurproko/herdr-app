@@ -118,6 +118,28 @@ deploy/enable/disable/remove/rollback/preference-import operational commands.
 The real gh CLI fixture uses synthetic auth and a GET-only localhost server.
 Provider/relay/Cloudflare unit transports are mocks, not live requests.
 
+## Git PR label facts
+
+Pull facts, pagination, fleet and webhook fixtures cover assigned label names/colours
+in both GraphQL connection and targeted gh array results, including exact emoji names,
+empty/null labels and malformed-colour fallback. Labeled/unlabeled events refresh
+loaded Open/Closed pages and older active or coordinator PRs using the existing reads;
+bursts coalesce and stale contexts cannot repopulate labels. These use synthetic
+GitHub data, not real label mutations, credentials or relay deployments.
+
+`tests/git-row-labels.test.mjs` loads the real shared row and facts with synthetic
+host/elements. It covers ordinary/coordinator Open/Closed/merged and ghost rows,
+Owner removal, tasks/checks/labels ordering with missing groups, exact emoji names,
+light/dark/fallback colours, bounded strip/pill sizes, truncation and full-name
+individual/strip/metadata tooltips. The same fixture checks 3px muted round separators,
+centred by their parent rows with equal 6px gaps, in bylines and every status/review/label
+boundary, including missing-group combinations without leading/trailing or orphan dots.
+Pagination/fleet fixtures also assert labels
+in actual pinned/scrolling and coordinator render paths; existing menu and pin-swap
+fixtures protect captured URLs, callbacks and measured motion. These prove render-tree
+constraints, not GPUI pixel layout, tooltip hit-testing or native animation appearance.
+No deployment or live label mutation is performed.
+
 ## Connected fleet fixtures
 
 `tests/fleet-preferences.test.mjs` covers the actual Spaces preference and Settings

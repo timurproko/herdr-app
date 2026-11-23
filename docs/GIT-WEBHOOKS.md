@@ -159,6 +159,13 @@ invalidate every loaded Open/Closed page and an explicitly linked beyond-page PR
 Pinned/unpinned PRs and drafts with running checks are updated alike. Bursts
 coalesce, expanded list depth is retained, cursors are renewed, and stale replies
 cannot overwrite another machine/repository. Failed reads keep the last good data.
+Assigned PR label names and colours travel with those same list/targeted PR reads,
+not additional requests per row. All `pull_request` actions invalidate facts,
+including `labeled` and `unlabeled`; no label bodies or action-specific transport
+are needed. The chrome-owned broker advances repository revisions for both label
+actions, and the panel consumes them through the same deferred, render-guarded
+refresh path. They do not count as main-merge hints for Custom update checks.
+Reconnect and manual Refresh also replace label facts, with no label polling.
 
 The bottom info card uses **Set up Git in Settings** for missing global relay
 setup, even on non-Git agents. With setup ready, it uses **Add this repo in Settings** only for a resolved, unenrolled repository. Configured

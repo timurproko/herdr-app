@@ -50,10 +50,16 @@ const request=(signature=signed(body),event='check_run')=>new Request('https://r
 assert.equal((await hub.fetch(request('sha256='+'0'.repeat(64)))).status,401);assert.equal(sent.length,0);
 assert.equal((await hub.fetch(request())).status,200);assert.equal(sent.length,1);assert.equal(sent[0].private,undefined);
 await hub.fetch(request());assert.equal(sent.length,1,'Duplicate deliveries do not fan out');
+for(const action of ['labeled','unlabeled']) {
+  const payload=JSON.stringify({repository:{full_name:'owner/repo'},action,label:{name:'🤖 Under review',color:'840479'}});
+  assert.equal((await hub.fetch(new Request('https://relay.test/github',{method:'POST',headers:{'X-Hub-Signature-256':signed(payload),'X-GitHub-Event':'pull_request','X-GitHub-Delivery':`delivery-${action}`},body:payload}))).status,200);
+  assert.deepEqual(sent.at(-1),{type:'github',repository:'owner/repo',event:'pull_request',delivery:`delivery-${action}`,action});
+}
 assert.equal((await hub.fetch(new Request('https://relay.test/configuration'))).status,401);
 assert.equal((await hub.fetch(new Request('https://relay.test/configuration',{headers:{Authorization:`Bearer ${token}`}}))).status,200);
 socket.attachment={authenticated:false};await hub.webSocketMessage(socket,JSON.stringify({type:'authenticate',token:'WRONG'}));assert.equal(socket.closed,1008);
 await hub.webSocketMessage(socket,JSON.stringify({type:'authenticate',token}));assert.equal(socket.attachment.authenticated,true);assert.equal(sent.at(-1).type,'ready');
-// Shared chrome transport and independent subscribers, all fixture-only.
+// Shared chrome transport and independent subscribers, including label events.
+// The panel is now a revision consumer, not a second socket owner.
 await import('./git-relay-lifecycle.test.mjs');
 console.log('PASS: private relay HMAC/authentication, payload minimization, duplicate delivery, safe Settings setup, credential isolation and native subscription lifecycle');

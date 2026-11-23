@@ -1,12 +1,12 @@
 // Pull requests for the repo under the panel's folder, read through the GitHub CLI.
 // Pure helpers here; main.js owns exec calls and rendering.
-export const PR_FIELDS = 'number,title,url,state,isDraft,author,createdAt,mergedAt,closedAt,body,statusCheckRollup,reviewDecision,headRefName,headRefOid,mergeable';
+export const PR_FIELDS = 'number,title,url,state,isDraft,author,createdAt,mergedAt,closedAt,body,statusCheckRollup,reviewDecision,headRefName,headRefOid,mergeable,labels';
 export const PR_PAGE_SIZE = 10;
 
 export function pullListArgs(state, nameWithOwner, after = null) {
   const [owner, name] = String(nameWithOwner).split('/');
   const states = state === 'closed' ? '[CLOSED,MERGED]' : '[OPEN]';
-  const query = `query($owner:String!,$name:String!,$after:String){repository(owner:$owner,name:$name){pullRequests(first:${PR_PAGE_SIZE},after:$after,states:${states},orderBy:{field:CREATED_AT,direction:DESC}){totalCount pageInfo{hasNextPage endCursor} nodes{number title url state isDraft author{login} createdAt mergedAt closedAt body reviewDecision headRefName headRefOid mergeable commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){nodes{... on CheckRun{name status conclusion startedAt completedAt detailsUrl checkSuite{workflowRun{workflow{name}}}} ... on StatusContext{context state createdAt}}}}}}}}}}}`;
+  const query = `query($owner:String!,$name:String!,$after:String){repository(owner:$owner,name:$name){pullRequests(first:${PR_PAGE_SIZE},after:$after,states:${states},orderBy:{field:CREATED_AT,direction:DESC}){totalCount pageInfo{hasNextPage endCursor} nodes{number title url state isDraft author{login} createdAt mergedAt closedAt body reviewDecision headRefName headRefOid mergeable labels(first:100){nodes{name color}} commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){nodes{... on CheckRun{name status conclusion startedAt completedAt detailsUrl checkSuite{workflowRun{workflow{name}}}} ... on StatusContext{context state createdAt}}}}}}}}}}}`;
   return ['api', 'graphql', '-f', `query=${query}`, '-F', `owner=${owner}`, '-F', `name=${name}`,
     ...(after ? ['-f', `after=${after}`] : [])];
 }
@@ -103,6 +103,14 @@ export function checks(rollup) {
   return { ok, bad, pending, total, label: `${ok}/${total}`, state: bad ? 'failure' : pending ? 'pending' : 'success' };
 }
 
+// GraphQL connections and gh pr view's arrays share one safe label shape.
+export function pullLabels(value) {
+  const labels = Array.isArray(value) ? value : value?.nodes;
+  if (!Array.isArray(labels)) return [];
+  return labels.filter(label => typeof label?.name === 'string' && label.name.length > 0)
+    .map(label => ({name: label.name, color: /^[a-f\d]{6}$/i.test(label.color ?? '') ? `#${label.color}` : null}));
+}
+
 // One row's facts from a gh JSON entry. `owner` is the repo owner's login.
 export function pullRow(pr, owner, now = Date.now()) {
   const login = pr.author?.login ?? '';
@@ -114,8 +122,9 @@ export function pullRow(pr, owner, now = Date.now()) {
     headRefName: pr.headRefName ?? null, headRefOid: pr.headRefOid ?? null,
     mergeConflict: ['open','draft'].includes(state) && pr.mergeable === 'CONFLICTING',
     meta: `#${pr.number} · ${login ? `${login} ` : ''}${when}`,
+    byline: `${login ? `${login} ` : ''}${when}`,
     owner: Boolean(owner && login && login.toLowerCase() === String(owner).toLowerCase()),
-    tasks: tasks(pr.body), checks: checks(pr.statusCheckRollup),
+    tasks: tasks(pr.body), checks: checks(pr.statusCheckRollup), labels: pullLabels(pr.labels),
     review: pr.reviewDecision === 'APPROVED' ? 'approved' : pr.reviewDecision === 'CHANGES_REQUESTED' ? 'changes' : null,
   };
 }

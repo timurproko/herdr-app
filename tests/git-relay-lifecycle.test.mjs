@@ -102,6 +102,23 @@ for(const change of ['disabled','relay','checking','transport']){
  await tick();assert.deepEqual(delivered,['new'],`${change} invalidates queued panel callbacks`);
  store.set('custom.plugins',{git:{enabled:true}});relay='https://relay.test';eager=false;store.set(runtime.RELAY_STATE,saved);
 }
+// Label actions remain PR-fact invalidations on the shared broker, never main
+// update hints. The panel still yields out of render and opens no own socket.
+const labelConsumer=new panel.namespace.GitWebhooks();let labelChanges=0;
+const labelSync=()=>labelConsumer.sync(cx,{enabled:true,scope:'labels',repository:repo,onChange(){cx.notify();labelChanges++;}});
+labelSync();await tick();assert.equal(labelChanges,1);
+const labelsBeforeSockets=sockets.length,labelsBeforeUpdates=invalidations;
+for(const action of ['labeled','unlabeled']) {
+ const revision=runtime.relayRevision(store.get(runtime.RELAY_STATE),repo),delivered=labelChanges;
+ const message=notice({repository:{full_name:repo},action,label:{name:'🤖 Under review',color:'840479'}},'pull_request',`label-${action}`);
+ assert.equal(mainChanged(message,repo),false);
+ await send(message);
+ assert.notEqual(runtime.relayRevision(store.get(runtime.RELAY_STATE),repo),revision);
+ duringRender(()=>{labelSync();labelSync();});assert.equal(labelChanges,delivered,'Label refresh cannot deliver in render');
+ await tick();assert.equal(labelChanges,delivered+1,'Label revisions coalesce into one deferred PR refresh');
+}
+assert.equal(invalidations,labelsBeforeUpdates,'Label actions do not trigger Custom main checks');
+assert.equal(sockets.length,labelsBeforeSockets,'Labels do not add a socket owner');labelConsumer.stop();
 const before = sockets.length; client.sync(cx,options); duplicate.sync(cx,options); await tick(); assert.equal(sockets.length,before);
 
 sockets.at(-1).reject(Error('offline')); await tick();

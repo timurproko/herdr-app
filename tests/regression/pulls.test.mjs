@@ -7,6 +7,14 @@ const m=await import(new URL('file://'+path.join(root,'mods/custom-changes/pulls
 const now=Date.parse('2026-11-10T17:10:10Z');
 
 assert.equal(m.PR_PAGE_SIZE,10);
+assert.ok(m.PR_FIELDS.split(',').includes('labels'),'Targeted older active/coordinator PR reads include labels');
+for (const state of ['open','closed']) assert.ok(m.pullListArgs(state,'owner/repo').some(a=>a.includes('labels(first:100){nodes{name color}}')));
+const labels=[{name:'🤖 Under review',color:'840479'},{name:'ready · 🚀',color:'ABCDEF'}];
+const expectedLabels=[{name:'🤖 Under review',color:'#840479'},{name:'ready · 🚀',color:'#ABCDEF'}];
+assert.deepEqual(m.pullLabels(labels),expectedLabels);
+assert.deepEqual(m.pullLabels({nodes:labels}),expectedLabels);
+for(const value of [null,undefined,{},[],{nodes:[]}])assert.deepEqual(m.pullLabels(value),[]);
+assert.deepEqual(m.pullLabels([null,{}, {name:''},{name:'invalid colour',color:'red;bad'}]),[{name:'invalid colour',color:null}]);
 assert.deepEqual(m.pullListArgs('open','owner/repo').slice(0,2),['api','graphql']);
 assert.ok(m.pullListArgs('open','owner/repo').some(a=>a.includes('first:10') && a.includes('states:[OPEN]')));
 assert.ok(m.pullListArgs('closed','owner/repo').some(a=>a.includes('states:[CLOSED,MERGED]')));
@@ -16,6 +24,10 @@ assert.ok(m.pullListArgs('closed','owner/repo','cursor:10').includes('after=curs
 const pageReply = nodes => JSON.stringify({data:{repository:{pullRequests:{nodes,totalCount:25,pageInfo:{hasNextPage:true,endCursor:'cursor:10'}}}}});
 const page = m.parsePullPage(pageReply([{number:1,commits:{nodes:[{commit:{statusCheckRollup:{contexts:{nodes:[{name:'test',checkSuite:{workflowRun:{workflow:{name:'CI'}}}}]}}}}]}}]));
 assert.equal(page.pulls[0].statusCheckRollup[0].workflowName,'CI');
+const labeledPage=m.parsePullPage(pageReply([{number:2,labels:{nodes:labels}}]));
+assert.deepEqual(m.pullRow(labeledPage.pulls[0],'owner',now).labels,expectedLabels);
+assert.deepEqual(m.pullRow({number:2,labels},'owner',now).labels,expectedLabels);
+assert.deepEqual(m.pullRow({number:2},'owner',now).labels,[]);
 assert.equal(page.cursor,'cursor:10'); assert.equal(page.hasMore,true); assert.equal(page.total,25);
 assert.throws(()=>m.parsePullPage('{}'));
 assert.throws(()=>m.parsePullPage(JSON.stringify({errors:[{message:'GitHub rate limit'}]})),/rate limit/);
