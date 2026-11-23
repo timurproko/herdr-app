@@ -786,8 +786,8 @@ export default {
   // The Spaces sidebar's tag for a space the coordinator or crew workers run in.
   spaceTags: space => {
     const display = fleetContexts({presentation:true});
-    if (display.some(c=>c.child===space.id)) return [];
-    const kind = display.some(c=>c.parent===space.id) ? 'coordinator' : crewInSpace(space);
+    const kind = display.some(c=>c.parent===space.id) ? 'coordinator'
+      : display.some(c=>c.child===space.id) ? 'worker' : crewInSpace(space);
     return kind ? [{ label: 'Crew', tooltip: kind === 'coordinator' ? 'Crew coordinator' : 'Crew worker' }] : [];
   },
   // Required moment behind a profile's role: prepare the launch or refuse. The role id stays
