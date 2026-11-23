@@ -32,7 +32,7 @@ An update SHALL run independently of the mod it replaces, with a finite deadline
 #### Scenario: Page replaced during deploy
 - **WHEN** deployment replaces Settings or the user closes and reopens it
 - **THEN** the same update continues independently and the row reattaches to its status
-- **AND** it shows Updating all machines with a disabled action until a result is known
+- **AND** its description shows Updating… with the unchanged disabled Updating… action until a result is known
 
 #### Scenario: Deadline or lost completion
 - **WHEN** the update exceeds its deadline, crashes or leaves no final result

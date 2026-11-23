@@ -18,6 +18,10 @@
 - [x] 3.2 Add integrated offline-then-online equal-main fixtures through real result recording, inspection, check, projection and Settings/marker consumers; verify pc2 is revisited by the next explicit Update, all Custom badges clear while desktop-current, pending state survives replacement/restart, and successful peer deployment clears it without automatic replay or peer probes during checks.
 - [x] 3.3 Finish README, COMMANDS and TESTING explanations of practical catch-up timing and the current-description plus Update action; verify they state that powering on pc2 alone does nothing and its next reachable eligible explicit update installs then-current main without a special command.
 
+## 4. Running descriptions say Updating… without changing other row wording
+
+- [x] 4.1 Shorten only the shared running-state description to Updating…, retain the button and all other states, and update quoted documentation/specification text; verify launching, pending receipt, active running and replacement cases through the existing row/model fixtures.
+
 ## Workflow follow-up
 
 - Stop after publishing this plan and await explicit implementation approval; no implementation tests or deployment are claimed at this stage.

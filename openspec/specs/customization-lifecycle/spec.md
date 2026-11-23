@@ -272,6 +272,11 @@ Custom Settings Updates SHALL retain its native rows and add one herdr-app-custo
 - **AND** an unknown revision cannot produce an up-to-date claim, even if a cached check says no update is available
 - **AND** unknown-update-outcome and failure diagnostics retain their meaning
 
+#### Scenario: Concise running description
+- **WHEN** Custom is launching an update, waiting for its launch receipt or running the update
+- **THEN** the row description is exactly Updating…
+- **AND** its disabled Updating… button and every other state's wording remain unchanged
+
 ### Requirement: Managed desktop all-machine update
 The row's explicit Update SHALL use only a managed desktop clone at ~/.local/share/herdr-app, created on first Update if absent. It SHALL invoke the existing deploy:all policy for full desktop and eligible existing peer shell updates, retaining clean-main and ownership gates. It SHALL NOT touch development checkouts, repair unsafe source or provision missing peer clones.
 
@@ -291,7 +296,7 @@ An update SHALL run independently of the mod it replaces, with a finite deadline
 #### Scenario: Page replaced during deploy
 - **WHEN** deployment replaces Settings or the user closes and reopens it
 - **THEN** the same update continues independently and the row reattaches to its status
-- **AND** it shows Updating all machines with a disabled action until a result is known
+- **AND** its description shows Updating… with the unchanged disabled Updating… action until a result is known
 
 #### Scenario: Open Updates view replaced
 - **WHEN** an update started from Updates replaces the still-open Settings view, while the runner is active or has just finished

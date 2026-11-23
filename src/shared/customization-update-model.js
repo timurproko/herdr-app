@@ -33,7 +33,7 @@ export function customizationRowState(snapshot, { busy = null, error = null, now
   const catchUp = snapshot?.peerPending && check?.checked && check.available === false && (!job?.finished || check.attempted >= job.finished);
   const canUpdate = !unknown && !running && !snapshot?.locked && !snapshot?.peerUnknown && !check?.error && (updateAvailable(snapshot) || catchUp) && (job?.state !== 'failed' || freshAfterFailure);
   let description, current = false;
-  if (running) description = 'Updating all machines…';
+  if (running) description = 'Updating…';
   else if (unknown) description = `Update outcome unknown${job?.error ? `: ${job.error}` : ''}. Inspect ${details?.kind === 'result' ? 'details' : 'log'}: ${details?.path || 'unavailable'}`;
   else if (error) description = error;
   else if (job?.state === 'failed') description = `Update failed: ${job.error || 'inspect log'}. Recovery: documented rollback.${log}`;

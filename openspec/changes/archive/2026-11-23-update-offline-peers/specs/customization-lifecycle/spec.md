@@ -35,6 +35,11 @@ Custom Settings Updates SHALL retain its native rows and add one herdr-app-custo
 - **AND** an unknown revision cannot produce an up-to-date claim, even if a cached check says no update is available
 - **AND** unknown-update-outcome and failure diagnostics retain their meaning
 
+#### Scenario: Concise running description
+- **WHEN** Custom is launching an update, waiting for its launch receipt or running the update
+- **THEN** the row description is exactly Updating…
+- **AND** its disabled Updating… button and every other state's wording remain unchanged
+
 ### Requirement: Durable desktop revision and partial outcomes
 Real deploy:all runs SHALL record latest per-machine outcomes and successful desktop commit with installed ownership evidence, without changing the ownership manifest schema. Dry-run SHALL NOT write these records. Desktop success SHALL remain distinct from peer skips/failures; uncertain installation SHALL NOT claim a verified revision. Definite failures SHALL retain an actionable stage and cause through the result, runner and Settings row, including the App version for a host-check refusal.
 

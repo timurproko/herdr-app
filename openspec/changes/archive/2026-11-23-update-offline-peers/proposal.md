@@ -11,6 +11,7 @@ A successful desktop update currently warns about pc2 merely being switched off.
 - Remember offline catch-up needs in host-local update runtime bookkeeping, separate from installed provenance, published-main availability and portable preferences. Offer the ordinary Update action for deferred peer work even when the desktop is current, without a warning, log pointer or update badge.
 - Revisit peers on every explicit update, including equal-main runs; clear a deferred peer only after a successful/current deployment or confirmed exclusion/removal. No reconnect-triggered deploy, background worker or automatic replay.
 - Update focused deployment/row/indicator regressions and the documentation defining partial outcomes and practical catch-up timing.
+- Use the concise Updating… description throughout launching/running feedback, preserving the existing button label and every other state's wording.
 
 ## Capabilities
 

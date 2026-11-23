@@ -133,7 +133,7 @@ try {
   assert.equal(customizationRowState(current, { busy: 'check' }).description, customizationRowState(current).description);
   assert.equal(customizationRowState(current, { busy: 'check' }).label, 'Checking…');
   row = customizationRowState({ ...current, job: { state: 'running', deadline: clock + 10000 } }, { now: clock });
-  assert.equal(row.description, 'Updating all machines…'); assert.equal(row.enabled, false);
+  assert.equal(row.description, 'Updating…'); assert.equal(row.enabled, false);
   row = customizationRowState({ ...current, job: { state: 'unknown' }, locked: true });
   assert.match(row.description, /outcome unknown.*fixture/); assert.equal(row.action, 'check');
   row = customizationRowState({ ...current, job: { state: 'failed', error: 'fixture conflict', finished: clock } });

@@ -65,9 +65,9 @@ const titleCases = [
   { name: 'requested check', snapshot: {}, busy: 'check', label: 'Checking…', action: 'check', enabled: false, description: /^Not checked\.$/ },
   { name: 'quiet peer catch-up', snapshot: { peerPending: true, check: { attempted: clock, checked: clock, available: false } }, label: 'Update', action: 'launch', enabled: true, description: /^(Up to date\. Checked at|Not checked\.)/ },
   { name: 'available', snapshot: { check: { checked: clock, available: true } }, label: 'Update', action: 'launch', enabled: true, description: /^Update available\.$/ },
-  { name: 'launching', snapshot: {}, busy: 'launch', label: 'Updating…', action: 'check', enabled: false, description: /^Updating all machines…$/ },
-  { name: 'pending receipt', snapshot: { launch: { deadline: clock + 30000 } }, label: 'Updating…', action: 'check', enabled: false, description: /^Updating all machines…$/ },
-  { name: 'running', snapshot: { locked: true, job: { state: 'running', deadline: clock + 30000 } }, label: 'Updating…', action: 'check', enabled: false, description: /^Updating all machines…$/ },
+  { name: 'launching', snapshot: {}, busy: 'launch', label: 'Updating…', action: 'check', enabled: false, description: /^Updating…$/ },
+  { name: 'pending receipt', snapshot: { launch: { deadline: clock + 30000 } }, label: 'Updating…', action: 'check', enabled: false, description: /^Updating…$/ },
+  { name: 'running', snapshot: { locked: true, job: { state: 'running', deadline: clock + 30000 } }, label: 'Updating…', action: 'check', enabled: false, description: /^Updating…$/ },
   { name: 'failed update', snapshot: { job: { state: 'failed', error: 'fixture refusal', finished: clock } }, label: 'Check now', action: 'check', enabled: true, description: /Update failed: fixture refusal/ },
   { name: 'failed check', snapshot: { check: { error: 'offline' } }, label: 'Check now', action: 'check', enabled: true, description: /^Check failed\. Try again\.$/ },
   { name: 'partial', snapshot: { partial: true }, label: 'Check now', action: 'check', enabled: true, description: /some machines skipped or failed.*fixture/ },
@@ -276,7 +276,7 @@ assert.equal(render(freshApi, fresh).button.options.enabled, false);
 retire(fresh);
 const duringApi = await modules(), during = fixture();
 duringApi.initCustomizationUpdates(during.view, during.cx, 'custom-settings'); await during.settle();
-assert.equal(render(duringApi, during).description, 'Updating all machines…');
+assert.equal(render(duringApi, during).description, 'Updating…');
 clock += 100;
 const complete = { ...available, revision: 'b'.repeat(40), locked: false, job: { ...running.job, state: 'complete', finished: clock } };
 const current = { ...complete, check: { attempted: clock + 1, checked: clock + 1, available: false } };

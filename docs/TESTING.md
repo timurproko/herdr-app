@@ -84,7 +84,9 @@ failure/recovery details and launch blocking after a successful main check.
 confirmation path, success/expiry and unchanged busy/error/unknown states. Its
 known/missing-revision matrix exercises the real model and row renderer across
 idle, checking, available, launching/running, failed, partial and unknown-outcome
-states. Unknown revisions show only `herdr-app-custom` with no trailing space;
+states. Launching, pending-receipt, active-running and replacement cases assert the
+exact **Updating…** description with the unchanged disabled **Updating…** button;
+other state wording stays unchanged. Unknown revisions show only `herdr-app-custom` with no trailing space;
 known revisions retain their seven-character suffix. Missing evidence cannot claim
 current even with a cached no-update result. The check fixture separately confirms
 that changed ownership evidence still offers Update after a successful main read.
