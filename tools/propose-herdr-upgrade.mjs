@@ -31,11 +31,11 @@ export function artifactDirectory(root,output) {
   if(!fs.realpathSync(resolved).startsWith(fs.realpathSync(artifacts)+path.sep))throw Error('Output escapes artifacts through a symlink.');
   return resolved;
 }
-export async function proposeHerdrUpgrade(options,{get=publicReader(),evaluate=evaluateCandidate}={}) {
+export async function proposeHerdrUpgrade(options,{get=publicReader(),evaluate=evaluateCandidate,readInventory=reviewInventory}={}) {
   const root=path.resolve(options.root??fileURLToPath(new URL('../',import.meta.url))),output=artifactDirectory(root,options.output??'.artifacts/herdr-upgrade');
   const gitSha=()=>cp.execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
   const baseSha=commitSha(options.baseSha??gitSha()),headSha=commitSha(options.headSha??gitSha());
-  const inventory=reviewInventory(root),discovery=await discoverReleases({inventory,get,requested:options.requested??{}});
+  const inventory=readInventory(root),discovery=await discoverReleases({inventory,get,requested:options.requested??{}});
   const report=await evaluate({root,inventory,discovery,get,baseSha,headSha,scratch:path.join(output,'scratch'),skipTests:options.probe});
   report.generatedAt=new Date().toISOString();
   report.worktreeDirty=Boolean(cp.execFileSync('git',['status','--porcelain','--untracked-files=normal'],{cwd:root,encoding:'utf8'}).trim());

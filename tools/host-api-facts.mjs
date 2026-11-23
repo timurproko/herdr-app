@@ -1,6 +1,6 @@
 // Shared pure contract checks for installed host facts and source-only candidates.
 import {HOST_CONTRACT,HOST_PROFILES,hostVersionStatus,apiCandidates,nativeCommand} from '../src/integration/herdr/compatibility.js';
-export function hostSourceFacts(files) {
+export function hostSourceFacts(files,{api=HOST_CONTRACT.api}={}) {
   const used=new Set(),stateKeys=new Set(),directImports=[];
   for(const [file,text] of Object.entries(files)) {
     if(!file.endsWith('.js')||/(?:^|\/)original(?:-[^/]*)?\.js$/.test(file))continue;
@@ -9,14 +9,16 @@ export function hostSourceFacts(files) {
     if(!file.endsWith('/host.js')&&file!=='host.js'&&/from\s+["']herdr["']/.test(text))directImports.push(file);
   }
   const commands=[...used].filter(n=>!stateKeys.has(n)).sort();
-  const consumers=Object.fromEntries([...HOST_CONTRACT.api,...commands].map(name=>[name,Object.entries(files).filter(([file,text])=>file.endsWith('.js')&&!/(?:^|\/)original(?:-[^/]*)?\.js$/.test(file)&&text.includes(name)).map(([file])=>file)]));
+  const consumers=Object.fromEntries([...api,...commands].map(name=>[name,Object.entries(files).filter(([file,text])=>file.endsWith('.js')&&!/(?:^|\/)original(?:-[^/]*)?\.js$/.test(file)&&text.includes(name)).map(([file])=>file)]));
   return {commands,directImports,consumers};
 }
-export function checkHostFacts({version,declarations,commands,files}) {
+export function checkHostFacts({version,declarations,commands,files,compatibility}) {
   const exported=new Set([...declarations.matchAll(/^export function\s+([A-Za-z0-9_]+)/gm)].map(m=>m[1]));
-  const source=hostSourceFacts(files),catalog=new Set(commands);
-  const missingApi=HOST_CONTRACT.api.filter(name=>!apiCandidates(name,version).some(candidate=>exported.has(candidate)));
-  const missingCommands=source.commands.filter(name=>!catalog.has(nativeCommand(name,version)));
-  const versionStatus=hostVersionStatus(version);
-  return {ok:versionStatus.supported&&!missingApi.length&&!missingCommands.length&&!source.directImports.length,version,reviewed:Boolean(HOST_PROFILES[version]),versionStatus,missingApi,missingCommands,directImports:source.directImports};
+  const contract=compatibility?.contract??HOST_CONTRACT,resolved=compatibility?.versions[version];
+  if(compatibility&&!resolved)throw Error('Missing evaluated-version compatibility facts.');
+  const source=hostSourceFacts(files,{api:contract.api}),catalog=new Set(commands);
+  const missingApi=contract.api.filter(name=>!(resolved?resolved.api[name]:apiCandidates(name,version)).some(candidate=>exported.has(candidate)));
+  const missingCommands=source.commands.filter(name=>!catalog.has(resolved?resolved.commands[name]:nativeCommand(name,version)));
+  const versionStatus=resolved?.versionStatus??hostVersionStatus(version);
+  return {ok:versionStatus.supported&&!missingApi.length&&!missingCommands.length&&!source.directImports.length,version,reviewed:resolved?resolved.reviewed:Boolean(HOST_PROFILES[version]),versionStatus,missingApi,missingCommands,directImports:source.directImports};
 }

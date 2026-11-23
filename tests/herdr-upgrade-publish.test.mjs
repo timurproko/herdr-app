@@ -77,6 +77,24 @@ assert.throws(()=>frozenUntil('2026-02-30'),/Invalid/);assert.throws(()=>frozenU
   const older=pr(1,{app:'0.1.16'}),{api,state}=server([older]);await publishMigration(bundle(),options(api));
   assert.match(state.comments[1][0].body,/supersedes/);assert.equal(state.prs[0].state,'open');assert.equal(state.calls.filter(c=>c.method==='PATCH').length,0);
 }
+for(const failingEndpoint of ['issues/2/comments','issues/1/comments']) {
+  const older=pr(1,{app:'0.1.16'}),{api,state}=server([older]);let fail=true;
+  const flaky=async(method,url,body)=>{if(method==='POST'&&url===failingEndpoint&&fail){fail=false;throw Error('transient comment failure');}return api(method,url,body);};
+  await assert.rejects(publishMigration(bundle(),options(flaky)),/transient comment failure/);assert.equal(state.prs.length,2);
+  await publishMigration(bundle(),options(api));
+  const notices=()=>state.comments[1].filter(c=>c.body.includes('herdr-superseded:app-0.1.17'));
+  assert.equal(notices().length,1);assert.match(notices()[0].body,/pull\/2/);
+  await publishMigration(bundle(),options(api));assert.equal(notices().length,1);assert.equal(state.prs.length,2);
+  assert.equal(state.calls.filter(c=>c.method==='POST'&&c.url==='git/refs').length,1);assert.equal(state.prs[0].state,'open');
+}
+{
+  const {api,state}=server([pr(1,{core:'0.1.23'})]);let fail=true;
+  const flaky=async(method,url,body)=>{if(method==='POST'&&url==='issues/1/comments'&&fail){fail=false;throw Error('cross-link temporarily unavailable');}return api(method,url,body);};
+  await assert.rejects(publishMigration(bundle(),options(flaky)),/temporarily unavailable/);
+  await publishMigration(bundle(),options(api));await publishMigration(bundle(),options(api));
+  assert.equal(state.comments[1].filter(c=>c.body.includes('herdr-related:app-0.1.17')).length,1);
+  assert.equal(state.comments[2].filter(c=>c.body.includes('herdr-related:core-0.1.23')).length,1);assert.equal(state.prs.length,2);
+}
 {
   const {api,state}=server();state.stale=true;await assert.rejects(publishMigration(bundle(),options(api)),/advanced/);assert.equal(writes(state).length,0);
 }

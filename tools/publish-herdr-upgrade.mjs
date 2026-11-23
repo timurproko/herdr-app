@@ -107,6 +107,16 @@ export async function commentOnce(api,number,marker,body) {
   const comments=await pages(api,`issues/${number}/comments`);
   if(!comments.some(c=>c.body?.includes(marker)))await api('POST',`issues/${number}/comments`,{body:`${marker}\n${boundedComment(body)}`});
 }
+export async function reconcileProposalLinks(api,proposals) {
+  const open=proposals.filter(pr=>pr.state==='open');
+  for(const newer of open)for(const older of open) {
+    if(newer.number===older.number)continue;
+    const identity=releaseIdentity(newer.versions),versions=newer.versions;
+    const shared=Object.keys(versions).filter(c=>older.versions[c]);
+    const advanced=shared.filter(c=>compareVersions(versions[c],older.versions[c])>0),supersedes=advanced.length>0;
+    if(supersedes||!shared.length)await commentOnce(api,older.number,`<!-- herdr-${supersedes?'superseded':'related'}:${identity} -->`,`${supersedes?`A newer Herdr migration supersedes the ${advanced.join(', ')} release review in this proposal`:'A related independent-component migration is available'}: ${newer.html_url}. Existing commits and checklist are preserved; neither proposal was closed or merged.`);
+  }
+}
 const prefixAllowed=(file,identity)=>file.startsWith(`upstream/migrations/${identity}/`)||file.startsWith(`openspec/changes/${migrationChange(identity)}/`);
 export function validateGeneratedFiles(files,identity) {
   parseIdentity(identity);let bytes=0;
@@ -176,7 +186,12 @@ export async function publishMigration(bundle,{api,readApi=api,enabled,probeRunI
       await commentOnce(api,pr.number,`<!-- herdr-reconsider:${probeRunId}:${bundle.report.generatedAt} -->`,'Manual reconsideration requested; the same migration branch and checklist are preserved.');
     }
   }
-  if(!identity)return result;
+  if(!identity) {
+    // Notices are derived state too. Reconcile them on reuse so a failure after
+    // PR creation (or during an earlier notice) cannot permanently lose a link.
+    await reconcileProposalLinks(api,await proposalInventory(readApi,defaultBranch));
+    return result;
+  }
   // Re-read immediately before creating any ref/PR; this closes duplicate races with other actors.
   existing=await proposalInventory(readApi,defaultBranch);
   const finalPlan=planProposals(parseIdentity(identity),existing,{manual});
@@ -186,13 +201,10 @@ export async function publishMigration(bundle,{api,readApi=api,enabled,probeRunI
   const pr=await api('POST','pulls',{base:defaultBranch,head:branch,title:migrationTitle(identity),body:migrationBody(identity),draft:true});
   result.proposals.push({number:pr.number,url:pr.html_url,identity});
   await commentOnce(api,pr.number,`<!-- herdr-initial:${identity} -->`,renderMigrationReport(bundle.report,identity,{prUrl:pr.html_url,artifactUrl:bundle.report.runUrl??pr.html_url}));
-  const versions=parseIdentity(identity);
-  for(const older of existing.filter(p=>p.state==='open')) {
-    const shared=Object.keys(versions).filter(c=>older.versions[c]);
-    const advanced=shared.filter(c=>compareVersions(versions[c],older.versions[c])>0),supersedes=advanced.length>0;
-    const unrelated=!shared.length;
-    if(supersedes||unrelated)await commentOnce(api,older.number,`<!-- herdr-${supersedes?'superseded':'related'}:${identity} -->`,`${supersedes?`A newer Herdr migration supersedes the ${advanced.join(', ')} release review in this proposal`:'A related independent-component migration is available'}: ${pr.html_url}. Existing commits and checklist are preserved; neither proposal was closed or merged.`);
-  }
+  const current=await proposalInventory(readApi,defaultBranch);
+  // Include the newly created PR even if the list endpoint is briefly stale.
+  if(!current.some(p=>p.number===pr.number))current.push({...pr,state:'open',versions:parseIdentity(identity)});
+  await reconcileProposalLinks(api,current);
   return result;
 }
 export async function publicationGate({api,env=process.env}) {

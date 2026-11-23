@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {releaseVersion,compareVersions,reviewInventory,reviewedVersion,validateFeed,resolveTag,discoverReleases,publicReader,releaseIdentity,parseIdentity} from '../tools/herdr-upgrade-releases.mjs';
+import {releaseVersion,compareVersions,reviewInventory,reviewedVersion,validateFeed,resolveTag,discoverReleases,publicReader,releaseIdentity,parseIdentity,selectedCoreGeneration} from '../tools/herdr-upgrade-releases.mjs';
 const inventory=reviewInventory(process.cwd()), sha='a'.repeat(40);
 const feed=(component,version)=>({version,...(component==='app'?{core_min:'0.1.11'}:{generation:1}),targets:{'linux-x86_64':{url:`https://releases.herdr.dev/${component}/${version}/test.tar.gz`,sha256:'b'.repeat(64)}}});
 const fake=(app='0.1.17',core='0.1.22')=>async url=>url.includes('latest.json')?feed(url.includes('/app/')?'app':'core',url.includes('/app/')?app:core):{ref:`refs/tags/v${url.split('/v').at(-1)}`,object:{type:'commit',sha:url.includes('herdr-core')?inventory.coreSource.commit:sha}};
@@ -18,6 +18,11 @@ for(const hash of Object.values(inventory.coreSource.criticalFiles))assert.ok(co
 assert.deepEqual((await discoverReleases({inventory,get:fake()})).candidates,{app:'0.1.17'});
 assert.deepEqual((await discoverReleases({inventory,get:fake('0.1.16','0.1.23')})).candidates,{core:'0.1.23'});
 assert.deepEqual((await discoverReleases({inventory,get:fake('0.1.17','0.1.23')})).candidates,{app:'0.1.17',core:'0.1.23'});
+const futureFeed=async url=>url==='https://releases.herdr.dev/core/latest.json'?{...feed('core','0.2.0'),generation:2}:fake()(url);
+const oldRequested=await discoverReleases({inventory,get:futureFeed,requested:{core:'0.1.22'}});
+assert.equal(oldRequested.releases.core.version,'0.1.22');assert.equal(oldRequested.releases.core.feed.version,'0.2.0');
+assert.equal(oldRequested.releases.core.generationEvidence.status,'unavailable');assert.equal(oldRequested.releases.core.generationEvidence.generation,null);
+assert.equal(selectedCoreGeneration({version:'0.2.0',feed:{version:'0.2.0',generation:2}}).generation,2);
 const result=await discoverReleases({inventory,get:async url=>{if(url.includes('/core/'))throw Error('HTTP 403');return fake()(url);}});
 assert.equal(result.errors.core,'HTTP 403');assert.equal(result.candidates.app,'0.1.17');
 const missing=await discoverReleases({inventory,get:async url=>{if(url.includes('/git/'))throw Error('missing tag');return fake()(url);}});

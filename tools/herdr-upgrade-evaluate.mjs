@@ -2,10 +2,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import cp from 'node:child_process';
-import {HOST_CONTRACT,apiCandidates,nativeCommand} from '../src/integration/herdr/compatibility.js';
+import {HOST_CONTRACT} from '../src/integration/herdr/compatibility.js';
+import {candidateCompatibilityFacts,trustedCompatibilityFacts} from './herdr-upgrade-compatibility.mjs';
+import {testEnvironment} from './herdr-upgrade-environment.mjs';
+export {testEnvironment} from './herdr-upgrade-environment.mjs';
 import {checkHostFacts,hostSourceFacts} from './host-api-facts.mjs';
 import {inventory as treeInventory,inventoryHash,compareRelease} from './check-tab-move.mjs';
-import {commitSha,gitBlob,githubUrl,sha256,safePath} from './herdr-upgrade-releases.mjs';
+import {commitSha,gitBlob,githubUrl,sha256,safePath,selectedCoreGeneration} from './herdr-upgrade-releases.mjs';
 
 export function walkSources(root) {
   const result={};
@@ -31,7 +34,12 @@ export function sdkSurface(text,required=HOST_CONTRACT.api) {
   // complete top-level declarations and their transitive referenced types.
   text=text.replace(/("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`)|(\/\*[\s\S]*?\*\/|\/\/[^\n]*)/g,(_m,literal)=>literal??'');
   const declarations={};const matches=[...text.matchAll(/^export (?:declare )?(function|interface|type|class|const|enum)\s+(\w+)/gm)];
-  for(let i=0;i<matches.length;i++)declarations[matches[i][2]]=text.slice(matches[i].index,matches[i+1]?.index??text.length).trim();
+  for(let i=0;i<matches.length;i++) {
+    const name=matches[i][2],declaration=text.slice(matches[i].index,matches[i+1]?.index??text.length).trim();
+    // TypeScript overloads and declaration merging share a name. Keep every
+    // declaration, in source order, including each one's referenced types.
+    declarations[name]=Object.hasOwn(declarations,name)?`${declarations[name]}\n${declaration}`:declaration;
+  }
   const needed=new Set(required);let changed=true;
   while(changed){changed=false;for(const name of [...needed])for(const word of (declarations[name]??'').match(/\b[A-Za-z_]\w*\b/g)??[])if(declarations[word]&&!needed.has(word)){needed.add(word);changed=true;}}
   return Object.fromEntries([...needed].sort().map(name=>[name,declarations[name]??null]));
@@ -75,10 +83,6 @@ export class StepRunner {
     record.detail=String(record.detail??'').slice(0,2000);this.steps.push(record);return record;
   }
 }
-export function testEnvironment(env=process.env) {
-  const allowed=['PATH','Path','HOME','USERPROFILE','SYSTEMROOT','SystemRoot','WINDIR','COMSPEC','ComSpec','PATHEXT','TEMP','TMP','TMPDIR','APPDATA','LOCALAPPDATA','ProgramFiles','ProgramFiles(x86)','NUMBER_OF_PROCESSORS'];
-  return {...Object.fromEntries(allowed.filter(k=>env[k]!==undefined).map(k=>[k,env[k]])),CI:'true'};
-}
 export function runCheck(root,args,{spawn=cp.spawnSync}={}) {
   const result=spawn(process.execPath,args,{cwd:root,env:testEnvironment(),encoding:'utf8',timeout:20*60*1000,maxBuffer:16*1024*1024,windowsHide:true});
   return {status:!result.error&&result.status===0?'passed':'failed',exitCode:result.status??null,detail:result.error?.message??`exit ${result.status}`,log:`node ${args.join(' ')}\n${result.stdout??''}\n${result.stderr??''}`};
@@ -89,12 +93,22 @@ export async function evaluateCandidate({root,inventory,discovery,get,baseSha,he
   const runner=new StepRunner(),repos={},evidence=runner.evidence,checks={},actions=[];
   const addAction=(id,problem,files,proof,command)=>actions.push({id,problem,files,evidence:proof,command});
   const diff=(name,before,after,beforeName,afterName)=>{evidence[`diffs/${name}.diff`]=unifiedDiff(before,after,beforeName,afterName,path.join(scratch,'diff'));return `diffs/${name}.diff`;};
-  const files=walkSources(root),facts=hostSourceFacts(files);
+  const files=walkSources(root),sourceFacts=hostSourceFacts(files);
+  const versions=[...new Set([inventory.appSource.appVersion,discovery.releases.app?.version].filter(Boolean))];
+  const baselineCompatibility=trustedCompatibilityFacts(versions,sourceFacts.commands);
+  let candidateCompatibility;
+  evidence['baseline-compatibility.json']=JSON.stringify(baselineCompatibility,null,2);
+  await runner.step('candidate-compatibility','Credential-free evaluated-checkout compatibility snapshot',()=>{
+    candidateCompatibility=candidateCompatibilityFacts(root,versions,sourceFacts.commands);
+    checks.compatibility=candidateCompatibility;
+    evidence['candidate-compatibility.json']=JSON.stringify(candidateCompatibility,null,2);
+    return 'Validated evaluated-checkout API/command adapters and document profiles; trusted baseline facts recorded separately.';
+  });
   for(const component of ['app','core']) {
     const release=discovery.releases[component],pin=component==='app'?inventory.appSource:inventory.coreSource;
     await runner.step(`${component}-feed`,`GET releases.herdr.dev/${component}/latest.json`,()=>{
       if(discovery.errors[component]&&!release)throw Error(discovery.errors[component]);
-      if(!release)throw Error('Feed unavailable.');return {detail:`${release.version}; feed SHA-256 ${release.feedSha256}`};
+      if(!release)throw Error('Feed unavailable.');return {detail:`Selected ${release.version}; latest feed describes ${release.feed?.version??'unknown'}; feed SHA-256 ${release.feedSha256}`};
     });
     await runner.step(`${component}-source`,'Resolve immutable tag, complete tree and reviewed source hashes',async()=>{
       if(!release?.commit)throw Error(discovery.errors[component]??'Candidate source unavailable.');
@@ -114,13 +128,14 @@ export async function evaluateCandidate({root,inventory,discovery,get,baseSha,he
         const before=await repos[`${component}Base`].read(file),after=await repos[component].read(file);
         compared.push(diff(`${component}-${file.replaceAll('/','-')}`,before,after,`${pin.commit}/${file}`,`${release.commit}/${file}`));
       }
-      checks[`${component}Documents`]={reviewed:inventory.documents[component].includes(release.version),diffs:compared};
+      if(!candidateCompatibility)throw Error('Evaluated document compatibility facts unavailable.');
+      checks[`${component}Documents`]={reviewed:candidateCompatibility.documents[component].includes(release.version),diffs:compared};
       if(!checks[`${component}Documents`].reviewed) {
         addAction(`${component}-documents`,'Review unreviewed document contracts; unchanged source is not native semantic proof. Preserve CAS, identity, generation, routing and partial-success checks.',['src/integration/herdr/documents/tab-move-v1.cjs','src/integration/herdr/documents/core-rpc.cjs','src/services/tabs/move-tab.cjs'],compared,'npm run check:tab-move -- --release '+(discovery.releases.app?.version??inventory.appSource.appVersion));
         return {status:'failed',detail:'needs-review; scoped source diff available, runtime permission unchanged.'};
       }
       return 'Reviewed version; scoped source comparison recorded.';
-    },{requires:[`${component}-source`]});
+    },{requires:[`${component}-source`,'candidate-compatibility']});
   }
   await runner.step('reachability','Hosted no-write feed/tag/tree/blob/schema reachability',async()=>{
     for(const file of ['defaults/herdr.d.ts','src/commands.rs',...inventory.patches.map(p=>`defaults/${p.target}/main.js`)])await repos.app.read(file);
@@ -135,30 +150,35 @@ export async function evaluateCandidate({root,inventory,discovery,get,baseSha,he
     const support=text=>text.replace(/pub const COMMANDS:\s*&\[Command\]\s*=\s*&\[[\s\S]*?\n\];/,'/* consumed catalog diff is separate */').split('#[cfg(test)]')[0];
     const commandSupportChanged=support(beforeCommandSource)!==support(afterCommandSource);
     const supportDiff=diff('command-support',support(beforeCommandSource),support(afterCommandSource),'reviewed catalog helpers/validation','candidate catalog helpers/validation');
-    const required=[...new Set(HOST_CONTRACT.api.flatMap(n=>[...apiCandidates(n,version),...apiCandidates(n,inventory.appSource.appVersion)]))];
+    const baseline=baselineCompatibility.versions[inventory.appSource.appVersion],candidate=candidateCompatibility.host.versions[version];
+    const required=[...new Set([...Object.values(baseline.api).flat(),...Object.values(candidate.api).flat()])];
+    const facts=hostSourceFacts(files,{api:[...new Set([...required,...baselineCompatibility.contract.api,...candidateCompatibility.host.contract.api])]});
     const before=sdkSurface(beforeSdk,required),after=sdkSurface(afterSdk,required);
-    const commandSurface=(catalog,appVersion)=>Object.fromEntries(facts.commands.map(name=>{const native=nativeCommand(name,appVersion);return [name,{native,args:catalog[native]??null}];}));
-    const oldCommands=commandSurface(beforeCommands,inventory.appSource.appVersion),newCommands=commandSurface(afterCommands,version);
+    const commandSurface=(catalog,resolved)=>Object.fromEntries(facts.commands.map(name=>{const native=resolved.commands[name];return [name,{native,args:catalog[native]??null}];}));
+    const oldCommands=commandSurface(beforeCommands,baseline),newCommands=commandSurface(afterCommands,candidate);
     const apiDelta=surfaceChanges(before,after),commandDelta=surfaceChanges(oldCommands,newCommands);
     const sdkDiff=diff('consumed-sdk',JSON.stringify(before,null,2),JSON.stringify(after,null,2),'reviewed consumed API','candidate consumed API');
     const commandDiff=diff('consumed-commands',JSON.stringify(oldCommands,null,2),JSON.stringify(newCommands,null,2),'reviewed commands','candidate commands');
-    checks.host=checkHostFacts({version,declarations:Object.values(after).filter(Boolean).join('\n'),commands:Object.keys(afterCommands),files});
+    checks.host=checkHostFacts({version,declarations:Object.values(after).filter(Boolean).join('\n'),commands:Object.keys(afterCommands),files,compatibility:candidateCompatibility.host});
     checks.apiDelta=apiDelta;checks.commandDelta=commandDelta;checks.commandSupportChanged=commandSupportChanged;checks.consumers=facts.consumers;
     evidence['candidate-api.json']=JSON.stringify(after,null,2);evidence['candidate-commands.json']=JSON.stringify(afterCommands,null,2);
     evidence['host-check.json']=JSON.stringify(checks.host,null,2);
-    if(!checks.host.ok||apiDelta.length||commandDelta.length||commandSupportChanged)addAction('host-api','Review changed or missing public contracts and consuming facade modules.',['src/integration/herdr/host.js','src/integration/herdr/compatibility.js',...new Set([...apiDelta,...commandDelta].flatMap(d=>facts.consumers[d.name]??[]))],[sdkDiff,commandDiff,supportDiff,'host-check.json'],'npm run check:host-api');
+    if(!checks.host.ok||apiDelta.length||commandDelta.length||commandSupportChanged)addAction('host-api',checks.host.ok?'Evaluated branch passes static host compatibility; review the recorded upstream deltas and migrated facade for behavioral proof.':'Repair missing public contracts or imports in the evaluated branch using its compatibility adapters.',['src/integration/herdr/host.js','src/integration/herdr/compatibility.js',...new Set([...apiDelta,...commandDelta].flatMap(d=>facts.consumers[d.name]??[]))],[sdkDiff,commandDiff,supportDiff,'host-check.json','baseline-compatibility.json','candidate-compatibility.json'],'npm run check:host-api');
     return {status:checks.host.ok?'passed':'failed',detail:`Static capabilities ${checks.host.ok?'present':'missing'}; ${apiDelta.length} API/type changes, ${commandDelta.length} command argument changes; catalog helper/validation change: ${commandSupportChanged}. See host-check.json and scoped hunks; live catalog not executed.`};
-  },{requires:['app-source']});
+  },{requires:['app-source','candidate-compatibility']});
   await runner.step('core-contract','Static Core OpenRPC methods and generation',async()=>{
     const schema=JSON.parse((await repos.core.read('schema/hc.openrpc.json')).toString('utf8'));
     if(!Array.isArray(schema.methods)||schema.methods.some(m=>typeof m?.name!=='string'))throw Error('Unsupported Core OpenRPC schema.');
     const required=['hello','doc.get','doc.set','terminal.get','terminal.list','terminal.label','machine.list','machine.exec'];
     const names=new Set(schema.methods.map(m=>m.name));const missing=required.filter(n=>!names.has(n));
-    checks.coreContract={generation:discovery.releases.core.feed.generation,missing};
+    const generationEvidence=selectedCoreGeneration(discovery.releases.core),expectedGeneration=candidateCompatibility.documents.generation;
+    checks.coreContract={generation:generationEvidence.generation,generationEvidence,expectedGeneration,missing};
     evidence['core-contract.json']=JSON.stringify(checks.coreContract,null,2);
-    if(missing.length||checks.coreContract.generation!==inventory.documents.generation)throw Error(`Core contract mismatch: generation ${checks.coreContract.generation}; missing ${missing.join(', ')}`);
-    return 'Required source RPC names and feed generation present; runtime hello, CAS and persistence semantics still require review.';
-  },{requires:['core-source']});
+    if(missing.length)throw Error(`Core contract mismatch: missing ${missing.join(', ')}`);
+    if(generationEvidence.status!=='available')return {status:'blocked',detail:generationEvidence.reason};
+    if(checks.coreContract.generation!==expectedGeneration)throw Error(`Core contract mismatch: generation ${checks.coreContract.generation}; expected ${expectedGeneration} for the evaluated branch.`);
+    return 'Required source RPC names and selected-version feed generation present; runtime hello, CAS and persistence semantics still require review.';
+  },{requires:['core-source','candidate-compatibility']});
   for(const patch of inventory.patches)await runner.step(`patch-${patch.id}`,'Compare each registered original and stock-to-custom hunks',async()=>{
     const candidate=await repos.app.read(`defaults/${patch.target}/main.js`),custom=fs.readFileSync(path.join(root,patch.main));
     const originals=[];

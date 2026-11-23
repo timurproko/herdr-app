@@ -1,0 +1,81 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import cp from 'node:child_process';
+import {HOST_CONTRACT} from '../src/integration/herdr/compatibility.js';
+import {reviewInventory,gitBlob,sha256} from '../tools/herdr-upgrade-releases.mjs';
+import {inventoryHash} from '../tools/check-tab-move.mjs';
+import {evaluateCandidate} from '../tools/herdr-upgrade-evaluate.mjs';
+import {proposeHerdrUpgrade} from '../tools/propose-herdr-upgrade.mjs';
+import {candidateCompatibilityFacts,validateCompatibilityFacts} from '../tools/herdr-upgrade-compatibility.mjs';
+const project=process.cwd(),directory=fs.mkdtempSync(path.resolve('.artifacts/herdr-refresh-'));
+const saved=Object.fromEntries(['GH_TOKEN','GITHUB_READ_TOKEN','DELIVERY_BOT_PRIVATE_KEY','CUSTOM_SECRET'].map(k=>[k,process.env[k]]));
+try {
+  const root=path.join(directory,'proposal');fs.mkdirSync(root);
+  const write=(file,text)=>{const target=path.join(root,file);fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,text);};
+  const git=(...args)=>cp.execFileSync('git',args,{cwd:root,encoding:'utf8',windowsHide:true}).trim();
+  git('init','--initial-branch=main');git('config','user.name','Fixture');git('config','user.email','fixture@example.invalid');git('config','commit.gpgsign','false');
+  write('.gitignore','.artifacts/\n');write('package.json','{"type":"module"}\n');
+  const file='src/integration/herdr/compatibility.js';
+  const guard="if(['GH_TOKEN','GITHUB_READ_TOKEN','DELIVERY_BOT_PRIVATE_KEY','CUSTOM_SECRET','NODE_OPTIONS'].some(k=>process.env[k]))throw Error('Candidate received a credential or preload');\n";
+  const original=fs.readFileSync(path.join(project,file),'utf8');write(file,guard+original);
+  write('src/integration/herdr/documents/tab-move-v1.cjs',"module.exports={PROFILE:{apps:['0.1.15','0.1.16'],cores:['0.1.22'],generation:1}};\n");
+  write('src/host.js',"export {run} from 'herdr';\n");write('src/feature.js',"import {run} from './host.js'; run('tab.new');\n");
+  git('add','.');git('commit','-m','fixture reviewed source');const baseSha=git('rev-parse','HEAD');git('switch','-c','chore/herdr-app-0.1.17');
+  const inventory=structuredClone(reviewInventory(project));inventory.patches=[];
+  inventory.baselines={'0.1.16':{'mods/tabs/main.js':sha256('stock')}};
+  const sdk=HOST_CONTRACT.api.map(n=>`export function ${n}(): void;`).join('\n');
+  const catalog=name=>`pub const COMMANDS: &[Command] = &[\ncmd("${name}", &[], "About"),\n];`;
+  const appBase={'src/layout.rs':'reviewed layout','defaults/herdr.d.ts':sdk,'src/commands.rs':catalog('tab.new'),'defaults/mods/tabs/main.js':'stock'};
+  const appNext={...appBase,'defaults/herdr.d.ts':sdk.replace('export function run(): void;','export function runReplacement(): void;')+'\nexport function branchOnly(): void;','src/commands.rs':catalog('tab.spawn')};
+  const core={'schema/hc.openrpc.json':JSON.stringify({methods:['hello','doc.get','doc.set','terminal.get','terminal.list','terminal.label','machine.list','machine.exec'].map(name=>({name}))})};
+  const trees={},blobs={},appCommit='a'.repeat(40);
+  const add=(commit,contents)=>{const entries=Object.entries(contents).map(([name,text])=>{const bytes=Buffer.from(text),sha=gitBlob(bytes);blobs[sha]={sha,encoding:'base64',content:bytes.toString('base64')};return [name,'100644','blob',sha];}).sort((a,b)=>a[0]<b[0]?-1:1);trees[commit]=entries;return entries;};
+  const baseTree=add(inventory.appSource.commit,appBase);add(appCommit,appNext);add(inventory.coreSource.commit,core);
+  inventory.appSource.criticalFiles={'src/layout.rs':gitBlob(appBase['src/layout.rs'])};inventory.appSource.inventorySha256=inventoryHash(baseTree);
+  inventory.coreSource.criticalFiles={'schema/hc.openrpc.json':gitBlob(core['schema/hc.openrpc.json'])};
+  const feed=(component,version)=>({version,...(component==='app'?{core_min:'0.1.11'}:{generation:1}),targets:{'linux-x86_64':{url:`https://releases.herdr.dev/${component}/${version}/fixture.tar.gz`,sha256:'b'.repeat(64)}}});
+  const get=async url=>{
+    if(url.includes('latest.json'))return url.includes('/app/')?feed('app','0.1.17'):feed('core','0.1.22');
+    const tree=/git\/trees\/([a-f0-9]+)/.exec(url);if(tree)return {truncated:false,tree:trees[tree[1]].map(([path,mode,type,sha])=>({path,mode,type,sha}))};
+    const blob=/git\/blobs\/([a-f0-9]+)/.exec(url);if(blob)return blobs[blob[1]];
+    if(url.includes('git/ref'))return {ref:`refs/tags/v${url.split('/v').at(-1)}`,object:{type:'commit',sha:url.includes('herdr-core')?inventory.coreSource.commit:appCommit}};
+    throw Error(`Unexpected fixture read: ${url}`);
+  };
+  for(const key of Object.keys(saved))process.env[key]='fixture-secret-must-not-reach-child';
+  const fakeCheck=()=>({status:'passed',exitCode:0,detail:'fixture process result'});
+  const dependencies={get,readInventory:()=>structuredClone(inventory),evaluate:args=>evaluateCandidate({...args,run:fakeCheck,runScript:fakeCheck})};
+  const proposed=await proposeHerdrUpgrade({root,output:'.artifacts/broken',baseSha,requested:{app:'0.1.17'}},dependencies);
+  assert.equal(proposed.bundle.mode,'evaluate');assert.equal(proposed.bundle.report.checks.host.ok,false);
+  assert.deepEqual(proposed.bundle.report.checks.host.missingApi,['run']);assert.deepEqual(proposed.bundle.report.checks.host.missingCommands,['tab.new']);
+  assert.equal(proposed.bundle.report.steps.find(s=>s.name==='host-api').status,'failed');
+  const profile="'0.1.17': Object.freeze({api:{run:'runReplacement'},commands:{'tab.new':'tab.spawn'}}),";
+  let repaired=original.replace(/'0\.1\.17': SAME,?/,profile);
+  if(repaired===original)repaired=original.replace("'0.1.16': SAME,",`'0.1.16': SAME,\n  ${profile}`);
+  assert.notEqual(repaired,original);repaired=repaired.replace("'watchFolder',","'branchOnly', 'watchFolder',");
+  write(file,guard+repaired);git('add',file);git('commit','-m','fixture migrate API and command adapters');const repairedSha=git('rev-parse','HEAD');
+  const refreshed=await proposeHerdrUpgrade({root,output:'.artifacts/fixed',baseSha,refresh:'app-0.1.17',requested:{app:'0.1.17'}},dependencies);
+  const report=refreshed.bundle.report;
+  assert.equal(refreshed.bundle.mode,'refresh');assert.equal(report.headSha,repairedSha);assert.notEqual(report.headSha,proposed.bundle.headSha);assert.equal(report.baseSha,baseSha);
+  assert.equal(report.worktreeDirty,false);assert.equal(report.checks.host.ok,true);assert.deepEqual(report.checks.host.missingApi,[]);assert.deepEqual(report.checks.host.missingCommands,[]);
+  assert.equal(report.steps.find(s=>s.name==='host-api').status,'passed');assert.match(report.actions.find(a=>a.id==='host-api').problem,/Evaluated branch passes/);
+  const candidate=JSON.parse(report.evidence['candidate-compatibility.json']),baseline=JSON.parse(report.evidence['baseline-compatibility.json']);
+  assert.deepEqual(candidate.host.versions['0.1.17'].api.run,['runReplacement','run']);assert.equal(candidate.host.versions['0.1.17'].commands['tab.new'],'tab.spawn');
+  assert.ok(candidate.host.contract.api.includes('branchOnly'));assert.ok(!baseline.contract.api.includes('branchOnly'));
+  assert.deepEqual(baseline.versions['0.1.16'].api.run,['run']);assert.equal(baseline.versions['0.1.16'].commands['tab.new'],'tab.new');
+  assert.equal(candidate.sources[file],sha256(fs.readFileSync(path.join(root,file))));
+  // The fixed branch is compatible, but historical removed exports stay in the
+  // immutable upstream delta rather than being erased by the adapter repair.
+  assert.ok(report.checks.apiDelta.some(d=>d.name==='run'&&d.after===null));
+  assert.match(fs.readFileSync(path.join(refreshed.output,'report.md'),'utf8'),/candidate-compatibility.json/);
+  assert.equal(git('status','--porcelain'),'');
+  const again=candidateCompatibilityFacts(root,['0.1.17'],['tab.new']);assert.deepEqual(again.host.versions['0.1.17'].api.run,['runReplacement','run']);
+  assert.throws(()=>candidateCompatibilityFacts(root,['0.1.17'],['tab.new'],{spawn:()=>({status:0,stdout:'{}'})}),/schema/);
+  const incomplete=structuredClone(again);delete incomplete.host.versions['0.1.17'].api.run;
+  assert.throws(()=>validateCompatibilityFacts(incomplete,['0.1.17'],['tab.new']),/Incomplete/);
+  assert.throws(()=>candidateCompatibilityFacts(root,['0.1.17'],['tab.new'],{spawn:()=>({status:1,stderr:'fixture adapter refused'})}),/snapshot failed/);
+  console.log('PASS proposal broken -> agent commits API/command adapter fix -> trusted refresh reports repaired; candidate contract, separate baseline and credential-free snapshots verified');
+} finally {
+  for(const [key,value] of Object.entries(saved)){if(value===undefined)delete process.env[key];else process.env[key]=value;}
+  fs.rmSync(directory,{recursive:true,force:true});
+}

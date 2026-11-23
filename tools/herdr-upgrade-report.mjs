@@ -32,11 +32,12 @@ export function renderMigrationReport(report,identity,{prUrl,artifactUrl,date=re
     '\n## Versions and provenance'];
   for(const c of ['app','core']) {
     const release=report.discovery.releases[c];
-    lines.push(`- ${c}: ${release?`${release.version}; commit ${release.commit??'UNAVAILABLE'}; feed SHA-256 ${release.feedSha256}`:'UNAVAILABLE'}${report.discovery.errors[c]?`; ${escape(report.discovery.errors[c])}`:''}`);
+    lines.push(`- ${c}: ${release?`${release.version}; commit ${release.commit??'UNAVAILABLE'}; latest feed version ${release.feed?.version??'unavailable'}; feed SHA-256 ${release.feedSha256}`:'UNAVAILABLE'}${report.discovery.errors[c]?`; ${escape(report.discovery.errors[c])}`:''}`);
     const pin=c==='app'?report.inventory.appSource:report.inventory.coreSource;
     lines.push(`  - Reviewed source: ${pin.appVersion??pin.coreVersion} at ${pin.commit}${release?.commit?`; [immutable comparison](https://github.com/${pin.repository}/compare/${pin.commit}...${release.commit})`:''}`);
     lines.push(`  - Document review versions: ${report.inventory.documents[c].join(', ')}`);
   }
+  if(report.checks.compatibility)lines.push(`- Evaluated-checkout compatibility: ${evidenceLink('candidate-compatibility.json')}; trusted baseline mappings: ${evidenceLink('baseline-compatibility.json')}. Candidate adapter fixes affect the host verdict; historical upstream deltas still require review.`);
   lines.push(`- Host API reviews: ${report.inventory.host.versions.join(', ')}; profiles: ${report.inventory.host.profiles.join(', ')}`);
   lines.push(`- Stock baseline versions: ${Object.keys(report.inventory.baselines).join(', ')}. Missing coverage is not an older-baseline fallback.`);
   lines.push('\n## Step-by-step checks','\n| Step | Result | Operation | Details / log |','| --- | --- | --- | --- |');

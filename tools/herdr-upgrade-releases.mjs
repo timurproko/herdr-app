@@ -105,6 +105,14 @@ export function reviewedVersion(inventory,component) {
   if(!values.length)throw Error(`Missing ${component} review inventory.`);
   return [...values].sort(compareVersions).at(-1);
 }
+export function selectedCoreGeneration(release) {
+  const version=release?.version,feedVersion=release?.feed?.version;
+  if(version!==feedVersion||!Number.isSafeInteger(release?.feed?.generation)||release.feed.generation<1)return {
+    status:'unavailable',version,generation:null,feedVersion:feedVersion??null,
+    reason:`Generation evidence unavailable for selected Core ${version??'unknown'}; latest feed describes ${feedVersion??'an unknown version'}. No other release's generation is substituted.`,
+  };
+  return {status:'available',version,generation:release.feed.generation,feedVersion,source:'https://releases.herdr.dev/core/latest.json',feedSha256:release.feedSha256};
+}
 export async function discoverReleases({inventory,get=publicReader(),requested={}}) {
   const releases={},errors={},candidates={};
   await Promise.all(['app','core'].map(async component=>{
@@ -115,6 +123,7 @@ export async function discoverReleases({inventory,get=publicReader(),requested={
       const expected=version===(pin.appVersion??pin.coreVersion)?pin.commit:undefined;
       // Keep the observed version even if its source is not yet published.
       releases[component]={version,feed,feedSha256:sha256(JSON.stringify(feed)),commit:null};
+      if(component==='core')releases[component].generationEvidence=selectedCoreGeneration(releases[component]);
       if(compareVersions(version,reviewedVersion(inventory,component))>0||requested[component])candidates[component]=version;
       releases[component].commit=await resolveTag(component,version,get,expected);
     } catch(error){errors[component]=error.message;}
