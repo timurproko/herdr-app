@@ -1,7 +1,7 @@
 // One reorder interaction for strips, lists and icon bars. Domain writes stay
 // with the caller; variants own geometry/presentation, not feature-specific IDs.
 import { div } from 'gpui-kit';
-import { h_flex, v_flex, Popup } from 'gpui-base';
+import { h_flex, Popup } from 'gpui-base';
 import { U } from './ui.js';
 
 export const REORDER_VARIANTS = Object.freeze({
@@ -170,16 +170,15 @@ export class ReorderDrag {
     const result = this.take(null, cx);
     return result?.kind === 'drop' ? movedOrder(keys, result.id, result.target) : null;
   }
-  preview(id, t, {icon, label, rows}) {
+  preview(id, t, {icon, label}) {
     const d = this.view;
     if (!d) return null;
     const iconOnly = this.options.preview === 'icon';
-    const row = (icon, label) => h_flex().h(U.control).items_center().justify_center().rounded(U.radius)
+    const chip = h_flex().h(U.control).items_center().justify_center().rounded(U.radius)
       .border_1().border_color(t.border).bg(t.popover).shadow_md().text_size(U.font).text_color(t.foreground)
       .when(iconOnly, el => el.w(U.control))
       .when(!iconOnly, el => el.px(8).gap(U.gap))
       .child(icon).when(!iconOnly && Boolean(label), el => el.child(div().max_w(200).truncate().child(label)));
-    const chip = rows?.length ? v_flex().children(rows.map(r=>row(r.icon,r.label))) : row(icon,label);
     if (this.active) return Popup.new(`${id}-preview`, div().size(1)).absolute()
       .left(d.point?.x ?? 8).top(d.point?.y ?? this.options.offset.y).anchor('top_left').content(chip);
     const at = d.phase === 'arm' || !d.home ? d.point : d.home;

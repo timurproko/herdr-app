@@ -243,11 +243,14 @@ moves on retained unverified pairs; the real Git aggregate/relay refresh fixture
 also samples actual sidebar projection across its in-flight status read.
 `tests/fleet-reorder.test.mjs` exercises pure display blocks and queued public move
 acknowledgements, either grabbed member, pair edges, timeout and no replay. Shared
-reorder and Spaces render fixtures cover both-source dimming, stacked preview and
-expanded/compact vector elbows and paired previews while preserving ordinary
-worktree order. Geometry assertions put the thin 1px muted stem under the parent
-badge centre, the bend on the child name's centre line, and only the name at its
-8px child inset; rail selection and ordinary numbering stay unchanged. Packaged Crew
+reorder and Spaces render fixtures cover both-source dimming, a single ordinary
+coordinator chip from either grabbed member (including return/fade), no stacked
+preview or floating chain icon, and expanded/compact chain badges while preserving
+ordinary worktree order. Geometry
+assertions compare the muted vector's 16px box, slot width and vertical centering
+with real numbered badges; fleet names share ordinary names' left edge while
+retaining muted text, without connector lines. Rail selection, name/directory
+tooltips and ordinary numbering stay unchanged. Packaged Crew
 fixtures retain the coordinator's Crew tag, omit only the verified attached fleet's
 tag, restore ordinary worker tags on confirmed detach/attachment-off, and hide all Crew
 tags when the plugin is disabled; tag reads start no discovery or state writes.
