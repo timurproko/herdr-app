@@ -18,7 +18,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-23-herdr-upgrade-sync/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-23-herdr-upgrade-sync/acceptance.md",
   "finalizedDate": "2026-11-23",
-  "specBaseSha": "9fd7c020d7d5e52c3f2aae305447afc0a332807e",
+  "specBaseSha": "a1e4fc1a1385724ed31887e8aeae51c73a2d738e",
   "acceptanceScenarios": [
     "App and Core releases are compared independently with distinct reviewed source, host, document, baseline and native-original evidence.",
     "Candidate reports preserve scoped hunks and file-specific actions while separating static checks, fixture results and unavailable native proof.",
