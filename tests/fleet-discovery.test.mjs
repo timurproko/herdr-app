@@ -34,7 +34,7 @@ const facts=new Map([
   ['example/repo#4',{number:4,state:'OPEN',url:url(4)}],
 ]);
 const statusCalls=[],pullCalls=[],focused=[],jobs=[],storage=new Map();
-const cx={notify(){},stop_propagation(){},timer:{every(){},after(){}},spawn:fn=>jobs.push(Promise.resolve().then(()=>fn(cx)))};
+const cx={focus_handle:()=>({}),notify(){},stop_propagation(){},timer:{every(){},after(){}},spawn:fn=>jobs.push(Promise.resolve().then(()=>fn(cx)))};
 const drain=async()=>{while(jobs.length)await Promise.all(jobs.splice(0));};
 const result=(stdout='',code=0,stderr='',timed_out=false)=>({code:0,stdout:JSON.stringify({code,stdout:Buffer.from(stdout).toString('base64'),stderr:Buffer.from(stderr).toString('base64'),timed_out})});
 const host={shared:k=>state[k],setShared:(k,v)=>state[k]=v,spaces:()=>groups,panes:()=>panes,terminals:()=>terminals,machines:()=>[{layout:'ready'}],checking:()=>false,
@@ -53,9 +53,9 @@ const host={shared:k=>state[k],setShared:(k,v)=>state[k]=v,spaces:()=>groups,pan
     const key=`${args[args.indexOf('--repo')+1]}#${args[2]}`;assert.ok(facts.has(key),'Only linked PR identities are queried');pullCalls.push(key);
     return {code:0,stdout:JSON.stringify({title:'Fixture',author:{login:'fixture'},body:'',labels:[],statusCheckRollup:[],...facts.get(key)})};
   }};
-const modules={'label-colors.js':'src/plugins/git/mod/label-colors.js','main.js':'src/plugins/git/mod/main.js','aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js','ui.js':'src/ui/ui.js','space-color-state.js':{currentSpaceColor:()=>null},
+const modules={'enrollment-picker.js':'src/plugins/git/mod/enrollment-picker.js','choice-menu.js':'src/ui/choice-menu.js','label-colors.js':'src/plugins/git/mod/label-colors.js','main.js':'src/plugins/git/mod/main.js','aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js','ui.js':'src/ui/ui.js','space-color-state.js':{currentSpaceColor:()=>null},
   'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{}},'gpui-base':{v_flex:element,h_flex:element,Popover:{},Input:{}},'location.js':{location:()=>({space:'coordinator',cwd:'/not-git',on:null,terminal:'owner'})},'agent-links.js':{AgentLinks:class{}},'pin-swap.js':{PinSwap:class{cancel(){}},PIN_SWAP_MS:320},'panel-pin.js':{panelPin:element},'sidebar-title.js':{sidebarTitle:element},'settings-dialog.js':{openSettings(){}},'panel-state.js':{changePanel(){}},'panel-kit.js':{headerTool:element,contextMenu:element,tag:element,panelMessage:(_t,id,o)=>element().id(id).child(o.text)},
-  'webhooks.js':{GitWebhooks:class{sync(){}stop(){}retryNow(){}}},'notices.js':{GitNotices:class{sync(){return null;}stop(){}retryNow(){}}}};
+  'webhooks.js':{GitWebhooks:class{sync(){}stop(){}retryNow(){}}},'notices.js':{GitNotices:class{sync(){return null;}presentation(){return null;}stop(){}retryNow(){}}}};
 const {Main,r,f}=await loadMod({host,modules,globals:{Date:class extends Date{static now(){return now;}},localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v)}},mod:'custom-changes',
   entry:'export {default as Main} from "./main.js";export * as r from "./plugins.js";export * as f from "./plugins/crew/fleet.js";'});
 const refresh=async()=>{r.pluginEvent('workspace.context.refresh',{cx,force:true});await drain();};

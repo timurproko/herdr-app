@@ -51,6 +51,7 @@ const colors={foreground:'white',ansi1:'red',ansi2:'green',ansi3:'yellow',ansi5:
 const context=vm.createContext({localStorage:{getItem:()=>null,setItem(){}}});
 const cache=new Map();
 const modules={
+  './enrollment-picker.js':{EnrollmentPicker:class{}},
   './ci-fix.js':{CIFix:class {sync(){}stop(){}}},
   './notices.js':{GitNotices:class {sync(){return null;}stop(){}retryNow(){}}},
   './webhooks.js':{GitWebhooks:class {sync(){} stop(){}}},

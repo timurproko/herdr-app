@@ -44,7 +44,7 @@ const synthetic=exports=>new vm.SyntheticModule(Object.keys(exports),function(){
 async function load(name) {
   if(modules.has(name))return modules.get(name);
   const source=await fs.readFile(path.join(project,'src',name),'utf8'),m=new vm.SourceTextModule(source,{context,identifier:name});modules.set(name,m);
-  await m.link((s)=>s==='./host.js'?synthetic(native):s==='gpui-kit'?synthetic({div:element,svg:element}):s==='./ui.js'?synthetic({menuRow:realUi(element).menuRow,PILL:realUi(element).PILL,pillTrigger:realUi(element).pillTrigger,pillMenu:realUi(element).pillMenu,U:{control:24,smallIcon:14,row:28,radius:4},slot:v=>v,menuSurface:element,dropdown:(id,trigger,menu,options)=>{const e=element().child(trigger).child(menu);e.options=options;return e;}}):s==='./claude-context.js'?load('shared/claude-context.js'):Promise.reject(Error(s)));
+  await m.link((s)=>s==='./host.js'?synthetic(native):s==='gpui-kit'?synthetic({div:element,svg:element}):s==='./ui.js'?synthetic({menuRow:realUi(element).menuRow,PILL:realUi(element).PILL,pillTrigger:realUi(element).pillTrigger,pillMenu:realUi(element).pillMenu,U:{control:24,smallIcon:14,row:28,radius:4},slot:v=>v,menuSurface:element,dropdown:(id,trigger,menu,options)=>{const e=element().child(trigger).child(menu);e.options=options;return e;}}):s==='./choice-menu.js'?load('ui/choice-menu.js'):s==='./claude-context.js'?load('shared/claude-context.js'):Promise.reject(Error(s)));
   return m;
 }
 const m=await load('features/workspace-status/claude-account.js');await m.evaluate();

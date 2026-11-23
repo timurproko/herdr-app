@@ -245,13 +245,31 @@ still cannot be inferred by the app from transcripts or branches.
 
 `ui/ui.js` owns `sidebarSectionHeader`, the common machine/repository header shell
 and right-edge chevron; Spaces retains its own actions and guarded folding.
-Aggregate repository headers start expanded, retain both task-scoped Open/Closed
-counts when folded using the shared row's 3px centred metadata separator, and persist a canonical repository-key set in localStorage
+Aggregate repository headers start expanded and show only canonical owner/name
+plus the shared chevron, never repository Open/Closed counts. The flexible name
+uses all remaining width; a clipped invisible natural-width probe and the label's
+available width enable its full-name tooltip only on actual overflow. Geometry is
+local, scope-keyed and updated after layout with changed-only notifications, not
+render-time effects. Top-level tab totals still include folded repositories.
+Sections persist a canonical repository-key set in localStorage
 (`custom.git.task-repositories.folded`), like Spaces' `machines.folded` set.
 Explicit toggles are UI-only: no preference export or Crew/host-document writes,
 and no new fetch or cancellation. Fold state survives tab/context changes and
-panel recreation. Scoped rows/errors/enrollment notices fold with the body; global
-setup stays visible. Counts and webhook-driven facts continue updating while folded.
+panel recreation. Scoped rows/errors and repository-specific diagnostics fold with
+the body; global setup stays visible. Counts and webhook-driven facts continue
+updating while folded.
+
+Coordinator enrollment uses one non-shrinking footer after `task-pulls-scroll`.
+`GitNotices.presentation` is a pure cached snapshot of confirmed unenrolled
+canonical names, deduplicated in rendered section order; pending/unknown is quiet.
+`EnrollmentPicker` uses the shared `ui/choice-menu.js` presentation even for one
+choice. It captures choices plus coordinator/home, selected location, view and
+notice configuration/refresh generation. Opening starts no read. Revalidation
+uses current cached facts before passing the captured repository to Settings;
+configuration, membership or scope changes close an obsolete menu rather than
+moving entries under the pointer. Escape/backdrop dismiss; local hover and arrow
+navigation share menu-row highlighting. Global missing setup takes precedence;
+ordinary Git's card is unchanged. No picker action enrolls or changes account.
 
 The existing single authenticated WebSocket routes repository invalidations into
 the aggregate index. Bursts coalesce behind each in-flight PR read; reconnect/show
@@ -733,6 +751,12 @@ credentials, provider reads or render-time commands. Disabled dialog copies clos
 by captured overlay ID after yielding; stale shortcuts/settings controls are guarded.
 The Settings page and footer/Look entries are availability projections, not destructive
 preference migrations. Node preference validation still knows disabled section IDs.
+
+`ui/choice-menu.js` owns pure account-style pill/choice presentation: the 12px
+muted chevron, upward native Popover, menu bounds and shared row/selected-slot
+geometry. Callers supply focus, index and callbacks; the account controller keeps
+its authentication, loading, cache and switching behavior. Left trigger presses
+bubble to native Popover rather than a second JavaScript opener.
 
 Claude session switching is not quota collection: its read-only terminal-label
 identity helper is shared in `src/shared/claude-context.js`, independently of Usage.

@@ -155,6 +155,21 @@ stock mismatches and malformed baseline records still fail. The new
 reviewed/mismatching and missing-0.1.17 fixtures. Existing reviewed hashes remain
 unchanged; a passing public capability gate is not a stock/native source review.
 
+## Shared account-style choice menus
+
+`tests/choice-menu.test.mjs` loads the actual account caller, `ui/choice-menu.js`
+and `ui/ui.js` with instrumented native elements. It checks the inherited muted
+12px chevron, gap, upward Popover, surface bounds/padding, row hover/highlight and
+fixed selected slot through both actual account and enrollment callers.
+`tests/fleet-enrollment.test.mjs` runs the coordinator renderer with real notices,
+picker and UI: zero/one/multiple choices, section-order deduplication, enrollment
+completion, quiet pending/unknown state, global setup precedence, fold/long-scroll
+footer structure, keyboard/pointer/dismissal, exact captured Settings payload and
+pre-render invalidation on refresh/tab/home/account/config changes. Read counters
+prove opening/choosing adds no membership/GitHub read or enrollment.
+`tests/claude-session-account.test.mjs` retains controller
+loading/switching/session guards. These are render-tree fixtures, not live pixels.
+
 ## Reviewed native frame stock
 
 `tests/feedback-native-stock.test.mjs` and `tests/palette-native-stock.test.mjs`
@@ -286,11 +301,16 @@ links, webhook burst coalescing, no periodic GitHub reads, hide/show catch-up an
 stale completions. It loads the real shared UI header and covers machine-style
 chevron geometry, default expansion, independent repository folds, localStorage
 restore after panel recreation, temporary repository absence, tab/refresh changes,
-zero and live counts while folded, hidden/restored scoped body notices, stale toggle
+count-free expanded/collapsed headers, unchanged top-level totals while folded,
+hidden/restored scoped body errors, fixed enrollment visibility, stale toggle
 guards, no fold-triggered reads and no false empty state when all sections fold.
 The merged fixture retains the real shared-relay deferred-delivery/render guards,
-PR label add/remove assertions and new shared row. Repository counts reuse the 3px
-centred separator. Long outages retain rows/counts/folds with Stale and no robot,
+PR label add/remove assertions and new shared row/separators. The enrollment fixture
+also feeds header available/intrinsic layout widths across 75–200% scales: fitting
+names have no tooltip, overflowing names do, widening removes it, repeated callbacks
+never loop notifications and old-scope measurements are ignored. The invisible
+probe is clipped and absolute so no count-width placeholder or extra row remains.
+Long outages retain rows/counts/folds with Stale and no robot,
 read or live-consumer authority; cold controllers render Verifying/waiting without
 persisted PR inventory or folder fallback. Fresh verification restores controls.
 Immediate-spawn guards reject synchronous notify, shared writes and new IO.
