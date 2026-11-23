@@ -153,7 +153,10 @@ An optional `updates.watch` subscription uses Git's single chrome-owned relay
 without depending on the Git panel or selected repository. Main pushes and merged
 PRs for this customization trigger only a 300 ms debounced authoritative main read,
 with a persisted 15-second automatic floor, one dirty follow-up and the same lease.
-Failure backoff wins over hints; Check now retains its manual bypass. Git disabled,
+Failure backoff wins over hints; Check now retains its manual bypass. While an
+update is running, automatic checks wait at least 30 seconds between worker
+requests even if the main-check deadline has expired. Pending hints survive that
+busy interval and catch up after completion without launching another update. Git disabled,
 legacy relay notices, absent credentials or no enrollment leave independent polling.
 After eventual merge, each desktop needs an explicit initial full installation;
 near-immediate hints additionally need a person-owned relay **Configure** upgrade

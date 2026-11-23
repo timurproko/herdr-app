@@ -7,7 +7,7 @@ const { createHash, randomUUID } = require('node:crypto');
 const REPOSITORY = 'https://github.com/timurproko/herdr-app.git';
 const DEADLINE = 30 * 60 * 1000;
 const CHECK_MIN = 120000, CHECK_MAX = 180000, RETRY_MAX = 1800000;
-const INVALIDATE_MIN = 15000;
+const INVALIDATE_MIN = 15000, BUSY_CHECK_RETRY = 30000;
 const failures = check => Number.isInteger(check?.failures) ? Math.max(0, Math.min(4, check.failures)) : check?.error ? 1 : 0;
 function nextAttempt(check, now) {
   if (!Number.isFinite(check?.attempted) || check.attempted > now || check.attempted < 1) return now;
@@ -91,7 +91,7 @@ function inspect(home, { now = Date.now, isAlive = alive } = {}) {
 }
 function checkMain(home, { force = false, invalidate = false, now = Date.now, random = Math.random, run = command, env = process.env } = {}) {
   const p = files(home), snapshot = inspect(home, { now });
-  if (snapshot.job?.state === 'running') return snapshot;
+  if (snapshot.job?.state === 'running') return { ...snapshot, retryAfter:now() + BUSY_CHECK_RETRY };
   let previous = snapshot.check || {};
   const latest = snapshot.job || snapshot.lastRun;
   const afterUpdate = ['complete', 'partial'].includes(latest?.state) && (latest.finished || 0) > (previous.attempted || 0);
@@ -123,6 +123,7 @@ function checkMain(home, { force = false, invalidate = false, now = Date.now, ra
     // Recheck after exclusive acquisition: another process can have completed
     // between our first snapshot and open. Do not lose a deferred merge hint.
     const fresh = { ...inspect(home, { now }), checking:false };
+    if (fresh.job?.state === 'running') return { ...fresh, retryAfter:now() + BUSY_CHECK_RETRY };
     const reused = cached(fresh); if (reused) return reused;
     previous = fresh.check || {};
     // A killed transport also leaves a bounded retry deadline, not a hot loop.
@@ -274,7 +275,7 @@ async function launch(home, { spawn = cp.spawn, source = fs.readFileSync(__filen
     return inspect(home);
   }
 }
-module.exports = { REPOSITORY, DEADLINE, CHECK_MIN, CHECK_MAX, RETRY_MAX, INVALIDATE_MIN, nextAttempt, checkDelay, files, read, atomic, command, installedRevision, inspect, checkMain, prepareClone, outcome, launch, runUpdate };
+module.exports = { REPOSITORY, DEADLINE, CHECK_MIN, CHECK_MAX, RETRY_MAX, INVALIDATE_MIN, BUSY_CHECK_RETRY, nextAttempt, checkDelay, files, read, atomic, command, installedRevision, inspect, checkMain, prepareClone, outcome, launch, runUpdate };
 if (require.main === module) {
   if (process.argv[2] === '--run') runUpdate(process.argv[3], process.argv[4]).catch(error => { console.error(shortError(error)); process.exitCode = 1; });
   else {

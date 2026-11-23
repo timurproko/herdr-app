@@ -45,5 +45,32 @@ try{
   const disabled=reads;await advance(15000);assert.equal(reads,disabled,'queued relay generation is canceled on disable');
   await advance(150000);assert.equal(reads,disabled+1,'updater polling still works with relay disabled');
   owner.customUpdateClosed=true;await advance(1000000);assert.equal(reads,disabled+1,'closed chrome does not keep checking');
-  assert.ok(calls.every(call=>call.action==='check'));console.log('PASS: actual controller/worker main availability, deferred rate/lease hints, storm backoff, manual bypass and independent fallback (no deployment)');
+  // A deployment begins before the main-check deadline and is still running
+  // after it expires. Its readonly worker responses must not create a 300 ms
+  // subprocess loop, and a newer merge hint must survive until it completes.
+  const previous=worker.read(p.check);
+  worker.atomic(p.check,{...previous,attempted:clock-160000,nextAttempt:clock-10000});
+  const running={token:'busy-deployment',state:'running',phase:'deploying',pid:process.pid,started:clock-60000,deadline:clock+600000};
+  worker.atomic(p.status,running);worker.atomic(p.lock,{token:running.token});
+  const busy={};const beforeBusyReads=reads;
+  api.initCustomizationUpdates(busy,cx,'custom-workspace-chrome',{chrome:true});await settle();
+  const beforeBusyCalls=calls.length;
+  assert.equal(worker.checkMain(home,options).retryAfter,clock+worker.BUSY_CHECK_RETRY,'worker explicitly defers a busy check');
+  assert.equal(worker.read(p.check).nextAttempt,clock-10000,'busy checks do not fake a new main-check deadline');
+  await advance(3000);
+  assert.equal(calls.length,beforeBusyCalls,'overdue main-check deadline must not launch workers every 300 ms during deployment');
+  assert.equal(reads,beforeBusyReads,'running deployment never checks Git');
+  api.invalidateCustomizationUpdates(busy,cx);
+  await advance(26999);assert.equal(calls.length,beforeBusyCalls,'hints cannot shorten the busy-job retry floor');
+  await advance(1);assert.equal(calls.length,beforeBusyCalls+1);
+  assert.equal(calls.at(-1).invalidate,true);assert.equal(busy.customAutoDirty,true,'busy reply preserves the pending hint');
+  await advance(60000);assert.equal(calls.length,beforeBusyCalls+3,'long deployments use a bounded 30-second retry cadence');
+  assert.equal(reads,beforeBusyReads);assert.equal(busy.customAutoDirty,true);
+  const finished=clock;worker.atomic(p.status,{...running,state:'complete',finished});target='c'.repeat(40);
+  await advance(30000);
+  assert.equal(reads,beforeBusyReads+1,'one authoritative check catches up after completion');
+  assert.equal(api.customizationUpdateSnapshot().check.target,target);assert.equal(busy.customAutoDirty,false);
+  assert.equal(api.customizationUpdateSnapshot().locked,true,'availability catch-up cannot remove the deployment lock');
+  busy.customUpdateClosed=true;
+  assert.ok(calls.every(call=>call.action==='check'));console.log('PASS: actual controller/worker main availability, deferred rate/lease hints, storm backoff, busy-deploy retry/hint retention, manual bypass and independent fallback (no deployment)');
 }finally{fs.rmSync(home,{recursive:true,force:true});}
