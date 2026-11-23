@@ -89,7 +89,7 @@ for(const state of ['open','closed']) {
   assert.ok(h.pending[0].args.some(a=>a.includes(state==='open'?'states:[OPEN]':'states:[CLOSED,MERGED]')));
   assert.equal(h.pending[0].options.on,'pc2');
   assert.equal(h.pending[0].options.cwd,'/repo');
-  await h.reply(page(1,10,'page-1'));
+  await h.reply(page(1,10,'page-1',true,[{name:'🤖 Under review',color:'840479'}]));
   await h.reply(JSON.stringify({data:{repository:{open:{totalCount:100},closed:{totalCount:200}}}}));
   assert.equal(v.pulls[state].length,10);
   assert.equal(v.pages[state].cursor,'page-1');
@@ -100,6 +100,8 @@ for(const state of ['open','closed']) {
   h.scroll(650,40);assert.equal(h.pending.length,0,'Scrolling upwards never fetches');
   v.agentPull=5;
   assert.ok(find(find(h.render(),'active-pull'),'pr-5'),'The active PR remains outside the scrolling content');
+  assert.ok(find(find(h.render(),'active-pull'),'pr-labels-5'),'Pinned rows render assigned labels');
+  assert.ok(find(find(h.render(),`pulls-list-${state}`),'pr-labels-1'),'Scrolling rows use the same labels');
   const pin=find(h.render(),'active-pull-content-5');
   assert.equal(pin.attrs.opacity[0],0.75,'Only a changed pin gets a subtle fade');
   assert.equal(pin.attrs.transition[0],'opacity');assert.equal(pin.attrs.transition[1].duration,120);

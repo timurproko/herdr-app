@@ -9,10 +9,10 @@
 
 ## 2. Shared PR rows omit Owner and show bounded coloured label pills after tasks and checks
 
-- [ ] 2.1 Remove the Owner pill in the shared row and make byline/status lines explicit; add renderer assertions for tasks/checks/labels order, missing groups and retained review indicators across ordinary/coordinator Open/Closed rows.
-- [ ] 2.2 Render exact label names in compact GitHub-coloured pills with contrasting foreground, bounded single-height layout and per-pill/complete-strip tooltips; add multiple-label, long-name, label-only, unlabeled and narrow-layout constraint assertions.
-- [ ] 2.3 Cover pinned, scrolling and pin-motion ghost rows with the same renderer and preserve measured-row callbacks, PR menus and related-agent navigation in the corresponding existing regressions.
-- [ ] 2.4 Document Owner removal, label order, colour and truncation/tooltip behavior in README.md and relevant testing docs; check focused renderer and pin-motion/fleet regressions.
+- [x] 2.1 Remove the Owner pill in the shared row and make byline/status lines explicit; add renderer assertions for tasks/checks/labels order, missing groups and retained review indicators across ordinary/coordinator Open/Closed rows.
+- [x] 2.2 Render exact label names in compact GitHub-coloured pills with contrasting foreground, bounded single-height layout and per-pill/complete-strip tooltips; add multiple-label, long-name, label-only, unlabeled and narrow-layout constraint assertions.
+- [x] 2.3 Cover pinned, scrolling and pin-motion ghost rows with the same renderer and preserve measured-row callbacks, PR menus and related-agent navigation in the corresponding existing regressions.
+- [x] 2.4 Document Owner removal, label order, colour and truncation/tooltip behavior in README.md and relevant testing docs; check focused renderer and pin-motion/fleet regressions.
 
 ## 3. All PR metadata separators share a visible centred muted dot with balanced spacing
 

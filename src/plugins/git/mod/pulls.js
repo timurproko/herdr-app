@@ -122,6 +122,7 @@ export function pullRow(pr, owner, now = Date.now()) {
     headRefName: pr.headRefName ?? null, headRefOid: pr.headRefOid ?? null,
     mergeConflict: ['open','draft'].includes(state) && pr.mergeable === 'CONFLICTING',
     meta: `#${pr.number} · ${login ? `${login} ` : ''}${when}`,
+    byline: `${login ? `${login} ` : ''}${when}`,
     owner: Boolean(owner && login && login.toLowerCase() === String(owner).toLowerCase()),
     tasks: tasks(pr.body), checks: checks(pr.statusCheckRollup), labels: pullLabels(pr.labels),
     review: pr.reviewDecision === 'APPROVED' ? 'approved' : pr.reviewDecision === 'CHANGES_REQUESTED' ? 'changes' : null,

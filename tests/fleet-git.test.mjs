@@ -32,8 +32,8 @@ const panel=new Main();panel.init({},cx);await drain();let tree=panel.render(cx)
 assert.equal(calls.length,2,'Duplicate task PR is fetched once');
 assert.ok(calls.every(args=>args.at(-1).split(',').includes('labels')));
 assert.equal(panel.aggregate.rows('open')[0].labels[0].name,'🤖 Under review');assert.equal(panel.aggregate.counts().open,1);assert.equal(panel.aggregate.counts().closed,1);
-assert.ok(find(tree,'pr-example/a#12'));assert.equal(find(tree,'pr-example/b#12'),undefined);assert.ok(find(tree,'git-task-incomplete'));assert.equal(find(tree,'active-pull'),undefined);
-panel.setView('closed',cx);tree=panel.render(cx);assert.ok(find(tree,'pr-example/b#12'));assert.equal(find(tree,'pr-example/a#12'),undefined);
+assert.ok(find(tree,'pr-example/a#12'));assert.ok(find(tree,'pr-labels-example/a#12'));assert.equal(find(tree,'pr-example/b#12'),undefined);assert.ok(find(tree,'git-task-incomplete'));assert.equal(find(tree,'active-pull'),undefined);
+panel.setView('closed',cx);tree=panel.render(cx);assert.ok(find(tree,'pr-example/b#12'));assert.ok(find(tree,'pr-labels-example/b#12'));assert.equal(find(tree,'pr-example/a#12'),undefined);
 find(tree,'pr-agent-example/b#12').attrs.on_click[0]({},cx);assert.deepEqual(JSON.parse(JSON.stringify(focus.at(-1))),['agent.focus',{terminal:'t3'}]);
 const captured=find(tree,'pr-agent-example/b#12');list[2].state='finished';captured.attrs.on_click[0]({},cx);assert.equal(focus.length,1,'Removed worker cannot be focused by stale callback');list[2].state='live';
 for(let i=0;i<4;i++)panel.render(cx);await drain();assert.equal(calls.length,2,'Local context refresh does not poll GitHub facts');
