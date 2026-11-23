@@ -1,7 +1,7 @@
 // Crew owns identity and versioned task PR sourcing. Consumers use registry contributions only.
 import { shared, setShared, spaces, panes, terminals, machines, checking, FLEET_DISPLAY_KEY, fleetDisplayChangeAllowed, updateFleetDisplay } from '../api.js';
 export const FLEET_KEY = 'custom.fleet.links', DISPLAY_KEY = FLEET_DISPLAY_KEY;
-const READS = 'custom.fleet.reads', TTL = 10000, EXPIRY = 30000;
+const READS = 'custom.fleet.reads', TTL = 10000, EXPIRY = 30000, READ_LEASE = 45000;
 // Only reads witnessed by this running mod can authorize actions. Persisted
 // timestamps/tokens alone are display history, not cold-start verification.
 const verifiedTokens = new Map(), pendingTokens = new Map();
@@ -204,12 +204,12 @@ export function refreshFleets(cx, readStatus, force = false) {
     if(!force && witnessed(key,entry?.attemptToken) && (entry.attemptSignature??entry.signature)===sig && now-(entry.attemptAt??entry.at)<TTL) continue;
     const token=`${now}-${Math.random()}`, generation=shared('custom.fleet.generation');
     pendingTokens.set(key,token);
-    setShared(READS,{...shared(READS),[key]:{token,until:now+20000}});
+    setShared(READS,{...shared(READS),[key]:{token,until:now+READ_LEASE}});
     cx.spawn(async view=> {
       const current=()=>enabled() && (!shared(FLEET_KEY) || shared(FLEET_KEY).version===1) && shared('custom.fleet.generation')===generation && shared(READS)?.[key]?.token===token && shared(READS)[key].until>Date.now();
       try {
         await Promise.resolve();if(!current()) return;
-        const status=recordedSource(await readStatus(machine));
+        const status=recordedSource(await readStatus(machine,{current:()=>current() && signature(machine,model(),reference)===sig}));
         if(!current()) return;
         const latest=shared(FLEET_KEY), snapshot=model(), prior=latest?.entries?.[key]?.status;
         const evidence={ready:readyLayout(machine),verified:true};

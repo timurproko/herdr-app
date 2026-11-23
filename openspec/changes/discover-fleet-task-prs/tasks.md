@@ -9,11 +9,11 @@
 
 ## 2. Bounded discovery transport and capability compatibility
 
-- [ ] 2.1 Request status with --all, --json and --discover-prs through the existing installed-tool machine transport; fixture the exact quoted command, machine routing and absence of setup or mutation commands.
-- [ ] 2.2 Add at most one recorded-only fallback for an explicit unsupported discovery-flag response, with enable/generation checks before follow-up; fixtures cover ignored flags, unknown versions, fallback success/failure, and no fallback for timeout, authentication, malformed success or ordinary transport failures.
-- [ ] 2.3 Set the discovery timeout to 25 seconds, plain fallback timeout to 15 seconds and coalescing lease to 45 seconds while retaining ten-second TTL and 30-second action freshness; use fake-clock fixtures for slow discovery, duplicate readers, failure backoff and expired leases.
-- [ ] 2.4 Retain obsolete-result rejection across owner, plugin, preference and read generations; delayed transport fixtures must show no late publication, fallback after disablement, binding restoration or renewed freshness on error.
-- [ ] 2.5 Update architecture timing guidance with the ten-second Crew budget, finite fallback allowance and unchanged refresh cadence; compare documented constants against the implementation fixtures.
+- [x] 2.1 Request status with --all, --json and --discover-prs through the existing installed-tool machine transport; fixture the exact quoted command, machine routing and absence of setup or mutation commands.
+- [x] 2.2 Add at most one recorded-only fallback for an explicit unsupported discovery-flag response, with enable/generation checks before follow-up; fixtures cover ignored flags, unknown versions, fallback success/failure, and no fallback for timeout, authentication, malformed success or ordinary transport failures.
+- [x] 2.3 Set the discovery timeout to 25 seconds, plain fallback timeout to 15 seconds and coalescing lease to 45 seconds while retaining ten-second TTL and 30-second action freshness; use fake-clock fixtures for slow discovery, duplicate readers, failure backoff and expired leases.
+- [x] 2.4 Retain obsolete-result rejection across owner, plugin, preference and read generations; delayed transport fixtures must show no late publication, fallback after disablement, binding restoration or renewed freshness on error.
+- [x] 2.5 Update architecture timing guidance with the ten-second Crew budget, finite fallback allowance and unchanged refresh cadence; compare documented constants against the implementation fixtures.
 
 ## 3. Pre-report coordinator behavior and compatibility integration
 

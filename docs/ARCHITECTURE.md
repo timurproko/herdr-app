@@ -152,7 +152,7 @@ been retired; third-party license notices retain their original attribution.
 
 ## Fleet context contributions
 
-Crew owns `plugins/crew/fleet.js`: installed `crew status --all --json` supplies
+Crew owns `plugins/crew/fleet.js`: installed `crew status --all --json --discover-prs` supplies
 owner/task terminals and task PRs. `custom.crew.home=1` is only a role hint;
 `crew.home` is a worker home tag. The resolver joins exact live machine-qualified
 terminals to actual panes/spaces and verifies the fleet adoption identity. Missing,
@@ -173,6 +173,14 @@ checks or durable display records. The removed generic incomplete-list notice st
 absent for both new and older Crew. Coalesced per-machine reads use the existing
 Spaces lifecycle, a 10-second TTL and expiring sanitized runtime facts under
 `custom.fleet.links`; preference/plugin generations invalidate late responses.
+The installed-tool reader uses the existing read-only machine transport with a
+25-second discovery timeout (the former 15-second allowance plus Crew's ten-second
+discovery budget). Only an explicit unsupported `--discover-prs` usage refusal allows
+one 15-second recorded-only fallback. Authentication, transport and timeout failures
+never trigger it or mean none. Missing/unknown discovery versions reuse the first
+payload, with no extra call. A 45-second shared read lease covers both bounded calls
+without overlapping mod readers; it does not extend action freshness. There is no
+new retry or polling loop; the existing 10-second TTL/refresh cadence is unchanged.
 Only the default-off Spaces boolean is portable. Raw reports, task files and
 pending ordering operations are not exported or replayed.
 
@@ -229,8 +237,9 @@ invalid or future completion dates do not admit historical Closed rows. Live-tas
 rows retain normal eligibility. Repository/global counts use the same eligible
 rows, and repositories containing only excluded history have no empty headers.
 Candidate facts remain bounded for webhook reopen/merge events; aging does not poll
-GitHub. The existing 1 MiB/4096-task source limits, 15-second status timeout and
-three concurrent targeted GitHub reads remain. No private task timestamps are read. There is no extra task heading or generic incomplete-list notice, single
+GitHub. The existing 1 MiB/4096-task source limits and three concurrent targeted GitHub
+reads remain; status uses the 25-second discovery / 15-second capability fallback
+bounds described above. No private task timestamps are read. There is no extra task heading or generic incomplete-list notice, single
 active pin or repository-wide PR inventory in this mode. Missing task links
 still cannot be inferred by the app from transcripts or branches.
 
