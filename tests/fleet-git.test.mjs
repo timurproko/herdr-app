@@ -7,17 +7,19 @@ const state={'custom.plugins':{crew:{enabled:true},git:{enabled:true}},'custom.s
 let selected={space:'coordinator',cwd:'/not-a-repository',on:null,terminal:'t1'},shown=true,failRepo=null,defer=false,pendingCI=false,bClosed=true;
 const waiting=[],settingsOpened=[],noticeModes={};
 let holdStatus=false,releaseStatus;
+let assignedLabels=[{name:'🤖 Under review',color:'840479'}];
 const groups=[{id:'coordinator',tabs:[{id:'c'}]},{id:'fm-crew-home',tabs:[{id:'a'},{id:'b'},{id:'dup'}]}];
 const all=[{pane:'cp',tab:'c',terminal:'t1'},...['a','b','dup'].map((id,i)=>({pane:id+'p',tab:id,terminal:'t'+(i+2)}))];
 const list=[{address:'t1',state:'live',labels:{'custom.crew.home':'1'}},...['a','b','dup'].map((id,i)=>({address:'t'+(i+2),state:'live',labels:{'crew.task':id,'crew.home':'home','herdr.space':'fm-crew-home'}}))];
 const url=repo=>`https://github.com/example/${repo}/pull/12`;
 const status={home:'C:/fixture/.crew',owner:{terminal:'t1',live:true},tasks:[{id:'a',terminal:'t2',state:'reported',pr:url('a')},{id:'b',terminal:'t3',state:'working',pr:url('b')},{id:'dup',terminal:'t4',state:'reported',pr:url('a')}]};
-const calls=[],focus=[],jobs=[];const cx={notify(){},stop_propagation(){},spawn(fn){const p=Promise.resolve().then(()=>fn(cx));jobs.push(p);},timer:{every(){},after(){} }};
+let rendering=false;
+const calls=[],focus=[],jobs=[];const cx={notify(){assert.equal(rendering,false,'No synchronous notify from fleet render');},stop_propagation(){},spawn(fn){const p=Promise.resolve().then(()=>fn(cx));jobs.push(p);},timer:{every(){},after(){} }};
 const drain=async()=>{while(jobs.length)await Promise.all(jobs.splice(0));};
 const host={closeOverlay(){},openOverlay(){},nextCommand(){return new Promise(()=>{});},shared:k=>state[k],setShared:(k,v)=>state[k]=v,spaces:()=>groups,panes:()=>all,terminals:()=>list,machines:()=>[],checking:()=>false,
   props:()=>null,layout:()=>({id:'panel',hidden:!shown,children:[{id:'panel-body',active:'changes'}]}),settings:()=>({zoom:1}),theme:()=>({}),window:()=>({platform:'windows'}),notify(){},run:(...args)=>focus.push(args),
   hc:async args=>{assert.match(args.at(-1),/status '--all' '--json'/);if(holdStatus)await new Promise(resolve=>releaseStatus=resolve);return {code:0,stdout:JSON.stringify({code:0,stdout:Buffer.from(JSON.stringify(status)).toString('base64'),stderr:'',timed_out:false})};},
-  exec:async(cmd,args)=>{assert.equal(cmd,'gh','Coordinator cwd must not be probed as Git');calls.push(args);if(defer)await new Promise(resolve=>waiting.push(resolve));const repo=args[args.indexOf('--repo')+1];if(repo===failRepo)return {code:1,stderr:'unreachable'};return {code:0,stdout:JSON.stringify({number:12,title:repo,url:`https://github.com/${repo}/pull/12`,state:repo==='example/b'&&bClosed?'CLOSED':'OPEN',author:{login:'fixture'},body:'',statusCheckRollup:pendingCI?[{name:'build',status:'IN_PROGRESS'}]:[]})};}};
+  exec:async(cmd,args)=>{assert.equal(cmd,'gh','Coordinator cwd must not be probed as Git');calls.push(args);if(defer)await new Promise(resolve=>waiting.push(resolve));const repo=args[args.indexOf('--repo')+1];if(repo===failRepo)return {code:1,stderr:'unreachable'};return {code:0,stdout:JSON.stringify({number:12,title:repo,url:`https://github.com/${repo}/pull/12`,state:repo==='example/b'&&bClosed?'CLOSED':'OPEN',author:{login:'fixture'},body:'',labels:assignedLabels,statusCheckRollup:pendingCI?[{name:'build',status:'IN_PROGRESS'}]:[]})};}};
 const storage=new Map(),writes=[];
 const localStorage={getItem:key=>storage.get(key)??null,setItem:(key,value)=>{storage.set(key,value);writes.push(key);}};
 const text=n=>typeof n==='string'?n:(n?.kids??[]).map(text).join(' ');
@@ -27,12 +29,15 @@ const modules={
  'location.js':{location:()=>selected},'gpui-kit':{View:class{},div:element,svg:asset=>element().asset(asset),PathBuilder:{}},'gpui-base':{v_flex:element,h_flex:element,Popover:{},Input:{}},'ui.js':'src/ui/ui.js',
  'agent-links.js':{AgentLinks:class{}},'pin-swap.js':{PinSwap:class{cancel(){}},PIN_SWAP_MS:320},'panel-pin.js':{panelPin:(_t,o)=>element().id(o.id)},'sidebar-title.js':{sidebarTitle:element},'settings-dialog.js':{openSettings:options=>settingsOpened.push(options)},'panel-state.js':{changePanel(){}},
  'panel-kit.js':{headerTool:(_t,o)=>element().id(o.id).on_click(o.onClick),contextMenu:element,tag:element,panelMessage:(_t,id,o)=>element().id(id).child(o.text)},
+ 'relay-consumer.js':'src/plugins/git/mod/webhooks.js',
  'webhooks.js':{GitWebhooks:class{sync(_cx,options){websocket=options;}stop(){}retryNow(){}}},'notices.js':{GitNotices:class{sync(_cx,{enabled,repository}){return enabled?noticeModes[repository]??null:null;}stop(){}retryNow(){}}},
 };
-const {Main,f,A,r}=await loadMod({host,modules,globals:{localStorage},mod:'custom-changes',entry:'export {default as Main} from "./main.js";export * as f from "./plugins/crew/fleet.js";export * as A from "./aggregate.js";export * as r from "./plugins.js";'});
+const {Main,f,A,r,GitWebhooks}=await loadMod({host,modules,globals:{URL,localStorage},mod:'custom-changes',entry:'export {default as Main} from "./main.js";export * as f from "./plugins/crew/fleet.js";export * as A from "./aggregate.js";export * as r from "./plugins.js";export {GitWebhooks} from "./relay-consumer.js";'});
 f.refreshFleets(cx,async()=>JSON.stringify(status));await drain();
 const panel=new Main();panel.init({},cx);await drain();let tree=panel.render(cx);await drain();tree=panel.render(cx);
 assert.equal(calls.length,2,'Duplicate task PR is fetched once');assert.equal(panel.aggregate.counts().open,1);assert.equal(panel.aggregate.counts().closed,1);
+assert.ok(calls.every(args=>args.at(-1).split(',').includes('labels')));assert.equal(panel.aggregate.rows('open')[0].labels[0].name,'🤖 Under review');
+assert.ok(find(tree,'pr-labels-example/a#12'),'Coordinator rows use the shared labels row');
 // Real aggregate Refresh/relay/render lifecycle never emits an ordinary fleet row.
 const refreshFrames=[],sample=()=>{
  const projected=projectLinkedRows(groups.map(w=>({w})),r.pluginWorkspaceLinks({presentation:true}));
@@ -48,10 +53,11 @@ assert.ok(find(tree,'pr-example/a#12'));assert.equal(find(tree,'pr-example/b#12'
 assert.doesNotMatch(text(tree),/Recorded task PRs|possibly incomplete until tasks report/);
 assert.ok(find(tree,'git-actions'));assert.ok(find(tree,'git-views'));
 const header=(repo,root=tree)=>find(root,`task-repo-header-example/${repo}`);
-const counts=(repo,root=tree)=>text(find(root,`task-repo-counts-example/${repo}`));
+const counts=(repo,root=tree)=>find(root,`task-repo-counts-example/${repo}`).kids.map(child=>child.attrs?.size?.[0]===3?'·':text(child)).join(' ');
 const toggle=repo=>{header(repo).attrs.on_click[0]({},cx);tree=panel.render(cx);};
 assert.ok(find(tree,'task-repo-body-example/a'));assert.ok(find(tree,'task-repo-body-example/b'),'Default expanded, including a zero-row current tab');
 assert.equal(counts('a'),'Open 1 · Closed 0');assert.equal(counts('b'),'Open 0 · Closed 1');
+const countStrip=find(tree,'task-repo-counts-example/a');assert.equal(countStrip.attrs.gap[0],6);assert.ok(countStrip.attrs.items_center);assert.equal(countStrip.kids[1].attrs.size[0],3);assert.ok(countStrip.kids[1].attrs.rounded_full,'Collapsible sections reuse the shared metadata separator');
 const aHeader=header('a');assert.equal(aHeader.attrs.h[0],28);assert.equal(aHeader.attrs.pr[0],4);assert.equal(aHeader.kids.at(-1).attrs.size[0],16);
 assert.match(aHeader.kids.at(-1).kids[0].attrs.asset[0],/chevron-down.svg$/);assert.equal(aHeader.attrs.accessibility_label[0],'Collapse example/a');
 let foldCalls=calls.length;const foldWrites=writes.length;
@@ -68,7 +74,7 @@ assert.equal(find(restoredTree,'task-repo-body-example/a'),undefined);assert.equ
 // Restore original panel presentation; both toggles are independent and only affect UI.
 toggle('a');toggle('b');panel.setView('open',cx);tree=panel.render(cx);
 assert.equal(state['custom.spaces.preferences'].connectFleetToCoordinator,true);
-panel.setView('closed',cx);tree=panel.render(cx);assert.ok(find(tree,'pr-example/b#12'));assert.equal(find(tree,'pr-example/a#12'),undefined);
+panel.setView('closed',cx);tree=panel.render(cx);assert.ok(find(tree,'pr-example/b#12'));assert.ok(find(tree,'pr-labels-example/b#12'));assert.equal(find(tree,'pr-example/a#12'),undefined);
 find(tree,'pr-agent-example/b#12').attrs.on_click[0]({},cx);assert.deepEqual(JSON.parse(JSON.stringify(focus.at(-1))),['agent.focus',{terminal:'t3'}]);
 const captured=find(tree,'pr-agent-example/b#12');list[2].state='finished';captured.attrs.on_click[0]({},cx);assert.equal(focus.length,1,'Removed worker cannot be focused by stale callback');list[2].state='live';
 const stableCalls=calls.length;for(let i=0;i<4;i++)panel.render(cx);await drain();assert.equal(calls.length,stableCalls,'Local context refresh does not poll GitHub facts');
@@ -89,7 +95,43 @@ let before=calls.length;websocket.onChange({repository:'elsewhere/repo'},cx);awa
 websocket.onChange({repository:'example/a'},cx);await tick();assert.equal(calls.length,before+1);
 websocket.onChange({repository:'example/a'},cx);websocket.onChange({repository:'example/a'},cx);await tick();assert.equal(calls.length,before+1);
 waiting.shift()();await tick();assert.equal(calls.length,before+2,'A burst produces only one coalesced follow-up');waiting.shift()();await drain();assert.ok(panel.ciSweep,'Task-linked running CI uses the header sweep');
+// The actual relay consumer is called by render, not an asynchronous socket.
+// Exercise the real fleet callback/sweep under an immediate-spawn render guard.
+const savedWebhooks=panel.webhooks;panel.webhooks=new GitWebhooks();defer=false;
+state['custom.plugins'].git.settings={relay:'https://relay.test'};
+const relayState=state['custom.git.relay-runtime']={scope:'fleet-render',status:'connected',ready:1,repositories:{'example/a':{revision:1}}};
+const renderCx={...cx,spawn:fn=>jobs.push(fn(renderCx))};
+const renderSync=()=>{rendering=true;try{panel.syncTaskWebhooks(renderCx);}finally{rendering=false;}};
+assert.ok(panel.aggregate.rows('open')[0].checks.pending>0);panel.ciSweep=null;
+before=calls.length;renderSync();
+assert.equal(calls.length,before,'fleet render must not start GitHub reads');assert.equal(panel.ciSweep,null,'fleet render must not arm a sweep synchronously');
+await drain();assert.equal(calls.length,before+2);assert.ok(panel.ciSweep,'deferred delivery still arms the native sweep');
+// A new revision and repeated renders coalesce into one deferred refresh.
+panel.ciSweep=null;relayState.repositories['example/a'].revision++;
+before=calls.length;renderSync();renderSync();renderSync();assert.equal(calls.length,before);
+await drain();assert.equal(calls.length,before+2);assert.ok(panel.ciSweep);
+// Disable/hide/context changes between render and delivery cannot start work.
+for(const change of ['disable','hide','context']){
+ panel.ciSweep=null;relayState.repositories['example/a'].revision++;before=calls.length;renderSync();
+ const context=panel.context;
+ if(change==='disable')state['custom.plugins'].git.enabled=false;
+ if(change==='hide')shown=false;
+ if(change==='context')panel.context='tasks:replaced';
+ await drain();assert.equal(calls.length,before,`${change} cancels queued fleet delivery`);assert.equal(panel.ciSweep,null);
+ state['custom.plugins'].git.enabled=true;shown=true;panel.context=context;panel.webhooks.stop();
+}
+panel.webhooks=savedWebhooks;defer=true;
 noticeModes['example/b']='repository';tree=panel.render(cx);find(tree,'git-live-ci-example/b-settings').attrs.on_click[0]({},cx);assert.equal(settingsOpened.at(-1).pluginSearch,'example/b');assert.equal(settingsOpened.at(-1).pluginSection,'repository');
+// Label add/remove invalidates the same targeted reads in both tabs.
+defer=false;pendingCI=false;
+for(const action of ['unlabeled','labeled']) {
+  assignedLabels=action==='labeled'?[{name:'🤖 Under review',color:'840479'}]:[];
+  const beforeLabels=calls.length;
+  for(const repository of ['example/a','example/b'])websocket.onChange({repository,event:'pull_request',action},cx);
+  await drain();assert.equal(calls.length,beforeLabels+2);
+  for(const tab of ['open','closed'])assert.equal(panel.aggregate.rows(tab)[0].labels.length,assignedLabels.length);
+}
+defer=true;
 // Hide/disable invalidates in-flight writes and starts no follow-up or polling.
 before=calls.length;panel.aggregate.refresh(cx);await tick();shown=false;panel.render(cx);while(waiting.length)waiting.shift()();await drain();assert.equal(calls.length,before+2);assert.equal(websocket.enabled,false);assert.equal(panel.aggregate.busy,false);
 shown=true;defer=false;panel.render(cx);await drain();assert.equal(calls.length,before+4,'Showing again catches up both linked repositories');

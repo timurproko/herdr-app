@@ -6,7 +6,7 @@ const find=(n,id)=>n?.attrs?.id?.[0]===id?n:n?.kids?.map(c=>find(c,id)).find(Boo
 const DAY=86400000;let now=Date.UTC(2026,10,23,12),active=0,peak=0,statusReads=0;
 const iso=at=>new Date(at).toISOString(),url=(number,repo='example/repo')=>`https://github.com/${repo}/pull/${number}`;
 const facts=new Map();
-const fact=(number,state,completedAt,repo='example/repo',draft=false)=>facts.set(`${repo}#${number}`,{number,state,isDraft:draft,url:url(number,repo),title:`PR ${number}`,author:{login:'fixture'},body:'',createdAt:iso(now-100*DAY),...(completedAt===undefined?{}:{closedAt:completedAt}),...(state==='MERGED'?{mergedAt:completedAt}:{}),statusCheckRollup:[]});
+const fact=(number,state,completedAt,repo='example/repo',draft=false)=>facts.set(`${repo}#${number}`,{number,state,isDraft:draft,url:url(number,repo),title:`PR ${number}`,author:{login:'fixture'},body:'',labels:[{name:'🤖 Under review',color:'840479'}],createdAt:iso(now-100*DAY),...(completedAt===undefined?{}:{closedAt:completedAt}),...(state==='MERGED'?{mergedAt:completedAt}:{}),statusCheckRollup:[]});
 fact(1,'OPEN');fact(2,'OPEN');fact(3,'OPEN',undefined,'example/repo',true);fact(4,'MERGED',iso(now-3600000));fact(5,'CLOSED',iso(now-2*3600000));fact(6,'CLOSED',iso(now-2*DAY),'example/old');fact(7,'CLOSED');fact(8,'CLOSED','invalid-date');fact(9,'CLOSED',iso(now-DAY));fact(10,'CLOSED',iso(now+DAY));
 const tasks=[{id:'live',terminal:'t2',state:'working',pr:url(1)},...Array.from({length:10},(_,i)=>({id:`done-${i+1}`,terminal:`old${i}`,state:'closed',pr:url(i+1,i+1===6?'example/old':'example/repo')})),{id:'duplicate',state:'closed',pr:url(1)},{id:'scout',state:'closed',pr:null},{id:'bad',state:'closed',pr:'https://evil.test/example/repo/pull/99'}];
 const status={home:'C:/fixture/.crew',owner:{terminal:'t1',live:true},tasks};
@@ -19,7 +19,7 @@ const cx={notify(){},stop_propagation(){},timer:{every(){},after(){}},spawn:fn=>
 const drain=async()=>{while(jobs.length)await Promise.all(jobs.splice(0));};
 const host={shared:key=>state[key],setShared:(key,value)=>state[key]=value,spaces:()=>groups,panes:()=>panes,terminals:()=>terminals,machines:()=>[],checking:()=>false,props:()=>null,theme:()=>({}),settings:()=>({zoom:1}),window:()=>({platform:'windows'}),layout:()=>({id:'panel',children:[{id:'panel-body',active:'changes'}]}),notify(){},run:(...args)=>focused.push(args),closeOverlay(){},openOverlay(){},nextCommand:()=>new Promise(()=>{}),
  hc:async args=>{assert.match(args.at(-1),/status '--all' '--json'/);statusReads++;return {code:0,stdout:JSON.stringify({code:0,stdout:Buffer.from(JSON.stringify(status)).toString('base64'),stderr:'',timed_out:false})};},
- exec:async(command,args)=>{assert.equal(command,'gh');assert.equal(args[0],'pr');assert.equal(args[1],'view');assert.ok(args.at(-1).includes('closedAt'));const key=`${args[args.indexOf('--repo')+1]}#${args[2]}`;assert.ok(facts.has(key),'No malformed URL or no-PR task starts a read');calls.push(key);peak=Math.max(peak,++active);await Promise.resolve();active--;return {code:0,stdout:JSON.stringify(facts.get(key))};}};
+ exec:async(command,args)=>{assert.equal(command,'gh');assert.equal(args[0],'pr');assert.equal(args[1],'view');assert.ok(args.at(-1).includes('closedAt'));assert.ok(args.at(-1).split(',').includes('labels'));const key=`${args[args.indexOf('--repo')+1]}#${args[2]}`;assert.ok(facts.has(key),'No malformed URL or no-PR task starts a read');calls.push(key);peak=Math.max(peak,++active);await Promise.resolve();active--;return {code:0,stdout:JSON.stringify(facts.get(key))};}};
 const modules={'main.js':'src/plugins/git/mod/main.js','aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js','ui.js':'src/ui/ui.js','space-color-state.js':{currentSpaceColor:()=>null},
  'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{}},'gpui-base':{v_flex:element,h_flex:element,Popover:{},Input:{}},'location.js':{location:()=>({space:'coordinator',cwd:'/not-git',on:null,terminal:'t1'})},'agent-links.js':{AgentLinks:class{}},'pin-swap.js':{PinSwap:class{cancel(){}},PIN_SWAP_MS:320},'panel-pin.js':{panelPin:element},'sidebar-title.js':{sidebarTitle:element},'settings-dialog.js':{openSettings(){}},'panel-state.js':{changePanel(){}},'panel-kit.js':{headerTool:element,contextMenu:element,tag:element,panelMessage:(_t,id)=>element().id(id)},
  'webhooks.js':{GitWebhooks:class{sync(_cx,options){socket=options;}stop(){}retryNow(){}}},'notices.js':{GitNotices:class{sync(){return null;}stop(){}retryNow(){}}}};
@@ -31,7 +31,12 @@ assert.equal(calls.length,10,'One targeted read per full PR identity, not per ta
 assert.equal(panel.aggregate.counts().open,3);assert.equal(panel.aggregate.counts().closed,2,'Only recent closed/merged history contributes');
 for(const number of [1,2,3])assert.ok(find(tree,`pr-example/repo#${number}`));
 assert.ok(find(tree,'pr-agent-example/repo#1'),'Live source wins over historical duplicates');
-for(const number of [2,3])assert.equal(find(tree,`pr-agent-example/repo#${number}`),undefined,'Historical-only rows have no robot');
+for(const number of [2,3]){
+ assert.equal(find(tree,`pr-agent-example/repo#${number}`),undefined,'Historical-only rows have no robot');
+ assert.ok(find(tree,`pr-labels-example/repo#${number}`),'Finished-task rows use the new shared label-pill row');
+ assert.equal(find(tree,`pr-owner-example/repo#${number}`),undefined,'No old Owner badge on historical rows');
+ const byline=find(tree,`pr-byline-example/repo#${number}`);assert.equal(byline.kids[1].attrs.size[0],3);assert.equal(byline.attrs.gap[0],6,'Historical metadata uses the shared centred separator');
+}
 assert.equal(find(tree,'task-repo-example/old'),undefined,'An old historical-only repository leaves no empty header');
 panel.setView('closed',cx);tree=panel.render(cx);for(const number of [4,5])assert.ok(find(tree,`pr-example/repo#${number}`));for(const number of [6,7,8,9,10])assert.equal(find(tree,`pr-${number===6?'example/old':'example/repo'}#${number}`),undefined,'Old, boundary-expired, undated, invalid and future-dated Closed history is excluded');
 // Live-task closed PRs are not subjected to the historical cutoff.

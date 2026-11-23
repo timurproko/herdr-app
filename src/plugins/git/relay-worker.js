@@ -1,6 +1,6 @@
 // Deploy to YOUR Cloudflare account; nothing is deployed by the customization build.
 // Only validated, minimal invalidation notices leave this receiver, not GitHub bodies.
-const EVENTS = new Set(['check_run','check_suite','status','workflow_run','pull_request','push']);
+import { relayNotice } from './relay-notice.js';
 const encoder = new TextEncoder();
 const hex = bytes => [...new Uint8Array(bytes)].map(b=>b.toString(16).padStart(2,'0')).join('');
 export const digest = async text => hex(await crypto.subtle.digest('SHA-256',encoder.encode(text)));
@@ -11,9 +11,8 @@ export async function validSignature(body, signature, secret) {
   return crypto.subtle.verify('HMAC',key,bytes,body);
 }
 export function notice(payload, event, delivery) {
-  const repository = payload?.repository?.full_name;
-  if (!EVENTS.has(event) || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository ?? '') || !/^[A-Za-z0-9-]{1,100}$/.test(delivery ?? '')) return null;
-  return {type:'github',repository,event,delivery};
+  return relayNotice({type:'github',repository:payload?.repository?.full_name,event,delivery,
+    ref:payload?.ref,action:payload?.action,merged:payload?.pull_request?.merged,base:payload?.pull_request?.base?.ref});
 }
 export class WebhookHub {
   constructor(state, env) { this.env=env;this.state=state;this.seen=new Map();this.authTimers=new Map(); }
@@ -23,7 +22,7 @@ export class WebhookHub {
     if (url.pathname === '/configuration' && request.method === 'GET') {
       const supplied = request.headers.get('Authorization') ?? '';
       if (await digest(supplied) !== await digest(`Bearer ${env.CLIENT_TOKEN}`)) return new Response('Unauthorized',{status:401});
-      return Response.json({protocol:1,secretHash:await digest(env.GITHUB_SECRET)}, {headers:{'Cache-Control':'no-store'}});
+      return Response.json({protocol:1,noticeVersion:2,secretHash:await digest(env.GITHUB_SECRET)}, {headers:{'Cache-Control':'no-store'}});
     }
     if (url.pathname === '/events' && request.method === 'GET' && request.headers.get('Upgrade')?.toLowerCase() === 'websocket') {
       if (this.state.getWebSockets().length >= 32) return new Response('Too many clients',{status:429});

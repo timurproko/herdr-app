@@ -11,7 +11,7 @@ import { GitNotices } from './notices.js';
 import { PinSwap, PIN_SWAP_MS } from './pin-swap.js';
 import { panelPin } from './panel-pin.js';
 import { openSettings } from './settings-dialog.js';
-import { headerTool, contextMenu, tag, panelMessage } from './panel-kit.js';
+import { headerTool, contextMenu, panelMessage } from './panel-kit.js';
 import { changePanel } from './panel-state.js';
 import { sidebarPanelEnabled } from './plugins.js';
 import { sidebarTitle } from './sidebar-title.js';
@@ -262,7 +262,8 @@ export default class Changes extends View {
     this.webhooks ??= new GitWebhooks();
     const aggregate=this.aggregate,scope=aggregate.context.scope;
     const repositories=[...new Set([...aggregate.entries.values()].map(e=>e.link.repo))].sort();
-    this.webhooks.sync(cx,{enabled:this.shown() && !aggregate.context.stale && repositories.length>0,scope:JSON.stringify(['tasks',scope,repositories]),
+    this.webhooks.sync(cx,{enabled:this.shown() && !aggregate.context.stale && repositories.length>0,scope:JSON.stringify(['tasks',scope,repositories]),repositories,
+      isCurrent:()=>this.shown() && !aggregate.context.stale && aggregate.currentContext()?.scope===scope && this.context===`tasks:${scope}`,
       onChange:(event,view)=> {
         if(!this.shown() || aggregate.currentContext()?.scope!==scope || this.context!==`tasks:${scope}`)return;
         aggregate.invalidate(event?.repository??null);aggregate.pump(view);this.startCISweep(view);
@@ -272,10 +273,11 @@ export default class Changes extends View {
 
   syncWebhooks(cx) {
     this.webhooks ??= new GitWebhooks();
-    const shown = this.shown();
+    const shown = this.shown(), context=this.context, repo=this.repo;
     if (shown && this.webhookShown === false && this.repo) this.webhookDirty = true;
     this.webhookShown = shown;
-    this.webhooks.sync(cx, {enabled:shown && Boolean(this.repo),scope:JSON.stringify([this.context,this.repo?.name]),
+    this.webhooks.sync(cx, {enabled:shown && Boolean(this.repo),scope:JSON.stringify([this.context,this.repo?.name]),repository:this.repo?.name,
+      isCurrent:()=>this.shown() && this.context===context && key()===context && this.repo===repo,
       onChange:(event,cx) => this.queueWebhook(event,cx)});
     if (!this.shown()) this.ciSweep = null;
     this.flushWebhook(cx);
@@ -524,14 +526,42 @@ export default class Changes extends View {
     return this.taskRing(t, task.done, task.total);
   }
 
+  // Shapes avoid font-baseline drift; parent rows own equal gaps on both sides.
+  metaSeparator(t) {
+    return div().size(3).flex_none().rounded_full().bg(t.muted);
+  }
+
+  labelPill(t, label, id) {
+    const color = /^#[a-f\d]{6}$/i.test(label.color ?? '') ? label.color : null;
+    const channels = color ? [1,3,5].map(at => {
+      const value = parseInt(color.slice(at,at+2),16) / 255;
+      return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+    }) : null;
+    const foreground = channels ? (channels[0]*0.2126 + channels[1]*0.7152 + channels[2]*0.0722 > 0.179 ? '#000000' : '#ffffff') : t.foreground;
+    return h_flex().id(id).flex_none().min_w(0).max_w_full().h(18).px(5).rounded_full()
+      .items_center().overflow_hidden().bg(color ?? t.raised).text_color(foreground).tooltip(label.name)
+      .child(div().min_w(0).truncate().child(label.name));
+  }
+
   pullRow(t, pr, ghost = false) {
     const prefix = ghost ? 'swap-' : '', rowId = pr.key ?? pr.number;
     const agentButton = this.agentButton(t, pr, !ghost);
-    const dot = () => div().text_color(t.dim).child('·');
+    const dot = () => this.metaSeparator(t);
+    const labels = pr.labels ?? [];
+    const groups = [];
+    if (pr.tasks) groups.push(h_flex().id(`${prefix}pr-tasks-${rowId}`).min_w(0).flex_shrink(1).overflow_hidden().gap(4).items_center()
+      .tooltip(pr.tasks.label).child(this.taskIcon(t, pr.tasks).flex_none()).child(div().min_w(0).truncate().child(pr.tasks.label)));
     const checkColor = pr.checks?.state === 'success' ? t.ansi2 : pr.checks?.state === 'failure' ? t.ansi1 : t.ansi3;
     const checkIcon = pr.checks?.state === 'success' ? svg('mods/custom-workspace-chrome/check.svg').size(U.tinyIcon).text_color(checkColor)
       : pr.checks?.state === 'failure' ? svg('mods/custom-workspace-chrome/x.svg').size(U.tinyIcon).text_color(checkColor)
       : div().size(8).flex_none().rounded_full().bg(checkColor);
+    if (pr.checks) groups.push(h_flex().id(`${prefix}pr-checks-${rowId}`).min_w(0).flex_shrink(1).overflow_hidden().gap(4).items_center()
+      .tooltip(pr.checks.label).child(checkIcon.flex_none()).child(div().min_w(0).truncate().underline().child(pr.checks.label)));
+    if (labels.length) groups.push(h_flex().id(`${prefix}pr-labels-${rowId}`).flex_1().min_w(0).h(18).gap(4).items_center().overflow_hidden()
+      .tooltip(labels.map(label => label.name).join('\n'))
+      .children(labels.map((label,index) => this.labelPill(t,label,`${prefix}pr-label-${rowId}-${index}`))));
+    if (pr.review) groups.push(div().id(`${prefix}pr-review-${rowId}`).min_w(0).truncate()
+      .text_color(pr.review === 'approved' ? t.ansi2 : t.ansi1).child(pr.review === 'approved' ? 'Approved' : 'Changes requested'));
     return h_flex().id(`${prefix}pr-${rowId}`).w_full().flex_none().px(8).py(6).gap(U.gap).items_start().rounded(U.radius)
       .when(!ghost, el => el.cursor_pointer().role('button').accessibility_label(`Open pull request #${pr.number} on GitHub`)
         .hover(s => s.bg(t.hover)).on_click(() => this.openPull(pr))
@@ -543,15 +573,12 @@ export default class Changes extends View {
         .child(h_flex().w_full().min_w(0).gap(4).items_center()
           .child(div().id(`${prefix}pr-title-${rowId}`).flex_1().min_w(0).truncate().text_size(U.font).font_semibold().text_color(t.foreground).child(pr.title))
           .when(Boolean(agentButton), el => el.child(agentButton)))
-        .child(h_flex().id(`${prefix}pr-meta-${rowId}`).w_full().min_w(0).flex_wrap().gap_x(6).gap_y(2).items_center().text_size(11).text_color(t.muted)
-          .child(div().child(pr.meta))
-          .when(pr.owner, el => el.child(tag(t, `${prefix}pr-owner-${rowId}`, 'Owner', { compact: true })))
-          .when(Boolean(pr.tasks), el => el.child(dot()).child(h_flex().gap(4).items_center()
-            .child(this.taskIcon(t, pr.tasks)).child(div().child(pr.tasks.label))))
-          .when(Boolean(pr.checks), el => el.child(dot()).child(h_flex().gap(4).items_center()
-            .child(checkIcon).child(div().underline().child(pr.checks.label))))
-          .when(pr.review === 'approved', el => el.child(dot()).child(div().text_color(t.ansi2).child('Approved')))
-          .when(pr.review === 'changes', el => el.child(dot()).child(div().text_color(t.ansi1).child('Changes requested')))));
+        .child(h_flex().id(`${prefix}pr-byline-${rowId}`).w_full().min_w(0).gap(6).items_center().text_size(11).text_color(t.muted).overflow_hidden()
+          .child(div().flex_none().child(`#${pr.number}`)).child(dot())
+          .child(div().min_w(0).truncate().tooltip(pr.meta ?? '').child(pr.byline ?? '')))
+        .child(h_flex().id(`${prefix}pr-meta-${rowId}`).w_full().min_w(0).h(18).gap(6).items_center().overflow_hidden().text_size(11).text_color(t.muted)
+          .when(labels.length > 0, el => el.tooltip(labels.map(label => label.name).join('\n')))
+          .children(groups.flatMap((group,index) => index ? [dot(),group] : [group]))));
   }
 
   swapOverlay(t, swap) {
@@ -643,11 +670,12 @@ export default class Changes extends View {
     return v_flex().id(`task-repo-${repo}`).w_full().flex_none().gap(U.rowGap)
       .child(sidebarSectionHeader(t, {id:`task-repo-header-${repo}`, label:repo, open:!folded, children:[
         div().flex_1().min_w(0).truncate().child(repo),
-        div().id(`task-repo-counts-${repo}`).flex_none().text_color(t.dim).child(`Open ${open} · Closed ${closed}`),
+        h_flex().id(`task-repo-counts-${repo}`).flex_none().gap(6).items_center().text_color(t.dim)
+          .child(div().child(`Open ${open}`)).child(this.metaSeparator(t)).child(div().child(`Closed ${closed}`)),
       ]}).cursor_pointer().hover(s => s.bg(t.selected))
         .on_click((_e, cx) => {
           cx.stop_propagation();
-          if (!this.shown() || aggregate.currentContext()?.scope !== scope || ![...aggregate.entries.values()].some(e => e.link.repo === repo)) return;
+          if (!this.shown() || aggregate.currentContext({presentation:true})?.scope !== scope || ![...aggregate.entries.values()].some(e => e.link.repo === repo)) return;
           this.foldedRepositories.has(repo) ? this.foldedRepositories.delete(repo) : this.foldedRepositories.add(repo);
           try { localStorage.setItem(FOLDED_REPOS_KEY, JSON.stringify([...this.foldedRepositories])); } catch {}
           cx.notify();

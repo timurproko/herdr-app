@@ -21,6 +21,7 @@ async function verifyRelay(base, keys, request = fetch) {
   if (!r.ok) throw Object.assign(Error('Relay is unavailable or its client token does not match.'),{setupMissing:[401,403,404].includes(r.status)});
   const data = await r.json();
   if (data.protocol !== 1 || data.secretHash !== createHash('sha256').update(keys.secret).digest('hex')) throw Object.assign(Error('Relay webhook secret does not match the local credentials.'),{setupMissing:true});
+  return data.noticeVersion === 2 ? 2 : 1;
 }
 async function run(mode, file, relay, repository, io = {}, githubAccount = '') {
   if (mode === 'guide') {
@@ -47,8 +48,8 @@ async function run(mode, file, relay, repository, io = {}, githubAccount = '') {
   if (mode === 'credentials') return {status:'ready',detail:'Local credentials available; never exported with preferences.',fix:null};
   let base;
   try { base = baseURL(relay); } catch { return {status:'missing',detail:'Enter the HTTPS relay URL after deploying your private relay.',fix:null}; }
-  await verifyRelay(base, keys, io.fetch);
-  if (mode === 'relay') return {status:'ready',detail:'Relay reachable; client token and webhook secret match.'};
+  const noticeVersion = await verifyRelay(base, keys, io.fetch);
+  if (mode === 'relay') return {status:'ready',noticeVersion,detail:'Relay reachable; client token and webhook secret match.'};
   const selected=githubAccount||(mode==='set-repositories'?JSON.parse(repository).account:'');
   if(selected&&!validLogin(selected))throw Object.assign(Error('Choose a signed-in GitHub account.'),{safe:true});
   const execute=io.gh??(selected?await forAccount(selected,io.github):gh);

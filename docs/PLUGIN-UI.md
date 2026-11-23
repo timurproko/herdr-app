@@ -128,7 +128,12 @@ belongs to, then Add), the description, and one row per item with **Remove** on 
   button says Add, Remove or Apply; the footer counts what this visit changes.
 - **items** picker: `candidates` runs only when the popup opens (listing can be slow). The
   popup has a search field (`search` is its placeholder), Loading bottom left, and Add.
-- One change runs at a time; refusals become the section's detail. Lists start collapsed.
+- One change runs at a time; refusals become the section's detail. Folder-change failures
+  distinguish the attempted operation/target from the plugin's own explanation, for example
+  **Could not add folder “D:\Git\site.dev”. Crew reported: Read-only: this home is owned by terminal …**
+  The plugin name comes from its declaration, not a renderer-specific message. This also
+  applies to unticking folders and row Remove actions; batch changes retain successes and
+  refresh the authoritative list after reporting failures. Lists start collapsed.
 - A deep link `{ section, search }` (Settings props `pluginSection`, `pluginSearch`) opens
   an items picker filtered to that search.
 
