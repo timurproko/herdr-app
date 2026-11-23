@@ -82,6 +82,17 @@ try {
   const lostOverload=await evaluateCandidate({root,inventory,discovery,get,baseSha:'c'.repeat(40),headSha:'d'.repeat(40),scratch,skipTests:true});
   assert.equal(lostOverload.checks.host.ok,true);assert.ok(lostOverload.checks.apiDelta.some(d=>d.name==='run'&&d.before.includes('x: string')&&!d.after.includes('x: string')));
   assert.ok(lostOverload.actions.some(a=>a.id==='host-api'));
+  const palette17=inventory.patches.find(p=>p.id==='palette').originals.find(o=>o.file.endsWith('/original-0.1.17.js'));
+  nextFiles['defaults/frame/palette/main.js']=fs.readFileSync(path.join(root,palette17.file),'utf8');add(appCommit,nextFiles);
+  const reviewed17=await evaluateCandidate({root,inventory,discovery,get,baseSha:'c'.repeat(40),headSha:'d'.repeat(40),scratch,skipTests:true});
+  assert.equal(reviewed17.checks.palette.sourceMatch,true);
+  const selected=reviewed17.checks.palette.originals.find(o=>o.match);assert.equal(selected.file,palette17.file);assert.equal(selected.main,'src/integration/native-patches/palette/main-0.1.17.js');
+  assert.match(reviewed17.evidence[selected.customDiff],/main-0.1.17.js/);
+  assert.equal(reviewed17.checks.palette.originals.find(o=>o.file.endsWith('/original-0.1.17-windows.js')).match,false);
+  assert.equal(JSON.parse(reviewed17.evidence['palette-provenance.json']).data.installedVerification.release,'v0.1.17');
+  assert.equal(reviewed17.checks.feedback.provenance.data.installedVerification.release,'v0.1.17');
+  assert.equal(reviewed17.checks.baselines.reviewed,false,'Native review does not manufacture a release-wide stock baseline');
+  assert.match(reviewed17.checks.palette.binaryApplicability,/current installed binary not inspected/);
   await assert.rejects(sourceRepository('app',appCommit,async()=>({truncated:true,tree:[]})),/truncated/);
   const source=await sourceRepository('app',appCommit,get);await assert.rejects(source.read('absent'),/Missing/);
   console.log('PASS source-only evaluation: exact native hunks, candidate baseline provenance, static host contracts, advisory documents, honest step failures and protected bytes');

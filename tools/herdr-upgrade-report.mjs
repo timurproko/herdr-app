@@ -45,8 +45,13 @@ export function renderMigrationReport(report,identity,{prUrl,artifactUrl,date=re
   lines.push('\n## Consumed contracts and evidence');
   for(const [key,label] of [['apiDelta','API/type'],['commandDelta','Command']])for(const change of report.checks[key]??[])lines.push(`- ${label} \`${escape(change.name)}\`: ${change.after===null?'removed':'changed'}; consumers: ${(report.checks.consumers?.[change.name]??[]).map(f=>`\`${f}\``).join(', ')||'facade/transitive declaration'}`);
   for(const patch of report.inventory.patches) {
-    const result=report.checks[patch.id];lines.push(`- **${patch.id}**: ${result?`source ${result.sourceMatch?'matches a reviewed original':'changed'}; ${result.binaryApplicability}`:'blocked; see prerequisite failures'}. Local source: \`${patch.main}\`.`);
-    for(const original of result?.originals??[])lines.push(`  - \`${original.file}\`: ${original.match?'exact match':'changed'}; ${evidenceLink(original.candidateDiff,'candidate hunks')}; ${evidenceLink(original.customDiff,'Custom hunks')}`);
+    const result=report.checks[patch.id];lines.push(`- **${patch.id}**: ${result?`source ${result.sourceMatch?'matches a reviewed original':'changed'}; ${result.binaryApplicability}`:'blocked; see prerequisite failures'}. Local sources: ${(patch.mains??[patch.main]).map(file=>`\`${file}\``).join(', ')}.`);
+    for(const original of result?.originals??[])lines.push(`  - \`${original.file}\`: ${original.match?'exact match':'changed'}; ${evidenceLink(original.candidateDiff,'candidate hunks')}; ${evidenceLink(original.customDiff,'Custom hunks')}; replacement \`${original.main??patch.main}\``);
+    if(result?.provenance) {
+      const record=result.provenance;
+      lines.push(`  - Reviewed native provenance: ${evidenceLink(`${patch.id}-provenance.json`)} from \`${record.file}\` (SHA-256 ${record.sha256}); releases ${record.data.releases.map(r=>r.tag).join(', ')}.`);
+      if(record.data.installedVerification)lines.push(`  - Prior read-only binary verification: ${record.data.installedVerification.release}, executable SHA-256 ${record.data.installedVerification.executableSha256}, original \`${record.data.installedVerification.original}\`. This is recorded evidence, not a new inspection of the current host.`);
+    }
   }
   lines.push(artifactUrl?`\nThis run did not replace committed proposal evidence. Download the current report, scoped hunks, candidate manifests and full bounded logs from the [Actions artifact](${artifactUrl}); open report.md inside it. Evidence links below point to that run and name each artifact path.`:'\nAll scoped hunks and candidate manifests are committed beside this report. Full bounded logs are also retained in the Actions artifact; tracked log files contain a bounded excerpt when the full log is longer.');
   lines.push('Whole-tree changed-path inventories flag dependencies outside the primary diff, not a claim that those dependencies were reviewed.');

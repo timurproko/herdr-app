@@ -42,11 +42,24 @@ exports and referenced types, command argument contracts, reviewed document
 sources and every registry-native surface. A separate full-tree change inventory
 warns about dependency, submodule, mode and scope changes outside those paths.
 Command source must match the understood declaration grammar; a partial parse is
-an explicit failure, never an empty successful catalog.
+an explicit failure, never an empty successful catalog. Every consumed SDK
+overload and merged declaration is preserved, including referenced types from
+earlier declarations; removing one overload still creates a review delta even
+when another overload leaves the function name available.
+
+For an exact Core override, generation evidence must name the selected version.
+If `core/latest.json` describes a different release, its generation is not reused:
+the selected release's generation is reported unavailable and its generation
+check is blocked, not falsely reported as a generation mismatch.
 
 Each native surface compares **every** reviewed original byte-for-byte and records
-both original-to-candidate and original-to-Custom hunks. Candidate stock hashes
-are marked candidate-only and cannot substitute for an installed executable's
+both original-to-candidate and original-to-Custom hunks, using each original's
+`mainByOriginal` replacement where configured. The corrected 0.1.17 feedback and
+palette originals from #26, their LF/Windows CRLF byte formats, and the matching
+`provenance.json` records are included. Provenance digests/lengths are checked
+against the registered originals; prior binary verification is retained as
+recorded evidence, not misrepresented as a new inspection of the current host.
+Candidate stock hashes are marked candidate-only and cannot substitute for an installed executable's
 reviewed embedded-stock provenance. Missing source, missing baseline coverage,
 unknown document versions and native proof stay visible independently.
 
@@ -71,6 +84,15 @@ Optional `--app-version 0.1.17` / `--core-version 0.1.23` select exact source ta
 `--refresh app-0.1.17` identifies an existing proposal for a read-only refresh.
 Reports bind the merged base, evaluated checkout head, candidate commits and feeds.
 A default-branch evaluation is never represented as testing an agent's edited head.
+The trusted evaluator reads the evaluated checkout's compatibility module and
+document profile only in a credential-free, bounded subprocess. It validates the
+returned contract, API/command aliases and version facts, then uses those facts
+for the evaluated branch's host verdict. Trusted baseline mappings remain separate
+in `baseline-compatibility.json`; `candidate-compatibility.json` includes the
+actual evaluated adapter hashes. An agent's committed alias repair therefore
+changes the refresh verdict without erasing historical upstream deltas. A failed
+or malformed snapshot blocks dependent checks rather than substituting base
+profiles. Writer code and credentials never load the proposal's adapters.
 Dirty local previews are labelled and cannot be published. The publisher also
 refuses stale or dirty evaluation identities.
 
@@ -111,8 +133,8 @@ After this change is merged into the repository default branch:
 3. Copy the numeric run ID from `/actions/runs/<id>`. In **Settings → Secrets and
    variables → Actions → Variables**, set `HERDR_UPGRADE_PROBE_RUN_ID` to that ID.
    This is a public run identifier, not a secret.
-4. Reconcile any already-running migration work (including the separate 0.1.17
-   native-patch task), then set `HERDR_UPGRADE_PROPOSALS_ENABLED` to exactly `true`.
+4. Reconcile any already-running migration work (#26's reviewed 0.1.17 native
+   patches are already included), then set `HERDR_UPGRADE_PROPOSALS_ENABLED` to exactly `true`.
    Only now can the nightly schedule publish. For an immediate proposal, manually
    run the same default-branch workflow with **mode: publish**. Existing delivery
    App ID/key and their Contents/Pull requests write permissions are reused; no
@@ -156,7 +178,10 @@ has a proposal. Existing proposals are found across all states with pagination.
 If App is already represented and Core advances, only a Core proposal is added.
 A newer same-component proposal comments on older open work; independent component
 work is cross-linked, not falsely declared obsolete. Nothing automatically closes,
-merges, marks ready, replaces a branch or rewrites a delivery checklist.
+merges, marks ready, replaces a branch or rewrites a delivery checklist. Every
+publishing rerun reconciles marker-deduplicated notices for existing open proposals,
+so a transient failure after PR creation or while posting a notice is repaired
+on retry without opening another proposal.
 
 For a report of the agent's actual edited head, manually choose **mode: publish**
 and enter its identity (for example `app-0.1.17`) in **refresh**, leaving version

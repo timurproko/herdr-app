@@ -180,11 +180,15 @@ export async function evaluateCandidate({root,inventory,discovery,get,baseSha,he
     return 'Required source RPC names and selected-version feed generation present; runtime hello, CAS and persistence semantics still require review.';
   },{requires:['core-source','candidate-compatibility']});
   for(const patch of inventory.patches)await runner.step(`patch-${patch.id}`,'Compare each registered original and stock-to-custom hunks',async()=>{
-    const candidate=await repos.app.read(`defaults/${patch.target}/main.js`),custom=fs.readFileSync(path.join(root,patch.main));
+    const candidate=await repos.app.read(`defaults/${patch.target}/main.js`);
     const originals=[];
-    for(const original of patch.originals){const bytes=fs.readFileSync(path.join(root,original.file));originals.push({...original,match:Buffer.compare(bytes,candidate)===0,candidateDiff:diff(`${patch.id}-${path.basename(original.file)}`,bytes,candidate,original.file,`candidate/${patch.target}/main.js`),customDiff:diff(`${patch.id}-${path.basename(original.file)}-custom`,bytes,custom,original.file,patch.main)});}
-    const match=originals.some(o=>o.match);checks[patch.id]={originals,candidateSha256:sha256(candidate),sourceMatch:match,binaryApplicability:'blocked: no installed-binary provenance'};
-    addAction(`patch-${patch.id}`,match?'Source matches a reviewed original; verify actual embedded binary provenance and disposable native behavior before certifying.':'Rebase this optional native patch only after reviewing every changed hunk; unknown native bytes remain skipped, not an update blocker.',[patch.main,...patch.originals.map(o=>o.file),'src/integration/native-patches/registry.json'],originals.flatMap(o=>[o.candidateDiff,o.customDiff]),`node --experimental-vm-modules tests/frame-upgrade.test.mjs`);
+    for(const original of patch.originals){
+      const main=original.main??patch.main,bytes=fs.readFileSync(path.join(root,original.file)),custom=fs.readFileSync(path.join(root,main));
+      originals.push({...original,main,match:Buffer.compare(bytes,candidate)===0,candidateDiff:diff(`${patch.id}-${path.basename(original.file)}`,bytes,candidate,original.file,`candidate/${patch.target}/main.js`),customDiff:diff(`${patch.id}-${path.basename(original.file)}-custom`,bytes,custom,original.file,main)});
+    }
+    if(patch.provenance)evidence[`${patch.id}-provenance.json`]=JSON.stringify(patch.provenance,null,2);
+    const match=originals.some(o=>o.match);checks[patch.id]={originals,candidateSha256:sha256(candidate),sourceMatch:match,provenance:patch.provenance??null,binaryApplicability:patch.provenance?.data.installedVerification?'blocked: current installed binary not inspected; reviewed binary verification retained in provenance record':'blocked: no installed-binary provenance'};
+    addAction(`patch-${patch.id}`,match?'Source matches a reviewed original; verify actual embedded binary provenance and disposable native behavior before certifying.':'Rebase this optional native patch only after reviewing every changed hunk; unknown native bytes remain skipped, not an update blocker.',[...(patch.mains??[patch.main]),...patch.originals.map(o=>o.file),'src/integration/native-patches/registry.json'],[...originals.flatMap(o=>[o.candidateDiff,o.customDiff]),...(patch.provenance?[`${patch.id}-provenance.json`]:[])],`node --experimental-vm-modules tests/frame-upgrade.test.mjs`);
     return {status:match?'passed':'failed',detail:`${originals.filter(o=>o.match).length}/${originals.length} reviewed originals exactly match. ${patch.id==='palette'?'Stock palette loses Custom styling, Usage entry and close/settings routing.':'Stock feedback loses Custom presentation; old owned patch may be retained, not refreshed or certified.'}`};
   },{requires:['app-source']});
   await runner.step('baselines','Compare reviewed coverage and generate candidate-only source hashes',async()=>{

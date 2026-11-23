@@ -94,9 +94,25 @@ export function reviewInventory(root) {
   };
   const patches=registry.patches.map(p=>{
     if(!/^[a-z0-9-]{1,60}$/.test(p.id))throw Error('Invalid native patch ID.');
-    return {id:p.id,target:safePath(p.target),main:canonical(p.files['main.js']),originals:p.originals.map(name=>{
-      const file=canonical(name),bytes=fs.readFileSync(path.join(root,file));return {file,sha256:sha256(bytes)};
-    })};
+    const main=canonical(p.files['main.js']);
+    if(Object.keys(p.mainByOriginal??{}).some(name=>!p.originals.includes(name)))throw Error('Native replacement selector names an unregistered original.');
+    const originals=p.originals.map(name=>{
+      const file=canonical(name),bytes=fs.readFileSync(path.join(root,file));return {file,sha256:sha256(bytes),bytes:bytes.length,main:canonical(p.mainByOriginal?.[name]??p.files['main.js'])};
+    });
+    const provenanceOutput=path.posix.join(path.posix.dirname(p.files['main.js']),'provenance.json');
+    let provenance=null;
+    if(Object.hasOwn(config.files,provenanceOutput)) {
+      const file=canonical(provenanceOutput),data=json(path.join(root,file));
+      if(data.repository!==REPOSITORIES.app||data.source!==`defaults/${p.target}/main.js`||!Array.isArray(data.releases)||!data.releases.length||!Array.isArray(data.originals))throw Error('Invalid native provenance record.');
+      for(const release of data.releases){if(!release.tag?.startsWith('v'))throw Error('Invalid native provenance release tag.');releaseVersion(release.tag.slice(1));commitSha(release.commit);}
+      for(const original of originals) {
+        const record=data.originals.find(r=>r.file===path.posix.basename(original.file));
+        if(!record||record.sha256!==original.sha256||record.bytes!==original.bytes)throw Error(`Native original/provenance mismatch: ${original.file}`);
+      }
+      if(data.installedVerification&&(!/^[a-f0-9]{64}$/.test(data.installedVerification.executableSha256??'')||!data.originals.some(r=>r.file===data.installedVerification.original)))throw Error('Invalid recorded native binary verification.');
+      provenance={file,sha256:sha256(fs.readFileSync(path.join(root,file))),data};
+    }
+    return {id:p.id,target:safePath(p.target),main,mains:[...new Set([main,...originals.map(o=>o.main)])],originals,provenance};
   });
   return {host:{versions:[...HOST_CONTRACT.reviewedVersions],profiles:Object.keys(HOST_PROFILES)},documents:{app:[...PROFILE.apps],core:[...PROFILE.cores],generation:PROFILE.generation},appSource,coreSource,baselines,provenance,patches};
 }

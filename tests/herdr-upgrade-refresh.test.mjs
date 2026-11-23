@@ -5,6 +5,7 @@ import cp from 'node:child_process';
 import {HOST_CONTRACT} from '../src/integration/herdr/compatibility.js';
 import {reviewInventory,gitBlob,sha256} from '../tools/herdr-upgrade-releases.mjs';
 import {inventoryHash} from '../tools/check-tab-move.mjs';
+import {checkHostFacts} from '../tools/host-api-facts.mjs';
 import {evaluateCandidate} from '../tools/herdr-upgrade-evaluate.mjs';
 import {proposeHerdrUpgrade} from '../tools/propose-herdr-upgrade.mjs';
 import {candidateCompatibilityFacts,validateCompatibilityFacts} from '../tools/herdr-upgrade-compatibility.mjs';
@@ -14,7 +15,7 @@ try {
   const root=path.join(directory,'proposal');fs.mkdirSync(root);
   const write=(file,text)=>{const target=path.join(root,file);fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,text);};
   const git=(...args)=>cp.execFileSync('git',args,{cwd:root,encoding:'utf8',windowsHide:true}).trim();
-  git('init','--initial-branch=main');git('config','user.name','Fixture');git('config','user.email','fixture@example.invalid');git('config','commit.gpgsign','false');
+  git('init','--initial-branch=main');git('config','user.name','Fixture');git('config','user.email','fixture@example.invalid');git('config','commit.gpgsign','false');git('config','core.autocrlf','false');
   write('.gitignore','.artifacts/\n');write('package.json','{"type":"module"}\n');
   const file='src/integration/herdr/compatibility.js';
   const guard="if(['GH_TOKEN','GITHUB_READ_TOKEN','DELIVERY_BOT_PRIVATE_KEY','CUSTOM_SECRET','NODE_OPTIONS'].some(k=>process.env[k]))throw Error('Candidate received a credential or preload');\n";
@@ -64,6 +65,8 @@ try {
   assert.ok(candidate.host.contract.api.includes('branchOnly'));assert.ok(!baseline.contract.api.includes('branchOnly'));
   assert.deepEqual(baseline.versions['0.1.16'].api.run,['run']);assert.equal(baseline.versions['0.1.16'].commands['tab.new'],'tab.new');
   assert.equal(candidate.sources[file],sha256(fs.readFileSync(path.join(root,file))));
+  const missingNewContract=checkHostFacts({version:'0.1.17',declarations:appNext['defaults/herdr.d.ts'].replace('export function branchOnly(): void;',''),commands:['tab.spawn'],files:{'src/feature.js':"run('tab.new')"},compatibility:candidate.host});
+  assert.deepEqual(missingNewContract.missingApi,['branchOnly']);
   // The fixed branch is compatible, but historical removed exports stay in the
   // immutable upstream delta rather than being erased by the adapter repair.
   assert.ok(report.checks.apiDelta.some(d=>d.name==='run'&&d.after===null));

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {releaseVersion,compareVersions,reviewInventory,reviewedVersion,validateFeed,resolveTag,discoverReleases,publicReader,releaseIdentity,parseIdentity,selectedCoreGeneration} from '../tools/herdr-upgrade-releases.mjs';
+import {releaseVersion,compareVersions,reviewInventory,reviewedVersion,validateFeed,resolveTag,discoverReleases,publicReader,releaseIdentity,parseIdentity,selectedCoreGeneration,sha256} from '../tools/herdr-upgrade-releases.mjs';
 const inventory=reviewInventory(process.cwd()), sha='a'.repeat(40);
 const feed=(component,version)=>({version,...(component==='app'?{core_min:'0.1.11'}:{generation:1}),targets:{'linux-x86_64':{url:`https://releases.herdr.dev/${component}/${version}/test.tar.gz`,sha256:'b'.repeat(64)}}});
 const fake=(app='0.1.17',core='0.1.22')=>async url=>url.includes('latest.json')?feed(url.includes('/app/')?'app':'core',url.includes('/app/')?app:core):{ref:`refs/tags/v${url.split('/v').at(-1)}`,object:{type:'commit',sha:url.includes('herdr-core')?inventory.coreSource.commit:sha}};
@@ -11,6 +11,14 @@ assert.throws(()=>parseIdentity('core-0.1.22-app-0.1.17'));
 assert.equal(reviewedVersion(inventory,'app'),'0.1.16');
 assert.equal(reviewedVersion(inventory,'core'),'0.1.22');
 assert.equal(inventory.patches.length,2);
+const palette=inventory.patches.find(p=>p.id==='palette'),feedback=inventory.patches.find(p=>p.id==='feedback');
+assert.equal(palette.originals.find(o=>o.file.endsWith('/original-0.1.17.js')).main,'src/integration/native-patches/palette/main-0.1.17.js');
+assert.ok(palette.originals.some(o=>o.file.endsWith('/original-0.1.17-windows.js')));
+for(const patch of [palette,feedback]) {
+  assert.equal(patch.provenance.data.installedVerification.release,'v0.1.17');
+  assert.ok(patch.provenance.data.releases.some(r=>r.tag==='v0.1.17'));
+  assert.equal(patch.provenance.sha256,sha256(fs.readFileSync(patch.provenance.file)));
+}
 assert.equal(inventory.baselines['0.1.17'],undefined);
 assert.ok(inventory.patches.every(p=>p.originals.every(o=>/^[a-f0-9]{64}$/.test(o.sha256))));
 const coreDoc=fs.readFileSync('docs/TAB-MOVE-CORE-0.1.22-REVIEW.md','utf8');
