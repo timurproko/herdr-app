@@ -567,7 +567,9 @@ motion are implemented once, not copied into each feature. See
 ## Spaces and the last tab
 
 Worktree spaces keep normal avatar/title alignment, with a Git worktree icon at
-the right. Drag them like other spaces within their machine: repository discovery
+the right. Its fixed icon slot shares the machine-header chevron's right inset
+and centre line, including attached fleet rows; Crew and other pills sit to its
+left without shifting the icon. Drag them like other spaces within their machine: repository discovery
 never regroups them or overrides the saved order. This is Spaces presentation and
 works independently of the Git plugin.
 

@@ -15,9 +15,9 @@
 
 ## 3. Worktree markers align with machine chevrons even beside Crew tags
 
-- [ ] 3.1 Anchor the trailing branch slot to the machine header chevron's right inset and centre line for ordinary and attached rows, keeping tags to its left; numeric render assertions compare actual header/row anchors rather than merely checking child order.
-- [ ] 3.2 Extend local/remote rendering cases for Crew and unrelated/multiple pills, long names, child indentation, tag-only rows, hidden icons and renaming; existing ordinary-worktree order and avatar checks still pass.
-- [ ] 3.3 Document right-edge alignment in README and fixture scope in docs/TESTING.md; the added workspace requirement captures tagged and untagged ordinary/attached rows while historical archived changes remain untouched.
+- [x] 3.1 Anchor the trailing branch slot to the machine header chevron's right inset and centre line for ordinary and attached rows, keeping tags to its left; numeric render assertions compare actual header/row anchors rather than merely checking child order.
+- [x] 3.2 Extend local/remote rendering cases for Crew and unrelated/multiple pills, long names, child indentation, tag-only rows, hidden icons and renaming; existing ordinary-worktree order and avatar checks still pass.
+- [x] 3.3 Document right-edge alignment in README and fixture scope in docs/TESTING.md; the added workspace requirement captures tagged and untagged ordinary/attached rows while historical archived changes remain untouched.
 ## 4. Consolidated Git repositories fold independently with visible counts and no redundant wording
 
 - [ ] 4.1 Remove the aggregate header's `Recorded task PRs` text and entire generic incomplete-list notice without replacement; render assertions cover reported and unreported tasks while preserving Git title/tools, empty states and scoped error/setup behavior.

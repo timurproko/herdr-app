@@ -1,7 +1,7 @@
 // Spaces layout/order: dummy host data only; no real navigation or Core writes.
 import * as links from '../src/shared/workspace-links.js';
 import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';
-function element(){const n={attrs:{},kids:[]};let p;return p=new Proxy(n,{get:(o,k)=>k in o?o[k]:k==='when'?(yes,fn)=>yes?fn(p):p:k==='child'?child=>{o.kids.push(child);return p;}:(...args)=>{o.attrs[k]=args;return p;}});}
+function element(){const n={attrs:{},kids:[]};let p;return p=new Proxy(n,{get:(o,k)=>k in o?o[k]:k==='when'?(yes,fn)=>yes?fn(p):p:k==='child'?child=>{o.kids.push(child);return p;}:k==='children'?children=>{o.attrs.children=[children];o.kids.push(...children);return p;}:(...args)=>{o.attrs[k]=args;return p;}});}
 const find=(n,id)=>n?.attrs?.id?.[0]===id?n:n?.kids?.map(child=>find(child,id)).find(Boolean);
 const drag={view:null,item:e=>e,sourceLayer:e=>e,guard:fn=>fn};let hostSpaces=[];
 const context={...links,pluginWorkspaceLinks:()=>[],View:class{},div:element,h_flex:element,v_flex:element,svg:path=>element().asset(path),slot:child=>element().size(16).child(child),badge:(number,color)=>element().color(color).child(number),spaceTitle:()=>element(),itemHover:()=> 'hover',spaceBadgeColor:()=> 'avatar-color',reorder:()=>drag,spaces:()=>hostSpaces,panes:()=>[],pluginSpaceTags:()=>[],rolePill:(_t,label)=>element().child(label),displaySpace:s=>s,spaceDirectory:s=>({cwd:s.folder}),shared:key=>key==='custom.plugins'?{git:{enabled:false}}:{},run(){assert.fail('Rendering must not navigate or move spaces');},U:{row:28,control:28,icon:16,gap:8,radius:6,smallIcon:14}};
@@ -23,7 +23,8 @@ view.rename={id:w.id};view.renameField=()=>element().child('editing');const edit
  const tagsOf=row=>find(row,'space-content-worktree').attrs.children?.[0]??[];
  const crewRow=view.row({w,i:5,g:{name:'repo',linked:true},tree:null},theme),[pill]=tagsOf(crewRow);
  assert.equal(pill?.attrs.id[0],'space-tag-worktree-crew-0','The plugin’s tag is on the row');assert.deepEqual(pill.kids,['Crew']);assert.equal(pill.attrs.tooltip[0],'Crew coordinator');
- assert.ok(find(crewRow,'space-worktree-worktree'),'Beside the worktree marker, which comes before it');assert.ok(asked.includes('worktree'),'Asked for this space');
+ const crewContent=find(crewRow,'space-content-worktree'),branch=find(crewRow,'space-worktree-worktree');
+ assert.equal(crewContent.kids.at(-1),branch,'Worktree marker stays rightmost, after pills');assert.ok(crewContent.kids.indexOf(pill)<crewContent.kids.indexOf(branch));assert.equal(pill.attrs.mr,undefined,'No negative pill margin beside a marker');assert.ok(asked.includes('worktree'),'Asked for this space');
  view.rename={id:w.id};view.renameField=()=>element().child('editing');assert.equal(tagsOf(view.row({w,i:5,g:{linked:true},tree:null},theme)).length,0,'Not while renaming');view.rename=null;
  context.__tags=[];assert.equal(tagsOf(view.row({w,i:5,g:{name:'repo',linked:true},tree:null},theme)).length,0,'No tag, no pill');
 }
@@ -106,4 +107,23 @@ drag.view={id:'parent',meta:{sources:['parent','worktree-a']}};drag.preview=(_id
 const preview=view.dragPreview(theme);assert.equal(preview.rows[1].icon.kids[0].attrs.asset[0],'mods/custom-spaces/fleet-elbow.svg');
 assert.equal(preview.rows[1].label.attrs.text_color[0],theme.muted);assert.equal(preview.rows[0].label,'parent');drag.view=null;
 context.pluginWorkspaceLinks=()=>[];assert.equal(view.ordered().find(r=>r.w.id==='worktree-a').linked,false);
-console.log('PASS: first-frame local/remote checkout snapshots; aligned worktrees, preserved user order and cross-machine drag guards (dummy Core only)');
+// Compare actual machine header and row trailing slots, including tags and child inset.
+view.machines=[{name:'pc2',state:'connected'}];view.reconnecting={};view.folded=new Set();view.rebuilt=()=>false;
+Object.assign(context,{machines:()=>[{name:'pc2',layout:'ready'}],iconButton:(_t,o)=>element().id(o.id),chevron:()=>element()});
+for(const machine of [null,'pc2']) {
+ const [header]=view.groupRows(machine,[],false,theme,()=>null,()=>false,()=>element());
+ const chevronSlot=header.kids.at(-1),axis=header.attrs.pr[0]+chevronSlot.attrs.size[0]/2;
+ assert.equal(axis,12,'Header chevron centre is 12px from the right edge');
+ for(const linked of [false,true])for(const tags of [[],[{plugin:'crew',label:'Crew'}],[{plugin:'crew',label:'Crew'},{plugin:'other',label:'Other'}]]) {
+  context.__tags=tags;
+  const row=view.row({w:{...w,machine,name:'very-long-space-name-that-must-not-move-trailing-tools'},i:0,g:{linked:true},linked},theme);
+  const content=find(row,'space-content-worktree'),marker=find(row,'space-worktree-worktree');
+  assert.equal(content.kids.at(-1),marker);assert.equal(marker.attrs.size[0],16);
+  assert.equal(row.attrs.px[0]+marker.attrs.mr[0]+marker.attrs.size[0]/2,axis,'Tagged and untagged worktrees align with the chevron');
+  for(const pill of content.attrs.children[0]){assert.ok(content.kids.indexOf(pill)<content.kids.indexOf(marker));assert.equal(pill.attrs.mr,undefined);}
+ }
+}
+context.__tags=[{plugin:'crew',label:'Crew'}];
+const tagOnly=find(view.row({w,i:0,g:null},theme),'space-content-worktree');assert.equal(tagOnly.kids.at(-1).attrs.mr[0],-5,'Tag-only rows retain their old edge');
+view.rename={id:w.id};assert.equal(find(view.row({w,i:0,g:{linked:true}},theme),'space-worktree-worktree'),undefined);view.rename=null;
+console.log('PASS: first-frame local/remote checkout snapshots; aligned tagged/child worktrees, vector elbows, preserved user order and cross-machine drag guards (dummy Core only)');

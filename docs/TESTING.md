@@ -135,6 +135,9 @@ badge centre, the bend on the child name's centre line, and only the name at its
 fixtures retain the coordinator's Crew tag, omit only the verified attached fleet's
 tag, restore ordinary worker tags on stale/disabled attachment, and hide all Crew
 tags when the plugin is disabled; tag reads start no discovery or state writes.
+Worktree layout fixtures compare actual local/remote machine-chevron and trailing
+branch-slot right axes for ordinary/attached rows, Crew and multiple plugin pills,
+long names, tag-only edges, hidden icons and rename mode.
 
 `tests/fleet-git.test.mjs` loads the actual Git controller, aggregate source and Crew
 provider through the package harness. Synthetic tasks/gh results cover coordinator
