@@ -2,10 +2,10 @@
 
 ## 1. Task PR reads retain last-good facts and classify GitHub response failures separately from transport outages
 
-- [ ] 1.1 Repeat the real-provider crew 8 plus finished-task crew 5/6/7 fixture through the host exec seam, recording sanitized command, repository, machine, exit status, timing and stderr; identify any failing layer before changing targeted read behavior, or document the still-unreproduced original transport failure.
-- [ ] 1.2 Preserve machine-qualified targeted reads, full PR identity and last-good state/completion facts; add a deterministic one-live-open/three-finished-merged regression asserting Open 1 / Closed 3, exact rows, no historical robots and maximum three concurrent reads.
-- [ ] 1.3 Classify GitHub resource/HTTP/GraphQL, auth and quota responses separately from genuine DNS/connection/transport failures without double-classifying formatted messages; cover these categories and ordinary folder-Git compatibility in focused pull tests.
-- [ ] 1.4 Keep the strict 24-hour mergedAt/closedAt history rule and existing live-task exception, with fixture assertions for expired, missing, invalid and future completion dates and same-number PRs in other repositories.
+- [x] 1.1 Repeat the real-provider crew 8 plus finished-task crew 5/6/7 fixture through the host exec seam, recording sanitized command, repository, machine, exit status, timing and stderr; identify any failing layer before changing targeted read behavior, or document the still-unreproduced original transport failure.
+- [x] 1.2 Preserve machine-qualified targeted reads, full PR identity and last-good state/completion facts; add a deterministic one-live-open/three-finished-merged regression asserting Open 1 / Closed 3, exact rows, no historical robots and maximum three concurrent reads.
+- [x] 1.3 Classify GitHub resource/HTTP/GraphQL, auth and quota responses separately from genuine DNS/connection/transport failures without double-classifying formatted messages; cover these categories and ordinary folder-Git compatibility in focused pull tests.
+- [x] 1.4 Keep the strict 24-hour mergedAt/closedAt history rule and existing live-task exception, with fixture assertions for expired, missing, invalid and future completion dates and same-number PRs in other repositories.
 
 ## 2. Repository sections show one truthful tab-scoped read notice without leaking finished Closed failures into Open
 

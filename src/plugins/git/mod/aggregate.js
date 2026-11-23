@@ -2,7 +2,7 @@
 import { exec, run } from './host.js';
 import { pluginPullContext, pluginEvent, sidebarPanelEnabled } from './plugins.js';
 import { location } from './location.js';
-import { PR_FIELDS, pullRow, pullError } from './pulls.js';
+import { PR_FIELDS, pullRow, pullFailure } from './pulls.js';
 export function taskPullLink(url) {
   const match=/^https:\/\/github\.com\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\/pull\/([1-9]\d*)\/?$/.exec(url??'');
   const number=Number(match?.[2]);
@@ -65,13 +65,13 @@ export class AggregatePulls {
           await Promise.resolve();if(!current())return;
           const result=await exec('gh',['pr','view',String(entry.link.number),'--repo',entry.link.repo,'--json',PR_FIELDS],{on:context.machine,timeout:30000});
           if(!current())return;
-          if(result.code!==0)throw Error(pullError('',result.stderr));
+          if(result.code!==0 || result.timed_out || result.timedOut || result.signal) {entry.error=pullFailure(result);return;}
           const value=JSON.parse(result.stdout);
           if(value.number!==entry.link.number || taskPullLink(value.url)?.key!==key)throw Error('Pull request identity mismatch');
           entry.pr={...pullRow(value,entry.link.repo.split('/')[0]),key,repo:entry.link.repo};
           const completedAt=Date.parse(value.mergedAt??value.closedAt??'');
           entry.completedAt=completedAt<=Date.now()?completedAt:NaN;entry.error=null;this.onUpdate?.(view);
-        }catch(e){if(current())entry.error=pullError(e);}
+        }catch(e){if(current())entry.error=pullFailure(e);}
         finally {
           if(this.pending.get(key)===token)this.pending.delete(key);
           if(this.serial===serial && this.shown())this.pump(view);

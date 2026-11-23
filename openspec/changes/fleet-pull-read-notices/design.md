@@ -14,6 +14,10 @@ Read-only investigation in this worktree:
 - `main.js` renders every entry error in a repository, independent of selected tab and PR state. This proves the duplication and cross-tab leak, including for cached merged rows. `pullError` maps any `Could not resolve`, `network` or `timeout` substring to unreachable. A GraphQL resource-resolution message such as `Could not resolve to a PullRequest...` therefore deterministically produces the wrong notice without any DNS failure.
 - The original stderr and host result from the installed-app incident are unavailable. Fresh merged reads succeed. No evidence currently justifies blaming merged support, quotas, the 24-hour filter, enrollment or concurrency, or changing the working provider read itself.
 
+The same real-provider fixture was repeated after approval and again returned Open 1 / Closed 3 with no read errors. The coordinator supplied a plausible Windows-load candidate: other processes failed to start with 3221225794 (0xC0000142). That is not recovered stderr from this incident. Previously an empty abnormal exit lost its exit code and became `Cannot load pull requests`, while a local timeout was misclassified as unreachable; neither proves a GitHub outage. The implementation retains exit/signal/timeout facts and covers unsigned and signed NTSTATUS, spawn rejection, empty stderr and process timeout explicitly. An account switch remains another plausible but unproven cause of resource-resolution responses.
+
+Local execution failures say `Could not read pull requests; refresh to retry`. They use the existing single-flight manual/webhook refresh path, not a new retry loop or a false promise of an automatic retry. Repository/PR resolution refusals identify the current GitHub account; actual DNS/connection failure still says `GitHub is unreachable`.
+
 Baseline validation: `CI=true npm run test:ci` passed all 151 supported Windows suite entries, with three documented exclusions. Diagnostic scripts, provider responses and logs remain ignored in `.artifacts/`.
 
 ## Goals / Non-Goals

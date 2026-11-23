@@ -139,13 +139,29 @@ export function parsePulls(stdout) {
   return Array.isArray(list) ? list : [];
 }
 
-// A person-readable reason when gh cannot answer.
-export function pullError(e, stderr = '') {
-  const text = `${e ?? ''} ${stderr ?? ''}`;
-  if (/program not found|not recognized|No such file|cannot start gh/i.test(text)) return 'GitHub CLI (gh) is not installed';
-  if (/auth login|not logged in|authentication/i.test(text)) return 'Sign in first: gh auth login';
-  if (/no git remotes|could not determine|none of the git remotes|not a git repository|no remotes/i.test(text)) return 'No GitHub repository';
-  if (/Could not resolve|network|timed out|timeout/i.test(text)) return 'GitHub is unreachable';
-  const first = (stderr || (e?.message ?? String(e ?? ''))).trim().split('\n')[0];
-  return first || 'Cannot load pull requests';
+// Keep command/response facts until classification; an empty abnormal exit is
+// not evidence that GitHub is down. The string wrapper also serves folder Git.
+export function pullFailure(e, stderr = '') {
+  const detail = String(stderr || e?.stderr || e?.message || (typeof e === 'string' ? e : '')).trim();
+  const text = `${e?.code ?? ''} ${detail}`;
+  const failure = (kind, message) => ({kind, message});
+  const transient = () => failure('transient', 'Could not read pull requests; refresh to retry');
+  if (/program not found|not recognized|No such file|\bENOENT\b/i.test(text)) return failure('cli', 'GitHub CLI (gh) is not installed');
+  // Windows NTSTATUS (signed or unsigned), signals and start/exec failures are
+  // local execution failures even if stderr happens to mention the network.
+  const code = Number(e?.code);
+  if (e?.signal || (Number.isInteger(code) && (code < 0 || code >= 0x80000000)) ||
+      /cannot start gh|failed to (?:start|spawn)|spawn.*(?:EAGAIN|ENOMEM|EPERM)|process init|0xc0000142|3221225794|\bEAGAIN\b|\bENOMEM\b/i.test(text)) return transient();
+  if (e?.timed_out || e?.timedOut || /execution timed out|command timed out|process timed out/i.test(text)) return transient();
+  if (/rate limit|HTTP 429|secondary rate/i.test(text)) return failure('rate', 'Could not read pull requests: GitHub rate limit exceeded');
+  if (/auth login|not logged in|authentication|HTTP 401|bad credentials/i.test(text)) return failure('auth', 'Sign in first: gh auth login');
+  if (/no git remotes|could not determine|none of the git remotes|not a git repository|no remotes/i.test(text)) return failure('repository', 'No GitHub repository');
+  if (/could not resolve to|could not resolve (?:repository|pull request)|HTTP (?:403|404)|not found|not accessible|resource not accessible|permission denied/i.test(text)) return failure('access', 'Repository or pull request is not accessible with the current GitHub account');
+  if (/HTTP [45]\d\d|GraphQL:/i.test(text)) return failure('response', 'Could not read pull requests: GitHub returned an error');
+  // Resource resolution, a local command timeout and arbitrary mentions of
+  // "network" must not be mistaken for a DNS/connection failure.
+  if (/could not resolve host|no such host|\bENOTFOUND\b|\bEAI_AGAIN\b|network is unreachable|network is down|connection refused|connection reset|failed to connect|TLS handshake timeout|dial tcp.*(?:timeout|timed out)|connect(?:ion)?[^\n]*timed out/i.test(text)) return failure('unreachable', 'GitHub is unreachable');
+  if (/timeout|timed out/i.test(text) || (e && typeof e === 'object' && 'code' in e && !detail)) return transient();
+  return failure('read', detail.split('\n')[0] || 'Cannot load pull requests');
 }
+export function pullError(e, stderr = '') { return pullFailure(e, stderr).message; }
