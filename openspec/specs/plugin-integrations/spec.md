@@ -415,3 +415,46 @@ Discovery SHALL use the existing read-only installed-tool machine transport and 
 - **WHEN** discovery consumes its additional ten-second budget or completes after plugin, preference, owner or read-generation replacement
 - **THEN** finite transport and in-flight lease bounds account for that extra latency while duplicate readers still coalesce
 - **AND** obsolete results cannot publish links, change bindings or authorize worker actions
+
+### Requirement: Truthful repository-scoped pull request read notices
+The coordinator Git overview SHALL render at most one PR-read failure notice per repository section in the selected tab. Notices SHALL describe the failed operation and distinguish GitHub responses from genuine transport unreachability. Cached PR state SHALL scope failures to the appropriate tab without erasing healthy rows or bypassing history eligibility.
+
+#### Scenario: One live open PR and three finished merged PRs
+- **WHEN** a verified coordinator records one live Open or Draft PR and three finished-task Merged PRs in the same repository, each merged within 24 hours
+- **THEN** Open shows only the live PR and Closed shows the three merged PRs without historical worker robots
+- **AND** successful reads produce no failure notices in either tab, with repository and global counts of Open 1 and Closed 3
+
+#### Scenario: Failed refresh of known closed history
+- **WHEN** refresh reads fail for several previously loaded historical Merged or Closed PRs in one repository
+- **THEN** their failures produce no notice in Open and at most one scoped read-failure notice in Closed
+- **AND** last-good eligible rows and counts remain, while expired historical rows and their row-specific failures do not reappear
+
+#### Scenario: Historical failure before state is known
+- **WHEN** an initial read fails for a recorded historical-only PR whose GitHub state has not been established
+- **THEN** at most one history-load notice appears in that repository's Closed section, with no per-PR error line under Open
+- **AND** no state, completion date or count is invented for the unread PR
+
+#### Scenario: GitHub answered with a refusal
+- **WHEN** GitHub answers a PR read with a resource-resolution, access, authentication or rate-limit failure
+- **THEN** the notice describes the failed read or relevant refusal instead of declaring GitHub unreachable
+- **AND** several failures in that repository still produce at most one notice in the applicable tab
+
+#### Scenario: Local process failure or timeout
+- **WHEN** the GitHub CLI cannot start, exits abnormally with empty stderr or exceeds its local command timeout
+- **THEN** the applicable repository section shows one transient read-failure notice offering Refresh to retry rather than asserting that GitHub is unreachable
+- **AND** last-good eligible PR facts survive and the existing bounded refresh path remains without a new polling or automatic retry loop
+
+#### Scenario: Current account cannot resolve the repository
+- **WHEN** GitHub answers that the repository or PR cannot be resolved or accessed with the current login
+- **THEN** the notice identifies access with the current GitHub account rather than a GitHub connectivity outage
+- **AND** the panel does not switch the login or discard healthy rows
+
+#### Scenario: Genuine connectivity failure
+- **WHEN** applicable PR reads fail because the GitHub connection cannot be established or times out at the transport boundary
+- **THEN** the repository section shows one clear connectivity notice rather than one line per PR
+- **AND** other repositories' valid rows remain visible and no account switch or automatic enrollment occurs
+
+#### Scenario: Partial recovery and folded sections
+- **WHEN** some failed reads recover or a repository section is folded
+- **THEN** recovered failures are removed from the summary without hiding remaining applicable failures
+- **AND** folding hides the single notice with that section's body, without new reads or changes to its counts
