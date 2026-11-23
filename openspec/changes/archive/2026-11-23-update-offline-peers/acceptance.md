@@ -19,7 +19,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-23-update-offline-peers/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-23-update-offline-peers/acceptance.md",
   "finalizedDate": "2026-11-23",
-  "specBaseSha": "b6b39624f26c70c7e3ef98f8165eb43ebfa4eed8",
+  "specBaseSha": "b818c15d4da9b56c89774d361d008dbe8bc4e564",
   "acceptanceScenarios": [
     "Offline and unreachable peers remain plainly logged without a partial warning after a successful desktop update.",
     "Desktop-equipped peers are quiet exclusions and still require their own full Update.",
