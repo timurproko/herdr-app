@@ -68,6 +68,11 @@ for (const variant of ['strip','list','icons']) {
   drag.begin('b',press,cx);old[2].fn(cx);assert.equal(drag.current.id,'b');assert.equal(drag.leaving,null,'Old cleanup cannot cancel a new drag');
   drag.cancel(cx);assert.equal(timers.length,0,'A press without a drag has no return animation');
 }
+const blockDrag=new ReorderDrag({variant:'list'});
+blockDrag.begin('fleet',press,cx,{meta:{sources:['coordinator','fleet']}});blockDrag.track(motion,cx);
+assert.equal(blockDrag.dimmed('coordinator'),true);assert.equal(blockDrag.dimmed('fleet'),true);assert.equal(blockDrag.dimmed('other'),false);
+assert.equal(blockDrag.preview('pair',t,{rows:[{icon:element(),label:'Coordinator'},{icon:element(),label:'Fleet'}]}).style.content[0].kids.length,2);
+blockDrag.reset();
 assert.throws(()=>new ReorderDrag({variant:'unknown'}),/Unknown reorder variant/);
 const custom = new ReorderDrag({variant:'icons',threshold:10,cancel:'clear',offset:{x:2,y:3}});
 custom.begin('a',press,cx,{scale:2});custom.track(motion,cx);assert.equal(custom.current.point.x,32);custom.cancel(cx);assert.equal(custom.view,null);

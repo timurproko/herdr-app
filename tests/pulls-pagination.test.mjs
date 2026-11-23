@@ -36,6 +36,7 @@ async function harness(state) {
     exec:(cmd,args,options)=>new Promise((resolve,reject)=>{const call={cmd,args,options,resolve,reject};pending.push(call);calls.push(call);}),
   };
   const modules = {
+    './aggregate.js':{AggregatePulls:class {sync(){return false;}stop(){}}},
     './ci-fix.js':{CIFix:class {sync(){}stop(){}}},
     './notices.js':{GitNotices:class {sync(){return null;}stop(){}retryNow(){}}},
     './webhooks.js':{GitWebhooks:class {sync(){} stop(){}}},

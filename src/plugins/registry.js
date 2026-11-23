@@ -104,6 +104,25 @@ export function pluginSpaceTags(space, context = {}) {
   });
 }
 
+// Read-only contextual contributions. Plugins own their identity/source policy;
+// features never import a provider's implementation or start work during render.
+export function pluginWorkspaceLinks() {
+  return PLUGINS.flatMap(plugin => {
+    if(!pluginEnabled(plugin) || !plugin.workspaceLinks) return [];
+    try { return (plugin.workspaceLinks(pluginContext(plugin))??[]).filter(link=>typeof link?.parent==='string' && typeof link?.child==='string' && link.parent!==link.child && typeof link.binding==='string'); }
+    catch(e) { failed(plugin,'workspaceLinks',e);return []; }
+  });
+}
+export function pluginPullContext(space) {
+  const found=[];
+  for(const plugin of PLUGINS) {
+    if(!pluginEnabled(plugin) || !plugin.pullContext) continue;
+    try { const value=plugin.pullContext({space,...pluginContext(plugin)});if(value?.kind==='tasks' && typeof value.scope==='string' && Array.isArray(value.links)) found.push(value); }
+    catch(e) { failed(plugin,'pullContext',e); }
+  }
+  return found.length===1 ? found[0] : null;
+}
+
 // Asks enabled plugins, in order, to handle a moment a feature exposes (a hook).
 // The first one that returns true handles it; a failing plugin is reported and
 // the feature carries on with its own behaviour.

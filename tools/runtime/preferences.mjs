@@ -59,7 +59,8 @@ function sharedPreferences(input,strict=false){
   }
   else if(key==='custom.spaces.preferences'){
    if(value?.version!==1||['confirmLastTab','closeOnLastTab'].some(k=>typeof value[k]!=='boolean'))throw Error('Invalid spaces preferences.');
-   saved=pick(value,['version','confirmLastTab','closeOnLastTab']);
+   if(value.connectFleetToCoordinator!==undefined&&typeof value.connectFleetToCoordinator!=='boolean')throw Error('Invalid spaces preferences.');
+   saved=pick(value,['version','confirmLastTab','closeOnLastTab','connectFleetToCoordinator']);
   }
   entries.push([key,safe(saved)]);
  }
