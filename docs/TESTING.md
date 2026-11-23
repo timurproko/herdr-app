@@ -184,7 +184,29 @@ GitHub data, not real label mutations, credentials or relay deployments.
 host/elements. It covers ordinary/coordinator Open/Closed/merged and ghost rows,
 Owner removal, tasks/checks/labels ordering with missing groups, exact emoji names,
 light/dark/fallback colours, bounded strip/pill sizes, truncation and full-name
-individual/strip/metadata tooltips. The same fixture checks 3px muted round separators,
+individual/strip/metadata tooltips. Colour cases replace the former solid-fill assertions:
+18 independent samples cover green, amber, purple, red, blue, yellow, black/near-black,
+white/near-white and both sides of the label lightness/border thresholds. The expected
+HSL results were derived with Python colorsys and the three reference hues cross-checked
+against Primer CSS in Chrome; no test computes its oracle using the production helper.
+RGB conversion allows one byte of rounding; alpha bytes are exact (18% becomes `2e`,
+30% becomes `4d`). The real row runs through dark → light → dark palettes at each zoom,
+state and ordinary/coordinator/ghost combination. Border plus padding preserves the
+original 5px content inset and 18px outer height; neutral fallback retains exact names.
+
+`src/plugins/git/mod/label-colors.js` adapts the MIT-licensed
+[Primer IssueLabelToken CSS](https://github.com/primer/react/blob/2128032dca65a1bd565fe382c2e91c638c6473a4/packages/react/src/Token/IssueLabelToken.module.css)
+and its [rounded HSL inputs](https://github.com/primer/react/blob/2128032dca65a1bd565fe382c2e91c638c6473a4/packages/react/src/Token/IssueLabelToken.tsx),
+with attribution preserved in the helper. Perceived lightness is the weighted encoded
+RGB sum divided by 255, not gamma-corrected WCAG luminance. Dark text adds
+`(0.6 - perceived) * 100 * clamp(1 / (0.6 - perceived), 0, 1)` to rounded HSL lightness;
+background/border alpha are 0.18/0.3. Light text switches at 0.453; the border uses
+HSL lightness minus 25 with alpha `clamp((perceived - 0.96) * 100, 0, 1)`.
+Effective panel backgrounds below weighted RGB lightness 0.5 use dark rules, others
+use light; unavailable/invalid backgrounds default dark. This classification and
+invalid label colours are covered separately from the upstream formula.
+
+The same fixture checks 3px muted round separators,
 optically lowered 1.5 logical pixels from the parent line-box centre with equal 6px gaps,
 in bylines and every status/review/label boundary. Zoom cases from 75% to 200% retain
 the same logical offset; comparison with the old separator tree protects neighbouring
@@ -199,22 +221,68 @@ No deployment or live label mutation is performed.
 ## Connected fleet fixtures
 
 `tests/fleet-preferences.test.mjs` covers the actual Spaces preference and Settings
-switch, old/new snapshot round trips and runtime-identity exclusion in disposable
+switch, explicit durable-identity clearing on disable, old/new snapshot round trips
+and durable/runtime-identity exclusion in disposable
 checkout artifacts. `src/plugins/crew/fleet.test.mjs` loads packaged plugin sources
 with fake status/Core snapshots: exact owner/task joins, moved/conflicting/remote
 identities, TTL/coalescing, order-independent binding, expiry and disable generations.
+`src/plugins/crew/fleet-refresh.test.mjs` drives the real provider/registry with
+fake clocks and deferred status reads. Every sampled Spaces projection and Crew
+tag frame remains attached through Git/Spaces refresh, focus/unrelated topology
+changes and the old expiry boundary. Adding/removing/renaming/reordering/selecting
+unrelated spaces/tabs/panes on either machine does not even invalidate the pair's
+fingerprint. Errors/malformed responses/timeouts preserve successful verification
+age and the identity-lifetime display through long outages; retries back off while
+actions expire independently. Fresh module graphs exercise first-frame cold/hot/
+layout restoration, no render writes/IO, completed crash leases, corruption, remote
+layout loading/pruning and explicit disablement. Persisted raw timestamps/tokens
+never authorize a new runtime, and negative/expired/obsolete completions cannot
+resurrect old bindings. Spaces drop fixtures refuse standalone
+moves on retained unverified pairs; the real Git aggregate/relay refresh fixture
+also samples actual sidebar projection across its in-flight status read.
 `tests/fleet-reorder.test.mjs` exercises pure display blocks and queued public move
 acknowledgements, either grabbed member, pair edges, timeout and no replay. Shared
 reorder and Spaces render fixtures cover both-source dimming, stacked preview and
-expanded/compact link glyphs while preserving ordinary worktree order.
+expanded/compact vector elbows and paired previews while preserving ordinary
+worktree order. Geometry assertions put the thin 1px muted stem under the parent
+badge centre, the bend on the child name's centre line, and only the name at its
+8px child inset; rail selection and ordinary numbering stay unchanged. Packaged Crew
+fixtures retain the coordinator's Crew tag, omit only the verified attached fleet's
+tag, restore ordinary worker tags on confirmed detach/attachment-off, and hide all Crew
+tags when the plugin is disabled; tag reads start no discovery or state writes.
+Worktree layout fixtures compare actual local/remote machine-chevron and trailing
+branch-slot right axes for ordinary/attached rows, Crew and multiple plugin pills,
+long names, tag-only edges, hidden icons and rename mode.
 
 `tests/fleet-git.test.mjs` loads the actual Git controller, aggregate source and Crew
 provider through the package harness. Synthetic tasks/gh results cover coordinator
 non-repo routing, recorded working/reported links, missing/new links, duplicate
 cross-repository PR numbers, shared PR deduplication, scoped counts/errors, exact
-worker robots, incomplete wording, repository enrollment links, webhook burst
-coalescing, no periodic GitHub reads, hide/show catch-up and stale completions.
+worker robots, absent extra task heading/incomplete notice, repository enrollment
+links, webhook burst coalescing, no periodic GitHub reads, hide/show catch-up and
+stale completions. It loads the real shared UI header and covers machine-style
+chevron geometry, default expansion, independent repository folds, localStorage
+restore after panel recreation, temporary repository absence, tab/refresh changes,
+zero and live counts while folded, hidden/restored scoped body notices, stale toggle
+guards, no fold-triggered reads and no false empty state when all sections fold.
+The merged fixture retains the real shared-relay deferred-delivery/render guards,
+PR label add/remove assertions and new shared row. Repository counts reuse the 3px
+centred separator. Long outages retain rows/counts/folds with Stale and no robot,
+read or live-consumer authority; cold controllers render Verifying/waiting without
+persisted PR inventory or folder fallback. Fresh verification restores controls.
+Immediate-spawn guards reject synchronous notify, shared writes and new IO.
 No fixture uses real Core, credentials, GitHub, terminals, native input or deployment.
+`tests/fleet-history.test.mjs` drives the actual --all reader, Crew join, Git
+controller/aggregate and UI with fake GitHub facts. It covers same-home finished
+Open/Draft rows without robots, live/history duplicate precedence and one read per
+PR, Core-first worker exit before the closed record (even with another live
+worker preserving adoption), last-worker-exit scope continuity,
+recent/old/undated/invalid/future and exact
+24-hour Closed boundaries, unchanged live-task eligibility, accurate counts,
+excluded empty history headers, webhook reopen/close, three-read concurrency and
+stale robot refusal. Finished-task rows use the merged shared row's labels, absent
+Owner badge and centred metadata separators rather than a separate historical renderer. The provider also checks source size/task bounds and rejects
+another owner/home or machine. No fixture reads real task reports or GitHub.
 Recorded links deliberately do not guarantee pre-report PR discovery. Native pixels,
 actual drag motion and real remote execution remain unverified without separate
 authorization; fixture success is not deployment evidence.
@@ -333,7 +401,7 @@ only the demonstrated Windows Git-sh fixture remains an observed suite exclusion
 ## Exact selected source entries
 
 The list below is generated from CI selection, not inferred from naming. On Node
-24 the current selection is **144 Ubuntu / 143 Windows entries**, with two/three
+24 the current selection is **152 Ubuntu / 151 Windows entries**, with two/three
 explicit exclusions respectively. The installed directory-loader fixture now runs
 on both; the preference-home and four runtime-contract suites are included. It includes scaffold/aggregator tests. Earlier Node 20 attempts selected
 122/121 and then 119/119 entries while diagnosing the crashes; those temporary
@@ -406,6 +474,8 @@ tests/deploy-all-pipeline.test.mjs
 tests/deploy-all-remote.test.mjs
 tests/deploy-all-result.test.mjs
 tests/deploy-all.test.mjs
+tests/deploy-failure.test.mjs
+tests/deploy-gate-pipeline.test.mjs
 tests/deployment.test.mjs
 tests/empty-state.test.mjs
 tests/file-refresh.test.mjs
@@ -413,8 +483,13 @@ tests/file-tab-reuse.test.mjs
 tests/files-plugin-tabs.test.mjs
 tests/files-refresh-policy.test.mjs
 tests/firstmate-profile-role.test.mjs
+tests/fleet-git.test.mjs
+tests/fleet-history.test.mjs
+tests/fleet-preferences.test.mjs
+tests/fleet-reorder.test.mjs
 tests/folder-browser-multi.test.mjs
 tests/folder-content.test.mjs
+tests/frame-upgrade.test.mjs
 tests/git-ci-fix.test.mjs
 tests/git-context-menu.test.mjs
 tests/git-core-monitor.test.mjs
@@ -425,8 +500,10 @@ tests/git-notices.test.mjs
 tests/git-relay-lifecycle.test.mjs
 tests/git-repository-checkboxes.test.mjs
 tests/git-repository-cli.test.mjs
+tests/git-row-labels.test.mjs
 tests/git-webhooks.test.mjs
 tests/host-facade.test.mjs
+tests/host-gate.test.mjs
 tests/installed-export.test.mjs
 tests/native-selection.test.mjs
 tests/ownership-report.test.mjs
@@ -462,6 +539,7 @@ tests/spaces-settings.test.mjs
 tests/spaces-startup.test.mjs
 tests/spaces-worktree-layout.test.mjs
 tests/status-reveal.test.mjs
+tests/stock-baseline.test.mjs
 tests/tab-arrival.test.mjs
 tests/tab-move-compatibility.test.mjs
 tests/tab-move-ui.test.mjs
@@ -479,6 +557,8 @@ tests/usage-plugin.test.mjs
 src/plugins/a1-colors/session-name.test.mjs
 src/plugins/a1-colors/session-sync.test.mjs
 src/plugins/a1-colors/settings.test.mjs
+src/plugins/crew/fleet-refresh.test.mjs
+src/plugins/crew/fleet.test.mjs
 src/plugins/crew/plugin.test.mjs
 scripts/ci-required.test.mjs
 ```

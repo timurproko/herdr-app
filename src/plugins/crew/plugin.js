@@ -487,11 +487,15 @@ const crewCommandScript = args => [
 ].join('\n');
 export const crewProjectScript = args => crewCommandScript(['project', ...args]);
 const readFleetStatus = async machine => {
-  const result = await powershell(machine, crewCommandScript(['status', '--json']), {timeout:15});
+  const result = await powershell(machine, crewCommandScript(['status', '--all', '--json']), {timeout:15});
   if(result.code!==0) throw Error('Crew status unavailable');
   return result.stdout;
 };
-const refreshFleetContext = cx => refreshFleets(cx.cx, readFleetStatus, cx.force === true);
+const refreshFleetContext = ({cx,force}) => cx?.spawn(async view => {
+  // Lifecycle hooks may be called by render, and native spawn can start inline.
+  // Yield before persistence, leases or IO, just like the shared relay consumer.
+  await Promise.resolve();refreshFleets(view, readFleetStatus, force === true);
+});
 // `crew project list` prints one line per project: name and folder, tab-separated, and
 // sometimes a third column with a setting of that project (how it is delivered, say).
 export function parseProjects(stdout) {
@@ -776,13 +780,14 @@ export default {
   ],
   hooks: {},
   events: { 'spaces.refresh': refreshFleetContext, 'workspace.context.refresh': refreshFleetContext },
-  workspaceLinks: () => fleetContexts().filter(c=>c.child),
-  pullContext: ({space}) => fleetPullContext(space),
+  workspaceLinks: ({presentation = false} = {}) => fleetContexts({presentation}).filter(c=>c.child),
+  pullContext: ({space,presentation = false}) => fleetPullContext(space,{presentation}),
   onEnabledChange: invalidateFleet,
   // The Spaces sidebar's tag for a space the coordinator or crew workers run in.
   spaceTags: space => {
-    if (fleetContexts().some(c=>c.child && (c.parent===space.id || c.child===space.id))) return [];
-    const kind = crewInSpace(space);
+    const display = fleetContexts({presentation:true});
+    if (display.some(c=>c.child===space.id)) return [];
+    const kind = display.some(c=>c.parent===space.id) ? 'coordinator' : crewInSpace(space);
     return kind ? [{ label: 'Crew', tooltip: kind === 'coordinator' ? 'Crew coordinator' : 'Crew worker' }] : [];
   },
   // Required moment behind a profile's role: prepare the launch or refuse. The role id stays

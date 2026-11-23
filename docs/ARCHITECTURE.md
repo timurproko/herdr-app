@@ -152,7 +152,7 @@ been retired; third-party license notices retain their original attribution.
 
 ## Fleet context contributions
 
-Crew owns `plugins/crew/fleet.js`: plain installed `crew status --json` supplies
+Crew owns `plugins/crew/fleet.js`: installed `crew status --all --json` supplies
 owner/task terminals and recorded PRs. `custom.crew.home=1` is only a role hint;
 `crew.home` is a worker home tag. The resolver joins exact live machine-qualified
 terminals to actual panes/spaces and verifies the fleet adoption identity. Missing,
@@ -168,12 +168,73 @@ Spaces lifecycle, a 10-second TTL and expiring sanitized runtime facts under
 Only the default-off Spaces boolean is portable. Raw reports, task files and
 pending ordering operations are not exported or replayed.
 
+Successful publication separates durable identity (`custom.fleet.display`, version
+1) from expiring status facts, pending leases and retry timestamps. The durable
+record contains only bounded machine/space/home/owner references and adoption facts,
+with one pair per machine; no task/PR inventory, reports, transcripts or credentials.
+Public shared values are persisted by the SDK. Pure Spaces projection and Crew tag
+reads restore that record in the first available native-space frame after a cold
+start, mod replacement or layout switch, without render-time writes or IO. It is
+excluded from portable preferences. Explicit preference/plugin disablement clears
+it, and completed negative results or ready native-space absence prune it; another
+machine's loading layout cannot erase its record.
+
+Presentation has no wall-clock expiry. Its bound is the lifetime of the exact pair
+identities, not repeated re-earning after unrelated topology events. Fingerprints
+include only parent/child presence, coordinator owner/home membership and fleet
+adoption facts, never unrelated names/order/selection/tabs/panes. Errors do not
+publish `status:null` or renew success age; independent attempt timestamps back off
+retries. Crew lifecycle hooks explicitly yield before persistence, leases or reads,
+including when native spawn begins inline.
+
+Strict action queries still require a current-runtime witnessed status result,
+30-second freshness, matching dependency fingerprints and exact live membership.
+Persisted timestamps/tokens cannot authorize a cold module. Consumers can witness a
+shared in-flight read, preserving coalescing across mod copies, but completed crash
+leases are not fresh verification. Drops on/from a retained unverified block refuse
+to move, never fall back to a single-space reorder. Git requests presentation context
+only to retain already-loaded same-home rows/counts/folds with a Stale badge, or a
+Verifying/waiting state with no restored inventory on cold start. It starts no task
+GitHub reads or worker navigation from stale context, and pauses its relay consumer,
+not the chrome-owned shared broker or independent update checks. Fresh verification
+resumes targeted reads and controls; different selected spaces or confirmed ownership
+changes cannot inherit those rows. Git additionally matches the successfully
+verified live-task membership, independently of the pair/adoption fingerprint: a
+Core-first worker exit cannot silently remove its PR before Crew publishes the
+closed record. A working/finished mismatch remains unverified rather than renewing
+action freshness, while existing same-home rows stay explicitly stale.
+
 `plugins/git/mod/aggregate.js` consumes the registry's explicit task context only
 for the selected coordinator. It reads exact recorded PR URLs on that machine with
 three bounded concurrent requests, keys rows by repository plus PR number, and
 never probes the coordinator's directory. Working/reported live terminals are
-eligible; unreported tasks trigger the possibly-incomplete label. There is no
-single active pin or repository-wide PR inventory in this mode.
+eligible. Same-home closed-task records contribute recorded links without live
+worker authority; they cannot establish a fleet child. The verified owner/home
+PR scope excludes the optional child so last-worker exit does not discard PR facts.
+Full PR identities deduplicate before reads/counts; current live sources win robot
+selection, and historical-only rows have no target. Captured robot callbacks still
+require a current live source.
+
+Historical-only Open/Draft rows remain eligible. Merged/Closed historical rows use
+GitHub's existing `mergedAt`/`closedAt` fields and expire after 24 hours; missing,
+invalid or future completion dates do not admit historical Closed rows. Live-task
+rows retain normal eligibility. Repository/global counts use the same eligible
+rows, and repositories containing only excluded history have no empty headers.
+Candidate facts remain bounded for webhook reopen/merge events; aging does not poll
+GitHub. The existing 1 MiB/4096-task source limits, 15-second status timeout and
+three concurrent targeted GitHub reads remain. No private task timestamps are read. There is no extra task heading or generic incomplete-list notice, single
+active pin or repository-wide PR inventory in this mode. Missing recorded links
+still cannot be inferred from transcripts or branches.
+
+`ui/ui.js` owns `sidebarSectionHeader`, the common machine/repository header shell
+and right-edge chevron; Spaces retains its own actions and guarded folding.
+Aggregate repository headers start expanded, retain both task-scoped Open/Closed
+counts when folded using the shared row's 3px centred metadata separator, and persist a canonical repository-key set in localStorage
+(`custom.git.task-repositories.folded`), like Spaces' `machines.folded` set.
+Explicit toggles are UI-only: no preference export or Crew/host-document writes,
+and no new fetch or cancellation. Fold state survives tab/context changes and
+panel recreation. Scoped rows/errors/enrollment notices fold with the body; global
+setup stays visible. Counts and webhook-driven facts continue updating while folded.
 
 The existing single authenticated WebSocket routes repository invalidations into
 the aggregate index. Bursts coalesce behind each in-flight PR read; reconnect/show
