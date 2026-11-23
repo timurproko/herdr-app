@@ -17,10 +17,10 @@
 
 ## 3. Pre-report coordinator behavior and compatibility integration
 
-- [ ] 3.1 Add an end-to-end fixture from a working task with recorded pr null and known discovery URL through the registry context into the coordinator aggregate; assert the first draft appears once with the exact live worker and no report, footer or branch inference.
-- [ ] 3.2 Protect mixed known/none/unavailable budget partials, recorded-only old/unknown-version compatibility, shared live/history deduplication, last-worker exit and closed-history aging in integration fixtures; unchanged PR facts must not gain periodic GitHub reads.
-- [ ] 3.3 Retain normal Git title, folds, counts and removed-notice assertions without editing the enrollment banner or label pill renderer; update README's coordinator source/compatibility description to match the exercised integration.
-- [ ] 3.4 Run the required CI=true npm run test:ci once for implementation handoff, recording its real outcome and any remaining native-validation gaps without deployment.
+- [x] 3.1 Add an end-to-end fixture from a working task with recorded pr null and known discovery URL through the registry context into the coordinator aggregate; assert the first draft appears once with the exact live worker and no report, footer or branch inference.
+- [x] 3.2 Protect mixed known/none/unavailable budget partials, recorded-only old/unknown-version compatibility, shared live/history deduplication, last-worker exit and closed-history aging in integration fixtures; unchanged PR facts must not gain periodic GitHub reads.
+- [x] 3.3 Retain normal Git title, folds, counts and removed-notice assertions without editing the enrollment banner or label pill renderer; update README's coordinator source/compatibility description to match the exercised integration.
+- [x] 3.4 Run the required CI=true npm run test:ci once for implementation handoff, recording its real outcome and any remaining native-validation gaps without deployment.
 
 ## Workflow follow-up
 
