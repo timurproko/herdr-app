@@ -495,12 +495,18 @@ See [independent startup and management](docs/GIT-CORE-MONITOR.md) and
 
 ## Terminal copy feedback
 
-On Windows, Custom shows a standard success toast, **Copied N chars to clipboard**,
-for best-effort native terminal mouse copy-on-select. Missing window facts during
-cold startup no longer disable the observer: it starts when those facts arrive.
-Turning native `copy_on_select` off stops this feedback; turning it back on resumes it.
-The observer only reads the local clipboard and leaves text, selection and terminals
-unchanged.
+On Windows, Custom shows its own centered terminal-font popup, **Copied N chars to
+clipboard**, for best-effort native terminal mouse copy-on-select—not the standard
+notification. It sits at the bottom center of the terminal area in the source tab,
+with white terminal-font text, the theme's popover background and border, and the
+original rounded box and fade/slide animation. It stays for two seconds before
+fading out; another settled copy updates it and renews its lifetime.
+
+Missing window facts during cold startup do not disable the observer: it starts
+when those facts arrive. Turning native `copy_on_select` off stops this feedback;
+turning it back on resumes it. The observer reads the local clipboard directly,
+without subprocesses, and leaves text, selection and terminals unchanged. Each
+settled selection produces at most one popup, including same-text inference.
 
 Herdr exposes selection changes, not copy completion or mouse release. Feedback
 therefore uses a short selection-settle delay and bounded clipboard checks; a held
