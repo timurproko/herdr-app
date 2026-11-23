@@ -39,7 +39,8 @@ async function harness() {
   const panelKit=kitModule(context);withKitUi(modules['./ui.js'],element);
   await main.link(name=>name==='./settings-dialog.js'?new vm.SourceTextModule(fs.readFileSync(new URL('../src/ui/settings-dialog.js',import.meta.url),'utf8'),{context}):name==='./panel-kit.js'?panelKit:new vm.SyntheticModule(Object.keys(modules[name]),function(){for(const [k,v]of Object.entries(modules[name]))this.setExport(k,v);},{context}));
   await main.evaluate();
-  const view=new main.namespace.default(),cx={notify(){},stop_propagation(){},spawn:fn=>tasks.push(fn(cx)),timer:{every:(ms,fn)=>timers.push({ms,fn}),after:(ms,fn)=>phases.push({ms,fn})}};
+  let rendering=false;
+  const view=new main.namespace.default(),cx={focus_handle(){assert.equal(rendering,false,'No focus allocation from render');return {};},notify(){assert.equal(rendering,false,'No notify from render');},stop_propagation(){},spawn:fn=>tasks.push(fn(cx)),timer:{every:(ms,fn)=>timers.push({ms,fn}),after:(ms,fn)=>phases.push({ms,fn})}};
   view.resetRepository();view.view='open';view.root='/repo';view.on=place.on;view.context=JSON.stringify([place.cwd,place.on]);
   view.repo={name:'owner/repo',owner:'owner'};view.agentPull=1;view.selection=JSON.stringify(place);view.agentResolved=JSON.stringify(place);
   view.pulls.open=[pulls.pullRow(raw(1)),pulls.pullRow(raw(2,running))];view.pulls.closed=null;
@@ -48,7 +49,7 @@ async function harness() {
   const reply=async(stdout,code=0)=>{const c=pending.shift();assert.ok(c,'Expected read');c.resolve({code,stdout,stderr:code?'network failed':''});await tick();return c;};
   // Rendering chrome should not start unrelated agent/repository reads in these tests.
   view.syncAgent=()=>{};view.loadRelatedPull=()=>{};
-  return {view,cx,place,pending,tasks,timers,phases,opened,tick,event,reply,render:()=>view.render(cx),hide:()=>{shown=false;},disable:()=>{enabled=false;}};
+  return {view,cx,place,pending,tasks,timers,phases,opened,tick,event,reply,render:()=>{rendering=true;try{return view.render(cx);}finally{rendering=false;}},hide:()=>{shown=false;},disable:()=>{enabled=false;}};
 }
 {
   const h=await harness(),v=h.view;
