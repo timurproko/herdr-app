@@ -7,6 +7,7 @@
 // identity labels) or refuses with the reason; the only thing it ever writes is the crew
 // home itself, the first time.
 import { hc, shared, setShared, panes, terminals } from '../api.js';
+import { refreshFleets, fleetContexts, fleetPullContext, invalidateFleet } from './fleet.js';
 
 const winPath = path => String(path).replace(/\//g, '\\');
 const CHECK_TIMEOUT = 15, INSTALL_TIMEOUT = 300;
@@ -477,13 +478,20 @@ const UPDATE_CREW = Object.freeze({ label: 'Update', statusLabel: 'Updating', ru
 // stays).
 
 // One `crew project …` call. Arguments are passed as quoted PowerShell strings.
-export const crewProjectScript = args => [
+const crewCommandScript = args => [
   "$ErrorActionPreference = 'Stop'",
   `$root = ${CREW_ROOT}; ${PICK_TOOL}; $main = Join-Path $tool 'crew.mjs'`,
   "if (-not (Test-Path -LiteralPath $main -PathType Leaf)) { [Console]::Error.WriteLine('The crew tool is not installed.'); exit 1 }",
-  `& node $main project ${args.map(psQuote).join(' ')}`,
+  `& node $main ${args[0]} ${args.slice(1).map(psQuote).join(' ')}`,
   'exit $LASTEXITCODE',
 ].join('\n');
+export const crewProjectScript = args => crewCommandScript(['project', ...args]);
+const readFleetStatus = async machine => {
+  const result = await powershell(machine, crewCommandScript(['status', '--json']), {timeout:15});
+  if(result.code!==0) throw Error('Crew status unavailable');
+  return result.stdout;
+};
+const refreshFleetContext = cx => refreshFleets(cx.cx, readFleetStatus);
 // `crew project list` prints one line per project: name and folder, tab-separated, and
 // sometimes a third column with a setting of that project (how it is delivered, say).
 export function parseProjects(stdout) {
@@ -766,8 +774,13 @@ export default {
     PROJECTS,
   ],
   hooks: {},
+  events: { 'spaces.refresh': refreshFleetContext, 'workspace.context.refresh': refreshFleetContext },
+  workspaceLinks: () => fleetContexts().filter(c=>c.child),
+  pullContext: ({space}) => fleetPullContext(space),
+  onEnabledChange: invalidateFleet,
   // The Spaces sidebar's tag for a space the coordinator or crew workers run in.
   spaceTags: space => {
+    if (fleetContexts().some(c=>c.child && (c.parent===space.id || c.child===space.id))) return [];
     const kind = crewInSpace(space);
     return kind ? [{ label: 'Crew', tooltip: kind === 'coordinator' ? 'Crew coordinator' : 'Crew worker' }] : [];
   },

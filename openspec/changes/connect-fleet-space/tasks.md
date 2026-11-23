@@ -10,10 +10,10 @@ Implementation approved for recorded links only. These five groups match the PR'
 
 ## 2. Crew contributes verified same-machine coordinator and fleet context
 
-- [ ] 2.1 Add a Crew-owned read-only status transport/parser and binding resolver using the installed tool and exact machine-qualified owner/task terminals; cover default home, remote qualification, repeated local IDs, absent owner, conflicting labels, ambiguous fleets, stale replies and workers manually moved elsewhere with fake hc/status fixtures.
-- [ ] 2.2 Add generic registry workspace-link/context contributions and only the required plugin API support, without direct feature-to-Crew imports; cover disabled/throwing providers and packaging/import boundaries with registry and architecture fixtures.
-- [ ] 2.3 Publish expiring sanitized runtime context through coalesced lifecycle reads with generation and membership guards; cover one in-flight read per machine/home, timeout, replacement, reconnect, off/no-reads and exclusion of runtime identity from preference exports.
-- [ ] 2.4 Document the observed role-marker versus home-tag distinction, exact ownership join and unsupported custom-home fallback in architecture guidance; compare docs with parser fixtures and run the focused plugin/packaging checks.
+- [x] 2.1 Add a Crew-owned read-only status transport/parser and binding resolver using the installed tool and exact machine-qualified owner/task terminals; cover default home, remote qualification, repeated local IDs, absent owner, conflicting labels, ambiguous fleets, stale replies and workers manually moved elsewhere with fake hc/status fixtures.
+- [x] 2.2 Add generic registry workspace-link/context contributions and only the required plugin API support, without direct feature-to-Crew imports; cover disabled/throwing providers and packaging/import boundaries with registry and architecture fixtures.
+- [x] 2.3 Publish expiring sanitized runtime context through coalesced lifecycle reads with generation and membership guards; cover one in-flight read per machine/home, timeout, replacement, reconnect, off/no-reads and exclusion of runtime identity from preference exports.
+- [x] 2.4 Document the observed role-marker versus home-tag distinction, exact ownership join and unsupported custom-home fallback in architecture guidance; compare docs with parser fixtures and run the focused plugin/packaging checks.
 
 ## 3. Linked spaces display an attachment and drag together as one block
 

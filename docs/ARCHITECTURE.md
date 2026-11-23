@@ -146,6 +146,24 @@ Do not sync credentials, account caches, usage reports, sessions, `shared.json`,
 `custom-*` and `custom.*`. Old namespace migration tools and label aliases have
 been retired; third-party license notices retain their original attribution.
 
+## Fleet context contributions
+
+Crew owns `plugins/crew/fleet.js`: plain installed `crew status --json` supplies
+owner/task terminals and recorded PRs. `custom.crew.home=1` is only a role hint;
+`crew.home` is a worker home tag. The resolver joins exact live machine-qualified
+terminals to actual panes/spaces and verifies the fleet adoption identity. Missing,
+ambiguous, moved or cross-machine identities fail closed. Unrouted custom homes
+remain ordinary spaces. No Crew record is changed and no new companion is needed.
+
+Registry `pluginWorkspaceLinks()` and `pluginPullContext(space)` expose read-only
+contributions; lifecycle events refresh them after yielding. The source adapter
+`recordedSource` and injected status reader are the future-discovery seam, not a
+promise or call to discover-prs. Coalesced per-machine reads use the existing
+Spaces lifecycle, a 10-second TTL and expiring sanitized runtime facts under
+`custom.fleet.links`; preference/plugin generations invalidate late responses.
+Only the default-off Spaces boolean is portable. Raw reports, task files and
+pending ordering operations are not exported or replayed.
+
 ## Right-sidebar tab pins
 
 `shared/panel-state.js` is the single owner of `custom.panel.tabs` (version 1):
