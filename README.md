@@ -578,7 +578,30 @@ worktree**. Rows and popup height never change during an open menu; reopening pi
 up newer metadata. Worktree dialogs keep the clicked folder rather than a later
 selected terminal's folder.
 
-**Settings → Spaces** exposes two independent, persistent switches:
+**Settings → Spaces → Connect fleet space to coordinator** is off by default
+(`connectFleetToCoordinator`). When on with Crew enabled, a verified same-machine
+fleet attaches below its coordinator with a link badge; both rows omit the Crew tag.
+Dragging either expanded row moves the pair, with both rows dimmed and a paired
+preview. Public ordering commands wait for acknowledgements; the two-space move is
+not atomic and an uncertain result is never replayed. The compact rail remains
+selection-only and shows the same link glyph. They remain separate selectable native
+spaces; no terminals or tabs are relocated. The coordinator's Git panel shows only
+recorded task PRs across projects, with task-scoped counts and no single active pin.
+Live working and reported tasks (including plans awaiting approval) are included.
+Unreported tasks make the recorded list possibly incomplete, even if a previous
+report already supplied a link. PR rows are grouped by repository; Open/Closed
+counts cover those distinct linked PRs only, never all PRs in each repository.
+Robots open the exact live worker, and PR menus retain their captured URL.
+The source is plain `crew status --json` (`tasks[].pr`), not transcript/branch
+inference or a new Crew capability. No Crew change is required. The existing
+webhook connection refreshes only relevant linked repositories; unchanged PR/CI
+facts are not polled. Manual Refresh remains available. Repository errors and
+Add this repo in Settings links are scoped to that repository; nothing is enrolled
+automatically and auto-fix permissions do not change. Off retains today's
+independent spaces and folder-based Git. Only the boolean is portable; pair bindings,
+homes, task/terminal identities and in-flight ordering are not exported.
+
+**Settings → Spaces** also exposes two independent, persistent switches:
 
 - **Confirm before closing the last tab** (off by default): Custom's tab/pane
   buttons, Agents context-menu Close, Jump, palette and close shortcuts ask before
@@ -639,7 +662,7 @@ Turning auto-close back on removes only terminal-free Start tabs beside existing
 work, never running terminals; already-empty spaces stay until you close them or
 add work again. If a Start tab is split with real work, it is treated as an ordinary
 work tab and never hidden or automatically deleted. Preference snapshots export
-only the two switches and their schema version, not space/session IDs.
+only the three Spaces switches and their schema version, not space/session IDs.
 
 ## Jump dialog
 

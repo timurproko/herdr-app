@@ -73,7 +73,7 @@ async function harness(feature, pluginOn = true) {
     './file-icons.js': {fileIconAsset: () => ''},
     './file-header.js': {fullFilePath() {}, fileHeader: (_tab, fallback) => fallback, publishFileHeader() {}, fileReloadStamp() {}, finishFileReload() {}},
     './preview-font.js': {previewFont: () => ({})},
-    './plugins.js': {runPluginHook: async () => false, sidebarPanelEnabled: () => pluginOn},
+    './plugins.js': {pluginPullContext: () => null, pluginEvent() {}, runPluginHook: async () => false, sidebarPanelEnabled: () => pluginOn},
     './sidebar-title.js': {sidebarTitle: () => element()},
     './delete-entry.js': {deleteEntry() { throw Error('Refresh must never recycle files'); }},
   };
@@ -83,6 +83,7 @@ async function harness(feature, pluginOn = true) {
     if (specifier === './ui.js') return new vm.SourceTextModule(fs.readFileSync(path.join(root, 'src/ui/ui.js'), 'utf8'), {context});
     if (specifier === './panel-kit.js') return new vm.SourceTextModule(fs.readFileSync(path.join(root, 'src/ui/panel-kit.js'), 'utf8'), {context});
     if (specifier === './settings-dialog.js') return new vm.SourceTextModule(fs.readFileSync(path.join(root, 'src/ui/settings-dialog.js'), 'utf8'), {context});
+    if (specifier === './aggregate.js') return new vm.SourceTextModule(fs.readFileSync(path.join(root, 'src/plugins/git/mod/aggregate.js'), 'utf8'), {context});
     if (exports[specifier]) return new vm.SyntheticModule(Object.keys(exports[specifier]), function () {
       for (const [key, value] of Object.entries(exports[specifier])) this.setExport(key, value);
     }, {context});

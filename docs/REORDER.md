@@ -50,6 +50,15 @@ feature-local drag implementations. Keep one fixed configuration per instance.
    returning retained child. `sourceLayer(element, id)` optionally fades a source
    highlight in sync with the source; it is not a destination hover effect.
 
+A domain block can pass `meta: {sources: [id, ...], ...binding}` to `begin`.
+All captured sources share dimming/return cleanup; ordinary clicks retain the
+original pressed ID. `preview(..., {rows: [{icon,label}, ...]})` draws a stacked
+block chip with the same pointer/return motion. Domain adapters still validate
+bindings and destination block edges. Spaces commits its finite public ordering
+sequence only after each prior move is acknowledged; no native transaction is
+claimed and an uncertain result is not replayed. The compact Spaces rail retains
+its existing selection-only behavior, with a link icon for the attached fleet.
+
 Read-only state: `current`, `active`, `target`, `view` (active or returning), and
 `leaving`. Do not seed these in feature code; fixtures may do so to render phases.
 
