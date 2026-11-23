@@ -4,7 +4,11 @@
     {
       "id": "palette",
       "target": "frame/palette",
-      "originals": ["frame-patches/palette/original.js", "frame-patches/palette/original-0.1.13.js"],
+      "originals": ["frame-patches/palette/original.js", "frame-patches/palette/original-windows.js", "frame-patches/palette/original-0.1.13.js", "frame-patches/palette/original-0.1.17.js", "frame-patches/palette/original-0.1.17-windows.js"],
+      "mainByOriginal": {
+        "frame-patches/palette/original-0.1.17.js": "frame-patches/palette/main-0.1.17.js",
+        "frame-patches/palette/original-0.1.17-windows.js": "frame-patches/palette/main-0.1.17.js"
+      },
       "files": {
         "custom-ui.js": "lib/ui.js",
         "custom-look.js": "lib/look.js",

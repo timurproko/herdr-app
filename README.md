@@ -1238,13 +1238,18 @@ supported global confirmation override exists, and the shipped Confirm mod is
 never patched.
 Install/layout entry repairs only prior opt-ins. Unknown native bytes are skipped
 with an advisory, not a failed deploy; personal dependency conflicts and corrupt
-records still fail. On 0.1.17 the standard palette remains instead of Custom's
-styling and command routing. Feedback's corrected byte-faithful originals support
-0.1.16/0.1.17 refresh for prior opt-ins: its JavaScript did not change, and the old
-rejection was a false negative. Unknown future feedback remains native, or an old
-owned patch is retained without refresh. Restoring unsupported styling needs reviewed native originals and a
-patch rebase, not a version allowlist. See the native patch policy for the exact
-lost features and provenance safeguards. The worker is deployed with the customization and does not
+records still fail. Reviewed 0.1.16/0.1.17 originals support refresh for prior
+opt-ins. On 0.1.17, Custom's palette styling, fixed headings, fades, keyboard
+navigation, Usage entry and Custom command routing return **without losing native
+dynamic light/dark/layout-filtered theme choices**. Feedback's JavaScript did not
+change: its old rejection was a false negative caused by incorrect canonical
+originals. Its compact attachments, Add image, expandable JSON details and Feedback
+sent view refresh again. Other layouts retain native presentation and routing.
+Unknown future stock remains untouched, or an old owned patch is retained without
+refresh; that patch's advisory never blocks an otherwise successful install/update.
+Restoring unsupported styling needs reviewed native originals and a patch rebase,
+not a version allowlist. See [review provenance](docs/HERDR-0.1.17-NATIVE-PATCHES.md)
+and the native patch policy for safeguards. The worker is deployed with the customization and does not
 need this source folder.
 
 ```powershell
