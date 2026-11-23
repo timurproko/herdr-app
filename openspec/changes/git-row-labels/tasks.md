@@ -2,10 +2,10 @@
 
 ## 1. Assigned GitHub labels arrive with existing PR reads and refresh on label events
 
-- [ ] 1.1 Extend the paginated GraphQL selection and targeted PR_FIELDS selection with labels; add facts tests demonstrating names and colours are returned by the existing list, older active-PR and coordinator requests without extra per-row requests.
-- [ ] 1.2 Normalize connection/array label payloads into shared row facts, preserving exact emoji names and order, handling empty/null data and invalid colours; cover each case in pull facts regressions.
-- [ ] 1.3 Add labeled/unlabeled relay and repository/coordinator refresh fixtures showing label addition/removal, burst coalescing and stale-context rejection through existing invalidation paths, including Open/Closed and older active PRs.
-- [ ] 1.4 Document label refresh behavior and unchanged request/transport boundaries in docs/GIT-WEBHOOKS.md and fixture coverage in docs/TESTING.md; check the focused facts, pagination, fleet and webhook suites.
+- [x] 1.1 Extend the paginated GraphQL selection and targeted PR_FIELDS selection with labels; add facts tests demonstrating names and colours are returned by the existing list, older active-PR and coordinator requests without extra per-row requests.
+- [x] 1.2 Normalize connection/array label payloads into shared row facts, preserving exact emoji names and order, handling empty/null data and invalid colours; cover each case in pull facts regressions.
+- [x] 1.3 Add labeled/unlabeled relay and repository/coordinator refresh fixtures showing label addition/removal, burst coalescing and stale-context rejection through existing invalidation paths, including Open/Closed and older active PRs.
+- [x] 1.4 Document label refresh behavior and unchanged request/transport boundaries in docs/GIT-WEBHOOKS.md and fixture coverage in docs/TESTING.md; check the focused facts, pagination, fleet and webhook suites.
 
 ## 2. Shared PR rows omit Owner and show bounded coloured label pills after tasks and checks
 

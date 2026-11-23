@@ -5,6 +5,7 @@ const find=(n,id)=>n?.attrs?.id?.[0]===id?n:n?.kids?.map(c=>find(c,id)).find(Boo
 const state={'custom.plugins':{crew:{enabled:true},git:{enabled:true}},'custom.spaces.preferences':{connectFleetToCoordinator:true}};
 let selected={space:'coordinator',cwd:'/not-a-repository',on:null,terminal:'t1'},shown=true,failRepo=null,defer=false,pendingCI=false;
 const waiting=[],settingsOpened=[],noticeModes={};
+let assignedLabels=[{name:'🤖 Under review',color:'840479'}];
 const groups=[{id:'coordinator',tabs:[{id:'c'}]},{id:'fm-crew-home',tabs:[{id:'a'},{id:'b'},{id:'dup'}]}];
 const all=[{pane:'cp',tab:'c',terminal:'t1'},...['a','b','dup'].map((id,i)=>({pane:id+'p',tab:id,terminal:'t'+(i+2)}))];
 const list=[{address:'t1',state:'live',labels:{'custom.crew.home':'1'}},...['a','b','dup'].map((id,i)=>({address:'t'+(i+2),state:'live',labels:{'crew.task':id,'crew.home':'home','herdr.space':'fm-crew-home'}}))];
@@ -15,7 +16,7 @@ const drain=async()=>{while(jobs.length)await Promise.all(jobs.splice(0));};
 const host={closeOverlay(){},openOverlay(){},nextCommand(){return new Promise(()=>{});},shared:k=>state[k],setShared:(k,v)=>state[k]=v,spaces:()=>groups,panes:()=>all,terminals:()=>list,machines:()=>[],checking:()=>false,
   props:()=>null,layout:()=>({id:'panel',hidden:!shown,children:[{id:'panel-body',active:'changes'}]}),settings:()=>({zoom:1}),theme:()=>({}),window:()=>({platform:'windows'}),notify(){},run:(...args)=>focus.push(args),
   hc:async args=>{assert.match(args.at(-1),/status '--json'/);return {code:0,stdout:JSON.stringify({code:0,stdout:Buffer.from(JSON.stringify(status)).toString('base64'),stderr:'',timed_out:false})};},
-  exec:async(cmd,args)=>{assert.equal(cmd,'gh','Coordinator cwd must not be probed as Git');calls.push(args);if(defer)await new Promise(resolve=>waiting.push(resolve));const repo=args[args.indexOf('--repo')+1];if(repo===failRepo)return {code:1,stderr:'unreachable'};return {code:0,stdout:JSON.stringify({number:12,title:repo,url:`https://github.com/${repo}/pull/12`,state:repo==='example/b'?'CLOSED':'OPEN',author:{login:'fixture'},body:'',statusCheckRollup:pendingCI?[{name:'build',status:'IN_PROGRESS'}]:[]})};}};
+  exec:async(cmd,args)=>{assert.equal(cmd,'gh','Coordinator cwd must not be probed as Git');calls.push(args);if(defer)await new Promise(resolve=>waiting.push(resolve));const repo=args[args.indexOf('--repo')+1];if(repo===failRepo)return {code:1,stderr:'unreachable'};return {code:0,stdout:JSON.stringify({number:12,title:repo,url:`https://github.com/${repo}/pull/12`,state:repo==='example/b'?'CLOSED':'OPEN',author:{login:'fixture'},body:'',labels:assignedLabels,statusCheckRollup:pendingCI?[{name:'build',status:'IN_PROGRESS'}]:[]})};}};
 const ui={U:{row:28,section:36,control:28,insetControl:24,gutter:8,gap:8,rowGap:2,font:12,meta:11,icon:16,tinyIcon:12,radius:6,insetRadius:4},headerTools:e=>e,reveal:e=>e,subtleActionFill:()=>'',refreshButton:(_t,opts)=>element().id(opts.id).on_click(opts.onClick)};
 let websocket;
 const modules={
@@ -28,7 +29,9 @@ const modules={
 const {Main,f,A}=await loadMod({host,modules,globals:{localStorage:{getItem(){return null;},setItem(){}}},mod:'custom-changes',entry:'export {default as Main} from "./main.js";export * as f from "./plugins/crew/fleet.js";export * as A from "./aggregate.js";'});
 f.refreshFleets(cx,async()=>JSON.stringify(status));await drain();
 const panel=new Main();panel.init({},cx);await drain();let tree=panel.render(cx);await drain();tree=panel.render(cx);
-assert.equal(calls.length,2,'Duplicate task PR is fetched once');assert.equal(panel.aggregate.counts().open,1);assert.equal(panel.aggregate.counts().closed,1);
+assert.equal(calls.length,2,'Duplicate task PR is fetched once');
+assert.ok(calls.every(args=>args.at(-1).split(',').includes('labels')));
+assert.equal(panel.aggregate.rows('open')[0].labels[0].name,'🤖 Under review');assert.equal(panel.aggregate.counts().open,1);assert.equal(panel.aggregate.counts().closed,1);
 assert.ok(find(tree,'pr-example/a#12'));assert.equal(find(tree,'pr-example/b#12'),undefined);assert.ok(find(tree,'git-task-incomplete'));assert.equal(find(tree,'active-pull'),undefined);
 panel.setView('closed',cx);tree=panel.render(cx);assert.ok(find(tree,'pr-example/b#12'));assert.equal(find(tree,'pr-example/a#12'),undefined);
 find(tree,'pr-agent-example/b#12').attrs.on_click[0]({},cx);assert.deepEqual(JSON.parse(JSON.stringify(focus.at(-1))),['agent.focus',{terminal:'t3'}]);
@@ -46,6 +49,16 @@ websocket.onChange({repository:'example/a'},cx);await tick();assert.equal(calls.
 websocket.onChange({repository:'example/a'},cx);websocket.onChange({repository:'example/a'},cx);await tick();assert.equal(calls.length,before+1);
 waiting.shift()();await tick();assert.equal(calls.length,before+2,'A burst produces only one coalesced follow-up');waiting.shift()();await drain();assert.ok(panel.ciSweep,'Task-linked running CI uses the header sweep');
 noticeModes['example/b']='repository';tree=panel.render(cx);find(tree,'git-live-ci-example/b-settings').attrs.on_click[0]({},cx);assert.equal(settingsOpened.at(-1).pluginSearch,'example/b');assert.equal(settingsOpened.at(-1).pluginSection,'repository');
+// Label add/remove invalidates the same targeted reads in both tabs.
+defer=false;pendingCI=false;
+for(const action of ['unlabeled','labeled']) {
+  assignedLabels=action==='labeled'?[{name:'🤖 Under review',color:'840479'}]:[];
+  const beforeLabels=calls.length;
+  for(const repository of ['example/a','example/b'])websocket.onChange({repository,event:'pull_request',action},cx);
+  await drain();assert.equal(calls.length,beforeLabels+2);
+  for(const tab of ['open','closed'])assert.equal(panel.aggregate.rows(tab)[0].labels.length,assignedLabels.length);
+}
+defer=true;
 // Hide/disable invalidates in-flight writes and starts no follow-up or polling.
 before=calls.length;panel.aggregate.refresh(cx);await tick();shown=false;panel.render(cx);while(waiting.length)waiting.shift()();await drain();assert.equal(calls.length,before+2);assert.equal(websocket.enabled,false);assert.equal(panel.aggregate.busy,false);
 shown=true;defer=false;panel.render(cx);await drain();assert.equal(calls.length,before+4,'Showing again catches up both linked repositories');

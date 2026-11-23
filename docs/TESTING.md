@@ -118,6 +118,15 @@ deploy/enable/disable/remove/rollback/preference-import operational commands.
 The real gh CLI fixture uses synthetic auth and a GET-only localhost server.
 Provider/relay/Cloudflare unit transports are mocks, not live requests.
 
+## Git PR label facts
+
+Pull facts, pagination, fleet and webhook fixtures cover assigned label names/colours
+in both GraphQL connection and targeted gh array results, including exact emoji names,
+empty/null labels and malformed-colour fallback. Labeled/unlabeled events refresh
+loaded Open/Closed pages and older active or coordinator PRs using the existing reads;
+bursts coalesce and stale contexts cannot repopulate labels. These use synthetic
+GitHub data, not real label mutations, credentials or relay deployments.
+
 ## Connected fleet fixtures
 
 `tests/fleet-preferences.test.mjs` covers the actual Spaces preference and Settings

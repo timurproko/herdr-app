@@ -23,8 +23,8 @@ function find(node,id) {
   if (node.attrs?.id?.[0] === id) return node;
   return node.kids?.map(child=>find(child,id)).find(Boolean);
 }
-const page = (start,count,cursor,hasMore=true) => JSON.stringify({data:{repository:{pullRequests:{
-  totalCount:100,nodes:Array.from({length:count},(_,i)=>({number:start+i,title:`PR ${start+i}`,state:'OPEN'})),
+const page = (start,count,cursor,hasMore=true,labels=[]) => JSON.stringify({data:{repository:{pullRequests:{
+  totalCount:100,nodes:Array.from({length:count},(_,i)=>({number:start+i,title:`PR ${start+i}`,state:'OPEN',labels:{nodes:labels}})),
   pageInfo:{endCursor:cursor,hasNextPage:hasMore},
 }}}});
 async function harness(state) {
@@ -157,7 +157,9 @@ for(const state of ['open','closed']) {
   // list pages, filtered to this tab, and never duplicated when paged in.
   v.agentPull=908;v.loadRelatedPull(h.cx);
   assert.deepEqual(Array.from(h.pending[0].args.slice(0,3)),['pr','view','908']);
-  await h.reply(JSON.stringify({number:908,title:'Older active PR',state:state==='open'?'OPEN':'MERGED'}));
+  assert.ok(h.pending[0].args.at(-1).split(',').includes('labels'));
+  await h.reply(JSON.stringify({number:908,title:'Older active PR',state:state==='open'?'OPEN':'MERGED',labels:[{name:'🤖 Under review',color:'840479'}]}));
+  assert.equal(v.relatedPull.labels[0].name,'🤖 Under review');
   assert.ok(find(find(h.render(),'active-pull'),'pr-908'));
   assert.equal(v.pulls[state].length,10);assert.equal(v.pages[state].cursor,'new-1');
   v.loadRelatedPull(h.cx);assert.equal(h.pending.length,0,'Related lookups are cached');
@@ -169,6 +171,25 @@ for(const state of ['open','closed']) {
   v.relatedPull.state=state==='open'?'merged':'open';
   assert.equal(find(h.render(),'active-pull'),undefined,'A related PR in the other state cannot pin into this tab');
   v.relatedPull.state=state==='open'?'open':'merged';
+
+  // Label events use the same snapshot: both loaded tabs + older active PR,
+  // never a request for each row. Bursts coalesce behind the in-flight read.
+  const labels=[{name:'🤖 Under review',color:'840479'}];
+  for (const [cycle,assigned] of [[0,labels],[1,labels],[2,[]]]) {
+    const before=h.calls.length;
+    if(cycle!==1)v.queueWebhook({repository:'owner/repo',event:'pull_request',action:cycle===2?'unlabeled':'labeled'},h.cx);
+    await h.tick();
+    if(cycle===0){v.queueWebhook({repository:'owner/repo',event:'pull_request'},h.cx);v.queueWebhook({repository:'owner/repo',event:'pull_request'},h.cx);}
+    await h.reply(page(200,10,'refresh-open',true,assigned));
+    await h.reply(page(100,10,'refresh-closed',true,assigned));
+    const targeted=h.pending[0];assert.equal(targeted.args[0],'pr');assert.ok(targeted.args.at(-1).includes('labels'));
+    await h.reply(JSON.stringify({number:908,state:state==='open'?'OPEN':'MERGED',labels:assigned}));
+    await h.reply('{}');
+    assert.equal(v.pulls.open[0].labels.length,assigned.length);
+    assert.equal(v.pulls.closed[0].labels.length,assigned.length);
+    assert.equal(v.relatedPull.labels.length,assigned.length);
+    assert.equal(h.calls.length-before,cycle===0?5:cycle===1?3:4,'Only loaded pages, older PR and counts are read; burst has one follow-up');
+  }
 
   // A pending page cannot restore a repository after focus/location changes.
   v.morePulls(state,h.cx);const old=h.take();

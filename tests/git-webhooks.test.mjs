@@ -50,6 +50,11 @@ const request=(signature=signed(body),event='check_run')=>new Request('https://r
 assert.equal((await hub.fetch(request('sha256='+'0'.repeat(64)))).status,401);assert.equal(sent.length,0);
 assert.equal((await hub.fetch(request())).status,200);assert.equal(sent.length,1);assert.equal(sent[0].private,undefined);
 await hub.fetch(request());assert.equal(sent.length,1,'Duplicate deliveries do not fan out');
+for(const action of ['labeled','unlabeled']) {
+  const payload=JSON.stringify({repository:{full_name:'owner/repo'},action,label:{name:'🤖 Under review',color:'840479'}});
+  assert.equal((await hub.fetch(new Request('https://relay.test/github',{method:'POST',headers:{'X-Hub-Signature-256':signed(payload),'X-GitHub-Event':'pull_request','X-GitHub-Delivery':`delivery-${action}`},body:payload}))).status,200);
+  assert.deepEqual(sent.at(-1),{type:'github',repository:'owner/repo',event:'pull_request',delivery:`delivery-${action}`});
+}
 assert.equal((await hub.fetch(new Request('https://relay.test/configuration'))).status,401);
 assert.equal((await hub.fetch(new Request('https://relay.test/configuration',{headers:{Authorization:`Bearer ${token}`}}))).status,200);
 socket.attachment={authenticated:false};await hub.webSocketMessage(socket,JSON.stringify({type:'authenticate',token:'WRONG'}));assert.equal(socket.closed,1008);
@@ -77,6 +82,11 @@ await hub.webSocketMessage(socket,JSON.stringify({type:'authenticate',token}));a
   sockets[0].resolve(JSON.stringify({type:'ready',protocol:1}));await tick();assert.deepEqual(changes,[null],'Connect performs catch-up');
   const event=JSON.stringify({type:'github',event:'check_run',repository:'owner/repo',delivery:'delivery-2'});
   sockets[0].resolve(event);await tick();sockets[0].resolve(event);await tick();assert.equal(changes.length,2,'Delivery deduplication');
+  for(const action of ['labeled','unlabeled']) {
+    sockets[0].resolve(JSON.stringify({type:'github',event:'pull_request',repository:'owner/repo',delivery:`delivery-${action}`}));await tick();
+    assert.equal(changes.at(-1).event,'pull_request');assert.equal(changes.at(-1).delivery,`delivery-${action}`);
+  }
+  assert.equal(changes.length,4,'Both label actions reach existing invalidation handlers');
   sync();sync();assert.equal(sockets.length,1,'Renders never reconnect/poll');
   sync(false);await tick();assert.equal(sockets[0].closed,true);assert.equal(timers.filter(t=>t.ms!==10000).length,0,'Hiding does not schedule reconnect retries');
   sync();await tick();sockets[1].reject(Error('disconnected'));await tick();assert.equal(timers.filter(t=>t.ms!==10000).length,1);
