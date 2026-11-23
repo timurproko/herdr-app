@@ -17,7 +17,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-23-git-row-labels/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-23-git-row-labels/acceptance.md",
   "finalizedDate": "2026-11-23",
-  "specBaseSha": "e73862dd1309a331398624f2a1d7d6ab7f8695da",
+  "specBaseSha": "4a61896ca33b85e39bbc2638cd9ba4692e2c0d0a",
   "acceptanceScenarios": [
     "Ordinary and coordinator PR rows omit Owner and order present metadata as tasks, checks and assigned GitHub labels in Open and Closed tabs.",
     "Label pills retain exact names and GitHub colours, contrast their text and expose complete names through tooltips without adding row lines or horizontal overflow.",
@@ -25,7 +25,7 @@ The maintainer integration decision accepts these scenarios:
     "Number/author and status separators share a centred muted 3px dot with equal 6px spacing and no empty-group separators."
   ],
   "archiveDigest": "7540a80bf9e3145b433c04237743446d80bf536211726f945e9ff65c72bae300",
-  "specDigest": "e2760f1474cad3b0b200320b4d97eaa3571dbe76e540ccb56050c4e838e8e9e1",
+  "specDigest": "3af0eb3f51349fb530619b804fe7b0f47703cbef78a43472ba55cc126e2efd02",
   "tasksDigest": "86b9e314f562c028cf4ab5990aacafb19129071906e7f2f04ef27ec5a61eeebc",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []
