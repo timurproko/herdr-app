@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { transformFeedback } from '../tools/runtime/native-transform.mjs';
-import { tree,method,text } from '../tools/runtime/native-ast.mjs';
+import { tree,method,text,nodes,call,Incompatible } from '../tools/runtime/native-ast.mjs';
 import { harness,byId,words } from './native-harness.mjs';
 const files=Object.fromEntries(Object.entries({'feedback-ui.js':'src/integration/native-patches/feedback/ui.js','custom-ui.js':'src/ui/ui.js','custom-modal-layout.js':'src/ui/modal-layout.js'}).map(([n,f])=>['custom-test/'+n,fs.readFileSync(f,'utf8')]));
 for(const version of ['0.1.16','0.1.17','future']) {
@@ -44,4 +44,63 @@ for(const version of ['0.1.16','0.1.17','future']) {
  transformFeedback('\ufeff'+stock.replaceAll('\n','\r\n'),'./custom-test');
  transformFeedback(stock.replace('{ View, div','{ View as FrameView, div').replace('Feedback extends View','Renamed extends FrameView').replace('InputState, Input,','InputState, Input as NativeInput,').replace('TextareaState, Textarea }','TextareaState, Textarea as NativeTextarea }').replaceAll('Input.new','NativeInput.new').replaceAll('Textarea.new','NativeTextarea.new'),'./custom-test');
 }
+// Audit every replaced subtree: a native action must survive or cause a named
+// incompatibility, never disappear behind a descendant-only anchor match.
+const auditStock=fs.readFileSync('tests/fixtures/native-stock/0.1.17/feedback.js','utf8');
+const extra='div().id("native-extra").on_click(() => this.nativeExtra = true).child("Native action")';
+const nativeButton='this.button(t,"native-extra","Native action",()=>this.nativeExtra = true)';
+const changed=(from,to)=>{assert.ok(auditStock.includes(from),from);return auditStock.replace(from,to);};
+const rejected=[
+ ['attachments wrapper',changed('.child(this.shots_row(t))',`.child(h_flex().child(this.shots_row(t)).child(${extra}))`),/attachments: surrounding/],
+ ['attachments conditional',changed('.child(this.shots_row(t))',`.child(this.shots_row(t).when(true,el=>el.child(${extra})))`),/attachments: surrounding/],
+ ['message wrapper',changed('.child(field(Textarea.new(this.message)).h(130))',`.child(h_flex().child(field(Textarea.new(this.message)).h(130)).child(${extra}))`),/messageField/],
+ ['email wrapper',changed('.child(field(Input.new(this.email)).h(40))',`.child(h_flex().child(field(Input.new(this.email)).h(40)).child(${extra}))`),/emailField/],
+ ['field renderer',changed('.text_size(14);',`.text_size(14).on_click(()=>this.nativeExtra=true).id("native-extra");`),/messageField renderer/],
+ ['caption renderer',changed('.child(text);',`.child(text).on_click(()=>this.nativeExtra=true).id("native-extra");`),/caption renderer/],
+ ['header children',changed('.child("Send feedback"))',`.child("Send feedback").children([${extra}]))`),/feedback header/],
+ ['success children',changed('.child("Sent. Thanks for helping us improve Herdr."))',`.child("Sent. Thanks for helping us improve Herdr.").children([${extra}]))`),/feedback success/,{sent:true}],
+ ['agent children',changed('.child("Drafted by an agent: read it before sending")))',`.child("Drafted by an agent: read it before sending").children([${extra}])))`),/feedback agent caption/,{from:'agent'}],
+ ['availability children',changed('.child("This build was made from source and doesn\'t send feedback. Use a release build.")))',`.child("This build was made from source and doesn't send feedback. Use a release build.").children([${extra}])))`),/feedback availability caption/,{available:false}],
+ ['thumbnail row sibling',changed('.children(this.shots.map(thumb))',`.children(this.shots.map(thumb)).child(${nativeButton})`),/thumbnail row/],
+ ['thumbnail list spread',changed('.children(this.shots.map(thumb))',`.children([...this.shots.map(thumb),${nativeButton}])`),/thumbnail list wrapper/],
+ ['thumbnail image wrapper',changed('.child(image(path).h(72))',`.child(h_flex().child(image(path).h(72)).child(${nativeButton}))`),/thumbnail image wrapper/,{shots:['one.png']}],
+ ['thumbnail remove sibling',changed('.child("×"));',`.child("×").children([${nativeButton}]));`),/thumbnail remove control/,{shots:['one.png']}],
+ ['thumbnail Add callback',changed('(_e, cx) => this.pick(cx)','(_e, cx) => { this.nativeExtra = true; this.pick(cx); }'),/thumbnail Add action/,{id:'feedback-add'}],
+ ['button renderer sibling',changed('.child(label);',`.child(label).children([${extra}]);`),/feedback button/],
+ ['button callback',changed('.on_click((e, cx) => { if (!disabled)','.on_click((e, cx) => { this.nativeExtra = true; if (!disabled)'),/button click action/,{id:'feedback-cancel'}],
+];
+async function auditForm(source,options={}) {
+ const h=await harness(source,files,{props:()=>({overlay:'fixture',from:options.from}),appHome:()=>'/fixture',readTextFile:async()=>null,writeTextFile:async()=>{},feedbackPreview:()=>({available:options.available!==false,body:{native:true}}),feedbackClearImages(){},feedbackPasteImage:()=>null,feedbackPickImages:async()=>[],feedbackAttachImages:paths=>paths.map(path=>({path})),sendFeedback:async()=>null});
+ const form=new h.View();form.init({},h.cx);form.sent=Boolean(options.sent);form.shots=options.shots??[];return {h,form};
+}
+for(const [name,source,reason,options={}]of rejected) {
+ const {h,form}=await auditForm(source,options),native=byId(form.render(h.cx),options.id??'native-extra');
+ assert.ok(native,`${name}: added native action exists`);native.events.on_click({},h.cx);assert.equal(form.nativeExtra,true,`${name}: original callback works`);
+ assert.throws(()=>transformFeedback(source,'./custom-test'),error=>error instanceof Incompatible&&reason.test(error.message),`${name}: refuse overlapping edit explicitly`);
+}
+const bodyEffect=changed('.px(24).gap(10)','.px(24).gap((this.nativeExtra = true,10))');
+const bodyNative=await auditForm(bodyEffect);bodyNative.form.render(bodyNative.h.cx);assert.equal(bodyNative.form.nativeExtra,true);assert.throws(()=>transformFeedback(bodyEffect,'./custom-test'),/body layout decorator gained behavior/);
+const placeholderEffect=changed('placeholder: "Email (optional)"','placeholder: (this.nativeExtra = true, "Email (optional)")');assert.equal((await auditForm(placeholderEffect)).form.nativeExtra,true);assert.throws(()=>transformFeedback(placeholderEffect,'./custom-test'),/email placeholder gained behavior/);
+const focusHook=changed('this.message.focus();','this.message.on("focus",()=>this.nativeExtra=true); this.message.focus();');const focusNative=await auditForm(focusHook);focusNative.form.message.events.focus();assert.equal(focusNative.form.nativeExtra,true);assert.throws(()=>transformFeedback(focusHook,'./custom-test'),/native focus\/blur hooks/);
+assert.throws(()=>transformFeedback(changed('init(_props, cx) {','init(_props, cx) { this.previewExpanded = true;'),'./custom-test'),/native state collides/);
+const render=method(tree(auditStock).body.find(n=>n.type==='ExportDefaultDeclaration').declaration,'render');
+const jsonChild=nodes(render,n=>call(n,'child')&&nodes(n.arguments[0],m=>call(m,'stringify')&&m.callee.object.name==='JSON').length).sort((a,b)=>(a.end-a.start)-(b.end-b.start))[0];
+const footerChild=nodes(render,n=>call(n,'child')&&call(n.arguments[0],'button')&&n.arguments[0].arguments[1]?.value==='feedback-send')[0];
+const preserved=[
+ ['JSON wrapper',auditStock.slice(0,jsonChild.arguments[0].start)+`h_flex().child(${text(auditStock,jsonChild.arguments[0])}).child(${extra})`+auditStock.slice(jsonChild.arguments[0].end)],
+ ['footer wrapper',auditStock.slice(0,footerChild.arguments[0].start)+`h_flex().child(${text(auditStock,footerChild.arguments[0])}).child(${extra})`+auditStock.slice(footerChild.arguments[0].end)],
+ ['unknown form condition',changed('.child(this.shots_row(t))',`.child(this.shots_row(t)).when(true,el=>el.child(${extra}))`)],
+];
+for(const [name,source]of preserved)for(const transformed of [false,true]) {
+ const {h,form}=await auditForm(transformed?transformFeedback(source,'./custom-test'):source);form.previewExpanded=true;
+ const native=byId(form.render(h.cx),'native-extra');assert.ok(native,`${name}: action retained in ${transformed?'Custom':'native'}`);native.events.on_click({},h.cx);assert.equal(form.nativeExtra,true);
+}
+const boundDefaults=await auditForm(transformFeedback(changed('disabled = false','disabled = true'),'./custom-test'));
+const blockedCancel=byId(boundDefaults.form.render(boundDefaults.h.cx),'feedback-cancel');assert.equal(blockedCancel.style.disabled[0],true,'Bound native default parameters survive Custom button construction');blockedCancel.events.on_click({},boundDefaults.h.cx);assert.equal(boundDefaults.h.closed.length,0);
+const dropSource=changed('if (this.sending || this.sent) return;\n        if (this.shots.length', 'if (this.sending || this.sent) return;\n        this.nativeExtra = true;\n        if (this.shots.length');
+for(const area of ['root','attachments']) {
+ const {h,form}=await auditForm(transformFeedback(dropSource,'./custom-test'));const view=form.render(h.cx);
+ (area==='root'?view:byId(view,'feedback-attachments')).events.on_drop({paths:['one.png']},h.cx);assert.equal(form.nativeExtra,true,`${area}: native drop additions retained`);assert.equal(form.shots.length,1);
+}
+console.log('PASS replacement audit: native nested/wrapped actions preserved or specifically refused at all feedback sites');
 console.log('PASS actual 0.1.16/0.1.17 and future feedback: Custom form/viewer/drafts, native actions/controllers/validation, non-Custom and safe refusal');

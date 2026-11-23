@@ -21,6 +21,9 @@ closure and required capabilities are checked before activation. Missing/ambiguo
 necessary sites, unavailable current-stock evidence or failed self-checks leave
 all patch files/records untouched, with a concrete optional incompatibility advisory.
 Personal dependency edits, corrupt records and unsafe recovery remain hard errors.
+Descendant-only matches never authorize replacing surrounding wrappers or sibling
+actions. The [replacement-site audit](../../../docs/NATIVE-PATCH-AUDIT.md) lists
+preserved regions, explicit refusal contracts and future-variant regressions.
 Unknown newer stock is never overwritten or downgraded on restore.
 
 ## Surface behavior and native actions
@@ -52,7 +55,11 @@ The engine stages a complete immutable content-addressed helper generation befor
 one atomic main-entrypoint activation. Main always references a complete graph;
 new staging cannot mutate active helpers. Durable journals preserve raw originals
 and previous records. State v2 records source/executable digests, generation and
-installed hashes; v1 migrates only after ownership and current-stock checks.
+installed hashes; v1 migrates only after ownership and current-stock checks. Prior
+hash evidence for retained legacy helpers survives an interrupted v1 refresh.
+Final validation includes expected main, record and the complete generated graph,
+even when only a missing helper was written. Unchanged checkpoints participate in
+journal recovery too; external changes retain a recovery-required journal.
 Identical refresh is a no-op, including main/record timestamps.
 
 Explicit CLI, deploy, startup and restore serialize native mutations with the same

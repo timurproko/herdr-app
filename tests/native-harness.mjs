@@ -30,7 +30,7 @@ export async function harness(source,files,extra={}) {
     const m=new vm.SourceTextModule(body??files[name],{context,identifier:name});cache.set(name,m);
     await m.link((spec,ref)=>{
       if(spec==='gpui-kit')return synthetic(spec,kit);if(spec==='gpui-base')return synthetic(spec,base);
-      if(spec.endsWith('/host.js')||spec==='./host.js')return synthetic(spec,api);
+      if(spec==='herdr'||spec.endsWith('/host.js')||spec==='./host.js')return synthetic(spec,api);
       if(spec.endsWith('/custom-look.js')||spec==='./custom-look.js')return synthetic(spec,{isCustom:()=>state.skin,liveTheme:()=>t,ensureNativeSelection(){}});
       const dest=path.posix.normalize(path.posix.join(path.posix.dirname(ref.identifier),spec));
       if(!files[dest])throw Error(`Harness missing ${dest}`);return load(dest);

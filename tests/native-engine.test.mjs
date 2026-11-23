@@ -41,6 +41,22 @@ try {
   const vanished=fixture(),vanishedBefore=snapshot(vanished.home);
   assert.throws(()=>mutateNative('apply',vanished.home,vanished.root,patch,transform,{...vanished.options,fault:(phase)=>{if(phase==='before-commit'){const record=JSON.parse(fs.readFileSync(path.join(vanished.home,'.customizations/frame-palette.json')));fs.unlinkSync(path.join(vanished.home,patch.target,record.generation,'helper.js'));}}}),/previous graph restored/);
   assert.deepEqual(snapshot(vanished.home),vanishedBefore,'A reset after individual readbacks cannot silently certify a missing helper');
+  for(const target of ['main','record']) {
+    const repair=fixture();mutateNative('apply',repair.home,repair.root,patch,transform,repair.options);
+    const recordFile=path.join(repair.home,'.customizations/frame-palette.json'),saved=fs.readFileSync(recordFile),record=JSON.parse(saved);
+    const mainFile=path.join(repair.home,patch.target,'main.js'),mainBytes=fs.readFileSync(mainFile),helperFile=path.join(repair.home,patch.target,record.generation,'helper.js');
+    fs.unlinkSync(helperFile);const writes=[];
+    const changedFile=target==='main'?mainFile:recordFile,external=Buffer.concat([fs.readFileSync(changedFile),Buffer.from(target==='main'?'\n// concurrent main':'\n ')]);
+    assert.throws(()=>mutateNative('apply',repair.home,repair.root,patch,transform,{...repair.options,fault:(phase,file)=>{if(phase==='after-write')writes.push(file);if(phase==='before-commit')put(changedFile,external);}}),/Final readback failed.*recovery required/);
+    assert.ok(writes.every(n=>n.endsWith('/helper.js')),'Dependency-only repair does not rewrite main/record');
+    assert.deepEqual(fs.readFileSync(changedFile),external,'Concurrent unchanged main/record is never overwritten');
+    assert.equal(inspectNative(repair.home,repair.root,patch,transform,repair.options).status,'recovery-required');
+    assert.ok(fs.existsSync(path.join(repair.home,'.customizations/native-palette.journal.json')),'Failed checkpoint keeps recovery journal and helper');
+    assert.ok(fs.existsSync(helperFile));
+    // Once an external writer deliberately restores its bytes, journal recovery works.
+    put(mainFile,mainBytes);put(recordFile,saved);mutateNative('apply',repair.home,repair.root,patch,transform,repair.options);
+    assert.equal(inspectNative(repair.home,repair.root,patch,transform,repair.options).active,true);
+  }
   const restoreFault=fixture();mutateNative('apply',restoreFault.home,restoreFault.root,patch,transform,restoreFault.options);
   const restoreMain=path.join(restoreFault.home,patch.target,'main.js'),restoreBefore=snapshot(restoreFault.home),rename=fs.renameSync;
   fs.renameSync=(from,to)=>{rename(from,to);if(to===restoreMain){const body=fs.readFileSync(to,'utf8'),gen=body.match(/custom-[a-f0-9]{24}/)?.[0];if(gen)assert.ok(fs.existsSync(path.join(restoreFault.home,patch.target,gen,'helper.js')),'Rollback must recreate prior dependencies before reactivating main');}};
@@ -54,6 +70,20 @@ try {
   assert.equal(inspectNative(conflict.home,conflict.root,patch,transform,conflict.options).status,'recovery-required');
   const migration=fixture();const original=stock;const patched=stock+'// old owned\n';put(path.join(migration.home,patch.target,'main.js'),patched);put(path.join(migration.home,'.customizations/frame-palette.json'),JSON.stringify({version:1,original:{'main.js':original},installed:{'main.js':digest(patched)}}));
   mutateNative('apply',migration.home,migration.root,patch,transform,migration.options);assert.equal(JSON.parse(fs.readFileSync(path.join(migration.home,'.customizations/frame-palette.json'))).version,2);
+  for(const backup of [null,'original helper']) {
+    const partial=fixture(),oldHelper='previous owned helper',newHelper='new owned helper',legacyMain=stock+'// legacy owned\n';
+    const stateFile=path.join(partial.home,'.customizations/frame-palette.json'),legacyHelper=path.join(partial.home,patch.target,'custom-ui.js');
+    put(path.join(partial.home,patch.target,'main.js'),legacyMain);put(legacyHelper,oldHelper);
+    put(stateFile,JSON.stringify({version:1,original:{'main.js':stock,'custom-ui.js':backup},installed:{'main.js':digest(legacyMain),'custom-ui.js':digest(newHelper)},previousInstalled:{'main.js':digest(stock),'custom-ui.js':digest(oldHelper)}}));
+    assert.equal(inspectNative(partial.home,partial.root,patch,transform,partial.options).status,'ready');
+    mutateNative('apply',partial.home,partial.root,patch,transform,partial.options);
+    const migrated=JSON.parse(fs.readFileSync(stateFile));assert.equal(migrated.previousInstalled['custom-ui.js'],digest(oldHelper));assert.equal(migrated.previousInstalled['main.js'],undefined);
+    assert.equal(inspectNative(partial.home,partial.root,patch,transform,partial.options).active,true);
+    const stable=snapshot(partial.home);assert.match(mutateNative('apply',partial.home,partial.root,patch,transform,partial.options),/already current/);assert.deepEqual(snapshot(partial.home),stable);
+    mutateNative('restore',partial.home,partial.root,patch,transform,partial.options);
+    assert.equal(fs.readFileSync(path.join(partial.home,patch.target,'main.js'),'utf8'),stock);
+    if(backup===null)assert.equal(fs.existsSync(legacyHelper),false);else assert.equal(fs.readFileSync(legacyHelper,'utf8'),backup);
+  }
   const lock=path.join(migration.home,'.customizations/native-patches.lock');put(lock,String(process.pid));assert.throws(()=>mutateNative('apply',migration.home,migration.root,patch,transform,migration.options),/busy/);fs.unlinkSync(lock);
   put(lock,'99999999');assert.throws(()=>mutateNative('apply',migration.home,migration.root,patch,transform,migration.options),/Stale/);assert.equal(fs.existsSync(lock),false);
   const caps=fixture();assert.equal(inspectNative(caps.home,caps.root,{...patch,capabilities:['missingApi']},transform,{...caps.options,apis:[]}).status,'skipped');

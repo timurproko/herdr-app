@@ -34,4 +34,26 @@ for(const version of ['0.1.16','0.1.17','future']) {
   // Formatting and local binding renames are not review/byte gates.
   transformPalette('\ufeff'+stock.replaceAll('\n','\r\n').replaceAll('keyParts','splitBinding'),'./custom-test');
 }
+const auditStock=fs.readFileSync('tests/fixtures/native-stock/0.1.17/palette.js','utf8');
+const widget='nativeWidget() { return div().id("native-extra").on_click(() => this.nativeExtra = true).child("Native action"); }\n decorateRow(node) { return h_flex().child(node).child(this.nativeWidget()); }\n ';
+const withWidget=auditStock.replace('close() {',widget+'close() {');
+const wrappedRow=withWidget.replace('.child(div().flex_1().min_w(0).child(this.title(t, r.e.title, r.hits, on)))','.child(this.decorateRow(div().flex_1().min_w(0).child(this.title(t, r.e.title, r.hits, on))))');assert.notEqual(wrappedRow,withWidget);
+for(const [name,source]of [
+ ['root sibling',withWidget.replace('.id("palette")','.child(this.nativeWidget()).id("palette")')],
+ ['row wrapper',wrappedRow],
+ ['root wrapper',withWidget.replace('return v_flex()','return this.decorateRow(v_flex())')],
+ ['list wrapper',withWidget.replace('.children(fixed ? list : [v_flex().children(list)])','.children([...list, this.nativeWidget()])')],
+]) {
+ const h=await harness(source,paletteFiles());h.state.skin=false;const p=new h.View();p.init({},h.cx);
+ const added=byId(p.render(),'native-extra');assert.ok(added,`${name}: native action exists`);added.events.on_click({},h.cx);assert.equal(p.nativeExtra,true);
+ assert.throws(()=>transformPalette(source,'./custom-test'),/palette (?:root|render)/,`${name}: unsupported content must not disappear in Custom`);
+}
+const focus=auditStock.replace('this.input.focus();','this.input.on("focus",()=>this.nativeExtra=true); this.input.focus();');const nativeFocus=await harness(focus,paletteFiles()),focused=new nativeFocus.View();focused.init({},nativeFocus.cx);focused.input.events.focus();assert.equal(focused.nativeExtra,true);assert.throws(()=>transformPalette(focus,'./custom-test'),/native focus\/blur hooks/);
+assert.throws(()=>transformPalette(auditStock.replace('init(_props, cx) {','init(_props, cx) { this.headingSync = null;'),'./custom-test'),/native state collides/);
+assert.throws(()=>transformPalette(auditStock.replace('placeholder: "Type a command…"','placeholder: (this.nativeExtra = true, "Type a command…")'),'./custom-test'),/placeholder gained behavior/);
+const computed=auditStock.replace(' : e.args);',' : (this.argumentEvaluations = (this.argumentEvaluations ?? 0) + 1, e.args));');assert.notEqual(computed,auditStock);
+const h=await harness(transformPalette(computed,'./custom-test'),paletteFiles()),p=new h.View();p.init({},h.cx);
+p.go({name:'app.settings',args:{},id:'settings'});assert.equal(p.argumentEvaluations,1,'Native dispatch arguments evaluate exactly once even with Custom routing');assert.equal(h.calls.at(-1)[0],'mod.open');
+for(const [name,args]of [['app.settings',{section:'native-added'}],['tab.rename',{id:'native-tab'}],['space.rename',{id:'native-space'}]]) {p.go({name,args,id:name});assert.equal(h.calls.at(-1)[0],name,'Unknown explicit native arguments are not silently dropped');assert.equal(h.calls.at(-1)[1],args);}
+console.log('PASS replacement audit: palette render wrappers refuse and native dispatch argument computation survives');
 console.log('PASS actual 0.1.16/0.1.17 and future palette: native actions/themes/history/dispatch, Custom UI/routing and non-Custom behavior');

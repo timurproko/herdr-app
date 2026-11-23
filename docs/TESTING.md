@@ -144,6 +144,11 @@ paths in disposable homes with synthetic binaries, including offline relocated
 workers, native resets, independent optional skips, current-stock restore and
 personal conflicts. Existing detailed palette/feedback UI regressions now load
 build-generated previews of those same transforms, not obsolete full replacements.
+Review regressions additionally cover wrapped/nested native actions at each replaced
+presentation site, unchanged main/record races during dependency-only repair, and
+v1 helpers recognized through previous hashes. See [the replacement-site audit](NATIVE-PATCH-AUDIT.md)
+for preserved versus specifically refused regions. Native drop additions survive
+both the root and attachment-area callbacks.
 
 `tests/deploy-failure.test.mjs` carries host/build/install/patch causes through the
 actual all-machine worker, durable result writer, Update inspection and Settings

@@ -54,8 +54,8 @@ export function emailField(form,t,leaf) {
   return v_flex().id('feedback-email-section').w_full().flex_none().gap(6).child(caption(t,'Email'))
     .child(inputFrame(t,h_flex(),form.emailFocused).id('feedback-email-field').items_center().child(leaf.id('feedback-email').w_full().h_full().accessibility_label('Email')));
 }
-export function attachments(form,t) {
-  return v_flex().id('feedback-attachments').w_full().flex_none().gap(8).on_drop((e,cx)=>dropImages.call(form,e,cx))
+export function attachments(form,t,nativeDrop = null) {
+  return v_flex().id('feedback-attachments').w_full().flex_none().gap(8).on_drop((e,cx)=>dropImages.call(form,e,cx,nativeDrop?()=>nativeDrop(e,cx):null))
     .child(h_flex().w_full().items_center().gap(8).child(caption(t,'Attachments'))
       .child(div().id('feedback-shot-count').text_size(11).text_color(t.dim).child(`${form.shots.length}/${MAX_SHOTS}`)).child(div().flex_1())
       .child(textButton(t,'feedback-add','Add image','mods/custom-workspace-chrome/plus.svg',(_e,cx)=>{if(!form.sending&&!form.sent&&form.shots.length<MAX_SHOTS)form.pick(cx);},{enabled:form.shots.length<MAX_SHOTS&&!form.sending&&!form.sent})))
@@ -106,11 +106,12 @@ export function loadDraft(cx) {
     });
   }
 
-export function dropImages(e,cx) {
+export function dropImages(e,cx,native = null) {
     cx.stop_propagation();
     if (this.sending || this.sent || !e.paths?.length) return;
     const remaining = MAX_SHOTS - this.shots.length;
     try {
+      if (native) return native();
       if (remaining > 0) {
         this.add(feedbackAttachImages(e.paths.slice(0, remaining)));
         if (e.paths.length > remaining && !this.error && !isCustom()) this.error = "Up to 3 screenshots.";

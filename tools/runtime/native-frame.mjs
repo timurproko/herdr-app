@@ -130,8 +130,12 @@ function recoverNative(home,patch) {
   for(const e of order)if(!equal(read(safe(home,e.file)),decode(e.before)))atomic(safe(home,e.file),decode(e.before));
   fs.unlinkSync(file);
 }
-function transact(home,patch,c,changes,options) {
-  const journal=safe(home,c.journalFile),j={version:1,id:patch.id,changes:changes.map(e=>({file:e.file,before:encode(e.before),after:encode(e.after)}))};
+function transact(home,patch,c,changes,options,expected=[]) {
+  // Journal unchanged checkpoints too: dependency-only repair must still protect
+  // main/record, and recovery must not clean staging behind a concurrent main.
+  const checkpoints=new Map(changes.map(e=>[e.file,e]));
+  for(const e of expected)if(!checkpoints.has(e.file))checkpoints.set(e.file,{file:e.file,before:e.after,after:e.after});
+  const journal=safe(home,c.journalFile),j={version:1,id:patch.id,changes:[...checkpoints.values()].map(e=>({file:e.file,before:encode(e.before),after:encode(e.after)}))};
   atomic(journal,Buffer.from(JSON.stringify(j)));
   try {
     for(const [i,e]of changes.entries()) {
@@ -144,7 +148,7 @@ function transact(home,patch,c,changes,options) {
     options.fault?.('before-commit',c.journalFile);
     // A native reset can remove an earlier helper after its individual readback.
     // Check the complete activated graph and record again before certifying success.
-    for(const e of changes)if(!equal(read(safe(home,e.file)),e.after))throw Error(`Final readback failed: ${e.file}`);
+    for(const e of checkpoints.values())if(!equal(read(safe(home,e.file)),e.after))throw Error(`Final readback failed: ${e.file}`);
     for(const [n,b]of Object.entries(c.files??{}))if(!equal(read(safe(home,`${c.dir}/${n}`)),b))throw Error(`Activated dependency graph changed: ${n}`);
     fs.unlinkSync(journal);
   } catch(e) {
@@ -173,7 +177,8 @@ export function mutateNative(action,home,root,patch,transform,options={}) {
         const before=read(safe(home,`${c.dir}/${n}`)),after=original(c.state,n);
         if(before!==null&&!equal(before,after))changes.push({file:`${c.dir}/${n}`,before,after});
       }
-      changes.push({file:c.stateFile,before:c.raw,after:null});c.binaryDigest=digest(c.bin);transact(home,patch,c,changes,options);
+      changes.push({file:c.stateFile,before:c.raw,after:null});c.binaryDigest=digest(c.bin);
+      transact(home,patch,c,changes,options,[{file:`${c.dir}/main.js`,after:stock},{file:c.stateFile,after:null}]);
       return `${patch.id} frame restored; personal settings and shortcuts unchanged.`;
     }
     const c=prepare(home,root,patch,transform,options);
@@ -187,12 +192,15 @@ export function mutateNative(action,home,root,patch,transform,options={}) {
       if(!equal(before,b))changes.push({file:`${c.dir}/${n}`,before,after:b});
     }
     saved['main.js']=encode(c.source);installed['main.js']=digest(c.output);
-    const next={version:2,original:saved,installed,source:digest(c.source),executable:c.binaryDigest,generation:c.gen};
+    // Keep v1 partial-refresh evidence only for files retained verbatim. They
+    // need not equal v1 installed[n]: previousInstalled[n] also proved ownership.
+    const previousInstalled=Object.fromEntries(Object.entries(c.state?.previousInstalled??{}).filter(([n])=>n!=='main.js'&&Object.hasOwn(installed,n)&&!Object.hasOwn(c.files,n)));
+    const next={version:2,original:saved,installed,source:digest(c.source),executable:c.binaryDigest,generation:c.gen,...(Object.keys(previousInstalled).length?{previousInstalled}:{})};
     const nextRaw=Buffer.from(JSON.stringify(next,null,2)+'\n');
     if(!equal(c.main,c.output))changes.push({file:`${c.dir}/main.js`,before:c.main,after:c.output});
     if(!equal(c.raw,nextRaw))changes.push({file:c.stateFile,before:c.raw,after:nextRaw});
     if(!changes.length)return `Custom ${patch.id} frame already current.`;
-    transact(home,patch,c,changes,options);
+    transact(home,patch,c,changes,options,[{file:`${c.dir}/main.js`,after:c.output},{file:c.stateFile,after:nextRaw},...Object.entries(c.files).map(([n,b])=>({file:`${c.dir}/${n}`,after:b}))]);
     return `Custom ${patch.id} frame applied (other layouts retain stock styling).`;
   });
 }

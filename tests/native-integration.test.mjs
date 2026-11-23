@@ -34,6 +34,11 @@ try {
  // An actually missing anchor skips only that patch, with complete bytes unchanged.
  const incompatible={...future,palette:future.palette.replace('go(e) {','activate(e) {')};put(exe,binary(incompatible));const paletteBefore=fileSnapshot(path.join(home,'frame/palette')),recordBefore=fs.readFileSync(path.join(home,'.customizations/frame-palette.json'));
  const skipped=restoreStartupFrames(home,runtime);assert.equal(skipped.ok,true);assert.match(skipped.frames.palette.advisory,/method go/);assert.equal(skipped.frames.feedback.ok,true);assert.deepEqual(fileSnapshot(path.join(home,'frame/palette')),paletteBefore);assert.deepEqual(fs.readFileSync(path.join(home,'.customizations/frame-palette.json')),recordBefore);const diag=doctor(home);assert.equal(diag.ok,true);assert.match(diag.advisories[0],/method go/);
+ // A descendant shots_row match does not authorize deleting its new native wrapper/sibling.
+ const wrapped={...future,feedback:future.feedback.replace('.child(this.shots_row(t))','.child(h_flex().child(this.shots_row(t)).child(div().id("native-extra").on_click(() => this.nativeExtra = true).child("Native action")))')};
+ put(exe,binary(wrapped));const feedbackBefore=fileSnapshot(path.join(home,'frame/feedback')),feedbackRecord=fs.readFileSync(path.join(home,'.customizations/frame-feedback.json'));
+ const refused=restoreStartupFrames(home,runtime);assert.equal(refused.ok,true);assert.equal(refused.frames.feedback.status,'skipped');assert.match(refused.frames.feedback.advisory,/feedback attachments: surrounding wrapper\/sibling/);
+ assert.deepEqual(fileSnapshot(path.join(home,'frame/feedback')),feedbackBefore);assert.deepEqual(fs.readFileSync(path.join(home,'.customizations/frame-feedback.json')),feedbackRecord);assert.match(doctor(home).advisories[0],/attachments: surrounding/);
  // Valid helpers of another generation never mask personal edits to active dependencies.
  const state=JSON.parse(fs.readFileSync(path.join(home,'.customizations/frame-feedback.json')));const dep=path.join(home,'frame/feedback',state.generation,'custom-ui.js'),owned=fs.readFileSync(dep);put(dep,'personal');assert.equal(restoreStartupFrames(home,runtime).ok,false);assert.equal(doctor(home).ok,false);put(dep,owned);
  // Restore on changed stock uses latest proven raw source, not the 0.1.16 backup.

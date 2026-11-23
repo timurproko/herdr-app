@@ -1108,8 +1108,8 @@
       ],
       "source": "https://github.com/herdrdev/herdr-app/blob/034f8b85f7e6bb71f8ff55cb4a80c548b2578c0f/defaults/frame/feedback/main.js",
       "version": "0.1.13–0.1.16 reviewed feedback",
-      "modifications": "Extracted Custom styling, draft/viewer and attachment integration; native pick/send/validation/removal callbacks are retained by transforms.",
-      "sha256LF": "dcdc1e4ef5d84ea05724ff3bfa033dc8e69a2b6d47a8ed951b4e2fc638aa7963",
+      "modifications": "Extracted Custom styling, draft/viewer and attachment integration; native pick/send/validation/removal/drop callbacks are retained by transforms.",
+      "sha256LF": "0df33ab78284a62489c253786c07a6ad0e9813797433e3c68299125b3d818b8e",
       "evidence": "Version relationships from reviewed tag comparisons; comparisons reverse existing facade import and normalize newlines."
     }
   ]
