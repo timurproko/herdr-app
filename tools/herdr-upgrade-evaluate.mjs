@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import cp from 'node:child_process';
-import {HOST_CONTRACT,apiCandidates} from '../src/integration/herdr/compatibility.js';
+import {HOST_CONTRACT,apiCandidates,nativeCommand} from '../src/integration/herdr/compatibility.js';
 import {checkHostFacts,hostSourceFacts} from './host-api-facts.mjs';
 import {inventory as treeInventory,inventoryHash,compareRelease} from './check-tab-move.mjs';
 import {commitSha,gitBlob,githubUrl,sha256,safePath} from './herdr-upgrade-releases.mjs';
@@ -27,9 +27,11 @@ export function parseCommands(text) {
   return result;
 }
 export function sdkSurface(text,required=HOST_CONTRACT.api) {
-  // Top-level declaration boundaries preserve multiline interfaces and return types.
+  // Preserve string/template literal types while stripping comments, then retain
+  // complete top-level declarations and their transitive referenced types.
+  text=text.replace(/("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`)|(\/\*[\s\S]*?\*\/|\/\/[^\n]*)/g,(_m,literal)=>literal??'');
   const declarations={};const matches=[...text.matchAll(/^export (?:declare )?(function|interface|type|class|const|enum)\s+(\w+)/gm)];
-  for(let i=0;i<matches.length;i++)declarations[matches[i][2]]=text.slice(matches[i].index,matches[i+1]?.index??text.length).replace(/\/\*[\s\S]*?\*\//g,'').replace(/\/\/[^\n]*/g,'').trim();
+  for(let i=0;i<matches.length;i++)declarations[matches[i][2]]=text.slice(matches[i].index,matches[i+1]?.index??text.length).trim();
   const needed=new Set(required);let changed=true;
   while(changed){changed=false;for(const name of [...needed])for(const word of (declarations[name]??'').match(/\b[A-Za-z_]\w*\b/g)??[])if(declarations[word]&&!needed.has(word)){needed.add(word);changed=true;}}
   return Object.fromEntries([...needed].sort().map(name=>[name,declarations[name]??null]));
@@ -128,19 +130,24 @@ export async function evaluateCandidate({root,inventory,discovery,get,baseSha,he
   await runner.step('host-api','Static candidate SDK, command catalog, signatures and direct imports',async()=>{
     const version=discovery.releases.app.version;
     const beforeSdk=(await repos.appBase.read('defaults/herdr.d.ts')).toString('utf8'),afterSdk=(await repos.app.read('defaults/herdr.d.ts')).toString('utf8');
-    const beforeCommands=parseCommands((await repos.appBase.read('src/commands.rs')).toString('utf8'));
-    const afterCommands=parseCommands((await repos.app.read('src/commands.rs')).toString('utf8'));
-    const required=[...new Set(HOST_CONTRACT.api.flatMap(n=>apiCandidates(n,version)))];
+    const beforeCommandSource=(await repos.appBase.read('src/commands.rs')).toString('utf8'),afterCommandSource=(await repos.app.read('src/commands.rs')).toString('utf8');
+    const beforeCommands=parseCommands(beforeCommandSource),afterCommands=parseCommands(afterCommandSource);
+    const support=text=>text.replace(/pub const COMMANDS:\s*&\[Command\]\s*=\s*&\[[\s\S]*?\n\];/,'/* consumed catalog diff is separate */').split('#[cfg(test)]')[0];
+    const commandSupportChanged=support(beforeCommandSource)!==support(afterCommandSource);
+    const supportDiff=diff('command-support',support(beforeCommandSource),support(afterCommandSource),'reviewed catalog helpers/validation','candidate catalog helpers/validation');
+    const required=[...new Set(HOST_CONTRACT.api.flatMap(n=>[...apiCandidates(n,version),...apiCandidates(n,inventory.appSource.appVersion)]))];
     const before=sdkSurface(beforeSdk,required),after=sdkSurface(afterSdk,required);
-    const apiDelta=surfaceChanges(before,after),commandDelta=surfaceChanges(Object.fromEntries(facts.commands.map(n=>[n,beforeCommands[n]??null])),Object.fromEntries(facts.commands.map(n=>[n,afterCommands[n]??null])));
+    const commandSurface=(catalog,appVersion)=>Object.fromEntries(facts.commands.map(name=>{const native=nativeCommand(name,appVersion);return [name,{native,args:catalog[native]??null}];}));
+    const oldCommands=commandSurface(beforeCommands,inventory.appSource.appVersion),newCommands=commandSurface(afterCommands,version);
+    const apiDelta=surfaceChanges(before,after),commandDelta=surfaceChanges(oldCommands,newCommands);
     const sdkDiff=diff('consumed-sdk',JSON.stringify(before,null,2),JSON.stringify(after,null,2),'reviewed consumed API','candidate consumed API');
-    const commandDiff=diff('consumed-commands',JSON.stringify(Object.fromEntries(facts.commands.map(n=>[n,beforeCommands[n]??null])),null,2),JSON.stringify(Object.fromEntries(facts.commands.map(n=>[n,afterCommands[n]??null])),null,2),'reviewed commands','candidate commands');
-    checks.host=checkHostFacts({version,declarations:afterSdk,commands:Object.keys(afterCommands),files});
-    checks.apiDelta=apiDelta;checks.commandDelta=commandDelta;checks.consumers=facts.consumers;
+    const commandDiff=diff('consumed-commands',JSON.stringify(oldCommands,null,2),JSON.stringify(newCommands,null,2),'reviewed commands','candidate commands');
+    checks.host=checkHostFacts({version,declarations:Object.values(after).filter(Boolean).join('\n'),commands:Object.keys(afterCommands),files});
+    checks.apiDelta=apiDelta;checks.commandDelta=commandDelta;checks.commandSupportChanged=commandSupportChanged;checks.consumers=facts.consumers;
     evidence['candidate-api.json']=JSON.stringify(after,null,2);evidence['candidate-commands.json']=JSON.stringify(afterCommands,null,2);
     evidence['host-check.json']=JSON.stringify(checks.host,null,2);
-    if(!checks.host.ok||apiDelta.length||commandDelta.length)addAction('host-api','Review changed or missing public contracts and consuming facade modules.',['src/integration/herdr/host.js','src/integration/herdr/compatibility.js',...new Set([...apiDelta,...commandDelta].flatMap(d=>facts.consumers[d.name]??[]))],[sdkDiff,commandDiff,'host-check.json'],'npm run check:host-api');
-    return {status:checks.host.ok?'passed':'failed',detail:`Static capabilities ${checks.host.ok?'present':'missing'}; ${apiDelta.length} API/type changes, ${commandDelta.length} command argument changes. See host-check.json and scoped hunks; live catalog not executed.`};
+    if(!checks.host.ok||apiDelta.length||commandDelta.length||commandSupportChanged)addAction('host-api','Review changed or missing public contracts and consuming facade modules.',['src/integration/herdr/host.js','src/integration/herdr/compatibility.js',...new Set([...apiDelta,...commandDelta].flatMap(d=>facts.consumers[d.name]??[]))],[sdkDiff,commandDiff,supportDiff,'host-check.json'],'npm run check:host-api');
+    return {status:checks.host.ok?'passed':'failed',detail:`Static capabilities ${checks.host.ok?'present':'missing'}; ${apiDelta.length} API/type changes, ${commandDelta.length} command argument changes; catalog helper/validation change: ${commandSupportChanged}. See host-check.json and scoped hunks; live catalog not executed.`};
   },{requires:['app-source']});
   await runner.step('core-contract','Static Core OpenRPC methods and generation',async()=>{
     const schema=JSON.parse((await repos.core.read('schema/hc.openrpc.json')).toString('utf8'));
@@ -163,11 +170,14 @@ export async function evaluateCandidate({root,inventory,discovery,get,baseSha,he
   await runner.step('baselines','Compare reviewed coverage and generate candidate-only source hashes',async()=>{
     const version=discovery.releases.app.version,baseline=inventory.baselines[version],prior=inventory.baselines[inventory.appSource.appVersion];
     const candidate={},missing=[],changed=[];
-    for(const [file,reviewedHash] of Object.entries(prior)) {
-      try {const bytes=await repos.app.read(`defaults/${safePath(file)}`);candidate[file]=sha256(bytes);if(candidate[file]!==reviewedHash)changed.push(file);}
+    const covered=[...new Set(Object.values(inventory.baselines).flatMap(b=>Object.keys(b)))].sort();
+    for(const file of covered) {
+      const reviewedHash=prior?.[file];
+      try {const bytes=await repos.app.read(`defaults/${safePath(file)}`);candidate[file]=sha256(bytes);if(reviewedHash&&candidate[file]!==reviewedHash)changed.push(file);}
       catch(error){missing.push({file,error:error.message});}
     }
-    checks.baselines={reviewed:Boolean(baseline),changed,missing,priorVersion:inventory.appSource.appVersion};
+    const mismatches=Object.entries(baseline??{}).filter(([n,h])=>candidate[n]!==h).map(([file,expected])=>({file,expected,actual:candidate[file]??null}));
+    checks.baselines={reviewed:Boolean(baseline),changed,missing,mismatches,priorVersion:inventory.appSource.appVersion};
     evidence['candidate-stock-baseline.json']=JSON.stringify({candidateOnly:true,appVersion:version,commit:discovery.releases.app.commit,hashes:candidate,missing,installedBinaryVerified:false},null,2);
     addAction('baselines','Review source hashes and real stock/binary provenance before recording release-specific stock coverage. Never use live patched files or substitute an older baseline.',[`upstream/baselines/${version}.json`,`upstream/baselines/${version}.provenance.json`],['candidate-stock-baseline.json'],'npm run test:integration');
     return {status:baseline&&!missing.length&&!Object.entries(baseline).some(([n,h])=>candidate[n]!==h)?'passed':'failed',detail:`${baseline?'Reviewed coverage exists':'stock baseline unreviewed'}; ${changed.length} prior source hashes changed; ${missing.length} unavailable paths; candidate-only hashes do not certify installed bytes.`};
@@ -181,6 +191,10 @@ export async function evaluateCandidate({root,inventory,discovery,get,baseSha,he
   for(const [name,file] of [['tab-move-fixtures','tests/tab-move.test.mjs'],['tab-move-menu','tests/tab-move-ui.test.mjs'],['host-fixtures','tests/host-gate.test.mjs'],['patch-fixtures','tests/frame-upgrade.test.mjs']])await runner.step(name,`node --experimental-vm-modules ${file}`,()=>run(root,['--experimental-vm-modules',file]),{requires:['build'],skip:skipTests?'Tests explicitly omitted.':null});
   await runner.step('test-ci','CI=true node --run test:ci',()=>runScript(root,'test:ci'),{skip:skipTests?'Tests explicitly omitted.':null});
   // Every unavailable check is an actionable migration task too, even if it never got far enough to create a detailed delta.
-  for(const step of runner.steps.filter(s=>s.status!=='passed'))if(!actions.some(a=>a.id===step.name))addAction(step.name,step.detail,step.name.startsWith('core-')?['tools/contracts/herdr-core-reviewed.json','src/integration/herdr/documents/tab-move-v1.cjs']:['tools/contracts/tab-move-0.1.16.json','src/integration/herdr/compatibility.js'],[step.evidence],step.operation);
+  for(const step of runner.steps.filter(s=>s.status!=='passed'))if(!actions.some(a=>a.id===step.name)) {
+    const testFile=/tests\/[A-Za-z0-9_.-]+\.mjs/.exec(step.operation)?.[0];
+    const files=step.name==='native-binary'?[`upstream/baselines/${discovery.releases.app?.version??inventory.appSource.appVersion}.provenance.json`,'src/integration/native-patches/README.md']:testFile?[testFile]:step.name==='test-ci'?['scripts/test-ci.mjs','docs/TESTING.md']:step.name==='build'?['tools/build.mjs','customization.json']:step.name.startsWith('core-')?['tools/contracts/herdr-core-reviewed.json','src/integration/herdr/documents/tab-move-v1.cjs']:['tools/herdr-upgrade-releases.mjs','tools/contracts/tab-move-0.1.16.json'];
+    addAction(step.name,`${step.detail} Resolve missing evidence or failing source/tests without relaxing runtime or review safeguards.`,files,[step.evidence],step.name==='native-binary'?'npm run test:native (only after separate disposable-host authorization)':step.operation);
+  }
   return {schema:'herdr-migration-v1',baseSha,headSha,discovery,inventory,steps:runner.steps,checks,actions,evidence};
 }

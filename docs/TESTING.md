@@ -157,13 +157,18 @@ unchanged; a passing public capability gate is not a stock/native source review.
 
 ## Herdr migration tooling fixtures
 
-`tests/herdr-upgrade-{releases,evaluate,report}.test.mjs` are automatically discovered
+`tests/herdr-upgrade-{releases,evaluate,report,publish}.test.mjs` are automatically discovered
 by the existing hosted runner. They use fake release feeds, hash-verified synthetic
 Git trees/blobs, fake process results and ignored preview directories. They cover
 independent versions, invalid evidence and rate limits, consumed SDK/command
 changes, exact palette/feedback hunks, missing stock/native proof, step verdicts,
 protected reviewed bytes, agent handoff and delivery/OpenSpec rendering. They never
 open a live proposal, execute downloaded code, contact a Core or certify pixels.
+The publisher fixtures additionally use fake paginated GitHub state and Git objects:
+local Skip creation, closed/skipped/merged deduplication, component overlap,
+agent-owned branches/checklists, supersession, interrupted initial publication,
+freeze/activation refusal, stale heads and malicious evidence paths. Static workflow
+assertions protect no-write defaults, credential separation and minimal permissions.
 A real hosted no-write probe remains a distinct activation prerequisite.
 
 ## Git PR label facts

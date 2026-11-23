@@ -24,9 +24,10 @@ export function migrationBody(identity) {
 export function handoff(identity,prUrl='the URL of this proposal') {
   return `After the person approves the plan, give an agent this task:\n\n> The plan in ${prUrl} is approved for implementation. Continue its existing branch ${migrationBranch(identity)} and OpenSpec change ${migrationChange(identity)}. Read ${migrationRoot(identity)}/report.md, resolve its file-specific checklist and rerun the listed checks. Preserve capability-based runtime safety and native updates. Do not create another PR, mark ready or merge. If behavior must change, revise the plan and relevant OpenSpec deltas first.\n\nCrew: start a ship task with this instruction, or resume its existing worker using crew tell. Crew's separate task branch is not permission to replace the proposal branch; use supported task/worktree attachment, and report an attachment blocker instead of making a second migration PR. No agent is spawned automatically.\n`;
 }
-export function renderMigrationReport(report,identity,{prUrl,date=report.generatedAt??'undated'}={}) {
+export function renderMigrationReport(report,identity,{prUrl,artifactUrl,date=report.generatedAt??'undated'}={}) {
   parseIdentity(identity);
-  const lines=[`# ${migrationTitle(identity).replace('chore(herdr): ','')}`,`\nGenerated: ${escape(date)}`,`\nBase: \`${report.baseSha}\`; evaluated head: \`${report.headSha}\`.`,
+  const evidenceLink=(file,label=file)=>artifactUrl?`[${label}](${artifactUrl}) (artifact path \`${safePath(file)}\`)`:`[${label}](${safePath(file)})`;
+  const lines=[`# ${migrationTitle(identity).replace('chore(herdr): ','')}`,`\nGenerated: ${escape(date)}`,`\nBase: \`${report.baseSha}\`; evaluated head: \`${report.headSha}\`.${report.worktreeDirty?' **Dirty working tree: this local preview includes uncommitted changes and cannot be published.**':''}`,
     '\nThis is source/fixture evidence, not certification of an installed binary or native UI. Native updates and capability/shape gates remain unchanged. Unknown native bytes stay advisory skips; old owned feedback can remain retained but unreviewed.',
     '\n## Versions and provenance'];
   for(const c of ['app','core']) {
@@ -39,16 +40,17 @@ export function renderMigrationReport(report,identity,{prUrl,date=report.generat
   lines.push(`- Host API reviews: ${report.inventory.host.versions.join(', ')}; profiles: ${report.inventory.host.profiles.join(', ')}`);
   lines.push(`- Stock baseline versions: ${Object.keys(report.inventory.baselines).join(', ')}. Missing coverage is not an older-baseline fallback.`);
   lines.push('\n## Step-by-step checks','\n| Step | Result | Operation | Details / log |','| --- | --- | --- | --- |');
-  for(const step of report.steps)lines.push(`| ${escape(step.name)} | **${step.status}** | ${escape(step.operation).replaceAll('|','\\|')} | ${escape(step.detail).replaceAll('|','\\|')} — [details](${step.evidence})${step.exitCode!==undefined?`; exit ${step.exitCode}`:''} |`);
+  for(const step of report.steps)lines.push(`| ${escape(step.name)} | **${step.status}** | ${escape(step.operation).replaceAll('|','\\|')} | ${escape(step.detail).replaceAll('|','\\|')} — ${evidenceLink(step.evidence,'details')}${step.exitCode!==undefined?`; exit ${step.exitCode}`:''} |`);
   lines.push('\n## Consumed contracts and evidence');
   for(const [key,label] of [['apiDelta','API/type'],['commandDelta','Command']])for(const change of report.checks[key]??[])lines.push(`- ${label} \`${escape(change.name)}\`: ${change.after===null?'removed':'changed'}; consumers: ${(report.checks.consumers?.[change.name]??[]).map(f=>`\`${f}\``).join(', ')||'facade/transitive declaration'}`);
   for(const patch of report.inventory.patches) {
     const result=report.checks[patch.id];lines.push(`- **${patch.id}**: ${result?`source ${result.sourceMatch?'matches a reviewed original':'changed'}; ${result.binaryApplicability}`:'blocked; see prerequisite failures'}. Local source: \`${patch.main}\`.`);
-    for(const original of result?.originals??[])lines.push(`  - \`${original.file}\`: ${original.match?'exact match':'changed'}; [candidate hunks](${original.candidateDiff}); [Custom hunks](${original.customDiff})`);
+    for(const original of result?.originals??[])lines.push(`  - \`${original.file}\`: ${original.match?'exact match':'changed'}; ${evidenceLink(original.candidateDiff,'candidate hunks')}; ${evidenceLink(original.customDiff,'Custom hunks')}`);
   }
-  lines.push('\nAll scoped hunks and candidate manifests are committed beside this report. Full bounded logs are also retained in the Actions artifact; tracked log files contain a bounded excerpt when the full log is longer. Whole-tree changed-path inventories flag dependencies outside the primary diff, not a claim that those dependencies were reviewed.');
+  lines.push(artifactUrl?`\nThis run did not replace committed proposal evidence. Download the current report, scoped hunks, candidate manifests and full bounded logs from the [Actions artifact](${artifactUrl}); open report.md inside it. Evidence links below point to that run and name each artifact path.`:'\nAll scoped hunks and candidate manifests are committed beside this report. Full bounded logs are also retained in the Actions artifact; tracked log files contain a bounded excerpt when the full log is longer.');
+  lines.push('Whole-tree changed-path inventories flag dependencies outside the primary diff, not a claim that those dependencies were reviewed.');
   lines.push('\n## Agent migration checklist');
-  for(const action of report.actions)lines.push(`\n- [ ] **${escape(action.id)}**: ${escape(action.problem)}\n  - Touch: ${action.files.map(f=>`\`${safePath(f)}\``).join(', ')}\n  - Evidence: ${action.evidence.map(f=>`[${f}](${safePath(f)})`).join(', ')}\n  - Check: \`${escape(action.command)}\``);
+  for(const action of report.actions)lines.push(`\n- [ ] **${escape(action.id)}**: ${escape(action.problem)}\n  - Touch: ${action.files.map(f=>`\`${safePath(f)}\``).join(', ')}\n  - Evidence: ${action.evidence.map(f=>evidenceLink(f)).join(', ')}\n  - Check: \`${escape(action.command)}\``);
   lines.push('\n## Mechanical work already done','\nFeed snapshots and immutable commits resolved where available; consumed-source and every-native-original diffs generated; candidate-only hashes and inventories recorded; build/fixture/test results collected; this migration plan scaffolded. No reviewed original, baseline, opt-in or runtime review list was changed automatically.', '\n## Native proof still required','\nSeparately authorize disposable native checks for embedded-original provenance, frame interactions and tab/session continuity. Do not test document mutations on existing sessions. An unchanged name or source hunk cannot prove CAS/durability semantics.', '\n## Agent continuation',handoff(identity,prUrl));
   return lines.join('\n')+'\n';
 }

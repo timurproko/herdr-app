@@ -15,6 +15,8 @@ try {
   assert.throws(()=>parseCommands(''),/syntax/);
   assert.deepEqual(Object.keys(sdkSurface('export function run(): Info;\nexport interface Info { x: string }\nexport function unused(): void;', ['run'])),['Info','run']);
   assert.equal(surfaceChanges({x:'a'},{x:'b'})[0].name,'x');
+  assert.match(sdkSurface('export function url(): "https://example/a"; // note',['url']).url,/https:\/\/example\/a/);
+  assert.equal(sdkSurface('/*\nexport function fake(): void;\n*/',['fake']).fake,null);
   assert.equal(testEnvironment({GH_TOKEN:'secret',DELIVERY_BOT_PRIVATE_KEY:'secret',PATH:'a',CUSTOM_SECRET:'secret'}).GH_TOKEN,undefined);
   assert.deepEqual(Object.keys(testEnvironment({GH_TOKEN:'secret',PATH:'a'})).sort(),['CI','PATH']);
   let options;const failed=runCheck(root,['x'],{spawn:(_cmd,_args,opts)=>{options=opts;return {status:2,stdout:'all errors',stderr:'failure'};}});
@@ -46,6 +48,7 @@ try {
   assert.equal(step('host-api').status,'failed');assert.deepEqual(evaluated.checks.host.missingApi,['run']);
   assert.equal(step('app-documents').status,'failed');assert.match(step('app-documents').detail,/needs-review/);
   assert.equal(step('patch-palette').status,'failed');assert.equal(step('patch-feedback').status,'failed');
+  assert.equal(evaluated.checks.palette.originals.length,inventory.patches.find(p=>p.id==='palette').originals.length);
   assert.match(evaluated.evidence[evaluated.checks.palette.originals[0].candidateDiff],/\+\/\/ new upstream hunk/);
   assert.equal(step('core-contract').status,'passed');assert.equal(step('baselines').status,'failed');
   assert.equal(step('native-binary').status,'skipped');assert.equal(step('test-ci').status,'passed');

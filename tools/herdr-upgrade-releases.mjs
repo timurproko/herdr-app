@@ -4,6 +4,7 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {createRequire} from 'node:module';
 import {HOST_CONTRACT, HOST_PROFILES} from '../src/integration/herdr/compatibility.js';
+import {stockBaseline} from './runtime/stock-baseline.mjs';
 const {PROFILE} = createRequire(import.meta.url)('../src/integration/herdr/documents/tab-move-v1.cjs');
 export const REPOSITORIES = Object.freeze({app:'herdrdev/herdr-app',core:'herdrdev/herdr-core'});
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -16,6 +17,11 @@ export function compareVersions(a,b) { const x=releaseVersion(a).split('.').map(
 export function commitSha(value) {if(!/^[a-f0-9]{40}$/.test(value??''))throw Error('Invalid immutable commit/blob identity.'); return value;}
 export function safePath(value) {
   if(typeof value!=='string'||value.length>500||!/^[A-Za-z0-9_./-]+$/.test(value)||value.split('/').some(p=>!p||p==='.'||p==='..'))throw Error('Unsafe evidence path.');
+  return value;
+}
+export function evidenceFile(value) {
+  safePath(value);
+  if(!/^(?:logs\/[a-z0-9-]+\.txt|diffs\/[A-Za-z0-9_.-]+\.diff|[a-z0-9-]+\.json)$/.test(value)||value==='report.json')throw Error('Unsafe generated evidence.');
   return value;
 }
 export function releaseIdentity(versions) {
@@ -62,13 +68,13 @@ export async function resolveTag(component, version, get, expected) {
   let object=ref.object;
   for(let i=0;i<4;i++) {
     commitSha(object?.sha);
-    if(object.type==='commit'){if(expected&&expected!==object.sha)throw Error('Reviewed release tag moved.');return object.sha;}
+    if(object.type==='commit'){if(expected&&expected!==object.sha)throw Error(`Reviewed release tag moved: expected ${expected}, observed ${object.sha}.`);return object.sha;}
     if(object.type!=='tag')throw Error('Release tag is not a commit.');
     object=(await get(githubUrl(component,`git/tags/${object.sha}`))).object;
   }
   throw Error('Release tag nesting exceeds limit.');
 }
-const json=file=>JSON.parse(fs.readFileSync(file,'utf8'));
+const json=file=>{if(!fs.lstatSync(file).isFile())throw Error('Review evidence must be a regular file.');return JSON.parse(fs.readFileSync(file,'utf8'));};
 export function reviewInventory(root) {
   const appSource=json(path.join(root,'tools/contracts/tab-move-0.1.16.json'));
   const coreSource=json(path.join(root,'tools/contracts/herdr-core-reviewed.json'));
@@ -77,13 +83,21 @@ export function reviewInventory(root) {
     if(pin.repository!==REPOSITORIES[component])throw Error('Unexpected reviewed repository.');
   }
   const directory=path.join(root,'upstream/baselines');
-  const baselines=Object.fromEntries(fs.readdirSync(directory).filter(n=>/^\d+\.\d+\.\d+\.json$/.test(n)).map(n=>[n.slice(0,-5),json(path.join(directory,n))]));
+  const baselines=Object.fromEntries(fs.readdirSync(directory).filter(n=>/^\d+\.\d+\.\d+\.json$/.test(n)).map(n=>{json(path.join(directory,n));const version=n.slice(0,-5);return [version,stockBaseline(path.join(root,'upstream'),version).baseline];}));
   const provenance=Object.fromEntries(fs.readdirSync(directory).filter(n=>n.endsWith('.provenance.json')).map(n=>[n.replace('.provenance.json',''),json(path.join(directory,n))]));
   const config=json(path.join(root,'customization.json'));
   const registry=json(path.join(root,'src/integration/native-patches/registry.json'));
-  const patches=registry.patches.map(p=>({id:p.id,target:safePath(p.target),main:safePath(config.files[p.files['main.js']]),originals:p.originals.map(name=>{
-    const file=safePath(config.files[name]);const bytes=fs.readFileSync(path.join(root,file));return {file,sha256:sha256(bytes)};
-  })}));
+  const canonical=name=>{
+    const file=safePath(config.files[name]);
+    if(!file.startsWith('src/integration/native-patches/')||!fs.lstatSync(path.join(root,file)).isFile()||!fs.realpathSync(path.join(root,file)).startsWith(fs.realpathSync(root)+path.sep))throw Error('Native original/source must be a canonical regular checkout file.');
+    return file;
+  };
+  const patches=registry.patches.map(p=>{
+    if(!/^[a-z0-9-]{1,60}$/.test(p.id))throw Error('Invalid native patch ID.');
+    return {id:p.id,target:safePath(p.target),main:canonical(p.files['main.js']),originals:p.originals.map(name=>{
+      const file=canonical(name),bytes=fs.readFileSync(path.join(root,file));return {file,sha256:sha256(bytes)};
+    })};
+  });
   return {host:{versions:[...HOST_CONTRACT.reviewedVersions],profiles:Object.keys(HOST_PROFILES)},documents:{app:[...PROFILE.apps],core:[...PROFILE.cores],generation:PROFILE.generation},appSource,coreSource,baselines,provenance,patches};
 }
 export function reviewedVersion(inventory,component) {

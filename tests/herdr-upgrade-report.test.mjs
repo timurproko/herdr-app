@@ -15,6 +15,8 @@ for(const outcome of MIGRATION_OUTCOMES)assert.ok(Buffer.byteLength(outcome)<=30
 const text=renderMigrationReport(report,identity,{prUrl:'https://github.com/timurproko/herdr-app/pull/123'});
 for(const expected of ['**failed**','**skipped**','evaluated head','source/fixture','src/integration/native-patches/palette/main.js','diffs/palette.diff','old owned feedback','https://github.com/timurproko/herdr-app/pull/123','Do not create another PR','whole-tree'])assert.ok(text.toLowerCase().includes(expected.toLowerCase()),expected);
 assert.match(handoff(identity),/after the person approves/i);
+const refreshed=renderMigrationReport(report,identity,{artifactUrl:'https://github.com/timurproko/herdr-app/actions/runs/123'});
+assert.match(refreshed,/did not replace committed proposal evidence/);assert.ok(!refreshed.includes('](diffs/palette.diff)'));assert.match(refreshed,/artifact path `diffs\/palette.diff`/);
 const files=migrationFiles(report,identity,{date:'2026-11-23'});
 assert.match(files[`openspec/changes/${migrationChange(identity)}/.openspec.yaml`],/skip_specs: true/);
 assert.equal((files[`openspec/changes/${migrationChange(identity)}/tasks.md`].match(/^## \d+\./gm)??[]).length,MIGRATION_OUTCOMES.length);
@@ -27,7 +29,7 @@ try {
   const feed=(c,v)=>({version:v,...(c==='app'?{core_min:'0.1.11'}:{generation:1}),targets:{'linux-x86_64':{url:`https://releases.herdr.dev/${c}/${v}/fixture.tar.gz`,sha256:'c'.repeat(64)}}});
   const fake=async url=>url.includes('latest.json')?feed(url.includes('/app/')?'app':'core',url.includes('/app/')?'0.1.17':'0.1.22'):{ref:`refs/tags/v${url.split('/v').at(-1)}`,object:{type:'commit',sha:url.includes('herdr-core')?inventory.coreSource.commit:sha}};
   const result=await proposeHerdrUpgrade({probe:true,output:path.relative(process.cwd(),dir),requested:{}},{get:fake,evaluate:async()=>structuredClone(report)});
-  assert.equal(result.bundle.mode,'probe');assert.equal(result.probe.ok,true);assert.ok(fs.existsSync(path.join(dir,'preview',`upstream/migrations/${identity}/report.md`)));
+  assert.equal(result.bundle.mode,'probe');assert.equal(result.probe.ok,true);assert.ok(fs.existsSync(path.join(dir,'preview',`upstream/migrations/${identity}/report.md`)));assert.ok(fs.existsSync(path.join(dir,'diffs/palette.diff')));
   // Rendering a repeated preview cannot mutate tracked baselines or create a PR.
   assert.equal(cp.execFileSync('git',['status','--porcelain','--','src/integration/native-patches','upstream/baselines'],{encoding:'utf8'}),'');
 } finally {fs.rmSync(dir,{recursive:true,force:true});}

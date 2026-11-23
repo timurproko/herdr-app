@@ -23,11 +23,11 @@
 
 ## 4. Controlled scheduled draft publication
 
-- [ ] 4.1 Add the pinned scheduled/manual workflow with read-only default, explicit publishing activation, freeze and exact-version/refresh inputs, serialized runs and evaluation/writer credential separation; static workflow tests cover minimal permissions, trusted writer source, bounded execution and no downloaded-code execution.
-- [ ] 4.2 Implement paginated identity lookup and initial-only branch/PR publication with fake GitHub/Git; cases cover component overlap, open/closed/merged duplicates, interrupted branch creation, unknown branch collisions and agent-owned head preservation.
-- [ ] 4.3 Add exact skipped-version recognition, manual same-PR reconsideration and marker-deduplicated supersession/cross-link comments; fake GitHub tests cover combined identities, absent labels, malformed freezes, newer versions and failing/uncertain writes without merging, readiness changes or body rewrites.
-- [ ] 4.4 Validate and stage only bounded generated evidence/OpenSpec paths, and publish reports with the existing delivery App token only in the writer; malicious artifact/path/input fixtures demonstrate refusal and no writer secret exposure to evaluation or test children.
-- [ ] 4.5 Document activation, read-only hosted reachability probe, freeze/skip/reconsideration and rollback, including publisher-created repository-local 🤖 Skip with neutral colour and closing-to-skip description, without changing MyWorkflows; dry-run fixtures assert zero writes and leave the actual hosted probe explicitly pending if unavailable before merge. Open no live migration proposal in this task.
+- [x] 4.1 Add the pinned scheduled/manual workflow with read-only default, explicit publishing activation, freeze and exact-version/refresh inputs, serialized runs and evaluation/writer credential separation; static workflow tests cover minimal permissions, trusted writer source, bounded execution and no downloaded-code execution.
+- [x] 4.2 Implement paginated identity lookup and initial-only branch/PR publication with fake GitHub/Git; cases cover component overlap, open/closed/merged duplicates, interrupted branch creation, unknown branch collisions and agent-owned head preservation.
+- [x] 4.3 Add exact skipped-version recognition, manual same-PR reconsideration and marker-deduplicated supersession/cross-link comments; fake GitHub tests cover combined identities, absent labels, malformed freezes, newer versions and failing/uncertain writes without merging, readiness changes or body rewrites.
+- [x] 4.4 Validate and stage only bounded generated evidence/OpenSpec paths, and publish reports with the existing delivery App token only in the writer; malicious artifact/path/input fixtures demonstrate refusal and no writer secret exposure to evaluation or test children.
+- [x] 4.5 Document activation, read-only hosted reachability probe, freeze/skip/reconsideration and rollback, including publisher-created repository-local 🤖 Skip with neutral colour and closing-to-skip description, without changing MyWorkflows; dry-run fixtures assert zero writes and leave the actual hosted probe explicitly pending if unavailable before merge. Open no live migration proposal in this task.
 
 ## Workflow follow-up
 
