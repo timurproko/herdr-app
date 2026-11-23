@@ -49,9 +49,50 @@ const main = new vm.SourceTextModule('export * from "./customization-update-mode
 await main.link(link); await main.evaluate(); return main.namespace;
 }
 const api = await modules();
+for (const revision of [null, undefined, '', 'a'.repeat(40)]) {
+  assert.equal(api.customizationRowState({ revision }).title, revision ? 'herdr-app-custom aaaaaaa' : 'herdr-app-custom');
+}
+assert.equal(api.customizationRowState(null).title, 'herdr-app-custom');
 const cx = { notify() { assert.equal(rendering,false,'No updater notify during render'); }, spawn(fn) { jobs.push(fn(cx)); }, timer: { every(ms, callback) { timers.push({ ms, callback }); }, after(ms, callback) { timers.push({ ms, callback, once: true }); } } };
 async function flush() { while (jobs.length) await Promise.all(jobs.splice(0)); }
 const owner = { section: 'updates', button(_theme, id, label, callback, options) { this.buttonCalls.push({ id, label, callback, options }); return builder(); }, row(_theme, title, description, control) { return { title, description, control }; }, buttonCalls: [] };
+// Titles are presentation only: every real row state retains its controls and
+// diagnostics, including missing evidence that must never claim to be current.
+const titleCases = [
+  { name: 'idle', snapshot: {}, label: 'Check now', action: 'check', enabled: true, description: /^Not checked\.$/ },
+  { name: 'current cache', snapshot: { check: { checked: clock, available: false } }, label: 'Check now', action: 'check', enabled: true, current: true },
+  { name: 'checking', snapshot: { checking: true }, label: 'Checking…', action: 'check', enabled: false, description: /^Not checked\.$/ },
+  { name: 'requested check', snapshot: {}, busy: 'check', label: 'Checking…', action: 'check', enabled: false, description: /^Not checked\.$/ },
+  { name: 'available', snapshot: { check: { checked: clock, available: true } }, label: 'Update', action: 'launch', enabled: true, description: /^Update available\.$/ },
+  { name: 'launching', snapshot: {}, busy: 'launch', label: 'Updating…', action: 'check', enabled: false, description: /^Updating all machines…$/ },
+  { name: 'pending receipt', snapshot: { launch: { deadline: clock + 30000 } }, label: 'Updating…', action: 'check', enabled: false, description: /^Updating all machines…$/ },
+  { name: 'running', snapshot: { locked: true, job: { state: 'running', deadline: clock + 30000 } }, label: 'Updating…', action: 'check', enabled: false, description: /^Updating all machines…$/ },
+  { name: 'failed update', snapshot: { job: { state: 'failed', error: 'fixture refusal', finished: clock } }, label: 'Check now', action: 'check', enabled: true, description: /Update failed: fixture refusal/ },
+  { name: 'failed check', snapshot: { check: { error: 'offline' } }, label: 'Check now', action: 'check', enabled: true, description: /^Check failed\. Try again\.$/ },
+  { name: 'partial', snapshot: { partial: true }, label: 'Check now', action: 'check', enabled: true, description: /some machines skipped or failed.*fixture/ },
+  { name: 'unknown outcome', snapshot: { locked: true, job: { state: 'unknown' } }, label: 'Check now', action: 'check', enabled: true, description: /Update outcome unknown.*fixture/ },
+  { name: 'expired run', snapshot: { locked: true, job: { state: 'running', deadline: clock - 1 } }, label: 'Check now', action: 'check', enabled: true, description: /Update outcome unknown.*fixture/ },
+];
+for (const revision of [null, 'a'.repeat(40)]) {
+  for (const test of titleCases) {
+    const snapshot = { revision, log: '/fixture/update.log', ...test.snapshot };
+    const model = api.customizationRowState(snapshot, { busy: test.busy, now: clock });
+    const view = { ...owner, customUpdatePending: test.busy, buttonCalls: [] };
+    state.set(api.CUSTOMIZATION_UPDATE_KEY, snapshot);
+    const rendered = duringRender(() => api.customizationUpdateRow(view, {}));
+    const button = view.buttonCalls.at(-1), context = `${test.name}, revision=${revision}`;
+    assert.equal(rendered.title, revision ? 'herdr-app-custom aaaaaaa' : 'herdr-app-custom', context);
+    assert.equal(rendered.description, model.description, context);
+    assert.equal(model.action, test.action, context);
+    assert.equal(model.current, Boolean(test.current && revision), context);
+    assert.equal(button.label, test.label, context);
+    assert.equal(button.options.enabled, test.enabled, context);
+    if (test.current) assert.match(rendered.description, revision ? /^Up to date\. Checked at/ : /^Not checked\.$/, context);
+    else assert.match(rendered.description, test.description, context);
+    assert.doesNotMatch(`${rendered.title} ${rendered.description} ${button.label}`, /revision unknown/, context);
+  }
+}
+state.delete(api.CUSTOMIZATION_UPDATE_KEY);
 api.initCustomizationUpdates(owner, cx, 'custom-settings'); await flush();
 assert.equal(calls[0].action, 'status'); assert.equal(timers[0].ms, 1000);
 let row = api.customizationUpdateRow(owner, {});
@@ -283,6 +324,14 @@ assert.match(settings, /u\.app\.ready \|\| \(u\.core\.ready && !u\.core\.managed
 assert.equal((chromeSource.match(/updates\(\)\.app\.ready \|\| customizationUpdateAvailable\(\)/g) || []).length, 2, 'expanded Settings and compact More preserve native predicates');
 for (const command of ['app.check_updates', 'app.update', 'app.update_core', 'app.whats_new']) assert.ok(settings.includes(command));
 assert.equal((settings.match(/\.child\(customizationUpdateRow\(this, t\)\)/g) || []).length, 1);
+const updateExplanation = settings.match(/\.child\("(Herdr and herdr-core[^"\n]*)"\)/)?.[1];
+assert.ok(updateExplanation, 'Updates retains an explanatory paragraph');
+assert.match(updateExplanation, /Herdr and herdr-core look for updates every hour\./);
+assert.match(updateExplanation, /Custom normally checks every 2–3 minutes while mounted/);
+assert.match(updateExplanation, /sooner on merge hints when the Git relay is enabled and configured/);
+assert.match(updateExplanation, /Available updates appear in the corner\./);
+assert.match(updateExplanation, /herdr-core runs your terminals, so they keep running through its updates\./);
+assert.doesNotMatch(settings, /Herdr looks for both every hour/);
 assert.match(settings, /initUpdateCheckFeedback\(this, cx/);
 assert.match(settings, /updateCheckSlot\(this, t/);
 const { output } = build();
