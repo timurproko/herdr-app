@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 
 function element(){const n={attrs:{},kids:[]};let p;return p=new Proxy(n,{get:(o,k)=>k in o?o[k]:k==='when'?(yes,fn)=>yes?fn(p):p:k==='child'?child=>{o.kids.push(child);return p;}:k==='children'?children=>{o.attrs.children=[children];o.kids.push(...children);return p;}:(...args)=>{o.attrs[k]=args;return p;}});}
 const find=(n,id)=>n?.attrs?.id?.[0]===id?n:n?.kids?.map(child=>find(child,id)).find(Boolean);
 const drag={view:null,item:e=>e,sourceLayer:e=>e,guard:fn=>fn};let hostSpaces=[];
-const context={...links,pluginWorkspaceLinks:()=>[],View:class{},div:element,h_flex:element,v_flex:element,svg:path=>element().asset(path),slot:child=>element().size(16).child(child),badge:realUi(element).badge,spaceTitle:()=>element(),itemHover:()=> 'hover',spaceBadgeColor:()=> 'avatar-color',reorder:()=>drag,spaces:()=>hostSpaces,panes:()=>[],pluginSpaceTags:()=>[],rolePill:realUi(element).rolePill,displaySpace:s=>s,spaceDirectory:s=>({cwd:s.folder}),shared:key=>key==='custom.plugins'?{git:{enabled:false}}:{},run(){assert.fail('Rendering must not navigate or move spaces');},U:{row:28,control:28,icon:16,gap:8,radius:6,smallIcon:14}};
+const context={...links,pluginWorkspaceLinks:()=>[],View:class{},div:element,h_flex:element,v_flex:element,svg:path=>element().asset(path),slot:child=>element().size(16).child(child),badge:realUi(element).badge,spaceTitle:()=>element(),itemHover:()=> 'hover',spaceBadgeColor:realUi(element).spaceBadgeColor,reorder:()=>drag,spaces:()=>hostSpaces,panes:()=>[],pluginSpaceTags:()=>[],rolePill:realUi(element).rolePill,displaySpace:s=>s,spaceDirectory:s=>({cwd:s.folder}),shared:key=>key==='custom.plugins'?{git:{enabled:false}}:{},run(){assert.fail('Rendering must not navigate or move spaces');},U:{row:28,control:28,icon:16,gap:8,radius:6,smallIcon:14}};
 const source=fs.readFileSync(new URL('../src/features/spaces/main.js',import.meta.url),'utf8').replace(/^import .*;\r?\n/gm,'').replace('export default class Spaces','class Spaces').replace(/export /g,'')+'\nglobalThis.Spaces=Spaces;';vm.runInNewContext(source,context);
 const view=new context.Spaces(),theme={muted:'muted',dim:'dim',selected:'selected',ansi2:'green',ansi1:'red'},w={id:'worktree',name:'session-name-dialog-editing',active:true};
 for(const tree of ['└─',null]){
@@ -97,8 +97,11 @@ for(const [row,content] of [[parentRow,parentContent],[ordinaryRow,ordinaryConte
  assert.equal(row.attrs.px[0]+content.kids[0].attrs.size[0]+content.attrs.gap[0],32,'Every space name starts at the same left edge');
  assert.equal((row.attrs.h[0]-content.kids[0].attrs.size[0])/2,6,'Every badge box is vertically centered with the same inset');
 }
-assert.equal(chain.attrs.asset[0],'mods/custom-spaces/link.svg');assert.equal(chain.attrs.text_color[0],theme.muted);
-assert.equal(chain.attrs.absolute,undefined);assert.equal(chain.kids.length,0,'No oversized connector wrapper or extra line');
+assert.equal(chain.attrs.bg[0],parentContent.kids[0].attrs.bg[0],'Fleet shell uses the coordinator badge fill');
+assert.equal(chain.attrs.rounded[0],4);assert.equal(chain.attrs.text_color[0],'#ffffff');
+assert.equal(chain.kids[0].attrs.asset[0],'mods/custom-spaces/link.svg');assert.equal(chain.kids[0].attrs.size[0],12);
+assert.equal(chain.kids[0].attrs.text_color[0],'#ffffff');
+assert.equal(chain.attrs.absolute,undefined);assert.equal(chain.kids.length,1,'Only the inset glyph inside the numbered-badge shell, no connector line');
 for(const active of [false,true]) {
  const content=find(view.row({...projected[parentAt+1],w:{...projected[parentAt+1].w,active}},theme),'space-content-worktree-a');
  assert.equal(content.kids[1].attrs.text_color[0],theme.muted,'The left-aligned fleet name stays subordinate, including when active');
@@ -135,13 +138,46 @@ assert.equal(tagReads.length,beforeRailReads,'Compact rail does not query plugin
 for(const row of [compact,parentRail])assert.equal(row.kids.length,1,'Compact rail remains badge-only, without Crew pills');
 context.pluginSpaceTags=ordinaryTags;
 assert.equal(rail.attrs.size[0],parentRailBadge.attrs.size[0]);assert.equal(rail.attrs.size[0],16);
-assert.equal(rail.attrs.asset[0],'mods/custom-spaces/link.svg');assert.equal(rail.attrs.text_color[0],theme.muted);
+assert.equal(rail.attrs.bg[0],parentRailBadge.attrs.bg[0]);assert.equal(rail.attrs.rounded[0],4);
+assert.equal(rail.kids[0].attrs.asset[0],'mods/custom-spaces/link.svg');assert.equal(rail.kids[0].attrs.size[0],12);assert.equal(rail.kids[0].attrs.text_color[0],'#ffffff');
 assert.equal(compact.attrs.items_center.length,0);assert.equal(compact.attrs.justify_center.length,0);
 assert.equal((28-rail.attrs.size[0])/2,(28-parentRailBadge.attrs.size[0])/2,'Rail icons and numbers have identical centering');
 assert.equal(compact.attrs.w[0],28);assert.equal(compact.attrs.h[0],28);assert.equal(compact.controlOptions.tooltip,projected[parentAt+1].w.directory||projected[parentAt+1].w.name,'Rail keeps the existing name/directory tooltip');
 assert.ok(compact.attrs.on_click);assert.equal(find(view.compact(projected[parentAt],theme),'space-badge-parent').kids[0],String(projected[parentAt].i+1));
 const oldRun=context.run,selected=[];context.run=(name,args)=>selected.push([name,args]);
 compact.attrs.on_click[0]();assert.deepEqual(JSON.parse(JSON.stringify(selected)),[['space.select',{id:'worktree-a'}]]);context.run=oldRun;
+// Real colour resolution: the child never inherits its own colour while attached.
+const savedSpaces=hostSpaces;
+for(const machine of [null,'pc2']) {
+ hostSpaces=savedSpaces.map(s=>({...s,machine}));
+ const records=view.ordered(),parent=records.find(r=>r.w.id==='parent'),fleet=records.find(r=>r.w.id==='worktree-a');
+ const colors={'worktree-a':'#ff0044'};context.__store.set('space.colors',colors);
+ for(const [color,expected] of [[undefined,'#22a99a'],['ansi3','#e3814f'],['#123abc','#123abc'],['ansi5','#8b7cf6']]) {
+  if(color===undefined)delete colors.parent;else colors.parent=color;
+  const before=JSON.stringify(colors);
+  for(const active of [false,true])for(const record of [parent,fleet]) {
+   const r={...record,w:{...record.w,active}},expanded=view.row(r,theme),compact=view.compact(r,theme);
+   const shell=find(expanded,`space-content-${r.w.id}`).kids[0],rail=find(compact,`space-badge-${r.w.id}`);
+   for(const b of [shell,rail]) {
+    assert.equal(b.attrs.bg[0],expected,'Coordinator recolouring updates both badges in both modes');
+    assert.equal(b.attrs.size[0],16);assert.equal(b.attrs.rounded[0],4);assert.equal(b.attrs.text_color[0],'#ffffff');
+    if(record.linked) {
+     assert.equal(b.kids[0].attrs.asset[0],'mods/custom-spaces/link.svg');assert.equal(b.kids[0].attrs.size[0],12);
+     assert.equal(b.kids[0].attrs.text_color[0],'#ffffff');assert.ok(b.kids[0].attrs.flex_none);
+    } else assert.equal(b.kids[0],String(record.i+1));
+   }
+  }
+  assert.equal(JSON.stringify(colors),before,'Rendering never copies colours into saved space preferences');
+ }
+ // Attachment off (or its parent absent) restores the child's own numbered badge.
+ for(const r of [{...fleet,linked:false},{...fleet,block:['missing-parent',fleet.w.id]}]) {
+  const b=view.spaceBadge(r,theme);assert.equal(b.kids[0],String(fleet.i+1));assert.equal(b.attrs.bg[0],'#ff0044');
+ }
+ const crossMachine=view.spaceBadge({...fleet,w:{...fleet.w,machine:machine===null?'pc2':null}},theme);
+ assert.equal(crossMachine.kids[0],String(fleet.i+1),'No colour borrowed from a cross-machine parent');
+ context.__store.delete('space.colors');
+}
+hostSpaces=savedSpaces;
 // Either grabbed member yields the same ordinary coordinator chip, not two rows.
 drag.preview=(_id,_t,data)=>data;
 const parentBadge=parentContent.kids[0];
@@ -218,6 +254,8 @@ view.rename={id:w.id};assert.equal(find(view.row({w,i:0,g:{linked:true}},theme),
 // A visually retained pair cannot fall through to an independent one-space move.
 context.pluginWorkspaceLinks=options=>options?.presentation?[{parent:'parent',child:'worktree-a',binding:'cached'}]:[];
 const retained=view.ordered().find(r=>r.w.id==='worktree-a');assert.equal(retained.linked,true);
+context.__store.set('space.colors',{parent:'#aabbcc','worktree-a':'#ff0044'});
+assert.equal(view.spaceBadge(retained,theme).attrs.bg[0],'#aabbcc','Retained display identity supplies colour without requiring fresh action authority');context.__store.delete('space.colors');
 const guardedCalls=[];context.run=(...args)=>guardedCalls.push(args);
 drag.take=()=>({kind:'drop',id:'worktree-a',target:'other',meta:{sources:['worktree-a']}});view.drop('other',{});
 drag.take=()=>({kind:'drop',id:'other',target:'parent',meta:{sources:['other']}});view.drop('parent',{});

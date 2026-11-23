@@ -8,10 +8,14 @@
 
 ## 2. Coordinator-coloured chain badges in both sidebar modes
 
-- [ ] 2.1 Render an inset white outline chain in the numbered badge's filled 16px rounded shell using the current projected coordinator's resolved colour; assert shell dimensions, fill and glyph in expanded and compact fixtures.
-- [ ] 2.2 Exercise distinct parent/child colours, named and literal hex overrides and coordinator recolouring with the real colour resolver; retain left text anchors, muted fleet names, badge-only rail, click/tooltip targets, disabled numbering and single coordinator drag-chip assertions.
-- [ ] 2.3 Update README's fleet badge description and TESTING.md coverage text; run `node tests/spaces-worktree-layout.test.mjs` and `node tests/fleet-reorder.test.mjs` to check presentation and unchanged block behavior.
-- [ ] 2.4 Run `CI=true npm run test:ci` once on the completed implementation and record its actual result and any remaining native visual-validation limit without deploying.
+- [x] 2.1 Render an inset white outline chain in the numbered badge's filled 16px rounded shell using the current projected coordinator's resolved colour; assert shell dimensions, fill and glyph in expanded and compact fixtures.
+- [x] 2.2 Exercise distinct parent/child colours, named and literal hex overrides and coordinator recolouring with the real colour resolver; retain left text anchors, muted fleet names, badge-only rail, click/tooltip targets, disabled numbering and single coordinator drag-chip assertions.
+- [x] 2.3 Update README's fleet badge description and TESTING.md coverage text; run `node tests/spaces-worktree-layout.test.mjs` and `node tests/fleet-reorder.test.mjs` to check presentation and unchanged block behavior.
+- [x] 2.4 Run `CI=true npm run test:ci` once on the completed implementation and record its actual result and any remaining native visual-validation limit without deploying.
+
+## Validation result
+
+`CI=true npm run test:ci` passed on Node 24.22.0 / Windows: 165 supported suite entries, 3 documented exclusions. Targeted Spaces rendering and fleet-reorder fixtures also passed. These fixtures do not prove native pixels; no deployment or changed live-app visual validation was performed.
 
 ## Workflow follow-up
 

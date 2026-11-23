@@ -307,9 +307,12 @@ reorder and Spaces render fixtures cover both-source dimming, a single ordinary
 coordinator chip from either grabbed member (including return/fade), no stacked
 preview or floating chain icon, and expanded/compact chain badges while preserving
 ordinary worktree order. Geometry
-assertions compare the muted vector's 16px box, slot width and vertical centering
-with real numbered badges; fleet names share ordinary names' left edge while
-retaining muted text, without connector lines. Rail selection, name/directory
+assertions compare the filled chain badge's 16px box, 4px rounding, slot width and
+vertical centering with real numbered badges, with an inset 12px white outline glyph.
+The real colour resolver covers distinct coordinator/fleet colours, named and hex
+overrides, recolouring between renders, and retained display identity in both modes;
+missing/cross-machine parents cannot lend colour. Fleet names share ordinary names'
+left edge while retaining muted text, without connector lines. Rail selection, name/directory
 tooltips and ordinary numbering stay unchanged. Packaged Crew
 fixtures retain Crew tags on both attached rows through refresh, finished fleets
 and cold restoration, restore ordinary worker tag rules on confirmed detach/attachment-off,

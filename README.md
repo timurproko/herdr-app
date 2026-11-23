@@ -600,10 +600,12 @@ selected terminal's folder.
 
 **Settings → Spaces → Connect fleet space to coordinator** is off by default
 (`connectFleetToCoordinator`). When on with Crew enabled, a verified same-machine
-fleet attaches below its coordinator with a muted outlined chain icon in the normal
-numbered-badge slot: the same 16px box and vertical centre. No elbow or connector
-lines remain. The fleet name starts at the same left edge as all other space names;
-its existing muted text alone keeps it visually subordinate.
+fleet attaches below its coordinator with a white outline chain inside a filled
+badge in the normal numbered-badge slot: the same 16px rounded box and vertical
+centre. Its fill uses the coordinator's actual badge colour and follows recolouring,
+not the fleet's saved colour. No elbow or connector lines remain. The fleet name
+starts at the same left edge as all other space names; its existing muted text alone
+keeps it visually subordinate.
 Both expanded rows show the same Crew pill at the right, after any ahead/behind
 counts and worktree icon; the pills share the same right edge.
 Unrelated plugin tags remain; the compact rail stays badge-only. Refreshing Git or
@@ -626,8 +628,8 @@ coordinator chip (its numbered badge and name), whichever row is grabbed. The fl
 preview has no fleet row or chain icon; the insertion indicator still treats the pair
 as one block. Public ordering commands wait for acknowledgements; the two-space move is
 not atomic and an uncertain result is never replayed. The compact rail remains
-selection-only and shows the same badge-sized chain icon in the fleet's badge slot, with its usual
-name/directory tooltip. They remain separate selectable native
+selection-only and shows the same filled coordinator-coloured chain badge in the
+fleet's badge slot, with its usual name/directory tooltip. They remain separate selectable native
 spaces; no terminals or tabs are relocated. The coordinator's Git panel shows only
 linked task PRs across projects, with task-scoped counts and no single active pin.
 With discovery-capable Crew, a working worker's first draft appears before its first
