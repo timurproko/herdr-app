@@ -63,6 +63,7 @@ withKitUi(modules['./ui.js'],element);
 const main=moduleFor(path.join(folder,'main.js'));
 await main.link((specifier,ref)=>{
   if (specifier === './panel-kit.js') return moduleFor(path.join(root,'src/ui/panel-kit.js'));
+  if (specifier === './settings-dialog.js') return moduleFor(path.join(root,'src/ui/settings-dialog.js'));
   if (modules[specifier]) return new vm.SyntheticModule(Object.keys(modules[specifier]),function(){
     for(const [key,value] of Object.entries(modules[specifier])) this.setExport(key,value);
   },{context});
