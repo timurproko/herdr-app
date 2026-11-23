@@ -25,7 +25,7 @@ const panel=new Main();panel.view='open';panel.foldedRepositories=new Set();pane
 const entries=new Map();
 for(let i=0;i<80;i++){const repo=i%2?'owner/a':'owner/b',key=`${repo}#${i+1}`;entries.set(key,{link:{repo,key},pr:{key,repo,number:i+1,title:`Fixture ${i}`,state:'open',url:`https://github.com/${repo}/pull/${i+1}`,labels:[]},error:null});}
 entries.set('owner/c#1',{link:{repo:'owner/c',key:'owner/c#1'},pr:null,error:'Scoped repository read failed'});
-panel.aggregate={context,entries,currentContext:()=>context,repositories:()=>repositories,rows:state=>state==='open'?[...entries.values()].flatMap(e=>e.pr?[e.pr]:[]):[],counts:()=>({open:80,closed:0}),target:()=>null,refresh(){},busy:false};
+panel.aggregate={context,entries,readNotice:repo=>entries.get(`${repo}#1`)?.error??null,currentContext:()=>context,repositories:()=>repositories,rows:state=>state==='open'?[...entries.values()].flatMap(e=>e.pr?[e.pr]:[]):[],counts:()=>({open:80,closed:0}),target:()=>null,refresh(){},busy:false};
 let tree;const render=()=>{rendering=true;try{return tree=panel.renderAggregate(cx,t);}finally{rendering=false;}};
 render();await drain();render();assert.equal(find(tree,'git-enrollment-footer'),undefined,'Zero confirmed choices');
 const change=members=>{snapshot={...snapshot,revision:snapshot.revision+1,members};render();};
@@ -42,8 +42,8 @@ change({'owner/a':false,'owner/b':false,'owner/c':false});await drain();open();
 assert.deepEqual([...panel.enrollmentPicker.opening.choices],['owner/c','owner/a','owner/b'],'Deduplicated exact rendered section order');
 const footer=find(tree,'git-enrollment-footer'),scroll=find(tree,'task-pulls-scroll');assert.ok(footer.attrs.flex_none);assert.ok(scroll.attrs.flex_1);assert.ok(scroll.attrs.min_h);assert.ok(scroll.attrs.overflow_y_scrollbar);
 assert.ok(tree.kids.indexOf(footer)>tree.kids.indexOf(scroll));assert.ok(new Set(walk(scroll).filter(e=>/^pr-owner\//.test(e.attrs.id?.[0]??'')).map(e=>e.attrs.id[0])).size===80,'Long real PR content stays in scroll sibling');
-assert.equal(find(scroll,'git-enrollment-footer'),undefined);assert.ok(find(tree,'task-error-owner/c#1'));
-for(const repo of repositories)panel.foldedRepositories.add(repo);render();assert.ok(find(tree,'git-enrollment-footer'));assert.equal(find(tree,'task-error-owner/c#1'),undefined);assert.equal(find(tree,'task-repo-body-owner/a'),undefined);assert.equal(find(tree,'git-task-empty'),undefined);
+assert.equal(find(scroll,'git-enrollment-footer'),undefined);assert.ok(find(tree,'task-error-owner/c'));
+for(const repo of repositories)panel.foldedRepositories.add(repo);render();assert.ok(find(tree,'git-enrollment-footer'));assert.equal(find(tree,'task-error-owner/c'),undefined);assert.equal(find(tree,'task-repo-body-owner/a'),undefined);assert.equal(find(tree,'git-task-empty'),undefined);
 key('up');assert.equal(panel.enrollmentPicker.index,2);key('down');assert.equal(panel.enrollmentPicker.index,0);key('down');assert.equal(find(tree,'git-enrollment-choice-1').attrs.bg[0],t.hover);key('enter');assert.equal(settings.at(-1).pluginSearch,'owner/a');
 open();find(tree,'git-enrollment-choice-2').attrs.on_hover[0](true,cx);render();assert.equal(panel.enrollmentPicker.index,2);assert.equal(find(tree,'git-enrollment-choice-2').attrs.bg[0],t.hover);key('escape');assert.equal(panel.enrollmentPicker.opening,null);
 open();const count=settings.length;popup().attrs.on_open_change[0](false,cx);render();assert.equal(panel.enrollmentPicker.opening,null);assert.equal(settings.length,count,'Backdrop dismisses without Settings');
