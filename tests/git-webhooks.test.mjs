@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import vm from 'node:vm';
 import {createHmac,createHash} from 'node:crypto';
 import {loadMod} from '../tools/plugin-harness.mjs';
 import * as config from '../src/plugins/git/relay-config.js';
@@ -26,7 +25,8 @@ try {
   const requests=[],calls=[];
   const io={fetch:async(url,options)=>{requests.push({url,options});return {ok:true,json:async()=>({protocol:1,secretHash:createHash('sha256').update(secret).digest('hex')})};},
     gh:async(args,input)=>{calls.push({args,input});return input ? '{}' : '[[]]';}};
-  assert.equal((await setup.run('relay',file,'https://relay.test','',io)).status,'ready');
+  const legacy=await setup.run('relay',file,'https://relay.test','',io);assert.equal(legacy.status,'ready');assert.equal(legacy.noticeVersion,1);
+  const modern=await setup.run('relay',file,'https://relay.test','',{...io,fetch:async()=>({ok:true,json:async()=>({protocol:1,noticeVersion:2,secretHash:createHash('sha256').update(secret).digest('hex')})})});assert.equal(modern.noticeVersion,2);
   assert.equal(requests[0].options.headers.Authorization,`Bearer ${token}`);
   assert.equal((await setup.run('repository',file,'https://relay.test','owner/repo',io)).status,'missing');
   assert.equal((await setup.run('connect',file,'https://relay.test','owner/repo',io)).status,'ready');
@@ -54,38 +54,6 @@ assert.equal((await hub.fetch(new Request('https://relay.test/configuration'))).
 assert.equal((await hub.fetch(new Request('https://relay.test/configuration',{headers:{Authorization:`Bearer ${token}`}}))).status,200);
 socket.attachment={authenticated:false};await hub.webSocketMessage(socket,JSON.stringify({type:'authenticate',token:'WRONG'}));assert.equal(socket.closed,1008);
 await hub.webSocketMessage(socket,JSON.stringify({type:'authenticate',token}));assert.equal(socket.attachment.authenticated,true);assert.equal(sent.at(-1).type,'ready');
-// Native subscription contract, without a network, credentials or real host.
-{
-  let relay='https://relay.test',keyText=JSON.stringify(keys),checking=false;
-  const sockets=[],tasks=[],timers=[],changes=[];let reads=0;
-  const cx={notify(){},spawn:fn=>tasks.push(fn(cx)),timer:{after:(ms,fn)=>timers.push({ms,fn})}};
-  const tick=async()=>{for(let i=0;i<30;i++)await Promise.resolve();};
-  const modules={
-    'websocket':{WebSocket:{connect:async url=>{
-      const s={url,writes:[],write:async text=>s.writes.push(text),read:()=>new Promise((resolve,reject)=>{s.resolve=resolve;s.reject=reject;}),close:async()=>{s.closed=true;s.reject?.(Error('closed'));}};
-      sockets.push(s);return s;
-    }}},
-    './host.js':{appHome:()=>'/fixture',checking:()=>checking,readTextFile:async()=>{reads++;return keyText;}},
-    './plugins.js':{pluginById:()=>({id:'git'}),pluginSetting:()=>relay},'./plugins/git/relay-config.js':config,
-  };
-  const context=vm.createContext({});const main=new vm.SourceTextModule(await fs.readFile(new URL('../src/plugins/git/mod/webhooks.js',import.meta.url),'utf8'),{context});
-  await main.link(name=>new vm.SyntheticModule(Object.keys(modules[name]),function(){for(const[k,v]of Object.entries(modules[name]))this.setExport(k,v);},{context}));await main.evaluate();
-  const client=new main.namespace.GitWebhooks();
-  const sync=(enabled=true,scope='repo')=>client.sync(cx,{enabled,scope,onChange:e=>changes.push(e)});
-  sync();await tick();assert.equal(sockets.length,1);assert.equal(sockets[0].url,'wss://relay.test/events');
-  assert.equal(JSON.parse(sockets[0].writes[0]).token,token);assert.ok(!sockets[0].url.includes(token));
-  sockets[0].resolve(JSON.stringify({type:'ready',protocol:1}));await tick();assert.deepEqual(changes,[null],'Connect performs catch-up');
-  const event=JSON.stringify({type:'github',event:'check_run',repository:'owner/repo',delivery:'delivery-2'});
-  sockets[0].resolve(event);await tick();sockets[0].resolve(event);await tick();assert.equal(changes.length,2,'Delivery deduplication');
-  sync();sync();assert.equal(sockets.length,1,'Renders never reconnect/poll');
-  sync(false);await tick();assert.equal(sockets[0].closed,true);assert.equal(timers.filter(t=>t.ms!==10000).length,0,'Hiding does not schedule reconnect retries');
-  sync();await tick();sockets[1].reject(Error('disconnected'));await tick();assert.equal(timers.filter(t=>t.ms!==10000).length,1);
-  sync();await tick();assert.equal(sockets.length,2,'Backoff cannot be bypassed by rendering');
-  timers.find(t=>t.ms===1000).fn(cx);sync();await tick();assert.equal(sockets.length,3);
-  client.stop();await tick();relay='';sync();await tick();assert.equal(sockets.length,3);
-  relay='https://relay.test';keyText='invalid';sync();await tick();const readCount=reads;sync();sync();await tick();assert.equal(reads,readCount,'Invalid credentials do not retry on renders');
-  keyText=JSON.stringify(keys);client.retryNow();sync();await tick();assert.equal(sockets.length,4);
-  client.stop();await tick();checking=true;sync();await tick();assert.equal(sockets.length,4,'Native eager checks never connect');
-  await Promise.all(tasks);
-}
+// Shared chrome transport and independent subscribers, all fixture-only.
+await import('./git-relay-lifecycle.test.mjs');
 console.log('PASS: private relay HMAC/authentication, payload minimization, duplicate delivery, safe Settings setup, credential isolation and native subscription lifecycle');

@@ -10,7 +10,8 @@ const all=[{pane:'cp',tab:'c',terminal:'t1'},...['a','b','dup'].map((id,i)=>({pa
 const list=[{address:'t1',state:'live',labels:{'custom.crew.home':'1'}},...['a','b','dup'].map((id,i)=>({address:'t'+(i+2),state:'live',labels:{'crew.task':id,'crew.home':'home','herdr.space':'fm-crew-home'}}))];
 const url=repo=>`https://github.com/example/${repo}/pull/12`;
 const status={home:'C:/fixture/.crew',owner:{terminal:'t1',live:true},tasks:[{id:'a',terminal:'t2',state:'reported',pr:url('a')},{id:'b',terminal:'t3',state:'working',pr:url('b')},{id:'dup',terminal:'t4',state:'reported',pr:url('a')}]};
-const calls=[],focus=[],jobs=[];const cx={notify(){},stop_propagation(){},spawn(fn){const p=Promise.resolve().then(()=>fn(cx));jobs.push(p);},timer:{every(){},after(){} }};
+let rendering=false;
+const calls=[],focus=[],jobs=[];const cx={notify(){assert.equal(rendering,false,'No synchronous notify from fleet render');},stop_propagation(){},spawn(fn){const p=Promise.resolve().then(()=>fn(cx));jobs.push(p);},timer:{every(){},after(){} }};
 const drain=async()=>{while(jobs.length)await Promise.all(jobs.splice(0));};
 const host={closeOverlay(){},openOverlay(){},nextCommand(){return new Promise(()=>{});},shared:k=>state[k],setShared:(k,v)=>state[k]=v,spaces:()=>groups,panes:()=>all,terminals:()=>list,machines:()=>[],checking:()=>false,
   props:()=>null,layout:()=>({id:'panel',hidden:!shown,children:[{id:'panel-body',active:'changes'}]}),settings:()=>({zoom:1}),theme:()=>({}),window:()=>({platform:'windows'}),notify(){},run:(...args)=>focus.push(args),
@@ -23,9 +24,10 @@ const modules={
  'location.js':{location:()=>selected},'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{}},'gpui-base':{v_flex:element,h_flex:element},'ui.js':ui,
  'agent-links.js':{AgentLinks:class{}},'pin-swap.js':{PinSwap:class{cancel(){}},PIN_SWAP_MS:320},'panel-pin.js':{panelPin:(_t,o)=>element().id(o.id)},'sidebar-title.js':{sidebarTitle:element},'settings-dialog.js':{openSettings:options=>settingsOpened.push(options)},'panel-state.js':{changePanel(){}},
  'panel-kit.js':{headerTool:(_t,o)=>element().id(o.id).on_click(o.onClick),contextMenu:element,tag:element,panelMessage:(_t,id,o)=>element().id(id).child(o.text)},
+ 'relay-consumer.js':'src/plugins/git/mod/webhooks.js',
  'webhooks.js':{GitWebhooks:class{sync(_cx,options){websocket=options;}stop(){}retryNow(){}}},'notices.js':{GitNotices:class{sync(_cx,{enabled,repository}){return enabled?noticeModes[repository]??null:null;}stop(){}retryNow(){}}},
 };
-const {Main,f,A}=await loadMod({host,modules,globals:{localStorage:{getItem(){return null;},setItem(){}}},mod:'custom-changes',entry:'export {default as Main} from "./main.js";export * as f from "./plugins/crew/fleet.js";export * as A from "./aggregate.js";'});
+const {Main,f,A,GitWebhooks}=await loadMod({host,modules,globals:{URL,localStorage:{getItem(){return null;},setItem(){}}},mod:'custom-changes',entry:'export {default as Main} from "./main.js";export * as f from "./plugins/crew/fleet.js";export * as A from "./aggregate.js";export {GitWebhooks} from "./relay-consumer.js";'});
 f.refreshFleets(cx,async()=>JSON.stringify(status));await drain();
 const panel=new Main();panel.init({},cx);await drain();let tree=panel.render(cx);await drain();tree=panel.render(cx);
 assert.equal(calls.length,2,'Duplicate task PR is fetched once');assert.equal(panel.aggregate.counts().open,1);assert.equal(panel.aggregate.counts().closed,1);
@@ -45,6 +47,32 @@ let before=calls.length;websocket.onChange({repository:'elsewhere/repo'},cx);awa
 websocket.onChange({repository:'example/a'},cx);await tick();assert.equal(calls.length,before+1);
 websocket.onChange({repository:'example/a'},cx);websocket.onChange({repository:'example/a'},cx);await tick();assert.equal(calls.length,before+1);
 waiting.shift()();await tick();assert.equal(calls.length,before+2,'A burst produces only one coalesced follow-up');waiting.shift()();await drain();assert.ok(panel.ciSweep,'Task-linked running CI uses the header sweep');
+// The actual relay consumer is called by render, not an asynchronous socket.
+// Exercise the real fleet callback/sweep under an immediate-spawn render guard.
+const savedWebhooks=panel.webhooks;panel.webhooks=new GitWebhooks();defer=false;
+state['custom.plugins'].git.settings={relay:'https://relay.test'};
+const relayState=state['custom.git.relay-runtime']={scope:'fleet-render',status:'connected',ready:1,repositories:{'example/a':{revision:1}}};
+const renderCx={...cx,spawn:fn=>jobs.push(fn(renderCx))};
+const renderSync=()=>{rendering=true;try{panel.syncTaskWebhooks(renderCx);}finally{rendering=false;}};
+assert.ok(panel.aggregate.rows('open')[0].checks.pending>0);panel.ciSweep=null;
+before=calls.length;renderSync();
+assert.equal(calls.length,before,'fleet render must not start GitHub reads');assert.equal(panel.ciSweep,null,'fleet render must not arm a sweep synchronously');
+await drain();assert.equal(calls.length,before+2);assert.ok(panel.ciSweep,'deferred delivery still arms the native sweep');
+// A new revision and repeated renders coalesce into one deferred refresh.
+panel.ciSweep=null;relayState.repositories['example/a'].revision++;
+before=calls.length;renderSync();renderSync();renderSync();assert.equal(calls.length,before);
+await drain();assert.equal(calls.length,before+2);assert.ok(panel.ciSweep);
+// Disable/hide/context changes between render and delivery cannot start work.
+for(const change of ['disable','hide','context']){
+ panel.ciSweep=null;relayState.repositories['example/a'].revision++;before=calls.length;renderSync();
+ const context=panel.context;
+ if(change==='disable')state['custom.plugins'].git.enabled=false;
+ if(change==='hide')shown=false;
+ if(change==='context')panel.context='tasks:replaced';
+ await drain();assert.equal(calls.length,before,`${change} cancels queued fleet delivery`);assert.equal(panel.ciSweep,null);
+ state['custom.plugins'].git.enabled=true;shown=true;panel.context=context;panel.webhooks.stop();
+}
+panel.webhooks=savedWebhooks;defer=true;
 noticeModes['example/b']='repository';tree=panel.render(cx);find(tree,'git-live-ci-example/b-settings').attrs.on_click[0]({},cx);assert.equal(settingsOpened.at(-1).pluginSearch,'example/b');assert.equal(settingsOpened.at(-1).pluginSection,'repository');
 // Hide/disable invalidates in-flight writes and starts no follow-up or polling.
 before=calls.length;panel.aggregate.refresh(cx);await tick();shown=false;panel.render(cx);while(waiting.length)waiting.shift()();await drain();assert.equal(calls.length,before+2);assert.equal(websocket.enabled,false);assert.equal(panel.aggregate.busy,false);

@@ -22,14 +22,16 @@ export async function requireReady(result){if(result.status!=='ready')throw Erro
 export async function createCredentials(cx){const result=await requireReady(await setup('create',cx));updateNoticeState(cx.setting('relay')??'');return result;}
 export const accountChoices=(cx,state)=>({key:'account',options:(state.accounts??[]).map(a=>[a.id,a.name]),value:cx.setting('account')??''});
 export async function configureCheck(cx){
-  const relay=await relayState(cx);if(relay.status==='ready')return {...relay,configuredValue:cx.setting('relay'),fix:null};
+  const relay=await relayState(cx), upgrading=relay.status==='ready';
+  if(upgrading&&relay.noticeVersion===2)return {...relay,configuredValue:cx.setting('relay'),fix:null};
   const state=await cloudState(cx);
   if(!state.installed)return {status:'missing',detail:'Press Install beside Cloudflare tools first.',fix:null};
   if(!state.loggedIn)return {status:'missing',detail:'Press Login beside Cloudflare account first.',fix:null};
   const storedAccount=cx.setting('account')??'',oldRelay=cx.setting('relay')??'';
   const account=state.accounts?.find(a=>a.id===storedAccount)??(state.accounts?.length===1?state.accounts[0]:null);
   if(!account)return {status:'missing',detail:'Choose the Cloudflare account above, then press Configure.',fix:null};
-  return {status:'missing',detail:`Configure in ${account.name}. Cloudflare limits and charges may apply.`,fix:{
+  return {status:upgrading?'recommended':'missing',...(upgrading?{configuredValue:oldRelay}:{}),
+    detail:`${upgrading?'Upgrade relay notices':'Configure'} in ${account.name}. Cloudflare limits and charges may apply.${upgrading?' Polling stays available.':''}`,fix:{
     label:'Configure',busyLabel:'Working…',manual:true,primary:true,requiresEnabled:true,
     async run(current){
       if(current.enabled?.()===false)throw Error('Enable Git before configuring.');

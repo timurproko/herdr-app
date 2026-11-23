@@ -14,7 +14,7 @@ try {
   const home = path.join(base, 'home'), p = worker.files(home);
   assert.equal(fs.existsSync(home), false); worker.inspect(home); assert.equal(fs.existsSync(home), false);
   let clock = 1000000, calls = 0, target = 'a'.repeat(40), fail = false;
-  const options = { now: () => clock, run(command, args, config) {
+  const options = { now: () => clock, random: () => 0, run(command, args, config) {
     calls++; assert.equal(command, 'git'); assert.deepEqual(args, ['ls-remote', '--', worker.REPOSITORY, 'refs/heads/main']);
     assert.equal(config.timeout, 15000); assert.equal(config.env.GIT_TERMINAL_PROMPT, '0');
     return { code: fail ? 1 : 0, stdout: `${target}\trefs/heads/main\n` };
@@ -26,8 +26,12 @@ try {
   assert.equal(snapshot.revision, target); assert.equal(snapshot.check.available, false);
   assert.equal(customizationRowState(updateProjection(snapshot)).title, 'herdr-app-custom aaaaaaa');
   assert.match(customizationRowState(updateProjection(snapshot)).description, /^Up to date\. Checked at \d\d:\d\d\.$/);
-  worker.checkMain(home, options); assert.equal(calls, 1, 'mounts coalesce within the persisted hour');
-  clock += worker.HOUR; target = 'b'.repeat(40); snapshot = worker.checkMain(home, options);
+  worker.checkMain(home, options); assert.equal(calls, 1, 'mounts coalesce within the persisted healthy delay');
+  assert.equal(snapshot.check.nextAttempt, clock + worker.CHECK_MIN);
+  assert.equal(worker.checkDelay(0, () => 1), worker.CHECK_MAX);
+  assert.equal(worker.checkDelay(4, () => 0), 1620000, 'backoff still jitters at the cap');
+  assert.equal(worker.checkDelay(4, () => 1), worker.RETRY_MAX);
+  clock += worker.CHECK_MIN; target = 'b'.repeat(40); snapshot = worker.checkMain(home, options);
   assert.equal(calls, 2); assert.equal(snapshot.check.available, true);
   let row = customizationRowState(updateProjection(snapshot)); assert.equal(row.label, 'Update'); assert.equal(row.description, 'Update available.');
   fail = true; clock++; const checked = snapshot.check.checked;
@@ -43,6 +47,39 @@ try {
   assert.match(customizationRowState(updateProjection(worker.inspect(home))).title, /revision unknown/);
   fs.rmSync(p.check); fail = true;
   assert.equal(updateAvailable(worker.checkMain(home, { ...options, force: true })), false, 'failed first check never invents availability');
+  // Separate desktops, legacy caches, failures, invalidation and clock skew.
+  {
+    const one = path.join(base, 'one'), two = path.join(base, 'two');
+    let at = 5000000, reads = 0, offline = false;
+    const io = { now: () => at, random: () => 0.5, run() { reads++; return { code: offline ? 1 : 0, stdout: `${target}\trefs/heads/main\n` }; } };
+    let first = worker.checkMain(one, io); worker.checkMain(two, io);
+    assert.equal(reads, 2, 'desktops have independent caches and evidence');
+    assert.equal(first.check.nextAttempt, at + 150000);
+    assert.equal(first.check.failures, 0);
+    at += 15000;
+    worker.checkMain(one, { ...io, invalidate: true }); assert.equal(reads, 3, 'hint bypasses healthy cache');
+    worker.checkMain(one, { ...io, invalidate: true }); assert.equal(reads, 3, 'automatic rate floor');
+    offline = true; worker.checkMain(one, { ...io, force: true }); assert.equal(reads, 4);
+    for (const delay of [300000, 600000, 1200000, 1800000]) {
+      const cached = worker.inspect(one, { now: io.now }).check;
+      assert.equal(cached.nextAttempt - at, delay);
+      worker.checkMain(one, { ...io, invalidate: true }); assert.equal(reads, 4 + [300000,600000,1200000,1800000].indexOf(delay), 'failure backoff wins over hints');
+      at = cached.nextAttempt; worker.checkMain(one, io);
+    }
+    offline = false; first = worker.checkMain(one, { ...io, force: true });
+    assert.equal(first.check.failures, 0); assert.equal(first.check.nextAttempt, at + 150000);
+    const before = reads;
+    worker.atomic(worker.files(one).check, { attempted: at - 120000, target, available: true });
+    worker.checkMain(one, io); assert.equal(reads, before + 1, 'legacy cache does not retain hourly gate');
+    worker.atomic(worker.files(one).check, { attempted: at + 9999999, nextAttempt: at + 99999999 });
+    worker.checkMain(one, io); assert.equal(reads, before + 2, 'backwards clock cannot postpone forever');
+    // The command can reenter from another mod, but its lease is already held.
+    worker.checkMain(one, { ...io, force: true, run() {
+      const held = worker.checkMain(one, { ...io, force: true });
+      assert.equal(held.checking, true); assert.equal(reads, before + 2);
+      return { code: 0, stdout: `${target}\trefs/heads/main\n` };
+    } });
+  }
   const current = { revision: 'a'.repeat(40), check: { checked: clock, attempted: clock, available: false }, log: '/fixture/update.log' };
   assert.equal(customizationRowState(current, { busy: 'check' }).description, customizationRowState(current).description);
   assert.equal(customizationRowState(current, { busy: 'check' }).label, 'Checking…');
@@ -56,7 +93,7 @@ try {
   row = customizationRowState({ ...current, job: { state: 'complete', finished: clock + 1 } }); assert.equal(row.description, 'Updated. Check now.');
   assert.equal(CUSTOMIZATION_LABEL, 'herdr-app-custom');
   // Runtime projection and sidecars are never preference export inputs.
-  fs.writeFileSync(path.join(home, 'shared.json'), JSON.stringify({ [CUSTOMIZATION_UPDATE_KEY]: { log: '/private', token: 'private', resume: { opening: 'private-opening', started: 1000 } }, 'custom.settings.navigation': { version: 1, dialogs: [{ overlay: 'private-dialog', section: 'updates' }] }, 'sidebar.width': 268 }));
+  fs.writeFileSync(path.join(home, 'shared.json'), JSON.stringify({ [CUSTOMIZATION_UPDATE_KEY]: { log: '/private', token: 'private', resume: { opening: 'private-opening', started: 1000 } }, 'custom.settings.navigation': { version: 1, dialogs: [{ overlay: 'private-dialog', section: 'updates' }] }, 'custom.git.relay-runtime': { owner:'private-lease', repositories:{ 'private/repo':{ revision:3,main:2 } } }, 'custom.git.relay-retry': 4, 'sidebar.width': 268 }));
   syncPreferences('export', home, { hostname: 'fixture', isDesktopOpen: () => false });
   const exported = JSON.parse(fs.readFileSync(path.join(home, 'preferences/fixture.json')));
   assert.deepEqual(exported.shared, { 'sidebar.width': 268 });
@@ -129,5 +166,5 @@ try {
     }
     console.log(`PASS: outcome matrix ${title}: ${row.description}`);
   }
-  console.log('PASS: bounded main-only checks, hourly cache/lease/failure semantics, installed evidence, all eight run-source/outcome cells and preference exclusion (fixtures).');
+  console.log('PASS: bounded main-only checks, jittered persisted cache/lease/backoff semantics, installed evidence, all eight run-source/outcome cells and preference exclusion (fixtures).');
 } finally { fs.rmSync(base, { recursive: true, force: true }); cleanRunFixtures(); }

@@ -85,7 +85,7 @@ for(const id of plugins.ids)for(const file of walk(path.join(project,PLUGIN_SOUR
   assert.ok((target==='../api.js'||target==='../api.cjs')&&inside==='.'||target==='../'.repeat(inside.split('/').length)+'api.js'||!target.startsWith('..'),`Plugin ${id} reaches outside its folder: ${rel} -> ${spec}`);
  }
 }
-assert.deepEqual(importsOf(fs.readFileSync(path.join(project,PLUGIN_SOURCE,'api.js'),'utf8')).sort(),['../host.js','../host.js','../space-color-state.js','./where.js'],'The plugin API exposes only the host facade and space colors');
+assert.deepEqual(importsOf(fs.readFileSync(path.join(project,PLUGIN_SOURCE,'api.js'),'utf8')).sort(),['../host.js','../host.js','../space-color-state.js','./where.js','websocket'],'The plugin API exposes the host facade, space colors and native socket factory');
 for(const file of walk(path.join(project,'src')).filter(p=>/\.(?:js|mjs|cjs)$/.test(p))) {
  const rel=path.relative(project,file).replaceAll('\\','/');
  if(rel.startsWith(`${PLUGIN_SOURCE}/`))continue;

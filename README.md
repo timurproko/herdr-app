@@ -390,31 +390,30 @@ local context refresh (or manual Refresh), independently of webhook-driven CI. W
 rows stay unselected.
 
 CI updates are **webhook-driven**, for **pinned and unpinned PRs**. Under
-**Settings → Plugins → Git**, use **Install → Login → Configure**, then check
-individual repositories in **Repositories**. Its **GitHub account** tabs show the
-signed-in accounts and which one supplies the list. Switching tabs reloads that
-account's repositories without switching the global CLI login or changing hooks.
-Apply or Discard pending edits before switching accounts. There is no bulk All option.
-This is paginated GitHub account inventory with admin permission, not local
-clones. The actions privately install pinned Cloudflare tools, open browser
-authorization, and configure the relay/keys/URL. No wizard, terminal commands, secret copying or URL pasting are needed.
-Configure starts immediately. Repository checkbox changes are local drafts; the
-same fixed **Apply / Discard** footer as Core saves or cancels them. Only Apply
-changes webhooks; unchecking removes only this relay's hook when applied. Successful
-partial updates stay saved and failed selections remain pending. There is no
-extra confirmation panel or Connect step. Install all cannot trigger remote changes.
-The configured Cloudflare URL is read-only under its requirement. Repositories
-have a separate searchable, scrollable section with individual checkboxes.
-Search never starts network requests; wheel gestures over the list scroll only
-that list. Pending edits survive search/collapse and are not shared or exported.
+**Settings → Plugins → Git**, explicitly use **Install → Login → Configure**
+when relay setup or a notice-format upgrade is needed, then expand **Repositories**.
+Choose the GitHub **Account**, open **Add repo**, select repositories in its search
+picker and confirm **Add**. Only that explicit Add changes webhooks; searching,
+selecting alone or Cancel does not. The main list retains last-confirmed enrollment;
+Remove deletes only this relay's matching hook. There is no bottom Apply step for
+this list. The picker reads paginated active admin repositories, not local clones;
+choosing an account does not switch the global CLI login. Partial successes stay
+saved and failures require an explicit retry. Setup privately installs pinned
+Cloudflare tools, opens browser authorization and configures the relay/keys/URL.
+No wizard, secret copying or URL pasting is required. Configure starts immediately;
+Install all cannot trigger cloud changes or enroll webhooks. The configured URL is
+read-only, and picker selections are per-view, never preferences or replay jobs.
 See [Git webhook setup](docs/GIT-WEBHOOKS.md). Credentials stay local and are never
 preference exports; customization deployment itself provisions no account/service.
 
-The shown panel keeps one authenticated native WebSocket. Relevant events refresh
-all loaded Open/Closed pages and an explicitly linked older PR; expanded lists
-retain their depth and renewed cursors. Bursts coalesce, reconnect/open catches up,
-and stale replies cannot update another machine/repository. Hidden/disabled panels
-close the connection. Failed reads retain the last good status. There is **no
+Enabled Git shares one authenticated native WebSocket from mounted non-footer
+chrome, with a short owner lease across duplicate mounts/windows. Relevant events
+refresh all loaded Open/Closed pages and an explicitly linked older PR; expanded
+lists retain their depth and renewed cursors. Bursts coalesce, reconnect/open catches
+up, and stale replies cannot update another machine/repository. Hiding Git or
+selecting another repository stops hidden panel reads, not update notifications.
+Disabling Git or closing its chrome owner closes transport; another mounted owner
+can take over. Failed reads retain the last good status. There is **no
 periodic CI polling or polling fallback**; unconfigured/offline panels show a
 compact bottom info card **Set up Git in Settings** only when global setup is
 missing. With setup ready, an unenrolled Git repository instead shows **Add this repo in Settings**. Enabled repos and non-Git agents have
@@ -426,7 +425,7 @@ Manual Refresh remains available. Its **Settings** link opens Git's prerequisite
 directly for missing setup. **Add this repo in Settings** instead opens Requirements
 collapsed and Repositories expanded, with the captured **owner/repository** prefilled
 in search. It only filters the list: choose the appropriate account if needed,
-check the repository and click Apply yourself. The header **‹ Plugins** button returns
+open Add repo, select the repository and confirm Add yourself. The header **‹ Plugins** button returns
 to the full catalog. Transport backoff and local agent discovery are
 separate from CI checking.
 
@@ -1056,9 +1055,24 @@ showing a short installed revision and **Check now** or **Update**. Update uses 
 existing all-machine command through an independent, finite runner: full deploy
 on this desktop and shell deploy on eligible peers. Its desktop source is only
 `~/.local/share/herdr-app` (created on first Update if absent), never the developer
-checkout or a crew worktree. Checks compare published main, run hourly while
+checkout or a crew worktree. Checks compare published main every **2–3 minutes** with jitter while
 Custom is mounted and raise the existing Custom dots; they never deploy or probe
-peers. Unknown/changed revision evidence is shown honestly as revision unknown.
+peers. Each desktop checks independently, including one without relay setup.
+Startup, window activation after two minutes idle and delayed timers after sleep
+catch up automatically. Offline failures persist jittered retry delays of roughly
+5, 10, 20 and then at most 30 minutes, reset on success; Check now still bypasses
+the cache under the same single-flight lease. No public network-return event is
+assumed: timer retry and supported activation signals are the fallback.
+
+For near-immediate discovery, the updater independently subscribes to the shared
+Git relay while Git is enabled: only `timurproko/herdr-app` main pushes or closed,
+merged PRs targeting main invalidate its cache. A 300 ms debounce and 15-second
+automatic rate floor coalesce hints into a bounded authoritative main check;
+events never decide availability or install anything. Git disabled, missing relay
+setup, legacy notices or no repository enrollment leave **updater-owned polling**
+working independently. After merge, install the observer on each desktop, explicitly
+upgrade the relay with Configure, and enroll the repository through Account → Add
+repo → select → Add. Do not sync private keys. See [setup and limits](docs/GIT-WEBHOOKS.md#customization-update-discovery). Unknown/changed revision evidence is shown honestly as revision unknown.
 
 The latest status, result and log live under the selected Herdr home's
 `.customizations/`: `update-status.json`, `deploy-all-result.json`,

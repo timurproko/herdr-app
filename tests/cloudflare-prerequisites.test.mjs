@@ -60,7 +60,7 @@ try {
 } finally {await fs.rm(temp,{recursive:true,force:true});}
 // Plugin-side direct Configure, automatic saves and explicit checkbox actions.
 {
-  const calls=[],settings={relay:'',repository:'',account:'',githubAccount:''};let rows=[{name:'owner/repo',repositoryId:1,checked:false}],failMutations=false,otherAdministers=null;
+  const calls=[],settings={relay:'',repository:'',account:'',githubAccount:''};let noticeVersion=1;let rows=[{name:'owner/repo',repositoryId:1,checked:false}],failMutations=false,otherAdministers=null;
   const target={cwd:'/repo',on:'pc2',binding:'captured'};
   const runtime={};const host={shared:key=>runtime[key],setShared:(key,value)=>runtime[key]=value,appHome:()=>'/fixture',exec:async(cmd,args,options)=>{
     calls.push({cmd,args,options});
@@ -70,7 +70,7 @@ try {
       if(args[1]==='status')return {code:0,stdout:JSON.stringify({installed:true,loggedIn:true,accounts:[{id:account,name:'Personal'}]})};
       return {code:0,stdout:JSON.stringify({status:'ready',relay:'https://managed.example',account})};
     }
-    if(args[1]==='relay')return {code:0,stdout:JSON.stringify({status:settings.relay?'ready':'missing'})};
+    if(args[1]==='relay')return {code:0,stdout:JSON.stringify({status:settings.relay?'ready':'missing',noticeVersion})};
     if(args[1]==='repositories')return {code:0,stdout:JSON.stringify({status:'ready',account:'fixture-user',detail:'0 enabled',repositories:rows})};
     if(args[1]==='set-repositories'){const payload=JSON.parse(args[4]);return {code:0,stdout:JSON.stringify({status:'ready',errors:failMutations?{[payload.names[0]]:'Fixture failure'}:{}})};}
     throw Error('Unexpected mode');
@@ -80,6 +80,10 @@ try {
   const configure=await actions.configureCheck(context());assert.equal(configure.fix.label,'Configure');assert.equal(configure.fix.confirm,undefined,'Configure is a one-click explicit action');assert.equal(configure.fix.requiresEnabled,true);assert.match(configure.detail,/Personal/);
   assert.ok(!calls.some(c=>c.args[1]==='configure'),'Checking never deploys resources');
   await configure.fix.run(context());assert.equal(settings.relay,'https://managed.example');assert.equal(settings.account,account);
+  const beforeUpgrade=calls.filter(c=>c.args[1]==='configure').length;
+  const upgrade=await actions.configureCheck(context());assert.equal(upgrade.fix.label,'Configure');assert.equal(upgrade.status,'recommended');
+  assert.equal(upgrade.configuredValue,settings.relay);assert.equal(calls.filter(c=>c.args[1]==='configure').length,beforeUpgrade,'Legacy notice detection never redeploys automatically');
+  noticeVersion=2;assert.equal((await actions.configureCheck(context())).fix,null,'Current notice protocol needs no redeploy');
   // The section lists added repositories without scanning; only Add's popup enumerates.
   {const empty=await actions.repositoryCheck(context());assert.deepEqual(empty.rows.length,0);assert.equal(empty.statusLabel,'0 added');assert.equal(empty.detail,'No repositories added yet.');assert.equal(empty.usable,true);
     assert.equal(empty.selection.key,'githubAccount');assert.equal(empty.selection.value,'fixture-user');assert.equal(empty.selection.options.length,2);assert.equal(empty.fix,null);
