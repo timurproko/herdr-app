@@ -64,8 +64,12 @@ fixture runs actual npm scripts and the existing full/shell installers only agai
 its disposable home, with a fake host check and synthetic bundle; no real machine,
 Core, native app or account is contacted. Cases include source refusal, peer skips,
 independent failures, selection, dry-run byte preservation, backup IDs and exit codes.
-`tests/deploy-all-result.test.mjs` additionally covers incremental result sidecars
-and revision evidence. `tests/update-{runner,detach,check,row}.test.mjs` cover
+`tests/deploy-all-result.test.mjs` additionally covers incremental result sidecars,
+revision evidence and bounded host-local deferred-peer identities. Offline repetition,
+selection omissions, failed inventory, reachable failure, successful/current clearance,
+full-desktop exclusion, confirmed removal, legacy receipts, explicit empty sets and
+dry-run preservation are exercised. Preference export excludes deferred identities
+alongside other updater runtime state. `tests/update-{runner,detach,check,row}.test.mjs` cover
 managed-source refusal, clone-on-Update, deadlines, reload/late-result recovery,
 main-only checks/coalescing, one-button states, dots, packaging and preference
 exclusion. The runner fixture also upgrades a pre-feature clean clone through a local bare

@@ -189,8 +189,12 @@ webhook operation runs just because you install this code or open Settings. See
 The selected Herdr home's `.customizations/` holds only the latest operation:
 `update-status.json`, `deploy-all-result.json`, `update-check.json`, `update.log`,
 `update-runner.cjs` and the active `update.lock` (plus a short check lock). These
-are private runtime files, not portable preferences. Reload/reopen reads the same
-status. The update has a 30-minute deadline in addition to existing subprocess
+are private runtime files, not portable preferences. The result sidecar also carries
+bounded `deferredPeers` identities for peers skipped offline, preserving them across
+later selected runs or failed inventories. Successful/current peer deployment, a
+confirmed full-desktop exclusion or a successful inventory proving removal clears
+the fact; it is not an installed-peer revision claim. Dry-run leaves it unchanged,
+and preference export never includes it. Reload/reopen reads the same status. The update has a 30-minute deadline in addition to existing subprocess
 limits; a deadline/crash/missing result reports outcome unknown, never success or
 automatic retry. The installer's own eight-minute npm timeout is also unknown:
 especially on Windows, termination of cmd.exe does not prove npm/installer

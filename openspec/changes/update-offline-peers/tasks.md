@@ -8,9 +8,9 @@
 
 ## 2. Deferred offline peers survive later runs in private runtime bookkeeping
 
-- [ ] 2.1 Persist validated bounded deferred-peer identities in the existing result sidecar without changing installed provenance; verify offline addition, legacy inference, incremental writes, repeated offline runs and successful/current clearance in deploy-all-result fixtures.
-- [ ] 2.2 Preserve deferred work across unselected peers, local-only runs, failed inventory and later failures; clear confirmed full-desktop exclusions or removal only with authoritative evidence, verified by selection/inventory fixtures and dry-run byte comparisons.
-- [ ] 2.3 Document deferred peer facts as host-local runtime data, never portable preferences or an installed-peer revision claim; verify existing preference-export fixtures exclude the added bookkeeping and TESTING describes the fixture coverage honestly.
+- [x] 2.1 Persist validated bounded deferred-peer identities in the existing result sidecar without changing installed provenance; verify offline addition, legacy inference, incremental writes, repeated offline runs and successful/current clearance in deploy-all-result fixtures.
+- [x] 2.2 Preserve deferred work across unselected peers, local-only runs, failed inventory and later failures; clear confirmed full-desktop exclusions or removal only with authoritative evidence, verified by selection/inventory fixtures and dry-run byte comparisons.
+- [x] 2.3 Document deferred peer facts as host-local runtime data, never portable preferences or an installed-peer revision claim; verify existing preference-export fixtures exclude the added bookkeeping and TESTING describes the fixture coverage honestly.
 
 ## 3. The current desktop quietly offers Update until eligible deferred peers catch up
 
