@@ -1,0 +1,151 @@
+name: Herdr upstream sync
+
+on:
+  schedule:
+    - cron: '41 23 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'probe = no writes; publish requires an authorized hosted probe and explicit activation'
+        type: choice
+        options: [probe, publish]
+        default: probe
+      app_version:
+        description: 'Optional exact App version; explicit publishing requests may reconsider skipped versions'
+        type: string
+      core_version:
+        description: 'Optional exact Core version'
+        type: string
+      refresh:
+        description: 'Existing migration identity to evaluate without replacing its branch, e.g. app-0.1.17'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: herdr-upstream-sync
+  cancel-in-progress: false
+
+env:
+  DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+  EVENT_NAME: ${{ github.event_name }}
+  MODE: ${{ inputs.mode || 'publish' }}
+  REFRESH_ID: ${{ inputs.refresh }}
+  EXACT_VERSION_OVERRIDE: ${{ inputs.app_version != '' || inputs.core_version != '' }}
+  HERDR_UPGRADE_PROPOSALS_ENABLED: ${{ vars.HERDR_UPGRADE_PROPOSALS_ENABLED }}
+  HERDR_UPGRADE_PROBE_RUN_ID: ${{ vars.HERDR_UPGRADE_PROBE_RUN_ID }}
+  HERDR_UPGRADE_FREEZE_UNTIL: ${{ vars.HERDR_UPGRADE_FREEZE_UNTIL }}
+
+jobs:
+  gate:
+    if: github.repository == 'timurproko/herdr-app' && github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      base: ${{ steps.gate.outputs.base }}
+      frozen: ${{ steps.gate.outputs.frozen }}
+      publish: ${{ steps.gate.outputs.publish }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Check freeze and hosted-probe activation
+        id: gate
+        env:
+          GITHUB_READ_TOKEN: ${{ github.token }}
+        run: node tools/publish-herdr-upgrade.mjs --gate
+
+  evaluate:
+    name: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'probe' && 'Hosted no-write probe' || 'Migration evaluation' }}
+    needs: gate
+    if: needs.gate.outputs.frozen != 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.gate.outputs.base }}
+          path: trusted
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.refresh != '' && format('chore/herdr-{0}', inputs.refresh) || needs.gate.outputs.base }}
+          path: candidate
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Evaluate public candidate evidence without write credentials
+        working-directory: trusted
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ needs.gate.outputs.base }}
+          APP_VERSION: ${{ inputs.app_version }}
+          CORE_VERSION: ${{ inputs.core_version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(--root ../candidate --base-sha "$BASE_SHA")
+          if [ "$MODE" = probe ]; then args+=(--probe); fi
+          if [ -n "$APP_VERSION" ]; then args+=(--app-version "$APP_VERSION"); fi
+          if [ -n "$CORE_VERSION" ]; then args+=(--core-version "$CORE_VERSION"); fi
+          if [ -n "$REFRESH_ID" ]; then args+=(--refresh "$REFRESH_ID"); fi
+          node tools/propose-herdr-upgrade.mjs "${args[@]}"
+      - name: Retain no-write evaluation evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: herdr-upgrade-${{ github.run_id }}
+          path: candidate/.artifacts/herdr-upgrade
+          include-hidden-files: true
+          retention-days: 30
+      - name: Record successful no-write probe
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'probe' && inputs.refresh == '' && inputs.app_version == '' && inputs.core_version == ''
+        working-directory: trusted
+        run: node --input-type=module -e "import fs from 'node:fs'; const p=JSON.parse(fs.readFileSync('../candidate/.artifacts/herdr-upgrade/probe.json')); if(p.mode!=='probe'||!p.ok)process.exit(1); console.log('Hosted feeds, immutable trees/blobs and Core schema reachable; no writes performed.');"
+
+  publish:
+    needs: [gate, evaluate]
+    if: needs.gate.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.gate.outputs.base }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: herdr-upgrade-${{ github.run_id }}
+          path: .artifacts/herdr-upgrade
+      - name: Mint the existing delivery App writer only after evaluation
+        id: app
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.DELIVERY_BOT_APP_ID }}
+          private-key: ${{ secrets.DELIVERY_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: herdr-app
+          permission-contents: write
+          permission-pull-requests: write
+      - name: Publish the validated draft evidence without executing candidate code
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          GITHUB_READ_TOKEN: ${{ github.token }}
+        run: node tools/publish-herdr-upgrade.mjs --publish .artifacts/herdr-upgrade/bundle.json
