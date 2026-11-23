@@ -2,13 +2,18 @@
 export const CUSTOMIZATION_LABEL = 'herdr-app-custom';
 export const CUSTOMIZATION_UPDATE_KEY = 'custom.customization-update';
 const ok = row => ['deployed', 'already current'].includes(row?.action);
+// Kept identical to the standalone update worker's policy (matrix-tested).
+// Only pre-dispatch unavailability and the deliberate desktop exclusion are quiet.
+export const peerSkipKind = row => row?.action !== 'skipped' || row.outcome === 'unknown' ? null
+  : /^offline \((?:offline|unreachable|disconnected)\)$/.test(row.reason) ? 'offline'
+  : row.reason === 'needs its own full deploy' ? 'desktop' : null;
 export function updateProjection(snapshot) {
   const result = snapshot?.result;
   return {
     revision: snapshot?.revision || null, check: snapshot?.check || null,
     checking: snapshot?.checking === true, locked: snapshot?.locked === true,
     log: snapshot?.log || '', details: snapshot?.details || null, job: snapshot?.job || snapshot?.lastRun || null,
-    partial: Boolean(result?.complete && ok(result.results?.find(row => row.machine === 'local')) && result.results.some(row => row.machine !== 'local' && !ok(row))),
+    partial: Boolean(result?.complete && ok(result.results?.find(row => row.machine === 'local')) && result.results.some(row => row.machine !== 'local' && !ok(row) && !peerSkipKind(row))),
   };
 }
 export const updateAvailable = snapshot => snapshot?.check?.available === true;

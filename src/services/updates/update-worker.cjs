@@ -22,6 +22,10 @@ function checkDelay(count, random) {
     : Math.round(CHECK_MIN + jitter * (CHECK_MAX - CHECK_MIN));
 }
 const success = row => row && ['deployed', 'already current'].includes(row.action);
+// Kept identical to the UI model's policy; this runner must remain self-contained.
+const peerSkipKind = row => row?.action !== 'skipped' || row.outcome === 'unknown' ? null
+  : /^offline \((?:offline|unreachable|disconnected)\)$/.test(row.reason) ? 'offline'
+  : row.reason === 'needs its own full deploy' ? 'desktop' : null;
 const read = file => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
 function files(home) {
   const dir = path.join(path.resolve(home), '.customizations');
@@ -58,7 +62,7 @@ function outcome(result) {
   const local = result?.results?.find(row => row.machine === 'local');
   if (local?.outcome === 'unknown' || /\boutcome unknown\b/i.test(local?.reason || '')) return { state: 'unknown', error: shortError(local.reason || 'Desktop deployment outcome unknown') };
   if (!success(local)) return { state: 'failed', error: shortError(result?.error || local?.reason || 'Desktop returned no successful result') };
-  return { state: result.results.some(row => row.machine !== 'local' && !success(row)) ? 'partial' : 'complete', error: null };
+  return { state: result.results.some(row => row.machine !== 'local' && !success(row) && !peerSkipKind(row)) ? 'partial' : 'complete', error: null };
 }
 function inspect(home, { now = Date.now, isAlive = alive } = {}) {
   const p = files(home), result = read(p.result);
@@ -75,6 +79,12 @@ function inspect(home, { now = Date.now, isAlive = alive } = {}) {
   // A later ordinary CLI run has no Settings launch token/log. Do not attach
   // its result to a stale completed Settings job or that job's unrelated log.
   if (job && !['running', 'unknown'].includes(job.state) && result?.complete && result.at >= job.started && result.token !== job.token) job = null;
+  // Old completed Settings jobs may have called a benign skip partial. Only
+  // their exact final receipt can refine that state; never resolve live/unknown work.
+  if (job && ['complete', 'partial'].includes(job.state) && !fs.existsSync(p.lock)
+      && result?.complete === true && result.token === job.token && result.at >= job.started) {
+    job = { ...job, ...outcome(result) };
+  }
   const details = job && fs.existsSync(p.log) ? { kind: 'log', path: p.log }
     : result && (!job || result.token === job.token) ? { kind: 'result', path: p.result } : null;
   // Plain CLI runs have no Settings job. Preserve their terminal outcome (and
@@ -275,7 +285,7 @@ async function launch(home, { spawn = cp.spawn, source = fs.readFileSync(__filen
     return inspect(home);
   }
 }
-module.exports = { REPOSITORY, DEADLINE, CHECK_MIN, CHECK_MAX, RETRY_MAX, INVALIDATE_MIN, BUSY_CHECK_RETRY, nextAttempt, checkDelay, files, read, atomic, command, installedRevision, inspect, checkMain, prepareClone, outcome, launch, runUpdate };
+module.exports = { REPOSITORY, DEADLINE, CHECK_MIN, CHECK_MAX, RETRY_MAX, INVALIDATE_MIN, BUSY_CHECK_RETRY, nextAttempt, checkDelay, files, read, atomic, command, installedRevision, inspect, checkMain, prepareClone, peerSkipKind, outcome, launch, runUpdate };
 if (require.main === module) {
   if (process.argv[2] === '--run') runUpdate(process.argv[3], process.argv[4]).catch(error => { console.error(shortError(error)); process.exitCode = 1; });
   else {

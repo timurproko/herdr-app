@@ -198,8 +198,14 @@ descendants stopped. Its structured unknown result retains update.lock even
 when the CLI exits and a fresh Check succeeds. Remote work already dispatched
 might still finish.
 
-When the desktop succeeds but peers skip/fail, the single row names that fact and
-its matching details path: **Log:** points to `update.log` for a detached Settings
+When the desktop succeeds, positively identified offline/unreachable skips and the
+deliberate **needs its own full deploy** exclusion are benign: after checking, the
+current desktop row shows Up to date without a warning or details pointer, and Custom
+badges clear. The log/result still records each skip plainly. A desktop-equipped peer
+still needs its own full Update. Unknown inventory states, other ineligibility skips,
+reachable deployment errors, locks and post-dispatch unknown outcomes are not benign.
+For these partial outcomes the single row retains the existing warning and its matching
+details path: **Log:** points to `update.log` for a detached Settings
 run; **Details:** points to `deploy-all-result.json` for an ordinary CLI run that
 captured no log. A missing or unrelated earlier Settings log is never advertised.
 Inspect the matching file for individual reasons and backup IDs.

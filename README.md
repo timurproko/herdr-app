@@ -1167,8 +1167,13 @@ trusting an overlay ID. The update-only resume hint is runtime state, never a
 portable preference.
 Shared launch feedback keeps the row on Updating before the detached runner's
 receipt arrives; a lost receipt becomes outcome unknown, not stale Up to date.
-Reload/closing Settings does not cancel or repeat an update. Peer skips/failures retain the successful desktop revision and
-show one short matching-details warning (`update.log` for Settings runs,
+Reload/closing Settings does not cancel or repeat an update. Offline/unreachable peers
+and peers deliberately excluded as **needs its own full deploy** do not make a successful
+desktop update partial: after reconciliation the row is normally Up to date, without a
+warning or log pointer, and Custom badges clear when the desktop matches main. Their
+plain skip reasons remain in the log/result. Desktop-equipped peers still need their
+own full Update. Other peer skips, failures and inventory errors retain the successful
+desktop revision and show one short matching-details warning (`update.log` for Settings runs,
 `deploy-all-result.json` for ordinary CLI runs without a captured log); desktop
 failure names the cause and documented
 manual rollback. Missing results/deadlines say outcome unknown and block replay

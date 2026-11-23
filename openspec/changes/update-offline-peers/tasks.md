@@ -2,9 +2,9 @@
 
 ## 1. Offline and desktop-equipped peer skips complete without masking real failures
 
-- [ ] 1.1 Add narrow benign skip classification to the all-machine results, worker terminal outcome and model projection, including recognized legacy receipts; verify deployed/current plus offline or full-desktop exclusions complete successfully, while unknown states, unsafe skips, inventory failures, reachable deploy errors and locks remain partial/failed in the existing deploy/update fixture matrix.
-- [ ] 1.2 Reconcile matching completed historical Settings receipts without weakening token, deadline, live-lock or unknown-outcome refusal; verify both detached Settings and ordinary CLI paths keep truthful desktop provenance, matching details and real failure causes in update-check/runner fixtures.
-- [ ] 1.3 Update README and COMMANDS partial-outcome wording for the narrow benign exclusions and independent full-desktop update requirement; verify examples match tested row text and plain offline log/result entries remain present.
+- [x] 1.1 Add narrow benign skip classification to the all-machine results, worker terminal outcome and model projection, including recognized legacy receipts; verify deployed/current plus offline or full-desktop exclusions complete successfully, while unknown states, unsafe skips, inventory failures, reachable deploy errors and locks remain partial/failed in the existing deploy/update fixture matrix.
+- [x] 1.2 Reconcile matching completed historical Settings receipts without weakening token, deadline, live-lock or unknown-outcome refusal; verify both detached Settings and ordinary CLI paths keep truthful desktop provenance, matching details and real failure causes in update-check/runner fixtures.
+- [x] 1.3 Update README and COMMANDS partial-outcome wording for the narrow benign exclusions and independent full-desktop update requirement; verify examples match tested row text and plain offline log/result entries remain present.
 
 ## 2. Deferred offline peers survive later runs in private runtime bookkeeping
 
