@@ -4,10 +4,10 @@ Implementation begins only after plan approval. Groups map one-to-one to the dra
 
 ## 1. Shared account-style choice presentation
 
-- [ ] 1.1 Extract the account trigger/menu presentation into a pure shared UI helper and migrate ClaudeAccount rendering without moving authentication, list loading or switching logic; existing account controller regressions must pass.
-- [ ] 1.2 Package the helper into workspace-status and Git using existing manifests; a clean customization build and architecture/dependency-closure fixtures must resolve all imports.
-- [ ] 1.3 Add actual helper/caller-output regressions for the account's unchanged 12px inherited-muted chevron, glyph/gap, upward Popover, pill shift, surface bounds, padding, row geometry, hover/highlight and fixed selected slot; include the native left-mouse-down opener contract.
-- [ ] 1.4 Document the shared presentation boundary in architecture/testing guidance and check that its documented source and controller ownership match the built files.
+- [x] 1.1 Extract the account trigger/menu presentation into a pure shared UI helper and migrate ClaudeAccount rendering without moving authentication, list loading or switching logic; existing account controller regressions must pass.
+- [x] 1.2 Package the helper into workspace-status and Git using existing manifests; a clean customization build and architecture/dependency-closure fixtures must resolve all imports.
+- [x] 1.3 Add actual helper/caller-output regressions for the account's unchanged 12px inherited-muted chevron, glyph/gap, upward Popover, pill shift, surface bounds, padding, row geometry, hover/highlight and fixed selected slot; include the native left-mouse-down opener contract.
+- [x] 1.4 Document the shared presentation boundary in architecture/testing guidance and check that its documented source and controller ownership match the built files.
 
 ## 2. One scope-safe coordinator enrollment footer
 

@@ -155,6 +155,14 @@ stock mismatches and malformed baseline records still fail. The new
 reviewed/mismatching and missing-0.1.17 fixtures. Existing reviewed hashes remain
 unchanged; a passing public capability gate is not a stock/native source review.
 
+## Shared account-style choice menus
+
+`tests/choice-menu.test.mjs` loads the actual account caller, `ui/choice-menu.js`
+and `ui/ui.js` with instrumented native elements. It checks the inherited muted
+12px chevron, gap, upward Popover, surface bounds/padding, row hover/highlight and
+fixed selected slot. `tests/claude-session-account.test.mjs` retains controller
+loading/switching/session guards. These are render-tree fixtures, not live pixels.
+
 ## Git PR label facts
 
 Pull facts, pagination, fleet and webhook fixtures cover assigned label names/colours

@@ -371,6 +371,7 @@
     "mods/custom-workspace-status/arrow-up-right.svg": "src/shared/arrow-up-right.svg",
     "mods/custom-workspace-status/claude-context.js": "src/shared/claude-context.js",
     "mods/custom-workspace-status/claude-account.js": "src/features/workspace-status/claude-account.js",
+    "mods/custom-workspace-status/choice-menu.js": "src/ui/choice-menu.js",
     "mods/custom-workspace-status/session-account.cjs": "src/services/claude/session-account.cjs",
     "mods/custom-workspace-status/claude.svg": "src/shared/claude.svg",
     "mods/custom-workspace-status/chevron-down.svg": "src/shared/chevron-down.svg",

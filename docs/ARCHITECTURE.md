@@ -709,6 +709,12 @@ by captured overlay ID after yielding; stale shortcuts/settings controls are gua
 The Settings page and footer/Look entries are availability projections, not destructive
 preference migrations. Node preference validation still knows disabled section IDs.
 
+`ui/choice-menu.js` owns pure account-style pill/choice presentation: the 12px
+muted chevron, upward native Popover, menu bounds and shared row/selected-slot
+geometry. Callers supply focus, index and callbacks; the account controller keeps
+its authentication, loading, cache and switching behavior. Left trigger presses
+bubble to native Popover rather than a second JavaScript opener.
+
 Claude session switching is not quota collection: its read-only terminal-label
 identity helper is shared in `src/shared/claude-context.js`, independently of Usage.
 The collector, credentials, caches and session/account IDs are never exported with
