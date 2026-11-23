@@ -10,6 +10,17 @@ export class GitNotices {
   constructor(){this.serial=0;this.message=null;this.members=new Map();}
   stop(){if(this.active){this.serial++;this.scope=null;}this.active=false;}
   retryNow(){this.force=(this.force??0)+1;}
+  configuration(){
+    const plugin=pluginById('git'),raw=pluginSetting(plugin,'relay')??'',account=pluginSetting(plugin,'githubAccount')??'',relay=relayURL(raw),state=noticeState();
+    const snapshot=state?.version===1&&state.relay===raw?state:null;
+    return {raw,account,relay,snapshot,scope:JSON.stringify([raw,account,snapshot?.revision??0,this.force??0])};
+  }
+  // Pure cached presentation, also safe inside a popup callback. Never starts a check.
+  presentation(repositories){
+    if(!this.active || checking() || this.configuration().scope!==this.scope)return null;
+    const choices=this.setup===true && this.relay ? [...new Set(repositories.map(repo=>repositoryName(repo)?.toLowerCase()).filter(name=>name&&this.members.get(name)===false))] : [];
+    return {choices,key:JSON.stringify([this.scope,this.serial,this.setup,choices])};
+  }
   request(cx,mode,repository,callback){
     const serial=this.serial,relay=this.relay,account=this.account;
     cx.spawn(async cx=>{
@@ -27,9 +38,7 @@ export class GitNotices {
     // Enrollment belongs only to the currently resolved repository. Never carry
     // its banner through another folder's root lookup or membership check.
     if(this.message==='repository')this.message=null;
-    const plugin=pluginById('git'),raw=pluginSetting(plugin,'relay')??'',account=pluginSetting(plugin,'githubAccount')??'',relay=relayURL(raw),state=noticeState();
-    const snapshot=state?.version===1&&state.relay===raw?state:null;
-    const scope=JSON.stringify([raw,account,snapshot?.revision??0,this.force??0]);
+    const {raw,account,relay,snapshot,scope}=this.configuration();
     if(scope!==this.scope){
       this.scope=scope;this.serial++;this.relay=relay;this.account=account;this.members=new Map();
       // Preserve the last confirmed global result while rechecking. Unknown
