@@ -1,0 +1,127 @@
+# Spec Delta
+
+## MODIFIED Requirements
+
+### Requirement: Optional coordinator fleet attachment
+Settings → Spaces SHALL expose **Connect fleet space to coordinator**, defaulting off and portable as a boolean. When enabled with Crew, a verified same-machine fleet SHALL appear below its coordinator with a muted vector chain icon replacing its numbered badge and its name aligned with ordinary space names. Only the attached fleet SHALL omit its Crew tag; the coordinator SHALL retain its Crew tag. Both rows SHALL remain independently selectable. Native spaces, tabs and terminals SHALL remain distinct.
+
+#### Scenario: First use and disabled setting
+- **WHEN** the preference is absent or false
+- **THEN** spaces retain their existing independent numbering, Crew tags, ordering and selection behavior
+- **AND** no attachment-specific discovery is started
+
+#### Scenario: Connected fleet
+- **WHEN** the preference is true, Crew is enabled and live ownership identifies one coordinator and one fleet on the same machine
+- **THEN** the fleet is displayed directly below the coordinator with an outlined vector chain/link icon in the numbered-badge slot, using the same slot width, icon-box size and vertical centre as an ordinary numbered badge
+- **AND** the icon uses the app's muted icon color and no elbow or connector lines are drawn
+- **AND** the fleet name begins at the same left edge as the coordinator and ordinary space names, retaining its existing muted text style without indentation
+- **AND** the coordinator retains its Crew tag, only the attached fleet omits its Crew tag, and unrelated plugin tags remain
+- **AND** the existing fleet worktree icon remains at the row's right edge when enabled
+
+#### Scenario: Compact rail attachment
+- **WHEN** the verified pair is shown in the compact rail
+- **THEN** the coordinator retains its numbered badge and the fleet shows the same muted vector chain/link icon in its badge slot, with the same box size and centering as a numbered badge
+- **AND** no elbow or connector lines are drawn
+- **AND** the fleet remains separately selectable with its existing name or directory tooltip
+
+#### Scenario: Independent navigation
+- **WHEN** the user clicks the attached fleet rather than dragging it
+- **THEN** the fleet space itself is selected without selecting the coordinator or moving its terminals
+- **AND** clicking the coordinator continues to select that space itself
+
+#### Scenario: Unverified or broken relationship
+- **WHEN** no prior verified attachment exists, or completed evidence establishes an absent, ambiguous, cross-machine or changed relationship
+- **THEN** the app does not attach unrelated spaces or infer a relationship from their names
+- **AND** affected spaces use ordinary presentation without changing focus or sessions
+- **AND** transport uncertainty during refresh is handled by bounded last-verified presentation rather than an intermediate detached frame
+
+#### Scenario: Disable or preference round trip
+- **WHEN** the user disables attachment or disables Crew
+- **THEN** linked presentation is removed without closing or relocating either space or replaying an earlier order
+- **AND** exporting and importing the preference preserves only its boolean, not homes, task records, terminal IDs or pair bindings
+
+### Requirement: Linked spaces reorder as one block
+Dragging either member of a verified coordinator/fleet pair SHALL reorder both as one same-machine block, with the coordinator before the fleet. The drag SHALL NOT split another linked block, cross machines, select a space, move tabs or restart terminals. Cancellation and stale relationships SHALL NOT commit an order change. Unlinked spaces SHALL retain ordinary reordering.
+
+#### Scenario: Drag the coordinator or the fleet
+- **WHEN** the user drags either linked row to a valid position in its own machine group
+- **THEN** the final displayed and acknowledged native order puts coordinator then fleet at that position
+- **AND** both source rows remain dimmed with one external block insertion marker
+- **AND** whichever row is grabbed, the floating preview is one ordinary coordinator chip with its numbered badge and name, not stacked rows, a fleet chip or a chain icon
+- **AND** the active space and running terminals are unchanged
+
+#### Scenario: Drop beside another linked pair
+- **WHEN** a linked block or an ordinary space is dropped on a member of another linked block
+- **THEN** the destination resolves to an edge of that block rather than between its members
+
+#### Scenario: Cancellation or relationship changes
+- **WHEN** a gesture is cancelled, a member disappears, ownership changes, or the switch is disabled before release
+- **THEN** no stale block move is committed
+- **AND** cancellation never activates the grabbed row
+
+#### Scenario: Native move acknowledgements fail
+- **WHEN** the host does not acknowledge a public ordering command or the captured membership changes during a multi-command block move
+- **THEN** the app stops the remaining sequence and reports the failure or uncertain result
+- **AND** it does not restore an old whole document or persist a retry for a later session
+
+#### Scenario: Ordinary spaces and worktrees
+- **WHEN** attachment is off or a dragged space has no verified link
+- **THEN** the existing same-machine independent reorder behavior is preserved
+- **AND** repository discovery does not regroup unrelated worktree spaces
+
+### Requirement: Aligned space worktree markers
+In the expanded Spaces sidebar, visible Git worktree markers SHALL occupy the same right-edge vertical axis as the machine header's fold chevron, for ordinary spaces and attached fleet rows. Any adjacent Crew or other plugin tag SHALL appear to the marker's left without shifting that axis. Worktree-icon visibility and rename behavior SHALL remain unchanged.
+
+#### Scenario: Ordinary and attached worktree rows
+- **WHEN** a local or remote machine group shows ordinary worktree spaces or an attached fleet with its worktree marker enabled
+- **THEN** every visible worktree marker is centred on the header chevron's vertical axis with the same right inset
+- **AND** the fleet's left-aligned name and chain badge do not move the marker away from that axis
+
+#### Scenario: Worktree marker beside plugin tags
+- **WHEN** a worktree space also displays a Crew tag or another plugin tag
+- **THEN** the tag appears to the left of the trailing worktree marker
+- **AND** the marker retains the same centre line as rows without tags and the machine header chevron
+
+#### Scenario: Hidden marker and renaming
+- **WHEN** worktree icons are switched off or a space is being renamed
+- **THEN** that row shows no worktree marker, preserving the existing visibility and editing behavior
+
+### Requirement: Stable verified fleet presentation during refresh
+Verified fleet presentation SHALL be a persisted property of exact pair identity, not a temporary refresh mode. Unrelated changes SHALL NOT emit detached frames. Persisted facts SHALL restore the first native-space frame after restart or reload while background verification runs. Failures SHALL retain the pair while both native spaces exist; only completed contradictory evidence, explicit disablement or missing native spaces SHALL detach it. Retained display SHALL NOT authorize actions.
+
+#### Scenario: Successful refresh cycle
+- **WHEN** an attached fleet undergoes a delayed Crew status refresh from Git or Spaces and the completed result verifies the same pair
+- **THEN** every intermediate sidebar projection retains the same coordinator/fleet block, fleet chain badge and Crew-tag visibility
+- **AND** no intermediate frame shows the fleet's ordinary numbered badge, independent position or Crew tag
+
+#### Scenario: Unrelated model and focus changes
+- **WHEN** spaces, tabs or panes unrelated to the pair are added, removed, renamed, reordered or selected on this or another machine, or focus/relay/Git refresh events occur
+- **THEN** none of those changes emits even one detached projection of the verified pair
+- **AND** only the two spaces' identities, coordinator home/owner and fleet adoption facts participate in binding-dependent invalidation
+- **AND** a pending or subsequent successful same-binding refresh emits no detached sidebar projection
+
+#### Scenario: Failed or timed-out refresh
+- **WHEN** a previously verified pair's next status read fails, is malformed or times out
+- **THEN** its prior verified presentation remains while its two native spaces exist, until a completed read disproves it or the setting/plugin is turned off
+- **AND** elapsed time alone does not detach an unchanged pair, including long outages beyond the former 60-second window
+- **AND** retention is bounded to the exact machine/space/home identities with at most one verified pair per known machine, never fresh action authorization
+
+#### Scenario: Completed relationship change
+- **WHEN** a successful completed read establishes that the fleet or coordinator is gone or ownership identifies a different valid pair
+- **THEN** the prior attachment is removed or replaced atomically without a temporary unknown publication
+- **AND** a late result from an older read cannot resurrect it
+
+#### Scenario: No verified history
+- **WHEN** the first read is pending, fails or produces ambiguous evidence and no previously verified pair exists in memory or durable local identity facts
+- **THEN** the sidebar remains unattached rather than creating a relationship from names, role hints or an unverified snapshot
+
+#### Scenario: Restart, mod reload or layout switch
+- **WHEN** a previously verified pair's two native spaces still exist after app restart, mod hot reload or a layout switch
+- **THEN** the first available native-space frame restores its attached block, chain badge and Crew-tag treatment from persisted sanitized identity facts before a status read completes
+- **AND** background verification can update or disprove that pair without an intermediate ordinary-space frame
+- **AND** persisted facts contain no reports, task records, PR inventory, credentials or transcripts and are not exported as portable preferences
+
+#### Scenario: Relevant identity changes during a read
+- **WHEN** the pair's owner/home or adoption evidence changes while verification is pending
+- **THEN** actions lose eligibility immediately but the previous verified display remains until the new read completes
+- **AND** missing native space identities or explicit disablement detach immediately rather than leaving ghost rows
