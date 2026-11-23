@@ -17,7 +17,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-23-fleet-row-look/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-23-fleet-row-look/acceptance.md",
   "finalizedDate": "2026-11-23",
-  "specBaseSha": "9fd7c020d7d5e52c3f2aae305447afc0a332807e",
+  "specBaseSha": "771fbb2eb83265156e321ccf69a8423fcfc30c91",
   "acceptanceScenarios": [
     "Fleet chain icons match numbered badges in size, slot width and vertical center in expanded and compact Spaces; no connector lines remain.",
     "Fleet names share the ordinary space-name left edge and retain muted text; coordinator Crew tags and trailing worktree-marker alignment are unchanged.",
