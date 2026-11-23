@@ -63,8 +63,10 @@ missing-API errors, and resolves commands/API aliases through
 `src/integration/herdr/compatibility.js`.
 
 After a Herdr update, run `npm run check:host-api`. It compares the reviewed
-profile with the regenerated `herdr.d.ts`, the live command catalog, and direct
-imports. If an API or command was renamed, update one profile/adapter rather than
+API contract with the regenerated `herdr.d.ts`, the live command catalog, and direct
+imports. App 0.1.13+ is required. Newer unreviewed releases pass when those
+checks pass, with a visible **newer than last reviewed** advisory; review history
+is not deployment permission. Tab-move's separate source audit stays advisory. If an API or command was renamed, update one profile/adapter rather than
 every feature. Data-shape changes may require one normalizer in `host.js`. Native
 patch source can still need a reviewed rebase when Herdr changes its private UI
 implementation—the facade reduces public API churn but cannot make copied native
@@ -1182,8 +1184,10 @@ its own updates do not change this deploy-owned revision.
 
 Ordinary Custom mods/layouts are unshipped private files, so native updates do not
 replace them. API compatibility can still change. Run `npm run check:host-api`, tests and native
-checks against the new host. Add the new reviewed version and aliases only in the
-facade compatibility profile; **do not rebuild the native app as a workaround**.
+checks against the new host. Required APIs, commands and import boundaries—not
+exact review-list membership—gate deployment. Record an actual review and any
+needed aliases in the facade profile separately; never add a version merely to
+unblock deployment. **Do not rebuild the native app as a workaround**.
 
 Two approved frame-only exceptions remain: palette and feedback. Each has a
 reviewed stock snapshot, opt-in record, hashes and restore support.

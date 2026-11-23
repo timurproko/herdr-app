@@ -20,6 +20,7 @@
 - `customization.json` maps each packaged file to one canonical source. Shared helpers are authored once; the build copies them into sandbox-local mod packages. Do not duplicate helpers manually.
 - `src/appearance/` owns visuals and layout composition. `src/ui/` owns visual primitives. Features own behavior. Services own external/privileged operations. `src/integration/` owns host identity, shell reporting and native compatibility.
 - Keep runtime workers self-contained in the deployment. Never import source-checkout paths from UI mods.
+- Public-host deployment requires App 0.1.13+, required SDK functions/commands and the direct-import boundary. Newer unreviewed releases get an advisory, not an exact-version refusal; this never grants native-patch or tab-move document-shape permission.
 - Feature/UI code must import Herdr functions from `./host.js`, never directly from `herdr`. `src/integration/herdr/host.js` is the sole native-module boundary; version aliases and shape adapters belong in `compatibility.js`.
 - Keep public IDs stable and use `src/integration/herdr/identity.js`. No former product name in new identifiers/paths; retired namespace aliases and migration tooling must not be reintroduced. Preserve required third-party attribution.
 

@@ -2,9 +2,9 @@
 
 ## 1. Newer capable App releases pass the host gate with review advisories
 
-- [ ] 1.1 Add central public-host minimum/version eligibility independent of exact review profiles; cover reviewed, 0.1.17, later unreviewed, older and malformed versions in focused fixtures without adding a 0.1.17 profile.
-- [ ] 1.2 Update the real host-check verdict and visible advisory; cover missing API, command and direct-import failures plus needs-review/source-unavailable/fixture-failed tab-move audits remaining advisory.
-- [ ] 1.3 Update README and architecture/development compatibility guidance alongside the code; verify the real read-only npm run check:host-api reports 0.1.17 success, reviewed false and zero missing requirements after the already reproduced exit-1 failure.
+- [x] 1.1 Add central public-host minimum/version eligibility independent of exact review profiles; cover reviewed, 0.1.17, later unreviewed, older and malformed versions in focused fixtures without adding a 0.1.17 profile.
+- [x] 1.2 Update the real host-check verdict and visible advisory; cover missing API, command and direct-import failures plus needs-review/source-unavailable/fixture-failed tab-move audits remaining advisory.
+- [x] 1.3 Update README and architecture/development compatibility guidance alongside the code; verify the real read-only npm run check:host-api reports 0.1.17 success, reviewed false and zero missing requirements after the already reproduced exit-1 failure.
 
 ## 2. Unsupported optional native patches skip safely without blocking deployment
 
