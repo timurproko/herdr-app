@@ -27,7 +27,7 @@ panel.view='open';panel.foldedRepositories=new Set();panel.context='tasks:fixtur
 const entries=new Map();
 for(let i=0;i<80;i++){const repo=i%2?'owner/a':'owner/b',key=`${repo}#${i+1}`;entries.set(key,{link:{repo,key},pr:{key,repo,number:i+1,title:`Fixture ${i}`,state:'open',url:`https://github.com/${repo}/pull/${i+1}`,labels:[]},error:null});}
 entries.set('owner/c#1',{link:{repo:'owner/c',key:'owner/c#1'},pr:null,error:'Scoped repository read failed'});
-panel.aggregate={context,entries,readNotice:repo=>entries.get(`${repo}#1`)?.error??null,currentContext:()=>context,repositories:()=>repositories,rows:state=>state==='open'?[...entries.values()].flatMap(e=>e.pr?[e.pr]:[]):[],counts:()=>({open:80,closed:0}),target:()=>null,refresh(){},busy:false};
+panel.aggregate={context,entries,readNotice:repo=>entries.get(`${repo}#1`)?.error??null,currentContext:()=>context,repositories:()=>repositories,rows:state=>[...entries.values()].flatMap(e=>e.pr && (state==='open'?['open','draft']:['closed','merged']).includes(e.pr.state)?[e.pr]:[]),counts:()=>({open:80,closed:0}),target:()=>null,refresh(){},busy:false};
 let tree;const render=()=>{rendering=true;try{return tree=panel.renderAggregate(cx,t);}finally{rendering=false;}};
 render();await drain();render();assert.equal(find(tree,'git-enrollment-footer'),undefined,'Zero confirmed choices');
 const change=members=>{snapshot={...snapshot,revision:snapshot.revision+1,members};render();};
@@ -62,9 +62,16 @@ change({'owner/a':true,'owner/b':true,'owner/c':true});await drain();render();as
 change({'owner/a':true});await drain();render();assert.equal(find(tree,'git-enrollment-footer'),undefined,'Pending membership quiet');
 // Unknown membership is quiet too; no IO is introduced by popup presentation.
 panel.notices.members.set('owner/b','unknown');panel.notices.members.set('owner/c','unknown');render();assert.equal(find(tree,'git-enrollment-footer'),undefined);
+// Section visibility is independent of the inventory used by the fixed footer.
+change({'owner/a':false,'owner/b':false,'owner/c':false});await drain();
+for(const entry of entries.values())if(entry.pr?.repo==='owner/b')entry.pr.state='merged';
+render();assert.equal(find(tree,'task-repo-owner/b'),undefined);assert.ok(find(tree,'task-repo-owner/a'));open();
+assert.deepEqual([...panel.enrollmentPicker.opening.choices],['owner/b','owner/a','owner/c'],'Hidden-tab repositories remain enrollment choices in inventory order');key('escape');
+panel.view='closed';render();assert.ok(find(tree,'task-repo-owner/b'));assert.equal(find(tree,'task-repo-owner/a'),undefined);assert.equal(find(tree,'task-repo-body-owner/b'),undefined,'Hidden sections keep their fold when eligible again');assert.equal(find(tree,'git-task-empty'),undefined);
+for(const entry of entries.values())if(entry.pr)entry.pr.state='open';panel.view='open';render();assert.ok(find(tree,'task-repo-owner/a'));assert.ok(find(tree,'task-repo-owner/b'));
 raw='';render();assert.ok(find(tree,'git-live-ci-footer'));assert.equal(find(tree,'git-enrollment-footer'),undefined,'Global missing setup takes precedence');
 // Header name uses the count-strip width; tooltips require measured real overflow.
-const longRepo='owner/a-very-long-canonical-repository-name';repositories=[longRepo];render();
+const longRepo='owner/a-very-long-canonical-repository-name';repositories=[longRepo];entries.set(`${longRepo}#1`,{link:{repo:longRepo},pr:null,error:'Scoped repository read failed'});render();
 const label=()=>find(tree,`task-repo-name-${context.scope}-${longRepo}`);
 const probe=()=>find(tree,`task-repo-name-${context.scope}-${longRepo}-probe`);
 assert.equal(find(tree,`task-repo-header-${longRepo}`).kids.length,2);assert.ok(label().attrs.flex_1);assert.equal(label().attrs.min_w[0],0);assert.ok(label().kids[0].attrs.truncate);assert.ok(label().attrs.overflow_hidden);

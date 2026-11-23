@@ -694,8 +694,8 @@ export default class Changes extends View {
           .on_size_change((size,cx)=>measure('intrinsic',size,cx))));
   }
 
-  repositorySection(t, repo, scope) {
-    const aggregate = this.aggregate, folded = this.foldedRepositories.has(repo), error = aggregate.readNotice(repo, this.view);
+  repositorySection(t, {repo, rows, error}, scope) {
+    const aggregate = this.aggregate, folded = this.foldedRepositories.has(repo);
     return v_flex().id(`task-repo-${repo}`).w_full().flex_none().gap(U.rowGap)
       .child(sidebarSectionHeader(t, {id:`task-repo-header-${repo}`, label:repo, open:!folded, children:[
         this.repositoryNameLabel(repo,scope),
@@ -708,13 +708,16 @@ export default class Changes extends View {
           cx.notify();
         }))
       .when(!folded, el => el.child(v_flex().id(`task-repo-body-${repo}`).gap(U.rowGap)
-        .children(aggregate.rows(this.view).filter(pr => pr.repo === repo).map(pr => this.pullRow(t, pr)))
+        .children(rows.map(pr => this.pullRow(t, pr)))
         .when(Boolean(error), body => body.child(div().id(`task-error-${repo}`).px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(error)))));
   }
 
   renderAggregate(cx,t) {
     const aggregate=this.aggregate,counts=aggregate.counts(),scope=aggregate.context.scope;
-    const repositories=aggregate.repositories();
+    // Membership is cross-tab: enrollment and updates must retain hidden sections.
+    const repositories=aggregate.repositories(), rows=aggregate.rows(this.view);
+    const sections=repositories.map(repo=>({repo,rows:rows.filter(pr=>pr.repo===repo),error:aggregate.readNotice(repo,this.view)}))
+      .filter(section=>section.rows.length || section.error);
     if(this.repositoryNameSizes){
       const ids=new Set(repositories.map(repo=>`task-repo-name-${scope}-${repo}`));
       for(const id of this.repositoryNameSizes.keys())if(!ids.has(id))this.repositoryNameSizes.delete(id);
@@ -743,8 +746,8 @@ export default class Changes extends View {
         .child(this.segment(t,'git-view-open','Open',counts.open,this.view==='open',view=>this.setView('open',view)))
         .child(this.segment(t,'git-view-closed','Closed',counts.closed,this.view==='closed',view=>this.setView('closed',view))))
       .child(v_flex().id('task-pulls-scroll').flex_1().min_h(0).overflow_y_scrollbar().p(4)
-        .children(repositories.map(repo => this.repositorySection(t, repo, scope)))
-        .when(!aggregate.rows(this.view).length,el=>el.child(panelMessage(t,'git-task-empty',{text:aggregate.context.stale?'Waiting for fleet verification':aggregate.busy?'Loading…':`No recorded ${this.view} task pull requests`,loading:!aggregate.context.stale && aggregate.busy,rowInset:2}))))
+        .children(sections.map(section => this.repositorySection(t, section, scope)))
+        .when(!sections.length,el=>el.child(panelMessage(t,'git-task-empty',{text:aggregate.context.stale?'Waiting for fleet verification':aggregate.busy?'Loading…':`No ${this.view} pull requests`,loading:!aggregate.context.stale && aggregate.busy,rowInset:2}))))
       .when(setup,el=>el.child(this.liveCIInfo(t)))
       .when(Boolean(enrollment),el=>el.child(enrollment))
       .when(Boolean(sweep),el=>el.child(this.sweepLayer(t,sweep).top(U.section)));
