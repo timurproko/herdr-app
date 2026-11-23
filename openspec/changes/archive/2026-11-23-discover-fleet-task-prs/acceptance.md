@@ -18,7 +18,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-23-discover-fleet-task-prs/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-23-discover-fleet-task-prs/acceptance.md",
   "finalizedDate": "2026-11-23",
-  "specBaseSha": "d823d5ebac2cfd664fe3a61bfa2ec13476d5393f",
+  "specBaseSha": "6e33e4f35c63d1f672cdb309c3e0ccb07514d5c4",
   "acceptanceScenarios": [
     "Working tasks with no recorded PR contribute validated discovered drafts before their first report, using exact live worker identity.",
     "Known, none and unavailable results retain their meaning through bounded sanitized task facts and generic pull context.",
