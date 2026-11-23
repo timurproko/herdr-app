@@ -79,6 +79,11 @@ consume(); consume(); assert.equal(changes.length,1);
 consume(true,'someone/else'); consume(false); await tick(); assert.equal(sockets.at(-1).closed,undefined,'hiding a panel leaves update transport active');
 await send({ ...push, delivery:'hidden-main' }); assert.equal(invalidations,4);
 consume(); assert.equal(changes.length,3,'showing catches up independent of selected repo');
+const grouped=new panel.namespace.GitWebhooks();let groupChanges=0;
+const groupSync=()=>grouped.sync(cx,{enabled:true,scope:'tasks',repositories:[repo,'someone/else'],onChange(){groupChanges++;}});
+groupSync();await send({...push,event:'check_run',repository:'someone/else',delivery:'group-notice'});groupSync();
+assert.equal(groupChanges,2,'merged task/fleet multi-repository panel consumes notices for every linked repo');
+await send({...push,event:'check_run',repository:'unrelated/repo',delivery:'group-unrelated'});groupSync();assert.equal(groupChanges,2);
 const before = sockets.length; client.sync(cx,options); duplicate.sync(cx,options); await tick(); assert.equal(sockets.length,before);
 
 sockets.at(-1).reject(Error('offline')); await tick();

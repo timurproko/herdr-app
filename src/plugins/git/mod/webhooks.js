@@ -6,7 +6,7 @@ import { RELAY_STATE, RELAY_RETRY, relayRevision } from './plugins/git/relay-sta
 export class GitWebhooks {
   constructor() { this.state = 'idle'; this.status = ''; }
   stop() { this.scope = null; this.revision = null; }
-  sync(cx, { enabled, scope, repository, onChange }) {
+  sync(cx, { enabled, scope, repository, repositories, onChange }) {
     if (!enabled || checking()) { this.stop(); return; }
     const relay = relayURL(pluginSetting(pluginById('git'), 'relay'));
     if (!relay) { this.state = 'setup'; this.status = 'Live CI: configure webhooks in Settings › Plugins › Git'; return; }
@@ -14,7 +14,8 @@ export class GitWebhooks {
     this.state = state?.status || 'connecting';
     this.status = this.state === 'connected' ? '' : this.state === 'setup'
       ? 'Live CI: create credentials in Settings › Plugins › Git' : 'Live CI disconnected · reconnecting (manual Refresh remains available)';
-    const revision = relayRevision(state, repository);
+    const names = repositories || [repository];
+    const revision = JSON.stringify(names.map(name => relayRevision(state, name)));
     if (scope === this.scope && revision === this.revision) return;
     const changedScope = scope !== this.scope;
     this.scope = scope; this.revision = revision;
