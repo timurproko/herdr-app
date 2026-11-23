@@ -2,9 +2,9 @@
 
 ## 1. Coordinator Crew tags remain visible while only attached fleet tags are omitted
 
-- [ ] 1.1 Narrow the Crew plugin's verified-binding tag suppression to the child; packaged plugin assertions retain the coordinator's Crew label/tooltip, hide the attached fleet's tag and preserve unrelated workers and plugin tags.
-- [ ] 1.2 Cover binding invalidation, attachment off and Crew disabled in packaged fixtures; only verified attached children receive the special omission, with no new discovery or state writes.
-- [ ] 1.3 Correct README and docs/TESTING.md tag descriptions; the documented coordinator/child behavior agrees with the delta specification and focused regression results.
+- [x] 1.1 Narrow the Crew plugin's verified-binding tag suppression to the child; packaged plugin assertions retain the coordinator's Crew label/tooltip, hide the attached fleet's tag and preserve unrelated workers and plugin tags.
+- [x] 1.2 Cover binding invalidation, attachment off and Crew disabled in packaged fixtures; only verified attached children receive the special omission, with no new discovery or state writes.
+- [x] 1.3 Correct README and docs/TESTING.md tag descriptions; the documented coordinator/child behavior agrees with the delta specification and focused regression results.
 
 ## 2. Attached fleet rows use a muted vector elbow in expanded and compact sidebars
 

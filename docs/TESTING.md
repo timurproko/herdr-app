@@ -128,7 +128,10 @@ identities, TTL/coalescing, order-independent binding, expiry and disable genera
 `tests/fleet-reorder.test.mjs` exercises pure display blocks and queued public move
 acknowledgements, either grabbed member, pair edges, timeout and no replay. Shared
 reorder and Spaces render fixtures cover both-source dimming, stacked preview and
-expanded/compact link glyphs while preserving ordinary worktree order.
+expanded/compact link glyphs while preserving ordinary worktree order. Packaged Crew
+fixtures retain the coordinator's Crew tag, omit only the verified attached fleet's
+tag, restore ordinary worker tags on stale/disabled attachment, and hide all Crew
+tags when the plugin is disabled; tag reads start no discovery or state writes.
 
 `tests/fleet-git.test.mjs` loads the actual Git controller, aggregate source and Crew
 provider through the package harness. Synthetic tasks/gh results cover coordinator

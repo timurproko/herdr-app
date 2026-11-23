@@ -780,7 +780,7 @@ export default {
   onEnabledChange: invalidateFleet,
   // The Spaces sidebar's tag for a space the coordinator or crew workers run in.
   spaceTags: space => {
-    if (fleetContexts().some(c=>c.child && (c.parent===space.id || c.child===space.id))) return [];
+    if (fleetContexts().some(c=>c.child===space.id)) return [];
     const kind = crewInSpace(space);
     return kind ? [{ label: 'Crew', tooltip: kind === 'coordinator' ? 'Crew coordinator' : 'Crew worker' }] : [];
   },

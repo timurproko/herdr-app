@@ -22,10 +22,17 @@ const read=async()=>{calls++;return JSON.stringify(status);};
 f.refreshFleets(cx,read);f.refreshFleets(cx,read);await Promise.all(tasks.splice(0));assert.equal(calls,1);
 assert.ok(!JSON.stringify(state[f.FLEET_KEY]).includes('MUST NOT SHARE'));assert.equal(r.pluginWorkspaceLinks().length,1);assert.equal(r.pluginPullContext('coordinator').links.length,1);assert.equal(r.pluginPullContext('fm-crew-home1'),null);
 groups.reverse();all.reverse();list.reverse();assert.equal(f.fleetContexts().length,1,'Native ordering does not change identity or abort block acknowledgements');groups.reverse();all.reverse();list.reverse();
-assert.equal(r.pluginSpaceTags(groups[0]).length,0);
-all[1].terminal='replacement';assert.equal(f.fleetContexts().length,0);all[1].terminal='t2';
-state[f.FLEET_KEY].entries.local.at-=31000;assert.equal(f.fleetContexts().length,0);
+const tags=space=>Array.from(r.pluginSpaceTags(space),tag=>[tag.label,tag.tooltip]);
+assert.deepEqual(tags(groups[0]),[['Crew','Crew coordinator']],'The attached coordinator keeps its role tag');
+assert.deepEqual(tags(groups[1]),[],'Only the attached fleet omits Crew');
+assert.deepEqual(tags({id:'unrelated-worker',tabs:[{id:'w'}]}),[['Crew','Crew worker']],'A worker outside the bound child keeps its tag');
+const savedState=JSON.stringify(state),savedCalls=calls;
+for(let i=0;i<3;i++){tags(groups[0]);tags(groups[1]);}
+assert.equal(JSON.stringify(state),savedState);assert.equal(calls,savedCalls,'Reading tags starts no discovery');
+all[1].terminal='replacement';assert.equal(f.fleetContexts().length,0);assert.deepEqual(tags(groups[0]),[['Crew','Crew coordinator']]);all[1].terminal='t2';
+state[f.FLEET_KEY].entries.local.at-=31000;assert.equal(f.fleetContexts().length,0);assert.deepEqual(tags(groups[1]),[['Crew','Crew worker']],'Expired binding restores the worker tag');
 state['custom.spaces.preferences'].connectFleetToCoordinator=false;f.refreshFleets(cx,read);assert.equal(calls,1);assert.equal(r.pluginWorkspaceLinks().length,0);
+assert.deepEqual(tags(groups[0]),[['Crew','Crew coordinator']]);assert.deepEqual(tags(groups[1]),[['Crew','Crew worker']]);
 state['custom.spaces.preferences'].connectFleetToCoordinator=true;f.invalidateFleet();
 let release;f.refreshFleets(cx,()=>new Promise(r=>release=r));await Promise.resolve();await Promise.resolve();f.invalidateFleet();release(JSON.stringify(status));await Promise.all(tasks.splice(0));assert.equal(f.fleetContexts().length,0,'Disable generations reject obsolete responses');
 f.refreshFleets(cx,()=>new Promise(r=>release=r));await Promise.resolve();await Promise.resolve();state['custom.fleet.reads'].local.until=0;release(JSON.stringify(status));await Promise.all(tasks.splice(0));assert.equal(f.fleetContexts().length,0,'Expired read leases cannot publish a late snapshot');
@@ -38,4 +45,5 @@ assert.ok(!JSON.stringify(f.recordedSource(JSON.stringify(status))).includes('MU
 const declaration=r.pluginById('crew'),workspace=declaration.workspaceLinks,pulls=declaration.pullContext;
 declaration.workspaceLinks=()=>{throw Error('fixture provider failure');};declaration.pullContext=()=>{throw Error('fixture provider failure');};assert.equal(r.pluginWorkspaceLinks().length,0);assert.equal(r.pluginPullContext('coordinator'),null);declaration.workspaceLinks=workspace;declaration.pullContext=pulls;
 r.setPluginEnabled(declaration,false);assert.equal(r.pluginWorkspaceLinks().length,0);assert.equal(r.pluginPullContext('coordinator'),null);
+assert.deepEqual(tags(groups[0]),[]);assert.deepEqual(tags(groups[1]),[],'Disabled Crew contributes no tags');
 console.log('PASS Crew fleet exact identities, registry seam, source filtering, read coalescing, expiry, generations and remote qualification');

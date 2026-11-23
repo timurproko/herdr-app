@@ -581,7 +581,8 @@ selected terminal's folder.
 
 **Settings → Spaces → Connect fleet space to coordinator** is off by default
 (`connectFleetToCoordinator`). When on with Crew enabled, a verified same-machine
-fleet attaches below its coordinator with a link badge; both rows omit the Crew tag.
+fleet attaches below its coordinator with a link badge; the coordinator keeps its
+Crew tag and only the attached fleet omits it. Unrelated plugin tags remain.
 Dragging either expanded row moves the pair, with both rows dimmed and a paired
 preview. Public ordering commands wait for acknowledgements; the two-space move is
 not atomic and an uncertain result is never replayed. The compact rail remains
