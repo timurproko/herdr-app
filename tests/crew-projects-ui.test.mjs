@@ -119,14 +119,37 @@ several.attrs.on_pick[0]({add:['D:\\Git\\one','D:\\Git\\bad','D:\\Git\\two'],rem
 assert.equal(view.pluginOpen['crew-projects'],true,'Adding opens the section so the new projects are in view');
 await runJob();list.add=addOne;
 assert.deepEqual(calls.splice(0).map(c=>[c[0],c[2]]),[['remove','app'],['add','D:\\Git\\one'],['add','D:\\Git\\bad'],['add','D:\\Git\\two']],'An unticked project is removed by its name; every newly ticked folder is tried');
-assert.equal(view.pluginFixError['crew:projects'],'D:\\Git\\bad: D:/Git/bad is not a git repository.');
+assert.equal(view.pluginFixError['crew:projects'],'Could not add folder “D:\\Git\\bad”. Crew reported: D:/Git/bad is not a git repository.');
 assert.equal(jobs.length,1,'The list is read again afterwards');
 delete view.pluginFixError['crew:projects'];
 
-// What the tool refuses is shown in the section, in its words.
+// Both older-name and home-ownership refusals are attributed to Crew, not the folder.
+for (const reason of ['Invalid project name: agentnumberone.dev. Use lowercase letters, digits and dashes.',
+  'Read-only: this home is owned by terminal t9. Only that session may change its projects.']) {
+  seed();fail=reason;popup().attrs.on_open_change[0](true,cx);opened.length=0;
+  popup().attrs.on_pick[0]({add:['D:\\Git\\agentnumberone.dev'],remove:[]},cx);await runJob();fail=null;
+  assert.deepEqual(calls.splice(0),[['add','pc2','D:\\Git\\agentnumberone.dev']],'No retry or alternative folder after refusal');
+  const expected=`Could not add folder “D:\\Git\\agentnumberone.dev”. Crew reported: ${reason}`;
+  assert.equal(view.pluginFixError['crew:projects'],expected);
+  assert.equal(jobs.length,1,'The authoritative list is re-read even after refusal');
+  seed();assert.ok(words(find(render(),'st-plugin-crew-projects-body')).includes(expected),'The full attributed refusal is visible in the section');
+}
+// Unticking preserves both the dotted ID and removal-specific refusal context.
+const dotted={id:'agentnumberone.dev',label:'D:\\Git\\agentnumberone.dev',path:'D:\\Git\\agentnumberone.dev'};
+seed({status:'ready',usable:true,rows:[dotted]});popup().attrs.on_open_change[0](true,cx);opened.length=0;
+assert.deepEqual(popup().attrs.multi[0].existing,[dotted.path],'Existing dotted registrations start ticked');
+fail='Read-only: this home is owned by terminal t9. Only that session may change its projects.';
+popup().attrs.on_pick[0]({add:['D:\\Git\\other'],remove:[dotted.path]},cx);await runJob();fail=null;
+assert.deepEqual(calls.splice(0),[['remove','pc2',dotted.id],['add','pc2','D:\\Git\\other']]);
+assert.equal(view.pluginFixError['crew:projects'],`Could not remove folder “${dotted.path}”. Crew reported: Read-only: this home is owned by terminal t9. Only that session may change its projects. · Could not add folder “D:\\Git\\other”. Crew reported: Read-only: this home is owned by terminal t9. Only that session may change its projects.`);
+assert.equal(jobs.length,1,'Batch refusals still refresh the list');
+seed({status:'ready',usable:true,rows:[dotted]});hover(0);find(render(),`${P}-remove-0`).attrs.on_click[0]({},cx);await runJob();
+assert.deepEqual(calls.splice(0),[['remove','pc2',dotted.id]],'The row button removes a dotted registration by exact ID too');
+
+// A direct Remove uses the same attribution and preserves the tool's refusal.
 seed();fail='Read-only: this home is owned by terminal t9. Only that session may change its projects.';
 hover(0);find(render(),`${P}-remove-0`).attrs.on_click[0]({},cx);await runJob();fail=null;calls.length=0;
-assert.equal(view.pluginFixError['crew:projects'],'Read-only: this home is owned by terminal t9. Only that session may change its projects.');
+assert.equal(view.pluginFixError['crew:projects'],'Could not remove folder “D:\\Git\\crew”. Crew reported: Read-only: this home is owned by terminal t9. Only that session may change its projects.');
 seed();assert.ok(words(find(render(),'st-plugin-crew-projects-body')).includes(view.pluginFixError['crew:projects']));
 find(render(),'st-plugin-refresh-crew-projects').attrs.on_click[0]({},cx);
 assert.equal(view.pluginFixError['crew:projects'],undefined,'Check clears it');
