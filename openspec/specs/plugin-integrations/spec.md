@@ -375,47 +375,6 @@ Closed tasks from the verified coordinator's crew home SHALL contribute their va
 - **AND** targeted GitHub reads retain their concurrency bound
 - **AND** existing webhook/manual refresh handles merge, close and reopen transitions without repository-wide inventory or periodic polling of unchanged GitHub facts
 
-### Requirement: Validated task PR discovery results
-The app SHALL accept discovery only for top-level version 1 with valid per-task status, URL, source and reason combinations. Known results SHALL provide canonical HTTPS GitHub PR links. None SHALL mean no PR on that read; unavailable SHALL mean unknown. Both states SHALL survive binding into the generic pull context without inventing links or action authority. Malformed v1 fields SHALL be read uncertainty, never evidence of absent tasks, ownership or PRs.
-
-#### Scenario: Known result before the first report
-- **WHEN** a valid v1 status has a working task with no recorded PR and a known canonical discovery URL from GitHub
-- **THEN** the sanitized task and generic pull links contain that URL
-- **AND** worker identity, home binding, deduplication and captured navigation rules are unchanged
-
-#### Scenario: Partial discovery budget
-- **WHEN** a v1 read returns known and none results alongside unavailable results with reason budget-exhausted
-- **THEN** known links remain usable and each none/unavailable distinction remains available in the generic pull context
-- **AND** unavailable tasks add no invented PR and no immediate follow-up lookup or retry loop
-
-#### Scenario: Strict discovery schema
-- **WHEN** a v1 task result omits a required field, has a wrong type or contradictory field combination, or supplies a noncanonical or unsafe known URL
-- **THEN** the app treats the read as uncertain instead of publishing authoritative missing ownership, tasks or PRs
-- **AND** prior verified presentation and freshness obey the existing failed-read policy
-
-### Requirement: Bounded discovery compatibility
-Discovery SHALL use the existing read-only installed-tool machine transport and coalesced local refresh lifecycle. Missing or unknown versions SHALL retain recorded-only behavior without an extra status call. Only an explicit unsupported discovery-flag refusal SHALL permit one bounded recorded-only fallback. Transport, timeout and authentication failures SHALL NOT mean none or trigger that fallback. Discovery SHALL NOT add a refresh loop or change the ten-second refresh cadence.
-
-#### Scenario: Older Crew ignores the flag or uses an unknown version
-- **WHEN** status succeeds without discovery metadata or with an unsupported discovery version
-- **THEN** the app uses recorded links from that payload without another read and does not assert confirmed none
-- **AND** no generic incomplete-list text is restored
-
-#### Scenario: Older Crew explicitly refuses the flag
-- **WHEN** the installed Crew status command explicitly rejects the discovery flag as unsupported
-- **THEN** at most one bounded plain `status --all --json` fallback supplies recorded-only data
-- **AND** failure of that fallback remains unavailable without another attempt
-
-#### Scenario: Timeout or authentication failure
-- **WHEN** the machine transport times out or status fails for authentication or another non-capability reason
-- **THEN** no capability fallback or immediate discovery retry is started
-- **AND** the failure cannot publish none or renew successful action freshness
-
-#### Scenario: Slow and superseded discovery
-- **WHEN** discovery consumes its additional ten-second budget or completes after plugin, preference, owner or read-generation replacement
-- **THEN** finite transport and in-flight lease bounds account for that extra latency while duplicate readers still coalesce
-- **AND** obsolete results cannot publish links, change bindings or authorize worker actions
-
 ### Requirement: Truthful repository-scoped pull request read notices
 The coordinator Git overview SHALL render at most one PR-read failure notice per repository section in the selected tab. Notices SHALL describe the failed operation and distinguish GitHub responses from genuine transport unreachability. Cached PR state SHALL scope failures to the appropriate tab without erasing healthy rows or bypassing history eligibility.
 
@@ -458,3 +417,44 @@ The coordinator Git overview SHALL render at most one PR-read failure notice per
 - **WHEN** some failed reads recover or a repository section is folded
 - **THEN** recovered failures are removed from the summary without hiding remaining applicable failures
 - **AND** folding hides the single notice with that section's body, without new reads or changes to its counts
+
+### Requirement: Validated task PR discovery results
+The app SHALL accept discovery only for top-level version 1 with valid per-task status, URL, source and reason combinations. Known results SHALL provide canonical HTTPS GitHub PR links. None SHALL mean no PR on that read; unavailable SHALL mean unknown. Both states SHALL survive binding into the generic pull context without inventing links or action authority. Malformed v1 fields SHALL be read uncertainty, never evidence of absent tasks, ownership or PRs.
+
+#### Scenario: Known result before the first report
+- **WHEN** a valid v1 status has a working task with no recorded PR and a known canonical discovery URL from GitHub
+- **THEN** the sanitized task and generic pull links contain that URL
+- **AND** worker identity, home binding, deduplication and captured navigation rules are unchanged
+
+#### Scenario: Partial discovery budget
+- **WHEN** a v1 read returns known and none results alongside unavailable results with reason budget-exhausted
+- **THEN** known links remain usable and each none/unavailable distinction remains available in the generic pull context
+- **AND** unavailable tasks add no invented PR and no immediate follow-up lookup or retry loop
+
+#### Scenario: Strict discovery schema
+- **WHEN** a v1 task result omits a required field, has a wrong type or contradictory field combination, or supplies a noncanonical or unsafe known URL
+- **THEN** the app treats the read as uncertain instead of publishing authoritative missing ownership, tasks or PRs
+- **AND** prior verified presentation and freshness obey the existing failed-read policy
+
+### Requirement: Bounded discovery compatibility
+Discovery SHALL use the existing read-only installed-tool machine transport and coalesced local refresh lifecycle. Missing or unknown versions SHALL retain recorded-only behavior without an extra status call. Only an explicit unsupported discovery-flag refusal SHALL permit one bounded recorded-only fallback. Transport, timeout and authentication failures SHALL NOT mean none or trigger that fallback. Discovery SHALL NOT add a refresh loop or change the ten-second refresh cadence.
+
+#### Scenario: Older Crew ignores the flag or uses an unknown version
+- **WHEN** status succeeds without discovery metadata or with an unsupported discovery version
+- **THEN** the app uses recorded links from that payload without another read and does not assert confirmed none
+- **AND** no generic incomplete-list text is restored
+
+#### Scenario: Older Crew explicitly refuses the flag
+- **WHEN** the installed Crew status command explicitly rejects the discovery flag as unsupported
+- **THEN** at most one bounded plain `status --all --json` fallback supplies recorded-only data
+- **AND** failure of that fallback remains unavailable without another attempt
+
+#### Scenario: Timeout or authentication failure
+- **WHEN** the machine transport times out or status fails for authentication or another non-capability reason
+- **THEN** no capability fallback or immediate discovery retry is started
+- **AND** the failure cannot publish none or renew successful action freshness
+
+#### Scenario: Slow and superseded discovery
+- **WHEN** discovery consumes its additional ten-second budget or completes after plugin, preference, owner or read-generation replacement
+- **THEN** finite transport and in-flight lease bounds account for that extra latency while duplicate readers still coalesce
+- **AND** obsolete results cannot publish links, change bindings or authorize worker actions
