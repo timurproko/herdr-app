@@ -77,6 +77,10 @@ try {
     assert.equal(customizationRowState(updateProjection(checked)).action, 'launch');
     const progress = updateLaunchProgress(checked);
     assert.equal(progress.peerRevision, peerOnly ? installed : null);
+    const launching = customizationRowState({ ...updateProjection(checked), launch: { deadline: Date.now() + 30000, progress } });
+    assert.equal(launching.title, `herdr-app-custom ${installed.slice(0, 7)}`);
+    assert.equal(launching.description, `${peerOnly ? 'Updating other machines' : 'Updating'} to ${checkedTarget.slice(0, 7)}`);
+    assert.equal(launching.label, 'Updating…'); assert.equal(launching.enabled, false);
     const fetchedTarget = advancing.advance();
     const { token } = pending(advancing);
     let child;
@@ -88,17 +92,30 @@ try {
     let snapshot = inspect(advancing.home);
     assert.equal(snapshot.job.state, 'running'); assert.equal(snapshot.job.target, fetchedTarget);
     assert.equal(snapshot.check.target, checkedTarget, 'cached availability is deliberately still the old main');
+    assert.equal(row(snapshot).title, `herdr-app-custom ${installed.slice(0, 7)}`, 'fetching a target does not install it');
     assert.equal(row(snapshot).description, `Updating to ${fetchedTarget.slice(0, 7)}`, 'fetched target replaces both stale target and peer-only wording');
     snapshot = worker.checkMain(advancing.home, { force: true, run() { assert.fail('running jobs do not start another main check'); } });
     assert.equal(row(snapshot).description, `Updating to ${fetchedTarget.slice(0, 7)}`);
     const deployedTarget = advancing.advance();
-    let peerVisited = false;
+    let peerVisited = false, desktopVisited = false;
     const deployed = deployAll([], { root: advancing.root, env: { ...advancing.env, HERDR_UPDATE_RUN_ID: token }, log() {}, run(program, args, options) {
+      if (program === 'npm' || program === 'cmd.exe') {
+        desktopVisited = true;
+        const installing = row(inspect(advancing.home));
+        assert.equal(installing.title, `herdr-app-custom ${installed.slice(0, 7)}`, 'desktop installer has not succeeded yet');
+        assert.equal(installing.description, `Updating to ${deployedTarget.slice(0, 7)}`);
+        assert.equal(installing.label, 'Updating…'); assert.equal(installing.enabled, false);
+        // Real installation changes ownership before the successful result is
+        // recorded. Neither the carried provenance nor the target proves it yet.
+        atomic(p.manifest, { version: 2, id: 'custom', files: {}, installed: deployedTarget });
+        assert.equal(row(inspect(advancing.home)).title, 'herdr-app-custom', 'changed ownership cannot retain a stale installed claim');
+      }
       if (program !== 'hc') return advancing.run(program, args, options);
       if (args[0] === 'machine') {
         const fetched = read(p.result);
         assert.equal(fetched.target, deployedTarget); assert.equal(fetched.results.length, 0);
         assert.equal(fetched.desktop.commit, installed, 'old installed provenance is still carried before deployment');
+        assert.equal(row(inspect(advancing.home)).title, `herdr-app-custom ${installed.slice(0, 7)}`);
         assert.equal(row(inspect(advancing.home)).description, `Updating to ${deployedTarget.slice(0, 7)}`, 'pipeline fetch publishes the newer target before inventory or installation finishes');
         return { code: 0, stdout: JSON.stringify({ machines: [{ name: 'peer', state: 'connected' }] }) };
       }
@@ -108,7 +125,9 @@ try {
       assert.equal(receipt.results.find(value => value.machine === 'local').commit, deployedTarget);
       snapshot = inspect(advancing.home);
       assert.equal(snapshot.job.state, 'running'); assert.equal(snapshot.job.target, deployedTarget, 'same-run desktop attempt supersedes the bootstrap target while peer work runs');
-      assert.equal(row(snapshot).description, `Updating to ${deployedTarget.slice(0, 7)}`);
+      assert.equal(row(snapshot).title, `herdr-app-custom ${deployedTarget.slice(0, 7)}`, 'real recorder verifies desktop success before peers finish');
+      assert.equal(row(snapshot).description, `Updating other machines to ${deployedTarget.slice(0, 7)}`);
+      assert.equal(customizationRowState(updateProjection(snapshot)).description, row(snapshot).description, 'replacement needs no remembered launch progress');
       assert.equal(row(snapshot).label, 'Updating…'); assert.equal(row(snapshot).enabled, false);
       atomic(p.result, { ...receipt, target: fetchedTarget });
       assert.equal(inspect(advancing.home).job.target, deployedTarget, 'actual local attempt wins over a preliminary source target');
@@ -128,12 +147,41 @@ try {
       const output = 'HERDR_DEPLOY_ALL_RESULT=' + JSON.stringify({ action: 'already current', commit: deployedTarget });
       return { code: 0, stdout: JSON.stringify({ code: 0, stdout: Buffer.from(output).toString('base64') }) };
     } });
-    assert.equal(deployed.code, 0); assert.equal(peerVisited, true);
+    assert.equal(deployed.code, 0); assert.equal(peerVisited, true); assert.equal(desktopVisited, true);
     child.emit('exit', 0);
     const completed = await active;
     assert.equal(completed.state, 'complete'); assert.equal(completed.target, deployedTarget);
     assert.equal(inspect(advancing.home).revision, deployedTarget);
     assert.equal(read(p.status).target, deployedTarget, 'final durable receipt preserves the actual deployment target');
+    const reconciled = worker.checkMain(advancing.home, { force: true, run: () => ({ code: 0, stdout: `${deployedTarget}\trefs/heads/main\n` }) });
+    assert.equal(row(reconciled).title, `herdr-app-custom ${deployedTarget.slice(0, 7)}`);
+    assert.match(row(reconciled).description, /^Up to date\. Checked at/);
+    assert.equal(row(reconciled).label, 'Check now'); assert.equal(row(reconciled).enabled, true);
+  }
+  // Terminal failures use the actual recorder's provenance policy, not targets
+  // fabricated as installed revisions: refusal retains prior evidence, a failed
+  // installer invalidates it, and peer failure retains desktop success.
+  for (const phase of ['before-install', 'desktop-failed', 'peer-failed']) {
+    const failed = setup(), p = files(failed.home);
+    atomic(p.manifest, { version: 2, id: 'custom', files: {} });
+    const installed = git(failed.root, 'rev-parse', 'HEAD'), target = failed.advance();
+    resultRecorder(failed.env)([{ machine: 'local', action: 'deployed', commit: installed }], true);
+    const { token } = pending(failed);
+    const record = resultRecorder({ ...failed.env, HERDR_UPDATE_RUN_ID: token });
+    record([], false, null, null, target);
+    if (phase !== 'before-install') record([
+      { machine: 'local', action: phase === 'desktop-failed' ? 'failed' : 'deployed', commit: target, reason: 'fixture install failure' },
+      ...(phase === 'peer-failed' ? [{ machine: 'peer', action: 'failed', reason: 'fixture peer failure' }] : []),
+    ], true);
+    const status = { ...read(p.status), target, state: phase === 'peer-failed' ? 'partial' : 'failed', error: 'fixture failure', finished: Date.now() };
+    atomic(p.status, status); fs.unlinkSync(p.lock);
+    const snapshot = worker.checkMain(failed.home, { force: true, run: () => ({ code: 0, stdout: `${target}\trefs/heads/main\n` }) });
+    const row = customizationRowState(updateProjection(snapshot));
+    const revision = phase === 'before-install' ? installed : phase === 'peer-failed' ? target : null;
+    assert.equal(row.title, revision ? `herdr-app-custom ${revision.slice(0, 7)}` : 'herdr-app-custom', phase);
+    assert.match(row.description, phase === 'peer-failed' ? /^Desktop updated; some machines skipped or failed\./ : /^Update failed:/, phase);
+    assert.doesNotMatch(row.description, /Updating/);
+    assert.notEqual(row.label, 'Updating…');
   }
   for (const kind of ['success', 'partial', 'local-failure', 'installer-timeout', 'missing', 'wrong-token', 'spawn-error', 'timeout']) {
     const h = setup(), { p, token } = pending(h); let killed = false;
