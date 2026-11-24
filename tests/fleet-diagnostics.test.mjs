@@ -70,7 +70,12 @@ try {
   const at=x.state[x.f.FLEET_KEY].entries.local.at;x.advance(31000);x.setAnswer(()=>{throw Error(secret);});x.event();await x.drain();
   assert.equal(x.state[x.f.FLEET_KEY].entries.local.at,at,'Failure never renews success');
   const stale=x.r.pluginPullContext('coordinator',{presentation:true});assert.equal(stale.stale,true);assert.equal(stale.verification.reason,'transport-error');
-  x.list[0].address='replacement';assert.equal(x.r.pluginPullContext('coordinator',{presentation:true}),null,'Changed owner cannot inherit the prior inventory or its exact-owner failure feedback');
+  x.list[0].address='replacement';
+  const waiting=x.r.pluginPullContext('coordinator',{presentation:true});
+  assert.notEqual(waiting.scope,stale.scope,'Changed owner gets an empty Loading scope, never the prior inventory');
+  assert.equal(waiting.stale,true);assert.equal(waiting.links.length,0);
+  assert.equal(waiting.verification,null,'Changed/missing owner cannot inherit the former owner failure feedback');
+  assert.equal(x.r.pluginPullContext('coordinator'),null,'Remembered Loading grants no operational authority');
  }
  for(const [change,reason]of [
   [x=>x.state['custom.fleet.generation']++,'obsolete-generation'],
