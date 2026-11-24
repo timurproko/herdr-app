@@ -18,6 +18,16 @@ export function updateProjection(snapshot) {
   };
 }
 export const updateAvailable = snapshot => snapshot?.check?.available === true;
+const commit = value => typeof value === 'string' && /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i.test(value) ? value.toLowerCase() : null;
+export const updateTarget = snapshot => commit(snapshot?.job?.state === 'running' ? snapshot.job.target : null) || commit(snapshot?.check?.target);
+// Display facts belong to one launch/job, never to installed provenance or action guards.
+export const sameUpdateRun = (progress, job) => Boolean(progress && job &&
+  ((job.token && progress.token === job.token) || (!job.token && job.started != null && progress.started === job.started)));
+export function updateLaunchProgress(snapshot) {
+  const target = updateTarget(snapshot);
+  return { target, peerRevision: snapshot?.peerPending && snapshot?.check?.checked && !snapshot.check.error &&
+    snapshot.check.available === false && commit(snapshot.revision) === target ? target : null };
+}
 const at = millis => { const date = new Date(millis); return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`; };
 export function customizationRowState(snapshot, { busy = null, error = null, now = Date.now() } = {}) {
   const revision = snapshot?.revision?.slice(0, 7);
@@ -33,7 +43,14 @@ export function customizationRowState(snapshot, { busy = null, error = null, now
   const catchUp = snapshot?.peerPending && check?.checked && check.available === false && (!job?.finished || check.attempted >= job.finished);
   const canUpdate = !unknown && !running && !snapshot?.locked && !snapshot?.peerUnknown && !check?.error && (updateAvailable(snapshot) || catchUp) && (job?.state !== 'failed' || freshAfterFailure);
   let description, current = false;
-  if (running) description = 'Updating…';
+  if (running) {
+    const progress = launch?.progress || (busy === 'launch' ? updateLaunchProgress(snapshot)
+      : sameUpdateRun(snapshot?.progress, job) ? snapshot.progress : null);
+    const target = updateTarget(snapshot) || commit(progress?.target);
+    const peerRevision = commit(progress?.peerRevision);
+    const scope = peerRevision && (!target || peerRevision === target) ? 'Updating other machines' : 'Updating';
+    description = target ? `${scope} to ${target.slice(0, 7)}` : scope;
+  }
   else if (unknown) description = `Update outcome unknown${job?.error ? `: ${job.error}` : ''}. Inspect ${details?.kind === 'result' ? 'details' : 'log'}: ${details?.path || 'unavailable'}`;
   else if (error) description = error;
   else if (job?.state === 'failed') description = `Update failed: ${job.error || 'inspect log'}. Recovery: documented rollback.${log}`;
