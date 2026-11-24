@@ -1,3 +1,4 @@
+import {githubInvocation} from './support/github-read.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -49,6 +50,7 @@ async function harness(feature, pluginOn = true) {
     theme: () => ({}), settings: () => ({}), window: () => ({platform: 'linux'}), layout: () => null,
     run() {}, openOverlay() {}, closeOverlay() {}, nextCommand: () => new Promise(() => {}), hc: async () => ({code:1,stdout:''}), readTextFile: async () => '', writeTextFile: async () => null, notify() {}, watchFolder: () => new Promise(() => {}),
     exec: (cmd, args) => {
+      ({command:cmd,args}=githubInvocation(cmd,args,{}));
       calls.push([cmd, args]);
       if (gate?.program === cmd) { const current = gate; gate = null; return current.promise; }
       const stdout = cmd === 'git' && args.includes('--show-toplevel') ? '/repo\n'
