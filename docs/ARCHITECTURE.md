@@ -185,6 +185,17 @@ Spaces invokes the provider at init and from its existing 250 ms lifecycle, incl
 after cold start or mod replacement. A cold failed first read remains independent
 until verification succeeds; retained display survives uncertainty. An abandoned
 in-flight lease can defer another copy for at most its remaining 45 seconds.
+Failure-only recovery stores one generation-scoped retry deadline in those runtime
+facts: 2 seconds, 5 seconds, 15 seconds, then repeated 60-second delays measured
+from failed completion. The existing 250 ms Spaces lifecycle services deadlines;
+no second scheduler or timer is registered. Lifecycle-triggered reads respect the
+deadline even if the old failed-attempt TTL would have expired; explicit Refresh
+may bypass backoff but never an active reader. Success, disablement, disappearance
+of applicable candidates or authoritative absence clears recovery. Partial PR
+discovery alone does not escalate it. A new mod copy respects the shared deadline
+without inheriting action permission, and expired abandoned reads leave a discard
+diagnostic before replacement. Healthy and workerless-history refresh stay normal.
+Sleep or a blocked UI naturally delays callbacks; this is not a wall-clock service.
 
 Crew's `fleet-diagnostics.js` preserves bounded machine-scoped reason, time and
 attempted/current generation under runtime-only `custom.fleet.diagnostics` (at most

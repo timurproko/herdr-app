@@ -372,9 +372,16 @@ transport/negative results, enable-disable-enable with obsolete replies and sibl
 switch writes. Both expanded-row chains appear immediately before their Crew pills
 after verification and disappear on disable. Expanded rows, compact rails and drag
 chips retain native shortcut indices, and rails/chips never render chains. Render guards reject notifications, focus allocation, IO and shared
-writes. The original source fails because the toggle starts zero reads until a
-later Spaces lifecycle event. This fixture proves direct scheduling and rendered
-rows, not native pixel timing. A read-only-state/native screenshot baseline on
+writes. The original toggle source fails because it starts zero reads until a
+later Spaces lifecycle event. Additional fake-clock cases start with the preference
+already enabled: rejected/timed-out first reads recover using only the actual
+Spaces 250 ms timer, with no click or unrelated interaction. They pin completion-
+based 2/5/15/60-second backoff, no early lifecycle retries, no new timer, immediate
+disable, authoritative absence, module replacement, first-frame retained display,
+expired abandoned readers and obsolete completion refusal. The pre-backoff source
+fails the two-second timer-only recovery assertion (2 status reads instead of 4). Strict Git
+context recovers only after witnessed verification on both machines. These fixtures
+prove scheduling and rendered rows, not native pixel timing. A read-only-state/native screenshot baseline on
 0.1.17 showed verification pending at one second and attachment by seven seconds
 with Settings still open; it did not reproduce a hard close-only repaint freeze.
 

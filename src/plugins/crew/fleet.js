@@ -1,6 +1,6 @@
 // Crew owns identity and versioned task PR sourcing. Consumers use registry contributions only.
 import { shared, setShared, spaces, panes, terminals, machines, checking, FLEET_DISPLAY_KEY, fleetDisplayChangeAllowed, updateFleetDisplay } from '../api.js';
-import { fleetError, fleetGeneration, recordFleetFailure, resolveFleetFailure, fleetVerification } from './fleet-diagnostics.js';
+import { fleetError, fleetGeneration, recordFleetFailure, resolveFleetFailure, fleetVerification, fleetRetry, deferFleetRetry, clearFleetRetry, clearFleetRetries } from './fleet-diagnostics.js';
 export const FLEET_KEY = 'custom.fleet.links', DISPLAY_KEY = FLEET_DISPLAY_KEY;
 const READS = 'custom.fleet.reads', TTL = 10000, EXPIRY = 30000, READ_LEASE = 45000;
 // Only reads witnessed by this running mod can authorize actions. Persisted
@@ -214,10 +214,13 @@ export function fleetColorAllowed(pair) {
 }
 // The injected bounded status reader owns capability fallback, never consumers.
 export function refreshFleets(cx, readStatus, force = false) {
-  if(!enabled() || checking() || (shared(FLEET_KEY) && shared(FLEET_KEY).version!==1)) return;
+  if(checking())return;
+  if(!enabled()) {clearFleetRetries();return;}
+  if(shared(FLEET_KEY) && shared(FLEET_KEY).version!==1)return;
   const snapshot=model(), hosts=machines();pruneDisplays(snapshot,hosts);
   const displays=savedDisplays();
   const relevant=new Set([...snapshot.list.filter(t=>t.state==='live' && (t.labels?.['custom.crew.home']==='1' || t.labels?.['crew.task'])).map(t=>machineOf(t.address)),...displays.map(d=>d.machine)]);
+  clearFleetRetries(new Set([...relevant].map(machine=>machine??'local')));
   for(const machine of relevant) {
     if(machine && !hosts.some(m=>m.name===machine && m.layout==='ready')) continue;
     const key=machine??'local', state=shared(FLEET_KEY), entry=state?.entries?.[key];
@@ -228,10 +231,13 @@ export function refreshFleets(cx, readStatus, force = false) {
       if(pending.token!==entry?.attemptToken)pendingTokens.set(key,pending.token);
       if(pending.token!==entry?.attemptToken || witnessed(key,pending.token))continue;
     }
-    if(!force && witnessed(key,entry?.attemptToken) && (entry.attemptSignature??entry.signature)===sig && now-(entry.attemptAt??entry.at)<TTL) continue;
+    const sameAttempt=(entry?.attemptSignature??entry?.signature)===sig, retry=sameAttempt?fleetRetry(machine):null;
+    if(!force && retry && now<retry.nextAt)continue;
+    if(!force && !retry && witnessed(key,entry?.attemptToken) && sameAttempt && now-(entry.attemptAt??entry.at)<TTL)continue;
+    if(pending && pending.until<=now)recordFleetFailure(machine,'expired-read',pending.generation??fleetGeneration(),{discard:true,subject:pending.subject??coordinatorCandidate(machine,snapshot)});
     const token=`${now}-${Math.random()}`, generation=fleetGeneration(), subject=coordinatorCandidate(machine,snapshot);
     pendingTokens.set(key,token);
-    setShared(READS,{...shared(READS),[key]:{token,until:now+READ_LEASE}});
+    setShared(READS,{...shared(READS),[key]:{token,until:now+READ_LEASE,generation,subject}});
     cx.spawn(async view=> {
       const obsolete=()=>fleetGeneration()!==generation ? 'obsolete-generation' : !enabled() ? 'disabled' :
         shared(READS)?.[key]?.token!==token ? 'replaced-read' : shared(READS)[key].until<=Date.now() ? 'expired-read' :
@@ -257,10 +263,14 @@ export function refreshFleets(cx, readStatus, force = false) {
           displayIdentity:identityOf(display),displaySignature:signature(machine,snapshot,display)}}});
         verifiedTokens.set(key,token);publishDisplay(machine,display,evidence);
         if(bound && (bound.child || display))resolveFleetFailure(machine);
-        else recordFleetFailure(machine,!status.owner.live ? 'no-owner' : !bound ? 'identity-mismatch' : 'no-fleet',generation,{subject});
+        else {
+          recordFleetFailure(machine,!status.owner.live ? 'no-owner' : !bound ? 'identity-mismatch' : 'no-fleet',generation,{subject});
+          clearFleetRetry(machine);
+        }
       } catch(error) {
         if(current()) {
           recordFleetFailure(machine,error?.reason??'transport-error',generation,{subject,code:error?.code,timeout:error?.timeout});
+          deferFleetRetry(machine,!sameAttempt);
           const latest=shared(FLEET_KEY);
           // Failed transport is not a negative relationship result. Back off
           // using attempt age without renewing successful verification age.
@@ -275,6 +285,7 @@ export function refreshFleets(cx, readStatus, force = false) {
   }
 }
 export function invalidateFleet() {
+  clearFleetRetries();
   setShared('custom.fleet.generation',(shared('custom.fleet.generation')??0)+1);
   setShared(FLEET_KEY,null);setShared(READS,{});updateFleetDisplay(null,null,{disabled:!enabled()});
   verifiedTokens.clear();pendingTokens.clear();

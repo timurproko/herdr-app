@@ -632,8 +632,14 @@ block verification. The installed-tool discovery command allows 25 seconds, with
 one 15-second recorded-only fallback solely for an explicit unsupported flag;
 the shared 45-second read lease bounds abandoned reads after a reload. A timeout
 is not proof of absent ownership. Spaces already checks its lifecycle every 250 ms;
-healthy status reads use a ten-second TTL, so a failed first read does not inherently
-wait for a click or dialog close before another eligible verification.
+healthy status reads use a ten-second TTL. Failed verification now backs off for
+**2 s, 5 s, 15 s, then 60 s** between completed attempts. The existing Spaces timer
+services each deadline (normally within its next 250 ms tick); there is no second
+scheduler and no click or dialog close is needed. Success, disablement, missing
+candidates or authoritative absence ends recovery; normal healthy/history refresh
+can continue. Reload keeps the current failure deadline and can replace an abandoned
+reader after its finite lease expires. The same guards apply under load; a paused
+or sleeping app cannot promise wall-clock retry timing.
 When on with Crew enabled, a verified same-machine
 fleet attaches below its coordinator with its own ordinary numbered badge (for
 example, **2 crew** below **1 coordinator**), in the same 16px rounded slot.

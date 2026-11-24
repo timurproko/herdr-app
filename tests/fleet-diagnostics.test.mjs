@@ -49,6 +49,8 @@ try {
   assert.deepEqual(event.subject,{parent:'coordinator',owner:'owner'});
   if(reason==='status-timeout')assert.equal(event.timeout,25);
   if(reason==='status-exit')assert.equal(event.code,19);
+  if(['no-owner','no-fleet','identity-mismatch'].includes(reason))assert.equal(x.diagnostic().retry??null,null,'Authoritative absence/conflict does not start recovery');
+  else assert.equal(x.diagnostic().retry.nextAt,102000);
   assert.equal(x.r.pluginWorkspaceLinks().length,0);assert.equal(x.r.pluginWorkspaceLinks({presentation:true}).length,0);
   x.inspect(()=>{
    const context=x.r.pluginPullContext('coordinator',{presentation:true});
@@ -99,6 +101,18 @@ try {
   fs.writeFileSync(path.join(x.home,'.customizations',x.d.LOG_NAME),('x'.repeat(1024)+'\n').repeat(128));
   x.d.recordFleetFailure(null,'invalid-status',7);await x.d.flushFleetLog();assert.ok(Buffer.byteLength(x.log())<=65536);assert.ok(x.log().trim().split('\n').length<=128);
   for(let i=0;i<260;i++)x.d.recordFleetFailure(`machine-${i}`,'no-fleet',7);await x.d.flushFleetLog();assert.equal(Object.keys(x.state[x.d.DIAGNOSTICS_KEY].entries).length,256);
+ }
+ {
+  const x=await fixture();x.setAnswer(()=>{throw Error(secret);});x.event();await x.drain();
+  const original=clone(x.diagnostic().lastFailure),subject={parent:'coordinator',owner:'owner'};
+  for(const bad of [{reason:secret},{at:secret},{at:8640000000000001},{generation:999}]){
+   x.state[x.d.DIAGNOSTICS_KEY].entries.local.lastFailure={...original,...bad};
+   x.inspect(()=>assert.equal(x.d.fleetVerification(null,subject),null,'Corrupt persisted diagnostics cannot break native date formatting or expose raw text'));
+  }
+ }
+ {
+  const x=await fixture();let calls=0;x.setAnswer(()=>{calls++;throw Error(secret);});x.event();await x.drain();assert.equal(x.diagnostic().retry.attempts,1);
+  x.list.splice(0);x.advance(60001);x.event();await x.drain();assert.equal(calls,1,'No candidate means no recovery IO');assert.equal(x.diagnostic().retry,null);
  }
  {
   const x=await fixture();x.setChecking(true);x.setAnswer(()=>{assert.fail('No checking-time IO');});x.event();x.d.recordFleetFailure(null,'transport-error',7);await x.drain();

@@ -18,7 +18,7 @@ Refreshing fleet status SHALL distinguish pending or failed transport from a com
 #### Scenario: Shared refresh entrypoints
 - **WHEN** Git manual refresh, existing relay invalidation, Spaces lifecycle or periodic Crew refresh runs
 - **THEN** all consumers observe the same non-destructive refresh policy
-- **AND** no extra healthy polling loop, companion or cross-machine inference is introduced; only bounded unverified-fleet recovery can schedule independent verification retries
+- **AND** no extra healthy polling loop, companion or cross-machine inference is introduced; bounded unverified-fleet recovery uses the existing periodic lifecycle without a second scheduler
 
 ### Requirement: Bounded discovery compatibility
 Discovery SHALL use the existing read-only installed-tool machine transport and coalesced local refresh lifecycle. Missing or unknown versions SHALL retain recorded-only behavior without an extra status call. Only an explicit unsupported discovery-flag refusal SHALL permit one bounded recorded-only fallback. Transport, timeout and authentication failures SHALL NOT mean none or trigger that fallback. Discovery SHALL retain healthy ten-second refreshes except bounded unverified recovery.
@@ -74,11 +74,11 @@ Failed, unmatched and discarded fleet verification attempts SHALL retain a bound
 - **AND** recovery history does not become a durable authorization record or contain raw task, transcript or authentication data
 
 ### Requirement: Bounded unverified fleet recovery
-An enabled fleet with applicable native identity candidates but no current verification SHALL schedule coalesced recovery without user action. Failed attempts SHALL wait 2 seconds, 5 seconds, 15 seconds and then 60 seconds between attempts, measured from completion. Healthy refresh and finite transport bounds SHALL remain unchanged. Recovery SHALL stop on successful verification, explicit disablement or authoritative absence, and SHALL never authorize unverified actions.
+An enabled fleet with applicable native identity candidates but no current verification SHALL recover through its existing periodic lifecycle without user action or a second scheduler. Failed attempts SHALL wait 2 seconds, 5 seconds, 15 seconds and then 60 seconds between attempts, measured from completion. Healthy refresh/transport bounds SHALL remain unchanged. Recovery SHALL stop on success, disablement or authoritative absence, and SHALL never authorize unverified actions.
 
 #### Scenario: Failed or timed-out first read
 - **WHEN** first verification fails or times out while attachment and Crew remain enabled and candidates remain applicable
-- **THEN** a one-shot recovery attempt runs after the scheduled delay without a click, dialog close, topology change or another lifecycle event
+- **THEN** a recovery attempt runs on the existing periodic lifecycle after the delay without a click, dialog close, topology change or unrelated lifecycle interaction
 - **AND** a later successful read attaches the pair and restores eligible coordinator Git context without fabricated intermediate attachment
 
 #### Scenario: Repeated failures under load
@@ -88,12 +88,12 @@ An enabled fleet with applicable native identity candidates but no current verif
 
 #### Scenario: Disable, success and no fleet
 - **WHEN** verification succeeds, attachment or Crew is disabled, candidates disappear or a completed coherent result establishes no applicable fleet
-- **THEN** the recovery chain stops and queued callbacks cannot start another attempt for that obsolete scope
+- **THEN** the recovery chain stops and later lifecycle callbacks cannot start recovery for that obsolete scope
 - **AND** later ordinary native membership changes or explicit enablement can initiate a new eligible verification
 
 #### Scenario: Startup and update replacement
 - **WHEN** the app starts or replaces its mod graph after an update with attachment already enabled
-- **THEN** mounted lifecycle startup starts or joins verification and re-arms any eligible recovery independently of retired view callbacks
+- **THEN** mounted lifecycle startup starts or joins verification and resumes any eligible backoff independently of retired view callbacks
 - **AND** a persisted abandoned read lease has a finite bound and cannot suppress verification indefinitely or count as witnessed success
 
 #### Scenario: Changed generation while reading

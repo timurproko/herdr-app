@@ -12,6 +12,25 @@ const entries = () => {
   return value?.version===1 && value.entries && typeof value.entries==='object' && !Array.isArray(value.entries) ? value.entries : {};
 };
 export const fleetDiagnostic = machine => entries()[machine??'local'];
+const RETRY_DELAYS=[2000,5000,15000,60000];
+// Deadlines are serviced by the existing Spaces lifecycle, not another timer.
+export function fleetRetry(machine) {
+  const retry=fleetDiagnostic(machine)?.retry;
+  return retry?.generation===fleetGeneration() && integer(retry.attempts) && retry.attempts>=1 && retry.attempts<=4 &&
+    integer(retry.at) && retry.at<=Date.now() && retry.nextAt===retry.at+RETRY_DELAYS[retry.attempts-1] ? retry : null;
+}
+export function deferFleetRetry(machine, reset=false) {
+  const prior=reset?null:fleetRetry(machine), attempts=Math.min((prior?.attempts??0)+1,4), at=Date.now();
+  update(machine,{retry:{generation:fleetGeneration(),attempts,at,nextAt:at+RETRY_DELAYS[attempts-1]}});
+}
+export function clearFleetRetry(machine) {
+  if(fleetDiagnostic(machine)?.retry)update(machine,{retry:null});
+}
+export function clearFleetRetries(active=null) {
+  const all=entries(), obsolete=key=>!active || !active.has(key);
+  if(Object.entries(all).some(([key,entry])=>entry?.retry && obsolete(key)))setShared(DIAGNOSTICS_KEY,{version:1,
+    entries:Object.fromEntries(Object.entries(all).map(([key,entry])=>[key,obsolete(key)?{...entry,retry:null}:entry]))});
+}
 function update(machine, change) {
   const key=machine??'local', all=entries();
   const next={...all,[key]:{...all[key],...change}};
@@ -54,13 +73,18 @@ export function recordFleetFailure(machine, reason, generation, {discard=false,s
 }
 export function resolveFleetFailure(machine) {
   const prior=fleetDiagnostic(machine);
-  if(prior && (prior.lastFailure && !prior.resolvedAt || prior.retry))update(machine,{resolvedAt:Date.now(),retry:null,failureLogEpisode:null});
+  if(prior && (prior.retry || Math.max(prior.lastFailure?.at??0,prior.lastDiscard?.at??0)>(prior.resolvedAt??-1)))
+    update(machine,{resolvedAt:Date.now(),retry:null,failureLogEpisode:null,discardLogEpisode:null});
 }
 export function fleetVerification(machine, subject) {
-  const diagnostic=fleetDiagnostic(machine), failure=diagnostic?.lastFailure;
-  if(!failure || diagnostic.resolvedAt || failure.generation!==fleetGeneration() || !subject ||
-    failure.subject?.parent!==subject.parent || failure.subject?.owner!==subject.owner)return null;
+  const diagnostic=fleetDiagnostic(machine);
+  const failure=[diagnostic?.resolvedAt?null:diagnostic?.lastFailure,diagnostic?.lastDiscard]
+    .filter(event=>event && REASONS.has(event.reason) && integer(event.at) && event.at<=8640000000000000 &&
+      (!diagnostic.resolvedAt || event.at>diagnostic.resolvedAt) && event.generation===fleetGeneration() && subject &&
+      event.subject?.parent===subject.parent && event.subject?.owner===subject.owner)
+    .sort((a,b)=>b.at-a.at)[0];
+  if(!failure)return null;
   // Presentation gets only safe scalar facts, not scheduler state or arbitrary error text.
   return {reason:failure.reason,at:failure.at,generation:failure.generation,
-    ...(failure.timeout!==undefined?{timeout:failure.timeout}:{})};
+    ...(integer(failure.timeout) && failure.timeout<=600?{timeout:failure.timeout}:{})};
 }

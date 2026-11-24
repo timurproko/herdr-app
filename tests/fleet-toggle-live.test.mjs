@@ -18,9 +18,9 @@ const find=(tree,id)=>nodes(tree).find(e=>e.attrs.id?.[0]===id);
 const plain=value=>JSON.parse(JSON.stringify(value));
 const theme={foreground:'#eeeeee',muted:'#aaaaaa',dim:'#888888',chrome:'#111111',background:'#222222',border:'#444444',selected:'#333333',hover:'#333333',ansi2:'#22aa44',ansi3:'#cc8833',ansi6:'#11aaaa'};
 
-async function mounted() {
- const state={'custom.plugins':{crew:{enabled:true}},'custom.spaces.preferences':{connectFleetToCoordinator:false}},copies=[],refreshes=new Set(),jobs=[],requests=[];
- let rendering=false,dialogOpen=true,mode='success';
+async function mounted({enabled=false,initialMode='success'} = {}) {
+ const state={'custom.plugins':{crew:{enabled:true}},'custom.spaces.preferences':{connectFleetToCoordinator:enabled}},copies=[],refreshes=new Set(),jobs=[],requests=[];
+ let rendering=false,dialogOpen=true,mode=initialMode,now=100000;
  const pending=[];
  const groups=[],panes=[],terminals=[];
  for(const machine of [null,'pc2']) {
@@ -45,6 +45,7 @@ async function mounted() {
    const result={home:`${machine??'local'}/.crew`,owner:{terminal:'t1',live:true},tasks:[{id:'task',terminal:'t2',state:'working',pr:null}]};
    const reply=type=>{
     if(type==='error')throw Error('Verification transport failed');
+    if(type==='timeout')return {code:0,stdout:JSON.stringify({code:null,timed_out:true,stdout:'',stderr:''})};
     const output=type==='ambiguous'?{...result,owner:null}:result;
     return {code:0,stdout:JSON.stringify({code:0,stdout:Buffer.from(JSON.stringify(output)).toString('base64'),stderr:''})};
    };
@@ -63,10 +64,10 @@ async function mounted() {
   'tab-arrival.js':{startTabArrivals(){},tabArrivalMotion:(_o,e)=>e},
  };
  const mount=async(kind)=>{
-  const timers=[],copy={};
+  const timers=[],copy={active:true};
   const cx={notify(){assertEvent();refreshes.add(copy);},focus_handle(){assertEvent();return{focus(){assertEvent();}};},
-   spawn(fn){const job=Promise.resolve(fn(cx));jobs.push(job);return job;},timer:{every(ms,fn){timers.push({ms,fn});},after(){}},stop_propagation(){}};
-  const api=await loadMod({host,mod:`custom-${kind}`,globals:{localStorage:{getItem:()=>null,setItem(){}}},
+   spawn(fn){const job=Promise.resolve(fn(cx));jobs.push(job);return job;},timer:{every(ms,fn){timers.push({ms,fn});},after(){assert.fail('Recovery must not add a second scheduler');}},stop_propagation(){}};
+  const api=await loadMod({host,mod:`custom-${kind}`,globals:{localStorage:{getItem:()=>null,setItem(){}},Date:class extends Date{static now(){return now;}}},
    modules:{...common,'main.js':'src/features/spaces/main.js','spaces-ui.js':'src/features/settings/spaces-ui.js'},
    entry:kind==='settings'?'export {spacesPage} from "./spaces-ui.js";export * as r from "./plugins.js";':'export {default as Spaces} from "./main.js";export * as r from "./plugins.js";'});
   Object.assign(copy,{cx,api,timers});
@@ -79,8 +80,8 @@ async function mounted() {
   }
   copies.push(copy);refreshes.add(copy);return copy;
  };
- const settings=await mount('settings'),sidebar=await mount('spaces');
- const paint=()=>{for(const copy of [...refreshes]){refreshes.delete(copy);rendering=true;try{copy.render();}finally{rendering=false;}}};
+ const settings=await mount('settings');let sidebar=await mount('spaces');
+ const paint=()=>{for(const copy of [...refreshes]){refreshes.delete(copy);if(!copy.active)continue;rendering=true;try{copy.render();}finally{rendering=false;}}};
  const drain=async()=>{while(jobs.length){await Promise.all(jobs.splice(0));}paint();};
  const tick=async()=>{for(let i=0;i<30;i++)await Promise.resolve();paint();};
  const release=(count=pending.length,type='success')=>{assert.ok(count<=pending.length);for(let i=0;i<count;i++)pending.shift()(type);};
@@ -127,7 +128,9 @@ async function mounted() {
   assert.equal(JSON.stringify({groups,panes,terminals,colors}),topology,'No native order, terminal, focus or saved colour mutation');
  };
  await drain();frame(false);
- return{state,settings,sidebar,requests,flip,drain,tick,paint,frame,release,setMode:value=>mode=value};
+ return{state,settings,get sidebar(){return sidebar;},requests,flip,drain,tick,paint,frame,release,setMode:value=>mode=value,
+  async pulse(ms,wait=true){now+=ms;for(const copy of copies)if(copy.active)for(const timer of copy.timers)if(timer.ms===250)timer.fn(copy.cx);await (wait?drain():tick());},
+  async replaceSidebar(){sidebar.active=false;sidebar=await mount('spaces');await tick();},get now(){return now;}};
 }
 
 const m=await mounted();
@@ -169,4 +172,44 @@ for(const failure of ['error','ambiguous']){
  m.flip('fleet');await m.drain();m.frame(false);
  m.setMode('success');m.flip('fleet');await m.drain();m.frame(true);
 }
-console.log('PASS mounted Settings local/remote fleet toggles: immediate lifecycle, pending/failure/reversal guards, no close event or render effects, sibling synchronous writes');
+// Startup/failed first-read recovery is driven only by the real Spaces timer.
+for(const failure of ['error','timeout']) {
+ const x=await mounted({enabled:true,initialMode:failure});x.frame(false);assert.equal(x.requests.length,2);
+ const reason=failure==='timeout'?'status-timeout':'transport-error';
+ for(const key of ['local','pc2'])assert.equal(x.state['custom.fleet.diagnostics'].entries[key].lastFailure.reason,reason);
+ x.setMode('success');await x.pulse(1999);assert.equal(x.requests.length,2);x.frame(false);
+ await x.pulse(1);assert.equal(x.requests.length,4,'Existing Spaces timer alone retries the failed first read after two seconds');x.frame(true);
+ for(const machine of [null,'pc2']){
+  const id=machine?'pc2/coordinator':'coordinator';const context=x.sidebar.api.r.pluginPullContext(id);
+  assert.equal(context.stale,false);assert.equal(x.state['custom.fleet.diagnostics'].entries[machine??'local'].retry,null);
+ }
+ x.flip('fleet');await x.drain();x.frame(false);await x.pulse(60001);assert.equal(x.requests.length,4,'Disable stops recovery immediately');
+}
+{
+ const x=await mounted({initialMode:'defer'});x.flip('fleet');await x.tick();const before=x.requests.length;
+ await x.pulse(25000,false);assert.equal(x.requests.length,before,'An in-flight command cannot overlap another recovery read');
+ x.release(undefined,'timeout');await x.drain();assert.equal(x.state['custom.fleet.diagnostics'].entries.local.retry.nextAt,x.now+2000,'Backoff starts at timeout completion, not read start');
+ x.setMode('success');await x.pulse(1999);assert.equal(x.requests.length,before);await x.pulse(1);x.frame(true);
+}
+{
+ const x=await mounted({enabled:true,initialMode:'error'});
+ for(const [delay,attempt]of [[2000,2],[5000,3],[15000,4],[60000,4],[60000,4]]){
+  const before=x.requests.length;await x.pulse(delay-1);assert.equal(x.requests.length,before,'Lifecycle events cannot bypass the failure deadline');
+  await x.pulse(1);assert.equal(x.requests.length,before+2);assert.equal(x.state['custom.fleet.diagnostics'].entries.local.retry.attempts,attempt);
+ }
+ x.setMode('ambiguous');await x.pulse(60000);assert.equal(x.state['custom.fleet.diagnostics'].entries.local.retry,null,'Authoritative no-owner result ends the recovery chain');x.frame(false);
+}
+{
+ const x=await mounted({enabled:true,initialMode:'timeout'}),before=x.requests.length;
+ await x.replaceSidebar();assert.equal(x.requests.length,before,'Reload retains the failure deadline instead of resetting backoff');x.frame(false);
+ x.setMode('success');await x.pulse(2000);x.frame(true);assert.equal(x.requests.length,before+2);
+ // First frame after another graph replacement retains display, but only a
+ // witnessed current read restores strict Git/worker action context.
+ x.setMode('defer');await x.replaceSidebar();x.frame(true);assert.equal(x.sidebar.api.r.pluginPullContext('coordinator'),null);
+ const pending=x.requests.length;x.setMode('success');await x.replaceSidebar();x.frame(true);assert.equal(x.requests.length,pending,'Replacement joins an extant reader');
+ await x.pulse(45001,false);x.frame(true);assert.equal(x.requests.length,pending+2,'Abandoned read lease expires without a click or topology change');
+ assert.equal(x.sidebar.api.r.pluginPullContext('coordinator').stale,false);const verified=x.state['custom.fleet.links'].entries.local.at;
+ x.release();await x.drain();assert.equal(x.state['custom.fleet.links'].entries.local.at,verified,'Retired reader cannot overwrite replacement verification');
+ assert.equal(x.state['custom.fleet.diagnostics'].entries.local.lastDiscard.reason,'replaced-read');
+}
+console.log('PASS mounted Settings/Spaces local/remote toggles and timer-only startup/timeout recovery: recorded reasons, 2/5/15/60 backoff, reload/abandoned leases, no new scheduler or user action');
