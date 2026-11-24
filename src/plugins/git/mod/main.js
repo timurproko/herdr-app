@@ -655,16 +655,18 @@ export default class Changes extends View {
   }
 
   segment(t, id, label, count, on, onClick) {
+    const value = count ?? 0, text = value > 999 ? '999+' : String(value);
+    const tooltip = count == null ? 'Count loading; showing 0' : value > 999 ? String(value) : null;
     return h_flex().id(id).h(U.control).px(8).gap(6).flex_none().items_center().rounded(U.radius).cursor_pointer()
       .role('button').accessibility_label(`${label}: ${count ?? 0}${count == null ? ' (loading)' : ''}`)
       .text_size(U.meta).text_color(on ? t.foreground : t.muted).when(on, el => el.font_semibold())
       .hover(s => s.bg(t.hover)).on_click((_e, cx) => onClick(cx))
-      .child(label)
-      .child(div().id(`${id}-count-slot`).w(32).h(16).flex_none()
-        .child(div().id(`${id}-count`).w_full().min_w(0).px(5).h(16).flex().items_center().justify_center().rounded_full()
+      .child(div().id(`${id}-label`).flex_none().child(label))
+      .child(div().id(`${id}-count-slot`).w(32).h(16).flex_none().flex().items_center()
+        .child(div().id(`${id}-count`).w(32).min_w(32).max_w(32).flex_none().px(4).h(16).flex().items_center().justify_center().rounded_full()
           .bg(on ? t.selected : t.raised).text_size(10).font_medium().text_color(on ? t.foreground : t.muted)
-          .tooltip(count == null ? 'Count loading; showing 0' : String(count))
-          .child(div().min_w(0).truncate().child(String(count ?? 0)))));
+          .when(Boolean(tooltip), el => el.tooltip(tooltip))
+          .child(div().min_w(0).truncate().child(text))));
   }
 
   pullIcon(t, pr) {
@@ -907,8 +909,8 @@ export default class Changes extends View {
     ], ['review', 'labels']);
     meta.line.tooltip([pr.tasks?.label, pr.checks?.label, labelNames,
       pr.review ? (pr.review === 'approved' ? 'Approved' : 'Changes requested') : null].filter(Boolean).join('\n'));
-    // Panel border (1) + list inset (4) + row padding (6) matches Spaces' 11px Crew edge.
-    return h_flex().id(`${prefix}pr-${rowId}`).relative().w_full().h(74).min_h(74).max_h(74).flex_none().pl(8).pr(6).py(6).gap(U.gap).items_start().rounded(U.radius)
+    // Spaces' row padding (8) minus its trailing pill margin (5) leaves 3px inside the highlight.
+    return h_flex().id(`${prefix}pr-${rowId}`).relative().w_full().h(74).min_h(74).max_h(74).flex_none().pl(8).pr(3).py(6).gap(U.gap).items_start().rounded(U.radius)
       .when(!ghost, el => el.cursor_pointer().role('button').accessibility_label(`Open pull request #${pr.number} on GitHub`)
         .hover(s => s.bg(t.hover)).on_click(() => this.openPull(pr))
         .on_mouse_down('right', (_event, cx) => { cx.stop_propagation(); this.showPullMenu(pr, cx); })
@@ -1038,7 +1040,7 @@ export default class Changes extends View {
   repositorySection(t, {repo, rows, error}, scope) {
     const aggregate = this.aggregate, folded = this.foldedRepositories.has(repo);
     return v_flex().id(`task-repo-${repo}`).w_full().flex_none().gap(U.rowGap)
-      .child(sidebarSectionHeader(t, {id:`task-repo-header-${repo}`, label:repo, open:!folded, trailingSize:U.insetControl, trailingInset:6, children:[
+      .child(sidebarSectionHeader(t, {id:`task-repo-header-${repo}`, label:repo, open:!folded, trailingSize:U.insetControl, trailingInset:3, children:[
         this.repositoryNameLabel(repo,scope),
       ]}).cursor_pointer().hover(s => s.bg(t.selected))
         .on_click((_e, cx) => {
