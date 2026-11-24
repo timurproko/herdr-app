@@ -152,7 +152,12 @@ boundary. All transports/installers are synthetic; no live pc2 or native UI is u
 Unknown CLI receipts block even before peers finish and when no Settings lock
 exists; stale completed Settings jobs cannot hide the latest CLI outcome. The detach fixture
 runs actual detached Node supervision with synthetic Git and deploy CLI; it does
-not prove survival under the real Herdr/Core process lifecycle. All use checkout `.artifacts/` homes; exec, peer transport and deployment
+not prove survival under the real Herdr/Core process lifecycle. Its bounded wait
+requires both completed status and released lock: the supervisor deliberately writes
+status before unlocking, and another process can observe that intermediate state.
+Deterministic snapshots cover delayed unlock and reject a permanent lock, an
+unfinished unlocked job and an unknown outcome; receipt/token assertions remain.
+This avoids the Ubuntu completion/lock race without changing production ordering. All use checkout `.artifacts/` homes; exec, peer transport and deployment
 are mocked/synthetic. Real-app steps are in COMMANDS.md; no live home, machine,
 terminal, account or native UI is used by these suites.
 CI otherwise executes library fixtures, not real-home
