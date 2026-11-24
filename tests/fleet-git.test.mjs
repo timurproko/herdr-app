@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {legacyTargetResponses} from './support/github-read.mjs';
 import {loadMod} from '../tools/plugin-harness.mjs';
 import {projectLinkedRows} from '../src/shared/workspace-links.js';
 const element=()=>{const o={kids:[],attrs:{}};let p;p=new Proxy(o,{get(t,k){if(k in t)return t[k];if(k==='then')return undefined;if(k==='when')return(yes,fn)=>yes?fn(p):p;if(k==='child')return c=>{o.kids.push(c);return p;};if(k==='children')return cs=>{o.kids.push(...cs);return p;};return(...args)=>{o.attrs[k]=args;return p;};}});return p;};
@@ -34,9 +35,13 @@ const modules={
  'relay-consumer.js':'src/plugins/git/mod/webhooks.js',
  'webhooks.js':{GitWebhooks:class{sync(_cx,options){websocket=options;}stop(){}retryNow(){}}},'notices.js':{GitNotices:class{sync(_cx,{enabled,repository}){this.active=enabled;return enabled?noticeModes[repository]??null:null;}presentation(repos){if(!this.active)return null;const choices=[...new Set(repos)].filter(repo=>noticeModes[repo]==='repository');return {choices,key:JSON.stringify([this.force,noticeModes,choices])};}stop(){this.active=false;}retryNow(){this.force=(this.force??0)+1;}}},
 };
-const {Main,f,A,r,GitWebhooks}=await loadMod({host,modules,globals:{URL,localStorage,Date:class extends Date{static now(){return now;}}},mod:'custom-changes',entry:'export {default as Main} from "./main.js";export * as f from "./plugins/crew/fleet.js";export * as A from "./aggregate.js";export * as r from "./plugins.js";export {GitWebhooks} from "./relay-consumer.js";'});
+host.exec=legacyTargetResponses(host.exec);
+const {Main,f,A,r,GitWebhooks,gitReads}=await loadMod({host,modules,globals:{URL,localStorage,Date:class extends Date{static now(){return now;}}},mod:'custom-changes',entry:'export {default as Main} from "./main.js";export * as f from "./plugins/crew/fleet.js";export * as A from "./aggregate.js";export * as r from "./plugins.js";export {GitWebhooks} from "./relay-consumer.js";export {gitReads} from "./pulls.js";'});
 f.refreshFleets(cx,async()=>JSON.stringify(status));await drain();
 const panel=new Main();panel.init({},cx);await drain();let tree=panel.render(cx);await drain();tree=panel.render(cx);
+// Explicit change injection for the existing semantic/race cases below;
+// generic final-cache request budgets are measured without this adapter.
+panel.aggregate.invalidate=(repository=null)=>{gitReads(host.exec).facts.clear();for(const e of panel.aggregate.entries.values())if(!repository||e.link.repo===repository)e.dirty=true;};
 assert.equal(calls.length,2,'Duplicate task PR is fetched once');assert.equal(panel.aggregate.counts().open,1);assert.equal(panel.aggregate.counts().closed,1);
 assert.ok(calls.every(args=>args.at(-1).split(',').includes('labels')));assert.equal(panel.aggregate.rows('open')[0].labels[0].name,'🤖 Under review');
 assert.ok(find(tree,'pr-labels-example/a#12'),'Coordinator rows use the shared labels row');
@@ -201,7 +206,7 @@ failStatus=false;f.refreshFleets(cx,async()=>JSON.stringify(status),true);await 
 assert.equal(find(tree,'git-task-stale'),undefined);assert.ok(find(tree,'pr-agent-example/b#12'));assert.equal(panel.foldedRepositories.has('example/a'),!foldBefore);assert.equal(JSON.stringify(panel.aggregate.counts()),countsBefore);panel.setView('open',cx);tree=panel.render(cx);toggle('a');defer=true;
 // Finished workers leave an extant fleet, but successful owner membership moves
 // must refresh the retained display before a later status outage uses its scope.
-defer=false;bClosed=false;for(const task of status.tasks)task.state='closed';for(const worker of list.slice(1))worker.state='finished';all.splice(1);groups[1].tabs=[];
+defer=false;bClosed=false;panel.aggregate.invalidate('example/b');for(const task of status.tasks)task.state='closed';for(const worker of list.slice(1))worker.state='finished';all.splice(1);groups[1].tabs=[];
 const priorDisplay=f.fleetContexts({presentation:true})[0];
 f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();
 for(const [ownerTab,ownerPane] of [['c','cp-moved'],['c-moved','cp-moved-again']]) {

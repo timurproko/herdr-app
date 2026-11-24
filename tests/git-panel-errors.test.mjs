@@ -1,5 +1,6 @@
 // Complete packaged coordinator rendering; fake host IO only, never the live app.
 import assert from 'node:assert/strict';
+import {legacyTargetResponses} from './support/github-read.mjs';
 import {loadMod} from '../tools/plugin-harness.mjs';
 import {element,svg,Popover,find,words,nodes,theme} from './support/choice-menu.mjs';
 let rendering=false,reads=0,syncFailure=false,operations=0,peakOperations=0,zoom=1;
@@ -38,6 +39,7 @@ const host={props:()=>null,theme:()=>theme,settings:()=>({zoom}),window:()=>({pl
    ?{code:1,stderr:'GraphQL: Could not resolve to a PullRequest with the number of 36.'}
    :{code:1,stderr:'execution timed out after 30000ms'});
  }};
+host.exec=legacyTargetResponses(host.exec);
 const {Main}=await loadMod({mod:'custom-changes',host,globals:{console:{...console,error:(...args)=>errors.push(args.join(' '))},localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>{assert.equal(rendering,false);storage.set(k,v);}}},modules:{
  'main.js':process.env.GIT_PANEL_MAIN??'src/plugins/git/mod/main.js','aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js','notices.js':process.env.GIT_PANEL_NOTICES??'src/plugins/git/mod/notices.js','label-colors.js':'src/plugins/git/mod/label-colors.js','enrollment-picker.js':'src/plugins/git/mod/enrollment-picker.js','choice-menu.js':'src/ui/choice-menu.js','ui.js':'src/ui/ui.js',
  'gpui-kit':{View:class{},div:budgetElement,svg:asset=>budgetElement().asset(asset),PathBuilder:{}},'gpui-base':{h_flex:budgetElement,v_flex:budgetElement,Popover,Input:{}},

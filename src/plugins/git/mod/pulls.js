@@ -27,7 +27,7 @@ export function retryRead(owner, cx, error, run) {
   return true;
 }
 export class GitReads {
-  constructor({now=()=>Date.now(),log=line=>console.log(line)}={}) {this.now=now;this.log=log;this.routes=new Map();this.pending=new Map();this.facts=new Map();}
+  constructor({now=()=>Date.now(),log=line=>console.log(line)}={}) {this.now=now;this.log=log;this.routes=new Map();this.pending=new Map();this.facts=new Map();this.targets=new Map();this.lists=new Map();this.generation=0;this.versions=new Map();}
   route(options={}) {return JSON.stringify([options.on??null,options.credentialScope??null]);}
   state(options) {const key=this.route(options);if(!this.routes.has(key))this.routes.set(key,{until:0,episode:false});return this.routes.get(key);}
   refusal(result,repository,options={}) {
@@ -67,7 +67,7 @@ export function rateRefusal(result) {
     || /^HTTP[^\n]*\b429\b/im.test(result?.stdout??'');
 }
 export function repositoryRead(exec, args, repository, options = {}) {
-  const {current,manual,credentialScope,...native}=options;
+  const {current,manual,credentialScope,skipList,generation,...native}=options;
   return gitReads(exec).read(args,repository,options,()=>{
     if(args[0]!=='api')return exec('gh',args,native);
     if(typeof repository!=='string' || repository.trim()!==repository || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) || repository.split('/').some(p=>p==='.'||p==='..'))throw Error('Invalid GitHub repository');
@@ -239,7 +239,8 @@ export function parsePendingChecks(stdout,numbers) {
 export function pullListArgs(state, nameWithOwner, after = null) {
   const [owner, name] = String(nameWithOwner).split('/');
   const states = state === 'closed' ? '[CLOSED,MERGED]' : '[OPEN]';
-  const query = `query($owner:String!,$name:String!,$after:String){repository(owner:$owner,name:$name){open:pullRequests(states:OPEN){totalCount} closed:pullRequests(states:[CLOSED,MERGED]){totalCount} pullRequests(first:${PR_PAGE_SIZE},after:$after,states:${states},orderBy:{field:CREATED_AT,direction:DESC}){totalCount pageInfo{hasNextPage endCursor} nodes{number title url state isDraft author{login} createdAt mergedAt closedAt body reviewDecision headRefName headRefOid mergeable labels(first:100){nodes{name color}} commits(last:1){nodes{commit{statusCheckRollup{state contexts(first:100){nodes{... on CheckRun{name status conclusion startedAt completedAt detailsUrl checkSuite{workflowRun{workflow{name}}}} ... on StatusContext{context state createdAt}}}}}}}}}}}`;
+  let query = `query($owner:String!,$name:String!,$after:String){repository(owner:$owner,name:$name){open:pullRequests(states:OPEN){totalCount} closed:pullRequests(states:[CLOSED,MERGED]){totalCount} pullRequests(first:${PR_PAGE_SIZE},after:$after,states:${states},orderBy:{field:CREATED_AT,direction:DESC}){totalCount pageInfo{hasNextPage endCursor} nodes{number title url state isDraft author{login} createdAt mergedAt closedAt body reviewDecision headRefName headRefOid mergeable labels(first:100){nodes{name color}} commits(last:1){nodes{commit{statusCheckRollup{state}}}}}}}}`;
+  if(state==='closed')query=query.replace(/nodes\{number title[\s\S]*$/, 'nodes{number}}}}');
   return ['api', 'graphql', '-f', `query=${query}`, '-F', `owner=${owner}`, '-F', `name=${name}`,
     ...(after ? ['-f', `after=${after}`] : [])];
 }
@@ -253,13 +254,107 @@ export function parsePullPage(stdout) {
     checkSummary:summaryState(pr.commits?.nodes?.[0]?.commit?.statusCheckRollup?.state),
     statusCheckRollup: pr.commits?.nodes?.[0]?.commit?.statusCheckRollup?.contexts?.nodes?.map(check => ({...check,
       workflowName:check.checkSuite?.workflowRun?.workflow?.name ?? null,
-    })) ?? [],
+    })),
   }));
   const cursor = page.pageInfo?.endCursor ?? null;
   if (page.pageInfo?.hasNextPage && !cursor) throw new Error('Missing pull-request page cursor');
   const counts=Number.isSafeInteger(repo.open?.totalCount) && Number.isSafeInteger(repo.closed?.totalCount)
     ? {open:repo.open.totalCount,closed:repo.closed.totalCount} : null;
   return {pulls, cursor, hasMore:Boolean(page.pageInfo?.hasNextPage), total:page.totalCount ?? null,counts};
+}
+const factKey=(session,repo,number,options)=>JSON.stringify([session.route(options),repo.toLowerCase(),number]);
+export function rememberPull(exec,repository,row,options={}) {
+  const session=gitReads(exec),key=factKey(session,repository,row.number,options),generation=options.generation??++session.generation;
+  if((session.versions.get(key)??0)>generation)return session.facts.get(key)??row;
+  session.versions.set(key,generation);session.facts.set(key,row);return row;
+}
+export function cachedPull(exec,repository,number,options={}) {return gitReads(exec).facts.get(factKey(gitReads(exec),repository,number,options));}
+export function finalPull(row) {return ['closed','merged'].includes(row?.state);}
+function successful(result) {
+  if(result.code!==0 || result.signal || result.timed_out || result.timedOut)throw Object.assign(new Error(result.stderr||'GitHub read failed'),result);
+  return result.stdout;
+}
+export async function completePulls(exec,values,repository,options={}) {
+  const rows=values.map(pr=>pullRow(pr,repository.split('/')[0])),changed=[];
+  for(let i=0;i<rows.length;i++) {
+    const row=rows[i],old=cachedPull(exec,repository,row.number,options);
+    if(Array.isArray(values[i].statusCheckRollup))continue;
+    if(old?.checksKnown && old.headRefOid===row.headRefOid && old.checkSummary===row.checkSummary) {
+      row.checks=old.checks;row.checksKnown=true;
+    } else if(row.checkSummary!=null)changed.push(row.number);
+    else {row.checks=null;row.checksKnown=true;}
+  }
+  for(let at=0;at<changed.length;at+=CHECKS_BATCH_SIZE) {
+    const batch=changed.slice(at,at+CHECKS_BATCH_SIZE);
+    const details=parsePendingChecks(successful(await repositoryRead(exec,pendingChecksArgs(batch,repository),repository,options)),batch);
+    for(const number of batch) {
+      const row=rows.find(row=>row.number===number),value=details.get(number);
+      if((value.headRefOid??null)!==row.headRefOid || value.state.toLowerCase()!==(row.state==='draft'?'open':row.state) || value.isDraft!==(values.find(pr=>pr.number===number)?.isDraft===true))throw Error('Pull request changed during detail read');
+      row.checks=value.checks;row.checksKnown=true;
+    }
+  }
+  if(options.current && !options.current())throw Object.assign(new Error('Obsolete facts'),{quiet:true,retryAt:Date.now()+10000});
+  return rows.map(row=>rememberPull(exec,repository,row,options));
+}
+export async function readPullPage(exec,state,repository,after=null,options={}) {
+  const session=gitReads(exec),key=JSON.stringify([session.route(options),repository.toLowerCase()]);
+  const consumers=[options.current??(()=>true)],shared={...options,generation:++session.generation,current:()=>consumers.some(current=>current())};
+  const job=(async()=>{
+    const page=parsePullPage(successful(await repositoryRead(exec,pullListArgs(state,repository,after),repository,shared)));
+    if(state==='closed') {
+      const values=await readTargetPulls(exec,page.pulls.map(pr=>pr.number),repository,{...shared,skipList:true});
+      page.rows=page.pulls.map(pr=>{const value=values.get(pr.number);if(value.error)throw Object.assign(new Error(),value.error);return value.row;});
+    } else page.rows=await completePulls(exec,page.pulls,repository,shared);
+    return page;
+  })();
+  job.consumers=consumers;session.lists.set(key,job);
+  try{return await job;}finally{if(session.lists.get(key)===job)session.lists.delete(key);}
+}
+export function targetPullArgs(numbers,repository) {
+  if(!numbers.length || numbers.length>20 || numbers.some(n=>!Number.isSafeInteger(n)||n<1))throw Error('Invalid targeted batch');
+  const [owner,name]=repository.split('/');
+  const fields='number title url state isDraft author{login} createdAt mergedAt closedAt body reviewDecision headRefName headRefOid mergeable labels(first:100){nodes{name color}} commits(last:1){nodes{commit{statusCheckRollup{state}}}}';
+  return ['api','graphql','--include','-f',`query=query($owner:String!,$name:String!){repository(owner:$owner,name:$name){${numbers.map(n=>`pr${n}:pullRequest(number:${n}){${fields}}`).join(' ')}}}`,'-F',`owner=${owner}`,'-F',`name=${name}`];
+}
+// The target lease lives beyond either view's entries. Raw facts carry no worker
+// identity; every consumer must independently validate its current membership.
+export async function readTargetPulls(exec,numbers,repository,options={}) {
+  const session=gitReads(exec),result=new Map(),waiting=[],fresh=[];
+  const list=options.skipList?null:session.lists.get(JSON.stringify([session.route(options),repository.toLowerCase()]));
+  if(list) {list.consumers?.push(options.current??(()=>true));await list;}
+  for(const number of numbers) {
+    const key=factKey(session,repository,number,options),known=session.facts.get(key);
+    if(known && (finalPull(known)||list))result.set(number,{row:known});
+    else if(session.targets.has(key)) {const pending=session.targets.get(key);pending.consumers?.push(options.current??(()=>true));waiting.push([number,pending]);}
+    else fresh.push(number);
+  }
+  for(let at=0;at<fresh.length;at+=20) {
+    const batch=fresh.slice(at,at+20),consumers=[options.current??(()=>true)],shared={...options,generation:++session.generation,current:()=>consumers.some(current=>current())};
+    const job=(async()=>{
+      const response=JSON.parse(pullPayload(successful(await repositoryRead(exec,targetPullArgs(batch,repository),repository,shared))));
+      const repo=response.data?.repository,values=[],errors=new Map();
+      for(const number of batch) {
+        const alias=`pr${number}`,failures=(response.errors??[]).filter(e=>!e.path || e.path.length<2 || e.path[1]===alias);
+        const value=repo?.[alias];
+        if(failures.length || !value) {
+          const stderr=failures.map(e=>e.message).join('; ')||'Incomplete targeted PR response';
+          errors.set(number,{code:1,stderr});continue;
+        }
+        if(value.number!==number || value.url?.toLowerCase()!==`https://github.com/${repository.toLowerCase()}/pull/${number}`)throw Error('Pull request identity mismatch');
+        values.push({...value,checkSummary:summaryState(value.commits?.nodes?.[0]?.commit?.statusCheckRollup?.state),
+          statusCheckRollup:value.commits?.nodes?.[0]?.commit?.statusCheckRollup?.contexts?.nodes ?? value.statusCheckRollup});
+      }
+      const rows=await completePulls(exec,values,repository,shared);
+      return new Map(batch.map(number=>[number,errors.has(number)?{error:errors.get(number)}:{row:rows.find(row=>row.number===number)}]));
+    })();
+    for(const number of batch) {
+      const key=factKey(session,repository,number,options),value=job.then(rows=>rows.get(number));value.consumers=consumers;session.targets.set(key,value);waiting.push([number,value]);
+      // Install a rejection handler immediately, including when an earlier chunk fails.
+      value.catch(()=>{}).finally(()=>{if(session.targets.get(key)===value)session.targets.delete(key);});
+    }
+  }
+  for(const [number,promise]of waiting)result.set(number,await promise);
+  return result;
 }
 export const REPO_ARGS = ['repo', 'view', '--json', 'nameWithOwner,owner,url'];
 export function countArgs(nameWithOwner) {
@@ -412,7 +507,7 @@ export function pullFailure(e, stderr = '') {
   if (/could not resolve to|could not resolve (?:repository|pull request)|HTTP 404|\bnot found\b/i.test(text)) return failure('notfound', 'Repository or pull request not found');
   if (/HTTP [45]\d\d|GraphQL:/i.test(text)) return failure('response', 'Could not read pull requests: GitHub returned an error');
   if (/timeout|timed out/i.test(text) || (e && typeof e === 'object' && 'code' in e && !detail)) return transient();
-  if (e instanceof SyntaxError) return failure('response', 'Could not read pull requests: invalid GitHub response');
+  if (e instanceof SyntaxError || /invalid GitHub response/i.test(text)) return failure('response', 'Could not read pull requests: invalid GitHub response');
   return failure('read', detail.split('\n')[0].slice(0,240) || 'Cannot load pull requests');
 }
 export function pullError(e, stderr = '') { return pullFailure(e, stderr).message; }

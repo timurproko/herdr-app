@@ -18,7 +18,7 @@ import { headerTool, contextMenu, panelMessage } from './panel-kit.js';
 import { changePanel } from './panel-state.js';
 import { sidebarPanelEnabled } from './plugins.js';
 import { sidebarTitle } from './sidebar-title.js';
-import { pullListArgs, REPO_ARGS, countArgs, parseCounts, parsePullPage, agentPullNumber, pullRow, pullError, PR_FIELDS, PR_PAGE_SIZE, repositoryRead, repositoryFailure, quietRead, retryRead, pendingChecksArgs, parsePendingChecks, refreshPullFacts, pullStateArgs, parsePullStates, pullPayload, pullRetryAfter, ChecksFallback, PullFactsOrder, CHECKS_BATCH_SIZE, STATE_BATCH_SIZE } from './pulls.js';
+import { pullListArgs, REPO_ARGS, countArgs, parseCounts, parsePullPage, agentPullNumber, pullRow, pullError, PR_FIELDS, PR_PAGE_SIZE, repositoryRead, repositoryFailure, quietRead, retryRead, readPullPage, readTargetPulls, rememberPull, pendingChecksArgs, parsePendingChecks, refreshPullFacts, pullStateArgs, parsePullStates, pullPayload, pullRetryAfter, ChecksFallback, PullFactsOrder, CHECKS_BATCH_SIZE, STATE_BATCH_SIZE } from './pulls.js';
 
 const VIEWS = ['open', 'closed'];
 const VIEW_KEY = 'custom.git.view';
@@ -227,16 +227,9 @@ export default class Changes extends View {
           repo=this.repo={ name: value.nameWithOwner, owner: value.owner?.login ?? value.nameWithOwner.split('/')[0], url: value.url ?? `https://github.com/${value.nameWithOwner}` };
         }
         repository=repo.name;
-        const list = await gh(pullListArgs(state, repository, after));
-        // A refused obsolete read is not permission to start another request,
-        // especially an account probe on the previous machine/repository.
+        const page = await readPullPage(exec,state,repository,after,{cwd:root,on,timeout:30000,current:()=>current()&&this.shown(),manual:this.manualRead});
         if (!current()) return;
-        if (list.code !== 0 || list.timed_out || list.timedOut || list.signal) {
-          if(!this.shown())return;
-          throw Object.assign(new Error(),await repositoryFailure(exec,list,repository,{cwd:root,on}));
-        }
-        const page = parsePullPage(list.stdout);
-        const rows = page.pulls.map(pr => this.publishPull(pullRow(pr,this.repo.owner),read).value).filter(Boolean);
+        const rows = page.rows.map(pr => this.publishPull(pr,read).value).filter(Boolean);
         const incoming=new Map(rows.map(pr=>[pr.number,pr]));
         const existing = (append ? this.pulls[state] ?? [] : []).map(pr=>incoming.get(pr.number)??pr);
         const seen = new Set(existing.map(pr => pr.number));
@@ -258,8 +251,10 @@ export default class Changes extends View {
       } catch (e) {
         if (current()) {
           if(retryRead(this,cx,e,view=>{if(this.shown() && this.context===context)this.loadPulls(state,view,true,true,append);}))return;
-          if (append) this.pageError = {state,message:pullError(e)};
-          else { this.pullError = pullError(e); this.pullsAt[state] = Date.now(); }
+          const failure=await repositoryFailure(exec,e,repository,{cwd:root,on,current:()=>current()&&this.shown()});
+          if(!current())return;
+          if (append) this.pageError = {state,message:failure.message};
+          else { this.pullError = failure.message; this.pullsAt[state] = Date.now(); }
         }
       } finally {
         await Promise.resolve(); // even a synchronous transport throw must yield
@@ -325,11 +320,11 @@ export default class Changes extends View {
       let accepted=false;
       try {
         await Promise.resolve();if(!current())return;
-        const result = await repositoryRead(exec, ['pr','view',String(number),'--repo',repo.name,'--json',PR_FIELDS], repo.name, {cwd:root,on,timeout:30000,current,manual:this.manualRead});
-        if (!current() || result.code !== 0 || result.timed_out || result.timedOut || result.signal) return;
-        const pr = JSON.parse(result.stdout);
+        const result = (await readTargetPulls(exec,[number],repo.name,{cwd:root,on,timeout:30000,current,manual:this.manualRead})).get(number);
+        if (!current() || result.error) return;
+        const pr = result.row;
         if (pr.number === number) {
-          const published=this.publishPull(pullRow(pr,repo.owner),read,repo.name);accepted=published.accepted;
+          const published=this.publishPull(pr,read,repo.name);accepted=published.accepted;
           if(published.value) {
             const previous=this.relatedPull;
             this.relatedPull=published.value;
@@ -436,7 +431,9 @@ export default class Changes extends View {
       const update=pr=>{
         if(!updates.has(pr?.number))return pr;
         const published=order.publish(read,`${repo.name.toLowerCase()}#${pr.number}`,previous=>refreshPullFacts(previous??pr,updates.get(pr.number)));
-        accepted=accepted && published.accepted;return published.value??pr;
+        accepted=accepted && published.accepted;
+        if(published.accepted)rememberPull(exec,repo.name,published.value,{on});
+        return published.value??pr;
       };
       if(aggregate) {
         for(const entry of aggregate.entries.values())if(entry.link.repo===repo.name && entry.pr) {
@@ -520,8 +517,8 @@ export default class Changes extends View {
           const depth=Math.max(1,this.pullDepth[state]??0,Math.ceil(this.pulls[state].length/PR_PAGE_SIZE));
           let after=null,page,rows=[];
           for(let i=0;i<depth;i++) {
-            page=parsePullPage(await gh(pullListArgs(state,repo.name,after)));
-            rows.push(...page.pulls.map(pr=>pullRow(pr,repo.owner)));
+            page=await readPullPage(exec,state,repo.name,after,{cwd:root,on,timeout:30000,current,manual:this.manualRead});
+            rows.push(...page.rows);
             if(!page.hasMore || page.cursor===after)break;
             after=page.cursor;
           }
@@ -531,8 +528,9 @@ export default class Changes extends View {
         const number=this.agentPull ?? location().pullNumber;
         let related=number ? Object.values(updates).flatMap(u=>u.rows).find(pr=>pr.number===number) : null;
         if(number && !related) {
-          const data=JSON.parse(await gh(['pr','view',String(number),'--repo',repo.name,'--json',PR_FIELDS]));
-          if(data.number===number)related=pullRow(data,repo.owner);
+          const value=(await readTargetPulls(exec,[number],repo.name,{cwd:root,on,timeout:30000,current,manual:this.manualRead})).get(number);
+          if(value.error)throw Object.assign(new Error(),value.error);
+          related=value.row;
         }
         const counts=Object.values(updates).map(update=>update.page.counts).find(Boolean) ?? parseCounts(await gh(countArgs(repo.name)));
         if(!current())return;

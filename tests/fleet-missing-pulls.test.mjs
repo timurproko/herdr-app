@@ -1,5 +1,6 @@
 // Actual aggregate/diagnosis modules, synthetic responses and clock only.
 import assert from 'node:assert/strict';
+import {legacyTargetResponses} from './support/github-read.mjs';
 import {loadMod} from '../tools/plugin-harness.mjs';
 let now=1_800_000_000_000,shown=true,enabled=true,identityReads=0,hold=null;
 const repo='example/crew',other='example/other',url=(n,r=repo)=>`https://github.com/${r}/pull/${n}`,key=(n,r=repo)=>`${r}#${n}`;
@@ -8,7 +9,7 @@ const context={scope:'home',machine:'pc2',links:[source(36),source(37),source(38
 const missing=n=>({code:1,stderr:`GraphQL: Could not resolve to a PullRequest with the number of ${n}. (repository.pullRequest)`});
 const found=(n,r=repo)=>({code:0,stdout:JSON.stringify({number:n,url:url(n,r),title:`PR ${n}`,state:'MERGED',mergedAt:new Date(now-1000).toISOString(),labels:[],statusCheckRollup:[]})});
 const results=new Map([[key(36),missing(36)],[key(37),{code:1,stderr:'HTTP 404: Not Found'}],[key(38),found(38)]]),calls=[],logs=[],jobs=[];
-const cx={notify(){},spawn:fn=>jobs.push(Promise.resolve().then(()=>fn(cx))),timer:{after(){throw Error('No new timer');},every(){throw Error('No new timer');}}};
+const cx={notify(){},spawn:fn=>jobs.push(Promise.resolve().then(()=>fn(cx))),timer:{after(){}, every(){throw Error('No new timer');}}};
 const tick=async()=>{for(let i=0;i<20;i++)await Promise.resolve();};
 const drain=async()=>{while(jobs.length)await Promise.all(jobs.splice(0));};
 const host={run(){throw Error('No worker action');},exec:async(cmd,args,options)=>{
@@ -18,8 +19,9 @@ const host={run(){throw Error('No worker action');},exec:async(cmd,args,options)
  if(hold)return new Promise(resolve=>hold.push(()=>resolve(results.get(k))));
  const value=results.get(k);assert.ok(value,`Missing fixture ${k}`);if(value instanceof Error)throw value;return value;
 }};
-const load=(log=line=>logs.push(line))=>loadMod({host,modules:{'aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js','plugins.js':{sidebarPanelEnabled:()=>enabled,pluginPullContext:()=>context,pluginEvent(){}},'location.js':{location:()=>({space:'coordinator'})}},globals:{Date:class extends Date{static now(){return now;}},console:{log}},entry:'export {AggregatePulls} from "./aggregate.js";'});
-const {AggregatePulls}=await load();let a=new AggregatePulls({shown:()=>shown});
+host.exec=legacyTargetResponses(host.exec);
+const load=(log=line=>logs.push(line))=>loadMod({host,modules:{'aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js','plugins.js':{sidebarPanelEnabled:()=>enabled,pluginPullContext:()=>context,pluginEvent(){}},'location.js':{location:()=>({space:'coordinator'})}},globals:{Date:class extends Date{static now(){return now;}},console:{log}},entry:'export {AggregatePulls} from "./aggregate.js";export {gitReads} from "./pulls.js";'});
+const {AggregatePulls,gitReads}=await load();let a=new AggregatePulls({shown:()=>shown});
 const reads=k=>calls.filter(c=>c===k).length;
 const silent=()=>{for(const state of ['open','closed'])assert.equal(a.readNotice(repo,state),null);};
 a.sync(cx);await drain();silent();assert.deepEqual(Array.from(a.rows('closed'),pr=>pr.number),[38]);assert.equal(a.counts().closed,1);assert.equal(logs.length,2);assert.equal(identityReads,0);
@@ -30,7 +32,7 @@ context.scope='another-home';a.sync(cx);await drain();a.stop();a=new AggregatePu
 context.links=[];a.sync(cx);context.links=[source(36),source(37),source(38),source(36,true,other)];results.set(key(36,other),found(36,other));a.sync(cx);await drain();
 assert.equal(reads(key(36)),1);assert.equal(reads(key(37)),1);assert.equal(reads(key(36,other)),1);assert.equal(logs.length,2);silent();
 // Previously loaded facts are removed only for authoritative absence.
-results.set(key(38),missing(38));a.refresh(cx);await drain();assert.equal(a.entries.get(key(38)).pr,null);assert.equal(a.counts().closed,1);assert.deepEqual(Array.from(a.repositories()),[other]);silent();
+results.set(key(38),missing(38));gitReads(host.exec).facts.clear();a.entries.get(key(38)).dirty=true;a.refresh(cx);await drain();assert.equal(a.entries.get(key(38)).pr,null);assert.equal(a.counts().closed,1);assert.deepEqual(Array.from(a.repositories()),[other]);silent();
 // Live and shared live/history sources are equally silent, but may be retried.
 context.links=[source(40,false),source(40)];results.set(key(40),missing(40));a.sync(cx);await drain();silent();assert.equal(a.counts().open,0);assert.equal(a.counts().closed,0);assert.equal(a.repositories().length,0);
 const firstMissing=now;for(let i=0;i<4;i++){a.refresh(cx);await drain();}assert.equal(reads(key(40)),1);
@@ -43,7 +45,7 @@ context.links=[source(40)];now+=600000;a.sync(cx);a.refresh(cx);await drain();as
 // A corrected URL does not inherit another identity's cooldown.
 context.links=[source(41,false)];results.set(key(41),found(41));a.sync(cx);await drain();assert.equal(reads(key(41)),1);assert.equal(a.rows('closed')[0].number,41);
 context.links=[source(40,false)];results.set(key(40),found(40));a.sync(cx);await drain();assert.equal(reads(key(40)),3);assert.equal(a.rows('closed')[0].number,40,'A later created PR becomes visible normally');
-results.set(key(40),missing(40));a.refresh(cx);await drain();assert.equal(logs.filter(l=>l.endsWith('#40')).length,1,'Success never resets log deduplication');
+results.set(key(40),missing(40));gitReads(host.exec).facts.clear();a.entries.get(key(40)).dirty=true;a.refresh(cx);await drain();assert.equal(logs.filter(l=>l.endsWith('#40')).length,1,'Success never resets log deduplication');
 // A real error during an expired-live recheck becomes an explicit notice, not
 // another cached absence; the next explicit Refresh can retry immediately.
 now+=300000;results.set(key(40),{code:1,stderr:'HTTP 403: Resource not accessible by integration'});a.sync(cx);await drain();
@@ -64,6 +66,7 @@ const failures=[
 ];
 for(const [i,[failure,kind]]of failures.entries()){
  const n=100+i;context.links=[source(n)];results.set(key(n),failure);a.sync(cx);await drain();
+ if(kind==='rate') {assert.equal(a.entries.get(key(n)).error,null);assert.equal(a.readNotice(repo,'closed'),null);now+=900001;a.readWake=null;continue;}
  assert.equal(a.entries.get(key(n)).error.kind,kind);assert.ok(a.readNotice(repo,'closed'));const before=reads(key(n));a.refresh(cx);await drain();assert.equal(reads(key(n)),before+1);
 }
 // Missing replies from obsolete hidden/disabled/superseded contexts cannot log
