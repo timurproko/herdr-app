@@ -315,11 +315,13 @@ or an applicable `readNotice`, before applying folds. Empty sections have no hea
 but disappearing sections retain saved fold keys. A settled tab with no qualifying
 sections uses ordinary Git's **No open pull requests** / **No closed pull requests**;
 notice-only and folded eligible sections are not empty. Pending/unverified feedback
-is unchanged. The selected presentation is sliced into replacement pages of ten
-items including headers, notices and rows, with repeated continuation headers.
-Paging applies after folding, preserves full counts/inventory and starts no IO;
-its per-page scroll identity resets position and Previous/Show more remain outside
-the viewport. Page state is per coordinator home and tab. Distinct-string native
+is unchanged. The selected presentation reveals ten items initially, including headers,
+notices and rows, then appends ten near the scroll bottom without IO or page controls.
+After folding, a prefix-height projection renders only viewport-near items with
+exact spacers: PRs retain 74px blocks, shared headers retain their control height,
+and notices retain keyed native height measurements. Revealed depth and stable
+scroll identity are per coordinator home and tab. Same-context insertions preserve
+surviving row anchors rather than resetting scroll; enrollment stays outside it. Distinct-string native
 probe widths use a bounded zoom/style-keyed cache; PR label presentation caches
 immutable facts, never native callback-bearing elements. Coordinator rows build
 at most three pills but retain all names in metadata/strip tooltips. See

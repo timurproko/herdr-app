@@ -1,6 +1,7 @@
 // Complete packaged coordinator rendering; fake host IO only, never the live app.
 import assert from 'node:assert/strict';
 import {loadMod} from '../tools/plugin-harness.mjs';
+import {measureTask,scrollTask,taskWindow} from './support/git-scroll.mjs';
 import {element,svg,Popover,find,words,nodes,theme} from './support/choice-menu.mjs';
 let rendering=false,reads=0,syncFailure=false,operations=0,peakOperations=0,zoom=1;
 function budgetElement(){
@@ -44,8 +45,8 @@ const {Main}=await loadMod({mod:'custom-changes',host,globals:{console:{...conso
 const panel=new Main();panel.init({},cx);await drain();
 const render=()=>{operations=0;rendering=true;try{return panel.render(cx);}finally{rendering=false;peakOperations=Math.max(peakOperations,operations);assert.ok(operations<10000,`Fixed render operation budget: ${operations}`);}};
 let tree=render();await drain();tree=render();await drain();
-// Cold 100-row inventory must build only one bounded page. Page controls
-// replace it, never append an ever-growing list, and every row stays reachable.
+// Reveal all 100 rows through native-style scroll events. Row builds remain
+// viewport-bounded even after the entire inventory is loaded.
 const rowNodes=tree=>nodes(tree).filter(n=>/^pr-timurproko\/(?:crew|herdr-app)#\d+$/.test(n.attrs.id?.[0]??''));
 const budget=tree=>{
  const rows=rowNodes(tree);assert.ok(rows.length<=10);
@@ -53,18 +54,21 @@ const budget=tree=>{
  for(const row of rows)assert.ok(nodes(row).length<125,'Bounded visible + probe elements per PR');
 };
 budget(tree);
-const firstTree=tree,seen=new Set();
-while(true){
+const firstTree=tree,seen=new Set(),beforeScroll=reads;
+measureTask(panel,tree,cx);tree=render();
+for(let offset=0;offset<9000;offset+=250){
+ scrollTask(panel,tree,cx,offset);tree=render();measureTask(panel,tree,cx);
  budget(tree);for(const row of rowNodes(tree))seen.add(row.attrs.id[0].slice(3));
- const more=find(tree,'task-pulls-more');if(!more)break;
- more.attrs.on_click[0]({},cx);tree=render();
+ assert.equal(find(tree,'task-pulls-more'),undefined);assert.equal(find(tree,'task-pulls-pages'),undefined);
+ if(taskWindow(panel).limit>=taskWindow(panel).items.length && taskWindow(panel).offset>=taskWindow(panel).max)break;
 }
 assert.deepEqual([...seen].sort(),[...prs.keys()].sort());
-// Each tab remembers its own presentation page without changing counts or IO.
-const beforePages=reads;panel.view='open';render();panel.view='closed';tree=render();
-assert.equal(find(tree,'task-pulls-more'),undefined);assert.equal(reads,beforePages);
-// Return to the first page for notice/error attribution checks below.
-panel.taskPages.clear();tree=render();
+assert.equal(reads,beforeScroll,'Revealing the known inventory starts no reads');
+assert.ok(rowNodes(tree).length<10,'A fully loaded 100-row list still builds only the viewport window');
+const retainedOffset=taskWindow(panel).offset;
+panel.view='open';render();panel.view='closed';tree=render();
+assert.equal(taskWindow(panel).offset,retainedOffset);assert.equal(reads,beforeScroll);
+scrollTask(panel,tree,cx,0);tree=render();
 assert.ok(find(tree,'pr-timurproko/crew#1'));
 assert.equal(nodes(find(tree,'pr-labels-timurproko/crew#1')).filter(n=>/^pr-label-timurproko/.test(n.attrs.id?.[0]??'')).length,3);
 assert.ok(find(tree,'pr-meta-timurproko/crew#1').attrs.tooltip[0].includes('label-99'));
@@ -84,9 +88,9 @@ const originalWhen=changedPr.when;changedPr.when='merged 1 hour earlier';cached=
 const changedTime=nodes(cached).find(n=>String(n.attrs.id?.[0]).includes('-probe-time-full')&&words(n).join('')===changedPr.when);
 assert.ok(changedTime);assert.notEqual(changedTime.attrs.id[0],timeProbes[0].attrs.id[0],'New strings need new native IDs even if their width is unchanged');changedPr.when=originalWhen;
 const time=timeProbes[0];time.attrs.on_size_change[0]({width:120,height:18},cx);
-find(render(),'task-pulls-more').attrs.on_click[0]({},cx);cached=render();
+scrollTask(panel,render(),cx,800);cached=render();
 assert.ok(!nodes(cached).some(n=>String(n.attrs.id?.[0]).includes('-probe-time-full')&&words(n).join('')===words(time).join('')),'Later pages reuse distinct-string measurements');
-panel.taskPages.clear();tree=render();
+scrollTask(panel,cached,cx,0);tree=render();
 
 assert.ok(find(tree,'task-error-timurproko/crew'));assert.match(words(tree).join(' '),/Task PR history/);
 assert.equal(words(find(tree,'task-error-timurproko/crew')).join(' '),'Task PR history: timurproko/crew #36 not found');
@@ -116,4 +120,4 @@ assert.ok(errors.some(line=>line.includes('previous render did not complete')&&l
 // Section notices have their own attribution boundary too.
 assert.throws(()=>panel.renderPart('repository-notice:timurproko/crew',()=>{throw Error('notice fixture exception');}),/notice fixture exception/);
 assert.ok(errors.some(line=>line.includes('repository-notice:timurproko/crew')&&line.includes('notice fixture exception')));
-assert.ok(reads>=101);console.log(`Peak fixed render operations: ${peakOperations} / 10000`);console.log('PASS bounded 100-row Closed coordinator pagination, probe cache, real aggregate/notices, inline-spawn guards and component/error diagnostics');
+assert.ok(reads>=101);console.log(`Peak fixed render operations: ${peakOperations} / 10000`);console.log('PASS windowed 100-row Closed coordinator scrolling, probe cache, real aggregate/notices, inline-spawn guards and component/error diagnostics');

@@ -8,6 +8,11 @@ row geometry alone is not established as the introducing cause of that banner.
 
 ## Measurements
 
+`node tools/measure-git-render.mjs` now measures 30/60/100 loaded rows after
+production scroll handlers reveal them, including deep-window renders; its five
+samples per size record total render time and built-row count in the raw results.
+The historical table below describes #45, not the new windowed measurements.
+
 `node tools/measure-git-render.mjs` builds the real packaged coordinator renderer
 inside the installed native QuickJS/GPUI checker with a disposable app home under
 `.artifacts/`. No live app, Core, GitHub, account, deployment or restart is involved.
@@ -54,14 +59,19 @@ increase. The tool accepts `post42-no-tooltips current-no-tooltips` to repeat it
 
 ## Bounds and cache ownership
 
-- Coordinator Open and Closed use replacement pages of **10 presentation items**:
-  headers, notices and PRs all count. A continued repository repeats its header.
-  Previous / Show more change only the visible slice, never fetch or append.
-  Page-specific native scroll IDs start each replacement at the top. The page
-  controls and enrollment footer remain outside scrolling content.
+- Coordinator Open and Closed reveal **10 presentation items** initially:
+  headers, notices and PRs all count. Near-bottom scrolling appends ten already-known
+  items without GitHub reads, page counters or Previous / Show more controls.
+  Only the viewport plus 74px overscan on each side builds native elements;
+  exact-height top/bottom spacers preserve the full revealed scroll extent.
+  PR blocks remain 74px, headers use the shared control height, and scoped notices
+  retain keyed native height measurements. Existing gaps/padding are included.
+- Stable native scroll IDs and retained per-home/tab depth keep refreshes and
+  appends from resetting scroll. Surviving first-visible row identities anchor
+  insertions above the viewport. Enrollment remains outside scrolling content.
 - Counts, inventory, notices, webhook updates, folds and worker authority keep
-  their existing meaning. Open/Closed pages are independent and home-scoped.
-  Folds apply before paging; collapsed repositories cost one header each.
+  their existing meaning. Folds apply before reveal/windowing; collapsed
+  repositories cost one header each.
 - Native probe widths are cached by zoom, group style/kind and exact string.
   Intrinsic text widths are independent of available line width; each visible
   line still measures its current available width to select full/compact values.
@@ -82,10 +92,11 @@ increase. The tool accepts `post42-no-tooltips current-no-tooltips` to repeat it
   of PR inventories, focus allocation or notification is added to render.
 
 `tests/git-panel-errors.test.mjs` exercises 100 Closed PRs, including a 100-label
-PR, with a fixed **10,000 builder-operation / 1,200 element** ceiling, at most ten
-PRs per page and fewer than 125 elements per PR. Observed peak was **2,750**
-operations including the page-specific scroll-frame wrapper.
-It visits every page, proves every PR remains reachable, checks independent tabs,
+PR, with a fixed **10,000 builder-operation / 1,200 element** ceiling, only viewport-near
+PRs per render and fewer than 125 elements per PR. Observed peak was **2,750**
+operations in the prior replacement-page implementation.
+It now scrolls to reveal all 100 rows, proves every PR remains reachable while
+late-window renders stay bounded, and checks independent tabs,
 unchanged IO/counts, cached/distinct-string probes, zoom invalidation and stale
 callbacks. Existing 47,250 geometry comparisons and label-colour tests remain.
 This deterministic regression is the CI budget gate, not a flaky wall-clock test.

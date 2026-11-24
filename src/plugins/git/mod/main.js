@@ -1,6 +1,9 @@
 // Custom: GitHub pull requests for the repository under the focused folder.
 import { View, div, svg, PathBuilder } from 'gpui-kit';
 import { v_flex, h_flex } from 'gpui-base';
+import * as base from 'gpui-base';
+import { TaskWindow } from './task-window.js';
+import { SidebarScrollState } from './sidebar-scroll.js';
 import { U, headerTools, reveal, subtleActionFill, refreshButton, sidebarSectionHeader } from './ui.js';
 import { exec, hc, theme, run, layout, openOverlay, closeOverlay, props, notify, nextCommand, window, settings } from './host.js';
 import { location } from './location.js';
@@ -26,9 +29,6 @@ const FOLDED_REPOS_KEY = 'custom.git.task-repositories.folded';
 const LOCAL_CONTEXT_TTL = 10000; // shell branch/footer only, never a GitHub poll
 const CI_SWEEP_MS = 2400;
 const CI_SWEEP_WIDTH = 96;
-// Include headers/notices in the budget, not only PRs. Pages replace rather
-// than append: no amount of Show more clicks can recreate an unbounded render.
-const TASK_PAGE_SIZE = 10;
 const TEXT_CACHE_LIMIT = 512;
 const ciPending = pr => ['open','draft'].includes(pr?.state) && pr.checks?.pending > 0;
 function find(node, id) { return node?.id === id ? node : (node?.children ?? []).map(c => find(c, id)).find(Boolean); }
@@ -71,6 +71,8 @@ export default class Changes extends View {
     this.checksFallback?.stop();this.factOrder?.reset();
     this.enrollmentPicker?.stop();this.aggregate?.stop();this.webhooks?.stop();this.notices?.stop();
     this.rootRequest=null;this.pullRequest=null;this.relatedRequest=null;
+    for(const window of this.taskWindows?.values()??[])window.handle?.release();
+    for(const handle of this.retiredTaskHandles??[])handle.release();
   }
 
   resetRepository() {
@@ -1031,10 +1033,11 @@ export default class Changes extends View {
           .on_size_change((size,cx)=>measure('intrinsic',size,cx))));
   }
 
-  repositorySection(t, {repo, rows, error}, scope) {
+  repositorySection(t, {repo, items}, scope, window) {
     const aggregate = this.aggregate, folded = this.foldedRepositories.has(repo);
-    return v_flex().id(`task-repo-${repo}`).w_full().flex_none().gap(U.rowGap)
-      .child(sidebarSectionHeader(t, {id:`task-repo-header-${repo}`, label:repo, open:!folded, trailingSize:U.insetControl, trailingInset:6, children:[
+    const header=items.find(item=>item.header), body=items.filter(item=>!item.header);
+    return v_flex().id(`task-repo-${repo}`).w_full().flex_none()
+      .when(Boolean(header),section=>section.child(div().flex_none().h(header.height+header.gap).child(sidebarSectionHeader(t, {id:`task-repo-header-${repo}`, label:repo, open:!folded, trailingSize:U.insetControl, trailingInset:6, children:[
         this.repositoryNameLabel(repo,scope),
       ]}).cursor_pointer().hover(s => s.bg(t.selected))
         .on_click((_e, cx) => {
@@ -1043,49 +1046,76 @@ export default class Changes extends View {
           this.foldedRepositories.has(repo) ? this.foldedRepositories.delete(repo) : this.foldedRepositories.add(repo);
           try { localStorage.setItem(FOLDED_REPOS_KEY, JSON.stringify([...this.foldedRepositories])); } catch {}
           cx.notify();
-        }))
-      .when(!folded, el => el.child(v_flex().id(`task-repo-body-${repo}`).gap(U.rowGap)
-        .children(rows.map(pr => this.pullRow(t, pr)))
-        .when(Boolean(error), body => body.child(this.renderPart(`repository-notice:${repo}`,()=>div().id(`task-error-${repo}`).px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(error))))));
+        }))))
+      .when(!folded && body.length>0, el => el.child(v_flex().id(`task-repo-body-${repo}`).flex_none()
+        .children(body.map(item=>div().id(`task-item-${item.key}`).flex_none().h(item.height+item.gap)
+          .child(item.row ? this.pullRow(t,item.row) : this.renderPart(`repository-notice:${repo}`,()=>div().id(`task-error-${repo}`).px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(item.error)
+            .on_size_change((size,cx)=>{
+              if(!this.taskWindowCurrent(window,scope) || !Number.isFinite(size.height))return;
+              const height=size.height/window.zoom;
+              if(window.noticeHeights.get(item.measureKey)===height)return;
+              window.noticeHeights.set(item.measureKey,height);cx.notify();
+            })))))));
   }
 
   taskSections(sections, scope) {
-    const key = `${scope}\0${this.view}`;
-    if (this.taskPageScope !== scope) { this.taskPages = new Map();this.taskPageScope=scope; }
-    this.taskPages ??= new Map();
-    const items = [];
-    for (const section of sections) {
-      items.push({section,header:true});
-      if (this.foldedRepositories.has(section.repo)) continue;
-      for (const row of section.rows) items.push({section,row});
-      if (section.error) items.push({section,error:section.error});
+    const key=`${scope}\0${this.view}`;
+    if(this.taskWindowScope!==scope) {
+      this.retiredTaskHandles=[...(this.retiredTaskHandles??[]),...[...(this.taskWindows?.values()??[])].flatMap(window=>window.handle?[window.handle]:[])];
+      this.taskWindows=new Map();this.taskWindowScope=scope;
     }
-    const last = Math.max(0,Math.ceil(items.length / TASK_PAGE_SIZE)-1);
-    const page = Math.min(this.taskPages.get(key) ?? 0,last);
-    const visible = [];
-    for (const item of items.slice(page*TASK_PAGE_SIZE,(page+1)*TASK_PAGE_SIZE)) {
-      let section = visible[visible.length-1];
-      if (section?.repo !== item.section.repo) {
-        section = {repo:item.section.repo,rows:[],error:null};visible.push(section);
-      }
-      if (item.row) section.rows.push(item.row);
-      if (item.error) section.error=item.error;
+    let window=this.taskWindows.get(key);
+    if(!window) {
+      window=new TaskWindow();window.key=key;window.metrics=new SidebarScrollState();
+      this.taskWindows.set(key,window);
     }
-    return {sections:visible,page,last,key};
+    const zoom=settings().zoom||1;
+    window.zoom=zoom;
+    window.project(sections,this.foldedRepositories,U.control,U.rowGap,`${zoom}:${window.width??0}`);
+    const range=window.range(),visible=[];
+    for(const item of range.items) {
+      let section=visible.at(-1);
+      if(section?.repo!==item.repo) {section={repo:item.repo,items:[],rows:[]};visible.push(section);}
+      section.items.push(item);if(item.row)section.rows.push(item.row);
+    }
+    return {...range,sections:visible,window,key,page:window.generation};
   }
 
-  taskPageControl(t, paging, scope) {
-    if (!paging.last) return null;
-    const change = (page,cx) => {
-      if (!this.shown() || this.aggregate?.currentContext({presentation:true})?.scope !== scope || `${scope}\0${this.view}` !== paging.key) return;
-      this.taskPages.set(paging.key,page);cx.notify();
-    };
-    return h_flex().id('task-pulls-pages').flex_none().p(8).gap(12).text_size(U.meta).text_color(t.dim)
-      .when(paging.page>0,el=>el.child(div().id('task-pulls-previous').cursor_pointer().role('button').accessibility_label('Show previous task pull requests')
-        .on_click((_e,cx)=>change(paging.page-1,cx)).child('Previous')))
-      .child(div().child(`${paging.page+1} / ${paging.last+1}`))
-      .when(paging.page<paging.last,el=>el.child(div().id('task-pulls-more').cursor_pointer().role('button').accessibility_label('Show more task pull requests')
-        .on_click((_e,cx)=>change(paging.page+1,cx)).child('Show more')));
+  taskWindowCurrent(window,scope) {
+    return this.shown() && this.aggregate?.currentContext({presentation:true})?.scope===scope
+      && this.taskWindows?.get(`${scope}\0${this.view}`)===window;
+  }
+
+  taskMeasure(window,scope,which,size,cx) {
+    if(!this.taskWindowCurrent(window,scope))return;
+    // Handles are created after layout, never in render; they retain the same
+    // native list's position across appends and same-home refreshes.
+    if(!window.handle && base.ScrollHandle) {window.handle=base.ScrollHandle.new();cx.notify();}
+    if(which==='viewport' && window.width!==size.width) {window.width=size.width;cx.notify();}
+    window.metrics.measure(which,size,cx);
+    if(window.move(window.metrics.offset/window.zoom,window.metrics.viewport/window.zoom,true))cx.notify();
+  }
+
+  taskViewportMotion(window,scope,event,kind,cx) {
+    if(!this.taskWindowCurrent(window,scope))return;
+    window.metrics.viewportMotion(event,kind,cx);
+    if(window.move(window.metrics.offset/window.zoom,window.metrics.viewport/window.zoom))cx.notify();
+  }
+
+  applyTaskAnchor(window,scope,cx) {
+    if(this.retiredTaskHandles?.length) {
+      const retired=this.retiredTaskHandles;this.retiredTaskHandles=[];
+      cx.spawn(async()=>{await Promise.resolve();for(const handle of retired)handle.release();});
+    }
+    const correction=window.correction;
+    if(!correction || !window.handle || window.scheduledCorrection===correction)return;
+    window.scheduledCorrection=correction;
+    cx.spawn(async cx=>{
+      await Promise.resolve();
+      if(!this.taskWindowCurrent(window,scope) || window.correction!==correction)return;
+      window.handle.scroll_to_item(1);
+      window.metrics.offset=window.offset*window.zoom;
+    });
   }
 
   renderAggregate(cx,t) {
@@ -1101,7 +1131,8 @@ export default class Changes extends View {
       const ids=new Set(repositories.map(repo=>`task-repo-name-${scope}-${repo}`));
       for(const id of this.repositoryNameSizes.keys())if(!ids.has(id))this.repositoryNameSizes.delete(id);
     }
-    const paging=this.taskSections(sections,scope);
+    const paging=this.taskSections(sections,scope), taskWindow=paging.window;
+    this.applyTaskAnchor(taskWindow,scope,cx);
     this.notices ??= new GitNotices();
     const notices=new Map(repositories.map(repo=>[repo,this.notices.sync(cx,{enabled:this.shown() && !aggregate.context.stale,repository:repo})]));
     const setup=repositories.length ? [...notices.values()].includes('setup') : this.notices.sync(cx,{enabled:this.shown() && !aggregate.context.stale,repository:null})==='setup';
@@ -1128,11 +1159,23 @@ export default class Changes extends View {
       .child(h_flex().id('git-views').h(40).flex_none().px(4).gap(2).items_center().border_b(1).border_color(t.border)
         .child(this.segment(t,'git-view-open','Open',counts.open,this.view==='open',view=>this.setView('open',view)))
         .child(this.segment(t,'git-view-closed','Closed',counts.closed,this.view==='closed',view=>this.setView('closed',view))))
-      .child(v_flex().id('task-pulls-scroll').flex_1().min_h(0).overflow_hidden()
-        .child(v_flex().id(`task-pulls-page-${scope}-${this.view}-${paging.page}`).flex_1().min_h(0).overflow_y_scrollbar().p(4)
-          .children(paging.sections.map(section => this.renderPart(`repository-section:${section.repo}`,()=>this.repositorySection(t, section, scope))))
-          .when(!sections.length,el=>el.child(panelMessage(t,'git-task-empty',{text:aggregate.context.stale?'Waiting for fleet verification':aggregate.busy?'Loading…':`No ${this.view} pull requests`,loading:!aggregate.context.stale && aggregate.busy,rowInset:2})))))
-      .when(Boolean(paging.last),el=>el.child(this.taskPageControl(t,paging,scope)))
+      .child(v_flex().id('task-pulls-scroll').relative().flex_1().min_h(0).overflow_hidden()
+        .child(v_flex().id(`task-pulls-frame-${scope}-${this.view}`).relative().flex_1().min_h(0).overflow_hidden()
+          .on_size_change((size,cx)=>this.taskMeasure(taskWindow,scope,'viewport',size,cx))
+          .on_scroll_wheel((event,cx)=>this.taskViewportMotion(taskWindow,scope,event,'wheel',cx))
+          .on_mouse_move((event,cx)=>this.taskViewportMotion(taskWindow,scope,event,'move',cx))
+          .child(v_flex().id(`task-pulls-list-${scope}-${this.view}`).flex_1().min_h(0).overflow_y_scrollbar()
+            .when(Boolean(taskWindow.handle),el=>el.track_scroll(taskWindow.handle))
+            .child(v_flex().id('task-pulls-content').w_full().flex_none().p(4)
+              .on_size_change((size,cx)=>this.taskMeasure(taskWindow,scope,'content',size,cx))
+              .on_scroll_wheel(event=>taskWindow.metrics.contentMotion(event,'wheel'))
+              .on_mouse_move(event=>taskWindow.metrics.contentMotion(event,'move'))
+              .child(div().id('task-pulls-spacer-top').flex_none().h(paging.top))
+              .children(paging.sections.map(section => this.renderPart(`repository-section:${section.repo}`,()=>this.repositorySection(t, section, scope,taskWindow))))
+              .child(div().id('task-pulls-spacer-bottom').flex_none().h(paging.bottom))
+              .when(!sections.length,el=>el.child(panelMessage(t,'git-task-empty',{text:aggregate.context.stale?'Waiting for fleet verification':aggregate.busy?'Loading…':`No ${this.view} pull requests`,loading:!aggregate.context.stale && aggregate.busy,rowInset:2}))))
+            .when(Boolean(taskWindow.correction),el=>el.child(div().id('task-pulls-anchor').absolute().left(0).w(1).h(1)
+              .top(taskWindow.correction.to+(taskWindow.correction.to>taskWindow.correction.from?taskWindow.viewport-1:0)))))))
       .when(setup,el=>el.child(this.liveCIInfo(t)))
       .when(Boolean(enrollment),el=>el.child(enrollment))
       .when(Boolean(sweep),el=>el.child(this.sweepLayer(t,sweep).top(U.section)));

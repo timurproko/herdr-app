@@ -100,7 +100,10 @@ for(const mode of ['ordinary','pinned','scrolling','coordinator','ghost'])for(co
       if(mode==='pinned'||mode==='scrolling'){
         panel.pulls[panel.view]=[pr,next];panel.agentPull=mode==='pinned'?17:null;return panel.renderPulls(t);
       }
-      if(mode==='coordinator')return panel.repositorySection(t,{repo:'owner/repo',rows:[pr,next]},'home');
+      if(mode==='coordinator') {
+        const slice=panel.taskSections([{repo:'owner/repo',rows:[pr,next]}],'home');
+        return panel.repositorySection(t,slice.sections[0],'home',slice.window);
+      }
       return element().flex().flex_col().gap(U.rowGap).children([panel.pullRow(t,pr,mode==='ghost'),panel.pullRow(t,next,mode==='ghost')]);
     },width,zoom,mode==='pinned'||mode==='scrolling'?600:undefined);
     const row=find(tree,`${prefix}pr-${id}`),box=geometry.get(row);

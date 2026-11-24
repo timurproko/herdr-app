@@ -1,3 +1,4 @@
+import {scrollModule,Background} from './support/git-scroll-modules.mjs';
 import {githubInvocation} from './support/github-read.mjs';
 import assert from 'node:assert/strict';
 import {kitModule,withKitUi} from './support/panel-kit.mjs';
@@ -45,7 +46,7 @@ async function harness(state) {
     './ci-fix.js':{CIFix:class {sync(){}stop(){}}},
     './notices.js':{GitNotices:class {sync(){return null;}stop(){}retryNow(){}}},
     './webhooks.js':{GitWebhooks:class {sync(){} stop(){}}},
-    'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{}},
+    'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{},Background},
     'gpui-base':{h_flex:element,v_flex:element},
     './host.js':host,'./location.js':{location:()=>place},
     './agent-links.js':{AgentLinks:class { related(){return null;} refresh(){} }},
@@ -58,6 +59,7 @@ async function harness(state) {
   const main = new vm.SourceTextModule(fs.readFileSync(path.join(root,'src/plugins/git/mod/main.js'),'utf8'),{context});
   const panelKit=kitModule(context);withKitUi(modules['./ui.js'],element);
   await main.link(specifier=> {
+    const dependency=scrollModule(context,specifier);if(dependency)return dependency;
     if(specifier==='./panel-kit.js')return panelKit;
     if(specifier==='./settings-dialog.js')return new vm.SourceTextModule(fs.readFileSync(path.join(root,'src/ui/settings-dialog.js'),'utf8'),{context});
     if (modules[specifier]) return new vm.SyntheticModule(Object.keys(modules[specifier]),function(){

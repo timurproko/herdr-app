@@ -92,23 +92,23 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
     }
   }
 }
-// Exercise main's real replacement-page renderer, including continuation
-// headers and warm distinct-string measurements, rather than a two-row mock.
+// Exercise main's windowed scroll renderer and warm distinct-string widths.
+const {measureTask,scrollTask,taskWindow}=await import('./support/git-scroll.mjs');
 let pagedComparisons=0;
 for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,2])for(const view of ['open','closed']) {
-  h.setZoom(zoom);h.setAgent(true);panel.view=view;panel.pinMotion=null;panel.taskPages?.clear();panel.foldedRepositories.clear();
+  h.setZoom(zoom);h.setAgent(true);panel.view=view;panel.pinMotion=null;panel.taskWindows?.clear();panel.foldedRepositories.clear();
   const rows=Array.from({length:25},(_,i)=>Object.assign(facts.pullRow({...raw,number:i+1,state:view==='open'?'OPEN':'MERGED'},'owner',now),
     {key:`owner/repo#${i+1}`,repo:'owner/repo'}));
   Object.assign(panel.aggregate,{rows:()=>rows,counts:()=>({open:25,closed:25}),entries:new Map(rows.map(pr=>[pr.key,{pr,link:{repo:pr.repo}}]))});
   panel.syncAggregate=()=>true;
   const spaceTree=spaces.render(),expected=right(rowGeometry(spaceTree,width,zoom,600).get(find(spaceTree,'space-tag-coordinator-crew-0')));
-  const seen=new Set();let page=0;
+  const seen=new Set();let offset=0;
   while(true) {
     const {tree,geometry}=h.settle(()=>panel.render(h.cx),width,zoom,600);
-    const viewport=find(tree,`task-pulls-page-home-${view}-${page}`),scroll=find(tree,'task-pulls-scroll');
-    assert.ok(viewport,'Replacement pages retain their own native scroll identity');assert.equal(viewport.attrs.p[0],4);
-    const controls=find(tree,'task-pulls-pages');assert.ok(controls);assert.ok(!nodes(scroll).includes(controls),'Page controls remain outside scrolling content');
-    const header=find(tree,'task-repo-header-owner/repo');near(right(geometry.get(header.kids.at(-1))),expected,'Continuation-header slot shares the Spaces edge');
+    const viewport=find(tree,`task-pulls-list-home-${view}`);
+    assert.ok(viewport,'Continuous scrolling retains one native scroll identity');assert.equal(find(tree,'task-pulls-content').attrs.p[0],4);
+    assert.equal(find(tree,'task-pulls-pages'),undefined);
+    const header=find(tree,'task-repo-header-owner/repo');if(header)near(right(geometry.get(header.kids.at(-1))),expected,'Header slot shares the Spaces edge');
     const visible=nodes(viewport).filter(node=>/^pr-owner\/repo#\d+$/.test(node.attrs.id?.[0]??''));
     assert.ok(visible.length<=10,'Alignment must preserve main\'s bounded page size');
     for(const row of visible) {
@@ -117,14 +117,11 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
       near(right(geometry.get(find(row,`pr-labels-${id}`).kids.at(-1))),expected,'Paged actual pill shares the Spaces edge');
       near(geometry.get(row).height,74*zoom,'Paged rows preserve their vertical geometry');pagedComparisons++;
     }
-    const more=find(tree,'task-pulls-more');if(!more) {
-      find(tree,'task-pulls-previous').attrs.on_click[0]({},h.cx);
-      assert.ok(find(h.render(()=>panel.render(h.cx)),`task-pulls-page-home-${view}-${page-1}`),'Previous also replaces the page');
-      break;
-    }
-    more.attrs.on_click[0]({},h.cx);page++;
+    measureTask(panel,tree,h.cx,400,width,zoom);
+    const w=taskWindow(panel);if(w.limit>=w.items.length && w.offset>=w.max)break;
+    offset+=250;scrollTask(panel,tree,h.cx,offset,400,zoom);
   }
-  assert.equal(page,2);assert.deepEqual([...seen].sort(),rows.map(pr=>pr.key).sort(),'Every PR remains reachable with unchanged alignment');
+  assert.deepEqual([...seen].sort(),rows.map(pr=>pr.key).sort(),'Every PR remains reachable with unchanged alignment');
 }
-console.log(`PASS ${pagedComparisons} replacement-page right-edge comparisons, real Previous/Show more and continuation headers across widths/zoom/Open/Closed`);
+console.log(`PASS ${pagedComparisons} windowed-scroll right-edge comparisons and stable native scroll identity across widths/zoom/Open/Closed`);
 console.log(`PASS ${comparisons} full-panel right-edge comparisons against actual Spaces Crew geometry, 280–480px / 75–200% including 130%, ordinary/pinned/scrolling/ghost/coordinator, Open/Closed/merged and mutation guards (synthetic, not native pixels)`);

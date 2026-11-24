@@ -8,7 +8,7 @@ import {build} from './build.mjs';
 const {output}=build(),root=path.resolve('.artifacts/git-render-native');
 fs.mkdirSync(root,{recursive:true});
 const executable=process.env.HERDR_APP_BIN||path.join(process.env.LOCALAPPDATA,'Programs/herdr-app/herdr-app.exe');
-const requested=process.argv.slice(2),variants=requested.length?requested:['pre42','post42','unbounded','current'];
+const requested=process.argv.slice(2),variants=requested.length?requested:['current'];
 const revisions={pre42:'70fd212^',post42:'70fd212',unbounded:'025e191'};
 // Remove only tooltip method calls for a differential native cost sample. This
 // balanced scanner handles their nested argument expressions and string literals.
@@ -28,7 +28,7 @@ function withoutTooltips(source){
  return source;
 }
 const results=[];
-for(const variant of variants)for(const count of [30,60])for(let sample=0;sample<5;sample++) {
+for(const variant of variants)for(const count of [30,60,100])for(let sample=0;sample<5;sample++) {
  const home=fs.mkdtempSync(path.join(root,`${variant}-${count}-`)),dir=path.join(home,'mods/custom-changes');
  try{
  fs.cpSync(path.join(output,'mods/custom-changes'),dir,{recursive:true});
@@ -47,6 +47,19 @@ export default class Fixture extends Changes {
  const rows=Array.from({length:${count}},(_,i)=>({key:(i<3?'timurproko/crew':'timurproko/herdr-app')+'#'+(i+1),repo:i<3?'timurproko/crew':'timurproko/herdr-app',number:i+1,title:'Closed coordinator fixture: natural-width metadata '+i,state:i%2?'closed':'merged',login:'timurproko',when:'opened 4 hours ago',compactWhen:'4h ago',meta:'#'+(i+1)+' · timurproko · opened 4 hours ago',tasks:{done:2,total:2,label:'2 tasks done'},checks:{state:'success',label:'11/11'},labels:[{name:'bug',color:'d73a4a'},{name:'UI',color:'0075ca'}],review:'approved'}));
  this.aggregate={context:{scope:'fixture',machine:null},entries:new Map(rows.map(pr=>[pr.key,{pr,link:{repo:pr.repo}}])),counts:()=>({open:5,closed:${count}}),repositories:()=>['timurproko/crew','timurproko/herdr-app'],rows:()=>rows,currentContext:()=>({scope:'fixture'}),readNotice:repo=>repo==='timurproko/crew'?'Task PR history: timurproko/crew #36, #37, #38 not found':null,target:pr=>pr.number%3?null:{address:'fixture-worker'}};
  this.notices={sync(){return null;},presentation(){return null;}};this.syncChecksFallback=()=>{};
+ // Exercise the production projection and paired native-style scroll handlers,
+ // not a direct assignment of the loaded limit. No live desktop input is sent.
+ if(this.taskViewportMotion){
+   const sections=this.aggregate.repositories().map(repo=>({repo,rows:rows.filter(pr=>pr.repo===repo),error:this.aggregate.readNotice(repo)}));
+   const w=this.taskSections(sections,'fixture').window;
+   this.taskMeasure(w,'fixture','viewport',{width:390,height:400},cx);
+   while(w.limit<w.items.length){
+     this.taskMeasure(w,'fixture','content',{width:390,height:w.height+8},cx);
+     const event={position:{x:50,y:100},bounds:{x:0,y:-w.max,width:390,height:w.height+8},delta:{y:0}};
+     w.metrics.contentMotion(event,'move');this.taskViewportMotion(w,'fixture',{...event,bounds:{x:0,y:0,width:390,height:400}},'move',cx);
+   }
+   this.taskMeasure(w,'fixture','content',{width:390,height:w.height+8},cx);
+ }
  this.profile={visible:0,probes:0,pills:0,rows:[]};
  const label=this.labelPill;this.labelPill=(...args)=>{const start=Date.now();const r=label.apply(this,args);this.profile.pills+=Date.now()-start;return r;};
  const row=this.pullRow;this.pullRow=(...args)=>{const start=Date.now();const r=row.apply(this,args);this.profile.rows.push(Date.now()-start);return r;};
