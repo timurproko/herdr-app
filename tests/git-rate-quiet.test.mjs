@@ -8,6 +8,7 @@ for(const result of [
  {code:1,stdout:'HTTP/2.0 429 Too Many Requests\r\nRetry-After: 1200\r\n\r\n{}'},
  {code:0,stdout:JSON.stringify({errors:[{type:'RATE_LIMITED',message:'API rate limit exceeded'}]})},
  {code:1,stdout:JSON.stringify({rateLimited:true,retryAfter:1800000})},
+ {code:1,stdout:'HTTP/2.0 403 Forbidden\r\nX-RateLimit-Remaining: 3300\r\n\r\n{"message":"You have exceeded a secondary rate limit"}' },
 ])assert.equal(f.rateRefusal(result),true);
 for(const result of [
  {code:1,stderr:'HTTP 403: Resource not accessible by integration'},
@@ -17,6 +18,8 @@ for(const result of [
  {code:1,stderr:'execution timed out; check API rate limits'},
  {code:-1073741502,stderr:'API rate limit exceeded'},
  {code:0,stdout:'malformed rate limit response'},
+ {code:0,stdout:'{"message":"rate limit exceeded"}'},
+ {code:1,stdout:'HTTP/2.0 401 Unauthorized\r\nX-RateLimit-Remaining: 3300\r\n\r\n{"message":"Bad credentials"}' },
 ])assert.equal(f.rateRefusal(result),false,JSON.stringify(result));
 let now=0,calls=0;const logs=[],reads=new f.GitReads({now:()=>now,log:line=>logs.push(line)});
 const refused=()=>{calls++;return {code:1,stderr:'secondary rate limit',headers:{'retry-after':'1200'}};};

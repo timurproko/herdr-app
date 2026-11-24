@@ -61,7 +61,8 @@ export function rateRefusal(result) {
   if(result?.signal || result?.timed_out || result?.timedOut || code<0 || code>=0x80000000)return false;
   let payload;try{payload=JSON.parse(pullPayload(result?.stdout));}catch {}
   if(payload?.rateLimited===true)return true;
-  const text=[result?.stderr,result?.message,...(payload?.errors??[]).map(e=>`${e.type??''} ${e.message??''}`)].filter(Boolean).join('\n');
+  const responseMessage=(Number(result?.code)!==0 || /^HTTP[^\n]*\b[45]\d\d\b/im.test(result?.stdout??''))?payload?.message:null;
+  const text=[result?.stderr,result?.message,responseMessage,...(payload?.errors??[]).map(e=>`${e.type??''} ${e.message??''}`)].filter(Boolean).join('\n');
   if(/auth login|not logged in|bad credentials|HTTP 401|permission denied|resource not accessible|timed? out|timeout|could not resolve host|network is unreachable/i.test(text))return false;
   return /(?:API |secondary |primary )?rate[ -]?limit(?:ed| exceeded| already exceeded| has been exceeded|ing)?|RATE_LIMITED|HTTP 429|abuse detection mechanism|secondary.*limit/i.test(text)
     || /^HTTP[^\n]*\b429\b/im.test(result?.stdout??'');
