@@ -26,7 +26,7 @@ export const CHECKS_INTERVAL = 45000;
 export const STATE_SAFETY_INTERVAL = 120000;
 export const needsChecks = pr => Boolean(pr && (pr.checks?.pending > 0 || (!pr.checks && pr.checksKnown !== true)));
 export class ChecksFallback {
-  constructor({snapshot,read,now=()=>Date.now()}) {this.snapshot=snapshot;this.read=read;this.now=now;this.jobs=new Map();}
+  constructor({snapshot,read,now=()=>Date.now()}) {this.snapshot=snapshot;this.read=read;this.now=now;this.jobs=new Map();this.cooldowns=new Map();}
   stop() {this.jobs.clear();this.wakeup=null;}
   eligible() {
     const state=this.snapshot();
@@ -36,12 +36,13 @@ export class ChecksFallback {
   sync(cx) {
     const state=this.eligible();
     if(!state) {this.stop();return;}
+    for(const [name,until]of this.cooldowns)if(until<=this.now())this.cooldowns.delete(name);
     const wanted=new Set(state.repositories.map(repo=>repo.name));
     for(const [name,job] of this.jobs)if(job.scope!==state.scope || !wanted.has(name))this.jobs.delete(name);
     for(const repo of state.repositories) {
       const job=this.jobs.get(repo.name);
-      if(!job)this.jobs.set(repo.name,{scope:state.scope,interval:repo.interval,due:this.now()+repo.interval,failures:0});
-      else if(job.interval!==repo.interval) {job.interval=repo.interval;if(!job.running && !job.failures)job.due=this.now()+repo.interval;}
+      if(!job)this.jobs.set(repo.name,{scope:state.scope,interval:repo.interval,due:Math.max(this.now()+repo.interval,this.cooldowns.get(repo.name)??0),failures:0});
+      else if(job.interval!==repo.interval) {job.interval=repo.interval;if(!job.running && !job.failures)job.due=Math.max(this.now()+repo.interval,this.cooldowns.get(repo.name)??0);}
     }
     this.arm(cx);
   }
@@ -72,6 +73,7 @@ export class ChecksFallback {
       else if(result?.failed) {
         job.failures++;
         job.due=this.now()+Math.max(result.rateLimited?900000:0,result.retryAfter??0,Math.min(720000,CHECKS_INTERVAL*2**Math.min(job.failures,4)));
+        if(result.rateLimited || result.retryAfter)this.cooldowns.set(repo.name,job.due);
       } else {job.failures=0;job.due=this.now()+job.interval;}
     }
     this.sync(cx);

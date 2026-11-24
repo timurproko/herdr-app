@@ -197,7 +197,9 @@ cap); primary and secondary rate-limit refusals wait **at least 15 minutes**, or
 longer when Retry-After says so. Safety API responses include headers so numeric
 or date Retry-After is honored without a separate request. A secondary/burst refusal
 is still a rate limit when the hourly quota has points remaining; there is no
-immediate retry and no overlapping probe/detail cycle. A successful read restores
+immediate retry and no overlapping probe/detail cycle. The in-memory repository
+cooldown survives hiding, reopening or switching tabs so those actions cannot
+bypass Retry-After. A successful read restores
 the repository's 45/120-second cadence only if a shown row still needs it. No hooks are enrolled,
 accounts switched or relay credentials changed by this fallback.
 

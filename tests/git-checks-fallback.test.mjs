@@ -77,6 +77,7 @@ for(const coordinator of [false,true]) {
   await advance(45000);assert.equal(requests.length,++before);assert.equal(rows()[0].checks.label,'0/10','Failure keeps last-good count');
   await advance(89999);assert.equal(requests.length,before);await advance(1);assert.equal(requests.length,++before);
   rate=true;retryAfter='1800';await advance(180000);assert.equal(requests.length,++before);
+  shown=false;sync();shown=true;sync();
   await advance(1799999);assert.equal(requests.length,before,'Secondary rate limit honors Retry-After longer than the 15-minute floor');
   rate=false;retryAfter=null;fail=false;status={ok:10,total:10};await advance(1);before=requests.length;assert.equal(rows()[0].checks.label,'10/10');
 
