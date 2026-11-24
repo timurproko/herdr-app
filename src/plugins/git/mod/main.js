@@ -73,6 +73,8 @@ export default class Changes extends View {
     this.checksFallback?.stop();this.factOrder?.reset();
     this.enrollmentPicker?.stop();this.aggregate?.stop();this.webhooks?.stop();this.notices?.stop();
     this.rootRequest=null;this.pullRequest=null;this.relatedRequest=null;
+    for(const metrics of this.ordinaryScroll?.values()??[])metrics.handle?.release();
+    for(const handle of this.retiredOrdinaryHandles??[])handle.release();
     for(const window of this.taskWindows?.values()??[])window.handle?.release();
     for(const handle of this.retiredTaskHandles??[])handle.release();
   }
@@ -920,7 +922,10 @@ export default class Changes extends View {
   }
 
   ordinaryScrollState(state) {
-    if(!this.ordinaryScroll || this.ordinaryScrollScope!==this.context) {this.ordinaryScrollScope=this.context;this.ordinaryScroll=new Map();}
+    if(!this.ordinaryScroll || this.ordinaryScrollScope!==this.context) {
+      this.retiredOrdinaryHandles??=[];for(const old of this.ordinaryScroll?.values()??[])if(old.handle)this.retiredOrdinaryHandles.push(old.handle);
+      this.ordinaryScrollScope=this.context;this.ordinaryScroll=new Map();
+    }
     let metrics=this.ordinaryScroll.get(state);
     if(!metrics) {
       metrics=new SidebarScrollState();this.ordinaryScroll.set(state,metrics);
@@ -931,6 +936,7 @@ export default class Changes extends View {
     }
     const zoom=settings().zoom>0?settings().zoom:1;
     const scale=metrics.zoom?zoom/metrics.zoom:1;
+    if(metrics.zoom&&metrics.zoom!==zoom)metrics.awaitZoom=true;
     // This physical frame survives tab/context changes. Its unchanged native
     // dimensions will not be emitted again for a newly created tab state.
     metrics.setMetrics({offset:metrics.offset*scale,content:metrics.content*scale,
@@ -939,15 +945,35 @@ export default class Changes extends View {
     return metrics;
   }
 
+  sampleNativeScroll(metrics,handle,zoom) {
+    if(metrics.awaitZoom||!handle?.offset||!handle?.viewport_size||!handle?.content_size)return false;
+    try{
+      const offset=handle.offset()?.y,viewport=handle.viewport_size()?.height,content=handle.content_size()?.height;
+      if(!Number.isFinite(offset)||!Number.isFinite(viewport)||!Number.isFinite(content)||viewport<=0)return false;
+      metrics.setMetrics({offset:offset*zoom,viewport:viewport*zoom,content:content*zoom});return true;
+    }catch{return false;}
+  }
+
+  ordinaryHandle(metrics,cx) {
+    for(const old of this.retiredOrdinaryHandles??[])old.release();this.retiredOrdinaryHandles=[];
+    if(!metrics.handle&&base.ScrollHandle){metrics.handle=base.ScrollHandle.new();cx.notify();}
+  }
+
+  ordinaryMotion(metrics,cx) {
+    if(!this.shown()||this.ordinaryScroll?.get(this.view)!==metrics)return;
+    if(this.sampleNativeScroll(metrics,metrics.handle,metrics.zoom))metrics.update(cx);
+  }
+
   measureOrdinaryViewport(size,cx) {
     if(!Number.isFinite(size.height))return;
     this.ordinaryViewportHeight=Math.max(0,size.height);
-    this.ordinaryScroll?.get(this.view)?.measure('viewport',size,cx);
+    const metrics=this.ordinaryScroll?.get(this.view);if(metrics){this.ordinaryHandle(metrics,cx);metrics.measure('viewport',size,cx);}
   }
 
   renderPulls(t) {
     const state = this.view, list = this.pulls[state], {liveRows,active} = this.pullSelection();
     const metrics=this.ordinaryScrollState(state), zoom=metrics.zoom, measurement=metrics.measurement;
+    this.sampleNativeScroll(metrics,metrics.handle,zoom);
     this.pinMotion?.rebaseZoom?.(zoom);
     this.pinMotion?.active(this.context,state);
     this.pinMotion?.resolve(location().terminal,active?.number,this.agentResolved === agentKey(location()));
@@ -983,13 +1009,14 @@ export default class Changes extends View {
         .child(div().id('active-pull-divider').h(1).flex_none().bg(t.border)))
       .child(v_flex().id('pulls-scroll-frame').relative().flex_1().min_h(0).overflow_hidden()
         .on_size_change((size,cx)=>this.measureOrdinaryViewport(size,cx))
-        .on_scroll_wheel((event, cx) => {this.scrollMotionAt(event, 'wheel', state, cx);metrics.viewportMotion(event,'wheel',cx);})
-        .on_mouse_move((event, cx) => {this.scrollMotionAt(event, 'move', state, cx);metrics.viewportMotion(event,'move',cx);})
+        .on_scroll_wheel((event, cx) => {this.scrollMotionAt(event, 'wheel', state, cx);metrics.viewportMotion(event,'wheel',cx);this.ordinaryMotion(metrics,cx);})
+        .on_mouse_move((event, cx) => {this.scrollMotionAt(event, 'move', state, cx);metrics.viewportMotion(event,'move',cx);this.ordinaryMotion(metrics,cx);})
         .child(v_flex().id(`pulls-list-${state}`).flex_1().min_h(0).overflow_y_scrollbar()
+          .when(Boolean(metrics.handle),el=>el.track_scroll(metrics.handle))
           .child(v_flex().id(`pulls-content-${metrics.measurement}-${zoom}`).w_full().flex_none().gap(U.rowGap).p(4)
             .on_size_change((size,cx)=>{
               if(this.ordinaryScroll?.get(this.view)!==metrics || metrics.measurement!==measurement || (settings().zoom>0?settings().zoom:1)!==zoom)return;
-              metrics.measure('content',size,cx);
+              metrics.awaitZoom=false;this.ordinaryHandle(metrics,cx);metrics.measure('content',size,cx);
             })
             .on_scroll_wheel(event => {this.contentMotion(event, 'wheel', state);metrics.contentMotion(event,'wheel');})
             .on_mouse_move(event => {this.contentMotion(event, 'move', state);metrics.contentMotion(event,'move');})
@@ -1092,14 +1119,16 @@ export default class Changes extends View {
     }
     const zoom=settings().zoom||1;
     if(window.zoom && window.zoom!==zoom) {
+      window.metrics.awaitZoom=true;
       // Retained native scrolling is logical-pixel based; paired event bounds
       // are window pixels. Rebase cached metrics before new zoom callbacks.
-      window.metrics.setMetrics({offset:window.offset*zoom,content:(window.height+8)*zoom});
+      window.metrics.setMetrics({offset:window.offset*zoom,content:window.contentHeight*zoom});
       // The frame is measured in physical pixels and can stay exactly the
       // same size during zoom. Do not rescale a measurement that will not fire.
       window.viewport=window.metrics.viewport/zoom;
     }
     window.zoom=zoom;
+    if(this.sampleNativeScroll(window.metrics,window.handle,zoom))window.observe(window.metrics.offset/zoom,window.metrics.viewport/zoom,true);
     window.project(sections,this.foldedRepositories,U.control,U.rowGap,`${zoom}:${window.width??0}`);
     const range=window.range(),visible=[];
     for(const item of range.items) {
@@ -1121,19 +1150,51 @@ export default class Changes extends View {
     // native list's position across appends and same-home refreshes.
     if(!window.handle && base.ScrollHandle) {window.handle=base.ScrollHandle.new();cx.notify();}
     if(which==='viewport' && window.width!==size.width) {window.width=size.width;cx.notify();}
+    if(which==='content')window.metrics.awaitZoom=false;
     window.metrics.measure(which,size,cx);
-    if(window.move(window.metrics.offset/window.zoom,window.metrics.viewport/window.zoom,true))cx.notify();
+    this.sampleNativeScroll(window.metrics,window.handle,window.zoom);
+    window.observe(window.metrics.offset/window.zoom,window.metrics.viewport/window.zoom,true);
+    this.tryTaskReveal(window,cx);
+  }
+
+  tryTaskReveal(window,cx,ahead=0,onlyFit=false) {
+    const metrics=window.metrics,serial=window.renderSerial??0,expected=window.contentHeight*window.zoom;
+    if(window.revealedSerial===serial || !window.more || window.atCap || metrics.viewport<=0 || metrics.content<=0)return false;
+    // Do not append repeatedly against the previous batch's native layout.
+    if(Math.abs(metrics.content-expected)>2 && !(metrics.content<=metrics.viewport+1&&expected<=metrics.viewport+1))return false;
+    if(onlyFit?metrics.content>metrics.viewport+1:metrics.max-metrics.offset>120+ahead)return false;
+    if(!window.revealMore())return false;
+    window.revealedSerial=serial;cx.notify();return true;
+  }
+
+  scheduleTaskLayout(window,scope,cx) {
+    const key=[window.measurement,window.generation,window.limit,window.metrics.viewport,this.taskSelectionEpoch].join(':');
+    if(window.layoutCheck===key)return;window.layoutCheck=key;
+    cx.spawn(async cx=>{
+      await Promise.resolve();
+      if(!this.taskWindowCurrent(window,scope)||window.layoutCheck!==key)return;
+      cx.timer?.after(16,view=>{
+        if(!this.taskWindowCurrent(window,scope)||window.layoutCheck!==key)return;
+        this.sampleNativeScroll(window.metrics,window.handle,window.zoom);
+        window.observe(window.metrics.offset/window.zoom,window.metrics.viewport/window.zoom,true);
+        window.metrics.update(view);this.tryTaskReveal(window,view,0,true);
+      });
+    });
   }
 
   taskViewportMotion(window,scope,event,kind,cx) {
     if(!this.taskWindowCurrent(window,scope))return;
-    window.metrics.viewportMotion(event,kind,cx);
-    if(window.move(window.metrics.offset/window.zoom,window.metrics.viewport/window.zoom))cx.notify();
+    const native=this.sampleNativeScroll(window.metrics,window.handle,window.zoom);
+    if(!native)window.metrics.viewportMotion(event,kind,cx);else window.metrics.update(cx);
+    window.anchorMarker=null;
+    window.observe(window.metrics.offset/window.zoom,window.metrics.viewport/window.zoom);
+    const ahead=native&&kind==='wheel'?Math.max(0,-(event.delta?.y??0)):0;
+    this.tryTaskReveal(window,cx,ahead);
   }
 
   nextTaskChunk(window,scope,cx) {
     if(!this.taskWindowCurrent(window,scope) || !window.canTurn)return;
-    window.handle?.release();window.handle=null;window.nextChunk();
+    window.handle?.release();window.handle=null;window.anchorMarker=null;window.nextChunk();
     window.measurement=this.taskMeasureSequence=(this.taskMeasureSequence??0)+1;
     window.metrics.setMetrics({offset:0,content:window.contentHeight*window.zoom});
     cx.notify();
@@ -1151,9 +1212,9 @@ export default class Changes extends View {
       await Promise.resolve();
       if(!this.taskWindowCurrent(window,scope) || window.correction!==correction)return;
       window.handle.scroll_to_item(1);
-      window.metrics.setMetrics({offset:window.offset*window.zoom,content:(window.height+8)*window.zoom});
-      window.metrics.update(cx);
-      cx.notify(); // Native scroll_to_item queues layout; it never schedules one.
+      window.anchorMarker=correction;window.correction=null;
+      window.metrics.setMetrics({offset:correction.to*window.zoom,content:window.contentHeight*window.zoom});
+      window.metrics.update(cx,true); // scroll_to_item queues layout, never a repaint.
     });
   }
 
@@ -1174,7 +1235,10 @@ export default class Changes extends View {
       for(const id of this.repositoryNameSizes.keys())if(!ids.has(id))this.repositoryNameSizes.delete(id);
     }
     const paging=this.taskSections(sections,scope), taskWindow=paging.window, taskZoom=taskWindow.zoom;
+    taskWindow.renderSerial=(taskWindow.renderSerial??0)+1;
     this.applyTaskAnchor(taskWindow,scope,cx);
+    this.scheduleTaskLayout(taskWindow,scope,cx);
+    const anchor=taskWindow.correction??taskWindow.anchorMarker;
     this.notices ??= new GitNotices();
     const notices=new Map(repositories.map(repo=>[repo,this.notices.sync(cx,{enabled:this.shown() && !aggregate.context.stale,repository:repo})]));
     const setup=repositories.length ? [...notices.values()].includes('setup') : this.notices.sync(cx,{enabled:this.shown() && !aggregate.context.stale,repository:null})==='setup';
@@ -1203,7 +1267,7 @@ export default class Changes extends View {
           .on_size_change((size,cx)=>this.taskMeasure(taskWindow,scope,'viewport',size,cx))
           .on_scroll_wheel((event,cx)=>this.taskViewportMotion(taskWindow,scope,event,'wheel',cx))
           .on_mouse_move((event,cx)=>this.taskViewportMotion(taskWindow,scope,event,'move',cx))
-          .child(v_flex().id(`task-pulls-list-${scope}-${this.view}`).flex_1().min_h(0).overflow_y_scrollbar()
+          .child(v_flex().id(`task-pulls-list-${scope}-${this.view}${taskWindow.chunk?`-${taskWindow.chunk}`:''}`).flex_1().min_h(0).overflow_y_scrollbar()
             .when(Boolean(taskWindow.handle),el=>el.track_scroll(taskWindow.handle))
             .child(v_flex().id(`task-pulls-content-${taskWindow.measurement}-${taskWindow.zoom}`).w_full().flex_none().p(4)
               .on_size_change((size,cx)=>this.taskMeasure(taskWindow,scope,'content',size,cx,taskZoom))
@@ -1216,8 +1280,8 @@ export default class Changes extends View {
                 .on_click((_event,cx)=>this.nextTaskChunk(taskWindow,scope,cx)).child('Show more')))
               .when(!sections.length,el=>el.child(panelMessage(t,'git-task-empty',{text:verifying || aggregate.busy?'Loading':`No ${this.view} pull requests`,loading:verifying || aggregate.busy,rowInset:2})
                 .when(verifying,message=>message.tooltip(verificationHint)))))
-            .when(Boolean(taskWindow.correction),el=>el.child(div().id('task-pulls-anchor').absolute().left(0).w(1).h(1)
-              .top(taskWindow.correction.to+(taskWindow.correction.to>taskWindow.correction.from?taskWindow.viewport-1:0)))))
+            .when(Boolean(anchor),el=>el.child(div().id('task-pulls-anchor').absolute().left(0).w(1).h(1)
+              .top(anchor.to+(anchor.to>anchor.from?taskWindow.viewport-1:0)))))
           .when(taskWindow.metrics.moreAbove,el=>el.child(topFade(taskWindow.metrics,'task-pulls-list',t.background)))
           .when(taskWindow.metrics.moreBelow,el=>el.child(bottomFade(taskWindow.metrics,'task-pulls-list',t.background)))))
       .when(setup,el=>el.child(this.liveCIInfo(t)))

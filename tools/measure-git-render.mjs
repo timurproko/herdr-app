@@ -45,21 +45,15 @@ export default class Fixture extends Changes {
  const rows=Array.from({length:${count}},(_,i)=>({key:(i<3?'timurproko/crew':'timurproko/herdr-app')+'#'+(i+1),repo:i<3?'timurproko/crew':'timurproko/herdr-app',number:i+1,title:'Closed coordinator fixture: natural-width metadata '+i,state:i%2?'closed':'merged',login:'timurproko',when:'opened 4 hours ago',compactWhen:'4h ago',meta:'#'+(i+1)+' · timurproko · opened 4 hours ago',tasks:{done:2,total:2,label:'2 tasks done'},checks:{state:'success',label:'11/11'},labels:[{name:'bug',color:'d73a4a'},{name:'UI',color:'0075ca'}],review:'approved'}));
  this.aggregate={context:{scope:'fixture',machine:null},entries:new Map(rows.map(pr=>[pr.key,{pr,link:{repo:pr.repo}}])),counts:()=>({open:5,closed:${count}}),repositories:()=>['timurproko/crew','timurproko/herdr-app'],rows:()=>rows,currentContext:()=>({scope:'fixture'}),readNotice:repo=>repo==='timurproko/crew'?'Task PR history: timurproko/crew #36, #37, #38 not found':null,target:pr=>pr.number%3?null:{address:'fixture-worker'}};
  this.notices={sync(){return null;},presentation(){return null;}};this.syncChecksFallback=()=>{};
- // Exercise the production projection and paired native-style scroll handlers,
- // not a direct assignment of the loaded limit. No live desktop input is sent.
- if(this.taskViewportMotion){
+ // Benchmark the entire mounted tree, deliberately bypassing the runtime cap.
+ // Input/reveal correctness is tested separately without fabricated mouse pairs.
+ if(this.taskSections){
    const sections=this.aggregate.repositories().map(repo=>({repo,rows:rows.filter(pr=>pr.repo===repo),error:this.aggregate.readNotice(repo)}));
    const w=this.taskSections(sections,'fixture').window;w.maxRows=Infinity;
    this.taskMeasure(w,'fixture','viewport',{width:390,height:400},cx);
-   while(w.limit<w.items.length){
-     this.taskMeasure(w,'fixture','content',{width:390,height:w.height+8},cx);
-     const event={position:{x:50,y:100},bounds:{x:0,y:-w.max,width:390,height:w.height+8},delta:{y:0}};
-     w.metrics.contentMotion(event,'move');this.taskViewportMotion(w,'fixture',{...event,bounds:{x:0,y:0,width:390,height:400}},'move',cx);
-   }
-   this.taskMeasure(w,'fixture','content',{width:390,height:w.height+8},cx);
-   const end={position:{x:50,y:100},bounds:{x:0,y:-w.max,width:390,height:w.height+8},delta:{y:0}};
-   w.metrics.contentMotion(end,'move');this.taskViewportMotion(w,'fixture',{...end,bounds:{x:0,y:0,width:390,height:400}},'move',cx);
-   this.fixtureLoaded=w.items.slice(0,w.length).filter(item=>item.row).length;this.fixtureOffset=w.offset;
+   while(w.revealMore()){}
+   w.observe(1e9,400);w.metrics.setMetrics({offset:w.offset,viewport:400,content:w.contentHeight});
+   this.fixtureLoaded=w.range().visible.length;this.fixtureOffset=w.offset;
  }
  this.profile={visible:0,probes:0,pills:0,rows:[]};
  const label=this.labelPill;this.labelPill=(...args)=>{const start=Date.now();const r=label.apply(this,args);this.profile.pills+=Date.now()-start;return r;};
@@ -75,11 +69,11 @@ export default class Fixture extends Changes {
  fs.writeFileSync(path.join(root,`${variant}-${warm?'warm':'cold'}-${count}-${sample}.log`),log);
  const match=log.match(/PROFILE (\{[^\n]+\})/);
  if(result.status!==0||!match){
-   if(count!==200)throw Error(`Native check failed: ${log}`);
+   if(count!==200||!/interrupted/i.test(log))throw Error(`Native check failed: ${log}`);
    const failure={variant,count,sample,warm,total:null,error:/interrupted/i.test(log)?'native interruption':'native check failed'};
    results.push(failure);console.log(JSON.stringify(failure));continue;
  }
- const record=JSON.parse(match[1]);results.push(record);console.log(JSON.stringify(record));
+ const record=JSON.parse(match[1]);if(record.loaded!==count||record.rows.length!==count)throw Error(`Expected ${count} mounted rows, got ${record.loaded}/${record.rows.length}`);results.push(record);console.log(JSON.stringify(record));
  }finally{fs.rmSync(home,{recursive:true,force:true});}
 }
 fs.writeFileSync(path.join(root,`mounted-${warm?'warm':'cold'}-results.json`),JSON.stringify(results,null,2)+'\n');

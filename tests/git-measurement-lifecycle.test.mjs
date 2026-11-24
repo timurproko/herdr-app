@@ -81,14 +81,14 @@ if(selected('notice')) {
  c.notice('Task history: owner/repo #37 could not be read');tree=render();notice=first(tree,'task-notice-measure-');
  assert.notEqual(notice.attrs.id[0],oldId);assert.equal(w.items.at(-1).height,24.5);
  assert.ok(size(notice,{width:382,height:41},cx),'A fresh native ID emits the same dimensions again');tree=render();
- assert.equal(w.items.at(-1).height,41);assert.equal(w.height,total,'Wrapper and spacer extent retain the multiline height');
+ assert.equal(w.items.at(-1).height,41);assert.equal(w.height,total,'Measured wrapper retains the multiline height');
  assert.equal(first(tree,'task-item-notice:').attrs.h[0],41);assert.equal(size(first(tree,'task-notice-measure-'),{width:382,height:41},cx),false);
  stale({width:382,height:99},cx);assert.equal(w.noticeHeights.size,2,'Obsolete notice callbacks are rejected');
 }
 // Second review: equal-height replacement cannot emit a native size callback.
 // An insertion above the viewport plus deletion at the tail reaches the end
 // through anchor correction alone; both edges must derive from the new offset.
-if(selected('anchor')) {
+if(selected('anchor')) for(const target of [1000,1840]) {
  const requests=[];
  const c=await coordinator(30,{'gpui-base':{h_flex:()=>element().flex(),v_flex:()=>element().flex().flex_col(),Popover:{},Input:{},
   ScrollHandle:{new:()=>({scroll_to_item:index=>requests.push(index),release(){}})}}});
@@ -102,19 +102,19 @@ if(selected('anchor')) {
  }
  const w=taskWindow(panel),height=w.height;
  size(taskContent(tree),{width:390,height:height+8},cx);
- scrollTask(panel,tree,cx,w.max-76);tree=render();
- const anchor=w.range().visible[0].key,offset=w.offset;
- assert.equal(w.max,1916);assert.equal(offset,1840);assert.ok(find(tree,'task-pulls-list-more-below'));
+ scrollTask(panel,tree,cx,target);tree=render();
+ const anchor=w.items[w.index(Math.max(0,w.offset-4))].key,offset=w.offset;
+ assert.equal(w.max,1916);assert.equal(offset,target);assert.ok(find(tree,'task-pulls-list-more-below'));
  const before=notifications;
  list.unshift({...list[0],number:0,key:'owner/repo#0'});list.pop();tree=render();
- assert.equal(w.height,height);assert.equal(w.offset,offset+76);assert.equal(w.offset,w.max);assert.equal(w.range().visible[0].key,anchor);
+ assert.equal(w.height,height);assert.equal(w.offset,offset+76);assert.equal(w.offset,target+76);assert.equal(w.items[w.index(Math.max(0,w.offset-4))].key,anchor);
  assert.equal(size(frame(),{width:390,height:400},cx),false);
  assert.equal(size(taskContent(tree),{width:390,height:height+8},cx),false,'No callback repairs the unchanged content dimensions');
  for(let i=0;i<5;i++)await Promise.resolve();tree=render();
- assert.deepEqual(requests,[1]);assert.equal(notifications,before+1,'The yielded correction requests a repaint without a native size event');assert.equal(w.metrics.offset,1916);assert.equal(w.metrics.moreBelow,false);
- assert.equal(find(tree,'task-pulls-list-more-below'),undefined);assert.ok(find(tree,'task-pulls-list-more-above'));
+ assert.deepEqual(requests,[1]);assert.equal(notifications,before+1,'The yielded correction requests a repaint without a native size event');assert.equal(w.metrics.offset,target+76);assert.equal(w.metrics.moreBelow,target!==1840);
+ assert.equal(Boolean(find(tree,'task-pulls-list-more-below')),target!==1840);assert.ok(find(tree,'task-pulls-list-more-above'));
 }
-// Audit: a coordinator scope can return after its old TaskWindow was retired.
+// Audit: a coordinator scope can return after its old revealed-list owner was retired.
 // New cache owners need fresh native frame/content identities at equal sizes.
 if(selected('audit')) {
  const c=await coordinator(),{panel,cx,render,size}=c;c.notice(null);

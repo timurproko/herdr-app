@@ -57,8 +57,8 @@ export class SidebarScrollState {
     const hi = Math.max(lo, Math.min(max, span[1] * pitch + row - this.viewport + (pitch - row)));
     return [lo, hi];
   }
-  update(cx) {
-    if (this.moreAbove !== this.#notifiedAbove || this.moreBelow !== this.#notifiedBelow) {
+  update(cx, force = false) {
+    if (force || this.moreAbove !== this.#notifiedAbove || this.moreBelow !== this.#notifiedBelow) {
       this.#notifiedAbove = this.moreAbove;
       this.#notifiedBelow = this.moreBelow;
       cx.notify();

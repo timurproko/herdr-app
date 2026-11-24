@@ -10,12 +10,12 @@ panel.notices={sync(){},presentation(){}};panel.enrollmentPicker={render(){}};pa
 const cx={notify(){assert.equal(rendering,false);},spawn(fn){jobs.push(fn(cx));}};
 const render=()=>{rendering=true;try{return panel.renderAggregate(cx,t);}finally{rendering=false;}};
 let tree=render();measureTask(panel,tree,cx);tree=render();assert.equal(handles.length,1);assert.equal(find(tree,'task-pulls-list-home-open').attrs.track_scroll[0],handles[0]);
-scrollTask(panel,tree,cx,250);tree=render();const w=taskWindow(panel),before=w.offset,anchor=w.range().visible[0].key;
-rows.unshift({...rows[0],key:'owner/repo#0',number:0});tree=render();assert.equal(w.offset,before+76);assert.equal(w.range().visible[0].key,anchor);
+scrollTask(panel,tree,cx,250);tree=render();const w=taskWindow(panel),before=w.offset,anchor=w.items[w.index(Math.max(0,w.offset-4))].key;
+rows.unshift({...rows[0],key:'owner/repo#0',number:0});tree=render();assert.equal(w.offset,before+76);assert.equal(w.items[w.index(Math.max(0,w.offset-4))].key,anchor);
 assert.equal(handles[0].requests.length,0,'Render only queues a yielded native anchor request');
 assert.ok(find(tree,'task-pulls-anchor'));await Promise.all(jobs.splice(0));assert.deepEqual(handles[0].requests,[1]);
 // Subsequent same-size measurement must not cancel a pending row correction.
-measureTask(panel,tree,cx);assert.ok(w.correction);
+measureTask(panel,tree,cx);assert.ok(w.anchorMarker);
 const zoomOffset=w.offset;h.setZoom(1.3);tree=render();measureTask(panel,tree,cx,400,390,1.3);assert.equal(w.offset,zoomOffset,'Zoom keeps logical scroll anchors while native metrics rescale');
 h.setZoom(1);tree=render();measureTask(panel,tree,cx);
 scrollTask(panel,tree,cx,200);tree=render();assert.equal(w.correction,null);

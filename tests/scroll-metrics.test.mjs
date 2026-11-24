@@ -21,6 +21,8 @@ state.setMetrics({offset:2000,content:2480,viewport:480},cx);assert.equal(state.
 state.setMetrics({offset:1800});assert.equal(state.moreBelow,true);assert.equal(notices,2,'Pure render-time projection cannot notify');
 state.update(cx);assert.equal(notices,3,'A yielded correction still publishes its new edges without a native callback');
 state.update(cx);assert.equal(notices,3);
+state.update(cx,true);assert.equal(notices,4,'Native layout requests force one repaint even when both fades remain unchanged');
+state.update(cx);assert.equal(notices,4);
 state.setMetrics({moreBelow:false,max:0});assert.equal(state.moreBelow,true);assert.equal(state.max,2000,'Derived fields cannot be overridden through the setter');
 state.setMetrics({offset:500,viewport:1000,content:900},cx);assert.equal(state.offset,0);assert.equal(state.moreAbove,false);assert.equal(state.moreBelow,false);
 console.log('PASS pure scroll metric projection: 240 geometry cases, read-only inputs/edges, atomic programmatic changes and boundary-only notifications');

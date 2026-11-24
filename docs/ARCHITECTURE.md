@@ -337,11 +337,15 @@ but disappearing sections retain saved fold keys. A settled tab with no qualifyi
 sections uses ordinary Git's **No open pull requests** / **No closed pull requests**;
 notice-only and folded eligible sections are not empty. Pending/unverified feedback
 is unchanged. The selected presentation reveals ten items initially, including headers,
-notices and rows, then appends ten near the scroll bottom without IO or page controls.
-After folding, a prefix-height projection renders only viewport-near items with
-exact spacers: PRs retain 74px blocks, shared headers retain their control height,
-and notices retain keyed native height measurements. Revealed depth and stable
-scroll identity are per coordinator home and tab. Same-context insertions preserve
+notices and rows, then appends ten near the scroll bottom without inventory IO.
+Every revealed unfolded row stays mounted: PRs retain 74px blocks, shared headers
+retain their control height and notices retain keyed native heights. A measured
+60-PR/100-item cap bounds the mounted batch; one quiet end Show more advances it
+and cycles from the last batch to the first. There are no viewport spacers.
+Native handles supply render-time fade geometry and event-time bottom detection;
+consumed scrollbar input may defer fades/reveal until the next render/event. A
+finite post-batch layout check fills underflow, not polling. Revealed depth and
+stable scroll identity are per home/tab/batch. Same-context insertions preserve
 surviving row anchors rather than resetting scroll; enrollment stays outside it. Distinct-string native
 probe widths use a bounded zoom/style-keyed cache; PR label presentation caches
 immutable facts, never native callback-bearing elements. Coordinator rows build

@@ -342,11 +342,11 @@ No deployment or live label mutation is performed.
 `node --experimental-vm-modules tests/git-panel-errors.test.mjs` exercises the
 packaged controller, aggregate reader, real notices and UI with 100 Closed rows
 across two repositories, a history read notice, merged/closed-unmerged states and
-live/historical agent variants. A fixed 10,000-builder-operation / 1,200-element
-budget bounds each replacement page; every row is reachable, even a 100-label PR
-builds fewer than 125 elements, and paging adds no reads. Distinct-string probes,
+live/historical agent variants. A 20,000-builder-operation / 8,000-element mounted
+batch ceiling accompanies the measured 60-PR/100-item cap; every row is reachable,
+even a 100-label PR builds fewer than 125 elements, and reveal/batch changes add no inventory reads. Distinct-string probes,
 cache reuse across pages, zoom invalidation and stale measurement refusal have
-regressions. The disposable native 30/60-row measurements and their exact scope
+regressions. The disposable native 30/60/100/200-row measurements and their exact scope
 are recorded in [GIT-RENDER-BUDGET.md](GIT-RENDER-BUDGET.md). It uses inline spawn and render-side-effect guards.
 A synchronous notice transport failure previously reached fallback `notify` during
 render; yielding before request work fixes that proven path (present since import
@@ -590,37 +590,43 @@ an unaccounted border fail; the latter is checked against the highlight-to-panel
 inset because a row-relative-only oracle cannot detect a shifted highlight.
 Title truncation boundaries stay identical with and without an agent.
 Existing row/fold/menu fixtures retain callbacks and tooltip coverage. Another
-3,840 comparisons exercise the actual windowed-scroll renderer with 25 PRs,
+3,840 comparisons exercise the actual mounted-scroll renderer with 25 PRs,
 stable native list IDs and warm distinct-string measurements in both tabs across
 the same width/zoom matrix. The extended 100-row panel regression scrolls to reveal
-every row while retaining the existing operation/element ceilings. These are synthetic
+every row across measured capped batches while enforcing per-row/mounted-batch ceilings. These are synthetic
 resolved-box checks, not live GPUI pixel or deployment evidence.
 
-## Windowed Git scroll fixtures
+## Mounted Git scroll fixtures
 
 `tests/git-measurement-lifecycle.test.mjs` models native size-change-only events
 with a retained element-ID/dimension cache, not unconditional layout callbacks.
 It covers equal-height wrapped-notice replacement, ordinary tab/context changes,
 live ordinary/coordinator zoom with an unchanged physical viewport, coordinator
 home-away-home, recreated header caches and pin body/reveal lifetimes. Its `anchor`
-case covers an equal-height 30-row refresh reaching the end solely through a
+cases cover equal-height 30-row refreshes in the middle and at the end through a
 yielded anchor correction, with both native size callbacks suppressed and exactly
-one repaint requested. `tests/scroll-metrics.test.mjs` separately checks the pure
+one repaint requested even when both fades remain unchanged. `tests/scroll-metrics.test.mjs` separately checks the pure
 geometry projection, getter-only fields and atomic notifications across 240 cases.
 See the
 [measurement audit](GIT-RENDER-BUDGET.md#measurement-lifetime-audit) for the full
 cache ownership inventory and unchanged paths checked.
 
-`tests/git-scroll-window.test.mjs` checks exact spacers, ten-item reveal, all-100-row
-reachability, bounded overscan, insertion anchors, folds and notice-height updates.
+`tests/git-scroll-window.test.mjs` now checks the mounted prefix, ten-item reveal,
+60-PR/100-item cap, 200-row reachability, cycling Show more, insertion anchors,
+folds and notice-height updates. `tests/git-row-presentation.test.mjs` checks pure
+memoisation/invalidation and fresh native callbacks. `tests/git-native-scroll.test.mjs`
+changes only the actual native-handle model for thumb/track/keyboard movements,
+without fake content/frame events. It checks truthful render-time fades, next-event
+reveal, finite post-layout underflow fill and accepted middle/end anchor repaints.
 `tests/git-scroll-anchor.test.mjs` exercises yielded native scroll-handle requests,
 retired-handle release and obsolete-scope refusal without render effects.
 `tests/git-scroll-fades.test.mjs` checks both views at 75/100/130/200% zoom using
 actual shared `SidebarScrollState` and passive `topFade`/`bottomFade`: start, middle,
 end, fitting content, scrollbar motion, resize and folds, plus byte-identical shared
 packaging. `tools/measure-git-render.mjs` records five disposable native render-build
-samples after revealing 30/60/100 rows through the production scroll handlers;
-these are not live desktop paint/input timings or deployment evidence.
+samples for complete 30/60/100/200 mounted trees, deliberately bypassing the runtime
+cap; warm mode warms only pure caches, never native callbacks. It records native
+interruptions honestly. These are not live desktop paint/input timings or deployment evidence.
 
 ## Connected fleet fixtures
 

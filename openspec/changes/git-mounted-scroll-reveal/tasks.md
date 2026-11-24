@@ -8,9 +8,9 @@
 
 ## 2. Native handle geometry drives fades, incremental reveal and repainting anchor corrections
 
-- [ ] 2.1 Sample actual handle geometry at render and received wheel/pointer/size events; retain passive shared fades and test native thumb/track/keyboard position changes without fabricated content events.
-- [ ] 2.2 Add guarded one-shot post-batch layout checks to fill non-overflowing viewports in ten-item batches without IO; test bottom-drag next-event reveal, stale callbacks, retained anchors and unconditional repaint after middle/end corrections.
-- [ ] 2.3 Document exact reveal triggers and the possible fade/reveal lag until the next event/render after native input consumed by the host; preserve ordinary pagination, pins, totals, folds and external enrollment.
+- [x] 2.1 Sample actual handle geometry at render and received wheel/pointer/size events; retain passive shared fades and test native thumb/track/keyboard position changes without fabricated content events.
+- [x] 2.2 Add guarded one-shot post-batch layout checks to fill non-overflowing viewports in ten-item batches without IO; test bottom-drag next-event reveal, stale callbacks, retained anchors and unconditional repaint after middle/end corrections.
+- [x] 2.3 Document exact reveal triggers and the possible fade/reveal lag until the next event/render after native input consumed by the host; preserve ordinary pagination, pins, totals, folds and external enrollment.
 
 ## 3. Coordinator safety reads cover revealed unfolded rows with stale-selection protection
 

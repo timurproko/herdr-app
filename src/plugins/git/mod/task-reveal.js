@@ -44,5 +44,6 @@ export class TaskReveal {
   }
   revealMore(){if(this.atCap)return false;const before=this.end;this.limit=Math.min(this.items.length,this.limit+10);if(this.end!==before){this.generation++;return true;}return false;}
   nextChunk(){this.start=this.end<this.items.length?this.end:0;this.limit=this.start+10-(this.leading?1:0);this.chunk++;this.offset=0;this.correction=null;this.generation++;this.selection=null;}
-  move(offset,viewport,preserveAnchor=false){this.viewport=Math.max(0,viewport);this.offset=Math.max(0,Math.min(this.max,preserveAnchor&&this.correction?this.offset:offset));if(!preserveAnchor)this.correction=null;return this.max-this.offset<=120?this.revealMore():false;}
+  observe(offset,viewport,preserveAnchor=false){this.viewport=Math.max(0,viewport);this.offset=Math.max(0,Math.min(this.max,preserveAnchor&&this.correction?this.offset:offset));if(!preserveAnchor)this.correction=null;}
+  move(offset,viewport,preserveAnchor=false){this.observe(offset,viewport,preserveAnchor);return this.max-this.offset<=120?this.revealMore():false;}
 }
