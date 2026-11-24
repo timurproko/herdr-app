@@ -22,7 +22,7 @@ export function fleetStatusScript(prelude, {discover = true, legacy = false, cap
     "$installation = Get-Item -LiteralPath $main -ErrorAction Stop",
     "$capabilityKey = $installation.FullName.ToLowerInvariant() + '|' + $installation.LastWriteTimeUtc.Ticks",
     ...(legacy ? ['$fleetView = $false'] : [
-      `if ($capabilityKey -eq '${String(capability?.key??'').replaceAll("'","''")}') { $fleetView = $${capability?.view===true?'true':'false'} } else {`,
+      `if ($capabilityKey -eq '${String(capability?.key??'').replace(/['‘’‚‛]/g,"$&$&")}') { $fleetView = $${capability?.view===true?'true':'false'} } else {`,
       "  $help = InvokeCrew '--help'",
       '  if ($help.code -ne 0) { if ($help.stderr) { [Console]::Error.WriteLine($help.stderr) }; $help.stdout; exit $help.code }',
       "  $fleetView = $help.stdout -match '--view(?:\\s+|=)fleet\\b'",

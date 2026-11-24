@@ -42,6 +42,8 @@ if(process.platform!=='win32') {
   assert.deepEqual(run({...payload,owner:null,tasks:[]}).value,{home:payload.home,owner:null,tasks:[],prDiscovery:{version:1}});
   const recorded=run(payload,true,{discover:false,reportCapability:true});assert.ok(!recorded.calls.at(-1).includes('--discover-prs'));
   assert.equal(recorded.capability.view,true);assert.ok(recorded.capability.key.includes('crew-fixture.mjs|'));
+  const quoted=run(payload,true,{discover:false,capability:{key:"x’ ; Write-Output 'injected'; '",view:true}});
+  assert.deepEqual(quoted.value,expected,'Cached paths use PowerShell literal quoting, including smart quotes');
   const cached=run(payload,true,{discover:false,reportCapability:true,capability:recorded.capability});
   assert.deepEqual(cached.calls,[['status','--json','--view','fleet']],'An unchanged installation never reruns help');
   fs.appendFileSync(cli,'\n// new installation modification time\n');
