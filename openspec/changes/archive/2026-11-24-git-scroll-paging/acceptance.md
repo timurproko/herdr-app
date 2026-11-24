@@ -19,7 +19,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-24-git-scroll-paging/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-24-git-scroll-paging/acceptance.md",
   "finalizedDate": "2026-11-24",
-  "specBaseSha": "3bf9eb078d4f91fc6e0e72033babac6cdbcc88d5",
+  "specBaseSha": "934fb700cb4bc4bd3d7c4bd7f219d05b19f9a28d",
   "acceptanceScenarios": [
     "Coordinator lists reveal ten presentation items initially and append near the bottom without page controls or scroll-triggered GitHub inventory reads.",
     "Revealed coordinator lists build only viewport-near rows with exact-height spacers while retaining intrinsic-width and immutable-label caches.",
@@ -29,7 +29,7 @@ The maintainer integration decision accepts these scenarios:
     "The 100-row scroll regression retains the existing 10000-operation and 1200-element ceilings after every row is revealed."
   ],
   "archiveDigest": "b4cb52e5408063db59fd45764c61fb558a33a8af73ec6ca00d2a16015cac1d3a",
-  "specDigest": "4e0095bf9af56d971e23e2a00645a497c475c319585cb0d4332e7ee9b53c9a63",
+  "specDigest": "eb8d58bb7b8c29ed8a650ba2dec36017dfa8733678a83e9a2fe3626e0e492456",
   "tasksDigest": "1417e9d836cba2ebc62a07ae48726491108218e4569ee8fc8db0d422e7e35dc0",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []
