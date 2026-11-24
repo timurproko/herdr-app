@@ -31,6 +31,19 @@ Git SHALL use identical metadata in ordinary and coordinator Open/Closed rows, w
 - **THEN** the row uses a complete compact form such as 2/2 tasks or an icon with 2/2, without cutting a word and before clipping label text
 - **AND** no metadata value renders as a lone ellipsis; full task progress, labels and review values remain available in tooltips
 
+### Requirement: Labels share PR data refresh
+PR labels SHALL be obtained with existing PR reads rather than additional per-row requests. Labels SHALL refresh with other row facts on panel opening, manual refresh, reconnect and relevant webhook invalidation, including pull_request labeled and unlabeled actions. Stale replies SHALL NOT restore labels in another repository or panel context, and unchanged PRs SHALL NOT acquire periodic label polling.
+
+#### Scenario: Existing repository and targeted reads
+- **WHEN** a PR is loaded through a paginated repository list, an older active-PR lookup or a coordinator task lookup
+- **THEN** its assigned label names and colours are included in that same PR read
+- **AND** no additional label request is started for the row
+
+#### Scenario: Label added or removed
+- **WHEN** a relevant authenticated pull_request labeled or unlabeled event invalidates loaded rows
+- **THEN** the corresponding existing refresh path updates their labels from authoritative PR data
+- **AND** removing the final label removes its visible pills and any now-redundant separator without changing the line height or leaving a visible placeholder or horizontal reservation
+
 ### Requirement: Stable pull request block geometry
 At a given panel width and zoom, every PR block SHALL reserve the same state-icon, title, related-agent, byline and metadata slots from first paint. Optional facts SHALL NOT change title truncation width, line positions or block height. Within a lower line, present elements MAY take their natural places as facts change; horizontal anchors are not reserved for absent metadata. Metadata SHALL occupy one fixed-height line even when empty, and absent content SHALL remain visually blank rather than showing skeletons or fabricated values.
 

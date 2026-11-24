@@ -22,9 +22,9 @@
 
 ## Approved display amendment
 
-- [x] Both lower lines flow left with natural content widths, no absent-group reservations and unused space only at the end; fitting 390px rows retain full task/time wording.
-- [x] Native-size callbacks converge after layout without render-time notifications; full/compact probes are invisible and clipped outside the visible run. Geometry measurements survive data resets and reject obsolete-context callbacks.
-- [x] Current proposal/design/spec delta and canonical requirements plus README/testing guidance reflect the amended horizontal-flow contract; freshness source paths remain unchanged.
+- Both lower lines flow left with natural content widths, no absent-group reservations and unused space only at the end; fitting 390px rows retain full task/time wording.
+- Native-size callbacks converge after layout without render-time notifications; full/compact probes are invisible and clipped outside the visible run. Geometry measurements survive data resets and reject obsolete-context callbacks.
+- Current proposal/design/spec delta and canonical requirements plus README/testing guidance reflect the amended horizontal-flow contract; freshness source paths remain unchanged.
 
 ## Workflow follow-up
 
