@@ -54,6 +54,16 @@ for(const outcome of ['slow','failed']) {
  if(holdStatus){holdStatus=false;releaseStatus();await drain();}else {await drain();retainedFrame();failStatus=false;f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();}
  tree=panel.render(cx);await drain();tree=panel.render(cx);assert.equal(find(tree,'git-task-stale'),undefined);assert.ok(find(tree,'pr-agent-example/a#12'));
 }
+// The same identity guard applies to retained shared display, not only the
+// off/on cache. A warm owner move cannot keep the old inventory while failing.
+failStatus=true;const warmPane=all[0].pane;all[0].pane='warm-owner-moved';tree=panel.render(cx);
+assert.equal(find(tree,'pr-example/a#12'),undefined);assert.equal(find(tree,'git-task-stale'),undefined);assert.equal(text(find(tree,'git-task-empty')).trim(),'Loading');await drain();
+all[0].pane=warmPane;failStatus=false;f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();tree=panel.render(cx);await drain();tree=panel.render(cx);
+// An optional role hint disappearing is not itself contradictory owner status:
+// a witnessed exact native owner/home may retain read-only history without it.
+failStatus=true;delete list[0].labels['custom.crew.home'];tree=panel.render(cx);assert.ok(find(tree,'pr-example/a#12'));assert.equal(find(tree,'git-task-stale').kids[0],'Stale');assert.equal(r.pluginPullContext('coordinator'),null);await drain();
+status.owner.live=false;f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();assert.equal(panel.aggregate.sync(cx),false,'A witnessed negative clears history even without a role-hint diagnostic subject');assert.equal(r.pluginPullContext('coordinator',{presentation:true}),null);
+status.owner.live=true;list[0].labels['custom.crew.home']='1';failStatus=false;f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();tree=panel.render(cx);await drain();tree=panel.render(cx);
 // A changed native owner membership cannot reuse the old inventory while the
 // new identity is unverified, even if the parent space and role hint survive.
 state['custom.spaces.preferences'].connectFleetToCoordinator=false;f.invalidateFleet();panel.render(cx);await drain();

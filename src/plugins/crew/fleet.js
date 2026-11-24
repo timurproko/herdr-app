@@ -309,6 +309,18 @@ export function invalidateFleet() {
   setShared(FLEET_KEY,null);setShared(READS,{});updateFleetDisplay(null,null,{disabled:!enabled()});
   verifiedTokens.clear();pendingTokens.clear();
 }
+function pullIdentityMatches(identity, snapshot, requireChild=false) {
+  const owner=snapshot.list.find(t=>t.address===identity.owner && t.state==='live'),members=snapshot.all.filter(p=>p.terminal===identity.owner && !p.mod);
+  const groups=members.length===1?snapshot.groups.filter(s=>(s.machine??null)===identity.machine && s.tabs?.some(t=>t.id===members[0].tab)):[];
+  if(!owner || groups.length!==1 || groups[0].id!==identity.parent || (members[0].tab??null)!==identity.ownerTab || (members[0].pane??null)!==identity.ownerPane)return false;
+  const child=snapshot.groups.find(s=>s.id===identity.child && (s.machine??null)===identity.machine);
+  // A witnessed owner/home may retain historical Git scope without its child;
+  // restoring after off/on requires the extant pair, not that weaker evidence.
+  if(!child)return !requireChild;
+  const tabs=new Set(child.tabs?.map(t=>t.id)??[]),workers=new Set(snapshot.all.filter(p=>tabs.has(p.tab) && !p.mod).map(p=>p.terminal));
+  return !snapshot.list.some(t=>workers.has(t.address) && t.state==='live' && (t.labels?.['crew.task'] || t.labels?.['crew.home']) &&
+    (t.labels?.['crew.home']!==identity.adoption || t.labels?.['herdr.space']!==identity.child.split('/').at(-1)));
+}
 export function fleetPullContext(space, {presentation = false} = {}) {
   const context=fleetContexts().find(c=>c.parent===space && c.taskMembershipVerified);
   if(context) {
@@ -333,24 +345,20 @@ export function fleetPullContext(space, {presentation = false} = {}) {
       }
   }
   if(identity) {
-    const candidate=coordinatorCandidate(identity.machine,model());
-    const verification=candidate?.parent===identity.parent && candidate.owner===identity.owner ? fleetVerification(identity.machine,candidate) : null;
-    return {...identity,kind:'tasks',scope:identity.pullScope,stale:true,links:[],verification};
+    const snapshot=model(),candidate=coordinatorCandidate(identity.machine,snapshot);
+    if(pullPresentation.get(identity.machine??'local')?.pullScope!==identity.pullScope)pullPresentation.delete(identity.machine??'local');
+    if(pullIdentityMatches(identity,snapshot))return {...identity,kind:'tasks',scope:identity.pullScope,stale:true,links:[],verification:fleetVerification(identity.machine,candidate??identity)};
+    pullPresentation.delete(identity.machine??'local');
   }
   const snapshot=model(), group=snapshot.groups.find(s=>s.id===space);
   if(!group)return null;
-  const machine=group.machine??null, candidate=coordinatorCandidate(machine,snapshot), verification=fleetVerification(machine,candidate);
-  const key=machine??'local', retained=pullPresentation.get(key);
-  if(verification && ['no-owner','identity-mismatch','no-fleet'].includes(verification.reason)) {pullPresentation.delete(key);return null;}
-  if(candidate?.parent!==space)return null;
+  const machine=group.machine??null, candidate=coordinatorCandidate(machine,snapshot),key=machine??'local',retained=pullPresentation.get(key),entry=shared(FLEET_KEY)?.entries?.[key];
+  const verification=fleetVerification(machine,candidate??(retained?.parent===space?retained:null));
+  if(entry?.status && entry.binding===null && locallyVerified(key,entry) || verification && ['no-owner','identity-mismatch','no-fleet'].includes(verification.reason)) {pullPresentation.delete(key);return null;}
   // Reuse only a witnessed identity with unchanged native owner membership and
   // extant nonconflicting fleet. This scope has NO links or action authority.
-  const same=retained && ['parent','owner','ownerTab','ownerPane'].every(k=>candidate[k]===retained[k]) && inMachine(snapshot,retained.child,machine);
-  const tabs=new Set(same?snapshot.groups.find(s=>s.id===retained.child)?.tabs?.map(t=>t.id):[]);
-  const members=new Set(snapshot.all.filter(p=>tabs.has(p.tab) && !p.mod).map(p=>p.terminal));
-  const conflict=same && snapshot.list.some(t=>members.has(t.address) && t.state==='live' && (t.labels?.['crew.task'] || t.labels?.['crew.home']) &&
-    (t.labels?.['crew.home']!==retained.adoption || t.labels?.['herdr.space']!==retained.child.split('/').at(-1)));
-  if(same && !conflict)return {...retained,kind:'tasks',scope:retained.pullScope,stale:true,links:[],verification};
+  if(retained?.parent===space && pullIdentityMatches(retained,snapshot,true))return {...retained,kind:'tasks',scope:retained.pullScope,stale:true,links:[],verification};
   pullPresentation.delete(key);
+  if(candidate?.parent!==space)return null;
   return {...candidate,machine,kind:'tasks',scope:JSON.stringify(['fleet-waiting',machine,candidate.parent,candidate.owner,candidate.ownerTab,candidate.ownerPane]),stale:true,links:[],verification};
 }
