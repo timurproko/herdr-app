@@ -20,7 +20,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-24-fix-fleet-toggle-reattach/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-24-fix-fleet-toggle-reattach/acceptance.md",
   "finalizedDate": "2026-11-24",
-  "specBaseSha": "386fcc4a01a4ed4ba6e0ec04792dd8ba34322d09",
+  "specBaseSha": "934fb700cb4bc4bd3d7c4bd7f219d05b19f9a28d",
   "acceptanceScenarios": [
     "Large fleet responses decode in bounded native task turns while Settings remains open on the selected fleet.",
     "Multiline legacy status collection and field projection scale linearly within the supported payload and task limits.",
