@@ -7,7 +7,7 @@
 // identity labels) or refuses with the reason; the only thing it ever writes is the crew
 // home itself, the first time.
 import { hc, shared, setShared, panes, terminals } from '../api.js';
-import { refreshFleets, fleetContexts, fleetPullContext, invalidateFleet } from './fleet.js';
+import { refreshFleets, fleetContexts, fleetPullContext, fleetColorAllowed, invalidateFleet } from './fleet.js';
 
 const winPath = path => String(path).replace(/\//g, '\\');
 const CHECK_TIMEOUT = 15, INSTALL_TIMEOUT = 300;
@@ -791,6 +791,7 @@ export default {
   hooks: {},
   events: { 'spaces.refresh': refreshFleetContext, 'workspace.context.refresh': refreshFleetContext },
   workspaceLinks: ({presentation = false} = {}) => fleetContexts({presentation}).filter(c=>c.child),
+  guards: { 'spaces.color': ({pair}) => fleetColorAllowed(pair) },
   pullContext: ({space,presentation = false}) => fleetPullContext(space,{presentation}),
   onEnabledChange: invalidateFleet,
   // The Spaces sidebar's tag for a space the coordinator or crew workers run in.

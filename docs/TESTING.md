@@ -362,17 +362,25 @@ The packaged `tests/regression/space-colors.test.mjs` fixture covers coordinator
 fleet palette origins, selected swatches, mouse/keyboard and Automatic choices,
 unchanged saved fleet colour/Automatic flags and unrelated-space preferences.
 Rename/close/worktree targets remain the clicked space. Stale/changed/ambiguous,
-disabled, missing, cross-machine or retained-only pair bindings refuse writes;
+disabled, missing, cross-machine or presentation-only unverified bindings refuse writes;
 reopening a detached fleet restores independent controls. Actual detached row/rail
 projections restore its own colour without copying preferences.
 `tests/fleet-color-menu.test.mjs` uses separate packaged `custom-spaces` and
 `custom-menu` instances with the real registry, Crew provider, menu and colour
 state. Sidebar verification alone cannot authorize menu writes: opening an
 attached palette starts or witnesses verification through the generic lifecycle,
-yielding before shared writes or IO. Both menu origins on local/remote machines,
-mouse colour and keyboard Automatic choices, shared in-flight coalescing, reopening,
-failed/expired verification and changed/missing/disabled bindings are covered.
-Fleet saved colour and Automatic flags stay untouched. No real Core or network is used.
+yielding before shared writes or IO. The success matrix explicitly enumerates live
+workers, closed tasks with a still-live terminal, a retained fleet after the last
+worker exits, and a retained fleet with no tasks. Each runs locally and remotely,
+from both menu origins, with mouse colour and keyboard Automatic choices, before
+and after cold module restoration with persisted runtime facts or display identity
+alone. Every state refuses a pre-verification click, then accepts the unchanged
+binding after successful verification; retained fleets still have no live move links.
+Shared in-flight witnessing/coalescing, reopening, failed/expired verification,
+changed home/adoption/owner, missing members, unready/cross-machine layouts and
+explicit disablement remain guarded. An empty fleet with no verified display
+history stays independent instead of being inferred from names. Fleet saved colour
+and Automatic flags stay untouched. No real Core or network is used.
 
 `tests/fleet-git.test.mjs` loads the actual Git controller, aggregate source and Crew
 provider through the package harness. Synthetic tasks/gh results cover coordinator

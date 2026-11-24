@@ -185,6 +185,22 @@ export function fleetContexts({presentation = false} = {}) {
     return bound && bound.binding===entry.binding ? [{...bound,taskMembershipVerified:taskMembership(bound)===entry.members}] : [];
   });
 }
+// Colour edits need the verified displayed relationship, not live worker membership.
+// The exact retained pair is attested by a successful read witnessed in this mod;
+// persisted display (or a fresh owner with a different retained child) is not proof.
+export function fleetColorAllowed(pair) {
+  if(!pair) return false;
+  const snapshot=model(), shown=savedDisplays();
+  return fleetContexts().some(context=> {
+    const entry=shared(FLEET_KEY)?.entries?.[context.machine??'local'];
+    const verified=displayRecord(entry?.displayIdentity);
+    const displayed=shown.find(record=>record.machine===context.machine);
+    return Boolean(verified && displayed && verified.parent===pair.parent && verified.child===pair.child && verified.binding===pair.binding
+      && context.pullScope===verified.pullScope && (!context.child || context.child===verified.child)
+      && JSON.stringify(identityOf(displayed))===JSON.stringify(identityOf(verified))
+      && signature(context.machine,snapshot,verified)===entry.displaySignature);
+  });
+}
 // The injected bounded status reader owns capability fallback, never consumers.
 export function refreshFleets(cx, readStatus, force = false) {
   if(!enabled() || checking() || (shared(FLEET_KEY) && shared(FLEET_KEY).version!==1)) return;
@@ -219,7 +235,8 @@ export function refreshFleets(cx, readStatus, force = false) {
         const bound=bindFleet(status,machine,snapshot), identity=identityOf(bound), at=Date.now();
         const display=nextDisplay(machine,bound,snapshot), verifiedSignature=signature(machine,snapshot,identity);
         setShared(FLEET_KEY,{version:1,entries:{...(latest?.version===1?latest.entries:{}),[key]:{
-          machine,at,attemptAt:at,token,attemptToken:token,signature:verifiedSignature,attemptSignature:signature(machine,snapshot,display??identity),status,binding:bound?.binding??null,identity,members:taskMembership(bound)}}});
+          machine,at,attemptAt:at,token,attemptToken:token,signature:verifiedSignature,attemptSignature:signature(machine,snapshot,display??identity),status,binding:bound?.binding??null,identity,members:taskMembership(bound),
+          displayIdentity:identityOf(display),displaySignature:signature(machine,snapshot,display)}}});
         verifiedTokens.set(key,token);publishDisplay(machine,display,evidence);
       } catch {
         if(current()) {

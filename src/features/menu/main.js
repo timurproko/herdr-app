@@ -17,7 +17,7 @@ import { spaceColorPicker, setSpaceColor, selectedColorIndex, colorAt as colorVa
 import { requestInlineTabRename } from './tab-rename.js';
 import { requestInlineSpaceRename } from './space-rename.js';
 import { closeWithConfirmation } from './close-space.js';
-import { pluginEvent, pluginMenuItems, pluginWorkspaceLinks } from './plugins.js';
+import { pluginAllows, pluginEvent, pluginMenuItems, pluginWorkspaceLinks } from './plugins.js';
 import { run, props, closeOverlay, openOverlay, theme, keys, terminals, spaces, panes, agents, shared, notify, updates } from "./host.js";
 
 function items(p, git, pluginItems = []) {
@@ -168,11 +168,11 @@ export default class Menu extends View {
     if (!this.colorPair) return shown.length === 0;
     const pair = this.colorPair;
     const same = l => l.parent === pair.parent && l.child === pair.child && l.binding === pair.binding;
-    const fresh = pluginWorkspaceLinks().filter(l => l.parent === source.id || l.child === source.id);
-    // Retained display may paint the palette, but never authorizes a colour write.
+    // The provider verifies this displayed binding even when no live workers remain.
+    // Retained presentation alone is never permission; live move links are separate.
     return shown.length === 1 && same(shown[0])
       && [pair.parent,pair.child].every(id => all.some(s => s.id === id && (s.machine ?? null) === source.machine))
-      && fresh.length === 1 && same(fresh[0]);
+      && pluginAllows('spaces.color', {pair});
   }
 
   checkMove(cx) {

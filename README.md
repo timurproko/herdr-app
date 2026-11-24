@@ -615,8 +615,11 @@ right edge. Renaming hides markers and tags; the Worktree icon switch hides only
 worktree markers, not the independent coordinator chain.
 Choosing a colour or Automatic from either attached row edits the coordinator's
 colour; the fleet's saved colour and Automatic flag stay untouched. Its palette and
-mouse/keyboard choices use that same captured coordinator. Other menu actions still
-target the clicked space. A changed or unverifiable pair refuses a stale colour
+mouse/keyboard choices use that same captured coordinator. Colour permission follows
+freshly verified displayed pair identity, including retained fleets after all workers
+finish or when no tasks remain, locally or remotely. After restart, the menu must
+first witness successful verification; restored visuals alone do not permit a write.
+Other menu actions still target the clicked space. A changed or unverifiable pair refuses a stale colour
 choice; reopen after detachment to edit the fleet's own colour again. Disabling
 attachment or confirmed unlinking restores that independent fleet colour.
 Unrelated plugin tags remain; the compact rail stays badge-only. Refreshing Git or
