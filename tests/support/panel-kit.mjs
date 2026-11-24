@@ -16,7 +16,7 @@ export function realUi(element = chain) {
   const exports = {};
   const body = uiSource.replace(/^import [^\n]*\n/gm, '').replace(/^export (function|const|let|class) (\w+)/gm, (_m, kind, name) => { exports[name] = true; return `${kind} ${name}`; });
   const names = Object.keys(exports);
-  const context = { div: element, svg: element, Popover: { new: element }, Input: { new: element }, settings: () => ({ zoom: 1 }) };
+  const context = { div: element, svg: element, Popover: { new: element }, Input: { new: element } };
   return vm.runInNewContext(`${body}\n({${names.join(',')}})`, context);
 }
 export function withKitUi(ui, element = chain) {

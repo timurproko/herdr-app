@@ -2,7 +2,6 @@
 // Logical pixels at zoom=1; the person's app zoom remains untouched.
 import { div, svg } from "gpui-kit";
 import { Popover, Input } from "gpui-base";
-import { settings } from "./host.js";
 export const U = Object.freeze({
   row: 28, rowGap: 2, subrow: 26, section: 32, control: 28, insetControl: 24, insetRadius: 4, field: 32,
   icon: 16, smallIcon: 14, tinyIcon: 12, statusSize: 7,
@@ -369,7 +368,7 @@ export function chevronSlot(t, direction, id = null) {
     .child(svg(`mods/custom-workspace-chrome/chevron-${direction}.svg`).size(U.smallIcon));
 }
 export function collapsible(t, { id, title, open, onToggle, chevron: side = "start", trailing = null, label = null,
-  height = SETTINGS_ROW, on = t.surface, tint = 0.5, panel: fill = null, inset = 8, bodyInset = inset, bodyPadY = 4, bodyGap = 2, bodyHeight: givenHeight = null, measured = null }, body) {
+  height = SETTINGS_ROW, on = t.surface, tint = 0.5, panel: fill = null, inset = 8, bodyInset = inset, bodyPadY = 4, bodyGap = 2, bodyHeight: givenHeight = null, measured = null, zoom = 1 }, body) {
   const panel = fill ?? collapsiblePanel(t, on, tint);
   // A body slides open and shut when its height is known: given (Usage's Resets), or
   // `measured`, an object the caller keeps: the body is then laid out even while closed (in
@@ -393,7 +392,7 @@ export function collapsible(t, { id, title, open, onToggle, chevron: side = "sta
     .when(measuring, el => el.flex_none().on_size_change((size, cx) => {
       // Native measurements are window px; h()/padding are logical px. Feeding a
       // scaled height back into the clip leaves a zoom-sized tail in every section.
-      const next = Math.max(0, Math.round((size?.height ?? 0) / (settings().zoom ?? 1) - 2 * bodyPadY));
+      const next = Math.max(0, Math.round((size?.height ?? 0) / zoom - 2 * bodyPadY));
       if (measured[id] !== next) { measured[id] = next; cx.notify(); }
     }))
     .child(body());
