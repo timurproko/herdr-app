@@ -3,6 +3,45 @@
 export const PR_FIELDS = 'number,title,url,state,isDraft,author,createdAt,mergedAt,closedAt,body,statusCheckRollup,reviewDecision,headRefName,headRefOid,mergeable,labels';
 export const PR_PAGE_SIZE = 10;
 
+// The public host exec API has no env option. Scope GH_REPO in one child only;
+// gh api does not accept -R, and account wrappers cannot inspect GraphQL bodies.
+export const GH_REPOSITORY_ENV = `const {spawnSync}=require('node:child_process');
+const [repo,argv,limit]=process.argv.slice(1);
+const r=spawnSync('gh',JSON.parse(argv),{env:{...process.env,GH_REPO:repo},encoding:'utf8',windowsHide:true,maxBuffer:8*1024*1024,timeout:Number(limit)});
+process.stdout.write(r.stdout||'');process.stderr.write(r.stderr||'');
+if(r.error)process.stderr.write(r.error.code==='ETIMEDOUT'?'GitHub command timed out':String(r.error.message));
+process.exitCode=r.status??1;`;
+export function repositoryRead(exec, args, repository, options = {}) {
+  if(args[0]!=='api')return exec('gh',args,options);
+  if(typeof repository!=='string' || repository.trim()!==repository || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) || repository.split('/').some(p=>p==='.'||p==='..'))throw Error('Invalid GitHub repository');
+  return exec('node',['-e',GH_REPOSITORY_ENV,repository,JSON.stringify(args),String(Math.max(1,Math.min(options.timeout??30000,30000)-1000))],options);
+}
+
+// Diagnose with the same repository routing and inherited credential, not the
+// globally active gh login. Only a validated public login leaves the child.
+export async function repositoryFailure(exec, result, repository, options = {}, diagnostics = null) {
+  const failure=pullFailure(result);
+  if(!repository)return failure;
+  // GitHub's missing-resource response is not evidence of an account problem.
+  if(failure.kind==='notfound')return {...failure,repository,message:`${repository} not found`};
+  if(!['access','auth'].includes(failure.kind))return failure;
+  const key=JSON.stringify([repository,options.on??null,options.cwd??null]);
+  let identity=diagnostics?.get(key);
+  if(!identity) {
+    identity=(async()=>{
+      try {
+        const result=await repositoryRead(exec,['api','user','--jq','.login'],repository,{...options,timeout:5000});
+        const login=result.stdout?.trim();
+        if(result.code===0 && !result.signal && !result.timed_out && !result.timedOut && /^[a-z\d][a-z\d-]{0,38}(?:\[bot\])?$/i.test(login??''))return login;
+      } catch {} // Unknown identity never permits a login switch.
+      return null;
+    })();
+    diagnostics?.set(key,identity);
+  }
+  const account=await identity;
+  return {...failure,repository,account,message:`${repository} not accessible with the GitHub account ${account??'(unknown)'}${failure.kind==='auth'?'; sign in with gh auth login':''}`};
+}
+
 // Single publication rule for every PR-read path. Queue ownership determines
 // read order; epochs invalidate old contexts, and generations prevent late
 // replies from replacing a newer published PR. No read path bypasses this gate.
@@ -99,7 +138,7 @@ export function parsePendingChecks(stdout,numbers) {
 export function pullListArgs(state, nameWithOwner, after = null) {
   const [owner, name] = String(nameWithOwner).split('/');
   const states = state === 'closed' ? '[CLOSED,MERGED]' : '[OPEN]';
-  const query = `query($owner:String!,$name:String!,$after:String){repository(owner:$owner,name:$name){pullRequests(first:${PR_PAGE_SIZE},after:$after,states:${states},orderBy:{field:CREATED_AT,direction:DESC}){totalCount pageInfo{hasNextPage endCursor} nodes{number title url state isDraft author{login} createdAt mergedAt closedAt body reviewDecision headRefName headRefOid mergeable labels(first:100){nodes{name color}} commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){nodes{... on CheckRun{name status conclusion startedAt completedAt detailsUrl checkSuite{workflowRun{workflow{name}}}} ... on StatusContext{context state createdAt}}}}}}}}}}}`;
+  const query = `query($owner:String!,$name:String!,$after:String){repository(owner:$owner,name:$name){open:pullRequests(states:OPEN){totalCount} closed:pullRequests(states:[CLOSED,MERGED]){totalCount} pullRequests(first:${PR_PAGE_SIZE},after:$after,states:${states},orderBy:{field:CREATED_AT,direction:DESC}){totalCount pageInfo{hasNextPage endCursor} nodes{number title url state isDraft author{login} createdAt mergedAt closedAt body reviewDecision headRefName headRefOid mergeable labels(first:100){nodes{name color}} commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){nodes{... on CheckRun{name status conclusion startedAt completedAt detailsUrl checkSuite{workflowRun{workflow{name}}}} ... on StatusContext{context state createdAt}}}}}}}}}}}`;
   return ['api', 'graphql', '-f', `query=${query}`, '-F', `owner=${owner}`, '-F', `name=${name}`,
     ...(after ? ['-f', `after=${after}`] : [])];
 }
@@ -107,7 +146,7 @@ export function pullListArgs(state, nameWithOwner, after = null) {
 export function parsePullPage(stdout) {
   const result = JSON.parse(stdout || '{}');
   if (result.errors?.length) throw new Error(result.errors.map(e => e.message).join('; '));
-  const page = result.data?.repository?.pullRequests;
+  const repo=result.data?.repository, page=repo?.pullRequests;
   if (!Array.isArray(page?.nodes)) throw new Error('Cannot load pull requests');
   const pulls = page.nodes.map(pr => ({...pr,
     statusCheckRollup: pr.commits?.nodes?.[0]?.commit?.statusCheckRollup?.contexts?.nodes?.map(check => ({...check,
@@ -116,7 +155,9 @@ export function parsePullPage(stdout) {
   }));
   const cursor = page.pageInfo?.endCursor ?? null;
   if (page.pageInfo?.hasNextPage && !cursor) throw new Error('Missing pull-request page cursor');
-  return {pulls, cursor, hasMore:Boolean(page.pageInfo?.hasNextPage), total:page.totalCount ?? null};
+  const counts=Number.isSafeInteger(repo.open?.totalCount) && Number.isSafeInteger(repo.closed?.totalCount)
+    ? {open:repo.open.totalCount,closed:repo.closed.totalCount} : null;
+  return {pulls, cursor, hasMore:Boolean(page.pageInfo?.hasNextPage), total:page.totalCount ?? null,counts};
 }
 export const REPO_ARGS = ['repo', 'view', '--json', 'nameWithOwner,owner,url'];
 export function countArgs(nameWithOwner) {
@@ -237,6 +278,9 @@ export function parsePulls(stdout) {
 // Keep command/response facts until classification; an empty abnormal exit is
 // not evidence that GitHub is down. The string wrapper also serves folder Git.
 export function pullFailure(e, stderr = '') {
+  // Already classified at the repository boundary; don't erase its identity
+  // when the controller applies its ordinary error presentation.
+  if(e?.repository && ['access','auth','notfound'].includes(e.kind) && typeof e.message==='string')return e;
   const detail = String(stderr || e?.stderr || e?.message || (typeof e === 'string' ? e : '')).trim();
   const text = `${e?.code ?? ''} ${detail}`;
   const failure = (kind, message) => ({kind, message});
@@ -251,7 +295,8 @@ export function pullFailure(e, stderr = '') {
   if (/rate limit|HTTP 429|secondary rate/i.test(text)) return failure('rate', 'Could not read pull requests: GitHub rate limit exceeded');
   if (/auth login|not logged in|authentication|HTTP 401|bad credentials/i.test(text)) return failure('auth', 'Sign in first: gh auth login');
   if (/no git remotes|could not determine|none of the git remotes|not a git repository|no remotes/i.test(text)) return failure('repository', 'No GitHub repository');
-  if (/could not resolve to|could not resolve (?:repository|pull request)|HTTP (?:403|404)|not found|not accessible|resource not accessible|permission denied/i.test(text)) return failure('access', 'Repository or pull request is not accessible with the current GitHub account');
+  if (/could not resolve to|could not resolve (?:repository|pull request)|HTTP 404|\bnot found\b/i.test(text)) return failure('notfound', 'Repository or pull request not found');
+  if (/HTTP 403|not accessible|resource not accessible|permission denied/i.test(text)) return failure('access', 'Repository or pull request is not accessible with the GitHub account');
   if (/HTTP [45]\d\d|GraphQL:/i.test(text)) return failure('response', 'Could not read pull requests: GitHub returned an error');
   // Resource resolution, a local command timeout and arbitrary mentions of
   // "network" must not be mistaken for a DNS/connection failure.

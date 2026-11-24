@@ -1,4 +1,5 @@
 import {loadMod} from '../../tools/plugin-harness.mjs';
+import {githubInvocation} from './github-read.mjs';
 import {element,svg,nodes,find,words} from './choice-menu.mjs';
 export {element,svg,nodes,find,words};
 export const t={background:'#191d28',foreground:'#eeeeee',muted:'#999999',dim:'#666666',raised:'#222222',hover:'#333333',border:'#444444',ansi1:'red',ansi2:'green',ansi3:'yellow',ansi5:'purple'};
@@ -8,7 +9,8 @@ export async function rowHarness({host={},modules={}}={}) {
   const chain=new Proxy({},{get:(_n,key)=>key==='build'?()=>({}):()=>chain});
   const {Main,facts,U,AggregatePulls}=await loadMod({mod:'custom-changes',globals:{window:{paint_path:element}},
     host:{props:()=>null,settings:()=>({zoom}),theme:()=>t,closeOverlay(){},openOverlay(){},nextCommand(){},run:(...args)=>focus.push(args),
-      layout:()=>({id:'panel',children:[{id:'panel-body',active:'changes'}]}),...host},
+      layout:()=>({id:'panel',children:[{id:'panel-body',active:'changes'}]}),...host,
+      ...(host.exec?{exec:(command,args,options)=>{const call=githubInvocation(command,args,options);return host.exec(call.command,call.args,call.options);}}:{})},
     modules:{'main.js':'src/plugins/git/mod/main.js','pulls.js':'src/plugins/git/mod/pulls.js','label-colors.js':'src/plugins/git/mod/label-colors.js',
       'ui.js':'src/ui/ui.js','gpui-kit':{View:class{},div:element,svg,PathBuilder:{stroke:()=>chain}},
       'gpui-base':{h_flex:()=>element().flex(),v_flex:()=>element().flex().flex_col(),Popover:{},Input:{}},
