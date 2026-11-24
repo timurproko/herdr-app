@@ -1,12 +1,15 @@
 # Tasks
 
-## 1. Coordinator rendering logs component-scoped failures and guards mixed Closed history and notices
+## 1. Coordinator rendering bounds long lists and caches text while retaining component-scoped failure diagnostics
 
 - [x] 1.1 Inspect installed provenance and reviewed native execution/render behavior read-only; document the 50 ms uncatchable native interrupt and explicitly record that the screenshot cause remains unproven.
 - [x] 1.2 Exercise the real packaged coordinator renderer with 30 mixed Closed rows, two repositories, a section read notice and live/historical targets; record that the original interruption does not reproduce in this fixture.
 - [x] 1.3 Reproduce the separate synchronous notice-fallback notify violation before its fix, trace it to import PR #1, and distinguish it from the screenshot's native interruption without blaming an unproven merged change.
 - [x] 1.4 Yield notice work before inline spawn can notify, and add exact component/error logging for caught render failures plus honest next-attempt component evidence after an uncatchable abort; verify the full-render regression.
 - [x] 1.5 Document the unresolved native cause and diagnostics limits in testing guidance; pass focused notices/history/geometry/render fixtures before delivering this outcome.
+
+- [x] 1.6 Measure the packaged coordinator renderer before and after PR 42 with 30 and 60 Closed rows in disposable native checks, separating row/probe/pill/notice costs and differential tooltip overhead.
+- [x] 1.7 Bound coordinator replacement pages, cache distinct-string native measurements and immutable row presentation, cap visible pills while retaining full tooltips, and enforce a synthetic 100-row fixed-operation regression without render IO.
 
 ## 2. Repository-scoped GitHub reads route unambiguously and access refusals identify repository and account context
 
@@ -24,4 +27,4 @@
 ## Workflow follow-up
 
 - Inspect hosted required checks on the exact final head and report actual status before handoff; never personally ready or merge the PR.
-- The original native render interruption and its introducing merged change remain unproven; component diagnostics are the approved fallback, not a claim of native timing coverage.
+- The live interruption remains unreproduced by the disposable checker. PR 42 measurably increased build cost; bounded paging and caches remove inventory-size growth. Native callback build measurements are not live layout/paint timing evidence.

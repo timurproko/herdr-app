@@ -315,7 +315,15 @@ or an applicable `readNotice`, before applying folds. Empty sections have no hea
 but disappearing sections retain saved fold keys. A settled tab with no qualifying
 sections uses ordinary Git's **No open pull requests** / **No closed pull requests**;
 notice-only and folded eligible sections are not empty. Pending/unverified feedback
-is unchanged. The cross-tab repository inventory remains separate from this render
+is unchanged. The selected presentation is sliced into replacement pages of ten
+items including headers, notices and rows, with repeated continuation headers.
+Paging applies after folding, preserves full counts/inventory and starts no IO;
+its per-page scroll identity resets position and Previous/Show more remain outside
+the viewport. Page state is per coordinator home and tab. Distinct-string native
+probe widths use a bounded zoom/style-keyed cache; PR label presentation caches
+immutable facts, never native callback-bearing elements. Coordinator rows build
+at most three pills but retain all names in metadata/strip tooltips. See
+[GIT-RENDER-BUDGET.md](GIT-RENDER-BUDGET.md) for measurements and native-check limits. The cross-tab repository inventory remains separate from this render
 projection so membership reads, enrollment and webhook updates do not lose hidden sections.
 
 Coordinator enrollment uses one non-shrinking footer after `task-pulls-scroll`.

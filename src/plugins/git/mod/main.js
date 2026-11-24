@@ -26,6 +26,10 @@ const FOLDED_REPOS_KEY = 'custom.git.task-repositories.folded';
 const LOCAL_CONTEXT_TTL = 10000; // shell branch/footer only, never a GitHub poll
 const CI_SWEEP_MS = 2400;
 const CI_SWEEP_WIDTH = 96;
+// Include headers/notices in the budget, not only PRs. Pages replace rather
+// than append: no amount of Show more clicks can recreate an unbounded render.
+const TASK_PAGE_SIZE = 10;
+const TEXT_CACHE_LIMIT = 512;
 const ciPending = pr => ['open','draft'].includes(pr?.state) && pr.checks?.pending > 0;
 function find(node, id) { return node?.id === id ? node : (node?.children ?? []).map(c => find(c, id)).find(Boolean); }
 // Repository data survives agent/tab changes in the same machine and folder.
@@ -674,10 +678,20 @@ export default class Changes extends View {
   pullLine(t, id, items, clipOrder = []) {
     this.pullLineSizes ??= new Map();
     const sizes = this.pullLineSizes.get(id) ?? {};
+    this.pullTextWidths ??= new Map();
+    this.pullTextPending ??= new Set();
+    this.pullTextRequests ??= new Map();
+    const zoom = settings().zoom > 0 ? settings().zoom : 1;
     const context = this.context;
+    const textKey = (item, short) => `${zoom}\0${item.kind}\0${short ? item.compactKey : item.measureKey}`;
+    const keyed = this.context?.startsWith('tasks:') && items.every(item => item.measureKey != null);
+    for (const item of items) for (const short of [false, ...(item.compact ? [true] : [])]) {
+      const name = `${item.kind}-${short ? 'compact' : 'full'}`;
+      if (keyed) sizes[name] = this.pullTextWidths.get(textKey(item, short));
+    }
     const measure = (name, size, cx) => {
-      if (this.context !== context || !this.shown() || !Number.isFinite(size.width)) return;
-      const width = size.width / (settings().zoom > 0 ? settings().zoom : 1);
+      if (this.context !== context || !this.shown() || !Number.isFinite(size.width) || (settings().zoom > 0 ? settings().zoom : 1) !== zoom) return;
+      const width = size.width / zoom;
       if (Math.abs((sizes[name] ?? -1) - width) < 0.01) return;
       sizes[name] = width; this.pullLineSizes.set(id, sizes); cx.notify();
     };
@@ -713,10 +727,32 @@ export default class Changes extends View {
     // text never adds a line, gap, hover target or horizontal reservation.
     const probes = div().id(`${id}-probes`).absolute().left(0).top(0).w(0).h(0).overflow_hidden().invisible()
       .text_size(11).line_height('18px')
-      .children(items.flatMap(item => [false, ...(item.compact ? [true] : [])].map(short =>
-        h_flex().absolute().left(0).top(0).child(item.render(short, true).flex_none()
-          .id(`${id}-probe-${item.kind}-${short ? 'compact' : 'full'}`)
-          .on_size_change((size, cx) => measure(`${item.kind}-${short ? 'compact' : 'full'}`, size, cx))))));
+      .children(items.flatMap(item => [false, ...(item.compact ? [true] : [])].flatMap(short => {
+        const key = keyed ? textKey(item, short) : null;
+        if (key && (this.pullTextWidths.has(key) || this.pullTextPending.has(key))) return [];
+        let measurement;
+        if (key) {
+          this.pullTextPending.add(key);
+          measurement=this.pullTextRequests.get(key);
+          if (measurement == null) {
+            measurement=this.pullTextSequence=(this.pullTextSequence??0)+1;
+            this.pullTextRequests.set(key,measurement);
+            if (this.pullTextRequests.size>TEXT_CACHE_LIMIT) this.pullTextRequests.delete(this.pullTextRequests.keys().next().value);
+          }
+        }
+        return [h_flex().absolute().left(0).top(0).child(item.render(short, true).flex_none()
+          .id(`${id}-probe-${item.kind}-${short ? 'compact' : 'full'}${key ? `-measure-${measurement}` : ''}`)
+          .on_size_change((size, cx) => {
+            if (this.context !== context || !this.shown() || !Number.isFinite(size.width) || (settings().zoom > 0 ? settings().zoom : 1) !== zoom) return;
+            if (key) {
+              if (this.pullTextRequests.get(key)!==measurement) return;
+              this.pullTextRequests.delete(key);
+              this.pullTextWidths.set(key, size.width / zoom);
+              if (this.pullTextWidths.size > TEXT_CACHE_LIMIT) this.pullTextWidths.delete(this.pullTextWidths.keys().next().value);
+            }
+            measure(`${item.kind}-${short ? 'compact' : 'full'}`, size, cx);
+          }))];
+      })));
     return {line, probes};
   }
 
@@ -739,21 +775,32 @@ export default class Changes extends View {
 
   renderPullRow(t, pr, ghost = false) {
     const prefix = ghost ? 'swap-' : '', rowId = pr.key ?? pr.number;
-    const agentButton = this.agentButton(t, pr, !ghost), labels = pr.labels ?? [];
+    const agentButton = this.agentButton(t, pr, !ghost);
+    // Cache presentation by immutable fact identity; never retain native rows:
+    // their event callbacks belong to the current native snapshot build.
+    this.pullPresentations ??= new WeakMap();
+    let presentation = this.pullPresentations.get(pr);
+    const labelLimit=this.context?.startsWith('tasks:') ? 3 : Infinity;
+    if (!presentation || presentation.source!==pr.labels || presentation.limit!==labelLimit) {
+      const allLabels = pr.labels ?? [];
+      presentation = {source:pr.labels,limit:labelLimit,labels:allLabels.slice(0,labelLimit),labelNames:allLabels.map(label=>label.name).join('\n')};
+      this.pullPresentations.set(pr,presentation);
+    }
+    const {labels,labelNames} = presentation;
     const groupId = (kind, probe) => `${prefix}pr-${kind}-${rowId}${probe ? '-probe' : ''}`;
     const text = (kind, value, tooltip, probe) => div().id(groupId(kind, probe)).min_w(0).h(18)
       .overflow_hidden().whitespace_nowrap().tooltip(tooltip).child(value);
     const byline = this.pullLine(t, `${prefix}pr-byline-${rowId}`, [
-      {kind:'number', render:(_short, probe) => text('number', `#${pr.number}`, pr.meta ?? '', probe)},
-      ...(pr.login ? [{kind:'author', render:(_short, probe) => text('author', pr.login, pr.meta ?? '', probe)}] : []),
-      ...(pr.when ? [{kind:'time', compact:true, render:(short, probe) => text('time', short ? pr.compactWhen : pr.when, pr.meta ?? '', probe)}] : []),
+      {kind:'number', measureKey:`#${pr.number}`, render:(_short, probe) => text('number', `#${pr.number}`, pr.meta ?? '', probe)},
+      ...(pr.login ? [{kind:'author', measureKey:pr.login, render:(_short, probe) => text('author', pr.login, pr.meta ?? '', probe)}] : []),
+      ...(pr.when ? [{kind:'time', measureKey:pr.when, compactKey:pr.compactWhen, compact:true, render:(short, probe) => text('time', short ? pr.compactWhen : pr.when, pr.meta ?? '', probe)}] : []),
     ], ['author']);
     byline.line.tooltip(pr.meta ?? '');
     const meta = this.pullLine(t, `${prefix}pr-meta-${rowId}`, [
-      ...(pr.tasks ? [{kind:'tasks', compact:true, render:(short, probe) => h_flex().id(groupId('tasks', probe)).min_w(0).h(18).gap(4).items_center()
+      ...(pr.tasks ? [{kind:'tasks', measureKey:pr.tasks.label, compactKey:`${pr.tasks.done}/${pr.tasks.total}`, compact:true, render:(short, probe) => h_flex().id(groupId('tasks', probe)).min_w(0).h(18).gap(4).items_center()
         .tooltip(pr.tasks.label).child((probe ? div().size(U.tinyIcon) : this.taskIcon(t, pr.tasks)).flex_none())
         .child(div().flex_none().whitespace_nowrap().child(short ? `${pr.tasks.done}/${pr.tasks.total}` : pr.tasks.label))}] : []),
-      ...(pr.checks ? [{kind:'checks', render:(_short, probe) => {
+      ...(pr.checks ? [{kind:'checks', measureKey:pr.checks.label, render:(_short, probe) => {
         const color = pr.checks.state === 'success' ? t.ansi2 : pr.checks.state === 'failure' ? t.ansi1 : t.ansi3;
         const icon = pr.checks.state === 'success' ? svg('mods/custom-workspace-chrome/check.svg').size(U.tinyIcon).text_color(color)
           : pr.checks.state === 'failure' ? svg('mods/custom-workspace-chrome/x.svg').size(U.tinyIcon).text_color(color)
@@ -762,13 +809,13 @@ export default class Changes extends View {
           .child(div().id(groupId('check-icon', probe)).size(U.tinyIcon).flex_none().flex().items_center().justify_center().child(icon.flex_none()))
           .child(div().flex_none().whitespace_nowrap().underline().child(pr.checks.label));
       }}] : []),
-      ...(labels.length ? [{kind:'labels', render:(_short, probe) => h_flex().id(groupId('labels', probe)).min_w(0).h(18).gap(4).items_center().overflow_hidden()
-        .tooltip(labels.map(label => label.name).join('\n'))
+      ...(labels.length ? [{kind:'labels', measureKey:labels.map(label=>label.name).join('\0'), render:(_short, probe) => h_flex().id(groupId('labels', probe)).min_w(0).h(18).gap(4).items_center().overflow_hidden()
+        .tooltip(labelNames)
         .children(labels.map((label, index) => this.labelPill(t, label, `${groupId('label', probe)}-${index}`)))}] : []),
-      ...(pr.review ? [{kind:'review', render:(_short, probe) => text('review', pr.review === 'approved' ? 'Approved' : 'Changes requested',
+      ...(pr.review ? [{kind:'review', measureKey:pr.review, render:(_short, probe) => text('review', pr.review === 'approved' ? 'Approved' : 'Changes requested',
         pr.review === 'approved' ? 'Approved' : 'Changes requested', probe).text_color(pr.review === 'approved' ? t.ansi2 : t.ansi1)}] : []),
     ], ['review', 'labels']);
-    meta.line.tooltip([pr.tasks?.label, pr.checks?.label, ...labels.map(label => label.name),
+    meta.line.tooltip([pr.tasks?.label, pr.checks?.label, labelNames,
       pr.review ? (pr.review === 'approved' ? 'Approved' : 'Changes requested') : null].filter(Boolean).join('\n'));
     return h_flex().id(`${prefix}pr-${rowId}`).relative().w_full().h(74).min_h(74).max_h(74).flex_none().px(8).py(6).gap(U.gap).items_start().rounded(U.radius)
       .when(!ghost, el => el.cursor_pointer().role('button').accessibility_label(`Open pull request #${pr.number} on GitHub`)
@@ -915,7 +962,49 @@ export default class Changes extends View {
         .when(Boolean(error), body => body.child(this.renderPart(`repository-notice:${repo}`,()=>div().id(`task-error-${repo}`).px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(error))))));
   }
 
+  taskSections(sections, scope) {
+    const key = `${scope}\0${this.view}`;
+    if (this.taskPageScope !== scope) { this.taskPages = new Map();this.taskPageScope=scope; }
+    this.taskPages ??= new Map();
+    const items = [];
+    for (const section of sections) {
+      items.push({section,header:true});
+      if (this.foldedRepositories.has(section.repo)) continue;
+      for (const row of section.rows) items.push({section,row});
+      if (section.error) items.push({section,error:section.error});
+    }
+    const last = Math.max(0,Math.ceil(items.length / TASK_PAGE_SIZE)-1);
+    const page = Math.min(this.taskPages.get(key) ?? 0,last);
+    const visible = [];
+    for (const item of items.slice(page*TASK_PAGE_SIZE,(page+1)*TASK_PAGE_SIZE)) {
+      let section = visible[visible.length-1];
+      if (section?.repo !== item.section.repo) {
+        section = {repo:item.section.repo,rows:[],error:null};visible.push(section);
+      }
+      if (item.row) section.rows.push(item.row);
+      if (item.error) section.error=item.error;
+    }
+    return {sections:visible,page,last,key};
+  }
+
+  taskPageControl(t, paging, scope) {
+    if (!paging.last) return null;
+    const change = (page,cx) => {
+      if (!this.shown() || this.aggregate?.currentContext({presentation:true})?.scope !== scope || `${scope}\0${this.view}` !== paging.key) return;
+      this.taskPages.set(paging.key,page);cx.notify();
+    };
+    return h_flex().id('task-pulls-pages').flex_none().p(8).gap(12).text_size(U.meta).text_color(t.dim)
+      .when(paging.page>0,el=>el.child(div().id('task-pulls-previous').cursor_pointer().role('button').accessibility_label('Show previous task pull requests')
+        .on_click((_e,cx)=>change(paging.page-1,cx)).child('Previous')))
+      .child(div().child(`${paging.page+1} / ${paging.last+1}`))
+      .when(paging.page<paging.last,el=>el.child(div().id('task-pulls-more').cursor_pointer().role('button').accessibility_label('Show more task pull requests')
+        .on_click((_e,cx)=>change(paging.page+1,cx)).child('Show more')));
+  }
+
   renderAggregate(cx,t) {
+    // Dedupe only within this snapshot; unacknowledged probes retry next frame.
+    this.pullTextPending = new Set();
+    if (this.pullTextScope!==this.context) {this.pullTextRequests=new Map();this.pullTextScope=this.context;}
     const aggregate=this.aggregate,counts=aggregate.counts(),scope=aggregate.context.scope;
     // Membership is cross-tab: enrollment and updates must retain hidden sections.
     const repositories=aggregate.repositories(), rows=aggregate.rows(this.view);
@@ -925,6 +1014,7 @@ export default class Changes extends View {
       const ids=new Set(repositories.map(repo=>`task-repo-name-${scope}-${repo}`));
       for(const id of this.repositoryNameSizes.keys())if(!ids.has(id))this.repositoryNameSizes.delete(id);
     }
+    const paging=this.taskSections(sections,scope);
     this.notices ??= new GitNotices();
     const notices=new Map(repositories.map(repo=>[repo,this.notices.sync(cx,{enabled:this.shown() && !aggregate.context.stale,repository:repo})]));
     const setup=repositories.length ? [...notices.values()].includes('setup') : this.notices.sync(cx,{enabled:this.shown() && !aggregate.context.stale,repository:null})==='setup';
@@ -951,9 +1041,11 @@ export default class Changes extends View {
       .child(h_flex().id('git-views').h(40).flex_none().px(4).gap(2).items_center().border_b(1).border_color(t.border)
         .child(this.segment(t,'git-view-open','Open',counts.open,this.view==='open',view=>this.setView('open',view)))
         .child(this.segment(t,'git-view-closed','Closed',counts.closed,this.view==='closed',view=>this.setView('closed',view))))
-      .child(v_flex().id('task-pulls-scroll').flex_1().min_h(0).overflow_y_scrollbar().p(4)
-        .children(sections.map(section => this.renderPart(`repository-section:${section.repo}`,()=>this.repositorySection(t, section, scope))))
-        .when(!sections.length,el=>el.child(panelMessage(t,'git-task-empty',{text:aggregate.context.stale?'Waiting for fleet verification':aggregate.busy?'Loading…':`No ${this.view} pull requests`,loading:!aggregate.context.stale && aggregate.busy,rowInset:2}))))
+      .child(v_flex().id('task-pulls-scroll').flex_1().min_h(0).overflow_hidden()
+        .child(v_flex().id(`task-pulls-page-${scope}-${this.view}-${paging.page}`).flex_1().min_h(0).overflow_y_scrollbar().p(4)
+          .children(paging.sections.map(section => this.renderPart(`repository-section:${section.repo}`,()=>this.repositorySection(t, section, scope))))
+          .when(!sections.length,el=>el.child(panelMessage(t,'git-task-empty',{text:aggregate.context.stale?'Waiting for fleet verification':aggregate.busy?'Loading…':`No ${this.view} pull requests`,loading:!aggregate.context.stale && aggregate.busy,rowInset:2})))))
+      .when(Boolean(paging.last),el=>el.child(this.taskPageControl(t,paging,scope)))
       .when(setup,el=>el.child(this.liveCIInfo(t)))
       .when(Boolean(enrollment),el=>el.child(enrollment))
       .when(Boolean(sweep),el=>el.child(this.sweepLayer(t,sweep).top(U.section)));
@@ -981,6 +1073,7 @@ export default class Changes extends View {
   }
 
   render(cx) {
+    this.pullTextPending = new Set();
     // QuickJS's deadline interrupt is deliberately uncatchable. A surviving
     // marker on the next attempt is evidence of an aborted frame, not its cause.
     if(this.renderAttempt) console.error('[custom-changes] previous render did not complete',JSON.stringify({component:this.renderComponent??'panel',view:this.view,error:'Native interruption or aborted render; consult the host error banner/log for the exact error'}));

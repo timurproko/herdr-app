@@ -289,9 +289,14 @@ No deployment or live label mutation is performed.
 ## Coordinator render error diagnostics
 
 `node --experimental-vm-modules tests/git-panel-errors.test.mjs` exercises the
-packaged controller, aggregate reader, real notices and UI with 30 Closed rows
+packaged controller, aggregate reader, real notices and UI with 100 Closed rows
 across two repositories, a history read notice, merged/closed-unmerged states and
-live/historical agent variants. It uses inline spawn and render-side-effect guards.
+live/historical agent variants. A fixed 10,000-builder-operation / 1,200-element
+budget bounds each replacement page; every row is reachable, even a 100-label PR
+builds fewer than 125 elements, and paging adds no reads. Distinct-string probes,
+cache reuse across pages, zoom invalidation and stale measurement refusal have
+regressions. The disposable native 30/60-row measurements and their exact scope
+are recorded in [GIT-RENDER-BUDGET.md](GIT-RENDER-BUDGET.md). It uses inline spawn and render-side-effect guards.
 A synchronous notice transport failure previously reached fallback `notify` during
 render; yielding before request work fixes that proven path (present since import
 PR #1). This is **not** a reproduction of the screenshot's native `interrupted`

@@ -61,6 +61,27 @@ Caught Git render failures SHALL log the actual error text and innermost failing
 - **THEN** the log identifies its actual error and innermost component without replacing them with a generic outer-panel error
 - **AND** the error still reaches the host's last-good-frame fallback
 
+### Requirement: Bounded coordinator render work
+Coordinator Open and Closed presentation SHALL use replacement pages of at most ten inventory presentation items including headers, notices and PRs. Continuation headers MAY repeat. Paging SHALL preserve full linked-PR counts, folds, inventory and action authority without starting reads or appending an unbounded native tree.
+
+#### Scenario: Long Closed inventory
+- **WHEN** a coordinator has one hundred eligible Closed PRs across repositories
+- **THEN** each render builds only its bounded page and Previous or Show more makes every PR reachable
+- **AND** page controls and enrollment remain outside the page-specific scrolling viewport
+- **AND** a deterministic regression enforces a fixed builder-operation ceiling and bounded native elements per PR
+
+#### Scenario: Repeated row text and labels
+- **WHEN** coordinator rows share natural-width metadata strings
+- **THEN** native intrinsic widths are measured once per distinct zoom, style and string in a bounded cache, with at most one pending probe per snapshot
+- **AND** current available line width still selects semantic shortening without guessed character budgets
+- **AND** stale-context or prior-zoom callbacks cannot poison current measurements
+- **AND** each row builds at most three label pills while full assigned label names remain available in tooltips
+
+#### Scenario: Snapshot-safe row caching
+- **WHEN** unchanged PR facts are rendered again
+- **THEN** pure presentation and text measurements may be reused while interactive native elements register callbacks in the current snapshot
+- **AND** native measurements are reported with their scope rather than claimed as live desktop paint or click latency
+
 #### Scenario: Native interruption leaves a surviving marker
 - **WHEN** a native abort bypasses JavaScript catch/finally and a later render observes the prior component marker
 - **THEN** it logs the last entered component and an explicitly incomplete-render diagnostic
