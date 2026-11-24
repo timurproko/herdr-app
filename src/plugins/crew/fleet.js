@@ -1,5 +1,6 @@
 // Crew owns identity and versioned task PR sourcing. Consumers use registry contributions only.
 import { shared, setShared, spaces, panes, terminals, machines, checking, FLEET_DISPLAY_KEY, fleetDisplayChangeAllowed, updateFleetDisplay } from '../api.js';
+import { fleetError, fleetGeneration, recordFleetFailure, resolveFleetFailure, fleetVerification, fleetRetry, deferFleetRetry, clearFleetRetry, clearFleetRetries } from './fleet-diagnostics.js';
 export const FLEET_KEY = 'custom.fleet.links', DISPLAY_KEY = FLEET_DISPLAY_KEY;
 const READS = 'custom.fleet.reads', TTL = 10000, EXPIRY = 30000, READ_LEASE = 45000;
 // Only reads witnessed by this running mod can authorize actions. Persisted
@@ -9,6 +10,16 @@ const enabled = () => shared('custom.spaces.preferences')?.connectFleetToCoordin
 const machineOf = address => address?.includes('/') ? address.split('/')[0] : null;
 const qualify = (address, machine) => typeof address !== 'string' || !address || (address.includes('/') && machineOf(address) !== machine) ? null : machine && !address.includes('/') ? `${machine}/${address}` : address;
 const model = () => ({groups:spaces(), all:panes(), list:terminals()});
+// A role hint can route waiting feedback, never a pair or an action scope.
+function coordinatorCandidate(machine, snapshot) {
+  const candidates=snapshot.list.filter(t=>t.state==='live' && machineOf(t.address)===machine && t.labels?.['custom.crew.home']==='1')
+    .flatMap(t=>{
+      const members=snapshot.all.filter(p=>p.terminal===t.address && !p.mod);
+      const groups=members.length===1 ? snapshot.groups.filter(s=>(s.machine??null)===machine && s.tabs?.some(tab=>tab.id===members[0].tab)) : [];
+      return groups.length===1 ? [{parent:groups[0].id,owner:t.address}] : [];
+    });
+  return candidates.length===1 ? candidates[0] : null;
+}
 const readyLayout = (machine, hosts=machines()) => hosts.some(h=>(h.name??null)===machine && h.layout==='ready');
 // A status reply can race native membership or crew finish's record update.
 // Missing workers remain uncertain; a finished owner or conflicting join is not.
@@ -203,10 +214,13 @@ export function fleetColorAllowed(pair) {
 }
 // The injected bounded status reader owns capability fallback, never consumers.
 export function refreshFleets(cx, readStatus, force = false) {
-  if(!enabled() || checking() || (shared(FLEET_KEY) && shared(FLEET_KEY).version!==1)) return;
+  if(checking())return;
+  if(!enabled()) {clearFleetRetries();return;}
+  if(shared(FLEET_KEY) && shared(FLEET_KEY).version!==1)return;
   const snapshot=model(), hosts=machines();pruneDisplays(snapshot,hosts);
   const displays=savedDisplays();
   const relevant=new Set([...snapshot.list.filter(t=>t.state==='live' && (t.labels?.['custom.crew.home']==='1' || t.labels?.['crew.task'])).map(t=>machineOf(t.address)),...displays.map(d=>d.machine)]);
+  clearFleetRetries(new Set([...relevant].map(machine=>machine??'local')));
   for(const machine of relevant) {
     if(machine && !hosts.some(m=>m.name===machine && m.layout==='ready')) continue;
     const key=machine??'local', state=shared(FLEET_KEY), entry=state?.entries?.[key];
@@ -217,35 +231,52 @@ export function refreshFleets(cx, readStatus, force = false) {
       if(pending.token!==entry?.attemptToken)pendingTokens.set(key,pending.token);
       if(pending.token!==entry?.attemptToken || witnessed(key,pending.token))continue;
     }
-    if(!force && witnessed(key,entry?.attemptToken) && (entry.attemptSignature??entry.signature)===sig && now-(entry.attemptAt??entry.at)<TTL) continue;
-    const token=`${now}-${Math.random()}`, generation=shared('custom.fleet.generation');
+    const sameAttempt=(entry?.attemptSignature??entry?.signature)===sig, retry=sameAttempt?fleetRetry(machine):null;
+    if(!force && retry && now<retry.nextAt)continue;
+    if(!force && !retry && witnessed(key,entry?.attemptToken) && sameAttempt && now-(entry.attemptAt??entry.at)<TTL)continue;
+    if(pending && pending.until<=now)recordFleetFailure(machine,'expired-read',pending.generation??fleetGeneration(),{discard:true,subject:pending.subject??coordinatorCandidate(machine,snapshot)});
+    const token=`${now}-${Math.random()}`, generation=fleetGeneration(), subject=coordinatorCandidate(machine,snapshot);
     pendingTokens.set(key,token);
-    setShared(READS,{...shared(READS),[key]:{token,until:now+READ_LEASE}});
+    setShared(READS,{...shared(READS),[key]:{token,until:now+READ_LEASE,generation,subject}});
     cx.spawn(async view=> {
-      const current=()=>enabled() && (!shared(FLEET_KEY) || shared(FLEET_KEY).version===1) && shared('custom.fleet.generation')===generation && shared(READS)?.[key]?.token===token && shared(READS)[key].until>Date.now();
+      const obsolete=()=>fleetGeneration()!==generation ? 'obsolete-generation' : !enabled() ? 'disabled' :
+        shared(READS)?.[key]?.token!==token ? 'replaced-read' : shared(READS)[key].until<=Date.now() ? 'expired-read' :
+        signature(machine,model(),reference)!==sig ? 'obsolete-identity' :
+        shared(FLEET_KEY) && shared(FLEET_KEY).version!==1 ? 'replaced-read' : null;
+      const current=()=>!obsolete();
+      const discard=reason=>recordFleetFailure(machine,reason,generation,{discard:true,subject});
       try {
-        await Promise.resolve();if(!current()) return;
-        const status=recordedSource(await readStatus(machine,{current:()=>current() && signature(machine,model(),reference)===sig}));
-        if(!current()) return;
+        await Promise.resolve();if(!current()) {discard(obsolete());return;}
+        const output=await readStatus(machine,{current});
+        if(!current()) {discard(obsolete());return;}
+        let status;
+        try {status=recordedSource(output);} catch {throw fleetError('invalid-status');}
         const latest=shared(FLEET_KEY), snapshot=model(), prior=latest?.entries?.[key]?.status;
         const evidence={ready:readyLayout(machine),verified:true};
-        if(!fleetDisplayChangeAllowed(evidence))throw Error('Fleet layout is not ready');
+        if(!fleetDisplayChangeAllowed(evidence))throw fleetError('layout-unready');
         const changedOwner=prior && (prior.home!==status.home || prior.owner.terminal!==status.owner.terminal);
-        if(!changedOwner && incompleteMembership(status,machine,snapshot)) throw Error('Live membership is not yet available');
+        if(!changedOwner && incompleteMembership(status,machine,snapshot)) throw fleetError('membership-incomplete');
         const bound=bindFleet(status,machine,snapshot), identity=identityOf(bound), at=Date.now();
         const display=nextDisplay(machine,bound,snapshot), verifiedSignature=signature(machine,snapshot,identity);
         setShared(FLEET_KEY,{version:1,entries:{...(latest?.version===1?latest.entries:{}),[key]:{
           machine,at,attemptAt:at,token,attemptToken:token,signature:verifiedSignature,attemptSignature:signature(machine,snapshot,display??identity),status,binding:bound?.binding??null,identity,members:taskMembership(bound),
           displayIdentity:identityOf(display),displaySignature:signature(machine,snapshot,display)}}});
         verifiedTokens.set(key,token);publishDisplay(machine,display,evidence);
-      } catch {
+        if(bound && (bound.child || display))resolveFleetFailure(machine);
+        else {
+          recordFleetFailure(machine,!status.owner.live ? 'no-owner' : !bound ? 'identity-mismatch' : 'no-fleet',generation,{subject});
+          clearFleetRetry(machine);
+        }
+      } catch(error) {
         if(current()) {
+          recordFleetFailure(machine,error?.reason??'transport-error',generation,{subject,code:error?.code,timeout:error?.timeout});
+          deferFleetRetry(machine,!sameAttempt);
           const latest=shared(FLEET_KEY);
           // Failed transport is not a negative relationship result. Back off
           // using attempt age without renewing successful verification age.
           setShared(FLEET_KEY,{version:1,entries:{...latest?.entries,[key]:{
             ...latest?.entries?.[key],machine,attemptAt:Date.now(),attemptToken:token,attemptSignature:signature(machine,model(),savedDisplays().find(d=>d.machine===machine)??latest?.entries?.[key]?.identity??reference)}}});
-        }
+        } else discard(obsolete());
       } finally {
         if(shared(READS)?.[key]?.token===token) {const reads={...shared(READS)};delete reads[key];setShared(READS,reads);}
         view.notify();
@@ -254,6 +285,7 @@ export function refreshFleets(cx, readStatus, force = false) {
   }
 }
 export function invalidateFleet() {
+  clearFleetRetries();
   setShared('custom.fleet.generation',(shared('custom.fleet.generation')??0)+1);
   setShared(FLEET_KEY,null);setShared(READS,{});updateFleetDisplay(null,null,{disabled:!enabled()});
   verifiedTokens.clear();pendingTokens.clear();
@@ -273,5 +305,14 @@ export function fleetPullContext(space, {presentation = false} = {}) {
         if(owner?.pullScope===retained.pullScope)identity=retained;
       }
   }
-  return identity ? {...identity,kind:'tasks',scope:identity.pullScope,stale:true,links:[]} : null;
+  if(identity) {
+    const candidate=coordinatorCandidate(identity.machine,model());
+    const verification=candidate?.parent===identity.parent && candidate.owner===identity.owner ? fleetVerification(identity.machine,candidate) : null;
+    return {...identity,kind:'tasks',scope:identity.pullScope,stale:true,links:[],verification};
+  }
+  const snapshot=model(), group=snapshot.groups.find(s=>s.id===space);
+  if(!group)return null;
+  const machine=group.machine??null, candidate=coordinatorCandidate(machine,snapshot), verification=fleetVerification(machine,candidate);
+  return candidate?.parent===space && verification && !['no-owner','identity-mismatch','no-fleet'].includes(verification.reason)
+    ? {...candidate,machine,kind:'tasks',scope:JSON.stringify(['fleet-waiting',machine,candidate.parent,candidate.owner]),stale:true,links:[],verification} : null;
 }
