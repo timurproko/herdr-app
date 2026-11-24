@@ -785,7 +785,7 @@ only the demonstrated Windows Git-sh fixture remains an observed suite exclusion
 ## Exact selected source entries
 
 The list below is generated from CI selection, not inferred from naming. On Node
-24 the current selection is **154 Ubuntu / 153 Windows entries**, with two/three
+24 the current selection is **178 Ubuntu / 177 Windows entries**, with two/three
 explicit exclusions respectively. The installed directory-loader fixture now runs
 on both; the preference-home and four runtime-contract suites are included. It includes scaffold/aggregator tests. Earlier Node 20 attempts selected
 122/121 and then 119/119 entries while diagnosing the crashes; those temporary
@@ -846,6 +846,7 @@ tests/agent-context.test.mjs
 tests/agent-rename.test.mjs
 tests/agents-grouping.test.mjs
 tests/architecture.test.mjs
+tests/choice-menu.test.mjs
 tests/ci-message.test.mjs
 tests/claude-isolation.test.mjs
 tests/claude-session-account.test.mjs
@@ -869,25 +870,42 @@ tests/files-plugin-tabs.test.mjs
 tests/files-refresh-policy.test.mjs
 tests/firstmate-profile-role.test.mjs
 tests/fleet-color-menu.test.mjs
+tests/fleet-diagnostics.test.mjs
+tests/fleet-discovery.test.mjs
+tests/fleet-enrollment.test.mjs
 tests/fleet-git.test.mjs
 tests/fleet-history.test.mjs
 tests/fleet-preferences.test.mjs
+tests/fleet-read-failures.test.mjs
+tests/fleet-read-notices.test.mjs
 tests/fleet-reorder.test.mjs
+tests/fleet-toggle-live.test.mjs
 tests/folder-browser-multi.test.mjs
 tests/folder-content.test.mjs
 tests/frame-upgrade.test.mjs
+tests/git-checks-fallback.test.mjs
+tests/git-checks-order.test.mjs
 tests/git-ci-fix.test.mjs
 tests/git-context-menu.test.mjs
 tests/git-core-monitor.test.mjs
+tests/git-count-badges.test.mjs
 tests/git-github-accounts.test.mjs
 tests/git-location.test.mjs
 tests/git-monitor-settings.test.mjs
 tests/git-notices.test.mjs
+tests/git-panel-errors.test.mjs
 tests/git-relay-lifecycle.test.mjs
 tests/git-repository-checkboxes.test.mjs
 tests/git-repository-cli.test.mjs
+tests/git-repository-routing.test.mjs
+tests/git-row-geometry.test.mjs
 tests/git-row-labels.test.mjs
 tests/git-webhooks.test.mjs
+tests/herdr-upgrade-evaluate.test.mjs
+tests/herdr-upgrade-publish.test.mjs
+tests/herdr-upgrade-refresh.test.mjs
+tests/herdr-upgrade-releases.test.mjs
+tests/herdr-upgrade-report.test.mjs
 tests/host-facade.test.mjs
 tests/host-gate.test.mjs
 tests/installed-export.test.mjs
@@ -901,6 +919,7 @@ tests/palette-native-stock.test.mjs
 tests/pin-swap.test.mjs
 tests/pinned-pr-refresh.test.mjs
 tests/plugin-prerequisite-ui.test.mjs
+tests/plugin-section-geometry.test.mjs
 tests/plugin-ui-contract.test.mjs
 tests/plugins.test.mjs
 tests/pr-agent-links.test.mjs
@@ -944,7 +963,11 @@ tests/usage-plugin.test.mjs
 src/plugins/a1-colors/session-name.test.mjs
 src/plugins/a1-colors/session-sync.test.mjs
 src/plugins/a1-colors/settings.test.mjs
+src/plugins/crew/base64.test.mjs
+src/plugins/crew/fleet-command.test.mjs
+src/plugins/crew/fleet-discovery.test.mjs
 src/plugins/crew/fleet-refresh.test.mjs
+src/plugins/crew/fleet-transport.test.mjs
 src/plugins/crew/fleet.test.mjs
 src/plugins/crew/plugin.test.mjs
 scripts/ci-required.test.mjs
