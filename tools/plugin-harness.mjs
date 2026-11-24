@@ -21,7 +21,7 @@ export async function loadMod({ host, modules = {}, entry, mod = 'custom-setting
   }, { context });
   // Host functions a test did not fake fail loudly if a plugin calls them.
   const stub = name => () => { throw Error(`host.${name} is not faked in this test`); };
-  const HOST = ['exec', 'hc', 'window', 'spaces', 'panes', 'terminals', 'machines', 'shared', 'setShared', 'appHome', 'readTextFile', 'notify', 'layout', 'run', 'checking'];
+  const HOST = ['exec', 'hc', 'window', 'spaces', 'panes', 'terminals', 'machines', 'shared', 'setShared', 'appHome', 'readTextFile', 'writeTextFile', 'notify', 'layout', 'run', 'checking'];
   const cache = new Map([['host.js', synthetic({ ...Object.fromEntries(HOST.map(n => [n, stub(n)])), checking:()=>true, ...host })]]);
   cache.set('websocket', synthetic({ WebSocket:{ connect:stub('WebSocket.connect') } }));
   for (const [name, value] of Object.entries(modules)) {
