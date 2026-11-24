@@ -82,6 +82,28 @@ list[0].address=all[0].terminal=status.owner.terminal='t1';f.refreshFleets(cx,as
 failStatus=true;const warmPane=all[0].pane;all[0].pane='warm-owner-moved';tree=panel.render(cx);
 assert.equal(find(tree,'pr-example/a#12'),undefined);assert.equal(find(tree,'git-task-stale'),undefined);assert.equal(text(find(tree,'git-task-empty')).trim(),'Loading');await drain();
 all[0].pane=warmPane;failStatus=false;f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();tree=panel.render(cx);await drain();tree=panel.render(cx);
+// Remembered spaces can outlive their live owner facts or contain a new owner.
+// Keep the rows, but switch to an empty Loading scope rather than folder Git or
+// the former owner's inventory, even when this panel already loaded that data.
+for(const missingOwner of [true,false]) {
+ const oldScope=r.pluginPullContext('coordinator').scope,oldOwner=list[0],oldPane=all[0];
+ const reads=calls.length,navigations=focus.length,robot=find(tree,'pr-agent-example/a#12');
+ failStatus=true;
+ if(missingOwner){list.shift();all.shift();}
+ else {list[0]={...oldOwner,address:'replacement-owner'};all[0]={...oldPane,terminal:'replacement-owner'};}
+ tree=panel.render(cx);
+ const waitingContext=r.pluginPullContext('coordinator',{presentation:true});
+ assert.equal(r.pluginWorkspaceLinks({presentation:true}).length,1,'Missing/changing owner facts do not erase remembered space attachment');
+ assert.equal(r.pluginPullContext('coordinator'),null,'Remembered identity grants no operational authority');
+ assert.notEqual(waitingContext.scope,oldScope,'The old inventory cannot be retained under a different or absent native owner');
+ assert.equal(waitingContext.links.length,0);
+ assert.equal(text(find(tree,'git-task-empty')).trim(),'Loading');assert.equal(panel.aggregate.entries.size,0);
+ assert.equal(find(tree,'pr-example/a#12'),undefined);assert.equal(find(tree,'git-task-stale'),undefined);assert.doesNotMatch(text(tree),/Not a git repository/);
+ robot.attrs.on_click[0]({},cx);assert.equal(focus.length,navigations);await drain();assert.equal(calls.length,reads,'Waiting owner facts start no GitHub reads');
+ if(missingOwner){list.unshift(oldOwner);all.unshift(oldPane);}else {list[0]=oldOwner;all[0]=oldPane;}
+ failStatus=false;f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();tree=panel.render(cx);await drain();tree=panel.render(cx);
+ assert.ok(find(tree,'pr-example/a#12'),'Fresh verification restores consolidated inventory');
+}
 // An optional role hint disappearing is not itself contradictory owner status:
 // a witnessed exact native owner/home may retain read-only history without it.
 failStatus=true;delete list[0].labels['custom.crew.home'];tree=panel.render(cx);assert.ok(find(tree,'pr-example/a#12'));assert.equal(find(tree,'git-task-stale').kids[0],'Stale');assert.equal(r.pluginPullContext('coordinator'),null);await drain();

@@ -370,6 +370,9 @@ export function fleetPullContext(space, {presentation = false} = {}) {
     const snapshot=model(),candidate=coordinatorCandidate(identity.machine,snapshot),owner=bindFleet({home:identity.home,owner:{terminal:identity.owner,live:true},tasks:[]},identity.machine,snapshot);
     const sameCandidate=!candidate || ['parent','owner','ownerTab','ownerPane'].every(k=>candidate[k]===identity[k]);
     if(sameCandidate && owner?.pullScope===identity.pullScope)return {...identity,kind:'tasks',scope:identity.pullScope,stale:true,links:[],verification:fleetVerification(identity.machine,identity)};
+    // Remembered rows can precede live owner facts. Keep an EMPTY Loading scope,
+    // not ordinary folder Git or the former owner's retained PR inventory.
+    return {...identity,kind:'tasks',scope:JSON.stringify(['remembered-wait',identity.machine,identity.parent,fleetGeneration(),candidate?.owner??null]),stale:true,links:[],verification:fleetVerification(identity.machine,identity)};
   }
   const snapshot=model(), group=snapshot.groups.find(s=>s.id===space);
   if(!group)return null;
