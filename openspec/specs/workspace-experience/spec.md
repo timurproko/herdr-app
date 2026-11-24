@@ -303,7 +303,7 @@ Attached coordinator and fleet rows SHALL remain independently selectable native
 - **AND** disabling Crew still hides Crew tags without closing or relocating either space
 
 ### Requirement: Live fleet attachment preference propagation
-Changes to the fleet attachment switch SHALL propagate to mounted Spaces while Settings remains open, without a close event, restart or further user interaction. Enabling SHALL immediately initiate any required verification and publish the verified presentation as soon as it resolves. Disabling SHALL immediately restore independent presentation. This SHALL apply to every applicable local or remote machine group without granting unverified action authority.
+Changes to the fleet attachment switch SHALL propagate to mounted Spaces while Settings remains open, without a close event, restart or further user interaction. Every enable, including repeated off/on cycles, SHALL immediately initiate required current verification and publish attachment as soon as it succeeds. Disablement SHALL immediately restore independent presentation. Applicable local and remote groups SHALL obey the same rule without unverified action authority.
 
 #### Scenario: Enable while Settings remains open
 - **WHEN** the user enables attachment with Settings open and a valid same-machine coordinator/fleet relationship can be verified
@@ -325,6 +325,24 @@ Changes to the fleet attachment switch SHALL propagate to mounted Spaces while S
 - **WHEN** the user enables and then disables attachment while Settings stays open and the enable-time read is pending
 - **THEN** the sidebar remains independent after disabling and the superseded reply cannot restore attachment
 - **AND** a later explicit enable can start a current verification without closing Settings
+
+#### Scenario: Repeated verified off/on cycles
+- **WHEN** a verified attached pair is switched off and on repeatedly with Settings open, with immediate, one-second or fifteen-second off intervals
+- **THEN** each off transition immediately restores independent presentation and each on transition initiates current verification
+- **AND** the pair attaches again after the first successful current verification, without an additional freshness, attempt or abandoned-reader wait inherited from a prior toggle
+- **AND** for a successful local verification completing in less than two seconds, reattachment also completes in less than two seconds without dialog closure or unrelated events
+- **AND** ready remote machines attach after their own successful verification rather than waiting for another machine
+
+#### Scenario: Older reply after a newer toggle
+- **WHEN** a reply initiated before the last off/on sequence arrives before or after the current sequence's successful reply
+- **THEN** the older reply cannot replace current binding, presentation, verification age or retry state
+- **AND** rejecting it cannot discard or delay the current sequence's valid reply
+
+#### Scenario: Large verification response and interrupted processing
+- **WHEN** a valid supported status response of up to one MiB arrives during enablement
+- **THEN** bounded response processing publishes its verified pair without a watchdog interruption or dependence on closing Settings
+- **AND** if response processing is nevertheless abandoned, the existing lifecycle replaces its read within the next two-second recovery interval rather than waiting for the transport lease
+- **AND** transport commands retain their longer bounded execution allowance and superseded replies remain unable to publish
 
 #### Scenario: Other Spaces switches
 - **WHEN** the user changes either last-tab switch with Settings still open
