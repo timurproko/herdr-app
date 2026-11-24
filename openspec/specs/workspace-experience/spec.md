@@ -115,7 +115,7 @@ On supported Windows hosts, Custom SHALL observe terminal selections once window
 - **AND** a held drag or unrelated clipboard activity can still be mistaken for a completed copy
 
 ### Requirement: Optional coordinator fleet attachment
-Settings → Spaces SHALL expose **Connect fleet space to coordinator**, defaulting off and portable as a boolean. When enabled with Crew, a verified same-machine fleet SHALL appear below its coordinator with its own numbered badge using the coordinator's badge colour. The expanded coordinator SHALL show a muted outline chain immediately before its Crew tag. Fleet names SHALL align with ordinary names and use ordinary selected and inactive text states.
+Settings → Spaces SHALL expose **Connect fleet space to coordinator**, defaulting off and portable as a boolean. When enabled with Crew, a verified same-machine fleet SHALL appear below its coordinator with its own numbered badge using the coordinator's badge colour. Both expanded attached rows SHALL show a muted outline chain immediately before their Crew tags. Fleet names SHALL align with ordinary names and use ordinary selected and inactive text states.
 
 #### Scenario: First use and disabled setting
 - **WHEN** the preference is absent or false
@@ -127,8 +127,8 @@ Settings → Spaces SHALL expose **Connect fleet space to coordinator**, default
 - **THEN** the fleet is displayed directly below the coordinator with its own ordinary list-number badge, using the same 16px box, rounded shape and vertical centre as other numbered badges
 - **AND** the fleet badge uses the coordinator's resolved colour without changing the fleet's saved colour, and no chain appears inside either badge or as an elbow or connector line
 - **AND** the fleet name begins at the same left edge as the coordinator and ordinary space names, without indentation, and uses muted text only while inactive
-- **AND** the coordinator has a small muted outline chain immediately before its Crew tag, with the same size, slot, gap and vertical alignment as a worktree marker and no filled badge background
-- **AND** both expanded rows display the same Crew pill styling at the trailing tag edge, after any ahead/behind counts and worktree marker, and unrelated plugin tags remain
+- **AND** both expanded rows have a small muted outline chain immediately before their Crew tags, with the same size, slot, gap and vertical alignment as a worktree marker and no filled badge background
+- **AND** both chains align in one column to the left of the right-aligned Crew pills, after any ahead/behind counts and worktree marker, and unrelated plugin tags remain
 - **AND** a worktree marker without plugin tags retains its existing right-edge alignment with the machine chevron
 
 #### Scenario: Compact rail attachment
@@ -173,9 +173,15 @@ Settings → Spaces SHALL expose **Connect fleet space to coordinator**, default
 
 #### Scenario: Disable or preference round trip
 - **WHEN** the user disables attachment or disables Crew
-- **THEN** linked presentation and the coordinator chain are removed without closing or relocating either space or replaying an earlier order
+- **THEN** linked presentation and both chains are removed without closing or relocating either space or replaying an earlier order
 - **AND** the fleet's numbered badge shows its own saved colour and Automatic behaviour again, as it does after confirmed unlinking
 - **AND** exporting and importing the preference preserves only its boolean, not homes, task records, terminal IDs or pair bindings
+
+#### Scenario: Numbered badges identify native selection targets
+- **WHEN** attachment projects a fleet ahead of an unrelated space without changing native order
+- **THEN** expanded rows, compact badges and drag chips retain the numbers that select those native spaces through the host's numeric selection command and shortcuts
+- **AND** native order coordinator, unrelated space, fleet displays attached as coordinator 1, fleet 3, unrelated 2, then returns to native row order when detached
+- **AND** attachment does not silently reorder native spaces or remap shortcuts to make projected digits consecutive
 
 ### Requirement: Linked spaces reorder as one block
 Dragging either member of a verified coordinator/fleet pair SHALL reorder both as one same-machine block, with the coordinator before the fleet. The drag SHALL NOT split another linked block, cross machines, select a space, move tabs or restart terminals. Cancellation and stale relationships SHALL NOT commit an order change. Unlinked spaces SHALL retain ordinary reordering.
@@ -219,7 +225,7 @@ Dragging either member of a verified coordinator/fleet pair SHALL reorder both a
 - **AND** repository discovery does not regroup unrelated worktree spaces
 
 ### Requirement: Aligned space worktree markers
-In the expanded Spaces sidebar, plugin tags SHALL occupy the existing tag-only right edge, after any ahead/behind counts, worktree marker and attached-coordinator chain. Worktree markers on rows without tags SHALL retain their existing alignment with the machine header's fold chevron. Worktree-icon visibility and rename behavior SHALL remain unchanged.
+In the expanded Spaces sidebar, plugin tags SHALL occupy the existing tag-only right edge, after any ahead/behind counts, worktree marker and attached-row chain. Worktree markers on rows without tags SHALL retain their existing alignment with the machine header's fold chevron. Worktree-icon visibility and rename behavior SHALL remain unchanged.
 
 #### Scenario: Ordinary and attached worktree rows
 - **WHEN** a local or remote machine group shows ordinary worktree spaces or an attached fleet with its worktree marker enabled and no plugin tags
@@ -228,8 +234,8 @@ In the expanded Spaces sidebar, plugin tags SHALL occupy the existing tag-only r
 
 #### Scenario: Worktree marker beside plugin tags
 - **WHEN** a worktree space also displays a Crew tag or another plugin tag
-- **THEN** the row's order is name, any ahead/behind counts, worktree marker, attached-coordinator chain if present, then plugin tags
-- **AND** the chain is immediately before the coordinator's Crew tag, with matching worktree icon size, muted outline colour, gap and vertical alignment and no filled background
+- **THEN** the row's order is name, any ahead/behind counts, worktree marker, attached-row chain if present, then plugin tags
+- **AND** on both attached rows the chain is immediately before Crew, with matching worktree icon size, muted outline colour, gap and vertical alignment and no filled background
 - **AND** when multiple plugin tags exist, unrelated tag content, tooltips and relative order remain while the chain and Crew pill stay adjacent at the trailing edge
 - **AND** the final tag shares the same right edge as a tag-only row instead of being displaced by the markers
 - **AND** ordinary rows retain their existing order with attachment off
@@ -237,7 +243,7 @@ In the expanded Spaces sidebar, plugin tags SHALL occupy the existing tag-only r
 #### Scenario: Hidden marker and renaming
 - **WHEN** worktree icons are switched off or a space is being renamed
 - **THEN** that row shows no worktree marker, preserving the existing visibility and editing behavior
-- **AND** the worktree visibility switch does not hide an attached coordinator's independent chain marker, but renaming hides both markers and tags
+- **AND** the worktree visibility switch does not hide either attached row's independent chain marker, but renaming hides both markers and tags on the edited row
 - **AND** visible plugin tags retain their trailing edge when the worktree marker is hidden, and renaming still hides the tags
 
 ### Requirement: Stable verified fleet presentation during refresh
@@ -245,8 +251,8 @@ Verified fleet presentation SHALL be a persisted property of exact pair identity
 
 #### Scenario: Successful refresh cycle
 - **WHEN** an attached fleet undergoes a delayed Crew status refresh from Git or Spaces and the completed result verifies the same pair
-- **THEN** every intermediate sidebar projection retains the same coordinator/fleet block, own numbered badges with shared coordinator colour, coordinator chain and visible Crew pills on both expanded rows
-- **AND** no intermediate frame reverts the fleet to its independent colour or position, removes the coordinator chain or loses an attached-row Crew pill
+- **THEN** every intermediate sidebar projection retains the same coordinator/fleet block, own numbered badges with shared coordinator colour, matching chains and visible Crew pills on both expanded rows
+- **AND** no intermediate frame reverts the fleet to its independent colour or position, removes either chain or loses an attached-row Crew pill
 
 #### Scenario: Unrelated model and focus changes
 - **WHEN** spaces, tabs or panes unrelated to the pair are added, removed, renamed, reordered or selected on this or another machine, or focus/relay/Git refresh events occur
@@ -271,7 +277,7 @@ Verified fleet presentation SHALL be a persisted property of exact pair identity
 
 #### Scenario: Restart, mod reload or layout switch
 - **WHEN** a previously verified pair's two native spaces still exist after app restart, mod hot reload or a layout switch
-- **THEN** the first available native-space frame restores its attached block, own numbered badges with shared coordinator colour, coordinator chain and Crew pills on both expanded rows from persisted sanitized identity facts before a status read completes
+- **THEN** the first available native-space frame restores its attached block, own numbered badges with shared coordinator colour, chains and Crew pills on both expanded rows from persisted sanitized identity facts before a status read completes
 - **AND** background verification can update or disprove that pair without an intermediate detached frame
 - **AND** persisted facts contain no reports, task records, PR inventory, credentials or transcripts and are not exported as portable preferences
 
@@ -281,19 +287,19 @@ Verified fleet presentation SHALL be a persisted property of exact pair identity
 - **AND** missing native space identities or explicit disablement detach immediately rather than leaving ghost rows
 
 ### Requirement: Independent attached-space identity and tags
-Attached coordinator and fleet rows SHALL remain independently selectable native spaces with distinct tabs and terminals. Both expanded rows SHALL display the existing Crew pill with matching styling and a common trailing tag edge after counts and worktree markers. Only the attached coordinator SHALL show a muted outline chain immediately before its Crew tag. Unrelated plugin tags SHALL remain.
+Attached coordinator and fleet rows SHALL remain independently selectable native spaces with distinct tabs and terminals. Both expanded rows SHALL display the existing Crew pill with matching styling and a common trailing tag edge after counts and worktree markers. Both attached rows SHALL show a muted outline chain immediately before their Crew tags, aligned in one column. Unrelated plugin tags SHALL remain.
 
 #### Scenario: Attached row selection and tags
 - **WHEN** a verified coordinator and fleet are attached in Spaces
 - **THEN** clicking either row selects that native space without relocating tabs or terminals
 - **AND** the active fleet name uses ordinary selected-space text colour and normal weight, while inactive fleet text remains muted and names retain their aligned left edge
 - **AND** both expanded rows display their Crew pill and unrelated plugin tags remain
-- **AND** when Crew is their only tag, the coordinator and fleet pills share the same right edge even if either row has a worktree marker and ahead/behind counts and only the coordinator has the chain
+- **AND** when Crew is their only tag, both pills share the same right edge and both chains share the column immediately to their left, even if either row has a worktree marker and ahead/behind counts
 - **AND** the coordinator retains its coordinator tooltip and the fleet uses its worker tooltip
 
 #### Scenario: Attachment removed
 - **WHEN** the relationship is confirmed broken or attachment is disabled
-- **THEN** the rows retain their separate native identities and ordinary plugin tag rules without a coordinator chain or inherited fleet colour
+- **THEN** the rows retain their separate native identities and ordinary plugin tag rules without either attachment chain or inherited fleet colour
 - **AND** disabling Crew still hides Crew tags without closing or relocating either space
 
 ### Requirement: Live fleet attachment preference propagation
@@ -302,17 +308,17 @@ Changes to the fleet attachment switch SHALL propagate to mounted Spaces while S
 #### Scenario: Enable while Settings remains open
 - **WHEN** the user enables attachment with Settings open and a valid same-machine coordinator/fleet relationship can be verified
 - **THEN** required verification starts without waiting for dialog close or another lifecycle interaction
-- **AND** as soon as verification resolves, the fleet moves below its coordinator, numbering follows the projected order, the chain appears immediately before the coordinator's Crew pill and both badges use the coordinator's colour
+- **AND** as soon as verification resolves, the fleet moves below its coordinator, native shortcut numbers remain truthful, matching chains appear immediately before both Crew pills and both badges use the coordinator's colour
 - **AND** Settings remains open and native space order, focus, tabs and terminals are unchanged
 
 #### Scenario: Disable while Settings remains open
 - **WHEN** the user disables attachment while Settings is open and an attached pair is visible
-- **THEN** the sidebar immediately returns to independent row order and numbering, removes the coordinator chain and restores the fleet's saved badge colour
+- **THEN** the sidebar immediately returns to independent row order, retains each row's native shortcut number, removes both chains and restores the fleet's saved badge colour
 - **AND** no close event or further interaction is needed
 
 #### Scenario: Verification still pending or unavailable
 - **WHEN** enabling requires verification and no valid previously verified display identity is available
-- **THEN** no relationship, inherited badge colour or coordinator chain is fabricated before the read succeeds
+- **THEN** no relationship, inherited badge colour or attachment chain is fabricated before the read succeeds
 - **AND** a failed or ambiguous read leaves the spaces independent rather than attaching an unverified pair
 
 #### Scenario: Disable before verification completes
