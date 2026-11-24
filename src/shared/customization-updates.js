@@ -1,5 +1,5 @@
 import { exec, appHome, shared, setShared, checking, window } from './host.js';
-import { CUSTOMIZATION_UPDATE_KEY, updateProjection, updateAvailable, customizationRowState } from './customization-update-model.js';
+import { CUSTOMIZATION_UPDATE_KEY, updateProjection, updateAvailable, customizationRowState, updateTarget, updateLaunchProgress, sameUpdateRun } from './customization-update-model.js';
 
 const BUSY_CHECK_RETRY = 30000;
 export const customizationUpdateSnapshot = () => shared(CUSTOMIZATION_UPDATE_KEY) || null;
@@ -20,7 +20,7 @@ export function refreshCustomizationUpdates(owner, cx, action = 'status', force 
   const before = customizationUpdateSnapshot(), ticket = (before?.request || 0) + 1;
   // Launch intent must survive before exec returns: deployment can replace this
   // copy before its receipt. The transport bound becomes unknown, never success.
-  const launch = action === 'launch' ? { ticket, started: Date.now(), deadline: Date.now() + 22000, previousToken: before?.job?.token || null } : before?.launch;
+  const launch = action === 'launch' ? { ticket, started: Date.now(), deadline: Date.now() + 22000, previousToken: before?.job?.token || null, progress: updateLaunchProgress(before) } : before?.launch;
   setShared(CUSTOMIZATION_UPDATE_KEY, { ...before, request: ticket,
     ...(action === 'launch' ? { resume: owner.settingsOpening ? { opening: owner.settingsOpening, started: launch.started } : null } : {}),
     ...(launch ? { launch } : {}), ...(action === 'check' ? { checking: true } : {}) });
@@ -32,7 +32,12 @@ export function refreshCustomizationUpdates(owner, cx, action = 'status', force 
         (ticket < (current?.observed || 0) && !(action === 'launch' && current?.launch?.ticket === ticket)) ||
         (launch && action !== 'launch' && !current?.launch && !observesLaunch(snapshot, launch))) return false;
     const pending = current?.launch;
-    setShared(CUSTOMIZATION_UPDATE_KEY, { ...updateProjection(snapshot), request: current?.request,
+    const job = snapshot?.job;
+    const prior = pending && observesLaunch(snapshot, pending) ? pending.progress
+      : sameUpdateRun(current?.progress, job) ? current.progress : null;
+    const progress = job?.state === 'running' ? { token: job.token, started: job.started,
+      target: updateTarget(snapshot) || prior?.target || null, peerRevision: prior?.peerRevision || null } : null;
+    setShared(CUSTOMIZATION_UPDATE_KEY, { ...updateProjection(snapshot), progress, request: current?.request,
       resume: current?.resume || null, observed: Math.max(ticket, current?.observed || 0),
       ...(pending && action !== 'launch' && !observesLaunch(snapshot, pending) ? { launch: pending } : {}) });
     return true;
