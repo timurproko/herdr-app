@@ -278,12 +278,56 @@ optically lowered 1.5 logical pixels from the parent line-box centre with equal 
 in bylines and every status/review/label boundary. Zoom cases from 75% to 200% retain
 the same logical offset; comparison with the old separator tree protects neighbouring
 text, icons, pills and row geometry. Missing-group combinations have no leading/trailing
-or orphan dots.
+or orphan painted dots; the four cell containers and three separator gutters remain
+mounted, with empty cells containing no text, pills or controls.
 Pagination/fleet fixtures also assert labels
 in actual pinned/scrolling and coordinator render paths; existing menu and pin-swap
 fixtures protect captured URLs, callbacks and measured motion. These prove render-tree
 constraints, not GPUI pixel layout, tooltip hit-testing or native animation appearance.
 No deployment or live label mutation is performed.
+
+## Stable Git row geometry
+
+`node --experimental-vm-modules tests/git-row-geometry.test.mjs` resolves the actual
+shared row trees using a deterministic flex/absolute layout model with real `U`
+metrics and content-dependent text widths. At 280/360/480 logical-pixel widths and
+75/100/125/150/200% zoom, it compares title right edges, state/robot/byline/metadata
+anchors, line heights, 74px row heights and following-row positions across ordinary,
+pinned, scrolling, coordinator and ghost paths in Open/Closed/merged states.
+Optional agent transitions, untouched/partial/done and multi-digit tasks/checks,
+pending/success/failure icons, absent/long/multiple labels, review decisions and
+missing authors do not change those boxes. Empty robot slots are inert; ghost
+robots cannot navigate. Removing the reserved robot or making a metadata cell
+content-sized deliberately changes the oracle, demonstrating mutation sensitivity.
+The model preserves inherited line-height tokens and resolves numbers as effective
+font-size multipliers, while `px` strings remain absolute lengths; numeric `size`
+remains pixels. Independent oracles cover 20 × 13 = 260px and 18 × 11 = 198px,
+child font-size changes, fractional multipliers, explicit pixel strings and zoom.
+Every loaded row's measured text line must fit its containing title/byline/metadata
+cell, not merely retain a stable outer box. Sixty mutation cases reintroduce each
+numeric line-height defect in ordinary/coordinator live/ghost rows at every zoom
+and require that containment check to fail. The production rows use `20px`/`18px`
+strings explicitly. This closes the earlier fixture blind spot that treated all
+line heights as pixels and missed invisible/clipped text inside stable cells.
+Existing label-colour/tooltip, PR-action and pin-motion regressions remain intact.
+These are synthetic resolved-box comparisons, not native GPUI pixels or visual
+interaction evidence; no app, session, credential or deployment is used.
+
+The same fixture compares Open/Closed segment positions for unknown, zero and
+multi-digit counts; empty badge reservations have no fabricated values.
+`tests/git-location.test.mjs` now samples actual rendered row identities through
+pending/rejected/timed-out/signaled/abnormal/permission-denied/empty root replies,
+checks root/repository/count/page and native pin-size retention, then verifies
+successful recovery and explicit non-repository clearing. Root reads yield out of
+render even with inline spawn. `tests/pulls-pagination.test.mjs` samples manual
+and staged webhook refreshes, including a targeted older active PR after page-one
+replacement and a failed reread; the pin stays mounted until its facts are ready.
+Synchronous transport throws cannot notify or allocate focus during render.
+`tests/fleet-git.test.mjs` renders with inline-spawn guards during deferred same-home
+refresh, partial PR failure and reconnect recovery, preserving prior rows/counts
+until their individual replacements arrive. Its existing hide/show, stale/Verifying,
+cold waiting and exact worker-action refusal cases remain. No aggregate retention
+rewrite was needed: those same-home guards already preserve loaded facts.
 
 ## Connected fleet fixtures
 

@@ -242,7 +242,14 @@ errors are applied immediately, and longer requests spin until completion.
 The visual minimum is scoped to the clicked control and its machine/folder or
 Settings section, so switching context does not inherit another refresh.
 Refresh controls and the Usage settings gear have no hover tooltips;
-accessibility labels remain available.
+accessibility labels remain available. Git keeps loaded rows, counts, pagination and
+pin measurements while a same-context refresh runs or a Git-root/branch probe
+fails inconclusively. An older active PR also stays pinned during its targeted
+reread after page-one refresh. Only an authoritative replacement, proven
+non-repository or actual context change clears incompatible facts. Open/Closed
+count badges reserve their width before totals arrive, without displaying fake
+zeroes. Cold loading and coordinator Verifying remain panel feedback, never
+placeholder PR rows.
 Git's event-driven CI line sits immediately below its header and applies to
 all PRs, not just the pinned block. Rotation and line motion use native animation,
 not JavaScript frame timers. This applies to Settings, Files, file-pane
@@ -368,8 +375,17 @@ showing an earlier attempt's result. Untouched body checklists show a muted
 checklist icon and **2 tasks** (or **1 task**), not **0 of 2 tasks**. Partial
 progress keeps its ring; completed lists keep their purple check and done label.
 All PR rows, including coordinator/fleet rows and both Open/Closed tabs, omit the
-Owner badge. Below the number/author/time line, metadata starts at the same left
-edge with **tasks · checks · assigned GitHub labels**, omitting absent groups.
+Owner badge. Every PR block uses the same three fixed lines: a 20px title, an
+18px number/author/time line and an 18px metadata line, for a 74px block including
+spacing. A blank 24px robot slot keeps titles' truncation boundaries identical
+with or without a related agent. The state icon and separate number/author/time
+cells also retain their positions. Metadata reserves independent **tasks · checks ·
+assigned GitHub labels · review decision** cells; missing groups leave blank space
+and redundant dots are invisible without reclaiming their gutters. Task progress,
+check icons/counts, labels and review updates cannot move neighboring cells. Text
+truncates inside its cell with full-value hover text. This intentionally trades
+some horizontal room for stability, without adding a fourth line: the metadata
+line was already reserved even for PRs that never have checks or labels.
 Labels keep their exact GitHub names (including emoji) in fully rounded 18px pills.
 Dark palettes use GitHub's 18% colour tint, lightness-adjusted coloured text and thin
 30% text-colour border rather than solid blocks. Light palettes use solid label
@@ -379,8 +395,8 @@ otherwise light), including custom palettes, not the system appearance preferenc
 The formula comes from [Primer's IssueLabelToken](https://github.com/primer/react/blob/2128032dca65a1bd565fe382c2e91c638c6473a4/packages/react/src/Token/IssueLabelToken.module.css).
 Multiple/long labels stay in a bounded single-height strip:
 pill text truncates, and hovering the pills or metadata exposes complete names,
-including clipped labels. No labels means no placeholder or extra separator;
-label refreshes never add extra row lines or horizontal overflow. Metadata separators,
+including clipped labels. No labels means no visible placeholder or extra separator, only an empty reserved
+cell; label refreshes never add extra row lines or horizontal overflow. Metadata separators,
 including the number/author dot, share a clearly visible muted 3px round shape,
 vertically centred beside text/icons with equal 6px spacing on both sides.
 Git follows the selected terminal's live shell-reported directory (including remote
