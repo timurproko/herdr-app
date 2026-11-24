@@ -152,8 +152,10 @@ been retired; third-party license notices retain their original attribution.
 
 ## Fleet context contributions
 
-Crew owns `plugins/crew/fleet.js`: installed `crew status --all --json --discover-prs` supplies
-owner/task terminals and task PRs. `custom.crew.home=1` is only a role hint;
+Crew owns `plugins/crew/fleet.js`: installed status supplies owner/task terminals
+and task PRs. The reader prefers explicitly advertised `crew status --json --view
+fleet --discover-prs`; legacy Crew uses projected `crew status --all --json
+--discover-prs`. See [the exact transport and Crew capability contract](FLEET-STATUS.md). `custom.crew.home=1` is only a role hint;
 `crew.home` is a worker home tag. The resolver joins exact live machine-qualified
 terminals to actual panes/spaces and verifies the fleet adoption identity. Missing,
 ambiguous, moved or cross-machine identities fail closed. Unrouted custom homes
@@ -174,17 +176,28 @@ absent for both new and older Crew. Coalesced per-machine reads use the existing
 Spaces lifecycle, a 10-second TTL and expiring sanitized runtime facts under
 `custom.fleet.links`; preference/plugin generations invalidate late responses.
 The installed-tool reader uses the existing read-only machine transport with a
-25-second discovery timeout (the former 15-second allowance plus Crew's ten-second
-discovery budget). Only an explicit unsupported `--discover-prs` usage refusal allows
-one 15-second recorded-only fallback. Authentication, transport and timeout failures
+25-second discovery timeout and 15-second recorded-only allowance. Exact unsupported
+view/discovery refusals permit capability fallback; all attempts share 40 seconds
+inside the 45-second transport lease. Authentication, transport and timeout failures
 never trigger it or mean none. Missing/unknown discovery versions reuse the first
-payload, with no extra call. A 45-second shared read lease covers both bounded calls
-without overlapping mod readers; it does not extend action freshness. There is no
+payload, with no extra call. An explicit help advertisement is required because
+old Crew silently ignores unknown status flags. The existing PowerShell request
+projects unused fields before native encoding without changing historical Open/Draft
+eligibility. Bounded Base64/UTF-8 pieces yield real native task turns via zero-delay
+one-shot callbacks; no new periodic recovery scheduler is introduced. The 45-second
+shared read lease covers commands without overlapping mod readers and does not
+extend action freshness. Before response parsing or decoding, raw receipt switches
+to a two-second processing deadline. If a native interruption bypasses finally,
+the existing lifecycle records expired-read and replaces that finished command's
+continuation on expiry, bypassing the prior attempt TTL/backoff only for abandoned
+processing. Generation, token and exact identity checks remain unchanged. There is no
 new healthy polling loop; the existing 10-second TTL/refresh cadence is unchanged.
 Spaces invokes the provider at init and from its existing 250 ms lifecycle, including
 after cold start or mod replacement. A cold failed first read remains independent
 until verification succeeds; retained display survives uncertainty. An abandoned
-in-flight lease can defer another copy for at most its remaining 45 seconds.
+in-flight transport lease can defer another copy for at most its remaining 45
+seconds; received-reply processing is separately bounded to two seconds. Older
+unphased leases keep their original finite transport bound.
 Failure-only recovery stores one generation-scoped retry deadline in those runtime
 facts: 2 seconds, 5 seconds, then repeated 10-second delays measured from failed
 completion. Every retryable reason has this cap, including timeouts and transport
@@ -209,8 +222,9 @@ failure remains evidence, not action permission. Reasons are allowlisted; numeri
 exit/timeout facts and bounded native owner/space references are allowed, never raw
 process errors, task inventories, home paths, transcripts or credentials. Generic
 presentation context carries only the relevant sanitized verification fact; Git
-extends its existing Verifying/Stale tooltip without importing Crew code. A uniquely
-routed cold coordinator hint can route waiting feedback with empty links, not a pair,
+uses the standard panel Loading bulb's tooltip, or the retained Stale tooltip,
+without importing Crew code. Empty verification adds no special header text. A uniquely
+routed cold coordinator hint can route Loading even before a failure, with empty links, not a pair,
 verified home or GitHub/worker authority.
 
 The existing facade `writeTextFile` is exported by the plugin API for a narrow owned
@@ -249,7 +263,14 @@ shared in-flight read, preserving coalescing across mod copies, but completed cr
 leases are not fresh verification. Drops on/from a retained unverified block refuse
 to move, never fall back to a single-space reorder. Git requests presentation context
 only to retain already-loaded same-home rows/counts/folds with a Stale badge, or a
-Verifying/waiting state with no restored inventory on cold start. It starts no task
+standard Loading bulb with no extra header label or restored inventory on cold start.
+There is no cross-toggle identity/inventory cache. Off or a scope change clears
+the aggregate's entries; on shows Loading until fresh verification and facts arrive.
+Existing same-context outages retain their pre-existing Stale meaning only.
+Enabled current coordinator candidates pending verification or retry never fall
+back to ordinary folder Git. Only a witnessed completed negative whose dependency
+signature still matches the current native snapshot suppresses Loading. Old owner
+results and diagnostic reasons alone never decide a new candidate's empty state. It starts no task
 GitHub reads or worker navigation from stale context, and pauses its relay consumer,
 not the chrome-owned shared broker or independent update checks. Fresh verification
 resumes targeted reads and controls; different selected spaces or confirmed ownership
