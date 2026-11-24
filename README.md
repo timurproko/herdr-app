@@ -615,20 +615,36 @@ up newer metadata. Worktree dialogs keep the clicked folder rather than a later
 selected terminal's folder.
 
 **Settings → Spaces → Connect fleet space to coordinator** is off by default
-(`connectFleetToCoordinator`). When on with Crew enabled, a verified same-machine
+(`connectFleetToCoordinator`). Changes apply while Settings stays open: enabling
+starts fleet verification immediately for applicable machines and attaches as soon
+as it succeeds; disabling immediately restores independent rows and badge colours.
+Until the first successful verification, no attachment is guessed. The two last-tab
+switches on this page also save immediately; close actions and empty-space
+reconciliation read their current values without waiting for Settings to close.
+When on with Crew enabled, a verified same-machine
 fleet attaches below its coordinator with its own ordinary numbered badge (for
-example, **2 crew** below **1 coordinator**), in the same 16px rounded slot. Its fill
-uses the coordinator's actual badge colour and follows recolouring without changing
-the fleet's saved colour. The expanded coordinator shows a small muted outline chain
-immediately before its Crew pill, matching the worktree marker's size and alignment,
-not a filled badge. Metadata order is counts, worktree, chain, then tags; with multiple
+example, **2 crew** below **1 coordinator**), in the same 16px rounded slot.
+These numbers identify native `space.select` positions (the shipped `Alt+1` through
+`Alt+9` shortcuts), not projected row positions. If native order is coordinator,
+unrelated space, fleet, attachment therefore shows **1 coordinator, 3 fleet, 2 unrelated**;
+detaching restores native row order. Merely drawing 2 on the fleet would incorrectly
+advertise the shortcut for the unrelated space. Consecutive numbers require an actual
+native reorder, which this presentation-only switch does not perform.
+See the [Herdr 0.1.17 shipped shortcuts](https://github.com/herdrdev/herdr-app/blob/v0.1.17/defaults/keys.json)
+and [native index-selection implementation](https://github.com/herdrdev/herdr-app/blob/v0.1.17/src/window.rs#L3194-L3202).
+The fleet badge's fill uses the coordinator's actual colour and follows recolouring
+without changing the fleet's saved colour. Both expanded attached rows show a small
+muted outline chain immediately before their Crew pills, matching the worktree
+marker's size and alignment, not a filled badge. The two chains line up in one
+column just left of the right-aligned Crew pills. Metadata order is counts, worktree, chain, then tags; with multiple
 tags, the chain/Crew group stays last and unrelated tags retain their relative order.
 No elbow or connector lines remain. The fleet name starts at the ordinary left edge;
 only inactive names are muted. Selected fleet names use the same foreground and normal
 weight as other selected spaces, with ordinary hover and selection backgrounds.
 Both expanded rows show the same Crew pill at the right; the pills share the same
 right edge. Renaming hides markers and tags; the Worktree icon switch hides only
-worktree markers, not the independent coordinator chain.
+worktree markers, not either row's independent chain. Both chains disappear on
+detachment; neither the compact rail nor a drag chip shows a chain.
 Choosing a colour or Automatic from either attached row edits the coordinator's
 colour; the fleet's saved colour and Automatic flag stay untouched. Its palette and
 mouse/keyboard choices use that same captured coordinator. Colour permission follows
@@ -640,7 +656,7 @@ choice; reopen after detachment to edit the fleet's own colour again. Disabling
 attachment or confirmed unlinking restores that independent fleet colour.
 Unrelated plugin tags remain; the compact rail stays badge-only. Refreshing Git or
 Crew, relay events, focus changes and unrelated pane changes do not temporarily remove
-the coordinator chain, shared badge colour or attached row order. The pair is a persisted property of its exact native
+either attached-row chain, shared badge colour or attached row order. The pair is a persisted property of its exact native
 space IDs and verified coordinator home/owner/adoption identity, not a temporary
 mode with a display timeout. Adding, renaming, removing or reordering unrelated
 spaces/tabs/panes on either machine cannot detach it. App restart, mod reload and
