@@ -60,7 +60,7 @@ export function rowGeometry(root,width,zoom=1,height) {
     const paintY=y+(a.relative?v(a,'top'):0);
     boxes.set(n,{x:x*zoom,y:paintY*zoom,width:w*zoom,height:h*zoom});
     if(typeof n==='string') {
-      if(n)boxes.textLines.push({text:n,lineHeight:lineHeightPixels(s.line,s.font)*zoom,fontSize:s.font*zoom,ancestors});
+      if(n)boxes.textLines.push({text:n,x:x*zoom,naturalWidth:natural.w*zoom,lineHeight:lineHeightPixels(s.line,s.font)*zoom,fontSize:s.font*zoom,ancestors});
       return;
     }
     const row=Boolean(a.flex&&!a.flex_col),kids=children(n).filter(c=>!absolute(c)),innerW=Math.max(0,w-p.l-p.r),innerH=Math.max(0,h-p.t-p.b),gap=v(a,'gap');

@@ -8,6 +8,17 @@ for(const zoom of [0.75,1,1.25,1.5,2])for(const [line,font,expected] of [[20,13,
   assert.equal(text.lineHeight,expected*zoom);assert.equal(text.fontSize,font*zoom);
   assert.equal(geometry.get(tree.kids[0]).width,24*zoom,'Numeric size remains pixels, not a font multiplier');
 }
+function assertChecksFit(geometry,row) {
+  const check=nodes(row).find(n=>/^(?:swap-)?pr-checks-/.test(n.attrs?.id?.[0]??''));
+  if(!check)return;
+  const line=geometry.textLines.find(l=>l.ancestors.includes(check));
+  assert.ok(line && /^\d+\/\d+$/.test(line.text),'A count must keep all digits');
+  for(const ancestor of line.ancestors) {
+    assert.equal(ancestor.attrs?.truncate,undefined,'Checks must never use an ellipsis');
+    const box=geometry.get(ancestor);
+    assert.ok(line.x>=box.x-1e-6 && line.x+line.naturalWidth<=box.x+box.width+1e-6,`Full count ${line.text} must fit ${ancestor.attrs?.id?.[0]??'ancestor'}`);
+  }
+}
 function assertTextFits(geometry,row) {
   const lines=geometry.textLines.filter(line=>line.ancestors.includes(row));
   assert.ok(lines.length,'Loaded rows must contain measured text, not just empty boxes');
@@ -25,6 +36,7 @@ const cases=[
   ['empty',{}],['tasks untouched',{body:'- [ ] one\n- [ ] two'}],['tasks partial',{body:'- [x] one\n- [ ] two'}],['tasks done',{body:'- [x] one\n- [x] two'}],
   ['large tasks',{body:Array.from({length:100},(_,i)=>`- [${i<99?'x':' '}] task`).join('\n')}],
   ...['SUCCESS','FAILURE','PENDING'].map(state=>[`checks ${state}`,{statusCheckRollup:[{name:'CI',status:state==='PENDING'?'IN_PROGRESS':'COMPLETED',conclusion:state==='PENDING'?null:state}]}]),
+  ...[1,10,11,99].flatMap(total=>['SUCCESS','FAILURE','PENDING'].map(state=>[`count ${state} ${total}`,{statusCheckRollup:Array.from({length:total},(_,i)=>({name:`check ${i}`,status:state==='PENDING'&&i>=3?'IN_PROGRESS':'COMPLETED',conclusion:state==='FAILURE'&&i===0?'FAILURE':'SUCCESS'}))}])),
   ['many checks',{statusCheckRollup:Array.from({length:101},(_,i)=>({name:`check ${i}`,status:'COMPLETED',conclusion:'SUCCESS'}))}],
   ['one label',{labels:labels.slice(0,1)}],['long labels',{labels}],['approved',{reviewDecision:'APPROVED'}],['changes requested',{reviewDecision:'CHANGES_REQUESTED'}],
   ['missing author',{author:null}],['conflict',{mergeable:'CONFLICTING'}],
@@ -33,7 +45,7 @@ const cases=[
 const anchors=['state-slot','title-line','title','agent-slot','byline','number','author','time','meta','slot-tasks','slot-checks','slot-labels','slot-review'];
 const plain=box=>Object.fromEntries(Object.entries(box).map(([k,v])=>[k,Number(v.toFixed(6))]));
 let comparisons=0;
-for(const mode of ['ordinary','pinned','scrolling','coordinator','ghost'])for(const state of ['OPEN','CLOSED','MERGED'])for(const width of [280,360,480])for(const zoom of [0.75,1,1.25,1.5,2]){
+for(const mode of ['ordinary','pinned','scrolling','coordinator','ghost'])for(const state of ['OPEN','CLOSED','MERGED'])for(const width of [280,320,360,480])for(const zoom of [0.75,1,1.25,1.5,2]){
   h.setZoom(zoom);panel.view=state==='OPEN'?'open':'closed';
   const build=(overrides,agent)=>{
     h.setAgent(agent);
@@ -48,7 +60,12 @@ for(const mode of ['ordinary','pinned','scrolling','coordinator','ghost'])for(co
       return element().flex().flex_col().gap(U.rowGap).children([panel.pullRow(t,pr,mode==='ghost'),panel.pullRow(t,next,mode==='ghost')]);
     });
     const geometry=rowGeometry(tree,width,zoom,mode==='pinned'||mode==='scrolling'?600:undefined),row=find(tree,`${prefix}pr-${id}`),box=geometry.get(row);
-    assertTextFits(geometry,row);
+    assertTextFits(geometry,row);assertChecksFit(geometry,row);
+    for(const line of geometry.textLines.filter(l=>l.ancestors.includes(row)))assert.notEqual(line.text.trim(),'…');
+    const task=find(row,`${prefix}pr-tasks-${id}`);
+    if(task)assert.match(words(task).join(''),/^\d+\/\d+$/,'Tasks are whole compact fractions');
+    const time=find(row,`${prefix}pr-time-${id}`);
+    if(words(time).join(''))assert.match(words(time).join(''),/^\d+(?:s|m|h|d|mo|y) ago$/);
     const snapshot=Object.fromEntries(anchors.map(kind=>{
       const node=find(row,`${prefix}pr-${kind}-${id}`);assert.ok(node,kind);return [kind,plain(geometry.get(node))];
     }));
@@ -79,7 +96,7 @@ for(const mode of ['ordinary','pinned','scrolling','coordinator','ghost'])for(co
 }
 // The optional count badge must not move the neighboring Closed tab when data
 // arrives. Unknown values reserve geometry without inventing a zero count.
-for(const width of [280,360,480])for(const zoom of [0.75,1,1.25,1.5,2]){
+for(const width of [280,320,360,480])for(const zoom of [0.75,1,1.25,1.5,2]){
   let baseline;
   for(const count of [null,0,1,99999]){
     const tree=h.render(()=>element().flex().gap(2).children([
@@ -107,6 +124,11 @@ h.setAgent(false);const pr=facts.pullRow(source,'owner');const row=panel.pullRow
 const titleLine=find(row,'pr-title-line-17');titleLine.kids.pop();
 assert.notEqual(rowGeometry(row,360).get(find(row,'pr-title-17')).width,before.width,'Removing the empty robot slot must fail the title-boundary oracle');
 const packed=panel.pullRow(t,pr),slot=find(packed,'pr-slot-tasks-17'),checks=find(packed,'pr-slot-checks-17');
-const x=rowGeometry(packed,360).get(checks).x;delete slot.attrs.flex_basis;delete slot.attrs.flex_grow;slot.child('Content sized task label');
+const x=rowGeometry(packed,360).get(checks).x;delete slot.attrs.w;delete slot.attrs.flex_basis;delete slot.attrs.flex_grow;slot.child('Content sized task label');
 assert.notEqual(rowGeometry(packed,360).get(checks).x,x,'Content-sized metadata must fail the anchor oracle');
+// The former tiny allocation must fail despite unchanged outer heights.
+const counted=panel.pullRow(t,facts.pullRow({...source,statusCheckRollup:Array.from({length:99},(_,i)=>({name:`CI ${i}`,status:'COMPLETED',conclusion:'SUCCESS'}))},'owner'));
+assertChecksFit(rowGeometry(counted,280),counted);
+find(counted,'pr-slot-checks-17').w(18);
+assert.throws(()=>assertChecksFit(rowGeometry(counted,280),counted),/Full count .* must fit/);
 console.log(`PASS ${comparisons} resolved-box comparisons: actual ordinary/pin/list/coordinator/ghost rows, optional agent/tasks/checks/labels/review/author/conflict, three widths, five zooms, inert blank cells, font-relative numeric versus absolute px line heights, text containment and 60 clipping mutations (synthetic, not GPUI pixels)`);

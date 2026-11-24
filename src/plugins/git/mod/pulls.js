@@ -123,6 +123,8 @@ export function pullRow(pr, owner, now = Date.now()) {
     mergeConflict: ['open','draft'].includes(state) && pr.mergeable === 'CONFLICTING',
     meta: `#${pr.number} · ${login ? `${login} ` : ''}${when}`,
     byline: `${login ? `${login} ` : ''}${when}`, when,
+    compactWhen: when.replace(/^(?:opened|closed|merged) /, '').replace(/ (second|minute|hour|day|month|year)s? ago$/, (_m, unit) => `${({second:'s',minute:'m',hour:'h',day:'d',month:'mo',year:'y'})[unit]} ago`),
+    checksKnown: Array.isArray(pr.statusCheckRollup),
     owner: Boolean(owner && login && login.toLowerCase() === String(owner).toLowerCase()),
     tasks: tasks(pr.body), checks: checks(pr.statusCheckRollup), labels: pullLabels(pr.labels),
     review: pr.reviewDecision === 'APPROVED' ? 'approved' : pr.reviewDecision === 'CHANGES_REQUESTED' ? 'changes' : null,

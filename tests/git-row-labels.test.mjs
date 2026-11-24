@@ -86,7 +86,7 @@ for(t.background of ['#191d28','#ffffff','#191d28'])for(zoom of [0.75,1,1.25,1.5
   const prefix=ghost?'swap-':'',id=pr.key??17;
   const row=panel.pullRow(t,pr,ghost),meta=find(row,`${prefix}pr-meta-${id}`),byline=find(row,`${prefix}pr-byline-${id}`);
   assert.equal(find(row,`${prefix}pr-owner-${id}`),undefined);assert.ok(!text(row).includes('Owner'));
-  assert.equal(text(byline),`#17${pr.byline}`);assert.equal(byline.attrs.overflow_hidden.length,0);
+  assert.equal(text(byline),`#17${pr.login} ${pr.compactWhen}`);assert.equal(byline.attrs.overflow_hidden.length,0);
   assert.deepEqual(meta.kids.filter(n=>n.attrs.id).map(n=>n.kids[0].attrs.id[0]),['tasks','checks','labels','review'].map(kind=>`${prefix}pr-${kind}-${id}`));
   assert.equal(meta.attrs.h[0],18);assert.equal(meta.attrs.min_w[0],0);assert.equal(meta.attrs.flex_wrap,undefined);assert.ok(meta.attrs.overflow_hidden);
   const strip=find(row,`${prefix}pr-labels-${id}`);assert.equal(strip.attrs.min_w[0],0);assert.equal(strip.attrs.h[0],18);assert.ok(strip.attrs.flex_1);assert.ok(strip.attrs.overflow_hidden);
@@ -99,7 +99,7 @@ for(t.background of ['#191d28','#ffffff','#191d28'])for(zoom of [0.75,1,1.25,1.5
     assertColor(pill.attrs.text_color[0],dark?darkText:lightText);assertColor(pill.attrs.border_color[0],dark?`${darkText}4d`:lightBorder);
     assert.equal(pill.attrs.h[0],18);assert.ok(pill.attrs.border_1);assert.ok(pill.attrs.rounded_full);
     assert.equal(pill.attrs.px[0]+1,5,'Border plus padding retains the original content inset/width');
-    assert.equal(pill.attrs.min_w[0],0);assert.ok(pill.attrs.max_w_full);assert.ok(pill.attrs.overflow_hidden);assert.ok(pill.kids[0].attrs.truncate);
+    assert.equal(pill.attrs.min_w[0],0);assert.ok(pill.attrs.max_w_full);assert.ok(pill.attrs.overflow_hidden);assert.ok(pill.kids[0].attrs.overflow_hidden);assert.equal(pill.kids[0].attrs.truncate,undefined,'Clipped pills never paint a lone ellipsis');
   }
   assert.equal(text(find(row,`${prefix}pr-review-${id}`)),'Approved');
   const separators=[byline.kids[1],...meta.kids.filter(n=>!n.attrs.id)];
@@ -147,7 +147,9 @@ for(const tasks of [false,true])for(const checks of [false,true])for(const assig
     }
   }
   for(const slot of slots) {
-    assert.equal(slot.attrs.flex_basis[0],0);assert.equal(slot.attrs.min_w[0],0,'Slots can shrink in narrow panels');
+    if(/slot-(tasks|checks)-/.test(slot.attrs.id[0]))assert.ok(slot.attrs.flex_none,'Counts reserve a non-shrinking budget');
+    else assert.equal(slot.attrs.flex_basis[0],0);
+    assert.equal(slot.attrs.min_w[0],0);
     if(!slot.kids.length)assert.equal(text(slot),'','Empty layout cells have no visible placeholder');
   }
   for(const group of groups)assert.equal(group.attrs.min_w[0],0,'Groups can shrink in narrow panels');

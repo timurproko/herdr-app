@@ -290,7 +290,7 @@ No deployment or live label mutation is performed.
 
 `node --experimental-vm-modules tests/git-row-geometry.test.mjs` resolves the actual
 shared row trees using a deterministic flex/absolute layout model with real `U`
-metrics and content-dependent text widths. At 280/360/480 logical-pixel widths and
+metrics and content-dependent text widths. At 280/320/360/480 logical-pixel widths and
 75/100/125/150/200% zoom, it compares title right edges, state/robot/byline/metadata
 anchors, line heights, 74px row heights and following-row positions across ordinary,
 pinned, scrolling, coordinator and ghost paths in Open/Closed/merged states.
@@ -310,8 +310,14 @@ and require that containment check to fail. The production rows use `20px`/`18px
 strings explicitly. This closes the earlier fixture blind spot that treated all
 line heights as pixels and missed invisible/clipped text inside stable cells.
 Existing label-colour/tooltip, PR-action and pin-motion regressions remain intact.
-These are synthetic resolved-box comparisons, not native GPUI pixels or visual
-interaction evidence; no app, session, credential or deployment is used.
+Horizontal assertions also compare the full natural count width against every
+ancestor, reject any check truncation, and cover one/two-digit totals through
+99/99 in success/failure/pending states, plus the existing 101-check case. A tiny
+check-cell mutation must fail even with stable outer boxes. Compact task fractions
+and whole relative-time tokens replace mid-word clipping; metadata/pill text never
+uses ellipsis-only values. These are synthetic resolved-box comparisons, not native
+GPUI pixels or visual interaction evidence; no app, session, credential or deployment
+is used.
 
 The same fixture compares Open/Closed segment positions for unknown, zero and
 multi-digit counts; empty badge reservations have no fabricated values.

@@ -559,7 +559,7 @@ export default class Changes extends View {
     // Border-box: 4px padding + 1px border preserves the original 5px inset.
     return h_flex().id(id).flex_none().min_w(0).max_w_full().h(18).px(4).border_1().border_color(border).rounded_full()
       .items_center().overflow_hidden().bg(background).text_color(foreground).tooltip(label.name)
-      .child(div().min_w(0).truncate().child(label.name));
+      .child(div().min_w(0).overflow_hidden().whitespace_nowrap().child(label.name));
   }
 
   pullRow(t, pr, ghost = false) {
@@ -569,7 +569,7 @@ export default class Changes extends View {
     const labels = pr.labels ?? [];
     const groups = [null,null,null,null];
     if (pr.tasks) groups[0] = h_flex().id(`${prefix}pr-tasks-${rowId}`).w_full().min_w(0).h(18).overflow_hidden().gap(4).items_center()
-      .tooltip(pr.tasks.label).child(this.taskIcon(t, pr.tasks).flex_none()).child(div().min_w(0).truncate().child(pr.tasks.label));
+      .tooltip(pr.tasks.label).child(this.taskIcon(t, pr.tasks).flex_none()).child(div().flex_none().whitespace_nowrap().child(`${pr.tasks.done}/${pr.tasks.total}`));
     const checkColor = pr.checks?.state === 'success' ? t.ansi2 : pr.checks?.state === 'failure' ? t.ansi1 : t.ansi3;
     const checkIcon = pr.checks?.state === 'success' ? svg('mods/custom-workspace-chrome/check.svg').size(U.tinyIcon).text_color(checkColor)
       : pr.checks?.state === 'failure' ? svg('mods/custom-workspace-chrome/x.svg').size(U.tinyIcon).text_color(checkColor)
@@ -577,17 +577,21 @@ export default class Changes extends View {
     if (pr.checks) groups[1] = h_flex().id(`${prefix}pr-checks-${rowId}`).w_full().min_w(0).h(18).overflow_hidden().gap(4).items_center()
       .tooltip(pr.checks.label)
       .child(div().id(`${prefix}pr-check-icon-${rowId}`).size(U.tinyIcon).flex_none().flex().items_center().justify_center().child(checkIcon.flex_none()))
-      .child(div().min_w(0).truncate().underline().child(pr.checks.label));
+      .child(div().flex_none().whitespace_nowrap().underline().child(pr.checks.label));
     if (labels.length) groups[2] = h_flex().id(`${prefix}pr-labels-${rowId}`).flex_1().min_w(0).h(18).gap(4).items_center().overflow_hidden()
       .tooltip(labels.map(label => label.name).join('\n'))
       .children(labels.map((label,index) => this.labelPill(t,label,`${prefix}pr-label-${rowId}-${index}`)));
     const review = pr.review === 'approved' ? 'Approved' : 'Changes requested';
-    if (pr.review) groups[3] = div().id(`${prefix}pr-review-${rowId}`).w_full().min_w(0).truncate().tooltip(review)
+    if (pr.review) groups[3] = div().id(`${prefix}pr-review-${rowId}`).w_full().min_w(0).overflow_hidden().whitespace_nowrap().tooltip(review)
       .text_color(pr.review === 'approved' ? t.ansi2 : t.ansi1).child(review);
-    // Zero-basis weighted cells share only the space left after fixed gutters.
-    // Intrinsic text/pill widths and absent facts cannot redistribute that space.
+    // Budgets depend only on available width, never optional facts. Reserve
+    // complete 999/999 checks and compact task fractions before sharing the
+    // remainder, with labels taking priority over the review-decision text.
+    // Empty reservations intentionally cannot be reclaimed (the no-jump rule).
     const cells = groups.map((group,index) => h_flex().id(`${prefix}pr-slot-${['tasks','checks','labels','review'][index]}-${rowId}`)
-      .flex_basis(0).flex_grow([28,14,38,20][index]).flex_shrink(1).min_w(0).h(18).min_h(18).max_h(18).items_center().overflow_hidden()
+      .when(index < 2, el=>el.w(index === 1 ? 68 : 60).flex_none())
+      .when(index >= 2, el=>el.flex_basis(0).flex_grow(index === 2 ? 9 : 1).flex_shrink(1))
+      .min_w(0).h(18).min_h(18).max_h(18).items_center().overflow_hidden()
       .when(Boolean(group), el=>el.child(group)));
     return h_flex().id(`${prefix}pr-${rowId}`).w_full().h(74).min_h(74).max_h(74).flex_none().px(8).py(6).gap(U.gap).items_start().rounded(U.radius)
       .when(!ghost, el => el.cursor_pointer().role('button').accessibility_label(`Open pull request #${pr.number} on GitHub`)
@@ -605,8 +609,8 @@ export default class Changes extends View {
           .child(div().id(`${prefix}pr-number-${rowId}`).w(48).h(18).flex_none().truncate().child(`#${pr.number}`))
           .child(dot().when(!pr.byline, el=>el.invisible()))
           .child(h_flex().flex_1().min_w(0).h(18).gap(4).items_center().tooltip(pr.meta ?? '')
-            .child(div().id(`${prefix}pr-author-${rowId}`).flex_basis(0).flex_grow(45).min_w(0).h(18).truncate().child(pr.when && pr.login ? `${pr.login} ` : ''))
-            .child(div().id(`${prefix}pr-time-${rowId}`).flex_basis(0).flex_grow(55).min_w(0).h(18).truncate().child(pr.when ?? pr.byline ?? ''))))
+            .child(div().id(`${prefix}pr-author-${rowId}`).flex_1().min_w(0).h(18).overflow_hidden().whitespace_nowrap().child(pr.when && pr.login ? `${pr.login} ` : ''))
+            .child(div().id(`${prefix}pr-time-${rowId}`).w(76).flex_none().h(18).whitespace_nowrap().child(pr.compactWhen ?? ''))))
         .child(h_flex().id(`${prefix}pr-meta-${rowId}`).w_full().min_w(0).h(18).min_h(18).max_h(18).flex_none().gap(6).items_center().overflow_hidden().line_height('18px').text_size(11).text_color(t.muted)
           .when(labels.length > 0, el => el.tooltip(labels.map(label => label.name).join('\n')))
           .children(cells.flatMap((cell,index) => index ? [dot().when(!groups[index] || !groups.slice(0,index).some(Boolean), el=>el.invisible()),cell] : [cell]))));

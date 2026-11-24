@@ -381,10 +381,14 @@ spacing. A blank 24px robot slot keeps titles' truncation boundaries identical
 with or without a related agent. The state icon and separate number/author/time
 cells also retain their positions. Metadata reserves independent **tasks · checks ·
 assigned GitHub labels · review decision** cells; missing groups leave blank space
-and redundant dots are invisible without reclaiming their gutters. Task progress,
-check icons/counts, labels and review updates cannot move neighboring cells. Text
-truncates inside its cell with full-value hover text. This intentionally trades
-some horizontal room for stability, without adding a fourth line: the metadata
+and redundant dots are invisible without reclaiming their gutters. Checks reserve
+68px for their icon and full count (including realistic three-digit totals), not a
+percentage that can collapse to an ellipsis. Labels take most remaining space;
+tasks use whole icon-plus-fraction progress such as **2/2** in a stable 60px slot.
+Relative time uses whole compact forms such as **27m ago**, with the full author,
+action and time on hover. Labels and review text clip without an ellipsis-only
+value; all full values remain in tooltips. Optional facts cannot move neighboring
+cells. This retains stability without adding a fourth line: the metadata
 line was already reserved even for PRs that never have checks or labels.
 Labels keep their exact GitHub names (including emoji) in fully rounded 18px pills.
 Dark palettes use GitHub's 18% colour tint, lightness-adjusted coloured text and thin
