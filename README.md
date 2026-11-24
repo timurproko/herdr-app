@@ -317,11 +317,13 @@ change, remote companion or persistent deletion queue is involved.
 
 Files and Git headers have **Refresh · Pin · Close** tools in that order, using
 24px targets, matching 12px Refresh glyphs, 14px Pin/Close glyphs and the existing hover reveal.
-Their customization-owned title dropdowns (icon, label and chevron) use the same
-24px height, 4px corners and subtle foreground-tinted hover as the inset tools.
-A lone enabled panel keeps a static title without hover. Terminal-pane title
-styling is unchanged; the pin's persistent pressed treatment stays pin-specific.
-No native header patch is involved. Pin remembers **Files or
+All customization-owned title dropdowns (icon, label and chevron), including
+terminal pane headers, share the inset tools' 24px height, 4px corners and subtle
+foreground-tinted hover through one component, without caller opt-ins. Title
+padding and inline widths stay unchanged. A lone enabled sidebar panel keeps a
+static title without hover; existing static agent/program titles stay static.
+The pin's persistent pressed treatment stays pin-specific. No native header patch
+is involved; see the [header ownership inventory](docs/HEADER-TITLES.md). Pin remembers **Files or
 Git and open/closed state for the current tab**, separate from the shared sidebar
 choice used by unpinned tabs. Returning through tab clicks, keys or agent navigation
 restores that tab's choice. While pinned, switching the panel or opening/closing it
