@@ -115,7 +115,7 @@ for(const mode of ['ordinary','pinned','scrolling','coordinator','ghost'])for(co
     }));
     snapshot.row=plain(box);snapshot.next=plain(geometry.get(find(tree,`${prefix}pr-${pr.key?'owner/repo#18':18}`)));
     near(box.height,74*zoom,'Block height');near(snapshot['title-line'].height,20*zoom,'Title height');near(snapshot.byline.height,18*zoom,'Byline height');near(snapshot.meta.height,18*zoom,'Metadata height');
-    near(snapshot.title.x,(box.x/zoom+32)*zoom,'Title left reservation');near(snapshot.title.width,(box.width/zoom-68)*zoom,'Empty robot keeps title boundary');
+    near(snapshot.title.x,(box.x/zoom+32)*zoom,'Title left reservation');near(snapshot.title.width,(box.width/zoom-66)*zoom,'Empty robot keeps title boundary');
     near(snapshot['agent-slot'].width,24*zoom,'Robot reservation');
     const labelStrip=find(row,`${prefix}pr-labels-${id}`);
     if(labelStrip) {
