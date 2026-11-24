@@ -24,7 +24,7 @@ The actual packaged renderer runs in disposable native QuickJS/GPUI checks with
 30 and 60 Closed rows, two repositories, history notice, robots, tasks/checks,
 pills and reviews. Before/after PR 42 mean cold build times are 4.0→7.4 ms (30)
 and 7.6→14.6 ms (60). The prior repair head is 7.6 / 15.4 ms. Bounded pages are
-2.6 / 2.8 ms (five cold samples each); the 100-row deterministic fixture peaks at
+2.2 / 2.6 ms (five cold samples each); the 100-row deterministic fixture peaks at
 2,750 builder operations under a fixed 10,000 ceiling.
 
 Full breakdown, differential tooltip samples and reproduction command are in

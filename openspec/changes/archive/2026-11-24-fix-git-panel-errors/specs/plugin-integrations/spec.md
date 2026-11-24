@@ -61,6 +61,16 @@ Caught Git render failures SHALL log the actual error text and innermost failing
 - **THEN** the log identifies its actual error and innermost component without replacing them with a generic outer-panel error
 - **AND** the error still reaches the host's last-good-frame fallback
 
+#### Scenario: Native interruption leaves a surviving marker
+- **WHEN** a native abort bypasses JavaScript catch/finally and a later render observes the prior component marker
+- **THEN** it logs the last entered component and an explicitly incomplete-render diagnostic
+- **AND** it refers to the native banner or host log for the exact unavailable native error rather than inventing a cause
+
+#### Scenario: Synchronous notice transport refusal
+- **WHEN** the host begins a notice request inline during render and its transport fails synchronously
+- **THEN** request fallback and notification happen only after yielding out of render
+- **AND** healthy repository rows and section notices retain their ordinary presentation
+
 ### Requirement: Bounded coordinator render work
 Coordinator Open and Closed presentation SHALL use replacement pages of at most ten inventory presentation items including headers, notices and PRs. Continuation headers MAY repeat. Paging SHALL preserve full linked-PR counts, folds, inventory and action authority without starting reads or appending an unbounded native tree.
 
@@ -81,13 +91,3 @@ Coordinator Open and Closed presentation SHALL use replacement pages of at most 
 - **WHEN** unchanged PR facts are rendered again
 - **THEN** pure presentation and text measurements may be reused while interactive native elements register callbacks in the current snapshot
 - **AND** native measurements are reported with their scope rather than claimed as live desktop paint or click latency
-
-#### Scenario: Native interruption leaves a surviving marker
-- **WHEN** a native abort bypasses JavaScript catch/finally and a later render observes the prior component marker
-- **THEN** it logs the last entered component and an explicitly incomplete-render diagnostic
-- **AND** it refers to the native banner or host log for the exact unavailable native error rather than inventing a cause
-
-#### Scenario: Synchronous notice transport refusal
-- **WHEN** the host begins a notice request inline during render and its transport fails synchronously
-- **THEN** request fallback and notification happen only after yielding out of render
-- **AND** healthy repository rows and section notices retain their ordinary presentation
