@@ -5,7 +5,7 @@ Verdict: accepted only when an authorized human directly merges the containing e
 The maintainer integration decision accepts these scenarios:
 - Large fleet responses decode in bounded native task turns while Settings remains open on the selected fleet.
 - Multiline legacy status collection and field projection scale linearly within the supported payload and task limits.
-- Enabled pending verification shows the standard Loading bulb or the session's matching Stale list without granting stale action authority.
+- Current-candidate pending verification shows standard Loading, off/on clears old inventory, and only matching current-dependency negatives select ordinary Git.
 - The existing Spaces lifecycle replaces abandoned reply processing after two seconds without relying on finally or a prior attempt TTL.
 - Explicitly advertised fleet-view status is preferred and legacy output is projected before native decoding with narrow capability fallbacks.
 - Finished Open and Draft task PRs retain eligibility regardless of task age; only GitHub completion timestamps bound Closed history.
@@ -24,15 +24,15 @@ The maintainer integration decision accepts these scenarios:
   "acceptanceScenarios": [
     "Large fleet responses decode in bounded native task turns while Settings remains open on the selected fleet.",
     "Multiline legacy status collection and field projection scale linearly within the supported payload and task limits.",
-    "Enabled pending verification shows the standard Loading bulb or the session's matching Stale list without granting stale action authority.",
+    "Current-candidate pending verification shows standard Loading, off/on clears old inventory, and only matching current-dependency negatives select ordinary Git.",
     "The existing Spaces lifecycle replaces abandoned reply processing after two seconds without relying on finally or a prior attempt TTL.",
     "Explicitly advertised fleet-view status is preferred and legacy output is projected before native decoding with narrow capability fallbacks.",
     "Finished Open and Draft task PRs retain eligibility regardless of task age; only GitHub completion timestamps bound Closed history.",
     "Generation, token, exact identity and action-freshness guards continue rejecting obsolete replies and unverified actions."
   ],
-  "archiveDigest": "f910ced37b31ae29373147689a18a1c4c70fff2275cde2887f8f3ec695ff3666",
-  "specDigest": "5ebf9cf4186ba722c7bce3fea4c2920514fe7af4d2b98324314d953633d9d1b3",
-  "tasksDigest": "3dd1d8ff93b0a914bd898e4c7c0b3ab1c10d4b21486c5c2667adb2e35f3dee59",
+  "archiveDigest": "6120458f0b64bf4a3f488383edbf81e2e856ff2be9252ffdc2b123c37e4d4c8b",
+  "specDigest": "a89fd14ddff18b8fd3bda1f7f9febead5cf6627b0f84b967df17c0c144289631",
+  "tasksDigest": "36115e60fdec673c112d6f1f952d5d57f0c5133121ff63fba79bf1aa42742117",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []
 }
