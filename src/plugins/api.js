@@ -8,7 +8,7 @@ import { MOD } from './where.js';
 import { WebSocket } from 'websocket';
 
 // Herdr, through the one facade every mod uses.
-export { exec, hc, window, spaces, panes, terminals, machines, shared, setShared, appHome, readTextFile, notify, layout, run, checking } from '../host.js';
+export { exec, hc, window, spaces, panes, terminals, machines, shared, setShared, appHome, readTextFile, writeTextFile, notify, layout, run, checking } from '../host.js';
 
 export { FLEET_DISPLAY_KEY, fleetDisplayChangeAllowed, updateFleetDisplay } from '../fleet-display.js';
 

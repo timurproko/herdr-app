@@ -25,7 +25,7 @@ const options={hostname:'fixture',isDesktopOpen:()=>false};
 try {
  for(const flag of [undefined,true,false]) {
   const value={version:1,confirmLastTab:false,closeOnLastTab:true,...(flag===undefined?{}:{connectFleetToCoordinator:flag})};
-  put('shared.json',{'custom.spaces.preferences':value,'custom.fleet.links':{private:'not exported'},'custom.fleet.display':{version:1,entries:{local:{home:'private home',owner:'private terminal'}}},unrelated:123});syncPreferences('export',home,options);
+  put('shared.json',{'custom.spaces.preferences':value,'custom.fleet.links':{private:'not exported'},'custom.fleet.diagnostics':{version:1,entries:{local:{lastFailure:{reason:'transport-error',at:123,generation:7}}}},'custom.fleet.display':{version:1,entries:{local:{home:'private home',owner:'private terminal'}}},unrelated:123});syncPreferences('export',home,options);
   assert.deepEqual(get('preferences/fixture.json').shared,{'custom.spaces.preferences':value});
   put('shared.json',{unrelated:123});syncPreferences('import',home,options);assert.deepEqual(get('shared.json'),{unrelated:123,'custom.spaces.preferences':value});
  }
