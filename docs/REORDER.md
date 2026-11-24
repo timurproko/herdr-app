@@ -57,7 +57,8 @@ ordinary chip with the same pointer/return motion. Spaces represents the grabbed
 row's own numbered badge and name: `2 crew` from the fleet or `1 coordinator` from
 the coordinator. Attached badges share the coordinator's resolved colour without
 overwriting the fleet's saved colour. No chain or second row appears in the chip;
-the coordinator's small trailing chain stays in the expanded sidebar metadata. Domain adapters still validate
+both attached rows' small trailing chains stay in the expanded sidebar metadata,
+immediately before their Crew pills. Domain adapters still validate
 bindings and destination block edges. Spaces commits its finite public ordering
 sequence only after each prior move is acknowledged; no native transaction is
 claimed and an uncertain result is not replayed. The compact Spaces rail retains
