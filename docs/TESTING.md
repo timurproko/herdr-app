@@ -353,8 +353,9 @@ token/host preservation, invalid repository rejection and validated account outp
 PR reads keep their explicit `--repo` flag. Root discovery before a repository is
 known remains cwd-based. No global login or process environment is changed.
 
-Missing-resource/HTTP 404 replies say `not found`, with grouped repository/PR
-numbers and **no** login-problem wording or account lookup. Real permission/auth
+Authoritative targeted task-PR missing-resource/HTTP 404 replies are silent,
+including unfinished tasks, with **no** login-problem wording or account lookup.
+Uncertain repository resolution retains its scoped not-found error. Real permission/auth
 refusals share one bounded `gh api user --jq .login` diagnostic per repository in
 the current refresh, using the same routing/credential rather than the global
 active account. Notices name the effective account or explicitly `(unknown)`;
@@ -367,8 +368,10 @@ changed folder/machine and replaced or mutated repository responses (404 and 403
 The reported crew history notice was reproduced read-only for recorded PRs #36,
 #37 and #38: the explicitly targeted reads return `Could not resolve to a
 PullRequest` as timurproko, while crew #1–#9 and herdr-app #41/#43 succeed. The
-notice now reports these missing records as `Task PR history: timurproko/crew
-#36, #37, #38 not found`, not as a login problem. This does not establish a wrapper defect and no record, account or MyConfigs file is changed.
+old red history notice described those missing records; confirmed task-PR absence
+now contributes nothing to the interface and is diagnosed once per identity in the
+customization log. This does not establish a wrapper defect and no record, account
+or MyConfigs file is changed.
 Local native exec defaults to user home and inherits the desktop environment.
 The Core reproduction matched the documented command/cwd and had GH_REPO/GH_HOST
 unset and no explicit tokens, but it cannot prove the already-running desktop's
@@ -561,6 +564,21 @@ without display history, PR inventory, folder probes or worker authority.
 Preference round trips explicitly exclude the diagnostic key. These are synthetic
 failures, not evidence that the original recovered incident was a timeout or any
 other particular cause; no live installation, settings or process is changed.
+
+`tests/fleet-missing-pulls.test.mjs` covers silent confirmed absence for live and
+historical tasks, exact repository/number cache reuse across refresh, hide/show,
+context changes and panel recreation, one sanitized log line per session, mixed
+found/missing rows and removal of previously loaded missing facts. A synthetic
+clock checks live misses immediately before/at the five-minute recheck boundary,
+shared live/history links, task completion, corrected URLs, later creation at the
+same number and no duplicate pending rechecks. It also checks explicit access/auth,
+network, rate-limit, timeout and uncertain repository errors remain visible and
+retryable, including refusals quoting missing-resource text. Hidden, disabled,
+stale, removed-link and superseded replies cannot publish absence or log it. A new
+module session reads again; no persistent negative inventory or timer is introduced.
+The real renderer fixture additionally checks both tabs contain no missing-task
+row, notice, hint, tooltip or empty header/enrollment footer while found rows remain.
+These are synthetic responses and native-element fixtures, not live desktop proof.
 
 `tests/fleet-read-failures.test.mjs` and `tests/fleet-read-notices.test.mjs`
 exercise the actual targeted-reader and panel renderer with one live draft and

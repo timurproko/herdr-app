@@ -52,6 +52,9 @@ for(const [failure,kind,message]of cases){
  const f=pullFailure(failure);assert.equal(f.kind,kind);assert.equal(f.message,message);
  // String callers in ordinary Git must retain truthful response classification.
  assert.equal(pullError(failure),message);
+ // Exact targeted PR absence is covered by fleet-missing-pulls: unlike
+ // uncertain repository resolution it is no longer a retained row/error.
+ if(kind==='notfound' && /PullRequest|HTTP 404/.test(failure.stderr??''))continue;
  for(const n of [5,6,7])failures.set(key(n),failure);
  a.invalidate();a.pump(cx);await drain();assert.equal(JSON.stringify(a.counts()),JSON.stringify({open:1,closed:3}));
  for(const n of [5,6,7]){const e=a.entries.get(key(n));assert.equal(e.error.kind,kind);assert.equal(e.error.message,kind==='notfound'?'example/crew not found':['access','auth'].includes(kind)?`example/crew not accessible with the GitHub account fixture-user${kind==='auth'?'; sign in with gh auth login':''}`:message);assert.equal(e.pr.state,'merged');}
