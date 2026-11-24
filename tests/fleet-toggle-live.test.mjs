@@ -2,6 +2,7 @@
 // production row rendering. No Core, user preferences or native input is used.
 import assert from 'node:assert/strict';
 import {loadMod} from '../tools/plugin-harness.mjs';
+import {captureSpaceBlock} from '../src/shared/workspace-links.js';
 
 function element(asset) {
  const n={asset,attrs:{},kids:[]};let e;
@@ -20,7 +21,8 @@ const theme={foreground:'#eeeeee',muted:'#aaaaaa',dim:'#888888',chrome:'#111111'
 
 async function mounted({enabled=false,initialMode='success',selected='coordinator',workers=1} = {}) {
  const state={'custom.plugins':{crew:{enabled:true}},'custom.spaces.preferences':{connectFleetToCoordinator:enabled}},copies=[],refreshes=new Set(),jobs=[],requests=[];
- let rendering=false,dialogOpen=true,mode=initialMode,now=100000;
+ let rendering=false,dialogOpen=true,mode=initialMode,now=100000,allowOrder=false;
+ const order=[];
  const pending=[],yielded=[];
  const groups=[],panes=[],terminals=[];
  for(const machine of [null,'pc2']) {
@@ -42,7 +44,7 @@ async function mounted({enabled=false,initialMode='success',selected='coordinato
  const host={shared:k=>state[k],setShared(k,v){assertEvent();if(JSON.stringify(state[k])===JSON.stringify(v))return;state[k]=plain(v);for(const copy of copies)refreshes.add(copy);},
   spaces:()=>groups,panes:()=>panes,terminals:()=>terminals,machines:()=>[{name:null,layout:'ready'},{name:'pc2',layout:'ready'}],checking:()=>false,
   props:()=>({}),focused:()=>({space:selected,tab:selected==='coordinator'?'c':'w',pane:selected==='coordinator'?'cp':'wp',terminal:selected==='coordinator'?'t1':'t2',app:'a1'}),theme:()=>theme,layout:()=>({id:'sidebar',size:{px:248}}),window:()=>({active:true}),settings:()=>({zoom:1}),
-  notify(){assert.fail('No toast');},run(){assert.fail('No native mutation');},openOverlay(){assert.fail('No overlay replacement');},closeOverlay(){dialogOpen=false;assert.fail('The dialog must stay open');},
+  notify(){assert.fail('No toast');},run(name,args){assertEvent();if(allowOrder&&name==='space.move'){order.push(args);return;}assert.fail('No native mutation');},openOverlay(){assert.fail('No overlay replacement');},closeOverlay(){dialogOpen=false;assert.fail('The dialog must stay open');},
   exec(){assert.fail('No Git probe');},watchFolder(){assert.fail('No watcher');},
   async hc(args){assertEvent();if(args[0]==='machine')return {code:0,stdout:'{"machines":[]}'};
    assert.match(args.at(-1),/status '--all' '--json' '--discover-prs'/);
@@ -135,7 +137,7 @@ async function mounted({enabled=false,initialMode='success',selected='coordinato
   assert.equal(JSON.stringify({groups,panes,terminals,colors}),topology,'No native order, terminal, focus or saved colour mutation');
  };
  await drain();frame(false);
- return{state,settings,get sidebar(){return sidebar;},requests,flip,drain,tick,paint,frame,release,setMode:value=>mode=value,
+ return{state,settings,groups,order,allowOrder:()=>allowOrder=true,get sidebar(){return sidebar;},requests,flip,drain,tick,paint,frame,release,setMode:value=>mode=value,
   async pulse(ms,wait=true){now+=ms;for(const copy of copies)if(copy.active)for(const timer of copy.timers)if(timer.ms===250)timer.fn(copy.cx);await (wait?drain():tick());},
   advance(ms){now+=ms;},
   resumeYields(){for(const resume of yielded.splice(0))resume();},
@@ -152,7 +154,7 @@ for(const selected of ['coordinator','fm-crew-home'])for(const workers of [1,7])
   const before=x.requests.length;
   for(let elapsed=0;elapsed<delay;elapsed+=250)await x.pulse(250);
   assert.equal(x.requests.length,before,'Off never starts verification, even beyond the attempt TTL');
-  x.setMode('defer');const start=x.now;x.flip('fleet');await x.tick();x.frame(false);
+  x.setMode('defer');const start=x.now;x.flip('fleet');x.frame(true);await x.tick();x.frame(true);
   const generation=x.state['custom.fleet.generation'];
   assert.equal(x.requests.length,before+2,'Each on immediately starts a local and a remote verification');
   for(let elapsed=0;elapsed<750;elapsed+=250)await x.pulse(250,false);
@@ -180,7 +182,7 @@ for(const selected of ['coordinator','fm-crew-home'])for(const delay of [0,1000,
  const oldGeneration=x.state['custom.fleet.generation'];const before=x.requests.length;
  x.flip('fleet');await x.tick();x.frame(false);
  for(let elapsed=0;elapsed<delay;elapsed+=250)await x.pulse(250,false);
- x.flip('fleet');await x.tick();x.frame(false);
+ x.flip('fleet');x.frame(true);await x.tick();x.frame(true);
  assert.equal(x.state['custom.fleet.generation'],oldGeneration+2);
  assert.equal(x.requests.length,before+2,'A pre-off lease cannot block the latest on');
  const leases=plain(x.state['custom.fleet.reads']);
@@ -189,7 +191,7 @@ for(const selected of ['coordinator','fm-crew-home'])for(const delay of [0,1000,
  for(let elapsed=0;elapsed<3500;elapsed+=250)await x.pulse(250,false);
  assert.equal(x.requests.length,before+2,'Slow current verification remains single-flight');
  if(oldFirst) {
-  x.release(2,oldReply);await x.tick();x.frame(false);
+  x.release(2,oldReply);await x.tick();x.frame(true);
   assert.deepEqual(plain(x.state['custom.fleet.reads']),leases,'Obsolete callback cannot release its successor’s lease');
   x.release();await x.drain();x.frame(true);
  } else {
@@ -276,28 +278,28 @@ for(const [id,key,value]of [['confirm','confirmLastTab',true],['close','closeOnL
  m.flip(id);assert.equal(m.state['custom.spaces.preferences'][key],value);await m.drain();m.frame(true);
 }
 assert.equal(m.requests.length,reads);
-// No completed read: shared invalidations must not fabricate the pair while
-// the switch already shows on. Inline spawn is intentional (the native runtime
+// Remembered presentation restores before a read completes, with no fresh
+// action context or revived task inventory. Inline spawn is intentional (the native runtime
 // may enter a task immediately); rendering always guards focus and notify.
 m.flip('fleet');await m.drain();m.frame(false);
-m.setMode('defer');m.flip('fleet');await m.tick();m.frame(false);
+m.setMode('defer');m.flip('fleet');m.frame(true);await m.tick();m.frame(true);
+assert.equal(m.sidebar.api.r.pluginPullContext('coordinator'),null,'Memory grants no fresh inventory authority');
 assert.equal(m.requests.length,reads+2);
 m.release();await m.drain();m.frame(true);
 // Disabling while reads are pending revokes the generation immediately. An old
 // success cannot resurrect attachment, even if the user has enabled again.
 m.flip('fleet');await m.drain();m.frame(false);
-m.flip('fleet');await m.tick();m.frame(false);
+m.flip('fleet');await m.tick();m.frame(true);
 const beforeReversal=m.requests.length;
 m.flip('fleet');m.frame(false);
-m.flip('fleet');await m.tick();m.frame(false);
+m.flip('fleet');await m.tick();m.frame(true);
 assert.equal(m.requests.length,beforeReversal+2,'A new generation starts its own verification');
-m.release(2);await m.tick();m.frame(false);
+m.release(2);await m.tick();m.frame(true);
 m.release();await m.drain();m.frame(true);
-// Both failed transport and completed no-owner evidence leave a cold enable
-// independent; neither invents inherited colour or a chain.
+// Uncertain refresh keeps memory; only a completed no-owner result forgets it.
 for(const failure of ['error','ambiguous']){
  m.flip('fleet');await m.drain();m.frame(false);
- m.setMode(failure);m.flip('fleet');await m.drain();m.frame(false);
+ m.setMode(failure);m.flip('fleet');m.frame(true);await m.drain();m.frame(failure==='error');
  m.flip('fleet');await m.drain();m.frame(false);
  m.setMode('success');m.flip('fleet');await m.drain();m.frame(true);
 }
@@ -352,5 +354,17 @@ for(const failure of ['error','timeout']) {
  assert.equal(x.sidebar.api.r.pluginPullContext('coordinator').stale,false);const verified=x.state['custom.fleet.links'].entries.local.at;
  x.release();await x.drain();assert.equal(x.state['custom.fleet.links'].entries.local.at,verified,'Retired reader cannot overwrite replacement verification');
  assert.equal(x.state['custom.fleet.diagnostics'].entries.local.lastDiscard.reason,'replaced-read');
+}
+// Exercise the actual Spaces.drop caller, not just the pure domain planner.
+for(const source of ['coordinator','fm-crew-home']) {
+ const x=await mounted();x.flip('fleet');await x.drain();x.flip('fleet');await x.drain();
+ x.setMode('defer');x.flip('fleet');x.frame(true);await x.tick();
+ assert.equal(x.sidebar.api.r.pluginWorkspaceLinks().length,0);
+ const links=x.sidebar.api.r.pluginWorkspaceLinks({presentation:true});
+ const meta=captureSpaceBlock(x.groups,links,source);assert.equal(meta.sources.length,2);
+ x.allowOrder();x.sidebar.view.drag.take=()=>({kind:'drop',id:source,target:'other',meta});
+ x.sidebar.view.drop('other',x.sidebar.cx);assert.ok(x.order.length,'Remembered-only pair can reorder through the production caller');
+ assert.equal(x.order[0].id,'other');assert.equal(x.order[0].index,1);
+ x.release();await x.drain();
 }
 console.log('PASS mounted Settings/Spaces local/remote toggles and timer-only startup/timeout recovery: recorded reasons, 2/5/10 backoff capped at the former healthy cadence, reload/abandoned leases, no new scheduler or user action');

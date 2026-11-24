@@ -303,7 +303,7 @@ export function refreshFleets(cx, readStatus, force = false) {
 export function invalidateFleet() {
   clearFleetRetries();
   setShared('custom.fleet.generation',(shared('custom.fleet.generation')??0)+1);
-  setShared(FLEET_KEY,null);setShared(READS,{});updateFleetDisplay(null,null,{disabled:!enabled()});
+  setShared(FLEET_KEY,null);setShared(READS,{}); // Hide, never forget the last verified pair.
   verifiedTokens.clear();pendingTokens.clear();
 }
 export function fleetPullContext(space, {presentation = false} = {}) {

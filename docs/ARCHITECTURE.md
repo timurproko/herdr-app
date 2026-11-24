@@ -244,8 +244,9 @@ with one pair per machine; no task/PR inventory, reports, transcripts or credent
 Public shared values are persisted by the SDK. Pure Spaces projection and Crew tag
 reads restore that record in the first available native-space frame after a cold
 start, mod replacement or layout switch, without render-time writes or IO. It is
-excluded from portable preferences. Explicit preference/plugin disablement clears
-it, and completed negative results or ready native-space absence prune it; another
+excluded from portable preferences. Preference/plugin disablement hides the pair
+and revokes fresh authority but preserves that memory for same-render enablement.
+Completed negative results or ready native-space absence prune it; another
 machine's loading layout cannot erase its record.
 
 Presentation has no wall-clock expiry. Its bound is the lifetime of the exact pair
@@ -260,8 +261,10 @@ Move and Git/worker action queries still require a current-runtime witnessed sta
 result, 30-second freshness, matching dependency fingerprints and exact live membership.
 Persisted timestamps/tokens cannot authorize a cold module. Consumers can witness a
 shared in-flight read, preserving coalescing across mod copies, but completed crash
-leases are not fresh verification. Drops on/from a retained unverified block refuse
-to move, never fall back to a single-space reorder. Git requests presentation context
+leases are not fresh verification. Space-only block ordering uses the displayed
+remembered link, revalidating exact captured pair identity and native acknowledgements
+at commit. This exception reorders spaces only; it never permits terminal/tab moves,
+worker navigation, messages or coordinator colour writes from remembered identity. Git requests presentation context
 only to retain already-loaded same-home rows/counts/folds with a Stale badge, or a
 standard Loading bulb with no extra header label or restored inventory on cold start.
 There is no cross-toggle identity/inventory cache. Off or a scope change clears

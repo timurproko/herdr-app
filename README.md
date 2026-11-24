@@ -664,9 +664,12 @@ selected terminal's folder.
 
 **Settings → Spaces → Connect fleet space to coordinator** is off by default
 (`connectFleetToCoordinator`). Changes apply while Settings stays open: enabling
-starts fleet verification immediately for applicable machines and attaches as soon
-as it succeeds; disabling immediately restores independent rows and badge colours.
-Until the first successful verification, no attachment is guessed. The two last-tab
+restores the last verified host-local pair in the same render, before any read
+completes, and verifies in the background. Disabling immediately restores independent
+rows and badge colours without forgetting that pair. Restart, reload and update also
+restore remembered pairs when both exact native spaces still exist. Failed, slow or
+expired reads keep the picture; authoritative absence clears memory. First-ever
+pairing alone waits for successful verification; names never invent a link. The two last-tab
 switches on this page also save immediately; close actions and empty-space
 reconciliation read their current values without waiting for Settings to close.
 Fleet verification failures and discarded replies retain sanitized reason/time/generation
@@ -728,7 +731,11 @@ freshly verified displayed pair identity, including retained fleets after all wo
 finish or when no tasks remain, locally or remotely. After restart, the menu must
 first witness successful verification; restored visuals alone do not permit a write.
 Other menu actions still target the clicked space. A changed or unverifiable pair refuses a stale colour
-choice; reopen after detachment to edit the fleet's own colour again. Disabling
+choice; reopen after detachment to edit the fleet's own colour again.
+Space-only block dragging follows the displayed remembered pair even before fresh
+verification; it revalidates the captured pair and native ordering acknowledgements.
+This permission does not move tabs or terminals or authorize Git inventory reads,
+worker navigation, coordinator colour writes or messages. Disabling
 attachment or confirmed unlinking restores that independent fleet colour.
 Unrelated plugin tags remain; the compact rail stays badge-only. Refreshing Git or
 Crew, relay events, focus changes and unrelated pane changes do not temporarily remove

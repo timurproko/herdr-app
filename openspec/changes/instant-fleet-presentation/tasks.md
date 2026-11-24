@@ -2,11 +2,11 @@
 
 ## 1. Remembered fleet pairs restore instantly without granting fresh authority
 
-- [ ] 1.1 Separate durable pair memory from enabled visibility in the shared display/preference boundary and Crew invalidation; verify off hides immediately while preserving memory and on projects adjacency, chains and shared badge colour with zero reads completed.
-- [ ] 1.2 Restore exact remembered identities on startup, reload and update, and ignore/prune missing identities only with authoritative machine-layout evidence; verify cold fresh-module, ready-remote, unready-remote, missing-space and same-name replacement regressions.
-- [ ] 1.3 Revalidate native space-only block dragging from the displayed pair through capture, drop and acknowledgement; verify both origins reorder together before verification and cancel on disablement, disappearing members or authoritative re-pair without moving terminals or tabs.
-- [ ] 1.4 Preserve fresh gates for consolidated Git inventory, coordinator colour writes, worker navigation and operational actions; verify remembered-only context shows standard Loading, cannot write or navigate, and cannot resurrect inventory across off/on.
-- [ ] 1.5 Cover failed, timed-out, expired and interrupted background reads retaining memory, successful same-pair reads avoiding detached frames, and authoritative gone/different results clearing or replacing memory; extend mounted-toggle/provider tests and update README and architecture documentation with the presentation-versus-authority contract.
+- [x] 1.1 Separate durable pair memory from enabled visibility in the shared display/preference boundary and Crew invalidation; verify off hides immediately while preserving memory and on projects adjacency, chains and shared badge colour with zero reads completed.
+- [x] 1.2 Restore exact remembered identities on startup, reload and update, and ignore/prune missing identities only with authoritative machine-layout evidence; verify cold fresh-module, ready-remote, unready-remote, missing-space and same-name replacement regressions.
+- [x] 1.3 Revalidate native space-only block dragging from the displayed pair through capture, drop and acknowledgement; verify both origins reorder together before verification and cancel on disablement, disappearing members or authoritative re-pair without moving terminals or tabs.
+- [x] 1.4 Preserve fresh gates for consolidated Git inventory, coordinator colour writes, worker navigation and operational actions; verify remembered-only context shows standard Loading, cannot write or navigate, and cannot resurrect inventory across off/on.
+- [x] 1.5 Cover failed, timed-out, expired and interrupted background reads retaining memory, successful same-pair reads avoiding detached frames, and authoritative gone/different results clearing or replacing memory; extend mounted-toggle/provider tests and update README and architecture documentation with the presentation-versus-authority contract.
 
 ## 2. Real-path fleet reads recover across mod instances without a long blocking lease
 

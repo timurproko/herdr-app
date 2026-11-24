@@ -17,7 +17,7 @@ assert.equal(prefs.spacePreferences().connectFleetToCoordinator,false);
 let click;const owner={heading:()=>element(),row:(_t,label,about,toggle)=>({label,about,toggle}),toggle:(_t,id,value,fn)=>{if(id==='st-spaces-fleet')click=fn;return element().value(value);}};
 let tree=m.namespace.spacesPage(owner,{});assert.equal(tree.children[3].label,'Connect fleet space to coordinator');assert.deepEqual(tree.children[3].toggle.accessibility_labelValue,['Connect fleet space to coordinator']);
 click(null,{notify(){}});assert.equal(prefs.spacePreferences().connectFleetToCoordinator,true);
-tree=m.namespace.spacesPage(owner,{});assert.deepEqual(tree.children[3].toggle.valueValue,[true]);state['custom.fleet.display']={version:1,entries:{local:{parent:'fixture'}}};click(null,{notify(){}});assert.equal(prefs.spacePreferences().connectFleetToCoordinator,false);assert.equal(state['custom.fleet.display'],null,'Explicit disable clears durable pair identity');
+tree=m.namespace.spacesPage(owner,{});assert.deepEqual(tree.children[3].toggle.valueValue,[true]);state['custom.fleet.display']={version:1,entries:{local:{parent:'fixture'}}};click(null,{notify(){}});assert.equal(prefs.spacePreferences().connectFleetToCoordinator,false);assert.deepEqual(state['custom.fleet.display'],{version:1,entries:{local:{parent:'fixture'}}},'Explicit disable preserves host-local pair memory');
 const home=fs.mkdtempSync(path.resolve('.artifacts/fleet-prefs-'));
 const put=(rel,v)=>{fs.mkdirSync(path.dirname(path.join(home,rel)),{recursive:true});fs.writeFileSync(path.join(home,rel),JSON.stringify(v));};
 const get=rel=>JSON.parse(fs.readFileSync(path.join(home,rel),'utf8'));
