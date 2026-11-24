@@ -5,6 +5,7 @@ function element(){const n={attrs:{},kids:[]};let p;return p=new Proxy(n,{get:(n
 const bulbs=n=>n&&typeof n==='object'?Number(n.attrs?.bulb?.[0]===true)+(n.kids??[]).reduce((sum,k)=>sum+bulbs(k),0):0;
 const palette={working:'#5599dd',blocked:'#dd5555'};
 const find=(n,id)=>n?.attrs?.id?.[0]===id?n:n?.kids?.map(c=>find(c,id)).find(Boolean);
+const words=n=>typeof n==='string'?[n]:(n?.kids??[]).flatMap(words);
 // A collapsible's body stays laid out while closed (it is measured, to slide like Usage's): closed is a 0-tall clip.
 const clipH=(tree,id)=>find(tree,id+'-clip')?.attrs?.h?.[0];
 const state={},jobs=[],actions=[];
@@ -195,7 +196,7 @@ view.pluginTarget='git';view.pluginChecks.git={loading:false,items:[managed]};jo
 view.pluginChecks.git={loading:false,items:git.prerequisites.map(p=>({...p,status:'ready'}))};view.pluginFixing='git:node';assert.equal(bulbs(render()),1,'An individually running fix shows a bulb only on that row');view.pluginFixing=null;view.pluginChecks.git.loading=true;view.pluginChecks.git.checkingTarget='node';assert.equal(bulbs(render()),1+git.prerequisites.filter(p=>p.section).length,'Post-action validation marks the targeted row and refreshing sections');assert.equal(bulbs(find(render(),'st-plugin-git-requirements-status-rail')),0);view.pluginChecks.git.checkingTarget='requirements';const cachedCheck=render();assert.equal(bulbs(cachedCheck),1+git.prerequisites.filter(p=>p.section).length);assert.equal(bulbs(find(cachedCheck,'st-plugin-git-repository-status-rail')),1,'Repositories never show stale Ready while their list is refreshing');for(const item of git.prerequisites.filter(p=>!p.section))assert.ok(find(cachedCheck,`st-plugin-git-${item.id}-status-rail`).kids[1].kids[0].kids.includes('Ready'),'Previously checked rows retain their result during a main check');
 // Real scoped check scheduling, with deferred synthetic checks: no host IO.
 const originalPrerequisites=git.prerequisites;
-const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
+const deferred=()=>{let resolve,reject;const promise=new Promise((r,j)=>{resolve=r;reject=j;});return {promise,resolve,reject};};
 let waits={requirements:deferred(),repository:deferred()};const runs=[];
 try{
   git.prerequisites=originalPrerequisites.filter(pre=>pre.id!=='ci-monitor').map(pre=>({...pre,async check(context){const group=pre.section?pre.id:'requirements',gate=waits[group];runs.push({id:pre.id,group,context});return gate.promise;}}));
@@ -249,6 +250,62 @@ try{
     await jobs.shift()(cx);assert.deepEqual(added,['owner/two']);assert.equal(view.pluginFixing,null);assert.equal(jobs.length,1,'Adding re-checks the section');assert.equal(view.pluginSettling['git:repository'],true,'The section stays busy until that re-check answers');jobs.length=0;view.pluginSettling={}; // stands in for the dropped re-check's answer
     view.pluginChecks.git={loading:false,items:[listed]};
     find(render(),'st-plugin-list-git-repository-row-0').attrs.on_hover[0](true,cx);click('st-plugin-list-git-repository-remove-0');await jobs.shift()(cx);assert.deepEqual(calls.at(-1),['remove','owner/one']);jobs.length=0;view.pluginSettling={};
+    // Real mutation -> post-action check -> done/failed: header-only busy feedback,
+    // with identical account/detail/list content and row geometry until the check answers.
+    const beforeLifecycle=git.prerequisites,remove=list.remove;
+    try{
+      for(const outcome of ['done','action-failed','check-failed']){
+        const operation=deferred(),recheck=deferred();
+        list.remove=()=>operation.promise;
+        git.prerequisites=beforeLifecycle.map(p=>p.id==='repository'?{...p,check:()=>recheck.promise}:p);
+        view.pluginFixing=null;view.pluginSettling={};view.pluginFixError={};jobs.length=0;
+        view.pluginChecks.git={loading:false,items:[listed]};
+        find(render(),'st-plugin-list-git-repository-row-0').attrs.on_hover[0](true,cx);
+        const section=()=>find(render(),'st-plugin-section-git-repository');
+        const body=()=>find(section(),'st-plugin-git-repository-body');
+        const quiet=()=>assert.ok(!words(section()).some(s=>/^Updating(?:…|\.\.\.)?$/.test(s)),'No duplicate Updating line in any lifecycle state');
+        const snapshot=()=>({text:words(body()),rows:find(body(),'st-plugin-list-git-repository').kids.map(n=>({id:n.attrs.id,h:n.attrs.h}))});
+        const idle=snapshot();quiet();
+        assert.deepEqual(words(find(section(),'st-plugin-git-repository-status-rail')),['Check','1 added']);
+        click('st-plugin-list-git-repository-remove-0');
+        const busy=()=>{
+          quiet();
+          const tree=section(),rail=find(tree,'st-plugin-git-repository-status-rail'),status=rail.kids[1].kids[0];
+          assert.deepEqual(words(rail),['Check','Applying'],'The literal pill word has no ellipsis');
+          assert.equal(bulbs(rail),1);assert.equal(status.attrs.text_color[0],palette.working);
+          assert.equal(status.attrs.w[0],72);assert.equal(status.kids[1].attrs.whitespace_nowrap.length,0);
+          assert.equal(status.kids[1].attrs.truncate,undefined,'The full word is not ellipsized by truncation');
+          assert.equal(find(tree,'st-plugin-refresh-git-repository').attrs.disabled[0],true);
+          assert.equal(find(tree,'st-plugin-list-git-repository-add').attrs.disabled[0],true);
+          assert.equal(find(tree,'st-plugin-list-git-repository-remove-0').attrs.disabled[0],true);
+          assert.equal(find(tree,'st-plugin-git-repository-selection').attrs.disabled[0],true);
+          assert.equal(find(tree,'st-plugin-git-repository-selection-loading'),undefined,'Keep the previous account, not a loading replacement');
+          assert.equal(find(tree,'st-plugin-git-repository-selection-popup'),undefined);
+        };
+        busy();assert.deepEqual(snapshot(),idle,'Starting the mutation preserves body content and row height');
+        const applying=jobs.shift()(cx);
+        if(outcome==='action-failed')operation.reject(new Error('Webhook removal refused'));
+        else operation.resolve();
+        await applying;
+        assert.equal(view.pluginSettling['git:repository'],true);
+        busy();
+        if(outcome==='action-failed'){
+          assert.ok(words(body()).includes('Webhook removal refused'),'Action errors still occupy the existing detail slot');
+          assert.deepEqual(snapshot().rows,idle.rows,'An error does not replace the repository list');
+        }else assert.deepEqual(snapshot(),idle,'The post-action check also preserves body content and row height');
+        const checking=jobs.shift()(cx);busy();
+        recheck.resolve(outcome==='check-failed'?{status:'error',detail:'Repository check failed'}:listed);
+        await checking;quiet();
+        assert.equal(view.pluginSettling['git:repository'],undefined);
+        assert.ok(!words(section()).includes('Applying'));
+        assert.equal(find(section(),'st-plugin-refresh-git-repository').attrs.disabled[0],false);
+        if(outcome==='done'){
+          assert.deepEqual(snapshot(),idle,'Completion does not remove/reinsert unchanged content');
+          assert.equal(find(section(),'st-plugin-list-git-repository-remove-0').attrs.disabled[0],false);
+        }else assert.ok(words(body()).includes(outcome==='action-failed'?'Webhook removal refused':'Repository check failed'),'Failures remain visible after completion');
+        assert.equal(jobs.length,0);
+      }
+    }finally{git.prerequisites=beforeLifecycle;list.remove=remove;view.pluginFixError={};}
     view.pluginChecks.git={loading:false,items:[listed]};registry.setPluginSetting(git,'githubAccount','fixture-user');jobs.length=0;
     find(render(),'st-plugin-git-repository-selection-popup').attrs.on_open_change[0](true,cx);
     click('st-plugin-git-repository-selection-other-user');assert.equal(registry.pluginSetting(git,'githubAccount'),'other-user');assert.equal(jobs.length,1,'Switching account re-checks');jobs.length=0;
