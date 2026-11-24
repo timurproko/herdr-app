@@ -61,7 +61,8 @@ the coordinator's small trailing chain stays in the expanded sidebar metadata. D
 bindings and destination block edges. Spaces commits its finite public ordering
 sequence only after each prior move is acknowledged; no native transaction is
 claimed and an uncertain result is not replayed. The compact Spaces rail retains
-its existing selection-only behavior, with a link icon for the attached fleet.
+its existing selection-only behavior, with each row's own numbered badge in the
+shared coordinator colour while attached.
 
 Read-only state: `current`, `active`, `target`, `view` (active or returning), and
 `leaving`. Do not seed these in feature code; fixtures may do so to render phases.

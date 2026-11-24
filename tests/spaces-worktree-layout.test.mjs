@@ -249,7 +249,11 @@ context.__store.set('space.colors',{parent:'#123abc','worktree-a':'#ff0044'});
 const detached=view.ordered().find(r=>r.w.id==='worktree-a');
 assert.equal(find(view.row(detached,theme),'space-content-worktree-a').kids[0].attrs.bg[0],'#ff0044');
 assert.equal(find(view.compact(detached,theme),'space-badge-worktree-a').attrs.bg[0],'#ff0044','Actual detached projection restores the fleet colour in both modes');
-context.__store.delete('space.colors');
+drag.view={id:'worktree-a',meta:{sources:['worktree-a']}};
+const detachedChip=view.dragPreview(theme);
+assert.equal(detachedChip.label,detached.w.name);assert.equal(detachedChip.icon.kids[0],String(detached.i+1));
+assert.equal(detachedChip.icon.attrs.bg[0],'#ff0044','Attachment-off chip retains the fleet independent saved colour');
+drag.view=null;context.__store.delete('space.colors');
 // Compare actual machine header and row trailing slots, including tags and the left-aligned fleet name.
 view.machines=[{name:'pc2',state:'connected'}];view.reconnecting={};view.folded=new Set();view.rebuilt=()=>false;
 const machineWrites=new Map();context.localStorage={setItem:(key,value)=>machineWrites.set(key,value)};
