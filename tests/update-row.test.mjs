@@ -65,9 +65,9 @@ const titleCases = [
   { name: 'requested check', snapshot: {}, busy: 'check', label: 'Checking…', action: 'check', enabled: false, description: /^Not checked\.$/ },
   { name: 'quiet peer catch-up', snapshot: { peerPending: true, check: { attempted: clock, checked: clock, available: false } }, label: 'Update', action: 'launch', enabled: true, description: /^(Up to date\. Checked at|Not checked\.)/ },
   { name: 'available', snapshot: { check: { checked: clock, available: true } }, label: 'Update', action: 'launch', enabled: true, description: /^Update available\.$/ },
-  { name: 'launching', snapshot: {}, busy: 'launch', label: 'Updating…', action: 'check', enabled: false, description: /^Updating…$/ },
-  { name: 'pending receipt', snapshot: { launch: { deadline: clock + 30000 } }, label: 'Updating…', action: 'check', enabled: false, description: /^Updating…$/ },
-  { name: 'running', snapshot: { locked: true, job: { state: 'running', deadline: clock + 30000 } }, label: 'Updating…', action: 'check', enabled: false, description: /^Updating…$/ },
+  { name: 'launching', snapshot: {}, busy: 'launch', label: 'Updating…', action: 'check', enabled: false, description: /^Updating$/ },
+  { name: 'pending receipt', snapshot: { launch: { deadline: clock + 30000 } }, label: 'Updating…', action: 'check', enabled: false, description: /^Updating$/ },
+  { name: 'running', snapshot: { locked: true, job: { state: 'running', deadline: clock + 30000 } }, label: 'Updating…', action: 'check', enabled: false, description: /^Updating$/ },
   { name: 'failed update', snapshot: { job: { state: 'failed', error: 'fixture refusal', finished: clock } }, label: 'Check now', action: 'check', enabled: true, description: /Update failed: fixture refusal/ },
   { name: 'failed check', snapshot: { check: { error: 'offline' } }, label: 'Check now', action: 'check', enabled: true, description: /^Check failed\. Try again\.$/ },
   { name: 'partial', snapshot: { partial: true }, label: 'Check now', action: 'check', enabled: true, description: /some machines skipped or failed.*fixture/ },
@@ -93,6 +93,47 @@ for (const revision of [null, 'a'.repeat(40)]) {
     assert.doesNotMatch(`${rendered.title} ${rendered.description} ${button.label}`, /revision unknown/, context);
   }
 }
+// Published targets, not the installed title or unrelated completed receipts,
+// supply running descriptions in every phase. Both Git object formats work.
+const target = '4c4bff1' + 'b'.repeat(33);
+for (const phase of [
+  { options: { busy: 'launch' } },
+  { snapshot: { launch: { deadline: clock + 30000 } } },
+  { snapshot: { job: { state: 'running', token: 'target-run', deadline: clock + 30000 } } },
+]) {
+  for (const value of [undefined, null, '', 'not-a-commit', '4c4bff1', {}, 'b'.repeat(41), target, 'C'.repeat(64)]) {
+    const snapshot = { revision: 'a'.repeat(40), check: { target: value }, ...phase.snapshot };
+    const row = api.customizationRowState(snapshot, { now: clock, ...phase.options });
+    assert.equal(row.description, [target, 'C'.repeat(64)].includes(value) ? `Updating to ${value.slice(0, 7).toLowerCase()}` : 'Updating');
+    assert.equal(row.label, 'Updating…'); assert.equal(row.enabled, false);
+    assert.equal(row.title, 'herdr-app-custom aaaaaaa');
+  }
+}
+const targetJob = { state: 'running', token: 'target-run', deadline: clock + 30000 };
+assert.equal(api.customizationRowState({ job: { ...targetJob, target }, check: { target: 'c'.repeat(40) } }, { now: clock }).description, 'Updating to 4c4bff1', 'active receipt wins over the check');
+assert.equal(api.customizationRowState({ job: { ...targetJob, target: 'malformed' }, check: { target } }, { now: clock }).description, 'Updating to 4c4bff1', 'malformed receipt falls back to the published check');
+assert.equal(api.customizationRowState({ job: { state: 'complete', target }, launch: { deadline: clock + 30000 } }, { now: clock }).description, 'Updating', 'an old completed job cannot supply a target');
+assert.equal(api.customizationRowState({ job: targetJob, progress: { token: 'target-run', target } }, { now: clock }).description, 'Updating to 4c4bff1', 'same-run context survives missing check facts');
+assert.equal(api.customizationRowState({ job: targetJob, progress: { token: 'different-run', target } }, { now: clock }).description, 'Updating', 'foreign context is ignored');
+// Capture peer-only scope before launch, not after the desktop phase finishes.
+const peerSnapshot = { revision: target, peerPending: true, check: { target, checked: clock, available: false } };
+const peerProgress = api.updateLaunchProgress(peerSnapshot);
+assert.equal(api.customizationRowState(peerSnapshot, { busy: 'launch', now: clock }).description, 'Updating other machines to 4c4bff1');
+for (const snapshot of [
+  { ...peerSnapshot, launch: { deadline: clock + 30000, progress: peerProgress } },
+  { job: targetJob, progress: { ...peerProgress, token: targetJob.token } },
+]) {
+  const row = api.customizationRowState(snapshot, { now: clock });
+  assert.equal(row.description, 'Updating other machines to 4c4bff1');
+  assert.equal(row.label, 'Updating…'); assert.equal(row.enabled, false);
+}
+assert.equal(api.customizationRowState({ job: targetJob, progress: { token: targetJob.token, peerRevision: target } }, { now: clock }).description, 'Updating other machines', 'known peer-only scope can outlive missing target facts');
+for (const extra of [{ revision: null }, { check: { ...peerSnapshot.check, error: 'offline' } }, { check: { ...peerSnapshot.check, available: true } }, { peerPending: false }]) {
+  const snapshot = { ...peerSnapshot, ...extra };
+  assert.equal(api.updateLaunchProgress(snapshot).peerRevision, null, 'only verified current deferred work captures peer-only scope');
+}
+assert.equal(api.customizationRowState({ job: { ...targetJob, target: 'c'.repeat(40) }, progress: { ...peerProgress, token: targetJob.token } }, { now: clock }).description, 'Updating to ccccccc', 'new target invalidates the peer-only claim');
+assert.equal(api.customizationRowState({ ...peerSnapshot, job: targetJob, progress: { token: targetJob.token, target } }, { now: clock }).description, 'Updating to 4c4bff1', 'desktop phase completion cannot turn an ordinary update into a peer-only update');
 for (const extra of [
   { locked: true }, { peerUnknown: true }, { check: { checked: clock, attempted: clock, available: false, error: 'offline' } },
   { check: null }, { job: { state: 'unknown' } }, { job: { state: 'running', deadline: clock + 1000 } },
@@ -252,22 +293,24 @@ function fixture() {
 const render = (code, f) => { const row = code.customizationUpdateRow(f.view, {}); return { ...row, button: f.view.buttonCalls.at(-1) }; };
 const retire = f => { f.view.customUpdateClosed = true; f.ticks.length = 0; };
 const tick = f => f.ticks.find(t => t.ms === 1000).fn(f.cx);
-const available = { revision: 'a'.repeat(40), check: { attempted: clock - 10, checked: clock - 10, available: true }, log: '/fixture/update.log' };
+const available = { revision: 'a'.repeat(40), check: { attempted: clock - 10, checked: clock - 10, available: true, target: 'b'.repeat(40) }, log: '/fixture/update.log' };
 state.set(api.CUSTOMIZATION_UPDATE_KEY, available);
 const receipt = deferred(), old = fixture();
 respond = request => request.action === 'launch' ? receipt.promise : reply(available);
 render(api, old).button.callback(null, old.cx);
 assert.equal(render(api, old).button.label, 'Updating…');
+assert.equal(render(api, old).description, 'Updating to bbbbbbb');
 retire(old);
 const freshApi = await modules(), fresh = fixture();
 freshApi.initCustomizationUpdates(fresh.view, fresh.cx, 'custom-settings');
 assert.equal(render(freshApi, fresh).button.label, 'Updating…', 'shared intent survives replacement before launch acknowledgement');
 await fresh.settle();
 assert.equal(render(freshApi, fresh).button.label, 'Updating…', 'old cached status cannot erase a pending launch');
+assert.equal(render(freshApi, fresh).description, 'Updating to bbbbbbb', 'pending target survives replacement and an unacknowledged status');
 const launches = calls.filter(call => call.action === 'launch').length;
 render(freshApi, fresh).button.callback(null, fresh.cx); await fresh.settle();
 assert.equal(calls.filter(call => call.action === 'launch').length, launches, 'replacement cannot repeat the update');
-const running = { ...available, locked: true, job: { token: 'replacement-run', started: clock, deadline: clock + 1800000, state: 'running' } };
+const running = { ...available, check: null, locked: true, job: { token: 'replacement-run', started: clock, deadline: clock + 1800000, state: 'running' } };
 receipt.resolve(reply(running)); await old.settle();
 respond = () => reply(running); tick(fresh); await fresh.settle();
 assert.equal(freshApi.customizationUpdateSnapshot().launch, undefined, 'durable job acknowledges provisional feedback');
@@ -276,7 +319,7 @@ assert.equal(render(freshApi, fresh).button.options.enabled, false);
 retire(fresh);
 const duringApi = await modules(), during = fixture();
 duringApi.initCustomizationUpdates(during.view, during.cx, 'custom-settings'); await during.settle();
-assert.equal(render(duringApi, during).description, 'Updating…');
+assert.equal(render(duringApi, during).description, 'Updating to bbbbbbb');
 clock += 100;
 const complete = { ...available, revision: 'b'.repeat(40), locked: false, job: { ...running.job, state: 'complete', finished: clock } };
 const current = { ...complete, check: { attempted: clock + 1, checked: clock + 1, available: false } };
@@ -309,6 +352,43 @@ for (let i = 0; i < 2; i++) {
   assert.equal(calls.length, before, 'stale catch-up buttons cannot bypass a new lock/unknown outcome');
   state.set(code.CUSTOMIZATION_UPDATE_KEY, saved); retire(f);
 }
+// A peer-only launch stays honest through an empty pre-receipt response,
+// acknowledgement without check facts, and another module replacement.
+const peerBefore = { revision: target, peerPending: true, check: { target, attempted: clock, checked: clock, available: false } };
+state.set(api.CUSTOMIZATION_UPDATE_KEY, peerBefore);
+const peerReceipt = deferred(), peerOwner = fixture();
+respond = request => request.action === 'launch' ? peerReceipt.promise : reply({ revision: target });
+render(api, peerOwner).button.callback(null, peerOwner.cx);
+const peerRow = render(api, peerOwner);
+assert.equal(peerRow.description, 'Updating other machines to 4c4bff1');
+assert.deepEqual(geometry(peerRow.control), geometry(customSlot), 'longer peer description leaves the native action slot unchanged');
+retire(peerOwner);
+const peerCode = await modules(), peerView = fixture();
+peerCode.initCustomizationUpdates(peerView.view, peerView.cx, 'custom-settings'); await peerView.settle();
+assert.equal(render(peerCode, peerView).description, peerRow.description);
+const peerRunning = { revision: target, locked: true, job: { token: 'peer-run', started: clock, deadline: clock + 30000, state: 'running' } };
+peerReceipt.resolve(reply(peerRunning)); await peerOwner.settle();
+respond = () => reply(peerRunning); tick(peerView); await peerView.settle();
+assert.equal(render(peerCode, peerView).description, peerRow.description);
+retire(peerView);
+const peerAgainCode = await modules(), peerAgain = fixture();
+peerAgainCode.initCustomizationUpdates(peerAgain.view, peerAgain.cx, 'custom-settings'); await peerAgain.settle();
+assert.equal(render(peerAgainCode, peerAgain).description, peerRow.description);
+respond = () => reply({ ...peerRunning, job: { ...peerRunning.job, target: 'c'.repeat(40) } });
+tick(peerAgain); await peerAgain.settle();
+assert.equal(render(peerAgainCode, peerAgain).description, 'Updating to ccccccc', 'new authoritative target ends the old peer-only claim');
+respond = () => reply({ ...peerRunning, job: { ...peerRunning.job, token: 'other-job', started: clock + 1 } });
+tick(peerAgain); await peerAgain.settle();
+assert.equal(render(peerAgainCode, peerAgain).description, 'Updating', 'another job cannot inherit target or peer scope');
+retire(peerAgain);
+// Missing targets are not guessed, and a receipt can fill them without another launch.
+state.set(api.CUSTOMIZATION_UPDATE_KEY, { ...available, check: { ...available.check, target: null } });
+const laterTarget = deferred(), waiting = fixture(); respond = () => laterTarget.promise;
+render(api, waiting).button.callback(null, waiting.cx);
+assert.equal(render(api, waiting).description, 'Updating');
+laterTarget.resolve(reply({ ...running, job: { ...running.job, token: 'target-arrives', target } })); await waiting.settle();
+assert.equal(render(api, waiting).description, 'Updating to 4c4bff1');
+retire(waiting);
 for (const [jobState, description] of [['failed', /Update failed.*documented rollback/], ['partial', /some machines skipped or failed/], ['unknown', /outcome unknown/]]) {
   state.set(api.CUSTOMIZATION_UPDATE_KEY, running);
   respond = () => reply({ ...current, job: { ...current.job, state: jobState, error: 'fixture result' } });
@@ -349,7 +429,8 @@ assert.match(settings, /u\.app\.ready \|\| \(u\.core\.ready && !u\.core\.managed
 assert.equal((chromeSource.match(/updates\(\)\.app\.ready \|\| customizationUpdateAvailable\(\)/g) || []).length, 2, 'expanded Settings and compact More preserve native predicates');
 for (const command of ['app.check_updates', 'app.update', 'app.update_core', 'app.whats_new']) assert.ok(settings.includes(command));
 assert.equal((settings.match(/\.child\(customizationUpdateRow\(this, t\)\)/g) || []).length, 1);
-assert.match(fs.readFileSync('openspec/specs/customization-lifecycle/spec.md', 'utf8'), /its description shows Updating… with the unchanged disabled Updating… action until a result is known/, 'current reload contract retains the concise running description after finalization');
+const lifecycleSpec = 'openspec/changes/update-row-target/specs/customization-lifecycle/spec.md';
+assert.match(fs.readFileSync(fs.existsSync(lifecycleSpec) ? lifecycleSpec : 'openspec/specs/customization-lifecycle/spec.md', 'utf8'), /its description retains the target-aware running wording, or Updating until the target is known, with the unchanged disabled Updating… action until a result is known/, 'the reload contract retains target-aware wording before and after finalization');
 const updateExplanation = settings.match(/\.child\("(Herdr [^"\n]*)"\)/)?.[1];
 assert.equal(updateExplanation, 'Herdr looks for both every hour and tells you in the corner. herdr-core runs your terminals, so they keep running through its updates.', 'Updates retains the exact short paragraph from before PR 20');
 assert.match(settings, /initUpdateCheckFeedback\(this, cx/);
