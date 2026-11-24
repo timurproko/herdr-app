@@ -15,7 +15,7 @@ The existing spec explicitly prohibits polling settled rows. This is therefore a
 
 **Goals:** One coherent state/check publication rule across reader paths; maintain task-scoped aggregate counts and repository-wide ordinary counts; preserve existing bounded transport, history and UI retention.
 
-**Non-Goals:** New watcher or daemon, polling enrolled repositories, full repository discovery in coordinator mode, changing Crew task status, transport/notice redesign owned by PR #45, touching PRs #44/#46, cloud setup, deployment or real PR mutation.
+**Non-Goals:** New watcher or daemon, full repository discovery in coordinator mode, changing Crew task status, transport/notice redesign owned by PR #45, touching PRs #44/#46, cloud setup, deployment or real PR mutation.
 
 ## Decisions
 
@@ -25,7 +25,7 @@ Extend packaged-controller fixtures using fake GitHub, real Crew/provider contex
 
 ### Reuse the 45-second repository scheduler with a minimal state-and-check query
 
-Eligibility becomes shown Open/Draft OR pending/unknown checks for repositories without confirmed enrollment. Keep confirmed enrollment event-only and preserve selected-tab, aggregate-fold, visibility, offline and verified-context gates. Continue the existing queue, one-second contention retry, 20-PR chunks, complete-selection publication, epoch/generation guard and failure backoff.
+Eligibility becomes shown Open/Draft OR pending/unknown checks for unenrolled repositories, and shown Open/Draft for enrolled repositories. Use 45 seconds without confirmed enrollment and the approved 120-second safety cadence with enrollment; events still accelerate reads. Preserve selected-tab, aggregate-fold, visibility, offline and verified-context gates. Continue the existing queue, one-second contention retry, 20-PR chunks, complete-selection publication, epoch/generation guard and failure backoff.
 
 Add state, isDraft, mergedAt, closedAt and enough date/head facts for truthful existing row presentation to the existing batched check query, rather than launching one subprocess per row or fetching full repository lists each cycle. Include repository-wide Open/Closed totals in the ordinary repository snapshot so totals do not depend on arithmetic over a paginated subset. Aggregate totals remain derived from eligible linked entries only. Ensure row state, completion eligibility and totals commit together only after the complete batch succeeds. Retain labels/tasks/reviews not returned by this deliberately narrow read; do not replace them with empty defaults.
 
@@ -39,13 +39,13 @@ Ordinary updates must remove transitioned rows from incompatible cached arrays, 
 
 ### State latency honestly
 
-Enrolled healthy path has no polling interval or fixed end-to-end maximum: refresh starts after relay dispatch and a microtask, then includes GitHub delivery/propagation, queue contention and bounded reads. Aggregate uses at most three concurrent 30-second targeted commands; ordinary snapshots include loaded pages and counts. Missed events/outages may remain stale until reconnect/show/manual catch-up.
+Enrolled healthy path has no polling interval or fixed end-to-end maximum: refresh starts after relay dispatch and a microtask, then includes GitHub delivery/propagation, queue contention and bounded reads. Aggregate uses at most three concurrent 30-second targeted commands; ordinary snapshots include loaded pages and counts. Missed events/outages are also covered for shown Open/Draft rows by the independent 120-second safety read, plus queue/read time; this does not depend on the relay being connected.
 
 Unenrolled healthy shown-open state freshness is at most 45 seconds of scheduling delay plus queue time and successful GitHub reads: one command per at most 20 eligible rows, with a 30-second command timeout. Busy retries wait one second; failures use 90/180/360/720-second backoff and rate limits at least 15 minutes. There is no unconditional wall-clock maximum across failures, offline/hidden/stale contexts or GitHub eventual consistency. Documentation must distinguish these source-derived bounds from live latency measurements.
 
 ## Risks / Trade-offs
 
-- [Extra reads for settled unenrolled open PRs] → Reuse a narrow repository batch, avoid per-row processes, and stop under existing visibility/coverage gates.
+- [Extra reads for shown open PRs, including enrolled repositories] → Reuse a narrow repository batch, avoid per-row processes, and stop under existing visibility/coverage gates.
 - [Partial batches or mixed-age counts] → Hold complete results and publish rows/totals under the same queue and freshness guard; retain all prior facts on failure.
 - [Ordinary pagination or pin regressions] → Exercise expanded lists, older pins, merge/reopen, duplicates and retained render samples through real controller fixtures.
 - [Enrolled reproduction does not fail on current source] → State the evidence limit and retain a regression instead of inventing an event-routing diagnosis.

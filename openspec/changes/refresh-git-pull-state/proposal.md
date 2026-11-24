@@ -7,7 +7,7 @@ A coordinator Git panel can keep a merged PR in Open while checks keep changing.
 ## What Changes
 
 - Make authoritative PR state, draft status and completion timestamps travel with every row refresh, including the fallback.
-- Extend the existing 45-second unenrolled fallback to shown Open/Draft rows even after checks settle, retaining bounded repository batches and failure backoff.
+- Extend the existing 45-second unenrolled fallback to shown Open/Draft rows even after checks settle, retaining bounded repository batches and failure backoff; add the approved 120-second state-and-check safety net for enrolled repositories so missed events cannot leave open rows stale indefinitely.
 - Reconcile merge, close, reopen and convert-to-draft transitions into the correct tabs and totals without clearing loaded rows or disturbing unaffected ordering, pins, folds or pagination.
 - Reproduce the enrolled coordinator incident using the real packaged controller, Crew provider and relay consumer with fake GitHub data; fix the observed aggregate fault rather than assuming the fallback alone explains it.
 - Document event and fallback delay limits and add transition regressions for both views.

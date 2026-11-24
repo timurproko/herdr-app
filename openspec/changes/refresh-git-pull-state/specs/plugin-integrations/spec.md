@@ -3,7 +3,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Bounded aggregate reads and invalidation
-Aggregate reads SHALL be read-only, machine-bound and limited to a shown enabled Git panel. New local task links SHALL trigger targeted PR reads. PR state and checks SHALL use authenticated events or explicit refresh, with a bounded fallback for shown Open/Draft or pending/unknown-check rows lacking live coverage. Selection, plugin or ownership changes SHALL invalidate stale responses and captured actions. One repository's failure SHALL NOT erase valid rows from another.
+Aggregate reads SHALL be read-only, machine-bound and limited to a shown enabled Git panel. New local task links SHALL trigger targeted PR reads. PR state and checks SHALL use authenticated events or explicit refresh, with a bounded fallback for shown Open/Draft or uncovered pending/unknown-check rows. Selection, plugin or ownership changes SHALL invalidate stale responses and captured actions. One repository's failure SHALL NOT erase valid rows from another.
 
 #### Scenario: Refresh and repository events
 - **WHEN** the panel opens, the user refreshes, or a relevant authenticated repository event arrives
@@ -21,7 +21,7 @@ Aggregate reads SHALL be read-only, machine-bound and limited to a shown enabled
 - **AND** it does not switch accounts, install companions or enroll webhook repositories automatically
 
 ### Requirement: Pending checks fallback without live coverage
-Shown Open/Draft PRs or pending/unknown checks without repository live coverage SHALL refresh state and checks at 45-second intervals through one coalesced repository job using the existing request queue. Failed reads SHALL retain prior values and back off exponentially; rate limits SHALL delay retries at least 15 minutes. Enrolled rows SHALL NOT be polled. Hidden, disabled, offline or superseded contexts SHALL stop fallback reads.
+Shown Open/Draft PRs and uncovered pending/unknown checks SHALL refresh state and checks through coalesced repository jobs on the existing queue: every 45 seconds unenrolled or 120 seconds enrolled, independent of relay connectivity. Failures SHALL retain values and back off exponentially; rate limits SHALL delay retries at least 15 minutes. Hidden, disabled, offline or superseded contexts SHALL stop reads.
 
 #### Scenario: Pending checks settle
 - **WHEN** an unenrolled shown Open/Draft PR has pending checks and its fallback read returns settled checks
@@ -39,7 +39,7 @@ Shown Open/Draft PRs or pending/unknown checks without repository live coverage 
 - **AND** settlement alone cannot leave it indefinitely in Open after closure
 
 ### Requirement: Completion-driven Git checks freshness
-A shown, enabled Git panel with an enrolled repository and healthy relay SHALL refresh loaded PR state and checks from authoritative GitHub reads after relevant events, including events during an in-flight refresh. Reconnect and reopening SHALL catch up. The app SHALL retain latest-workflow/rerun semantics without polling enrolled rows and document latency dependencies and conditions that retain stale facts.
+A shown, enabled Git panel with an enrolled repository and healthy relay SHALL refresh loaded PR state and checks from authoritative GitHub reads after relevant events, including events during an in-flight refresh. Reconnect and reopening SHALL catch up. The app SHALL retain latest-workflow/rerun semantics with a 120-second shown-open safety net and document latency dependencies and conditions that retain stale facts.
 
 #### Scenario: Completion and rerun update loaded rows
 - **WHEN** authenticated check, status or workflow invalidation arrives for a loaded ordinary or coordinator repository after checks change
@@ -54,7 +54,7 @@ A shown, enabled Git panel with an enrolled repository and healthy relay SHALL r
 #### Scenario: Refresh timing and unavailable live updates
 - **WHEN** refresh behavior is documented or reported
 - **THEN** it distinguishes event receipt, request queue/read latency and GitHub data propagation from measured end-to-end latency
-- **AND** it states that absent enrollment uses a 45-second shown-open state-and-check fallback, while relay outages, hidden or disabled panels, unverified coordinator context, missed events and failed reads can retain stale facts until the applicable fallback, catch-up or manual refresh
+- **AND** it states that absent enrollment uses a 45-second shown-open state-and-check fallback, and enrolled shown Open/Draft rows use a 120-second safety net; hidden or disabled panels, unverified coordinator context and failed reads can retain stale facts until the applicable fallback, catch-up or manual refresh
 - **AND** it does not promise a bounded live-update delay when those prerequisites or successful reads are absent
 
 ### Requirement: Bounded finished-task pull request history
@@ -87,7 +87,7 @@ Closed tasks from the verified coordinator's crew home SHALL contribute their va
 - **WHEN** historical candidates are read or updated by the shown enabled aggregate panel
 - **THEN** status includes closed tasks through `--all --json`, requests discovery when supported, and retains response-size, task-count and finite transport bounds
 - **AND** targeted GitHub reads retain their concurrency bound
-- **AND** webhook/manual refresh and the eligible unenrolled fallback handle merge, close and reopen transitions without repository-wide inventory
+- **AND** webhook/manual refresh and the eligible state-and-check fallback handle merge, close and reopen transitions without repository-wide inventory
 
 ## ADDED Requirements
 
