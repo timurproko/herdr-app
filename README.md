@@ -929,6 +929,15 @@ stopped, and sign-in-only edits do not restart it. Separate Start / Stop remains
 available for ordinary power control without editing permissions. Unknown running
 permissions cannot be edited or applied until a successful refresh.
 
+While Apply runs, the footer keeps its original pending-change hint; runtime
+progress appears only in the Status row, and errors remain below the controls.
+The footer and its Discard / Apply buttons keep their positions after completion:
+the hint clears and those buttons stay disabled when there is nothing pending.
+After a restart, Status stays Restarting until fresh runtime inspection finishes;
+other refreshes show Checking there rather than presenting cached Running as ready.
+Once fresh Running facts arrive, eligible runtime controls re-enable immediately,
+without waiting for the refresh icon's separate visual minimum.
+
 ## Usage request limits
 
 Healthy usage accounts are checked at most every 10 minutes while the window is active.
