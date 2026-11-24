@@ -1,0 +1,125 @@
+# Design
+
+## Context
+
+See `proposal.md` for motivation and `stopgap.md` for the separately deliverable first stage. This is a plan only. No runtime implementation, installed-file mutation, deployment, restart, workflow dispatch or variable write has occurred.
+
+### Immutable evidence
+
+Published upstream: `herdrdev/herdr-app`:
+
+- [0.1.17](https://github.com/herdrdev/herdr-app/tree/a751b75b0418bf13950f7627d122bb934ac2c46c), commit `a751b75b0418bf13950f7627d122bb934ac2c46c`.
+- [0.1.18](https://github.com/herdrdev/herdr-app/tree/9a9ae13d998e6ed74c76e8eb13bdeb2e1420f50c), commit `9a9ae13d998e6ed74c76e8eb13bdeb2e1420f50c`.
+- 0.1.18 `defaults/frame/palette/main.js`: 19,238 bytes, SHA-256 `f8cbfb955ab3ef4474012dbb7103a7b8c5260c9c6ccde96aea6952a4980124dc` (raw API content decoded from base64, not a wrapper's rendered response).
+- 0.1.18 `defaults/herdr.d.ts`: SHA-256 `dcc11d3c3c5a7be9081e10a63c9ea92dfeeb2915d43e1877614346106d966f82`.
+- Both published `src/keys.rs` files compare byte-identically. Both `src/mod_files.rs` files also compare byte-identically.
+- Local references: `src/integration/native-patches/palette/{main-0.1.17.js,original-0.1.17.js,routing.js}`, registry/provenance, `tools/runtime/frame-patch.mjs`, `docs/HERDR-0.1.17-NATIVE-PATCHES.md`, `docs/HERDR-0.1.18-GIT-REVIEW.md`, `docs/HERDR-UPGRADES.md`, and merged #27. Closed-unmerged #23 explicitly abandoned structural any-version transforms; this plan does not revive them.
+
+`node tools/check-host-api.mjs` ran read-only against the installed 0.1.18: `ok:true`, no missing API/command/direct-import violations, newer-than-reviewed advisory. Its separate tab-move source audit returned HTTP 403/source-unavailable; synthetic tab-move fixtures passed. That unrelated audit neither blocks public palette capabilities nor certifies native bytes. The command checks our existing Herdr contract, not every new palette/UI capability: implementation must extend the targeted contract and source/fixture checks. Raw planning reads are under ignored `.artifacts/palette-0118/`.
+
+### A. What Custom adds (and what is already stock)
+
+Stock already has host-command discovery, named/grouped commands, fuzzy ranking with word-start/run bonuses and accent match highlighting, Recent (20 saved IDs, up to five displayed), layouts, hotkey chips, mouse activation, Enter, Escape, bounded Up/Down/PageUp/PageDown navigation and delayed input refocus. Dynamic theme discovery and light/dark/active-layout filtering arrived in **0.1.17**, not in our customization.
+
+The existing Custom variant adds the following, all to retain:
+
+1. Shared live Custom theme/dialog surface and native selection tint; a compact fixed 408px surface rather than stock's padded variable/manual list presentation. Shared `searchHeader`: “Search for a command…”, focused styling, search/clear controls, and normalized hotkey display.
+2. A 57px fixed search header; 32px command rows and 26px headings, shared row/gutter/scrollbar geometry, Custom selected/hover colors and quiet shared icon/text empty state.
+3. Native variable-height virtual list/scrollbar rather than stock's manually placed wheel-scrolled strip; a pinned opaque current-group heading (or filtered result count), inline upcoming-group headings, bottom overflow fade and a scrollbar painted last so decorations cannot steal its hit area.
+4. Keyboard selection remains a command result (never a heading), including empty results and paging; native scrolling keeps the selected result reachable without forcing a scroll on every movement. Search/clear resets selection, scroll, visible range, pinned heading and fade state. Preserve click, wheel/touchpad and scrollbar drag behavior.
+5. Usage entry, with existing quota keywords; make it available only when the Usage plugin is enabled, as required by the existing feature contract. Current `main-0.1.17.js` adds it whenever Custom is active, so do not copy that unconditional insertion as a new promise.
+6. Activation-only routing, preserving native entry IDs/history and displayed shortcuts: Settings -> `custom-settings`; picker/settings/machine-add/worktree mod opens -> Custom equivalents; tab/space rename -> mounted `custom-tabs` inline rename handlers (their native fallback retained).
+7. Untargeted tab/pane/space close -> mounted `custom-tabs` close handlers, preserving last-tab preferences and captured target confirmation. Explicit arguments MUST bypass untargeted routing unchanged. Duplicate-mod prompt and duplicate-layout defaults remain native when no explicit source name was supplied.
+8. Non-Custom layouts keep native presentation/routing. This change continues that existing layout scope; it does not hijack the user's escape hatch or another layout's palette.
+
+The 0.1.17 -> 0.1.18 stock diff changes **catalog ingestion, not the UI skin**:
+
+- Asynchronously reads sorted non-hidden `mods/*/mod.json` `palette` lists each opening; malformed/unreadable entries are skipped. `mod.open` entries require an installed target with `main.js`.
+- Adds the `Mod` group and manifest-provided title/group/words. Native command arguments are checked against the host catalog (required fields, unknown fields and target-string shapes). Unknown commands must belong to the declaring mod with no args; delivery still requires a shown listener.
+- Canonicalizes argument-object key order for manifest IDs/deduplication against built-ins and other contributions.
+- Matches object-valued key bindings as well as valid first-argument/numeric-index shorthand for manifest entries.
+- Does not prompt for mod.clone or substitute layout.clone's source when a manifest explicitly supplied `name`.
+
+Thus 0.1.18 now supplies **customizable extra entries natively**, but not Custom's fixed headings, native scrollbar/fade/search skin, Usage policy, Custom Settings/Jump/rename routing or safe-close policy. Simply using stock manifests cannot restore the requested palette.
+
+## Goals / Non-Goals
+
+**Goals:** own the palette under `mods/custom-palette`, preserve A plus 0.1.18 catalog additions, persist routing per desktop through normal installation and startup self-healing, and run on capable 0.1.17/0.1.18/newer hosts without reviewed-version permission.
+
+**Non-Goals:** override the native command table; globally intercept CLI/native `app.palette`; patch/rebuild Rust or binaries; guarantee operation after arbitrary public API removal; change Core/session documents; enable migrations or deploy to either machine during this task. Other open PRs (#56/#59/#61/#62 and row-gutter) are out of scope.
+
+## Decisions
+
+### B. Compare the three options honestly
+
+| Option | Feasibility / trade-off | Expected breakage |
+| --- | --- | --- |
+| (i) Reviewed 0.1.18 rebase + #27 migration proposals | Smallest immediate restoration. Add exact originals and a replacement retaining the new catalog. Strong fail-closed provenance/recovery. Proposed separate stop-gap first; see `stopgap.md`. | Every release that changes palette bytes can disable the patch again; releases with unchanged reviewed bytes need no migration. Automation proposes review, never guarantees installation before native update. |
+| (ii) Owned mod + user binding | **Chosen by the person and recommended.** All required interactive operations exist. More initial packaging/ownership/persistence work, no private-frame permission needed after migration. | Palette-source changes alone have no effect. Binding resets are automatically repaired. Genuine public API, command-argument, key-dispatch, overlay-metadata or GPUI behavioral changes can still require repair; no honest fixed release-count guarantee. |
+| (iii) Tiny native delegation hook + owned logic | A small hook at native palette open/init could delegate to a mod, reducing logic copied into native files. There is no public native-command override registration today. Would need fresh explicit native-exception approval. | Smaller review diff, but **unchanged exact-byte safety still rejects every changed patched file**. Only a genuinely separately stable hook file or new upstream extension point improves that trigger; a one-line patch in the same palette file does not. Structural/fuzzy application is not proposed. |
+
+No fallback to (iii) is authorized. If a required capability is disproved during implementation, stop with the exact missing operation and proposed minimal hook, not silently patch.
+
+### Public/host capability feasibility (ii)
+
+Source links below use the immutable 0.1.18 commit above.
+
+| Need | Evidence / design |
+| --- | --- |
+| Take Ctrl+Shift+P | `src/keys.rs:1-16,90-128,167-265` documents user keys, layout scopes, string/object actions and installation. Same file in 0.1.17. Write `keys.json["layout:Custom"]["ctrl-shift-p"] = "mod.open:custom-palette"`; more-specific terminal/mod mappings are checked for conflicts. No runtime key-registration function exists or is needed. |
+| Open without an already mounted palette listener | `src/window.rs:3683-3695`: native `mod.open` reads the owned mod's `mod.json.overlay`, loads it and toggles one `mod-custom-palette` overlay. Prefer this over `<mod>.open` delivery, since own mod commands only reach shown copies. |
+| Enumerate host commands | `defaults/herdr.d.ts:294-296`, implemented in `src/mods.rs` host module: `commands()` returns names/argument requirements/descriptions. It explicitly excludes mods' own commands. `keys()`, `layouts()`, `themes()`, `settings()` provide the rest. Both release SDKs contain these APIs. |
+| Invoke commands | Public `run(name,args)` validates native commands; `<mod>.<command>` dispatch is supported, not registered as a native override. Preserve explicit arguments and close overlay before dispatch. Native `.rename` prompts remain available as fallbacks. |
+| Focused overlay and input/navigation | `openOverlay`/`closeOverlay`/`props` are public. Ordinary mod load receives the same GPUI `View`, `cx.focus_handle`, `InputState`, `Input`, virtual list, Scrollbar and `on_key_down` used by our existing private picker and palette skin. `src/window.rs:3989-4099` focuses popup/dialog before loading, so the mod's input focus wins. Published stock palette demonstrates these Input/event calls; generated installed 0.1.18 `gpui-kit.d.ts` declares the same handles/input/list APIs. No palette-only UI privilege is used. |
+| Same placement and toggle | Declare owned `mod.json` with `place:none` and overlay `kind:popup, at:top, offset:60, width:620, height:0.85`, using `mod.open`'s host overlay metadata path. `at:top`/`offset` are recognized by the published host source and stock palette, but absent from the typed `OverlaySpec` API; do not cast them into a fictional typed API. Keep a source-contract/fixture assertion for this metadata behavior. If the host removes top anchoring, report that visual capability loss rather than silently switching placement or using a patch. |
+| Read manifest palette contributions | No public combined palette/mod-command enumeration API exists. Read metadata, never mod implementation code. A narrow self-contained installed Node worker, invoked via public `exec` and `appHome`, enumerates only direct mod manifests and target `main.js` existence, returns bounded validated JSON, and does not execute imports. This avoids relying on the stock palette's extra filesystem grant outside login home (`src/mods.rs:1407-1418,1470-1472`). Normal mods' `fs/promises` read roots do not universally include an arbitrary app home. Node is already an installation/runtime prerequisite. Host catalog appears immediately; manifest contribution reads are async and generation-bound. |
+| Repair persisted binding | Public `readTextFile`/`writeTextFile(path,text,expected)` are present on both SDKs, with stale-snapshot refusal/atomic existing-file replacement (`src/mod_files.rs`, identical in both releases). Use them for the narrow owned binding/record/log repair; no unrestricted shell-based key editor. `keys()` reads the key file, not GPUI's installed binding table; error-file readback and the host's reload path provide bounded reconciliation, not an event-dispatch oracle. Host reloads key changes (`src/window.rs:988-1003,4355`). |
+
+**What cannot be retained globally:** a user mod cannot override native `app.palette` calls from CLI, native menus or unmodified third-party mods. Those still open vanilla; Custom's key and status-bar button will no longer call that command. This is not missing capability for the selected shortcut-owned replacement, but it is a boundary of the word “replaces.” A true global override would require a new upstream API/minimal native hook and a separate decision. The escape hatch and non-Custom layouts deliberately remain native.
+
+**History:** native localStorage is scoped to frame identity and overlay props; moving to another mod does not automatically carry its Recent list. Preserve the visible behavior with a stable owned history key independent of transient overlay IDs. During normal installation, migrate only a verified/shape-checked native palette recent-ID list from its local store if present, never execute it or copy unrelated state; unsupported/malformed stores are preserved and reported, not guessed. The owned history then survives restarts/hot reloads and customization updates, remains per-desktop runtime state and is never exported as personal preferences.
+
+### Persistent binding and registration ownership
+
+1. **Where:** the physical file is `<appHome>/keys.json`, section `layout:Custom`, action `mod.open:custom-palette`. `mods/custom-palette/mod.json` owns overlay metadata; `customization.json` and the existing ownership manifest own its payload. No Herdr `defaults/` write; no ephemeral native command registration. Leave global `app.palette` mapping for other layouts. Update `src/features/workspace-status/main.js` both click routing and binding hint (currently hardcoded to global `app.palette`).
+2. **What upstream overwrites:** `src/mods.rs:73-94` rewrites `frame/` wholesale each start and updates stock mods/layouts/types. Our `custom-*` mod is outside those stock entries. `src/keys.rs:174-192` creates defaults when user keys are missing, migrates only exact older shipped defaults, and retains edited keys; `keys::install` clears/reinstalls bindings on reload. Core runs terminals and does not own desktop keys. Future resets can still erase our binding, so current native preservation is helpful, not the persistence guarantee.
+3. **Durable intent:** a versioned host-local `.customizations/palette-binding.json` records enabled ownership and only affected binding values/baselines, separate from shared UI state. Normal full installation establishes intent once and merges only that key after validating JSON and the owned mod payload. Guard owned writes and record them through existing deploy locking/recovery. Missing/stock `app.palette` mappings may be repaired automatically by the user's installed policy; unknown personal mappings, malformed keys, symlink/path anomalies and stale writes fail visibly instead of being forcibly replaced. Do not alter the reserved reset shortcut or unrelated settings/sections.
+4. **Startup/hot reload:** non-footer mounted Custom chrome starts a bounded, yielded self-check on init/layout entry and hot reload, independent of native-patch opt-ins. Check physical key plus `keys()` catalog and mod payload. Reuse its lifecycle for a low-frequency local key-catalog comparison/resume check so a live native reset or later stock reinstallation is detected too; no filesystem watcher, daemon, process restart or per-frame I/O. One lease per app home/window generation coalesces copies; no work under `checking()`, after close or while another install holds its lock. Re-read after one bounded CAS retry; persistent conflict stops.
+5. **Verification/failure:** after writing, allow a bounded host reload interval, check `keys()` recognizes the Custom binding and inspect `keys.error`/host diagnostics. The SDK has no installed-key-table or reload-ack API: `keys()` itself rereads disk. Report this as configuration reconciled with no reported reload error, not proof of actual key dispatch. Actual Ctrl+Shift+P dispatch must be exercised by the disposable host interaction regression; report a missing/unavailable interaction check honestly. Check higher-priority terminal/mod-scoped binding collisions and report rather than clobber them. Debounced success logs say installed/repaired/already current; bounded local `.customizations/palette.log` (128 lines/64 KiB) and namespaced runtime status keep sanitized machine/version/reason, no user key file dump. Failure shows a persistent Custom status-bar warning with a retry/details action, plus one deduplicated native notification, not only an installer log or hidden shared fact. The status-bar palette opener remains an alternate path when keyboard configuration cannot be repaired. No silent vanilla fallback or patch opt-in.
+6. **Every desktop:** install/check against local `appHome()`, not the currently selected space's remote machine. A pc2 Desktop full installation has its own owned key, record/history and mounted self-check; the desktop viewing pc2 terminals uses this desktop's palette. Existing `deploy:all` intentionally skips remote full desktops and gives eligible peers shell-only updates; do not silently broaden it. A pc2 Desktop receives its ordinary local full Update, while a pc2 Core-only host has no palette to install. Cover both policies with disposable machine fixtures, not live SSH.
+7. **Limits of guarantee:** once successfully installed with readable/writable config and mounted Custom, restarts, stock-frame rewrites, stock key resets, Core updates and customization reloads require no re-enabling. A transient reset can exist until the next startup/lifecycle repair and host reload; no atomic pre-start interception or installed-key-table inspection API exists. Missing Custom layout/mod payload, disk permission failure, a competing personal binding or removed public capability cannot be magically repaired; installation refuses or mounted chrome reports a persistent warning. Outside Custom there is intentionally no self-check or hijack. Do not advertise invulnerability to arbitrary future host changes.
+
+### Capability gate and native-patch retirement
+
+Keep the minimum host policy and `host.js` sole direct-import boundary. Add consumed palette APIs/command arguments/UI capability checks to targeted checks, with feature-specific actionable refusals. No exact 0.1.17/0.1.18 runtime allowlist. Real fixtures provide regression evidence, not runtime permission. Missing optional manifest support does not hide the host command catalog; report contribution discovery failure separately.
+
+Stage replacement payload and persistence policy before switching routing. After owned entrypoint/binding configuration passes guarded reconciliation and the supported dispatch path has regression coverage, disable palette refresh in install/startup paths and safely retire the palette opt-in. Exact owned native main/helpers may be restored/removed only using the existing ownership/recovery checks and **current** reviewed native original; never restore 0.1.17 over 0.1.18 from an old backup. If native startup already installed unknown/new stock, leave it byte-for-byte untouched; archive recoverable old patch records without treating those bytes as reviewed. If personal edits or ambiguous masked-native provenance prevent restoration, preserve them, report migration conflict and do not claim completed retirement. Keep feedback's registry/repair flow unchanged. Recovery data needed for rollback remains until safely obsolete; no broad frame cleanup.
+
+### Optional #27 upstream-sync activation (not done here)
+
+Read-only `gh-axi variable list` showed only `DELIVERY_BOT_APP_ID`; both `HERDR_UPGRADE_PROBE_RUN_ID` and `HERDR_UPGRADE_PROPOSALS_ENABLED` are unset. `DELIVERY_BOT_PRIVATE_KEY` exists (name only inspected), and repository API reports this signed-in account has admin rights. Therefore the agent **can technically configure it**, but requires explicit named-repository authorization to dispatch the hosted probe/change variables; plan approval alone is not that authorization. The person can also do it in Actions/Settings.
+
+Exact procedure from `docs/HERDR-UPGRADES.md` and `.github/workflows/herdr-upstream-sync.yml`:
+
+- Run **Herdr upstream sync** on default branch `main`, mode `probe`, with App/Core/refresh inputs empty. Require completed success, including **Hosted no-write probe / Record successful no-write probe**. Read retained evidence; local reachability is insufficient.
+- Set repository Actions variable `HERDR_UPGRADE_PROBE_RUN_ID` to that numeric run ID; set `HERDR_UPGRADE_PROPOSALS_ENABLED` to exactly `true` after reconciling this active 0.1.18 work to avoid competing proposals. No new secret; existing delivery App Contents/Pull requests write rights suffice.
+- Optionally dispatch mode `publish` immediately; otherwise schedule is **23:41 UTC daily**, not instant at release. An active `HERDR_UPGRADE_FREEZE_UNTIL` suppresses scheduled work. Publication verifies successful manual default-branch probe and matching migration-tool/workflow revision; changed tooling requires a fresh probe/new run ID.
+- Generated migration drafts are evidence/handoff only, not reviewed patch adoption or automatic merge/deploy. Owned palette no longer needs these drafts for each palette-source edit, but other host/feedback/document migrations still benefit.
+
+## Risks / Trade-offs
+
+- [Native command override absent] -> route all Custom-owned openers; document native/CLI/other-layout boundary, stop for a separate hook decision if global interception is newly required.
+- [Top metadata is host-supported but not typed OverlaySpec] -> pin the source behavior and fixture check; report a lost placement capability instead of casting around it.
+- [Manifest catalog omits custom commands from commands()] -> narrow metadata worker; preserve native validation, limits and shown-listener rule; never execute discovered code.
+- [Stock reset races with input] -> bounded startup/lifecycle repair and reload-error reconciliation, with separate dispatch regression coverage; visible degraded state, not false persistence success.
+- [Automatic repair versus personal edits] -> automatically reclaim only installed-owned/stock/missing mappings; explicit unknown edits fail visibly with safe retry, not a write loop.
+- [Native timing/pixels unproven by mocks] -> retain virtual-list geometry regressions at 100%/130%, fixture focus/navigation checks; live UI proof requires separately authorized installation. Do not deploy or restart to obtain it here.
+
+## Migration Plan
+
+1. Await approval. Deliver the narrowly scoped 0.1.18 stop-gap from `stopgap.md` in its own small PR/task; leave 0.1.17 replacements intact. No promise of recovery until the person's normal update actually installs it.
+2. Implement this owned replacement on the same existing branch/PR after approval, updating it with merged stop-gap/main without touching other tasks. Ship through normal customization Update only.
+3. On full install, stage owned payload and capability checks, establish/repair binding, reconcile native reload diagnostics, then retire palette patch safely; retain feedback. Startup/hot reload self-check maintains the same policy.
+4. Rollback/remove uses target-key baseline and ownership checks, restoring only unchanged owned values and exact known native bytes. Later personal edits stop rollback. Disabling/removing Custom intentionally stops repair and returns its shortcut scope to native behavior; no background service survives it.
+
+Planned checks, each landing with its outcome: real 0.1.18 LF source and reviewed Windows embedded bytes where verified; retained real 0.1.17 fixtures; stock-vs-owned command/theme/manifest dispatch parity; two-host capability matrix plus capable future host and missing-method cases; input/keyboard/click/scroll/zoom regressions; isolated install/restart/hot-reload/update/reset simulations; conflict/permission/CAS/higher-priority binding failures; history retention; normal update packaging/rollback and native retirement/feedback preservation. No live app or Core tests are authorized.
