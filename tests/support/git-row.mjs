@@ -24,13 +24,13 @@ export async function rowHarness({host={},modules={}}={}) {
   panel.agentLinks={related:()=>agent?{key:'agent',address:'t2'}:null};
   panel.aggregate={context:{scope:'home'},target:()=>agent?{terminal:'t2'}:null,focus:(...args)=>focus.push(args)};
   const cx={focus_handle(){if(rendering)throw Error('focus handle during render');return {};},notify(){if(rendering)throw Error('notify during render');},stop_propagation(){},spawn:fn=>fn(cx)};
-  const render=fn=>{rendering=true;try{return fn();}finally{rendering=false;}};
+  const render=fn=>{panel.pullTextPending=new Set();rendering=true;try{return fn();}finally{rendering=false;}};
   const settle=(build,width,zoom=1,height)=>{
     // Native post-layout callbacks, not render-time heuristics. Include hidden
     // intrinsic probes; visible text assertions below exclude their paint.
     for(let pass=0;pass<8;pass++) {
       const tree=render(build),geometry=rowGeometry(tree,width,zoom,height);let changed=false;
-      for(const node of nodes(tree))if(/pr-(?:byline|meta)-/.test(node.attrs?.id?.[0]??'')) {
+      for(const node of nodes(tree))if(/pr-(?:byline|meta|title|label)-/.test(node.attrs?.id?.[0]??'')) {
         const callback=node.attrs.on_size_change?.[0];if(callback)callback(geometry.get(node),{...cx,notify(){changed=true;}});
       }
       if(!changed)return {tree,geometry};

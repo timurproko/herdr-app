@@ -671,17 +671,21 @@ export default class Changes extends View {
       .child(svg('mods/custom-changes/merge-conflict.svg').size(U.icon).text_color(t.ansi1));
     const asset = pr.state === 'merged' ? 'git-merge' : pr.state === 'closed' ? 'git-pull-request-closed' : 'git-pull-request';
     const color = pr.state === 'merged' ? t.ansi5 : pr.state === 'closed' ? t.ansi1 : pr.state === 'draft' ? t.dim : t.ansi2;
-    return svg(`mods/custom-changes/${asset}.svg`).size(U.icon).flex_none().text_color(color);
+    const stated=pr.when?.startsWith(`${pr.state} `);
+    return svg(`mods/custom-changes/${asset}.svg`).size(U.icon).flex_none().text_color(color)
+      .when(!stated,el=>el.tooltip(pr.state==='draft'?'Draft pull request':pr.state==='open'?'Open pull request':pr.state==='merged'?'Merged pull request':'Closed pull request'));
   }
 
   agentButton(t, pr, interactive = true) {
     if(pr.key) {
       const target=this.aggregate?.target(pr),scope=this.aggregate?.context?.scope;
+      const name=target?this.agentLinks?.displayName?.(target.terminal):null;
       return target ? div().id(`${interactive ? '' : 'swap-'}pr-agent-${pr.key}`).absolute().left(0).top((20-U.insetControl)/2)
         .size(U.insetControl).flex_none().flex().items_center().justify_center().rounded(U.insetRadius).text_color(t.foreground)
         .when(interactive, el=>el.cursor_pointer().role('button').accessibility_label(`Open related agent for ${pr.repo} #${pr.number}`)
           .hover(s=>s.bg(subtleActionFill(t))).on_mouse_down('left',(_e,cx)=>cx.stop_propagation())
           .on_click((_e,cx)=>{cx.stop_propagation();this.aggregate.focus(pr,target,scope);}))
+        .when(Boolean(name),el=>el.tooltip(`Open agent: ${name}`))
         .child(svg('icons/agent.svg').size(U.icon)) : null;
     }
     const agent = this.agentLinks?.related(pr, this.repo?.name, location().terminal);
@@ -711,6 +715,7 @@ export default class Changes extends View {
                 {source:location().terminal,target:current.address,folder:folderKey(current),repo},cx)) cx.notify();
             run('agent.focus', {terminal:current.address});
           }))
+        .when(Boolean(agent.displayName),el=>el.tooltip(`Open agent: ${agent.displayName}`))
         .child(svg('icons/agent.svg').size(U.icon).flex_none().text_color(t.foreground)));
   }
 
@@ -744,12 +749,61 @@ export default class Changes extends View {
     return div().size(3).flex_none().relative().top(1.5).rounded_full().bg(t.muted);
   }
 
-  labelPill(t, label, id) {
+  // Share intrinsic widths across rows, keyed by actual text style and zoom.
+  // Only the first occurrence of a missing string builds a probe in a snapshot.
+  textWidthKey(value, style) {
+    return `${settings().zoom > 0 ? settings().zoom : 1}\0${settings().ui_font_family??''}\0text:${style}\0${value}`;
+  }
+
+  textWidthProbe(id, value, style, build) {
+    this.pullTextWidths ??= new Map();this.pullTextPending ??= new Set();this.pullTextRequests ??= new Map();
+    const key=this.textWidthKey(value,style),context=this.context,zoom=settings().zoom>0?settings().zoom:1;
+    if(this.pullTextWidths.has(key)||this.pullTextPending.has(key))return null;
+    this.pullTextPending.add(key);
+    let request=this.pullTextRequests.get(key);
+    if(request==null) {
+      request=this.pullTextSequence=(this.pullTextSequence??0)+1;this.pullTextRequests.set(key,request);
+      if(this.pullTextRequests.size>TEXT_CACHE_LIMIT)this.pullTextRequests.delete(this.pullTextRequests.keys().next().value);
+    }
+    return div().absolute().left(0).top(0).w(0).h(0).overflow_hidden().invisible().flex()
+      .child(build(value).id(`${id}-intrinsic-measure-${request}`).flex_none().whitespace_nowrap()
+        .on_size_change((size,cx)=>{
+          if(this.context!==context||!this.shown()||this.textWidthKey(value,style)!==key||!Number.isFinite(size.width)||this.pullTextRequests.get(key)!==request)return;
+          this.pullTextRequests.delete(key);this.pullTextWidths.set(key,size.width/zoom);
+          if(this.pullTextWidths.size>TEXT_CACHE_LIMIT)this.pullTextWidths.delete(this.pullTextWidths.keys().next().value);
+          cx.notify();
+        }));
+  }
+
+  measuredText(id,value,{font=11,height=18,weight='normal',truncate=false}={}) {
+    this.pullTextBoxes ??= new Map();
+    const style=`${font}:${weight}`,key=this.textWidthKey(value,style),context=this.context,zoom=settings().zoom>0?settings().zoom:1;
+    let sizes=this.pullTextBoxes.get(id);
+    if(sizes?.key!==key) {
+      sizes={key};this.pullTextBoxes.set(id,sizes);
+      if(this.pullTextBoxes.size>TEXT_CACHE_LIMIT)this.pullTextBoxes.delete(this.pullTextBoxes.keys().next().value);
+    }
+    const build=text=>div().text_size(font).line_height(`${height}px`).when(weight==='semibold',el=>el.font_semibold()).child(text);
+    const probe=this.textWidthProbe(id,value,style,build),natural=this.pullTextWidths.get(key);
+    const clipped=Number.isFinite(natural)&&Number.isFinite(sizes.available)&&natural>sizes.available+0.01;
+    return div().id(id).min_w(0).h(height).relative().overflow_hidden().text_size(font).line_height(`${height}px`)
+      .when(weight==='semibold',el=>el.font_semibold())
+      .on_size_change((size,cx)=>{
+        if(this.context!==context||!this.shown()||this.textWidthKey(value,style)!==key||this.pullTextBoxes.get(id)!==sizes||!Number.isFinite(size.width))return;
+        const width=size.width/zoom;if(Math.abs((sizes.available??-1)-width)<0.01)return;
+        sizes.available=width;cx.notify();
+      })
+      .when(clipped,el=>el.tooltip(value))
+      .when(truncate,el=>el.truncate()).when(!truncate,el=>el.whitespace_nowrap())
+      .child(value).when(Boolean(probe),el=>el.child(probe));
+  }
+
+  labelPill(t, label, id, probe = false) {
     const {background,foreground,border} = labelColors(t,label.color);
     // Border-box: 4px padding + 1px border preserves the original 5px inset.
     return h_flex().id(id).flex_none().min_w(0).max_w_full().h(18).px(4).border_1().border_color(border).rounded_full()
-      .items_center().overflow_hidden().bg(background).text_color(foreground).tooltip(label.name)
-      .child(div().min_w(0).overflow_hidden().whitespace_nowrap().child(label.name));
+      .items_center().overflow_hidden().bg(background).text_color(foreground)
+      .child((probe?div().min_w(0).h(18).child(label.name):this.measuredText(`${id}-text`,label.name)).whitespace_nowrap());
   }
 
   // Natural-width runs, with an optional right-anchored final group. Native
@@ -764,7 +818,7 @@ export default class Changes extends View {
     this.pullTextRequests ??= new Map();
     const zoom = settings().zoom > 0 ? settings().zoom : 1;
     const context = this.context;
-    const textKey = (item, short) => `${zoom}\0${item.kind}\0${short ? item.compactKey : item.measureKey}`;
+    const textKey = (item, short) => `${zoom}\0${settings().ui_font_family??''}\0${item.kind}\0${short ? item.compactKey : item.measureKey}`;
     const keyed = this.context?.startsWith('tasks:') && items.every(item => item.measureKey != null);
     for (const item of items) for (const short of [false, ...(item.compact ? [true] : [])]) {
       const name = `${item.kind}-${short ? 'compact' : 'full'}`;
@@ -804,8 +858,11 @@ export default class Changes extends View {
       .overflow_hidden().line_height('18px').text_size(11).text_color(t.muted)
       .on_size_change((size, cx) => measure('available', size, cx))
       .children(visible.flatMap(({item, index}, at) => {
+        const hidden=compact.has(item.kind)||(ready&&widths[index]+0.01<sizes[`${item.kind}-full`])||item.omitted;
+        const tooltip=item.info||(hidden?item.tooltip:null);
         const node = item.render(compact.has(item.kind), false).flex_none()
-          .when(ready && clipOrder.includes(item.kind), el => el.w(widths[index]));
+          .when(ready && clipOrder.includes(item.kind), el => el.w(widths[index]))
+          .when(Boolean(tooltip),el=>el.tooltip(tooltip));
         // The flexible slot owns only the free space, never the task/check
         // cells. There is one normal gap, but no dot, before assigned labels.
         if (item.trailing) return [h_flex().id(`${id}-right`).flex_1().min_w(0).h(18).justify_end().overflow_hidden().child(node)];
@@ -813,6 +870,8 @@ export default class Changes extends View {
       }));
     // These absolute invisible children are outside the visible run, so their
     // text never adds a line, gap, hover target or horizontal reservation.
+    const hidden=items.filter((item,index)=>item.omitted||(ready&&widths[index]===0)).map(item=>item.tooltip).filter(Boolean);
+    if(hidden.length)line.tooltip(hidden.join('\n'));
     const probes = div().id(`${id}-probes`).absolute().left(0).top(0).w(0).h(0).overflow_hidden().invisible()
       .text_size(11).line_height('18px')
       .children(items.flatMap(item => [false, ...(item.compact ? [true] : [])].flatMap(short => {
@@ -876,37 +935,34 @@ export default class Changes extends View {
     }
     const {labels,labelNames} = presentation;
     const groupId = (kind, probe) => `${prefix}pr-${kind}-${rowId}${probe ? '-probe' : ''}`;
-    const text = (kind, value, tooltip, probe) => div().id(groupId(kind, probe)).min_w(0).h(18)
-      .overflow_hidden().whitespace_nowrap().tooltip(tooltip).child(value);
+    const text = (kind, value, probe) => div().id(groupId(kind, probe)).min_w(0).h(18)
+      .overflow_hidden().whitespace_nowrap().child(value);
+    const timestamp=pr.state==='merged'?(pr.mergedAt??pr.closedAt):pr.state==='closed'?pr.closedAt:pr.createdAt;
+    const exact=Number.isFinite(Date.parse(timestamp??''))?new Date(timestamp).toISOString():null;
     const byline = this.pullLine(t, `${prefix}pr-byline-${rowId}`, [
-      {kind:'number', measureKey:`#${pr.number}`, render:(_short, probe) => text('number', `#${pr.number}`, pr.meta ?? '', probe)},
-      ...(pr.login ? [{kind:'author', measureKey:pr.login, render:(_short, probe) => text('author', pr.login, pr.meta ?? '', probe)}] : []),
-      ...(pr.when ? [{kind:'time', measureKey:pr.when, compactKey:pr.compactWhen, compact:true, render:(short, probe) => text('time', short ? pr.compactWhen : pr.when, pr.meta ?? '', probe)}] : []),
+      {kind:'number', measureKey:`#${pr.number}`, tooltip:`#${pr.number}`, render:(_short, probe) => text('number', `#${pr.number}`, probe)},
+      ...(pr.login ? [{kind:'author', measureKey:pr.login, tooltip:pr.login, render:(_short, probe) => text('author', pr.login, probe)}] : []),
+      ...(pr.when ? [{kind:'time', measureKey:pr.when, compactKey:pr.compactWhen, compact:true, tooltip:pr.when, info:exact?`${pr.when}\n${exact}`:null, render:(short, probe) => text('time', short ? pr.compactWhen : pr.when, probe)}] : []),
     ], ['author']);
-    byline.line.tooltip(pr.meta ?? '');
     // Lower both status-icon slots optically without moving text, separators
     // or layout reservations. Relative offsets scale with native app zoom.
     const meta = this.pullLine(t, `${prefix}pr-meta-${rowId}`, [
-      ...(pr.tasks ? [{kind:'tasks', measureKey:pr.tasks.label, compactKey:`${pr.tasks.done}/${pr.tasks.total}`, compact:true, render:(short, probe) => h_flex().id(groupId('tasks', probe)).min_w(0).h(18).gap(4).items_center()
-        .tooltip(pr.tasks.label).child((probe ? div().size(U.tinyIcon) : this.taskIcon(t, pr.tasks)).id(groupId('task-icon', probe)).flex_none().relative().top(1))
+      ...(pr.tasks ? [{kind:'tasks', measureKey:pr.tasks.label, compactKey:`${pr.tasks.done}/${pr.tasks.total}`, compact:true, tooltip:pr.tasks.label, render:(short, probe) => h_flex().id(groupId('tasks', probe)).min_w(0).h(18).gap(4).items_center()
+        .child((probe ? div().size(U.tinyIcon) : this.taskIcon(t, pr.tasks)).id(groupId('task-icon', probe)).flex_none().relative().top(1))
         .child(div().flex_none().whitespace_nowrap().child(short ? `${pr.tasks.done}/${pr.tasks.total}` : pr.tasks.label))}] : []),
-      ...(pr.checks ? [{kind:'checks', measureKey:pr.checks.label, render:(_short, probe) => {
+      ...(pr.checks ? [{kind:'checks', measureKey:pr.checks.label, tooltip:pr.checks.label, info:pr.checks.details?.length?`${pr.checks.label}\n${pr.checks.details.join('\n')}`:null, render:(_short, probe) => {
         const color = pr.checks.state === 'success' ? t.ansi2 : pr.checks.state === 'failure' ? t.ansi1 : t.ansi3;
         const icon = pr.checks.state === 'success' ? svg('mods/custom-workspace-chrome/check.svg').size(U.tinyIcon).text_color(color)
           : pr.checks.state === 'failure' ? svg('mods/custom-workspace-chrome/x.svg').size(U.tinyIcon).text_color(color)
           : div().size(8).rounded_full().bg(color);
-        return h_flex().id(groupId('checks', probe)).h(18).gap(4).items_center().tooltip(pr.checks.label)
+        return h_flex().id(groupId('checks', probe)).h(18).gap(4).items_center()
           .child(div().id(groupId('check-icon', probe)).size(U.tinyIcon).flex_none().relative().top(1).flex().items_center().justify_center().child(icon.flex_none()))
           .child(div().flex_none().whitespace_nowrap().underline().child(pr.checks.label));
       }}] : []),
-      ...(pr.review ? [{kind:'review', measureKey:pr.review, render:(_short, probe) => text('review', pr.review === 'approved' ? 'Approved' : 'Changes requested',
-        pr.review === 'approved' ? 'Approved' : 'Changes requested', probe).text_color(pr.review === 'approved' ? t.ansi2 : t.ansi1)}] : []),
-      ...(labels.length ? [{kind:'labels', trailing:true, measureKey:labels.map(label=>label.name).join('\0'), render:(_short, probe) => h_flex().id(groupId('labels', probe)).min_w(0).h(18).gap(4).items_center().justify_end().overflow_hidden()
-        .tooltip(labelNames)
-        .children(labels.map((label, index) => this.labelPill(t, label, `${groupId('label', probe)}-${index}`)))}] : []),
+      ...(pr.review ? [{kind:'review', measureKey:pr.review, tooltip:pr.review === 'approved' ? 'Approved' : 'Changes requested', render:(_short, probe) => text('review', pr.review === 'approved' ? 'Approved' : 'Changes requested', probe).text_color(pr.review === 'approved' ? t.ansi2 : t.ansi1)}] : []),
+      ...(labels.length ? [{kind:'labels', trailing:true, tooltip:labelNames, omitted:(pr.labels?.length??0)>labels.length, measureKey:labels.map(label=>label.name).join('\0'), render:(_short, probe) => h_flex().id(groupId('labels', probe)).min_w(0).h(18).gap(4).items_center().justify_end().overflow_hidden()
+        .children(labels.map((label, index) => this.labelPill(t, label, `${groupId('label', probe)}-${index}`,probe)))}] : []),
     ], ['review', 'labels']);
-    meta.line.tooltip([pr.tasks?.label, pr.checks?.label, labelNames,
-      pr.review ? (pr.review === 'approved' ? 'Approved' : 'Changes requested') : null].filter(Boolean).join('\n'));
     // Spaces' row padding (8) minus its trailing pill margin (5) leaves 3px inside the highlight.
     return h_flex().id(`${prefix}pr-${rowId}`).relative().w_full().h(74).min_h(74).max_h(74).flex_none().pl(8).pr(3).py(6).gap(U.gap).items_start().rounded(U.radius)
       .when(!ghost, el => el.cursor_pointer().role('button').accessibility_label(`Open pull request #${pr.number} on GitHub`)
@@ -917,7 +973,7 @@ export default class Changes extends View {
       .child(div().id(`${prefix}pr-state-slot-${rowId}`).w(U.icon).h(20).flex_none().flex().items_center().child(this.pullIcon(t, pr)))
       .child(v_flex().flex_1().min_w(0).gap(3)
         .child(h_flex().id(`${prefix}pr-title-line-${rowId}`).w_full().min_w(0).h(20).min_h(20).max_h(20).flex_none().gap(4).items_center().line_height('20px')
-          .child(div().id(`${prefix}pr-title-${rowId}`).flex_1().min_w(0).h(20).truncate().text_size(U.font).font_semibold().text_color(t.foreground).tooltip(pr.title).child(pr.title))
+          .child(this.measuredText(`${prefix}pr-title-${rowId}`,pr.title,{font:U.font,height:20,weight:'semibold',truncate:true}).flex_1().text_color(t.foreground))
           .child(div().id(`${prefix}pr-agent-slot-${rowId}`).w(U.insetControl).h(20).flex_none().relative()
             .when(Boolean(agentButton), el => el.child(agentButton))))
         .child(byline.line).child(meta.line))

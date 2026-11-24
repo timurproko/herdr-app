@@ -69,7 +69,7 @@ assert.equal(find(tree,'task-pulls-more'),undefined);assert.equal(reads,beforePa
 // Return to the first page for notice/error attribution checks below.
 panel.taskPages.clear();tree=render();
 assert.ok(find(tree,'pr-timurproko/crew#1'));
-assert.equal(nodes(find(tree,'pr-labels-timurproko/crew#1')).filter(n=>/^pr-label-timurproko/.test(n.attrs.id?.[0]??'')).length,3);
+assert.equal(nodes(find(tree,'pr-labels-timurproko/crew#1')).filter(n=>/^pr-label-timurproko\/crew#1-\d+$/.test(n.attrs.id?.[0]??'')).length,3);
 assert.ok(find(tree,'pr-meta-timurproko/crew#1').attrs.tooltip[0].includes('label-99'));
 const timeProbes=nodes(firstTree).filter(n=>String(n.attrs.id?.[0]).includes('-probe-time-full'));
 assert.equal(timeProbes.length,new Set(timeProbes.map(n=>words(n).join(''))).size,'One probe for each distinct time string per snapshot');

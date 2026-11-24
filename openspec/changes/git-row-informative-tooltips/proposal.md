@@ -8,7 +8,7 @@ Git PR rows show hover text that only repeats fully visible task progress, check
 
 - Preserve the already implemented one-logical-pixel downward offset for every task/check icon variant and its fixed-height/horizontal geometry regressions.
 - Show a PR-item tooltip only for information absent from the visible item: its full clipped/compact value or additional known facts. Apply per item to title, number, author, time, tasks, checks, labels, review, state and robot in both views.
-- Reuse existing fit measurements and layout callbacks; do not add hidden per-row probes or fetch data on hover. Preserve exact timestamps and failing/pending check names when existing facts provide them, and identify the related agent when known.
+- Reuse existing fit measurements and layout callbacks plus the explicitly approved bounded shared distinct-string/style/font/zoom cache; do not add hidden per-row probes on every render or fetch data on hover. Preserve exact timestamps and failing/pending check names when existing facts provide them, and identify the related agent when known.
 - Ensure overflowing PR titles, coordinator repository sections and other Git header text end in a fully visible U+2026 at 100% and 130%, preserving fixed line/row boxes. Diagnose the native suffix, selected face/weight and clipping before selecting the customization-layer fix.
 - Update tooltip and geometry regressions, conflicting unconditional-tooltip expectations, and feature documentation.
 
@@ -32,4 +32,4 @@ None.
 
 ## Delivery state
 
-PR #61 already contains the icon correction. The tooltip and ellipsis additions are a plan only, awaiting approval; no runtime code for those additions is implemented by this proposal.
+PR #61 already contains the icon correction. The person approved outcomes 2 and 3 and the bounded shared measurement approach; implementation proceeds one outcome at a time, preserving the no-per-row-every-render probe constraint.

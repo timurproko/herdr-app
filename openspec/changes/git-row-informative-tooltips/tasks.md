@@ -8,11 +8,11 @@
 
 ## 2. Every PR row item exposes only informative tooltips
 
-- [ ] 2.1 Resolve the design's title/pill fit feasibility gate with a supported existing-visible-element/native-layout route and a focused fixture; if no route exists without extra probes, stop and obtain a measurement exception before implementation.
-- [ ] 2.2 Retain exact event timestamps and newest-workflow failing/pending check names from already-read facts; facts/rerun and fallback fixtures demonstrate detail preservation with unchanged counts and request numbers.
-- [ ] 2.3 Apply the design's per-item tooltip table using existing full/compact/allocated-width facts, including fully clipped review/label recovery on a surviving hover target; tooltip fixtures cover complete, compact, clipped and informative cases and ancestor hover chains.
-- [ ] 2.4 Expose known related-agent display identity and non-visible state semantics without loosening target guards; ordinary/coordinator agent-link fixtures cover known/unknown/stale/absent/ghost cases and retain accessibility labels.
-- [ ] 2.5 Update conflicting unconditional-tooltip tests and document the complete item table in README/testing guidance; row/label/agent and complete-panel geometry fixtures pass at supported widths/zooms including 100% and 130%, with unchanged probe/read counts.
+- [x] 2.1 Resolve title/pill fit with the explicitly approved 512-entry shared distinct-string/style/font/zoom measurement cache and existing available-width callbacks; focused fixtures prove warm-cache reuse and one pending probe per snapshot.
+- [x] 2.2 Retain exact event timestamps and newest-workflow failing/pending check names from already-read facts; facts/rerun and fallback fixtures demonstrate detail preservation with unchanged counts and request numbers.
+- [x] 2.3 Apply the design's per-item tooltip table using existing full/compact/allocated-width facts, including fully clipped review/label recovery on a surviving hover target; tooltip fixtures cover complete, compact, clipped and informative cases and ancestor hover chains.
+- [x] 2.4 Expose known related-agent display identity and non-visible state semantics without loosening target guards; ordinary/coordinator agent-link fixtures cover known/unknown/stale/absent/ghost cases and retain accessibility labels.
+- [x] 2.5 Update conflicting unconditional-tooltip tests and document the complete item table in README/testing guidance; row/label/agent and complete-panel geometry fixtures pass at supported widths/zooms including 100% and 130%, with unchanged probe/read counts.
 
 ## 3. Truncated Git titles and headers use a readable contained Unicode ellipsis
 
@@ -23,7 +23,7 @@
 
 ## Workflow follow-up
 
-- Outcomes 2 and 3 require explicit plan approval; do not implement them as part of this planning commit.
-- If the no-extra-probe feasibility gate fails, request a narrow measurement decision before continuing rather than weakening the requirement or using guessed character budgets.
+- Outcomes 2 and 3 and the bounded shared measurement route are explicitly approved. Do not build hidden per-row probes on every render or use guessed character budgets.
+- If reliable measured title fit still proves unavailable, the person approved keeping full-title tooltips while the other items remain informative-only; report that exception if used.
 - After implementation, run the requested isolated `CI=true npm run test:ci` when no other local suite is running, then read the final-head required check results. Do not claim the original head's passing local suite proves later auto-refresh/plan heads.
 - Leave readiness/finalization to delivery automation; never merge or arm auto-merge. No installation or live-session modification is authorized.

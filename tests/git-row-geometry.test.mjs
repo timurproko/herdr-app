@@ -216,7 +216,7 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
     near(edge,robot.x+robot.width,'Shared edge matches the title robot control');
     const probe=find(tree,'pr-meta-17-probe-labels-full');
     near(geometry.get(strip).width,geometry.get(probe).width,'Review/Rework/Approved retain whole words throughout the supported matrix');
-    assert.equal(strip.attrs.tooltip[0],name);
+    assert.equal(strip.attrs.tooltip,undefined,'A complete visible label has no repeat-only group tooltip');
   }
 }
 // Exact whole-line fit thresholds from independent natural probes: one pixel
@@ -293,6 +293,7 @@ for(const coordinator of [false,true])for(const ghost of [false,true])for(const 
   const pr={...screenshot,number:17};if(coordinator)pr.key='owner/repo#17';
   const row=panel.pullRow(t,pr,ghost),cell=find(row,`${ghost?'swap-':''}pr-${kind}-${pr.key??17}`);
   assertTextFits(rowGeometry(row,480,zoom),row);cell.line_height(value);
+  for(const node of nodes(cell))if(node.attrs.line_height)node.line_height(value);
   assert.throws(()=>assertTextFits(rowGeometry(row,480,zoom),row),/text line height .* exceeds cell/);
 }
 // Mutations: removing the title reservation, stretching a fitting group,

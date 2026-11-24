@@ -250,7 +250,11 @@ assert.equal(calls.filter(c=>c.cmd==='hc').length,beforeUnsupported,'Unsupported
 const codexTarget=links.related(pr,'owner/repo','codex');assert.equal(codexTarget.address,'codex');
 assert.equal(await links.confirm(codexTarget,pr,'owner/repo'),true,'Other agents use their verified repo and tab/branch mapping');
 assert.equal(calls.filter(c=>c.cmd==='hc').length,beforeUnsupported,'Generic confirmation never guesses an unsupported footer format');
+const named=allAgents.find(agent=>agent.address==='codex'),nameCalls=calls.length;named.title='Build worker';
+assert.equal(links.related(pr,'owner/repo','codex').displayName,'Build worker');
+assert.equal(links.related(pr,'owner/repo','codex').key,codexTarget.key,'Display name is not action identity');
+assert.equal(links.displayName('codex'),'Build worker');assert.equal(calls.length,nameCalls,'Naming a tooltip adds no transport read');
 shown=false;const hiddenCalls=calls.length;view.render(cx);await tick();
 assert.equal(calls.length,hiddenCalls,'Hidden Git panels start no agent scans');
 await Promise.all(tasks);
-console.log('PASS: Separate white PR robot links, preserved PR state colors, standard hover/no tooltip, click isolation, remote/background agents, repository scoping, precedence, TTL and stale targets');
+console.log('PASS: Separate white PR robot links, preserved PR state colors, standard hover/no repeat-only tooltip, named display identity, click isolation, remote/background agents, repository scoping, precedence, TTL and stale targets');

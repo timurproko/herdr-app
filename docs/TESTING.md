@@ -337,6 +337,37 @@ fixtures protect captured URLs, callbacks and measured motion. These prove rende
 constraints, not GPUI pixel layout, tooltip hit-testing or native animation appearance.
 No deployment or live label mutation is performed.
 
+## Informative Git row tooltips
+
+`tests/git-row-tooltips.test.mjs` settles actual shared row trees at supported
+zooms, including 100% and 130%, in ordinary/coordinator live/ghost variants.
+Complete title/number/author/tasks/checks/labels/review text has no repeat-only
+item or ancestor tooltip. Compact/clipped values retain full wording; completely
+hidden review/labels have a surviving hover target. Exact UTC timestamps,
+newest-workflow failing/pending check names, unstated state/conflict and known
+related-agent names remain informative. Hover adds no requests; names do not
+become action identity. Existing agent/fallback/facts fixtures protect those guards.
+Distinct title/pill strings reuse the shared 512-entry intrinsic-width cache,
+keyed by size/weight, interface font and zoom, with one pending probe per snapshot.
+Warm strings build no probe; context/zoom-stale callbacks and cache/request bounds
+are asserted. Existing palette and geometry suites no longer require unconditional
+label/byline tooltips, while complete-panel builder/element bounds remain unchanged.
+These are synthetic native-element/layout assertions, not live hover pixels.
+
+| Item | Informative tooltip |
+| --- | --- |
+| Title | Full title only on measured overflow |
+| Number | Full number only if hidden/abbreviated; normally none |
+| Author | Full login only when clipped |
+| Time | Full compact/clipped wording and known exact UTC timestamp |
+| Tasks | Full progress phrase only when compact/clipped |
+| Checks | Complete count plus known failing/pending job names; no count-only repeat |
+| Label pill | Full name when its text is clipped |
+| Label group/metadata | Full assigned list when clipped or omitted |
+| Review | Full hidden decision, including a completely clipped value |
+| State icon | Unstated state or Merge conflicts, not an already visible state word |
+| Robot | Known current agent name; no invented name or changed action authority |
+
 ## Coordinator render error diagnostics
 
 `node --experimental-vm-modules tests/git-panel-errors.test.mjs` exercises the

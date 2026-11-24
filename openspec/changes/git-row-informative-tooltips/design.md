@@ -40,7 +40,7 @@ Do not remove accessibility labels when suppressing tooltips. Unknown details re
 
 Metadata decisions reuse `pullLine`'s current measurements, including clipping of the right strip and coordinator's omitted label count. Existing repository-header measurements can drive that header's tooltip. Existing visible-element layout callbacks may be used without adding hidden elements; invalidated scope/zoom callbacks must remain harmless.
 
-**Feasibility gate requiring resolution before implementation:** PR title nodes currently have no full intrinsic-width measurement, and the installed public SDK's `on_size_change` reports only width/height, not a truncation flag or text glyph metrics. No public text-measurement API was found during read-only inspection. The same limitation must be checked for individual clipped pills. Do not pretend metadata widths measure these different strings/fonts. Before implementing title/pill fit-dependent behavior or measured manual truncation, establish a supported non-probe route using existing visible nodes/native layout facts. If none exists, ask the person whether to allow bounded shared cached title/pill measurements; the no-extra-probe constraint is not silently relaxed. Default font/character-width estimates are rejected.
+**Approved resolution:** the person approved implementation of outcomes 2 and 3 and explicitly permits the shared measurement cache introduced by #45: distinct string + style + interface font + zoom, 512-entry bound and one pending probe per snapshot. Title and pill intrinsic widths use that cache alongside existing available-width callbacks. Warm strings add no probe; hidden probes per row on every render and guessed character budgets remain forbidden. If title truncation still cannot be established reliably, the separately approved fallback is full-title tooltips for all titles, with that exception reported; other items remain informative-only. The implementation can measure title fit, so that fallback is not currently needed.
 
 ### Diagnose and fix truncation at the owning customization layer
 
@@ -54,7 +54,7 @@ Keep the task/check +1px relative offsets, 18px metadata/byline lines, 20px titl
 
 ## Risks / Trade-offs
 
-- Missing title/pill fit facts under the no-new-probe constraint → Resolve the feasibility gate or obtain a narrow measurement exception before coding, rather than inventing measurements.
+- Cold title/pill fit facts → Use the approved bounded shared cache; suppress repeat-only tips until measurements resolve, and reject stale callbacks.
 - Native face/rasterization cause remains unproven → Capture explicit diagnosis at both requested zooms and choose only the corresponding customization remedy.
 - Parent tooltips can duplicate suppressed child values → Assert the complete ancestor hover chain as well as each item's tooltip.
 - Additional check details can regress rerun ordering → Keep names inside the existing newest-workflow selection and test event/fallback updates without new reads.

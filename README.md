@@ -414,7 +414,14 @@ as **27m ago**. If metadata still overflows, separate review-decision text yield
 first, then the bounded label group clips; checks and compact task fractions stay
 complete, without overlap or lone ellipses. Byline overflow clips secondary author
 text only after compacting time. Checks always keep their complete natural icon/count
-width, including realistic three-digit totals. All full values remain in tooltips.
+width, including realistic three-digit totals. Tooltips appear only when they add information: a clipped title/author/label,
+compact task/time value or hidden review/label value exposes its full original;
+fully visible text has no repeat-only tooltip. Time may add its exact UTC timestamp,
+checks may name failing/pending jobs, the state icon explains an unstated state or
+conflict, and a related robot can identify its known agent. Parent lines do not
+repeat complete visible items. Missing facts are never invented and hover starts
+no reads. Intrinsic title/pill widths share the bounded distinct-string/style/font/
+zoom cache rather than building a hidden probe per row on every render.
 Late facts may move left-run neighbors, but never the pill group's right anchor,
 three line positions, 74px block height or title/robot reservation. Native post-layout measurements of
 clipped invisible probes choose shortening; there is no guessed character budget,
@@ -427,8 +434,8 @@ Colours follow the live panel background (weighted RGB lightness below 0.5 is da
 otherwise light), including custom palettes, not the system appearance preference.
 The formula comes from [Primer's IssueLabelToken](https://github.com/primer/react/blob/2128032dca65a1bd565fe382c2e91c638c6473a4/packages/react/src/Token/IssueLabelToken.module.css).
 Multiple/long labels stay in a bounded single-height strip:
-pill text truncates, and hovering the pills or metadata exposes complete names,
-including clipped labels. No labels means no placeholder, extra separator or horizontal
+pill text clips, and hovering a clipped pill/group or metadata exposes complete
+names when labels are clipped or omitted, without repeating fully visible labels. No labels means no placeholder, extra separator or horizontal
 reservation; label refreshes never add extra row lines or horizontal overflow. Metadata separators,
 including the number/author dot, share a clearly visible muted 3px round shape,
 vertically centred beside text/icons with equal 6px spacing on both sides.
