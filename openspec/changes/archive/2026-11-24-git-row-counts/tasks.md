@@ -14,6 +14,12 @@
 - [x] 2.3 Document event dispatch, single-flight/page queue and GitHub read timing plus unenrolled/offline/missed-event/failed-read/stale-coordinator conditions in the applicable Git docs; verify each source-derived timing statement against code and distinguish it from any measured live evidence, without changing enrollment or PRs #40/#41.
 - [x] 2.4 When no other suite is running, execute CI=true npm run test:ci once with a long timeout and retain its actual output/exit status; record concrete failures and their focused repairs without weakening checks.
 
+## 3. Always-visible Open and Closed totals
+
+- [x] 3.1 Paint zero in unknown first-load badges through the shared segment renderer, preserving the fixed 32px geometry and loading tooltip/accessibility distinction.
+- [x] 3.2 Cover actual ordinary/coordinator render paths and delayed/failed same-context count retention, real-context resets and fully contained three-digit totals across the geometry matrix.
+- [x] 3.3 Update the current delta/canonical spec and README/testing guidance to explicitly replace the blank unknown-count presentation.
+
 ## Approved display amendment
 
 - [x] Both lower lines flow left with natural content widths, no absent-group reservations and unused space only at the end; fitting 390px rows retain full task/time wording.

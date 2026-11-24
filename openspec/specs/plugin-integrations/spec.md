@@ -595,6 +595,19 @@ At a given panel width and zoom, every PR block SHALL reserve the same state-ico
 - **THEN** a complete compact relative time such as 27m ago is shown instead of a mid-word truncation
 - **AND** full author, action and relative-time values remain in the byline tooltip while the number, author and time remain left-aligned with constant separator gaps
 
+### Requirement: Always-visible Git tab counts
+Ordinary and coordinator Git views SHALL always display Open and Closed count badges. Unknown totals on first load or a real context change SHALL display 0, replacing the earlier blank unknown-count presentation. Same-repository refreshes SHALL retain last-known totals until authoritative replacement. Badge slots SHALL reserve stable width for at least three digits so totals cannot move neighboring tabs. Unknown-count tooltips and accessibility text SHALL identify loading without hiding the visible zero.
+
+#### Scenario: Unknown and loaded totals
+- **WHEN** an ordinary or coordinator Git panel first loads, then receives authoritative totals
+- **THEN** both badges visibly start at 0 and change to the real counts without moving the tabs
+- **AND** three-digit totals remain fully contained in the fixed badge geometry at supported zooms
+
+#### Scenario: Refresh retains counts
+- **WHEN** known same-repository or coordinator-home counts are refreshed, including delayed or failed reads
+- **THEN** their last-known totals remain visible rather than returning to 0
+- **AND** only a real context change clears incompatible counts back to the first-load presentation
+
 ### Requirement: Non-destructive same-context PR refresh presentation
 A same-context PR refresh SHALL retain previously displayed rows, pin geometry and pagination until replacement data is ready. Pending reads, verification and transient failures SHALL NOT replace known rows with loading or empty states. Changed repository, machine or coordinator-home identities SHALL still invalidate old facts immediately, and retained stale coordinator presentation SHALL NOT authorize reads or worker actions.
 

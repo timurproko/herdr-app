@@ -74,6 +74,19 @@ Aggregate reads SHALL be read-only, machine-bound and limited to a shown enabled
 
 ## ADDED Requirements
 
+### Requirement: Always-visible Git tab counts
+Ordinary and coordinator Git views SHALL always display Open and Closed count badges. Unknown totals on first load or a real context change SHALL display 0, replacing the earlier blank unknown-count presentation. Same-repository refreshes SHALL retain last-known totals until authoritative replacement. Badge slots SHALL reserve stable width for at least three digits so totals cannot move neighboring tabs. Unknown-count tooltips and accessibility text SHALL identify loading without hiding the visible zero.
+
+#### Scenario: Unknown and loaded totals
+- **WHEN** an ordinary or coordinator Git panel first loads, then receives authoritative totals
+- **THEN** both badges visibly start at 0 and change to the real counts without moving the tabs
+- **AND** three-digit totals remain fully contained in the fixed badge geometry at supported zooms
+
+#### Scenario: Refresh retains counts
+- **WHEN** known same-repository or coordinator-home counts are refreshed, including delayed or failed reads
+- **THEN** their last-known totals remain visible rather than returning to 0
+- **AND** only a real context change clears incompatible counts back to the first-load presentation
+
 ### Requirement: Pending checks fallback without live coverage
 Shown pending or unknown checks without repository live coverage SHALL refresh at 45-second intervals through one coalesced repository job using the existing request queue. Failed reads SHALL retain prior values and back off exponentially; rate limits SHALL delay retries at least 15 minutes. Settled or enrolled rows SHALL NOT be polled. Hidden, disabled, offline or superseded contexts SHALL stop fallback reads.
 

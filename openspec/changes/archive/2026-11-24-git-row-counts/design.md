@@ -30,6 +30,10 @@ Rejected: guessed character metrics, threshold-only forced compact forms, fixed 
 
 Generate compact task fractions from numeric done/total facts, not substring truncation, only when full task wording makes the whole metadata line overflow. Time retains the action and full wording while its byline fits and becomes a whole compact token only on overflow. Keep status icons/colours and full tooltips. Secondary narrow author/label/review text clips without painting a lone ellipsis. Do not rename assigned GitHub labels.
 
+### Always-visible tab counts (approved addition)
+
+The shared segment renderer always paints its badge. Unknown first-load totals use 0 with a loading tooltip/accessibility distinction; known values continue using the existing count-retention paths. Keep the 32px slot and verify at least three digits fit, including zoom. A repository or coordinator-home reset clears incompatible facts; pending/failed same-context refreshes never reset known totals. Regressions exercise the actual ordinary/coordinator chrome and readers, not just the badge helper.
+
 ### Existing event refresh, explicit timing limits
 
 Drive completion, partial success/failure and rerun fixtures through the real ordinary and aggregate invalidation paths. Include a completion after an earlier read has captured old data, and require the dirty follow-up to publish the new result. Repair dropped invalidations only where reproduced; keep hidden/disabled/stale-scope guards and latest-run semantics intact.

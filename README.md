@@ -247,8 +247,11 @@ pin measurements while a same-context refresh runs or a Git-root/branch probe
 fails inconclusively. An older active PR also stays pinned during its targeted
 reread after page-one refresh. Only an authoritative replacement, proven
 non-repository or actual context change clears incompatible facts. Open/Closed
-count badges reserve their width before totals arrive, without displaying fake
-zeroes. Cold loading and coordinator Verifying remain panel feedback, never
+count badges are always visible in ordinary and coordinator Git views, showing
+**0** on first load or a real context change until totals arrive. The fixed badge
+width fits at least three digits without moving tabs. Same-repository refreshes
+keep the last-known counts; unknown-count tooltips and accessibility text identify
+loading without hiding the zero. Cold loading and coordinator Verifying remain panel feedback, never
 placeholder PR rows.
 Git's event-driven CI line sits immediately below its header and applies to
 all PRs, not just the pinned block. Rotation and line motion use native animation,

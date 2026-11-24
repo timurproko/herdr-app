@@ -308,6 +308,18 @@ Pagination and fleet fixtures also assert complete pending/success/failure and
 rerun counts through in-flight event follow-ups. These do not measure live GitHub
 latency, enroll hooks or use native UI/credentials.
 
+## Always-visible Git tab counts
+
+`tests/git-count-badges.test.mjs` renders the actual ordinary and coordinator chrome
+with the real shared segment, ordinary snapshot reader and aggregate index. It
+checks visible first-load/unknown zeros, loading tooltip/accessibility text,
+authoritative totals, retained counts during delayed and failed same-context reads,
+and first-load reset after a real repository/coordinator-home change. All IO is
+synthetic. The geometry matrix additionally compares tab and badge boxes across
+unknown/0/1/99/999/larger totals and verifies three-digit text fits inside the
+reserved 32px badge with padding at every tested width and zoom. Zero is now an
+explicit first-load display choice, not an authoritative claim that reads finished.
+
 ## Stable Git row geometry
 
 `node --experimental-vm-modules tests/git-row-geometry.test.mjs` resolves the actual

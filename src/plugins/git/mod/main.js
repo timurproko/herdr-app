@@ -560,14 +560,15 @@ export default class Changes extends View {
 
   segment(t, id, label, count, on, onClick) {
     return h_flex().id(id).h(U.control).px(8).gap(6).flex_none().items_center().rounded(U.radius).cursor_pointer()
-      .role('button').accessibility_label(label)
+      .role('button').accessibility_label(`${label}: ${count ?? 0}${count == null ? ' (loading)' : ''}`)
       .text_size(U.meta).text_color(on ? t.foreground : t.muted).when(on, el => el.font_semibold())
       .hover(s => s.bg(t.hover)).on_click((_e, cx) => onClick(cx))
       .child(label)
       .child(div().id(`${id}-count-slot`).w(32).h(16).flex_none()
-        .when(count != null, el => el.child(div().w_full().min_w(0).px(5).h(16).flex().items_center().justify_center().rounded_full()
-          .bg(on ? t.selected : t.raised).text_size(10).font_medium().text_color(on ? t.foreground : t.muted).tooltip(String(count))
-          .child(div().min_w(0).truncate().child(String(count))))));
+        .child(div().id(`${id}-count`).w_full().min_w(0).px(5).h(16).flex().items_center().justify_center().rounded_full()
+          .bg(on ? t.selected : t.raised).text_size(10).font_medium().text_color(on ? t.foreground : t.muted)
+          .tooltip(count == null ? 'Count loading; showing 0' : String(count))
+          .child(div().min_w(0).truncate().child(String(count ?? 0)))));
   }
 
   pullIcon(t, pr) {

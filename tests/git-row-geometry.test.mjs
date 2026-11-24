@@ -166,10 +166,13 @@ for(const [kind,shortKind,textKind] of [['meta','tasks','tasks'],['byline','time
 // Count badges still reserve width independently of the natural PR runs.
 for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.5,2]){
   let baseline;
-  for(const count of [null,0,1,99999]){
+  for(const count of [null,0,1,99,999,99999]){
     const tree=h.render(()=>element().flex().gap(2).children([panel.segment(t,'open','Open',count,true,()=>{}),panel.segment(t,'closed','Closed',count,false,()=>{})]));
     const boxes=rowGeometry(tree,width,zoom),snapshot=['open','closed','open-count-slot','closed-count-slot'].map(id=>plain(boxes.get(find(tree,id))));
-    baseline??=snapshot;assert.deepEqual(snapshot,baseline);if(count===null)assert.equal(words(find(tree,'open-count-slot')).join(''),'');
+    baseline??=snapshot;assert.deepEqual(snapshot,baseline);assert.equal(words(find(tree,'open-count-slot')).join(''),String(count??0));
+    if(count==null||count<=999)for(const line of boxes.visibleTextLines.filter(l=>l.ancestors.includes(find(tree,'open-count-slot')))) {
+      const badge=boxes.get(find(tree,'open-count-slot'));assert.ok(line.x+line.naturalWidth<=badge.x+badge.width-5*zoom+1e-6,'At least three digits fit inside badge padding');
+    }
   }
 }
 for(const coordinator of [false,true])for(const ghost of [false,true])for(const zoom of [0.75,1,1.25,1.5,2])for(const [kind,value] of [['title-line',20],['byline',18],['meta',18]]) {

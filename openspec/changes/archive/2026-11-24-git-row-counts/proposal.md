@@ -11,6 +11,7 @@ The fixed row geometry from #39 reserves too little room for CI counts: the supp
 - Cover completion/rerun invalidations and in-flight dirty follow-ups in existing webhook refresh paths; repair demonstrated stale-count defects and add an approved 45-second pending/unknown-only fallback for repositories without live coverage, with failure backoff and no webhook enrollment changes.
 - Extend resolved geometry assertions to 280/320/360/390/480px and 75–200% zoom, checking full one/two-digit counts and meaningful compact values as well as natural-width/constant-gap/fit thresholds and unchanged title/vertical pixel-line-height guarantees.
 - Document source-derived refresh timing and stale-data conditions, clearly separating fixture evidence from measured live latency.
+- Always show Open/Closed count badges in ordinary and coordinator views, using zero for unknown first-load totals, retaining known refresh counts and keeping fixed geometry for at least three digits.
 
 ## Capabilities
 
