@@ -5,7 +5,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-for (const entrypoint of ['main.js', 'main-0.1.17.js']) {
+for (const entrypoint of ['main.js', 'main-0.1.17.js', 'main-0.1.18.js']) {
 let inLayout=false;
 function element(kind='div') {
   const node={kind,kids:[],style:{},events:{}};let proxy;
@@ -22,8 +22,8 @@ function element(kind='div') {
 function nodes(n,out=[]){if(n&&typeof n==='object'){out.push(n);for(const kid of n.kids??[])nodes(kid,out);}return out;}
 const byId=(v,id)=>nodes(v).find(n=>n.style?.id?.[0]===id);
 const text=v=>nodes(v).flatMap(n=>(n.kids??[]).filter(k=>typeof k==='string')).join('\n');
-const timers=[],scrollCalls=[],calls=[],closed=[],storage=new Map();let notices=0,skin=true;
-const cx={notify(){assert.equal(inLayout,false,'No notify from native layout');notices++;},stop_propagation(){},focus_handle:()=>({}),timer:{after(){},every(ms,fn){const timer={ms,fn,cancelled:false};timers.push(timer);return{cancel(){timer.cancelled=true;}};}}};
+const timers=[],scrollCalls=[],calls=[],closed=[],spawnJobs=[],storage=new Map();let notices=0,skin=true,manifestReads=0;
+const cx={spawn:fn=>{const job=fn(cx);spawnJobs.push(job);return job;},notify(){assert.equal(inLayout,false,'No notify from native layout');notices++;},stop_propagation(){},focus_handle:()=>({}),timer:{after(){},every(ms,fn){const timer={ms,fn,cancelled:false};timers.push(timer);return{cancel(){timer.cancelled=true;}};}}};
 function state(options={}){let value=options.value??'';const events={};return{options,events,value:()=>value,set_value:v=>{value=v;},focus(){},on:(n,fn)=>{events[n]=fn;}};}
 const kit={View:class{},div:()=>element(),svg:p=>element('svg').asset(p)};
 const base={h_flex:()=>element('hflex'),v_flex:()=>element('vflex'),InputState:{new:state},Input:{new:()=>element('input')},Popover:{},
@@ -36,10 +36,11 @@ const base={h_flex:()=>element('hflex'),v_flex:()=>element('vflex'),InputState:{
   },
 };
 const t={foreground:'#fafafa',muted:'#aaa',dim:'#888',border:'#333',raised:'#252525',popover:'#202020',hover:'#303030',selected:'#444',accent:'#55aaff',input:'#555'};
-const api={commands:()=>[],layouts:()=>['main'],themes:()=>[],settings:()=>({dark:true}),keys:()=>[],theme:()=>t,shared:()=>skin?'Custom':'main',window:()=>({platform:'windows'}),props:()=>({overlay:'owned-test'}),run:(...args)=>calls.push(args),closeOverlay:id=>closed.push(id),openOverlay(){}};
+const api={appHome:()=>'/fixture-only',commands:()=>[],layouts:()=>['main'],themes:()=>[],settings:()=>({dark:true}),keys:()=>[],theme:()=>t,shared:()=>skin?'Custom':'main',window:()=>({platform:'windows'}),props:()=>({overlay:'owned-test'}),run:(...args)=>calls.push(args),closeOverlay:id=>closed.push(id),openOverlay(){}};
 const context=vm.createContext({console,localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v)}}),cache=new Map();
 const synthetic=(name,values)=>new vm.SyntheticModule(Object.keys(values),function(){for(const[k,v]of Object.entries(values))this.setExport(k,v);},{context,identifier:name});
 async function load(file){if(cache.has(file))return cache.get(file);const mod=new vm.SourceTextModule(fs.readFileSync(file,'utf8'),{context,identifier:file});cache.set(file,mod);await mod.link((name,ref)=>{
+  if(name==='fs/promises')return synthetic(name,{readdir:async()=>{manifestReads++;return ['demo'];},readFile:async()=>JSON.stringify({palette:[{title:'Async mod action',command:'demo.action'}]}),exists:async()=>true});
   if(name==='gpui-kit')return synthetic(name,kit);if(name==='gpui-base')return synthetic(name,base);if(name==='./host.js')return synthetic(name,api);
   if(name==='./custom-look.js')return synthetic(name,{isCustom:()=>skin,liveTheme:()=>t,ensureNativeSelection(){}});
   if(name==='./custom-ui.js')return load(path.join(root,'lib/ui.js'));
@@ -54,10 +55,27 @@ const fixture=[row('tab-a'),row('tab-b'),row('pane-a','Pane'),row('pane-b','Pane
 const items=paletteItems(fixture,false);
 assert.equal(items.length,8);assert.equal(items[0].head,'Tab');assert.equal(items[3].head,'Pane');assert.equal(items[3].gap,8);
 assert.equal(paletteHeading(items,2),'Tab');assert.equal(paletteHeading(items,3),'Pane');assert.equal(paletteHeading(items,5),'Pane');assert.equal(paletteHeading(items,999),'Space');assert.equal(paletteHeading([],0),null);
-const palette=new Palette();palette.init({},cx);palette.rows=()=>fixture;
+const palette=new Palette();palette.init({},cx);
+await Promise.all(spawnJobs);
+if(entrypoint==='main-0.1.18.js'){assert.equal(manifestReads,1);assert.equal(palette.mods[0].command,'demo.action','Opening asynchronously loads native manifest contributions');}
+palette.rows=()=>fixture;
 assert.equal(timers.length,1);assert.equal(timers[0].ms,32);
 function railOnTop(view){const frame=byId(view,'palette-list-frame'),rail=frame.kids.find(n=>n.kind==='scrollbar');assert.ok(rail);assert.equal(frame.kids.at(-1),rail,'Native rail paints/hit-tests above the sticky heading');assert.ok(frame.kids.indexOf(byId(view,'palette-pinned-heading'))<frame.kids.indexOf(rail));}
 let view=palette.render();railOnTop(view);
+assert.equal(view.style.h[0],408);assert.equal(byId(view,'palette-search-header').style.h[0],57);
+// Keyboard moves command results, never headings; only selections at viewport
+// boundaries ask the native list to reveal an item. Wheel remains native-owned.
+listKeyboard();
+function listKeyboard(){
+ const before=scrollCalls.length;
+ palette.visibleRange={start:0,end:8};
+ view.events.on_key_down({key:'down'},cx);assert.equal(palette.at,1);assert.equal(scrollCalls.length,before);
+ view.events.on_key_down({key:'pagedown'},cx);assert.equal(palette.at,4);assert.equal(scrollCalls.at(-1)[0],7);assert.equal(scrollCalls.at(-1)[1],'center');
+ view.events.on_key_down({key:'pageup'},cx);assert.equal(palette.at,0);assert.equal(scrollCalls.at(-1)[0],1);
+ view.events.on_key_down({key:'up'},cx);assert.equal(palette.at,0);
+ let stopped=0;byId(view,'palette-list-frame').events.on_scroll_wheel({delta:{y:50}},{stop_propagation:()=>stopped++});assert.equal(stopped,1);
+ assert.equal(palette.scroll,0,'No JS wheel simulation fights the native virtual list');
+}
 assert.equal(byId(view,'palette-list-frame').style.top[0]+byId(view,'palette-list-frame').style.my[0],65);assert.equal(byId(view,'palette-list-frame').style.ml[0],8);assert.equal(byId(view,'palette-list-frame').style.mr[0],0);assert.equal(byId(view,'palette-search-header').style.top[0],0);
 assert.equal(byId(view,'palette-list-frame').style.mb[0],0,'The list/fade reaches the bottom edge instead of clipping at an inset.');
 assert.equal(byId(view,'palette-list-more-below'),undefined,'Fitting lists never show a continuation fade.');
@@ -89,8 +107,9 @@ results=[];palette.input.events.change({},cx);view=palette.render();assert.equal
 for(const key of ['up','down','pageup','pagedown'])view.events.on_key_down({key},cx);assert.equal(palette.at,0,'Empty keyboard navigation never produces -1/NaN');
 // Clear returns to grouped entries and resets both native scrolling and header state.
 palette.rows=()=>fixture;view=palette.render();byId(view,'palette-search-clear').events.on_click({},cx);view=palette.render();assert.equal(palette.query,'');assert.equal(text(byId(view,'palette-pinned-heading')),'Tab');assert.equal(scrollCalls.at(-1)[0],0);
+assert.equal(palette.at,0);assert.equal(palette.visibleRange,null);assert.equal(palette.pinnedHead,null);assert.equal(palette.pendingHead,null);assert.equal(palette.moreBelow,true);assert.equal(palette.pendingMore,null);
 // Stock layouts gain neither the new header nor a synchronization task.
-skin=false;const timerCount=timers.length;const stock=new Palette();stock.init({},cx);stock.rows=()=>fixture;view=stock.render();assert.equal(timers.length,timerCount);assert.equal(byId(view,'palette-pinned-heading'),undefined);
+skin=false;const timerCount=timers.length;const stock=new Palette();stock.init({},cx);await Promise.all(spawnJobs);if(entrypoint==='main-0.1.18.js')assert.equal(manifestReads,2,'Each opening refreshes metadata, even outside Custom');stock.rows=()=>fixture;view=stock.render();assert.equal(timers.length,timerCount);assert.equal(byId(view,'palette-pinned-heading'),undefined);
 const unchanged=notices;palette.pendingHead='Outside scope';timers[0].fn(cx);assert.equal(notices,unchanged);palette.close();assert.equal(timers[0].cancelled,true,'Header synchronization is cancelled on close');assert.equal(closed.at(-1),'owned-test');
 console.log(`PASS ${entrypoint}: pinned command-group/count headings, scrollbar above sticky headers, native list retention, layout-safe sync, plural counts, clear/stale/empty-key guards and stock scope (synthetic UI)`);
 }
