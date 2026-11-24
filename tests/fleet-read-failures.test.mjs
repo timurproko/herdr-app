@@ -57,6 +57,10 @@ for(const [failure,kind,message]of cases){
  if(kind==='notfound' && /PullRequest|HTTP 404/.test(failure.stderr??''))continue;
  for(const n of [5,6,7])failures.set(key(n),failure);
  a.invalidate();a.pump(cx);await drain();assert.equal(JSON.stringify(a.counts()),JSON.stringify({open:1,closed:3}));
+ if(kind==='rate') {
+  assert.ok([5,6,7].every(n=>a.entries.get(key(n)).error?.kind!=='rate'),'Rate refusal does not create a notice or erase a previous actionable error');
+  now+=900001;a.readWake=null;failures.clear();a.invalidate();a.pump(cx);await drain();continue;
+ }
  for(const n of [5,6,7]){const e=a.entries.get(key(n));assert.equal(e.error.kind,kind);assert.equal(e.error.message,kind==='notfound'?'example/crew not found':['access','auth'].includes(kind)?`example/crew not accessible with the GitHub account fixture-user${kind==='auth'?'; sign in with gh auth login':''}`:message);assert.equal(e.pr.state,'merged');}
  assert.equal(a.entries.get(key(8)).error,null,'Healthy live row survives failed historical reads');
 }

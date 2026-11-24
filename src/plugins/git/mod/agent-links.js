@@ -1,7 +1,7 @@
 // Live, read-only PR -> agent links. No transcripts, terminal input or saved IDs.
 import { agents, panes, spaces, terminals, exec, hc } from './host.js';
 import { paneDirectory } from './directory.js';
-import { agentPullNumber, REPO_ARGS } from './pulls.js';
+import { agentPullNumber, REPO_ARGS, repositoryRead } from './pulls.js';
 import { namedPullNumber } from './location.js';
 
 const TTL = 10000;
@@ -50,7 +50,7 @@ export class AgentLinks {
         try {
           const folder = JSON.stringify([target.on,target.cwd]);
           if (!folders.has(folder)) folders.set(folder,
-            exec('gh',REPO_ARGS,{cwd:target.cwd,on:target.on,timeout:15000})
+            repositoryRead(exec,REPO_ARGS,null,{cwd:target.cwd,on:target.on,timeout:15000,current:()=>this.enabled()})
               .then(r => r.code === 0 ? repositoryName(r.stdout) : null).catch(() => null));
           const repo = await folders.get(folder);
           if (!this.enabled()) return;
@@ -74,8 +74,8 @@ export class AgentLinks {
   async confirm(target, pr, repo, current = () => true) {
     const live=()=>this.enabled()&&current()&&agentTargets().some(t=>t.key===target.key);
     if(!live())return false;
-    const result=await exec('gh',REPO_ARGS,{cwd:target.cwd,on:target.on,timeout:15000});
-    if(!live()||result.code!==0||repositoryName(result.stdout)!==repoKey(repo))return false;
+    const result=await repositoryRead(exec,REPO_ARGS,null,{cwd:target.cwd,on:target.on,timeout:15000,current:live}).catch(()=>null);
+    if(!live()||!result||result.code!==0||repositoryName(result.stdout)!==repoKey(repo))return false;
     let number=target.number;
     if(['a1','claude-code'].includes(target.app)) {
       const screen=await hc(['read',target.address,'--json','--lines','0']);

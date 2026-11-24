@@ -18,7 +18,7 @@ import { headerTool, contextMenu, panelMessage } from './panel-kit.js';
 import { changePanel } from './panel-state.js';
 import { sidebarPanelEnabled } from './plugins.js';
 import { sidebarTitle } from './sidebar-title.js';
-import { pullListArgs, REPO_ARGS, countArgs, parseCounts, parsePullPage, agentPullNumber, pullRow, pullError, PR_FIELDS, PR_PAGE_SIZE, repositoryRead, repositoryFailure, pendingChecksArgs, parsePendingChecks, refreshPullFacts, pullStateArgs, parsePullStates, pullPayload, pullRetryAfter, ChecksFallback, PullFactsOrder, CHECKS_BATCH_SIZE, STATE_BATCH_SIZE } from './pulls.js';
+import { pullListArgs, REPO_ARGS, countArgs, parseCounts, parsePullPage, agentPullNumber, pullRow, pullError, PR_FIELDS, PR_PAGE_SIZE, repositoryRead, repositoryFailure, quietRead, retryRead, pendingChecksArgs, parsePendingChecks, refreshPullFacts, pullStateArgs, parsePullStates, pullPayload, pullRetryAfter, ChecksFallback, PullFactsOrder, CHECKS_BATCH_SIZE, STATE_BATCH_SIZE } from './pulls.js';
 
 const VIEWS = ['open', 'closed'];
 const VIEW_KEY = 'custom.git.view';
@@ -74,7 +74,7 @@ export default class Changes extends View {
   }
 
   resetRepository() {
-    this.checksFallback?.stop();this.fallbackRequest=null;
+    this.checksFallback?.stop();this.fallbackRequest=null;this.readWake=null;
     this.factOrder ??= new PullFactsOrder();this.factOrder.reset();
     this.ciRevision=(this.ciRevision??0)+1;
     // Native size callbacks fire on size changes, not data resets. Keep the
@@ -201,11 +201,11 @@ export default class Changes extends View {
   }
 
   pullsDue(state) {
-    return Boolean(this.root && !this.pullLoading && this.pulls[state] === null && !this.pullsAt[state]);
+    return Boolean(!(this.readWake?.due>Date.now()) && this.root && !this.pullLoading && this.pulls[state] === null && !this.pullsAt[state]);
   }
 
   loadPulls(state, cx, force = false, notify = true, append = false) {
-    if (!sidebarPanelEnabled('changes') || !VIEWS.includes(state) || !this.root || this.pullLoading || key() !== this.context || (!force && !this.pullsDue(state))) return;
+    if (!this.shown() || !VIEWS.includes(state) || !this.root || this.pullLoading || key() !== this.context || (!force && !this.pullsDue(state))) return;
     const after = append ? this.pages[state].cursor : null;
     if (append && (!this.pages[state].hasMore || !after || state !== this.view || !this.shown())) return;
     const root = this.root, on = this.on, context = this.context;
@@ -216,7 +216,7 @@ export default class Changes extends View {
     if (notify) cx.notify();
     cx.spawn(async cx => {
       try {
-        const gh = args => repositoryRead(exec, args, repository, { cwd: root, on, timeout: 30000 });
+        const gh = args => repositoryRead(exec, args, repository, { cwd: root, on, timeout: 30000, current:()=>current() && this.shown(), manual:this.manualRead });
         if (!repo) {
           const r = await gh(REPO_ARGS);
           if (!current()) return;
@@ -257,6 +257,7 @@ export default class Changes extends View {
         this.counts = page.counts ?? (counts?.code===0?parseCounts(counts.stdout):null) ?? this.counts;
       } catch (e) {
         if (current()) {
+          if(retryRead(this,cx,e,view=>{if(this.shown() && this.context===context)this.loadPulls(state,view,true,true,append);}))return;
           if (append) this.pageError = {state,message:pullError(e)};
           else { this.pullError = pullError(e); this.pullsAt[state] = Date.now(); }
         }
@@ -324,7 +325,7 @@ export default class Changes extends View {
       let accepted=false;
       try {
         await Promise.resolve();if(!current())return;
-        const result = await exec('gh', ['pr','view',String(number),'--repo',repo.name,'--json',PR_FIELDS], {cwd:root,on,timeout:30000});
+        const result = await repositoryRead(exec, ['pr','view',String(number),'--repo',repo.name,'--json',PR_FIELDS], repo.name, {cwd:root,on,timeout:30000,current,manual:this.manualRead});
         if (!current() || result.code !== 0 || result.timed_out || result.timedOut || result.signal) return;
         const pr = JSON.parse(result.stdout);
         if (pr.number === number) {
@@ -337,14 +338,16 @@ export default class Changes extends View {
           }
           if(accepted)this.ciRevision=(this.ciRevision??0)+1;
         }
-      } catch {} finally {
+      } catch(error) {
+        if(quietRead(error)) {this.relatedRetry={scope,until:error.retryAt};retryRead(this,cx,error,view=>{if(this.shown())this.loadRelatedPull(view);});}
+      } finally {
         if(this.relatedRequest===request) {
           this.relatedRequest=null;
           if(!accepted && this.relatedKey===scope) {
             this.relatedKey=null;
             // A released cache key permits retry, not a render-driven hot loop.
-            const retry=this.relatedRetry={scope,until:Date.now()+LOCAL_CONTEXT_TTL};
-            cx.timer?.after(LOCAL_CONTEXT_TTL,view=>{
+            const retry=this.relatedRetry?.scope===scope && this.relatedRetry.until>Date.now() ? this.relatedRetry : (this.relatedRetry={scope,until:Date.now()+LOCAL_CONTEXT_TTL});
+            cx.timer?.after(Math.max(LOCAL_CONTEXT_TTL,retry.until-Date.now()),view=>{
               if(this.relatedRetry!==retry)return;
               this.relatedRetry=null;if(this.shown())view.notify();
             });
@@ -394,7 +397,7 @@ export default class Changes extends View {
       const updates=new Map(),previous=new Map(repo.rows.map(pr=>[pr.number,pr]));let counts=null;
       const gh=async args=>{
         if(!current())throw Error('Obsolete safety read');
-        const result=await repositoryRead(exec,args,repo.name,{...(root?{cwd:root}:{}),on,timeout:30000});
+        const result=await repositoryRead(exec,args,repo.name,{...(root?{cwd:root}:{}),on,timeout:30000,current});
         if(!current())throw Error('Obsolete safety read');
         retryAfter=Math.max(retryAfter,pullRetryAfter(result));
         if(result.code!==0 || result.timed_out || result.timedOut || result.signal) {
@@ -449,7 +452,7 @@ export default class Changes extends View {
       this.ciRevision=(this.ciRevision??0)+1;
       return {failed:false};
     } catch(error) {
-      return {failed:true,rateLimited:rateLimited || /rate.?limit|secondary.*limit|abuse|429/i.test(String(error)),retryAfter};
+      return {failed:true,rateLimited:rateLimited || error.kind==='rate',retryAfter:Math.max(retryAfter,(error.retryAt??0)-Date.now())};
     } finally {
       if(this.fallbackRequest===request)this.fallbackRequest=null;
       if(aggregate) {aggregate.fallbackBusy=false;aggregate.pump(cx);cx.notify();}
@@ -493,7 +496,7 @@ export default class Changes extends View {
   // selected PR, preserving expanded lists/cursors and handling newly opened PRs.
   // Reconnection/opening performs the same catch-up; no periodic GitHub requests.
   flushWebhook(cx) {
-    if (!this.webhookDirty || !this.repo || !this.root || this.pullLoading || !this.shown() || key() !== this.context) return;
+    if (this.readWake?.due>Date.now() || !this.webhookDirty || !this.repo || !this.root || this.pullLoading || !this.shown() || key() !== this.context) return;
     this.webhookDirty = false;
     // Related/older reads cannot overlap this snapshot's queue lease.
     const root=this.root,on=this.on,repo=this.repo,context=this.context;
@@ -506,7 +509,7 @@ export default class Changes extends View {
         this.startCISweep(cx);
         const gh=async args=>{
           if(!current())throw Error('Obsolete request');
-          const r=await repositoryRead(exec,args,repo.name,{cwd:root,on,timeout:30000});
+          const r=await repositoryRead(exec,args,repo.name,{cwd:root,on,timeout:30000,current,manual:this.manualRead});
           if(!current())throw Error('Obsolete request');
           if(r.code!==0 || r.timed_out || r.timedOut || r.signal)throw Object.assign(new Error(),await repositoryFailure(exec,r,repo.name,{cwd:root,on}));
           return r.stdout;
@@ -545,7 +548,10 @@ export default class Changes extends View {
         this.reconcilePulls([...VIEWS.flatMap(state=>this.pulls[state]??[]),...(this.relatedPull?[this.relatedPull]:[])]);
         this.counts=counts ?? this.counts;this.pullError=null;this.ciRevision=(this.ciRevision??0)+1;
         this.startCISweep(cx);
-      } catch(e) { if(current()) {this.pullError=pullError(e);this.relatedKey=null;this.relatedRetry=null;} }
+      } catch(e) { if(current()) {
+        if(retryRead(this,cx,e,view=>this.flushWebhook(view)))this.webhookDirty=true;
+        else {this.pullError=pullError(e);this.relatedKey=null;this.relatedRetry=null;}
+      } }
       finally {
         if(this.pullRequest===request)this.pullLoading=false;
         this.flushWebhook(cx);cx.notify();
@@ -1131,7 +1137,7 @@ export default class Changes extends View {
       .child(v_flex().id('task-pulls-scroll').flex_1().min_h(0).overflow_hidden()
         .child(v_flex().id(`task-pulls-page-${scope}-${this.view}-${paging.page}`).flex_1().min_h(0).overflow_y_scrollbar().p(4)
           .children(paging.sections.map(section => this.renderPart(`repository-section:${section.repo}`,()=>this.repositorySection(t, section, scope))))
-          .when(!sections.length,el=>el.child(panelMessage(t,'git-task-empty',{text:aggregate.context.stale?'Waiting for fleet verification':aggregate.busy?'Loading…':`No ${this.view} pull requests`,loading:!aggregate.context.stale && aggregate.busy,rowInset:2})))))
+          .when(!sections.length,el=>el.child(panelMessage(t,'git-task-empty',{text:aggregate.context.stale?'Waiting for fleet verification':(aggregate.busy || aggregate.waiting)?'Loading…':`No ${this.view} pull requests`,loading:!aggregate.context.stale && (aggregate.busy || aggregate.waiting),rowInset:2})))))
       .when(Boolean(paging.last),el=>el.child(this.taskPageControl(t,paging,scope)))
       .when(setup,el=>el.child(this.liveCIInfo(t)))
       .when(Boolean(enrollment),el=>el.child(enrollment))
@@ -1214,6 +1220,7 @@ export default class Changes extends View {
             onClick: (_e, cx) => {
               if (!this.root || this.loading || this.pullLoading) return;
               this.webhooks?.retryNow();this.notices?.retryNow();
+              this.manualRead={remaining:1};this.readWake=null;
               this.refresh(cx); this.loadPulls(this.view, cx, true);
             } })))
           .child(panelPin(t,{id:'git-pin',enabled:this.headerHovered}))

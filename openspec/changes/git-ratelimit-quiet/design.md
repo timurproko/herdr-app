@@ -53,9 +53,7 @@ Ordinary page membership remains cursor-based; refresh only the selected tab and
 
 Split row metadata/summary from check contexts on every path, not only safety probes. Compare head SHA and rollup summary with published facts; only new or changed rows fetch contexts, in 20-row chunks. Preserve the existing 40-row thin safety query and latest-workflow/rerun semantics. Publish complete selected updates atomically; a refused second chunk cannot partly blank counts or checks. No extra label-definition calls.
 
-Final state is not a claim that a closed-unmerged PR can never reopen. Extend the existing authenticated relay notice with a validated optional positive PR number and preserve a bounded per-repository changed-PR set through broker coalescing. Precise reopened/edited/labeled/unlabeled hints invalidate only the identified final fact and cause an authoritative read; generic push/check events do not rescan unchanged final history. Keep protocol compatibility and merge-hint security semantics. A bounded overflow marks mutable inventory dirty, never triggers an unbounded Closed scan.
-
-Relay deployment remains an explicit person action. Older notices lacking PR identity still refresh mutable rows, but cannot precisely refresh session-final coordinator history. Such final facts stay cached until independently observed contradictory facts, a precise hint or a new runtime session; document that deliberate freshness trade-off instead of claiming guaranteed reopen discovery from an old relay. Ordinary Open inventory can independently rediscover a reopened cached PR. The 45/120-second shown-open safety guarantee remains unchanged in either case.
+Approval refinement: do not change the relay. All read savings, quiet behavior and 45/120-second shown-open safety work with the deployed protocol. Precise numbered PR hints are an optional, default-off follow-up, not part of this implementation. Generic notifications refresh mutable facts only. Final coordinator facts are session-bound: external changes to a previously closed row are not polled; an independently observed contradictory Open fact or a new runtime can replace them. Ordinary Open inventory can independently rediscover reopened rows. Document this intentional final-cache freshness trade-off without a new Stale alarm.
 
 **Alternative rejected:** rereading every Closed PR to discover which one reopened defeats the requested session cache; moving all row reads to REST would require separate PR/check/status/review/label requests and increase request count.
 
@@ -115,7 +113,7 @@ Auxiliary ordinary-view audit (not additive to the coordinator-only workload):
 
 ## Risks / Trade-offs
 
-- [Closed-unmerged PRs can reopen; old relay lacks exact identity] → Optional numbered hints, explicit relay rollout and documented session-final freshness limits. Never scan all unchanged final PRs to compensate or claim webhook hints are authoritative state.
+- [Closed-unmerged PRs can reopen; current relay lacks exact identity] → Document session-final freshness limits and defer optional numbered hints. Never scan all unchanged final PRs to compensate or claim webhook hints are authoritative state.
 - [A new singleton or page can require metadata + details instead of one monolithic read] → Disclose that local increase and enforce the overall 35-PR workload budget. Reject blanket REST conversion that multiplies check/review/status calls.
 - [Mixed partial GraphQL failures can hide valid rows or turn access into absence] → Preserve per-alias identities and PR 55 classifier precedence; stage a complete affected update and retain last-good facts on refusal.
 - [Shared read outlives a coordinator identity] → Separate raw fact lifetime from subscriber publication/action authority; existing epochs and per-PR generations stay authoritative.
@@ -127,6 +125,6 @@ Auxiliary ordinary-view audit (not additive to the coordinator-only workload):
 
 1. Land this plan-only draft and stop for approval. No runtime code, broad suite, native installation or relay operation now.
 2. After approval, deliver the three PR outcomes in order, with code and focused fixtures per outcome and immediate task/body ticks.
-3. Preserve public IDs and protocol compatibility; cache/rate state is ephemeral. Relay source changes do not redeploy cloud infrastructure. Existing explicit Configure remains the authorized rollout path for precise hints.
+3. Preserve public IDs and deployed relay behavior; cache/rate state is ephemeral. No relay source or cloud deployment changes. Optional precise hints are a separately scoped follow-up.
 4. Before final implementation handoff, incorporate current main including PRs 56/57 once landed. Check for another running suite, then run `CI=true npm run test:ci` once against the final implementation. Read required-check results on the exact final head and report pending/blocked checks truthfully; this task must remain draft and must not be merged or marked ready by the agent.
 5. Rollback is reverting this customization change through the normal workflow; no persistent PR cache migration, credentials, host documents or worker configuration needs reversal.

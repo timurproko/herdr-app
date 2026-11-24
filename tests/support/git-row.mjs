@@ -3,11 +3,11 @@ import {githubInvocation} from './github-read.mjs';
 import {element,svg,nodes,find,words} from './choice-menu.mjs';
 export {element,svg,nodes,find,words};
 export const t={background:'#191d28',foreground:'#eeeeee',muted:'#999999',dim:'#666666',raised:'#222222',hover:'#333333',border:'#444444',ansi1:'red',ansi2:'green',ansi3:'yellow',ansi5:'purple'};
-export async function rowHarness({host={},modules={}}={}) {
+export async function rowHarness({host={},modules={},globals={}}={}) {
   let zoom=1,agent=false,rendering=false;
   const place={cwd:'/repo',on:null,terminal:'t1'},focus=[];
   const chain=new Proxy({},{get:(_n,key)=>key==='build'?()=>({}):()=>chain});
-  const {Main,facts,U,AggregatePulls}=await loadMod({mod:'custom-changes',globals:{window:{paint_path:element}},
+  const {Main,facts,U,AggregatePulls}=await loadMod({mod:'custom-changes',globals:{window:{paint_path:element},...globals},
     host:{props:()=>null,settings:()=>({zoom}),theme:()=>t,closeOverlay(){},openOverlay(){},nextCommand(){},run:(...args)=>focus.push(args),
       layout:()=>({id:'panel',children:[{id:'panel-body',active:'changes'}]}),...host,
       ...(host.exec?{exec:(command,args,options)=>{const call=githubInvocation(command,args,options);return host.exec(call.command,call.args,call.options);}}:{})},

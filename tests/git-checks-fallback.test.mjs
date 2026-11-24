@@ -11,7 +11,7 @@ for(const coordinator of [false,true]) {
   let now=0,shown=true,online=true,fail=false,rate=false,held=null,requests=[],tasks=[],timers=[],notifications=0,rendering=false;
   let status={ok:3,total:10},machineShape=null,failAt=null,retryAfter=null,httpFailure=null;
   const context={scope:'home',machine:'pc2',links:[]};
-  const h=await rowHarness({host:{machines:()=>machineShape??[{name:'pc2',layout:online?'ready':'loading'}],
+  const h=await rowHarness({globals:{Date:class extends Date{static now(){return now;}}},host:{machines:()=>machineShape??[{name:'pc2',layout:online?'ready':'loading'}],
     exec:async(_cmd,args,options)=>{
       assert.equal(options.env?.GH_REPO,'owner/repo','Both thin and detail probes must use the repository-scoped Node transport');
       if(args[1]==='user')return {code:0,stdout:'fixture-user'};

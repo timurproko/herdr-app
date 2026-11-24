@@ -10,13 +10,23 @@ function environment(source=process.env){
 }
 function gh(args,input,env=process.env){
   return new Promise((resolve,reject)=>{
-    const child=spawn('gh',args,{env,windowsHide:true,stdio:['pipe','pipe','pipe']});let out='',size=0,overflow=false,expired=false;
+    const child=spawn('gh',args,{env,windowsHide:true,stdio:['pipe','pipe','pipe']});let out='',err='',size=0,overflow=false,expired=false;
     const timer=setTimeout(()=>{expired=true;child.kill();},15000);
     child.on('error',()=>{clearTimeout(timer);reject(safe('Install GitHub CLI and sign in on this computer.'));});
     child.stdout.on('data',bytes=>{size+=bytes.length;if(size>2**20){overflow=true;child.kill();}else out+=bytes;});
     // Auth/API failures can contain credentials or request bodies. Discard them.
-    child.stderr.resume();child.stdin.on('error',()=>{});
-    child.on('close',code=>{clearTimeout(timer);code===0&&!overflow&&!expired?resolve(out):reject(safe('GitHub request failed. Check the selected GitHub login, permissions and API rate limits.'));});
+    child.stderr.on('data',bytes=>{if(err.length<8192)err+=bytes;});child.stdin.on('error',()=>{});
+    child.on('close',code=>{
+      clearTimeout(timer);
+      if(code===0&&!overflow&&!expired)return resolve(out);
+      const error=safe('GitHub request failed. Check the selected GitHub login, permissions and API rate limits.');
+      if(!expired&&!overflow&&/rate[ -]?limit|HTTP 429|abuse detection mechanism/i.test(err)) {
+        error.rateLimited=true;
+        const retry=/^retry-after:\s*([^\r\n]+)/im.exec(err)?.[1];
+        error.retryAfter=retry==null?0:Number.isFinite(Number(retry))?Math.max(0,Number(retry)*1000):Math.max(0,Date.parse(retry)-Date.now())||0;
+      }
+      reject(error);
+    });
     child.stdin.end(input===undefined?undefined:JSON.stringify(input));
   });
 }

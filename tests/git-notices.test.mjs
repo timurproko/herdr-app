@@ -1,9 +1,11 @@
 // Global prerequisites and per-repository enrollment must not follow WSS/agent state.
 import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';
+import {loadMod} from '../tools/plugin-harness.mjs';
+const rates=await loadMod({host:{},modules:{'pulls.js':'src/plugins/git/mod/pulls.js'},entry:'export * from "./pulls.js";'});
 import {relayURL,repositoryName,credentialPath} from '../src/plugins/git/relay-config.js';
 async function harness(){let relay='',account='',snapshot=null;const pending=[],tasks=[];
  const cx={notify(){},spawn:fn=>tasks.push(fn(cx))},context=vm.createContext({});
- const modules={'./host.js':{checking:()=>false,exec:(_cmd,args)=>new Promise(resolve=>pending.push({args,resolve}))},'./plugins.js':{pluginById:()=>({}),pluginSetting:(_p,key)=>key==='relay'?relay:account},'./plugins/api.js':{appHome:()=>'/fixture',pluginFile:()=>'/fixture/setup.cjs'},'./plugins/git/relay-config.js':{relayURL,repositoryName,credentialPath},'./plugins/git/notice-state.js':{noticeState:()=>snapshot}};
+ const modules={'./pulls.js':{...rates},'./host.js':{checking:()=>false,exec:(_cmd,args)=>new Promise(resolve=>pending.push({args,resolve}))},'./plugins.js':{pluginById:()=>({}),pluginSetting:(_p,key)=>key==='relay'?relay:account},'./plugins/api.js':{appHome:()=>'/fixture',pluginFile:()=>'/fixture/setup.cjs'},'./plugins/git/relay-config.js':{relayURL,repositoryName,credentialPath},'./plugins/git/notice-state.js':{noticeState:()=>snapshot}};
  const m=new vm.SourceTextModule(fs.readFileSync(new URL('../src/plugins/git/mod/notices.js',import.meta.url),'utf8'),{context});await m.link(name=>new vm.SyntheticModule(Object.keys(modules[name]),function(){for(const[k,v]of Object.entries(modules[name]))this.setExport(k,v);},{context}));await m.evaluate();const n=new m.namespace.GitNotices();
  const sync=(repository=null,pending=false,enabled=true)=>n.sync(cx,{enabled,repository,pending});
  const reply=async value=>{await Promise.resolve();const item=pending.shift();assert.ok(item,'Expected a readiness/enrollment check');item.resolve({code:0,stdout:JSON.stringify(value)});for(let i=0;i<10;i++)await Promise.resolve();return item;};

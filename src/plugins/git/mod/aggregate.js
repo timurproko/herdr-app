@@ -3,7 +3,7 @@
 import { exec, run } from './host.js';
 import { pluginPullContext, pluginEvent, sidebarPanelEnabled } from './plugins.js';
 import { location } from './location.js';
-import { PR_FIELDS, pullRow, pullFailure, repositoryFailure, PullFactsOrder } from './pulls.js';
+import { PR_FIELDS, pullRow, pullFailure, repositoryFailure, repositoryRead, quietRead, retryRead, PullFactsOrder } from './pulls.js';
 export function taskPullLink(url) {
   const match=/^https:\/\/github\.com\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\/pull\/([1-9]\d*)\/?$/.exec(url??'');
   const number=Number(match?.[2]);
@@ -66,6 +66,7 @@ export class AggregatePulls {
   }
   stop() {this.serial++;this.factOrder.reset();this.context=null;this.entries.clear();this.pending.clear();this.diagnostics.clear();}
   get busy() {return this.pending.size>0 || Boolean(this.fallbackBusy);}
+  get waiting() {return [...this.entries.values()].some(e=>!e.pr && e.dirty && !e.error);}
   eligible(entry, now = Date.now()) {
     if(!entry.pr)return false;
     if(['open','draft'].includes(entry.pr.state) || entry.link.targets.some(t=>!t.historical && typeof t.terminal==='string' && t.terminal))return true;
@@ -96,9 +97,9 @@ export class AggregatePulls {
   }
   counts() {return {open:this.rows('open').length,closed:this.rows('closed').length};}
   invalidate(repository=null) {this.diagnostics.clear();for(const e of this.entries.values())if(!repository || e.link.repo===repository.toLowerCase())e.dirty=true;}
-  refresh(cx) {pluginEvent('workspace.context.refresh',{cx,force:true});this.invalidate();this.pump(cx);}
+  refresh(cx) {pluginEvent('workspace.context.refresh',{cx,force:true});this.manualRead={remaining:1};this.readWake=null;this.invalidate();this.pump(cx);}
   pump(cx) {
-    if(this.fallbackBusy)return;
+    if(this.fallbackBusy || this.readWake?.due>Date.now())return;
     if(!this.context || this.context.stale || !this.shown() || this.currentContext()?.scope!==this.context.scope)return;
     const context=this.context,scope=context.scope,serial=this.serial;
     for(const [key,entry]of this.entries) {
@@ -115,7 +116,7 @@ export class AggregatePulls {
         let updated=false;
         try {
           await Promise.resolve();if(!current())return;
-          const result=await exec('gh',['pr','view',String(entry.link.number),'--repo',entry.link.repo,'--json',PR_FIELDS],{on:context.machine,timeout:30000});
+          const result=await repositoryRead(exec,['pr','view',String(entry.link.number),'--repo',entry.link.repo,'--json',PR_FIELDS],entry.link.repo,{on:context.machine,timeout:30000,current,manual:this.manualRead});
           if(!current())return;
           if(result.code!==0 || result.timed_out || result.timedOut || result.signal) {
             if(missingTaskPull(result,entry.link.number)) {
@@ -136,6 +137,7 @@ export class AggregatePulls {
           entry.completedAt=completedAt<=Date.now()?completedAt:NaN;entry.error=null;updated=true;
         }catch(e){
           if(current()) {
+            if(quietRead(e)) {entry.dirty=true;retryRead(this,view,e,next=>this.pump(next));return;}
             const failure=await repositoryFailure(exec,e,entry.link.repo,{on:context.machine},this.diagnostics);
             if(current()) {missingPulls.delete(key);entry.missing=false;entry.error=failure;}
           }

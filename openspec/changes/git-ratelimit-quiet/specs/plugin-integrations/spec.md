@@ -127,29 +127,6 @@ The coordinator Git overview SHALL render at most one actionable PR-read failure
 - **AND** a corrected recorded URL can be read immediately without clearing unrelated remembered absences, and a successful later read can display the now-existing PR normally
 - **AND** repeated missing confirmations still emit only the first sanitized customization-log line for that exact repository and number in the session; finishing the task restores session-long historical suppression
 
-### Requirement: Minimal validated merge notice metadata
-The relay SHALL retain raw-body HMAC verification, authenticated subscriptions and bounded input, client and deduplication limits. Notices SHALL add only validated push ref or PR action, merged boolean, base branch and optional positive PR number needed for main filtering and precise PR invalidation; credentials and full GitHub payloads SHALL NOT be forwarded. Old consumers SHALL remain compatible and notices without new fields SHALL NOT imply a merge or identify a PR.
-
-#### Scenario: Matching main metadata
-- **WHEN** an authenticated GitHub push or pull-request body contains valid branch and merge fields
-- **THEN** subscribers receive only the existing repository, event and delivery metadata plus the minimal applicable fields
-- **AND** no body text, account details, webhook secret or client token is published into shared state, preferences or logs
-
-#### Scenario: Forged or malformed notice
-- **WHEN** signature verification fails or optional merge fields have invalid types, lengths or shapes
-- **THEN** invalid signatures deliver no notice and malformed fields never satisfy the update filter
-- **AND** unrelated valid Git CI invalidation behavior is preserved
-
-#### Scenario: Explicit relay rollout
-- **WHEN** the application is installed without the person redeploying the old relay or enrolling this repository
-- **THEN** periodic authoritative availability checks still operate
-- **AND** no cloud deployment, enrollment, private-key sync or automatic credential repair occurs
-
-#### Scenario: Precise PR invalidation
-- **WHEN** an authenticated pull-request notice contains a safe positive PR number
-- **THEN** the broker preserves its repository-qualified invalidation identity through coalescing without forwarding the full PR payload
-- **AND** older consumers ignore the optional field safely, while older notices without it continue to invalidate mutable facts without triggering scans of cached final history
-
 ## ADDED Requirements
 
 ### Requirement: Quiet GitHub rate refusal episodes
@@ -182,7 +159,7 @@ Ordinary and coordinator views SHALL reuse session-cached Closed/Merged PR facts
 - **AND** coordinator task totals and twenty-four-hour eligibility are still computed from the current verified task membership and current time
 
 #### Scenario: Changed final fact or reopen hint
-- **WHEN** precise validated change evidence identifies a cached PR, including an exact reopened PR hint or a successful Open inventory that contradicts its Closed state
+- **WHEN** precise validated change evidence identifies a cached PR, such as a successful Open inventory that contradicts its Closed state
 - **THEN** only affected cached facts are invalidated and reread authoritatively
 - **AND** the hint itself cannot move a row, invent totals or grant worker authority
 - **AND** generic check/push events do not invalidate every cached Closed row
@@ -191,6 +168,11 @@ Ordinary and coordinator views SHALL reuse session-cached Closed/Merged PR facts
 - **WHEN** ordinary and coordinator views need overlapping compatible repository facts while a read is pending
 - **THEN** they reuse the pending facts rather than issuing duplicate reads for the same PRs and shape
 - **AND** each subscriber independently validates its scope before publication or follow-up, so a retired subscriber cannot cancel another current subscriber's authority or receive its results in a new context
+
+#### Scenario: No relay redeployment dependency
+- **WHEN** the panel uses the currently deployed relay with repository-only invalidations
+- **THEN** all batching, caching, quiet-refusal and activity benefits remain available without a relay change
+- **AND** cached final coordinator history is session-bound rather than polled for external reopen or metadata changes; precise hints remain a separately scoped optional follow-up
 
 ### Requirement: Demand-driven Git reads
 Git SHALL debounce event bursts for two seconds per routed repository and refresh only demanded mutable rows. Hidden, disabled, offline, superseded or explicitly inactive-window contexts SHALL start no reads or follow-ups. Return SHALL catch up once. Thin state/summary probes SHALL retain the 45-second unenrolled and 120-second enrolled shown-open cadences; check contexts SHALL be requested only for new or changed heads/summaries.

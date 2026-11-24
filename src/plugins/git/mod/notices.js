@@ -2,6 +2,7 @@
 // connection state. Checks run once per configuration/Settings change or explicit
 // Refresh, never on a timer or merely because the selected agent changed.
 import {exec,checking} from './host.js';
+import {gitReads,retryRead,quietRead} from './pulls.js';
 import {pluginById,pluginSetting} from './plugins.js';
 import {appHome,pluginFile} from './plugins/api.js';
 import {relayURL,credentialPath,repositoryName} from './plugins/git/relay-config.js';
@@ -29,9 +30,13 @@ export class GitNotices {
       await Promise.resolve();
       if(!this.active||this.serial!==serial)return;
       let result;try{
-        const r=await exec('node',[pluginFile('git','setup.cjs'),mode,credentialPath(appHome()),relay,repository??'',account],{timeout:45000});
+        const args=[pluginFile('git','setup.cjs'),mode,credentialPath(appHome()),relay,repository??'',account];
+        const r=await gitReads(exec).read(args,repository,{credentialScope:account,current:()=>this.active&&this.serial===serial},()=>exec('node',args,{timeout:45000}));
         result=JSON.parse(r.stdout);
-      }catch{result=mode==='notice'?{setup:'missing'}:{};}
+      }catch(error){
+        if(quietRead(error)) {retryRead(this,cx,error,view=>{if(this.active&&this.serial===serial)this.request(view,mode,repository,callback);});return;}
+        result=mode==='notice'?{setup:'missing'}:{};
+      }
       if(this.serial!==serial)return;
       callback(result);if(this.active)cx.notify();
     });

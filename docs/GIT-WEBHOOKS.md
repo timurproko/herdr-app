@@ -4,6 +4,18 @@ Open the Git panel's **Settings** link. Setup is a set of prerequisite actions,
 not a wizard. There is no terminal command, secret copying or URL pasting in the
 normal path.
 
+## Quiet GitHub rate refusals
+
+Primary and secondary rate-limit refusals keep last-good rows, counts, pins and
+paging without a red notice, banner or new Stale alarm. A cold refused load stays
+**Loading…**. Automatic retries wait at least fifteen minutes or a longer
+Retry-After, even when the hourly quota is positive. Explicit Refresh may try one
+read during cooldown; another refusal stays quiet and stops that refresh's fan-out.
+One sanitized customization-log line records each refusal episode, not each retry.
+Authentication/permission, connectivity, process, timeout and malformed-response
+failures retain their existing actionable feedback. An account-identity diagnosis
+that is itself refused does not hide the original permission error.
+
 ## Normal setup
 
 1. **Cloudflare tools → Install.** Installs pinned Wrangler **4.162.0** privately

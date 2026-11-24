@@ -11,10 +11,68 @@ const r=spawnSync('gh',JSON.parse(argv),{env:{...process.env,GH_REPO:repo},encod
 process.stdout.write(r.stdout||'');process.stderr.write(r.stderr||'');
 if(r.error)process.stderr.write(r.error.code==='ETIMEDOUT'?'GitHub command timed out':String(r.error.message));
 process.exitCode=r.status??1;`;
+// Session memory only: never publish credentials, PR inventories or promises to
+// persisted shared state. Both ordinary and coordinator readers use this boundary.
+const readers = new WeakMap();
+export const quietRead = error => error?.quiet === true;
+export function retryRead(owner, cx, error, run) {
+  if(!quietRead(error))return false;
+  const due=error.retryAt??Date.now()+900000;
+  if(owner.readWake && owner.readWake.due<=due)return true;
+  const wake=owner.readWake={due};
+  cx.timer?.after(Math.max(1,due-Date.now()),view=>{
+    if(owner.readWake!==wake)return;
+    owner.readWake=null;run(view);view.notify();
+  });
+  return true;
+}
+export class GitReads {
+  constructor({now=()=>Date.now(),log=line=>console.log(line)}={}) {this.now=now;this.log=log;this.routes=new Map();this.pending=new Map();this.facts=new Map();}
+  route(options={}) {return JSON.stringify([options.on??null,options.credentialScope??null]);}
+  state(options) {const key=this.route(options);if(!this.routes.has(key))this.routes.set(key,{until:0,episode:false});return this.routes.get(key);}
+  refusal(result,repository,options={}) {
+    const state=this.state(options);state.until=this.now()+Math.max(900000,pullRetryAfter(result,this.now()));
+    if(!state.episode) {state.episode=true;try{this.log(`[custom-changes] GitHub rate refusal; reads paused (${repository??'repository lookup'})`);}catch {}}
+    return Object.assign(new Error('GitHub read deferred'),{kind:'rate',quiet:true,retryAt:state.until});
+  }
+  async read(key,repository,options,run) {
+    if(options.current && !options.current())throw Object.assign(new Error('Obsolete GitHub read'),{quiet:true,retryAt:this.now()+10000});
+    const state=this.state(options),id=JSON.stringify([this.route(options),repository?.toLowerCase()??options.cwd??'',key]);
+    if(this.pending.has(id))return this.pending.get(id);
+    if(state.until>this.now()) {
+      if(options.manual?.remaining>0)options.manual.remaining--;
+      else throw Object.assign(new Error('GitHub read deferred'),{kind:'rate',quiet:true,retryAt:state.until});
+    }
+    const job=(async()=>{
+      if(options.current && !options.current())throw Object.assign(new Error('Obsolete GitHub read'),{quiet:true,retryAt:this.now()+10000});
+      const result=await run();
+      if(rateRefusal(result))throw this.refusal(result,repository,options);
+      if(result?.code===0 && !result.signal && !result.timed_out && !result.timedOut) {state.until=0;state.episode=false;}
+      return result;
+    })();
+    this.pending.set(id,job);
+    try{return await job;}finally{if(this.pending.get(id)===job)this.pending.delete(id);}
+  }
+}
+export function gitReads(exec) {if(!readers.has(exec))readers.set(exec,new GitReads());return readers.get(exec);}
+export function rateRefusal(result) {
+  if(result?.kind==='rate' || result?.rateLimited===true)return true;
+  const code=Number(result?.code);
+  if(result?.signal || result?.timed_out || result?.timedOut || code<0 || code>=0x80000000)return false;
+  let payload;try{payload=JSON.parse(pullPayload(result?.stdout));}catch {}
+  if(payload?.rateLimited===true)return true;
+  const text=[result?.stderr,result?.message,...(payload?.errors??[]).map(e=>`${e.type??''} ${e.message??''}`)].filter(Boolean).join('\n');
+  if(/auth login|not logged in|bad credentials|HTTP 401|permission denied|resource not accessible|timed? out|timeout|could not resolve host|network is unreachable/i.test(text))return false;
+  return /(?:API |secondary |primary )?rate[ -]?limit(?:ed| exceeded| already exceeded| has been exceeded|ing)?|RATE_LIMITED|HTTP 429|abuse detection mechanism|secondary.*limit/i.test(text)
+    || /^HTTP[^\n]*\b429\b/im.test(result?.stdout??'');
+}
 export function repositoryRead(exec, args, repository, options = {}) {
-  if(args[0]!=='api')return exec('gh',args,options);
-  if(typeof repository!=='string' || repository.trim()!==repository || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) || repository.split('/').some(p=>p==='.'||p==='..'))throw Error('Invalid GitHub repository');
-  return exec('node',['-e',GH_REPOSITORY_ENV,repository,JSON.stringify(args),String(Math.max(1,Math.min(options.timeout??30000,30000)-1000))],options);
+  const {current,manual,credentialScope,...native}=options;
+  return gitReads(exec).read(args,repository,options,()=>{
+    if(args[0]!=='api')return exec('gh',args,native);
+    if(typeof repository!=='string' || repository.trim()!==repository || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) || repository.split('/').some(p=>p==='.'||p==='..'))throw Error('Invalid GitHub repository');
+    return exec('node',['-e',GH_REPOSITORY_ENV,repository,JSON.stringify(args),String(Math.max(1,Math.min(native.timeout??30000,30000)-1000))],native);
+  });
 }
 
 // Diagnose with the same repository routing and inherited credential, not the
@@ -136,6 +194,8 @@ export function pullPayload(stdout) {
   return /^HTTP\//i.test(text)?text.slice(text.search(/\r?\n\r?\n/)).trim():text;
 }
 export function pullRetryAfter(result,now=Date.now()) {
+  if(Number.isFinite(result?.retryAfter))return Math.max(0,result.retryAfter);
+  try{const value=JSON.parse(result?.stdout);if(value?.rateLimited && Number.isFinite(value.retryAfter))return Math.max(0,value.retryAfter);}catch {}
   const header=result?.headers?.['retry-after']??result?.headers?.['Retry-After']??/^retry-after:\s*([^\r\n]+)/im.exec(`${result?.stdout??''}\n${result?.stderr??''}`)?.[1];
   if(header==null)return 0;
   const seconds=Number(header);
@@ -341,7 +401,7 @@ export function pullFailure(e, stderr = '') {
   if (e?.signal || (Number.isInteger(code) && (code < 0 || code >= 0x80000000)) ||
       /cannot start gh|failed to (?:start|spawn|execute)|spawn.*(?:EAGAIN|ENOMEM|EPERM)|process init|0xc0000142|3221225794|\bEAGAIN\b|\bENOMEM\b|resource temporarily unavailable|insufficient system resources/i.test(text)) return transient();
   if (e?.timed_out || e?.timedOut || /execution timed out|command timed out|process timed out/i.test(text)) return transient();
-  if (/rate limit|HTTP 429|secondary rate/i.test(text)) return failure('rate', 'Could not read pull requests: GitHub rate limit exceeded');
+  if (rateRefusal(e && typeof e==='object'?e:{stderr:text})) return failure('rate', 'Could not read pull requests: GitHub rate limit exceeded');
   if (/auth login|not logged in|authentication|HTTP 401|bad credentials/i.test(text)) return failure('auth', 'Sign in first: gh auth login');
   if (/no git remotes|could not determine|none of the git remotes|not a git repository|no remotes/i.test(text)) return failure('repository', 'No GitHub repository');
   // Explicit refusals/connectivity errors win even if stderr also quotes a

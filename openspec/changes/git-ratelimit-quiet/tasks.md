@@ -2,11 +2,11 @@
 
 ## 1. Rate-limit refusals stay quiet across all Git reads while preserving retry and actionable-error behavior
 
-- [ ] 1.1 Add typed primary/secondary/429 refusal and Retry-After handling at the Git read boundary, including GraphQL errors in successful HTTP replies and sanitized panel-called worker results; verify classifier fixtures keep bare 403, authentication, network, timeout, abnormal-exit and malformed-response failures actionable.
-- [ ] 1.2 Route list, count, older/pinned, aggregate/history, safety, detail, repository discovery, diagnosis and membership reads through shared cooldown admission; verify fake-clock fixtures enforce 90/180/360/720-second ordinary backoff, at least fifteen minutes or longer Retry-After for rate refusal, and no next-repository fan-out after refusal.
-- [ ] 1.3 Preserve last-good rows/counts/pins/paging and cold standard Loading on typed refusal without a new error or Stale alarm; verify both-view controller/render fixtures cover every read path, a refused second chunk and an unrelated pre-existing actionable notice.
-- [ ] 1.4 Admit one explicit manual Refresh API attempt during cooldown and log only once per refusal episode until successful recovery; verify repeated manual refusals remain quiet, hidden/controller recreation does not duplicate logs, and logging failures never block retry.
-- [ ] 1.5 Document the quiet path and strict exceptions in docs/GIT-WEBHOOKS.md; verify the documented cold-load, manual-bypass, episode and cooldown behavior against targeted Git/fleet regressions.
+- [x] 1.1 Add typed primary/secondary/429 refusal and Retry-After handling at the Git read boundary, including GraphQL errors in successful HTTP replies and sanitized panel-called worker results; verify classifier fixtures keep bare 403, authentication, network, timeout, abnormal-exit and malformed-response failures actionable.
+- [x] 1.2 Route list, count, older/pinned, aggregate/history, safety, detail, repository discovery, diagnosis and membership reads through shared cooldown admission; verify fake-clock fixtures enforce 90/180/360/720-second ordinary backoff, at least fifteen minutes or longer Retry-After for rate refusal, and no next-repository fan-out after refusal.
+- [x] 1.3 Preserve last-good rows/counts/pins/paging and cold standard Loading on typed refusal without a new error or Stale alarm; verify both-view controller/render fixtures cover every read path, a refused second chunk and an unrelated pre-existing actionable notice.
+- [x] 1.4 Admit one explicit manual Refresh API attempt during cooldown and log only once per refusal episode until successful recovery; verify repeated manual refusals remain quiet, hidden/controller recreation does not duplicate logs, and logging failures never block retry.
+- [x] 1.5 Document the quiet path and strict exceptions in docs/GIT-WEBHOOKS.md; verify the documented cold-load, manual-bypass, episode and cooldown behavior against targeted Git/fleet regressions.
 
 ## 2. Repository-batched shared reads and session-final caches eliminate redundant history and check-detail requests
 
@@ -14,9 +14,9 @@
 - [ ] 2.2 Replace per-PR aggregate reads with metadata/summary aliases in batches of at most twenty and preserve bounded concurrency and publication ordering; verify the two-repository 5-Open/30-Closed cold fixture uses two metadata batches, truthful full task totals and no unrelated repository inventory.
 - [ ] 2.3 Cache known final facts across tab/context/controller recreation and hydrate demanded Closed pages from them; verify warm generic events/manual refresh/hide-show produce zero unchanged final targeted/detail reads, while twenty-four-hour expiry and verified task membership still update presentation locally.
 - [ ] 2.4 Split list/targeted/event metadata from check contexts and reuse details for unchanged heads/summaries; verify cold and changed details stay in twenty-row chunks, thin safety probes retain forty-row bounds, latest-run/rerun semantics remain and a failed detail chunk retains the complete prior selection.
-- [ ] 2.5 Carry an optional validated positive PR number through authenticated relay notices, bounded broker invalidation sets and panel consumption; verify precise reopen/relabel hints invalidate only affected final facts, forged hints fail authentication, old notices/consumers remain compatible and no cloud action is run.
+- [ ] 2.5 Keep deployed relay behavior unchanged and document precise numbered invalidation as an optional, default-off follow-up; verify all panel benefits with the existing repository-only notices and no relay redeployment.
 - [ ] 2.6 Preserve PR 55 missing-history/live-miss caching, per-alias absence classification and scoped actionable failures under batching; verify existing missing-PR, routing, ordering, history and fleet-read regression cases plus mixed partial GraphQL results.
-- [ ] 2.7 Document final-cache lifetime, explicit numbered-hint relay rollout and old-relay freshness limits, and add the cold/warm budget rows to docs/GIT-REQUEST-BUDGET.md; verify documented bounds using deterministic fixture call counts rather than claiming live measured savings.
+- [ ] 2.7 Document final-cache lifetime, the deferred optional relay-hint follow-up and session-final freshness limits, and add the cold/warm budget rows to docs/GIT-REQUEST-BUDGET.md; verify documented bounds using deterministic fixture call counts rather than claiming live measured savings.
 
 ## 3. Selected-tab, two-second event and activity-aware scheduling reduces reads without weakening shown-open safety freshness
 
@@ -31,6 +31,6 @@
 
 ## Workflow follow-up
 
-- This is a plan-only draft; stop after publishing it and wait for explicit approval before implementing any task.
+- Implementation approved; precise numbered relay hints deferred as requested, with no relay redeployment dependency.
 - Keep the three PR Implementation outcomes in this task-group order and tick each only after its code/tests land; do not batch ticks at handoff.
 - Leave the PR draft and unmerged as requested. Do not turn it ready or arm auto-merge. Report any draft-only CI limitation instead of bypassing it.
