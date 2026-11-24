@@ -20,7 +20,8 @@ const theme={foreground:'#eeeeee',muted:'#aaaaaa',dim:'#888888',chrome:'#111111'
 
 async function mounted() {
  const state={'custom.plugins':{crew:{enabled:true}},'custom.spaces.preferences':{connectFleetToCoordinator:false}},copies=[],refreshes=new Set(),jobs=[],requests=[];
- let rendering=false,dialogOpen=true;
+ let rendering=false,dialogOpen=true,mode='success';
+ const pending=[];
  const groups=[],panes=[],terminals=[];
  for(const machine of [null,'pc2']) {
   const q=id=>machine?`${machine}/${id}`:id;
@@ -42,7 +43,13 @@ async function mounted() {
    const machine=args.includes('--on')?args[args.indexOf('--on')+1]:null;
    requests.push(machine);
    const result={home:`${machine??'local'}/.crew`,owner:{terminal:'t1',live:true},tasks:[{id:'task',terminal:'t2',state:'working',pr:null}]};
-   return {code:0,stdout:JSON.stringify({code:0,stdout:Buffer.from(JSON.stringify(result)).toString('base64'),stderr:''})};
+   const reply=type=>{
+    if(type==='error')throw Error('Verification transport failed');
+    const output=type==='ambiguous'?{...result,owner:null}:result;
+    return {code:0,stdout:JSON.stringify({code:0,stdout:Buffer.from(JSON.stringify(output)).toString('base64'),stderr:''})};
+   };
+   if(mode==='defer')return new Promise((resolve,reject)=>pending.push(type=>{try{resolve(reply(type));}catch(error){reject(error);}}));
+   return reply(mode);
   }};
  const common={
   'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{}},
@@ -75,6 +82,8 @@ async function mounted() {
  const settings=await mount('settings'),sidebar=await mount('spaces');
  const paint=()=>{for(const copy of [...refreshes]){refreshes.delete(copy);rendering=true;try{copy.render();}finally{rendering=false;}}};
  const drain=async()=>{while(jobs.length){await Promise.all(jobs.splice(0));}paint();};
+ const tick=async()=>{for(let i=0;i<30;i++)await Promise.resolve();paint();};
+ const release=(count=pending.length,type='success')=>{assert.ok(count<=pending.length);for(let i=0;i<count;i++)pending.shift()(type);};
  const flip=key=>{assert.ok(dialogOpen);find(settings.tree,`st-spaces-${key}`).attrs.on_click[0]({},settings.cx);paint();};
  const rows=machine=>nodes(sidebar.tree).filter(n=>n.attrs.id?.[0]?.startsWith('space-content-')).filter(n=>groups.find(s=>`space-content-${s.id}`===n.attrs.id[0])?.machine===machine);
  const frame=attached=>{
@@ -91,7 +100,7 @@ async function mounted() {
   assert.equal(JSON.stringify({groups,panes,terminals,colors}),topology,'No native order, terminal, focus or saved colour mutation');
  };
  await drain();frame(false);
- return{state,settings,sidebar,requests,flip,drain,paint,frame};
+ return{state,settings,sidebar,requests,flip,drain,tick,paint,frame,release,setMode:value=>mode=value};
 }
 
 const m=await mounted();
@@ -108,4 +117,29 @@ for(const [id,key,value]of [['confirm','confirmLastTab',true],['close','closeOnL
  m.flip(id);assert.equal(m.state['custom.spaces.preferences'][key],value);await m.drain();m.frame(true);
 }
 assert.equal(m.requests.length,reads);
-console.log('PASS mounted Settings fleet switch updates real local/remote sidebar rows without a close or timer event; sibling preferences save synchronously');
+// No completed read: shared invalidations must not fabricate the pair while
+// the switch already shows on. Inline spawn is intentional (the native runtime
+// may enter a task immediately); rendering always guards focus and notify.
+m.flip('fleet');await m.drain();m.frame(false);
+m.setMode('defer');m.flip('fleet');await m.tick();m.frame(false);
+assert.equal(m.requests.length,reads+2);
+m.release();await m.drain();m.frame(true);
+// Disabling while reads are pending revokes the generation immediately. An old
+// success cannot resurrect attachment, even if the user has enabled again.
+m.flip('fleet');await m.drain();m.frame(false);
+m.flip('fleet');await m.tick();m.frame(false);
+const beforeReversal=m.requests.length;
+m.flip('fleet');m.frame(false);
+m.flip('fleet');await m.tick();m.frame(false);
+assert.equal(m.requests.length,beforeReversal+2,'A new generation starts its own verification');
+m.release(2);await m.tick();m.frame(false);
+m.release();await m.drain();m.frame(true);
+// Both failed transport and completed no-owner evidence leave a cold enable
+// independent; neither invents inherited colour or a chain.
+for(const failure of ['error','ambiguous']){
+ m.flip('fleet');await m.drain();m.frame(false);
+ m.setMode(failure);m.flip('fleet');await m.drain();m.frame(false);
+ m.flip('fleet');await m.drain();m.frame(false);
+ m.setMode('success');m.flip('fleet');await m.drain();m.frame(true);
+}
+console.log('PASS mounted Settings local/remote fleet toggles: immediate lifecycle, pending/failure/reversal guards, no close event or render effects, sibling synchronous writes');

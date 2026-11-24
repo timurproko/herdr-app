@@ -352,6 +352,18 @@ process/provider responses, not proof that the original installed-app incident w
 caused by Windows load or an account switch; the real-provider four-PR diagnostic
 succeeded and no original failing process result was recovered.
 
+`tests/fleet-toggle-live.test.mjs` mounts separate Settings-page and Spaces sandboxes
+with the real registry, Crew reader, sidebar lifecycle, row renderer, badge colours
+and shared-state invalidation queue. Local/remote assertions cover both toggle
+directions without advancing a timer or closing Settings, pending verification,
+transport/negative results, enable-disable-enable with obsolete replies and sibling
+switch writes. Render guards reject notifications, focus allocation, IO and shared
+writes. The original source fails because the toggle starts zero reads until a
+later Spaces lifecycle event. This fixture proves direct scheduling and rendered
+rows, not native pixel timing. A read-only-state/native screenshot baseline on
+0.1.17 showed verification pending at one second and attachment by seven seconds
+with Settings still open; it did not reproduce a hard close-only repaint freeze.
+
 `tests/fleet-preferences.test.mjs` covers the actual Spaces preference and Settings
 switch, explicit durable-identity clearing on disable, old/new snapshot round trips
 and durable/runtime-identity exclusion in disposable

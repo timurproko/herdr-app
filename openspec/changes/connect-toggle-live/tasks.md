@@ -9,8 +9,8 @@
 
 ## 2. Mounted-dialog regression coverage rejects stale and render-phase updates
 
-- [ ] 2.1 Extend the mounted Settings/Spaces fixture with deferred verification, failed/ambiguous evidence, rapid enable-disable and re-enable; assert no guessed attachment, no late resurrection and no close callback in each passing scenario.
-- [ ] 2.2 Add render-phase guards rejecting focus-handle allocation and notifications while rendering, and run the targeted fleet preference/refresh suites to preserve persisted-display and action-authority regressions.
+- [x] 2.1 Extend the mounted Settings/Spaces fixture with deferred verification, failed/ambiguous evidence, rapid enable-disable and re-enable; assert no guessed attachment, no late resurrection and no close callback in each passing scenario.
+- [x] 2.2 Add render-phase guards rejecting focus-handle allocation and notifications while rendering, and run the targeted fleet preference/refresh suites to preserve persisted-display and action-authority regressions.
 
 ## Workflow follow-up
 
