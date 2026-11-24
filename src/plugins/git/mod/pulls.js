@@ -3,6 +3,34 @@
 export const PR_FIELDS = 'number,title,url,state,isDraft,author,createdAt,mergedAt,closedAt,body,statusCheckRollup,reviewDecision,headRefName,headRefOid,mergeable,labels';
 export const PR_PAGE_SIZE = 10;
 
+// The public host exec API has no env option. Scope GH_REPO in one child only;
+// gh api does not accept -R, and account wrappers cannot inspect GraphQL bodies.
+export const GH_REPOSITORY_ENV = `const {spawnSync}=require('node:child_process');
+const [repo,argv,limit]=process.argv.slice(1);
+const r=spawnSync('gh',JSON.parse(argv),{env:{...process.env,GH_REPO:repo},encoding:'utf8',windowsHide:true,maxBuffer:8*1024*1024,timeout:Number(limit)});
+process.stdout.write(r.stdout||'');process.stderr.write(r.stderr||'');
+if(r.error)process.stderr.write(r.error.code==='ETIMEDOUT'?'GitHub command timed out':String(r.error.message));
+process.exitCode=r.status??1;`;
+export function repositoryRead(exec, args, repository, options = {}) {
+  if(args[0]!=='api')return exec('gh',args,options);
+  if(typeof repository!=='string' || repository.trim()!==repository || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) || repository.split('/').some(p=>p==='.'||p==='..'))throw Error('Invalid GitHub repository');
+  return exec('node',['-e',GH_REPOSITORY_ENV,repository,JSON.stringify(args),String(Math.max(1,Math.min(options.timeout??30000,30000)-1000))],options);
+}
+
+// Diagnose with the same repository routing and inherited credential, not the
+// globally active gh login. Only a validated public login leaves the child.
+export async function repositoryFailure(exec, result, repository, options = {}) {
+  const failure=pullFailure(result);
+  if(!repository || !['access','auth'].includes(failure.kind))return failure;
+  let account=null;
+  try {
+    const identity=await repositoryRead(exec,['api','user','--jq','.login'],repository,{...options,timeout:5000});
+    const login=identity.stdout?.trim();
+    if(identity.code===0 && !identity.signal && !identity.timed_out && /^[a-z\d][a-z\d-]{0,38}(?:\[bot\])?$/i.test(login??''))account=login;
+  } catch {} // Failure to identify is uncertainty, not permission to switch login.
+  return {...failure,repository,account,message:`${failure.message}: ${repository} (GitHub account: ${account??'unknown'})`};
+}
+
 export function pullListArgs(state, nameWithOwner, after = null) {
   const [owner, name] = String(nameWithOwner).split('/');
   const states = state === 'closed' ? '[CLOSED,MERGED]' : '[OPEN]';
@@ -142,6 +170,9 @@ export function parsePulls(stdout) {
 // Keep command/response facts until classification; an empty abnormal exit is
 // not evidence that GitHub is down. The string wrapper also serves folder Git.
 export function pullFailure(e, stderr = '') {
+  // Already classified at the repository boundary; don't erase its identity
+  // when the controller applies its ordinary error presentation.
+  if(e?.repository && ['access','auth'].includes(e.kind) && typeof e.message==='string')return e;
   const detail = String(stderr || e?.stderr || e?.message || (typeof e === 'string' ? e : '')).trim();
   const text = `${e?.code ?? ''} ${detail}`;
   const failure = (kind, message) => ({kind, message});

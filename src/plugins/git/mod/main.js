@@ -17,7 +17,7 @@ import { headerTool, contextMenu, panelMessage } from './panel-kit.js';
 import { changePanel } from './panel-state.js';
 import { sidebarPanelEnabled } from './plugins.js';
 import { sidebarTitle } from './sidebar-title.js';
-import { pullListArgs, REPO_ARGS, countArgs, parseCounts, parsePullPage, agentPullNumber, pullRow, pullError, PR_FIELDS, PR_PAGE_SIZE } from './pulls.js';
+import { pullListArgs, REPO_ARGS, countArgs, parseCounts, parsePullPage, agentPullNumber, pullRow, pullError, PR_FIELDS, PR_PAGE_SIZE, repositoryRead, repositoryFailure } from './pulls.js';
 
 const VIEWS = ['open', 'closed'];
 const VIEW_KEY = 'custom.git.view';
@@ -207,7 +207,7 @@ export default class Changes extends View {
     if (notify) cx.notify();
     cx.spawn(async cx => {
       try {
-        const gh = args => exec('gh', args, { cwd: root, on, timeout: 30000 });
+        const gh = args => repositoryRead(exec, args, this.repo?.name, { cwd: root, on, timeout: 30000 });
         if (!this.repo) {
           const r = await gh(REPO_ARGS);
           if (!current()) return;
@@ -218,7 +218,7 @@ export default class Changes extends View {
           this.repo = { name: repo.nameWithOwner, owner: repo.owner?.login ?? repo.nameWithOwner.split('/')[0], url: repo.url ?? `https://github.com/${repo.nameWithOwner}` };
         }
         const list = await gh(pullListArgs(state, this.repo.name, after));
-        if (list.code !== 0 || list.timed_out || list.timedOut || list.signal) throw new Error(pullError(list));
+        if (list.code !== 0 || list.timed_out || list.timedOut || list.signal) throw await repositoryFailure(exec,list,this.repo.name,{cwd:root,on});
         if (!current()) return;
         const page = parsePullPage(list.stdout);
         const rows = page.pulls.map(pr => pullRow(pr, this.repo.owner));
@@ -324,9 +324,9 @@ export default class Changes extends View {
         this.startCISweep(cx);
         const gh=async args=>{
           if(!current())throw Error('Obsolete request');
-          const r=await exec('gh',args,{cwd:root,on,timeout:30000});
+          const r=await repositoryRead(exec,args,repo.name,{cwd:root,on,timeout:30000});
           if(!current())throw Error('Obsolete request');
-          if(r.code!==0 || r.timed_out || r.timedOut || r.signal)throw Error(pullError(r));
+          if(r.code!==0 || r.timed_out || r.timedOut || r.signal)throw await repositoryFailure(exec,r,repo.name,{cwd:root,on});
           return r.stdout;
         };
         const updates={};

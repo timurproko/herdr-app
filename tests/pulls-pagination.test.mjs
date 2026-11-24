@@ -1,3 +1,4 @@
+import {githubInvocation} from './support/github-read.mjs';
 import assert from 'node:assert/strict';
 import {kitModule,withKitUi} from './support/panel-kit.mjs';
 import fs from 'node:fs';
@@ -35,7 +36,7 @@ async function harness(state) {
   let syncError=null;
   const host = {settings:()=>({zoom:1}),theme:()=>({}),layout:()=>({id:'panel',children:[{id:'panel-body',active:'changes'}]}),
     window:()=>({platform:'windows'}),hc:async()=>({code:1}),run(){},openOverlay(){},props:()=>null,closeOverlay(){},notify(){},nextCommand(){},
-    exec:(cmd,args,options)=>{if(syncError)throw syncError;return new Promise((resolve,reject)=>{const call={cmd,args,options,resolve,reject};pending.push(call);calls.push(call);});},
+    exec:(cmd,args,options)=>{if(syncError)throw syncError;({command:cmd,args,options}=githubInvocation(cmd,args,options));if(args[0]==='api'&&args[1]==='user')return Promise.resolve({code:0,stdout:'fixture-user'});return new Promise((resolve,reject)=>{const call={cmd,args,options,resolve,reject};pending.push(call);calls.push(call);});},
   };
   const modules = {
     './enrollment-picker.js':{EnrollmentPicker:class{}},
@@ -97,7 +98,7 @@ for(const [result,message] of [
 ]) {
   const h=await harness('open');h.view.pulls.open=[{number:1,state:'open'}];
   h.view.loadPulls('open',h.cx,true);h.take().resolve(result);await h.tick();
-  assert.equal(h.view.pullError,message);assert.equal(h.view.pulls.open.length,1);assert.equal(h.pending.length,0);
+  assert.equal(h.view.pullError,message+(result.stderr?.includes('resolve to')?': owner/repo (GitHub account: fixture-user)':''));assert.equal(h.view.pulls.open.length,1);assert.equal(h.pending.length,0);
 }
 
 for(const state of ['open','closed']) {
@@ -108,6 +109,7 @@ for(const state of ['open','closed']) {
   assert.ok(h.pending[0].args.some(a=>a.includes(state==='open'?'states:[OPEN]':'states:[CLOSED,MERGED]')));
   assert.equal(h.pending[0].options.on,'pc2');
   assert.equal(h.pending[0].options.cwd,'/repo');
+  assert.equal(h.pending[0].options.env.GH_REPO,'owner/repo');
   await h.reply(page(1,10,'page-1',true,[{name:'🤖 Under review',color:'840479'}]));
   await h.reply(JSON.stringify({data:{repository:{open:{totalCount:100},closed:{totalCount:200}}}}));
   assert.equal(v.pulls[state].length,10);

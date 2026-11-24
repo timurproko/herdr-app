@@ -10,9 +10,9 @@
 
 ## 2. Repository-scoped GitHub reads route unambiguously and access refusals identify repository and account context
 
-- [ ] 2.1 Identify the exact inaccessible crew history PR and working herdr-app comparison from validated same-home links; record arguments, executable resolution, machine, cwd and non-secret environment facts, then reproduce the exact invocation read-only through hc exec.
-- [ ] 2.2 Classify the refusal as app call-shape routing, genuine inaccessible item or another proven cause; preserve sanitized reproduction evidence and document any precise external wrapper correction without editing MyConfigs.
-- [ ] 2.3 Make known-repository PR/API/GraphQL reads explicit in command-supported wrapper-recognized form and prevent empty app-supplied GH_REPO; verify fixtures cover coordinator-home/unrelated cwd, absent/empty/wrong GH_REPO and explicit credential preservation without account switching.
-- [ ] 2.4 Add repository and established account or honest unknown/explicit-credential context to access refusals; verify one notice per applicable section/tab, healthy-row retention, historical expiry, partial recovery and no secret exposure.
-- [ ] 2.5 Document the exact history-read cause and call-shape regressions alongside focused account/read-notice tests, retaining all live-installation safety restrictions.
+- [x] 2.1 Reproduce recorded crew #36/#37/#38 refusals and successful crew #1–#9/herdr-app #41/#43 reads through hc exec with exact installed arguments and user-home cwd; record wrapper resolution and non-secret environment, explicitly noting that the desktop's inherited environment was not captured.
+- [x] 2.2 Establish recorded-item inaccessibility as timurproko, not an evidenced wrapper defect; preserve sanitized reproduction evidence without changing task records or MyConfigs.
+- [x] 2.3 Make known-repository PR/API/GraphQL reads explicit in command-supported wrapper-recognized form and prevent empty app-supplied GH_REPO; verify fixtures cover coordinator-home/unrelated cwd, absent/empty/wrong GH_REPO and explicit credential preservation without account switching.
+- [x] 2.4 Add repository and established account or honest unknown/explicit-credential context to access refusals; verify one notice per applicable section/tab, healthy-row retention, historical expiry, partial recovery and no secret exposure.
+- [x] 2.5 Document history-read cause and routing regressions; compare host 0.1.18 render/text/machine/process contracts and record gate acceptance, palette skip and retained feedback ownership in the diagnostic review without altering live files.
 - [ ] 2.6 Check that no other suite is running, execute CI=true npm run test:ci once exclusively, and report its actual result plus required-check status on the exact final head without readying or merging the draft PR.

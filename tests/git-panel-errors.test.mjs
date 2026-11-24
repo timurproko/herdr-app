@@ -16,6 +16,10 @@ const cx={focus_handle(){assert.equal(rendering,false);return {};},notify(){asse
 const drain=async()=>{while(jobs.length)await Promise.all(jobs.splice(0));};
 const host={props:()=>null,theme:()=>theme,settings:()=>({zoom:1}),window:()=>({platform:'windows'}),layout:()=>({id:'panel',children:[{id:'panel-body',active:'changes'}]}),checking:()=>false,appHome:()=>'/fixture',shared:()=>null,setShared(){assert.equal(rendering,false);},notify(){assert.equal(rendering,false);},closeOverlay(){},openOverlay(){},nextCommand(){},run(){},
  exec:(command,args)=>{if(syncFailure)throw Error('fixture synchronous transport failure');assert.equal(rendering,false,'reads must yield out of render');reads++;
+  if(command==='node'&&args[0]==='-e'){
+    assert.equal(args[2],'timurproko/crew');assert.deepEqual(JSON.parse(args[3]),['api','user','--jq','.login']);
+    return Promise.resolve({code:0,stdout:'fixture-user'});
+  }
   if(command==='node')return Promise.resolve({code:0,stdout:JSON.stringify({setup:'ready',status:'ready'})});
   assert.equal(command,'gh');const key=`${args[args.indexOf('--repo')+1]}#${args[2]}`;
   return Promise.resolve(prs.has(key)?{code:0,stdout:JSON.stringify(prs.get(key))}:{code:1,stderr:'GraphQL: Could not resolve to a PullRequest with the number of 36.'});
@@ -31,6 +35,7 @@ const render=()=>{rendering=true;try{return panel.render(cx);}finally{rendering=
 let tree=render();await drain();tree=render();await drain();
 for(const [key]of prs)assert.ok(find(tree,`pr-${key}`),key);
 assert.ok(find(tree,'task-error-timurproko/crew'));assert.match(words(tree).join(' '),/Task PR history/);
+assert.match(words(find(tree,'task-error-timurproko/crew')).join(' '),/timurproko\/crew .*GitHub account: fixture-user.*#36/);
 assert.ok(find(tree,'pr-agent-timurproko/crew#3'));assert.equal(find(tree,'pr-agent-timurproko/crew#1'),undefined);
 assert.equal(errors.length,0,'The screenshot-shaped fixture does not reproduce the native interruption');
 // A synchronous transport exception during a new notice generation used to run

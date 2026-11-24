@@ -308,6 +308,35 @@ not invent an exception or claim that the prior frame timed out. If no later
 render occurs, JS cannot emit that next-attempt diagnostic. No live app is changed
 or restarted by this fixture.
 
+## Git repository routing and access refusals
+
+`node --experimental-vm-modules tests/git-repository-routing.test.mjs` executes the
+actual per-child environment script with synthetic process/CLI IO. Panel API and
+GraphQL reads use `GH_REPO=owner/name` only in that child; the public host exec API
+has no environment option and `gh api` does not accept `-R`. The fixture covers
+absent, empty and wrong ambient GH_REPO, unrelated cwd, remote options, explicit
+token/host preservation, invalid repository rejection and validated account output.
+PR reads keep their explicit `--repo` flag. Root discovery before a repository is
+known remains cwd-based. No global login or process environment is changed.
+
+On access/auth refusal, one bounded account diagnostic per failed PR uses `gh api
+user --jq .login` with the same repository routing and inherited credential, not
+`gh auth status`'s global active account. Notices include canonical repository,
+refused PR numbers and that effective login; failed/invalid identity reads say
+`GitHub account: unknown`. No token is read into JS, put in argv, logged or shared.
+Late identity results retain the original request's freshness checks.
+
+The reported crew history notice was reproduced read-only for recorded PRs #36,
+#37 and #38: the explicitly targeted reads return `Could not resolve to a
+PullRequest` as timurproko, while crew #1–#9 and herdr-app #41/#43 succeed. The
+notice is therefore honest about inaccessible recorded items; this does not
+establish a wrapper defect and no record, account or MyConfigs file is changed.
+Local native exec defaults to user home and inherits the desktop environment.
+The Core reproduction matched the documented command/cwd and had GH_REPO/GH_HOST
+unset and no explicit tokens, but it cannot prove the already-running desktop's
+inherited environment. Existing pagination, full-panel and read-notice fixtures
+also cover the scoped notice and preserve healthy rows/history eligibility.
+
 ## Stable Git row geometry
 
 `node --experimental-vm-modules tests/git-row-geometry.test.mjs` resolves the actual

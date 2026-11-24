@@ -2,7 +2,7 @@
 import { exec, run } from './host.js';
 import { pluginPullContext, pluginEvent, sidebarPanelEnabled } from './plugins.js';
 import { location } from './location.js';
-import { PR_FIELDS, pullRow, pullFailure } from './pulls.js';
+import { PR_FIELDS, pullRow, repositoryFailure } from './pulls.js';
 export function taskPullLink(url) {
   const match=/^https:\/\/github\.com\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\/pull\/([1-9]\d*)\/?$/.exec(url??'');
   const number=Number(match?.[2]);
@@ -54,7 +54,9 @@ export class AggregatePulls {
     if(!failed.length)return null;
     const messages=[...new Set(failed.map(e=>e.error.message))];
     const categories={cli:'GitHub CLI unavailable',transient:'local command failed or timed out',auth:'GitHub sign-in required',repository:'repository unavailable',access:'current GitHub account access',rate:'GitHub rate limit',response:'GitHub response error',unreachable:'GitHub connection failed',read:'PR read failed'};
-    const message=messages.length===1 ? messages[0] : `Could not read some pull requests (${[...new Set(failed.map(e=>categories[e.error.kind]))].join('; ')}); refresh to retry`;
+    let message=messages.length===1 ? messages[0] : `Could not read some pull requests (${[...new Set(failed.map(e=>e.error.repository ? e.error.message : categories[e.error.kind]))].join('; ')}); refresh to retry`;
+    const refused=failed.filter(e=>['access','auth'].includes(e.error.kind)).map(e=>`#${e.link.number}`);
+    if(refused.length)message+=` · PR ${[...new Set(refused)].join(', ')}`;
     return failed.every(e=>!e.pr && e.link.targets.every(t=>t.historical)) ? `Task PR history: ${message}` : message;
   }
   repositories() {
@@ -79,13 +81,22 @@ export class AggregatePulls {
           await Promise.resolve();if(!current())return;
           const result=await exec('gh',['pr','view',String(entry.link.number),'--repo',entry.link.repo,'--json',PR_FIELDS],{on:context.machine,timeout:30000});
           if(!current())return;
-          if(result.code!==0 || result.timed_out || result.timedOut || result.signal) {entry.error=pullFailure(result);return;}
+          if(result.code!==0 || result.timed_out || result.timedOut || result.signal) {
+            const failure=await repositoryFailure(exec,result,entry.link.repo,{on:context.machine});
+            if(current())entry.error=failure;
+            return;
+          }
           const value=JSON.parse(result.stdout);
           if(value.number!==entry.link.number || taskPullLink(value.url)?.key!==key)throw Error('Pull request identity mismatch');
           entry.pr={...pullRow(value,entry.link.repo.split('/')[0]),key,repo:entry.link.repo};
           const completedAt=Date.parse(value.mergedAt??value.closedAt??'');
           entry.completedAt=completedAt<=Date.now()?completedAt:NaN;entry.error=null;updated=true;
-        }catch(e){if(current())entry.error=pullFailure(e);}
+        }catch(e){
+          if(current()) {
+            const failure=await repositoryFailure(exec,e,entry.link.repo,{on:context.machine});
+            if(current())entry.error=failure;
+          }
+        }
         finally {
           if(this.pending.get(key)===token)this.pending.delete(key);
           if(this.serial===serial && this.shown())this.pump(view);
