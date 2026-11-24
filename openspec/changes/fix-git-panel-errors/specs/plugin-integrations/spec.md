@@ -33,10 +33,20 @@ A GitHub access refusal SHALL identify the refused canonical repository and the 
 - **THEN** the notice names the repository and identifies the account as unknown or the credential context as unverified
 - **AND** it does not assume a wrapper's owner mapping proves the server-authenticated login
 
-### Requirement: Complete coordinator history rendering under read failure
-The coordinator's Closed view SHALL render all eligible repository sections and their scoped notices without interrupting the view when merged and closed-unmerged PRs coexist, with or without live-agent actions. A read failure in one section SHALL NOT prevent other sections from rendering or cause render-time host side effects.
+### Requirement: Diagnosable coordinator render failures
+Caught Git render failures SHALL log the actual error text and innermost failing row, section or notice component before preserving native last-frame fallback. A surviving component marker after an uncatchable native abort SHALL be reported on the next render attempt, explicitly distinguishing incomplete-render evidence from a known exception or timeout cause.
 
-#### Scenario: Two repositories with mixed Closed rows and a notice
-- **WHEN** Closed contains two repository sections with merged and closed-unmerged rows, historical rows without agents, live rows with agents, and a repository-scoped read notice
-- **THEN** the complete coordinator view renders all eligible rows and the notice without falling back to the host's last rendered version
-- **AND** rendering performs no synchronous host notification, focus-handle allocation, shared-state write or GitHub read
+#### Scenario: Caught failure while rendering mixed history
+- **WHEN** Closed contains two repositories with merged and closed-unmerged rows, historical and live-agent targets, and a section read notice, and a row or notice renderer throws
+- **THEN** the log identifies its actual error and innermost component without replacing them with a generic outer-panel error
+- **AND** the error still reaches the host's last-good-frame fallback
+
+#### Scenario: Native interruption leaves a surviving marker
+- **WHEN** a native abort bypasses JavaScript catch/finally and a later render observes the prior component marker
+- **THEN** it logs the last entered component and an explicitly incomplete-render diagnostic
+- **AND** it refers to the native banner or host log for the exact unavailable native error rather than inventing a cause
+
+#### Scenario: Synchronous notice transport refusal
+- **WHEN** the host begins a notice request inline during render and its transport fails synchronously
+- **THEN** request fallback and notification happen only after yielding out of render
+- **AND** healthy repository rows and section notices retain their ordinary presentation

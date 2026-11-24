@@ -222,7 +222,7 @@ export default class Changes extends View {
           this.repo = { name: repo.nameWithOwner, owner: repo.owner?.login ?? repo.nameWithOwner.split('/')[0], url: repo.url ?? `https://github.com/${repo.nameWithOwner}` };
         }
         const list = await gh(pullListArgs(state, this.repo.name, after));
-        if (list.code !== 0 || list.timed_out || list.timedOut || list.signal) throw await repositoryFailure(exec,list,this.repo.name,{cwd:root,on});
+        if (list.code !== 0 || list.timed_out || list.timedOut || list.signal) throw Object.assign(new Error(),await repositoryFailure(exec,list,this.repo.name,{cwd:root,on}));
         if (!current()) return;
         const page = parsePullPage(list.stdout);
         const rows = page.pulls.map(pr => this.publishPull(pullRow(pr,this.repo.owner),read).value).filter(Boolean);
@@ -344,7 +344,7 @@ export default class Changes extends View {
         const batch=numbers.slice(at,at+CHECKS_BATCH_SIZE);
         const result=await repositoryRead(exec,pendingChecksArgs(batch,repo.name),repo.name,{...(root?{cwd:root}:{}),on,timeout:30000});
         if(!current())return;
-        if(result.code!==0 || result.timed_out || result.timedOut || result.signal)throw await repositoryFailure(exec,result,repo.name,{...(root?{cwd:root}:{}),on});
+        if(result.code!==0 || result.timed_out || result.timedOut || result.signal)throw Object.assign(new Error(),await repositoryFailure(exec,result,repo.name,{...(root?{cwd:root}:{}),on}));
         for(const [number,value] of parsePendingChecks(result.stdout,batch))updates.set(number,value);
       }
       // Commit only a complete selection. Failed chunks retain every old row.
@@ -417,7 +417,7 @@ export default class Changes extends View {
           if(!current())throw Error('Obsolete request');
           const r=await repositoryRead(exec,args,repo.name,{cwd:root,on,timeout:30000});
           if(!current())throw Error('Obsolete request');
-          if(r.code!==0 || r.timed_out || r.timedOut || r.signal)throw await repositoryFailure(exec,r,repo.name,{cwd:root,on});
+          if(r.code!==0 || r.timed_out || r.timedOut || r.signal)throw Object.assign(new Error(),await repositoryFailure(exec,r,repo.name,{cwd:root,on}));
           return r.stdout;
         };
         const updates={};

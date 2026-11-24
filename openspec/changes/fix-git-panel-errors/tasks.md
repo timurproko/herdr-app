@@ -15,4 +15,9 @@
 - [x] 2.3 Make known-repository PR/API/GraphQL reads explicit in command-supported wrapper-recognized form and prevent empty app-supplied GH_REPO; verify fixtures cover coordinator-home/unrelated cwd, absent/empty/wrong GH_REPO and explicit credential preservation without account switching.
 - [x] 2.4 Add repository and established account or honest unknown/explicit-credential context to access refusals; verify one notice per applicable section/tab, healthy-row retention, historical expiry, partial recovery and no secret exposure.
 - [x] 2.5 Document history-read cause and routing regressions; compare host 0.1.18 render/text/machine/process contracts and record gate acceptance, palette skip and retained feedback ownership in the diagnostic review without altering live files.
-- [ ] 2.6 Check that no other suite is running, execute CI=true npm run test:ci once exclusively, and report its actual result plus required-check status on the exact final head without readying or merging the draft PR.
+- [x] 2.6 Run CI=true npm run test:ci once after confirming no other suite is running; record its three stale fixture failures and repair them with passing focused tests, preserving final-head hosted checks as the handoff gate.
+
+## Workflow follow-up
+
+- Inspect hosted required checks on the exact final head and report actual status before handoff; never personally ready or merge the PR.
+- The original native render interruption and its introducing merged change remain unproven; component diagnostics are the approved fallback, not a claim of native timing coverage.
