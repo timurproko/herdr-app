@@ -20,7 +20,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-24-stabilize-git-pr-row-geometry/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-24-stabilize-git-pr-row-geometry/acceptance.md",
   "finalizedDate": "2026-11-24",
-  "specBaseSha": "99cb78a80091cac2bae27cffcf26cc5330b286de",
+  "specBaseSha": "ec26d474ff7fd3784274beb49649ef4a3dcf9790",
   "acceptanceScenarios": [
     "Titles and three fixed row lines keep identical geometry with or without a related agent.",
     "Tasks, checks, labels, reviews and separators retain independent blank slots when absent.",
