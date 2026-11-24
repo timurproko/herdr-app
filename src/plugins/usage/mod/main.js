@@ -15,7 +15,7 @@ const I = name => `mods/custom-usage/${name}.svg`;
 // Hover on the card (ui.js raisedHover); inside the open Resets panel, on that panel.
 const cardHover = (t, base = t.surface) => raisedHover(t, base);
 const resetsHover = (t, open) => cardHover(t, open ? collapsiblePanel(t) : t.surface);
-const RESET_OUTCOME = 18; // the outcome line's height
+const RESET_OUTCOME = 18; // failure feedback only; success adds no line or height
 const RESET_BUTTON = 80, RESET_BUTTON_HEIGHT = 24; // Settings' row buttons (settings-kit KIT.action)
 const RESET_NAME = 132; // the reset names column, so every expiry starts at one edge
 const activeMachine = () => spaces().find(s=>s.active)?.machine??null;
@@ -249,10 +249,10 @@ export default class Usage extends View {
     this.claiming=key;this.resetConfirm=null;this.resetOutcome=null;cx.notify();
     cx.spawn(async cx=>{
       const r=await claimReset(machine,{provider:this.providerIcon(entry),accountId:entry.account?.id,organizationId:entry.account?.organizationId,grantId:g.grantId});
-      const text=r.error??{reset:`${g.name} used. Limits refilled.`,already_used:'That reset was already used.',not_limited:'Nothing to reset yet: use it once you hit a limit.',
+      const text=r.error??(r.result==='reset'?null:({already_used:'That reset was already used.',not_limited:'Nothing to reset yet: use it once you hit a limit.',
         cooldown:'Resets are cooling down. Try again later.',ineligible:'This account can’t use that reset.',unavailable:'That reset isn’t available right now.',
-        rate_limited:'Too many requests. Try again shortly.'}[r.result]??'The reset did not finish.';
-      this.resetOutcome={id:entry.id,text};cx.notify();
+        rate_limited:'Too many requests. Try again shortly.'}[r.result]??'The reset did not finish.'));
+      this.resetOutcome=text?{id:entry.id,text}:null;cx.notify();
       if(r.result){
         for(let i=0;i<120&&refresh(machine,cx,{force:true,reportId:entry.id,signedIn:true})===false;i++)await cx.sleep(500);
         for(let i=0;i<240&&cache(machine).loading;i++)await cx.sleep(500);
