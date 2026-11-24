@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {loadMod} from '../../../tools/plugin-harness.mjs';
 import {projectLinkedRows, captureSpaceBlock, planBlockDrop, SpaceBlockCommit} from '../../shared/workspace-links.js';
 let now=100000, mode='success', release, requests=0,localLayout='ready';
-const state={'custom.plugins':{crew:{enabled:true}},'custom.spaces.preferences':{connectFleetToCoordinator:true}};
+const state={'custom.plugins':{crew:{enabled:true},git:{enabled:false}},'custom.spaces.preferences':{connectFleetToCoordinator:true}};
 const groups=[{id:'coordinator',tabs:[{id:'c'}]},{id:'fm-crew-home',tabs:[{id:'w'}]},{id:'other',tabs:[]}];
 let all=[{tab:'c',pane:'cp',terminal:'t1'},{tab:'w',pane:'wp',terminal:'t2'}];
 const list=[{address:'t1',state:'live',labels:{'custom.crew.home':'1'}},{address:'t2',state:'live',labels:{'crew.task':'task','crew.home':'home','herdr.space':'fm-crew-home'}}];
@@ -61,9 +61,9 @@ assert.ok(frames.every(Boolean),'No unrelated-change frame becomes detached');
 // Manual Git/periodic refresh coalesce without clearing either tag/badge projection.
 mode='defer';event('workspace.context.refresh',true);await tick();const pendingEntry=JSON.stringify(state[f.FLEET_KEY]),pendingRequests=requests;
 frame();event();event('workspace.context.refresh');await tick();assert.equal(requests,pendingRequests);assert.equal(JSON.stringify(state[f.FLEET_KEY]),pendingEntry);
-now+=11000;frame();release();await drain();frame();
+now+=11000;event();await tick();frame();release();await drain();frame();
 // Crossing action expiry retains display, not permission for Git or pair moves.
-now+=29000;mode='defer';event('workspace.context.refresh',true);await tick();frame();now+=2000;frame();
+now+=29000;mode='defer';event('workspace.context.refresh',true);await tick();frame();now+=2000;event();await tick();frame();
 assert.equal(r.pluginWorkspaceLinks().length,0);assert.equal(r.pluginPullContext('coordinator'),null);
 assert.equal(r.pluginPullContext('coordinator',{presentation:true}).stale,true);
 const captured=captureSpaceBlock(groups,links(),'fm-crew-home');assert.equal(captured.sources.length,2);

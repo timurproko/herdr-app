@@ -74,3 +74,36 @@ An enabled fleet SHALL recover on its existing lifecycle without user action or 
 - **THEN** a remembered pair stays visible immediately while first pairing and Git use Loading until verification completes
 - **AND** a successful response publishes first pairing and verified inventory eligibility promptly after receipt without a 45-second lease wait
 - **AND** a slow but live command is not mistaken for an abandoned reader merely because it exceeds the retry interval
+
+### Requirement: Bounded discovery compatibility
+Verification SHALL use recorded-only status, preferring an explicitly advertised fleet view. PR discovery SHALL be separate lower-priority work after verified recorded inventory is available, never blocking attachment or first inventory. Capability probes SHALL be cached by CLI path and modification time across repeated reads and mod copies. Unknown discovery versions SHALL remain recorded-only; only exact unsupported-flag refusals SHALL permit bounded capability fallback.
+
+#### Scenario: Older Crew ignores the flag or uses an unknown version
+- **WHEN** discovery succeeds without metadata or with an unsupported version
+- **THEN** the app uses recorded links from that payload without another read and does not assert confirmed none
+- **AND** no generic incomplete-list text is restored
+
+#### Scenario: Older Crew explicitly refuses the flag
+- **WHEN** the installed Crew status command explicitly rejects the discovery flag as unsupported
+- **THEN** at most one bounded plain recorded-only fallback supplies data
+- **AND** failure of that fallback remains unavailable without another immediate attempt
+
+#### Scenario: Timeout or authentication failure
+- **WHEN** machine transport times out or status fails for authentication or another non-capability reason
+- **THEN** no capability fallback or immediate discovery retry is started
+- **AND** failure cannot publish none or renew verification freshness; eligible verification recovery retains its bounded delay
+
+#### Scenario: Slow and superseded discovery
+- **WHEN** separate PR discovery consumes its extra budget or completes after plugin, preference, owner or read-generation replacement
+- **THEN** already-verified attachment and recorded inventory remain available independently of discovery
+- **AND** finite command bounds and shared liveness still coalesce healthy reads, while obsolete results cannot publish links, change bindings or authorize workers
+
+#### Scenario: Repeated reads of the same installation
+- **WHEN** verification, discovery, toggles or module copies read the same CLI path with unchanged modification time
+- **THEN** they reuse previously observed capability evidence instead of running help per read
+- **AND** a changed CLI path or modification time causes a fresh bounded probe before selecting the advertised view
+
+#### Scenario: Recorded verification precedes discovery
+- **WHEN** recorded-only status succeeds while Git inventory is needed and separate discovery remains pending or fails
+- **THEN** the pair is verified and recorded task links can populate first inventory without waiting for GitHub discovery
+- **AND** later enrichment cannot renew verification age, change pair identity or discard unchanged discovered links during the next recorded refresh

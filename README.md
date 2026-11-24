@@ -684,12 +684,17 @@ deduplicating an unchanged reason episode without raw command output or secrets.
 Neither diagnostics nor the log is a portable preference. Log-write errors cannot
 block verification. The reader prefers Crew's explicitly advertised `--view fleet`
 and otherwise projects the legacy `--all` reply to the fields it needs before
-native decoding. Finished Open/Draft task PRs are never removed by task age.
-Discovery allows 25 seconds, recorded-only fallback 15 seconds, and exact
-capability refusals share a 40-second command budget inside the 45-second transport
-lease. Large replies decode in bounded native task turns. Raw receipt starts a
-separate two-second processing deadline: the existing Spaces lifecycle can replace
-an interrupted continuation without its finally block or a 45-second wait.
+native decoding. Verification never includes `--discover-prs`: recorded links
+can populate first inventory immediately, with separate lower-priority discovery
+only when Git needs inventory. Help capability evidence is cached by CLI path and
+modification time across reads and mod copies. Finished Open/Draft task PRs are
+never removed by task age. Discovery allows 25 seconds, recorded verification
+15 seconds, and exact capability refusals share a 40-second command budget.
+Reads belong to the recurring Spaces lifecycle, not a transient Settings/Git view.
+Its actual native task renews a shared two-second owner lease while transport is
+healthy, within the 45-second maximum command envelope. A dead/replaced owner loses
+that lease after two seconds; raw receipt starts a separate two-second processing
+deadline. Recovery never depends on the initiating copy's finally block.
 A timeout is not proof of absent ownership. See [the transport contract,
 reproduced watchdog failure and regression evidence](docs/FLEET-STATUS.md). Spaces already checks its lifecycle every 250 ms;
 healthy status reads use a ten-second TTL. Failed verification now backs off for
@@ -700,7 +705,7 @@ services each deadline (normally within its next 250 ms tick); there is no secon
 scheduler and no click or dialog close is needed. Success, disablement, missing
 candidates or authoritative absence ends recovery; normal healthy/history refresh
 can continue. Reload keeps the current failure deadline and can replace an abandoned
-reader after its finite lease expires. The same guards apply under load; a paused
+reader within two seconds plus the next lifecycle tick, not after 45 seconds. The same guards apply under load; a paused
 or sleeping app cannot promise wall-clock retry timing.
 When on with Crew enabled, a verified same-machine
 fleet attaches below its coordinator with its own ordinary numbered badge (for

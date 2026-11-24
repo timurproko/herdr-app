@@ -3,6 +3,8 @@ import { shared, setShared, spaces, panes, terminals, machines, checking, FLEET_
 import { fleetError, fleetGeneration, recordFleetFailure, resolveFleetFailure, fleetVerification, fleetRetry, deferFleetRetry, clearFleetRetry, clearFleetRetries } from './fleet-diagnostics.js';
 export const FLEET_KEY = 'custom.fleet.links', DISPLAY_KEY = FLEET_DISPLAY_KEY;
 const READS = 'custom.fleet.reads', TTL = 10000, EXPIRY = 30000, READ_LEASE = 45000, PROCESSING_LEASE = 2000;
+const readerOwner=`${Date.now()}-${Math.random()}`, activeReads=new Map();
+const sourceIdentity = status => JSON.stringify([status?.home,status?.owner,status?.tasks?.map(t=>[t.id,t.state,t.terminal])]);
 // Only reads witnessed by this running mod can authorize actions. Persisted
 // timestamps/tokens alone are display history, not cold-start verification.
 const verifiedTokens = new Map(), pendingTokens = new Map();
@@ -183,9 +185,19 @@ function locallyVerified(key, entry) {
   if(entry?.token && pendingTokens.get(key)===entry.token)verifiedTokens.set(key,entry.token);
   return Boolean(entry?.token && verifiedTokens.get(key)===entry.token);
 }
+export function fleetNeedsWitness() {
+  return Object.entries(shared(FLEET_KEY)?.entries??{}).some(([key,entry])=> {
+    const token=entry?.attemptToken??entry?.token;
+    return token && !witnessed(key,token);
+  });
+}
 export function fleetContexts({presentation = false} = {}) {
   if(!enabled()) return [];
   const state=shared(FLEET_KEY), now=Date.now(), snapshot=model(), hosts=machines();
+  // Non-owner copies witness a live verification, never a completed persisted
+  // token. Native shared changes redraw them before and after publication.
+  for(const [key,read] of Object.entries(shared(READS)??{}))
+    if(read.until>now && read.generation===fleetGeneration() && read.kind!=='discovery' && read.token!==state?.entries?.[key]?.attemptToken)pendingTokens.set(key,read.token);
   if(presentation) return savedDisplays().filter(record=>[record.parent,record.child].every(id=>inMachine(snapshot,id,record.machine)));
   if(state?.version!==1) return [];
   return Object.entries(state.entries??{}).flatMap(([key,entry])=> {
@@ -213,7 +225,7 @@ export function fleetColorAllowed(pair) {
   });
 }
 // The injected bounded status reader owns capability fallback, never consumers.
-export function refreshFleets(cx, readStatus, force = false) {
+export function refreshFleets(cx, readStatus, force = false, readDiscovery = null) {
   if(checking())return;
   if(!enabled()) {clearFleetRetries();return;}
   if(shared(FLEET_KEY) && shared(FLEET_KEY).version!==1)return;
@@ -226,30 +238,45 @@ export function refreshFleets(cx, readStatus, force = false) {
     const key=machine??'local', state=shared(FLEET_KEY), entry=state?.entries?.[key];
     const reference=displays.find(d=>d.machine===machine)??entry?.identity, sig=signature(machine,snapshot,reference), now=Date.now();
     locallyVerified(key,entry);
-    const pending=shared(READS)?.[key];
+    let pending=shared(READS)?.[key];
+    const running=activeReads.get(key);
+    let alive=false;
+    try {alive=Boolean(running && running.token===pending?.token && (!running.task?.is_done || !running.task.is_done()));}catch {}
+    if(pending?.owner===readerOwner && pending.phase==='transport' && alive && pending.transportUntil>now && pending.until-now<1750) {
+      // Only the lifecycle owning the actual native task renews transport.
+      // Task cancellation/watchdog completion cannot leave a 45-second lock.
+      pending={...pending,until:Math.min(pending.transportUntil,now+PROCESSING_LEASE)};
+      setShared(READS,{...shared(READS),[key]:pending});
+    }
+    // Pre-liveness leases from a retired build do not block a new runtime for
+    // their whole command allowance. They are never witnessed verification.
+    if(pending && !pending.owner)pending={...pending,until:Math.min(pending.until,(pending.transportUntil??pending.until)-READ_LEASE+PROCESSING_LEASE)};
     if(pending?.until>now) {
       if(pending.token!==entry?.attemptToken)pendingTokens.set(key,pending.token);
       if(pending.token!==entry?.attemptToken || witnessed(key,pending.token))continue;
     }
-    // Only a received reply's abandoned continuation bypasses attempt/backoff
-    // gates. The command is already finished; replacing it cannot overlap IO.
-    const abandonedProcessing=pending?.phase==='processing' && pending.until<=now;
+    // Abandoned ownership/processing bypasses attempt and backoff gates.
+    // Healthy native tasks renew liveness; cancelled predecessors cannot publish.
+    const abandoned=Boolean(pending && pending.until<=now);
     const sameAttempt=(entry?.attemptSignature??entry?.signature)===sig, retry=sameAttempt?fleetRetry(machine):null;
-    if(!force && !abandonedProcessing && retry && now<retry.nextAt)continue;
-    if(!force && !abandonedProcessing && !retry && witnessed(key,entry?.attemptToken) && sameAttempt && now-(entry.attemptAt??entry.at)<TTL)continue;
+    if(!force && !abandoned && retry && now<retry.nextAt)continue;
+    const cached=!force && !abandoned && !retry && witnessed(key,entry?.attemptToken) && sameAttempt && now-(entry.attemptAt??entry.at)<TTL;
+    const discovery=Boolean(cached && readDiscovery && shared('custom.plugins')?.git?.enabled!==false && entry?.binding && now-entry.at<EXPIRY && now-(entry.discoveryAttemptAt??-Infinity)>=TTL);
+    if(cached && !discovery)continue;
     if(pending && pending.until<=now)recordFleetFailure(machine,'expired-read',pending.generation??fleetGeneration(),{discard:true,subject:pending.subject??coordinatorCandidate(machine,snapshot)});
     const token=`${now}-${Math.random()}`, generation=fleetGeneration(), subject=coordinatorCandidate(machine,snapshot);
     pendingTokens.set(key,token);
-    setShared(READS,{...shared(READS),[key]:{token,until:now+READ_LEASE,transportUntil:now+READ_LEASE,phase:'transport',generation,subject}});
-    cx.spawn(async view=> {
+    setShared(READS,{...shared(READS),[key]:{token,owner:readerOwner,until:now+PROCESSING_LEASE,transportUntil:now+READ_LEASE,phase:'transport',kind:discovery?'discovery':'verification',generation,subject}});
+    const runningRead={token,task:null};activeReads.set(key,runningRead);
+    runningRead.task=cx.spawn(async view=> {
       const obsolete=()=>fleetGeneration()!==generation ? 'obsolete-generation' : !enabled() ? 'disabled' :
         shared(READS)?.[key]?.token!==token ? 'replaced-read' : shared(READS)[key].until<=Date.now() ? 'expired-read' :
         signature(machine,model(),reference)!==sig ? 'obsolete-identity' :
         shared(FLEET_KEY) && shared(FLEET_KEY).version!==1 ? 'replaced-read' : null;
       const current=()=>!obsolete();
-      let expiredProcessing=false;
+      let expiredRead=false;
       const discard=reason=>{
-        if(reason==='expired-read' && shared(READS)?.[key]?.phase==='processing')expiredProcessing=true;
+        if(reason==='expired-read')expiredRead=true;
         recordFleetFailure(machine,reason,generation,{discard:true,subject});
       };
       try {
@@ -258,13 +285,23 @@ export function refreshFleets(cx, readStatus, force = false) {
           if(!current() || !['transport','processing'].includes(phase))return;
           const reads=shared(READS), pending=reads[key];
           setShared(READS,{...reads,[key]:{...pending,phase,
-            until:phase==='processing'?Math.min(pending.transportUntil,Date.now()+PROCESSING_LEASE):pending.transportUntil}});
+            until:Math.min(pending.transportUntil,Date.now()+PROCESSING_LEASE)}});
         };
-        const output=await readStatus(machine,{current,progress,yieldTurn:()=>new Promise(resolve=>view.timer.after(0,resolve))});
+        const output=await (discovery?readDiscovery:readStatus)(machine,{current,progress,yieldTurn:()=>new Promise(resolve=>view.timer.after(0,resolve))});
         if(!current()) {discard(obsolete());return;}
         let status;
         try {status=recordedSource(output);} catch {throw fleetError('invalid-status');}
-        const latest=shared(FLEET_KEY), snapshot=model(), prior=latest?.entries?.[key]?.status;
+        const latest=shared(FLEET_KEY), previous=latest?.entries?.[key], snapshot=model(), prior=previous?.status;
+        if(discovery) {
+          // Enrichment cannot renew verification or change a pair. Changed
+          // membership is handed back to the higher-priority verifier.
+          const same=previous?.token===entry.token && sourceIdentity(status)===sourceIdentity(previous.verificationStatus??prior);
+          setShared(FLEET_KEY,{...latest,entries:{...latest.entries,[key]:{...previous,
+            ...(same?{status}: {attemptAt:0}),discoveryAttemptAt:Date.now()}}});
+          return;
+        }
+        const verificationStatus=status;
+        if(prior && JSON.stringify(status)===JSON.stringify(previous.verificationStatus))status=prior;
         const evidence={ready:readyLayout(machine),verified:true};
         if(!fleetDisplayChangeAllowed(evidence))throw fleetError('layout-unready');
         const changedOwner=prior && (prior.home!==status.home || prior.owner.terminal!==status.owner.terminal);
@@ -272,7 +309,7 @@ export function refreshFleets(cx, readStatus, force = false) {
         const bound=bindFleet(status,machine,snapshot), identity=identityOf(bound), at=Date.now();
         const display=nextDisplay(machine,bound,snapshot), verifiedSignature=signature(machine,snapshot,identity);
         setShared(FLEET_KEY,{version:1,entries:{...(latest?.version===1?latest.entries:{}),[key]:{
-          machine,at,attemptAt:at,token,attemptToken:token,signature:verifiedSignature,attemptSignature:signature(machine,snapshot,display??identity),status,binding:bound?.binding??null,identity,members:taskMembership(bound),
+          machine,at,attemptAt:at,token,attemptToken:token,signature:verifiedSignature,attemptSignature:signature(machine,snapshot,display??identity),status,verificationStatus,discoveryAttemptAt:force?undefined:previous?.discoveryAttemptAt,binding:bound?.binding??null,identity,members:taskMembership(bound),
           displayIdentity:identityOf(display),displaySignature:signature(machine,snapshot,display)}}});
         verifiedTokens.set(key,token);publishDisplay(machine,display,evidence);
         if(bound && (bound.child || display))resolveFleetFailure(machine);
@@ -283,18 +320,22 @@ export function refreshFleets(cx, readStatus, force = false) {
       } catch(error) {
         if(current()) {
           recordFleetFailure(machine,error?.reason??'transport-error',generation,{subject,code:error?.code,timeout:error?.timeout});
-          deferFleetRetry(machine,!sameAttempt);
           const latest=shared(FLEET_KEY);
+          if(discovery) {
+            setShared(FLEET_KEY,{...latest,entries:{...latest.entries,[key]:{...latest.entries[key],discoveryAttemptAt:Date.now()}}});
+            return;
+          }
+          deferFleetRetry(machine,!sameAttempt);
           // Failed transport is not a negative relationship result. Back off
           // using attempt age without renewing successful verification age.
           setShared(FLEET_KEY,{version:1,entries:{...latest?.entries,[key]:{
             ...latest?.entries?.[key],machine,attemptAt:Date.now(),attemptToken:token,attemptSignature:signature(machine,model(),savedDisplays().find(d=>d.machine===machine)??latest?.entries?.[key]?.identity??reference)}}});
         } else discard(obsolete());
       } finally {
-        // If a late decoder resumes before the lifecycle, keep its expired
-        // processing lease as the recovery marker. Deleting it would let a
-        // previous witnessed success's ten-second TTL suppress the next read.
-        if(shared(READS)?.[key]?.token===token && !expiredProcessing) {const reads={...shared(READS)};delete reads[key];setShared(READS,reads);}
+        // A late continuation must leave its expired lease as a recovery marker
+        // even if it resumes before the lifecycle, inside a prior success TTL.
+        if(shared(READS)?.[key]?.token===token && !expiredRead) {const reads={...shared(READS)};delete reads[key];setShared(READS,reads);}
+        if(activeReads.get(key)?.token===token)activeReads.delete(key);
         view.notify();
       }
     });
@@ -304,7 +345,7 @@ export function invalidateFleet() {
   clearFleetRetries();
   setShared('custom.fleet.generation',(shared('custom.fleet.generation')??0)+1);
   setShared(FLEET_KEY,null);setShared(READS,{}); // Hide, never forget the last verified pair.
-  verifiedTokens.clear();pendingTokens.clear();
+  verifiedTokens.clear();pendingTokens.clear();activeReads.clear();
 }
 export function fleetPullContext(space, {presentation = false} = {}) {
   const context=fleetContexts().find(c=>c.parent===space && c.taskMembershipVerified);

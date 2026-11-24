@@ -6,8 +6,8 @@
 // `hc exec`. The launch gate prepares the coordinator (crew home as cwd, `crew` on PATH,
 // identity labels) or refuses with the reason; the only thing it ever writes is the crew
 // home itself, the first time.
-import { hc, shared, setShared, panes, terminals } from '../api.js';
-import { refreshFleets, fleetContexts, fleetPullContext, fleetColorAllowed, invalidateFleet } from './fleet.js';
+import { hc, shared, setShared, panes, terminals, pluginMod } from '../api.js';
+import { refreshFleets, fleetContexts, fleetNeedsWitness, fleetPullContext, fleetColorAllowed, invalidateFleet } from './fleet.js';
 import { fleetError } from './fleet-diagnostics.js';
 import { fleetStatusScript } from './fleet-command.js';
 
@@ -528,13 +528,18 @@ const crewCommandScript = args => [
 export const crewProjectScript = args => crewCommandScript(['project', ...args]);
 export const crewFleetStatusScript = options => fleetStatusScript(crewCommandPrelude(),options);
 const DISCOVERY_TIMEOUT = 25, RECORDED_TIMEOUT = 15, TRANSPORT_BUDGET = 40000;
+// Shared capability evidence survives duplicate copies/reloads. It is not
+// authority: PowerShell rechecks the exact CLI path + mtime on every request.
+// Valid unchanged evidence can safely outlive an app session; no repeated help.
+const FLEET_CAPABILITIES='custom.fleet.capabilities';
+const fleetCapabilities = new Map();
 // Only a complete usage refusal for this exact flag is capability evidence.
 // Arbitrary stderr, auth failures, timeouts and transport errors are not retries.
 const unsupportedDiscovery = result => [1,2].includes(result.code) && !result.timedOut && !result.missing && !result.stdout.trim() &&
   /^(?:crew:\s*)?(?:unknown|unrecognized|unsupported) (?:option|flag|argument):? ['"]?--discover-prs['"]?\.?$/i.test(result.stderr.trim());
 const unsupportedFleetView = result => [1,2].includes(result.code) && !result.timedOut && !result.missing && !result.stdout.trim() &&
   /^(?:crew:\s*)?(?:unknown|unrecognized|unsupported) (?:(?:option|flag|argument):? ['"]?--view['"]?(?:[ =]['"]?fleet['"]?)?|view:? ['"]?fleet['"]?)\.?$/i.test(result.stderr.trim());
-export const readFleetStatus = async (machine, {current = () => true, progress = () => {}, yieldTurn} = {}) => {
+export const readFleetStatus = async (machine, {current = () => true, progress = () => {}, yieldTurn, discover = false} = {}) => {
   if(!current()) throw fleetError('obsolete-generation');
   const deadline=Date.now()+TRANSPORT_BUDGET;
   let timeout=DISCOVERY_TIMEOUT, legacy=false;
@@ -545,25 +550,70 @@ export const readFleetStatus = async (machine, {current = () => true, progress =
     if(remaining<=0)throw fleetError('status-timeout',{timeout:TRANSPORT_BUDGET/1000});
     timeout=Math.min(allowance,Math.max(1,Math.floor(remaining/1000)));
     progress('transport');
-    return powershell(machine,crewFleetStatusScript({discover,legacy}),{timeout,received,decode});
+    const key=machine??'local';
+    const cached=shared(FLEET_CAPABILITIES)?.[key];
+    const saved=typeof cached?.key==='string' && cached.key.length<=4096 && typeof cached.view==='boolean'?cached:undefined;
+    const capability=fleetCapabilities.get(key)??saved;
+    const result=await powershell(machine,crewFleetStatusScript({discover,legacy,capability,reportCapability:true}),{timeout,received,decode});
+    const prefix='__HERDR_FLEET_CAPABILITY__',newline=result.stdout.indexOf('\n');
+    if(result.stdout.startsWith(prefix) && newline>=0) {
+      const fact=json(result.stdout.slice(prefix.length,newline));
+      if(current() && typeof fact?.key==='string' && fact.key.length<=4096 && typeof fact.view==='boolean') {
+        const value={key:fact.key,view:fact.view};fleetCapabilities.set(key,value);
+        if(JSON.stringify(saved)!==JSON.stringify(value)) {
+          const cache=shared(FLEET_CAPABILITIES),bounded=cache && typeof cache==='object' && !Array.isArray(cache) && Object.keys(cache).length<256?cache:{};
+          setShared(FLEET_CAPABILITIES,{...bounded,[key]:value});
+        }
+      }
+      result.stdout=result.stdout.slice(newline+1);
+    }
+    return result;
   };
   let result;
   try {
-    result=await ask(true,DISCOVERY_TIMEOUT);
+    result=await ask(discover,discover?DISCOVERY_TIMEOUT:RECORDED_TIMEOUT);
     // A stale/incorrect help advertisement can receive an exact view refusal.
     // No auth/transport failure or arbitrary stderr permits another command.
-    if(unsupportedFleetView(result) && current()) {legacy=true;result=await ask(true,DISCOVERY_TIMEOUT);}
-    if(unsupportedDiscovery(result) && current()) result=await ask(false,RECORDED_TIMEOUT);
+    if(unsupportedFleetView(result) && current()) {legacy=true;result=await ask(discover,discover?DISCOVERY_TIMEOUT:RECORDED_TIMEOUT);}
+    if(discover && unsupportedDiscovery(result) && current()) result=await ask(false,RECORDED_TIMEOUT);
   } catch(error) { throw error?.reason?error:fleetError('transport-error'); }
   if(result.timedOut) throw fleetError('status-timeout',{timeout});
   if(result.code!==0) throw fleetError('status-exit',{code:result.code});
   return result.stdout;
 };
-const refreshFleetContext = ({cx,force}) => cx?.spawn(async view => {
-  // Lifecycle hooks may be called by render, and native spawn can start inline.
-  // Yield before persistence, leases or IO, just like the shared relay consumer.
-  await Promise.resolve();refreshFleets(view, readFleetStatus, force === true);
-});
+const FLEET_REQUEST = 'custom.fleet.request';
+let fleetLifecycle = null, lastFleetRequest = null;
+const discoverFleetStatus = (machine,options) => readFleetStatus(machine,{...options,discover:true});
+const refreshFleetContext = ({cx,force}) => {
+  if(!cx)return;
+  // Reads belong to the recurring Spaces owner, NEVER a transient Settings or
+  // Git view. Closing such a view cancels native tasks without settling promises.
+  fleetLifecycle=cx;
+  return cx.spawn(async view => {
+    await Promise.resolve();
+    const request=shared(FLEET_REQUEST), valid=request?.generation===(shared('custom.fleet.generation')??0);
+    const urgent=force===true || valid && request.id!==lastFleetRequest && request.force===true;
+    const inventory=valid && request.inventory===true && Date.now()-request.at<1000;
+    refreshFleets(view,readFleetStatus,urgent,inventory?discoverFleetStatus:null);
+    // Leave an urgent request pending behind lower-priority discovery. Do not
+    // clear shared intent on consumption: that would cause a render/request loop.
+    if(!Object.values(shared('custom.fleet.reads')??{}).some(read=>read.kind==='discovery'))lastFleetRequest=request?.id;
+  });
+};
+const requestFleetContext = ({cx,force}) => {
+  // A cold consumer must witness current verification, not a persisted success.
+  fleetContexts(); // Witness a shared in-flight read before asking for proof.
+  const needsProof=fleetNeedsWitness(); // Expired/failed witnessed status obeys retry backoff.
+  return cx?.spawn(async ()=> {
+    await Promise.resolve(); // This transient task only publishes intent, never IO.
+    const generation=shared('custom.fleet.generation')??0, at=Date.now(), prior=shared(FLEET_REQUEST);
+    const recent=prior?.generation===generation && at-prior.at<1000;
+    const inventory=pluginMod==='custom-changes' || recent && prior.inventory===true;
+    if(force===true || !recent || needsProof&&!prior.force || inventory&&!prior.inventory)
+      setShared(FLEET_REQUEST,{id:`${at}-${Math.random()}`,generation,at,force:force===true||needsProof,inventory});
+    if(fleetLifecycle)try {refreshFleetContext({cx:fleetLifecycle});}catch {fleetLifecycle=null;}
+  });
+};
 // `crew project list` prints one line per project: name and folder, tab-separated, and
 // sometimes a third column with a setting of that project (how it is delivered, say).
 export function parseProjects(stdout) {
@@ -847,7 +897,7 @@ export default {
     PROJECTS,
   ],
   hooks: {},
-  events: { 'spaces.refresh': refreshFleetContext, 'workspace.context.refresh': refreshFleetContext },
+  events: { 'spaces.refresh': refreshFleetContext, 'workspace.context.refresh': requestFleetContext },
   workspaceLinks: ({presentation = false} = {}) => fleetContexts({presentation}).filter(c=>c.child),
   guards: { 'spaces.color': ({pair}) => fleetColorAllowed(pair) },
   pullContext: ({space,presentation = false}) => fleetPullContext(space,{presentation}),

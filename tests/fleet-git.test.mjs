@@ -14,10 +14,10 @@ const all=[{pane:'cp',tab:'c',terminal:'t1'},...['a','b','dup'].map((id,i)=>({pa
 const list=[{address:'t1',state:'live',labels:{'custom.crew.home':'1'}},...['a','b','dup'].map((id,i)=>({address:'t'+(i+2),state:'live',labels:{'crew.task':id,'crew.home':'home','herdr.space':'fm-crew-home'}}))];
 const url=repo=>`https://github.com/example/${repo}/pull/12`;
 const status={home:'C:/fixture/.crew',owner:{terminal:'t1',live:true},tasks:[{id:'a',terminal:'t2',state:'reported',pr:url('a')},{id:'b',terminal:'t3',state:'working',pr:url('b')},{id:'dup',terminal:'t4',state:'reported',pr:url('a')}]};
-let rendering=false;
+let rendering=false,lifecycle,consumerRegistry;
 const calls=[],focus=[],jobs=[];const cx={focus_handle(){assert.equal(rendering,false,'Never create a focus handle inside render');return {};},notify(){assert.equal(rendering,false,'No synchronous notify from fleet render');},stop_propagation(){},spawn(fn){const p=Promise.resolve().then(()=>fn(cx));jobs.push(p);},timer:{every(){},after(){} }};
-const drain=async()=>{while(jobs.length)await Promise.all(jobs.splice(0));};
-const host={closeOverlay(){},openOverlay(){},nextCommand(){return new Promise(()=>{});},shared:k=>state[k],setShared:(k,v)=>{assert.equal(rendering,false,'No shared-state writes from fleet render');state[k]=v;},spaces:()=>groups,panes:()=>all,terminals:()=>list,machines:()=>[{name:null,layout:'ready'}],checking:()=>false,
+const drain=async()=>{for(let pass=0;pass<3;pass++){for(let i=0;i<30;i++)await Promise.resolve();while(jobs.length)await Promise.all(jobs.splice(0));}};
+const host={closeOverlay(){},openOverlay(){},nextCommand(){return new Promise(()=>{});},shared:k=>state[k],setShared:(k,v)=>{assert.equal(rendering,false,'No shared-state writes from fleet render');state[k]=v;if(k==='custom.fleet.request'&&v&&lifecycle)Promise.resolve().then(()=>lifecycle.pluginEvent('spaces.refresh',{cx}));if(k==='custom.fleet.reads'&&consumerRegistry)consumerRegistry.pluginWorkspaceLinks({presentation:true});},spaces:()=>groups,panes:()=>all,terminals:()=>list,machines:()=>[{name:null,layout:'ready'}],checking:()=>false,
   props:()=>null,layout:()=>({id:'panel',hidden:!shown,children:[{id:'panel-body',active:'changes'}]}),settings:()=>({zoom:1}),theme:()=>({}),window:()=>({platform:'windows'}),notify(){},run:(...args)=>focus.push(args),
   hc:async args=>{assert.equal(rendering,false,'Status reads yield out of render');if(failStatus)throw Error('Crew status unavailable');assert.match(args.at(-1),/status '--all' '--json'/);if(holdStatus)await new Promise(resolve=>releaseStatus=resolve);return {code:0,stdout:JSON.stringify({code:0,stdout:Buffer.from(JSON.stringify(status)).toString('base64'),stderr:'',timed_out:false})};},
   exec:async(cmd,args)=>{assert.equal(rendering,false,'GitHub reads never start during render');if(cmd==='git'){assert.equal(state['custom.spaces.preferences'].connectFleetToCoordinator,false,'Enabled coordinator verification must never probe its non-repository cwd');return {code:128,stdout:'',stderr:'fatal: not a git repository'};}assert.equal(cmd,'gh','Coordinator cwd must not be probed as Git');calls.push(args);const capturedChecks=checkFacts??(pendingCI?[{name:'build',status:'IN_PROGRESS'}]:[]);if(defer)await new Promise(resolve=>waiting.push(resolve));const repo=args[args.indexOf('--repo')+1];if(repo===failRepo)return {code:1,stderr:'unreachable'};return {code:0,stdout:JSON.stringify({number:12,title:repo,url:`https://github.com/${repo}/pull/12`,state:repo==='example/b'&&bClosed?'CLOSED':'OPEN',author:{login:'fixture'},body:'',labels:assignedLabels,statusCheckRollup:capturedChecks})};}};
@@ -35,6 +35,8 @@ const modules={
  'webhooks.js':{GitWebhooks:class{sync(_cx,options){websocket=options;}stop(){}retryNow(){}}},'notices.js':{GitNotices:class{sync(_cx,{enabled,repository}){this.active=enabled;return enabled?noticeModes[repository]??null:null;}presentation(repos){if(!this.active)return null;const choices=[...new Set(repos)].filter(repo=>noticeModes[repo]==='repository');return {choices,key:JSON.stringify([this.force,noticeModes,choices])};}stop(){this.active=false;}retryNow(){this.force=(this.force??0)+1;}}},
 };
 const {Main,f,A,r,GitWebhooks}=await loadMod({host,modules,globals:{URL,localStorage,Date:class extends Date{static now(){return now;}}},mod:'custom-changes',entry:'export {default as Main} from "./main.js";export * as f from "./plugins/crew/fleet.js";export * as A from "./aggregate.js";export * as r from "./plugins.js";export {GitWebhooks} from "./relay-consumer.js";'});
+consumerRegistry=r;
+({r:lifecycle}=await loadMod({host,modules,globals:{Date:class extends Date{static now(){return now;}}},mod:'custom-spaces',entry:'export * as r from "./plugins.js";'}));
 f.refreshFleets(cx,async()=>JSON.stringify(status));await drain();
 const panel=new Main();panel.init({},cx);await drain();let tree=panel.render(cx);await drain();tree=panel.render(cx);
 assert.equal(calls.length,2,'Duplicate task PR is fetched once');assert.equal(panel.aggregate.counts().open,1);assert.equal(panel.aggregate.counts().closed,1);
@@ -70,7 +72,7 @@ status.tasks[0].pr=status.tasks[2].pr=url('a');f.refreshFleets(cx,async()=>JSON.
 // not ordinary Git. The old negative's broad dependency signature no longer fits.
 status.owner.live=false;f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();
 list[0].address=all[0].terminal=status.owner.terminal='t-new';status.owner.live=true;holdStatus=true;
-tree=panel.render(cx);for(let i=0;i<30;i++)await Promise.resolve();tree=panel.render(cx);
+tree=panel.render(cx);lifecycle.pluginEvent('spaces.refresh',{cx});for(let i=0;i<30;i++)await Promise.resolve();tree=panel.render(cx);
 assert.equal(state['custom.fleet.reads'].local.subject.owner,'t-new');assert.equal(state['custom.fleet.reads'].local.phase,'transport');
 assert.equal(text(find(tree,'git-task-empty')).trim(),'Loading');assert.doesNotMatch(text(tree),/Not a git repository|Stale/);assert.equal(panel.aggregate.entries.size,0);assert.equal(r.pluginPullContext('coordinator'),null);
 holdStatus=false;releaseStatus();await drain();tree=panel.render(cx);await drain();tree=panel.render(cx);assert.ok(find(tree,'pr-example/a#12'));assert.equal(r.pluginPullContext('coordinator').owner,'t-new');

@@ -1,7 +1,7 @@
 // Project before hc Base64-encodes stdout, never in render or a new companion.
 // Old Crew silently ignores unknown status flags: only an explicit help
 // advertisement permits --view fleet. Crew owns its versioned history policy.
-export function fleetStatusScript(prelude, {discover = true, legacy = false} = {}) {
+export function fleetStatusScript(prelude, {discover = true, legacy = false, capability = null, reportCapability = false} = {}) {
   const flags=discover?" '--discover-prs'":'';
   return [...prelude,
     '[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)',
@@ -19,11 +19,16 @@ export function fleetStatusScript(prelude, {discover = true, legacy = false} = {
     '  foreach ($line in $lines) { if ($line -is [System.Management.Automation.ErrorRecord]) { $stderr.Add($line.ToString()) } else { $stdout.Add([string]$line) } }',
     '  return [pscustomobject]@{code=$code;stdout=($stdout -join "`n");stderr=($stderr -join "`n")}',
     '}',
+    "$installation = Get-Item -LiteralPath $main -ErrorAction Stop",
+    "$capabilityKey = $installation.FullName.ToLowerInvariant() + '|' + $installation.LastWriteTimeUtc.Ticks",
     ...(legacy ? ['$fleetView = $false'] : [
-      "$help = InvokeCrew '--help'",
-      'if ($help.code -ne 0) { if ($help.stderr) { [Console]::Error.WriteLine($help.stderr) }; $help.stdout; exit $help.code }',
-      "$fleetView = $help.stdout -match '--view(?:\\s+|=)fleet\\b'",
+      `if ($capabilityKey -eq '${String(capability?.key??'').replaceAll("'","''")}') { $fleetView = $${capability?.view===true?'true':'false'} } else {`,
+      "  $help = InvokeCrew '--help'",
+      '  if ($help.code -ne 0) { if ($help.stderr) { [Console]::Error.WriteLine($help.stderr) }; $help.stdout; exit $help.code }',
+      "  $fleetView = $help.stdout -match '--view(?:\\s+|=)fleet\\b'",
+      '}',
     ]),
+    ...(reportCapability ? ["[Console]::WriteLine('__HERDR_FLEET_CAPABILITY__' + (ConvertTo-Json -Compress -InputObject @{key=$capabilityKey;view=[bool]$fleetView}))"] : []),
     `if ($fleetView) { $result = InvokeCrew status '--json' '--view' 'fleet'${flags} }`,
     `else { $result = InvokeCrew status '--all' '--json'${flags} }`,
     '$code = $result.code; $raw = $result.stdout',

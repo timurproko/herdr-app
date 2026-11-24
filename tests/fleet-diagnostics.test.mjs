@@ -47,7 +47,7 @@ try {
   const event=x.diagnostic().lastFailure;
   assert.equal(event.reason,reason);assert.equal(event.at,100000);assert.equal(event.generation,7);assert.equal(event.currentGeneration,7);
   assert.deepEqual(event.subject,{parent:'coordinator',owner:'owner'});
-  if(reason==='status-timeout')assert.equal(event.timeout,25);
+  if(reason==='status-timeout')assert.equal(event.timeout,15);
   if(reason==='status-exit')assert.equal(event.code,19);
   if(['no-owner','no-fleet','identity-mismatch'].includes(reason))assert.equal(x.diagnostic().retry??null,null,'Authoritative absence/conflict does not start recovery');
   else assert.equal(x.diagnostic().retry.nextAt,102000);

@@ -20,7 +20,7 @@ const plain=value=>JSON.parse(JSON.stringify(value));
 const theme={foreground:'#eeeeee',muted:'#aaaaaa',dim:'#888888',chrome:'#111111',background:'#222222',border:'#444444',selected:'#333333',hover:'#333333',ansi2:'#22aa44',ansi3:'#cc8833',ansi6:'#11aaaa'};
 
 async function mounted({enabled=false,initialMode='success',selected='coordinator',workers=1} = {}) {
- const state={'custom.plugins':{crew:{enabled:true}},'custom.spaces.preferences':{connectFleetToCoordinator:enabled}},copies=[],refreshes=new Set(),jobs=[],requests=[];
+ const state={'custom.plugins':{crew:{enabled:true},git:{enabled:false}},'custom.spaces.preferences':{connectFleetToCoordinator:enabled}},copies=[],refreshes=new Set(),jobs=[],requests=[];
  let rendering=false,dialogOpen=true,mode=initialMode,now=100000,allowOrder=false;
  const order=[];
  const pending=[],yielded=[];
@@ -47,7 +47,8 @@ async function mounted({enabled=false,initialMode='success',selected='coordinato
   notify(){assert.fail('No toast');},run(name,args){assertEvent();if(allowOrder&&name==='space.move'){order.push(args);return;}assert.fail('No native mutation');},openOverlay(){assert.fail('No overlay replacement');},closeOverlay(){dialogOpen=false;assert.fail('The dialog must stay open');},
   exec(){assert.fail('No Git probe');},watchFolder(){assert.fail('No watcher');},
   async hc(args){assertEvent();if(args[0]==='machine')return {code:0,stdout:'{"machines":[]}'};
-   assert.match(args.at(-1),/status '--all' '--json' '--discover-prs'/);
+   assert.match(args.at(-1),/status '--all' '--json'/);
+   assert.ok(!args.at(-1).includes("'--discover-prs'"),'Verification never performs GitHub discovery');
    const machine=args.includes('--on')?args[args.indexOf('--on')+1]:null;
    requests.push(machine);
    const result={home:`${machine??'local'}/.crew`,owner:{terminal:'t1',live:true},tasks:Array.from({length:workers},(_,i)=>({id:i===0?'task':`task${i}`,terminal:`t${i+2}`,state:'working',pr:null}))};
@@ -91,8 +92,10 @@ async function mounted({enabled=false,initialMode='success',selected='coordinato
  };
  const settings=await mount('settings');let sidebar=await mount('spaces');
  const paint=()=>{for(const copy of [...refreshes]){refreshes.delete(copy);if(!copy.active)continue;rendering=true;try{copy.render();}finally{rendering=false;}}};
- const drain=async()=>{while(jobs.length){await Promise.all(jobs.splice(0));}paint();};
- const tick=async()=>{for(let i=0;i<30;i++)await Promise.resolve();paint();};
+ let servicedRequest;
+ const service=()=>{servicedRequest=state['custom.fleet.request']?.id;for(const copy of copies)if(copy.active)for(const timer of copy.timers)if(timer.ms===250)timer.fn(copy.cx);};
+ const drain=async()=>{await Promise.resolve();if(state['custom.fleet.request']?.id!==servicedRequest)service();while(jobs.length){await Promise.all(jobs.splice(0));}paint();};
+ const tick=async()=>{for(let i=0;i<30;i++)await Promise.resolve();if(state['custom.fleet.request']?.id!==servicedRequest)service();for(let i=0;i<30;i++)await Promise.resolve();paint();};
  const release=(count=pending.length,type='success',offset=0)=>{assert.ok(count+offset<=pending.length);for(const done of pending.splice(offset,count))done(type);};
  const flip=key=>{assert.ok(dialogOpen);find(settings.tree,`st-spaces-${key}`).attrs.on_click[0]({},settings.cx);paint();};
  const rows=machine=>nodes(sidebar.tree).filter(n=>n.attrs.id?.[0]?.startsWith('space-content-')).filter(n=>groups.find(s=>`space-content-${s.id}`===n.attrs.id[0])?.machine===machine);
@@ -190,6 +193,7 @@ for(const selected of ['coordinator','fm-crew-home'])for(const delay of [0,1000,
  // promise. TTL and timer events must not replace a valid current reader.
  for(let elapsed=0;elapsed<3500;elapsed+=250)await x.pulse(250,false);
  assert.equal(x.requests.length,before+2,'Slow current verification remains single-flight');
+ Object.assign(leases,plain(x.state['custom.fleet.reads'])); // owner heartbeat, not a replacement
  if(oldFirst) {
   x.release(2,oldReply);await x.tick();x.frame(true);
   assert.deepEqual(plain(x.state['custom.fleet.reads']),leases,'Obsolete callback cannot release its successor’s lease');
@@ -350,7 +354,7 @@ for(const failure of ['error','timeout']) {
  // witnessed current read restores strict Git/worker action context.
  x.setMode('defer');await x.replaceSidebar();x.frame(true);assert.equal(x.sidebar.api.r.pluginPullContext('coordinator'),null);
  const pending=x.requests.length;x.setMode('success');await x.replaceSidebar();x.frame(true);assert.equal(x.requests.length,pending,'Replacement joins an extant reader');
- await x.pulse(45001,false);x.frame(true);assert.equal(x.requests.length,pending+2,'Abandoned read lease expires without a click or topology change');
+ await x.pulse(2001,false);x.frame(true);assert.equal(x.requests.length,pending+2,'Retired lifecycle owner is replaced at two seconds, not the 45-second command allowance');
  assert.equal(x.sidebar.api.r.pluginPullContext('coordinator').stale,false);const verified=x.state['custom.fleet.links'].entries.local.at;
  x.release();await x.drain();assert.equal(x.state['custom.fleet.links'].entries.local.at,verified,'Retired reader cannot overwrite replacement verification');
  assert.equal(x.state['custom.fleet.diagnostics'].entries.local.lastDiscard.reason,'replaced-read');
