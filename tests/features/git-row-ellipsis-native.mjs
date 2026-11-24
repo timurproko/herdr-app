@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';import path from 'node:path';
 import {spawn,execFileSync} from 'node:child_process';
 import {build} from '../../tools/build.mjs';
+import {temporaryMod} from '../../tools/temporary-mod.mjs';
 if(process.platform!=='win32'||!process.argv.includes('--run'))throw Error('Explicit Windows opt-in required: --run [--diagnose]');
 const app=process.env.HERDR_APP_BIN??path.join(process.env.LOCALAPPDATA,'Programs/herdr-app/herdr-app.exe');
 const diagnose=process.argv.includes('--diagnose'),sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -19,7 +20,9 @@ for(const zoom of [1,1.3]) {
   put('settings.json',{telemetry:false,zoom,core:path.join(home,'unavailable-core.exe')});
   put('shared.json',{layout:'EllipsisFixture','frame.welcomed':'skipped'});
   put('layouts/EllipsisFixture.json',{id:'root',type:'row',titlebar:'system',children:[{id:'fixture',type:'block',content:{mod:'custom-ellipsis-fixture'}}]});
-  const dir=path.join(home,'mods/custom-ellipsis-fixture');fs.cpSync(path.resolve('dist/mods/custom-changes'),dir,{recursive:true});fs.renameSync(path.join(dir,'main.js'),path.join(dir,'changes.js'));
+  const dir=path.join(home,'mods/custom-ellipsis-fixture'),dispose=temporaryMod(home,'custom-ellipsis-fixture');
+  try {
+  fs.cpSync(path.resolve('dist/mods/custom-changes'),dir,{recursive:true});fs.renameSync(path.join(dir,'main.js'),path.join(dir,'changes.js'));
   put('mods/custom-ellipsis-fixture/mod.json',{place:'none'});
   put('mods/custom-ellipsis-fixture/main.js',`import Changes from './changes.js';import {div} from 'gpui-kit';import {h_flex,v_flex} from 'gpui-base';import {writeTextFile} from './host.js';
 export default class Fixture extends Changes {
@@ -61,5 +64,6 @@ export default class Fixture extends Changes {
     }
     console.log(`Native ${diagnose?'diagnosis':'fix'} ${zoom*100}%: ${home}`);
   } finally {child.kill();await sleep(400);fs.closeSync(descriptor);}
+  } finally {dispose();}
 }
 console.log('Inspect comparison.png at both zooms; only disposable app processes/homes were used. No live app, Core, terminal or preference was changed.');

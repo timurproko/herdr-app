@@ -126,7 +126,7 @@ for(const change of ['folder','machine','hidden','disabled','reset']) {
     assert.equal(pr.mergeConflict,mergeable==='CONFLICTING');
     const icon=h.view.pullIcon(t,pr);
     if(pr.mergeConflict){assert.equal(icon.attrs.tooltip[0],'Merge conflicts');assert.equal(icon.attrs.bg,undefined,'The outlined icon has no background-colored overlay');assert.equal(icon.kids[0].attrs.text_color[0],'red');assert.equal(icon.kids[0].attrs.size[0],16);}
-    else {assert.equal(icon.attrs.tooltip,undefined);assert.equal(icon.attrs.text_color[0],'green');}
+    else {assert.equal(icon.attrs.tooltip[0],'Open pull request','Current open state adds information beyond the relative opened time');assert.equal(icon.attrs.text_color[0],'green');}
   }
   for(const state of ['MERGED','CLOSED']) {
     const pr=pulls.pullRow(raw(1,{state,mergeable:'CONFLICTING'}));
