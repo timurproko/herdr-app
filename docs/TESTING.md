@@ -224,6 +224,21 @@ overloads/merged declarations, unavailable generation evidence for an exact olde
 Core, and retried supersession/cross-link comments have dedicated regressions.
 A real hosted no-write probe remains a distinct activation prerequisite.
 
+## Sidebar header hover parity
+
+`tests/sidebar-plugins.test.mjs` renders the actual `sidebarTitle`/`panelTitle`
+chain and compares its hover callback with the real inset `iconButton` and
+active unpinned `panelPin` toggle. Both Files and Git title triggers match the
+24px height, 4px radius and exact foreground-at-0x0a hover fill across dark,
+light, custom and unavailable foreground colours. The title and div icon button
+have no custom focus or transient pressed styling to replicate; the pin's
+persistent selected state is separate. Default terminal titles keep their
+28px/6px/themed-hover treatment. Single-panel static titles remain noninteractive,
+and stale popup/disabled-plugin guards still run. This is customization-owned
+chrome (`src/ui/sidebar-title.js`, `src/ui/ui.js`, and the plugin panel callers),
+not a native patch; no coordinator Verifying presentation is changed. These are
+rendering/style assertions, not live native hover or keyboard evidence.
+
 ## Shared account-style choice menus
 
 `tests/choice-menu.test.mjs` loads the actual account caller, `ui/choice-menu.js`

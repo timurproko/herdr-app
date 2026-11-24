@@ -16,6 +16,6 @@
 
 ## 3. Consistent customization-owned header hover
 
-- [ ] 3.1 Establish header ownership and opt only the customization sidebar title dropdown into the same 24px height, 4px radius and subtle hover fill as its inset icon buttons; verify native chrome, terminal-title defaults and Verifying text are untouched, with no invented pressed/focus state absent from the reference buttons.
-- [ ] 3.2 Extend the real sidebar-title rendering regression to compare hover colour/opacity, radius and height against an inset iconButton and unpinned pin toggle across palettes; verify disabled-plugin/static-title and stale-popup behavior remain intact, and document ownership and retained pin-specific pressed state.
-- [ ] 3.3 Run targeted tests, then once no other suite is running execute CI=true npm run test:ci after all additions; record results, reconcile default-branch changes without touching PR #56's branch, and report measured geometry and final-head required-check status with native-pixel limitations explicit.
+- [x] 3.1 Establish header ownership and opt only the customization sidebar title dropdown into the same 24px height, 4px radius and subtle hover fill as its inset icon buttons; verify native chrome, terminal-title defaults and Verifying text are untouched, with no invented pressed/focus state absent from the reference buttons.
+- [x] 3.2 Extend the real sidebar-title rendering regression to compare hover colour/opacity, radius and height against an inset iconButton and unpinned pin toggle across palettes; verify disabled-plugin/static-title and stale-popup behavior remain intact, and document ownership and retained pin-specific pressed state.
+- [x] 3.3 Run targeted tests, then once no other suite is running execute CI=true npm run test:ci after all additions; record results, reconcile default-branch changes without touching PR #56's branch, and report measured geometry and final-head required-check status with native-pixel limitations explicit.

@@ -75,11 +75,11 @@ export function headerTools(element = div()) {
 // A header title that opens a menu: the right panel's (Files / Git switcher) and a
 // terminal pane's (its shell menu). `icon` is an asset path or a ready element (a
 // program icon); `shrink` lets a long label truncate inside a narrow header.
-export function panelTitle(t, { id, icon, label, labelId = null, labelColor = t.foreground, medium = true, shrink = false, menuLabel = 'Switch panel', iconFirst = true }, onOpen) {
-  return div().id(id).h(U.control).px(8).gap(U.gap).flex().items_center().rounded(U.radius)
+export function panelTitle(t, { id, icon, label, labelId = null, labelColor = t.foreground, medium = true, shrink = false, menuLabel = 'Switch panel', iconFirst = true, inset = false }, onOpen) {
+  return div().id(id).h(inset ? U.insetControl : U.control).px(8).gap(U.gap).flex().items_center().rounded(inset ? U.insetRadius : U.radius)
     .when(!shrink, el => el.flex_none()).when(shrink, el => el.min_w(0).flex_shrink(1))
     .when(Boolean(onOpen), el => el.role('button').accessibility_label(menuLabel)
-      .cursor_pointer().hover(s => s.bg(t.hover))
+      .cursor_pointer().hover(s => inset ? s.bg(subtleActionFill(t)).text_color(t.foreground) : s.bg(t.hover))
       .on_mouse_down('left', (_e, cx) => cx.stop_propagation())
       .on_click((e, cx) => { cx.stop_propagation(); onOpen(e, cx); }))
     .when(iconFirst, el => el.child(typeof icon === 'string' ? slot(svg(icon).size(U.smallIcon).text_color(t.foreground)) : icon))
