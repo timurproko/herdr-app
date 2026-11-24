@@ -231,6 +231,21 @@ overloads/merged declarations, unavailable generation evidence for an exact olde
 Core, and retried supersession/cross-link comments have dedicated regressions.
 A real hosted no-write probe remains a distinct activation prerequisite.
 
+## Sidebar header hover parity
+
+`tests/sidebar-plugins.test.mjs` renders the actual `sidebarTitle`/`panelTitle`
+chain and compares its hover callback with the real inset `iconButton` and
+active unpinned `panelPin` toggle. Both Files and Git title triggers match the
+24px height, 4px radius and exact foreground-at-0x0a hover fill across dark,
+light, custom and unavailable foreground colours. The title and div icon button
+have no custom focus or transient pressed styling to replicate; the pin's
+persistent selected state is separate. Default terminal titles keep their
+28px/6px/themed-hover treatment. Single-panel static titles remain noninteractive,
+and stale popup/disabled-plugin guards still run. This is customization-owned
+chrome (`src/ui/sidebar-title.js`, `src/ui/ui.js`, and the plugin panel callers),
+not a native patch; no coordinator Verifying presentation is changed. These are
+rendering/style assertions, not live native hover or keyboard evidence.
+
 ## Shared account-style choice menus
 
 `tests/choice-menu.test.mjs` loads the actual account caller, `ui/choice-menu.js`
@@ -469,8 +484,17 @@ authoritative totals, retained counts during delayed and failed same-context rea
 and first-load reset after a real repository/coordinator-home change. All IO is
 synthetic. The geometry matrix additionally compares tab and badge boxes across
 unknown/0/1/99/999/larger totals and verifies three-digit text fits inside the
-reserved 32px badge with padding at every tested width and zoom. Zero is now an
-explicit first-load display choice, not an authoritative claim that reads finished.
+reserved 32px badge with padding at every tested width and zoom. Another 2,400
+complete-panel comparisons in `git-count-badges.test.mjs` cover both selected
+states and both tabs in ordinary/coordinator renderers at 280–480px and
+75–200% zoom including 130%. They compare the label's 8px left inset with the
+painted badge's 8px right inset, not just its reserved slot, and require centred
+one/two/three-digit text and stable tab/badge boxes. Known exact totals have no
+count-only tab or nested badge tooltip; unknown zeros keep loading information,
+and counts above 999 show a bounded 999+ with their exact total in a tooltip and
+accessible label. The 4px symmetric badge padding also contains the overflow
+indicator. Zero is an explicit first-load display choice, not an authoritative
+claim that reads finished. These checks resolve synthetic boxes, not native pixels.
 
 ## Stable Git row geometry
 
@@ -543,11 +567,21 @@ coordinator Git render trees (including the panel border, pinned/list padding an
 motion overlays) against the actual Spaces chrome, sidebar scroll and Crew-tagged
 row renderers. Across 280/320/360/390/480px and 75/100/125/130/150/200% zoom,
 1,440 row comparisons require robot slots, header chevron slots and actual label
-pills to share Spaces' 11px trailing inset. Negative Spaces pill margins have an
-independent geometry oracle. Robot/chevron glyph centres align despite their
+pills to share the actual Spaces Crew pill's inset from its own row highlight,
+not its sidebar edge: 8px row padding minus the final pill's 5px negative margin
+leaves 3px. Both actual Spaces rows supply the oracle. Separate assertions retain
+Spaces' 8px sidebar-to-highlight inset and Git's 5px panel-to-highlight inset;
+Git's controls now end 8px from its panel versus Spaces' unchanged 11px.
+Renderer measurements at 100% / 130% zoom give Spaces highlight-to-pill gaps of
+3px / 3.9px, unchanged, and Git highlight-to-robot-hover-box/pill gaps changing
+from 6px / 7.8px to 3px / 3.9px. Neither row highlight moves. Negative Spaces
+pill margins have an independent geometry oracle. Robot/chevron glyph centres align despite their
 16px/14px SVG sizes; 24px hit targets, inert missing-agent reservations, fixed
 line positions and 74px rows remain. Expanded/folded header slots stay aligned.
-Mutations restoring old row/header insets or adding an unaccounted border fail.
+Mutations restoring 6px row/header insets, shrinking the chevron slot or adding
+an unaccounted border fail; the latter is checked against the highlight-to-panel
+inset because a row-relative-only oracle cannot detect a shifted highlight.
+Title truncation boundaries stay identical with and without an agent.
 Existing row/fold/menu fixtures retain callbacks and tooltip coverage. Another
 1,500 comparisons exercise the actual replacement-page renderer with 25 PRs,
 Previous/Show more, continuation headers and warm distinct-string measurements

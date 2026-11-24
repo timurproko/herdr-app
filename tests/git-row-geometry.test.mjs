@@ -115,7 +115,7 @@ for(const mode of ['ordinary','pinned','scrolling','coordinator','ghost'])for(co
     }));
     snapshot.row=plain(box);snapshot.next=plain(geometry.get(find(tree,`${prefix}pr-${pr.key?'owner/repo#18':18}`)));
     near(box.height,74*zoom,'Block height');near(snapshot['title-line'].height,20*zoom,'Title height');near(snapshot.byline.height,18*zoom,'Byline height');near(snapshot.meta.height,18*zoom,'Metadata height');
-    near(snapshot.title.x,(box.x/zoom+32)*zoom,'Title left reservation');near(snapshot.title.width,(box.width/zoom-66)*zoom,'Empty robot keeps title boundary');
+    near(snapshot.title.x,(box.x/zoom+32)*zoom,'Title left reservation');near(snapshot.title.width,(box.width/zoom-63)*zoom,'Empty robot keeps title boundary with 3px trailing padding');
     near(snapshot['agent-slot'].width,24*zoom,'Robot reservation');
     const labelStrip=find(row,`${prefix}pr-labels-${id}`);
     if(labelStrip) {
@@ -224,9 +224,9 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.5,2]){
   for(const count of [null,0,1,99,999,99999]){
     const tree=h.render(()=>element().flex().gap(2).children([panel.segment(t,'open','Open',count,true,()=>{}),panel.segment(t,'closed','Closed',count,false,()=>{})]));
     const boxes=rowGeometry(tree,width,zoom),snapshot=['open','closed','open-count-slot','closed-count-slot'].map(id=>plain(boxes.get(find(tree,id))));
-    baseline??=snapshot;assert.deepEqual(snapshot,baseline);assert.equal(words(find(tree,'open-count-slot')).join(''),String(count??0));
+    baseline??=snapshot;assert.deepEqual(snapshot,baseline);assert.equal(words(find(tree,'open-count-slot')).join(''),count>999?'999+':String(count??0));
     if(count==null||count<=999)for(const line of boxes.visibleTextLines.filter(l=>l.ancestors.includes(find(tree,'open-count-slot')))) {
-      const badge=boxes.get(find(tree,'open-count-slot'));assert.ok(line.x+line.naturalWidth<=badge.x+badge.width-5*zoom+1e-6,'At least three digits fit inside badge padding');
+      const badge=boxes.get(find(tree,'open-count-slot'));assert.ok(line.x+line.naturalWidth<=badge.x+badge.width-4*zoom+1e-6,'At least three digits fit inside badge padding');
     }
   }
 }
