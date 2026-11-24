@@ -9,10 +9,10 @@
 
 ## 2. Symmetric tab count presentation
 
-- [ ] 2.1 Remove visible-count-only tab/badge tooltips, retaining loading feedback and exact-number tooltips for counts displayed as 999+ above 999; verify accessible labels still expose exact totals and loading state in ordinary and coordinator views.
-- [ ] 2.2 Explicitly constrain the painted count badge to its centred fixed-width reservation, with symmetric tab padding; verify one-, two- and three-digit counts preserve badge/tab positions and equal label-left/badge-right insets for both tabs, selected and unselected, at 280–480px and 75–200% zoom including 130%.
-- [ ] 2.3 Update count-badge regressions and README/testing documentation together with the tab presentation; verify informative-only tooltip behavior, badge-text centring, symmetric padding and existing refresh/context-reset coverage, including bounded large counts.
-- [ ] 2.4 Run targeted tab count and geometry regressions and record results; the final isolated full suite and head-check reporting after all approved header polish is covered by task 3.3.
+- [x] 2.1 Remove visible-count-only tab/badge tooltips, retaining loading feedback and exact-number tooltips for counts displayed as 999+ above 999; verify accessible labels still expose exact totals and loading state in ordinary and coordinator views.
+- [x] 2.2 Explicitly constrain the painted count badge to its centred fixed-width reservation, with symmetric tab padding; verify one-, two- and three-digit counts preserve badge/tab positions and equal label-left/badge-right insets for both tabs, selected and unselected, at 280–480px and 75–200% zoom including 130%.
+- [x] 2.3 Update count-badge regressions and README/testing documentation together with the tab presentation; verify informative-only tooltip behavior, badge-text centring, symmetric padding and existing refresh/context-reset coverage, including bounded large counts.
+- [x] 2.4 Run targeted tab count and geometry regressions and record results; the final isolated full suite and head-check reporting after all approved header polish is covered by task 3.3.
 
 ## 3. Consistent customization-owned header hover
 

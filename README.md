@@ -249,9 +249,12 @@ reread after page-one refresh. Only an authoritative replacement, proven
 non-repository or actual context change clears incompatible facts. Open/Closed
 count badges are always visible in ordinary and coordinator Git views, showing
 **0** on first load or a real context change until totals arrive. The fixed badge
-width fits at least three digits without moving tabs. Same-repository refreshes
-keep the last-known counts; unknown-count tooltips and accessibility text identify
-loading without hiding the zero. Cold loading and coordinator Verifying remain panel feedback, never
+width is 32px with centred digits, fitting three digits without moving tabs.
+Each tab has equal 8px padding before its label and after the painted badge,
+selected or not. Fully visible totals have no count-only tooltip; unknown totals
+keep **Count loading; showing 0**, while totals above 999 display **999+** with
+the exact number in their tooltip. Accessible labels always keep the full total
+and loading state. Same-repository refreshes keep the last-known counts. Cold loading and coordinator Verifying remain panel feedback, never
 placeholder PR rows.
 Git's event-driven CI line sits immediately below its header and applies to
 all PRs, not just the pinned block. Rotation and line motion use native animation,

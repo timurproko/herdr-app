@@ -462,8 +462,17 @@ authoritative totals, retained counts during delayed and failed same-context rea
 and first-load reset after a real repository/coordinator-home change. All IO is
 synthetic. The geometry matrix additionally compares tab and badge boxes across
 unknown/0/1/99/999/larger totals and verifies three-digit text fits inside the
-reserved 32px badge with padding at every tested width and zoom. Zero is now an
-explicit first-load display choice, not an authoritative claim that reads finished.
+reserved 32px badge with padding at every tested width and zoom. Another 2,400
+complete-panel comparisons in `git-count-badges.test.mjs` cover both selected
+states and both tabs in ordinary/coordinator renderers at 280–480px and
+75–200% zoom including 130%. They compare the label's 8px left inset with the
+painted badge's 8px right inset, not just its reserved slot, and require centred
+one/two/three-digit text and stable tab/badge boxes. Known exact totals have no
+count-only tab or nested badge tooltip; unknown zeros keep loading information,
+and counts above 999 show a bounded 999+ with their exact total in a tooltip and
+accessible label. The 4px symmetric badge padding also contains the overflow
+indicator. Zero is an explicit first-load display choice, not an authoritative
+claim that reads finished. These checks resolve synthetic boxes, not native pixels.
 
 ## Stable Git row geometry
 
