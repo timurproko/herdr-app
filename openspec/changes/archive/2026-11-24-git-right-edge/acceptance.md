@@ -17,16 +17,16 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-24-git-right-edge/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-24-git-right-edge/acceptance.md",
   "finalizedDate": "2026-11-24",
-  "specBaseSha": "a2f344270efb05a71082310e9098ebb3c9ded0cb",
+  "specBaseSha": "1c511d7eb9a6ba944899903712439917db91a428",
   "acceptanceScenarios": [
     "Git PR rows retain 8px left and 6px vertical padding while 6px right padding places their robot slots and label pills at the Spaces Crew edge.",
     "Repository chevrons keep their 14px glyph in a centred 24px slot sharing the robot column and 11px trailing inset in expanded and folded sections.",
     "Complete-panel regressions cover actual Spaces geometry at 280–480px and 75–200% zoom including 130%, preserving hit targets, inert reservations and fixed vertical anchors.",
     "Geometry evidence is synthetic; no installed app, native pixel validation or deployment is claimed."
   ],
-  "archiveDigest": "303dc7a625d98f3346fd8785153956a7fab34f89a18b086c6c4d5759bb04da06",
-  "specDigest": "66d89b4a9b04fbfc20cca161487a199e23da8bb6e41e2970ea3960a0554a0b35",
-  "tasksDigest": "e48add4a398d54656536fc097e3cdba27f91ebc261623957145671bed930f537",
+  "archiveDigest": "e9e1b88a9fadfd0f0ae24066a980adb934a6b015c8e83839502f51726d5d1ec0",
+  "specDigest": "652f2ec49707f7e2848b2ae104de3911c56c03979303421716c0b97f5c5156b2",
+  "tasksDigest": "266b91e070069c8ae71b55ab05a0581cb4f50ab0311420f5b582017f3a67c75f",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []
 }
