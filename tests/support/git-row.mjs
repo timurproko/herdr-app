@@ -30,28 +30,39 @@ export async function rowHarness() {
 // pixels. Intrinsic text widths deliberately vary by glyph and length. Handles
 // zero-basis growth, shrinking/minima, padding/borders, inherited line boxes,
 // stretch, alignment and absolute/relative positioning. Clipping is a paint rule.
+// Unlike size()/text_size(), Herdr line_height(number) is font-relative. Retain
+// its inherited token until the text leaf's effective font size is known.
+export function lineHeightPixels(value,fontSize) {
+  if(typeof value==='number')return value*fontSize;
+  if(typeof value==='string' && /^\d+(?:\.\d+)?px$/.test(value))return Number.parseFloat(value);
+  throw Error(`Unsupported fixture line-height: ${value}`);
+}
 export function rowGeometry(root,width,zoom=1,height) {
   const boxes=new Map(),v=(a,k,f=0)=>a[k]?.[0]??f;
+  boxes.textLines=[];
   const attrs=n=>typeof n==='object'&&n?n.attrs:{};
   const children=n=>typeof n==='object'&&n?(n.kids??[]).filter(c=>c!=null):[];
   const absolute=n=>Boolean(attrs(n).absolute);
-  const style=(n,parent={font:13,line:20})=>({font:v(attrs(n),'text_size',parent.font),line:v(attrs(n),'line_height',parent.line)});
+  const style=(n,parent={font:13,line:1.5})=>({font:v(attrs(n),'text_size',parent.font),line:v(attrs(n),'line_height',parent.line)});
   const pad=a=>{const b=a.border_1?1:0;return {l:v(a,'pl',v(a,'px',v(a,'p')))+b,r:v(a,'pr',v(a,'px',v(a,'p')))+b,t:v(a,'pt',v(a,'py',v(a,'p')))+b,b:v(a,'pb',v(a,'py',v(a,'p')))+b};};
   const intrinsic=(n,parent)=>{
     const s=style(n,parent),a=attrs(n);
-    if(typeof n==='string')return {w:[...n].reduce((w,c)=>w+(/[il1 .]/.test(c)?0.3:/[MW🤖🚀]/u.test(c)?0.9:0.56)*s.font,0),h:n?s.line:0};
+    if(typeof n==='string')return {w:[...n].reduce((w,c)=>w+(/[il1 .]/.test(c)?0.3:/[MW🤖🚀]/u.test(c)?0.9:0.56)*s.font,0),h:n?lineHeightPixels(s.line,s.font):0};
     const p=pad(a),row=Boolean(a.flex&&!a.flex_col),kids=children(n).filter(c=>!absolute(c)).map(c=>intrinsic(c,s)),gap=v(a,'gap');
     return {w:v(a,'w',v(a,'size',p.l+p.r+(row?kids.reduce((sum,k)=>sum+k.w,Math.max(0,kids.length-1)*gap):Math.max(0,...kids.map(k=>k.w))))),
       h:v(a,'h',v(a,'size',p.t+p.b+(row?Math.max(0,...kids.map(k=>k.h)):kids.reduce((sum,k)=>sum+k.h,Math.max(0,kids.length-1)*gap))))};
   };
   const limit=(x,min=0,max=Infinity)=>Math.max(min,Math.min(max,x));
-  const place=(n,x,y,w,h,parent)=>{
+  const place=(n,x,y,w,h,parent,ancestors=[])=>{
     const a=attrs(n),s=style(n,parent),natural=intrinsic(n,parent),p=pad(a);
     w=limit(w??(a.w_full?width:natural.w),v(a,'min_w'),a.max_w_full?w:v(a,'max_w',Infinity));
     h=limit(h??natural.h,v(a,'min_h'),v(a,'max_h',Infinity));
     const paintY=y+(a.relative?v(a,'top'):0);
     boxes.set(n,{x:x*zoom,y:paintY*zoom,width:w*zoom,height:h*zoom});
-    if(typeof n==='string')return;
+    if(typeof n==='string') {
+      if(n)boxes.textLines.push({text:n,lineHeight:lineHeightPixels(s.line,s.font)*zoom,fontSize:s.font*zoom,ancestors});
+      return;
+    }
     const row=Boolean(a.flex&&!a.flex_col),kids=children(n).filter(c=>!absolute(c)),innerW=Math.max(0,w-p.l-p.r),innerH=Math.max(0,h-p.t-p.b),gap=v(a,'gap');
     const available=(row?innerW:innerH)-Math.max(0,kids.length-1)*gap;
     const records=kids.map(child=>{
@@ -67,12 +78,12 @@ export function rowGeometry(root,width,zoom=1,height) {
       const size=Math.max(r.min,r.base+(free>0&&grow?free*r.grow/grow:free<0&&shrink?free*r.shrink*r.base/shrink:0));
       const cross=row?v(r.a,'h',v(r.a,'size',a.items_start||a.items_center?r.n.h:innerH)):v(r.a,'w',v(r.a,'size',innerW));
       const crossOffset=a.items_center?((row?innerH:innerW)-cross)/2:0;
-      place(r.child,x+p.l+(row?offset:crossOffset),y+p.t+(row?crossOffset:offset),row?size:cross,row?cross:size,s);
+      place(r.child,x+p.l+(row?offset:crossOffset),y+p.t+(row?crossOffset:offset),row?size:cross,row?cross:size,s,[...ancestors,n]);
       offset+=size+gap;
     }
     for(const child of children(n).filter(absolute)){
       const ca=attrs(child),cn=intrinsic(child,s),cw=v(ca,'w',v(ca,'size',ca.size_full?innerW:ca.right?innerW-v(ca,'left')-v(ca,'right'):cn.w)),ch=v(ca,'h',v(ca,'size',ca.size_full?innerH:ca.bottom?innerH-v(ca,'top')-v(ca,'bottom'):cn.h));
-      place(child,x+v(ca,'left'),y+v(ca,'top'),cw,ch,s);
+      place(child,x+v(ca,'left'),y+v(ca,'top'),cw,ch,s,[...ancestors,n]);
     }
   };
   place(root,0,0,width,height);return boxes;

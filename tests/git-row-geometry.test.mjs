@@ -1,5 +1,22 @@
 import assert from 'node:assert/strict';
 import {rowHarness,rowGeometry,element,find,nodes,words,t} from './support/git-row.mjs';
+// Independent host-semantics oracles: numbers multiply the effective font,
+// including after inheritance; px strings stay absolute. Numeric size is pixels.
+for(const zoom of [0.75,1,1.25,1.5,2])for(const [line,font,expected] of [[20,13,260],[18,11,198],[1.5,11,16.5],['20px',13,20],['18px',11,18]]) {
+  const tree=element().text_size(17).line_height(line).child(element().text_size(font).size(24).child('sample'));
+  const geometry=rowGeometry(tree,100,zoom),text=geometry.textLines[0];
+  assert.equal(text.lineHeight,expected*zoom);assert.equal(text.fontSize,font*zoom);
+  assert.equal(geometry.get(tree.kids[0]).width,24*zoom,'Numeric size remains pixels, not a font multiplier');
+}
+function assertTextFits(geometry,row) {
+  const lines=geometry.textLines.filter(line=>line.ancestors.includes(row));
+  assert.ok(lines.length,'Loaded rows must contain measured text, not just empty boxes');
+  for(const line of lines) {
+    const cell=[...line.ancestors].reverse().find(node=>/^(?:swap-)?pr-(?:title-line|byline|meta)-/.test(node.attrs?.id?.[0]??''));
+    assert.ok(cell,`Missing containing line cell for ${line.text}`);
+    assert.ok(line.lineHeight<=geometry.get(cell).height+1e-6,`${cell.attrs.id[0]} text line height ${line.lineHeight} exceeds cell ${geometry.get(cell).height}: ${line.text}`);
+  }
+}
 const h=await rowHarness(),{panel,facts,U}=h;
 panel.foldedRepositories=new Set();
 const source={number:17,title:'A deliberately very long PR title that must truncate at exactly the same boundary',url:'https://github.com/owner/repo/pull/17',author:{login:'long-author-name'},createdAt:'2026-11-20T10:00:00Z',state:'OPEN'};
@@ -31,6 +48,7 @@ for(const mode of ['ordinary','pinned','scrolling','coordinator','ghost'])for(co
       return element().flex().flex_col().gap(U.rowGap).children([panel.pullRow(t,pr,mode==='ghost'),panel.pullRow(t,next,mode==='ghost')]);
     });
     const geometry=rowGeometry(tree,width,zoom,mode==='pinned'||mode==='scrolling'?600:undefined),row=find(tree,`${prefix}pr-${id}`),box=geometry.get(row);
+    assertTextFits(geometry,row);
     const snapshot=Object.fromEntries(anchors.map(kind=>{
       const node=find(row,`${prefix}pr-${kind}-${id}`);assert.ok(node,kind);return [kind,plain(geometry.get(node))];
     }));
@@ -72,6 +90,17 @@ for(const width of [280,360,480])for(const zoom of [0.75,1,1.25,1.5,2]){
     if(count===null)assert.equal(words(find(tree,'open-count-slot')).join(''),'');
   }
 }
+// Reintroducing each reviewed numeric line-height bug must fail even though
+// fixed row/cell dimensions still match. Exercise loaded ordinary/coordinator
+// text and both live/ghost presentation at every tested zoom.
+for(const coordinator of [false,true])for(const ghost of [false,true])for(const zoom of [0.75,1,1.25,1.5,2])for(const [kind,value] of [['title-line',20],['byline',18],['meta',18]]) {
+  const pr=facts.pullRow({...source,body:'- [x] done',labels,reviewDecision:'APPROVED',statusCheckRollup:[{name:'CI',status:'COMPLETED',conclusion:'SUCCESS'}]},'owner');
+  if(coordinator)Object.assign(pr,{key:'owner/repo#17',repo:'owner/repo'});
+  const row=panel.pullRow(t,pr,ghost),cell=find(row,`${ghost?'swap-':''}pr-${kind}-${pr.key??17}`);
+  assertTextFits(rowGeometry(row,360,zoom),row);
+  cell.line_height(value);
+  assert.throws(()=>assertTextFits(rowGeometry(row,360,zoom),row),/text line height .* exceeds cell/,`${kind} numeric multiplier must expose clipped text, coordinator=${coordinator} ghost=${ghost} zoom=${zoom}`);
+}
 // Mutation sensitivity: the solver sees the original disappearing-robot defect,
 // and a content-sized metadata cell would move its neighbors.
 h.setAgent(false);const pr=facts.pullRow(source,'owner');const row=panel.pullRow(t,pr),before=rowGeometry(row,360).get(find(row,'pr-title-17'));
@@ -80,4 +109,4 @@ assert.notEqual(rowGeometry(row,360).get(find(row,'pr-title-17')).width,before.w
 const packed=panel.pullRow(t,pr),slot=find(packed,'pr-slot-tasks-17'),checks=find(packed,'pr-slot-checks-17');
 const x=rowGeometry(packed,360).get(checks).x;delete slot.attrs.flex_basis;delete slot.attrs.flex_grow;slot.child('Content sized task label');
 assert.notEqual(rowGeometry(packed,360).get(checks).x,x,'Content-sized metadata must fail the anchor oracle');
-console.log(`PASS ${comparisons} resolved-box comparisons: actual ordinary/pin/list/coordinator/ghost rows, optional agent/tasks/checks/labels/review/author/conflict, three widths, five zooms, inert blank cells and mutation-sensitive geometry (synthetic, not GPUI pixels)`);
+console.log(`PASS ${comparisons} resolved-box comparisons: actual ordinary/pin/list/coordinator/ghost rows, optional agent/tasks/checks/labels/review/author/conflict, three widths, five zooms, inert blank cells, font-relative numeric versus absolute px line heights, text containment and 60 clipping mutations (synthetic, not GPUI pixels)`);

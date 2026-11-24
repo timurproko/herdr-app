@@ -299,6 +299,16 @@ pending/success/failure icons, absent/long/multiple labels, review decisions and
 missing authors do not change those boxes. Empty robot slots are inert; ghost
 robots cannot navigate. Removing the reserved robot or making a metadata cell
 content-sized deliberately changes the oracle, demonstrating mutation sensitivity.
+The model preserves inherited line-height tokens and resolves numbers as effective
+font-size multipliers, while `px` strings remain absolute lengths; numeric `size`
+remains pixels. Independent oracles cover 20 × 13 = 260px and 18 × 11 = 198px,
+child font-size changes, fractional multipliers, explicit pixel strings and zoom.
+Every loaded row's measured text line must fit its containing title/byline/metadata
+cell, not merely retain a stable outer box. Sixty mutation cases reintroduce each
+numeric line-height defect in ordinary/coordinator live/ghost rows at every zoom
+and require that containment check to fail. The production rows use `20px`/`18px`
+strings explicitly. This closes the earlier fixture blind spot that treated all
+line heights as pixels and missed invisible/clipped text inside stable cells.
 Existing label-colour/tooltip, PR-action and pin-motion regressions remain intact.
 These are synthetic resolved-box comparisons, not native GPUI pixels or visual
 interaction evidence; no app, session, credential or deployment is used.
