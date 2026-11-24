@@ -17,7 +17,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-24-git-row-counts/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-24-git-row-counts/acceptance.md",
   "finalizedDate": "2026-11-24",
-  "specBaseSha": "bbeafa31157dbe7f99e3c85a04ce51b1a74de39b",
+  "specBaseSha": "e73e500aa58562d9fe3010394ce8c05f77099dab",
   "acceptanceScenarios": [
     "Checks retain their full icon and count through two-digit totals at 280, 320, 360 and 480px widths and 75 to 200 percent zoom without changing optional-data anchors.",
     "Task fractions and compact relative times remain whole, with full hover values; metadata cells never paint a lone ellipsis.",
