@@ -274,19 +274,19 @@ Custom Settings Updates SHALL retain its native rows and add one herdr-app-custo
 
 #### Scenario: Concise running description
 - **WHEN** Custom is launching an update, waiting for its launch receipt or running the update with a known published target
-- **THEN** the row description says Updating to followed by that target's first seven characters, such as Updating to 4c4bff1
+- **THEN** the row description says Updating to followed by that target's first seven characters and a full stop, such as `Updating to 4c4bff1.`
 - **AND** the target comes from the update check or the active run's target receipt, never from an invented value or unverified installed revision
-- **AND** its disabled Updating… button, row layout and every other state's wording remain unchanged
+- **AND** its disabled Updating… button and row layout remain unchanged, and other states change only where needed for consistent sentence punctuation
 
 #### Scenario: Target becomes known after launch
 - **WHEN** Custom is launching, waiting for a launch receipt or running without a trustworthy target yet
-- **THEN** its description is Updating without an ellipsis
+- **THEN** its description is `Updating.` without an ellipsis
 - **AND** it switches to the target-aware description as soon as the update flow supplies the target
 
 #### Scenario: Only other machines need updating
 - **WHEN** an explicit update is catching up other machines and this computer is already verified current for the update target
-- **THEN** the running description says Updating other machines to followed by the seven-character target
-- **AND** if the peer-only scope is known but its target is not yet known, the description is Updating other machines without an ellipsis
+- **THEN** the running description says Updating other machines to followed by the seven-character target and a full stop, such as `Updating other machines to 4c4bff1.`
+- **AND** if the peer-only scope is known but its target is not yet known, the description is `Updating other machines.` without an ellipsis
 - **AND** unknown desktop currency never claims that only other machines need updating
 
 ### Requirement: Managed desktop all-machine update
@@ -308,7 +308,7 @@ An update SHALL run independently of the mod it replaces, with a finite deadline
 #### Scenario: Page replaced during deploy
 - **WHEN** deployment replaces Settings or the user closes and reopens it
 - **THEN** the same update continues independently and the row reattaches to its status
-- **AND** its description retains the target-aware running wording, or Updating until the target is known, with the unchanged disabled Updating… action until a result is known
+- **AND** its description retains the target-aware running wording, or `Updating.` until the target is known, with the unchanged disabled Updating… action until a result is known
 - **AND** a verified peer-only update retains its Updating other machines wording and known target
 
 #### Scenario: Open Updates view replaced
@@ -537,3 +537,12 @@ An offline skip SHALL retain a host-local deferred peer fact outside portable pr
 #### Scenario: Dry-run and preference export
 - **WHEN** an update is previewed or portable preferences are exported
 - **THEN** dry-run leaves deferred-peer bookkeeping unchanged and preference exports include no deferred peers, update receipts or locks
+
+### Requirement: Consistent update description sentence punctuation
+Every description sentence in the Custom row and sibling Settings update rows built by this project SHALL end with a full stop without duplicated stops. Button ellipses, diagnostic content, revision provenance, update scope, layout and action guards SHALL remain unchanged.
+
+#### Scenario: All description states use sentence punctuation
+- **WHEN** a Custom or sibling update row displays an idle, checking, current, available, updating, failed, partial, unknown or restart-ready description
+- **THEN** each description sentence ends with a full stop, including error causes and log or details suffixes
+- **AND** already-terminated errors do not introduce double stops between sentences or at the end
+- **AND** diagnostic paths and revision values remain intact and button labels retain their existing ellipses

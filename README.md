@@ -1311,8 +1311,8 @@ Ordinary navigation is not remembered. A new opening honors its requested page o
 starts on Look; unqualified direct mod opens also keep that default rather than
 trusting an overlay ID. The update-only resume hint is runtime state, never a
 portable preference.
-While launching or running, the description says **Updating to 4c4bff1**, using
-the published target's seven-character revision, or **Updating** without an ellipsis
+While launching or running, the description says **Updating to 4c4bff1.**, using
+the published target's seven-character revision, or **Updating.** without an ellipsis
 until the target is known. The worker publishes its fetched main target before
 deployment; if deploy:all fetches newer main again, its run-qualified source target
 replaces that target before installation starts. The same-run desktop attempt
@@ -1322,12 +1322,14 @@ not the fetched target: it retains the previous revision until desktop installat
 succeeds (or omits the revision if ownership evidence changes before success).
 Once the desktop succeeds, the title shows its new installed revision even while
 peers are still deploying, and the description switches to **Updating other machines
-to 4c4bff1**. Peer-only catch-up on an already-current desktop uses that same wording
-(or **Updating other machines** until the target is known). If main advances beyond that desktop revision before Update, the row
+to 4c4bff1.** Peer-only catch-up on an already-current desktop uses that same wording
+(or **Updating other machines.** until the target is known). If main advances beyond that desktop revision before Update, the row
 switches to ordinary **Updating to** the new target instead of claiming peer-only
-work. The disabled button stays **Updating…**; the row layout and other states
-are unchanged. Shared launch feedback retains that target and scope before the detached
-runner's receipt arrives and across Settings replacement; a lost receipt becomes
+work. Every update-row description sentence ends with a full stop, including errors
+and diagnostic log/details suffixes, without duplicate stops. This also applies to
+the Herdr and herdr-core rows built by Custom. The disabled button stays **Updating…**;
+button ellipses, the row layout and update behavior are unchanged. Shared launch
+feedback retains that target and scope before the detached runner's receipt arrives and across Settings replacement; a lost receipt becomes
 outcome unknown, not stale Up to date.
 Reload/closing Settings does not cancel or repeat an update. Offline/unreachable peers
 and peers deliberately excluded as **needs its own full deploy** do not make a successful

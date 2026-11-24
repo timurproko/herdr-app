@@ -28,13 +28,15 @@ export function updateLaunchProgress(snapshot) {
   return { target, peerRevision: snapshot?.peerPending && snapshot?.check?.checked && !snapshot.check.error &&
     snapshot.check.available === false && commit(snapshot.revision) === target ? target : null };
 }
+// Description prose only: never normalize diagnostic paths or button labels.
+export const updateSentence = text => `${String(text).trimEnd().replace(/[.\u2026]+$/u, '')}.`;
 const at = millis => { const date = new Date(millis); return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`; };
 export function customizationRowState(snapshot, { busy = null, error = null, now = Date.now() } = {}) {
   const revision = snapshot?.revision?.slice(0, 7);
   const title = revision ? `${CUSTOMIZATION_LABEL} ${revision}` : CUSTOMIZATION_LABEL;
   const job = snapshot?.job, check = snapshot?.check;
   const details = snapshot?.details || (snapshot?.log ? { kind: 'log', path: snapshot.log } : null);
-  const log = details ? ` ${details.kind === 'log' ? 'Log' : 'Details'}: ${details.path}` : '';
+  const log = details ? ` ${details.kind === 'log' ? 'Log' : 'Details'}: ${details.path}.` : '';
   const launch = snapshot?.launch;
   const unknown = (launch && launch.deadline < now) || job?.state === 'unknown' || (job?.state === 'running' && job.deadline < now);
   const running = busy === 'launch' || ((launch || job?.state === 'running') && !unknown);
@@ -52,11 +54,11 @@ export function customizationRowState(snapshot, { busy = null, error = null, now
     // publishes it after desktop success, before the remaining peer work ends.
     const desktopCurrent = target && commit(snapshot?.revision) === target;
     const scope = desktopCurrent || (peerRevision && (!target || peerRevision === target)) ? 'Updating other machines' : 'Updating';
-    description = target ? `${scope} to ${target.slice(0, 7)}` : scope;
+    description = target ? `${scope} to ${target.slice(0, 7)}.` : `${scope}.`;
   }
-  else if (unknown) description = `Update outcome unknown${job?.error ? `: ${job.error}` : ''}. Inspect ${details?.kind === 'result' ? 'details' : 'log'}: ${details?.path || 'unavailable'}`;
-  else if (error) description = error;
-  else if (job?.state === 'failed') description = `Update failed: ${job.error || 'inspect log'}. Recovery: documented rollback.${log}`;
+  else if (unknown) description = `${updateSentence(`Update outcome unknown${job?.error ? `: ${job.error}` : ''}`)} Inspect ${details?.kind === 'result' ? 'details' : 'log'}: ${details?.path || 'unavailable'}.`;
+  else if (error) description = updateSentence(error);
+  else if (job?.state === 'failed') description = `${updateSentence(`Update failed: ${job.error || 'inspect log'}`)} Recovery: documented rollback.${log}`;
   else if (check?.error) description = 'Check failed. Try again.';
   else if (snapshot?.partial || job?.state === 'partial') description = `Desktop updated; some machines skipped or failed.${log}`;
   else if (['complete', 'partial'].includes(job?.state) && (check?.attempted || 0) < job.finished) description = 'Updated. Check now.';
