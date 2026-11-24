@@ -2,6 +2,7 @@
 // Logical pixels at zoom=1; the person's app zoom remains untouched.
 import { div, svg } from "gpui-kit";
 import { Popover, Input } from "gpui-base";
+import { settings } from "./host.js";
 export const U = Object.freeze({
   row: 28, rowGap: 2, subrow: 26, section: 32, control: 28, insetControl: 24, insetRadius: 4, field: 32,
   icon: 16, smallIcon: 14, tinyIcon: 12, statusSize: 7,
@@ -390,7 +391,9 @@ export function collapsible(t, { id, title, open, onToggle, chevron: side = "sta
     .when(side === "end", el => el.child(arrow));
   const content = () => div().id(`${id}-body`).flex().flex_col().w_full().px(bodyInset).pt(bodyPadY).pb(bodyPadY).gap(bodyGap)
     .when(measuring, el => el.flex_none().on_size_change((size, cx) => {
-      const next = Math.max(0, Math.round((size?.height ?? 0) - 2 * bodyPadY));
+      // Native measurements are window px; h()/padding are logical px. Feeding a
+      // scaled height back into the clip leaves a zoom-sized tail in every section.
+      const next = Math.max(0, Math.round((size?.height ?? 0) / (settings().zoom ?? 1) - 2 * bodyPadY));
       if (measured[id] !== next) { measured[id] = next; cx.notify(); }
     }))
     .child(body());
