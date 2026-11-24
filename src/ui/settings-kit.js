@@ -4,6 +4,7 @@
 // behaves the same and a new plugin needs no UI code at all.
 import { div, svg } from 'gpui-kit';
 import { h_flex, v_flex } from 'gpui-base';
+import { settings } from './host.js';
 import { U, button, control, spinner, itemHover, description, dropdown, menuSurface, menuRow, collapsible } from './ui.js';
 
 // One geometry for every plugin: row buttons, status badges and the Add popups.
@@ -98,7 +99,7 @@ export function disclosure(state, t, id, title, { summary = null, tools = null, 
   // collapsible block.
   // `measured`: the bodies slide open and shut like Usage's Resets (heights kept on the view).
   return collapsible(t, { id: `st-plugin-${id}`, title, open, on: t.background, tint: 1, bodyPadY: 8, bodyGap: 12, chevron: 'end',
-    measured: state.pluginHeights ??= {},
+    measured: state.pluginHeights ??= {}, zoom: settings().zoom ?? 1,
     onToggle: (_e, cx) => { state.pluginOpen[id] = !open; cx.notify(); },
     trailing: summary || tools ? statusRail(summary, tools, `st-plugin-${id}-status-rail`) : null }, body);
 }
