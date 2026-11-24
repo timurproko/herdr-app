@@ -203,7 +203,7 @@ separate Spaces, Settings and inventory-consumer copies. First pairing verified 
 797 ms and painted attached in 812 ms; remembered off/on painted attached in **6 ms**
 and verified in **706 ms**. Recorded commands took 744/508 ms; separate discovery took
 1251/1571 ms and completed 2101/2300 ms after on. One help probe served all four reads,
-decoder turns peaked at 5 ms, and native status had no errors. The attached screenshot
+decoder turns peaked at 4 ms, and native status had no errors. The attached screenshot
 showed adjacent rows, both chains/Crew pills and shared green numbered badges.
 A fresh owner-reload run with the same intentional four-second delay replaced the
 abandoned owner 2270 ms after its command started, rather than 45 seconds later.
