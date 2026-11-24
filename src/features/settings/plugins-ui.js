@@ -556,12 +556,13 @@ function listSection(view, t, plugin, item, loading) {
   // Applying already has header feedback. Keep the last confirmed body, including
   // through its authoritative re-check, rather than collapsing and restoring it.
   const rows = loading && !applying ? [] : item.rows ?? [];
+  const detail = view.pluginFixError[key] ?? item.detail ?? item.about;
   const enabled = !locked;
   return v_flex().w_full().gap(8)
     .child(scopeRow(t, { id, label: def ? machineName(pluginSetting(plugin, def.key)) : spec.scope?.label ?? 'Machine', dropdown: scope, action: add }))
-    .child(description(t, view.pluginFixError[key] ?? item.detail ?? item.about))
+    .when(Boolean(detail), el => el.child(description(t, detail)))
     // A row's note (an incomplete webhook) follows its name: one line per item.
-    .child(v_flex().id(id).w_full().gap(U.rowGap)
+    .when(rows.length > 0, el => el.child(v_flex().id(id).w_full().gap(U.rowGap)
       .children(rows.map((row, index) => removableRow(view, t, `${id}-row-${index}`, row.detail ? `${row.label} · ${row.detail}` : row.label,
         (_e, cx) => runListAction(view, cx, plugin, item, async context => {
           try { await spec.remove(context, row.id); }
@@ -569,7 +570,7 @@ function listSection(view, t, plugin, item, loading) {
             if (spec.picker?.kind !== 'folders') throw e;
             throw new Error(folderRefusal(plugin, 'remove', row.path ?? row.label, e));
           }
-        }), enabled))));
+        }), enabled)))));
 }
 
 function prerequisiteSections(view,t,plugin) {
