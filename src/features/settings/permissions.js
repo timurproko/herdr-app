@@ -89,10 +89,14 @@ export function coreHasChanges(owner) {
 export function coreNeedsRelaunch(owner) {
   const info = infoOf(owner);return info?.running === true && typeof info.elevated === 'boolean' && draft(owner, info).mode !== (info.elevated ? 'administrator' : 'standard');
 }
+function changeHint(owner) {
+  return coreHasChanges(owner) ? coreNeedsRelaunch(owner) ? 'Apply restarts core with all agents.' : 'Unapplied changes' : '';
+}
 export function coreChangeNotice(owner, t) {
-  const job = pending(owner);
-  const label = active(owner) ? job?.operation === 'autostart' ? 'Applying' : job?.operation === 'stop' ? 'Stopping' : job?.operation === 'start' ? 'Starting' : 'Restarting'
-    : coreHasChanges(owner) ? coreNeedsRelaunch(owner) ? 'Apply restarts core with all agents.' : 'Unapplied changes' : '';
+  const job = pending(owner), checking = owner.terminalPermissions?.get(machineOf(owner))?.loading;
+  // Keep the reminder captured at Apply, including the final fresh-status check.
+  // Older shared jobs have no hint; their draft remains a safe fallback.
+  const label = (active(owner) || checking) && typeof job?.hint === 'string' ? job.hint : changeHint(owner);
   return div().id('st-core-change-notice').flex_1().min_w(0).text_size(U.meta).text_color(t.muted).child(label);
 }
 export function coreAction(owner, operation, cx) {
@@ -107,7 +111,7 @@ export function coreAction(owner, operation, cx) {
   const d = { ...draft(owner, info) };
   const request = `core-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
   const mode = operation === 'stop' ? info.elevated ? 'administrator' : 'standard' : operation === 'start' ? baseMode(info) : d.mode;
-  let job = { request: operation === 'apply' ? `${request}-settings` : request, mode, operation: operation === 'apply' ? 'autostart' : operation, session: info.session, started: Date.now(), state: 'preparing' };
+  let job = { request: operation === 'apply' ? `${request}-settings` : request, mode, operation: operation === 'apply' ? 'autostart' : operation, hint: changeHint(owner), session: info.session, started: Date.now(), state: 'preparing' };
   setShared(key(machine), job);owner.permissionApplying = true;owner.permissionPickerOpen = false;owner.settingsHostOpen = false;cx.notify();
   cx.spawn(async cx => {
     try {
@@ -158,9 +162,8 @@ export function coreEditorActions(owner, t) {
     && (info?.running !== true || typeof info.elevated === 'boolean') && (!coreNeedsRelaunch(owner) || info?.desktop);
   return h_flex().w_full().h(U.field).gap(8).items_center()
     .child(coreChangeNotice(owner, t))
-    .when(coreHasChanges(owner), e => e
-      .child(editorActionButton(owner.button(t, 'st-core-discard', 'Discard', (_e, cx) => { if (!enabled) return;owner.permissionDrafts.delete(machineOf(owner));cx.notify(); }, { enabled })))
-      .child(editorActionButton(owner.button(t, 'st-core-apply', 'Apply', (_e, cx) => coreAction(owner, 'apply', cx), { enabled }))));
+    .child(editorActionButton(owner.button(t, 'st-core-discard', 'Discard', (_e, cx) => { if (!enabled) return;owner.permissionDrafts.delete(machineOf(owner));cx.notify(); }, { enabled })))
+    .child(editorActionButton(owner.button(t, 'st-core-apply', 'Apply', (_e, cx) => coreAction(owner, 'apply', cx), { enabled })));
 }
 export function corePage(owner, t) {
   const machine = machineOf(owner), entry = owner.terminalPermissions?.get(machine), info = entry?.result, job = pending(owner);
