@@ -380,7 +380,7 @@ export default class Spaces extends View {
         }));
       const empty = this.drag.control(h_flex().id(`machine-new-${m ?? "local"}`).h(28).flex_none().px(collapsed ? 0 : 8).gap(7).items_center().rounded(U.radius)
         .when(collapsed, el => el.w(U.control).self_center().justify_center())
-        .text_size(12).text_color(t.dim), {hover: s => s.bg(t.hover).text_color(t.foreground)})
+        .text_size(12).text_color(t.dim), {hover: s => s.bg(t.hover)})
         .on_click(this.drag.guard(() => run("space.new", { machine: m ?? "" })))
         .child(svg("mods/custom-workspace-chrome/plus.svg").size(12)).when(!collapsed, el => el.child("New space"));
       if (!collapsed && rebuilt) return [head];
@@ -581,7 +581,7 @@ export default class Spaces extends View {
         // machine +, so it keeps this one.
         .when(!collapsed, el => el.child(this.optionsButton(t)))
         .when(collapsed, el => el.child(this.drag.control(div().id("space-new").size(U.control).flex_none().flex().items_center().justify_center().rounded(U.radius).text_color(t.dim),
-          {hover: s => s.bg(interactionFill(t)).text_color(t.foreground)})
+          {hover: s => s.bg(interactionFill(t))})
           .on_click(this.drag.guard(() => run("space.new"))).child(svg("mods/custom-workspace-chrome/plus.svg").size(14)))))
       .child(sidebarScroll(this, 'spaces-list', t, this.grouped(t, collapsed), {
         bottomPadding: 12,
