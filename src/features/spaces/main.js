@@ -442,6 +442,8 @@ export default class Spaces extends View {
   }
 
   // Display identity only: the projected parent supplies colour, never action authority.
+  // i is the native space.select/Alt+N index, not the projected row position.
+  // Changing only the digit would advertise a shortcut for another space.
   spaceBadge({ w, i, linked = false, block }, t) {
     const parent = linked && spaces().find(s => s.id === block?.[0] && (s.machine ?? null) === (w.machine ?? null));
     const fill = spaceBadgeColor(t, parent || w, shared('space.colors') ?? {});

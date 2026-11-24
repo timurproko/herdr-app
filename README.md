@@ -623,7 +623,16 @@ switches on this page also save immediately; close actions and empty-space
 reconciliation read their current values without waiting for Settings to close.
 When on with Crew enabled, a verified same-machine
 fleet attaches below its coordinator with its own ordinary numbered badge (for
-example, **2 crew** below **1 coordinator**), in the same 16px rounded slot. Its fill
+example, **2 crew** below **1 coordinator**), in the same 16px rounded slot.
+These numbers identify native `space.select` positions (the shipped `Alt+1` through
+`Alt+9` shortcuts), not projected row positions. If native order is coordinator,
+unrelated space, fleet, attachment therefore shows **1 coordinator, 3 fleet, 2 unrelated**;
+detaching restores native row order. Merely drawing 2 on the fleet would incorrectly
+advertise the shortcut for the unrelated space. Consecutive numbers require an actual
+native reorder, which this presentation-only switch does not perform.
+See the [Herdr 0.1.17 shipped shortcuts](https://github.com/herdrdev/herdr-app/blob/v0.1.17/defaults/keys.json)
+and [native index-selection implementation](https://github.com/herdrdev/herdr-app/blob/v0.1.17/src/window.rs#L3194-L3202).
+Its fill
 uses the coordinator's actual badge colour and follows recolouring without changing
 the fleet's saved colour. The expanded coordinator shows a small muted outline chain
 immediately before its Crew pill, matching the worktree marker's size and alignment,

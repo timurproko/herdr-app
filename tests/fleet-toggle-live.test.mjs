@@ -92,7 +92,24 @@ async function mounted() {
    const q=id=>machine?`${machine}/${id}`:id;
    assert.deepEqual(rows(machine).map(r=>r.attrs.id[0]),(attached?['coordinator','fm-crew-home','other']:['coordinator','other','fm-crew-home']).map(id=>`space-content-${q(id)}`));
    const parent=find(sidebar.tree,`space-content-${q('coordinator')}`),child=find(sidebar.tree,`space-content-${q('fm-crew-home')}`);
-   assert.equal(parent.kids[0].kids[0],machine?'4':'1');assert.equal(child.kids[0].kids[0],machine?'6':'3','Native identity numbers stay on their own rows');
+   // Herdr 0.1.17 defaults/keys.json binds Alt+N to space.select:N;
+   // window.rs resolves that against model.spaces[N-1], not our projection.
+   // Keep every advertised shortcut truthful, including the unrelated row.
+   for(const row of rows(machine)){
+    const nativeIndex=groups.findIndex(s=>`space-content-${s.id}`===row.attrs.id[0]);
+    assert.equal(row.kids[0].kids[0],String(nativeIndex+1),'Expanded badge denotes the native selection index');
+   }
+   for(const record of sidebar.view.ordered().filter(r=>r.w.machine===machine)){
+    const expected=String(groups.findIndex(s=>s.id===record.w.id)+1);
+    rendering=true;
+    try{
+     const rail=sidebar.view.compact(record,theme);
+     assert.equal(find(rail,`space-badge-${record.w.id}`).kids[0],expected,'Compact rail advertises the same native shortcut');
+     sidebar.view.drag.leaving={id:record.w.id,phase:'arm'};
+     const chip=sidebar.view.dragPreview(theme);
+     assert.equal(chip.kids[0].kids[0],expected,'Drag chip retains that native number, not the projected position');
+    }finally{sidebar.view.drag.leaving=null;rendering=false;}
+   }
    assert.equal(child.kids[0].attrs.bg[0],attached?theme.ansi2:theme.ansi3);
    assert.equal(Boolean(find(sidebar.tree,`space-link-${q('coordinator')}`)),attached);
    if(attached)assert.equal(parent.kids.at(-2).attrs.id[0],`space-link-${q('coordinator')}`,'Chain immediately precedes Crew');
