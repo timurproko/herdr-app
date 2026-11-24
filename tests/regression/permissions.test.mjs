@@ -37,7 +37,7 @@ assert.equal(byId('st-permission-mode').style.w[0],byId('st-permission-mode-menu
 assert.equal(p.coreHasChanges(owner),false);assert.equal(p.coreNeedsRelaunch(owner),false);cleanFooter();assert.equal(mode(),'Standard user');
 const idleFooterShape=footerShape();
 assert.equal(page().kids.find(e=>e.kids[0]==='Permissions').kids[1],null,'Permissions has no current-value description');
-p.reloadPermissions(owner,cx);assert.equal(label(),'Running');assert.equal(page().kids.length,6);assert.equal(byId('st-core-power').style.disabled[0],true);await run();
+p.reloadPermissions(owner,cx);assert.equal(label(),'Checking','Refreshing must not present cached Running as ready');assert.equal(page().kids.length,6);assert.equal(byId('st-core-power').style.disabled[0],true);await run();
 const reopened={...owner,terminalPermissions:undefined};p.initPermissions(reopened,cx);p.reloadPermissions(reopened,cx);
 assert.equal(reopened.terminalPermissions.get('pc2').result.running,true);
 assert.equal(nodes(p.corePage(reopened,{})).find(n=>n.style.id?.[0]==='st-core-power').style.disabled[0],true,'Cached values cannot drive actions');
@@ -119,4 +119,60 @@ const afterFailure={...owner,terminalPermissions:undefined};p.initPermissions(af
   assert.equal(overlays.length,1);assert.equal(overlays[0].mod,'custom-confirm');assert.equal(overlays[0].modal,true);
   assert.deepEqual({...overlays[0].props},{action:'reboot',machine:'pc3',label:'pc3'});
 }
-console.log('PASS: current permission dropdown, description-free row, Apply/Discard, verified restart on Apply, save-only stopped/autostart edits, separate Start/Stop, rejected setup, unknown status, machine-scoped cache and stable loading rows');
+// Intermediate renders matter: draining every job at once hid the screenshot-04 defect.
+{
+  state.clear();respond=()=>reply(facts);
+  const o={...owner,profileMachine:'pc2',terminalPermissions:undefined,permissionApplying:false};p.initPermissions(o,cx);p.reloadPermissions(o,cx);await run();
+  const get=id=>nodes(p.corePage(o,{})).find(n=>n.style.id?.[0]===id);
+  const footer=()=>p.coreEditorActions(o,{}),notice=()=>p.coreChangeNotice(o,{}).kids[0];
+  const status=()=>get('st-terminal-permissions').kids[0];
+  const controls=disabled=>{
+    for(const id of ['st-permission-mode','st-core-power','st-core-reboot'])assert.equal(get(id).style.disabled[0],disabled,id);
+    const toggleParent=nodes(p.corePage(o,{})).find(n=>n.style.disabled && nodes(n).some(k=>k.style.id?.[0]==='st-permission-remember'));
+    assert.equal(toggleParent.style.disabled[0],disabled,'Sign-in toggle');
+  };
+  const buttons=disabled=>{for(const id of ['st-core-discard','st-core-apply'])assert.equal(nodes(footer()).find(n=>n.style.id?.[0]===id).style.disabled[0],disabled,id);};
+  const ack=input=>reply(input.request.action==='autostart'?{configured:true,request:input.request.request}:{queued:true,request:input.request.request});
+  const start=async mode=>{get(`st-permission-mode-${mode}`).events.click({},cx);o.permissionDrafts.get('pc2').remember=false;respond=ack;p.coreAction(o,'apply',cx);await run();};
+  const complete=async()=>{const job=state.get(k);respond=input=>input.request.action==='status'?reply({request:job.request,state:'complete'}):assert.fail('Inspection must remain queued');p.pollPermissionRelaunch(o,cx,true);assert.equal(jobs.length,1);await jobs.shift()(cx);};
+  const deferred=()=>{let resolve;const promise=new Promise(r=>{resolve=r;});return{promise,resolve};};
+  const admin={...facts,elevated:true,savedMode:'administrator'};
+  controls(false);buttons(true);await start('administrator');assert.equal(status(),'Restarting');
+  await complete();
+  assert.equal(state.get(k).state,'complete');assert.equal(o.terminalPermissions.get('pc2').loading,true);
+  assert.equal(status(),'Restarting','Completion acknowledgement is not verified Running');assert.equal(notice(),restartHint);controls(true);buttons(true);
+  const fresh=deferred();respond=()=>fresh.promise;const inspecting=jobs.shift()(cx);await Promise.resolve();
+  assert.equal(status(),'Restarting');assert.equal(notice(),restartHint);
+  fresh.resolve(reply(admin));await inspecting;
+  assert.equal(status(),'Running');controls(false);buttons(true);assert.equal(notice(),'');assert.equal(p.coreHasChanges(o),false);
+  // A later manual refresh cannot resurrect the old operation's captured hint.
+  respond=()=>reply(admin);p.reloadPermissions(o,cx);assert.equal(status(),'Checking');assert.equal(notice(),'');await run();controls(false);
+  // Save-only completion also keeps its hint after the draft is cleared, until facts settle.
+  get('st-permission-remember').events.click({},cx);respond=ack;p.coreAction(o,'apply',cx);await jobs.shift()(cx);
+  assert.equal(notice(),'Unapplied changes');assert.equal(status(),'Checking');controls(true);
+  respond=()=>reply({...admin,remember:true});await run();assert.equal(notice(),'');controls(false);buttons(true);
+  // A failed final inspection releases busy state but never enables unverified controls.
+  await start('standard');await complete();respond=()=>({code:1,stdout:JSON.stringify({error:'Could not verify runtime'})});await run();
+  assert.equal(status(),'Unknown');assert.equal(get('st-permission-result').kids[0],'Could not verify runtime');
+  assert.equal(o.terminalPermissions.get('pc2').loading,false);assert.equal(o.permissionApplying,false);controls(true);buttons(true);
+  respond=()=>reply(facts);p.reloadPermissions(o,cx);await run();assert.equal(status(),'Running');controls(false);assert.equal(notice(),'');
+  // Completion supersedes a read begun before restart; its late failure cannot wipe fresh facts.
+  await start('administrator');const stale=deferred();respond=()=>stale.promise;p.reloadPermissions(o,cx);const oldRead=jobs.shift()(cx);
+  await complete();respond=()=>reply(admin);await run();assert.equal(status(),'Running');controls(false);
+  stale.resolve({code:1,stdout:JSON.stringify({error:'Old read failed'})});await oldRead;
+  assert.equal(status(),'Running');assert.equal(get('st-permission-result'),undefined);controls(false);
+  // A delayed inspection updates only its captured machine, not the newly selected one.
+  await start('standard');await complete();const pc2Read=deferred();respond=()=>pc2Read.promise;const readingPc2=jobs.shift()(cx);
+  o.profileMachine='pc3';respond=()=>reply(admin);p.reloadPermissions(o,cx);await run();assert.equal(status(),'Running');controls(false);
+  pc2Read.resolve(reply(facts));await readingPc2;assert.equal(get('st-permission-mode').kids[0].kids[0],'Administrator');controls(false);assert.equal(notice(),'');
+  // A superseded status reply cannot publish completion or schedule inspection for a newer request.
+  o.profileMachine='pc2';await start('administrator');const oldJob=state.get(k),lateStatus=deferred();respond=()=>lateStatus.promise;
+  p.pollPermissionRelaunch(o,cx,true);const polling=jobs.shift()(cx);const replacement={...oldJob,request:`${oldJob.request}-new`,state:'queued'};state.set(k,replacement);
+  lateStatus.resolve(reply({request:oldJob.request,state:'complete'}));await polling;
+  assert.equal(state.get(k),replacement);assert.equal(jobs.length,0);assert.equal(status(),'Restarting');controls(true);
+  // Existing offline and unknown-token guards still win over displayed/cached facts.
+  state.clear();o.profileMachine='unreachable';assert.equal(status(),'Unreachable');controls(true);
+  o.profileMachine='pc2';respond=()=>reply({...facts,elevated:null});p.reloadPermissions(o,cx);await run();
+  assert.equal(get('st-permission-mode').style.disabled[0],true);assert.equal(get('st-core-power').style.disabled[0],true);buttons(true);
+}
+console.log('PASS: quiet stable Core footer across idle/pending/saving/restarting/done/failed, verified control recovery, deferred inspections, stale replies, machine isolation and safety guards');

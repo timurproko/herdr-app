@@ -906,6 +906,10 @@ While Apply runs, the footer keeps its original pending-change hint; runtime
 progress appears only in the Status row, and errors remain below the controls.
 The footer and its Discard / Apply buttons keep their positions after completion:
 the hint clears and those buttons stay disabled when there is nothing pending.
+After a restart, Status stays Restarting until fresh runtime inspection finishes;
+other refreshes show Checking there rather than presenting cached Running as ready.
+Once fresh Running facts arrive, eligible runtime controls re-enable immediately,
+without waiting for the refresh icon's separate visual minimum.
 
 ## Usage request limits
 

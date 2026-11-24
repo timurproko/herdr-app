@@ -8,6 +8,6 @@
 
 ## 2. Core controls recover with verified Running facts after restart
 
-- [ ] 2.1 Reconcile operation completion with fresh inspection before displaying ready Running; a deferred-inspection regression reproduces the fourth screenshot's cached Running/disabled transition and confirms truthful feedback during verification.
-- [ ] 2.2 Release eligible Permissions, sign-in, Stop and Reboot controls immediately when fresh Running facts settle, with clean Discard/Apply still disabled; regressions cover delayed replies, failed inspection, request replacement, machine switches and existing offline/unknown-permission safety guards.
-- [ ] 2.3 Document the verified completion behavior and run focused packaged Settings regressions, then run CI=true npm run test:ci once for integration evidence and report current final-head required-check status, including draft-skipped checks.
+- [x] 2.1 Reconcile operation completion with fresh inspection before displaying ready Running; a deferred-inspection regression reproduces the fourth screenshot's cached Running/disabled transition and confirms truthful feedback during verification.
+- [x] 2.2 Release eligible Permissions, sign-in, Stop and Reboot controls immediately when fresh Running facts settle, with clean Discard/Apply still disabled; regressions cover delayed replies, failed inspection, request replacement, machine switches and existing offline/unknown-permission safety guards.
+- [x] 2.3 Document the verified completion behavior and run focused packaged Settings regressions, then run CI=true npm run test:ci once for integration evidence and report current final-head required-check status, including draft-skipped checks.
