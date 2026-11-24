@@ -562,7 +562,24 @@ export default class Changes extends View {
       .child(div().min_w(0).truncate().child(label.name));
   }
 
+  // Keep the innermost component if the native VM aborts before JS can catch.
+  renderPart(component, build) {
+    const previous=this.renderComponent;this.renderComponent=component;
+    try { return build(); }
+    catch(error) {
+      if(this.reportedRenderError!==error) {
+        this.reportedRenderError=error;
+        console.error('[custom-changes] render failed',JSON.stringify({component,view:this.view,error:String(error?.message??error),stack:error?.stack??null}));
+      }
+      throw error; // Preserve the host's last-good-frame fallback.
+    } finally { this.renderComponent=previous; }
+  }
+
   pullRow(t, pr, ghost = false) {
+    return this.renderPart(`pull-row:${pr.key??pr.number}`,()=>this.renderPullRow(t,pr,ghost));
+  }
+
+  renderPullRow(t, pr, ghost = false) {
     const prefix = ghost ? 'swap-' : '', rowId = pr.key ?? pr.number;
     const agentButton = this.agentButton(t, pr, !ghost);
     const dot = () => this.metaSeparator(t);
@@ -738,7 +755,7 @@ export default class Changes extends View {
         }))
       .when(!folded, el => el.child(v_flex().id(`task-repo-body-${repo}`).gap(U.rowGap)
         .children(rows.map(pr => this.pullRow(t, pr)))
-        .when(Boolean(error), body => body.child(div().id(`task-error-${repo}`).px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(error)))));
+        .when(Boolean(error), body => body.child(this.renderPart(`repository-notice:${repo}`,()=>div().id(`task-error-${repo}`).px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(error))))));
   }
 
   renderAggregate(cx,t) {
@@ -775,7 +792,7 @@ export default class Changes extends View {
         .child(this.segment(t,'git-view-open','Open',counts.open,this.view==='open',view=>this.setView('open',view)))
         .child(this.segment(t,'git-view-closed','Closed',counts.closed,this.view==='closed',view=>this.setView('closed',view))))
       .child(v_flex().id('task-pulls-scroll').flex_1().min_h(0).overflow_y_scrollbar().p(4)
-        .children(sections.map(section => this.repositorySection(t, section, scope)))
+        .children(sections.map(section => this.renderPart(`repository-section:${section.repo}`,()=>this.repositorySection(t, section, scope))))
         .when(!sections.length,el=>el.child(panelMessage(t,'git-task-empty',{text:aggregate.context.stale?'Waiting for fleet verification':aggregate.busy?'Loading…':`No ${this.view} pull requests`,loading:!aggregate.context.stale && aggregate.busy,rowInset:2}))))
       .when(setup,el=>el.child(this.liveCIInfo(t)))
       .when(Boolean(enrollment),el=>el.child(enrollment))
@@ -804,13 +821,25 @@ export default class Changes extends View {
   }
 
   render(cx) {
+    // QuickJS's deadline interrupt is deliberately uncatchable. A surviving
+    // marker on the next attempt is evidence of an aborted frame, not its cause.
+    if(this.renderAttempt) console.error('[custom-changes] previous render did not complete',JSON.stringify({component:this.renderComponent??'panel',view:this.view,error:'Native interruption or aborted render; consult the host error banner/log for the exact error'}));
+    this.renderAttempt=true;this.reportedRenderError=null;
+    try {
+      const tree=this.renderPart('panel',()=>this.renderPanel(cx));
+      this.renderAttempt=false;
+      return tree;
+    } catch(error) { this.renderAttempt=false;throw error; }
+  }
+
+  renderPanel(cx) {
     if (!sidebarPanelEnabled('changes')) {
       this.enrollmentPicker?.stop();this.webhooks?.stop();this.notices?.stop();this.aggregate?.stop();
       this.resetRepository(); this.rootRequest = null; this.loading = false; this.context = null;
       return div();
     }
     if (this.pullMenu) return this.renderPullMenu(theme());
-    if (this.syncAggregate(cx)) return this.renderAggregate(cx,theme());
+    if (this.renderPart('coordinator-context',()=>this.syncAggregate(cx))) return this.renderPart('coordinator',()=>this.renderAggregate(cx,theme()));
     this.enrollmentPicker?.stop();
     if (key() !== this.context) this.refresh(cx, false);
     this.syncAgent(cx);

@@ -1,12 +1,12 @@
 # Tasks
 
-## 1. Coordinator Closed rendering remains complete across mixed history rows and section read notices
+## 1. Coordinator rendering logs component-scoped failures and guards mixed Closed history and notices
 
-- [ ] 1.1 Inspect installed provenance/update log and available render diagnostics read-only; document the precise failing path and distinguish JavaScript failure from native interruption in sanitized local evidence.
-- [ ] 1.2 Reproduce the failure through the real packaged coordinator renderer with two repositories, the section-level notice, merged and closed-unmerged states, and rows with and without live agents; verify a failing regression before changing source.
-- [ ] 1.3 Trace the reproduced path through merged revisions and identify the introducing PR with a before/after reproduction, without touching PR #42 or fleet-attach-broken.
-- [ ] 1.4 Repair only the proven source-owned failure and verify the complete packaged render passes strict render-side-effect guards with notices and all eligible rows intact.
-- [ ] 1.5 Document the render cause, introducing change and regression command in the relevant testing guidance; run focused renderer/history/geometry fixtures and deliver this outcome with its tests before starting outcome 2.
+- [x] 1.1 Inspect installed provenance and reviewed native execution/render behavior read-only; document the 50 ms uncatchable native interrupt and explicitly record that the screenshot cause remains unproven.
+- [x] 1.2 Exercise the real packaged coordinator renderer with 30 mixed Closed rows, two repositories, a section read notice and live/historical targets; record that the original interruption does not reproduce in this fixture.
+- [x] 1.3 Reproduce the separate synchronous notice-fallback notify violation before its fix, trace it to import PR #1, and distinguish it from the screenshot's native interruption without blaming an unproven merged change.
+- [x] 1.4 Yield notice work before inline spawn can notify, and add exact component/error logging for caught render failures plus honest next-attempt component evidence after an uncatchable abort; verify the full-render regression.
+- [x] 1.5 Document the unresolved native cause and diagnostics limits in testing guidance; pass focused notices/history/geometry/render fixtures before delivering this outcome.
 
 ## 2. Repository-scoped GitHub reads route unambiguously and access refusals identify repository and account context
 

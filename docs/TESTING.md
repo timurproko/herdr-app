@@ -286,6 +286,28 @@ fixtures protect captured URLs, callbacks and measured motion. These prove rende
 constraints, not GPUI pixel layout, tooltip hit-testing or native animation appearance.
 No deployment or live label mutation is performed.
 
+## Coordinator render error diagnostics
+
+`node --experimental-vm-modules tests/git-panel-errors.test.mjs` exercises the
+packaged controller, aggregate reader, real notices and UI with 30 Closed rows
+across two repositories, a history read notice, merged/closed-unmerged states and
+live/historical agent variants. It uses inline spawn and render-side-effect guards.
+A synchronous notice transport failure previously reached fallback `notify` during
+render; yielding before request work fixes that proven path (present since import
+PR #1). This is **not** a reproduction of the screenshot's native `interrupted`
+error, and no introducing merged change for that error has been established.
+
+Herdr 0.1.17's reviewed QuickJS sandbox has a 50 ms render/layout deadline and an
+uncatchable interrupt. Node fixture timing is not evidence of native budget safety.
+Caught render errors now log `[custom-changes] render failed` with exact error,
+stack and innermost row/section/notice component, then rethrow so native last-frame
+fallback remains. An uncatchable abort can leave an in-memory component marker:
+the next render logs `previous render did not complete` with that component. Its
+message explicitly defers the exact native error to the host banner/log; it does
+not invent an exception or claim that the prior frame timed out. If no later
+render occurs, JS cannot emit that next-attempt diagnostic. No live app is changed
+or restarted by this fixture.
+
 ## Stable Git row geometry
 
 `node --experimental-vm-modules tests/git-row-geometry.test.mjs` resolves the actual

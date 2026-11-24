@@ -10,6 +10,12 @@ The public host facade delegates `exec` unchanged. The installed SDK exposes cwd
 
 Existing fixtures provide packaged module resolution (`tools/plugin-harness.mjs`), complete aggregate controller tests (`tests/fleet-git.test.mjs`), history/read-failure fixtures, and row geometry tests. Some UI builders are permissive proxies and some fixtures stub notices or defer spawn, so their passing status cannot rule out the screenshot's actual path.
 
+## Approved implementation fallback and findings
+
+The implementation approval explicitly permits proven repairs plus diagnostics when either screenshot fault cannot be reproduced. The 30-row packaged fixture does not reproduce the native `interrupted` banner; no introducing PR for that interruption is established. Reviewed native QuickJS source confirms a 50 ms render deadline whose interruption is uncatchable. Caught JS errors can log exact text/stack/component; an uncatchable abort can only leave a component marker for a later render to log, not expose the exact native error to JS. A separate reproducible notice path starts inline and reaches synchronous notify if exec throws before its first await; that code dates to import PR #1. Only that proven boundary receives a repair.
+
+Read-only Core execution from the native local-exec default (user home) reproduces unresolved crew PRs #36, #37 and #38 as account timurproko while crew #1–#9 and herdr-app #41/#43 succeed. The wrapper resolves first on PATH; GH_REPO/GH_HOST are absent and GH_TOKEN/GITHUB_TOKEN are absent in this reproduction. This is recorded-item inaccessibility, not proof of broken wrapper routing. Native local exec inherits the desktop environment, not Core's; the running desktop's full inherited environment was not captured, so that limitation remains explicit.
+
 ## Goals / Non-Goals
 
 **Goals:** Establish both causes before code changes; repair the narrow source owner; retain account, identity, history, folding and stale-result safety boundaries. Exercise the complete packaged coordinator renderer rather than a replacement renderer or isolated row-only assertion.
