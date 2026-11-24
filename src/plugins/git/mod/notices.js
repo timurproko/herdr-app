@@ -9,7 +9,7 @@ import {relayURL,credentialPath,repositoryName} from './plugins/git/relay-config
 import {noticeState} from './plugins/git/notice-state.js';
 export class GitNotices {
   constructor(){this.serial=0;this.message=null;this.members=new Map();}
-  stop(){if(this.active){this.serial++;this.scope=null;}this.active=false;}
+  stop(){if(this.active){this.serial++;this.scope=null;}this.active=false;this.readWake=null;this.deferred=new Map();}
   retryNow(){this.force=(this.force??0)+1;}
   configuration(){
     const plugin=pluginById('git'),raw=pluginSetting(plugin,'relay')??'',account=pluginSetting(plugin,'githubAccount')??'',relay=relayURL(raw),state=noticeState();
@@ -35,7 +35,15 @@ export class GitNotices {
         const r=mode==='notice'?await run():await gitReads(exec).read(args,repository,{credentialScope:account,current:()=>this.active&&this.serial===serial},run);
         result=JSON.parse(r.stdout);
       }catch(error){
-        if(quietRead(error)) {retryRead(this,cx,error,view=>{if(this.active&&this.serial===serial)this.request(view,mode,repository,callback);});return;}
+        if(quietRead(error)) {
+          if(!this.active || this.serial!==serial)return;
+          this.deferred??=new Map();this.deferred.set(JSON.stringify([mode,repository]),{mode,repository,callback});
+          retryRead(this,cx,error,view=>{
+            if(!this.active || this.serial!==serial)return;
+            const requests=[...this.deferred.values()];this.deferred.clear();
+            for(const request of requests)this.request(view,request.mode,request.repository,request.callback);
+          });return;
+        }
         result=mode==='notice'?{setup:'missing'}:{};
       }
       if(this.serial!==serial)return;
@@ -68,7 +76,7 @@ export class GitNotices {
     if(this.message==='repository')this.message=null;
     const {raw,account,relay,snapshot,scope}=this.configuration();
     if(scope!==this.scope){
-      this.scope=scope;this.serial++;this.memberQueue=new Set();this.memberJob=null;this.relay=relay;this.account=account;this.members=new Map();
+      this.scope=scope;this.serial++;this.readWake=null;this.deferred=new Map();this.memberQueue=new Set();this.memberJob=null;this.relay=relay;this.account=account;this.members=new Map();
       // Preserve the last confirmed global result while rechecking. Unknown
       // initialization is quiet; it must not briefly claim setup is missing.
       if(this.previousRelay!==raw)this.setup=undefined;

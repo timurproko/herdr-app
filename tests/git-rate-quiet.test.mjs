@@ -13,6 +13,8 @@ for(const result of [
 for(const result of [
  {code:1,stderr:'HTTP 403: Resource not accessible by integration'},
  {code:1,stderr:'HTTP 401: bad credentials'},
+ {code:1,stdout:'HTTP/2.0 401 Unauthorized\r\n\r\n{"message":"API rate limit exceeded"}'},
+
  {code:1,stderr:'Could not resolve host: api.github.com'},
  {code:1,timed_out:true,stderr:'API rate limit exceeded'},
  {code:1,stderr:'execution timed out; check API rate limits'},
@@ -54,6 +56,11 @@ const serial=new f.GitReads();let finishSerial,serialCalls=0;
 const first=serial.read('first','owner/repo',{},()=>{serialCalls++;return new Promise(resolve=>finishSerial=resolve);});
 const second=serial.read('different-shape','owner/repo',{},()=>{serialCalls++;return {code:0};});
 assert.equal(serialCalls,1,'Different shapes queue behind the repository in-flight read');finishSerial({code:0});await Promise.all([first,second]);assert.equal(serialCalls,2);assert.equal(serial.tails.size,0);
+let retired=false;
+const heldJob=serial.read('held','owner/repo',{},()=>new Promise(resolve=>finishSerial=resolve));
+const retiring=serial.read('joined','owner/repo',{current:()=>!retired},()=>{serialCalls++;return {code:0};});
+const subscriber=serial.read('joined','owner/repo',{current:()=>true},()=>assert.fail('Compatible read must be shared'));
+retired=true;finishSerial({code:0});await Promise.all([heldJob,retiring,subscriber]);assert.equal(serialCalls,3,'A retired queued subscriber cannot cancel a still-current subscriber');
 let eligible=true;
 const third=serial.read('third','owner/repo',{},()=>new Promise(resolve=>finishSerial=resolve));
 const cancelled=serial.read('cancelled','owner/repo',{current:()=>eligible},()=>assert.fail('Queued obsolete work cannot dispatch'));

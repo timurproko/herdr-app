@@ -24,9 +24,11 @@ reply={code:1,out:'HTTP/2.0 429 Too Many Requests\nRetry-After: Thu, 01 Jan 1970
 await assert.rejects(read(),e=>e.rateLimited===true&&e.retryAfter===1800000);
 reply={code:1,out:'[HTTP/2.0 200 OK\nRetry-After: 1200\n\n[],HTTP/2.0 429 Too Many Requests\nRetry-After: 2400\n\n{}]'};
 await assert.rejects(read(),e=>e.rateLimited===true&&e.retryAfter===2400000,'Later pagination headers cannot shorten Retry-After');
+reply={code:1,err:'gh: Too Many Requests (HTTP 429)'};await assert.rejects(read(),e=>e.rateLimited===true);
 for(const value of [
  {code:1,out:'HTTP/2.0 403 Forbidden\nX-RateLimit-Remaining: 3300\n\n{"message":"Resource not accessible by integration"}'},
  {code:1,out:'HTTP/2.0 401 Unauthorized\nX-RateLimit-Remaining: 0\n\n{"message":"Bad credentials"}'},
+ {code:1,out:'HTTP/2.0 401 Unauthorized\n\n{"message":"API rate limit exceeded"}'},
  {code:-1073741502,err:'API rate limit exceeded'},
  {code:null,signal:'SIGTERM',err:'API rate limit exceeded'},
  {code:1,err:'command timed out; check API rate limits'},

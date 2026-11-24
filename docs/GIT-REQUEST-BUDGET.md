@@ -8,7 +8,9 @@ are not polled. An authoritative Open inventory can contradict cached final fact
 in ordinary mode; restarting the mod session also starts with fresh facts.
 Historical expiry remains a local 24-hour eligibility rule, not a cache TTL/read.
 Relative time wording also ages locally; caching does not freeze a final row at
-“merged 1 second ago” for the rest of the session.
+“merged 1 second ago” for the rest of the session. Final rows are never safety-probed,
+even with pending or unknown checks; late final-row CI changes share the same
+session-cache freshness limit.
 
 ## Measurement
 

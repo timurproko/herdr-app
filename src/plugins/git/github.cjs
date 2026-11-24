@@ -28,8 +28,8 @@ function gh(args,input,env=process.env){
       const text=err+'\n'+message;
       const error=safe('GitHub request failed. Check the selected GitHub login, permissions and API rate limits.');
       if(!expired&&!overflow&&!signal&&Number.isInteger(code)&&code>=0&&code<0x80000000
-          && !/HTTP 401|bad credentials|permission denied|resource not accessible|timeout|timed out/i.test(text)
-          && (/API rate limit|secondary rate limit|rate limit exceeded|abuse detection mechanism/i.test(text)||statuses.includes('429'))) {
+          && !statuses.includes('401') && !/HTTP 401|bad credentials|permission denied|resource not accessible|timeout|timed out/i.test(text)
+          && (/API rate limit|secondary rate limit|rate limit exceeded|abuse detection mechanism/i.test(text)||statuses.includes('429')||/\bHTTP(?:\/[\d.]+)?\s+429\b/i.test(err))) {
         error.rateLimited=true;
         const retries=[...(out+'\n'+err).matchAll(/^retry-after:\s*([^\r\n]+)/gim)].map(([,retry])=>Number.isFinite(Number(retry))?Math.max(0,Number(retry)*1000):Math.max(0,Date.parse(retry)-Date.now())||0);
         error.retryAfter=Math.max(0,...retries);

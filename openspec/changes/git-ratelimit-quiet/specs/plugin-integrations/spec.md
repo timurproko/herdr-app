@@ -127,6 +127,39 @@ The coordinator Git overview SHALL render at most one actionable PR-read failure
 - **AND** a corrected recorded URL can be read immediately without clearing unrelated remembered absences, and a successful later read can display the now-existing PR normally
 - **AND** repeated missing confirmations still emit only the first sanitized customization-log line for that exact repository and number in the session; finishing the task restores session-long historical suppression
 
+### Requirement: Pending checks fallback without live coverage
+Shown Open/Draft PRs, including pending or unknown checks, SHALL refresh state and checks through coalesced repository jobs every 45 seconds unenrolled or 120 seconds enrolled, independent of relay connectivity. Known Closed/Merged rows SHALL remain session-cached even with pending checks. Failures SHALL retain values and back off exponentially, with at least 15 minutes for rate limits. Hidden, disabled, offline, inactive or superseded contexts SHALL stop reads.
+
+#### Scenario: Pending checks settle
+- **WHEN** an unenrolled shown Open/Draft PR has pending checks and its fallback read returns settled checks
+- **THEN** the count updates in place and the fallback continues reading that shown open PR's state and checks at its normal cadence
+- **AND** a confirmed empty rollup is settled rather than unknown but does not stop an open row's state refresh
+
+#### Scenario: Failure and visibility
+- **WHEN** a fallback read fails or the panel is hidden, disabled, inactive or its machine goes offline
+- **THEN** its last displayed value remains and failures back off before another eligible read
+- **AND** hidden, disabled, inactive or offline contexts start no fallback reads and late replies cannot overwrite a new context
+
+#### Scenario: Thin unchanged-row cycle
+- **WHEN** shown PR heads and overall check summaries remain unchanged during a safety cycle
+- **THEN** one bounded repository probe reads state, draft/completion/head facts and the rollup summary without requesting individual check contexts
+- **AND** full check contexts are fetched only for changed heads or summaries, under the same single-flight lease
+
+#### Scenario: Secondary rate limit
+- **WHEN** GitHub refuses a safety read with a secondary limit despite positive hourly quota
+- **THEN** last-good facts remain and no immediate automatic retry occurs
+- **AND** the next automatic attempt waits at least 15 minutes or a longer Retry-After value
+
+#### Scenario: Settled open PR changes state
+- **WHEN** a shown unenrolled PR with settled checks is merged, closed or converted to draft after its last successful refresh
+- **THEN** the next successful fallback cycle reads its current state alongside checks and reconciles its row and totals
+- **AND** settlement alone cannot leave it indefinitely in Open after closure
+
+#### Scenario: Final history retains pending checks without rereads
+- **WHEN** a shown known Closed or Merged PR has pending or unknown checks
+- **THEN** its last-known checks remain session-cached without a safety probe or detail reread
+- **AND** Open/Draft rows still retain their normal state-and-check safety cadence
+
 ## ADDED Requirements
 
 ### Requirement: Quiet GitHub rate refusal episodes

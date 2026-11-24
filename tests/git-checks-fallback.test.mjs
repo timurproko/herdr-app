@@ -156,6 +156,9 @@ for(const coordinator of [false,true]) {
     before=requests.length;await panel.readPendingChecks({name:'owner/repo',rows:rows()},cx,()=>shown);
     assert.equal(requests.length,before+1);assert.ok(requests.at(-1).args.every(arg=>!arg.includes('contexts(')),'Unchanged pending summaries also remain thin');
   }
+  const finalTimers=[];
+  const terminal=new facts.ChecksFallback({snapshot:()=>({enabled:true,scope:'final-history',repositories:[{name:'owner/repo',uncovered:true,rows:[{state:'merged',checks:{pending:3},checksKnown:true},{state:'closed',checksKnown:false}]}]}),read:()=>assert.fail('Known final rows never get safety rereads, even for pending/unknown checks')});
+  terminal.sync({timer:{after:(...args)=>finalTimers.push(args)}});assert.equal(terminal.eligible().repositories.length,0);assert.equal(finalTimers.length,0);
   httpFailure='HTTP/2.0 401 Unauthorized\r\nX-RateLimit-Remaining: 2800\r\n\r\n{"message":"Bad credentials"}';
   assert.equal((await panel.readPendingChecks({name:'owner/repo',rows:rows()},cx,()=>true)).rateLimited,false,'Ordinary quota headers do not turn authentication failures into secondary limits');
   httpFailure='HTTP/2.0 403 Forbidden\r\nX-RateLimit-Remaining: 2800\r\n\r\n{"message":"You have exceeded a secondary rate limit"}';

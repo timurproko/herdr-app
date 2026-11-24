@@ -40,20 +40,23 @@ export class GitReads {
     const state=this.state(options),id=JSON.stringify([this.route(options),repository?.toLowerCase()??[options.cwd??'',++this.generation],key]);
     const bypass=options.manual?.remaining>0 && (options.manual.expires==null || options.manual.expires>=this.now());
     if(bypass)options.manual.remaining--; // An earlier healthy click is not a future bypass credit.
-    if(this.pending.has(id))return this.pending.get(id);
+    if(this.pending.has(id)) {
+      const job=this.pending.get(id);job.consumers.push(options.current??(()=>true));return job;
+    }
+    const consumers=[options.current??(()=>true)],current=()=>consumers.some(consumer=>consumer());
     if(state.until>this.now() && !bypass)throw Object.assign(new Error('GitHub read deferred'),{kind:'rate',quiet:true,retryAt:state.until});
     const scope=repository?JSON.stringify([this.route(options),repository.toLowerCase()]):null,previous=scope?this.tails.get(scope):null;
     const job=(async()=>{
       if(previous)await previous.catch(()=>{});
       if(state.until>this.now() && !bypass)throw Object.assign(new Error('GitHub read deferred'),{kind:'rate',quiet:true,retryAt:state.until});
-      if(options.current && !options.current())throw Object.assign(new Error('Obsolete GitHub read'),{quiet:true,retryAt:this.now()+10000});
+      if(!current())throw Object.assign(new Error('Obsolete GitHub read'),{quiet:true,retryAt:this.now()+10000});
       const admitted=state.version??0;let result;
       try{result=await run();}catch(error){if(rateRefusal(error))throw this.refusal(error,repository,options);throw error;}
       if(rateRefusal(result))throw this.refusal(result,repository,options);
       if((state.version??0)===admitted && result?.code===0 && !result.signal && !result.timed_out && !result.timedOut) {state.until=0;state.episode=false;}
       return result;
     })();
-    this.pending.set(id,job);if(scope)this.tails.set(scope,job);
+    job.consumers=consumers;this.pending.set(id,job);if(scope)this.tails.set(scope,job);
     try{return await job;}finally{if(this.pending.get(id)===job)this.pending.delete(id);if(scope && this.tails.get(scope)===job)this.tails.delete(scope);}
   }
 }
@@ -68,7 +71,7 @@ export function rateRefusal(result) {
   if(payload?.rateLimited===true)return true;
   const responseMessage=(Number(result?.code)!==0 || /^HTTP[^\n]*\b[45]\d\d\b/im.test(result?.stdout??''))?payload?.message:null;
   const text=[result?.stderr,result?.message,responseMessage,...(payload?.errors??[]).map(e=>`${e.type??''} ${e.message??''}`)].filter(Boolean).join('\n');
-  if(/auth login|not logged in|bad credentials|HTTP 401|permission denied|resource not accessible|timed? out|timeout|could not resolve host|network is unreachable|cannot start|failed to (?:start|spawn|execute)|\bEAGAIN\b|\bENOMEM\b|process init/i.test(text))return false;
+  if(/^HTTP[^\n]*\b401\b/im.test(result?.stdout??'') || /auth login|not logged in|bad credentials|HTTP 401|permission denied|resource not accessible|timed? out|timeout|could not resolve host|network is unreachable|cannot start|failed to (?:start|spawn|execute)|\bEAGAIN\b|\bENOMEM\b|process init/i.test(text))return false;
   return /\b(?:API|GitHub|secondary|primary) rate[ -]limit\b|\brate[ -]limit (?:already |has been |is )?(?:exceeded|reached|exhausted)\b|\bRATE_LIMITED\b|\bHTTP 429\b|abuse detection mechanism/i.test(text)
     || /^HTTP[^\n]*\b429\b/im.test(result?.stdout??'');
 }
@@ -134,7 +137,7 @@ export class ChecksFallback {
   eligible() {
     const state=this.snapshot();
     return state?.enabled ? {...state,repositories:state.repositories.map(repo=>({...repo,interval:repo.uncovered?CHECKS_INTERVAL:STATE_SAFETY_INTERVAL,
-      rows:repo.rows.filter(pr=>['open','draft'].includes(pr?.state) || (repo.uncovered && needsChecks(pr)))})).filter(repo=>repo.rows.length)} : null;
+      rows:repo.rows.filter(pr=>['open','draft'].includes(pr?.state))})).filter(repo=>repo.rows.length)} : null;
   }
   sync(cx) {
     const state=this.eligible();

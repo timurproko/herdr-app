@@ -188,7 +188,8 @@ redeployment is required; optional precise numbered hints are deferred.
 While Git is shown, Open/Draft PRs use a **45-second fallback** without confirmed
 enrollment (including unknown membership or missing setup), and a **120-second
 safety net** when enrolled, even during relay outages. Unenrolled pending/unknown
-checks also remain eligible. Settled or known-empty checks do not stop an open
+Open/Draft checks also remain eligible. Known Closed/Merged rows are never safety-probed,
+even when their last-known checks are pending or unknown. Settled or known-empty checks do not stop an open
 row's state reads: a later merge must leave Open without relying on another event.
 One coalesced repository job probes only number, state, draft/completion dates,
 head SHA and the last commit's rollup **STATE**, in chunks of at most **40 PRs**.
@@ -212,7 +213,7 @@ coordinators and disconnected remote machines stop reads and reject late replies
 An explicit `window().active === false` also pauses starts/follow-ups; return catches
 up once under the same cooldown. Unknown activity is allowed for compatibility;
 no independent minimized-window API is assumed.
-Settled Closed rows are session-cached, not periodically reread on generic events,
+Known Closed/Merged rows are session-cached, not periodically reread on generic events,
 manual refresh or hide/show. Ordinary Open inventory can rediscover reopened rows;
 coordinator final-history external changes wait for contradictory facts or a new
 runtime session. This is the deliberate cost/freshness trade-off of final caching.

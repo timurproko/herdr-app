@@ -4,12 +4,12 @@ import {loadMod} from '../tools/plugin-harness.mjs';
 const rates=await loadMod({host:{},modules:{'pulls.js':'src/plugins/git/mod/pulls.js'},entry:'export * from "./pulls.js";'});
 import {relayURL,repositoryName,credentialPath} from '../src/plugins/git/relay-config.js';
 async function harness(){let relay='',account='',snapshot=null;const pending=[],tasks=[];
- const cx={notify(){},spawn:fn=>tasks.push(fn(cx))},context=vm.createContext({});
+ const timers=[],cx={notify(){},spawn:fn=>tasks.push(fn(cx)),timer:{after:(ms,fn)=>timers.push({ms,fn})}},context=vm.createContext({});
  const modules={'./pulls.js':{...rates},'./host.js':{checking:()=>false,exec:(_cmd,args)=>new Promise(resolve=>pending.push({args,resolve}))},'./plugins.js':{pluginById:()=>({}),pluginSetting:(_p,key)=>key==='relay'?relay:account},'./plugins/api.js':{appHome:()=>'/fixture',pluginFile:()=>'/fixture/setup.cjs'},'./plugins/git/relay-config.js':{relayURL,repositoryName,credentialPath},'./plugins/git/notice-state.js':{noticeState:()=>snapshot}};
  const m=new vm.SourceTextModule(fs.readFileSync(new URL('../src/plugins/git/mod/notices.js',import.meta.url),'utf8'),{context});await m.link(name=>new vm.SyntheticModule(Object.keys(modules[name]),function(){for(const[k,v]of Object.entries(modules[name]))this.setExport(k,v);},{context}));await m.evaluate();const n=new m.namespace.GitNotices();
  const sync=(repository=null,pending=false,enabled=true)=>n.sync(cx,{enabled,repository,pending});
  const reply=async value=>{await Promise.resolve();const item=pending.shift();assert.ok(item,'Expected a readiness/enrollment check');item.resolve({code:0,stdout:JSON.stringify(value)});for(let i=0;i<10;i++)await Promise.resolve();return item;};
- return {n,sync,pending,reply,setRelay:v=>relay=v,setAccount:v=>account=v,setState:v=>snapshot=v};
+ return {n,sync,pending,reply,timers,cx,reads:rates.gitReads(modules['./host.js'].exec),setRelay:v=>relay=v,setAccount:v=>account=v,setState:v=>snapshot=v};
 }
 {
  const h=await harness();for(const repo of [null,'owner/one',null,'owner/two'])assert.equal(h.sync(repo,true),'setup','Missing setup is global, including non-Git agents');assert.equal(h.pending.length,0,'A missing URL needs no network checks');
@@ -60,4 +60,16 @@ async function harness(){let relay='',account='',snapshot=null;const pending=[],
  h.n.retryNow();assert.equal(h.n.presentation(['owner/a']),null,'Refresh invalidates a captured menu synchronously');
  h.sync('owner/a',false,false);assert.equal(h.n.presentation(['owner/a']),null,'Stopped controller has no eligible presentation');
 }
-console.log('PASS: stable global setup, immediate repo-switch dismissal, quiet pending enrollment, cached repo results, Settings updates and stale/disabled guards');
+{
+ const h=await harness();h.setRelay('https://relay.example');h.sync();await h.reply({setup:'ready'});
+ h.sync('owner/a');await h.reply({rateLimited:true,retryAfter:900000});
+ h.sync('owner/b');for(let i=0;i<20;i++)await Promise.resolve();
+ assert.equal(h.pending.length,0,'A second membership waits quietly during the shared cooldown');
+ assert.equal(h.timers.length,1,'Multiple deferred memberships share one wakeup');
+ assert.equal(h.n.members.get('owner/a'),'pending');assert.equal(h.n.members.get('owner/b'),'pending');
+ for(const state of h.reads.routes.values())state.until=0;
+ h.timers.shift().fn(h.cx);await h.reply({status:'ready'});await h.reply({status:'missing'});
+ assert.equal(h.sync('owner/a'),null);assert.equal(h.sync('owner/b'),'repository','Every deferred repository is retried, not just the first one');
+ h.n.readWake={due:Infinity};h.n.retryNow();h.sync('owner/a');assert.equal(h.n.readWake,null,'A new configuration cannot inherit an obsolete retry callback');await h.reply({setup:'ready'});
+}
+console.log('PASS: stable global setup, immediate repo-switch dismissal, quiet pending enrollment, cached repo results, deferred membership retries, Settings updates and stale/disabled guards');
