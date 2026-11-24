@@ -1,9 +1,13 @@
 import { v_flex } from 'gpui-base';
 import { spacePreferences, updateSpacePreferences } from './space-preferences.js';
+import { pluginEvent } from './plugins.js';
 export function spacesPage(owner, t) {
   const prefs = spacePreferences();
   const toggle = (key, id) => owner.toggle(t, id, prefs[key], (_e, cx) => {
     updateSpacePreferences({ [key]: !spacePreferences()[key] });
+    // Start verification from this event, not the sidebar's next lifecycle tick
+    // (or the focus/snapshot refresh when the dialog closes).
+    if (key === 'connectFleetToCoordinator') pluginEvent('workspace.context.refresh', { owner, cx });
     cx.notify();
   }).role('switch').accessibility_label(key === 'connectFleetToCoordinator' ? 'Connect fleet space to coordinator' : key === 'confirmLastTab' ? 'Confirm before closing the last tab' : 'Close space when the last tab closes');
   return v_flex().w_full()
