@@ -80,7 +80,14 @@ the real deploy:all result recorder: check at A, publish B before Update, then
 publish C before deploy:all's fetch. Even before inventory or installation finishes,
 the source receipt must identify C rather than carried installed provenance. During
 a mocked connected peer's deployment, the row must use C from the same-run desktop
-attempt, not A or bootstrap target B.
+attempt, not A or bootstrap target B. The title retains verified pre-update provenance
+during launch, fetch and installation, omits it if ownership changes before success,
+and switches to C only when the real recorder verifies desktop success. While peers
+remain active, the description then says Updating other machines to C, including
+with no remembered launch progress after replacement. Completion plus a fresh check
+restores Up to date. Real-recorder failure cases cover pre-install refusal retaining
+the previous revision, desktop failure invalidating it, and peer failure retaining
+the newly installed revision with the partial-outcome warning.
 Both ordinary updates and initially peer-only catch-up are covered; foreign tokens,
 pre-launch timestamps, carried desktop-only provenance and malformed commits cannot
 replace the active target. No fixture invents the worker's target receipt for this
@@ -100,7 +107,8 @@ until a valid target arrives, with the unchanged disabled **Updating…** button
 Peer-only catch-up says **Updating other machines to 4c4bff1**, with a targetless
 **Updating other machines** fallback. Fixtures distinguish installed and target
 revisions, reject malformed or foreign-run targets, preserve launch scope through
-replacement and prevent desktop-phase completion from inventing peer-only scope;
+replacement and narrow scope after verified desktop completion without inferring
+installation from the target alone;
 other state wording and the native action-slot geometry stay unchanged. Unknown revisions show only `herdr-app-custom` with no trailing space;
 known revisions retain their seven-character suffix. Missing evidence cannot claim
 current even with a cached no-update result. The check fixture separately confirms

@@ -1305,9 +1305,13 @@ until the target is known. The worker publishes its fetched main target before
 deployment; if deploy:all fetches newer main again, its run-qualified source target
 replaces that target before installation starts. The same-run desktop attempt
 remains authoritative while peers are still running. A cached availability check
-cannot keep advertising an older commit. Peer-only catch-up on an already-current desktop says
-**Updating other machines to 4c4bff1** (or **Updating other machines** until the target
-is known). If main advances beyond that desktop revision before Update, the row
+cannot keep advertising an older commit. The title follows verified installed provenance,
+not the fetched target: it retains the previous revision until desktop installation
+succeeds (or omits the revision if ownership evidence changes before success).
+Once the desktop succeeds, the title shows its new installed revision even while
+peers are still deploying, and the description switches to **Updating other machines
+to 4c4bff1**. Peer-only catch-up on an already-current desktop uses that same wording
+(or **Updating other machines** until the target is known). If main advances beyond that desktop revision before Update, the row
 switches to ordinary **Updating to** the new target instead of claiming peer-only
 work. The disabled button stays **Updating…**; the row layout and other states
 are unchanged. Shared launch feedback retains that target and scope before the detached

@@ -48,7 +48,10 @@ export function customizationRowState(snapshot, { busy = null, error = null, now
       : sameUpdateRun(snapshot?.progress, job) ? snapshot.progress : null);
     const target = updateTarget(snapshot) || commit(progress?.target);
     const peerRevision = commit(progress?.peerRevision);
-    const scope = peerRevision && (!target || peerRevision === target) ? 'Updating other machines' : 'Updating';
+    // inspect() supplies manifest-verified installed provenance. deploy:all
+    // publishes it after desktop success, before the remaining peer work ends.
+    const desktopCurrent = target && commit(snapshot?.revision) === target;
+    const scope = desktopCurrent || (peerRevision && (!target || peerRevision === target)) ? 'Updating other machines' : 'Updating';
     description = target ? `${scope} to ${target.slice(0, 7)}` : scope;
   }
   else if (unknown) description = `Update outcome unknown${job?.error ? `: ${job.error}` : ''}. Inspect ${details?.kind === 'result' ? 'details' : 'log'}: ${details?.path || 'unavailable'}`;

@@ -115,7 +115,8 @@ assert.equal(api.customizationRowState({ job: { ...targetJob, target: 'malformed
 assert.equal(api.customizationRowState({ job: { state: 'complete', target }, launch: { deadline: clock + 30000 } }, { now: clock }).description, 'Updating', 'an old completed job cannot supply a target');
 assert.equal(api.customizationRowState({ job: targetJob, progress: { token: 'target-run', target } }, { now: clock }).description, 'Updating to 4c4bff1', 'same-run context survives missing check facts');
 assert.equal(api.customizationRowState({ job: targetJob, progress: { token: 'different-run', target } }, { now: clock }).description, 'Updating', 'foreign context is ignored');
-// Capture peer-only scope before launch, not after the desktop phase finishes.
+// Preserve initial peer-only scope; verified desktop completion can also narrow
+// an ordinary update to peer work, without borrowing scope from another target.
 const peerSnapshot = { revision: target, peerPending: true, check: { target, checked: clock, available: false } };
 const peerProgress = api.updateLaunchProgress(peerSnapshot);
 assert.equal(api.customizationRowState(peerSnapshot, { busy: 'launch', now: clock }).description, 'Updating other machines to 4c4bff1');
@@ -133,7 +134,18 @@ for (const extra of [{ revision: null }, { check: { ...peerSnapshot.check, error
   assert.equal(api.updateLaunchProgress(snapshot).peerRevision, null, 'only verified current deferred work captures peer-only scope');
 }
 assert.equal(api.customizationRowState({ job: { ...targetJob, target: 'c'.repeat(40) }, progress: { ...peerProgress, token: targetJob.token } }, { now: clock }).description, 'Updating to ccccccc', 'new target invalidates the peer-only claim');
-assert.equal(api.customizationRowState({ ...peerSnapshot, job: targetJob, progress: { token: targetJob.token, target } }, { now: clock }).description, 'Updating to 4c4bff1', 'desktop phase completion cannot turn an ordinary update into a peer-only update');
+for (const phase of [
+  { options: { busy: 'launch' } },
+  { snapshot: { launch: { deadline: clock + 30000, progress: { target } } } },
+  { snapshot: { job: { ...targetJob, target } } },
+]) {
+  const snapshot = { revision: target, check: { target, available: false }, ...phase.snapshot };
+  const row = api.customizationRowState(snapshot, { now: clock, ...phase.options });
+  assert.equal(row.title, 'herdr-app-custom 4c4bff1');
+  assert.equal(row.description, 'Updating other machines to 4c4bff1', 'verified installed target narrows scope even without launch progress or deferred peers');
+  assert.equal(row.label, 'Updating…'); assert.equal(row.enabled, false);
+}
+assert.equal(api.customizationRowState({ ...peerSnapshot, revision: null, job: { ...targetJob, target } }, { now: clock }).description, 'Updating to 4c4bff1', 'target equality without verified installed provenance cannot claim desktop success');
 for (const extra of [
   { locked: true }, { peerUnknown: true }, { check: { checked: clock, attempted: clock, available: false, error: 'offline' } },
   { check: null }, { job: { state: 'unknown' } }, { job: { state: 'running', deadline: clock + 1000 } },
