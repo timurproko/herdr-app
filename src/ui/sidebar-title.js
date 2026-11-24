@@ -12,5 +12,5 @@ export function sidebarTitle(t, panelId, id) {
       height: 8 + 24 + current.length * U.row, props: { panelSwitch: panelId },
     });
   } : null;
-  return panelTitle(t, { id, icon: panel.icon, label: panel.name }, open);
+  return panelTitle(t, { id, icon: panel.icon, label: panel.name, inset: true }, open);
 }

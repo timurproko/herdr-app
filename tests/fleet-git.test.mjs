@@ -117,7 +117,7 @@ const nameOnly=(repo,root=tree)=>{assert.equal(find(root,`task-repo-counts-examp
 const toggle=repo=>{header(repo).attrs.on_click[0]({},cx);tree=panel.render(cx);};
 assert.ok(find(tree,'task-repo-body-example/a'));assert.equal(header('b'),undefined,'Closed-only repository has no Open header');
 nameOnly('a');assert.equal(text(find(tree,'git-view-open')),'Open 1');assert.equal(text(find(tree,'git-view-closed')),'Closed 1');
-const aHeader=header('a');assert.equal(aHeader.attrs.h[0],28);assert.equal(aHeader.attrs.pr[0],6);assert.equal(aHeader.kids.at(-1).attrs.size[0],24);
+const aHeader=header('a');assert.equal(aHeader.attrs.h[0],28);assert.equal(aHeader.attrs.pr[0],3);assert.equal(aHeader.kids.at(-1).attrs.size[0],24);
 assert.match(aHeader.kids.at(-1).kids[0].attrs.asset[0],/chevron-down.svg$/);assert.equal(aHeader.attrs.accessibility_label[0],'Collapse example/a');
 let foldCalls=calls.length;const foldWrites=writes.length;
 toggle('a');assert.equal(find(tree,'pr-example/a#12'),undefined);assert.equal(header('b'),undefined);nameOnly('a');

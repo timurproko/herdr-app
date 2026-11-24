@@ -249,9 +249,13 @@ reread after page-one refresh. Only an authoritative replacement, proven
 non-repository or actual context change clears incompatible facts. Open/Closed
 count badges are always visible in ordinary and coordinator Git views, showing
 **0** on first load or a real context change until totals arrive. The fixed badge
-width fits at least three digits without moving tabs. Same-repository refreshes
-keep the last-known counts; unknown-count tooltips and accessibility text identify
-loading without hiding the zero. Cold loading and coordinator verification remain panel feedback, never
+width is 32px with centred digits, fitting three digits without moving tabs.
+Each tab has equal 8px padding before its label and after the painted badge,
+selected or not. Fully visible totals have no count-only tooltip; unknown totals
+keep **Count loading; showing 0**, while totals above 999 display **999+** with
+the exact number in their tooltip. Accessible labels always keep the full total
+and loading state. Same-repository refreshes keep the last-known counts. Cold loading
+and coordinator verification remain panel feedback, never
 placeholder PR rows.
 Git's event-driven CI line sits immediately below its header and applies to
 all PRs, not just the pinned block. Rotation and line motion use native animation,
@@ -313,7 +317,12 @@ replaces its target; reopen the menu to try again. No terminal input, native
 change, remote companion or persistent deletion queue is involved.
 
 Files and Git headers have **Refresh · Pin · Close** tools in that order, using
-24px targets, matching 12px Refresh glyphs, 14px Pin/Close glyphs and the existing hover reveal. Pin remembers **Files or
+24px targets, matching 12px Refresh glyphs, 14px Pin/Close glyphs and the existing hover reveal.
+Their customization-owned title dropdowns (icon, label and chevron) use the same
+24px height, 4px corners and subtle foreground-tinted hover as the inset tools.
+A lone enabled panel keeps a static title without hover. Terminal-pane title
+styling is unchanged; the pin's persistent pressed treatment stays pin-specific.
+No native header patch is involved. Pin remembers **Files or
 Git and open/closed state for the current tab**, separate from the shared sidebar
 choice used by unpinned tabs. Returning through tab clicks, keys or agent navigation
 restores that tab's choice. While pinned, switching the panel or opening/closing it
@@ -382,9 +391,13 @@ Owner badge. Every PR block uses the same three fixed lines: a 20px title, an
 18px number/author/time line and an 18px metadata line, for a 74px block including
 spacing. A blank 24px robot slot keeps titles' truncation boundaries identical
 with or without a related agent. Robot slots, label pills and the repository headers'
-24px chevron slots end 11 logical pixels from the panel edge, matching Spaces'
-Crew pill inset. Robot and chevron glyphs share a centre line without changing
-their sizes or hit targets. The state icon also stays fixed. The byline flows
+24px chevron slots end 3 logical pixels inside their own row's highlight edge,
+matching Spaces' Crew pill (8px row padding minus its 5px negative trailing margin).
+Git keeps its highlight 5px inside the panel, versus Spaces' 8px sidebar inset;
+its controls therefore end 8px from the panel, not Spaces' 11px. At 100% zoom,
+Git's highlight-to-control gap changes from 6px to 3px; at 130%, from 7.8px to
+3.9px, matching Spaces' unchanged 3px / 3.9px gaps. Robot and chevron glyphs
+share a centre line without changing their sizes or hit targets. The state icon also stays fixed. The byline flows
 naturally from the left: **number · author · opened 4 hours ago**, with constant
 gaps and unused space at the end. The metadata line keeps **tasks · checks · review
 decision** naturally on the left, while assigned GitHub label pills form one
