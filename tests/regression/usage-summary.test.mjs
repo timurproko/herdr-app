@@ -38,7 +38,7 @@ for(const file of ['lib/ui.js','mods/custom-usage/model.js','mods/custom-usage/s
   const source=fs.readFileSync(new URL(file,root),'utf8').replace(/^import .*;\r?\n/gm,'').replace('export default class Usage','class Usage').replace(/^export \{[^\n]+\r?\n/gm,'').replace(/export /g,'');
   vm.runInContext(source,context);
 }
-vm.runInContext('globalThis.UsageView=Usage;',context);
+vm.runInContext('const uiButton=button;globalThis.UsageView=Usage;',context);
 const cx={stop_propagation:()=>stops++,notify(){},sleep:async()=>{},spawn:fn=>jobs.push(fn),timer:{after:(ms,fn)=>timers.push({ms,fn})}};
 const finishFeedback=()=>{while(timers.length){const timer=timers.shift();assert.equal(timer.ms,600);timer.fn(cx);}};
 const available={id:'report',sourceLabel:'Codex',checkedAt:Date.now(),fetchedAt:new Date().toISOString(),report:{status:'available',windows:[{id:'weekly',label:'Weekly',usedPct:18}]}};
@@ -388,4 +388,86 @@ assert.equal(byId(view,'usage-summary-open').style.tooltip,undefined,'The hover 
   assert.equal(columns.length,6);
   assert.deepEqual(cells(0),['Codex','Claude','Claude']);assert.deepEqual(cells(3),['·','·','·']);assert.deepEqual(cells(5),['','(one)','(two)']);
 }
-console.log('PASS: stale widget ---/dialog navigation, clickable provider recovery, fresh account quotas/reset counts, account context and single-flight refresh');
+// Reset success is silent for every kind/provider. Exercise the actual card,
+// claim controller, store refresh and shared collapsible; only transport is fake.
+const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
+const originalExec=context.exec;
+for(const host of [null,'pc2'])for(const sourceLabel of ['Claude','Codex'])for(const name of ['Full reset','Fable reset','Future reset']){
+  const resetField=sourceLabel==='Claude'?'claudeResets':'codexResets';
+  const group={name,left:2,endsAt:'2030-01-02T00:00:00Z',grantId:'grant-one',usable:true};
+  const entry={...cardEntry,sourceId:sourceLabel.toLowerCase(),sourceLabel,account:{id:'fixture-account',organizationId:'fixture-org'},
+    report:{status:'available',windows:[{id:'weekly',label:'Weekly',usedPct:100}],
+      [resetField]:{available:2,groups:[group]}}};
+  setup({host,reports:[entry]});summaryMode=false;viewInstance.machine=host;viewInstance.resetsOpen=new Set([entry.id]);
+  const current=()=>storage.get(key(host,'cache')).reports[0];
+  const render=()=>viewInstance.card(context.theme(),current(),{remaining:true,pins:[]},storage.get(key(host,'cache')));
+  const prefix=`usage-claude-resets-${entry.id}`,outcome=`usage-claude-reset-outcome-${entry.id}`;
+  const clipHeight=tree=>byId(tree,`${prefix}-clip`).style.h[0];
+  const before=render(),height=clipHeight(before);
+  const quotaKey=JSON.stringify([entry.id,'weekly']);
+  byId(before,`usage-track-${quotaKey}`).events.on_size_change({width:200,height:4},cx);
+  assert.equal(byId(render(),`usage-fill-${quotaKey}`).style.w[0],0);
+  const claimed=deferred(),collected=deferred(),claimStarted=deferred(),collectionStarted=deferred();
+  context.exec=async(command,args,options)=>{
+    const request=JSON.parse(args.at(-1));
+    if(request.action){
+      executions.push({command,args,options});claimStarted.resolve();await claimed.promise;
+      assert.equal(request.action,sourceLabel==='Claude'?'claude-reset':'codex-reset');
+      assert.equal(request.grantId,group.grantId);assert.equal(options.on,host);
+      return {code:0,stdout:JSON.stringify({result:'reset'})};
+    }
+    collectionStarted.resolve();await collected.promise;return originalExec(command,args,options);
+  };
+  const rid=`usage-claude-reset-line-${entry.id}:${group.grantId}`,bid=`usage-claude-reset-${entry.id}:${group.grantId}`;
+  byId(render(),rid).events.on_hover(true,cx);
+  byId(render(),bid).events.on_click({},cx);assert.equal(text(byId(render(),bid)),'Confirm');
+  byId(render(),bid).events.on_click({},cx);
+  const claimJob=jobs.pop();jobs.length=0; // discard only the confirmation-expiry job
+  const claimCx={...cx,sleep:async()=>{if(jobs.length)await jobs.shift()(claimCx);}};
+  const running=claimJob(claimCx);await claimStarted.promise;
+  const busy=()=>{const tree=render();assert.equal(text(byId(tree,bid)),'Resetting…');assert.equal(byId(tree,bid).style.disabled[0],true);assert.equal(byId(tree,outcome),undefined);assert.equal(clipHeight(tree),height);};
+  busy();claimed.resolve();await collectionStarted.promise;busy();
+  replyReports=[{...entry,report:{...entry.report,windows:[{id:'weekly',label:'Weekly',usedPct:0}],
+    [resetField]:{available:1,groups:[{...group,left:1,endsAt:'2030-01-12T00:00:00Z',grantId:'grant-two'}]}}}];
+  collected.resolve();await running;
+  const after=render();assert.equal(viewInstance.claiming,null);assert.equal(viewInstance.resetOutcome,null);
+  assert.equal(byId(after,outcome),undefined,'Success adds no description node');
+  assert.doesNotMatch(text(after),/used\. Limits refilled|did not finish/);
+  assert.equal(clipHeight(after),height,'Completing a reset adds no section height');
+  assert.equal(byId(after,`${prefix}-body`).style.pt[0],byId(before,`${prefix}-body`).style.pt[0]);
+  assert.equal(text(byId(after,`usage-claude-resets-count-${entry.id}`)),'1 available');
+  assert.match(text(after),/Expires Jan 12/);assert.doesNotMatch(text(after),/All expire/);
+  const fill=byId(after,`usage-fill-${quotaKey}`);assert.equal(fill.style.w[0],200);
+  assert.equal(fill.style.transition[0],'width');assert.equal(fill.style.transition[1].duration,700);
+  assert.equal(fill.style.transition[1].easing,'ease-out');
+  const collectRequest=JSON.parse(executions.at(-1).args.at(-1));
+  assert.equal(collectRequest.refresh,true);assert.equal(sourceLabel==='Claude'?collectRequest.sourceId:collectRequest.reportId,sourceLabel==='Claude'?'claude':entry.id);
+}
+// Transport failures and every provider refusal retain the existing message slot.
+for(const sourceLabel of ['Claude','Codex'])for(const [reply,message] of [
+  [{error:'Fixture reset failed.'},'Fixture reset failed.'],
+  [{result:'already_used'},'That reset was already used.'],
+  [{result:'not_limited'},'Nothing to reset yet: use it once you hit a limit.'],
+  [{result:'cooldown'},'Resets are cooling down. Try again later.'],
+  [{result:'ineligible'},'This account can’t use that reset.'],
+  [{result:'unavailable'},'That reset isn’t available right now.'],
+  [{result:'rate_limited'},'Too many requests. Try again shortly.'],
+  [{result:'unknown'},'The reset did not finish.'],
+]){
+  const group={name:'Full reset',left:1,grantId:'grant-one',usable:true};
+  const entry={...cardEntry,sourceId:sourceLabel.toLowerCase(),sourceLabel,report:{status:'available',windows:[],
+    [sourceLabel==='Claude'?'claudeResets':'codexResets']:{available:1,groups:[group]}}};
+  setup({reports:[entry]});replyReports=[entry];viewInstance.machine=null;viewInstance.resetsOpen=new Set([entry.id]);
+  const render=()=>card(storage.get(key(null,'cache')).reports[0]);
+  const before=render(),prefix=`usage-claude-resets-${entry.id}`;
+  context.exec=async(command,args,options)=>JSON.parse(args.at(-1)).action?{code:0,stdout:JSON.stringify(reply)}:originalExec(command,args,options);
+  viewInstance.startClaim(entry,group,`${entry.id}:${group.grantId}`,cx);
+  await jobs.shift()({...cx,sleep:async()=>{if(jobs.length)await jobs.shift()(cx);}});
+  const after=render(),outcome=byId(after,`usage-claude-reset-outcome-${entry.id}`);
+  assert.equal(text(outcome),message);assert.equal(outcome.style.h[0],18);
+  assert.equal(byId(after,`${prefix}-clip`).style.h[0],byId(before,`${prefix}-clip`).style.h[0]+20,'Failures retain their original feedback space');
+  assert.equal(viewInstance.claiming,null);
+  const other=card({...entry,id:'other-account'});assert.equal(byId(other,'usage-claude-reset-outcome-other-account'),undefined,'Failure stays on the initiating card');
+}
+context.exec=originalExec;
+console.log('PASS: stale widget/dialog navigation, provider recovery, reset success silence/stable height/refill/refresh, failure feedback, account context and single-flight refresh');
