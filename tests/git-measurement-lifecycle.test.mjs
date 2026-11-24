@@ -1,8 +1,11 @@
 // Native size events are edge-triggered by element ID and dimensions. Keep
 // historical IDs even while absent: replaying every callback hides these bugs.
 import assert from 'node:assert/strict';
-import {rowHarness,find,nodes,t} from './support/git-row.mjs';
+import {rowHarness as loadRows,find,nodes,t} from './support/git-row.mjs';
 import {ordinaryContent,taskContent,activeContent,taskWindow,scrollTask} from './support/git-scroll.mjs';
+const rowHarness=()=>loadRows({modules:process.env.GIT_LIFECYCLE_MAIN?{'main.js':process.env.GIT_LIFECYCLE_MAIN}:{}});
+const only=process.argv[process.argv.indexOf('--case')+1];
+const selected=name=>!process.argv.includes('--case')||only===name;
 const nativeSizes=()=>{
  const sizes=new Map();
  return (node,size,cx)=>{
@@ -24,7 +27,7 @@ function ordinary(h) {
  return {render,layout};
 }
 // Review #2: neither tab nor folder changes physically resize this frame.
-{
+if(selected('viewport')) {
  const h=await rowHarness(),{panel}=h,{render,layout}=ordinary(h);
  let tree=render();assert.deepEqual(layout(tree),{frame:true,content:true});tree=render();assert.ok(find(tree,'pulls-list-more-below'));
  for(const action of [()=>panel.view='closed',()=>panel.view='open',()=>panel.context='folder-b',()=>panel.context='folder-a',()=>panel.context='folder-b']) {
@@ -34,7 +37,7 @@ function ordinary(h) {
 }
 // Audit: a retained tab can return after the shared frame changed in another
 // tab. Its content size is unchanged, but its old edge flags are no longer valid.
-{
+if(selected('audit')) {
  const h=await rowHarness(),{panel}=h,{render,layout}=ordinary(h);
  let tree=render();layout(tree,390,400);tree=render();assert.equal(find(tree,'pulls-list-more-below'),undefined);
  panel.view='closed';tree=render();layout(tree,390,300);tree=render();assert.ok(find(tree,'pulls-list-more-below'));
@@ -42,7 +45,7 @@ function ordinary(h) {
 }
 // Review #3: live zoom, not a fresh panel per scale. The physical frame remains
 // 400px, so the old size-only callback must not be manufactured by the test.
-{
+if(selected('zoom')) {
  const h=await rowHarness(),{panel,cx}=h,{render,layout}=ordinary(h);
  let tree=render();layout(tree);tree=render();
  const event={position:{x:50,y:100},bounds:{x:0,y:-1000,width:390,height:2400},delta:{y:0}};
@@ -70,7 +73,7 @@ async function coordinator(count=1) {
 // Review #1: replacement text has a new cache key but the exact same 41px
 // native dimensions. The new measurement ID, not an unconditional callback,
 // must recover the measured height and the complete spacer extent.
-{
+if(selected('notice')) {
  const c=await coordinator(),{panel,cx,render,size}=c;
  let tree=render();size(first(tree,'task-pulls-frame-'),{width:390,height:400},cx);tree=render();
  let notice=first(tree,'task-notice-measure-');assert.ok(size(notice,{width:382,height:41},cx));tree=render();
@@ -84,7 +87,7 @@ async function coordinator(count=1) {
 }
 // Audit: a coordinator scope can return after its old TaskWindow was retired.
 // New cache owners need fresh native frame/content identities at equal sizes.
-{
+if(selected('audit')) {
  const c=await coordinator(),{panel,cx,render,size}=c;c.notice(null);
  for(const scope of ['home','other','home']) {
   c.scope(scope);let tree=render();assert.ok(size(first(tree,'task-pulls-frame-'),{width:390,height:400},cx));tree=render();
@@ -93,7 +96,7 @@ async function coordinator(count=1) {
 }
 // Audit: coordinator live zoom also keeps an unchanged physical frame while
 // the logical viewport expands. The content measurement is zoom-keyed.
-{
+if(selected('audit')) {
  const c=await coordinator(30),{h,panel,cx,render,size}=c;c.notice(null);
  let tree=render();size(first(tree,'task-pulls-frame-'),{width:390,height:400},cx);tree=render();
  for(let i=0;i<5;i++){size(taskContent(tree),{width:390,height:taskWindow(panel).height+8},cx);scrollTask(panel,tree,cx,taskWindow(panel).max);tree=render();}
@@ -104,7 +107,7 @@ async function coordinator(count=1) {
 }
 // Audit: removed repository labels lose their cache but native IDs can remain
 // known. Reappearance must remeasure both available and natural widths.
-{
+if(selected('audit')) {
  const c=await coordinator(),{cx,render,size}=c;
  let tree=render();const label=()=>find(tree,'task-repo-name-home-owner/repo');
  size(label().kids[0],{width:100,height:16.5},cx);size(label().kids[1].kids[0],{width:200,height:16.5},cx);tree=render();assert.ok(label().attrs.tooltip);
@@ -114,7 +117,7 @@ async function coordinator(count=1) {
 }
 // Audit: native pin-body dimensions can stay fixed during zoom. Retain raw
 // dimensions to normalize again; pin reveal A -> B -> A needs a fresh callback.
-{
+if(selected('audit')) {
  const h=await rowHarness(),{panel,cx}=h,{render,layout}=ordinary(h),size=nativeSizes();
  let tree=render();layout(tree);panel.pinMotion.measureBody({width:390,height:500},1);
  h.setZoom(0.5);tree=render();assert.deepEqual({...panel.pinMotion.bodySize},{width:780,height:1000});
