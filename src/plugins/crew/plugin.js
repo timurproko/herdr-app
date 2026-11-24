@@ -8,6 +8,7 @@
 // home itself, the first time.
 import { hc, shared, setShared, panes, terminals } from '../api.js';
 import { refreshFleets, fleetContexts, fleetPullContext, fleetColorAllowed, invalidateFleet } from './fleet.js';
+import { fleetError } from './fleet-diagnostics.js';
 
 const winPath = path => String(path).replace(/\//g, '\\');
 const CHECK_TIMEOUT = 15, INSTALL_TIMEOUT = 300;
@@ -492,13 +493,18 @@ const DISCOVERY_TIMEOUT = 25, RECORDED_TIMEOUT = 15;
 const unsupportedDiscovery = result => [1,2].includes(result.code) && !result.timedOut && !result.missing && !result.stdout.trim() &&
   /^(?:crew:\s*)?(?:unknown|unrecognized|unsupported) (?:option|flag|argument):? ['"]?--discover-prs['"]?\.?$/i.test(result.stderr.trim());
 export const readFleetStatus = async (machine, {current = () => true} = {}) => {
-  if(!current()) throw Error('Crew status superseded');
-  let result = await powershell(machine, crewCommandScript(['status', '--all', '--json', '--discover-prs']), {timeout:DISCOVERY_TIMEOUT});
-  // Successful legacy/unknown-version output needs no second command. The
-  // source adapter handles it. This fallback is separate, bounded and one-shot.
-  if(unsupportedDiscovery(result) && current())
-    result = await powershell(machine, crewCommandScript(['status', '--all', '--json']), {timeout:RECORDED_TIMEOUT});
-  if(result.code!==0) throw Error('Crew status unavailable');
+  if(!current()) throw fleetError('obsolete-generation');
+  let result, timeout=DISCOVERY_TIMEOUT;
+  try {
+    result = await powershell(machine, crewCommandScript(['status', '--all', '--json', '--discover-prs']), {timeout});
+    // Only explicit capability evidence allows a separate, bounded fallback.
+    if(unsupportedDiscovery(result) && current()) {
+      timeout=RECORDED_TIMEOUT;
+      result = await powershell(machine, crewCommandScript(['status', '--all', '--json']), {timeout});
+    }
+  } catch { throw fleetError('transport-error'); }
+  if(result.timedOut) throw fleetError('status-timeout',{timeout});
+  if(result.code!==0) throw fleetError('status-exit',{code:result.code});
   return result.stdout;
 };
 const refreshFleetContext = ({cx,force}) => cx?.spawn(async view => {
