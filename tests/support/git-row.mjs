@@ -20,7 +20,7 @@ export async function rowHarness({host={},modules={}}={}) {
       'enrollment-picker.js':{EnrollmentPicker:class{}},'panel-pin.js':{panelPin:element},'sidebar-title.js':{sidebarTitle:element},
       'panel-state.js':{changePanel(){}},'settings-dialog.js':{openSettings(){}},'panel-kit.js':{headerTool:element,contextMenu:element,panelMessage:element},...modules},
     entry:'export {default as Main} from "./main.js"; export * as facts from "./pulls.js"; export {U} from "./ui.js"; export {AggregatePulls} from "./aggregate.js";'});
-  const panel=new Main();panel.resetRepository();panel.root='/repo';panel.repo={name:'owner/repo'};panel.context=JSON.stringify(['/repo',null]);panel.view='open';
+  const panel=new Main();panel.resetRepository();panel.root='/repo';panel.repo={name:'owner/repo'};panel.context=JSON.stringify(['/repo',null]);panel.view='open';panel.foldedRepositories=new Set();
   panel.agentLinks={related:()=>agent?{key:'agent',address:'t2'}:null};
   panel.aggregate={context:{scope:'home'},target:()=>agent?{terminal:'t2'}:null,focus:(...args)=>focus.push(args)};
   const cx={focus_handle(){if(rendering)throw Error('focus handle during render');return {};},notify(){if(rendering)throw Error('notify during render');},stop_propagation(){},spawn:fn=>fn(cx)};
