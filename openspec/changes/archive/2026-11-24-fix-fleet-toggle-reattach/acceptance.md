@@ -18,7 +18,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-24-fix-fleet-toggle-reattach/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-24-fix-fleet-toggle-reattach/acceptance.md",
   "finalizedDate": "2026-11-24",
-  "specBaseSha": "1c511d7eb9a6ba944899903712439917db91a428",
+  "specBaseSha": "3bf9eb078d4f91fc6e0e72033babac6cdbcc88d5",
   "acceptanceScenarios": [
     "Large fleet responses decode in bounded native task turns while Settings remains open on the selected fleet.",
     "The existing Spaces lifecycle replaces abandoned reply processing after two seconds without relying on finally or a prior attempt TTL.",

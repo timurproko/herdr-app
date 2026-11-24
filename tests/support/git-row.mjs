@@ -62,7 +62,10 @@ export function rowGeometry(root,width,zoom=1,height) {
   const intrinsic=(n,parent)=>{
     const s=style(n,parent),a=attrs(n);
     if(typeof n==='string')return {w:[...n].reduce((w,c)=>w+(/[il1 .]/.test(c)?0.3:/[MW🤖🚀]/u.test(c)?0.9:0.56)*s.font,0),h:n?lineHeightPixels(s.line,s.font):0};
-    const p=pad(a),row=Boolean(a.flex&&!a.flex_col),kids=children(n).filter(c=>!absolute(c)).map(c=>intrinsic(c,s)),gap=v(a,'gap');
+    const p=pad(a),row=Boolean(a.flex&&!a.flex_col),kids=children(n).filter(c=>!absolute(c)).map(c=>{
+      const size=intrinsic(c,s),m=attrs(c);
+      return {w:size.w+v(m,'ml')+v(m,'mr'),h:size.h+v(m,'mt')+v(m,'mb')};
+    }),gap=v(a,'gap');
     return {w:v(a,'w',v(a,'size',p.l+p.r+(row?kids.reduce((sum,k)=>sum+k.w,Math.max(0,kids.length-1)*gap):Math.max(0,...kids.map(k=>k.w))))),
       h:v(a,'h',v(a,'size',p.t+p.b+(row?Math.max(0,...kids.map(k=>k.h)):kids.reduce((sum,k)=>sum+k.h,Math.max(0,kids.length-1)*gap))))};
   };
@@ -84,21 +87,22 @@ export function rowGeometry(root,width,zoom=1,height) {
       const ca=attrs(child),cn=intrinsic(child,s),basis=ca.flex_basis?.[0]??(ca.flex_1?0:undefined);
       const explicit=row?(ca.w?.[0]??ca.size?.[0]??(ca.w_full?innerW:undefined)):(ca.h?.[0]??ca.size?.[0]);
       const min=row?v(ca,'min_w',ca.flex_none?cn.w:0):v(ca,'min_h');
-      return {child,a:ca,n:cn,base:Math.max(min,basis??explicit??(row?cn.w:cn.h)),min,grow:v(ca,'flex_grow',ca.flex_1?1:0),shrink:ca.flex_none?0:v(ca,'flex_shrink',1)};
+      return {child,a:ca,n:cn,base:Math.max(min,basis??explicit??(row?cn.w:cn.h)),min,leading:v(ca,row?'ml':'mt'),trailing:v(ca,row?'mr':'mb'),grow:v(ca,'flex_grow',ca.flex_1?1:0),shrink:ca.flex_none?0:v(ca,'flex_shrink',1)};
     });
-    const used=records.reduce((sum,k)=>sum+k.base,0),free=available-used,grow=records.reduce((sum,k)=>sum+k.grow,0),shrink=records.reduce((sum,k)=>sum+k.shrink*k.base,0);
+    const used=records.reduce((sum,k)=>sum+k.base+k.leading+k.trailing,0),free=available-used,grow=records.reduce((sum,k)=>sum+k.grow,0),shrink=records.reduce((sum,k)=>sum+k.shrink*k.base,0);
     let offset=0;
     if(a.justify_center&&free>0&&!grow)offset=free/2;
     if(a.justify_end&&!grow)offset=free;
     for(const r of records){
+      offset+=r.leading;
       const size=Math.max(r.min,r.base+(free>0&&grow?free*r.grow/grow:free<0&&shrink?free*r.shrink*r.base/shrink:0));
       const cross=row?v(r.a,'h',v(r.a,'size',a.items_start||a.items_center?r.n.h:innerH)):v(r.a,'w',v(r.a,'size',innerW));
       const crossOffset=a.items_center?((row?innerH:innerW)-cross)/2:0;
       place(r.child,x+p.l+(row?offset:crossOffset),y+p.t+(row?crossOffset:offset),row?size:cross,row?cross:size,s,[...ancestors,n]);
-      offset+=size+gap;
+      offset+=size+r.trailing+gap;
     }
     for(const child of children(n).filter(absolute)){
-      const ca=attrs(child),cn=intrinsic(child,s),cw=v(ca,'w',v(ca,'size',ca.size_full?innerW:ca.right?innerW-v(ca,'left')-v(ca,'right'):cn.w)),ch=v(ca,'h',v(ca,'size',ca.size_full?innerH:ca.bottom?innerH-v(ca,'top')-v(ca,'bottom'):cn.h));
+      const ca=attrs(child),cn=intrinsic(child,s),cw=v(ca,'w',v(ca,'size',ca.size_full||ca.inset_0?innerW:ca.right?innerW-v(ca,'left')-v(ca,'right'):cn.w)),ch=v(ca,'h',v(ca,'size',ca.size_full||ca.inset_0?innerH:ca.bottom?innerH-v(ca,'top')-v(ca,'bottom'):cn.h));
       place(child,x+v(ca,'left'),y+v(ca,'top'),cw,ch,s,[...ancestors,n]);
     }
   };

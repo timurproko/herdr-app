@@ -381,7 +381,10 @@ All PR rows, including coordinator/fleet rows and both Open/Closed tabs, omit th
 Owner badge. Every PR block uses the same three fixed lines: a 20px title, an
 18px number/author/time line and an 18px metadata line, for a 74px block including
 spacing. A blank 24px robot slot keeps titles' truncation boundaries identical
-with or without a related agent. The state icon also stays fixed. The byline flows
+with or without a related agent. Robot slots, label pills and the repository headers'
+24px chevron slots end 11 logical pixels from the panel edge, matching Spaces'
+Crew pill inset. Robot and chevron glyphs share a centre line without changing
+their sizes or hit targets. The state icon also stays fixed. The byline flows
 naturally from the left: **number · author · opened 4 hours ago**, with constant
 gaps and unused space at the end. The metadata line keeps **tasks · checks · review
 decision** naturally on the left, while assigned GitHub label pills form one

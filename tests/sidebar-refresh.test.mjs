@@ -335,7 +335,8 @@ for (const state of ['open','closed']) for (const count of [0,1,2,50]) {
       assert.ok(rail.attrs.left[0] + rail.attrs.w[0] <= pinned.attrs.p[0],'The rail stays outside the row hover area');
       assert.equal(rail.attrs.on_click,undefined,'The decoration has no interaction handlers');
       const pinnedRow = find(pinned,'pr-908');
-      assert.equal(pinnedRow.attrs.px[0],8,'Pinning preserves the standard row content inset');
+      assert.equal(pinnedRow.attrs.pl[0],8,'Pinning preserves the standard left row content inset');
+      assert.equal(pinnedRow.attrs.pr[0],6,'Pinning preserves the Spaces-aligned right row content inset');
       assert.ok(pinnedRow.attrs.w_full,'The normal full-width hover target is preserved');
       assert.equal(divider.attrs.bg[0],'border','The horizontal separator uses the theme border');
       assert.equal(pinned.attrs.overflow_y_scrollbar,undefined);
