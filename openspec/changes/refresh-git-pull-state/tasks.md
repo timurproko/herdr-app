@@ -2,11 +2,11 @@
 
 ## 1. State-and-check freshness through existing refresh paths
 
-- [ ] 1.1 Add a packaged coordinator reproduction using fake Crew/GitHub and the actual relay consumer: settled Open merges during and outside an in-flight read; sample state and counts across the cycle and same-home verification, recording whether the enrolled fault reproduces.
-- [ ] 1.2 Extend the bounded repository fallback query/parser and scheduler to include current state, draft/completion facts and shown settled Open/Draft eligibility; verify 45-second unenrolled and 120-second enrolled timing, 20-PR chunks, authoritative empty checks and missed-event safety with fake clocks.
-- [ ] 1.3 Preserve request leases, epoch/generation guards, complete-batch publication, backoff and visibility/offline/stale-context cancellation; verify failed chunks and obsolete responses retain every last-good row.
-- [ ] 1.4 Repair any lost aggregate event invalidation established by the reproduction without changing PR #45 transport/notices unnecessarily; verify a merge/close event during a read produces the required coalesced state reread.
-- [ ] 1.5 Update README.md, docs/GIT-WEBHOOKS.md, docs/ARCHITECTURE.md and applicable testing guidance for state-and-check fallback and honest enrolled/unenrolled latency bounds; check descriptions against scheduler/query tests.
+- [x] 1.1 Add a packaged coordinator reproduction using fake Crew/GitHub and the actual relay consumer: settled Open merges during and outside an in-flight read; sample state and counts across the cycle and same-home verification, recording whether the enrolled fault reproduces.
+- [x] 1.2 Extend the bounded repository fallback query/parser and scheduler to include current state, draft/completion facts and shown settled Open/Draft eligibility; verify 45-second unenrolled and 120-second enrolled timing, 20-PR chunks, authoritative empty checks and missed-event safety with fake clocks.
+- [x] 1.3 Preserve request leases, epoch/generation guards, complete-batch publication, backoff and visibility/offline/stale-context cancellation; verify failed chunks and obsolete responses retain every last-good row.
+- [x] 1.4 Repair any lost aggregate event invalidation established by the reproduction without changing PR #45 transport/notices unnecessarily; verify a merge/close event during a read produces the required coalesced state reread.
+- [x] 1.5 Update README.md, docs/GIT-WEBHOOKS.md, docs/ARCHITECTURE.md and applicable testing guidance for state-and-check fallback and honest enrolled/unenrolled latency bounds; check descriptions against scheduler/query tests.
 
 ## 2. Coherent list membership, counts and retained presentation
 

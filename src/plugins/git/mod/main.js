@@ -18,7 +18,7 @@ import { headerTool, contextMenu, panelMessage } from './panel-kit.js';
 import { changePanel } from './panel-state.js';
 import { sidebarPanelEnabled } from './plugins.js';
 import { sidebarTitle } from './sidebar-title.js';
-import { pullListArgs, REPO_ARGS, countArgs, parseCounts, parsePullPage, agentPullNumber, pullRow, pullError, PR_FIELDS, PR_PAGE_SIZE, pendingChecksArgs, parsePendingChecks, ChecksFallback, PullFactsOrder, CHECKS_BATCH_SIZE } from './pulls.js';
+import { pullListArgs, REPO_ARGS, countArgs, parseCounts, parsePullPage, agentPullNumber, pullRow, pullError, PR_FIELDS, PR_PAGE_SIZE, pendingChecksArgs, parsePendingChecks, refreshPullFacts, ChecksFallback, PullFactsOrder, CHECKS_BATCH_SIZE } from './pulls.js';
 
 const VIEWS = ['open', 'closed'];
 const VIEW_KEY = 'custom.git.view';
@@ -338,22 +338,31 @@ export default class Changes extends View {
     else {this.pullLoading=true;this.pullRequest=request;}
     try {
       if(!current())return;
-      const updates=new Map();
+      const updates=new Map();let counts=null;
       for(let at=0;at<numbers.length;at+=CHECKS_BATCH_SIZE) {
         if(!current())return;
         const batch=numbers.slice(at,at+CHECKS_BATCH_SIZE);
-        const result=await exec('gh',pendingChecksArgs(batch,repo.name),{...(root?{cwd:root}:{}),on,timeout:30000});
+        const result=await exec('gh',pendingChecksArgs(batch,repo.name,!aggregate && at===0),{...(root?{cwd:root}:{}),on,timeout:30000});
         if(!current())return;
         if(result.code!==0 || result.timed_out || result.timedOut || result.signal)throw Error(pullError(result));
         for(const [number,value] of parsePendingChecks(result.stdout,batch))updates.set(number,value);
+        if(!aggregate && at===0) {
+          counts=parseCounts(result.stdout);
+          if(!Number.isInteger(counts?.open) || !Number.isInteger(counts?.closed))throw Error('Incomplete pull request counts');
+        }
       }
       // Commit only a complete selection. Failed chunks retain every old row.
-      const update=pr=>updates.has(pr?.number)?order.publish(read,`${repo.name.toLowerCase()}#${pr.number}`,previous=>({...(previous??pr),checks:updates.get(pr.number),checksKnown:true})).value??pr:pr;
+      const update=pr=>updates.has(pr?.number)?order.publish(read,`${repo.name.toLowerCase()}#${pr.number}`,previous=>refreshPullFacts(previous??pr,updates.get(pr.number))).value??pr:pr;
       if(aggregate) {
-        for(const entry of aggregate.entries.values())if(entry.link.repo===repo.name && entry.pr)entry.pr=update(entry.pr);
+        for(const entry of aggregate.entries.values())if(entry.link.repo===repo.name && entry.pr) {
+          entry.pr=update(entry.pr);
+          const at=Date.parse(entry.pr.mergedAt??entry.pr.closedAt??'');
+          entry.completedAt=at<=Date.now()?at:NaN;
+        }
       } else {
         for(const state of VIEWS)if(this.pulls[state])this.pulls[state]=this.pulls[state].map(update);
         this.relatedPull=update(this.relatedPull);
+        this.counts=counts;
       }
       this.ciRevision=(this.ciRevision??0)+1;
       return {failed:false};

@@ -149,9 +149,9 @@ Custom chrome. A short runtime lease selects one owner across duplicate mounts o
 windows; configuration changes and owner teardown invalidate stale callbacks.
 Hiding Git or switching repositories leaves transport active but starts no hidden
 PR/CI/agent-link reads. Disabling Git revokes ownership and closes the socket.
-Reconnection has bounded jittered transport backoff. Enrolled repositories use
-**events only**, including during a relay outage. Opening or reconnecting catches
-up using authoritative GitHub reads. Missing/invalid credentials block retries until an explicit retry or setup
+Reconnection has bounded jittered transport backoff. Events accelerate enrolled repositories, while a 120-second safety read repairs
+shown Open/Draft rows independently of relay delivery or connectivity. Opening or
+reconnecting also catches up using authoritative GitHub reads. Missing/invalid credentials block retries until an explicit retry or setup
 revision, rather than retrying on every render.
 
 `check_run`, `check_suite`, `status`, `workflow_run`, `pull_request` and `push` events
@@ -169,27 +169,36 @@ Reconnect and manual Refresh also replace label facts, with no label polling.
 
 ### Pending checks without enrollment
 
-While Git is shown, pending/in-progress checks (or an unknown rollup) in a repository
-without confirmed live enrollment get a **45-second fallback** (including unknown
-membership or missing setup). Confirmed enrolled repositories never poll. One
-coalesced repository job reads only those PRs' checks in sequential GraphQL chunks
-of at most **20 PRs**. Commands stay comfortably below Windows' process-argument
-limit, including a 120-PR expanded list. The queue lease covers every chunk; values
-publish only after the complete selection succeeds. Known empty rollups and settled
-rows are not polled. Coordinator folded sections and the other Open/Closed
-tab are not eligible. Reads share the existing ordinary/aggregate queue; contention
-rechecks eligibility after one second rather than starting a parallel request.
-Prior row values stay on screen during reads. Hidden/disabled panels, changed
-contexts, unverified coordinators and disconnected remote machines stop new reads
-and reject late replies. Settling the final pending row stops the repository job.
+While Git is shown, Open/Draft PRs use a **45-second fallback** without confirmed
+enrollment (including unknown membership or missing setup), and a **120-second
+safety net** when enrolled, even during relay outages. Unenrolled pending/unknown
+checks also remain eligible. Settled or known-empty checks do not stop an open
+row's state reads: a later merge must leave Open without relying on another event.
+One coalesced repository job reads state, draft/completion/head facts and checks
+together in sequential GraphQL chunks of at most **20 PRs**. It preserves unrelated
+labels/tasks/reviews. Ordinary totals come from the same repository batch, not the
+loaded subset; aggregate totals derive from eligible task rows, including the
+unchanged 24-hour historical completion bound. Commands stay below Windows'
+process-argument limit, including a 120-PR expanded list. The queue lease covers
+every chunk; values publish only after the complete selection succeeds.
+Coordinator folded sections and the other Open/Closed tab are not eligible.
+Reads share the existing ordinary/aggregate queue; contention rechecks eligibility
+after one second rather than starting a parallel request. Prior rows/counts stay
+on screen during reads. Hidden/disabled panels, changed contexts, unverified
+coordinators and disconnected remote machines stop reads and reject late replies.
+Settled Closed rows need no periodic read; reopen is discovered by event/manual/
+show/reconnect refresh rather than polling all closed history.
 
 Failures retain last-good values and retry after **90s, 180s, 360s, then 720s** (the
 cap); a rate-limit refusal waits **at least 15 minutes**. A successful read restores
-the 45-second cadence only if a shown row still needs it. No hooks are enrolled,
+the repository's 45/120-second cadence only if a shown row still needs it. No hooks are enrolled,
 accounts switched or relay credentials changed by this fallback.
 
-Healthy fallback latency is up to 45 seconds **plus queue time and the GitHub reads**
-(one command per 20 pending PRs, each with a 30-second timeout). Event-covered rows start after native relay dispatch
+Healthy safety latency is up to **45 seconds unenrolled or 120 seconds enrolled,
+plus queue time and the GitHub reads** (one command per 20 eligible PRs, each with a
+30-second timeout). This is the scheduling bound after the preceding read; it is
+not an unconditional wall-clock maximum across errors, stale/offline contexts or
+GitHub eventual consistency. Event-covered rows start after native relay dispatch
 and a microtask, without a configured debounce: latency includes GitHub delivery and
 data propagation, any existing request, and the authoritative reads. Ordinary events
 publish after all loaded pages, an older linked PR when needed and counts; coordinator
@@ -205,12 +214,13 @@ Failed/discarded standalone older-PR reads also release that key and use a bound
 10-second retry delay, rather than retrying on every render. Repository replacement
 invalidates old epochs; coordinator targeted reads and fallback use the same guard.
 
-A settled PR that starts a new rerun without an event is not automatically rediscovered
-by the fallback: it is deliberately not polled. Manual Refresh, opening or reconnect
-can discover it. Enrolled relay outages/missed events, GitHub eventual consistency,
-failed reads and offline machines can retain old values until an
-applicable catch-up. A displayed **Add this repo in Settings** does not imply a live
-event source; pending rows there use the fallback described above.
+A shown settled Open/Draft PR that starts a rerun or merges without an event is
+rediscovered by the next successful safety cycle. Closed settled rows, folded
+coordinator sections and hidden tabs are not periodically rediscovered. GitHub
+eventual consistency, failed reads and offline/stale contexts can retain old values
+until an applicable safety cycle or catch-up. A displayed **Add this repo in
+Settings** does not imply a live event source; shown open/pending rows there use
+the 45-second fallback described above.
 
 The bottom info card uses **Set up Git in Settings** for missing global relay
 setup, even on non-Git agents. With setup ready, it uses **Add this repo in Settings** only for a resolved, unenrolled repository. Configured

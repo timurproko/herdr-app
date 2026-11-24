@@ -685,13 +685,16 @@ transport scope; stop/replacement invalidates queued callbacks. Hidden panels st
 do no PR/agent reads. GitHub events and successful reconnection invalidate every
 loaded page rather than just the pinned PR. Snapshot refreshes are single-flight with one coalesced dirty
 flag, retain expanded depth, renew cursors, and guard repository/machine/request
-identity before reads and writes. Enrolled repositories and settled rows are never
-polled. `pulls.js` owns a one-shot 45-second pending/unknown-check fallback for shown
-rows lacking setup/enrollment; one repository batch shares the ordinary pull lease
-or aggregate queue, with 90/180/360/720-second failure backoff and at least 15 minutes
-for rate limits. Visibility, offline machines, scope and fresh coordinator identity
-are rechecked at dispatch/publication. Full row facts/pagination remain event/manual
-reads; the fallback replaces checks only and retains displayed values during reads.
+identity before reads and writes. `pulls.js` owns one-shot state-and-check safety reads for shown Open/Draft rows:
+45 seconds without confirmed enrollment, 120 seconds enrolled even during relay
+outages. Uncovered pending/unknown checks also remain eligible. One repository batch
+shares the ordinary pull lease or aggregate queue, with 90/180/360/720-second failure
+backoff and at least 15 minutes for rate limits. Visibility, offline machines, scope
+and fresh coordinator identity are rechecked at dispatch/publication. The narrow
+batch reads state, draft/completion/head facts and checks, retaining labels/tasks/
+review and all displayed values during reads. Ordinary totals are repository-wide;
+aggregate totals and 24-hour history eligibility derive from current task PR state.
+Full metadata/pagination refreshes still use event/manual reads.
 The local branch/footer and agent-link discovery lifecycle is separate.
 
 **Check-fact ordering rule:** every list, targeted/older-PR, fallback and event

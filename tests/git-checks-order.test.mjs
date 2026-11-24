@@ -4,7 +4,7 @@ import {rowHarness} from './support/git-row.mjs';
 const checks=(ok,total)=>Array.from({length:total},(_,i)=>({name:`CI ${i}`,status:i<ok?'COMPLETED':'IN_PROGRESS',conclusion:i<ok?'SUCCESS':null}));
 const raw=(number,ok=3,total=10)=>({number,url:`https://github.com/owner/repo/pull/${number}`,title:`PR ${number}`,state:'OPEN',statusCheckRollup:checks(ok,total)});
 const page=value=>JSON.stringify({data:{repository:{pullRequests:{nodes:[{...value,commits:{nodes:[{commit:{statusCheckRollup:{contexts:{nodes:value.statusCheckRollup}}}}]}}],pageInfo:{endCursor:'end',hasNextPage:false},totalCount:1}}}});
-const graph=value=>JSON.stringify({data:{repository:{[`pr${value.number}`]:{number:value.number,commits:{nodes:[{commit:{statusCheckRollup:{contexts:{nodes:value.statusCheckRollup}}}}]}}}}});
+const graph=value=>JSON.stringify({data:{repository:{open:{totalCount:1},closed:{totalCount:0},[`pr${value.number}`]:{number:value.number,state:value.state,isDraft:false,commits:{nodes:[{commit:{statusCheckRollup:{contexts:{nodes:value.statusCheckRollup}}}}]}}}}});
 const pending=[];
 const context={scope:'home',machine:null,links:[{url:raw(1).url,terminal:'t1'}]};
 const h=await rowHarness({host:{exec:(_cmd,args)=>new Promise(resolve=>pending.push({args,resolve}))},modules:{'aggregate.js':'src/plugins/git/mod/aggregate.js','plugins.js':{sidebarPanelEnabled:()=>true,pluginPullContext:()=>context,pluginEvent(){}}}});

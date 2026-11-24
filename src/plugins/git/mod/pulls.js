@@ -20,23 +20,29 @@ export class PullFactsOrder {
   }
 }
 
-// Pending-only scheduler. One-shot wakeups always recheck the live snapshot;
-// reads share the panel queue and never poll settled/event-covered rows.
+// One-shot state/check safety reads share the panel queue. Enrollment accelerates
+// via events, but cannot guarantee delivery: shown open rows still get a repair.
 export const CHECKS_INTERVAL = 45000;
+export const STATE_SAFETY_INTERVAL = 120000;
 export const needsChecks = pr => Boolean(pr && (pr.checks?.pending > 0 || (!pr.checks && pr.checksKnown !== true)));
 export class ChecksFallback {
   constructor({snapshot,read,now=()=>Date.now()}) {this.snapshot=snapshot;this.read=read;this.now=now;this.jobs=new Map();}
   stop() {this.jobs.clear();this.wakeup=null;}
   eligible() {
     const state=this.snapshot();
-    return state?.enabled ? {...state,repositories:state.repositories.map(repo=>({...repo,rows:repo.rows.filter(needsChecks)})).filter(repo=>repo.rows.length && repo.uncovered)} : null;
+    return state?.enabled ? {...state,repositories:state.repositories.map(repo=>({...repo,interval:repo.uncovered?CHECKS_INTERVAL:STATE_SAFETY_INTERVAL,
+      rows:repo.rows.filter(pr=>['open','draft'].includes(pr?.state) || (repo.uncovered && needsChecks(pr)))})).filter(repo=>repo.rows.length)} : null;
   }
   sync(cx) {
     const state=this.eligible();
     if(!state) {this.stop();return;}
     const wanted=new Set(state.repositories.map(repo=>repo.name));
     for(const [name,job] of this.jobs)if(job.scope!==state.scope || !wanted.has(name))this.jobs.delete(name);
-    for(const repo of state.repositories)if(!this.jobs.has(repo.name))this.jobs.set(repo.name,{scope:state.scope,due:this.now()+CHECKS_INTERVAL,failures:0});
+    for(const repo of state.repositories) {
+      const job=this.jobs.get(repo.name);
+      if(!job)this.jobs.set(repo.name,{scope:state.scope,interval:repo.interval,due:this.now()+repo.interval,failures:0});
+      else if(job.interval!==repo.interval) {job.interval=repo.interval;if(!job.running && !job.failures)job.due=this.now()+repo.interval;}
+    }
     this.arm(cx);
   }
   arm(cx) {
@@ -55,7 +61,7 @@ export class ChecksFallback {
       const job=this.jobs.get(repo.name);
       if(!job || job.running || job.due>this.now())continue;
       const current=()=>this.jobs.get(repo.name)===job && this.eligible()?.scope===job.scope
-        && this.eligible()?.repositories.some(r=>r.name===repo.name && r.uncovered && r.rows.length);
+        && this.eligible()?.repositories.some(r=>r.name===repo.name && r.rows.length);
       if(!current())continue;
       job.running=true;
       let result;
@@ -66,33 +72,33 @@ export class ChecksFallback {
       else if(result?.failed) {
         job.failures++;
         job.due=this.now()+Math.max(result.rateLimited?900000:0,Math.min(720000,CHECKS_INTERVAL*2**Math.min(job.failures,4)));
-      } else {job.failures=0;job.due=this.now()+CHECKS_INTERVAL;}
+      } else {job.failures=0;job.due=this.now()+job.interval;}
     }
     this.sync(cx);
   }
 }
 
-// One request per repository, only the currently shown pending PRs. Reuse the
-// same newest-workflow facts as list reads; never replace unrelated row facts.
+// One repository batch for shown open rows (or uncovered pending checks).
+// State and checks travel together; unrelated tasks/labels/reviews stay intact.
 // Keep each query comfortably below Windows' 32K argv ceiling, including
 // quoting/remote wrappers. A repository job holds its lease across all chunks.
 export const CHECKS_BATCH_SIZE = 20;
-export function pendingChecksArgs(numbers, nameWithOwner) {
+export function pendingChecksArgs(numbers, nameWithOwner, includeCounts = false) {
   const [owner,name]=nameWithOwner.split('/');
   if(!numbers.length || numbers.length>CHECKS_BATCH_SIZE || numbers.some(n=>!Number.isSafeInteger(n)||n<1))throw Error('Invalid or oversized checks batch');
-  const fields=numbers.map(n=>`pr${n}:pullRequest(number:${n}){number commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){pageInfo{hasNextPage} nodes{... on CheckRun{name status conclusion startedAt completedAt detailsUrl checkSuite{workflowRun{workflow{name}}}} ... on StatusContext{context state createdAt}}}}}}}}`).join(' ');
-  return ['api','graphql','-f',`query=query($owner:String!,$name:String!){repository(owner:$owner,name:$name){${fields}}}`,'-F',`owner=${owner}`,'-F',`name=${name}`];
+  const fields=numbers.map(n=>`pr${n}:pullRequest(number:${n}){number state isDraft createdAt mergedAt closedAt headRefName headRefOid mergeable commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){pageInfo{hasNextPage} nodes{... on CheckRun{name status conclusion startedAt completedAt detailsUrl checkSuite{workflowRun{workflow{name}}}} ... on StatusContext{context state createdAt}}}}}}}}`).join(' ');
+  return ['api','graphql','-f',`query=query($owner:String!,$name:String!){repository(owner:$owner,name:$name){${fields}${includeCounts?' open:pullRequests(states:OPEN){totalCount} closed:pullRequests(states:[CLOSED,MERGED]){totalCount}':''}}}`,'-F',`owner=${owner}`,'-F',`name=${name}`];
 }
 export function parsePendingChecks(stdout,numbers) {
   const data=JSON.parse(stdout);
   if(data.errors?.length)throw Error(data.errors.map(e=>e.message).join('; '));
   return new Map(numbers.map(number=>{
     const pr=data.data?.repository?.[`pr${number}`];
-    if(pr?.number!==number || !Array.isArray(pr.commits?.nodes))throw Error('Incomplete checks response');
+    if(pr?.number!==number || !Array.isArray(pr.commits?.nodes) || !['OPEN','CLOSED','MERGED'].includes(pr.state) || typeof pr.isDraft!=='boolean')throw Error('Incomplete checks/state response');
     const rollup=pr.commits.nodes[0]?.commit?.statusCheckRollup;
     if(rollup?.contexts?.pageInfo?.hasNextPage)throw Error('Incomplete checks contexts');
     const contexts=rollup?.contexts?.nodes??[];
-    return [number,checks(contexts.map(c=>({...c,workflowName:c.checkSuite?.workflowRun?.workflow?.name??null})))];
+    return [number,{...pr,checks:checks(contexts.map(c=>({...c,workflowName:c.checkSuite?.workflowRun?.workflow?.name??null})))}];
   }));
 }
 
@@ -212,6 +218,7 @@ export function pullRow(pr, owner, now = Date.now()) {
     : state === 'closed' ? `closed ${ago(pr.closedAt, now)}` : `opened ${ago(pr.createdAt, now)}`;
   return {
     number: pr.number, title: pr.title ?? '', url: pr.url, state, login,
+    createdAt:pr.createdAt??null,mergedAt:pr.mergedAt??null,closedAt:pr.closedAt??null,
     headRefName: pr.headRefName ?? null, headRefOid: pr.headRefOid ?? null,
     mergeConflict: ['open','draft'].includes(state) && pr.mergeable === 'CONFLICTING',
     meta: `#${pr.number} · ${login ? `${login} ` : ''}${when}`,
@@ -222,6 +229,12 @@ export function pullRow(pr, owner, now = Date.now()) {
     tasks: tasks(pr.body), checks: checks(pr.statusCheckRollup), labels: pullLabels(pr.labels),
     review: pr.reviewDecision === 'APPROVED' ? 'approved' : pr.reviewDecision === 'CHANGES_REQUESTED' ? 'changes' : null,
   };
+}
+
+// Apply the deliberately narrow safety read without erasing labels/tasks/review.
+export function refreshPullFacts(pr, value) {
+  const {state,meta,byline,when,compactWhen,mergeConflict,headRefName,headRefOid,createdAt,mergedAt,closedAt}=pullRow({...value,author:{login:pr.login}});
+  return {...pr,state,meta,byline,when,compactWhen,mergeConflict,headRefName,headRefOid,createdAt,mergedAt,closedAt,checks:value.checks,checksKnown:true};
 }
 
 // Session-owned PR badges can differ from the parent shell's branch.

@@ -290,15 +290,15 @@ No deployment or live label mutation is performed.
 
 `tests/git-checks-fallback.test.mjs` drives the actual ordinary/coordinator snapshot,
 repository-batched reader and scheduler with fake clocks and GitHub transport. It
-covers pending 3/10 to 11/11 settlement and polling stop, preserved render values
+covers pending 3/10 to 11/11 settlement with continued open-state reads, preserved render values
 while in flight, hidden/offline cancellation, native remote `machines()` layout
 readiness without an `hc` state field (and refusal for loading/missing/unrelated
 layouts), failure retention and 90/180-second
-backoff, the 15-minute rate-limit floor, event-only enrolled rows, existing-queue
+backoff, the 15-minute rate-limit floor, 120-second enrolled safety reads, existing-queue
 contention, authoritative empty rollups and late hidden/replaced-context replies.
 The 120-row ordinary/coordinator cases require six command-line-bounded chunks,
 actually launch a harmless Node child with generated arguments, retain all rows on
-a failed second chunk, then retry successfully and stop on settlement.
+a failed second chunk, then retry successfully and continue while Open.
 `tests/git-checks-order.test.mjs` injects newer publications while replies are held
 and asserts the single epoch/generation guard is wired into list, related/older,
 event, fallback and aggregate paths. Pagination also covers selecting an older PR
@@ -500,7 +500,7 @@ provider through the package harness. Synthetic tasks/gh results cover coordinat
 non-repo routing, recorded working/reported links, missing/new links, duplicate
 cross-repository PR numbers, shared PR deduplication, scoped counts/errors, exact
 worker robots, absent extra task heading/incomplete notice, repository enrollment
-links, webhook burst coalescing, no periodic GitHub reads, hide/show catch-up and
+links, webhook burst coalescing, no membership-triggered GitHub reads, hide/show catch-up and
 stale completions. It loads the real shared UI header and covers machine-style
 chevron geometry, default expansion, independent repository folds, localStorage
 restore after panel recreation, temporary repository absence, tab/refresh changes,
@@ -529,7 +529,11 @@ worker preserving adoption), last-worker-exit scope continuity,
 recent/old/undated/invalid/future and exact
 24-hour Closed boundaries, unchanged live-task eligibility, accurate counts,
 excluded empty history headers, webhook reopen/close, three-read concurrency and
-stale robot refusal. Finished-task rows use the merged shared row's labels, absent
+stale robot refusal. It additionally drives the actual relay consumer with settled
+Open-to-Merged, close, reopen and draft transitions, including a merge during a held
+read, checking current totals and unaffected row order. The delivered-event case
+passes on the pre-fix source; this is not proof of the screenshot's missed-event
+cause or live relay delivery. Finished-task rows use the merged shared row's labels, absent
 Owner badge and centred metadata separators rather than a separate historical renderer. The provider also checks source size/task bounds and rejects
 another owner/home or machine. No fixture reads real task reports or GitHub.
 Recorded links deliberately do not guarantee pre-report PR discovery. Native pixels,

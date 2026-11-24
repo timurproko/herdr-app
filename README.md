@@ -456,13 +456,17 @@ lists retain their depth and renewed cursors. Bursts coalesce, reconnect/open ca
 up, and stale replies cannot update another machine/repository. Hiding Git or
 selecting another repository stops hidden panel reads, not update notifications.
 Disabling Git or closing its chrome owner closes transport; another mounted owner
-can take over. Failed reads retain the last good status. Enrolled repositories use **events only**, not periodic CI polling. Without live
-setup or enrollment, shown pending/unknown checks have a **45-second fallback**:
-one coalesced repository job reads just those PRs in bounded 20-PR chunks,
-retaining displayed values until the complete selection succeeds.
-It stops on settlement, hide/disable, stale context or remote-machine disconnect;
-failures back off 90/180/360/720 seconds, with at least 15 minutes for rate limits.
-Settled rows are never polled. See [refresh timing and stale-data limits](docs/GIT-WEBHOOKS.md#pending-checks-without-enrollment).
+can take over. Failed reads retain the last good status. Events accelerate enrolled repository updates, with a **120-second safety net**
+for shown Open/Draft PRs even when checks have settled or the relay misses an event.
+Without confirmed enrollment, shown Open/Draft PRs and pending/unknown checks use
+ a **45-second fallback**. One coalesced repository job reads current state and
+checks together in bounded 20-PR chunks, retaining displayed values until the
+complete selection succeeds. Merge/close transitions move rows to Closed and update
+both totals; finished-task history still uses GitHub's 24-hour completion bound.
+Reads stop on hide/disable, stale context or remote-machine disconnect; failures
+back off 90/180/360/720 seconds, with at least 15 minutes for rate limits.
+Healthy safety delay is up to the cadence plus queue/GitHub read time, not a fixed
+end-to-end SLA. See [refresh timing and stale-data limits](docs/GIT-WEBHOOKS.md#pending-checks-without-enrollment).
 Unconfigured/offline panels show a
 compact bottom info card **Set up Git in Settings** only when global setup is
 missing. With setup ready, an unenrolled Git repository instead shows **Add this repo in Settings**. Enabled repos and non-Git agents have
