@@ -601,19 +601,6 @@ Every PR block SHALL retain fixed state-icon, title and related-agent slots, thr
 - **THEN** a complete compact relative time such as 27m ago is shown instead of a mid-word truncation
 - **AND** full author, action and relative-time values remain in the byline tooltip while the number, author and time remain left-aligned with constant separator gaps
 
-### Requirement: Always-visible Git tab counts
-Ordinary and coordinator Git views SHALL always display Open and Closed count badges. Unknown first-load or real-context-change totals SHALL display 0 with a loading tooltip and accessible label. Same-context refreshes SHALL retain last-known totals. Badge slots SHALL keep stable width for at least three digits, without moving neighboring tabs.
-
-#### Scenario: Unknown and loaded totals
-- **WHEN** an ordinary or coordinator Git panel first loads, then receives authoritative totals
-- **THEN** both badges visibly start at 0 and change to the real counts without moving the tabs
-- **AND** three-digit totals remain fully contained in the fixed badge geometry at supported zooms
-
-#### Scenario: Refresh retains counts
-- **WHEN** known same-repository or coordinator-home counts are refreshed, including delayed or failed reads
-- **THEN** their last-known totals remain visible rather than returning to 0
-- **AND** only a real context change clears incompatible counts back to the first-load presentation
-
 ### Requirement: Non-destructive same-context PR refresh presentation
 A same-context PR refresh SHALL retain previously displayed rows, pin geometry and pagination until replacement data is ready. Pending reads, verification and transient failures SHALL NOT replace known rows with loading or empty states. Changed repository, machine or coordinator-home identities SHALL still invalidate old facts immediately, and retained stale coordinator presentation SHALL NOT authorize reads or worker actions.
 
@@ -636,6 +623,19 @@ A same-context PR refresh SHALL retain previously displayed rows, pin geometry a
 - **WHEN** a different machine, folder or coordinator home is selected, a repository is definitively absent, or authoritative PR/task membership changes
 - **THEN** incompatible rows are removed or replaced under existing eligibility rules rather than retained as facts for the new context
 - **AND** legitimate pin navigation, task-history expiry and requested folds or tab changes remain allowed layout changes
+
+### Requirement: Always-visible Git tab counts
+Ordinary and coordinator Git views SHALL always display Open and Closed count badges. Unknown first-load or real-context-change totals SHALL display 0 with a loading tooltip and accessible label. Same-context refreshes SHALL retain last-known totals. Badge slots SHALL keep stable width for at least three digits, without moving neighboring tabs.
+
+#### Scenario: Unknown and loaded totals
+- **WHEN** an ordinary or coordinator Git panel first loads, then receives authoritative totals
+- **THEN** both badges visibly start at 0 and change to the real counts without moving the tabs
+- **AND** three-digit totals remain fully contained in the fixed badge geometry at supported zooms
+
+#### Scenario: Refresh retains counts
+- **WHEN** known same-repository or coordinator-home counts are refreshed, including delayed or failed reads
+- **THEN** their last-known totals remain visible rather than returning to 0
+- **AND** only a real context change clears incompatible counts back to the first-load presentation
 
 ### Requirement: Pending checks fallback without live coverage
 Shown pending or unknown checks without repository live coverage SHALL refresh at 45-second intervals through one coalesced repository job using the existing request queue. Failed reads SHALL retain prior values and back off exponentially; rate limits SHALL delay retries at least 15 minutes. Settled or enrolled rows SHALL NOT be polled. Hidden, disabled, offline or superseded contexts SHALL stop fallback reads.
