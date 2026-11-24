@@ -3,13 +3,33 @@
 import { exec, run } from './host.js';
 import { pluginPullContext, pluginEvent, sidebarPanelEnabled } from './plugins.js';
 import { location } from './location.js';
-import { PR_FIELDS, pullRow, repositoryFailure, PullFactsOrder } from './pulls.js';
+import { PR_FIELDS, pullRow, pullFailure, repositoryFailure, PullFactsOrder } from './pulls.js';
 export function taskPullLink(url) {
   const match=/^https:\/\/github\.com\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\/pull\/([1-9]\d*)\/?$/.exec(url??'');
   const number=Number(match?.[2]);
   return match && !match[1].split('/').some(part=>part==='.' || part==='..') && Number.isSafeInteger(number) ? {repo:match[1].toLowerCase(),number,key:`${match[1].toLowerCase()}#${number}`,url:`https://github.com/${match[1]}/pull/${number}`} : null;
 }
 const HISTORY_MS = 24 * 60 * 60 * 1000;
+const MISSING_LIVE_MS = 5 * 60 * 1000;
+// Module-session facts, not coordinator entries or portable preferences. Keep log
+// deduplication even when a live miss expires or a later read finds the PR.
+const missingPulls = new Map(), loggedMissingPulls = new Set();
+function missingTaskPull(result, number) {
+  if(pullFailure(result).kind!=='notfound')return false;
+  const text=String(result.stderr??'');
+  // Repository resolution and arbitrary "not found" text are not PR absence.
+  return new RegExp(`Could not resolve to a PullRequest with the number of ${number}\\b`, 'i').test(text)
+    || (/\bHTTP 404\b/i.test(text) && !/could not resolve to a Repository/i.test(text));
+}
+function liveLink(link) {return link.targets.some(t=>!t.historical && typeof t.terminal==='string' && t.terminal);}
+function rememberMissing(entry) {
+  missingPulls.set(entry.link.key,Date.now());
+  entry.pr=null;entry.error=null;entry.missing=true;entry.completedAt=NaN;entry.dirty=false;
+  if(!loggedMissingPulls.has(entry.link.key)) {
+    loggedMissingPulls.add(entry.link.key);
+    try {console.log(`[custom-changes] task PR not found: ${entry.link.repo} #${entry.link.number}`);}catch {}
+  }
+}
 export class AggregatePulls {
   constructor({shown,onUpdate}) {this.shown=shown;this.onUpdate=onUpdate;this.entries=new Map();this.pending=new Map();this.diagnostics=new Map();this.serial=0;this.factOrder=new PullFactsOrder();}
   currentContext({presentation = false} = {}) {
@@ -31,7 +51,15 @@ export class AggregatePulls {
     const links=new Map();
     for(const source of context.links) {const link=taskPullLink(source.url);if(!link)continue;const entry=links.get(link.key)??{...link,targets:[]};entry.targets.push({terminal:source.terminal,task:source.task,historical:source.historical===true});links.set(link.key,entry);}
     for(const key of this.entries.keys()) if(!links.has(key)) {this.entries.delete(key);this.pending.delete(key);}
-    for(const [key,link]of links) {const old=this.entries.get(key);if(old)old.link=link;else this.entries.set(key,{link,dirty:true,pr:null,error:null});}
+    for(const [key,link]of links) {
+      const old=this.entries.get(key);if(old)old.link=link;else this.entries.set(key,{link,dirty:true,pr:null,error:null});
+      const entry=this.entries.get(key),missingAt=missingPulls.get(key);
+      if(missingAt!==undefined) {
+        entry.pr=null;entry.error=null;entry.missing=true;
+        // Use the existing shown-panel lifecycle, never a new retry timer.
+        if(liveLink(link) && Date.now()-missingAt>=MISSING_LIVE_MS && !this.pending.has(key))entry.dirty=true;
+      }
+    }
     if(!this.shown()) {this.serial++;this.factOrder.reset();this.pending.clear();this.diagnostics.clear();for(const e of this.entries.values())e.dirty=true;}
     else this.pump(cx);
     return true;
@@ -64,7 +92,7 @@ export class AggregatePulls {
   }
   repositories() {
     const now=Date.now();
-    return [...new Set([...this.entries.values()].filter(e=>!e.pr || this.eligible(e,now)).map(e=>e.link.repo))].sort();
+    return [...new Set([...this.entries.values()].filter(e=>!e.missing && (!e.pr || this.eligible(e,now))).map(e=>e.link.repo))].sort();
   }
   counts() {return {open:this.rows('open').length,closed:this.rows('closed').length};}
   invalidate(repository=null) {this.diagnostics.clear();for(const e of this.entries.values())if(!repository || e.link.repo===repository.toLowerCase())e.dirty=true;}
@@ -72,12 +100,16 @@ export class AggregatePulls {
   pump(cx) {
     if(this.fallbackBusy)return;
     if(!this.context || this.context.stale || !this.shown() || this.currentContext()?.scope!==this.context.scope)return;
-    const context=this.context,serial=this.serial;
+    const context=this.context,scope=context.scope,serial=this.serial;
     for(const [key,entry]of this.entries) {
       if(this.pending.size>=3)break;
       if(!entry.dirty || this.pending.has(key))continue;
+      const missingAt=missingPulls.get(key);
+      if(missingAt!==undefined && (!liveLink(entry.link) || Date.now()-missingAt<MISSING_LIVE_MS)) {
+        entry.pr=null;entry.error=null;entry.missing=true;entry.dirty=false;continue;
+      }
       entry.dirty=false;const token={},read=this.factOrder.begin();this.pending.set(key,token);
-      const current=()=>this.serial===serial && this.shown() && this.currentContext()?.scope===context.scope && this.pending.get(key)===token && this.entries.get(key)===entry
+      const current=()=>this.serial===serial && this.shown() && this.currentContext()?.scope===scope && this.pending.get(key)===token && this.entries.get(key)===entry
         && this.currentContext()?.links.some(l=>taskPullLink(l.url)?.key===key);
       cx.spawn(async view=>{
         let updated=false;
@@ -86,21 +118,26 @@ export class AggregatePulls {
           const result=await exec('gh',['pr','view',String(entry.link.number),'--repo',entry.link.repo,'--json',PR_FIELDS],{on:context.machine,timeout:30000});
           if(!current())return;
           if(result.code!==0 || result.timed_out || result.timedOut || result.signal) {
+            if(missingTaskPull(result,entry.link.number)) {
+              const published=this.factOrder.publish(read,key,()=>null);
+              if(published.accepted)rememberMissing(entry);else entry.dirty=true;
+              return;
+            }
             const failure=await repositoryFailure(exec,result,entry.link.repo,{on:context.machine},this.diagnostics);
-            if(current())entry.error=failure;
+            if(current()) {missingPulls.delete(key);entry.missing=false;entry.error=failure;}
             return;
           }
           const value=JSON.parse(result.stdout);
           if(value.number!==entry.link.number || taskPullLink(value.url)?.key!==key)throw Error('Pull request identity mismatch');
           const published=this.factOrder.publish(read,key,()=>({...pullRow(value,entry.link.repo.split('/')[0]),key,repo:entry.link.repo}));
           if(!published.accepted) {entry.dirty=true;return;}
-          entry.pr=published.value;
+          missingPulls.delete(key);entry.missing=false;entry.pr=published.value;
           const completedAt=Date.parse(value.mergedAt??value.closedAt??'');
           entry.completedAt=completedAt<=Date.now()?completedAt:NaN;entry.error=null;updated=true;
         }catch(e){
           if(current()) {
             const failure=await repositoryFailure(exec,e,entry.link.repo,{on:context.machine},this.diagnostics);
-            if(current())entry.error=failure;
+            if(current()) {missingPulls.delete(key);entry.missing=false;entry.error=failure;}
           }
         }
         finally {
@@ -112,7 +149,7 @@ export class AggregatePulls {
           view.notify();
         }
         // Presentation callback failures are not failed GitHub reads.
-        if(updated && this.serial===serial && this.shown() && this.currentContext()?.scope===context.scope)this.onUpdate?.(view);
+        if(updated && this.serial===serial && this.shown() && this.currentContext()?.scope===scope)this.onUpdate?.(view);
       });
     }
   }
