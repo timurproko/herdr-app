@@ -10,12 +10,12 @@
 ## 2. Completion-driven checks freshness and documented latency
 
 - [ ] 2.1 Add completion, partial failure/success and rerun regression sequences through real ordinary and aggregate webhook paths, including an event during an older in-flight read; verify the full latest count reaches pinned, unpinned, older linked and coordinator rows with a coalesced follow-up.
-- [ ] 2.2 Repair any stale-count invalidation/aggregation defect demonstrated by those sequences while retaining no-polling, hide/disable and stale-context boundaries; verify focused pagination/fleet/webhook and latest-workflow tests pass without reads in obsolete contexts.
+- [ ] 2.2 Repair any stale-count invalidation/aggregation defect demonstrated by those sequences and add the approved 45-second pending/unknown-only repository fallback with exponential/rate-limit backoff while retaining enrolled-event-only, hide/disable/offline and stale-context boundaries; verify fake-clock settlement/stop, failure retention/backoff and queue coalescing plus focused pagination/fleet/webhook tests.
 - [ ] 2.3 Document event dispatch, single-flight/page queue and GitHub read timing plus unenrolled/offline/missed-event/failed-read/stale-coordinator conditions in the applicable Git docs; verify each source-derived timing statement against code and distinguish it from any measured live evidence, without changing enrollment or PRs #40/#41.
 - [ ] 2.4 When no other suite is running, execute CI=true npm run test:ci once with a long timeout and retain its actual output/exit status; inspect required checks for the final head and report success, pending, skipped or failure honestly while leaving the PR draft and never merging.
 
 ## Workflow follow-up
 
-- Stop after publishing this plan-only draft; implementation requires explicit plan approval and a new instruction.
+- Plan approved by the coordinator, including the bounded fallback addition; implement in the same PR.
 - Do not modify, label, close, refresh-branch or otherwise mutate PRs #40 and #41.
 - Write the task report to the requested Crew report path and run crew done git-row-counts at handoff.

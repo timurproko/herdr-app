@@ -12,9 +12,9 @@ The supplied screenshot visibly says **Add this repo in Settings**: that snapsho
 
 ## Goals / Non-Goals
 
-**Goals:** Give check text a real minimum/intrinsic budget, deterministic empty reservations, whole compact secondary values, and stronger horizontal readability oracles. Retain 74px blocks, title/robot/state geometry, metadata order, pagination and stale-context safety. Cover completion delivery without adding polling.
+**Goals:** Give check text a real minimum/intrinsic budget, deterministic empty reservations, whole compact secondary values, and stronger horizontal readability oracles. Retain 74px blocks, title/robot/state geometry, metadata order, pagination and stale-context safety. Cover completion delivery and an approved bounded pending-only fallback.
 
-**Non-Goals:** Native changes, deployment, webhook configuration, account changes, auto-fix changes, new periodic polling, or any changes to #40/#41. The screenshot's Rework is an assigned GitHub label pill, not the separate reviewDecision text; preserve that distinction and exact label names.
+**Non-Goals:** Native changes, deployment, webhook configuration, account changes, auto-fix changes, settled-row or enrolled-repository polling, or any changes to #40/#41. The screenshot's Rework is an assigned GitHub label pill, not the separate reviewDecision text; preserve that distinction and exact label names.
 
 ## Decisions
 
@@ -34,7 +34,13 @@ Generate compact task representations from numeric done/total facts rather than 
 
 Drive completion, partial success/failure and rerun fixtures through the real ordinary and aggregate invalidation paths. Include a completion after an earlier read has captured old data, and require the dirty follow-up to publish the new result. Repair dropped invalidations only where reproduced; keep hidden/disabled/stale-scope guards and latest-run semantics intact.
 
-There is no configured CI debounce/poll delay in the consumer beyond deferred delivery and single-flight queuing. End-to-end time is GitHub webhook delivery/propagation + relay/native dispatch + any outstanding request + GitHub reads. Ordinary batches use 30-second per-command bounds and publish after all loaded pages/target/count reads, so they have no fixed short maximum. Coordinator targeted reads are also bounded at 30 seconds and queued three at a time. Read failure retains last-good data; no periodic fallback repairs a missed final event or an unenrolled/offline setup. Document these facts and report measured timing only if actual observation is possible without changing live setup; fixture timing must be labelled synthetic.
+There is no configured CI debounce/poll delay in the consumer beyond deferred delivery and single-flight queuing. End-to-end time is GitHub webhook delivery/propagation + relay/native dispatch + any outstanding request + GitHub reads. Ordinary batches use 30-second per-command bounds and publish after all loaded pages/target/count reads, so they have no fixed short maximum. Coordinator targeted reads are also bounded at 30 seconds and queued three at a time. Read failure retains last-good data; the new fallback repairs pending unenrolled rows, but no polling repairs an already-settled missed rerun or an enrolled/offline setup. Document these facts and report measured timing only if actual observation is possible without changing live setup; fixture timing must be labelled synthetic.
+
+### Approved pending-only fallback
+
+Use 45 seconds between successful reads of shown pending/unknown rows when a repository is not enrolled (or has no configured source). Enrolled repositories remain event-only, including during a temporary disconnect. Group pending rows into one repository job, target only those PRs, and coalesce behind the existing ordinary/aggregate request queues. Keep previous rows during reads. A failed job backs off at 90/180/360 seconds up to a 12-minute cap; rate-limit refusals wait at least 15 minutes. Stop new reads immediately on hide, disable, offline machine, changed scope or settlement. A known empty rollup is settled, not an eternally unknown count. Re-evaluate eligibility at dispatch and before publication. Use one-shot native timers, never a render-time read or frame loop.
+
+Update the existing no-periodic-CI spec narrowly for this fallback; all settled and event-covered rows retain the existing no-polling guarantee. Regressions use fake clocks and reads for settlement/stop, hidden/offline cancellation, queue coalescing, errors/backoff and preserved on-screen values.
 
 ### Readability regressions alongside geometry regressions
 
@@ -46,7 +52,7 @@ Matrix: 280/320/360/480 logical px; 75/100/125/150/200% zoom; one/two-digit tota
 
 - Less space for author, verbose tasks or the separate review decision → prefer readable semantic shortening; retain full hover values and exact label facts.
 - Synthetic text metrics differ from GPUI → retain conservative padding and identify fixture versus native evidence honestly; do not claim native pixels from a model.
-- GitHub data can lag the completion event, and disconnected/missed events have no polling repair → disclose prerequisites and stale conditions, exercise in-flight follow-ups, never promise an unconditional latency SLA.
+- GitHub data can lag completion events → exercise in-flight follow-ups and the pending unenrolled fallback, disclose stale conditions, and never promise an unconditional latency SLA.
 - The existing paginated rollup query requests the first 100 contexts → the requested one/two-digit coverage is within that bound; report larger-provider limitations separately rather than equating layout capacity with API completeness.
 
 ## Migration Plan

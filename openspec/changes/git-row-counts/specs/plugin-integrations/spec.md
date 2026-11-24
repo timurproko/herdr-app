@@ -54,10 +54,41 @@ At a given panel width and zoom, every PR block SHALL reserve the same state-ico
 - **THEN** a complete compact relative time such as 27m ago is shown instead of a mid-word truncation
 - **AND** full author, action and relative-time values remain in the byline tooltip without moving neighboring cells
 
+### Requirement: Bounded aggregate reads and invalidation
+Aggregate reads SHALL be read-only, machine-bound and limited to a shown enabled Git panel. New local task links SHALL trigger targeted PR reads. CI SHALL use authenticated events or explicit refresh, with a bounded pending/unknown-only fallback for repositories lacking live coverage. Selection, plugin or ownership changes SHALL invalidate stale responses and captured actions. One repository's failure SHALL NOT erase valid rows from another.
+
+#### Scenario: Refresh and repository events
+- **WHEN** the panel opens, the user refreshes, or a relevant authenticated repository event arrives
+- **THEN** it refreshes the appropriate linked PR facts and retains unaffected repository rows
+- **AND** timer-based local Crew membership checks do not periodically re-fetch unchanged GitHub PR or CI facts
+
+#### Scenario: Hide, disable or switch during a request
+- **WHEN** Git is hidden or disabled, Crew or attachment is disabled, or the selected coordinator binding changes during a read
+- **THEN** no new aggregate follow-up read starts from that obsolete request
+- **AND** its late result cannot populate the next context or authorize a stale agent-focus action
+
+#### Scenario: Repository unavailable
+- **WHEN** one linked repository is inaccessible to that machine's GitHub login
+- **THEN** the panel preserves other repositories' valid rows and reports a scoped incomplete result
+- **AND** it does not switch accounts, install companions or enroll webhook repositories automatically
+
 ## ADDED Requirements
 
+### Requirement: Pending checks fallback without live coverage
+Shown pending or unknown checks without repository live coverage SHALL refresh at 45-second intervals through one coalesced repository job using the existing request queue. Failed reads SHALL retain prior values and back off exponentially; rate limits SHALL delay retries at least 15 minutes. Settled or enrolled rows SHALL NOT be polled. Hidden, disabled, offline or superseded contexts SHALL stop fallback reads.
+
+#### Scenario: Pending checks settle
+- **WHEN** an unenrolled shown PR has pending checks and its fallback read returns settled checks
+- **THEN** the count updates in place and subsequent fallback timers start no reads for that settled row
+- **AND** a confirmed empty rollup is settled rather than unknown
+
+#### Scenario: Failure and visibility
+- **WHEN** a fallback read fails or the panel is hidden, disabled or its machine goes offline
+- **THEN** its last displayed value remains and failures back off before another eligible read
+- **AND** hidden, disabled or offline contexts start no fallback reads and late replies cannot overwrite a new context
+
 ### Requirement: Completion-driven Git checks freshness
-A shown, enabled Git panel with an enrolled repository and healthy relay SHALL refresh loaded checks from authoritative GitHub reads after relevant completion events, including events during an in-flight refresh. Reconnect and reopening SHALL catch up. The app SHALL retain latest-workflow/rerun semantics without periodic CI polling and document latency dependencies and conditions that retain stale counts.
+A shown, enabled Git panel with an enrolled repository and healthy relay SHALL refresh loaded checks from authoritative GitHub reads after relevant completion events, including events during an in-flight refresh. Reconnect and reopening SHALL catch up. The app SHALL retain latest-workflow/rerun semantics without polling settled or enrolled rows and document latency dependencies and conditions that retain stale counts.
 
 #### Scenario: Completion and rerun update loaded rows
 - **WHEN** authenticated check, status or workflow invalidation arrives for a loaded ordinary or coordinator repository after checks change
