@@ -2,6 +2,31 @@
 
 ## MODIFIED Requirements
 
+### Requirement: Always-visible Git tab counts
+Ordinary and coordinator Git views SHALL always display Open and Closed count badges. Unknown totals SHALL show 0 with loading feedback; refreshes SHALL retain known totals. One-, two- and three-digit counts SHALL retain stable tab positions and symmetric label-left/badge-right padding. Only loading or abbreviated counts SHALL have count tooltips; accessible labels SHALL retain exact totals.
+
+#### Scenario: Unknown and loaded totals
+- **WHEN** an ordinary or coordinator Git panel first loads, then receives authoritative totals
+- **THEN** both badges visibly start at 0 and change to the real counts without moving the tabs
+- **AND** three-digit totals remain fully contained in the fixed badge geometry at supported zooms
+- **AND** unknown totals have a loading tooltip and accessible label, while fully visible exact totals have no count-only tooltip on the tab or badge
+
+#### Scenario: Refresh retains counts
+- **WHEN** known same-repository or coordinator-home counts are refreshed, including delayed or failed reads
+- **THEN** their last-known totals remain visible rather than returning to 0
+- **AND** only a real context change clears incompatible counts back to the first-load presentation
+
+#### Scenario: Symmetric tab padding across digit changes
+- **WHEN** either selected or unselected Open or Closed tabs display one-, two- or three-digit counts in ordinary or coordinator views at 75–200% zoom including 130%
+- **THEN** the gap from the tab's left edge to its label equals the gap from its painted count badge's right edge to the tab's right edge
+- **AND** digits remain centred within the badge without moving tab or badge bounds as digit counts change
+
+#### Scenario: Abbreviated large counts
+- **WHEN** a count exceeds 999
+- **THEN** its bounded badge displays 999+ and exposes the full exact total through its tooltip and accessible label
+- **AND** its tab geometry remains unchanged
+
+
 ### Requirement: Git trailing alignment with Spaces
 Git PR rows and coordinator repository headers SHALL match the actual Spaces Crew pill inset inside its own row highlight: 3 logical pixels. Robot and header chevron reservations SHALL be 24px wide with equal right edges matching actual label pills. Their glyphs SHALL share a centre line without resizing. All row variants SHALL preserve interaction targets, absent-agent title reservations, tooltips, callbacks and vertical geometry.
 

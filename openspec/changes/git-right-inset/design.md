@@ -6,7 +6,7 @@ See proposal.md for motivation. The specification added by #53 currently mandate
 
 ## Goals / Non-Goals
 
-**Goals:** Match the visible gap between the trailing painted control/pill and its own row highlight edge. Keep a single robot/chevron centre line and a stable title reservation across agent presence and every row variant.
+**Goals:** Match the visible gap between the trailing painted control/pill and its own row highlight edge. Keep a single robot/chevron centre line and a stable title reservation across agent presence and every row variant. Make tab-pill padding symmetric around labels and painted badges without digit-driven tab movement, and show only informative count tooltips.
 
 **Non-Goals:** Moving Spaces, changing shared header defaults, normalizing unrelated panel gutters, altering vertical geometry, changing pagination or scroll fades, or touching PR #56's branch.
 
@@ -41,6 +41,14 @@ In `tests/git-right-edge.test.mjs`, obtain the Spaces row and Crew pill boxes fr
 
 Preserve the 280/320/360/390/480px by 75/100/125/130/150/200% matrix, Open/Closed/merged, agent presence, ordinary/pinned/scrolling/ghost/coordinator paths, folded/expanded headers and paged continuation headers. Mutation guards must reject restored 6px padding, altered header slot geometry and unaccounted borders. Retain title reservation/truncation, fixed vertical anchors, 24px hit targets and ghost noninteraction checks.
 
+### Symmetric tab pills and informative-only count tooltips
+
+The approved extension uses the existing shared `segment` renderer for ordinary and coordinator views. Keep 8px tab padding on both sides, a 6px label-to-badge gap and a 32px badge reservation, with centred digits. Give the label a measurable node and constrain the painted badge itself to 32px rather than relying on a percentage-width nested child. This explicitly keeps the painted badge's right edge at the padded content edge without moving either tab as counts change between one, two and three digits.
+
+Known exact totals through 999 have no tab or badge tooltip. Unknown totals retain `Count loading; showing 0`; totals above 999 show `999+` with their full exact count in the badge tooltip. Accessible labels retain the exact count and loading state. Use symmetric 4px padding inside the badge so the four-character overflow indicator remains bounded; no per-render text-measurement work or guessed fit threshold is introduced.
+
+Extend `tests/git-count-badges.test.mjs` to lay out the actual ordinary and coordinator panel tab strips at 280–480px and 75–200% zoom including 130%. Both tabs and selected/unselected states must have equal label-left and painted-badge-right insets, centred badge text, complete one/two/three-digit totals and unchanged tab/badge bounds across digit changes. Keep unknown/loading, same-context retention and true context reset coverage. Tooltip assertions distinguish visible exact, loading and abbreviated cases. Update the standalone segment geometry expectation for the explicit overflow indicator and document what tooltip information remains.
+
 ### Coexist with independent scrolling work
 
 Do not incorporate #56's paging/fade implementation. Reconcile only the shared row/header padding and geometry oracle if default-branch changes land first. Assertions should reason about rendered row boundaries rather than specific paging-container names wherever feasible, preserving that PR's separate paging tests and budget.
@@ -48,7 +56,7 @@ Do not incorporate #56's paging/fade implementation. Reconcile only the shared r
 ## Risks / Trade-offs
 
 - **Synthetic geometry is not native paint evidence** → Report measured renderer values and screenshot scaling separately; do not claim native pixel validation or installation.
-- **Two PRs edit the same module/test** → Keep source diff to the two trailing inset settings and comment; preserve whichever viewport implementation lands first.
+- **Two PRs edit the same module/test** → Keep source diff to the two trailing inset settings, comment and shared segment presentation; preserve whichever viewport implementation lands first.
 - **Old panel-relative checks would reject the intended fix** → Replace their oracle and document the deliberately different 8px Git versus 11px Spaces panel-relative trailing insets.
 - **Host load from concurrent full suites** → After approval, run quick targeted geometry checks first; run `CI=true npm run test:ci` only when no other suite is active, once, then read required-check results on the final head without a foreground watch.
 

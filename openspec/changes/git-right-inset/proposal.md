@@ -10,6 +10,8 @@ The installed follow-up to #53 matches trailing controls to the panel boundary, 
 - Move those Git trailing edges right by 3 logical pixels, retaining the existing row highlight bounds, 24px control slots, glyph centre lines, title reservation and vertical geometry.
 - Replace the complete-panel regression's panel-relative oracle with a row-highlight-relative comparison against the actual Spaces renderer across its existing width/zoom and presentation matrix.
 - Correct the README and testing guidance to distinguish row-relative from panel-relative geometry and record measured before/after values.
+- Remove count-only tab/badge tooltips while retaining loading information and exact totals for abbreviated counts above 999.
+- Make Open/Closed tab padding explicitly symmetric around the label and fixed-width, centred count badge; protect both selected states and ordinary/coordinator views with 1/2/3-digit geometry coverage.
 
 ## Capabilities
 
@@ -19,8 +21,8 @@ None.
 
 ### Modified Capabilities
 
-- `plugin-integrations`: Git trailing alignment is defined relative to each row's highlight, not equal distance from the panels' different outer boundaries.
+- `plugin-integrations`: Git trailing alignment is defined relative to each row's highlight, not equal distance from the panels' different outer boundaries; tab counts retain stable reservations with symmetric tab padding and informative-only tooltips.
 
 ## Impact
 
-Minimal source changes in `src/plugins/git/mod/main.js` for shared PR trailing padding and repository-header trailing inset; focused changes in `tests/git-right-edge.test.mjs` and related documentation. No change to Spaces, shared header defaults, pagination, fade logic, pin motion, GitHub reads or installed files. The independent scroll-paging PR #56 remains untouched; its renderer/test changes must retain this row-relative oracle whichever PR merges first.
+Minimal source changes in `src/plugins/git/mod/main.js` for shared PR trailing padding, repository-header trailing inset and tab segment count presentation; focused changes in geometry/count regressions and related documentation. No change to Spaces, shared header defaults, pagination, fade logic, pin motion, GitHub reads or installed files. The independent scroll-paging PR #56 remains untouched; its renderer/test changes must retain this row-relative oracle whichever PR merges first.
