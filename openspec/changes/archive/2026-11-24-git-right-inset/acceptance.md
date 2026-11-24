@@ -19,7 +19,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-24-git-right-inset/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-24-git-right-inset/acceptance.md",
   "finalizedDate": "2026-11-24",
-  "specBaseSha": "386fcc4a01a4ed4ba6e0ec04792dd8ba34322d09",
+  "specBaseSha": "934fb700cb4bc4bd3d7c4bd7f219d05b19f9a28d",
   "acceptanceScenarios": [
     "Git trailing control gaps match actual Spaces row highlights at 3px logical, or 3.9px at 130%, with unchanged highlight bounds, 24px targets and vertical geometry.",
     "Both Git tabs retain equal 8px label-left and painted-badge-right padding with centred 32px count badges and no movement between one, two and three digits.",
