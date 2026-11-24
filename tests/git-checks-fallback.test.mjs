@@ -154,6 +154,14 @@ for(const coordinator of [false,true]) {
   assert.equal((await panel.readPendingChecks({name:'owner/repo',rows:rows()},cx,()=>true)).rateLimited,false,'Ordinary quota headers do not turn authentication failures into secondary limits');
   httpFailure='HTTP/2.0 403 Forbidden\r\nX-RateLimit-Remaining: 2800\r\n\r\n{"message":"You have exceeded a secondary rate limit"}';
   assert.equal((await panel.readPendingChecks({name:'owner/repo',rows:rows()},cx,()=>true)).rateLimited,true,'A secondary refusal in stdout is a rate limit despite positive hourly remaining');
+  let rateNow=0,allow=false;const limitedCalls=[],rateTimers=[],rateTasks=[];
+  const limiter=new facts.ChecksFallback({now:()=>rateNow,snapshot:()=>({enabled:true,scope:'same-account',repositories:['a/repo','b/repo'].map(name=>({name,uncovered:true,rows:[{state:'open',checksKnown:true}]}))}),read:async repo=>{limitedCalls.push(repo.name);return allow?{}:{failed:true,rateLimited:true,retryAfter:1800000};}});
+  const rateCx={spawn:fn=>rateTasks.push(fn(rateCx)),timer:{after:(ms,fn)=>rateTimers.push({ms,fn})}};
+  limiter.sync(rateCx);rateNow=45000;rateTimers.shift().fn(rateCx);await flush();await Promise.all(rateTasks);
+  assert.deepEqual(limitedCalls,['a/repo'],'A secondary refusal must not immediately probe another repository on the same account');
+  limiter.stop();limiter.sync(rateCx);assert.ok(rateTimers.at(-1).ms>=1800000,'Account cooldown survives stop/reopen for every repository');
+  rateNow=1844999;await limiter.run(rateCx);assert.equal(limitedCalls.length,1);
+  allow=true;rateNow=1845000;await limiter.run(rateCx);assert.deepEqual(limitedCalls,['a/repo','a/repo','b/repo']);
   assert.ok(notifications>0);await Promise.all(tasks);
 }
 console.log('PASS ordinary/coordinator state+checks safety: 45s unenrolled / 120s enrolled, settled and empty open rows, bounded 120-row chunks, full publication, retained failures/backoff, visibility/offline/context cancellation and shared queue (synthetic clocks/transport)');

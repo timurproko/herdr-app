@@ -47,7 +47,7 @@ export class ChecksFallback {
     this.arm(cx);
   }
   arm(cx) {
-    const due=Math.min(Infinity,...[...this.jobs.values()].filter(j=>!j.running).map(j=>j.due));
+    const due=Math.min(Infinity,...[...this.jobs.values()].filter(j=>!j.running).map(j=>Math.max(j.due,this.cooldownUntil??0)));
     if(!Number.isFinite(due) || (this.wakeup && this.wakeup.due<=due))return;
     const wakeup=this.wakeup={due};
     cx.timer?.after(Math.max(0,due-this.now()),view=>{
@@ -58,6 +58,7 @@ export class ChecksFallback {
   }
   async run(cx) {
     const state=this.eligible();if(!state) {this.stop();return;}
+    if(this.now()<(this.cooldownUntil??0)) {this.arm(cx);return;}
     for(const repo of state.repositories) {
       const job=this.jobs.get(repo.name);
       if(!job || job.running || job.due>this.now())continue;
@@ -74,6 +75,9 @@ export class ChecksFallback {
         job.failures++;
         job.due=this.now()+Math.max(result.rateLimited?900000:0,result.retryAfter??0,Math.min(720000,CHECKS_INTERVAL*2**Math.min(job.failures,4)));
         if(result.rateLimited || result.retryAfter)this.cooldowns.set(repo.name,job.due);
+        // Repositories in this panel share the machine's account. A secondary
+        // refusal must not immediately fan out into the next repository.
+        if(result.rateLimited) {this.cooldownUntil=job.due;break;}
       } else {job.failures=0;job.due=this.now()+job.interval;}
     }
     this.sync(cx);

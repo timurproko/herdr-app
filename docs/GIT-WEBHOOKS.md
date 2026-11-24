@@ -199,7 +199,8 @@ or date Retry-After is honored without a separate request. A secondary/burst ref
 is still a rate limit when the hourly quota has points remaining; there is no
 immediate retry and no overlapping probe/detail cycle. The in-memory repository
 cooldown survives hiding, reopening or switching tabs so those actions cannot
-bypass Retry-After. A successful read restores
+bypass Retry-After. A rate refusal also pauses this panel's other repositories;
+it does not immediately fan out probes against the same machine's account. A successful read restores
 the repository's 45/120-second cadence only if a shown row still needs it. No hooks are enrolled,
 accounts switched or relay credentials changed by this fallback.
 
