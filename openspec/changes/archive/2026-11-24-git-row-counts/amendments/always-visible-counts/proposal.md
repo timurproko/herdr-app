@@ -1,0 +1,5 @@
+# Approved amendment: always-visible Open/Closed counts
+
+The person explicitly replaces the old unknown-count blank presentation in PR #42: both ordinary and coordinator Git tabs must always paint a count badge. On first load or a real context change, unknown totals display 0; successful totals then replace it. Same-repository refreshes retain last-known counts instead of dropping to 0. Keep the existing fixed badge geometry, accommodating at least three digits without moving tabs. Tooltip/accessibility text may identify unknown/loading counts.
+
+Implement this through the shared segment renderer, preserving the existing count retention/invalidation paths. Add regressions for both actual panel render paths, cold/unknown/loaded transitions, same-context reads in flight and real context changes, plus three-digit geometry/containment checks. Update the spec and README statements that disallow a first-load zero. This is a third approved outcome; the natural lower-line display amendment and freshness outcome remain in the same PR.

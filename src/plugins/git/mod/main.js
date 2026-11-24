@@ -8,6 +8,7 @@ import { AgentLinks } from './agent-links.js';
 import { AggregatePulls } from './aggregate.js';
 import { GitWebhooks } from './webhooks.js';
 import { GitNotices } from './notices.js';
+import * as host from './host.js';
 import { EnrollmentPicker } from './enrollment-picker.js';
 import { labelColors } from './label-colors.js';
 import { PinSwap, PIN_SWAP_MS } from './pin-swap.js';
@@ -17,7 +18,7 @@ import { headerTool, contextMenu, panelMessage } from './panel-kit.js';
 import { changePanel } from './panel-state.js';
 import { sidebarPanelEnabled } from './plugins.js';
 import { sidebarTitle } from './sidebar-title.js';
-import { pullListArgs, REPO_ARGS, countArgs, parseCounts, parsePullPage, agentPullNumber, pullRow, pullError, PR_FIELDS, PR_PAGE_SIZE, repositoryRead, repositoryFailure } from './pulls.js';
+import { pullListArgs, REPO_ARGS, countArgs, parseCounts, parsePullPage, agentPullNumber, pullRow, pullError, PR_FIELDS, PR_PAGE_SIZE, repositoryRead, repositoryFailure, pendingChecksArgs, parsePendingChecks, ChecksFallback, PullFactsOrder, CHECKS_BATCH_SIZE } from './pulls.js';
 
 const VIEWS = ['open', 'closed'];
 const VIEW_KEY = 'custom.git.view';
@@ -63,11 +64,14 @@ export default class Changes extends View {
   }
 
   close() {
+    this.checksFallback?.stop();this.factOrder?.reset();
     this.enrollmentPicker?.stop();this.aggregate?.stop();this.webhooks?.stop();this.notices?.stop();
     this.rootRequest=null;this.pullRequest=null;this.relatedRequest=null;
   }
 
   resetRepository() {
+    this.checksFallback?.stop();this.fallbackRequest=null;
+    this.factOrder ??= new PullFactsOrder();this.factOrder.reset();
     this.ciRevision=(this.ciRevision??0)+1;
     // Native size callbacks fire on size changes, not data resets. Keep the
     // controller's geometry for these same element IDs across repository loads.
@@ -79,7 +83,7 @@ export default class Changes extends View {
     this.pageError = null; this.loadingState = null; this.appending = false; this.scrollMotion = null;
     this.selection = null; this.agentRequest = null; this.agentResolved = null;
     this.pinKey = null; this.pinRevealed = true;
-    this.relatedKey = null; this.relatedPull = null; this.relatedRequest = null;
+    this.relatedKey = null; this.relatedPull = null; this.relatedRequest = null;this.relatedRetry=null;
     this.webhooks?.stop(); this.webhookDirty = false; this.ciSweep = null;
     this.pullError = null; this.pullLoading = false; this.pullRequest = null;
   }
@@ -99,7 +103,7 @@ export default class Changes extends View {
         // The clicked link already verified this destination's repository.
         // Retain rows across its worktree/folder refresh, but invalidate every
         // old-folder request before accepting any new terminal or Git result.
-        this.pinMotion.rebase(context); this.root = null;
+        this.pinMotion.rebase(context); this.root = null;this.factOrder.reset();
         this.selection = null; this.agentRequest = null; this.agentResolved = null;
         this.pullRequest = null; this.pullLoading = false;
         this.relatedRequest = null; this.relatedKey = null; this.webhookDirty = false;
@@ -201,7 +205,7 @@ export default class Changes extends View {
     const after = append ? this.pages[state].cursor : null;
     if (append && (!this.pages[state].hasMore || !after || state !== this.view || !this.shown())) return;
     const root = this.root, on = this.on, context = this.context;
-    const request = this.pullRequest = {};
+    const request = this.pullRequest = {},read=this.factOrder.begin();
     const current = () => sidebarPanelEnabled('changes') && this.pullRequest === request && this.root === root && this.context === context && key() === context;
     this.pullLoading = true; this.loadingState = state; this.appending = append; this.pageError = null;
     if (notify) cx.notify();
@@ -221,8 +225,9 @@ export default class Changes extends View {
         if (list.code !== 0 || list.timed_out || list.timedOut || list.signal) throw await repositoryFailure(exec,list,this.repo.name,{cwd:root,on});
         if (!current()) return;
         const page = parsePullPage(list.stdout);
-        const rows = page.pulls.map(pr => pullRow(pr, this.repo.owner));
-        const existing = append ? this.pulls[state] ?? [] : [];
+        const rows = page.pulls.map(pr => this.publishPull(pullRow(pr,this.repo.owner),read).value).filter(Boolean);
+        const incoming=new Map(rows.map(pr=>[pr.number,pr]));
+        const existing = (append ? this.pulls[state] ?? [] : []).map(pr=>incoming.get(pr.number)??pr);
         const seen = new Set(existing.map(pr => pr.number));
         this.pulls[state] = [...existing, ...rows.filter(pr => !seen.has(pr.number))];
         this.ciRevision=(this.ciRevision??0)+1;
@@ -231,7 +236,7 @@ export default class Changes extends View {
         this.pullsAt[state] = Date.now(); this.pullError = null;
         // All list and webhook reads share pullRequest/pullLoading: one writer.
         if (append) return;
-        this.relatedKey = null;
+        this.relatedKey = null;this.relatedRetry=null;
         const counts = await gh(countArgs(this.repo.name)).catch(() => null);
         if (!current()) return;
         if (counts?.code === 0) this.counts = parseCounts(counts.stdout) ?? this.counts;
@@ -249,13 +254,19 @@ export default class Changes extends View {
     });
   }
 
+  publishPull(pr,read,repo=this.repo?.name) {
+    return this.factOrder.publish(read,`${repo.toLowerCase()}#${pr.number}`,()=>pr);
+  }
+
   // Keep an explicitly linked PR pinnable even when it is older than page 1.
   // This one targeted lookup does not load earlier list pages or alter cursors.
   loadRelatedPull(cx) {
     const number = this.agentPull ?? location().pullNumber;
-    if (!this.repo || !number || !this.shown()) return;
+    // Related reads use the same lease as list, event and fallback snapshots.
+    // Do not cache a selection that has not actually acquired the queue.
+    if (!this.repo || !number || !this.shown() || this.pullLoading) return;
     const scope = JSON.stringify([this.context,this.repo.name,number]);
-    if (this.relatedKey === scope) return;
+    if (this.relatedKey === scope || (this.relatedRetry?.scope===scope && this.relatedRetry.until>Date.now())) return;
     this.relatedKey = scope; this.relatedRequest = null;
     // Manual page-one refresh may need to re-read the older active PR. Keep its
     // pin mounted while that same-number replacement is pending or fails.
@@ -263,17 +274,96 @@ export default class Changes extends View {
     const known = [...(this.pulls.open ?? []), ...(this.pulls.closed ?? [])].find(pr => pr.number === number);
     if (known) { this.relatedPull = known; return; }
     const context = this.context, repo = this.repo, root = this.root, on = this.on;
-    const request = this.relatedRequest = {};
-    const current = () => sidebarPanelEnabled('changes') && this.relatedRequest === request && this.relatedKey === scope && this.context === context
-      && key() === context && (this.agentPull ?? location().pullNumber) === number;
+    const request = this.pullRequest = this.relatedRequest = {},read=this.factOrder.begin();
+    this.pullLoading=true;
+    const current = () => sidebarPanelEnabled('changes') && this.pullRequest===request && this.relatedRequest === request && this.relatedKey === scope && this.context === context
+      && key() === context && this.shown() && (this.agentPull ?? location().pullNumber) === number;
     cx.spawn(async cx => {
+      let accepted=false;
       try {
+        await Promise.resolve();if(!current())return;
         const result = await exec('gh', ['pr','view',String(number),'--repo',repo.name,'--json',PR_FIELDS], {cwd:root,on,timeout:30000});
-        if (!current() || result.code !== 0) return;
+        if (!current() || result.code !== 0 || result.timed_out || result.timedOut || result.signal) return;
         const pr = JSON.parse(result.stdout);
-        if (pr.number === number) {this.relatedPull = pullRow(pr,repo.owner);this.ciRevision=(this.ciRevision??0)+1;}
-      } catch {} finally { await Promise.resolve(); cx.notify(); }
+        if (pr.number === number) {
+          const published=this.publishPull(pullRow(pr,repo.owner),read,repo.name);accepted=published.accepted;
+          if(published.value)this.relatedPull=published.value;
+          if(accepted)this.ciRevision=(this.ciRevision??0)+1;
+        }
+      } catch {} finally {
+        if(this.relatedRequest===request) {
+          this.relatedRequest=null;
+          if(!accepted && this.relatedKey===scope) {
+            this.relatedKey=null;
+            // A released cache key permits retry, not a render-driven hot loop.
+            const retry=this.relatedRetry={scope,until:Date.now()+LOCAL_CONTEXT_TTL};
+            cx.timer?.after(LOCAL_CONTEXT_TTL,view=>{
+              if(this.relatedRetry!==retry)return;
+              this.relatedRetry=null;if(this.shown())view.notify();
+            });
+          }
+        }
+        if(this.pullRequest===request)this.pullLoading=false;
+        await Promise.resolve();this.flushWebhook(cx);cx.notify();
+      }
     });
+  }
+
+  fallbackSnapshot() {
+    const aggregate=this.aggregate,task=this.context?.startsWith('tasks:');
+    const on=task?aggregate?.context?.machine:this.on;
+    let online=!on;
+    if(on)try {online=host.machines().some(m=>m.name===on && m.layout==='ready');}catch {}
+    const enabled=this.shown() && online && (task
+      ? !aggregate?.context?.stale && aggregate?.currentContext()?.scope===aggregate?.context?.scope
+      : key()===this.context && Boolean(this.root && this.repo));
+    const uncovered=name=>Boolean(this.notices?.active && this.notices.members?.get(name.toLowerCase())!==true);
+    if(task) return {enabled,scope:JSON.stringify([this.context,on,this.view]),repositories:(aggregate?.repositories()??[])
+      .filter(name=>!this.foldedRepositories?.has(name)).map(name=>({name,uncovered:uncovered(name),rows:aggregate.rows(this.view).filter(pr=>pr.repo===name)}))};
+    const selection=this.pullSelection();
+    return {enabled,scope:JSON.stringify([this.context,on,this.view,this.repo?.name]),repositories:this.repo?[{name:this.repo.name,uncovered:uncovered(this.repo.name),rows:[...selection.liveRows,...(selection.active?[selection.active]:[])]}]:[]};
+  }
+
+  syncChecksFallback(cx) {
+    this.checksFallback ??= new ChecksFallback({snapshot:()=>this.fallbackSnapshot(),read:(repo,view,current)=>this.readPendingChecks(repo,view,current)});
+    this.checksFallback.sync(cx);
+  }
+
+  async readPendingChecks(repo,cx,current) {
+    const aggregate=this.context?.startsWith('tasks:')?this.aggregate:null;
+    if(this.pullLoading || this.relatedRequest || aggregate?.busy)return {busy:true};
+    const numbers=[...new Set(repo.rows.map(pr=>pr.number))],root=this.root,on=aggregate?aggregate.context.machine:this.on;
+    const request=this.fallbackRequest={},order=aggregate?aggregate.factOrder:this.factOrder,read=order.begin();
+    if(aggregate)aggregate.fallbackBusy=true;
+    else {this.pullLoading=true;this.pullRequest=request;}
+    try {
+      if(!current())return;
+      const updates=new Map();
+      for(let at=0;at<numbers.length;at+=CHECKS_BATCH_SIZE) {
+        if(!current())return;
+        const batch=numbers.slice(at,at+CHECKS_BATCH_SIZE);
+        const result=await repositoryRead(exec,pendingChecksArgs(batch,repo.name),repo.name,{...(root?{cwd:root}:{}),on,timeout:30000});
+        if(!current())return;
+        if(result.code!==0 || result.timed_out || result.timedOut || result.signal)throw await repositoryFailure(exec,result,repo.name,{...(root?{cwd:root}:{}),on});
+        for(const [number,value] of parsePendingChecks(result.stdout,batch))updates.set(number,value);
+      }
+      // Commit only a complete selection. Failed chunks retain every old row.
+      const update=pr=>updates.has(pr?.number)?order.publish(read,`${repo.name.toLowerCase()}#${pr.number}`,previous=>({...(previous??pr),checks:updates.get(pr.number),checksKnown:true})).value??pr:pr;
+      if(aggregate) {
+        for(const entry of aggregate.entries.values())if(entry.link.repo===repo.name && entry.pr)entry.pr=update(entry.pr);
+      } else {
+        for(const state of VIEWS)if(this.pulls[state])this.pulls[state]=this.pulls[state].map(update);
+        this.relatedPull=update(this.relatedPull);
+      }
+      this.ciRevision=(this.ciRevision??0)+1;
+      return {failed:false};
+    } catch(error) {
+      return {failed:true,rateLimited:/rate.?limit|secondary limit|abuse|429/i.test(String(error))};
+    } finally {
+      if(this.fallbackRequest===request)this.fallbackRequest=null;
+      if(aggregate) {aggregate.fallbackBusy=false;aggregate.pump(cx);cx.notify();}
+      else if(this.pullRequest===request) {this.pullLoading=false;this.flushWebhook(cx);cx.notify();}
+    }
   }
 
   syncTaskWebhooks(cx) {
@@ -314,8 +404,9 @@ export default class Changes extends View {
   flushWebhook(cx) {
     if (!this.webhookDirty || !this.repo || !this.root || this.pullLoading || !this.shown() || key() !== this.context) return;
     this.webhookDirty = false;
+    // Related/older reads cannot overlap this snapshot's queue lease.
     const root=this.root,on=this.on,repo=this.repo,context=this.context;
-    const request=this.pullRequest={};this.pullLoading=true;
+    const request=this.pullRequest={},read=this.factOrder.begin();this.pullLoading=true;
     const current=()=>this.pullRequest===request && this.context===context && key()===context && this.repo===repo && this.shown();
     cx.spawn(async cx=>{
       await Promise.resolve(); // request feedback must not notify synchronously from render
@@ -352,13 +443,17 @@ export default class Changes extends View {
         const counts=parseCounts(await gh(countArgs(repo.name)));
         if(!current())return;
         for(const [state,{rows,page}] of Object.entries(updates)) {
-          this.pulls[state]=rows;this.pullsAt[state]=Date.now();
+          this.pulls[state]=rows.map(pr=>this.publishPull(pr,read,repo.name).value).filter(Boolean);this.pullsAt[state]=Date.now();
           this.pages[state]={...this.pages[state],cursor:page.cursor,hasMore:page.hasMore};
         }
-        if((this.agentPull ?? location().pullNumber)===number) this.relatedPull=related ?? null;
+        if((this.agentPull ?? location().pullNumber)===number) {
+          const published=related?this.publishPull(related,read,repo.name):null;
+          this.relatedPull=published?.value??null;
+          this.relatedKey=published?.accepted?JSON.stringify([context,repo.name,number]):null;
+        }
         this.counts=counts ?? this.counts;this.pullError=null;this.ciRevision=(this.ciRevision??0)+1;
         this.startCISweep(cx);
-      } catch(e) { if(current())this.pullError=pullError(e); }
+      } catch(e) { if(current()) {this.pullError=pullError(e);this.relatedKey=null;this.relatedRetry=null;} }
       finally {
         if(this.pullRequest===request)this.pullLoading=false;
         this.flushWebhook(cx);cx.notify();
@@ -465,14 +560,15 @@ export default class Changes extends View {
 
   segment(t, id, label, count, on, onClick) {
     return h_flex().id(id).h(U.control).px(8).gap(6).flex_none().items_center().rounded(U.radius).cursor_pointer()
-      .role('button').accessibility_label(label)
+      .role('button').accessibility_label(`${label}: ${count ?? 0}${count == null ? ' (loading)' : ''}`)
       .text_size(U.meta).text_color(on ? t.foreground : t.muted).when(on, el => el.font_semibold())
       .hover(s => s.bg(t.hover)).on_click((_e, cx) => onClick(cx))
       .child(label)
       .child(div().id(`${id}-count-slot`).w(32).h(16).flex_none()
-        .when(count != null, el => el.child(div().w_full().min_w(0).px(5).h(16).flex().items_center().justify_center().rounded_full()
-          .bg(on ? t.selected : t.raised).text_size(10).font_medium().text_color(on ? t.foreground : t.muted).tooltip(String(count))
-          .child(div().min_w(0).truncate().child(String(count))))));
+        .child(div().id(`${id}-count`).w_full().min_w(0).px(5).h(16).flex().items_center().justify_center().rounded_full()
+          .bg(on ? t.selected : t.raised).text_size(10).font_medium().text_color(on ? t.foreground : t.muted)
+          .tooltip(count == null ? 'Count loading; showing 0' : String(count))
+          .child(div().min_w(0).truncate().child(String(count ?? 0)))));
   }
 
   pullIcon(t, pr) {
@@ -559,7 +655,60 @@ export default class Changes extends View {
     // Border-box: 4px padding + 1px border preserves the original 5px inset.
     return h_flex().id(id).flex_none().min_w(0).max_w_full().h(18).px(4).border_1().border_color(border).rounded_full()
       .items_center().overflow_hidden().bg(background).text_color(foreground).tooltip(label.name)
-      .child(div().min_w(0).truncate().child(label.name));
+      .child(div().min_w(0).overflow_hidden().whitespace_nowrap().child(label.name));
+  }
+
+  // Natural-width runs. Native probes measure full/compact alternatives without
+  // affecting layout; only real whole-line overflow selects a shorter variant.
+  // Keep geometry by native element ID (not PR-data revision): unchanged sizes
+  // need not be reported again by the host after a refresh or context switch.
+  pullLine(t, id, items, clipOrder = []) {
+    this.pullLineSizes ??= new Map();
+    const sizes = this.pullLineSizes.get(id) ?? {};
+    const context = this.context;
+    const measure = (name, size, cx) => {
+      if (this.context !== context || !this.shown() || !Number.isFinite(size.width)) return;
+      const width = size.width / (settings().zoom > 0 ? settings().zoom : 1);
+      if (Math.abs((sizes[name] ?? -1) - width) < 0.01) return;
+      sizes[name] = width; this.pullLineSizes.set(id, sizes); cx.notify();
+    };
+    const widths = items.map(item => sizes[`${item.kind}-full`]);
+    const ready = Number.isFinite(sizes.available) && widths.every(Number.isFinite);
+    const compact = new Set();
+    const total = () => widths.reduce((sum, width) => sum + width, 0) + Math.max(0, widths.filter(width => width > 0).length - 1) * 15;
+    if (ready) {
+      for (const [index, item] of items.entries()) {
+        if (total() <= sizes.available + 0.01) break;
+        if (item.compact && Number.isFinite(sizes[`${item.kind}-compact`])) {
+          compact.add(item.kind); widths[index] = sizes[`${item.kind}-compact`];
+        }
+      }
+      // Never shrink tasks/checks/time into unreadable fragments. Secondary
+      // text loses width only after semantic shortening has been exhausted.
+      for (const kind of clipOrder) {
+        const index = items.findIndex(item => item.kind === kind);
+        if (index < 0 || total() <= sizes.available + 0.01) continue;
+        widths[index] = Math.max(0, widths[index] - (total() - sizes.available));
+      }
+    }
+    const visible = items.map((item, index) => ({item, index})).filter(({index}) => !ready || widths[index] > 0);
+    const line = h_flex().id(id).w_full().min_w(0).h(18).min_h(18).max_h(18).flex_none().gap(6).items_center()
+      .overflow_hidden().line_height('18px').text_size(11).text_color(t.muted)
+      .on_size_change((size, cx) => measure('available', size, cx))
+      .children(visible.flatMap(({item, index}, at) => {
+        const node = item.render(compact.has(item.kind), false).flex_none()
+          .when(ready && clipOrder.includes(item.kind), el => el.w(widths[index]));
+        return at ? [this.metaSeparator(t), node] : [node];
+      }));
+    // These absolute invisible children are outside the visible run, so their
+    // text never adds a line, gap, hover target or horizontal reservation.
+    const probes = div().id(`${id}-probes`).absolute().left(0).top(0).w(0).h(0).overflow_hidden().invisible()
+      .text_size(11).line_height('18px')
+      .children(items.flatMap(item => [false, ...(item.compact ? [true] : [])].map(short =>
+        h_flex().absolute().left(0).top(0).child(item.render(short, true).flex_none()
+          .id(`${id}-probe-${item.kind}-${short ? 'compact' : 'full'}`)
+          .on_size_change((size, cx) => measure(`${item.kind}-${short ? 'compact' : 'full'}`, size, cx))))));
+    return {line, probes};
   }
 
   // Keep the innermost component if the native VM aborts before JS can catch.
@@ -581,32 +730,38 @@ export default class Changes extends View {
 
   renderPullRow(t, pr, ghost = false) {
     const prefix = ghost ? 'swap-' : '', rowId = pr.key ?? pr.number;
-    const agentButton = this.agentButton(t, pr, !ghost);
-    const dot = () => this.metaSeparator(t);
-    const labels = pr.labels ?? [];
-    const groups = [null,null,null,null];
-    if (pr.tasks) groups[0] = h_flex().id(`${prefix}pr-tasks-${rowId}`).w_full().min_w(0).h(18).overflow_hidden().gap(4).items_center()
-      .tooltip(pr.tasks.label).child(this.taskIcon(t, pr.tasks).flex_none()).child(div().min_w(0).truncate().child(pr.tasks.label));
-    const checkColor = pr.checks?.state === 'success' ? t.ansi2 : pr.checks?.state === 'failure' ? t.ansi1 : t.ansi3;
-    const checkIcon = pr.checks?.state === 'success' ? svg('mods/custom-workspace-chrome/check.svg').size(U.tinyIcon).text_color(checkColor)
-      : pr.checks?.state === 'failure' ? svg('mods/custom-workspace-chrome/x.svg').size(U.tinyIcon).text_color(checkColor)
-      : div().size(8).flex_none().rounded_full().bg(checkColor);
-    if (pr.checks) groups[1] = h_flex().id(`${prefix}pr-checks-${rowId}`).w_full().min_w(0).h(18).overflow_hidden().gap(4).items_center()
-      .tooltip(pr.checks.label)
-      .child(div().id(`${prefix}pr-check-icon-${rowId}`).size(U.tinyIcon).flex_none().flex().items_center().justify_center().child(checkIcon.flex_none()))
-      .child(div().min_w(0).truncate().underline().child(pr.checks.label));
-    if (labels.length) groups[2] = h_flex().id(`${prefix}pr-labels-${rowId}`).flex_1().min_w(0).h(18).gap(4).items_center().overflow_hidden()
-      .tooltip(labels.map(label => label.name).join('\n'))
-      .children(labels.map((label,index) => this.labelPill(t,label,`${prefix}pr-label-${rowId}-${index}`)));
-    const review = pr.review === 'approved' ? 'Approved' : 'Changes requested';
-    if (pr.review) groups[3] = div().id(`${prefix}pr-review-${rowId}`).w_full().min_w(0).truncate().tooltip(review)
-      .text_color(pr.review === 'approved' ? t.ansi2 : t.ansi1).child(review);
-    // Zero-basis weighted cells share only the space left after fixed gutters.
-    // Intrinsic text/pill widths and absent facts cannot redistribute that space.
-    const cells = groups.map((group,index) => h_flex().id(`${prefix}pr-slot-${['tasks','checks','labels','review'][index]}-${rowId}`)
-      .flex_basis(0).flex_grow([28,14,38,20][index]).flex_shrink(1).min_w(0).h(18).min_h(18).max_h(18).items_center().overflow_hidden()
-      .when(Boolean(group), el=>el.child(group)));
-    return h_flex().id(`${prefix}pr-${rowId}`).w_full().h(74).min_h(74).max_h(74).flex_none().px(8).py(6).gap(U.gap).items_start().rounded(U.radius)
+    const agentButton = this.agentButton(t, pr, !ghost), labels = pr.labels ?? [];
+    const groupId = (kind, probe) => `${prefix}pr-${kind}-${rowId}${probe ? '-probe' : ''}`;
+    const text = (kind, value, tooltip, probe) => div().id(groupId(kind, probe)).min_w(0).h(18)
+      .overflow_hidden().whitespace_nowrap().tooltip(tooltip).child(value);
+    const byline = this.pullLine(t, `${prefix}pr-byline-${rowId}`, [
+      {kind:'number', render:(_short, probe) => text('number', `#${pr.number}`, pr.meta ?? '', probe)},
+      ...(pr.login ? [{kind:'author', render:(_short, probe) => text('author', pr.login, pr.meta ?? '', probe)}] : []),
+      ...(pr.when ? [{kind:'time', compact:true, render:(short, probe) => text('time', short ? pr.compactWhen : pr.when, pr.meta ?? '', probe)}] : []),
+    ], ['author']);
+    byline.line.tooltip(pr.meta ?? '');
+    const meta = this.pullLine(t, `${prefix}pr-meta-${rowId}`, [
+      ...(pr.tasks ? [{kind:'tasks', compact:true, render:(short, probe) => h_flex().id(groupId('tasks', probe)).min_w(0).h(18).gap(4).items_center()
+        .tooltip(pr.tasks.label).child((probe ? div().size(U.tinyIcon) : this.taskIcon(t, pr.tasks)).flex_none())
+        .child(div().flex_none().whitespace_nowrap().child(short ? `${pr.tasks.done}/${pr.tasks.total}` : pr.tasks.label))}] : []),
+      ...(pr.checks ? [{kind:'checks', render:(_short, probe) => {
+        const color = pr.checks.state === 'success' ? t.ansi2 : pr.checks.state === 'failure' ? t.ansi1 : t.ansi3;
+        const icon = pr.checks.state === 'success' ? svg('mods/custom-workspace-chrome/check.svg').size(U.tinyIcon).text_color(color)
+          : pr.checks.state === 'failure' ? svg('mods/custom-workspace-chrome/x.svg').size(U.tinyIcon).text_color(color)
+          : div().size(8).rounded_full().bg(color);
+        return h_flex().id(groupId('checks', probe)).h(18).gap(4).items_center().tooltip(pr.checks.label)
+          .child(div().id(groupId('check-icon', probe)).size(U.tinyIcon).flex_none().flex().items_center().justify_center().child(icon.flex_none()))
+          .child(div().flex_none().whitespace_nowrap().underline().child(pr.checks.label));
+      }}] : []),
+      ...(labels.length ? [{kind:'labels', render:(_short, probe) => h_flex().id(groupId('labels', probe)).min_w(0).h(18).gap(4).items_center().overflow_hidden()
+        .tooltip(labels.map(label => label.name).join('\n'))
+        .children(labels.map((label, index) => this.labelPill(t, label, `${groupId('label', probe)}-${index}`)))}] : []),
+      ...(pr.review ? [{kind:'review', render:(_short, probe) => text('review', pr.review === 'approved' ? 'Approved' : 'Changes requested',
+        pr.review === 'approved' ? 'Approved' : 'Changes requested', probe).text_color(pr.review === 'approved' ? t.ansi2 : t.ansi1)}] : []),
+    ], ['review', 'labels']);
+    meta.line.tooltip([pr.tasks?.label, pr.checks?.label, ...labels.map(label => label.name),
+      pr.review ? (pr.review === 'approved' ? 'Approved' : 'Changes requested') : null].filter(Boolean).join('\n'));
+    return h_flex().id(`${prefix}pr-${rowId}`).relative().w_full().h(74).min_h(74).max_h(74).flex_none().px(8).py(6).gap(U.gap).items_start().rounded(U.radius)
       .when(!ghost, el => el.cursor_pointer().role('button').accessibility_label(`Open pull request #${pr.number} on GitHub`)
         .hover(s => s.bg(t.hover)).on_click(() => this.openPull(pr))
         .on_mouse_down('right', (_event, cx) => { cx.stop_propagation(); this.showPullMenu(pr, cx); })
@@ -618,15 +773,8 @@ export default class Changes extends View {
           .child(div().id(`${prefix}pr-title-${rowId}`).flex_1().min_w(0).h(20).truncate().text_size(U.font).font_semibold().text_color(t.foreground).tooltip(pr.title).child(pr.title))
           .child(div().id(`${prefix}pr-agent-slot-${rowId}`).w(U.insetControl).h(20).flex_none().relative()
             .when(Boolean(agentButton), el => el.child(agentButton))))
-        .child(h_flex().id(`${prefix}pr-byline-${rowId}`).w_full().min_w(0).h(18).min_h(18).max_h(18).flex_none().gap(6).items_center().line_height('18px').text_size(11).text_color(t.muted).overflow_hidden()
-          .child(div().id(`${prefix}pr-number-${rowId}`).w(48).h(18).flex_none().truncate().child(`#${pr.number}`))
-          .child(dot().when(!pr.byline, el=>el.invisible()))
-          .child(h_flex().flex_1().min_w(0).h(18).gap(4).items_center().tooltip(pr.meta ?? '')
-            .child(div().id(`${prefix}pr-author-${rowId}`).flex_basis(0).flex_grow(45).min_w(0).h(18).truncate().child(pr.when && pr.login ? `${pr.login} ` : ''))
-            .child(div().id(`${prefix}pr-time-${rowId}`).flex_basis(0).flex_grow(55).min_w(0).h(18).truncate().child(pr.when ?? pr.byline ?? ''))))
-        .child(h_flex().id(`${prefix}pr-meta-${rowId}`).w_full().min_w(0).h(18).min_h(18).max_h(18).flex_none().gap(6).items_center().overflow_hidden().line_height('18px').text_size(11).text_color(t.muted)
-          .when(labels.length > 0, el => el.tooltip(labels.map(label => label.name).join('\n')))
-          .children(cells.flatMap((cell,index) => index ? [dot().when(!groups[index] || !groups.slice(0,index).some(Boolean), el=>el.invisible()),cell] : [cell]))));
+        .child(byline.line).child(meta.line))
+      .child(byline.probes).child(meta.probes);
   }
 
   swapOverlay(t, swap) {
@@ -774,6 +922,7 @@ export default class Changes extends View {
     this.enrollmentPicker ??= new EnrollmentPicker({focus:this.enrollmentFocus,current:()=>this.enrollmentPresentation(),
       onChoose:repository=>openSettings({section:'plugins',plugin:'git',pluginSection:'repository',pluginSearch:repository})});
     const enrollment=this.enrollmentPicker.render(t,setup?null:this.enrollmentPresentation());
+    this.syncChecksFallback(cx);
     const sweep=!aggregate.context.stale && this.shown() && this.ciSweep?.context===this.context ? this.ciSweep : null;
     return v_flex().id('changes').relative().size_full().min_h(0).rounded(8).overflow_hidden().bg(t.background).border_1().border_color(t.input).text_color(t.foreground).text_size(U.font)
       .child(h_flex().id('changes-header').relative().bg(t.surface).h(U.section).flex_none().pl(4).pr(U.gutter).gap(U.gap).items_center().border_b(1).border_color(t.border)
@@ -851,6 +1000,7 @@ export default class Changes extends View {
     this.notices??=new GitNotices();
     const notice=this.notices.sync(cx,{enabled:this.shown(),repository:this.repo?.name,
       pending:Boolean(this.loading||(this.root&&!this.repo&&!this.pullError))});
+    this.syncChecksFallback(cx);
     const t = theme(), busy = Boolean(this.loading || this.pullLoading);
     const pullsUrl = this.repo?.url ? `${this.repo.url.replace(/\/$/, '')}/pulls` : null;
     const canOpenPulls = Boolean(this.root && pullsUrl), linkScope = this.context, repoName = this.repo?.name;

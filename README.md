@@ -247,8 +247,11 @@ pin measurements while a same-context refresh runs or a Git-root/branch probe
 fails inconclusively. An older active PR also stays pinned during its targeted
 reread after page-one refresh. Only an authoritative replacement, proven
 non-repository or actual context change clears incompatible facts. Open/Closed
-count badges reserve their width before totals arrive, without displaying fake
-zeroes. Cold loading and coordinator Verifying remain panel feedback, never
+count badges are always visible in ordinary and coordinator Git views, showing
+**0** on first load or a real context change until totals arrive. The fixed badge
+width fits at least three digits without moving tabs. Same-repository refreshes
+keep the last-known counts; unknown-count tooltips and accessibility text identify
+loading without hiding the zero. Cold loading and coordinator Verifying remain panel feedback, never
 placeholder PR rows.
 Git's event-driven CI line sits immediately below its header and applies to
 all PRs, not just the pinned block. Rotation and line motion use native animation,
@@ -378,14 +381,20 @@ All PR rows, including coordinator/fleet rows and both Open/Closed tabs, omit th
 Owner badge. Every PR block uses the same three fixed lines: a 20px title, an
 18px number/author/time line and an 18px metadata line, for a 74px block including
 spacing. A blank 24px robot slot keeps titles' truncation boundaries identical
-with or without a related agent. The state icon and separate number/author/time
-cells also retain their positions. Metadata reserves independent **tasks · checks ·
-assigned GitHub labels · review decision** cells; missing groups leave blank space
-and redundant dots are invisible without reclaiming their gutters. Task progress,
-check icons/counts, labels and review updates cannot move neighboring cells. Text
-truncates inside its cell with full-value hover text. This intentionally trades
-some horizontal room for stability, without adding a fourth line: the metadata
-line was already reserved even for PRs that never have checks or labels.
+with or without a related agent. The state icon also stays fixed. The two lower
+lines flow naturally from the left: **number · author · opened 4 hours ago** and
+**tasks · checks · assigned GitHub labels · review decision**, with constant gaps
+and unused space at the end, not stretched columns. Missing groups consume no
+horizontal space. Full task and time wording stays visible while its whole line
+fits, including around 390px panel width. Only real overflow selects whole task
+fractions such as **2/2** or a compact time such as **27m ago** before clipping
+secondary author, label or review text. Checks always keep their complete natural
+icon/count width, including realistic three-digit totals; they never shrink into
+an ellipsis. All full values remain in tooltips. Late facts may move neighboring
+items horizontally in their fixed order, but never change the three line positions,
+74px block height or title/robot reservation. Native post-layout measurements of
+clipped invisible probes choose shortening; there is no guessed character budget,
+percentage allocation, render-time notification or extra visible line.
 Labels keep their exact GitHub names (including emoji) in fully rounded 18px pills.
 Dark palettes use GitHub's 18% colour tint, lightness-adjusted coloured text and thin
 30% text-colour border rather than solid blocks. Light palettes use solid label
@@ -395,8 +404,8 @@ otherwise light), including custom palettes, not the system appearance preferenc
 The formula comes from [Primer's IssueLabelToken](https://github.com/primer/react/blob/2128032dca65a1bd565fe382c2e91c638c6473a4/packages/react/src/Token/IssueLabelToken.module.css).
 Multiple/long labels stay in a bounded single-height strip:
 pill text truncates, and hovering the pills or metadata exposes complete names,
-including clipped labels. No labels means no visible placeholder or extra separator, only an empty reserved
-cell; label refreshes never add extra row lines or horizontal overflow. Metadata separators,
+including clipped labels. No labels means no placeholder, extra separator or horizontal
+reservation; label refreshes never add extra row lines or horizontal overflow. Metadata separators,
 including the number/author dot, share a clearly visible muted 3px round shape,
 vertically centred beside text/icons with equal 6px spacing on both sides.
 Git follows the selected terminal's live shell-reported directory (including remote
@@ -447,8 +456,14 @@ lists retain their depth and renewed cursors. Bursts coalesce, reconnect/open ca
 up, and stale replies cannot update another machine/repository. Hiding Git or
 selecting another repository stops hidden panel reads, not update notifications.
 Disabling Git or closing its chrome owner closes transport; another mounted owner
-can take over. Failed reads retain the last good status. There is **no
-periodic CI polling or polling fallback**; unconfigured/offline panels show a
+can take over. Failed reads retain the last good status. Enrolled repositories use **events only**, not periodic CI polling. Without live
+setup or enrollment, shown pending/unknown checks have a **45-second fallback**:
+one coalesced repository job reads just those PRs in bounded 20-PR chunks,
+retaining displayed values until the complete selection succeeds.
+It stops on settlement, hide/disable, stale context or remote-machine disconnect;
+failures back off 90/180/360/720 seconds, with at least 15 minutes for rate limits.
+Settled rows are never polled. See [refresh timing and stale-data limits](docs/GIT-WEBHOOKS.md#pending-checks-without-enrollment).
+Unconfigured/offline panels show a
 compact bottom info card **Set up Git in Settings** only when global setup is
 missing. With setup ready, an unenrolled Git repository instead shows **Add this repo in Settings**. Enabled repos and non-Git agents have
 no prompt; transport reconnects and agent switches do not flash setup messages.
@@ -719,7 +734,8 @@ transport allowance, its plain fallback has 15 seconds, and a shared 45-second
 in-flight lease prevents duplicate reads. The existing ten-second local refresh
 cadence and 30-second action freshness stay unchanged. No Crew records are written.
 The existing webhook connection refreshes only relevant linked repositories; unchanged PR/CI
-facts are not polled. Manual Refresh remains available. Repository errors stay in their sections. Confirmed unenrolled repositories share
+settled facts are not polled; shown pending checks without live enrollment use the
+same bounded fallback as ordinary Git. Manual Refresh remains available. Repository errors stay in their sections. Confirmed unenrolled repositories share
 one **Add this repo in Settings** card pinned below the scrolling list, so folding
 or scrolling cannot hide it. Its account-style dropdown opens upward with canonical
 repository names in inventory order, even for one choice, including repositories

@@ -86,12 +86,12 @@ for(t.background of ['#191d28','#ffffff','#191d28'])for(zoom of [0.75,1,1.25,1.5
   const prefix=ghost?'swap-':'',id=pr.key??17;
   const row=panel.pullRow(t,pr,ghost),meta=find(row,`${prefix}pr-meta-${id}`),byline=find(row,`${prefix}pr-byline-${id}`);
   assert.equal(find(row,`${prefix}pr-owner-${id}`),undefined);assert.ok(!text(row).includes('Owner'));
-  assert.equal(text(byline),`#17${pr.byline}`);assert.equal(byline.attrs.overflow_hidden.length,0);
-  assert.deepEqual(meta.kids.filter(n=>n.attrs.id).map(n=>n.kids[0].attrs.id[0]),['tasks','checks','labels','review'].map(kind=>`${prefix}pr-${kind}-${id}`));
+  assert.equal(text(byline),`#17${pr.login}${pr.when}`);assert.equal(byline.attrs.overflow_hidden.length,0);
+  assert.deepEqual(meta.kids.filter(n=>n.attrs.id).map(n=>n.attrs.id[0]),['tasks','checks','labels','review'].map(kind=>`${prefix}pr-${kind}-${id}`));
   assert.equal(meta.attrs.h[0],18);assert.equal(meta.attrs.min_w[0],0);assert.equal(meta.attrs.flex_wrap,undefined);assert.ok(meta.attrs.overflow_hidden);
-  const strip=find(row,`${prefix}pr-labels-${id}`);assert.equal(strip.attrs.min_w[0],0);assert.equal(strip.attrs.h[0],18);assert.ok(strip.attrs.flex_1);assert.ok(strip.attrs.overflow_hidden);
+  const strip=find(row,`${prefix}pr-labels-${id}`);assert.equal(strip.attrs.min_w[0],0);assert.equal(strip.attrs.h[0],18);assert.ok(strip.attrs.flex_none);assert.equal(strip.attrs.flex_grow,undefined);assert.ok(strip.attrs.overflow_hidden);
   assert.equal(strip.attrs.tooltip[0],labels.map(l=>l.name).join('\n'));
-  assert.equal(meta.attrs.tooltip[0],strip.attrs.tooltip[0],'Completely clipped strips retain a metadata hover target');
+  assert.ok(meta.attrs.tooltip[0].includes(strip.attrs.tooltip[0]),'Completely clipped strips retain full labels in the metadata hover target');
   for(const [index,label] of labels.entries()) {
     const pill=find(row,`${prefix}pr-label-${id}-${index}`);
     const [color,darkText,lightText,lightBorder]=colorCases.find(([color])=>color===`#${label.color}`),dark=t.background!=='#ffffff';
@@ -99,11 +99,11 @@ for(t.background of ['#191d28','#ffffff','#191d28'])for(zoom of [0.75,1,1.25,1.5
     assertColor(pill.attrs.text_color[0],dark?darkText:lightText);assertColor(pill.attrs.border_color[0],dark?`${darkText}4d`:lightBorder);
     assert.equal(pill.attrs.h[0],18);assert.ok(pill.attrs.border_1);assert.ok(pill.attrs.rounded_full);
     assert.equal(pill.attrs.px[0]+1,5,'Border plus padding retains the original content inset/width');
-    assert.equal(pill.attrs.min_w[0],0);assert.ok(pill.attrs.max_w_full);assert.ok(pill.attrs.overflow_hidden);assert.ok(pill.kids[0].attrs.truncate);
+    assert.equal(pill.attrs.min_w[0],0);assert.ok(pill.attrs.max_w_full);assert.ok(pill.attrs.overflow_hidden);assert.ok(pill.kids[0].attrs.overflow_hidden);assert.equal(pill.kids[0].attrs.truncate,undefined,'Clipped pills never paint a lone ellipsis');
   }
   assert.equal(text(find(row,`${prefix}pr-review-${id}`)),'Approved');
-  const separators=[byline.kids[1],...meta.kids.filter(n=>!n.attrs.id)];
-  assert.equal(separators.length,4,'One byline dot and one between each present status group');
+  const separators=[...byline.kids.filter(n=>!n.attrs.id),...meta.kids.filter(n=>!n.attrs.id)];
+  assert.equal(separators.length,5,'Two byline dots and one between each present status group');
   for(const dot of separators) {
     assert.equal(dot.attrs.size[0],3);assert.equal(dot.attrs.bg[0],t.muted);assert.ok(dot.attrs.flex_none);assert.ok(dot.attrs.rounded_full);
     assert.equal(dot.kids.length,0,'A shape has no font-baseline-dependent glyph');
@@ -123,7 +123,7 @@ for(t.background of ['#191d28','#ffffff','#191d28'])for(zoom of [0.75,1,1.25,1.5
   panel.metaSeparator=separator;
   const geometry=node=>JSON.stringify(node,(key,value)=>typeof value==='function'?'callback':value);
   const normalized=JSON.parse(geometry(row));
-  for(const dot of [find(normalized,`${prefix}pr-byline-${id}`).kids[1],...find(normalized,`${prefix}pr-meta-${id}`).kids.filter(n=>!n.attrs.id)]) {
+  for(const dot of [...find(normalized,`${prefix}pr-byline-${id}`).kids.filter(n=>!n.attrs.id),...find(normalized,`${prefix}pr-meta-${id}`).kids.filter(n=>!n.attrs.id)]) {
     delete dot.attrs.relative;delete dot.attrs.top;
   }
   assert.equal(geometry(normalized),geometry(before),'Only separator paint position changes; row height and neighbours stay identical');
@@ -133,24 +133,19 @@ for(t.background of ['#191d28','#ffffff','#191d28'])for(zoom of [0.75,1,1.25,1.5
 for(const tasks of [false,true])for(const checks of [false,true])for(const assigned of [[],labels]) {
   const pr=facts.pullRow({...source,state:'OPEN',body:tasks?source.body:'',statusCheckRollup:checks?source.statusCheckRollup:[],labels:assigned,reviewDecision:''},'owner');
   const row=panel.pullRow(t,pr),meta=find(row,'pr-meta-17');
-  const slots=meta.kids.filter(n=>n.attrs.id),groups=slots.flatMap(n=>n.kids);
+  const groups=meta.kids.filter(n=>n.attrs.id);
   assert.deepEqual(groups.map(n=>n.attrs.id[0]),[...(tasks?['pr-tasks-17']:[]),...(checks?['pr-checks-17']:[]),...(assigned.length?['pr-labels-17']:[])]);
-  assert.equal(meta.kids.length,7,'Four cells and three gutters always reserve the same geometry');
+  assert.equal(meta.kids.length,Math.max(0,groups.length*2-1),'Only present groups and their separators occupy width');
   assert.equal(meta.attrs.h[0],18,'Label add/remove cannot change status height');
-  const visibleDots=meta.kids.filter(n=>!n.attrs.id && !n.attrs.invisible);
-  assert.equal(visibleDots.length,Math.max(0,groups.length-1),'No leading, trailing or doubled painted dots');
+  assert.equal(meta.kids.filter(n=>!n.attrs.id).length,Math.max(0,groups.length-1),'No leading, trailing or doubled dots');
   for(let at=1;at<meta.kids.length;at+=2) {
-    const dot=meta.kids[at];assert.equal(dot.attrs.size[0],3);
-    if(!dot.attrs.invisible) {
-      assert.ok(meta.kids[at+1].kids.length,'A visible dot precedes present content');
-      assert.ok(meta.kids.slice(0,at).some(n=>n.attrs.id && n.kids.length),'A visible dot follows earlier content');
-    }
+    const dot=meta.kids[at];assert.equal(dot.attrs.size[0],3);assert.equal(dot.attrs.invisible,undefined);
+    assert.ok(meta.kids[at+1].attrs.id);assert.ok(meta.kids[at-1].attrs.id);
   }
-  for(const slot of slots) {
-    assert.equal(slot.attrs.flex_basis[0],0);assert.equal(slot.attrs.min_w[0],0,'Slots can shrink in narrow panels');
-    if(!slot.kids.length)assert.equal(text(slot),'','Empty layout cells have no visible placeholder');
+  for(const group of groups) {
+    assert.ok(group.attrs.flex_none,'Natural groups never stretch across free space');
+    assert.equal(group.attrs.flex_basis,undefined);assert.equal(group.attrs.w,undefined,'Cold full-wording layout has no guessed fixed budget');
   }
-  for(const group of groups)assert.equal(group.attrs.min_w[0],0,'Groups can shrink in narrow panels');
   if(!assigned.length)assert.equal(find(row,'pr-labels-17'),undefined,'No label placeholder');
 }
 const changes=panel.pullRow(t,facts.pullRow({...source,state:'OPEN',reviewDecision:'CHANGES_REQUESTED'},'owner'));

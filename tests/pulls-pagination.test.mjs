@@ -25,14 +25,14 @@ function find(node,id) {
   if (node.attrs?.id?.[0] === id) return node;
   return node.kids?.map(child=>find(child,id)).find(Boolean);
 }
-const page = (start,count,cursor,hasMore=true,labels=[]) => JSON.stringify({data:{repository:{pullRequests:{
-  totalCount:100,nodes:Array.from({length:count},(_,i)=>({number:start+i,title:`PR ${start+i}`,state:'OPEN',labels:{nodes:labels}})),
+const page = (start,count,cursor,hasMore=true,labels=[],rollup=[]) => JSON.stringify({data:{repository:{pullRequests:{
+  totalCount:100,nodes:Array.from({length:count},(_,i)=>({number:start+i,title:`PR ${start+i}`,state:'OPEN',labels:{nodes:labels},commits:{nodes:[{commit:{statusCheckRollup:{contexts:{nodes:rollup}}}}]}})),
   pageInfo:{endCursor:cursor,hasNextPage:hasMore},
 }}}});
 async function harness(state) {
   const context = vm.createContext({localStorage:{getItem:()=>null,setItem(){}}});
   const place = {cwd:'/repo',on:'pc2',terminal:'pc2/t1',space:'pc2/s1',tab:'pc2/tab'};
-  const pending = [], tasks = [], calls = [];
+  const pending = [], tasks = [], calls = [], timers=[];
   let syncError=null;
   const host = {settings:()=>({zoom:1}),theme:()=>({}),layout:()=>({id:'panel',children:[{id:'panel-body',active:'changes'}]}),
     window:()=>({platform:'windows'}),hc:async()=>({code:1}),run(){},openOverlay(){},props:()=>null,closeOverlay(){},notify(){},nextCommand(){},
@@ -72,7 +72,7 @@ async function harness(state) {
   view.resetRepository();view.view=state;view.root='/repo';view.on='pc2';view.context=JSON.stringify([place.cwd,place.on]);
   view.repo={name:'owner/repo',owner:'owner'};
   let rendering=false;
-  const cx = {notify(){assert.equal(rendering,false,'No synchronous notification during render, even with inline spawn');},focus_handle(){assert.equal(rendering,false,'No render-time focus allocation');return {};},spawn:fn=>tasks.push(fn(cx))};
+  const cx = {notify(){assert.equal(rendering,false,'No synchronous notification during render, even with inline spawn');},focus_handle(){assert.equal(rendering,false,'No render-time focus allocation');return {};},spawn:fn=>tasks.push(fn(cx)),timer:{after:(ms,fn)=>timers.push({ms,fn})}};
   const guarded=fn=>{rendering=true;try{return fn();}finally{rendering=false;}};
   const tick = async()=>{for(let i=0;i<16;i++)await Promise.resolve();};
   const take = ()=>{assert.ok(pending.length,'Expected one request');return pending.shift();};
@@ -85,7 +85,7 @@ async function harness(state) {
     content.attrs[method][0](event,cx);
     frame.attrs[method][0]({...event,bounds:{y:0,height:600}},cx);
   };
-  return {view,cx,pending,tasks,calls,place,take,reply,tick,render,scroll,guarded,failTransport:value=>{syncError=value;}};
+  return {view,cx,pending,tasks,calls,timers,place,take,reply,tick,render,scroll,guarded,failTransport:value=>{syncError=value;}};
 }
 
 // Folder Git retains execution facts too; empty NTSTATUS/command timeouts
@@ -181,7 +181,7 @@ for(const state of ['open','closed']) {
 
   // A linked PR beyond page 1 is fetched once, pinned without loading older
   // list pages, filtered to this tab, and never duplicated when paged in.
-  v.agentPull=908;v.loadRelatedPull(h.cx);
+  v.agentPull=908;v.loadRelatedPull(h.cx);await h.tick();
   assert.deepEqual(Array.from(h.pending[0].args.slice(0,3)),['pr','view','908']);
   assert.ok(h.pending[0].args.at(-1).split(',').includes('labels'));
   await h.reply(JSON.stringify({number:908,title:'Older active PR',state:state==='open'?'OPEN':'MERGED',labels:[{name:'🤖 Under review',color:'840479'}]}));
@@ -195,9 +195,11 @@ for(const state of ['open','closed']) {
   };
   v.loadPulls(state,h.cx,true);relatedFrame();
   await h.reply(page(200,10,'new-1'));relatedFrame();await h.reply('{}');
-  h.guarded(()=>v.loadRelatedPull(h.cx));relatedFrame();
-  await h.reply('',1);relatedFrame();
-  v.relatedKey=null;h.guarded(()=>v.loadRelatedPull(h.cx));relatedFrame();
+  h.guarded(()=>v.loadRelatedPull(h.cx));relatedFrame();await h.tick();
+  await h.reply('',1);relatedFrame();assert.equal(v.relatedKey,null,'Failed lookup releases its key');
+  h.guarded(()=>v.loadRelatedPull(h.cx));await h.tick();assert.equal(h.pending.length,0,'Released keys do not cause a render-driven failure loop');
+  const retry=h.timers.find(timer=>timer.ms===10000);assert.ok(retry,'Failures retry without a render hot loop');retry.fn(h.cx);
+  h.guarded(()=>v.loadRelatedPull(h.cx));relatedFrame();await h.tick();
   await h.reply(JSON.stringify({number:908,title:'Refreshed older PR',state:state==='open'?'OPEN':'MERGED',labels:[{name:'🤖 Under review',color:'840479'}]}));
   assert.equal(v.relatedPull.title,'Refreshed older PR');assert.ok(find(find(h.render(),'active-pull'),'pr-908'));
   // Synchronous transport refusal cannot notify inline from render either.
@@ -219,24 +221,31 @@ for(const state of ['open','closed']) {
   // never a request for each row. Bursts coalesce behind the in-flight read.
   const labels=[{name:'🤖 Under review',color:'840479'}];
   for (const [cycle,assigned] of [[0,labels],[1,labels],[2,[]]]) {
+    const rollup=Array.from({length:cycle===1?11:10},(_,i)=>({name:`CI ${i}`,status:cycle===0&&i>=3?'IN_PROGRESS':'COMPLETED',conclusion:cycle!==1&&i>=3?'FAILURE':'SUCCESS'}));
     const before=h.calls.length;
     if(cycle!==1)v.queueWebhook({repository:'owner/repo',event:'pull_request',action:cycle===2?'unlabeled':'labeled'},h.cx);
     await h.tick();
     if(cycle===0){v.queueWebhook({repository:'owner/repo',event:'pull_request'},h.cx);v.queueWebhook({repository:'owner/repo',event:'pull_request'},h.cx);}
     const oldOpen=v.pulls.open,oldClosed=v.pulls.closed,oldPin=v.relatedPull,oldCursor=v.pages[state].cursor;
     assert.ok(find(find(h.render(),'active-pull'),'pr-908'));
-    await h.reply(page(200,10,'refresh-open',true,assigned));
+    await h.reply(page(200,10,'refresh-open',true,assigned,rollup));
     assert.equal(v.pulls.open,oldOpen);assert.equal(v.pulls.closed,oldClosed);assert.equal(v.relatedPull,oldPin);assert.equal(v.pages[state].cursor,oldCursor,'Webhook snapshots do not partially replace mounted pages');
     assert.ok(find(find(h.render(),'active-pull'),'pr-908'));
-    await h.reply(page(100,10,'refresh-closed',true,assigned));
+    await h.reply(page(100,10,'refresh-closed',true,assigned,rollup));
     const targeted=h.pending[0];assert.equal(targeted.args[0],'pr');assert.ok(targeted.args.at(-1).includes('labels'));
-    await h.reply(JSON.stringify({number:908,state:state==='open'?'OPEN':'MERGED',labels:assigned}));
+    await h.reply(JSON.stringify({number:908,state:state==='open'?'OPEN':'MERGED',labels:assigned,statusCheckRollup:rollup}));
     await h.reply('{}');
     assert.equal(v.pulls.open[0].labels.length,assigned.length);
     assert.equal(v.pulls.closed[0].labels.length,assigned.length);
     assert.equal(v.relatedPull.labels.length,assigned.length);
+    for(const pr of [v.pulls.open[0],v.pulls.closed[0],v.relatedPull]) {
+      assert.equal(pr.checks.label,cycle===1?'11/11':'3/10');
+      assert.equal(pr.checks.state,cycle===0?'pending':cycle===1?'success':'failure');
+    }
     assert.equal(h.calls.length-before,cycle===0?5:cycle===1?3:4,'Only loaded pages, older PR and counts are read; burst has one follow-up');
   }
+
+  assert.equal(v.relatedPull.checks.label,'3/10','The last complete event snapshot retains its full count');
 
   // A pending page cannot restore a repository after focus/location changes.
   v.morePulls(state,h.cx);const old=h.take();
@@ -245,5 +254,38 @@ for(const state of ['open','closed']) {
   old.resolve({code:0,stdout:page(210,10,'stale')});await h.tick();
   assert.equal(v.pulls[state],null);assert.equal(v.pages[state].cursor,null);
   await h.reply('',128);await Promise.all(h.tasks);
+}
+// A selection made DURING an event snapshot cannot launch a second writer.
+{
+  const h=await harness('open'),v=h.view;
+  v.pulls.open=[{number:1,state:'open'}];v.pulls.closed=null;
+  v.queueWebhook({repository:'owner/repo',event:'check_run'},h.cx);await h.tick();
+  const list=h.pending[0];v.agentPull=908;v.loadRelatedPull(h.cx);await h.tick();
+  assert.equal(h.pending.length,1);assert.equal(h.pending[0],list);
+  assert.equal(v.relatedKey,null,'A deferred older selection must not cache a key');
+  const settled=Array.from({length:11},(_,i)=>({name:`CI ${i}`,status:'COMPLETED',conclusion:'SUCCESS'}));
+  await h.reply(page(1,1,'end',false,[],settled));
+  assert.deepEqual(Array.from(h.pending[0].args.slice(0,3)),['pr','view','908']);
+  v.loadRelatedPull(h.cx);assert.equal(h.pending.length,1,'Snapshot owns its embedded target read too');
+  await h.reply(JSON.stringify({number:908,state:'OPEN',statusCheckRollup:settled}));await h.reply('{}');
+  assert.equal(v.relatedPull.checks.label,'11/11');
+  v.loadRelatedPull(h.cx);await h.tick();assert.equal(h.pending.length,0,'No late 3/10 lookup exists to regress the published snapshot');
+}
+// A pre-existing lookup and a failing replacement cannot strand an absent pin
+// or a cached selection: the same queue orders them and failure releases retry.
+{
+  const h=await harness('open'),v=h.view;
+  v.pulls.open=[{number:1,state:'open'}];v.pulls.closed=null;v.agentPull=908;
+  v.loadRelatedPull(h.cx);await h.tick();
+  v.queueWebhook({repository:'owner/repo',event:'check_run'},h.cx);await h.tick();
+  assert.equal(h.pending.length,1,'Event coalesces behind the older lookup');
+  const partial=Array.from({length:10},(_,i)=>({name:`CI ${i}`,status:i<3?'COMPLETED':'IN_PROGRESS',conclusion:i<3?'SUCCESS':null}));
+  await h.reply(JSON.stringify({number:908,state:'OPEN',statusCheckRollup:partial}));
+  assert.equal(v.relatedPull.checks.label,'3/10');assert.equal(h.pending[0].args[0],'api');
+  await h.reply('',1);assert.equal(v.relatedKey,null,'Failed replacing snapshot releases the related selection key');
+  assert.equal(v.relatedPull.checks.label,'3/10','Failure retains the resolved pin');
+  v.loadRelatedPull(h.cx);await h.tick();assert.deepEqual(Array.from(h.pending[0].args.slice(0,3)),['pr','view','908']);
+  await h.reply(JSON.stringify({number:908,state:'OPEN',statusCheckRollup:[{name:'CI',status:'COMPLETED',conclusion:'SUCCESS'}]}));
+  assert.equal(v.relatedPull.checks.label,'1/1');assert.ok(v.relatedKey,'Only successful lookup results cache the selection');
 }
 console.log('PASS: Open/Closed cursor pages of 10, near-bottom loading, pinning, single-flight, deduplication, independent tabs, retry, end-of-list, refresh and stale-page guards');
