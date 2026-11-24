@@ -19,7 +19,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-24-fix-git-panel-errors/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-24-fix-git-panel-errors/acceptance.md",
   "finalizedDate": "2026-11-24",
-  "specBaseSha": "70fd212c94505a4d7b85d84cdefccc218f19e473",
+  "specBaseSha": "f6e03399d12a3292fdc16526c01f4334631cdcad",
   "acceptanceScenarios": [
     "Caught Git render failures log their actual error and innermost component while preserving native last-frame fallback.",
     "Notice requests yield before synchronous transport failures can notify during render.",
