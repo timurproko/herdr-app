@@ -23,7 +23,7 @@ import { cancelProfileDrag } from './profile-drag.js';
 import { cancelTerminalDrag } from './terminal-drag.js';
 import { cachedProfiles, composeProfiles, warmProfiles, setProfileRole, roleOrder, setRoleOrder } from './profiles.js';
 import { machinePicker } from './machine-picker.js';
-import { initPermissions, reloadPermissions, corePage, coreHasChanges, coreEditorActions } from './permissions.js';
+import { initPermissions, reloadPermissions, corePage, coreEditorActions } from './permissions.js';
 
 import { M, sectionAction, sectionRow, modalFooter } from './modal-layout.js';
 import { initCustomizationUpdates, refreshCustomizationUpdates, customizationUpdateAvailable, customizationUpdateSnapshot } from './customization-updates.js';
@@ -1127,7 +1127,7 @@ export default class Settings extends View {
               ),
           )
           .child(dialogScrollbar(Scrollbar.vertical(bodyId), { mode: 'always' }))))
-          .when((this.section==='core'&&coreHasChanges(this))||(this.section==='plugins'&&pluginTextOpen(this)&&pluginTextChanged(this))||(this.section==='profiles'&&Boolean(this.profileEdit))||(this.section==='terminals'&&Boolean(this.terminalEdit)),el=>el.child(
+          .when(this.section==='core'||(this.section==='plugins'&&pluginTextOpen(this)&&pluginTextChanged(this))||(this.section==='profiles'&&Boolean(this.profileEdit))||(this.section==='terminals'&&Boolean(this.terminalEdit)),el=>el.child(
             modalFooter(t,h_flex()).id('st-editor-footer').justify_end().bg(t.background)
               .child(this.section==='core'?coreEditorActions(this,t):this.section==='plugins'?pluginTextActions(this,t):this.section==='profiles'?profileEditorActions(this,t):terminalEditorActions(this,t)))),
       ))

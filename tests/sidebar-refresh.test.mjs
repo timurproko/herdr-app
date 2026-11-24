@@ -249,8 +249,9 @@ for (const [body,label,asset,color] of [
   ['- [x] a\n- [x] b','2 tasks done','circle-check.svg','purple'],
 ]) {
   const pr = {number:1,title:'Example',meta:'#1',state:'draft',tasks:checklistTasks(body)};
-  const nodes = descendants(taskPanel.view.pullRow(colors,pr));
-  assert.ok(nodes.includes(label));
+  const row = taskPanel.view.pullRow(colors,pr), nodes = descendants(row);
+  assert.ok(descendants(find(row,'pr-tasks-1')).includes(label),'Visible task wording stays full before overflow is measured; hidden compact probes are not display evidence');
+  assert.equal(find(row,'pr-tasks-1').attrs.tooltip[0],label,'Full GitHub wording remains on hover');
   const icon = nodes.find(node => typeof node === 'object' && node?.asset?.endsWith(asset));
   assert.ok(icon,`${label} uses ${asset}`);
   if (color) assert.equal(icon.attrs.text_color[0],color);

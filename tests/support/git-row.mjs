@@ -2,13 +2,13 @@ import {loadMod} from '../../tools/plugin-harness.mjs';
 import {element,svg,nodes,find,words} from './choice-menu.mjs';
 export {element,svg,nodes,find,words};
 export const t={background:'#191d28',foreground:'#eeeeee',muted:'#999999',dim:'#666666',raised:'#222222',hover:'#333333',border:'#444444',ansi1:'red',ansi2:'green',ansi3:'yellow',ansi5:'purple'};
-export async function rowHarness() {
+export async function rowHarness({host={},modules={}}={}) {
   let zoom=1,agent=false,rendering=false;
   const place={cwd:'/repo',on:null,terminal:'t1'},focus=[];
   const chain=new Proxy({},{get:(_n,key)=>key==='build'?()=>({}):()=>chain});
-  const {Main,facts,U}=await loadMod({mod:'custom-changes',globals:{window:{paint_path:element}},
+  const {Main,facts,U,AggregatePulls}=await loadMod({mod:'custom-changes',globals:{window:{paint_path:element}},
     host:{props:()=>null,settings:()=>({zoom}),theme:()=>t,closeOverlay(){},openOverlay(){},nextCommand(){},run:(...args)=>focus.push(args),
-      layout:()=>({id:'panel',children:[{id:'panel-body',active:'changes'}]})},
+      layout:()=>({id:'panel',children:[{id:'panel-body',active:'changes'}]}),...host},
     modules:{'main.js':'src/plugins/git/mod/main.js','pulls.js':'src/plugins/git/mod/pulls.js','label-colors.js':'src/plugins/git/mod/label-colors.js',
       'ui.js':'src/ui/ui.js','gpui-kit':{View:class{},div:element,svg,PathBuilder:{stroke:()=>chain}},
       'gpui-base':{h_flex:()=>element().flex(),v_flex:()=>element().flex().flex_col(),Popover:{},Input:{}},
@@ -16,14 +16,26 @@ export async function rowHarness() {
       'location.js':{location:()=>place},'plugins.js':{sidebarPanelEnabled:()=>true},'agent-links.js':{AgentLinks:class{}},
       'aggregate.js':{AggregatePulls:class{}},'webhooks.js':{GitWebhooks:class{}},'notices.js':{GitNotices:class{}},
       'enrollment-picker.js':{EnrollmentPicker:class{}},'panel-pin.js':{panelPin:element},'sidebar-title.js':{sidebarTitle:element},
-      'panel-state.js':{changePanel(){}},'settings-dialog.js':{openSettings(){}},'panel-kit.js':{headerTool:element,contextMenu:element,panelMessage:element}},
-    entry:'export {default as Main} from "./main.js"; export * as facts from "./pulls.js"; export {U} from "./ui.js";'});
+      'panel-state.js':{changePanel(){}},'settings-dialog.js':{openSettings(){}},'panel-kit.js':{headerTool:element,contextMenu:element,panelMessage:element},...modules},
+    entry:'export {default as Main} from "./main.js"; export * as facts from "./pulls.js"; export {U} from "./ui.js"; export {AggregatePulls} from "./aggregate.js";'});
   const panel=new Main();panel.resetRepository();panel.root='/repo';panel.repo={name:'owner/repo'};panel.context=JSON.stringify(['/repo',null]);panel.view='open';
   panel.agentLinks={related:()=>agent?{key:'agent',address:'t2'}:null};
   panel.aggregate={context:{scope:'home'},target:()=>agent?{terminal:'t2'}:null,focus:(...args)=>focus.push(args)};
   const cx={focus_handle(){if(rendering)throw Error('focus handle during render');return {};},notify(){if(rendering)throw Error('notify during render');},stop_propagation(){},spawn:fn=>fn(cx)};
   const render=fn=>{rendering=true;try{return fn();}finally{rendering=false;}};
-  return {panel,facts,U,cx,render,focus,place,setAgent:value=>{agent=value;},setZoom:value=>{zoom=value;}};
+  const settle=(build,width,zoom=1,height)=>{
+    // Native post-layout callbacks, not render-time heuristics. Include hidden
+    // intrinsic probes; visible text assertions below exclude their paint.
+    for(let pass=0;pass<8;pass++) {
+      const tree=render(build),geometry=rowGeometry(tree,width,zoom,height);let changed=false;
+      for(const node of nodes(tree))if(/pr-(?:byline|meta)-/.test(node.attrs?.id?.[0]??'')) {
+        const callback=node.attrs.on_size_change?.[0];if(callback)callback(geometry.get(node),{...cx,notify(){changed=true;}});
+      }
+      if(!changed)return {tree,geometry};
+    }
+    throw Error('Natural row layout must converge without a measurement/render loop');
+  };
+  return {panel,facts,U,AggregatePulls,cx,render,settle,focus,place,setAgent:value=>{agent=value;},setZoom:value=>{zoom=value;}};
 }
 
 // Deterministic flex/absolute box model for these real render trees, not GPUI
@@ -39,7 +51,7 @@ export function lineHeightPixels(value,fontSize) {
 }
 export function rowGeometry(root,width,zoom=1,height) {
   const boxes=new Map(),v=(a,k,f=0)=>a[k]?.[0]??f;
-  boxes.textLines=[];
+  boxes.textLines=[];boxes.naturalWidths=new Map();
   const attrs=n=>typeof n==='object'&&n?n.attrs:{};
   const children=n=>typeof n==='object'&&n?(n.kids??[]).filter(c=>c!=null):[];
   const absolute=n=>Boolean(attrs(n).absolute);
@@ -59,8 +71,9 @@ export function rowGeometry(root,width,zoom=1,height) {
     h=limit(h??natural.h,v(a,'min_h'),v(a,'max_h',Infinity));
     const paintY=y+(a.relative?v(a,'top'):0);
     boxes.set(n,{x:x*zoom,y:paintY*zoom,width:w*zoom,height:h*zoom});
+    boxes.naturalWidths.set(n,natural.w*zoom);
     if(typeof n==='string') {
-      if(n)boxes.textLines.push({text:n,lineHeight:lineHeightPixels(s.line,s.font)*zoom,fontSize:s.font*zoom,ancestors});
+      if(n)boxes.textLines.push({text:n,x:x*zoom,naturalWidth:natural.w*zoom,lineHeight:lineHeightPixels(s.line,s.font)*zoom,fontSize:s.font*zoom,ancestors});
       return;
     }
     const row=Boolean(a.flex&&!a.flex_col),kids=children(n).filter(c=>!absolute(c)),innerW=Math.max(0,w-p.l-p.r),innerH=Math.max(0,h-p.t-p.b),gap=v(a,'gap');
@@ -86,5 +99,7 @@ export function rowGeometry(root,width,zoom=1,height) {
       place(child,x+v(ca,'left'),y+v(ca,'top'),cw,ch,s,[...ancestors,n]);
     }
   };
-  place(root,0,0,width,height);return boxes;
+  place(root,0,0,width,height);
+  boxes.visibleTextLines=boxes.textLines.filter(line=>!line.ancestors.some(n=>n.attrs?.invisible));
+  return boxes;
 }

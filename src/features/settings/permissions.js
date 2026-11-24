@@ -39,20 +39,24 @@ export function initPermissions(owner, cx) {
   cx.timer.every(2500, cx => { if (owner.section === 'core') pollPermissionRelaunch(owner, cx); });
   if (owner.section === 'core') reloadPermissions(owner, cx);
 }
-export function reloadPermissions(owner, cx) {
+export function reloadPermissions(owner, cx, completion = null) {
   startRefreshFeedback(owner,'st-core-refresh',JSON.stringify(['core',owner.profileMachine]),cx,true);
   const machine = machineOf(owner);
   owner.terminalPermissions ??= new Map();
-  if (owner.terminalPermissions.get(machine)?.loading) return;
-  const entry = { loading: true, result: owner.terminalPermissions.get(machine)?.result ?? snapshots.get(machine) ?? null, error: null };owner.terminalPermissions.set(machine, entry);
+  const previousEntry = owner.terminalPermissions.get(machine);
+  // Completion needs a post-operation inspection, not a read started before restart.
+  if (previousEntry?.loading && (!completion || previousEntry.reconciling?.request === completion.request)) return;
+  const entry = { loading: true, result: previousEntry?.result ?? snapshots.get(machine) ?? null, error: null,
+    reconciling: completion?.state === 'complete' ? completion : null };owner.terminalPermissions.set(machine, entry);
   cx.spawn(async cx => {
     try {
       const result = await bridge(machine, { action: 'inspect' });
+      if (owner.terminalPermissions.get(machine) !== entry) return;
       if (typeof result.platform !== 'string' || ![true, false, null].includes(result.running) || ![true, false, null].includes(result.elevated)) throw Error('Invalid core status.');
       const d = owner.permissionDrafts?.get(machine), previous = entry.result;
       if (d && previous && d.mode === baseMode(previous) && d.remember === (previous.remember === true)) owner.permissionDrafts.delete(machine);
       entry.result = result;snapshots.set(machine, result);
-    } catch (error) { snapshots.delete(machine);entry.result = null;entry.error = error.message; }
+    } catch (error) { if (owner.terminalPermissions.get(machine) !== entry) return;snapshots.delete(machine);entry.result = null;entry.error = error.message; }
     finally { entry.loading = false; }
     cx.notify();
   });
@@ -71,7 +75,7 @@ export function pollPermissionRelaunch(owner, cx, force = false) {
       if (shared(key(machine))?.request !== job.request) return;
       if (result.request !== job.request || !['queued', 'restarting', 'complete', 'failed', 'unknown'].includes(result.state)) throw Error('Invalid operation result.');
       if (result.state !== 'unknown') setShared(key(machine), { ...job, ...result });
-      if (['complete', 'failed'].includes(result.state) && machine === machineOf(owner)) reloadPermissions(owner, cx);
+      if (['complete', 'failed'].includes(result.state) && machine === machineOf(owner)) reloadPermissions(owner, cx, { ...job, ...result });
     } catch { /* SSH may briefly disappear during a machine/core restart. */ }
     finally { owner.permissionPolls.delete(machine); }
     cx.notify();
@@ -89,10 +93,15 @@ export function coreHasChanges(owner) {
 export function coreNeedsRelaunch(owner) {
   const info = infoOf(owner);return info?.running === true && typeof info.elevated === 'boolean' && draft(owner, info).mode !== (info.elevated ? 'administrator' : 'standard');
 }
+function changeHint(owner) {
+  return coreHasChanges(owner) ? coreNeedsRelaunch(owner) ? 'Apply restarts core with all agents.' : 'Unapplied changes' : '';
+}
 export function coreChangeNotice(owner, t) {
-  const job = pending(owner);
-  const label = active(owner) ? job?.operation === 'autostart' ? 'Applying' : job?.operation === 'stop' ? 'Stopping' : job?.operation === 'start' ? 'Starting' : 'Restarting'
-    : coreHasChanges(owner) ? coreNeedsRelaunch(owner) ? 'Apply restarts core with all agents.' : 'Unapplied changes' : '';
+  const job = pending(owner), entry = owner.terminalPermissions?.get(machineOf(owner));
+  // Keep the reminder captured at Apply, including the final fresh-status check.
+  // Older shared jobs have no hint; their draft remains a safe fallback.
+  const reconciling = entry?.loading && entry.reconciling && entry.reconciling.request === job?.request;
+  const label = (active(owner) || reconciling) && typeof job?.hint === 'string' ? job.hint : changeHint(owner);
   return div().id('st-core-change-notice').flex_1().min_w(0).text_size(U.meta).text_color(t.muted).child(label);
 }
 export function coreAction(owner, operation, cx) {
@@ -107,7 +116,7 @@ export function coreAction(owner, operation, cx) {
   const d = { ...draft(owner, info) };
   const request = `core-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
   const mode = operation === 'stop' ? info.elevated ? 'administrator' : 'standard' : operation === 'start' ? baseMode(info) : d.mode;
-  let job = { request: operation === 'apply' ? `${request}-settings` : request, mode, operation: operation === 'apply' ? 'autostart' : operation, session: info.session, started: Date.now(), state: 'preparing' };
+  let job = { request: operation === 'apply' ? `${request}-settings` : request, mode, operation: operation === 'apply' ? 'autostart' : operation, hint: changeHint(owner), session: info.session, started: Date.now(), state: 'preparing' };
   setShared(key(machine), job);owner.permissionApplying = true;owner.permissionPickerOpen = false;owner.settingsHostOpen = false;cx.notify();
   cx.spawn(async cx => {
     try {
@@ -134,7 +143,7 @@ export function coreAction(owner, operation, cx) {
     } catch (error) {
       if (shared(key(machine))?.request === job.request) setShared(key(machine), { ...job, state: error.rejected ? 'failed' : 'unknown', message: error.message });
     } finally { owner.permissionApplying = false; }
-    if (job.operation === 'autostart' && machine === machineOf(owner)) reloadPermissions(owner, cx);
+    if (job.operation === 'autostart' && machine === machineOf(owner) && pending(owner)?.request === job.request) reloadPermissions(owner, cx, pending(owner));
     cx.notify();
   });
 }
@@ -158,20 +167,20 @@ export function coreEditorActions(owner, t) {
     && (info?.running !== true || typeof info.elevated === 'boolean') && (!coreNeedsRelaunch(owner) || info?.desktop);
   return h_flex().w_full().h(U.field).gap(8).items_center()
     .child(coreChangeNotice(owner, t))
-    .when(coreHasChanges(owner), e => e
-      .child(editorActionButton(owner.button(t, 'st-core-discard', 'Discard', (_e, cx) => { if (!enabled) return;owner.permissionDrafts.delete(machineOf(owner));cx.notify(); }, { enabled })))
-      .child(editorActionButton(owner.button(t, 'st-core-apply', 'Apply', (_e, cx) => coreAction(owner, 'apply', cx), { enabled }))));
+    .child(editorActionButton(owner.button(t, 'st-core-discard', 'Discard', (_e, cx) => { if (!enabled) return;owner.permissionDrafts.delete(machineOf(owner));cx.notify(); }, { enabled })))
+    .child(editorActionButton(owner.button(t, 'st-core-apply', 'Apply', (_e, cx) => coreAction(owner, 'apply', cx), { enabled })));
 }
 export function corePage(owner, t) {
   const machine = machineOf(owner), entry = owner.terminalPermissions?.get(machine), info = entry?.result, job = pending(owner);
   const away = offline(owner);
   const editing = Boolean(owner.profileEdit || owner.terminalEdit), enabled = Boolean(info?.supported && !entry.loading && !active(owner) && !editing && !away);
-  const transition = !away && active(owner) && ['start', 'stop', 'apply'].includes(job?.operation);
   const checking = Boolean(entry?.loading);
+  const reconciling = checking && entry.reconciling && entry.reconciling.request === job?.request;
+  const transition = !away && (active(owner) || reconciling) && ['start', 'stop', 'apply'].includes(job?.operation);
   const status = away ? 'Unreachable' : transition ? job.operation === 'stop' ? 'Stopping' : job.operation === 'start' ? 'Starting' : 'Restarting'
-    : info?.running === false ? 'Stopped' : info?.running === true ? info.desktop === false ? 'Running (logged out)' : 'Running' : 'Unknown';
+    : checking ? 'Checking' : info?.running === false ? 'Stopped' : info?.running === true ? info.desktop === false ? 'Running (logged out)' : 'Running' : 'Unknown';
   const cold = checking && !info && !away;
-  const bulb = transition ? activity(t.working) : div().size(U.statusSize).flex_none().rounded_full().bg(!away && info?.running === true ? t.done : t.dim);
+  const bulb = transition || checking ? activity(t.working) : div().size(U.statusSize).flex_none().rounded_full().bg(!away && info?.running === true ? t.done : t.dim);
   const statusInfo = h_flex().id('st-core-status-info').gap(U.gap).items_center()
     .tooltip(away ? `${machine} is not connected.` : checking ? info ? 'Last checked status; refreshing…' : 'Loading core status…' : `Core process: ${status}`)
     .when(cold, e => e.child(skeleton(t, 'st-terminal-permissions', 66).accessibility_label('Loading core status')))
