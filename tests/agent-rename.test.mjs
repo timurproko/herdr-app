@@ -26,7 +26,7 @@ const mocks={
  './tab-rename.js':{requestInlineTabRename:job=>{commands.push(job.command);return true;}},
  './space-rename.js':{requestInlineSpaceRename:job=>{commands.push(job.command);return true;}},
  './close-space.js':{closeWithConfirmation:(name,args)=>commands.push({name,args})},
- './plugins.js':{pluginMenuItems:()=>[],pluginWorkspaceLinks:()=>[]},
+ './plugins.js':{pluginEvent(){},pluginMenuItems:()=>[],pluginWorkspaceLinks:()=>[]},
  './customization-updates.js':{customizationUpdateAvailable:()=>false},
 };
 const context=vm.createContext({}),mod=new vm.SourceTextModule(read('src/features/menu/main.js'),{context});

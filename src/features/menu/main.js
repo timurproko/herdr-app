@@ -17,7 +17,7 @@ import { spaceColorPicker, setSpaceColor, selectedColorIndex, colorAt as colorVa
 import { requestInlineTabRename } from './tab-rename.js';
 import { requestInlineSpaceRename } from './space-rename.js';
 import { closeWithConfirmation } from './close-space.js';
-import { pluginMenuItems, pluginWorkspaceLinks } from './plugins.js';
+import { pluginEvent, pluginMenuItems, pluginWorkspaceLinks } from './plugins.js';
 import { run, props, closeOverlay, openOverlay, theme, keys, terminals, spaces, panes, agents, shared, notify, updates } from "./host.js";
 
 function items(p, git, pluginItems = []) {
@@ -125,6 +125,9 @@ export default class Menu extends View {
     this.colorAmbiguous = links.length > 1;
     this.colorPair = links.length === 1 ? {...links[0]} : null;
     this.colorTarget = this.colorPair?.parent ?? this.colorSource?.id;
+    // Each mod must witness verification itself; sidebar proof is display-only here.
+    // The generic lifecycle yields before reading or joining a shared in-flight read.
+    if (this.colorPair) pluginEvent('workspace.context.refresh', { owner: this, cx });
     this.pluginItems = p?.tab === 'agent' ? pluginMenuItems('agents.context', { terminal: p.target?.terminal })
       .map(action => [action.label, 'custom.plugin-action', {}, action.icon, null, false, action.run]) : [];
     // Do not focus the popup: right-click is a paste gesture, not a menu.

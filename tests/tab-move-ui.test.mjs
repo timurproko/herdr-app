@@ -134,7 +134,7 @@ const modules = {
     badge: (label,fill) => {colors.push([label,fill]);return element();}, spaceBadgeColor: (_t,s,c) => c[s.id]},
   './directory.js': {displaySpace: x => x}, './sidebar-footer.js': {footerItems: () => []}, './modal-layout.js': {divider: element, dividerHeight: () => 17},
   './space-colors.js': {spaceColorPicker: element,setSpaceColor(){},selectedColorIndex:()=>0,colorAt:()=>0,COLOR_COUNT:6},
-  './plugins.js': {pluginMenuItems:()=>menuActions,pluginWorkspaceLinks:()=>[]},
+  './plugins.js': {pluginEvent(){},pluginMenuItems:()=>menuActions,pluginWorkspaceLinks:()=>[]},
   './customization-updates.js': {customizationUpdateAvailable:()=>false},
   './agent-rename.js': {requestInlineAgentRename:()=>true},
   './tab-rename.js': {requestInlineTabRename:()=>true}, './space-rename.js': {requestInlineSpaceRename:()=>true}, './close-space.js': {closeWithConfirmation(...args){legacyActions.push(args);}},

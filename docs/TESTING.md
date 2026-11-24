@@ -365,6 +365,14 @@ Rename/close/worktree targets remain the clicked space. Stale/changed/ambiguous,
 disabled, missing, cross-machine or retained-only pair bindings refuse writes;
 reopening a detached fleet restores independent controls. Actual detached row/rail
 projections restore its own colour without copying preferences.
+`tests/fleet-color-menu.test.mjs` uses separate packaged `custom-spaces` and
+`custom-menu` instances with the real registry, Crew provider, menu and colour
+state. Sidebar verification alone cannot authorize menu writes: opening an
+attached palette starts or witnesses verification through the generic lifecycle,
+yielding before shared writes or IO. Both menu origins on local/remote machines,
+mouse colour and keyboard Automatic choices, shared in-flight coalescing, reopening,
+failed/expired verification and changed/missing/disabled bindings are covered.
+Fleet saved colour and Automatic flags stay untouched. No real Core or network is used.
 
 `tests/fleet-git.test.mjs` loads the actual Git controller, aggregate source and Crew
 provider through the package harness. Synthetic tasks/gh results cover coordinator
@@ -604,6 +612,7 @@ tests/file-tab-reuse.test.mjs
 tests/files-plugin-tabs.test.mjs
 tests/files-refresh-policy.test.mjs
 tests/firstmate-profile-role.test.mjs
+tests/fleet-color-menu.test.mjs
 tests/fleet-git.test.mjs
 tests/fleet-history.test.mjs
 tests/fleet-preferences.test.mjs
