@@ -1,4 +1,5 @@
 // Regression: webhook invalidations replaced pinned-only ten-second polling.
+import {githubInvocation} from './support/github-read.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {kitModule,withKitUi} from './support/panel-kit.mjs';
@@ -20,7 +21,7 @@ async function harness() {
   const place={cwd:'/repo',on:'pc2',terminal:'pc2/t1',app:'a1'},pending=[],tasks=[],timers=[],phases=[],opened=[];
   const context=vm.createContext({localStorage:{getItem:()=>null,setItem(){}}});
   const host={layout:()=>({id:'panel',hidden:!shown,children:[{id:'panel-body',active:'changes'}]}),
-    exec:(cmd,args,options)=>new Promise(resolve=>pending.push({cmd,args,options,resolve})),
+    exec:(cmd,args,options)=>{({command:cmd,args,options}=githubInvocation(cmd,args,options));return new Promise(resolve=>pending.push({cmd,args,options,resolve}));},
     settings:()=>({zoom:1}),theme:()=>({dim:'dim'}),run(){},openOverlay:spec=>opened.push(spec),closeOverlay(){},props(){},notify(){},nextCommand(){},window(){},hc:async()=>({code:1})};
   const modules={
     './enrollment-picker.js':{EnrollmentPicker:class{}},
