@@ -3,6 +3,23 @@ import {rowHarness,rowGeometry,element,find,nodes,t} from './support/git-row.mjs
 import {spacesGeometryHarness} from './support/spaces-geometry.mjs';
 const near=(a,b,message)=>assert.ok(Math.abs(a-b)<1e-6,`${message}: ${a} != ${b}`);
 const right=b=>b.x+b.width,centre=b=>b.x+b.width/2;
+const inset=(geometry,row,control)=>right(geometry.get(row))-right(geometry.get(control));
+function spacesInset(width,zoom) {
+  const tree=spaces.render(),geometry=rowGeometry(tree,width,zoom,600);
+  const insets=['coordinator','fleet'].map(id=>{
+    const row=find(tree,`space-${id}`),pill=find(tree,`space-tag-${id}-crew-0`);
+    near(width*zoom-right(geometry.get(row)),8*zoom,'Spaces highlight retains its 8px sidebar inset');
+    near(width*zoom-right(geometry.get(pill)),11*zoom,'Spaces pill retains its 11px sidebar inset');
+    return inset(geometry,row,pill);
+  });
+  near(insets[0],insets[1],'Actual coordinator and fleet Crew highlight-relative insets align');
+  near(insets[0],(8-5)*zoom,'Actual Spaces row padding minus negative pill margin leaves 3px inside the highlight');
+  return insets[0];
+}
+function gitHighlight(geometry,row,width,zoom) {
+  near(width*zoom-right(geometry.get(row)),5*zoom,'Git highlight retains its 5px panel inset');
+  near(geometry.get(row).x,5*zoom,'Git highlight retains its left anchor');
+}
 // Independent negative-margin oracle: a trailing pill extends beyond its row's
 // padding, but never beyond the list's inset. The full Spaces tree below uses it.
 {
@@ -20,10 +37,7 @@ const now=Date.parse('2026-11-20T14:00:00Z');
 let comparisons=0;
 for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,2]) {
   h.setZoom(zoom);
-  const spaceTree=spaces.render(),spaceBoxes=rowGeometry(spaceTree,width,zoom,600);
-  const crewEdges=['coordinator','fleet'].map(id=>right(spaceBoxes.get(find(spaceTree,`space-tag-${id}-crew-0`))));
-  near(crewEdges[0],crewEdges[1],'Actual coordinator and fleet Crew pills align');
-  const expected=crewEdges[0];near(width*zoom-expected,11*zoom,'Actual Spaces list + row - trailing margin is 11px');
+  const expectedInset=spacesInset(width,zoom),titles=new Map();
   for(const state of ['OPEN','CLOSED','MERGED'])for(const mode of ['ordinary','pinned','ghost','coordinator'])for(const agent of [false,true]) {
     h.setAgent(agent);panel.view=state==='OPEN'?'open':'closed';
     const pr=facts.pullRow({...raw,state},'owner',now),next={...pr,number:18};
@@ -41,8 +55,14 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
     for(const row of rows) {
       const id=row.key??row.number,block=find(tree,`${prefix}pr-${id}`),slot=find(block,`${prefix}pr-agent-slot-${id}`);
       const robot=geometry.get(slot),pill=geometry.get(find(block,`${prefix}pr-labels-${id}`).kids.at(-1));
-      near(right(robot),expected,'Robot slot right edge equals actual Spaces Crew edge');
-      near(right(pill),expected,'Actual label pill right edge equals actual Spaces Crew edge');
+      gitHighlight(geometry,block,width,zoom);
+      near(inset(geometry,block,slot),expectedInset,'Robot slot inset from its highlight equals actual Spaces Crew inset');
+      near(right(geometry.get(block))-right(pill),expectedInset,'Actual label pill inset from its highlight equals actual Spaces Crew inset');
+      near(width*zoom-right(robot),8*zoom,'Git control now ends 8px from the panel, not Spaces\' 11px');
+      const title=geometry.get(find(block,`${prefix}pr-title-${id}`)),titleKey=`${state}-${mode}-${id}`;
+      near(right(title),robot.x-4*zoom,'Title truncation ends before the reserved robot slot');
+      if(agent)near(right(title),titles.get(titleKey),'Agent presence never changes the title truncation boundary');
+      else titles.set(titleKey,right(title));
       near(robot.width,24*zoom,'Robot reservation remains 24px');near(geometry.get(block).height,74*zoom,'PR vertical geometry stays fixed');
       near(geometry.get(find(block,`${prefix}pr-title-${id}`)).x,geometry.get(block).x+32*zoom,'Left inset is unchanged');
       for(const [kind,height,offset] of [['title-line',20,6],['byline',18,29],['meta',18,50]]) {
@@ -53,7 +73,7 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
       assert.equal(Boolean(button),agent);
       if(button) {
         const box=geometry.get(button);near(box.width,24*zoom,'Robot hit width');near(box.height,24*zoom,'Robot hit height');
-        near(right(box),expected,'Robot hit target uses the reserved edge');assert.equal(Boolean(button.attrs.on_click),mode!=='ghost');
+        near(right(geometry.get(block))-right(box),expectedInset,'Robot hover box shares the Spaces highlight-relative inset');assert.equal(Boolean(button.attrs.on_click),mode!=='ghost');
         assert.equal(button.attrs.tooltip,undefined,'Robot remains without a tooltip');
         const glyph=nodes(button).find(node=>node.attrs.asset?.[0]==='icons/agent.svg');
         near(centre(geometry.get(glyph)),centre(robot),'Robot glyph is centred in its reserved column');
@@ -63,7 +83,9 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
     }
     if(mode==='coordinator') {
       const header=find(tree,'task-repo-header-owner/repo'),slot=header.kids.at(-1),glyph=slot.kids[0],box=geometry.get(slot);
-      near(right(box),expected,'Header chevron slot right edge equals robot and pill edges');
+      gitHighlight(geometry,header,width,zoom);
+      near(inset(geometry,header,slot),expectedInset,'Header chevron slot shares the Spaces highlight-relative inset');
+      near(right(box),right(geometry.get(find(tree,'pr-agent-slot-owner/repo#17'))),'Header chevron slot right edge equals robot and pill edges');
       near(box.width,24*zoom,'Header chevron reserves 24px');near(box.height,24*zoom,'Header slot remains inside 28px header');
       near(geometry.get(header).height,28*zoom,'Header vertical geometry is unchanged');
       near(centre(geometry.get(glyph)),centre(box),'Chevron glyph is centred in the robot column');
@@ -76,19 +98,25 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
       for(const folded of [true,false]) {
         panel.foldedRepositories=folded?new Set(['owner/repo']):new Set();
         const foldedTree=h.render(()=>panel.render(h.cx)),foldedBoxes=rowGeometry(foldedTree,width,zoom,600),foldedHeader=find(foldedTree,'task-repo-header-owner/repo');
-        near(right(foldedBoxes.get(foldedHeader.kids.at(-1))),expected,'Expanded and folded chevron slots share the same edge');
+        gitHighlight(foldedBoxes,foldedHeader,width,zoom);
+        near(inset(foldedBoxes,foldedHeader,foldedHeader.kids.at(-1)),expectedInset,'Expanded and folded chevron slots share the Spaces highlight-relative inset');
       }
     }
     // Mutations must fail at complete-panel level even when all row-local
     // equalities still hold: old padding, old header slot and an extra border.
     if(mode==='coordinator' && agent && state==='OPEN') {
       const row=find(tree,'pr-owner/repo#17'),header=find(tree,'task-repo-header-owner/repo');
-      row.pr(8);assert.notEqual(right(rowGeometry(tree,width,zoom,600).get(find(row,'pr-agent-slot-owner/repo#17'))),expected);row.pr(6);
-      header.pr(4);header.kids.at(-1).size(16);
-      assert.notEqual(right(rowGeometry(tree,width,zoom,600).get(header.kids.at(-1))),expected);
-      header.pr(6);header.kids.at(-1).size(24);
+      row.pr(6);
+      assert.notEqual(inset(rowGeometry(tree,width,zoom,600),row,find(row,'pr-agent-slot-owner/repo#17')),expectedInset);row.pr(3);
+      header.pr(6);
+      assert.notEqual(inset(rowGeometry(tree,width,zoom,600),header,header.kids.at(-1)),expectedInset);header.pr(3);
+      header.kids.at(-1).size(16);
+      near(inset(rowGeometry(tree,width,zoom,600),header,header.kids.at(-1)),expectedInset,'Inset alone cannot detect a shrunken chevron slot');
+      assert.notEqual(rowGeometry(tree,width,zoom,600).get(header.kids.at(-1)).width,24*zoom);header.kids.at(-1).size(24);
       find(tree,'task-pulls-scroll').border_1();
-      assert.notEqual(right(rowGeometry(tree,width,zoom,600).get(find(row,'pr-agent-slot-owner/repo#17'))),expected);
+      const changed=rowGeometry(tree,width,zoom,600);
+      near(inset(changed,row,find(row,'pr-agent-slot-owner/repo#17')),expectedInset,'Inset alone cannot detect a shifted highlight');
+      assert.throws(()=>gitHighlight(changed,row,width,zoom),/Git highlight retains/);
     }
   }
 }
@@ -101,20 +129,26 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
     {key:`owner/repo#${i+1}`,repo:'owner/repo'}));
   Object.assign(panel.aggregate,{rows:()=>rows,counts:()=>({open:25,closed:25}),entries:new Map(rows.map(pr=>[pr.key,{pr,link:{repo:pr.repo}}]))});
   panel.syncAggregate=()=>true;
-  const spaceTree=spaces.render(),expected=right(rowGeometry(spaceTree,width,zoom,600).get(find(spaceTree,'space-tag-coordinator-crew-0')));
+  const expectedInset=spacesInset(width,zoom);
   const seen=new Set();let offset=0;
   while(true) {
     const {tree,geometry}=h.settle(()=>panel.render(h.cx),width,zoom,600);
     const viewport=find(tree,`task-pulls-list-home-${view}`);
     assert.ok(viewport,'Continuous scrolling retains one native scroll identity');assert.equal(taskContent(tree).attrs.p[0],4);
     assert.equal(find(tree,'task-pulls-pages'),undefined);
-    const header=find(tree,'task-repo-header-owner/repo');if(header)near(right(geometry.get(header.kids.at(-1))),expected,'Header slot shares the Spaces edge');
+    const header=find(tree,'task-repo-header-owner/repo');
+    if(header) {
+      gitHighlight(geometry,header,width,zoom);
+      near(inset(geometry,header,header.kids.at(-1)),expectedInset,'Windowed header slot shares the Spaces highlight-relative inset');
+    }
     const visible=nodes(viewport).filter(node=>/^pr-owner\/repo#\d+$/.test(node.attrs.id?.[0]??''));
     assert.ok(visible.length<=10,'Alignment must preserve main\'s bounded page size');
     for(const row of visible) {
       const id=row.attrs.id[0].slice(3);seen.add(id);
-      near(right(geometry.get(find(row,`pr-agent-slot-${id}`))),expected,'Paged robot slot shares the Spaces edge');
-      near(right(geometry.get(find(row,`pr-labels-${id}`).kids.at(-1))),expected,'Paged actual pill shares the Spaces edge');
+      gitHighlight(geometry,row,width,zoom);
+      near(inset(geometry,row,find(row,`pr-agent-slot-${id}`)),expectedInset,'Paged robot slot shares the Spaces highlight-relative inset');
+      near(inset(geometry,row,find(row,`pr-agent-${id}`)),expectedInset,'Paged robot hover box shares the Spaces highlight-relative inset');
+      near(inset(geometry,row,find(row,`pr-labels-${id}`).kids.at(-1)),expectedInset,'Paged actual pill shares the Spaces highlight-relative inset');
       near(geometry.get(row).height,74*zoom,'Paged rows preserve their vertical geometry');pagedComparisons++;
     }
     measureTask(panel,tree,h.cx,400,width,zoom);
@@ -124,4 +158,4 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
   assert.deepEqual([...seen].sort(),rows.map(pr=>pr.key).sort(),'Every PR remains reachable with unchanged alignment');
 }
 console.log(`PASS ${pagedComparisons} windowed-scroll right-edge comparisons and stable native scroll identity across widths/zoom/Open/Closed`);
-console.log(`PASS ${comparisons} full-panel right-edge comparisons against actual Spaces Crew geometry, 280–480px / 75–200% including 130%, ordinary/pinned/scrolling/ghost/coordinator, Open/Closed/merged and mutation guards (synthetic, not native pixels)`);
+console.log(`PASS ${comparisons} full-panel highlight-relative inset comparisons against actual Spaces Crew geometry, 280–480px / 75–200% including 130%, ordinary/pinned/scrolling/ghost/coordinator, Open/Closed/merged and mutation guards (synthetic, not native pixels)`);
