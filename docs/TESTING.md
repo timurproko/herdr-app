@@ -426,10 +426,14 @@ writes. The original toggle source fails because it starts zero reads until a
 later Spaces lifecycle event. Additional fake-clock cases start with the preference
 already enabled: rejected/timed-out first reads recover using only the actual
 Spaces 250 ms timer, with no click or unrelated interaction. They pin completion-
-based 2/5/15/60-second backoff, no early lifecycle retries, no new timer, immediate
+based 2/5/10-second backoff with a ten-second cap for every retryable reason,
+no early lifecycle retries, no new timer, immediate
 disable, authoritative absence, module replacement, first-frame retained display,
 expired abandoned readers and obsolete completion refusal. The pre-backoff source
-fails the two-second timer-only recovery assertion (2 status reads instead of 4). Strict Git
+fails the two-second timer-only recovery assertion (2 status reads instead of 4).
+The previous 15/60-second policy fails the new ten-second deadline-cap assertion;
+local/remote transport failures and timeouts exercise repeated ten-second recovery.
+Replacement graphs also reject persisted old-policy deadlines. Strict Git
 context recovers only after witnessed verification on both machines. These fixtures
 prove scheduling and rendered rows, not native pixel timing. A read-only-state/native screenshot baseline on
 0.1.17 showed verification pending at one second and attachment by seven seconds

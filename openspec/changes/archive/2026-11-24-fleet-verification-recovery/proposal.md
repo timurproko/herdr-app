@@ -8,7 +8,7 @@ A reported fleet-detachment incident recovered before inspection, and verificati
 
 - Record sanitized verification outcomes, including discarded replies, with time and generation in bounded runtime-only provider diagnostics and a deduplicated bounded customization log.
 - Reuse the existing Git verification presentation/tooltip to expose the last relevant failure, without adding a new control, panel or notification.
-- Carry coalesced recovery backoff on the existing periodic Spaces lifecycle after 2 seconds, 5 seconds, 15 seconds and then 60 seconds between failed attempts, without another user interaction or a second scheduler. Stop the recovery chain on success, disablement or authoritative absence.
+- Carry coalesced recovery backoff on the existing periodic Spaces lifecycle after 2 seconds, 5 seconds and then repeated 10 seconds between failed attempts, never slower than the previous cadence for any retryable reason, without another user interaction or a second scheduler. Stop the recovery chain on success, disablement or authoritative absence.
 - Cover startup, update/mod replacement, timeouts, obsolete replies and automatic recovery through the actual packaged Settings/Spaces/Crew instances.
 
 ## Capabilities

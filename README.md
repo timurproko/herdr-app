@@ -648,7 +648,9 @@ one 15-second recorded-only fallback solely for an explicit unsupported flag;
 the shared 45-second read lease bounds abandoned reads after a reload. A timeout
 is not proof of absent ownership. Spaces already checks its lifecycle every 250 ms;
 healthy status reads use a ten-second TTL. Failed verification now backs off for
-**2 s, 5 s, 15 s, then 60 s** between completed attempts. The existing Spaces timer
+**2 s, 5 s, then every 10 s** between completed attempts, never slower than the
+previous ten-second attempt cadence. There are no longer reason-specific delays;
+unready remote layouts are simply skipped until ready. The existing Spaces timer
 services each deadline (normally within its next 250 ms tick); there is no second
 scheduler and no click or dialog close is needed. Success, disablement, missing
 candidates or authoritative absence ends recovery; normal healthy/history refresh

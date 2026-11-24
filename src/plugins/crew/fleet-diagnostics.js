@@ -12,15 +12,15 @@ const entries = () => {
   return value?.version===1 && value.entries && typeof value.entries==='object' && !Array.isArray(value.entries) ? value.entries : {};
 };
 export const fleetDiagnostic = machine => entries()[machine??'local'];
-const RETRY_DELAYS=[2000,5000,15000,60000];
+const RETRY_DELAYS=[2000,5000,10000];
 // Deadlines are serviced by the existing Spaces lifecycle, not another timer.
 export function fleetRetry(machine) {
   const retry=fleetDiagnostic(machine)?.retry;
-  return retry?.generation===fleetGeneration() && integer(retry.attempts) && retry.attempts>=1 && retry.attempts<=4 &&
+  return retry?.generation===fleetGeneration() && integer(retry.attempts) && retry.attempts>=1 && retry.attempts<=RETRY_DELAYS.length &&
     integer(retry.at) && retry.at<=Date.now() && retry.nextAt===retry.at+RETRY_DELAYS[retry.attempts-1] ? retry : null;
 }
 export function deferFleetRetry(machine, reset=false) {
-  const prior=reset?null:fleetRetry(machine), attempts=Math.min((prior?.attempts??0)+1,4), at=Date.now();
+  const prior=reset?null:fleetRetry(machine), attempts=Math.min((prior?.attempts??0)+1,RETRY_DELAYS.length), at=Date.now();
   update(machine,{retry:{generation:fleetGeneration(),attempts,at,nextAt:at+RETRY_DELAYS[attempts-1]}});
 }
 export function clearFleetRetry(machine) {

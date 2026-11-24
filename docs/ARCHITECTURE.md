@@ -186,8 +186,12 @@ after cold start or mod replacement. A cold failed first read remains independen
 until verification succeeds; retained display survives uncertainty. An abandoned
 in-flight lease can defer another copy for at most its remaining 45 seconds.
 Failure-only recovery stores one generation-scoped retry deadline in those runtime
-facts: 2 seconds, 5 seconds, 15 seconds, then repeated 60-second delays measured
-from failed completion. The existing 250 ms Spaces lifecycle services deadlines;
+facts: 2 seconds, 5 seconds, then repeated 10-second delays measured from failed
+completion. Every retryable reason has this cap, including timeouts and transport
+errors on ready remote machines; no slower reason-specific schedule is introduced.
+Unready remote layouts retain the existing read gate and resume eligibility when
+ready. Persisted deadlines from the older 15/60-second policy are rejected rather
+than delaying a replacement module. The existing 250 ms Spaces lifecycle services deadlines;
 no second scheduler or timer is registered. Lifecycle-triggered reads respect the
 deadline even if the old failed-attempt TTL would have expired; explicit Refresh
 may bypass backoff but never an active reader. Success, disablement, disappearance

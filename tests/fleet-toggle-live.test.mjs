@@ -191,13 +191,25 @@ for(const failure of ['error','timeout']) {
  x.release(undefined,'timeout');await x.drain();assert.equal(x.state['custom.fleet.diagnostics'].entries.local.retry.nextAt,x.now+2000,'Backoff starts at timeout completion, not read start');
  x.setMode('success');await x.pulse(1999);assert.equal(x.requests.length,before);await x.pulse(1);x.frame(true);
 }
-{
- const x=await mounted({enabled:true,initialMode:'error'});
- for(const [delay,attempt]of [[2000,2],[5000,3],[15000,4],[60000,4],[60000,4]]){
+for(const failure of ['error','timeout']) {
+ const x=await mounted({enabled:true,initialMode:failure});
+ for(const [delay,attempt]of [[2000,2],[5000,3],[10000,3],[10000,3],[10000,3]]){
   const before=x.requests.length;await x.pulse(delay-1);assert.equal(x.requests.length,before,'Lifecycle events cannot bypass the failure deadline');
-  await x.pulse(1);assert.equal(x.requests.length,before+2);assert.equal(x.state['custom.fleet.diagnostics'].entries.local.retry.attempts,attempt);
+  await x.pulse(1);assert.equal(x.requests.length,before+2,'Recovery must never wait longer than the previous ten-second cadence');
+  for(const key of ['local','pc2']){
+   const retry=x.state['custom.fleet.diagnostics'].entries[key].retry;
+   assert.equal(retry.attempts,attempt);assert.ok(retry.nextAt-x.now<=10000,'Every eligible failure stays at or below ten seconds');
+  }
  }
- x.setMode('ambiguous');await x.pulse(60000);assert.equal(x.state['custom.fleet.diagnostics'].entries.local.retry,null,'Authoritative no-owner result ends the recovery chain');x.frame(false);
+ x.setMode('ambiguous');await x.pulse(10000);assert.equal(x.state['custom.fleet.diagnostics'].entries.local.retry,null,'Authoritative no-owner result ends the recovery chain');x.frame(false);
+}
+{
+ const x=await mounted({enabled:true,initialMode:'error'}),before=x.requests.length;
+ // An update from the original slower policy must not inherit its old wait.
+ for(const [key,attempts,delay]of [['local',4,60000],['pc2',3,15000]])
+  x.state['custom.fleet.diagnostics'].entries[key].retry={generation:0,attempts,at:x.now,nextAt:x.now+delay};
+ x.setMode('success');await x.replaceSidebar();await x.drain();x.frame(true);
+ assert.equal(x.requests.length,before+2,'Replacement rejects persisted 15/60-second deadlines instead of inheriting a slower retry');
 }
 {
  const x=await mounted({enabled:true,initialMode:'timeout'}),before=x.requests.length;
@@ -212,4 +224,4 @@ for(const failure of ['error','timeout']) {
  x.release();await x.drain();assert.equal(x.state['custom.fleet.links'].entries.local.at,verified,'Retired reader cannot overwrite replacement verification');
  assert.equal(x.state['custom.fleet.diagnostics'].entries.local.lastDiscard.reason,'replaced-read');
 }
-console.log('PASS mounted Settings/Spaces local/remote toggles and timer-only startup/timeout recovery: recorded reasons, 2/5/15/60 backoff, reload/abandoned leases, no new scheduler or user action');
+console.log('PASS mounted Settings/Spaces local/remote toggles and timer-only startup/timeout recovery: recorded reasons, 2/5/10 backoff capped at the former healthy cadence, reload/abandoned leases, no new scheduler or user action');

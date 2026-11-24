@@ -698,7 +698,7 @@ Failed, unmatched and discarded fleet verification attempts SHALL retain a bound
 - **AND** recovery history does not become a durable authorization record or contain raw task, transcript or authentication data
 
 ### Requirement: Bounded unverified fleet recovery
-An enabled fleet with applicable native identity candidates but no current verification SHALL recover through its existing periodic lifecycle without user action or a second scheduler. Failed attempts SHALL wait 2 seconds, 5 seconds, 15 seconds and then 60 seconds between attempts, measured from completion. Healthy refresh/transport bounds SHALL remain unchanged. Recovery SHALL stop on success, disablement or authoritative absence, and SHALL never authorize unverified actions.
+An enabled fleet with applicable native identity candidates but no current verification SHALL recover through its existing periodic lifecycle without user action or a second scheduler. Failed attempts SHALL wait 2 seconds, 5 seconds and then repeated 10 seconds between attempts, measured from completion. Healthy refresh/transport bounds SHALL remain unchanged. Recovery SHALL stop on success, disablement or authoritative absence, and SHALL never authorize unverified actions.
 
 #### Scenario: Failed or timed-out first read
 - **WHEN** first verification fails or times out while attachment and Crew remain enabled and candidates remain applicable
@@ -707,8 +707,14 @@ An enabled fleet with applicable native identity candidates but no current verif
 
 #### Scenario: Repeated failures under load
 - **WHEN** successive eligible attempts fail and native lifecycle events continue firing
-- **THEN** delays progress through 2 seconds, 5 seconds, 15 seconds and then repeated 60-second intervals without parallel readers or lifecycle-driven early retries
+- **THEN** delays progress through 2 seconds, 5 seconds and then repeated 10-second intervals without parallel readers or lifecycle-driven early retries
 - **AND** the existing shared read lease coalesces mounted mod copies and the next delay begins only after the current bounded attempt ends
+
+#### Scenario: No slower recovery for retryable failures
+- **WHEN** a local or ready remote machine has retryable verification failures, including transport errors or timeouts
+- **THEN** no recovery delay exceeds the previous ten-second attempt cadence and no reason-specific slower interval is used
+- **AND** an unready remote layout is gated until ready rather than assigned a longer retry interval
+- **AND** a replacement module rejects persisted deadlines from the older slower policy
 
 #### Scenario: Disable, success and no fleet
 - **WHEN** verification succeeds, attachment or Crew is disabled, candidates disappear or a completed coherent result establishes no applicable fleet
