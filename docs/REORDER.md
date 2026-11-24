@@ -53,13 +53,16 @@ feature-local drag implementations. Keep one fixed configuration per instance.
 A domain block can pass `meta: {sources: [id, ...], ...binding}` to `begin`.
 All captured sources share dimming/return cleanup; ordinary clicks retain the
 original pressed ID. A block still uses `preview(..., {icon,label})` to draw one
-ordinary chip with the same pointer/return motion. Spaces always represents the
-coordinator's numbered badge and name, whichever linked row is grabbed; no fleet
-row or chain icon appears in that floating preview. Domain adapters still validate
+ordinary chip with the same pointer/return motion. Spaces represents the grabbed
+row's own numbered badge and name: `2 crew` from the fleet or `1 coordinator` from
+the coordinator. Attached badges share the coordinator's resolved colour without
+overwriting the fleet's saved colour. No chain or second row appears in the chip;
+the coordinator's small trailing chain stays in the expanded sidebar metadata. Domain adapters still validate
 bindings and destination block edges. Spaces commits its finite public ordering
 sequence only after each prior move is acknowledged; no native transaction is
 claimed and an uncertain result is not replayed. The compact Spaces rail retains
-its existing selection-only behavior, with a link icon for the attached fleet.
+its existing selection-only behavior, with each row's own numbered badge in the
+shared coordinator colour while attached.
 
 Read-only state: `current`, `active`, `target`, `view` (active or returning), and
 `leaving`. Do not seed these in feature code; fixtures may do so to render phases.

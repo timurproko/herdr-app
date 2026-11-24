@@ -17,7 +17,7 @@ import { spaceColorPicker, setSpaceColor, selectedColorIndex, colorAt as colorVa
 import { requestInlineTabRename } from './tab-rename.js';
 import { requestInlineSpaceRename } from './space-rename.js';
 import { closeWithConfirmation } from './close-space.js';
-import { pluginMenuItems } from './plugins.js';
+import { pluginAllows, pluginEvent, pluginMenuItems, pluginWorkspaceLinks } from './plugins.js';
 import { run, props, closeOverlay, openOverlay, theme, keys, terminals, spaces, panes, agents, shared, notify, updates } from "./host.js";
 
 function items(p, git, pluginItems = []) {
@@ -119,6 +119,15 @@ export default class Menu extends View {
     this.moveCapability = null;
     this.handle = cx.focus_handle();
     const p = props();
+    const source = p?.tab === 'space' && spaces().find(s => s.id === p.target?.id);
+    this.colorSource = source ? {id: source.id, machine: source.machine ?? null} : null;
+    const links = source ? pluginWorkspaceLinks({presentation:true}).filter(l => l.parent === source.id || l.child === source.id) : [];
+    this.colorAmbiguous = links.length > 1;
+    this.colorPair = links.length === 1 ? {...links[0]} : null;
+    this.colorTarget = this.colorPair?.parent ?? this.colorSource?.id;
+    // Each mod must witness verification itself; sidebar proof is display-only here.
+    // The generic lifecycle yields before reading or joining a shared in-flight read.
+    if (this.colorPair) pluginEvent('workspace.context.refresh', { owner: this, cx });
     this.pluginItems = p?.tab === 'agent' ? pluginMenuItems('agents.context', { terminal: p.target?.terminal })
       .map(action => [action.label, 'custom.plugin-action', {}, action.icon, null, false, action.run]) : [];
     // Do not focus the popup: right-click is a paste gesture, not a menu.
@@ -142,9 +151,28 @@ export default class Menu extends View {
   chooseColor(color, cx) {
     const p = props();
     if (p?.tab !== 'space') return;
-    setSpaceColor(p.target?.id, color);
+    if (!this.colorReady()) {
+      notify({title:'Space colour unavailable', body:'The linked spaces changed or could not be verified. Reopen this menu.', level:'warning'});
+      return;
+    }
+    setSpaceColor(this.colorTarget, color);
     closeOverlay(p.overlay);
     cx.notify();
+  }
+
+  colorReady() {
+    const source = this.colorSource, all = spaces();
+    if (!source || this.colorAmbiguous || props()?.tab !== 'space' || props().target?.id !== source.id
+      || !all.some(s => s.id === source.id && (s.machine ?? null) === source.machine)) return false;
+    const shown = pluginWorkspaceLinks({presentation:true}).filter(l => l.parent === source.id || l.child === source.id);
+    if (!this.colorPair) return shown.length === 0;
+    const pair = this.colorPair;
+    const same = l => l.parent === pair.parent && l.child === pair.child && l.binding === pair.binding;
+    // The provider verifies this displayed binding even when no live workers remain.
+    // Retained presentation alone is never permission; live move links are separate.
+    return shown.length === 1 && same(shown[0])
+      && [pair.parent,pair.child].every(id => all.some(s => s.id === id && (s.machine ?? null) === source.machine))
+      && pluginAllows('spaces.color', {pair});
   }
 
   checkMove(cx) {
@@ -230,7 +258,8 @@ export default class Menu extends View {
     // viewport, not one 28px line. Later height changes follow native wrapping.
     const rowsHeight = list.reduce((height, it) => height + (it[1] === 'custom.move-empty' ? (this.moveExplanationHeight ?? 320) : U.row), 0);
     const listHeight = Math.min(320, rowsHeight + list.filter((it, i) => separates(it, i, list)).length * dividerHeight(true) + (showSpacesHeading ? 24 : 0));
-    const colorSpace = props()?.tab === 'space' && spaces().find(s => s.id === props().target?.id);
+    const colorSpace = props()?.tab === 'space' && props().target?.id === this.colorSource?.id
+      && spaces().some(s => s.id === this.colorSource.id) && spaces().find(s => s.id === this.colorTarget);
     const focusColors = () => { this.at = -1;this.colorAt = Math.max(0, selectedColorIndex(colorSpace.id)); };
     return menuSurface(t, v_flex())
       .id("menu")

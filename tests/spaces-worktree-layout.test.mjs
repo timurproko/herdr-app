@@ -4,10 +4,11 @@ import {realUi} from './support/panel-kit.mjs';
 import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';
 function element(){const n={attrs:{},kids:[]};let p;return p=new Proxy(n,{get:(o,k)=>k in o?o[k]:k==='when'?(yes,fn)=>yes?fn(p):p:k==='child'?child=>{o.kids.push(child);return p;}:k==='children'?children=>{o.attrs.children=[children];o.kids.push(...children);return p;}:(...args)=>{o.attrs[k]=args;return p;}});}
 const find=(n,id)=>n?.attrs?.id?.[0]===id?n:n?.kids?.map(child=>find(child,id)).find(Boolean);
-const drag={view:null,item:e=>e,sourceLayer:e=>e,guard:fn=>fn};let hostSpaces=[];
-const context={...links,pluginWorkspaceLinks:()=>[],View:class{},div:element,h_flex:element,v_flex:element,svg:path=>element().asset(path),slot:child=>element().size(16).child(child),badge:realUi(element).badge,spaceTitle:()=>element(),itemHover:()=> 'hover',spaceBadgeColor:realUi(element).spaceBadgeColor,reorder:()=>drag,spaces:()=>hostSpaces,panes:()=>[],pluginSpaceTags:()=>[],rolePill:realUi(element).rolePill,displaySpace:s=>s,spaceDirectory:s=>({cwd:s.folder}),shared:key=>key==='custom.plugins'?{git:{enabled:false}}:{},run(){assert.fail('Rendering must not navigate or move spaces');},U:{row:28,control:28,icon:16,gap:8,radius:6,smallIcon:14}};
+const drag={view:null,item:(e,_id,options)=>{e.itemOptions=options;return e;},sourceLayer:e=>e,guard:fn=>fn};let hostSpaces=[];
+const context={...links,pluginWorkspaceLinks:()=>[],View:class{},div:element,h_flex:element,v_flex:element,svg:path=>element().asset(path),slot:child=>element().size(16).child(child),badge:realUi(element).badge,itemHover:realUi(element).itemHover,spaceBadgeColor:realUi(element).spaceBadgeColor,reorder:()=>drag,spaces:()=>hostSpaces,panes:()=>[],pluginSpaceTags:()=>[],rolePill:realUi(element).rolePill,displaySpace:s=>s,spaceDirectory:s=>({cwd:s.folder}),shared:key=>key==='custom.plugins'?{git:{enabled:false}}:{},run(){assert.fail('Rendering must not navigate or move spaces');},U:{font:12,row:28,control:28,icon:16,gap:8,radius:6,smallIcon:14}};
 const source=fs.readFileSync(new URL('../src/features/spaces/main.js',import.meta.url),'utf8').replace(/^import .*;\r?\n/gm,'').replace('export default class Spaces','class Spaces').replace(/export /g,'')+'\nglobalThis.Spaces=Spaces;';vm.runInNewContext(source,context);
-const view=new context.Spaces(),theme={muted:'muted',dim:'dim',selected:'selected',ansi2:'green',ansi1:'red'},w={id:'worktree',name:'session-name-dialog-editing',active:true};
+vm.runInContext(fs.readFileSync(new URL('../src/ui/space-title.js',import.meta.url),'utf8').replace(/^import .*;\r?\n/gm,'').replace('export function','function'),context);
+const view=new context.Spaces(),theme={foreground:'foreground',hover:'hover',muted:'muted',dim:'dim',selected:'selected',ansi2:'green',ansi1:'red'},w={id:'worktree',name:'session-name-dialog-editing',active:true};
 for(const tree of ['└─',null]){
  const row=view.row({w,i:5,g:{name:'repo',linked:true,ahead:1,behind:2},tree},theme),content=find(row,'space-content-worktree');
  assert.equal(row.attrs.h[0],28);assert.equal(row.attrs.px[0],8);assert.equal(content.attrs.pl,undefined,'Worktrees have no extra indentation');assert.deepEqual(content.kids[0].kids,['6'],'Avatar is the first element, like an ordinary space');
@@ -75,7 +76,7 @@ for (const machine of [null,'pc2']) {
  view.git={[key(s)]:{linked:true}};s.folder='/new/unknown';view.menu(s);
  assert.equal(overlays.at(-1).props.target.checkout,'unknown');
 }
-// The fleet chain is a numbered-badge-sized vector; names share the same left edge.
+// Attached rows keep their own numbers; only the coordinator has a trailing chain.
 context.pluginWorkspaceLinks=()=>[{parent:'parent',child:'worktree-a',binding:'pair'}];
 const projected=view.ordered(),parentAt=projected.findIndex(r=>r.w.id==='parent');
 assert.equal(projected[parentAt+1].w.id,'worktree-a');assert.equal(projected[parentAt+1].linked,true);
@@ -85,35 +86,46 @@ context.pluginSpaceTags=space=>{
  return ['parent','worktree-a'].includes(space.id)?[{plugin:'crew',label:'Crew',tooltip:space.id==='parent'?'Crew coordinator':'Crew worker'}]:[];
 };
 const fleetRow=view.row(projected[parentAt+1],theme),fleetContent=find(fleetRow,'space-content-worktree-a');
-const chain=fleetContent.kids[0];
+const fleetBadge=fleetContent.kids[0];
 const parentRow=view.row(projected[parentAt],theme),parentContent=find(parentRow,'space-content-parent');
 const ordinaryRow=view.row(projected.find(r=>r.w.id==='other'),theme),ordinaryContent=find(ordinaryRow,'space-content-other');
 for(const [row,content] of [[parentRow,parentContent],[ordinaryRow,ordinaryContent],[fleetRow,fleetContent]]) {
  assert.equal(row.attrs.h[0],28);assert.equal(row.attrs.px[0],8);
  assert.equal(content.attrs.pl,undefined);assert.equal(content.attrs.items_center.length,0);
- assert.equal(content.kids[0].attrs.size[0],16,'Real numbered badges and the fleet vector have the same square box');
+ assert.equal(content.kids[0].attrs.size[0],16,'Attached and ordinary numbered badges have the same square box');
  assert.ok(content.kids[0].attrs.flex_none,'Badge slots cannot shrink');
  assert.equal(content.attrs.gap[0],8);
  assert.equal(row.attrs.px[0]+content.kids[0].attrs.size[0]+content.attrs.gap[0],32,'Every space name starts at the same left edge');
  assert.equal((row.attrs.h[0]-content.kids[0].attrs.size[0])/2,6,'Every badge box is vertically centered with the same inset');
 }
-assert.equal(chain.attrs.bg[0],parentContent.kids[0].attrs.bg[0],'Fleet shell uses the coordinator badge fill');
-assert.equal(chain.attrs.rounded[0],4);assert.equal(chain.attrs.text_color[0],'#ffffff');
-assert.equal(chain.kids[0].attrs.asset[0],'mods/custom-spaces/link.svg');assert.equal(chain.kids[0].attrs.size[0],12);
-assert.equal(chain.kids[0].attrs.text_color[0],'#ffffff');
-assert.equal(chain.attrs.absolute,undefined);assert.equal(chain.kids.length,1,'Only the inset glyph inside the numbered-badge shell, no connector line');
+assert.equal(fleetBadge.attrs.bg[0],parentContent.kids[0].attrs.bg[0],'Fleet shell uses the coordinator badge fill');
+assert.equal(fleetBadge.attrs.rounded[0],4);assert.equal(fleetBadge.attrs.text_color[0],'#ffffff');
+assert.equal(fleetBadge.kids[0],String(projected[parentAt+1].i+1),'Fleet retains its own list number');
+assert.equal(find(fleetRow,'space-link-worktree-a'),undefined);
+const chain=find(parentRow,'space-link-parent');
+assert.equal(chain.attrs.size[0],16);assert.equal(chain.attrs.bg,undefined);
+assert.equal(chain.kids[0].attrs.asset[0],'mods/custom-spaces/link.svg');assert.equal(chain.kids[0].attrs.size[0],14);
+assert.equal(chain.kids[0].attrs.text_color[0],theme.muted);assert.equal(chain.attrs.absolute,undefined);
+assert.equal(parentContent.kids.at(-2),chain,'Chain immediately precedes Crew');
 for(const active of [false,true]) {
- const content=find(view.row({...projected[parentAt+1],w:{...projected[parentAt+1].w,active}},theme),'space-content-worktree-a');
- assert.equal(content.kids[1].attrs.text_color[0],theme.muted,'The left-aligned fleet name stays subordinate, including when active');
+ const record=projected[parentAt+1],name={...record.w,active,directory:'/fixture/full-name'};
+ const fleet=view.row({...record,w:name},theme),ordinary=view.row({w:{...name,id:'ordinary'},i:0},theme);
+ const title=find(fleet,'space-content-worktree-a').kids[1],other=find(ordinary,'space-content-ordinary').kids[1];
+ assert.deepEqual(title.attrs,other.attrs,'Real shared title styles match ordinary selected/inactive text');
+ assert.equal(title.attrs.text_color[0],active?theme.foreground:theme.muted);assert.ok(title.attrs.font_normal);
+ assert.equal(title.attrs.tooltip[0],name.directory);assert.deepEqual(fleet.attrs.bg,ordinary.attrs.bg);
+ assert.deepEqual(fleet.itemOptions.hover(element()).attrs,ordinary.itemOptions.hover(element()).attrs,'Hover follows ordinary selection treatment');
 }
-assert.equal(parentContent.kids[1].attrs.text_color,undefined,'The coordinator keeps its ordinary name style');
+assert.equal(parentContent.kids[1].attrs.text_color[0],theme.muted,'Inactive coordinator uses ordinary shared title styling');
 for(const machine of [null,'pc2']) {
  const pills=[];
  for(const [record,tooltip] of [[projected[parentAt],'Crew coordinator'],[projected[parentAt+1],'Crew worker']]) {
   const row=view.row({...record,w:{...record.w,machine},g:{linked:true}},theme);
   const content=find(row,`space-content-${record.w.id}`),pill=find(row,`space-tag-${record.w.id}-crew-0`),marker=find(row,`space-worktree-${record.w.id}`);
   assert.deepEqual(pill.kids,['Crew']);assert.equal(pill.attrs.tooltip[0],tooltip);
-  assert.equal(content.kids.at(-2),marker,'Worktree metadata precedes both Crew pills');
+  const link=find(row,`space-link-${record.w.id}`);
+  assert.equal(content.kids.indexOf(marker)+1,link?content.kids.indexOf(link):content.kids.indexOf(pill),'Counts/worktree then chain then Crew');
+  if(link) {assert.equal(link.attrs.size[0],marker.attrs.size[0]);assert.equal(link.kids[0].attrs.size[0],marker.kids[0].attrs.size[0]);assert.equal(link.kids[0].attrs.text_color[0],marker.kids[0].attrs.text_color[0]);}
   assert.equal(content.kids.at(-1),pill);
   assert.equal(row.attrs.px[0]+pill.attrs.mr[0],3,'Both Crew pills share the existing tag-only right edge');
   assert.equal(marker.attrs.mr,undefined,'Tagged marker keeps the full gap before its pill');
@@ -121,6 +133,31 @@ for(const machine of [null,'pc2']) {
   const {id,tooltip:tip,...style}=pill.attrs;pills.push(JSON.parse(JSON.stringify(style)));
  }
  assert.deepEqual(pills[1],pills[0],'The real shared rolePill styling matches on both attached rows');
+}
+// Full coordinator metadata matrix: count/worktree/chain/tag order and hidden states.
+for(const machine of [null,'pc2'])for(const worktree of [false,true])for(const counts of [false,true]) {
+ const record={...projected[parentAt],w:{...projected[parentAt].w,machine}};
+ const originalTags=context.pluginSpaceTags;
+ context.pluginSpaceTags=()=>[{plugin:'crew',label:'Crew',tooltip:'Coordinator'},{plugin:'other',label:'Other',tooltip:'Unrelated'},{plugin:'last',label:'Last'}];
+ const row=view.row({...record,g:{linked:worktree,ahead:counts?2:0,behind:counts?1:0},tree:null},theme);
+ const content=find(row,'space-content-parent'),link=find(row,'space-link-parent'),crew=find(row,'space-tag-parent-crew-0');
+ assert.equal(content.kids.at(-1),crew);assert.equal(content.kids.at(-2),link);
+ assert.equal(crew.attrs.mr[0],-5);assert.equal(crew.attrs.tooltip[0],'Coordinator');
+ assert.equal(find(row,'space-tag-parent-other-1').attrs.tooltip[0],'Unrelated');
+ assert.ok(content.kids.indexOf(find(row,'space-tag-parent-other-1'))<content.kids.indexOf(find(row,'space-tag-parent-last-2')),'Other tags retain relative order');
+ const marker=find(row,'space-worktree-parent');assert.equal(Boolean(marker),worktree);
+ assert.ok(content.kids.indexOf(content.kids[2])<content.kids.indexOf(link));
+ if(marker)assert.ok(content.kids.indexOf(marker)<content.kids.indexOf(link));
+ context.__store.set('spaces.show.worktree',false);
+ const hidden=view.row({...record,g:{linked:true}},theme);
+ assert.equal(find(hidden,'space-worktree-parent'),undefined);assert.ok(find(hidden,'space-link-parent'),'Worktree visibility does not hide relationship');
+ context.__store.delete('spaces.show.worktree');
+ view.rename={id:'parent'};
+ const editing=view.row({...record,g:{linked:true}},theme);
+ assert.equal(find(editing,'space-link-parent'),undefined);assert.equal(find(editing,'space-worktree-parent'),undefined);assert.equal(find(editing,'space-tag-parent-crew-0'),undefined);
+ view.rename=null;
+ assert.equal(find(view.row({...record,block:['parent']},theme),'space-link-parent'),undefined,'Detached coordinator has no chain');
+ context.pluginSpaceTags=originalTags;
 }
 const vector=fs.readFileSync(new URL('../src/shared/link.svg',import.meta.url),'utf8');
 assert.match(vector,/fill="none"/);assert.match(vector,/stroke="currentColor"/);assert.match(vector,/stroke-width="1.5"/);
@@ -139,7 +176,13 @@ for(const row of [compact,parentRail])assert.equal(row.kids.length,1,'Compact ra
 context.pluginSpaceTags=ordinaryTags;
 assert.equal(rail.attrs.size[0],parentRailBadge.attrs.size[0]);assert.equal(rail.attrs.size[0],16);
 assert.equal(rail.attrs.bg[0],parentRailBadge.attrs.bg[0]);assert.equal(rail.attrs.rounded[0],4);
-assert.equal(rail.kids[0].attrs.asset[0],'mods/custom-spaces/link.svg');assert.equal(rail.kids[0].attrs.size[0],12);assert.equal(rail.kids[0].attrs.text_color[0],'#ffffff');
+assert.equal(rail.kids[0],String(projected[parentAt+1].i+1),'Rail uses the fleet number, never a chain');
+for(const active of [false,true]) {
+ const record=projected[parentAt+1],fleet=view.compact({...record,w:{...record.w,active}},theme),ordinary=view.compact({w:{...record.w,id:'ordinary',active},i:0},theme);
+ assert.deepEqual(fleet.attrs.bg,ordinary.attrs.bg);
+ assert.deepEqual(fleet.controlOptions.hover(element()).attrs,ordinary.controlOptions.hover(element()).attrs,'Compact hover matches ordinary rows');
+ assert.equal(fleet.kids.length,1);assert.equal(fleet.kids[0].attrs.text_color[0],'#ffffff');
+}
 assert.equal(compact.attrs.items_center.length,0);assert.equal(compact.attrs.justify_center.length,0);
 assert.equal((28-rail.attrs.size[0])/2,(28-parentRailBadge.attrs.size[0])/2,'Rail icons and numbers have identical centering');
 assert.equal(compact.attrs.w[0],28);assert.equal(compact.attrs.h[0],28);assert.equal(compact.controlOptions.tooltip,projected[parentAt+1].w.directory||projected[parentAt+1].w.name,'Rail keeps the existing name/directory tooltip');
@@ -161,10 +204,7 @@ for(const machine of [null,'pc2']) {
    for(const b of [shell,rail]) {
     assert.equal(b.attrs.bg[0],expected,'Coordinator recolouring updates both badges in both modes');
     assert.equal(b.attrs.size[0],16);assert.equal(b.attrs.rounded[0],4);assert.equal(b.attrs.text_color[0],'#ffffff');
-    if(record.linked) {
-     assert.equal(b.kids[0].attrs.asset[0],'mods/custom-spaces/link.svg');assert.equal(b.kids[0].attrs.size[0],12);
-     assert.equal(b.kids[0].attrs.text_color[0],'#ffffff');assert.ok(b.kids[0].attrs.flex_none);
-    } else assert.equal(b.kids[0],String(record.i+1));
+    assert.equal(b.kids[0],String(record.i+1),'Both badges retain their own numbers in every colour');
    }
   }
   assert.equal(JSON.stringify(colors),before,'Rendering never copies colours into saved space preferences');
@@ -178,18 +218,23 @@ for(const machine of [null,'pc2']) {
  context.__store.delete('space.colors');
 }
 hostSpaces=savedSpaces;
-// Either grabbed member yields the same ordinary coordinator chip, not two rows.
-drag.preview=(_id,_t,data)=>data;
-const parentBadge=parentContent.kids[0];
-for(const id of ['parent','worktree-a'])for(const phase of [undefined,'arm','return','fade']) {
+// Both origins retain their own name/number, with the row/rail's shared pair colour.
+let previewCalls=0;drag.preview=(_id,_t,data)=>{previewCalls++;return data;};
+for(const color of ['ansi3','#123abc'])for(const id of ['parent','worktree-a'])for(const phase of [undefined,'arm','return','fade']) {
+ context.__store.set('space.colors',{parent:color,'worktree-a':'#ff0044'});
+ const record=view.ordered().find(r=>r.w.id===id),rowBadge=find(view.row(record,theme),`space-content-${id}`).kids[0];
+ const railBadge=find(view.compact(record,theme),`space-badge-${id}`);
  drag.view={id,phase,meta:{sources:['parent','worktree-a'],binding:'pair'}};
- const captured=JSON.stringify(drag.view),preview=view.dragPreview(theme);
- assert.equal(preview.label,'parent');assert.deepEqual(preview.icon.kids,parentBadge.kids,'Coordinator number, not the grabbed fleet number');
- assert.deepEqual(preview.icon.attrs,parentBadge.attrs,'Exactly the ordinary coordinator badge, including size and color');
+ const captured=JSON.stringify(drag.view),before=previewCalls,preview=view.dragPreview(theme);
+ assert.equal(previewCalls,before+1,'Exactly one preview call per rendered chip');
+ assert.equal(preview.label,id);assert.equal(preview.icon.kids[0],String(hostSpaces.findIndex(s=>s.id===id)+1),'Grabbed member retains its own list number');
+ assert.deepEqual(preview.icon.kids,rowBadge.kids);assert.deepEqual(preview.icon.attrs,rowBadge.attrs);
+ assert.equal(preview.icon.attrs.bg[0],railBadge.attrs.bg[0],'Coordinator recolouring stays in sync across row/rail/chip');
  assert.equal(Object.hasOwn(preview,'rows'),false,'No stacked-row preview data');
- assert.equal(preview.icon.attrs.asset,undefined,'No fleet chain in the floating chip');
+ assert.equal(typeof preview.icon.kids[0],'string','Neither chip contains a chain glyph');
  assert.equal(JSON.stringify(drag.view),captured,'Preview normalization never rewrites the pressed ID or paired sources');
 }
+context.__store.delete('space.colors');context.pluginWorkspaceLinks=()=>[];
 for(const id of ['other','worktree-a']) {
  drag.view={id,meta:{sources:[id]}};
  const preview=view.dragPreview(theme);
@@ -200,6 +245,15 @@ drag.view={id:'missing'};assert.equal(view.dragPreview(theme),null);
 drag.view={id:'worktree-a',meta:{sources:['missing-parent','worktree-a']}};assert.equal(view.dragPreview(theme),null,'A missing coordinator cannot produce a mismatched chip');
 drag.view=null;assert.equal(view.dragPreview(theme),null);
 context.pluginWorkspaceLinks=()=>[];assert.equal(view.ordered().find(r=>r.w.id==='worktree-a').linked,false);
+context.__store.set('space.colors',{parent:'#123abc','worktree-a':'#ff0044'});
+const detached=view.ordered().find(r=>r.w.id==='worktree-a');
+assert.equal(find(view.row(detached,theme),'space-content-worktree-a').kids[0].attrs.bg[0],'#ff0044');
+assert.equal(find(view.compact(detached,theme),'space-badge-worktree-a').attrs.bg[0],'#ff0044','Actual detached projection restores the fleet colour in both modes');
+drag.view={id:'worktree-a',meta:{sources:['worktree-a']}};
+const detachedChip=view.dragPreview(theme);
+assert.equal(detachedChip.label,detached.w.name);assert.equal(detachedChip.icon.kids[0],String(detached.i+1));
+assert.equal(detachedChip.icon.attrs.bg[0],'#ff0044','Attachment-off chip retains the fleet independent saved colour');
+drag.view=null;context.__store.delete('space.colors');
 // Compare actual machine header and row trailing slots, including tags and the left-aligned fleet name.
 view.machines=[{name:'pc2',state:'connected'}];view.reconnecting={};view.folded=new Set();view.rebuilt=()=>false;
 const machineWrites=new Map();context.localStorage={setItem:(key,value)=>machineWrites.set(key,value)};
@@ -261,4 +315,4 @@ drag.take=()=>({kind:'drop',id:'worktree-a',target:'other',meta:{sources:['workt
 drag.take=()=>({kind:'drop',id:'other',target:'parent',meta:{sources:['other']}});view.drop('parent',{});
 assert.equal(guardedCalls.length,0,'Neither grabbing nor targeting a retained unverified pair authorizes a move');
 drag.take=()=>({kind:'click',id:'worktree-a'});view.drop('worktree-a',{});assert.equal(guardedCalls[0][0],'space.select','Ordinary click selection remains available');
-console.log('PASS: first-frame local/remote checkout snapshots; aligned tagged/child worktrees, badge-sized vector chains and left-aligned names, single coordinator drag chip, retained-pair action guards, preserved user order and cross-machine drag guards (dummy Core only)');
+console.log('PASS: first-frame local/remote checkout snapshots; aligned tagged/child worktrees, own numbered badges, muted coordinator chain and ordinary selected fleet names, single grabbed-row drag chip, retained-pair action guards, preserved user order and cross-machine drag guards (dummy Core only)');

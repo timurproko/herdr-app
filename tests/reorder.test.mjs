@@ -76,14 +76,17 @@ for(const grabbed of ['coordinator','fleet']) {
   assert.equal(blockDrag.item(element(),id).style.opacity[0],id==='other'?1:0.5,'Both block sources remain dimmed');
   assert.equal(blockDrag.sourceLayer(element(),id).style.opacity[0],id==='other'?0:1);
  }
- const icon=element('coordinator-badge'),chip=blockDrag.preview('pair',t,{icon,label:'Coordinator'}).style.content[0];
+ const icon=element(`${grabbed}-badge`),label=grabbed==='fleet'?'2 crew':'1 coordinator';
+ const chip=blockDrag.preview('pair',t,{icon,label}).style.content[0];
  assert.equal(chip.style.h[0],28);assert.equal(chip.kids.length,2,'One ordinary chip contains only its icon and label');
- assert.equal(chip.kids[0],icon);assert.equal(chip.kids[1].kids[0],'Coordinator');
+ assert.equal(chip.kids[0],icon);assert.equal(chip.kids[1].kids[0],label);
  assert.equal(blockDrag.current.id,grabbed);assert.equal(blockDrag.current.meta,meta);
  blockDrag.cancel(cx);
  assert.equal(blockDrag.dimmed('coordinator'),true);assert.equal(blockDrag.dimmed('fleet'),true,'Cancellation still returns both sources');
  const phases=timers.splice(0);assert.deepEqual(phases.map(x=>x.ms),[16,236,416]);
  phases[0].fn(cx);assert.equal(blockDrag.leaving.phase,'return');
+ assert.equal(blockDrag.view.id,grabbed);assert.equal(blockDrag.view.meta,meta);
+ assert.equal(blockDrag.preview('pair',t,{icon,label}).kids[1].kids[0],label,'Returning chip keeps grabbed-row label');
  phases[1].fn(cx);assert.equal(blockDrag.dimmed('coordinator'),false);assert.equal(blockDrag.dimmed('fleet'),false);
  phases[2].fn(cx);assert.equal(blockDrag.view,null);
 }

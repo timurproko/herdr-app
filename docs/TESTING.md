@@ -375,15 +375,22 @@ also samples actual sidebar projection across its in-flight status read.
 `tests/fleet-reorder.test.mjs` exercises pure display blocks and queued public move
 acknowledgements, either grabbed member, pair edges, timeout and no replay. Shared
 reorder and Spaces render fixtures cover both-source dimming, a single ordinary
-coordinator chip from either grabbed member (including return/fade), no stacked
-preview or floating chain icon, and expanded/compact chain badges while preserving
-ordinary worktree order. Geometry
-assertions compare the filled chain badge's 16px box, 4px rounding, slot width and
-vertical centering with real numbered badges, with an inset 12px white outline glyph.
+grabbed-row chip (`2 crew` or `1 coordinator`) with its own number/name and shared
+coordinator fill from either grabbed member (including arm/return/fade), no stacked
+preview or floating chain icon, and each expanded/compact row's own numbered badge
+while preserving ordinary worktree order. Geometry assertions compare numbered badge
+boxes (16px, 4px rounding) and the coordinator's trailing chain slot with the worktree
+marker: a 14px muted outline glyph in the ordinary centred slot, without a filled
+background. Counts precede worktree, then chain/Crew; unrelated tags retain their
+relative order before the trailing chain/Crew group.
 The real colour resolver covers distinct coordinator/fleet colours, named and hex
 overrides, recolouring between renders, and retained display identity in both modes;
 missing/cross-machine parents cannot lend colour. Fleet names share ordinary names'
-left edge while retaining muted text, without connector lines. Rail selection, name/directory
+left edge, without connector lines. The real shared title helper proves that only
+inactive fleet names are muted; active names match ordinary selected foreground and
+normal weight. Expanded and compact hover/selection treatments match ordinary rows,
+and rename hides chain, worktree and tags while the Worktree switch hides only its
+own marker. Rail selection, name/directory
 tooltips and ordinary numbering stay unchanged. Packaged Crew
 fixtures retain Crew tags on both attached rows through refresh, finished fleets
 and cold restoration, restore ordinary worker tag rules on confirmed detach/attachment-off,
@@ -395,6 +402,29 @@ ordinary/attached and multiple-tag cases keep the final pill at that edge while
 untagged branch slots retain the machine-chevron axis. Long names, active/inactive
 rows, hidden icons and rename mode are covered. Compact rail fixtures
 remain badge-only and never query plugin tags.
+The packaged `tests/regression/space-colors.test.mjs` fixture covers coordinator and
+fleet palette origins, selected swatches, mouse/keyboard and Automatic choices,
+unchanged saved fleet colour/Automatic flags and unrelated-space preferences.
+Rename/close/worktree targets remain the clicked space. Stale/changed/ambiguous,
+disabled, missing, cross-machine or presentation-only unverified bindings refuse writes;
+reopening a detached fleet restores independent controls. Actual detached row/rail
+projections restore its own colour without copying preferences.
+`tests/fleet-color-menu.test.mjs` uses separate packaged `custom-spaces` and
+`custom-menu` instances with the real registry, Crew provider, menu and colour
+state. Sidebar verification alone cannot authorize menu writes: opening an
+attached palette starts or witnesses verification through the generic lifecycle,
+yielding before shared writes or IO. The success matrix explicitly enumerates live
+workers, closed tasks with a still-live terminal, a retained fleet after the last
+worker exits, and a retained fleet with no tasks. Each runs locally and remotely,
+from both menu origins, with mouse colour and keyboard Automatic choices, before
+and after cold module restoration with persisted runtime facts or display identity
+alone. Every state refuses a pre-verification click, then accepts the unchanged
+binding after successful verification; retained fleets still have no live move links.
+Shared in-flight witnessing/coalescing, reopening, failed/expired verification,
+changed home/adoption/owner, missing members, unready/cross-machine layouts and
+explicit disablement remain guarded. An empty fleet with no verified display
+history stays independent instead of being inferred from names. Fleet saved colour
+and Automatic flags stay untouched. No real Core or network is used.
 
 `tests/fleet-git.test.mjs` loads the actual Git controller, aggregate source and Crew
 provider through the package harness. Synthetic tasks/gh results cover coordinator
@@ -634,6 +664,7 @@ tests/file-tab-reuse.test.mjs
 tests/files-plugin-tabs.test.mjs
 tests/files-refresh-policy.test.mjs
 tests/firstmate-profile-role.test.mjs
+tests/fleet-color-menu.test.mjs
 tests/fleet-git.test.mjs
 tests/fleet-history.test.mjs
 tests/fleet-preferences.test.mjs
