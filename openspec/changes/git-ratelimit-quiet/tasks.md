@@ -34,3 +34,5 @@
 - Implementation approved; precise numbered relay hints deferred as requested, with no relay redeployment dependency.
 - Keep the three PR Implementation outcomes in this task-group order and tick each only after its code/tests land; do not batch ticks at handoff.
 - Leave the PR draft and unmerged as requested. Do not turn it ready or arm auto-merge. Report any draft-only CI limitation instead of bypassing it.
+- Current main is incorporated through `3143b12` (including PRs 51, 55, 57, 58, 60 and the now-merged 63). PR 56 remains open: task 3.7's post-56 integration condition is not claimed complete, and no open peer PR or branch was edited.
+- Takeover checks additionally cover retired shared subscribers, multiple deferred membership retries, final rows with pending checks, HTTP 429 stderr, explicit 401 precedence, selected-tab scrolling and detail-refusal snapshot retention.
