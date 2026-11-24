@@ -143,12 +143,15 @@ for (const feature of ['files', 'changes']) {
     if (fail) pending.reject(new Error('read failed'));
     else pending.resolve({code: 0, stdout: feature === 'files' ? '' : '/repo\n'});
     await Promise.all(h.tasks.splice(0));
-    if (feature==='changes'&&fail) assert.equal(h.button(),undefined,'Unresolved repositories hide Refresh immediately');
-    else state(h.button(), true);
+    state(h.button(), true);
+    if(feature==='changes'&&fail) {
+      assert.equal(h.view.root,'/repo','An inconclusive same-context failure retains the known repository');
+      assert.equal(h.view.error,'Could not read repository; refresh to retry');
+    }
     assert.equal(h.view.loading,false,'Real work finishes before the visual minimum');
     h.finishFeedback();
-    if(feature==='changes'&&fail) assert.equal(h.button(),undefined,'Unresolved repositories keep Refresh hidden');
-    else state(h.button(), false);
+    state(h.button(), false);
+    if(feature==='changes'&&fail) assert.ok(h.button().attrs.on_click,'Retained repositories keep explicit Refresh retry available');
     assert.equal(h.progress(), undefined);
   }
   h.view.headerHovered = false;
@@ -201,7 +204,7 @@ for(let i=0;i<3;i++) {
 // Non-repository tools are hidden, including guarding a stale enabled callback.
 const git=await harness('changes'),oldClick=git.button().attrs.on_click[0];
 const missing=git.hold('git');git.changeFolder('/not-a-repo');git.button();
-missing.resolve({code:128,stdout:'',stderr:'not a git repository'});await Promise.all(git.tasks.splice(0));
+missing.resolve({code:128,stdout:'',stderr:'fatal: not a git repository (or any of the parent directories): .git'});await Promise.all(git.tasks.splice(0));
 const before=git.calls.length;
 assert.equal(git.button(),undefined,'Non-repositories have no Refresh tool');
 assert.equal(find(git.render(),'git-repo'),undefined,'Non-repositories have no PR link tool');
