@@ -621,6 +621,19 @@ as it succeeds; disabling immediately restores independent rows and badge colour
 Until the first successful verification, no attachment is guessed. The two last-tab
 switches on this page also save immediately; close actions and empty-space
 reconciliation read their current values without waiting for Settings to close.
+Fleet verification failures and discarded replies retain sanitized reason/time/generation
+facts in runtime-only `custom.fleet.diagnostics`. Hover the existing Git **Verifying**
+or **Stale** indicator for the last relevant failure; a cold coordinator candidate
+can show **Waiting for fleet verification**, never an inferred attachment or PR list.
+The local `.customizations/fleet-verification.log` keeps at most 128 lines / 64 KiB,
+deduplicating an unchanged reason episode without raw command output or secrets.
+Neither diagnostics nor the log is a portable preference. Log-write errors cannot
+block verification. The installed-tool discovery command allows 25 seconds, with
+one 15-second recorded-only fallback solely for an explicit unsupported flag;
+the shared 45-second read lease bounds abandoned reads after a reload. A timeout
+is not proof of absent ownership. Spaces already checks its lifecycle every 250 ms;
+healthy status reads use a ten-second TTL, so a failed first read does not inherently
+wait for a click or dialog close before another eligible verification.
 When on with Crew enabled, a verified same-machine
 fleet attaches below its coordinator with its own ordinary numbered badge (for
 example, **2 crew** below **1 coordinator**), in the same 16px rounded slot.

@@ -331,6 +331,18 @@ rewrite was needed: those same-home guards already preserve loaded facts.
 
 ## Connected fleet fixtures
 
+`tests/fleet-diagnostics.test.mjs` loads the packaged Crew provider/transport and
+uses disposable supported read/CAS log IO. It distinguishes transport, timeout,
+status exit, malformed status, layout/membership uncertainty, authoritative absence
+and generation/identity/lease discards; checks reason/time/generation, duplicate
+mod deduplication, fixed bounds and logging-failure isolation; and rejects raw
+secret-bearing process output in facts/logs. Render inspection is effect-free.
+The real Git fixture exercises existing Stale/Verifying tooltip details and cold
+waiting without display history, PR inventory, folder probes or worker authority.
+Preference round trips explicitly exclude the diagnostic key. These are synthetic
+failures, not evidence that the original recovered incident was a timeout or any
+other particular cause; no live installation, settings or process is changed.
+
 `tests/fleet-read-failures.test.mjs` and `tests/fleet-read-notices.test.mjs`
 exercise the actual targeted-reader and panel renderer with one live draft and
 three finished-task merged PRs in the same repository. They preserve Open 1 /

@@ -164,12 +164,22 @@ assert.equal(find(tree,'git-task-stale').kids[0],'Stale');assert.ok(find(tree,'p
 assert.equal(websocket.enabled,false,'Stale presentation cannot subscribe for task reads');assert.equal(panel.ciSweep,null);
 lastRobot.attrs.on_click[0]({},cx);lateRelay({repository:'example/a'},cx);panel.aggregate.refresh(cx);await drain();assert.equal(calls.length,staleCalls);assert.equal(focus.length,1,'Stale callbacks cannot navigate');
 panel.setView('open',cx);tree=panel.render(cx);toggle('a');assert.equal(panel.foldedRepositories.has('example/a'),!foldBefore);assert.equal(calls.length,staleCalls,'Read-only folding still works while verification is unavailable');panel.setView('closed',cx);tree=panel.render(cx);
+assert.match(find(tree,'git-task-stale').attrs.tooltip[0],/transport-error at .*generation 0/,'Existing verification tooltip exposes the sanitized reason and time');
 // A cold controller/module gets the attached first frame, but no persisted PR inventory or authority.
 const coldState=JSON.parse(JSON.stringify(state));delete coldState[f.FLEET_KEY];
 const cold=await loadMod({host:{...host,shared:k=>coldState[k],setShared:(k,v)=>{assert.equal(rendering,false);coldState[k]=v;}},modules,globals:{URL,localStorage,Date:class extends Date{static now(){return now;}}},mod:'custom-changes',entry:'export {default as Main} from "./main.js";export * as r from "./plugins.js";'});
 const coldPanel=new cold.Main();coldPanel.init({},cx);const first=coldPanel.render(cx);
 assert.equal(find(first,'git-task-stale').kids[0],'Verifying');assert.equal(find(first,'git-task-empty').kids[0],'Waiting for fleet verification');assert.equal(coldPanel.aggregate.entries.size,0);assert.equal(cold.r.pluginWorkspaceLinks({presentation:true}).length,1);
 await drain();assert.equal(calls.length,staleCalls);coldPanel.close();
+// Cold first failure without display history still routes only waiting feedback,
+// not a guessed pair, folder Git probe, PR inventory or worker authority.
+const candidateState=JSON.parse(JSON.stringify(coldState));delete candidateState[f.DISPLAY_KEY];
+const candidate=await loadMod({host:{...host,shared:k=>candidateState[k],setShared:(k,v)=>{assert.equal(rendering,false);candidateState[k]=v;}},modules,globals:{URL,localStorage,Date:class extends Date{static now(){return now;}}},mod:'custom-changes',entry:'export {default as Main} from "./main.js";export * as r from "./plugins.js";'});
+const candidatePanel=new candidate.Main();candidatePanel.init({},cx);const candidateTree=candidatePanel.render(cx);
+assert.equal(find(candidateTree,'git-task-stale').kids[0],'Verifying');assert.match(find(candidateTree,'git-task-stale').attrs.tooltip[0],/transport-error at/);
+assert.equal(find(candidateTree,'git-task-empty').kids[0],'Waiting for fleet verification');assert.equal(candidatePanel.aggregate.entries.size,0);
+assert.equal(candidate.r.pluginWorkspaceLinks({presentation:true}).length,0);assert.equal(candidate.r.pluginPullContext('coordinator'),null);
+await drain();assert.equal(calls.length,staleCalls);candidatePanel.close();
 // Fresh same-home verification restores reads/robots, not a new folder/pin context.
 failStatus=false;f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();tree=panel.render(cx);await drain();tree=panel.render(cx);
 assert.equal(find(tree,'git-task-stale'),undefined);assert.ok(find(tree,'pr-agent-example/b#12'));assert.equal(panel.foldedRepositories.has('example/a'),!foldBefore);assert.equal(JSON.stringify(panel.aggregate.counts()),countsBefore);panel.setView('open',cx);tree=panel.render(cx);toggle('a');defer=true;

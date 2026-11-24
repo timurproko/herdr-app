@@ -2,11 +2,11 @@
 
 ## 1. Sanitized verification diagnostics and existing Git feedback
 
-- [ ] 1.1 Preserve structured timeout/exit/transport categories through the Crew status reader and classify malformed, absent, incomplete and superseded verification outcomes; cover each with packaged provider/transport regressions, including obsolete-generation completion after newer success.
-- [ ] 1.2 Publish bounded machine-scoped runtime diagnostics with reason, time and attempted generation without changing binding freshness; assert secret-bearing fake process output and raw task data never enter those facts or preference exports.
-- [ ] 1.3 Add the plugin API's supported compare-before-write export and the bounded deduplicated fleet-verification customization log; test cross-copy deduplication, size/line caps, write conflicts/failure isolation and no render/check-time IO with disposable files.
-- [ ] 1.4 Project sanitized last-failure details through generic presentation context into the existing Git verification feedback; exercise cold coordinator candidates, retained Stale rows, unrelated spaces, exact-scope changes and no unverified GitHub/worker authority in real Git/controller fixtures.
-- [ ] 1.5 Document the diagnostic key, log path, privacy bounds, 25/15-second command bounds, 45-second lease and current periodic retry behavior in README and relevant architecture/testing guidance; check the packaged entrypoints and documented paths against implementation.
+- [x] 1.1 Preserve structured timeout/exit/transport categories through the Crew status reader and classify malformed, absent, incomplete and superseded verification outcomes; cover each with packaged provider/transport regressions, including obsolete-generation completion after newer success.
+- [x] 1.2 Publish bounded machine-scoped runtime diagnostics with reason, time and attempted generation without changing binding freshness; assert secret-bearing fake process output and raw task data never enter those facts or preference exports.
+- [x] 1.3 Add the plugin API's supported compare-before-write export and the bounded deduplicated fleet-verification customization log; test cross-copy deduplication, size/line caps, write conflicts/failure isolation and no render/check-time IO with disposable files.
+- [x] 1.4 Project sanitized last-failure details through generic presentation context into the existing Git verification feedback; exercise cold coordinator candidates, retained Stale rows, unrelated spaces, exact-scope changes and no unverified GitHub/worker authority in real Git/controller fixtures.
+- [x] 1.5 Document the diagnostic key, log path, privacy bounds, 25/15-second command bounds, 45-second lease and current periodic retry behavior in README and relevant architecture/testing guidance; check the packaged entrypoints and documented paths against implementation.
 
 ## 2. Automatic bounded recovery across startup and replacement
 
