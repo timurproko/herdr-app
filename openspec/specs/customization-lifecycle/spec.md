@@ -273,9 +273,21 @@ Custom Settings Updates SHALL retain its native rows and add one herdr-app-custo
 - **AND** unknown-update-outcome and failure diagnostics retain their meaning
 
 #### Scenario: Concise running description
-- **WHEN** Custom is launching an update, waiting for its launch receipt or running the update
-- **THEN** the row description is exactly Updating…
-- **AND** its disabled Updating… button and every other state's wording remain unchanged
+- **WHEN** Custom is launching an update, waiting for its launch receipt or running the update with a known published target
+- **THEN** the row description says Updating to followed by that target's first seven characters, such as Updating to 4c4bff1
+- **AND** the target comes from the update check or the active run's target receipt, never from an invented value or unverified installed revision
+- **AND** its disabled Updating… button, row layout and every other state's wording remain unchanged
+
+#### Scenario: Target becomes known after launch
+- **WHEN** Custom is launching, waiting for a launch receipt or running without a trustworthy target yet
+- **THEN** its description is Updating without an ellipsis
+- **AND** it switches to the target-aware description as soon as the update flow supplies the target
+
+#### Scenario: Only other machines need updating
+- **WHEN** an explicit update is catching up other machines and this computer is already verified current for the update target
+- **THEN** the running description says Updating other machines to followed by the seven-character target
+- **AND** if the peer-only scope is known but its target is not yet known, the description is Updating other machines without an ellipsis
+- **AND** unknown desktop currency never claims that only other machines need updating
 
 ### Requirement: Managed desktop all-machine update
 The row's explicit Update SHALL use only a managed desktop clone at ~/.local/share/herdr-app, created on first Update if absent. It SHALL invoke the existing deploy:all policy for full desktop and eligible existing peer shell updates, retaining clean-main and ownership gates. It SHALL NOT touch development checkouts, repair unsafe source or provision missing peer clones.
@@ -296,7 +308,8 @@ An update SHALL run independently of the mod it replaces, with a finite deadline
 #### Scenario: Page replaced during deploy
 - **WHEN** deployment replaces Settings or the user closes and reopens it
 - **THEN** the same update continues independently and the row reattaches to its status
-- **AND** its description shows Updating… with the unchanged disabled Updating… action until a result is known
+- **AND** its description retains the target-aware running wording, or Updating until the target is known, with the unchanged disabled Updating… action until a result is known
+- **AND** a verified peer-only update retains its Updating other machines wording and known target
 
 #### Scenario: Open Updates view replaced
 - **WHEN** an update started from Updates replaces the still-open Settings view, while the runner is active or has just finished
