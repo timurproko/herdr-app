@@ -98,12 +98,12 @@ export function rowGeometry(root,width,zoom=1,height) {
       const size=Math.max(r.min,r.base+(free>0&&grow?free*r.grow/grow:free<0&&shrink?free*r.shrink*r.base/shrink:0));
       const cross=row?v(r.a,'h',v(r.a,'size',a.items_start||a.items_center?r.n.h:innerH)):v(r.a,'w',v(r.a,'size',innerW));
       const crossOffset=a.items_center?((row?innerH:innerW)-cross)/2:0;
-      place(r.child,x+p.l+(row?offset:crossOffset),y+p.t+(row?crossOffset:offset),row?size:cross,row?cross:size,s,[...ancestors,n]);
+      place(r.child,x+p.l+(row?offset:crossOffset),paintY+p.t+(row?crossOffset:offset),row?size:cross,row?cross:size,s,[...ancestors,n]);
       offset+=size+r.trailing+gap;
     }
     for(const child of children(n).filter(absolute)){
       const ca=attrs(child),cn=intrinsic(child,s),cw=v(ca,'w',v(ca,'size',ca.size_full||ca.inset_0?innerW:ca.right?innerW-v(ca,'left')-v(ca,'right'):cn.w)),ch=v(ca,'h',v(ca,'size',ca.size_full||ca.inset_0?innerH:ca.bottom?innerH-v(ca,'top')-v(ca,'bottom'):cn.h));
-      place(child,x+v(ca,'left'),y+v(ca,'top'),cw,ch,s,[...ancestors,n]);
+      place(child,x+v(ca,'left'),paintY+v(ca,'top'),cw,ch,s,[...ancestors,n]);
     }
   };
   place(root,0,0,width,height);

@@ -9,6 +9,14 @@ for(const zoom of [0.75,1,1.25,1.5,2])for(const [line,font,expected] of [[20,13,
   assert.equal(geometry.get(tree.kids[0]).width,24*zoom);
 }
 const near=(actual,expected,message)=>assert.ok(Math.abs(actual-expected)<1e-6,`${message}: ${actual} != ${expected}`);
+// Relative movement carries ordinary and absolute descendants without changing
+// the parent's layout reservation, including the two painted task-ring paths.
+for(const zoom of [1,1.3]) {
+  const relative=element().size(12).relative().top(1).children([element().size(12),element().absolute().inset_0().size_full()]);
+  const tree=element().flex().items_center().h(18).child(relative),geometry=rowGeometry(tree,100,zoom);
+  for(const node of nodes(relative))near(geometry.get(node).y,4*zoom,'Relative positioning translates the complete icon subtree');
+  near(geometry.get(tree).height,18*zoom,'Relative positioning does not resize the line');
+}
 function assertChecksFit(geometry,row) {
   const check=nodes(row).find(n=>/^(?:swap-)?pr-checks-/.test(n.attrs?.id?.[0]??'')&&!n.attrs.id[0].endsWith('-probe'));
   if(!check)return;
@@ -18,6 +26,29 @@ function assertChecksFit(geometry,row) {
     assert.equal(ancestor.attrs?.truncate,undefined,'Checks must never use an ellipsis');
     const box=geometry.get(ancestor);
     assert.ok(line.x>=box.x-1e-6 && line.x+line.naturalWidth<=box.x+box.width+1e-6,`Full count ${line.text} must fit ${ancestor.attrs?.id?.[0]??'ancestor'}`);
+  }
+}
+function assertStatusIcons(geometry,row,zoom) {
+  const prefix=row.attrs.id[0].startsWith('swap-')?'swap-':'',id=row.attrs.id[0].slice(`${prefix}pr-`.length);
+  const line=geometry.get(find(row,`${prefix}pr-meta-${id}`));
+  for(const kind of ['task','check']) {
+    const group=find(row,`${prefix}pr-${kind==='task'?'tasks':'checks'}-${id}`);
+    if(!group)continue;
+    const slot=find(group,`${prefix}pr-${kind}-icon-${id}`);assert.ok(slot,`${kind} has one shared icon slot`);
+    const box=geometry.get(slot);
+    near(box.width,12*zoom,`${kind} slot width`);near(box.height,12*zoom,`${kind} slot height`);
+    near(box.y+box.height/2,line.y+line.height/2+zoom,`${kind} icon centre is lowered one logical pixel`);
+    for(const glyph of nodes(slot).filter(node=>node!==slot)) {
+      const ink=geometry.get(glyph);
+      near(ink.y+ink.height/2,box.y+box.height/2,`${kind} glyph/path follows its slot`);
+    }
+    const text=group.kids.at(-1),textBox=geometry.get(text);
+    near(textBox.y,line.y,'Status text stays at its original vertical anchor');
+    near(textBox.height,line.height,'Status text keeps its 18px line box');
+  }
+  for(const separator of find(row,`${prefix}pr-meta-${id}`).kids.filter(node=>!node.attrs.id)) {
+    const box=geometry.get(separator);
+    near(box.y+box.height/2,line.y+line.height/2+1.5*zoom,'Separators retain their existing optical offset');
   }
 }
 function assertTextFits(geometry,row) {
@@ -82,6 +113,7 @@ const cases=[
   ['empty',{}],['tasks untouched',{body:'- [ ] one\n- [ ] two'}],['tasks partial',{body:'- [x] one\n- [ ] two'}],['tasks done',{body:'- [x] one\n- [x] two'}],
   ['large tasks',{body:Array.from({length:100},(_,i)=>`- [${i<99?'x':' '}] task`).join('\n')}],
   ...[1,10,11,99,101].flatMap(total=>['SUCCESS','FAILURE','PENDING'].map(state=>[`count ${state} ${total}`,{statusCheckRollup:Array.from({length:total},(_,i)=>({name:`check ${i}`,status:state==='PENDING'&&i>=3?'IN_PROGRESS':'COMPLETED',conclusion:state==='FAILURE'&&i===0?'FAILURE':'SUCCESS'}))}])),
+  ...['NEUTRAL','SKIPPED','IN_PROGRESS','FAILURE'].map(state=>[`icon ${state}`,{body:'- [x] one\n- [ ] two',statusCheckRollup:[{name:'CI',status:state==='IN_PROGRESS'?state:'COMPLETED',conclusion:state==='IN_PROGRESS'?null:state}]}]),
   ['one label',{labels:labels.slice(0,1)}],['long labels',{labels}],['approved',{reviewDecision:'APPROVED'}],['changes requested',{reviewDecision:'CHANGES_REQUESTED'}],
   ['missing author',{author:null}],['conflict',{mergeable:'CONFLICTING'}],
   ...Array.from({length:16},(_,mask)=>[`optional mask ${mask}`,{body:mask&1?'- [x] done':'',statusCheckRollup:mask&2?[{name:'CI',status:'COMPLETED',conclusion:'SUCCESS'}]:[],labels:mask&4?labels:[],reviewDecision:mask&8?'APPROVED':''}]),
@@ -104,7 +136,7 @@ for(const mode of ['ordinary','pinned','scrolling','coordinator','ghost'])for(co
       return element().flex().flex_col().gap(U.rowGap).children([panel.pullRow(t,pr,mode==='ghost'),panel.pullRow(t,next,mode==='ghost')]);
     },width,zoom,mode==='pinned'||mode==='scrolling'?600:undefined);
     const row=find(tree,`${prefix}pr-${id}`),box=geometry.get(row);
-    assertTextFits(geometry,row);assertChecksFit(geometry,row);
+    assertTextFits(geometry,row);assertChecksFit(geometry,row);assertStatusIcons(geometry,row,zoom);
     for(const kind of ['byline','meta'])assertNaturalRun(geometry,find(row,`${prefix}pr-${kind}-${id}`),zoom);
     const task=find(row,`${prefix}pr-tasks-${id}`);
     if(task)assert.ok([pr.tasks.label,`${pr.tasks.done}/${pr.tasks.total}`].includes(words(task).join('')),'Tasks remain full or shorten as a whole fraction');
@@ -132,6 +164,33 @@ for(const mode of ['ordinary','pinned','scrolling','coordinator','ghost'])for(co
   const baseline=build({},false);
   for(const [name,overrides] of cases)for(const agent of [false,true,false]){
     assert.deepEqual(build(overrides,agent),baseline,`${mode}/${state} width=${width} zoom=${zoom} ${name} agent=${agent}`);comparisons++;
+  }
+}
+// Every task variant paired with every checks-slot occupant, including the
+// unknown-state fallback. Neutral/skipped normalize to the success checkmark.
+// Cover coordinator ghosts too, independently of the broad row matrix above.
+for(const coordinator of [false,true])for(const ghost of [false,true])for(const zoom of [0.75,1,1.25,1.3,1.5,2])for(const done of [0,1,2])for(const state of ['SUCCESS','FAILURE','IN_PROGRESS','NEUTRAL','SKIPPED','unknown']) {
+  h.setZoom(zoom);
+  const pr=facts.pullRow({...source,body:`- [${done>0?'x':' '}] one\n- [${done>1?'x':' '}] two`,statusCheckRollup:[{name:'CI',status:state==='IN_PROGRESS'?state:'COMPLETED',conclusion:state}]},'owner',now);
+  if(state==='unknown')pr.checks.state='unknown';
+  if(coordinator)pr.key='owner/repo#17';
+  const {tree,geometry}=h.settle(()=>panel.pullRow(t,pr,ghost),390,zoom);
+  assertStatusIcons(geometry,tree,zoom);
+  const prefix=ghost?'swap-':'',id=pr.key??17,slot=find(tree,`${prefix}pr-check-icon-${id}`),glyph=slot.kids[0];
+  if(['IN_PROGRESS','unknown'].includes(state))assert.equal(glyph.attrs.asset,undefined,'Pending/unknown uses the shared dot fallback');
+  else assert.equal(glyph.attrs.asset[0],`mods/custom-workspace-chrome/${state==='FAILURE'?'x':'check'}.svg`);
+  // Removing either offset must fail, and restoring the old position must not
+  // change any horizontal box, text anchor, separator or outer row/line box.
+  for(const kind of ['task','check']) {
+    const icon=find(tree,`${prefix}pr-${kind}-icon-${id}`),moving=new Set(nodes(icon));
+    icon.top(0);const old=rowGeometry(tree,390,zoom);
+    assert.throws(()=>assertStatusIcons(old,tree,zoom),/icon centre is lowered one logical pixel/);
+    for(const node of nodes(tree)) {
+      const before=old.get(node),after=geometry.get(node);
+      for(const key of ['x','width','height'])near(after[key],before[key],`Nudge preserves ${key}`);
+      near(after.y-before.y,moving.has(node)?zoom:0,'Only the requested icon subtree moves');
+    }
+    icon.top(1);
   }
 }
 // Screenshot-shaped content: at ~390 logical px, no forced compact forms,

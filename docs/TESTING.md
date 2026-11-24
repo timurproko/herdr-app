@@ -536,6 +536,15 @@ numeric line-height defect in ordinary/coordinator live/ghost rows at every zoom
 and require that containment check to fail. The production rows use `20px`/`18px`
 strings explicitly. This closes the earlier fixture blind spot that treated all
 line heights as pixels and missed invisible/clipped text inside stable cells.
+Both metadata icon slots are optically lowered by 1 logical pixel without moving
+text or the existing 1.5px-lowered separators. The geometry regression covers
+untouched checklist, partial ring (including both painted paths), completed task
+check, success, failure, pending and unknown checks; neutral/skipped normalize to
+the same success checkmark. Ordinary, pinned, scrolling, coordinator and ghost
+paths retain 18px lines, 74px rows and all horizontal positions at every zoom,
+including 100% and 130%. Offset-removal mutations fail for each slot, and an
+independent relative-position oracle protects descendant movement in the model.
+These remain synthetic box assertions, not native font/rasterization evidence.
 Existing label-colour/tooltip, PR-action and pin-motion regressions remain intact.
 Horizontal assertions also compare the full natural count width against every
 ancestor, reject any check truncation, and cover one/two-digit totals through
