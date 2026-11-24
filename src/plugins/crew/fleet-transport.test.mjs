@@ -54,11 +54,14 @@ for(const failure of [unsupported,()=>reply('',1,'auth failed'),()=>reply('',nul
 }
 // Capability evidence is shared by module copies and keyed by the CLI path+mtime.
 {
- const x=await fixture(),fact={key:'c:\\fixture\\crew.mjs|1234',view:true};
+ const x=await fixture();let fact={key:'c:\\fixture\\crew.mjs|1234',view:true};
  x.setAnswer(async()=>reply('__HERDR_FLEET_CAPABILITY__'+JSON.stringify(fact)+'\n'+JSON.stringify(legacy)));
  assert.equal(await x.p.readFleetStatus(null),JSON.stringify(legacy));assert.deepEqual(copy(x.state['custom.fleet.capabilities'].local),fact);
  const peer=await x.load();await peer.p.readFleetStatus(null);assert.ok(command(x.calls[1]).includes("if ($capabilityKey -eq 'c:\\fixture\\crew.mjs|1234')"));
  x.f.invalidateFleet();await x.p.readFleetStatus(null);assert.ok(command(x.calls[2]).includes('crew.mjs|1234'),'Toggle does not discard installation capability evidence');
+ fact={...fact,key:'c:\\fixture\\crew.mjs|5678'};await peer.p.readFleetStatus(null);
+ await x.p.readFleetStatus(null);
+ assert.ok(command(x.calls.at(-1)).includes('crew.mjs|5678'),'A peer-probed installation update supersedes stale module-local evidence without another help probe');
 }
 // Settings requests work, but cannot own a native IO promise. The stable Spaces
 // lifecycle services the request and keeps a healthy slow transport single-flight.

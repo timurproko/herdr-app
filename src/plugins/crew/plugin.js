@@ -553,7 +553,9 @@ export const readFleetStatus = async (machine, {current = () => true, progress =
     const key=machine??'local';
     const cached=shared(FLEET_CAPABILITIES)?.[key];
     const saved=typeof cached?.key==='string' && cached.key.length<=4096 && typeof cached.view==='boolean'?cached:undefined;
-    const capability=fleetCapabilities.get(key)??saved;
+    // Another mounted copy may already have probed an updated installation.
+    // Shared evidence takes precedence over this copy's older in-memory fact.
+    const capability=saved??fleetCapabilities.get(key);
     const result=await powershell(machine,crewFleetStatusScript({discover,legacy,capability,reportCapability:true}),{timeout,received,decode});
     const prefix='__HERDR_FLEET_CAPABILITY__',newline=result.stdout.indexOf('\n');
     if(result.stdout.startsWith(prefix) && newline>=0) {
