@@ -6,7 +6,9 @@ const colors={'local-space':'ansi6','pc2/space':'ansi4'},automaticFlags={'local-
 let list=[{id:'local-space',name:'Local',active:true,machine:null,tabs:[]},{id:'pc2/space',name:'Remote',active:false,machine:'pc2',tabs:[]}];
 let props={tab:'space',target:{id:'pc2/space'},overlay:'space-menu'};
 const theme={foreground:'#eeeeee',muted:'#aaaaaa',dim:'#888888',hover:'#333333',border:'#444444',popover:'#222222'};
-const context={updates:()=>({app:{ready:null}}),pluginIsEnabled:()=>true,console,View:class{},div:element,svg:element,h_flex:element,v_flex:element,shared:k=>state.get(k),setShared:(k,v)=>{state.set(k,structuredClone(v));writes.push(v);},spaces:()=>list,panes:()=>[],terminals:()=>[],agents:()=>[],keys:()=>[],props:()=>props,closeOverlay:id=>closed.push(id),openOverlay:()=>{},theme:()=>theme,run:(...v)=>runs.push(v),requestInlineTabRename:p=>(requests.push(p),true),requestInlineSpaceRename:p=>(requests.push(p),true),exec:async()=>{throw Error('Unexpected execution');}};
+let pairLinks=[],freshLinks=null;
+const warnings=[];
+const context={pluginAllows:(_name,{pair})=>{const fresh=freshLinks??pairLinks;return fresh.length===1&&fresh[0].parent===pair.parent&&fresh[0].child===pair.child&&fresh[0].binding===pair.binding;},pluginEvent(){},pluginWorkspaceLinks:options=>options?.presentation?pairLinks:(freshLinks??pairLinks),notify:spec=>warnings.push(spec),updates:()=>({app:{ready:null}}),pluginIsEnabled:()=>true,console,View:class{},div:element,svg:element,h_flex:element,v_flex:element,shared:k=>state.get(k),setShared:(k,v)=>{state.set(k,structuredClone(v));writes.push(v);},spaces:()=>list,panes:()=>[],terminals:()=>[],agents:()=>[],keys:()=>[],props:()=>props,closeOverlay:id=>closed.push(id),openOverlay:()=>{},theme:()=>theme,run:(...v)=>runs.push(v),requestInlineTabRename:p=>(requests.push(p),true),requestInlineSpaceRename:p=>(requests.push(p),true),exec:async()=>{throw Error('Unexpected execution');}};
 const clean=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8').replace(/^import .*;\r?\n/gm,'').replace(/export /g,'');
 vm.createContext(context);
 vm.runInContext(clean('../mods/custom-menu/space-color-state.js')+'\nglobalThis.spaceColorState={savedSpaceColors,reconcileSpaceColors};',context);
@@ -64,4 +66,57 @@ key('down');assert.equal(tabMenu.at,1);key('enter');assert.equal(requests.at(-1)
 key('up');key('up');assert.equal(tabMenu.at,3,'Dividers are not keyboard stops');
 assert.equal(c.SPACE_COLORS.length,8);assert.equal(c.SPACE_COLORS[0].value,null);assert.match(fs.readFileSync(new URL('../mods/custom-menu/automatic.svg',import.meta.url),'utf8'),/stroke-dasharray=/,'Automatic is a dashed outline');
 assert.equal(c.SPACE_COLORS.length*22+(c.SPACE_COLORS.length-1)+6<=200-10,true,'All swatches fit the existing 200px menu');
-console.log('PASS: durable restart-safe space colors, partial-startup retention, automatic-first dashed swatch, current selection, local/remote isolation, immutable saved colors, reset, no-op/stale guards, keyboard palette/reset navigation, unchanged session commands and compact menu width');
+// A linked fleet edits the coordinator's palette, never its independent saved colour.
+for(const machine of [null,'pc2']) {
+ const parent='pair-parent',child='pair-child';
+ const reset=()=>{
+  list=[{id:parent,name:'coordinator',machine,tabs:[]},{id:child,name:'crew',machine,tabs:[]},{id:'unrelated',machine,tabs:[]}];
+  const saved={[parent]:'ansi2',[child]:'ansi1',unrelated:'ansi3'};
+  state.set('space.colors',structuredClone(saved));state.set('custom.space-colors',structuredClone(saved));
+  state.set('custom.space-color-auto',{[child]:true,unrelated:true});
+  pairLinks=[{parent,child,binding:'exact-pair'}];freshLinks=null;
+  props={tab:'space',target:{id:child,folder:'/captured',checkout:'linked'},overlay:'pair-menu'};
+ };
+ const open=()=>{const m=new context.Menu();m.init({},cx);return m;};
+ reset();let m=open();const beforeRender=writes.length,tree=m.render(cx);
+ assert.equal(writes.length,beforeRender,'Opening/rendering attached palette does no writes');
+ assert.equal(find(tree,'space-color-2').style.border_color[0],theme.foreground,'Fleet palette selects the coordinator colour, not its own saved red/Automatic');
+ assert.equal(m.colorTarget,parent);assert.equal(m.colorSource.id,child);
+ assert.equal(m.list().find(it=>it[1]==='space.rename')[2].id,child);
+ assert.equal(m.list().find(it=>it[1]==='space.close')[2].id,child);
+ for(const it of m.list().filter(it=>it[1]==='worktree'))assert.equal(it[2].space,child);
+ m.choose(m.list().findIndex(it=>it[1]==='space.rename'),cx);assert.equal(requests.at(-1).command.args.id,child,'Rename is not retargeted');
+ const oldOverlay=context.openOverlay,worktreeDialogs=[];context.openOverlay=spec=>worktreeDialogs.push(spec);
+ m.choose(m.list().findIndex(it=>it[1]==='worktree'),cx);assert.equal(worktreeDialogs[0].props.space,child);assert.equal(worktreeDialogs[0].props.folder,'/captured');context.openOverlay=oldOverlay;
+ find(tree,'space-color-5').events.on_click({},cx);
+ assert.equal(state.get('custom.space-colors')[parent],'ansi5');assert.equal(state.get('custom.space-colors')[child],'ansi1');
+ assert.equal(state.get('custom.space-color-auto')[child],true,'Fleet Automatic flag is untouched');
+ m=open();m.render(cx).events.on_key_down({key:'right'},cx);assert.equal(m.colorAt,5,'Keyboard starts on the same coordinator swatch');
+ m.render(cx).events.on_key_down({key:'right'},cx);m.render(cx).events.on_key_down({key:'enter'},cx);
+ assert.equal(state.get('custom.space-colors')[parent],'ansi6');assert.equal(state.get('custom.space-colors')[child],'ansi1');
+ m=open();find(m.render(cx),'space-color-0').events.on_click({},cx);
+ assert.equal(state.get('custom.space-colors')[parent],undefined,'Fleet Automatic choice resets only the coordinator');
+ assert.equal(state.get('custom.space-color-auto')[parent],true);assert.equal(state.get('custom.space-color-auto')[child],true);
+ assert.equal(state.get('custom.space-colors')[child],'ansi1');assert.equal(state.get('custom.space-colors').unrelated,'ansi3');
+ // Parent-origin menus follow exactly the same pair guards.
+ reset();props.target.id=parent;m=open();m.chooseColor('ansi4',cx);assert.equal(state.get('custom.space-colors')[parent],'ansi4');assert.equal(state.get('custom.space-colors')[child],'ansi1');
+ for(const invalidate of [
+  ()=>{pairLinks=[];}, // setting/plugin off or confirmed detach
+  ()=>{freshLinks=[];}, // retained display is not permission
+  ()=>{pairLinks=[{parent,child,binding:'new-binding'}];},
+  ()=>{pairLinks=[{parent:'unrelated',child,binding:'replacement'}];},
+  ()=>{list=list.filter(s=>s.id!==parent);},
+  ()=>{list=list.filter(s=>s.id!==child);},
+  ()=>{list.find(s=>s.id===parent).machine=machine===null?'pc2':null;},
+  ()=>{pairLinks.push({parent:'unrelated',child,binding:'ambiguous'});},
+  ()=>{props.target.id='unrelated';},
+ ]) {
+  reset();m=open();const saved=JSON.stringify([...state]),count=writes.length;invalidate();m.chooseColor('ansi5',cx);
+  assert.equal(writes.length,count,'A stale pair never writes or falls back to the fleet');assert.equal(JSON.stringify([...state]),saved);assert.equal(warnings.at(-1).title,'Space colour unavailable');
+ }
+ reset();freshLinks=[];m=open();const count=writes.length;m.chooseColor('ansi5',cx);assert.equal(writes.length,count,'Cold retained-only palette also refuses writes');
+ reset();pairLinks=[];m=open();find(m.render(cx),'space-color-1').events.on_click({},cx);
+ assert.equal(state.get('custom.space-colors')[child],'ansi4','Reopened detached fleet edits its independent colour');assert.equal(state.get('custom.space-colors')[parent],'ansi2');
+ reset();pairLinks=[];m=open();pairLinks=[{parent,child,binding:'newly-attached'}];const original=writes.length;m.chooseColor('ansi4',cx);assert.equal(writes.length,original,'An ordinary palette cannot silently become a pair palette');
+}
+console.log('PASS: captured pair colour palettes, mouse/keyboard and Automatic choices, untouched fleet preferences, stale-pair guards, ordinary action targets; durable restart-safe space colors, partial-startup retention, automatic-first dashed swatch, current selection, local/remote isolation, immutable saved colors, reset, no-op/stale guards, keyboard palette/reset navigation, unchanged session commands and compact menu width');

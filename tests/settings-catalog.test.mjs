@@ -39,7 +39,7 @@ const host = {
 const U = { control: 28, row: 28, smallIcon: 14, icon: 16, gap: 8, radius: 6 };
 const mocks = {
   './host.js': host,
-  './plugins.js': {pluginIsEnabled:()=>true,pluginEvent(){},pluginMenuItems:()=>[]},
+  './plugins.js': {pluginAllows:()=>false,pluginIsEnabled:()=>true,pluginEvent(){},pluginMenuItems:()=>[],pluginWorkspaceLinks:()=>[]},
   './agent-rename.js': {requestInlineAgentRename:()=>true},
 
   'gpui-kit': { View: class {}, div: element, svg: element, image: element },

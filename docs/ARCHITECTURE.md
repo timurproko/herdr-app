@@ -203,8 +203,8 @@ publish `status:null` or renew success age; independent attempt timestamps back 
 retries. Crew lifecycle hooks explicitly yield before persistence, leases or reads,
 including when native spawn begins inline.
 
-Strict action queries still require a current-runtime witnessed status result,
-30-second freshness, matching dependency fingerprints and exact live membership.
+Move and Git/worker action queries still require a current-runtime witnessed status
+result, 30-second freshness, matching dependency fingerprints and exact live membership.
 Persisted timestamps/tokens cannot authorize a cold module. Consumers can witness a
 shared in-flight read, preserving coalescing across mod copies, but completed crash
 leases are not fresh verification. Drops on/from a retained unverified block refuse
@@ -219,6 +219,20 @@ verified live-task membership, independently of the pair/adoption fingerprint: a
 Core-first worker exit cannot silently remove its PR before Crew publishes the
 closed record. A working/finished mismatch remains unverified rather than renewing
 action freshness, while existing same-home rows stay explicitly stale.
+
+Colour is a separate binding-scoped action, not live-worker navigation. The generic
+`pluginAllows('spaces.color', {pair})` guard accepts the exact displayed pair only
+after a successful status read in the calling mod (or a witnessed shared read).
+That success records `displayIdentity` and its dependency fingerprint alongside the
+existing expiring runtime status/token, not in the durable display record. The guard
+requires the witnessed token, ordinary 30-second freshness, ready machine layout,
+matching current owner/home and unchanged displayed pair/adoption fingerprint.
+It therefore handles live, retained finished and retained empty fleets uniformly,
+including remote pairs and cold restoration after the first successful verification.
+Persisted display or a fresh owner without a matching successfully verified retained
+child cannot grant colour permission. This does not broaden live move links, Git
+reads, worker navigation or exports. Opening an attached menu emits the generic
+refresh lifecycle; it yields before reads and joins the shared lease when possible.
 
 `plugins/git/mod/aggregate.js` consumes the registry's explicit task context only
 for the selected coordinator. It reads exact validated task PR URLs on that machine with
