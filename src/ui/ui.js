@@ -309,13 +309,13 @@ export function chevron(t, open) {
 }
 // Machine and repository sections share the same shell and trailing chevron.
 // Callers own click/hover guards and persistence; compact machines retain their icon.
-export function sidebarSectionHeader(t, { id, label, open, compact = false, children = [] }) {
-  return div().id(id).h(U.control).flex_none().flex().pl(compact ? 0 : 8).pr(compact ? 0 : 4)
+export function sidebarSectionHeader(t, { id, label, open, compact = false, children = [], trailingSize = U.icon, trailingInset = 4 }) {
+  return div().id(id).h(U.control).flex_none().flex().pl(compact ? 0 : 8).pr(compact ? 0 : trailingInset)
     .gap(U.gap).items_center().rounded(U.radius).text_size(U.meta).text_color(t.muted)
     .role('button').accessibility_label(`${open ? 'Collapse' : 'Expand'} ${label}`)
     .when(compact, el => el.w(U.control).self_center().justify_center())
     .children(children)
-    .when(!compact, el => el.child(slot(chevron(t, open))));
+    .when(!compact, el => el.child(slot(chevron(t, open), trailingSize)));
 }
 // Mixes two #rrggbb theme colors (b's share = amount), so blends follow every theme.
 export function blend(a, b, amount) {
