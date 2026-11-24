@@ -9,7 +9,7 @@ import {json,read,digest,put,contained} from './files.mjs';
 // A flag alone cannot turn a full journal into a Desktop-free rollback.
 function validateShellJournal(record) {
  const fail=()=>{throw Error('Not a verified shell-only rollback journal.');};
- if(record.scope!=='shell'||typeof record.afterState!=='string'||digest(record.afterState)!==record.afterManifest)fail();
+ if(record.paletteBinding||record.scope!=='shell'||typeof record.afterState!=='string'||digest(record.afterState)!==record.afterManifest)fail();
  const before=record.manifest===null?null:JSON.parse(record.manifest),after=JSON.parse(record.afterState);
  const valid=state=>state?.version===2&&state.id==='custom'&&state.files&&typeof state.files==='object'&&!Array.isArray(state.files);
  if(!valid(after)||(before&&!valid(before)))fail();
@@ -41,6 +41,15 @@ export function rollback(home,id,{fixture=false,shellOnly=false}={}) {
    if(![digest(value),after].includes(digest(actual)))throw Error(`Newer deployment/preference change: ${name}`);
    // Shell recovery checks preferences but must never rewrite them.
    if(!shellOnly||name!=='layout-preferences.json')jobs.push({file,before:value===null?null:Buffer.from(value),actual:actual===null?null:Buffer.from(actual)});
+  }
+  if(!shellOnly&&record.paletteBinding){
+   const b=record.paletteBinding;
+   for(const [rel,before,after]of [['keys.json',b.keys,b.afterKeys],['.customizations/palette-binding.json',b.record,b.afterRecord]]){
+    if(before!==null&&typeof before!=='string')throw Error('Invalid palette binding rollback record');
+    const file=contained(home,rel),actual=read(file);
+    if(![digest(before),after].includes(digest(actual)))throw Error('Personal palette binding edit after deployment');
+    jobs.push({file,before:before===null?null:Buffer.from(before),actual:actual===null?null:Buffer.from(actual)});
+   }
   }
   // Restore native exceptions before removing their runtime support on first-install rollback.
   if(!shellOnly&&record.manifest===null){const runtime=path.join(owner,'runtime');for(const patch of json(path.join(runtime,'frame-patches/registry.json'))?.patches??[])if(fs.existsSync(path.join(owner,`frame-${patch.id}.json`)))cp.execFileSync(process.execPath,[path.join(runtime,'scripts/frame-patch.mjs'),'restore',patch.id,home],{encoding:'utf8',timeout:30000});}

@@ -607,6 +607,11 @@ for (const scenario of ['priority','grouped','rail','empty']) {
     if(name==='custom-workspace-status'&&scenario!=='empty') {
       const paletteHint=byId('palette');assert.ok(paletteHint.style.cursor_pointer);assert.equal(paletteHint.hoverStyle.style.bg[0],theme.hover);assert.equal(paletteHint.hoverStyle.style.text_color,undefined,'Status hint keeps its text color on hover');
       paletteHint.events.on_click({},cx);assert.equal(calls.at(-1)[0],'mod.open');assert.equal(calls.at(-1)[1].name,'custom-palette');
+      shared['custom.palette.status']={ok:false,error:'Personal palette shortcut conflict'};view=instance.render(cx);
+      const warning=byId('palette-repair-warning');assert.ok(warning);assert.equal(warning.style.tooltip[0],'Personal palette shortcut conflict');
+      warning.events.on_click({},cx);assert.equal(typeof shared['custom.palette.retry'],'number');
+      assert.ok(byId('palette'),'The owned opener survives keyboard-repair failure');
+      delete shared['custom.palette.status'];delete shared['custom.palette.retry'];
       agents.push({address:'remote/t99',status:'blocked'});view=instance.render(cx);
       assert.equal(byId('machine-agents'),undefined,'Status bar has no agent-total widget');
       assert.equal(nodes(view).find(n=>n.style?.asset?.[0]?.endsWith('/monitor.svg')).style.size[0],14,'Device glyphs use the compact status size inside fixed 16px slots');

@@ -75,6 +75,11 @@ export function deploy(root,home=defaultHome(),{adopt={},repair=true,sources=nul
       if(current!==null&&actual!==next&&!owned&&!(rel===layoutFile&&old?.layoutBase))throw Error(`Personal file conflict: ${rel}; nothing deployed.`);
       files[rel]=next;jobs.push({rel,file,current,bytes,before:actual});
     }
+    // Preflight the one owned key before writing any payload. Shell/partial modes
+    // never change desktop binding policy; mounted startup handles later resets.
+    const paletteWorker=path.join(root,'scripts/palette-policy.mjs');
+    const palettePlan=repair&&!retained&&files['mods/custom-palette/main.js']&&fs.existsSync(paletteWorker)
+      ?JSON.parse(cp.execFileSync(process.execPath,[paletteWorker,'preflight',home],{encoding:'utf8',timeout:15000,windowsHide:true})):null;
     const stale=Object.entries(old?.files??{}).filter(([rel])=>!Object.hasOwn(files,rel)).map(([rel,hash])=>({rel,file:contained(home,rel),hash}));
     for(const item of stale)if(fs.existsSync(item.file)&&digest(fs.readFileSync(item.file))!==item.hash)throw Error(`Modified obsolete file: ${item.rel}; nothing deployed.`);
     const changed=jobs.filter(j=>j.before!==digest(j.bytes));
@@ -92,12 +97,13 @@ export function deploy(root,home=defaultHome(),{adopt={},repair=true,sources=nul
     const nextManifest=JSON.stringify(shellOnly?{...(old??{version:2,id:'custom',supportedHerdr:bundle.supportedHerdr}),files}:{version:2,id:'custom',supportedHerdr:bundle.supportedHerdr,files,layoutBase:base},null,2)+'\n';
     const nextPrefs=retained?prefsRaw:JSON.stringify({version:1,overrides},null,2)+'\n';
     let backup=null;
-    if(changed.length||stale.length) {
+    if(changed.length||stale.length||palettePlan?.changed) {
       const transaction=path.join(owner,'backups',`${Date.now()}-${process.pid}`);
       fs.mkdirSync(transaction,{recursive:true});
       // Journal original bytes outside synced source. No shared/session documents are included.
       backup=path.basename(transaction);
       const rollback={version:1,files:{},after:{},manifest:read(stateFile),preferences:prefsRaw,afterManifest:digest(nextManifest),afterPreferences:digest(nextPrefs),...(shellOnly?{scope:'shell',afterState:nextManifest}:{})};
+      if(palettePlan?.changed)rollback.paletteBinding={keys:palettePlan.keyRaw,record:palettePlan.recordRaw,afterKeys:digest(palettePlan.keys),afterRecord:digest(palettePlan.record)};
       for(const j of [...changed,...stale.map(j=>({...j,current:fs.existsSync(j.file)?fs.readFileSync(j.file):null}))]){
         rollback.files[j.rel]=j.current===null?null:j.current.toString('base64');
         rollback.after[j.rel]=files[j.rel]??null;
@@ -111,10 +117,12 @@ export function deploy(root,home=defaultHome(),{adopt={},repair=true,sources=nul
     for(const j of stale){if(fs.existsSync(j.file)){if(digest(fs.readFileSync(j.file))!==j.hash)throw Error(`Concurrent obsolete edit: ${j.rel}`);fs.unlinkSync(j.file);}}
     if(!retained)put(prefsFile,nextPrefs,digest(prefsRaw));
     put(stateFile,nextManifest);
+    let palette=null;
+    if(palettePlan)palette=JSON.parse(cp.execFileSync(process.execPath,[paletteWorker,'install',home],{encoding:'utf8',timeout:15000,windowsHide:true}));
     // Native compatibility patches are not regular payload. Refresh only existing opt-ins.
     let patches=null;
     if(repair&&!shellOnly){const worker=path.join(owner,'runtime/scripts/startup-frames.mjs');if(fs.existsSync(worker)){const output=cp.execFileSync(process.execPath,[worker,home],{encoding:'utf8',timeout:30000,windowsHide:true});patches=JSON.parse(output);}}
-    return {changed:changed.length,removed:stale.length,patches,backup,...(retained?{...(shellOnly?{scope:'shell'}:{sources}),preserved:Object.keys(old?.files??{}).filter(rel=>!selected.some(([target])=>target===rel)).length}:{})};
+    return {changed:changed.length,removed:stale.length,patches,palette,backup,...(retained?{...(shellOnly?{scope:'shell'}:{sources}),preserved:Object.keys(old?.files??{}).filter(rel=>!selected.some(([target])=>target===rel)).length}:{})};
   });
 }
 export function doctor(home=defaultHome()) {
@@ -155,6 +163,8 @@ export function remove(home=defaultHome()) {
     const registry=json(path.join(runtime,'frame-patches/registry.json'));
     if(fs.existsSync(path.join(home,'.customizations/terminal-input.json')))cp.execFileSync(process.execPath,[path.join(runtime,'scripts/terminal-input.mjs'),'restore',home],{encoding:'utf8',timeout:30000});
     for(const patch of registry?.patches??[])if(fs.existsSync(path.join(home,`.customizations/frame-${patch.id}.json`)))cp.execFileSync(process.execPath,[path.join(runtime,'scripts/frame-patch.mjs'),'restore',patch.id,home],{encoding:'utf8',timeout:30000});
+    const paletteWorker=path.join(runtime,'scripts/palette-policy.mjs');
+    if(fs.existsSync(paletteWorker))cp.execFileSync(process.execPath,[paletteWorker,'remove',home],{encoding:'utf8',timeout:15000,windowsHide:true});
     for(const j of files)if(fs.existsSync(j.file)&&digest(fs.readFileSync(j.file))===j.hash)fs.unlinkSync(j.file);
     fs.unlinkSync(path.join(home,'.customizations/manifest.json'));
     return {removed:files.length-changed.length,preserved:changed.map(j=>j.rel)};

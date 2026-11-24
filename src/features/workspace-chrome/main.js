@@ -6,6 +6,7 @@ import { openSettings } from './settings-dialog.js';
 import { FOOTER_ITEMS, footerItems, footerVisible, moveFooter } from './sidebar-footer.js';
 import { enterCustom } from "./look.js";
 import { restoreFrames } from "./startup.js";
+import { initPalettePolicy } from './palette-startup.js';
 import { pluginEvent } from './plugins.js';
 import { reorder, groupedInsertion } from './reorder.js';
 import { initCustomizationUpdates, customizationUpdateAvailable, observeCustomizationUpdates, invalidateCustomizationUpdates } from './customization-updates.js';
@@ -43,11 +44,13 @@ export default class WorkspaceChrome extends View {
     if (!props()?.footer) {
       enterCustom(this, cx);
       restoreFrames(cx);
+      initPalettePolicy(this, cx);
       initCustomizationUpdates(this, cx, 'custom-workspace-chrome', { chrome: true });
     }
   }
   close() {
     this.sidebarClosed = true;
+    this.paletteTimer?.cancel();
     this.customUpdateClosed = true;
     this.customAutoTimer = null;
     this.customAutoDirty = false;
