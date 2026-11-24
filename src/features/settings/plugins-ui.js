@@ -352,7 +352,7 @@ function selectionDropdown(view, t, plugin, item, { loading = false, only = null
   const saved = String(selection ? pluginSetting(plugin, selection.key) ?? '' : '');
   const offered = selection?.options ?? [];
   const value = offered.some(([v]) => v.toLowerCase() === saved.toLowerCase()) ? saved : selection?.value ?? '';
-  const locked = view.pluginClosed || !pluginEnabled(plugin) || Boolean(view.pluginFixing);
+  const locked = view.pluginClosed || !pluginEnabled(plugin) || Boolean(view.pluginFixing) || view.pluginSettling?.[sectionKey(plugin, item)] === true;
   return optionDropdown(t, { id, label: selection?.label ?? 'Account', value, options: offered, loading, disabled: locked,
     open: view.pluginOpen[openKey] === true, focus: view.pluginFocus[openKey],
     onOpen: (open, cx) => { view.pluginOpen[openKey] = open; cx.notify(); },
@@ -544,19 +544,22 @@ function itemsAdd(view, t, plugin, item, canAdd) {
 }
 
 function listSection(view, t, plugin, item, loading) {
-  const spec = item.list, id = listId(plugin, item);
-  const locked = view.pluginClosed || !pluginEnabled(plugin) || Boolean(view.pluginFixing) || loading;
+  const spec = item.list, id = listId(plugin, item), key = sectionKey(plugin, item);
+  const applying = view.pluginFixing === key || view.pluginSettling?.[key] === true;
+  const locked = view.pluginClosed || !pluginEnabled(plugin) || Boolean(view.pluginFixing) || applying || loading;
   const canAdd = !locked && item.usable === true;
   // The scope: a machine setting is named (the Settings header's machine changes it);
   // otherwise the check's selection is offered as a dropdown.
   const def = scopeSetting(plugin, item);
-  const scope = def ? null : spec.scope ? selectionDropdown(view, t, plugin, item, { loading, only: item.id }) : null;
+  const scope = def ? null : spec.scope ? selectionDropdown(view, t, plugin, item, { loading: loading && !applying, only: item.id }) : null;
   const add = spec.picker?.kind === 'folders' ? foldersAdd(view, t, plugin, item, canAdd, loading) : itemsAdd(view, t, plugin, item, canAdd);
-  const rows = loading ? [] : item.rows ?? [];
-  const enabled = pluginEnabled(plugin) && !view.pluginFixing && !loading;
+  // Applying already has header feedback. Keep the last confirmed body, including
+  // through its authoritative re-check, rather than collapsing and restoring it.
+  const rows = loading && !applying ? [] : item.rows ?? [];
+  const enabled = !locked;
   return v_flex().w_full().gap(8)
     .child(scopeRow(t, { id, label: def ? machineName(pluginSetting(plugin, def.key)) : spec.scope?.label ?? 'Machine', dropdown: scope, action: add }))
-    .child(description(t, view.pluginFixError[sectionKey(plugin, item)] ?? (view.pluginFixing === sectionKey(plugin, item) || view.pluginSettling?.[sectionKey(plugin, item)] ? 'Updating…' : item.detail ?? item.about)))
+    .child(description(t, view.pluginFixError[key] ?? item.detail ?? item.about))
     // A row's note (an incomplete webhook) follows its name: one line per item.
     .child(v_flex().id(id).w_full().gap(U.rowGap)
       .children(rows.map((row, index) => removableRow(view, t, `${id}-row-${index}`, row.detail ? `${row.label} · ${row.detail}` : row.label,
@@ -573,7 +576,7 @@ function prerequisiteSections(view,t,plugin) {
   const check=view.pluginChecks[plugin.id];
   return (check?.items??plugin.prerequisites??[]).filter(item=>item.section&&item.list).map(item=>{
     const key=sectionKey(plugin,item),busy=view.pluginFixing===key||view.pluginSettling?.[key]===true,checking=itemState(view,plugin,item.id);
-    const summary=busy?workingStatus(t,'Applying…'):checking.loading?workingStatus(t):item.status&&item.statusLabel!==null?badge(t,item.status,item.statusLabel):null;
+    const summary=busy?workingStatus(t,'Applying'):checking.loading?workingStatus(t):item.status&&item.statusLabel!==null?badge(t,item.status,item.statusLabel):null;
     const tools=checkButton(t,`st-plugin-refresh-${plugin.id}-${item.id}`,Boolean(checking.loading),(_e,cx)=>{
       if(!view.pluginFixing&&!itemState(view,plugin,item.id).loading){delete view.pluginFixError[key];reloadPlugins(view,cx,plugin.id,item.id);cx.notify();}
     },!checking.loading&&!view.pluginFixing);
