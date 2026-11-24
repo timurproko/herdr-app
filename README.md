@@ -254,7 +254,8 @@ Each tab has equal 8px padding before its label and after the painted badge,
 selected or not. Fully visible totals have no count-only tooltip; unknown totals
 keep **Count loading; showing 0**, while totals above 999 display **999+** with
 the exact number in their tooltip. Accessible labels always keep the full total
-and loading state. Same-repository refreshes keep the last-known counts. Cold loading and coordinator Verifying remain panel feedback, never
+and loading state. Same-repository refreshes keep the last-known counts. Cold loading
+and coordinator verification remain panel feedback, never
 placeholder PR rows.
 Git's event-driven CI line sits immediately below its header and applies to
 all PRs, not just the pinned block. Rotation and line motion use native animation,
@@ -317,11 +318,13 @@ change, remote companion or persistent deletion queue is involved.
 
 Files and Git headers have **Refresh · Pin · Close** tools in that order, using
 24px targets, matching 12px Refresh glyphs, 14px Pin/Close glyphs and the existing hover reveal.
-Their customization-owned title dropdowns (icon, label and chevron) use the same
-24px height, 4px corners and subtle foreground-tinted hover as the inset tools.
-A lone enabled panel keeps a static title without hover. Terminal-pane title
-styling is unchanged; the pin's persistent pressed treatment stays pin-specific.
-No native header patch is involved. Pin remembers **Files or
+All customization-owned title dropdowns (icon, label and chevron), including
+terminal pane headers, share the inset tools' 24px height, 4px corners and subtle
+foreground-tinted hover through one component, without caller opt-ins. Title
+padding and inline widths stay unchanged. A lone enabled sidebar panel keeps a
+static title without hover; existing static agent/program titles stay static.
+The pin's persistent pressed treatment stays pin-specific. No native header patch
+is involved; see the [header ownership inventory](docs/HEADER-TITLES.md). Pin remembers **Files or
 Git and open/closed state for the current tab**, separate from the shared sidebar
 choice used by unpinned tabs. Returning through tab clicks, keys or agent navigation
 restores that tab's choice. While pinned, switching the panel or opening/closing it
@@ -674,16 +677,23 @@ Until the first successful verification, no attachment is guessed. The two last-
 switches on this page also save immediately; close actions and empty-space
 reconciliation read their current values without waiting for Settings to close.
 Fleet verification failures and discarded replies retain sanitized reason/time/generation
-facts in runtime-only `custom.fleet.diagnostics`. Hover the existing Git **Verifying**
-or **Stale** indicator for the last relevant failure; a cold coordinator candidate
-can show **Waiting for fleet verification**, never an inferred attachment or PR list.
+facts in runtime-only `custom.fleet.diagnostics`. Hover the Git **Loading** bulb
+or **Stale** indicator for the last relevant failure. Empty verification uses the
+ordinary blue working bulb and **Loading**, without extra header text; a cold
+candidate never invents attachment or a PR list.
 The local `.customizations/fleet-verification.log` keeps at most 128 lines / 64 KiB,
 deduplicating an unchanged reason episode without raw command output or secrets.
 Neither diagnostics nor the log is a portable preference. Log-write errors cannot
-block verification. The installed-tool discovery command allows 25 seconds, with
-one 15-second recorded-only fallback solely for an explicit unsupported flag;
-the shared 45-second read lease bounds abandoned reads after a reload. A timeout
-is not proof of absent ownership. Spaces already checks its lifecycle every 250 ms;
+block verification. The reader prefers Crew's explicitly advertised `--view fleet`
+and otherwise projects the legacy `--all` reply to the fields it needs before
+native decoding. Finished Open/Draft task PRs are never removed by task age.
+Discovery allows 25 seconds, recorded-only fallback 15 seconds, and exact
+capability refusals share a 40-second command budget inside the 45-second transport
+lease. Large replies decode in bounded native task turns. Raw receipt starts a
+separate two-second processing deadline: the existing Spaces lifecycle can replace
+an interrupted continuation without its finally block or a 45-second wait.
+A timeout is not proof of absent ownership. See [the transport contract,
+reproduced watchdog failure and regression evidence](docs/FLEET-STATUS.md). Spaces already checks its lifecycle every 250 ms;
 healthy status reads use a ten-second TTL. Failed verification now backs off for
 **2 s, 5 s, then every 10 s** between completed attempts, never slower than the
 previous ten-second attempt cadence. There are no longer reason-specific delays;
@@ -738,8 +748,13 @@ background. Only completed contradictory evidence, disabling the feature or
 missing native spaces clears it; transport failures alone do not.
 Retained visuals are not action permission: pair moves and Git/worker actions
 still require fresh exact live identity. An unverified coordinator Git panel keeps
-its loaded rows and folds with **Stale**, or shows **Verifying** on cold start;
-it starts no new GitHub reads or worker navigation until verification succeeds.
+its loaded rows and folds with **Stale**, or shows the standard **Loading** bulb
+without special header text on cold start. After off/on, a slow or failed first
+read shows **Loading**, not **Not a git repository**, for the current coordinator
+candidate. Off clears the inventory; on never restores a previous list as Stale.
+Only authoritative negative evidence for the current dependency identity returns
+to ordinary folder Git; a previous owner's result cannot suppress Loading. No new GitHub
+reads or worker navigation are allowed until verification succeeds.
 Only sanitized pair identity is persisted for restoration, not task/PR inventory,
 reports or credentials; it is never exported as a portable preference.
 Dragging either expanded row moves the pair, with both rows dimmed and exactly one

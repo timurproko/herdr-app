@@ -41,7 +41,7 @@ const result=(stdout='',code=0,stderr='',timed_out=false)=>({code:0,stdout:JSON.
 const host={shared:k=>state[k],setShared:(k,v)=>state[k]=v,spaces:()=>groups,panes:()=>panes,terminals:()=>terminals,machines:()=>[{layout:'ready'}],checking:()=>false,
   props:()=>null,theme:()=>({}),settings:()=>({zoom:1}),window:()=>({platform:'windows'}),layout:()=>({id:'panel',children:[{id:'panel-body',active:'changes'}]}),notify(){},run:(...args)=>focused.push(args),closeOverlay(){},openOverlay(){},nextCommand:()=>new Promise(()=>{}),
   hc:async args=>{
-    const script=args.at(-1);assert.match(script,/& node \$main status '--all' '--json'/);statusCalls.push(args);
+    const script=args.at(-1);assert.match(script,/InvokeCrew status '--all' '--json'/);statusCalls.push(args);
     if(mode==='timeout')return result('',null,'Timed out',true);
     if(mode==='auth')return result('',1,'GitHub authentication failed');
     if(mode==='unsupported' && script.includes("'--discover-prs'"))return result('',1,'crew: Unknown option: --discover-prs');

@@ -33,6 +33,13 @@ export function interactionFill(t) { return t.hover; }
 export function subtleActionFill(t) {
   return /^#[0-9a-f]{6}$/i.test(t.foreground ?? "") ? `${t.foreground}0a` : "#ffffff0a";
 }
+// Shared inset chrome for header title triggers and icon tools. Keep content width
+// separate: titles retain their inline padding; square tools centre their glyph.
+// No pressed/focus override: these are ordinary actions, not persistent toggles.
+export function insetActionChrome(t, element, enabled = true) {
+  return element.h(U.insetControl).rounded(U.insetRadius)
+    .when(enabled, el => el.cursor_pointer().hover(s => s.bg(subtleActionFill(t)).text_color(t.foreground)));
+}
 // A visual minimum only: real results and errors are never delayed.
 export const REFRESH_MIN_MS = 600;
 export function refreshFeedbackActive(owner, id, scope) {
@@ -75,11 +82,10 @@ export function headerTools(element = div()) {
 // A header title that opens a menu: the right panel's (Files / Git switcher) and a
 // terminal pane's (its shell menu). `icon` is an asset path or a ready element (a
 // program icon); `shrink` lets a long label truncate inside a narrow header.
-export function panelTitle(t, { id, icon, label, labelId = null, labelColor = t.foreground, medium = true, shrink = false, menuLabel = 'Switch panel', iconFirst = true, inset = false }, onOpen) {
-  return div().id(id).h(inset ? U.insetControl : U.control).px(8).gap(U.gap).flex().items_center().rounded(inset ? U.insetRadius : U.radius)
+export function panelTitle(t, { id, icon, label, labelId = null, labelColor = t.foreground, medium = true, shrink = false, menuLabel = 'Switch panel', iconFirst = true }, onOpen) {
+  return insetActionChrome(t, div().id(id), Boolean(onOpen)).px(8).gap(U.gap).flex().items_center()
     .when(!shrink, el => el.flex_none()).when(shrink, el => el.min_w(0).flex_shrink(1))
     .when(Boolean(onOpen), el => el.role('button').accessibility_label(menuLabel)
-      .cursor_pointer().hover(s => inset ? s.bg(subtleActionFill(t)).text_color(t.foreground) : s.bg(t.hover))
       .on_mouse_down('left', (_e, cx) => cx.stop_propagation())
       .on_click((e, cx) => { cx.stop_propagation(); onOpen(e, cx); }))
     .when(iconFirst, el => el.child(typeof icon === 'string' ? slot(svg(icon).size(U.smallIcon).text_color(t.foreground)) : icon))
@@ -95,7 +101,8 @@ export function iconButton(t, { id, icon, label, enabled = true, available = tru
   return div().id(id).size(large ? U.control : U.insetControl).flex_none().flex().items_center().justify_center().rounded(large ? U.radius : U.insetRadius)
     .role('button').accessibility_label(label).disabled(!live).text_color(color)
     .when(Boolean(tooltip), el => el.tooltip(tooltip))
-    .when(live, el => el.cursor_pointer().hover(s => s.bg(large ? interactionFill(t) : subtleActionFill(t)).text_color(t.foreground)))
+    .when(!large, el => insetActionChrome(t, el, live))
+    .when(large && live, el => el.cursor_pointer().hover(s => s.bg(interactionFill(t)).text_color(t.foreground)))
     .when(!available, el => el.opacity(0.35))
     .on_mouse_down('left', (_e, cx) => cx.stop_propagation())
     .on_click((e, cx) => { cx?.stop_propagation(); if (live) onClick(e, cx); })
