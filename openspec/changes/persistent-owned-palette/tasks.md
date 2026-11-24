@@ -11,10 +11,10 @@ The four groups match this draft PR's Implementation outcomes in order. Stage 1 
 
 ## 2. Focused Custom palette overlay
 
-- [ ] 2.1 Package `custom-palette` with `place:none` and host-supported popup metadata; reuse shared search/dialog/list/empty-state/fade primitives rather than copying visual helpers, and check manifest metadata/source contract plus focused overlay mounting fixtures on both host profiles.
-- [ ] 2.2 Retain live theme/selection tint, fixed 408px skin/search header, pinned group/result count, virtual-list/scrollbar ordering and search/clear resets; port native-list regressions for empty/long results, wheel/drag and 100%/130% geometry, documenting fixture versus native-pixel limits.
-- [ ] 2.3 Preserve Enter, Escape/backdrop, repeat-shortcut toggle, bounded arrows/pages, click invocation, close-before-dispatch and focus return; exercise key/mod.open dispatch in a disposable host-shaped harness and mark unavailable real-native interaction coverage explicitly rather than claiming it passed.
-- [ ] 2.4 Route the Custom status-bar command opener and displayed shortcut to the owned overlay; update its regression expectation from app.palette and cover unchanged native behavior outside Custom.
+- [x] 2.1 Package `custom-palette` with `place:none` and host-supported popup metadata; reuse shared search/dialog/list/empty-state/fade primitives rather than copying visual helpers, and check manifest metadata/source contract plus focused overlay mounting fixtures on both host profiles.
+- [x] 2.2 Retain live theme/selection tint, fixed 408px skin/search header, pinned group/result count, virtual-list/scrollbar ordering and search/clear resets; port native-list regressions for empty/long results, wheel/drag and 100%/130% geometry, documenting fixture versus native-pixel limits.
+- [x] 2.3 Preserve Enter, Escape/backdrop, repeat-shortcut toggle, bounded arrows/pages, click invocation, close-before-dispatch and focus return; exercise key/mod.open dispatch in a disposable host-shaped harness and mark unavailable real-native interaction coverage explicitly rather than claiming it passed.
+- [x] 2.4 Route the Custom status-bar command opener and displayed shortcut to the owned overlay; update its regression expectation from app.palette and cover unchanged native behavior outside Custom.
 
 ## 3. Persistent capability-based binding and visible diagnostics
 

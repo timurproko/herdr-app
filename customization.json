@@ -7,6 +7,10 @@
   "owner": ".customizations",
   "features": [
     {
+      "id": "palette",
+      "mod": "custom-palette"
+    },
+    {
       "id": "agents",
       "mod": "custom-agents"
     },
@@ -83,11 +87,18 @@
     "mods/custom-usage/bridge.cjs"
   ],
   "plugins": {
-    "mods": ["custom-files", "custom-changes", "custom-new-menu", "custom-settings", "custom-spaces", "custom-tabs", "custom-usage", "custom-workspace-chrome", "custom-menu", "custom-agents", "custom-space-start"],
+    "mods": ["custom-palette", "custom-files", "custom-changes", "custom-new-menu", "custom-settings", "custom-spaces", "custom-tabs", "custom-usage", "custom-workspace-chrome", "custom-menu", "custom-agents", "custom-space-start"],
     "order": ["files", "git", "usage", "vscode-remote", "a1-colors", "crew"],
     "nodeWorkers": ["a1-colors/session-color.cjs"]
   },
   "files": {
+    "mods/custom-palette/main.js": "src/features/palette/main.js",
+    "mods/custom-palette/mod.json": "src/features/palette/mod.json",
+    "mods/custom-palette/model.js": "src/features/palette/model.js",
+    "mods/custom-palette/space-color-state.js": "src/shared/space-color-state.js",
+    "mods/custom-palette/ui.js": "src/ui/ui.js",
+    "mods/custom-palette/look.js": "src/ui/look.js",
+    "mods/custom-palette/scroll-fade.js": "src/ui/scroll-fade.js",
     "lib/palette-model.js": "src/features/palette/model.js",
     "scripts/palette-manifests.mjs": "src/services/palette-manifests.mjs",
     "mods/custom-agents/space-color-state.js": "src/shared/space-color-state.js",

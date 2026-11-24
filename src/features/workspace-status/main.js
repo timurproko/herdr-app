@@ -226,7 +226,7 @@ export default class WorkspaceStatus extends View {
   // The palette key as actually bound, not a hardcoded one; without a
   // binding the hint stays useful ("commands") instead of lying.
   hint(t) {
-    const b = keys().find((k) => k.section === "global" && k.action === "app.palette");
+    const b = keys().find((k) => k.section === 'layout:Custom' && k.action === 'mod.open:custom-palette');
     const key = hotkey(b?.keys);
     return key ? `${key}  commands` : "commands";
   }
@@ -277,7 +277,7 @@ export default class WorkspaceStatus extends View {
         .role("button").accessibility_label("Open command palette").cursor_pointer().text_color(t.dim)
         .hover(el => el.bg(t.hover))
         .on_mouse_down("left", (_e, cx) => cx.stop_propagation())
-        .on_click((_e, cx) => { cx.stop_propagation(); run("app.palette"); }).child(this.hint(t)));
+        .on_click((_e, cx) => { cx.stop_propagation(); run('mod.open', { name: 'custom-palette' }); }).child(this.hint(t)));
     reveal.settle(cx);
     return bar;
   }

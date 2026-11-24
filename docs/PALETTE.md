@@ -19,3 +19,11 @@ It is local desktop runtime history, never a portable preference.
 `tests/owned-palette-model.test.mjs` compares actual preserved native catalog code
 with the owned model; those fixtures certify behavior, not native patch permission
 or real GPU timing/pixels. No native installation or restart is part of these tests.
+
+The owned `mod.json` uses the host's popup metadata (top anchor, 60px offset,
+620px width, 85% window height cap). `mod.open` gives one toggled overlay; its
+input takes focus. The 408px shared skin retains the old Custom virtual-list,
+pinned heading/result count, fades, scrollbar ordering and clear behavior.
+`tests/owned-palette-ui.test.mjs` exercises the packaged view with both reviewed
+host-shaped fixtures. These are synthetic event/layout passes, not live screenshots.
+The status-bar opener uses the same mod and advertises the Custom-scoped binding.
