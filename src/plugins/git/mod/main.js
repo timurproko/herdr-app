@@ -962,7 +962,9 @@ export default class Changes extends View {
         .child(sidebarTitle(t,'changes','git-title'))
         .when(aggregate.context.stale, el=>el.child(div().id('git-task-stale').flex_none().text_size(U.meta).text_color(t.dim)
           .child([...aggregate.entries.values()].some(e=>e.pr)?'Stale':'Verifying')
-          .tooltip('Fleet status is unverified; actions are paused until fresh verification')))
+          .tooltip('Fleet status is unverified; actions are paused until fresh verification' + (aggregate.context.verification
+            ? `\n${aggregate.context.verification.reason} at ${new Date(aggregate.context.verification.at).toISOString()} (generation ${aggregate.context.verification.generation})`
+            : ''))))
         .child(reveal(headerTools(h_flex()).id('git-actions').bg(t.surface),this.headerHovered)
           .child(refreshButton(t,{id:'git-refresh',icon:'mods/custom-changes/refresh.svg',label:'Refresh',busy:aggregate.busy,spinning:aggregate.busy,
             owner:this,scope:this.context,enabled:this.headerHovered,size:U.insetControl,iconSize:U.tinyIcon,radius:U.insetRadius,color:t.dim,hover:subtleActionFill(t),
