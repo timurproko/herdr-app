@@ -18,7 +18,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-24-core-apply-quiet/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-24-core-apply-quiet/acceptance.md",
   "finalizedDate": "2026-11-24",
-  "specBaseSha": "e73e500aa58562d9fe3010394ce8c05f77099dab",
+  "specBaseSha": "eaea7a2ac6c11724700e61166483a403896c2e33",
   "acceptanceScenarios": [
     "Apply retains its original hint through saving, restarting and fresh-status reconciliation; progress stays in Status only.",
     "The Core footer and fixed-size Discard/Apply buttons keep their geometry, with an empty hint and disabled actions when clean.",
