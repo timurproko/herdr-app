@@ -12,4 +12,10 @@
 - [ ] 2.1 Remove visible-count-only tab/badge tooltips, retaining loading feedback and exact-number tooltips for counts displayed as 999+ above 999; verify accessible labels still expose exact totals and loading state in ordinary and coordinator views.
 - [ ] 2.2 Explicitly constrain the painted count badge to its centred fixed-width reservation, with symmetric tab padding; verify one-, two- and three-digit counts preserve badge/tab positions and equal label-left/badge-right insets for both tabs, selected and unselected, at 280–480px and 75–200% zoom including 130%.
 - [ ] 2.3 Update count-badge regressions and README/testing documentation together with the tab presentation; verify informative-only tooltip behavior, badge-text centring, symmetric padding and existing refresh/context-reset coverage, including bounded large counts.
-- [ ] 2.4 Run targeted tests and once no other suite is running execute CI=true npm run test:ci after the tab additions; record results, reconcile default-branch changes without touching PR #56's branch, and include measured geometry and final-head required-check status in the report with native-pixel limitations explicit.
+- [ ] 2.4 Run targeted tab count and geometry regressions and record results; the final isolated full suite and head-check reporting after all approved header polish is covered by task 3.3.
+
+## 3. Consistent customization-owned header hover
+
+- [ ] 3.1 Establish header ownership and opt only the customization sidebar title dropdown into the same 24px height, 4px radius and subtle hover fill as its inset icon buttons; verify native chrome, terminal-title defaults and Verifying text are untouched, with no invented pressed/focus state absent from the reference buttons.
+- [ ] 3.2 Extend the real sidebar-title rendering regression to compare hover colour/opacity, radius and height against an inset iconButton and unpinned pin toggle across palettes; verify disabled-plugin/static-title and stale-popup behavior remain intact, and document ownership and retained pin-specific pressed state.
+- [ ] 3.3 Run targeted tests, then once no other suite is running execute CI=true npm run test:ci after all additions; record results, reconcile default-branch changes without touching PR #56's branch, and report measured geometry and final-head required-check status with native-pixel limitations explicit.

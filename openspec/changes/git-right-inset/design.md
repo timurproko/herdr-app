@@ -49,6 +49,14 @@ Known exact totals through 999 have no tab or badge tooltip. Unknown totals reta
 
 Extend `tests/git-count-badges.test.mjs` to lay out the actual ordinary and coordinator panel tab strips at 280–480px and 75–200% zoom including 130%. Both tabs and selected/unselected states must have equal label-left and painted-badge-right insets, centred badge text, complete one/two/three-digit totals and unchanged tab/badge bounds across digit changes. Keep unknown/loading, same-context retention and true context reset coverage. Tooltip assertions distinguish visible exact, loading and abbreviated cases. Update the standalone segment geometry expectation for the explicit overflow indicator and document what tooltip information remains.
 
+### Sidebar title hover matches customization-owned inset tools
+
+The header is not native panel chrome: both Git render paths call `sidebarTitle()` from `src/ui/sidebar-title.js`, which calls the customization's `panelTitle()` in `src/ui/ui.js`. The same Git header renders customization refresh/close icon buttons and `panelPin()`. No native patch is needed or permitted.
+
+Opt only sidebar-title callers into an inset `panelTitle` variant: 24px height (`U.insetControl`), 4px radius (`U.insetRadius`) and `subtleActionFill(t)` hover (foreground at alpha 0x0a, with the existing fallback). Keep panelTitle's terminal-pane defaults unchanged. Static one-plugin titles remain noninteractive. Preserve menu capture/stale guards and full icon/label/chevron hit area. Match the existing iconButton's hover foreground state; there is no custom keyboard-focus or transient pressed treatment on these div-based icon buttons to duplicate. The pin toggle's persistent selected/pressed state remains pin-specific, not a state for the dropdown to inherit. Do not touch Verifying text or status.
+
+Extend the actual sidebar title rendering fixture to compare its hover callback style, height and radius against an actual inset iconButton and active unpinned panelPin, including dark/light/custom foregrounds and fallback colour. Retain plugin availability, static titles and stale-dropdown tests; assert a default terminal panelTitle still uses its original styling.
+
 ### Coexist with independent scrolling work
 
 Do not incorporate #56's paging/fade implementation. Reconcile only the shared row/header padding and geometry oracle if default-branch changes land first. Assertions should reason about rendered row boundaries rather than specific paging-container names wherever feasible, preserving that PR's separate paging tests and budget.
@@ -56,7 +64,7 @@ Do not incorporate #56's paging/fade implementation. Reconcile only the shared r
 ## Risks / Trade-offs
 
 - **Synthetic geometry is not native paint evidence** → Report measured renderer values and screenshot scaling separately; do not claim native pixel validation or installation.
-- **Two PRs edit the same module/test** → Keep source diff to the two trailing inset settings, comment and shared segment presentation; preserve whichever viewport implementation lands first.
+- **Two PRs edit the same module/test** → Keep source diff to the two trailing inset settings, comment, shared segment presentation and sidebar-title styling; preserve whichever viewport implementation lands first.
 - **Old panel-relative checks would reject the intended fix** → Replace their oracle and document the deliberately different 8px Git versus 11px Spaces panel-relative trailing insets.
 - **Host load from concurrent full suites** → After approval, run quick targeted geometry checks first; run `CI=true npm run test:ci` only when no other suite is active, once, then read required-check results on the final head without a foreground watch.
 
