@@ -39,7 +39,7 @@ export class AggregatePulls {
   sync(cx) {
     if(this.shown()) pluginEvent('workspace.context.refresh',{cx});
     const context=this.currentContext({presentation:true}), previous=this.context;
-    if(context?.scope!==previous?.scope) {this.readWake=null;this.serial++;this.factOrder.reset();this.entries.clear();this.pending.clear();this.diagnostics.clear();}
+    if(context?.scope!==previous?.scope) {this.readWake=null;this.manualRead=null;this.serial++;this.factOrder.reset();this.entries.clear();this.pending.clear();this.diagnostics.clear();}
     this.context=context;
     if(!context) return false;
     if(context.stale) {
@@ -97,10 +97,10 @@ export class AggregatePulls {
   }
   counts() {return {open:this.rows('open').length,closed:this.rows('closed').length};}
   invalidate(repository=null) {this.diagnostics.clear();for(const e of this.entries.values())if((!repository || e.link.repo===repository.toLowerCase()) && !finalPull(e.pr))e.dirty=true;}
-  refresh(cx) {pluginEvent('workspace.context.refresh',{cx,force:true});this.manualRead={remaining:1};this.readWake=null;this.invalidate();this.pump(cx);}
+  refresh(cx) {pluginEvent('workspace.context.refresh',{cx,force:true});this.manualRead={remaining:1,expires:Date.now()+30000};this.readWake=null;this.invalidate();this.pump(cx);}
   pump(cx) {
     if(this.fallbackBusy || this.readWake?.due>Date.now())return;
-    if(!this.context || this.context.stale || !this.shown() || this.currentContext()?.scope!==this.context.scope)return;
+    if(!this.context || this.context.stale || !this.shown() || this.currentContext()?.scope!==this.context.scope) {this.manualRead=null;return;}
     const context=this.context,scope=context.scope,serial=this.serial,groups=new Map();
     for(const [key,entry]of this.entries) {
       if(!entry.dirty || this.pending.has(key))continue;
@@ -148,12 +148,13 @@ export class AggregatePulls {
         finally {
           for(const entry of batch)if(this.pending.get(entry.link.key)===token)this.pending.delete(entry.link.key);
           if(this.serial===serial && this.shown())this.pump(view);
-          if(!this.pending.size && ![...this.entries.values()].some(e=>e.dirty))this.diagnostics.clear();
+          if(!this.pending.size && ![...this.entries.values()].some(e=>e.dirty)) {this.diagnostics.clear();this.manualRead=null;}
           view.notify();
         }
         if(updated && current())this.onUpdate?.(view);
       });
     }
+    if(!this.pending.size && ![...this.entries.values()].some(e=>e.dirty))this.manualRead=null;
   }
   target(pr) {
     const context=this.currentContext();if(context?.scope!==this.context?.scope)return null;

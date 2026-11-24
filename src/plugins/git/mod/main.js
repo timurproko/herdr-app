@@ -74,7 +74,7 @@ export default class Changes extends View {
   }
 
   resetRepository() {
-    this.checksFallback?.stop();this.fallbackRequest=null;this.readWake=null;
+    this.checksFallback?.stop();this.fallbackRequest=null;this.readWake=null;this.manualRead=null;
     this.factOrder ??= new PullFactsOrder();this.factOrder.reset();
     this.ciRevision=(this.ciRevision??0)+1;
     // Native size callbacks fire on size changes, not data resets. Keep the
@@ -263,7 +263,7 @@ export default class Changes extends View {
         }
       } finally {
         await Promise.resolve(); // even a synchronous transport throw must yield
-        if (this.pullRequest === request) { this.pullLoading = false; this.loadingState = null; this.appending = false; }
+        if (this.pullRequest === request) { this.pullLoading = false; this.loadingState = null; this.appending = false; this.manualRead=null; }
         this.flushWebhook(cx);
         cx.notify();
       }
@@ -1230,7 +1230,7 @@ export default class Changes extends View {
             onClick: (_e, cx) => {
               if (!this.root || this.loading || this.pullLoading) return;
               this.webhooks?.retryNow();this.notices?.retryNow();
-              this.manualRead={remaining:1};this.readWake=null;this.agentLinks?.invalidate?.();
+              this.manualRead={remaining:1,expires:Date.now()+30000};this.readWake=null;this.agentLinks?.invalidate?.();
               this.refresh(cx); this.loadPulls(this.view, cx, true);
             } })))
           .child(panelPin(t,{id:'git-pin',enabled:this.headerHovered}))

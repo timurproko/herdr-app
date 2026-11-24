@@ -38,11 +38,10 @@ export class GitReads {
   async read(key,repository,options,run) {
     if(options.current && !options.current())throw Object.assign(new Error('Obsolete GitHub read'),{quiet:true,retryAt:this.now()+10000});
     const state=this.state(options),id=JSON.stringify([this.route(options),repository?.toLowerCase()??[options.cwd??'',++this.generation],key]);
+    const bypass=options.manual?.remaining>0 && (options.manual.expires==null || options.manual.expires>=this.now());
+    if(bypass)options.manual.remaining--; // An earlier healthy click is not a future bypass credit.
     if(this.pending.has(id))return this.pending.get(id);
-    if(state.until>this.now()) {
-      if(options.manual?.remaining>0)options.manual.remaining--;
-      else throw Object.assign(new Error('GitHub read deferred'),{kind:'rate',quiet:true,retryAt:state.until});
-    }
+    if(state.until>this.now() && !bypass)throw Object.assign(new Error('GitHub read deferred'),{kind:'rate',quiet:true,retryAt:state.until});
     const admitted=state.version??0;
     const job=(async()=>{
       if(options.current && !options.current())throw Object.assign(new Error('Obsolete GitHub read'),{quiet:true,retryAt:this.now()+10000});
@@ -266,8 +265,11 @@ export function parsePullPage(stdout) {
 const factKey=(session,repo,number,options)=>JSON.stringify([session.route(options),repo.toLowerCase(),number]);
 export function rememberPull(exec,repository,row,options={}) {
   const session=gitReads(exec),key=factKey(session,repository,row.number,options),generation=options.generation??++session.generation;
-  if((session.versions.get(key)??0)>generation)return session.facts.get(key)??row;
-  session.versions.set(key,generation);session.facts.set(key,row);return row;
+  // View projection keys must never leak from coordinator safety publication
+  // into ordinary row IDs/pin measurements when a cached fact is reused.
+  const {key:projectionKey,repo:projectionRepo,...facts}=row;
+  if((session.versions.get(key)??0)>generation)return session.facts.get(key)??facts;
+  session.versions.set(key,generation);session.facts.set(key,facts);return facts;
 }
 export function cachedPull(exec,repository,number,options={}) {return gitReads(exec).facts.get(factKey(gitReads(exec),repository,number,options));}
 export function finalPull(row) {return ['closed','merged'].includes(row?.state);}

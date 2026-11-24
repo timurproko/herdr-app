@@ -16,6 +16,9 @@ assert.equal(calls.length,2,'One metadata command and one changed-detail command
 assert.equal(a.get(1).error.stderr,'Could not resolve to a PullRequest with the number of 1.');
 assert.equal(f.pullFailure(a.get(2).error).kind,'access');assert.equal(b.get(3).row.checks.label,'1/1');
 const cached=await f.readTargetPulls(exec,[3],'owner/repo');assert.equal(cached.get(3).row,b.get(3).row);assert.equal(calls.length,2,'Final facts survive consumer recreation');
+f.rememberPull(exec,'owner/repo',{...b.get(3).row,key:'owner/repo#3',repo:'owner/repo'});
+const ordinary=(await f.readTargetPulls(exec,[3],'owner/repo')).get(3).row;
+assert.equal(ordinary.key,undefined);assert.equal(ordinary.repo,undefined,'Coordinator projection cannot change ordinary row/pin element IDs');
 await f.readTargetPulls(exec,[3],'owner/repo',{on:'peer'});assert.equal(calls.length,4,'Another machine cannot inherit cached facts');
 assert.ok(calls.every(c=>c.numbers.length<=20));
 assert.throws(()=>f.targetPullArgs(Array.from({length:21},(_,i)=>i+1),'owner/repo'),/Invalid targeted batch/);

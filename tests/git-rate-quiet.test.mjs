@@ -35,6 +35,10 @@ const racing=new f.GitReads({now:()=>now,log(){}});let finish;
 const older=racing.read('old','owner/a',{},()=>new Promise(resolve=>finish=resolve));
 await assert.rejects(racing.read('refused','owner/b',{},refused));finish({code:0});await older;
 await assert.rejects(racing.read('next','owner/a',{},()=>assert.fail('Older success must not bypass newer cooldown')),e=>e.quiet);
+const credits=new f.GitReads({now:()=>now,log(){}}),ticket={remaining:1};
+await credits.read('healthy','owner/repo',{manual:ticket},()=>({code:0}));assert.equal(ticket.remaining,0);
+await assert.rejects(credits.read('rate','owner/repo',{},refused));
+await assert.rejects(credits.read('automatic','owner/repo',{manual:ticket},()=>assert.fail('A healthy manual click cannot become a later automatic bypass')),e=>e.quiet);
 const tick=async()=>{for(let i=0;i<60;i++)await Promise.resolve();};
 for(const initial of [true,false]) {
  const h=await rowHarness({host:{exec:async()=>({code:1,stderr:'GraphQL: API rate limit already exceeded for user ID 123'})},modules:{'panel-kit.js':{headerTool:element,contextMenu:element,panelMessage:(_t,id,o)=>element().id(id).child(o.text)}}});
