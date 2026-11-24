@@ -10,7 +10,7 @@
 
 ## 2. Coherent list membership, counts and retained presentation
 
-- [ ] 2.1 Publish aggregate row state and completion timestamp coherently so existing eligibility and derived totals move merge/close/reopen/draft rows correctly; verify live/history deduplication, 24-hour bounds, no historical robots and stable unrelated order in packaged fleet/history fixtures.
-- [ ] 2.2 Reconcile ordinary cached tabs and older related pins after every state refresh, with authoritative repository totals rather than paginated-subset deltas; verify merge/close/reopen/draft transitions, loaded/unloaded destination tabs, expanded pagination, pin uniqueness and no empty intermediate frame.
-- [ ] 2.3 Exercise both enrolled event and unenrolled fallback paths across both views with retained-render and stale-response assertions; verify unaffected rows keep order and existing folds, counts and pin geometry survive pending or failed reads.
+- [x] 2.1 Publish aggregate row state and completion timestamp coherently so existing eligibility and derived totals move merge/close/reopen/draft rows correctly; verify live/history deduplication, 24-hour bounds, no historical robots and stable unrelated order in packaged fleet/history fixtures.
+- [x] 2.2 Reconcile ordinary cached tabs and older related pins after every state refresh, with authoritative repository totals rather than paginated-subset deltas; verify merge/close/reopen/draft transitions, loaded/unloaded destination tabs, expanded pagination, pin uniqueness and no empty intermediate frame.
+- [x] 2.3 Exercise both enrolled event and unenrolled fallback paths across both views with retained-render and stale-response assertions; verify unaffected rows keep order and existing folds, counts and pin geometry survive pending or failed reads.
 - [ ] 2.4 Integrate latest default-branch work, preserving PR #45 changes if landed, and run focused suites plus CI=true npm run test:ci only when no other suite is running; record the exact final head, reproduction root cause/evidence limits and required-check status in the handoff, keeping the PR draft.

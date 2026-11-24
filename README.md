@@ -459,7 +459,7 @@ Disabling Git or closing its chrome owner closes transport; another mounted owne
 can take over. Failed reads retain the last good status. Events accelerate enrolled repository updates, with a **120-second safety net**
 for shown Open/Draft PRs even when checks have settled or the relay misses an event.
 Without confirmed enrollment, shown Open/Draft PRs and pending/unknown checks use
- a **45-second fallback**. One coalesced repository job reads current state and
+a **45-second fallback**. One coalesced repository job reads current state and
 checks together in bounded 20-PR chunks, retaining displayed values until the
 complete selection succeeds. Merge/close transitions move rows to Closed and update
 both totals; finished-task history still uses GitHub's 24-hour completion bound.
@@ -737,9 +737,9 @@ authentication errors and timeouts never mean no PR. Discovery has a 25-second
 transport allowance, its plain fallback has 15 seconds, and a shared 45-second
 in-flight lease prevents duplicate reads. The existing ten-second local refresh
 cadence and 30-second action freshness stay unchanged. No Crew records are written.
-The existing webhook connection refreshes only relevant linked repositories; unchanged PR/CI
-settled facts are not polled; shown pending checks without live enrollment use the
-same bounded fallback as ordinary Git. Manual Refresh remains available. Repository errors stay in their sections. Confirmed unenrolled repositories share
+The existing webhook connection refreshes relevant linked repositories. Shown
+Open/Draft rows also use ordinary Git's bounded state-and-check safety reads:
+45 seconds unenrolled or 120 seconds enrolled, including settled checks. Manual Refresh remains available. Repository errors stay in their sections. Confirmed unenrolled repositories share
 one **Add this repo in Settings** card pinned below the scrolling list, so folding
 or scrolling cannot hide it. Its account-style dropdown opens upward with canonical
 repository names in inventory order, even for one choice, including repositories

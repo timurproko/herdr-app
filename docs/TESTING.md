@@ -308,6 +308,16 @@ Pagination and fleet fixtures also assert complete pending/success/failure and
 rerun counts through in-flight event follow-ups. These do not measure live GitHub
 latency, enroll hooks or use native UI/credentials.
 
+`tests/git-state-refresh.test.mjs` drives the actual ordinary/coordinator readers
+with fake GitHub state and held replies for merge, close, reopen and draft
+conversion through event and safety paths. It checks both totals, current state
+wording, completion timestamps, history without a robot, unchanged labels/tasks/
+review, unaffected order and no clear-to-empty intermediate frame. Pagination
+also covers a merge at the eleven-row/two-page boundary: the original depth and
+cursor repair survive removal, the unopened destination stays lazy, and its older
+merged pin appears once when loaded. These are packaged synthetic fixtures, not
+live delivery or native pixel evidence.
+
 ## Always-visible Git tab counts
 
 `tests/git-count-badges.test.mjs` renders the actual ordinary and coordinator chrome

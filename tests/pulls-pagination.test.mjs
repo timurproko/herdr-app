@@ -75,7 +75,16 @@ async function harness(state) {
   const guarded=fn=>{rendering=true;try{return fn();}finally{rendering=false;}};
   const tick = async()=>{for(let i=0;i<16;i++)await Promise.resolve();};
   const take = ()=>{assert.ok(pending.length,'Expected one request');return pending.shift();};
-  async function reply(stdout,code=0) {const call=take();call.resolve({code,stdout,stderr:code?'network failed':''});await tick();return call;}
+  async function reply(stdout,code=0) {
+    const call=take();
+    // Page fixtures must obey the requested state filter. An OPEN response to a
+    // CLOSED query is not valid GitHub data and now correctly changes membership.
+    if(stdout && call.args.some(arg=>arg.includes('states:[CLOSED,MERGED]'))) {
+      const data=JSON.parse(stdout);const nodes=data.data?.repository?.pullRequests?.nodes;
+      if(nodes){for(const pr of nodes)pr.state='CLOSED';stdout=JSON.stringify(data);}
+    }
+    call.resolve({code,stdout,stderr:code?'network failed':''});await tick();return call;
+  }
   const render = ()=>guarded(()=>view.renderPulls({hover:'hover',border:'border'}));
   const scroll = (bottom,delta=-40,kind='wheel')=>{
     const tree=render(),content=find(tree,'pulls-content'),frame=find(tree,'pulls-scroll-frame');
@@ -285,5 +294,32 @@ for(const state of ['open','closed']) {
   v.loadRelatedPull(h.cx);await h.tick();assert.deepEqual(Array.from(h.pending[0].args.slice(0,3)),['pr','view','908']);
   await h.reply(JSON.stringify({number:908,state:'OPEN',statusCheckRollup:[{name:'CI',status:'COMPLETED',conclusion:'SUCCESS'}]}));
   assert.equal(v.relatedPull.checks.label,'1/1');assert.ok(v.relatedKey,'Only successful lookup results cache the selection');
+}
+// A state change at a loaded-page boundary renews the original depth rather
+// than shrinking from eleven rows/two pages to ten rows/one page. The older pin
+// updates immediately and the still-unloaded destination stays lazy.
+{
+  const h=await harness('open'),v=h.view;
+  v.pulls.open=Array.from({length:11},(_,i)=>({number:i+1,state:'open',title:`PR ${i+1}`,login:'author'}));
+  v.pulls.closed=null;v.counts={open:100,closed:27};v.pages.open={cursor:'old-boundary',hasMore:true,expanded:true};
+  v.agentPull=11;v.relatedPull=v.pulls.open[10];
+  const snapshot=v.readPendingChecks({name:'owner/repo',rows:v.pulls.open},h.cx,()=>true);
+  const repository={open:{totalCount:99},closed:{totalCount:28}};
+  for(let number=1;number<=11;number++)repository[`pr${number}`]={number,state:number===11?'MERGED':'OPEN',isDraft:false,closedAt:number===11?new Date().toISOString():null,mergedAt:number===11?new Date().toISOString():null,commits:{nodes:[]}};
+  assert.equal(v.pulls.open.length,11);await h.reply(JSON.stringify({data:{repository}}));await snapshot;await h.tick();
+  assert.equal(v.pulls.open.length,10);assert.equal(v.pulls.closed,null);assert.equal(v.relatedPull.state,'merged');
+  assert.deepEqual({...v.counts},{open:99,closed:28});assert.equal(find(h.render(),'active-pull'),undefined,'A merged older pin leaves Open immediately');
+  v.view='closed';assert.equal(v.relatedPull.number,11,'The updated older pin is retained while Closed remains lazy');v.view='open';
+  assert.equal(v.pullDepth.open,2);assert.equal(h.pending.length,1,'Cursor repair uses one coalesced existing snapshot');
+  await h.reply(page(1,10,'renewed-1',true));assert.equal(v.pulls.open.length,10,'Old loaded rows remain during cursor repair');
+  assert.ok(h.pending[0].args.includes('after=renewed-1'),'The second loaded page is not silently dropped');
+  await h.reply(page(12,10,'renewed-2',false));
+  assert.equal(h.pending[0].args[0],'pr');await h.reply(JSON.stringify({number:11,state:'MERGED'}));
+  await h.reply(JSON.stringify({data:{repository:{open:{totalCount:99},closed:{totalCount:28}}}}));
+  assert.equal(v.pulls.open.length,20);assert.equal(v.pages.open.cursor,'renewed-2');assert.equal(v.pages.open.expanded,true);
+  assert.equal(v.pulls.open.some(pr=>pr.number===11),false);assert.equal(h.pending.length,0);
+  v.view='closed';v.loadPulls('closed',h.cx,true);await h.reply(page(30,1,'closed-end',false));await h.reply('{}');
+  assert.equal(v.pullSelection().active.number,11,'The older merged pin appears once when its destination loads');
+  assert.equal(v.pulls.closed.some(pr=>pr.number===11),false);
 }
 console.log('PASS: Open/Closed cursor pages of 10, near-bottom loading, pinning, single-flight, deduplication, independent tabs, retry, end-of-list, refresh and stale-page guards');

@@ -78,7 +78,7 @@ export default class Changes extends View {
     this.pinMotion ??= new PinSwap(); this.pinMotion.cancel();
     this.pullPresentation = null; this.agentPress = null;
     this.root = null; this.repo = null; this.counts = null; this.branch = null; this.agentPull = null;
-    this.pulls = { open: null, closed: null }; this.pullsAt = { open: 0, closed: 0 };
+    this.pulls = { open: null, closed: null }; this.pullsAt = { open: 0, closed: 0 };this.pullDepth={open:0,closed:0};
     this.pages = {open:{cursor:null,hasMore:false,expanded:false},closed:{cursor:null,hasMore:false,expanded:false}};
     this.pageError = null; this.loadingState = null; this.appending = false; this.scrollMotion = null;
     this.selection = null; this.agentRequest = null; this.agentResolved = null;
@@ -230,6 +230,8 @@ export default class Changes extends View {
         const existing = (append ? this.pulls[state] ?? [] : []).map(pr=>incoming.get(pr.number)??pr);
         const seen = new Set(existing.map(pr => pr.number));
         this.pulls[state] = [...existing, ...rows.filter(pr => !seen.has(pr.number))];
+        this.pullDepth[state]=append?(this.pullDepth[state]||1)+1:1;
+        this.reconcilePulls(rows);
         this.ciRevision=(this.ciRevision??0)+1;
         this.pages[state] = {cursor:page.cursor,hasMore:page.hasMore && page.cursor !== after,expanded:append};
         this.counts = {...this.counts,[state]:page.total};
@@ -256,6 +258,33 @@ export default class Changes extends View {
 
   publishPull(pr,read,repo=this.repo?.name) {
     return this.factOrder.publish(read,`${repo.toLowerCase()}#${pr.number}`,()=>pr);
+  }
+
+  // A narrow read can change tabs without clearing the loaded pages or pin.
+  // Preserve unaffected order; insert moved rows by the list's created-at order.
+  reconcilePulls(values) {
+    const updates=new Map(values.filter(Boolean).map(pr=>[pr.number,pr])),moved=new Map();
+    const group=pr=>['open','draft'].includes(pr.state)?'open':'closed';
+    for(const state of VIEWS)for(const old of this.pulls[state]??[]) {
+      const pr=updates.get(old.number)??old;
+      if(group(pr)!==state)moved.set(pr.number,pr);
+    }
+    for(const state of VIEWS) {
+      const old=this.pulls[state];if(!old)continue;
+      this.pullDepth[state]=Math.max(this.pullDepth[state]??0,Math.ceil(old.length/PR_PAGE_SIZE));
+      const rows=old.map(pr=>updates.get(pr.number)??pr).filter(pr=>group(pr)===state);
+      const seen=new Set(rows.map(pr=>pr.number));
+      for(const pr of moved.values())if(group(pr)===state && !seen.has(pr.number)) {
+        const index=rows.findIndex(row=>(Date.parse(row.createdAt)||row.number)<(Date.parse(pr.createdAt)||pr.number));
+        rows.splice(index<0?rows.length:index,0,pr);seen.add(pr.number);
+      }
+      this.pulls[state]=rows;
+    }
+    if(this.relatedPull && updates.has(this.relatedPull.number))this.relatedPull=updates.get(this.relatedPull.number);
+    // State changes can remove a cursor boundary. Renew expanded snapshots under
+    // the existing lease, retaining the exact loaded depth even after removals.
+    if(moved.size && VIEWS.some(state=>this.pages[state].hasMore))this.webhookDirty=true;
+    return moved.size>0;
   }
 
   // Keep an explicitly linked PR pinnable even when it is older than page 1.
@@ -287,7 +316,12 @@ export default class Changes extends View {
         const pr = JSON.parse(result.stdout);
         if (pr.number === number) {
           const published=this.publishPull(pullRow(pr,repo.owner),read,repo.name);accepted=published.accepted;
-          if(published.value)this.relatedPull=published.value;
+          if(published.value) {
+            const previous=this.relatedPull;
+            this.relatedPull=published.value;
+            const moved=this.reconcilePulls([published.value]);
+            if(moved || (previous && ['open','draft'].includes(previous.state)!==['open','draft'].includes(published.value.state)))this.webhookDirty=true;
+          }
           if(accepted)this.ciRevision=(this.ciRevision??0)+1;
         }
       } catch {} finally {
@@ -352,7 +386,12 @@ export default class Changes extends View {
         }
       }
       // Commit only a complete selection. Failed chunks retain every old row.
-      const update=pr=>updates.has(pr?.number)?order.publish(read,`${repo.name.toLowerCase()}#${pr.number}`,previous=>refreshPullFacts(previous??pr,updates.get(pr.number))).value??pr:pr;
+      let accepted=true;
+      const update=pr=>{
+        if(!updates.has(pr?.number))return pr;
+        const published=order.publish(read,`${repo.name.toLowerCase()}#${pr.number}`,previous=>refreshPullFacts(previous??pr,updates.get(pr.number)));
+        accepted=accepted && published.accepted;return published.value??pr;
+      };
       if(aggregate) {
         for(const entry of aggregate.entries.values())if(entry.link.repo===repo.name && entry.pr) {
           entry.pr=update(entry.pr);
@@ -360,9 +399,9 @@ export default class Changes extends View {
           entry.completedAt=at<=Date.now()?at:NaN;
         }
       } else {
-        for(const state of VIEWS)if(this.pulls[state])this.pulls[state]=this.pulls[state].map(update);
-        this.relatedPull=update(this.relatedPull);
-        this.counts=counts;
+        const refreshed=[...new Map([...VIEWS.flatMap(state=>this.pulls[state]??[]),...(this.relatedPull?[this.relatedPull]:[])].map(pr=>[pr.number,pr])).values()].map(update);
+        this.reconcilePulls(refreshed);
+        if(accepted)this.counts=counts;
       }
       this.ciRevision=(this.ciRevision??0)+1;
       return {failed:false};
@@ -432,7 +471,7 @@ export default class Changes extends View {
         const updates={};
         for(const state of VIEWS) {
           if(this.pulls[state]===null)continue;
-          const depth=Math.max(1,Math.ceil(this.pulls[state].length/PR_PAGE_SIZE));
+          const depth=Math.max(1,this.pullDepth[state]??0,Math.ceil(this.pulls[state].length/PR_PAGE_SIZE));
           let after=null,page,rows=[];
           for(let i=0;i<depth;i++) {
             page=parsePullPage(await gh(pullListArgs(state,repo.name,after)));
@@ -460,6 +499,7 @@ export default class Changes extends View {
           this.relatedPull=published?.value??null;
           this.relatedKey=published?.accepted?JSON.stringify([context,repo.name,number]):null;
         }
+        this.reconcilePulls([...VIEWS.flatMap(state=>this.pulls[state]??[]),...(this.relatedPull?[this.relatedPull]:[])]);
         this.counts=counts ?? this.counts;this.pullError=null;this.ciRevision=(this.ciRevision??0)+1;
         this.startCISweep(cx);
       } catch(e) { if(current()) {this.pullError=pullError(e);this.relatedKey=null;this.relatedRetry=null;} }
