@@ -368,7 +368,7 @@ export function chevronSlot(t, direction, id = null) {
     .child(svg(`mods/custom-workspace-chrome/chevron-${direction}.svg`).size(U.smallIcon));
 }
 export function collapsible(t, { id, title, open, onToggle, chevron: side = "start", trailing = null, label = null,
-  height = SETTINGS_ROW, on = t.surface, tint = 0.5, panel: fill = null, inset = 8, bodyInset = inset, bodyPadY = 4, bodyGap = 2, bodyHeight: givenHeight = null, measured = null }, body) {
+  height = SETTINGS_ROW, on = t.surface, tint = 0.5, panel: fill = null, inset = 8, bodyInset = inset, bodyPadY = 4, bodyGap = 2, bodyHeight: givenHeight = null, measured = null, zoom = 1 }, body) {
   const panel = fill ?? collapsiblePanel(t, on, tint);
   // A body slides open and shut when its height is known: given (Usage's Resets), or
   // `measured`, an object the caller keeps: the body is then laid out even while closed (in
@@ -390,7 +390,9 @@ export function collapsible(t, { id, title, open, onToggle, chevron: side = "sta
     .when(side === "end", el => el.child(arrow));
   const content = () => div().id(`${id}-body`).flex().flex_col().w_full().px(bodyInset).pt(bodyPadY).pb(bodyPadY).gap(bodyGap)
     .when(measuring, el => el.flex_none().on_size_change((size, cx) => {
-      const next = Math.max(0, Math.round((size?.height ?? 0) - 2 * bodyPadY));
+      // Native measurements are window px; h()/padding are logical px. Feeding a
+      // scaled height back into the clip leaves a zoom-sized tail in every section.
+      const next = Math.max(0, Math.round((size?.height ?? 0) / zoom - 2 * bodyPadY));
       if (measured[id] !== next) { measured[id] = next; cx.notify(); }
     }))
     .child(body());
