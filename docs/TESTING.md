@@ -524,9 +524,12 @@ replacement and a failed reread; the pin stays mounted until its facts are ready
 Synchronous transport throws cannot notify or allocate focus during render.
 `tests/fleet-git.test.mjs` renders with inline-spawn guards during deferred same-home
 refresh, partial PR failure and reconnect recovery, preserving prior rows/counts
-until their individual replacements arrive. Its existing hide/show, stale/Verifying,
-cold waiting and exact worker-action refusal cases remain. No aggregate retention
-rewrite was needed: those same-home guards already preserve loaded facts.
+until their individual replacements arrive. It also exercises real off/on
+invalidation with slow/failed first reads: enabled verification never renders
+Not a git repository, same-identity session inventory returns Stale, and changed
+native owner membership or authoritative absence cannot reuse it. Cold waiting
+uses the actual standard panelMessage Loading bulb, with no Verifying header;
+leaving a cold waiting context without any cache is covered too.
 
 ## Connected fleet fixtures
 
@@ -536,8 +539,8 @@ status exit, malformed status, layout/membership uncertainty, authoritative abse
 and generation/identity/lease discards; checks reason/time/generation, duplicate
 mod deduplication, fixed bounds and logging-failure isolation; and rejects raw
 secret-bearing process output in facts/logs. Render inspection is effect-free.
-The real Git fixture exercises existing Stale/Verifying tooltip details and cold
-waiting without display history, PR inventory, folder probes or worker authority.
+The real Git fixture exercises Stale/Loading tooltip details and cold Loading
+without display history, PR inventory, folder probes or worker authority.
 Preference round trips explicitly exclude the diagnostic key. These are synthetic
 failures, not evidence that the original recovered incident was a timeout or any
 other particular cause; no live installation, settings or process is changed.
@@ -600,7 +603,10 @@ than waiting for the old ten-second TTL. Cold verification uses the same orderin
 calls, real-turn yield boundaries, cancellation, split UTF-8 and 4096-task validation.
 `fleet-command.test.mjs` executes the actual Windows PowerShell projection against a
 disposable CLI, including advertised view/legacy branches, exact stderr/exit codes,
-large unused fields, old Open history and malformed-shape preservation.
+large unused fields, old Open history and malformed-shape preservation. Pretty
+legacy fixtures scale together from 5k/400 tasks to 20k/1600 and 50k/4096 lines/tasks;
+whole-wrapper wall-time ratios reject superlinear collection/projection growth.
+The original growing-array collector times out on this regression.
 
 The opt-in `tests/features/fleet-toggle-native.mjs --run` creates only a disposable
 app/Core session with eight inert Node terminals, selects the actual seven-tab
@@ -615,6 +621,18 @@ after 2084 ms, independent of finally. This proves the reproduced watchdog mecha
 not the original person's exact response/load. No real A1, Crew/GitHub/SSH transport
 or user installation is exercised. See [full evidence and the expected separate
 Crew capability](FLEET-STATUS.md).
+
+The additional opt-in `tests/features/fleet-transport-native.mjs --run --git-preview`
+uses the **real Core exec / Windows PowerShell / projection / hc Base64 / native
+decoder** path, not a synthetic transport. Only its legacy Crew CLI's data is fake;
+10 KiB, 400 KiB/237 tasks and one MiB/4096-task replies are pretty-printed. It records
+command wall time, projected UTF-8 bytes, whole decoder turns (including setup/final
+join, excluding waits), and actual Settings-on-to-display publication. Its child
+PowerShell pins and guards the disposable Crew path explicitly because Core exec
+constructs its own environment. A final three-second read produces the native
+Custom-theme Loading screenshot with no Settings/What's New overlay covering it.
+It never targets the person's app/Core session. See the measured table in
+[FLEET-STATUS.md](FLEET-STATUS.md#whole-path-windows-measurement).
 
 `tests/fleet-preferences.test.mjs` covers the actual Spaces preference and Settings
 switch, explicit durable-identity clearing on disable, old/new snapshot round trips
@@ -717,7 +735,7 @@ names have no tooltip, overflowing names do, widening removes it, repeated callb
 never loop notifications and old-scope measurements are ignored. The invisible
 probe is clipped and absolute so no count-width placeholder or extra row remains.
 Long outages retain rows/counts/folds with Stale and no robot,
-read or live-consumer authority; cold controllers render Verifying/waiting without
+read or live-consumer authority; cold controllers render standard Loading without
 persisted PR inventory or folder fallback. Fresh verification restores controls.
 Immediate-spawn guards reject synchronous notify, shared writes and new IO.
 No fixture uses real Core, credentials, GitHub, terminals, native input or deployment.

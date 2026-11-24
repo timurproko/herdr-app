@@ -222,8 +222,9 @@ failure remains evidence, not action permission. Reasons are allowlisted; numeri
 exit/timeout facts and bounded native owner/space references are allowed, never raw
 process errors, task inventories, home paths, transcripts or credentials. Generic
 presentation context carries only the relevant sanitized verification fact; Git
-extends its existing Verifying/Stale tooltip without importing Crew code. A uniquely
-routed cold coordinator hint can route waiting feedback with empty links, not a pair,
+uses the standard panel Loading bulb's tooltip, or the retained Stale tooltip,
+without importing Crew code. Empty verification adds no special header text. A uniquely
+routed cold coordinator hint can route Loading even before a failure, with empty links, not a pair,
 verified home or GitHub/worker authority.
 
 The existing facade `writeTextFile` is exported by the plugin API for a narrow owned
@@ -262,7 +263,14 @@ shared in-flight read, preserving coalescing across mod copies, but completed cr
 leases are not fresh verification. Drops on/from a retained unverified block refuse
 to move, never fall back to a single-space reorder. Git requests presentation context
 only to retain already-loaded same-home rows/counts/folds with a Stale badge, or a
-Verifying/waiting state with no restored inventory on cold start. It starts no task
+standard Loading bulb with no extra header label or restored inventory on cold start.
+An attachment off/on round trip retains only a bounded in-memory presentation
+identity and the controller's last verified inventory; neither is persisted or
+used for attachment/authority. Native machine/owner/parent/tab/pane and extant,
+nonconflicting child identity must still match before that last list can return
+as Stale. Off hides it, and changed identity or authoritative absence cannot
+select incompatible cached rows. Enabled pending verification never falls back
+to an ordinary coordinator folder probe or Not a git repository. It starts no task
 GitHub reads or worker navigation from stale context, and pauses its relay consumer,
 not the chrome-owned shared broker or independent update checks. Fresh verification
 resumes targeted reads and controls; different selected spaces or confirmed ownership

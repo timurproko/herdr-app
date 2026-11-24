@@ -66,6 +66,12 @@ not invented `owner:null`, `tasks:[]` or terminal/discovery nulls. Native exit
 codes and raw unsupported-flag stderr survive PowerShell 5's ErrorRecord layer.
 No extra filter process, remote companion, file write or source-checkout import
 is introduced. The help probe adds one small Node invocation inside that request.
+Stdout and stderr use amortized-constant-time list appends and a single join;
+array `+=` recopies preceding lines and made a valid 830476-byte / 49161-line
+legacy reply exceed the command allowance. Task projection is likewise a single
+collecting pass, not repeated growing-array/string concatenation. The Windows
+regression scales both input lines and projected task counts at 5k/400, 20k/1600
+and 50k/4096, enforcing near-linear whole-wrapper wall-time ratios.
 
 A read-only sample on this machine had 237 tasks: legacy output was 398866 bytes,
 projected output 42647 bytes (about 89% less). One timing sample measured 3054 ms
@@ -109,6 +115,48 @@ and ordinary failures still retire their leases. Capability fallback returns to
 transport phase within the original finite transport deadline. Older unphased leases remain
 finite at their original deadline; they cannot be assumed to have received data.
 No generation, token, exact identity, freshness or action-authority guard is relaxed.
+
+## Git verification presentation
+
+While attachment is enabled, a uniquely routed coordinator candidate uses the
+ordinary panelMessage **Loading** working bulb, including before any failure.
+There is no special **Verifying** header and no plain waiting sentence; sanitized
+reason/time/generation remain in the loading tooltip. A previously loaded list
+retains its existing **Stale** treatment, folds and counts without reads or worker
+actions. Off displays ordinary Git but keeps one private last inventory; on may
+restore it only through the provider's session-only retained identity with the
+same machine/owner/parent/tab/pane and extant nonconflicting fleet. No inventory
+is persisted or converted into current authority. Changed identity, authoritative
+absence or a cold module cannot inherit those rows. Enabled pending/recovery
+never substitutes the coordinator's ordinary Not a git repository result.
+Historical PR scope for a still-verified owner/home remains independent of whether
+a live worker is present, as before.
+
+## Whole-path Windows measurement
+
+App 0.1.17, Custom theme, seven live inert workers, actual fleet selected and worker
+focused, Settings kept mounted across off/on. The test runs the production status
+reader through **real Core exec → Windows PowerShell → fake legacy Crew CLI →
+projection → hc Base64 → native decoder/provider → display publication**. It does
+not bypass the wrapper. Fixtures are pretty-printed JSON; 400 KiB models today's
+237-task byte volume with unused data, not a copy of private task records.
+
+| Input bytes | Lines / tasks | Command wall ms | Native stdout bytes | Longest decoder turn ms | On → attached ms |
+|---:|---:|---:|---:|---:|---:|
+| 10240 | 490 / 40 | 450 | 2524 | 1 | 454 |
+| 409600 | 2854 / 237 | 473 | 14875 | 6 | 483 |
+| 1048576 | 49162 / 4096 | 1046 | 261088 | 21 | 1206 |
+
+Command wall time includes hc/Core, PowerShell startup, help/status Node calls,
+stdout collection and field projection, ending at native raw receipt. Decoder
+turns include initial cleanup/buffers and the final join but exclude actual task
+waits (one-ms clock resolution). On-to-attached starts at the actual Settings
+handler and ends at display publication, including processing and validation.
+These are measured synthetic-data transport costs, not guarantees for real Crew
+collection, GitHub or SSH. A separate three-second read was inspected natively:
+Git shows the blue working bulb + Loading, with no extra header or non-repo text.
+The opt-in runner records JSON, native status/errors and screenshot in its ignored
+`.artifacts/fs-*/` directory and cleans up only its own app/Core session.
 
 ## Regression evidence
 

@@ -12,8 +12,11 @@ export function fleetStatusScript(prelude, {discover = true, legacy = false} = {
     '  param([Parameter(ValueFromRemainingArguments=$true)][string[]]$CrewArgs)',
     "  $saved = $ErrorActionPreference; $ErrorActionPreference = 'Continue'",
     '  $lines = @(& node $main @CrewArgs 2>&1); $code = $LASTEXITCODE',
-    '  $ErrorActionPreference = $saved; $stdout = @(); $stderr = @()',
-    '  foreach ($line in $lines) { if ($line -is [System.Management.Automation.ErrorRecord]) { $stderr += $line.ToString() } else { $stdout += [string]$line } }',
+    // Array += recopies all preceding lines: pretty status at 50k lines can
+    // exceed the entire command deadline. Lists append in amortized O(1),
+    // then each stream is joined once; task projection below is one pass.
+    '  $ErrorActionPreference = $saved; $stdout = [System.Collections.Generic.List[string]]::new(); $stderr = [System.Collections.Generic.List[string]]::new()',
+    '  foreach ($line in $lines) { if ($line -is [System.Management.Automation.ErrorRecord]) { $stderr.Add($line.ToString()) } else { $stdout.Add([string]$line) } }',
     '  return [pscustomobject]@{code=$code;stdout=($stdout -join "`n");stderr=($stderr -join "`n")}',
     '}',
     ...(legacy ? ['$fleetView = $false'] : [

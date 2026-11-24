@@ -9,3 +9,10 @@
 - [x] 1.5 Preserve independent colours and row order on every off transition, shared colour and both chain markers after successful on verification, truthful native numbers, guarded action authority and unchanged native topology; verify through the real row renderer and focused existing fleet regressions.
 - [x] 1.6 Prefer explicitly advertised Crew fleet-view status with narrow capability fallback and project legacy output before native decoding; exercise actual PowerShell projection, preserve historical Open/Draft eligibility, and document the expected separate Crew contract and legacy source-enumeration limit. Update testing documentation, run targeted/OpenSpec checks, then CI=true npm run test:ci only after confirming no other suite is running.
 - [x] 1.7 Report final-head required-check statuses and any draft-related skipped checks without claiming they passed; leave the PR unmerged and never mark it ready, and document any unresolved reproduction or native-validation gap.
+- [x] 1.8 Replace quadratic stdout/stderr collection with linear appends and one-pass projection; add real PowerShell 5k/20k/50k-line scaling and measure the full native transport-to-attachment path at 10 KiB, 400 KiB and one MiB/4096 tasks.
+
+## 2. Enabled coordinator verification uses standard loading or same-identity stale inventory without a non-repository fallback
+
+- [x] 2.1 Route enabled unique coordinator candidates to waiting presentation immediately, retaining only session-local exact native identity and previous inventory across off/on without restoring attachment or action authority.
+- [x] 2.2 Use the ordinary Git panel Loading bulb/text for empty verification, remove the special Verifying header, preserve Stale inventory treatment and keep sanitized diagnostics in existing indicator tooltips.
+- [x] 2.3 Cover slow/failed first reads, cold waiting with no diagnostic/cache, changed native membership, authoritative absence, ordinary off state and stale callback/IO refusal; inspect the native Custom-theme loading state and update the corresponding specs/docs.

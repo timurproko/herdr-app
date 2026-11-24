@@ -19,7 +19,14 @@ export class AggregatePulls {
   sync(cx) {
     if(this.shown()) pluginEvent('workspace.context.refresh',{cx});
     const context=this.currentContext({presentation:true}), previous=this.context;
-    if(context?.scope!==previous?.scope) {this.serial++;this.factOrder.reset();this.entries.clear();this.pending.clear();this.diagnostics.clear();}
+    if(context?.scope!==previous?.scope) {
+      // Off hides the inventory and invalidates every callback, not the last
+      // in-session list. Only the provider's exact retained presentation scope
+      // can restore it; waiting role hints alone cannot select cached rows.
+      if(previous && !previous.stale)this.retained={scope:previous.scope,entries:this.entries};
+      this.serial++;this.factOrder.reset();this.pending.clear();this.diagnostics.clear();
+      this.entries=context && this.retained && context.scope===this.retained.scope ? this.retained.entries : new Map();
+    }
     this.context=context;
     if(!context) return false;
     if(context.stale) {
@@ -36,7 +43,7 @@ export class AggregatePulls {
     else this.pump(cx);
     return true;
   }
-  stop() {this.serial++;this.factOrder.reset();this.context=null;this.entries.clear();this.pending.clear();this.diagnostics.clear();}
+  stop() {this.serial++;this.factOrder.reset();this.context=null;this.retained=null;this.entries.clear();this.pending.clear();this.diagnostics.clear();}
   get busy() {return this.pending.size>0 || Boolean(this.fallbackBusy);}
   eligible(entry, now = Date.now()) {
     if(!entry.pr)return false;

@@ -251,7 +251,7 @@ count badges are always visible in ordinary and coordinator Git views, showing
 **0** on first load or a real context change until totals arrive. The fixed badge
 width fits at least three digits without moving tabs. Same-repository refreshes
 keep the last-known counts; unknown-count tooltips and accessibility text identify
-loading without hiding the zero. Cold loading and coordinator Verifying remain panel feedback, never
+loading without hiding the zero. Cold loading and coordinator verification remain panel feedback, never
 placeholder PR rows.
 Git's event-driven CI line sits immediately below its header and applies to
 all PRs, not just the pinned block. Rotation and line motion use native animation,
@@ -654,9 +654,10 @@ Until the first successful verification, no attachment is guessed. The two last-
 switches on this page also save immediately; close actions and empty-space
 reconciliation read their current values without waiting for Settings to close.
 Fleet verification failures and discarded replies retain sanitized reason/time/generation
-facts in runtime-only `custom.fleet.diagnostics`. Hover the existing Git **Verifying**
-or **Stale** indicator for the last relevant failure; a cold coordinator candidate
-can show **Waiting for fleet verification**, never an inferred attachment or PR list.
+facts in runtime-only `custom.fleet.diagnostics`. Hover the Git **Loading** bulb
+or **Stale** indicator for the last relevant failure. Empty verification uses the
+ordinary blue working bulb and **Loading**, without extra header text; a cold
+candidate never invents attachment or a PR list.
 The local `.customizations/fleet-verification.log` keeps at most 128 lines / 64 KiB,
 deduplicating an unchanged reason episode without raw command output or secrets.
 Neither diagnostics nor the log is a portable preference. Log-write errors cannot
@@ -724,8 +725,12 @@ background. Only completed contradictory evidence, disabling the feature or
 missing native spaces clears it; transport failures alone do not.
 Retained visuals are not action permission: pair moves and Git/worker actions
 still require fresh exact live identity. An unverified coordinator Git panel keeps
-its loaded rows and folds with **Stale**, or shows **Verifying** on cold start;
-it starts no new GitHub reads or worker navigation until verification succeeds.
+its loaded rows and folds with **Stale**, or shows the standard **Loading** bulb
+without special header text on cold start. After off/on, a slow or failed first
+read never substitutes **Not a git repository** while enabled: the same session's
+last list returns only for the same native coordinator/fleet identity. Off hides
+that list; changed identity or authoritative absence invalidates it. No new GitHub
+reads or worker navigation are allowed until verification succeeds.
 Only sanitized pair identity is persisted for restoration, not task/PR inventory,
 reports or credentials; it is never exported as a portable preference.
 Dragging either expanded row moves the pair, with both rows dimmed and exactly one

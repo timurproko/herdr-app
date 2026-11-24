@@ -44,6 +44,11 @@ Changes to the fleet attachment switch SHALL propagate to mounted Spaces while S
 - **AND** if response processing is nevertheless abandoned, the existing lifecycle replaces its read within the next two-second recovery interval rather than waiting for the transport lease
 - **AND** transport commands retain their longer bounded execution allowance and superseded replies remain unable to publish
 
+#### Scenario: Pretty-printed large legacy status
+- **WHEN** legacy status emits a supported reply up to one MiB and 4096 tasks over tens of thousands of JSON lines
+- **THEN** transport collection and field projection complete within the ordinary command allowance without a format-induced timeout
+- **AND** their cost grows with input bytes, lines and task count rather than repeatedly recopying accumulated output
+
 #### Scenario: Other Spaces switches
 - **WHEN** the user changes either last-tab switch with Settings still open
 - **THEN** the new preference is available to subsequent close actions and normal empty-space reconciliation without requiring Settings to close
