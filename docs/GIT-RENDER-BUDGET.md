@@ -13,9 +13,9 @@ production paired scroll handlers reveal the full inventory and move to its end:
 
 | Loaded PR rows | Native render-build samples (ms) | Mean (ms) | PR rows built per render |
 |---|---|---:|---:|
-| 30 | 3, 3, 2, 2, 2 | 2.4 | 7 |
-| 60 | 2, 3, 3, 2, 2 | 2.4 | 7 |
-| 100 | 1, 1, 3, 3, 2 | 2.0 | 7 |
+| 30 | 2, 2, 2, 2, 3 | 2.2 | 7 |
+| 60 | 2, 2, 2, 2, 3 | 2.2 | 7 |
+| 100 | 2, 2, 3, 2, 2 | 2.2 | 7 |
 
 The viewport is 390×400 logical pixels. The raw results also record confirmed
 loaded-row counts and retained offsets (1970.5 / 4250.5 / 7290.5px). Scroll setup

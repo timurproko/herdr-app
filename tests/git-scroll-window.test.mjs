@@ -25,5 +25,11 @@ const generation=w.generation;w.move(0,400);w.move(retained,400);assert.ok(w.gen
 const notice=w.items.at(-1);w.noticeHeights.set(notice.measureKey,49);project();assert.equal(w.items.at(-1).height,49,'Native notice height replaces only that keyed measurement');
 folded.add('owner/repo');project();assert.equal(w.items.length,1);assert.equal(w.height,28);assert.equal(w.offset,0);assert.equal(w.range().visible.length,0);
 folded.clear();project();assert.equal(w.items.length,104);assert.equal(w.items[1].height,74);
+const edge=new TaskWindow(),edgeSections=[{repo:'owner/repo',rows:Array.from({length:8},(_,i)=>row(i+1)),error:'Notice'}];
+edge.project(edgeSections,new Set(),28,2,'1:390');edge.move(edge.max,400);edge.move(edge.max,400);
+const edgeOffset=edge.offset,edgeAnchor=edge.range().visible[0].key;
+edgeSections[0].rows.unshift(row(0));edge.project(edgeSections,new Set(),28,2,'1:390');
+assert.equal(edge.limit,11,'Insertion retains the former revealed tail, not merely the first visible row');
+assert.equal(edge.offset,edgeOffset+76,'An insertion at a loaded boundary cannot clamp away the viewport anchor');assert.equal(edge.range().visible[0].key,edgeAnchor);
 for(const viewport of [250,400,700]) {w.move(1000,viewport);const range=w.range();assert.ok(range.items.length<=Math.ceil(viewport/74)+4);}
 console.log('PASS exact-height window spacers, incremental reveal, 100-row reachability, insertion anchors, notice heights, folds and bounded overscan');

@@ -35,8 +35,13 @@ export class TaskWindow {
     });
     const anchorIndex = this.index(Math.max(0,this.offset - 4)), anchor = this.items[anchorIndex];
     const inset = this.offset - (this.starts[anchorIndex] ?? 0);
+    const revealedTail = this.items[this.length - 1]?.key;
     this.items = items; // Refresh immutable PR facts even when geometry is unchanged.
     if (!changed) return;
+    // An insertion above the viewport must not evict its old revealed tail:
+    // otherwise the shorter scroll extent clamps away the retained anchor.
+    const tail = items.findIndex(item=>item.key===revealedTail);
+    if (tail >= 0) this.limit = Math.max(this.limit,tail + 1);
     this.starts = [0];
     for (const item of items) this.starts.push(this.starts.at(-1) + item.height + item.gap);
     if (anchor) {
