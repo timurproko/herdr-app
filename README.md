@@ -1250,9 +1250,15 @@ trusting an overlay ID. The update-only resume hint is runtime state, never a
 portable preference.
 While launching or running, the description says **Updating to 4c4bff1**, using
 the published target's seven-character revision, or **Updating** without an ellipsis
-until the target is known. Peer-only catch-up on an already-current desktop says
+until the target is known. The worker publishes its fetched main target before
+deployment; if deploy:all fetches newer main again, its run-qualified source target
+replaces that target before installation starts. The same-run desktop attempt
+remains authoritative while peers are still running. A cached availability check
+cannot keep advertising an older commit. Peer-only catch-up on an already-current desktop says
 **Updating other machines to 4c4bff1** (or **Updating other machines** until the target
-is known). The disabled button stays **Updating…**; the row layout and other states
+is known). If main advances beyond that desktop revision before Update, the row
+switches to ordinary **Updating to** the new target instead of claiming peer-only
+work. The disabled button stays **Updating…**; the row layout and other states
 are unchanged. Shared launch feedback retains that target and scope before the detached
 runner's receipt arrives and across Settings replacement; a lost receipt becomes
 outcome unknown, not stale Up to date.

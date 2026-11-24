@@ -74,7 +74,17 @@ managed-source refusal, clone-on-Update, deadlines, reload/late-result recovery,
 main-only checks/coalescing, one-button states, dots, packaging and preference
 exclusion. The runner fixture also upgrades a pre-feature clean clone through a local bare
 origin and a fresh protocol-capable CLI, and simulates the installer's eight-minute
-Windows timeout to verify unknown status/lock retention after Check. The pipeline
+Windows timeout to verify unknown status/lock retention after Check. Its target
+advancement cases use real local bare Git origins, worker preparation/inspection and
+the real deploy:all result recorder: check at A, publish B before Update, then
+publish C before deploy:all's fetch. Even before inventory or installation finishes,
+the source receipt must identify C rather than carried installed provenance. During
+a mocked connected peer's deployment, the row must use C from the same-run desktop
+attempt, not A or bootstrap target B.
+Both ordinary updates and initially peer-only catch-up are covered; foreign tokens,
+pre-launch timestamps, carried desktop-only provenance and malformed commits cannot
+replace the active target. No fixture invents the worker's target receipt for this
+advancement regression. The pipeline
 fixture runs ordinary npm deploy:all with an offline peer and verifies successful,
 warning-free desktop presentation after checking, while its matching result still
 records the skip and an unrelated old Settings log is not advertised. It also runs the real
