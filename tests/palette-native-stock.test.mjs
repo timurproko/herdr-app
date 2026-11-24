@@ -23,7 +23,7 @@ try {
   const options={binary:Buffer.concat([Buffer.from('synthetic executable\0'),raw])};
   put(main,raw);assert.deepEqual(restoreStartupFrames(home,output,options),{ok:true,frames:{}});
   framePatch('apply',home,output,'palette',options);
-  const expected=record.release==='v0.1.17'?'main-0.1.17.js':'main.js';
+  const expected=['v0.1.17','v0.1.18'].includes(record.release)?`main-${record.release.slice(1)}.js`:'main.js';
   assert.equal(fs.readFileSync(main,'utf8'),fs.readFileSync(`${source}/${expected}`,'utf8'));
   assert.match(inspectFramePatch(home,output,'palette',options).main,new RegExp(expected.replaceAll('.','\\.')));
   assert.equal(restoreStartupFrames(home,output,options).ok,true);assert.match(framePatch('check',home,output,'palette',options),/match/);
@@ -34,16 +34,16 @@ try {
   framePatch('restore',home,output,'palette',options);assert.deepEqual(fs.readFileSync(main),raw,'Restore never downgrades stock or normalizes bytes');
  }
  // Native reset AND an old owned entrypoint masking the release update.
- for(const reset of [false,true]){
-  const home=path.join(temp,`upgrade-${reset}`),main=path.join(home,'frame/palette/main.js'),state=path.join(home,'.customizations/frame-palette.json');
-  const old=stock('original-windows.js'),updated=stock('original-0.1.17-windows.js'),options={binary:updated};
+ for(const version of ['0.1.17','0.1.18'])for(const reset of [false,true]){
+  const home=path.join(temp,`upgrade-${version}-${reset}`),main=path.join(home,'frame/palette/main.js'),state=path.join(home,'.customizations/frame-palette.json');
+  const old=stock(version==='0.1.18'?'original-0.1.17-windows.js':'original-windows.js'),updated=stock(`original-${version}-windows.js`),options={binary:updated};
   put(main,old);framePatch('apply',home,output,'palette',{binary:old});
   if(reset)put(main,updated);else assert.throws(()=>framePatch('check',home,output,'palette',options),/inactive/,'Old owned payload is not certified for the new original');
   assert.equal(restoreStartupFrames(home,output,options).ok,true);
-  assert.equal(fs.readFileSync(main,'utf8'),fs.readFileSync(`${source}/main-0.1.17.js`,'utf8'));
+  assert.equal(fs.readFileSync(main,'utf8'),fs.readFileSync(`${source}/main-${version}.js`,'utf8'));
   const record=JSON.parse(fs.readFileSync(state));assert.equal(record.original['main.js'],updated.toString());assert.ok(record.previousOriginals.includes(old.toString()),'Earlier raw backup retained');
   put(main,'// unknown future stock');const before=snapshot(home);const result=restoreStartupFrames(home,output,options);assert.equal(result.ok,true);assert.equal(result.frames.palette.status,'skipped');assert.match(result.frames.palette.advisory,/unknown target/);assert.deepEqual(snapshot(home),before);
-  put(main,fs.readFileSync(`${source}/main-0.1.17.js`));
+  put(main,fs.readFileSync(`${source}/main-${version}.js`));
   const goodState=fs.readFileSync(state);record.previousOriginals={bad:true};put(state,JSON.stringify(record));assert.throws(()=>inspectFramePatch(home,output,'palette',options),/Unrecognized/);put(state,goodState);
   const helper=path.join(home,'frame/palette/custom-ui.js'),goodHelper=fs.readFileSync(helper);put(helper,'personal');assert.equal(restoreStartupFrames(home,output,options).ok,false);put(helper,goodHelper);
   framePatch('restore',home,output,'palette',options);assert.deepEqual(fs.readFileSync(main),updated);
@@ -86,5 +86,5 @@ try {
   const e=themes(custom)[0];palette.go(e);assert.equal(calls.at(-1)[0],'app.theme');assert.equal(calls.at(-1)[1].name,e.args.name);
   skin=false;assert.ok(!ns.entries().some(e=>e.title==='Usage'));palette.go({name:'tab.close',args:{},id:'tab.close'});assert.equal(calls.at(-1)[0],'tab.close');
  }
- console.log('PASS real palette stock: raw provenance/build, 0.1.13/16/17 selection, masked/reset upgrades, backups, safe skips/conflicts, actual native dynamic themes/dispatch and Custom routes');
+ console.log('PASS real palette stock: raw provenance/build, 0.1.13/16/17/18 selection, masked/reset upgrades, backups, safe skips/conflicts, actual native dynamic themes/dispatch and Custom routes');
 }finally{fs.rmSync(temp,{recursive:true,force:true});}

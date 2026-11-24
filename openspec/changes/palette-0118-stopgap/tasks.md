@@ -2,9 +2,9 @@
 
 ## 1. Reviewed 0.1.18 originals and safe release-specific replacement
 
-- [ ] 1.1 Add pinned LF and independently verified Windows CRLF 0.1.18 originals, native imports, complete provenance and packaging mappings; assert exact source/build byte lengths and SHA-256 values in the real-stock fixture and document the installed executable evidence in the 0.1.18 review note.
-- [ ] 1.2 Add a dedicated 0.1.18 replacement and registry selectors while retaining every earlier original, unchanged 0.1.17 payload, feedback and capability-based host gate; check per-original selection and package dependency closure through focused build/frame tests.
-- [ ] 1.3 Extend isolated real-stock coverage for both releases, opt-in absence, apply/check/no-op/restore, reset and old-owned-mask upgrades, previous raw backups and current-original restoration; assert unknown/ambiguous bytes skip loudly without changing target, helpers or opt-in and retain conflict/corrupt/concurrent-write regressions.
+- [x] 1.1 Add pinned LF and independently verified Windows CRLF 0.1.18 originals, native imports, complete provenance and packaging mappings; assert exact source/build byte lengths and SHA-256 values in the real-stock fixture and document the installed executable evidence in the 0.1.18 review note.
+- [x] 1.2 Add a dedicated 0.1.18 replacement and registry selectors while retaining every earlier original, unchanged 0.1.17 payload, feedback and capability-based host gate; check per-original selection and package dependency closure through focused build/frame tests.
+- [x] 1.3 Extend isolated real-stock coverage for both releases, opt-in absence, apply/check/no-op/restore, reset and old-owned-mask upgrades, previous raw backups and current-original restoration; assert unknown/ambiguous bytes skip loudly without changing target, helpers or opt-in and retain conflict/corrupt/concurrent-write regressions.
 
 ## 2. Native 0.1.18 catalog parity and complete Custom behavior
 
