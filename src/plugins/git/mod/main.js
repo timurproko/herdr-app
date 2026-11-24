@@ -29,6 +29,8 @@ const CI_SWEEP_WIDTH = 96;
 // Include headers/notices in the budget, not only PRs. Pages replace rather
 // than append: no amount of Show more clicks can recreate an unbounded render.
 const TASK_PAGE_SIZE = 10;
+// The panel's 1px border plus this padding matches Spaces' 8px outer gutter.
+const LIST_INSET = 7;
 const TEXT_CACHE_LIMIT = 512;
 const ciPending = pr => ['open','draft'].includes(pr?.state) && pr.checks?.pending > 0;
 function find(node, id) { return node?.id === id ? node : (node?.children ?? []).map(c => find(c, id)).find(Boolean); }
@@ -927,7 +929,7 @@ export default class Changes extends View {
       .on_mouse_down('left', (_e,cx) => cx.stop_propagation()).on_click((_e,cx) => cx.stop_propagation())
       .on_scroll_wheel((_e,cx) => { this.pinMotion.cancel(); cx.notify(); cx.stop_propagation(); })
       .on_size_change((_size,cx) => this.pinMotion.arm(swap,cx))
-      .children([...swap.cards].reverse().map(card => div().id(`pin-swap-${swap.id}-${card.pr.number}`).absolute().left(4).right(4)
+      .children([...swap.cards].reverse().map(card => div().id(`pin-swap-${swap.id}-${card.pr.number}`).absolute().left(LIST_INSET).right(LIST_INSET)
         .top(swap.phase === 'moving' ? card.to : card.from)
         .transition('top',{duration:PIN_SWAP_MS,easing:'ease-in-out'})
         .bg(t.background).rounded(U.radius).shadow_sm().child(this.pullRow(t,card.pr,true))));
@@ -968,7 +970,7 @@ export default class Changes extends View {
       })
       .on_mouse_move(event => this.pinMotion?.bodyPointer(event))
       .when(Boolean(pinned), el => el
-        .child(v_flex().id('active-pull').relative().flex_none().p(4)
+        .child(v_flex().id('active-pull').relative().flex_none().py(4).px(LIST_INSET)
           .child(div().id('active-pull-rail').absolute().left(0).top(0).bottom(0).w(2).bg(t.accent))
           .child(v_flex().id(`active-pull-content-${pinned.number}`).w_full()
             .opacity(this.pinRevealed ? 1 : 0.75).transition('opacity', {duration:120,easing:'ease-out'})
@@ -980,7 +982,7 @@ export default class Changes extends View {
       .child(v_flex().id('pulls-scroll-frame').flex_1().min_h(0).overflow_hidden()
         .on_scroll_wheel((event, cx) => this.scrollMotionAt(event, 'wheel', state, cx))
         .on_mouse_move((event, cx) => this.scrollMotionAt(event, 'move', state, cx))
-        .child(v_flex().id(`pulls-list-${state}`).flex_1().min_h(0).overflow_y_scrollbar().p(4)
+        .child(v_flex().id(`pulls-list-${state}`).flex_1().min_h(0).overflow_y_scrollbar().py(4).px(LIST_INSET)
           .child(v_flex().id('pulls-content').w_full().flex_none().gap(U.rowGap)
             .on_scroll_wheel(event => this.contentMotion(event, 'wheel', state))
             .on_mouse_move(event => this.contentMotion(event, 'move', state))
@@ -1082,7 +1084,7 @@ export default class Changes extends View {
       if (!this.shown() || this.aggregate?.currentContext({presentation:true})?.scope !== scope || `${scope}\0${this.view}` !== paging.key) return;
       this.taskPages.set(paging.key,page);cx.notify();
     };
-    return h_flex().id('task-pulls-pages').flex_none().p(8).gap(12).text_size(U.meta).text_color(t.dim)
+    return h_flex().id('task-pulls-pages').flex_none().py(8).px(LIST_INSET).gap(12).text_size(U.meta).text_color(t.dim)
       .when(paging.page>0,el=>el.child(div().id('task-pulls-previous').cursor_pointer().role('button').accessibility_label('Show previous task pull requests')
         .on_click((_e,cx)=>change(paging.page-1,cx)).child('Previous')))
       .child(div().child(`${paging.page+1} / ${paging.last+1}`))
@@ -1131,7 +1133,7 @@ export default class Changes extends View {
         .child(this.segment(t,'git-view-open','Open',counts.open,this.view==='open',view=>this.setView('open',view)))
         .child(this.segment(t,'git-view-closed','Closed',counts.closed,this.view==='closed',view=>this.setView('closed',view))))
       .child(v_flex().id('task-pulls-scroll').flex_1().min_h(0).overflow_hidden()
-        .child(v_flex().id(`task-pulls-page-${scope}-${this.view}-${paging.page}`).flex_1().min_h(0).overflow_y_scrollbar().p(4)
+        .child(v_flex().id(`task-pulls-page-${scope}-${this.view}-${paging.page}`).flex_1().min_h(0).overflow_y_scrollbar().py(4).px(LIST_INSET)
           .children(paging.sections.map(section => this.renderPart(`repository-section:${section.repo}`,()=>this.repositorySection(t, section, scope))))
           .when(!sections.length,el=>el.child(panelMessage(t,'git-task-empty',{text:verifying || aggregate.busy?'Loading':`No ${this.view} pull requests`,loading:verifying || aggregate.busy,rowInset:2})
             .when(verifying,message=>message.tooltip(verificationHint))))))
@@ -1145,7 +1147,7 @@ export default class Changes extends View {
     const text=kind==='repository'?'Add this repo in':'Set up Git in';
     const repository=kind==='repository' ? capturedRepository ?? this.repo?.name ?? null : null;
     const id=capturedRepository ? `git-live-ci-${capturedRepository}` : 'git-live-ci';
-    return div().id(`${id}-footer`).flex_none().p(4).border_t(1).border_color(t.border)
+    return div().id(`${id}-footer`).flex_none().py(4).px(LIST_INSET).border_t(1).border_color(t.border)
       .child(h_flex().id(`${id}-info`).w_full().px(8).py(6).gap(U.gap).items_start().rounded(U.radius).bg(t.raised)
         .accessibility_label(`${text} Settings`)
         .child(div().h(20).flex_none().flex().items_center()
