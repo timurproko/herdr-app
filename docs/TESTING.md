@@ -301,6 +301,93 @@ fixtures protect captured URLs, callbacks and measured motion. These prove rende
 constraints, not GPUI pixel layout, tooltip hit-testing or native animation appearance.
 No deployment or live label mutation is performed.
 
+## Coordinator render error diagnostics
+
+`node --experimental-vm-modules tests/git-panel-errors.test.mjs` exercises the
+packaged controller, aggregate reader, real notices and UI with 100 Closed rows
+across two repositories, a history read notice, merged/closed-unmerged states and
+live/historical agent variants. A fixed 10,000-builder-operation / 1,200-element
+budget bounds each replacement page; every row is reachable, even a 100-label PR
+builds fewer than 125 elements, and paging adds no reads. Distinct-string probes,
+cache reuse across pages, zoom invalidation and stale measurement refusal have
+regressions. The disposable native 30/60-row measurements and their exact scope
+are recorded in [GIT-RENDER-BUDGET.md](GIT-RENDER-BUDGET.md). It uses inline spawn and render-side-effect guards.
+A synchronous notice transport failure previously reached fallback `notify` during
+render; yielding before request work fixes that proven path (present since import
+PR #1). This is **not** a reproduction of the screenshot's native `interrupted`
+error, and no introducing merged change for that error has been established.
+
+Herdr 0.1.17/0.1.18's unchanged QuickJS sandbox has a 50 ms render/layout deadline and an
+uncatchable interrupt. Node fixture timing is not evidence of native budget safety.
+Caught render errors now log `[custom-changes] render failed` with exact error,
+stack and innermost row/section/notice component, then rethrow so native last-frame
+fallback remains. An uncatchable abort can leave an in-memory component marker:
+the next render logs `previous render did not complete` with that component. Its
+message explicitly defers the exact native error to the host banner/log; it does
+not invent an exception or claim that the prior frame timed out. If no later
+render occurs, JS cannot emit that next-attempt diagnostic. No live app is changed
+or restarted by this fixture.
+
+## Git repository routing and access refusals
+
+`node --experimental-vm-modules tests/git-repository-routing.test.mjs` executes the
+actual per-child environment script with synthetic process/CLI IO. Panel API and
+GraphQL reads use `GH_REPO=owner/name` only in that child; the public host exec API
+has no environment option and `gh api` does not accept `-R`. The fixture covers
+absent, empty and wrong ambient GH_REPO, unrelated cwd, remote options, explicit
+token/host preservation, invalid repository rejection and validated account output.
+PR reads keep their explicit `--repo` flag. Root discovery before a repository is
+known remains cwd-based. No global login or process environment is changed.
+
+Missing-resource/HTTP 404 replies say `not found`, with grouped repository/PR
+numbers and **no** login-problem wording or account lookup. Real permission/auth
+refusals share one bounded `gh api user --jq .login` diagnostic per repository in
+the current refresh, using the same routing/credential rather than the global
+active account. Notices name the effective account or explicitly `(unknown)`;
+the cohort cache is discarded afterward and the next refresh re-verifies it.
+No token is returned to UI JS, put in argv, logged or shared. The ordinary reader
+captures its original repository and checks request freshness before diagnosis,
+not only before publication. Pagination regressions cover disabled/hidden Git,
+changed folder/machine and replaced or mutated repository responses (404 and 403).
+
+The reported crew history notice was reproduced read-only for recorded PRs #36,
+#37 and #38: the explicitly targeted reads return `Could not resolve to a
+PullRequest` as timurproko, while crew #1–#9 and herdr-app #41/#43 succeed. The
+notice now reports these missing records as `Task PR history: timurproko/crew
+#36, #37, #38 not found`, not as a login problem. This does not establish a wrapper defect and no record, account or MyConfigs file is changed.
+Local native exec defaults to user home and inherits the desktop environment.
+The Core reproduction matched the documented command/cwd and had GH_REPO/GH_HOST
+unset and no explicit tokens, but it cannot prove the already-running desktop's
+inherited environment. Existing pagination, full-panel and read-notice fixtures
+also cover the scoped notice and preserve healthy rows/history eligibility.
+
+### Environment carrier process and latency budget
+
+Read-only user-home/Core measurements on this Windows installation: bare Node
+startup median **36.8 ms** (9 samples); paired `gh --version` runs add median
+**49.6 ms** (9 pairs), and paired `gh api user` runs add median **45.8 ms**
+(5 pairs). Network variance means the API difference is not a precise startup
+estimate. The extra process is therefore not treated as free.
+
+A normal coordinator refresh with two repositories launches **zero extra Node
+carriers** for targeted PR reads: `gh pr view --repo` is direct. The reported
+three missing history items formerly caused three Node + three identity-gh reads;
+they now cause none. Real permission refusals reuse a diagnostic across the whole
+refresh: at most **two Node carriers + two identity-gh calls** for two repositories,
+regardless of how many PRs fail. These counts exclude existing setup/enrollment
+workers and the gh wrapper's own unchanged internal processes. A separate
+pending-check fallback already batches up to 20 PRs per repository/chunk: two
+repositories with at most 20 pending PRs each use two carriers, not one per PR.
+
+Ordinary list and webhook-page reads now include both totals in the same GraphQL
+snapshot, avoiding the count-only carrier/gh call. Three real paired crew
+list/count reads measured **2966→2383 ms, 2398→1977 ms, 2360→1751 ms**, reducing
+two Node carriers to one (421–609 ms saved in these samples). This measures the
+transport only, not native UI timing. `git-repository-routing` asserts two identity
+children for twelve permission failures over two repositories, zero for missing
+items and fresh diagnoses on the next refresh. Pagination asserts a complete
+page applies both counts with one API request; partial responses retain fallback.
+
 ## Pending Git checks fallback
 
 `tests/git-checks-fallback.test.mjs` drives the actual ordinary/coordinator snapshot,
