@@ -20,7 +20,7 @@ const modules={...choiceModules,'label-colors.js':'src/plugins/git/mod/label-col
  'aggregate.js':{AggregatePulls:class{}},'agent-links.js':{AgentLinks:class{}},'webhooks.js':{GitWebhooks:class{}},'pin-swap.js':{PinSwap:class{cancel(){}},PIN_SWAP_MS:320},
  'panel-pin.js':{panelPin:element},'sidebar-title.js':{sidebarTitle:element},'panel-state.js':{changePanel(){}},'space-color-state.js':{currentSpaceColor:()=>null},
  'panel-kit.js':{headerTool:(_t,o)=>element().id(o.id).on_click(o.onClick),contextMenu:element,panelMessage:(_t,id,o)=>element().id(id).child(o.text)},'settings-dialog.js':{openSettings:value=>settings.push(value)}};
-const {Main,GitNotices}=await loadMod({host,modules,globals:{URL},entry:'export {default as Main} from "./main.js";export * from "./notices.js";'});
+const {Main,GitNotices}=await loadMod({mod:'custom-changes',host,modules,globals:{URL},entry:'export {default as Main} from "./main.js";export * from "./notices.js";'});
 const panel=new Main();panel.refresh=()=>{};panel.init({}, {...cx,timer:{every(){}}});delete panel.refresh;
 assert.equal(handles.length,1,'Initialization owns exactly one enrollment focus handle');
 panel.view='open';panel.foldedRepositories=new Set();panel.context='tasks:fixture';panel.notices=new GitNotices();
@@ -42,8 +42,8 @@ find(tree,'git-enrollment-choice-0').attrs.on_click[0]({},cx);assert.equal(panel
 assert.deepEqual(JSON.parse(JSON.stringify(settings.at(-1))),{section:'plugins',plugin:'git',pluginSection:'repository',pluginSearch:'owner/b'});assert.equal(reads.length,before,'Choosing does not enroll or read');
 change({'owner/a':false,'owner/b':false,'owner/c':false});await drain();open();
 assert.deepEqual([...panel.enrollmentPicker.opening.choices],['owner/c','owner/a','owner/b'],'Deduplicated exact rendered section order');
-const footer=find(tree,'git-enrollment-footer'),scroll=find(tree,'task-pulls-scroll');assert.ok(footer.attrs.flex_none);assert.ok(scroll.attrs.flex_1);assert.ok(scroll.attrs.min_h);assert.ok(scroll.attrs.overflow_hidden);assert.ok(scroll.kids[0].attrs.overflow_y_scrollbar);
-assert.ok(tree.kids.indexOf(footer)>tree.kids.indexOf(scroll));assert.ok(new Set(walk(scroll).filter(e=>/^pr-owner\//.test(e.attrs.id?.[0]??'')).map(e=>e.attrs.id[0])).size<=10,'Long PR inventory builds only the bounded page in the scroll sibling');assert.equal(text(find(tree,'git-view-open')),'Open 80','Paging does not change the task total');assert.ok(find(tree,'task-pulls-more'));
+const footer=find(tree,'git-enrollment-footer'),scroll=find(tree,'task-pulls-scroll');assert.ok(footer.attrs.flex_none);assert.ok(scroll.attrs.flex_1);assert.ok(scroll.attrs.min_h);assert.ok(scroll.attrs.overflow_hidden);assert.ok(walk(scroll).some(node=>node.attrs.overflow_y_scrollbar));
+assert.ok(tree.kids.indexOf(footer)>tree.kids.indexOf(scroll));assert.ok(new Set(walk(scroll).filter(e=>/^pr-owner\//.test(e.attrs.id?.[0]??'')).map(e=>e.attrs.id[0])).size<=10,'Long PR inventory builds only the bounded window in the scroll sibling');assert.equal(text(find(tree,'git-view-open')),'Open 80','Windowing does not change the task total');assert.equal(find(tree,'task-pulls-more'),undefined);
 assert.equal(find(scroll,'git-enrollment-footer'),undefined);assert.ok(find(tree,'task-error-owner/c'));
 for(const repo of repositories)panel.foldedRepositories.add(repo);render();assert.ok(find(tree,'git-enrollment-footer'));assert.equal(find(tree,'task-error-owner/c'),undefined);assert.equal(find(tree,'task-repo-body-owner/a'),undefined);assert.equal(find(tree,'git-task-empty'),undefined);
 key('up');assert.equal(panel.enrollmentPicker.index,2);key('down');assert.equal(panel.enrollmentPicker.index,0);key('down');assert.equal(find(tree,'git-enrollment-choice-1').attrs.bg[0],t.hover);key('enter');assert.equal(settings.at(-1).pluginSearch,'owner/a');

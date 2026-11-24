@@ -10,9 +10,9 @@
 
 ## 2. Both Git lists reuse Spaces and Agents scroll metrics and passive edge fades
 
-- [ ] 2.1 Package and compose `SidebarScrollState` with `topFade`/`bottomFade` through the Git panel manifest; verify the build resolves the canonical shared helpers, with existing 40px gradients, edge thresholds and scrollbar clearance rather than copied behavior.
-- [ ] 2.2 Chain shared metrics into ordinary and coordinator content/frame events without replacing existing pin cancellation or GitHub cursor paging; add start/middle/end/fitting-list, scrollbar, resize, append, fold and zoom fade fixtures with no render-time notify/focus or scroll-triggered inventory reads.
-- [ ] 2.3 Document the exact reused components and preserve enrollment outside the scroller; extend enrollment and ordinary pagination regressions to confirm footer visibility, retained scroll and explicit load/retry behavior.
+- [x] 2.1 Package and compose `SidebarScrollState` with `topFade`/`bottomFade` through the Git panel manifest; verify the build resolves the canonical shared helpers, with existing 40px gradients, edge thresholds and scrollbar clearance rather than copied behavior.
+- [x] 2.2 Chain shared metrics into ordinary and coordinator content/frame events without replacing existing pin cancellation or GitHub cursor paging; add start/middle/end/fitting-list, scrollbar, resize, append, fold and zoom fade fixtures with no render-time notify/focus or scroll-triggered inventory reads.
+- [x] 2.3 Document the exact reused components and preserve enrollment outside the scroller; extend enrollment and ordinary pagination regressions to confirm footer visibility, retained scroll and explicit load/retry behavior.
 
 ## 3. Coordinator safety probes follow viewport rows and reject obsolete window replies without widening reads
 

@@ -608,8 +608,12 @@ preserves the draft, cursor and selection; it does not select everything again.
 ## Sidebar scroll hints
 
 Spaces and Agents show matching fades at the top and bottom when more items are
-hidden in that direction. The top fade disappears at the start; the bottom fade
-disappears at the end. These decorations do not intercept scrolling or row clicks.
+hidden in that direction. Both ordinary and coordinator Git lists reuse the same
+`SidebarScrollState` metrics and `topFade` / `bottomFade` components from
+`src/ui/sidebar-scroll.js` and `src/ui/scroll-fade.js`: passive 40px gradients,
+actual native geometry and the same edge thresholds. The top fade disappears at
+the start; the bottom fade disappears at the end. These decorations do not
+intercept scrolling or row clicks. Git keeps its enrollment card outside the scroller.
 
 ## Shared empty states
 

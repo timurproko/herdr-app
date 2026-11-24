@@ -366,6 +366,11 @@ failures. Setup is global and enrollment links capture each repository. Hidden/d
 superseded contexts cannot start follow-ups or publish stale results. Neither
 presentation nor setup notices enroll repositories or grant auto-fix authority.
 Ordinary folder Git retains its pin motion, pagination and existing agent matching.
+Both Git lists compose `SidebarScrollState` from `ui/sidebar-scroll.js` with
+`topFade` / `bottomFade` from `ui/scroll-fade.js`. These are the actual Spaces/Agents
+metrics and passive 40px gradients, not copied approximations. Git retains its own
+padding and background; paired native content/frame geometry and changed-only
+size/input callbacks update edge hints without polling or render-time notifications.
 
 ## Right-sidebar tab pins
 

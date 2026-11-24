@@ -36,7 +36,7 @@ const host={props:()=>null,theme:()=>theme,settings:()=>({zoom}),window:()=>({pl
   assert.equal(command,'gh');const key=`${args[args.indexOf('--repo')+1]}#${args[2]}`;
   return Promise.resolve(prs.has(key)?{code:0,stdout:JSON.stringify(prs.get(key))}:{code:1,stderr:'GraphQL: Could not resolve to a PullRequest with the number of 36.'});
  }};
-const {Main}=await loadMod({mod:'custom-changes',host,globals:{console:{...console,error:(...args)=>errors.push(args.join(' '))},localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>{assert.equal(rendering,false);storage.set(k,v);}}},modules:{
+const {Main}=await loadMod({mod:'custom-changes',host,globals:{window:{paint_path:budgetElement},console:{...console,error:(...args)=>errors.push(args.join(' '))},localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>{assert.equal(rendering,false);storage.set(k,v);}}},modules:{
  'main.js':process.env.GIT_PANEL_MAIN??'src/plugins/git/mod/main.js','aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js','notices.js':process.env.GIT_PANEL_NOTICES??'src/plugins/git/mod/notices.js','label-colors.js':'src/plugins/git/mod/label-colors.js','enrollment-picker.js':'src/plugins/git/mod/enrollment-picker.js','choice-menu.js':'src/ui/choice-menu.js','ui.js':'src/ui/ui.js',
  'gpui-kit':{View:class{},div:budgetElement,svg:asset=>budgetElement().asset(asset),PathBuilder:{}},'gpui-base':{h_flex:budgetElement,v_flex:budgetElement,Popover,Input:{}},
  'plugins.js':{sidebarPanelEnabled:()=>true,pluginPullContext:()=>context,pluginEvent(){},pluginById:()=>({}),pluginSetting:(_p,k)=>k==='relay'?'https://relay.example':''},

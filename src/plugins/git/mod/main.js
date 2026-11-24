@@ -4,6 +4,7 @@ import { v_flex, h_flex } from 'gpui-base';
 import * as base from 'gpui-base';
 import { TaskWindow } from './task-window.js';
 import { SidebarScrollState } from './sidebar-scroll.js';
+import { topFade, bottomFade } from './scroll-fade.js';
 import { U, headerTools, reveal, subtleActionFill, refreshButton, sidebarSectionHeader } from './ui.js';
 import { exec, hc, theme, run, layout, openOverlay, closeOverlay, props, notify, nextCommand, window, settings } from './host.js';
 import { location } from './location.js';
@@ -943,8 +944,16 @@ export default class Changes extends View {
     return {liveRows,active};
   }
 
+  ordinaryScrollState(state) {
+    if(this.ordinaryScrollScope!==this.context) {this.ordinaryScrollScope=this.context;this.ordinaryScroll=new Map();}
+    let metrics=this.ordinaryScroll.get(state);
+    if(!metrics) {metrics=new SidebarScrollState();this.ordinaryScroll.set(state,metrics);}
+    return metrics;
+  }
+
   renderPulls(t) {
     const state = this.view, list = this.pulls[state], {liveRows,active} = this.pullSelection();
+    const metrics=this.ordinaryScrollState(state);
     this.pinMotion?.active(this.context,state);
     this.pinMotion?.resolve(location().terminal,active?.number,this.agentResolved === agentKey(location()));
     const retained = this.pinMotion?.current;
@@ -977,13 +986,15 @@ export default class Changes extends View {
             })
             .child(this.pullRow(t, pinned).when(Boolean(swap), el => el.invisible()))))
         .child(div().id('active-pull-divider').h(1).flex_none().bg(t.border)))
-      .child(v_flex().id('pulls-scroll-frame').flex_1().min_h(0).overflow_hidden()
-        .on_scroll_wheel((event, cx) => this.scrollMotionAt(event, 'wheel', state, cx))
-        .on_mouse_move((event, cx) => this.scrollMotionAt(event, 'move', state, cx))
-        .child(v_flex().id(`pulls-list-${state}`).flex_1().min_h(0).overflow_y_scrollbar().p(4)
-          .child(v_flex().id('pulls-content').w_full().flex_none().gap(U.rowGap)
-            .on_scroll_wheel(event => this.contentMotion(event, 'wheel', state))
-            .on_mouse_move(event => this.contentMotion(event, 'move', state))
+      .child(v_flex().id('pulls-scroll-frame').relative().flex_1().min_h(0).overflow_hidden()
+        .on_size_change((size,cx)=>metrics.measure('viewport',size,cx))
+        .on_scroll_wheel((event, cx) => {this.scrollMotionAt(event, 'wheel', state, cx);metrics.viewportMotion(event,'wheel',cx);})
+        .on_mouse_move((event, cx) => {this.scrollMotionAt(event, 'move', state, cx);metrics.viewportMotion(event,'move',cx);})
+        .child(v_flex().id(`pulls-list-${state}`).flex_1().min_h(0).overflow_y_scrollbar()
+          .child(v_flex().id('pulls-content').w_full().flex_none().gap(U.rowGap).p(4)
+            .on_size_change((size,cx)=>metrics.measure('content',size,cx))
+            .on_scroll_wheel(event => {this.contentMotion(event, 'wheel', state);metrics.contentMotion(event,'wheel');})
+            .on_mouse_move(event => {this.contentMotion(event, 'move', state);metrics.contentMotion(event,'move');})
             .children(remaining.map(pr => this.pullRow(t, pr)
               .when(Boolean(swap?.cards.some(card => card.pr.number === pr.number)), el => el.invisible())))
             .when(!rows.length, el => el.child(panelMessage(t, 'git-empty', { text: empty, loading: empty === 'Loading…', rowInset: 2 })))
@@ -993,7 +1004,9 @@ export default class Changes extends View {
               .role('button').accessibility_label('Load 10 more pull requests').disabled(this.pullLoading)
               .when(!this.pullLoading, el => el.cursor_pointer().hover(s => s.bg(t.hover)))
               .on_click((_event, cx) => { if (!this.pullLoading) this.morePulls(state, cx); })
-              .child(this.pullLoading && this.loadingState === state ? 'Loading…' : this.pageError?.state === state ? 'Retry loading more' : 'Load 10 more'))))))
+              .child(this.pullLoading && this.loadingState === state ? 'Loading…' : this.pageError?.state === state ? 'Retry loading more' : 'Load 10 more')))))
+        .when(metrics.moreAbove,el=>el.child(topFade(metrics,'pulls-list',t.background)))
+        .when(metrics.moreBelow,el=>el.child(bottomFade(metrics,'pulls-list',t.background))))
       .when(Boolean(swap), el => el.child(this.swapOverlay(t,swap)));
   }
 
@@ -1175,7 +1188,9 @@ export default class Changes extends View {
               .child(div().id('task-pulls-spacer-bottom').flex_none().h(paging.bottom))
               .when(!sections.length,el=>el.child(panelMessage(t,'git-task-empty',{text:aggregate.context.stale?'Waiting for fleet verification':aggregate.busy?'Loading…':`No ${this.view} pull requests`,loading:!aggregate.context.stale && aggregate.busy,rowInset:2}))))
             .when(Boolean(taskWindow.correction),el=>el.child(div().id('task-pulls-anchor').absolute().left(0).w(1).h(1)
-              .top(taskWindow.correction.to+(taskWindow.correction.to>taskWindow.correction.from?taskWindow.viewport-1:0)))))))
+              .top(taskWindow.correction.to+(taskWindow.correction.to>taskWindow.correction.from?taskWindow.viewport-1:0)))))
+          .when(taskWindow.metrics.moreAbove,el=>el.child(topFade(taskWindow.metrics,'task-pulls-list',t.background)))
+          .when(taskWindow.metrics.moreBelow,el=>el.child(bottomFade(taskWindow.metrics,'task-pulls-list',t.background)))))
       .when(setup,el=>el.child(this.liveCIInfo(t)))
       .when(Boolean(enrollment),el=>el.child(enrollment))
       .when(Boolean(sweep),el=>el.child(this.sweepLayer(t,sweep).top(U.section)));
