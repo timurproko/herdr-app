@@ -180,7 +180,46 @@ one 15-second recorded-only fallback. Authentication, transport and timeout fail
 never trigger it or mean none. Missing/unknown discovery versions reuse the first
 payload, with no extra call. A 45-second shared read lease covers both bounded calls
 without overlapping mod readers; it does not extend action freshness. There is no
-new retry or polling loop; the existing 10-second TTL/refresh cadence is unchanged.
+new healthy polling loop; the existing 10-second TTL/refresh cadence is unchanged.
+Spaces invokes the provider at init and from its existing 250 ms lifecycle, including
+after cold start or mod replacement. A cold failed first read remains independent
+until verification succeeds; retained display survives uncertainty. An abandoned
+in-flight lease can defer another copy for at most its remaining 45 seconds.
+Failure-only recovery stores one generation-scoped retry deadline in those runtime
+facts: 2 seconds, 5 seconds, then repeated 10-second delays measured from failed
+completion. Every retryable reason has this cap, including timeouts and transport
+errors on ready remote machines; no slower reason-specific schedule is introduced.
+Unready remote layouts retain the existing read gate and resume eligibility when
+ready. Persisted deadlines from the older 15/60-second policy are rejected rather
+than delaying a replacement module. The existing 250 ms Spaces lifecycle services deadlines;
+no second scheduler or timer is registered. Lifecycle-triggered reads respect the
+deadline even if the old failed-attempt TTL would have expired; explicit Refresh
+may bypass backoff but never an active reader. Success, disablement, disappearance
+of applicable candidates or authoritative absence clears recovery. Partial PR
+discovery alone does not escalate it. A new mod copy respects the shared deadline
+without inheriting action permission, and expired abandoned reads leave a discard
+diagnostic before replacement. Healthy and workerless-history refresh stay normal.
+Sleep or a blocked UI naturally delays callbacks; this is not a wall-clock service.
+
+Crew's `fleet-diagnostics.js` preserves bounded machine-scoped reason, time and
+attempted/current generation under runtime-only `custom.fleet.diagnostics` (at most
+256 entries). Current failures and obsolete discards have separate slots, so an old
+reply cannot replace newer binding, freshness or failure facts. The last resolved
+failure remains evidence, not action permission. Reasons are allowlisted; numeric
+exit/timeout facts and bounded native owner/space references are allowed, never raw
+process errors, task inventories, home paths, transcripts or credentials. Generic
+presentation context carries only the relevant sanitized verification fact; Git
+extends its existing Verifying/Stale tooltip without importing Crew code. A uniquely
+routed cold coordinator hint can route waiting feedback with empty links, not a pair,
+verified home or GitHub/worker authority.
+
+The existing facade `writeTextFile` is exported by the plugin API for a narrow owned
+log at `.customizations/fleet-verification.log`, not the updater's `update.log`.
+Yielded best-effort read/CAS writes keep at most 128 lines / 64 KiB, serialize within
+a mod and retry a conflicting write once. Shared episode markers deduplicate the
+same reason/generation across copies. Logging failure sets a diagnostic flag and
+cannot prevent verification; runtime facts remain available. No diagnostics IO
+runs in render or native checking. This file and runtime key are never portable.
 Only the default-off Spaces boolean is portable. Raw reports, task files and
 pending ordering operations are not exported or replayed.
 

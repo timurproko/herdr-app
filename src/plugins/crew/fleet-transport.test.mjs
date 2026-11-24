@@ -68,7 +68,7 @@ for(const failure of [unsupported,()=>reply('',1,'auth failed'),()=>reply('',nul
   assert.equal(x.state[x.f.FLEET_KEY].entries.local.status,undefined);
 }
 {
-  const x=await fixture();await assert.rejects(x.p.readFleetStatus(null,{current:()=>false}),/superseded/);assert.equal(x.calls.length,0);
+  const x=await fixture();await assert.rejects(x.p.readFleetStatus(null,{current:()=>false}),error=>error.reason==='obsolete-generation');assert.equal(x.calls.length,0);
 }
 
 // Fake-clock worst case: a 25-second discovery refusal followed by a 15-second
