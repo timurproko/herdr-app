@@ -3,7 +3,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Truthful repository-scoped pull request read notices
-The coordinator Git overview SHALL render at most one genuine PR-read failure notice per repository section in the selected tab. Notices SHALL distinguish GitHub responses from transport unreachability. Confirmed missing historical-only task PRs SHALL be absent, not errors; missing live-task PRs SHALL have neutral task-specific hints. Other failures SHALL preserve healthy last-good rows and existing history eligibility.
+The coordinator Git overview SHALL render at most one genuine PR-read failure notice per repository section in the selected tab. Notices SHALL distinguish GitHub responses from transport unreachability. All confirmed missing recorded task PRs SHALL be absent from the interface, including live tasks, with no row, notice, hint or tooltip. Other failures SHALL preserve healthy last-good rows and existing history eligibility.
 
 #### Scenario: One live open PR and three finished merged PRs
 - **WHEN** a verified coordinator records one live Open or Draft PR and three finished-task Merged PRs in the same repository, each merged within 24 hours
@@ -47,7 +47,7 @@ The coordinator Git overview SHALL render at most one genuine PR-read failure no
 
 #### Scenario: Confirmed missing finished-task PR
 - **WHEN** GitHub authoritatively reports that an exact recorded historical-only task PR does not exist
-- **THEN** the PR contributes no row, count, red notice or empty repository header in either tab, even if it previously had cached facts
+- **THEN** the PR contributes no row, count, notice, neutral hint, tooltip or empty repository header in either tab, even if it previously had cached facts
 - **AND** its canonical repository and number are remembered for the app session so manual refresh, webhook invalidation, hide/show and coordinator or panel recreation do not repeatedly request it
 - **AND** first confirmation emits one sanitized customization-log line identifying that repository and number, with no raw command output, credentials or task inventory
 
@@ -58,16 +58,17 @@ The coordinator Git overview SHALL render at most one genuine PR-read failure no
 
 #### Scenario: Missing live-task PR
 - **WHEN** an unfinished task records a PR that GitHub confirms missing, including a PR also linked by finished tasks
-- **THEN** only the affected live task has a muted hint naming the task, repository and number and asking to check the recorded PR URL
-- **AND** that hint is not red, creates no fake PR row or worker control, and is absent from the unrelated Closed history presentation
-- **AND** a corrected repository or number can be read normally without clearing unrelated remembered absences
+- **THEN** the PR contributes no row, count, notice, neutral hint, tooltip, worker control or empty repository header in either tab
+- **AND** repeated refreshes within five minutes do not re-request it; the next eligible existing shown-panel refresh after five minutes may recheck it once, without a new timer or concurrent duplicate read
+- **AND** a corrected recorded URL can be read immediately without clearing unrelated remembered absences, and a successful later read can display the now-existing PR normally
+- **AND** repeated missing confirmations still emit only the first sanitized customization-log line for that exact repository and number in the session; finishing the task restores session-long historical suppression
 
 ### Requirement: Identifiable GitHub access refusal
-A GitHub access refusal SHALL identify the refused canonical repository and the known account or credential context. Unknown effective identity SHALL remain explicit. Credentials SHALL NOT appear in notices, logs or shared state. Authoritative missing task PRs SHALL follow quiet historical absence or neutral live-task hints, not imply a login problem; other missing resources SHALL retain truthful not-found diagnostics.
+A GitHub access refusal SHALL identify the refused canonical repository and the known account or credential context. Unknown effective identity SHALL remain explicit. Credentials SHALL NOT appear in notices, logs or shared state. Authoritative missing task PRs SHALL produce no interface output, whether live or historical, and SHALL NOT imply a login problem; other missing resources SHALL retain truthful not-found diagnostics.
 
 #### Scenario: Missing recorded pull requests
 - **WHEN** GitHub reports an exact recorded task PR missing through PR resource resolution or a definitive missing-resource response to its targeted read
-- **THEN** finished-task-only links produce no visible notice, and unfinished-task links produce only their neutral task-specific hints
+- **THEN** both finished-task-only and unfinished-task links produce no row, notice, hint or tooltip
 - **AND** the absence starts no account diagnosis and does not describe an authentication or permission problem
 
 #### Scenario: Obsolete refusal arrives
