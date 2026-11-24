@@ -5,7 +5,7 @@ let rendering=false;const handles=[],jobs=[];
 const h=await rowHarness({modules:{'gpui-base':{h_flex:()=>element().flex(),v_flex:()=>element().flex().flex_col(),Popover:{},Input:{},ScrollHandle:{new(){assert.equal(rendering,false);const handle={requests:[],scroll_to_item(index){assert.equal(rendering,false);this.requests.push(index);},release(){assert.equal(rendering,false);this.released=true;}};handles.push(handle);return handle;}}}}});
 const {panel}=h;panel.context='tasks:home';panel.shown=()=>true;
 let scope='home';const rows=Array.from({length:30},(_,i)=>({key:`owner/repo#${i+1}`,repo:'owner/repo',number:i+1,title:'Fixture',state:'open'}));
-panel.aggregate={context:{scope},currentContext:()=>({scope}),repositories:()=>['owner/repo'],rows:()=>rows,readNotice:()=>null,counts:()=>({open:rows.length,closed:0}),target:()=>null};
+panel.aggregate={context:{scope},entries:new Map(rows.map(pr=>[pr.key,{pr,link:{repo:pr.repo}}])),currentContext:()=>({scope}),repositories:()=>['owner/repo'],rows:()=>rows,readNotice:()=>null,counts:()=>({open:rows.length,closed:0}),target:()=>null};
 panel.notices={sync(){},presentation(){}};panel.enrollmentPicker={render(){}};panel.syncChecksFallback=()=>{};
 const cx={notify(){assert.equal(rendering,false);},spawn(fn){jobs.push(fn(cx));}};
 const render=()=>{rendering=true;try{return panel.renderAggregate(cx,t);}finally{rendering=false;}};

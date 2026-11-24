@@ -630,6 +630,8 @@ hidden in that direction. Both ordinary and coordinator Git lists reuse the same
 actual native geometry and the same edge thresholds. The top fade disappears at
 the start; the bottom fade disappears at the end. These decorations do not
 intercept scrolling or row clicks. Git keeps its enrollment card outside the scroller.
+Anchored refreshes update the fades even when the list's total height stays unchanged;
+no extra pointer movement is needed.
 
 ## Shared empty states
 

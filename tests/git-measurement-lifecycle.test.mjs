@@ -1,9 +1,9 @@
 // Native size events are edge-triggered by element ID and dimensions. Keep
 // historical IDs even while absent: replaying every callback hides these bugs.
 import assert from 'node:assert/strict';
-import {rowHarness as loadRows,find,nodes,t} from './support/git-row.mjs';
+import {rowHarness as loadRows,element,find,nodes,t} from './support/git-row.mjs';
 import {ordinaryContent,taskContent,activeContent,taskWindow,scrollTask} from './support/git-scroll.mjs';
-const rowHarness=()=>loadRows({modules:process.env.GIT_LIFECYCLE_MAIN?{'main.js':process.env.GIT_LIFECYCLE_MAIN}:{}});
+const rowHarness=(modules={})=>loadRows({modules:{...(process.env.GIT_LIFECYCLE_MAIN?{'main.js':process.env.GIT_LIFECYCLE_MAIN}:{}),...modules}});
 const only=process.argv[process.argv.indexOf('--case')+1];
 const selected=name=>!process.argv.includes('--case')||only===name;
 const nativeSizes=()=>{
@@ -59,16 +59,16 @@ if(selected('zoom')) {
   if(zoom===0.5){stale({width:390,height:9999},cx);assert.equal(metrics.content,1200,'Old-zoom callback cannot overwrite current geometry');assert.equal(metrics.max-metrics.offset,300);}
  }
 }
-async function coordinator(count=1) {
- const h=await rowHarness(),{panel,cx}=h;
+async function coordinator(count=1,modules={}) {
+ const h=await rowHarness(modules),{panel,cx}=h;
  let scope='home',notice='Task history: owner/repo #36 could not be read',repos=['owner/repo'];
  const list=rows(h,count).map(pr=>({...pr,key:`owner/repo#${pr.number}`,repo:'owner/repo'}));
  panel.context='tasks:home';panel.shown=()=>true;
- panel.aggregate={context:{scope},currentContext:()=>({scope}),repositories:()=>repos,rows:()=>repos.length?list:[],readNotice:()=>notice,counts:()=>({open:count,closed:0}),target:()=>null};
+ panel.aggregate={context:{scope},entries:new Map(list.map(pr=>[pr.key,{pr,link:{repo:pr.repo}}])),currentContext:()=>({scope}),repositories:()=>repos,rows:()=>repos.length?list:[],readNotice:()=>notice,counts:()=>({open:count,closed:0}),target:()=>null};
  panel.notices={sync(){},presentation(){}};panel.enrollmentPicker={render(){}};panel.syncChecksFallback=()=>{};
  const render=()=>h.render(()=>panel.renderAggregate(cx,t));
  const size=nativeSizes();
- return {h,panel,cx,render,size,notice:value=>{notice=value;},repos:value=>{repos=value;},scope:value=>{scope=value;panel.context=`tasks:${scope}`;panel.aggregate.context={scope};}};
+ return {h,panel,cx,render,size,rows:list,notice:value=>{notice=value;},repos:value=>{repos=value;},scope:value=>{scope=value;panel.context=`tasks:${scope}`;panel.aggregate.context={scope};}};
 }
 // Review #1: replacement text has a new cache key but the exact same 41px
 // native dimensions. The new measurement ID, not an unconditional callback,
@@ -84,6 +84,35 @@ if(selected('notice')) {
  assert.equal(w.items.at(-1).height,41);assert.equal(w.height,total,'Wrapper and spacer extent retain the multiline height');
  assert.equal(first(tree,'task-item-notice:').attrs.h[0],41);assert.equal(size(first(tree,'task-notice-measure-'),{width:382,height:41},cx),false);
  stale({width:382,height:99},cx);assert.equal(w.noticeHeights.size,2,'Obsolete notice callbacks are rejected');
+}
+// Second review: equal-height replacement cannot emit a native size callback.
+// An insertion above the viewport plus deletion at the tail reaches the end
+// through anchor correction alone; both edges must derive from the new offset.
+if(selected('anchor')) {
+ const requests=[];
+ const c=await coordinator(30,{'gpui-base':{h_flex:()=>element().flex(),v_flex:()=>element().flex().flex_col(),Popover:{},Input:{},
+  ScrollHandle:{new:()=>({scroll_to_item:index=>requests.push(index),release(){}})}}});
+ const {panel,cx,render,size,rows:list}=c;c.notice(null);
+ let notifications=0;const notify=cx.notify;cx.notify=()=>{notifications++;notify();};
+ let tree=render();const frame=()=>first(tree,'task-pulls-frame-');
+ size(frame(),{width:390,height:400},cx);tree=render();
+ for(let i=0;i<5;i++) {
+  size(taskContent(tree),{width:390,height:taskWindow(panel).height+8},cx);
+  scrollTask(panel,tree,cx,taskWindow(panel).max);tree=render();
+ }
+ const w=taskWindow(panel),height=w.height;
+ size(taskContent(tree),{width:390,height:height+8},cx);
+ scrollTask(panel,tree,cx,w.max-76);tree=render();
+ const anchor=w.range().visible[0].key,offset=w.offset;
+ assert.equal(w.max,1916);assert.equal(offset,1840);assert.ok(find(tree,'task-pulls-list-more-below'));
+ const before=notifications;
+ list.unshift({...list[0],number:0,key:'owner/repo#0'});list.pop();tree=render();
+ assert.equal(w.height,height);assert.equal(w.offset,offset+76);assert.equal(w.offset,w.max);assert.equal(w.range().visible[0].key,anchor);
+ assert.equal(size(frame(),{width:390,height:400},cx),false);
+ assert.equal(size(taskContent(tree),{width:390,height:height+8},cx),false,'No callback repairs the unchanged content dimensions');
+ for(let i=0;i<5;i++)await Promise.resolve();tree=render();
+ assert.deepEqual(requests,[1]);assert.equal(notifications,before+1,'The yielded correction requests a repaint without a native size event');assert.equal(w.metrics.offset,1916);assert.equal(w.metrics.moreBelow,false);
+ assert.equal(find(tree,'task-pulls-list-more-below'),undefined);assert.ok(find(tree,'task-pulls-list-more-above'));
 }
 // Audit: a coordinator scope can return after its old TaskWindow was retired.
 // New cache owners need fresh native frame/content identities at equal sizes.
@@ -128,4 +157,4 @@ if(selected('audit')) {
   assert.ok(size(pin,{width:390,height:82},cx),'Even a returning pin gets its reveal callback');tree=render();assert.equal(activeContent(tree,number).attrs.opacity[0],1);
  }
 }
-console.log('PASS size-change-only measurement lifetimes: equal-height notice replacement, ordinary tab/context and live zoom, coordinator scope/zoom, repository cache recreation and pin body/reveal');
+console.log('PASS size-change-only measurement lifetimes: equal-height notice replacement, ordinary tab/context and live zoom, coordinator scope/zoom, repository cache recreation, pin body/reveal and equal-height anchor fades');

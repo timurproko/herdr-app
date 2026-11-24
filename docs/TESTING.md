@@ -602,7 +602,12 @@ resolved-box checks, not live GPUI pixel or deployment evidence.
 with a retained element-ID/dimension cache, not unconditional layout callbacks.
 It covers equal-height wrapped-notice replacement, ordinary tab/context changes,
 live ordinary/coordinator zoom with an unchanged physical viewport, coordinator
-home-away-home, recreated header caches and pin body/reveal lifetimes. See the
+home-away-home, recreated header caches and pin body/reveal lifetimes. Its `anchor`
+case covers an equal-height 30-row refresh reaching the end solely through a
+yielded anchor correction, with both native size callbacks suppressed and exactly
+one repaint requested. `tests/scroll-metrics.test.mjs` separately checks the pure
+geometry projection, getter-only fields and atomic notifications across 240 cases.
+See the
 [measurement audit](GIT-RENDER-BUDGET.md#measurement-lifetime-audit) for the full
 cache ownership inventory and unchanged paths checked.
 

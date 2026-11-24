@@ -957,13 +957,12 @@ export default class Changes extends View {
       metrics.measurement=this.ordinaryMeasureSequence=(this.ordinaryMeasureSequence??0)+1;
     }
     const zoom=settings().zoom>0?settings().zoom:1;
-    if(metrics.zoom && metrics.zoom!==zoom) {
-      metrics.offset*=zoom/metrics.zoom;metrics.content*=zoom/metrics.zoom;
-    }
-    metrics.zoom=zoom;
+    const scale=metrics.zoom?zoom/metrics.zoom:1;
     // This physical frame survives tab/context changes. Its unchanged native
     // dimensions will not be emitted again for a newly created tab state.
-    metrics.viewport=this.ordinaryViewportHeight??metrics.viewport;
+    metrics.setMetrics({offset:metrics.offset*scale,content:metrics.content*scale,
+      viewport:this.ordinaryViewportHeight??metrics.viewport});
+    metrics.zoom=zoom;
     return metrics;
   }
 
@@ -1122,11 +1121,10 @@ export default class Changes extends View {
     if(window.zoom && window.zoom!==zoom) {
       // Retained native scrolling is logical-pixel based; paired event bounds
       // are window pixels. Rebase cached metrics before new zoom callbacks.
-      window.metrics.offset=window.offset*zoom;
+      window.metrics.setMetrics({offset:window.offset*zoom,content:(window.height+8)*zoom});
       // The frame is measured in physical pixels and can stay exactly the
       // same size during zoom. Do not rescale a measurement that will not fire.
       window.viewport=window.metrics.viewport/zoom;
-      window.metrics.content=(window.height+8)*zoom;
     }
     window.zoom=zoom;
     window.project(sections,this.foldedRepositories,U.control,U.rowGap,`${zoom}:${window.width??0}`);
@@ -1172,7 +1170,8 @@ export default class Changes extends View {
       await Promise.resolve();
       if(!this.taskWindowCurrent(window,scope) || window.correction!==correction)return;
       window.handle.scroll_to_item(1);
-      window.metrics.offset=window.offset*window.zoom;
+      window.metrics.setMetrics({offset:window.offset*window.zoom,content:(window.height+8)*window.zoom});
+      window.metrics.update(cx);
     });
   }
 

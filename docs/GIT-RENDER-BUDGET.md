@@ -13,9 +13,9 @@ production paired scroll handlers reveal the full inventory and move to its end:
 
 | Loaded PR rows | Native render-build samples (ms) | Mean (ms) | PR rows built per render |
 |---|---|---:|---:|
-| 30 | 3, 2, 3, 3, 2 | 2.6 | 7 |
-| 60 | 4, 2, 2, 2, 3 | 2.6 | 7 |
-| 100 | 2, 3, 2, 3, 3 | 2.6 | 7 |
+| 30 | 2, 3, 2, 2, 1 | 2.0 | 7 |
+| 60 | 2, 1, 3, 1, 2 | 1.8 | 7 |
+| 100 | 3, 2, 2, 2, 3 | 2.4 | 7 |
 
 The viewport is 390×400 logical pixels. The raw results also record confirmed
 loaded-row counts and retained offsets (1970.5 / 4250.5 / 7290.5px). Scroll setup
@@ -76,6 +76,28 @@ A differential native check with all tooltip registrations removed measured
 2.0 / 2.4 ms (versus 2.2 / 2.6). Tooltip deltas are at the timer/noise floor;
 measurement probes, not tooltips or the history notice, dominate the observed
 increase. The tool accepts `post42-no-tooltips current-no-tooltips` to repeat it.
+
+## Coherent metric commits
+
+`scrollMetrics` in `src/ui/sidebar-scroll.js` is the single pure projection of
+(offset, viewport, content), plus Spaces' constant bottom padding, into the clamped
+offset, scroll extent and both fade flags. `SidebarScrollState.setMetrics` is the
+only writer: it atomically replaces a private frozen snapshot. Geometry and edge
+properties are getter-only, so callers cannot change an input without recomputing
+the dependent edges. Native size/wheel/drag events and Git's zoom, tab/context and
+programmatic-anchor changes all use this same commit path.
+
+Pure render-time commits never notify. `update(cx)` publishes changed edge flags
+outside render; applying a yielded native anchor explicitly calls it after the
+atomic offset/content commit. An equal-height refresh therefore requests a new
+paint even when native measurement IDs and dimensions are unchanged.
+
+`tests/scroll-metrics.test.mjs` covers 240 pure geometry cases, read-only fields,
+atomic changes and boundary-only notifications. The size-change-only `anchor`
+case in `tests/git-measurement-lifecycle.test.mjs` reveals 30 PRs, scrolls 76px above
+the bottom and replaces the last PR with one inserted above the viewport. Both
+size callbacks remain silent, the same anchor moves from 1840px to max 1916px,
+and the bottom fade clears through one yielded repaint, not a pointer event.
 
 ## Measurement lifetime audit
 
