@@ -219,12 +219,18 @@ The relay SHALL retain raw-body HMAC verification, authenticated subscriptions a
 - **AND** no cloud deployment, enrollment, private-key sync or automatic credential repair occurs
 
 ### Requirement: Shared Git pull request metadata
-Git SHALL use identical metadata in ordinary and coordinator Open/Closed rows, without author-association badges. The two lower lines SHALL flow left at natural content widths with constant gaps and trailing free space, without stretched, percentage or equal-width cells. Metadata SHALL retain tasks, checks, assigned-labels and review-decision order. Missing groups SHALL occupy no horizontal space; separators SHALL NOT lead, double or trail visible groups. Full wording SHALL remain when the whole line fits. On actual overflow, tasks SHALL shorten to whole fractions and byline time to a compact form before clipping secondary author, label or review text. Checks SHALL never shrink, wrap or truncate. Tooltips SHALL retain full values.
+Git SHALL share natural-width metadata across all row variants, without Owner badges. Both lower lines SHALL flow left with constant gaps, trailing free space and no absent-group reservations. Status order SHALL be tasks, checks, labels, review. Full wording SHALL remain while the line fits; only real overflow SHALL select whole compact task/time forms before secondary clipping. Checks SHALL never shrink, wrap or truncate. Full values SHALL remain in tooltips.
 
 #### Scenario: Ordinary and coordinator rows
 - **WHEN** an owner-authored PR with tasks, checks and labels is displayed in either view and either tab
 - **THEN** its metadata flows naturally as tasks, checks and labels in that order, without an Owner badge
 - **AND** pinned, scrolling and motion-preview rows use the same presentation
+
+#### Scenario: Natural lower-line spacing
+- **WHEN** full number, author, time or status content fits the available line, including around 390px panel width
+- **THEN** it uses natural widths without stretched, percentage or equal-width cells and leaves free space only at the end
+- **AND** constant gaps separate present groups, without leading, trailing or doubled dots
+- **AND** overflow first shortens task wording or byline time before secondary author, label or review clipping
 
 #### Scenario: Missing metadata items
 - **WHEN** a PR lacks tasks, checks or labels
@@ -573,7 +579,7 @@ The coordinator Git panel SHALL render a repository section only when the select
 - **AND** hiding its section does not enroll it, remove its fold state, or initiate or cancel GitHub reads
 
 ### Requirement: Stable pull request block geometry
-At a given panel width and zoom, every PR block SHALL reserve the same state-icon, title, related-agent, byline and metadata slots from first paint. Optional facts SHALL NOT change title truncation width, line positions or block height. Within a lower line, present elements MAY take their natural places as facts change; horizontal anchors are not reserved for absent metadata. Metadata SHALL occupy one fixed-height line even when empty, and absent content SHALL remain visually blank rather than showing skeletons or fabricated values.
+Every PR block SHALL retain fixed state-icon, title and related-agent slots, three fixed line boxes and a 74px height at a given width and zoom. Optional facts SHALL NOT move title boundaries or vertical anchors. Lower-line items MAY move horizontally in fixed order as facts arrive; absent groups SHALL reserve no width. The metadata line SHALL retain its height even when empty, without placeholders.
 
 #### Scenario: Agent appears or finishes
 - **WHEN** otherwise identical rows have or lack a related live agent, including a coordinator task whose worker finishes
@@ -596,7 +602,7 @@ At a given panel width and zoom, every PR block SHALL reserve the same state-ico
 - **AND** full author, action and relative-time values remain in the byline tooltip while the number, author and time remain left-aligned with constant separator gaps
 
 ### Requirement: Always-visible Git tab counts
-Ordinary and coordinator Git views SHALL always display Open and Closed count badges. Unknown totals on first load or a real context change SHALL display 0, replacing the earlier blank unknown-count presentation. Same-repository refreshes SHALL retain last-known totals until authoritative replacement. Badge slots SHALL reserve stable width for at least three digits so totals cannot move neighboring tabs. Unknown-count tooltips and accessibility text SHALL identify loading without hiding the visible zero.
+Ordinary and coordinator Git views SHALL always display Open and Closed count badges. Unknown first-load or real-context-change totals SHALL display 0 with a loading tooltip and accessible label. Same-context refreshes SHALL retain last-known totals. Badge slots SHALL keep stable width for at least three digits, without moving neighboring tabs.
 
 #### Scenario: Unknown and loaded totals
 - **WHEN** an ordinary or coordinator Git panel first loads, then receives authoritative totals
