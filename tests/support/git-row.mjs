@@ -89,6 +89,7 @@ export function rowGeometry(root,width,zoom=1,height) {
     const used=records.reduce((sum,k)=>sum+k.base,0),free=available-used,grow=records.reduce((sum,k)=>sum+k.grow,0),shrink=records.reduce((sum,k)=>sum+k.shrink*k.base,0);
     let offset=0;
     if(a.justify_center&&free>0&&!grow)offset=free/2;
+    if(a.justify_end&&!grow)offset=free;
     for(const r of records){
       const size=Math.max(r.min,r.base+(free>0&&grow?free*r.grow/grow:free<0&&shrink?free*r.shrink*r.base/shrink:0));
       const cross=row?v(r.a,'h',v(r.a,'size',a.items_start||a.items_center?r.n.h:innerH)):v(r.a,'w',v(r.a,'size',innerW));

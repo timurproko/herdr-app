@@ -81,13 +81,15 @@ const t={background:'#191d28',foreground:'#eeeeee',muted:'#999999',dim:'#666666'
 const labels=[{name:'🤖 Under review',color:'840479'},{name:'🚀 Ready · with a deliberately long label name',color:'ffffff'},
   ...colorCases.filter(([color])=>!['#840479','#ffffff'].includes(color)).map(([color])=>({name:`Hue ${color}`,color:color.slice(1)}))];
 const source={number:17,title:'Shared row',url:'https://github.com/example/repo/pull/17',author:{login:'owner'},createdAt:'2026-11-20T10:00:00Z',body:'- [x] done',statusCheckRollup:[{name:'CI',conclusion:'SUCCESS',status:'COMPLETED'}],labels,reviewDecision:'APPROVED'};
-for(t.background of ['#191d28','#ffffff','#191d28'])for(zoom of [0.75,1,1.25,1.5,2])for(const state of ['OPEN','CLOSED','MERGED'])for(const coordinator of [false,true])for(const ghost of [false,true]) {
+for(t.background of ['#191d28','#ffffff','#191d28'])for(zoom of [0.75,1,1.25,1.3,1.5,2])for(const state of ['OPEN','CLOSED','MERGED'])for(const coordinator of [false,true])for(const ghost of [false,true]) {
   const pr=facts.pullRow({...source,state},'owner');if(coordinator)pr.key='example/repo#17';
   const prefix=ghost?'swap-':'',id=pr.key??17;
   const row=panel.pullRow(t,pr,ghost),meta=find(row,`${prefix}pr-meta-${id}`),byline=find(row,`${prefix}pr-byline-${id}`);
   assert.equal(find(row,`${prefix}pr-owner-${id}`),undefined);assert.ok(!text(row).includes('Owner'));
   assert.equal(text(byline),`#17${pr.login}${pr.when}`);assert.equal(byline.attrs.overflow_hidden.length,0);
-  assert.deepEqual(meta.kids.filter(n=>n.attrs.id).map(n=>n.attrs.id[0]),['tasks','checks','labels','review'].map(kind=>`${prefix}pr-${kind}-${id}`));
+  assert.deepEqual(meta.kids.filter(n=>n.attrs.id).map(n=>n.attrs.id[0]),[...['tasks','checks','review'].map(kind=>`${prefix}pr-${kind}-${id}`),`${prefix}pr-meta-${id}-right`]);
+  const right=find(row,`${prefix}pr-meta-${id}-right`);
+  assert.ok(right.attrs.flex_1 && right.attrs.justify_end);assert.equal(right.kids.length,1,'No dot before labels');
   assert.equal(meta.attrs.h[0],18);assert.equal(meta.attrs.min_w[0],0);assert.equal(meta.attrs.flex_wrap,undefined);assert.ok(meta.attrs.overflow_hidden);
   const strip=find(row,`${prefix}pr-labels-${id}`);assert.equal(strip.attrs.min_w[0],0);assert.equal(strip.attrs.h[0],18);assert.ok(strip.attrs.flex_none);assert.equal(strip.attrs.flex_grow,undefined);assert.ok(strip.attrs.overflow_hidden);
   assert.equal(strip.attrs.tooltip[0],labels.map(l=>l.name).join('\n'));
@@ -103,7 +105,7 @@ for(t.background of ['#191d28','#ffffff','#191d28'])for(zoom of [0.75,1,1.25,1.5
   }
   assert.equal(text(find(row,`${prefix}pr-review-${id}`)),'Approved');
   const separators=[...byline.kids.filter(n=>!n.attrs.id),...meta.kids.filter(n=>!n.attrs.id)];
-  assert.equal(separators.length,5,'Two byline dots and one between each present status group');
+  assert.equal(separators.length,4,'Two byline dots and two left-status dots; none before labels');
   for(const dot of separators) {
     assert.equal(dot.attrs.size[0],3);assert.equal(dot.attrs.bg[0],t.muted);assert.ok(dot.attrs.flex_none);assert.ok(dot.attrs.rounded_full);
     assert.equal(dot.kids.length,0,'A shape has no font-baseline-dependent glyph');
@@ -133,15 +135,18 @@ for(t.background of ['#191d28','#ffffff','#191d28'])for(zoom of [0.75,1,1.25,1.5
 for(const tasks of [false,true])for(const checks of [false,true])for(const assigned of [[],labels]) {
   const pr=facts.pullRow({...source,state:'OPEN',body:tasks?source.body:'',statusCheckRollup:checks?source.statusCheckRollup:[],labels:assigned,reviewDecision:''},'owner');
   const row=panel.pullRow(t,pr),meta=find(row,'pr-meta-17');
-  const groups=meta.kids.filter(n=>n.attrs.id);
+  const right=find(row,'pr-meta-17-right'),left=meta.kids.filter(n=>n!==right);
+  const groups=[...left.filter(n=>n.attrs.id),...(right?[right.kids[0]]:[])];
   assert.deepEqual(groups.map(n=>n.attrs.id[0]),[...(tasks?['pr-tasks-17']:[]),...(checks?['pr-checks-17']:[]),...(assigned.length?['pr-labels-17']:[])]);
-  assert.equal(meta.kids.length,Math.max(0,groups.length*2-1),'Only present groups and their separators occupy width');
+  assert.equal(left.length,Math.max(0,(Number(tasks)+Number(checks))*2-1),'Only present left groups and separators occupy left-run width');
   assert.equal(meta.attrs.h[0],18,'Label add/remove cannot change status height');
-  assert.equal(meta.kids.filter(n=>!n.attrs.id).length,Math.max(0,groups.length-1),'No leading, trailing or doubled dots');
-  for(let at=1;at<meta.kids.length;at+=2) {
-    const dot=meta.kids[at];assert.equal(dot.attrs.size[0],3);assert.equal(dot.attrs.invisible,undefined);
-    assert.ok(meta.kids[at+1].attrs.id);assert.ok(meta.kids[at-1].attrs.id);
+  assert.equal(meta.kids.filter(n=>!n.attrs.id).length,Number(tasks&&checks),'Only tasks/checks have a joining dot');
+  for(let at=1;at<left.length;at+=2) {
+    const dot=left[at];assert.equal(dot.attrs.size[0],3);assert.equal(dot.attrs.invisible,undefined);
+    assert.ok(left[at+1].attrs.id);assert.ok(left[at-1].attrs.id);
   }
+  assert.equal(Boolean(right),Boolean(assigned.length),'No right slot without assigned labels');
+  if(right)assert.equal(right.kids.length,1,'Label group has no joining separator');
   for(const group of groups) {
     assert.ok(group.attrs.flex_none,'Natural groups never stretch across free space');
     assert.equal(group.attrs.flex_basis,undefined);assert.equal(group.attrs.w,undefined,'Cold full-wording layout has no guessed fixed budget');
