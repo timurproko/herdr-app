@@ -378,18 +378,20 @@ All PR rows, including coordinator/fleet rows and both Open/Closed tabs, omit th
 Owner badge. Every PR block uses the same three fixed lines: a 20px title, an
 18px number/author/time line and an 18px metadata line, for a 74px block including
 spacing. A blank 24px robot slot keeps titles' truncation boundaries identical
-with or without a related agent. The state icon and separate number/author/time
-cells also retain their positions. Metadata reserves independent **tasks · checks ·
-assigned GitHub labels · review decision** cells; missing groups leave blank space
-and redundant dots are invisible without reclaiming their gutters. Checks reserve
-68px for their icon and full count (including realistic three-digit totals), not a
-percentage that can collapse to an ellipsis. Labels take most remaining space;
-tasks use whole icon-plus-fraction progress such as **2/2** in a stable 60px slot.
-Relative time uses whole compact forms such as **27m ago**, with the full author,
-action and time on hover. Labels and review text clip without an ellipsis-only
-value; all full values remain in tooltips. Optional facts cannot move neighboring
-cells. This retains stability without adding a fourth line: the metadata
-line was already reserved even for PRs that never have checks or labels.
+with or without a related agent. The state icon also stays fixed. The two lower
+lines flow naturally from the left: **number · author · opened 4 hours ago** and
+**tasks · checks · assigned GitHub labels · review decision**, with constant gaps
+and unused space at the end, not stretched columns. Missing groups consume no
+horizontal space. Full task and time wording stays visible while its whole line
+fits, including around 390px panel width. Only real overflow selects whole task
+fractions such as **2/2** or a compact time such as **27m ago** before clipping
+secondary author, label or review text. Checks always keep their complete natural
+icon/count width, including realistic three-digit totals; they never shrink into
+an ellipsis. All full values remain in tooltips. Late facts may move neighboring
+items horizontally in their fixed order, but never change the three line positions,
+74px block height or title/robot reservation. Native post-layout measurements of
+clipped invisible probes choose shortening; there is no guessed character budget,
+percentage allocation, render-time notification or extra visible line.
 Labels keep their exact GitHub names (including emoji) in fully rounded 18px pills.
 Dark palettes use GitHub's 18% colour tint, lightness-adjusted coloured text and thin
 30% text-colour border rather than solid blocks. Light palettes use solid label
@@ -399,8 +401,8 @@ otherwise light), including custom palettes, not the system appearance preferenc
 The formula comes from [Primer's IssueLabelToken](https://github.com/primer/react/blob/2128032dca65a1bd565fe382c2e91c638c6473a4/packages/react/src/Token/IssueLabelToken.module.css).
 Multiple/long labels stay in a bounded single-height strip:
 pill text truncates, and hovering the pills or metadata exposes complete names,
-including clipped labels. No labels means no visible placeholder or extra separator, only an empty reserved
-cell; label refreshes never add extra row lines or horizontal overflow. Metadata separators,
+including clipped labels. No labels means no placeholder, extra separator or horizontal
+reservation; label refreshes never add extra row lines or horizontal overflow. Metadata separators,
 including the number/author dot, share a clearly visible muted 3px round shape,
 vertically centred beside text/icons with equal 6px spacing on both sides.
 Git follows the selected terminal's live shell-reported directory (including remote

@@ -657,38 +657,93 @@ export default class Changes extends View {
       .child(div().min_w(0).overflow_hidden().whitespace_nowrap().child(label.name));
   }
 
+  // Natural-width runs. Native probes measure full/compact alternatives without
+  // affecting layout; only real whole-line overflow selects a shorter variant.
+  // Keep geometry by native element ID (not PR-data revision): unchanged sizes
+  // need not be reported again by the host after a refresh or context switch.
+  pullLine(t, id, items, clipOrder = []) {
+    this.pullLineSizes ??= new Map();
+    const sizes = this.pullLineSizes.get(id) ?? {};
+    const context = this.context;
+    const measure = (name, size, cx) => {
+      if (this.context !== context || !this.shown() || !Number.isFinite(size.width)) return;
+      const width = size.width / (settings().zoom > 0 ? settings().zoom : 1);
+      if (Math.abs((sizes[name] ?? -1) - width) < 0.01) return;
+      sizes[name] = width; this.pullLineSizes.set(id, sizes); cx.notify();
+    };
+    const widths = items.map(item => sizes[`${item.kind}-full`]);
+    const ready = Number.isFinite(sizes.available) && widths.every(Number.isFinite);
+    const compact = new Set();
+    const total = () => widths.reduce((sum, width) => sum + width, 0) + Math.max(0, widths.filter(width => width > 0).length - 1) * 15;
+    if (ready) {
+      for (const [index, item] of items.entries()) {
+        if (total() <= sizes.available + 0.01) break;
+        if (item.compact && Number.isFinite(sizes[`${item.kind}-compact`])) {
+          compact.add(item.kind); widths[index] = sizes[`${item.kind}-compact`];
+        }
+      }
+      // Never shrink tasks/checks/time into unreadable fragments. Secondary
+      // text loses width only after semantic shortening has been exhausted.
+      for (const kind of clipOrder) {
+        const index = items.findIndex(item => item.kind === kind);
+        if (index < 0 || total() <= sizes.available + 0.01) continue;
+        widths[index] = Math.max(0, widths[index] - (total() - sizes.available));
+      }
+    }
+    const visible = items.map((item, index) => ({item, index})).filter(({index}) => !ready || widths[index] > 0);
+    const line = h_flex().id(id).w_full().min_w(0).h(18).min_h(18).max_h(18).flex_none().gap(6).items_center()
+      .overflow_hidden().line_height('18px').text_size(11).text_color(t.muted)
+      .on_size_change((size, cx) => measure('available', size, cx))
+      .children(visible.flatMap(({item, index}, at) => {
+        const node = item.render(compact.has(item.kind), false).flex_none()
+          .when(ready && clipOrder.includes(item.kind), el => el.w(widths[index]));
+        return at ? [this.metaSeparator(t), node] : [node];
+      }));
+    // These absolute invisible children are outside the visible run, so their
+    // text never adds a line, gap, hover target or horizontal reservation.
+    const probes = div().id(`${id}-probes`).absolute().left(0).top(0).w(0).h(0).overflow_hidden().invisible()
+      .text_size(11).line_height('18px')
+      .children(items.flatMap(item => [false, ...(item.compact ? [true] : [])].map(short =>
+        h_flex().absolute().left(0).top(0).child(item.render(short, true).flex_none()
+          .id(`${id}-probe-${item.kind}-${short ? 'compact' : 'full'}`)
+          .on_size_change((size, cx) => measure(`${item.kind}-${short ? 'compact' : 'full'}`, size, cx))))));
+    return {line, probes};
+  }
+
   pullRow(t, pr, ghost = false) {
     const prefix = ghost ? 'swap-' : '', rowId = pr.key ?? pr.number;
-    const agentButton = this.agentButton(t, pr, !ghost);
-    const dot = () => this.metaSeparator(t);
-    const labels = pr.labels ?? [];
-    const groups = [null,null,null,null];
-    if (pr.tasks) groups[0] = h_flex().id(`${prefix}pr-tasks-${rowId}`).w_full().min_w(0).h(18).overflow_hidden().gap(4).items_center()
-      .tooltip(pr.tasks.label).child(this.taskIcon(t, pr.tasks).flex_none()).child(div().flex_none().whitespace_nowrap().child(`${pr.tasks.done}/${pr.tasks.total}`));
-    const checkColor = pr.checks?.state === 'success' ? t.ansi2 : pr.checks?.state === 'failure' ? t.ansi1 : t.ansi3;
-    const checkIcon = pr.checks?.state === 'success' ? svg('mods/custom-workspace-chrome/check.svg').size(U.tinyIcon).text_color(checkColor)
-      : pr.checks?.state === 'failure' ? svg('mods/custom-workspace-chrome/x.svg').size(U.tinyIcon).text_color(checkColor)
-      : div().size(8).flex_none().rounded_full().bg(checkColor);
-    if (pr.checks) groups[1] = h_flex().id(`${prefix}pr-checks-${rowId}`).w_full().min_w(0).h(18).overflow_hidden().gap(4).items_center()
-      .tooltip(pr.checks.label)
-      .child(div().id(`${prefix}pr-check-icon-${rowId}`).size(U.tinyIcon).flex_none().flex().items_center().justify_center().child(checkIcon.flex_none()))
-      .child(div().flex_none().whitespace_nowrap().underline().child(pr.checks.label));
-    if (labels.length) groups[2] = h_flex().id(`${prefix}pr-labels-${rowId}`).flex_1().min_w(0).h(18).gap(4).items_center().overflow_hidden()
-      .tooltip(labels.map(label => label.name).join('\n'))
-      .children(labels.map((label,index) => this.labelPill(t,label,`${prefix}pr-label-${rowId}-${index}`)));
-    const review = pr.review === 'approved' ? 'Approved' : 'Changes requested';
-    if (pr.review) groups[3] = div().id(`${prefix}pr-review-${rowId}`).w_full().min_w(0).overflow_hidden().whitespace_nowrap().tooltip(review)
-      .text_color(pr.review === 'approved' ? t.ansi2 : t.ansi1).child(review);
-    // Budgets depend only on available width, never optional facts. Reserve
-    // complete 999/999 checks and compact task fractions before sharing the
-    // remainder, with labels taking priority over the review-decision text.
-    // Empty reservations intentionally cannot be reclaimed (the no-jump rule).
-    const cells = groups.map((group,index) => h_flex().id(`${prefix}pr-slot-${['tasks','checks','labels','review'][index]}-${rowId}`)
-      .when(index < 2, el=>el.w(index === 1 ? 68 : 60).flex_none())
-      .when(index >= 2, el=>el.flex_basis(0).flex_grow(index === 2 ? 9 : 1).flex_shrink(1))
-      .min_w(0).h(18).min_h(18).max_h(18).items_center().overflow_hidden()
-      .when(Boolean(group), el=>el.child(group)));
-    return h_flex().id(`${prefix}pr-${rowId}`).w_full().h(74).min_h(74).max_h(74).flex_none().px(8).py(6).gap(U.gap).items_start().rounded(U.radius)
+    const agentButton = this.agentButton(t, pr, !ghost), labels = pr.labels ?? [];
+    const groupId = (kind, probe) => `${prefix}pr-${kind}-${rowId}${probe ? '-probe' : ''}`;
+    const text = (kind, value, tooltip, probe) => div().id(groupId(kind, probe)).min_w(0).h(18)
+      .overflow_hidden().whitespace_nowrap().tooltip(tooltip).child(value);
+    const byline = this.pullLine(t, `${prefix}pr-byline-${rowId}`, [
+      {kind:'number', render:(_short, probe) => text('number', `#${pr.number}`, pr.meta ?? '', probe)},
+      ...(pr.login ? [{kind:'author', render:(_short, probe) => text('author', pr.login, pr.meta ?? '', probe)}] : []),
+      ...(pr.when ? [{kind:'time', compact:true, render:(short, probe) => text('time', short ? pr.compactWhen : pr.when, pr.meta ?? '', probe)}] : []),
+    ], ['author']);
+    byline.line.tooltip(pr.meta ?? '');
+    const meta = this.pullLine(t, `${prefix}pr-meta-${rowId}`, [
+      ...(pr.tasks ? [{kind:'tasks', compact:true, render:(short, probe) => h_flex().id(groupId('tasks', probe)).min_w(0).h(18).gap(4).items_center()
+        .tooltip(pr.tasks.label).child((probe ? div().size(U.tinyIcon) : this.taskIcon(t, pr.tasks)).flex_none())
+        .child(div().flex_none().whitespace_nowrap().child(short ? `${pr.tasks.done}/${pr.tasks.total}` : pr.tasks.label))}] : []),
+      ...(pr.checks ? [{kind:'checks', render:(_short, probe) => {
+        const color = pr.checks.state === 'success' ? t.ansi2 : pr.checks.state === 'failure' ? t.ansi1 : t.ansi3;
+        const icon = pr.checks.state === 'success' ? svg('mods/custom-workspace-chrome/check.svg').size(U.tinyIcon).text_color(color)
+          : pr.checks.state === 'failure' ? svg('mods/custom-workspace-chrome/x.svg').size(U.tinyIcon).text_color(color)
+          : div().size(8).rounded_full().bg(color);
+        return h_flex().id(groupId('checks', probe)).h(18).gap(4).items_center().tooltip(pr.checks.label)
+          .child(div().id(groupId('check-icon', probe)).size(U.tinyIcon).flex_none().flex().items_center().justify_center().child(icon.flex_none()))
+          .child(div().flex_none().whitespace_nowrap().underline().child(pr.checks.label));
+      }}] : []),
+      ...(labels.length ? [{kind:'labels', render:(_short, probe) => h_flex().id(groupId('labels', probe)).min_w(0).h(18).gap(4).items_center().overflow_hidden()
+        .tooltip(labels.map(label => label.name).join('\n'))
+        .children(labels.map((label, index) => this.labelPill(t, label, `${groupId('label', probe)}-${index}`)))}] : []),
+      ...(pr.review ? [{kind:'review', render:(_short, probe) => text('review', pr.review === 'approved' ? 'Approved' : 'Changes requested',
+        pr.review === 'approved' ? 'Approved' : 'Changes requested', probe).text_color(pr.review === 'approved' ? t.ansi2 : t.ansi1)}] : []),
+    ], ['review', 'labels']);
+    meta.line.tooltip([pr.tasks?.label, pr.checks?.label, ...labels.map(label => label.name),
+      pr.review ? (pr.review === 'approved' ? 'Approved' : 'Changes requested') : null].filter(Boolean).join('\n'));
+    return h_flex().id(`${prefix}pr-${rowId}`).relative().w_full().h(74).min_h(74).max_h(74).flex_none().px(8).py(6).gap(U.gap).items_start().rounded(U.radius)
       .when(!ghost, el => el.cursor_pointer().role('button').accessibility_label(`Open pull request #${pr.number} on GitHub`)
         .hover(s => s.bg(t.hover)).on_click(() => this.openPull(pr))
         .on_mouse_down('right', (_event, cx) => { cx.stop_propagation(); this.showPullMenu(pr, cx); })
@@ -700,15 +755,8 @@ export default class Changes extends View {
           .child(div().id(`${prefix}pr-title-${rowId}`).flex_1().min_w(0).h(20).truncate().text_size(U.font).font_semibold().text_color(t.foreground).tooltip(pr.title).child(pr.title))
           .child(div().id(`${prefix}pr-agent-slot-${rowId}`).w(U.insetControl).h(20).flex_none().relative()
             .when(Boolean(agentButton), el => el.child(agentButton))))
-        .child(h_flex().id(`${prefix}pr-byline-${rowId}`).w_full().min_w(0).h(18).min_h(18).max_h(18).flex_none().gap(6).items_center().line_height('18px').text_size(11).text_color(t.muted).overflow_hidden()
-          .child(div().id(`${prefix}pr-number-${rowId}`).w(48).h(18).flex_none().truncate().child(`#${pr.number}`))
-          .child(dot().when(!pr.byline, el=>el.invisible()))
-          .child(h_flex().flex_1().min_w(0).h(18).gap(4).items_center().tooltip(pr.meta ?? '')
-            .child(div().id(`${prefix}pr-author-${rowId}`).flex_1().min_w(0).h(18).overflow_hidden().whitespace_nowrap().child(pr.when && pr.login ? `${pr.login} ` : ''))
-            .child(div().id(`${prefix}pr-time-${rowId}`).w(76).flex_none().h(18).whitespace_nowrap().child(pr.compactWhen ?? ''))))
-        .child(h_flex().id(`${prefix}pr-meta-${rowId}`).w_full().min_w(0).h(18).min_h(18).max_h(18).flex_none().gap(6).items_center().overflow_hidden().line_height('18px').text_size(11).text_color(t.muted)
-          .when(labels.length > 0, el => el.tooltip(labels.map(label => label.name).join('\n')))
-          .children(cells.flatMap((cell,index) => index ? [dot().when(!groups[index] || !groups.slice(0,index).some(Boolean), el=>el.invisible()),cell] : [cell]))));
+        .child(byline.line).child(meta.line))
+      .child(byline.probes).child(meta.probes);
   }
 
   swapOverlay(t, swap) {

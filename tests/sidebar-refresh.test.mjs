@@ -250,7 +250,7 @@ for (const [body,label,asset,color] of [
 ]) {
   const pr = {number:1,title:'Example',meta:'#1',state:'draft',tasks:checklistTasks(body)};
   const row = taskPanel.view.pullRow(colors,pr), nodes = descendants(row);
-  assert.ok(nodes.includes(`${pr.tasks.done}/${pr.tasks.total}`),'Progress remains a whole compact fraction');
+  assert.ok(descendants(find(row,'pr-tasks-1')).includes(label),'Visible task wording stays full before overflow is measured; hidden compact probes are not display evidence');
   assert.equal(find(row,'pr-tasks-1').attrs.tooltip[0],label,'Full GitHub wording remains on hover');
   const icon = nodes.find(node => typeof node === 'object' && node?.asset?.endsWith(asset));
   assert.ok(icon,`${label} uses ${asset}`);

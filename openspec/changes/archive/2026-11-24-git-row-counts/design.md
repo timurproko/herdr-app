@@ -12,23 +12,23 @@ The supplied screenshot visibly says **Add this repo in Settings**: that snapsho
 
 ## Goals / Non-Goals
 
-**Goals:** Give check text a real minimum/intrinsic budget, deterministic empty reservations, whole compact secondary values, and stronger horizontal readability oracles. Retain 74px blocks, title/robot/state geometry, metadata order, pagination and stale-context safety. Cover completion delivery and an approved bounded pending-only fallback.
+**Goals:** Give checks their full natural width, natural left-aligned lower lines, whole compact secondary values only on overflow, and stronger horizontal readability oracles. The approved natural-lower-lines amendment supersedes horizontal empty-cell/no-shift reservations; title and vertical stability remain. Retain 74px blocks, title/robot/state geometry, metadata order, pagination and stale-context safety. Cover completion delivery and an approved bounded pending-only fallback.
 
 **Non-Goals:** Native changes, deployment, webhook configuration, account changes, auto-fix changes, settled-row or enrolled-repository polling, or any changes to #40/#41. The screenshot's Rework is an assigned GitHub label pill, not the separate reviewDecision text; preserve that distinction and exact label names.
 
 ## Decisions
 
-### Width-only reservations rather than content-driven flex
+### Natural lower-line runs (approved amendment)
 
-Replace proportional check allocation with a stable non-shrinking check budget covering at least icon + gap + 99/99 (and retain the existing three-digit geometry case). Derive the remaining cell budgets from available logical width, prioritizing assigned review-label pill space before verbose task wording and the separate review-decision text. Keep all reservations and separator gutters mounted when facts are absent. Preserve visual tasks/checks/labels/review order: allocation priority is not display order.
+Both lower lines use natural content widths, 6px gaps on each side of 3px separator dots, left alignment and trailing free space. Only present groups occupy width, in tasks/checks/labels/review order. The byline is number/author/time in the same run style. No lower-line percentage, equal-width, fixed count/task budget or stretching remains. Checks are non-shrinking complete icon/count groups, including the existing three-digit geometry cases.
 
-Any width measurement needed for choosing a compact variant must be shared across row variants, scope-safe and changed-only, with no render-time notify or writes. Never choose a cell width from whether the optional content exists. Remove truncation from the checks value itself and ensure ancestors cannot shrink/clip it. Actual counts longer than the realistic reservation still require full text, not an ellipsis; exercise that boundary rather than silently capping the value.
+The shared pullLine helper measures available width and full/compact alternatives through native on_size_change callbacks. Clipped invisible absolute probes live outside the visible run and cannot add lines, gaps or hover controls. Measurements are normalized by zoom, retained by native element ID across data refreshes, guarded by context/visibility and notify only when changed after layout. Full content remains natural until the complete line needs shortening; tasks become fractions first, byline time becomes compact, then review/labels or author can clip as needed. Zero-width clipped groups and their redundant dots disappear. Full values remain in line/group tooltips.
 
-Rejected: merely increasing the check flex weight (no minimum guarantee); intrinsic optional cells with reclaimed empty space (breaks no-jump); adding a fourth row line (breaks block height).
+Rejected: guessed character metrics, threshold-only forced compact forms, fixed count/task reservations, stretching spare space between values, and a fourth line. Natural horizontal movement as facts arrive is explicitly permitted by the amended request; the title/agent/state slots, three line boxes and 74px block remain fixed.
 
 ### Semantic compact forms, full tooltips
 
-Generate compact task representations from numeric done/total facts rather than substring truncation. Select full text, compact fraction with tasks, or icon plus fraction based on reserved width. Keep status icons/colours unchanged. Use a compact time representation from timestamps (including merged/closed cases), with full byline in the tooltip; reserve stable number/author/time slots. For other narrow text/pills, show a meaningful fragment or suppress the unrepresentable text with full group hover information, never paint only an ellipsis. Do not rename assigned GitHub labels.
+Generate compact task fractions from numeric done/total facts, not substring truncation, only when full task wording makes the whole metadata line overflow. Time retains the action and full wording while its byline fits and becomes a whole compact token only on overflow. Keep status icons/colours and full tooltips. Secondary narrow author/label/review text clips without painting a lone ellipsis. Do not rename assigned GitHub labels.
 
 ### Existing event refresh, explicit timing limits
 
@@ -44,9 +44,9 @@ Update the existing no-periodic-CI spec narrowly for this fallback; all settled 
 
 ### Readability regressions alongside geometry regressions
 
-Extend `tests/support/git-row.mjs` only as needed to expose natural text width, allocated content width and effective clipping/truncation. Add horizontal checks independently from stable-box comparisons so removing check minimum width or restoring truncation fails. Preserve all existing no-shift assertions, line-height mutation tests, label palette/tooltips and agent/pin interactions.
+Extend `tests/support/git-row.mjs` only as needed to expose natural text width, allocated content width and effective clipping/truncation. Add horizontal checks independently from stable-box comparisons so removing check minimum width or restoring truncation fails. Preserve title and vertical no-shift assertions, line-height mutation tests, label palette/tooltips and agent/pin interactions; replace obsolete lower-line horizontal reservations with natural-width/constant-gap/trailing-space assertions.
 
-Matrix: 280/320/360/480 logical px; 75/100/125/150/200% zoom; one/two-digit totals and 1/1, 3/10, 10/10, 11/11, 99/99; pass/fail/pending icons; optional tasks/labels/reviews/agents; ordinary/pinned/scrolling/coordinator/ghost; Open/Closed/merged. Assert count text plus icon is inside its ancestors, full and untruncated, and no rendered cell contains only an ellipsis. Check whole compact task/time forms and full tooltips.
+Matrix: 280/320/360/390/480 logical px; 75/100/125/150/200% zoom; one/two-digit totals and 1/1, 3/10, 10/10, 11/11, 99/99; pass/fail/pending icons; optional tasks/labels/reviews/agents; ordinary/pinned/scrolling/coordinator/ghost; Open/Closed/merged. Assert count text plus icon is inside its ancestors, full and untruncated, and no rendered cell contains only an ellipsis. Check whole compact task/time forms and full tooltips.
 
 ## Risks / Trade-offs
 
@@ -57,9 +57,9 @@ Matrix: 280/320/360/480 logical px; 75/100/125/150/200% zoom; one/two-digit tota
 
 ## Implementation evidence
 
-- The shared row now reserves 68px for checks and 60px for whole task fractions; remaining width goes 9:1 to labels/review decisions. Relative time always uses the compact form, preserving full wording on hover. Label/review text clips without ellipsis-only paint.
+- The amended shared row uses native-measured natural runs for number/author/time and tasks/checks/labels/review. Full wording remains at fit; real overflow selects whole fractions/compact time before secondary clipping. Geometry now covers 47,250 natural-flow comparisons including 390px and exact shortening thresholds, while retaining title/vertical stability and full checks containment.
 - The new fallback scheduler and batched checks reader live in `pulls.js`; ordinary and coordinator readers share their existing queue. Known enrollment disables fallback even on transport outage. Unknown enrollment uses fallback until live coverage is confirmed.
-- A stale older-PR targeted request could overwrite an event snapshot. The event refresh now invalidates that older lease; the pagination regression resolves an obsolete targeted read after the new count and requires the new value to survive.
+- A stale older-PR targeted request could overwrite an event snapshot. The delivered repair shares the snapshot queue across related/list/event/fallback reads and uses a per-PR epoch/generation publication guard. Failed replacement snapshots release the related cache key; pagination and held-publication regressions cover both findings. Fallback jobs hold their lease across bounded 20-PR chunks and publish only a complete selection.
 - Geometry passes 38,700 resolved-box comparisons plus horizontal clipping/line-height mutations. Fallback, pagination, fleet, webhook, pin, context-menu and sidebar focused fixtures pass. A read-only GraphQL request against this PR confirmed the actual batched query shape (no changes to PRs 40/41).
 - No other suite process was present in the Windows process inventory before `CI=true npm run test:ci` ran with a 1,800-second tool timeout. It completed with exit 1: a menu fixture lacked the newly imported helper exports and the sidebar fixture still expected verbose task text. Both fixtures were updated for the new contract, preserving their original interaction/icon checks and adding compact/full-tooltip assertions; focused reruns pass. The broad suite was not looped. Final-head hosted checks are the integration gate.
 - No deployment, native pixel inspection or live end-to-end event latency measurement was performed. Pending-only fallback cannot discover a new rerun on an already-settled unenrolled row until another ordinary refresh; enrolled transport outages still rely on reconnect/manual catch-up. The existing first-100-context list read remains a larger-rollup provider limit, distinct from text geometry.

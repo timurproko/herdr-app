@@ -219,32 +219,32 @@ The relay SHALL retain raw-body HMAC verification, authenticated subscriptions a
 - **AND** no cloud deployment, enrollment, private-key sync or automatic credential repair occurs
 
 ### Requirement: Shared Git pull request metadata
-Git SHALL use identical metadata in ordinary and coordinator Open/Closed rows, without author-association badges. Stable width-dependent cells SHALL retain tasks, checks, assigned-labels and review-decision order. Allocation priority SHALL be full checks icon/count, assigned review-label pills, then task progress. Missing groups SHALL preserve blank reservations; separators SHALL NOT lead, double or trail visible groups. Tooltips SHALL retain full values.
+Git SHALL use identical metadata in ordinary and coordinator Open/Closed rows, without author-association badges. The two lower lines SHALL flow left at natural content widths with constant gaps and trailing free space, without stretched, percentage or equal-width cells. Metadata SHALL retain tasks, checks, assigned-labels and review-decision order. Missing groups SHALL occupy no horizontal space; separators SHALL NOT lead, double or trail visible groups. Full wording SHALL remain when the whole line fits. On actual overflow, tasks SHALL shorten to whole fractions and byline time to a compact form before clipping secondary author, label or review text. Checks SHALL never shrink, wrap or truncate. Tooltips SHALL retain full values.
 
 #### Scenario: Ordinary and coordinator rows
 - **WHEN** an owner-authored PR with tasks, checks and labels is displayed in either view and either tab
-- **THEN** its metadata uses the reserved tasks, checks and labels cells in that order, without an Owner badge
+- **THEN** its metadata flows naturally as tasks, checks and labels in that order, without an Owner badge
 - **AND** pinned, scrolling and motion-preview rows use the same presentation
 
 #### Scenario: Missing metadata items
 - **WHEN** a PR lacks tasks, checks or labels
-- **THEN** only present items are visible in their reserved cells, without shifting the other groups toward the left edge
+- **THEN** only present items and separators between them occupy the left-aligned run, leaving unused space at the end
 - **AND** no visible empty label placeholder or redundant separator is shown
 
 #### Scenario: Task counts and review decision change
 - **WHEN** a checklist changes between untouched, partial and complete, check counts change, or a review decision appears or disappears
-- **THEN** icons and text update within their existing cells without moving the labels, other metadata anchors or row lines
+- **THEN** present items take their natural places in fixed order without changing title geometry, line positions or block height
 - **AND** compact or truncated content remains available through full-value hover text
 
 #### Scenario: Checks take priority at supported widths
-- **WHEN** metadata renders at any supported panel width and zoom, including 280/320/360/480px at 75–200% zoom
+- **WHEN** metadata renders at any supported panel width and zoom, including 280/320/360/390/480px at 75–200% zoom
 - **THEN** the checks icon and full count remain contained, without clipping, ellipsis or wrapping, including one- and two-digit totals such as 1/1, 3/10, 11/11 and 99/99
-- **AND** its reservation accommodates the widest realistic count rather than just the currently displayed digits
-- **AND** the label allocation takes priority over verbose task wording without changing cell anchors when optional facts appear
+- **AND** checks use their complete natural width before lower-priority content is clipped
+- **AND** the matrix includes the screenshot's approximately 390px panel, with no shortening while the complete line fits
 
 #### Scenario: Compact whole task progress
-- **WHEN** full task wording does not fit its reserved cell
-- **THEN** the row uses a complete compact form such as 2/2 tasks or an icon with 2/2, without cutting a word
+- **WHEN** the whole metadata line cannot fit with full task wording
+- **THEN** the row uses a complete compact form such as 2/2 tasks or an icon with 2/2, without cutting a word and before clipping label text
 - **AND** no metadata value renders as a lone ellipsis; full task progress, labels and review values remain available in tooltips
 
 ### Requirement: GitHub label presentation
@@ -286,7 +286,7 @@ PR labels SHALL be obtained with existing PR reads rather than additional per-ro
 #### Scenario: Label added or removed
 - **WHEN** a relevant authenticated pull_request labeled or unlabeled event invalidates loaded rows
 - **THEN** the corresponding existing refresh path updates their labels from authoritative PR data
-- **AND** removing the final label removes its visible pills and any now-redundant separator while retaining blank cell geometry, without a visible placeholder
+- **AND** removing the final label removes its visible pills and any now-redundant separator without changing the line height or leaving a visible placeholder or horizontal reservation
 
 ### Requirement: Consistent visible Git metadata separators
 PR metadata separators SHALL use one visibly larger but muted dot treatment with equal spacing on both sides and vertical centring against adjacent text and icons. This treatment SHALL apply to every PR metadata separator in the Git panel, including the number/author byline and status items.
@@ -573,7 +573,7 @@ The coordinator Git panel SHALL render a repository section only when the select
 - **AND** hiding its section does not enroll it, remove its fold state, or initiate or cancel GitHub reads
 
 ### Requirement: Stable pull request block geometry
-At a given panel width and zoom, every PR block SHALL reserve the same state-icon, title, related-agent, byline and metadata slots from first paint. Optional facts SHALL NOT change title truncation width, line positions, block height or other cells' anchors. Metadata SHALL occupy one fixed-height line even when empty, and absent content SHALL remain visually blank rather than showing skeletons or fabricated values.
+At a given panel width and zoom, every PR block SHALL reserve the same state-icon, title, related-agent, byline and metadata slots from first paint. Optional facts SHALL NOT change title truncation width, line positions or block height. Within a lower line, present elements MAY take their natural places as facts change; horizontal anchors are not reserved for absent metadata. Metadata SHALL occupy one fixed-height line even when empty, and absent content SHALL remain visually blank rather than showing skeletons or fabricated values.
 
 #### Scenario: Agent appears or finishes
 - **WHEN** otherwise identical rows have or lack a related live agent, including a coordinator task whose worker finishes
@@ -582,8 +582,8 @@ At a given panel width and zoom, every PR block SHALL reserve the same state-ico
 
 #### Scenario: Late optional data
 - **WHEN** checks, tasks, assigned labels, author details, review decisions or merge-conflict facts arrive or are removed after first paint
-- **THEN** their reserved cells and the state-icon slot retain their geometry without adding or removing lines
-- **AND** lower-priority content shortens within its cell instead of displacing neighboring cells or overflowing the block, while checks remain complete
+- **THEN** the state-icon and title/agent reservations and all three line boxes retain their geometry without adding or removing lines
+- **AND** present lower-line elements flow in fixed order at natural widths, shortening only on whole-line overflow while checks remain complete
 
 #### Scenario: Row variants and zoom
 - **WHEN** ordinary, pinned, scrolling, coordinator and motion-preview rows render in Open or Closed at 75%, 100%, 125%, 150% or 200% zoom
@@ -591,9 +591,9 @@ At a given panel width and zoom, every PR block SHALL reserve the same state-ico
 - **AND** optional content changes preserve the list's vertical rhythm at every zoom
 
 #### Scenario: Whole relative time in the byline
-- **WHEN** verbose relative time cannot fit its stable byline slot
+- **WHEN** the full number, author and verbose relative time run cannot fit the available byline width
 - **THEN** a complete compact relative time such as 27m ago is shown instead of a mid-word truncation
-- **AND** full author, action and relative-time values remain in the byline tooltip without moving neighboring cells
+- **AND** full author, action and relative-time values remain in the byline tooltip while the number, author and time remain left-aligned with constant separator gaps
 
 ### Requirement: Non-destructive same-context PR refresh presentation
 A same-context PR refresh SHALL retain previously displayed rows, pin geometry and pagination until replacement data is ready. Pending reads, verification and transient failures SHALL NOT replace known rows with loading or empty states. Changed repository, machine or coordinator-home identities SHALL still invalidate old facts immediately, and retained stale coordinator presentation SHALL NOT authorize reads or worker actions.

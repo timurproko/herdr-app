@@ -278,8 +278,8 @@ optically lowered 1.5 logical pixels from the parent line-box centre with equal 
 in bylines and every status/review/label boundary. Zoom cases from 75% to 200% retain
 the same logical offset; comparison with the old separator tree protects neighbouring
 text, icons, pills and row geometry. Missing-group combinations have no leading/trailing
-or orphan painted dots; the four cell containers and three separator gutters remain
-mounted, with empty cells containing no text, pills or controls.
+or orphan painted dots; only present groups and separators occupy horizontal space.
+The status line itself remains mounted at 18px even when empty.
 Pagination/fleet fixtures also assert labels
 in actual pinned/scrolling and coordinator render paths; existing menu and pin-swap
 fixtures protect captured URLs, callbacks and measured motion. These prove render-tree
@@ -312,15 +312,25 @@ latency, enroll hooks or use native UI/credentials.
 
 `node --experimental-vm-modules tests/git-row-geometry.test.mjs` resolves the actual
 shared row trees using a deterministic flex/absolute layout model with real `U`
-metrics and content-dependent text widths. At 280/320/360/480 logical-pixel widths and
-75/100/125/150/200% zoom, it compares title right edges, state/robot/byline/metadata
-anchors, line heights, 74px row heights and following-row positions across ordinary,
+metrics and content-dependent text widths. It dispatches the actual native-size
+callbacks after layout (including clipped invisible natural-width probes), rerenders
+until changed-only measurements converge, and excludes invisible probe text from
+paint assertions. At 280/320/360/390/480 logical-pixel widths and 75/100/125/150/200%
+zoom, 47,250 comparisons protect title right edges, state/robot and whole-line
+boxes, line heights, 74px row heights and following-row positions across ordinary,
 pinned, scrolling, coordinator and ghost paths in Open/Closed/merged states.
 Optional agent transitions, untouched/partial/done and multi-digit tasks/checks,
 pending/success/failure icons, absent/long/multiple labels, review decisions and
-missing authors do not change those boxes. Empty robot slots are inert; ghost
-robots cannot navigate. Removing the reserved robot or making a metadata cell
-content-sized deliberately changes the oracle, demonstrating mutation sensitivity.
+missing authors preserve those vertical/title boxes, not obsolete horizontal cell
+reservations. Separate assertions require natural group widths, constant 6px gaps
+beside 3px dots, left alignment, absent-group removal and trailing free space.
+Full probe widths independently determine when the complete line fits: every fitting
+value must remain full and unshortened. Screenshot-shaped 390px cases retain both
+2 tasks done and opened 4 hours ago at every zoom. Exact fit thresholds assert
+whole task fractions or compact times appear only on overflow and before label or
+author clipping. Empty robot slots remain inert and ghost robots cannot navigate.
+Removing the title reservation, stretching a group or restoring a fixed task budget
+must fail the corresponding oracle.
 The model preserves inherited line-height tokens and resolves numbers as effective
 font-size multipliers, while `px` strings remain absolute lengths; numeric `size`
 remains pixels. Independent oracles cover 20 × 13 = 260px and 18 × 11 = 198px,
@@ -335,8 +345,8 @@ Existing label-colour/tooltip, PR-action and pin-motion regressions remain intac
 Horizontal assertions also compare the full natural count width against every
 ancestor, reject any check truncation, and cover one/two-digit totals through
 99/99 in success/failure/pending states, plus the existing 101-check case. A tiny
-check-cell mutation must fail even with stable outer boxes. Compact task fractions
-and whole relative-time tokens replace mid-word clipping; metadata/pill text never
+checks-width mutation must fail even with stable outer boxes. Whole task/time
+shortening replaces mid-word clipping only when necessary; metadata/pill text never
 uses ellipsis-only values. These are synthetic resolved-box comparisons, not native
 GPUI pixels or visual interaction evidence; no app, session, credential or deployment
 is used.

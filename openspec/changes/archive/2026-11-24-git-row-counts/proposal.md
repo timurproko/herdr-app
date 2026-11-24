@@ -6,10 +6,10 @@ The fixed row geometry from #39 reserves too little room for CI counts: the supp
 
 ## What Changes
 
-- Allocate stable metadata budgets by priority: complete checks icon/count first, assigned review-label pills next, task progress next, with the separate review-decision text using the remaining budget. Keep the existing visual order and blank reservations when optional facts are absent.
-- Use whole compact task progress and relative-time forms rather than mid-word or lone-ellipsis values, retaining full tooltips in ordinary, coordinator and motion-preview rows.
+- Flow both lower lines left at natural widths with constant gaps and trailing free space. Keep tasks/checks/labels/review order without blank horizontal reservations; preserve title/robot geometry, three line positions and block height.
+- Keep full task and time wording when the complete line fits. Only measured overflow selects whole compact task/time forms before secondary clipping; checks retain full natural width and all values retain full tooltips in ordinary, coordinator and motion-preview rows.
 - Cover completion/rerun invalidations and in-flight dirty follow-ups in existing webhook refresh paths; repair demonstrated stale-count defects and add an approved 45-second pending/unknown-only fallback for repositories without live coverage, with failure backoff and no webhook enrollment changes.
-- Extend resolved geometry assertions to 280/320/360/480px and 75–200% zoom, checking full one/two-digit counts and meaningful compact values as well as existing no-shift and pixel-line-height guarantees.
+- Extend resolved geometry assertions to 280/320/360/390/480px and 75–200% zoom, checking full one/two-digit counts and meaningful compact values as well as natural-width/constant-gap/fit thresholds and unchanged title/vertical pixel-line-height guarantees.
 - Document source-derived refresh timing and stale-data conditions, clearly separating fixture evidence from measured live latency.
 
 ## Capabilities

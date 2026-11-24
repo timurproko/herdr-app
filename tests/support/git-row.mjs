@@ -23,7 +23,19 @@ export async function rowHarness({host={},modules={}}={}) {
   panel.aggregate={context:{scope:'home'},target:()=>agent?{terminal:'t2'}:null,focus:(...args)=>focus.push(args)};
   const cx={focus_handle(){if(rendering)throw Error('focus handle during render');return {};},notify(){if(rendering)throw Error('notify during render');},stop_propagation(){},spawn:fn=>fn(cx)};
   const render=fn=>{rendering=true;try{return fn();}finally{rendering=false;}};
-  return {panel,facts,U,AggregatePulls,cx,render,focus,place,setAgent:value=>{agent=value;},setZoom:value=>{zoom=value;}};
+  const settle=(build,width,zoom=1,height)=>{
+    // Native post-layout callbacks, not render-time heuristics. Include hidden
+    // intrinsic probes; visible text assertions below exclude their paint.
+    for(let pass=0;pass<8;pass++) {
+      const tree=render(build),geometry=rowGeometry(tree,width,zoom,height);let changed=false;
+      for(const node of nodes(tree))if(/pr-(?:byline|meta)-/.test(node.attrs?.id?.[0]??'')) {
+        const callback=node.attrs.on_size_change?.[0];if(callback)callback(geometry.get(node),{...cx,notify(){changed=true;}});
+      }
+      if(!changed)return {tree,geometry};
+    }
+    throw Error('Natural row layout must converge without a measurement/render loop');
+  };
+  return {panel,facts,U,AggregatePulls,cx,render,settle,focus,place,setAgent:value=>{agent=value;},setZoom:value=>{zoom=value;}};
 }
 
 // Deterministic flex/absolute box model for these real render trees, not GPUI
@@ -39,7 +51,7 @@ export function lineHeightPixels(value,fontSize) {
 }
 export function rowGeometry(root,width,zoom=1,height) {
   const boxes=new Map(),v=(a,k,f=0)=>a[k]?.[0]??f;
-  boxes.textLines=[];
+  boxes.textLines=[];boxes.naturalWidths=new Map();
   const attrs=n=>typeof n==='object'&&n?n.attrs:{};
   const children=n=>typeof n==='object'&&n?(n.kids??[]).filter(c=>c!=null):[];
   const absolute=n=>Boolean(attrs(n).absolute);
@@ -59,6 +71,7 @@ export function rowGeometry(root,width,zoom=1,height) {
     h=limit(h??natural.h,v(a,'min_h'),v(a,'max_h',Infinity));
     const paintY=y+(a.relative?v(a,'top'):0);
     boxes.set(n,{x:x*zoom,y:paintY*zoom,width:w*zoom,height:h*zoom});
+    boxes.naturalWidths.set(n,natural.w*zoom);
     if(typeof n==='string') {
       if(n)boxes.textLines.push({text:n,x:x*zoom,naturalWidth:natural.w*zoom,lineHeight:lineHeightPixels(s.line,s.font)*zoom,fontSize:s.font*zoom,ancestors});
       return;
@@ -86,5 +99,7 @@ export function rowGeometry(root,width,zoom=1,height) {
       place(child,x+v(ca,'left'),y+v(ca,'top'),cw,ch,s,[...ancestors,n]);
     }
   };
-  place(root,0,0,width,height);return boxes;
+  place(root,0,0,width,height);
+  boxes.visibleTextLines=boxes.textLines.filter(line=>!line.ancestors.some(n=>n.attrs?.invisible));
+  return boxes;
 }
