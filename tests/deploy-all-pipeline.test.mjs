@@ -53,16 +53,17 @@ try {
   const ids=fs.readdirSync(path.join(home,'.customizations/backups'));assert.equal(ids.length,1);assert.ok(r.stdout.includes(ids[0]));
   assert.equal(fs.readFileSync(path.join(f.root,'dist/stages'),'utf8'),'check\nbuild\ndeploy\n');
   r=cli([]);assert.equal(r.status,0,r.stderr);assert.match(r.stdout,/local \| already current/);assert.equal(fs.readdirSync(path.join(home,'.customizations/backups')).length,1);
-  // The documented npm bootstrap has no detached Settings log. Its partial row
-  // must point to the matching durable result, never a missing or old update.log.
+  // The documented npm bootstrap keeps offline skips in its durable result,
+  // without a warning/details pointer once the desktop's check reconciles.
   const [npmProgram,npmArgs]=worker.npmCommand('deploy:all');
   const bootstrap=cp.spawnSync(npmProgram,npmArgs,{cwd:f.root,env:{...f.env,HERDR_FIXTURE_OFFLINE_PEER:'1',NODE_OPTIONS:`--require ${JSON.stringify(preload.replace(/\\/g,'/'))}`},encoding:'utf8',timeout:60000});
-  assert.equal(bootstrap.status,0,bootstrap.stderr+'\n'+bootstrap.stdout); assert.match(bootstrap.stdout,/offline-fixture \| skipped/);
+  assert.equal(bootstrap.status,0,bootstrap.stderr+'\n'+bootstrap.stdout); assert.match(bootstrap.stdout,/offline-fixture \| skipped: offline \(offline\)/);
   const updatePaths=updater.files(home);
   assert.equal(fs.existsSync(updatePaths.log),false);
-  let shown=updater.inspect(home),row=customizationRowState(updateProjection(shown));
+  let shown=updater.checkMain(home,{force:true,run:()=>({code:0,stdout:`${target}\trefs/heads/main\n`})}),row=customizationRowState(updateProjection(shown));
   assert.equal(shown.details.kind,'result'); assert.equal(shown.details.path,updatePaths.result); assert.ok(fs.existsSync(shown.details.path));
-  assert.ok(row.description.includes(`Details: ${updatePaths.result}`)); assert.ok(!row.description.includes(updatePaths.log));
+  assert.match(row.description,/^Up to date\./); assert.doesNotMatch(row.description,/Details:|Log:|skipped or failed/);
+  assert.equal(shown.lastRun.state,'complete');
   updater.atomic(updatePaths.status,{token:'older-settings-run',state:'partial',started:0,finished:1});
   fs.writeFileSync(updatePaths.log,'unrelated old Settings output');
   shown=updater.inspect(home); row=customizationRowState(updateProjection(shown));

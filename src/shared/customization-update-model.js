@@ -2,13 +2,19 @@
 export const CUSTOMIZATION_LABEL = 'herdr-app-custom';
 export const CUSTOMIZATION_UPDATE_KEY = 'custom.customization-update';
 const ok = row => ['deployed', 'already current'].includes(row?.action);
+// Kept identical to the standalone update worker's policy (matrix-tested).
+// Only pre-dispatch unavailability and the deliberate desktop exclusion are quiet.
+export const peerSkipKind = row => row?.action !== 'skipped' || row.outcome === 'unknown' ? null
+  : /^offline \((?:offline|unreachable|disconnected)\)$/.test(row.reason) ? 'offline'
+  : row.reason === 'needs its own full deploy' ? 'desktop' : null;
 export function updateProjection(snapshot) {
   const result = snapshot?.result;
   return {
     revision: snapshot?.revision || null, check: snapshot?.check || null,
     checking: snapshot?.checking === true, locked: snapshot?.locked === true,
+    peerPending: snapshot?.peerPending === true, peerUnknown: snapshot?.peerUnknown === true,
     log: snapshot?.log || '', details: snapshot?.details || null, job: snapshot?.job || snapshot?.lastRun || null,
-    partial: Boolean(result?.complete && ok(result.results?.find(row => row.machine === 'local')) && result.results.some(row => row.machine !== 'local' && !ok(row))),
+    partial: Boolean(result?.complete && ok(result.results?.find(row => row.machine === 'local')) && result.results.some(row => row.machine !== 'local' && !ok(row) && !peerSkipKind(row))),
   };
 }
 export const updateAvailable = snapshot => snapshot?.check?.available === true;
@@ -24,9 +30,10 @@ export function customizationRowState(snapshot, { busy = null, error = null, now
   const running = busy === 'launch' || ((launch || job?.state === 'running') && !unknown);
   const checking = busy === 'check' || snapshot?.checking;
   const freshAfterFailure = !job?.finished || (check?.attempted || 0) > job.finished;
-  const canUpdate = !unknown && !running && !snapshot?.locked && !check?.error && updateAvailable(snapshot) && (job?.state !== 'failed' || freshAfterFailure);
+  const catchUp = snapshot?.peerPending && check?.checked && check.available === false && (!job?.finished || check.attempted >= job.finished);
+  const canUpdate = !unknown && !running && !snapshot?.locked && !snapshot?.peerUnknown && !check?.error && (updateAvailable(snapshot) || catchUp) && (job?.state !== 'failed' || freshAfterFailure);
   let description, current = false;
-  if (running) description = 'Updating all machines…';
+  if (running) description = 'Updating…';
   else if (unknown) description = `Update outcome unknown${job?.error ? `: ${job.error}` : ''}. Inspect ${details?.kind === 'result' ? 'details' : 'log'}: ${details?.path || 'unavailable'}`;
   else if (error) description = error;
   else if (job?.state === 'failed') description = `Update failed: ${job.error || 'inspect log'}. Recovery: documented rollback.${log}`;
@@ -36,7 +43,7 @@ export function customizationRowState(snapshot, { busy = null, error = null, now
   else if (updateAvailable(snapshot)) description = 'Update available.';
   else if (check?.checked && snapshot?.revision) {
     description = `Up to date. Checked at ${at(check.checked)}.`;
-    current = check.available === false && !snapshot?.locked;
+    current = check.available === false && !snapshot?.locked && !snapshot?.peerPending && !snapshot?.peerUnknown;
   }
   else description = 'Not checked.';
   return { title, description, current, action: canUpdate ? 'launch' : 'check', label: running ? 'Updating…' : checking ? 'Checking…' : canUpdate ? 'Update' : 'Check now', enabled: !busy && !running && !checking };

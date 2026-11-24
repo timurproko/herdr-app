@@ -201,6 +201,16 @@ assert.ok(calls.slice(beforeHint).every(call=>call.action!=='launch'));
 store.delete(RELAY_STATE);next={...next,check:{checked:clock,available:false}};
 settings.api.refreshCustomizationUpdates(settings.view,settings.cx);await settle();
 assert.ok(!markers().some(Boolean));
+// Quiet catch-up is independently actionable, never a persistent availability dot.
+next = { ...next, peerPending: true, check: { attempted: clock, checked: clock, available: false }, job: { state: 'complete', finished: clock - 1 } };
+const beforeCatchUp = calls.length;
+settings.api.refreshCustomizationUpdates(settings.view, settings.cx); await settle();
+assert.equal(store.get(KEY).peerPending, true); assert.equal(store.get(KEY).check.available, false);
+assert.ok(!markers().some(Boolean), 'pending peers do not light any already-mounted marker');
+assert.ok(find(settings.tree, 'st-check-customizations').kids.includes('Update'));
+assert.match(JSON.stringify(settings.tree), /Up to date\. Checked at/);
+assert.ok(calls.slice(beforeCatchUp).every(call => call.action !== 'launch'), 'publication/checks cannot deploy deferred work');
+next = { ...next, peerPending: false }; settings.api.refreshCustomizationUpdates(settings.view, settings.cx); await settle();
 // A fresh module graph/owner, original overlay props and shared host store model
 // host replacement. Removed generations no longer have timers or redraws.
 function retire(copy) {

@@ -81,9 +81,23 @@ export function resultRecorder(env = process.env, dryRun = false) {
   if (dryRun) return () => {};
   const home = env.HERDR_APP_HOME || path.join(os.homedir(), '.config/herdr-app');
   const file = path.join(home, '.customizations/deploy-all-result.json');
-  let desktop = null, localRecorded = false;
-  try { desktop = JSON.parse(fs.readFileSync(file, 'utf8')).desktop ?? null; } catch {}
-  return (results, complete = false, error = null) => {
+  let previous = null, localRecorded = false;
+  try { previous = JSON.parse(fs.readFileSync(file, 'utf8')); } catch {}
+  let desktop = previous?.desktop ?? null;
+  const peerName = name => typeof name === 'string' && name !== 'local' && !name.startsWith('(') && name.length <= 200 && name.trim() === name && name.length > 0 && !/[\x00-\x1f\x7f]/.test(name);
+  const offline = row => row?.action === 'skipped' && row.outcome !== 'unknown' && /^offline \((?:offline|unreachable|disconnected)\)$/.test(row.reason);
+  // An explicit empty set means resolved; only legacy receipts infer from rows.
+  const saved = Array.isArray(previous?.deferredPeers) ? previous.deferredPeers
+    : (Array.isArray(previous?.results) ? previous.results : []).filter(offline).map(row => row.machine);
+  const deferred = new Set(saved.filter(peerName).slice(0, 256));
+  return (results, complete = false, error = null, inventoryNames = null) => {
+    for (const row of results) {
+      if (!peerName(row.machine)) continue;
+      if (['deployed', 'already current'].includes(row.action) || (row.action === 'skipped' && row.reason === 'needs its own full deploy' && row.outcome !== 'unknown')) deferred.delete(row.machine);
+      else if (offline(row) && deferred.size < 256) deferred.add(row.machine);
+    }
+    // Selection omissions and failed/absent inventory are never removal proof.
+    if (complete && inventoryNames) for (const name of deferred) if (!inventoryNames.includes(name)) deferred.delete(name);
     const local = results.find(row => row.machine === 'local');
     if (local && ['deployed', 'already current'].includes(local.action) && !localRecorded) {
       const manifest = manifestDigest(home);
@@ -92,7 +106,7 @@ export function resultRecorder(env = process.env, dryRun = false) {
     } else if (local?.action === 'failed' || error) {
       desktop = desktop ? { ...desktop, verified: false } : null;
     }
-    const value = { version: 1, token: env.HERDR_UPDATE_RUN_ID || null, at: Date.now(), complete, desktop, results, error };
+    const value = { version: 1, token: env.HERDR_UPDATE_RUN_ID || null, at: Date.now(), complete, desktop, deferredPeers: [...deferred].sort(), results, error };
     fs.mkdirSync(path.dirname(file), { recursive: true });
     const temp = `${file}.${randomUUID()}.tmp`;
     try { fs.writeFileSync(temp, JSON.stringify(value, null, 2) + '\n'); fs.renameSync(temp, file); }
@@ -113,8 +127,8 @@ export function deployAll(args = [], { root = project, log = console.log, hostna
     return { code: 1, results: [] };
   }
   const results = [];
-  let machines = [];
-  try { machines = inventory(options.run || worker.runCommand, options.env || process.env); }
+  let machines = [], inventoryKnown = false;
+  try { machines = inventory(options.run || worker.runCommand, options.env || process.env); inventoryKnown = true; }
   catch (error) { results.push({ machine: '(inventory)', action: 'failed', reason: error.message }); }
   const known = new Set(['local', hostname, ...machines.map(machine => machine.name)]);
   const unknown = selection.only?.filter(name => !known.has(name));
@@ -144,7 +158,7 @@ export function deployAll(args = [], { root = project, log = console.log, hostna
     record(results);
   }
   printSummary(results, log);
-  record(results, true);
+  record(results, true, null, inventoryKnown ? machines.map(machine => machine.name) : null);
   return { code: results.some(r => r.action === 'failed') ? 1 : 0, results };
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {

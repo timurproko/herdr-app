@@ -63,10 +63,11 @@ const titleCases = [
   { name: 'current cache', snapshot: { check: { checked: clock, available: false } }, label: 'Check now', action: 'check', enabled: true, current: true },
   { name: 'checking', snapshot: { checking: true }, label: 'Checking…', action: 'check', enabled: false, description: /^Not checked\.$/ },
   { name: 'requested check', snapshot: {}, busy: 'check', label: 'Checking…', action: 'check', enabled: false, description: /^Not checked\.$/ },
+  { name: 'quiet peer catch-up', snapshot: { peerPending: true, check: { attempted: clock, checked: clock, available: false } }, label: 'Update', action: 'launch', enabled: true, description: /^(Up to date\. Checked at|Not checked\.)/ },
   { name: 'available', snapshot: { check: { checked: clock, available: true } }, label: 'Update', action: 'launch', enabled: true, description: /^Update available\.$/ },
-  { name: 'launching', snapshot: {}, busy: 'launch', label: 'Updating…', action: 'check', enabled: false, description: /^Updating all machines…$/ },
-  { name: 'pending receipt', snapshot: { launch: { deadline: clock + 30000 } }, label: 'Updating…', action: 'check', enabled: false, description: /^Updating all machines…$/ },
-  { name: 'running', snapshot: { locked: true, job: { state: 'running', deadline: clock + 30000 } }, label: 'Updating…', action: 'check', enabled: false, description: /^Updating all machines…$/ },
+  { name: 'launching', snapshot: {}, busy: 'launch', label: 'Updating…', action: 'check', enabled: false, description: /^Updating…$/ },
+  { name: 'pending receipt', snapshot: { launch: { deadline: clock + 30000 } }, label: 'Updating…', action: 'check', enabled: false, description: /^Updating…$/ },
+  { name: 'running', snapshot: { locked: true, job: { state: 'running', deadline: clock + 30000 } }, label: 'Updating…', action: 'check', enabled: false, description: /^Updating…$/ },
   { name: 'failed update', snapshot: { job: { state: 'failed', error: 'fixture refusal', finished: clock } }, label: 'Check now', action: 'check', enabled: true, description: /Update failed: fixture refusal/ },
   { name: 'failed check', snapshot: { check: { error: 'offline' } }, label: 'Check now', action: 'check', enabled: true, description: /^Check failed\. Try again\.$/ },
   { name: 'partial', snapshot: { partial: true }, label: 'Check now', action: 'check', enabled: true, description: /some machines skipped or failed.*fixture/ },
@@ -91,6 +92,14 @@ for (const revision of [null, 'a'.repeat(40)]) {
     else assert.match(rendered.description, test.description, context);
     assert.doesNotMatch(`${rendered.title} ${rendered.description} ${button.label}`, /revision unknown/, context);
   }
+}
+for (const extra of [
+  { locked: true }, { peerUnknown: true }, { check: { checked: clock, attempted: clock, available: false, error: 'offline' } },
+  { check: null }, { job: { state: 'unknown' } }, { job: { state: 'running', deadline: clock + 1000 } },
+  { job: { state: 'failed', finished: clock + 1 } }, { job: { state: 'complete', finished: clock + 1 } },
+]) {
+  const snapshot = { revision: 'a'.repeat(40), peerPending: true, check: { checked: clock, attempted: clock, available: false }, ...extra };
+  assert.equal(api.customizationRowState(snapshot, { now: clock }).action, 'check', 'deferred work cannot bypass check/failure/unknown/lock guards');
 }
 state.delete(api.CUSTOMIZATION_UPDATE_KEY);
 api.initCustomizationUpdates(owner, cx, 'custom-settings'); await flush();
@@ -267,7 +276,7 @@ assert.equal(render(freshApi, fresh).button.options.enabled, false);
 retire(fresh);
 const duringApi = await modules(), during = fixture();
 duringApi.initCustomizationUpdates(during.view, during.cx, 'custom-settings'); await during.settle();
-assert.equal(render(duringApi, during).description, 'Updating all machines…');
+assert.equal(render(duringApi, during).description, 'Updating…');
 clock += 100;
 const complete = { ...available, revision: 'b'.repeat(40), locked: false, job: { ...running.job, state: 'complete', finished: clock } };
 const current = { ...complete, check: { attempted: clock + 1, checked: clock + 1, available: false } };
@@ -284,6 +293,22 @@ finishedApi.initCustomizationUpdates(finished.view, finished.cx, 'custom-setting
 assert.equal(render(finishedApi, finished).title, 'herdr-app-custom bbbbbbb', 'replacement just after completion keeps the verified result');
 assert.match(render(finishedApi, finished).description, /^Up to date/);
 retire(finished);
+// Pending peer work is runtime projection, not availability; fresh module graphs
+// retain the normal current description but expose Update rather than confirmation.
+respond = () => reply({ ...current, peerPending: true });
+for (let i = 0; i < 2; i++) {
+  const code = await modules(), f = fixture();
+  code.initCustomizationUpdates(f.view, f.cx, 'custom-settings'); await f.settle();
+  const row = render(code, f);
+  assert.match(row.description, /^Up to date/); assert.doesNotMatch(row.description, /Log:|Details:|skipped or failed/);
+  assert.equal(row.button.label, 'Update'); assert.equal(row.button.options.enabled, true);
+  assert.equal(code.customizationUpdateAvailable(), false);
+  const saved = code.customizationUpdateSnapshot(), before = calls.length;
+  state.set(code.CUSTOMIZATION_UPDATE_KEY, { ...saved, ...(i ? { peerUnknown: true } : { locked: true }) });
+  row.button.callback(null, f.cx); await f.settle();
+  assert.equal(calls.length, before, 'stale catch-up buttons cannot bypass a new lock/unknown outcome');
+  state.set(code.CUSTOMIZATION_UPDATE_KEY, saved); retire(f);
+}
 for (const [jobState, description] of [['failed', /Update failed.*documented rollback/], ['partial', /some machines skipped or failed/], ['unknown', /outcome unknown/]]) {
   state.set(api.CUSTOMIZATION_UPDATE_KEY, running);
   respond = () => reply({ ...current, job: { ...current.job, state: jobState, error: 'fixture result' } });
@@ -324,6 +349,7 @@ assert.match(settings, /u\.app\.ready \|\| \(u\.core\.ready && !u\.core\.managed
 assert.equal((chromeSource.match(/updates\(\)\.app\.ready \|\| customizationUpdateAvailable\(\)/g) || []).length, 2, 'expanded Settings and compact More preserve native predicates');
 for (const command of ['app.check_updates', 'app.update', 'app.update_core', 'app.whats_new']) assert.ok(settings.includes(command));
 assert.equal((settings.match(/\.child\(customizationUpdateRow\(this, t\)\)/g) || []).length, 1);
+assert.match(fs.readFileSync('openspec/specs/customization-lifecycle/spec.md', 'utf8'), /its description shows Updating… with the unchanged disabled Updating… action until a result is known/, 'current reload contract retains the concise running description after finalization');
 const updateExplanation = settings.match(/\.child\("(Herdr [^"\n]*)"\)/)?.[1];
 assert.equal(updateExplanation, 'Herdr looks for both every hour and tells you in the corner. herdr-core runs your terminals, so they keep running through its updates.', 'Updates retains the exact short paragraph from before PR 20');
 assert.match(settings, /initUpdateCheckFeedback\(this, cx/);

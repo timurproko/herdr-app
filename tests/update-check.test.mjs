@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
-import { CUSTOMIZATION_LABEL, customizationRowState, updateProjection, updateAvailable, CUSTOMIZATION_UPDATE_KEY } from '../src/shared/customization-update-model.js';
+import { CUSTOMIZATION_LABEL, customizationRowState, updateProjection, updateAvailable, peerSkipKind, CUSTOMIZATION_UPDATE_KEY } from '../src/shared/customization-update-model.js';
 import { syncPreferences } from '../tools/runtime/preferences.mjs';
 import { deployAll } from '../tools/deploy-all.mjs';
 import { fixture, clean as cleanRunFixtures } from './support/deploy-all.mjs';
@@ -85,11 +85,55 @@ try {
       return { code: 0, stdout: `${target}\trefs/heads/main\n` };
     } });
   }
+  // Both consumers must agree on the same narrow policy, including old receipts.
+  for (const [peer, expected] of [
+    [{ action: 'skipped', reason: 'offline (offline)' }, 'complete'],
+    [{ action: 'skipped', reason: 'offline (unreachable)' }, 'complete'],
+    [{ action: 'skipped', reason: 'offline (disconnected)' }, 'complete'],
+    [{ action: 'skipped', reason: 'needs its own full deploy' }, 'complete'],
+    [{ action: 'skipped', reason: 'offline (unknown)' }, 'partial'],
+    [{ action: 'skipped', reason: 'dirty checkout' }, 'partial'],
+    [{ action: 'skipped', reason: 'node is missing or unavailable' }, 'partial'],
+    [{ action: 'skipped', reason: 'not selected' }, 'partial'],
+    [{ action: 'failed', reason: 'remote timed out; outcome unknown' }, 'partial'],
+    [{ action: 'failed', reason: 'deploy lock held' }, 'partial'],
+    [{ action: 'failed', reason: 'offline (unreachable)' }, 'partial'],
+    [{ action: 'skipped', reason: 'offline (offline)', outcome: 'unknown' }, 'partial'],
+    [{ action: 'unrecognized' }, 'partial'],
+    [{ machine: '(inventory)', action: 'failed', reason: 'cannot list machines' }, 'partial'],
+  ]) {
+    const result = { complete: true, results: [{ machine: 'local', action: 'deployed' }, { machine: 'pc2', ...peer }] };
+    assert.equal(worker.peerSkipKind(peer), peerSkipKind(peer));
+    assert.equal(worker.outcome(result).state, expected, JSON.stringify(peer));
+    assert.equal(updateProjection({ result }).partial, expected === 'partial');
+  }
+  // A previously completed Settings job can refine its obsolete partial label
+  // from only its matching final receipt. Locks/unknown/foreign receipts win.
+  {
+    const home = path.join(base, 'legacy'), p = worker.files(home);
+    const result = { token: 'old-run', at: 20, complete: true, results: [
+      { machine: 'local', action: 'deployed' }, { machine: 'pc2', action: 'skipped', reason: 'offline (unreachable)' },
+    ] };
+    worker.atomic(p.result, result);
+    const job = { token: 'old-run', state: 'partial', started: 10, finished: 20 };
+    worker.atomic(p.status, job);
+    assert.equal(worker.inspect(home).job.state, 'complete');
+    worker.atomic(p.lock, { token: 'old-run' });
+    assert.equal(worker.inspect(home).job.state, 'partial');
+    fs.unlinkSync(p.lock);
+    worker.atomic(p.status, { ...job, state: 'unknown', pid: process.pid });
+    assert.equal(worker.inspect(home).job.state, 'unknown');
+    worker.atomic(p.status, { ...job, token: 'foreign', started: 30 });
+    assert.equal(worker.inspect(home).job.state, 'partial');
+    worker.atomic(p.result, { ...result, complete: false });
+    worker.atomic(p.status, job);
+    assert.equal(worker.inspect(home).job.state, 'partial');
+  }
   const current = { revision: 'a'.repeat(40), check: { checked: clock, attempted: clock, available: false }, log: '/fixture/update.log' };
   assert.equal(customizationRowState(current, { busy: 'check' }).description, customizationRowState(current).description);
   assert.equal(customizationRowState(current, { busy: 'check' }).label, 'Checking…');
   row = customizationRowState({ ...current, job: { state: 'running', deadline: clock + 10000 } }, { now: clock });
-  assert.equal(row.description, 'Updating all machines…'); assert.equal(row.enabled, false);
+  assert.equal(row.description, 'Updating…'); assert.equal(row.enabled, false);
   row = customizationRowState({ ...current, job: { state: 'unknown' }, locked: true });
   assert.match(row.description, /outcome unknown.*fixture/); assert.equal(row.action, 'check');
   row = customizationRowState({ ...current, job: { state: 'failed', error: 'fixture conflict', finished: clock } });
@@ -98,22 +142,27 @@ try {
   row = customizationRowState({ ...current, job: { state: 'complete', finished: clock + 1 } }); assert.equal(row.description, 'Updated. Check now.');
   assert.equal(CUSTOMIZATION_LABEL, 'herdr-app-custom');
   // Runtime projection and sidecars are never preference export inputs.
-  fs.writeFileSync(path.join(home, 'shared.json'), JSON.stringify({ [CUSTOMIZATION_UPDATE_KEY]: { log: '/private', token: 'private', resume: { opening: 'private-opening', started: 1000 } }, 'custom.settings.navigation': { version: 1, dialogs: [{ overlay: 'private-dialog', section: 'updates' }] }, 'custom.git.relay-runtime': { owner:'private-lease', repositories:{ 'private/repo':{ revision:3,main:2 } } }, 'custom.git.relay-retry': 4, 'sidebar.width': 268 }));
+  fs.writeFileSync(path.join(home, 'shared.json'), JSON.stringify({ [CUSTOMIZATION_UPDATE_KEY]: { log: '/private', token: 'private', deferredPeers: ['private-peer'], resume: { opening: 'private-opening', started: 1000 } }, 'custom.settings.navigation': { version: 1, dialogs: [{ overlay: 'private-dialog', section: 'updates' }] }, 'custom.git.relay-runtime': { owner:'private-lease', repositories:{ 'private/repo':{ revision:3,main:2 } } }, 'custom.git.relay-retry': 4, 'sidebar.width': 268 }));
+  worker.atomic(p.result, { ...worker.read(p.result), deferredPeers: ['private-peer'] });
   syncPreferences('export', home, { hostname: 'fixture', isDesktopOpen: () => false });
   const exported = JSON.parse(fs.readFileSync(path.join(home, 'preferences/fixture.json')));
   assert.deepEqual(exported.shared, { 'sidebar.width': 268 });
   assert.ok(!JSON.stringify(exported).includes('private'));
-  // Full 2 x 4 matrix: use the real deploy:all result writer, worker inspection,
+  // Full 2 x 6 matrix: use the real deploy:all result writer, worker inspection,
   // successful follow-up Check, public projection and row renderer for both run
   // sources. Only Git's bare fixture origin and mocked installers/hc are used.
-  for (const source of ['settings', 'cli']) for (const state of ['success', 'partial', 'failed', 'unknown']) {
+  for (const source of ['settings', 'cli']) for (const state of ['success', 'offline', 'desktop', 'partial', 'failed', 'unknown']) {
     const f = fixture(), home = f.env.HERDR_APP_HOME, p = worker.files(home);
     const token = source === 'settings' ? 'matrix-settings-run' : null;
     const original = f.run;
     f.env = { ...f.env, HERDR_UPDATE_RUN_ID: token || '' };
     f.run = (program, args, options) => {
       if (program === 'git') return original(program, args, options);
-      if (program === 'hc') return { code: 0, stdout: JSON.stringify({ machines: state === 'partial' ? [{ name: 'offline-fixture', state: 'offline' }] : [] }) };
+      if (program === 'hc') {
+        if (args[0] === 'machine') return { code: 0, stdout: JSON.stringify({ machines: ['partial', 'offline', 'desktop'].includes(state) ? [{ name: 'pc2', state: state === 'partial' ? 'unknown' : state === 'offline' ? 'unreachable' : 'connected' }] : [] }) };
+        const stdout = 'HERDR_DEPLOY_ALL_RESULT=' + JSON.stringify({ action: 'skipped', reason: 'needs its own full deploy' });
+        return { code: 0, stdout: JSON.stringify({ code: 0, stdout: Buffer.from(stdout).toString('base64') }) };
+      }
       if (state === 'failed') return { code: 1, stdout: '', stderr: 'fixture refused install' };
       if (state === 'unknown') { assert.equal(options.timeout, 480000); return { code: null, timedOut: true, stdout: '', stderr: 'fixture installer timeout' }; }
       worker.atomic(p.manifest, { version: 2, id: 'custom', files: {} });
@@ -129,7 +178,7 @@ try {
       if (state === 'unknown') worker.atomic(p.lock, { token });
     }
     let snapshot = worker.inspect(home), projected = updateProjection(snapshot);
-    assert.equal(projected.job.state, state === 'success' ? 'complete' : state, title);
+    assert.equal(projected.job.state, ['success', 'offline', 'desktop'].includes(state) ? 'complete' : state, title);
     assert.equal(snapshot.details.kind, source === 'settings' ? 'log' : 'result', title);
     assert.equal(fs.existsSync(snapshot.details.path), true, title);
     if (['failed', 'unknown'].includes(state)) {
@@ -144,7 +193,7 @@ try {
     snapshot = worker.checkMain(home, { force: true, now: () => result.at + 100, run: () => ({ code: 0, stdout: `${main}\trefs/heads/main\n` }) });
     projected = updateProjection(snapshot);
     const row = customizationRowState(projected, { now: result.at + 100 });
-    if (state === 'success') { assert.match(row.description, /^Up to date\. Checked at \d\d:\d\d\.$/, title); assert.equal(row.action, 'check', title); }
+    if (['success', 'offline', 'desktop'].includes(state)) { assert.match(row.description, /^Up to date\. Checked at \d\d:\d\d\.$/, title); assert.equal(row.action, state === 'offline' ? 'launch' : 'check', title); }
     if (state === 'partial') { assert.match(row.description, /Desktop updated; some machines skipped or failed/, title); assert.equal(row.action, 'check', title); }
     if (state === 'failed') { assert.match(row.description, /Update failed: deployment failed: fixture refused install\. Recovery: documented rollback\./, title); assert.equal(row.action, 'launch', title); }
     if (state === 'unknown') {
@@ -160,7 +209,8 @@ try {
         worker.atomic(p.result, result);
       }
     }
-    if (state !== 'success') assert.ok(row.description.includes(snapshot.details.path), title);
+    if (!['success', 'offline', 'desktop'].includes(state)) assert.ok(row.description.includes(snapshot.details.path), title);
+    else { assert.equal(updateAvailable(projected), false, title); assert.ok(!row.description.includes(snapshot.details.path), title); }
     if (source === 'cli') {
       worker.atomic(p.status, { token: 'old-settings', state: 'complete', started: 0, finished: 1 });
       fs.writeFileSync(p.log, 'unrelated Settings output');
@@ -171,5 +221,50 @@ try {
     }
     console.log(`PASS: outcome matrix ${title}: ${row.description}`);
   }
-  console.log('PASS: bounded main-only checks, jittered persisted cache/lease/backoff semantics, installed evidence, all eight run-source/outcome cells and preference exclusion (fixtures).');
+  // Real deploy-all revisits the now-online peer even at the same main. No
+  // network/Core is contacted: only fixture Git plus mocked installers/transport.
+  {
+    const f = fixture(), original = f.run, home = f.env.HERDR_APP_HOME, p = worker.files(home);
+    let connected = false, dispatched = 0;
+    f.run = (program, args, options) => {
+      if (program === 'git') return original(program, args, options);
+      if (program === 'hc') {
+        if (args[0] === 'machine') return { code: 0, stdout: JSON.stringify({ machines: [{ name: 'pc2', state: connected ? 'connected' : 'unreachable' }] }) };
+        dispatched++;
+        return { code: 0, stdout: JSON.stringify({ code: 0, stdout: Buffer.from('HERDR_DEPLOY_ALL_RESULT=' + JSON.stringify({ action: 'deployed', commit: worker.read(p.result).desktop.commit })).toString('base64') }) };
+      }
+      worker.atomic(p.manifest, { version: 2, id: 'custom', files: {} });
+      return { code: 0, stdout: '{"changed":0,"removed":0,"backup":null}', stderr: '' };
+    };
+    deployAll([], f);
+    const first = worker.read(p.result), commit = first.desktop.commit;
+    const checked = () => worker.checkMain(home, { force: true, now: () => worker.read(p.result).at + 100, run: (program, args) => {
+      assert.equal(program, 'git'); assert.equal(args[0], 'ls-remote', 'checks never probe peers');
+      return { code: 0, stdout: `${commit}\trefs/heads/main\n` };
+    } });
+    let observed = checked(), row = customizationRowState(updateProjection(observed));
+    assert.equal(observed.peerPending, true); assert.equal(dispatched, 0);
+    assert.equal(row.label, 'Update'); assert.equal(row.current, false, 'no disabled recent-check feedback while catch-up is actionable');
+    assert.match(row.description, /^Up to date\./); assert.doesNotMatch(row.description, /Log:|Details:|skipped or failed/);
+    assert.equal(updateAvailable(observed), false);
+    assert.equal(worker.inspect(home).peerPending, true, 'disk facts survive a fresh inspection');
+    worker.atomic(p.lock, { token: 'another-update' });
+    assert.equal(customizationRowState(updateProjection(checked())).action, 'check'); fs.unlinkSync(p.lock);
+    const unknown = { ...first, results: [...first.results, { machine: 'pc3', action: 'failed', reason: 'remote timed out; outcome unknown' }] };
+    worker.atomic(p.result, unknown);
+    observed = checked(); assert.equal(observed.peerPending, true); assert.equal(observed.peerUnknown, true);
+    row = customizationRowState(updateProjection(observed));
+    assert.equal(row.action, 'check'); assert.match(row.description, /some machines skipped or failed/);
+    await worker.launch(home, { spawn() { assert.fail('pending peers cannot authorize replay of an unknown remote outcome'); } });
+    worker.atomic(p.result, first);
+    connected = true;
+    assert.equal(dispatched, 0, 'returning connectivity alone never deploys');
+    deployAll([], f); // the next ordinary explicit Update
+    assert.equal(dispatched, 1); assert.equal(worker.read(p.result).desktop.commit, commit);
+    assert.deepEqual(worker.read(p.result).deferredPeers, []);
+    observed = checked(); row = customizationRowState(updateProjection(observed));
+    assert.equal(observed.peerPending, false); assert.equal(row.label, 'Check now'); assert.equal(row.current, true);
+    assert.equal(updateAvailable(observed), false); assert.match(row.description, /^Up to date\./);
+  }
+  console.log('PASS: main-only checks, durable offline-to-online equal-main catch-up, quiet states, safety/provenance, twelve run-source/outcome cells and preference exclusion (fixtures).');
 } finally { fs.rmSync(base, { recursive: true, force: true }); cleanRunFixtures(); }
