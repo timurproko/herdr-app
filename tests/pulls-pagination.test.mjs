@@ -24,8 +24,8 @@ function find(node,id) {
   if (node.attrs?.id?.[0] === id) return node;
   return node.kids?.map(child=>find(child,id)).find(Boolean);
 }
-const page = (start,count,cursor,hasMore=true,labels=[]) => JSON.stringify({data:{repository:{pullRequests:{
-  totalCount:100,nodes:Array.from({length:count},(_,i)=>({number:start+i,title:`PR ${start+i}`,state:'OPEN',labels:{nodes:labels}})),
+const page = (start,count,cursor,hasMore=true,labels=[],rollup=[]) => JSON.stringify({data:{repository:{pullRequests:{
+  totalCount:100,nodes:Array.from({length:count},(_,i)=>({number:start+i,title:`PR ${start+i}`,state:'OPEN',labels:{nodes:labels},commits:{nodes:[{commit:{statusCheckRollup:{contexts:{nodes:rollup}}}}]}})),
   pageInfo:{endCursor:cursor,hasNextPage:hasMore},
 }}}});
 async function harness(state) {
@@ -215,26 +215,35 @@ for(const state of ['open','closed']) {
 
   // Label events use the same snapshot: both loaded tabs + older active PR,
   // never a request for each row. Bursts coalesce behind the in-flight read.
+  v.relatedKey=null;v.loadRelatedPull(h.cx);const staleTargeted=h.take();
   const labels=[{name:'🤖 Under review',color:'840479'}];
   for (const [cycle,assigned] of [[0,labels],[1,labels],[2,[]]]) {
+    const rollup=Array.from({length:cycle===1?11:10},(_,i)=>({name:`CI ${i}`,status:cycle===0&&i>=3?'IN_PROGRESS':'COMPLETED',conclusion:cycle!==1&&i>=3?'FAILURE':'SUCCESS'}));
     const before=h.calls.length;
     if(cycle!==1)v.queueWebhook({repository:'owner/repo',event:'pull_request',action:cycle===2?'unlabeled':'labeled'},h.cx);
     await h.tick();
     if(cycle===0){v.queueWebhook({repository:'owner/repo',event:'pull_request'},h.cx);v.queueWebhook({repository:'owner/repo',event:'pull_request'},h.cx);}
     const oldOpen=v.pulls.open,oldClosed=v.pulls.closed,oldPin=v.relatedPull,oldCursor=v.pages[state].cursor;
     assert.ok(find(find(h.render(),'active-pull'),'pr-908'));
-    await h.reply(page(200,10,'refresh-open',true,assigned));
+    await h.reply(page(200,10,'refresh-open',true,assigned,rollup));
     assert.equal(v.pulls.open,oldOpen);assert.equal(v.pulls.closed,oldClosed);assert.equal(v.relatedPull,oldPin);assert.equal(v.pages[state].cursor,oldCursor,'Webhook snapshots do not partially replace mounted pages');
     assert.ok(find(find(h.render(),'active-pull'),'pr-908'));
-    await h.reply(page(100,10,'refresh-closed',true,assigned));
+    await h.reply(page(100,10,'refresh-closed',true,assigned,rollup));
     const targeted=h.pending[0];assert.equal(targeted.args[0],'pr');assert.ok(targeted.args.at(-1).includes('labels'));
-    await h.reply(JSON.stringify({number:908,state:state==='open'?'OPEN':'MERGED',labels:assigned}));
+    await h.reply(JSON.stringify({number:908,state:state==='open'?'OPEN':'MERGED',labels:assigned,statusCheckRollup:rollup}));
     await h.reply('{}');
     assert.equal(v.pulls.open[0].labels.length,assigned.length);
     assert.equal(v.pulls.closed[0].labels.length,assigned.length);
     assert.equal(v.relatedPull.labels.length,assigned.length);
+    for(const pr of [v.pulls.open[0],v.pulls.closed[0],v.relatedPull]) {
+      assert.equal(pr.checks.label,cycle===1?'11/11':'3/10');
+      assert.equal(pr.checks.state,cycle===0?'pending':cycle===1?'success':'failure');
+    }
     assert.equal(h.calls.length-before,cycle===0?5:cycle===1?3:4,'Only loaded pages, older PR and counts are read; burst has one follow-up');
   }
+
+  staleTargeted.resolve({code:0,stdout:JSON.stringify({number:908,state:state==='open'?'OPEN':'MERGED',statusCheckRollup:[{name:'obsolete',status:'IN_PROGRESS'}]})});await h.tick();
+  assert.equal(v.relatedPull.checks.label,'3/10','An older targeted read cannot overwrite a newer event snapshot');
 
   // A pending page cannot restore a repository after focus/location changes.
   v.morePulls(state,h.cx);const old=h.take();

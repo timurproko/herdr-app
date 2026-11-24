@@ -7,6 +7,7 @@ const state={'custom.plugins':{crew:{enabled:true},git:{enabled:true}},'custom.s
 let selected={space:'coordinator',cwd:'/not-a-repository',on:null,terminal:'t1'},shown=true,failRepo=null,defer=false,pendingCI=false,bClosed=true;
 const waiting=[],settingsOpened=[],noticeModes={};
 let holdStatus=false,releaseStatus,failStatus=false,now=Date.now();
+let checkFacts=null;
 let assignedLabels=[{name:'🤖 Under review',color:'840479'}];
 const groups=[{id:'coordinator',tabs:[{id:'c'}]},{id:'fm-crew-home',tabs:[{id:'a'},{id:'b'},{id:'dup'}]}];
 const all=[{pane:'cp',tab:'c',terminal:'t1'},...['a','b','dup'].map((id,i)=>({pane:id+'p',tab:id,terminal:'t'+(i+2)}))];
@@ -19,7 +20,7 @@ const drain=async()=>{while(jobs.length)await Promise.all(jobs.splice(0));};
 const host={closeOverlay(){},openOverlay(){},nextCommand(){return new Promise(()=>{});},shared:k=>state[k],setShared:(k,v)=>{assert.equal(rendering,false,'No shared-state writes from fleet render');state[k]=v;},spaces:()=>groups,panes:()=>all,terminals:()=>list,machines:()=>[{name:null,layout:'ready'}],checking:()=>false,
   props:()=>null,layout:()=>({id:'panel',hidden:!shown,children:[{id:'panel-body',active:'changes'}]}),settings:()=>({zoom:1}),theme:()=>({}),window:()=>({platform:'windows'}),notify(){},run:(...args)=>focus.push(args),
   hc:async args=>{assert.equal(rendering,false,'Status reads yield out of render');if(failStatus)throw Error('Crew status unavailable');assert.match(args.at(-1),/status '--all' '--json'/);if(holdStatus)await new Promise(resolve=>releaseStatus=resolve);return {code:0,stdout:JSON.stringify({code:0,stdout:Buffer.from(JSON.stringify(status)).toString('base64'),stderr:'',timed_out:false})};},
-  exec:async(cmd,args)=>{assert.equal(rendering,false,'GitHub reads never start during render');assert.equal(cmd,'gh','Coordinator cwd must not be probed as Git');calls.push(args);if(defer)await new Promise(resolve=>waiting.push(resolve));const repo=args[args.indexOf('--repo')+1];if(repo===failRepo)return {code:1,stderr:'unreachable'};return {code:0,stdout:JSON.stringify({number:12,title:repo,url:`https://github.com/${repo}/pull/12`,state:repo==='example/b'&&bClosed?'CLOSED':'OPEN',author:{login:'fixture'},body:'',labels:assignedLabels,statusCheckRollup:pendingCI?[{name:'build',status:'IN_PROGRESS'}]:[]})};}};
+  exec:async(cmd,args)=>{assert.equal(rendering,false,'GitHub reads never start during render');assert.equal(cmd,'gh','Coordinator cwd must not be probed as Git');calls.push(args);const capturedChecks=checkFacts??(pendingCI?[{name:'build',status:'IN_PROGRESS'}]:[]);if(defer)await new Promise(resolve=>waiting.push(resolve));const repo=args[args.indexOf('--repo')+1];if(repo===failRepo)return {code:1,stderr:'unreachable'};return {code:0,stdout:JSON.stringify({number:12,title:repo,url:`https://github.com/${repo}/pull/12`,state:repo==='example/b'&&bClosed?'CLOSED':'OPEN',author:{login:'fixture'},body:'',labels:assignedLabels,statusCheckRollup:capturedChecks})};}};
 const storage=new Map(),writes=[];
 const localStorage={getItem:key=>storage.get(key)??null,setItem:(key,value)=>{storage.set(key,value);writes.push(key);}};
 const text=n=>typeof n==='string'?n:(n?.kids??[]).map(text).join(' ');
@@ -135,6 +136,21 @@ for(const action of ['unlabeled','labeled']) {
   await drain();assert.equal(calls.length,beforeLabels+2);
   for(const tab of ['open','closed'])assert.equal(panel.aggregate.rows(tab)[0].labels.length,assignedLabels.length);
 }
+// Completion arriving after a read captured old rollups must survive the
+// in-flight lease and publish a full count on its coalesced follow-up.
+const checkRuns=(ok,total)=>Array.from({length:total},(_,i)=>({name:`CI ${i}`,status:i<ok?'COMPLETED':'IN_PROGRESS',conclusion:i<ok?'SUCCESS':null}));
+checkFacts=checkRuns(3,10);websocket.onChange({repository:'example/a',event:'check_run'},cx);await drain();
+assert.equal(panel.aggregate.entries.get('example/a#12').pr.checks.label,'3/10');
+defer=true;websocket.onChange({repository:'example/a',event:'check_run'},cx);await tick();
+checkFacts=checkRuns(11,11);websocket.onChange({repository:'example/a',event:'workflow_run'},cx);
+waiting.shift()();await tick();
+assert.equal(panel.aggregate.entries.get('example/a#12').pr.checks.label,'3/10');
+waiting.shift()();await drain();assert.equal(panel.aggregate.entries.get('example/a#12').pr.checks.label,'11/11');
+defer=false;checkFacts=checkRuns(0,10);websocket.onChange({repository:'example/a',event:'check_suite'},cx);await drain();
+assert.equal(panel.aggregate.entries.get('example/a#12').pr.checks.state,'pending','Rerun replaces the prior completed count');
+checkFacts=checkRuns(3,10).map(c=>({...c,status:'COMPLETED',conclusion:c.conclusion??'FAILURE'}));
+websocket.onChange({repository:'example/a',event:'status'},cx);await drain();
+assert.equal(panel.aggregate.entries.get('example/a#12').pr.checks.label,'3/10');assert.equal(panel.aggregate.entries.get('example/a#12').pr.checks.state,'failure');checkFacts=null;
 defer=true;
 // Same-home refresh keeps each loaded row until its own replacement is ready;
 // even a partial failure cannot substitute Loading/empty for the known facts.

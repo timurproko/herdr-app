@@ -286,6 +286,18 @@ fixtures protect captured URLs, callbacks and measured motion. These prove rende
 constraints, not GPUI pixel layout, tooltip hit-testing or native animation appearance.
 No deployment or live label mutation is performed.
 
+## Pending Git checks fallback
+
+`tests/git-checks-fallback.test.mjs` drives the actual ordinary/coordinator snapshot,
+repository-batched reader and scheduler with fake clocks and GitHub transport. It
+covers pending 3/10 to 11/11 settlement and polling stop, preserved render values
+while in flight, hidden/offline cancellation, failure retention and 90/180-second
+backoff, the 15-minute rate-limit floor, event-only enrolled rows, existing-queue
+contention, authoritative empty rollups and late hidden/replaced-context replies.
+Pagination and fleet fixtures also assert complete pending/success/failure and
+rerun counts through in-flight event follow-ups. These do not measure live GitHub
+latency, enroll hooks or use native UI/credentials.
+
 ## Stable Git row geometry
 
 `node --experimental-vm-modules tests/git-row-geometry.test.mjs` resolves the actual

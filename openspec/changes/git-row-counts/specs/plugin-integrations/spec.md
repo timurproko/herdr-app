@@ -103,5 +103,5 @@ A shown, enabled Git panel with an enrolled repository and healthy relay SHALL r
 #### Scenario: Refresh timing and unavailable live updates
 - **WHEN** refresh behavior is documented or reported
 - **THEN** it distinguishes event receipt, request queue/read latency and GitHub data propagation from measured end-to-end latency
-- **AND** it states that absent enrollment, missing/offline relay, hidden or disabled panels, unverified coordinator context, missed events and failed reads can retain old counts until the applicable catch-up or manual refresh
+- **AND** it states how absent enrollment uses pending-only fallback, while relay outages, hidden or disabled panels, unverified coordinator context, missed events and failed reads can retain old counts until the applicable fallback, catch-up or manual refresh
 - **AND** it does not promise a bounded live-update delay when those prerequisites or successful authoritative reads are absent

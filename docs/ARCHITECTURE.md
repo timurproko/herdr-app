@@ -685,8 +685,14 @@ transport scope; stop/replacement invalidates queued callbacks. Hidden panels st
 do no PR/agent reads. GitHub events and successful reconnection invalidate every
 loaded page rather than just the pinned PR. Snapshot refreshes are single-flight with one coalesced dirty
 flag, retain expanded depth, renew cursors, and guard repository/machine/request
-identity before reads and writes. No periodic CI/list polling remains. The local
-branch/footer and agent-link discovery lifecycle is separate.
+identity before reads and writes. Enrolled repositories and settled rows are never
+polled. `pulls.js` owns a one-shot 45-second pending/unknown-check fallback for shown
+rows lacking setup/enrollment; one repository batch shares the ordinary pull lease
+or aggregate queue, with 90/180/360/720-second failure backoff and at least 15 minutes
+for rate limits. Visibility, offline machines, scope and fresh coordinator identity
+are rechecked at dispatch/publication. Full row facts/pagination remain event/manual
+reads; the fallback replaces checks only and retains displayed values during reads.
+The local branch/footer and agent-link discovery lifecycle is separate.
 
 The explicitly configured private Cloudflare Worker uses
 a hibernating Durable Object. It verifies raw-body GitHub HMAC, bounds input and

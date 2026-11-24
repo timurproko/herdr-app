@@ -149,9 +149,9 @@ Custom chrome. A short runtime lease selects one owner across duplicate mounts o
 windows; configuration changes and owner teardown invalidate stale callbacks.
 Hiding Git or switching repositories leaves transport active but starts no hidden
 PR/CI/agent-link reads. Disabling Git revokes ownership and closes the socket.
-Reconnection has bounded jittered transport backoff; there is **no periodic CI
-polling fallback**. Opening or reconnecting catches up using authoritative GitHub
-reads. Missing/invalid credentials block retries until an explicit retry or setup
+Reconnection has bounded jittered transport backoff. Enrolled repositories use
+**events only**, including during a relay outage. Opening or reconnecting catches
+up using authoritative GitHub reads. Missing/invalid credentials block retries until an explicit retry or setup
 revision, rather than retrying on every render.
 
 `check_run`, `check_suite`, `status`, `workflow_run`, `pull_request` and `push` events
@@ -166,6 +166,39 @@ are needed. The chrome-owned broker advances repository revisions for both label
 actions, and the panel consumes them through the same deferred, render-guarded
 refresh path. They do not count as main-merge hints for Custom update checks.
 Reconnect and manual Refresh also replace label facts, with no label polling.
+
+### Pending checks without enrollment
+
+While Git is shown, pending/in-progress checks (or an unknown rollup) in a repository
+without confirmed live enrollment get a **45-second fallback** (including unknown
+membership or missing setup). Confirmed enrolled repositories never poll. One batched
+GraphQL request per repository reads only those PRs' checks; known empty rollups and
+settled rows are not polled. Coordinator folded sections and the other Open/Closed
+tab are not eligible. Reads share the existing ordinary/aggregate queue; contention
+rechecks eligibility after one second rather than starting a parallel request.
+Prior row values stay on screen during reads. Hidden/disabled panels, changed
+contexts, unverified coordinators and disconnected remote machines stop new reads
+and reject late replies. Settling the final pending row stops the repository job.
+
+Failures retain last-good values and retry after **90s, 180s, 360s, then 720s** (the
+cap); a rate-limit refusal waits **at least 15 minutes**. A successful read restores
+the 45-second cadence only if a shown row still needs it. No hooks are enrolled,
+accounts switched or relay credentials changed by this fallback.
+
+Healthy fallback latency is up to 45 seconds **plus queue time and one GitHub read**
+(30-second command timeout). Event-covered rows start after native relay dispatch
+and a microtask, without a configured debounce: latency includes GitHub delivery and
+data propagation, any existing request, and the authoritative reads. Ordinary events
+publish after all loaded pages, an older linked PR when needed and counts; coordinator
+reads queue at most three targeted requests. There is no fixed end-to-end short SLA.
+These are source-derived timings, not measured live delivery evidence.
+
+A settled PR that starts a new rerun without an event is not automatically rediscovered
+by the fallback: it is deliberately not polled. Manual Refresh, opening or reconnect
+can discover it. Enrolled relay outages/missed events, GitHub eventual consistency,
+failed reads and offline machines can retain old values until an
+applicable catch-up. A displayed **Add this repo in Settings** does not imply a live
+event source; pending rows there use the fallback described above.
 
 The bottom info card uses **Set up Git in Settings** for missing global relay
 setup, even on non-Git agents. With setup ready, it uses **Add this repo in Settings** only for a resolved, unenrolled repository. Configured

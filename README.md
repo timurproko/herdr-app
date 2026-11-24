@@ -451,8 +451,13 @@ lists retain their depth and renewed cursors. Bursts coalesce, reconnect/open ca
 up, and stale replies cannot update another machine/repository. Hiding Git or
 selecting another repository stops hidden panel reads, not update notifications.
 Disabling Git or closing its chrome owner closes transport; another mounted owner
-can take over. Failed reads retain the last good status. There is **no
-periodic CI polling or polling fallback**; unconfigured/offline panels show a
+can take over. Failed reads retain the last good status. Enrolled repositories use **events only**, not periodic CI polling. Without live
+setup or enrollment, shown pending/unknown checks have a **45-second fallback**:
+one coalesced repository request reads just those PRs, retaining displayed values.
+It stops on settlement, hide/disable, stale context or remote-machine disconnect;
+failures back off 90/180/360/720 seconds, with at least 15 minutes for rate limits.
+Settled rows are never polled. See [refresh timing and stale-data limits](docs/GIT-WEBHOOKS.md#pending-checks-without-enrollment).
+Unconfigured/offline panels show a
 compact bottom info card **Set up Git in Settings** only when global setup is
 missing. With setup ready, an unenrolled Git repository instead shows **Add this repo in Settings**. Enabled repos and non-Git agents have
 no prompt; transport reconnects and agent switches do not flash setup messages.
@@ -707,7 +712,8 @@ transport allowance, its plain fallback has 15 seconds, and a shared 45-second
 in-flight lease prevents duplicate reads. The existing ten-second local refresh
 cadence and 30-second action freshness stay unchanged. No Crew records are written.
 The existing webhook connection refreshes only relevant linked repositories; unchanged PR/CI
-facts are not polled. Manual Refresh remains available. Repository errors stay in their sections. Confirmed unenrolled repositories share
+settled facts are not polled; shown pending checks without live enrollment use the
+same bounded fallback as ordinary Git. Manual Refresh remains available. Repository errors stay in their sections. Confirmed unenrolled repositories share
 one **Add this repo in Settings** card pinned below the scrolling list, so folding
 or scrolling cannot hide it. Its account-style dropdown opens upward with canonical
 repository names in inventory order, even for one choice, including repositories

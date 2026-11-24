@@ -55,6 +55,15 @@ Matrix: 280/320/360/480 logical px; 75/100/125/150/200% zoom; one/two-digit tota
 - GitHub data can lag completion events → exercise in-flight follow-ups and the pending unenrolled fallback, disclose stale conditions, and never promise an unconditional latency SLA.
 - The existing paginated rollup query requests the first 100 contexts → the requested one/two-digit coverage is within that bound; report larger-provider limitations separately rather than equating layout capacity with API completeness.
 
+## Implementation evidence
+
+- The shared row now reserves 68px for checks and 60px for whole task fractions; remaining width goes 9:1 to labels/review decisions. Relative time always uses the compact form, preserving full wording on hover. Label/review text clips without ellipsis-only paint.
+- The new fallback scheduler and batched checks reader live in `pulls.js`; ordinary and coordinator readers share their existing queue. Known enrollment disables fallback even on transport outage. Unknown enrollment uses fallback until live coverage is confirmed.
+- A stale older-PR targeted request could overwrite an event snapshot. The event refresh now invalidates that older lease; the pagination regression resolves an obsolete targeted read after the new count and requires the new value to survive.
+- Geometry passes 38,700 resolved-box comparisons plus horizontal clipping/line-height mutations. Fallback, pagination, fleet, webhook, pin, context-menu and sidebar focused fixtures pass. A read-only GraphQL request against this PR confirmed the actual batched query shape (no changes to PRs 40/41).
+- No other suite process was present in the Windows process inventory before `CI=true npm run test:ci` ran with a 1,800-second tool timeout. It completed with exit 1: a menu fixture lacked the newly imported helper exports and the sidebar fixture still expected verbose task text. Both fixtures were updated for the new contract, preserving their original interaction/icon checks and adding compact/full-tooltip assertions; focused reruns pass. The broad suite was not looped. Final-head hosted checks are the integration gate.
+- No deployment, native pixel inspection or live end-to-end event latency measurement was performed. Pending-only fallback cannot discover a new rerun on an already-settled unenrolled row until another ordinary refresh; enrolled transport outages still rely on reconnect/manual catch-up. The existing first-100-context list read remains a larger-rollup provider limit, distinct from text geometry.
+
 ## Migration Plan
 
 No persistent state/schema migration. After plan approval, ship source/tests/docs only through this draft PR. Run quick focused regressions for each outcome. Once no other suite is running, run `CI=true npm run test:ci` once with a long timeout, retain its log and report its real exit status or startup/load failure. Inspect final-head required-check status; a plan-only draft has no app test suites and must not be represented as green implementation CI. Never mark ready or merge. No installation/deployment is part of this task.

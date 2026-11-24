@@ -3,6 +3,79 @@
 export const PR_FIELDS = 'number,title,url,state,isDraft,author,createdAt,mergedAt,closedAt,body,statusCheckRollup,reviewDecision,headRefName,headRefOid,mergeable,labels';
 export const PR_PAGE_SIZE = 10;
 
+// Pending-only scheduler. One-shot wakeups always recheck the live snapshot;
+// reads share the panel queue and never poll settled/event-covered rows.
+export const CHECKS_INTERVAL = 45000;
+export const needsChecks = pr => Boolean(pr && (pr.checks?.pending > 0 || (!pr.checks && pr.checksKnown !== true)));
+export class ChecksFallback {
+  constructor({snapshot,read,now=()=>Date.now()}) {this.snapshot=snapshot;this.read=read;this.now=now;this.jobs=new Map();}
+  stop() {this.jobs.clear();this.wakeup=null;}
+  eligible() {
+    const state=this.snapshot();
+    return state?.enabled ? {...state,repositories:state.repositories.map(repo=>({...repo,rows:repo.rows.filter(needsChecks)})).filter(repo=>repo.rows.length && repo.uncovered)} : null;
+  }
+  sync(cx) {
+    const state=this.eligible();
+    if(!state) {this.stop();return;}
+    const wanted=new Set(state.repositories.map(repo=>repo.name));
+    for(const [name,job] of this.jobs)if(job.scope!==state.scope || !wanted.has(name))this.jobs.delete(name);
+    for(const repo of state.repositories)if(!this.jobs.has(repo.name))this.jobs.set(repo.name,{scope:state.scope,due:this.now()+CHECKS_INTERVAL,failures:0});
+    this.arm(cx);
+  }
+  arm(cx) {
+    const due=Math.min(Infinity,...[...this.jobs.values()].filter(j=>!j.running).map(j=>j.due));
+    if(!Number.isFinite(due) || (this.wakeup && this.wakeup.due<=due))return;
+    const wakeup=this.wakeup={due};
+    cx.timer?.after(Math.max(0,due-this.now()),view=>{
+      if(this.wakeup!==wakeup)return;
+      this.wakeup=null;
+      view.spawn(async view=>{await Promise.resolve();await this.run(view);});
+    });
+  }
+  async run(cx) {
+    const state=this.eligible();if(!state) {this.stop();return;}
+    for(const repo of state.repositories) {
+      const job=this.jobs.get(repo.name);
+      if(!job || job.running || job.due>this.now())continue;
+      const current=()=>this.jobs.get(repo.name)===job && this.eligible()?.scope===job.scope
+        && this.eligible()?.repositories.some(r=>r.name===repo.name && r.uncovered && r.rows.length);
+      if(!current())continue;
+      job.running=true;
+      let result;
+      try {result=await this.read(repo,cx,current);}catch {result={failed:true};}
+      if(this.jobs.get(repo.name)!==job)continue;
+      job.running=false;
+      if(result?.busy)job.due=this.now()+1000;
+      else if(result?.failed) {
+        job.failures++;
+        job.due=this.now()+Math.max(result.rateLimited?900000:0,Math.min(720000,CHECKS_INTERVAL*2**Math.min(job.failures,4)));
+      } else {job.failures=0;job.due=this.now()+CHECKS_INTERVAL;}
+    }
+    this.sync(cx);
+  }
+}
+
+// One request per repository, only the currently shown pending PRs. Reuse the
+// same newest-workflow facts as list reads; never replace unrelated row facts.
+export function pendingChecksArgs(numbers, nameWithOwner) {
+  const [owner,name]=nameWithOwner.split('/');
+  if(!numbers.length || numbers.some(n=>!Number.isSafeInteger(n)||n<1))throw Error('Invalid checks selection');
+  const fields=numbers.map(n=>`pr${n}:pullRequest(number:${n}){number commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){pageInfo{hasNextPage} nodes{... on CheckRun{name status conclusion startedAt completedAt detailsUrl checkSuite{workflowRun{workflow{name}}}} ... on StatusContext{context state createdAt}}}}}}}}`).join(' ');
+  return ['api','graphql','-f',`query=query($owner:String!,$name:String!){repository(owner:$owner,name:$name){${fields}}}`,'-F',`owner=${owner}`,'-F',`name=${name}`];
+}
+export function parsePendingChecks(stdout,numbers) {
+  const data=JSON.parse(stdout);
+  if(data.errors?.length)throw Error(data.errors.map(e=>e.message).join('; '));
+  return new Map(numbers.map(number=>{
+    const pr=data.data?.repository?.[`pr${number}`];
+    if(pr?.number!==number || !Array.isArray(pr.commits?.nodes))throw Error('Incomplete checks response');
+    const rollup=pr.commits.nodes[0]?.commit?.statusCheckRollup;
+    if(rollup?.contexts?.pageInfo?.hasNextPage)throw Error('Incomplete checks contexts');
+    const contexts=rollup?.contexts?.nodes??[];
+    return [number,checks(contexts.map(c=>({...c,workflowName:c.checkSuite?.workflowRun?.workflow?.name??null})))];
+  }));
+}
+
 export function pullListArgs(state, nameWithOwner, after = null) {
   const [owner, name] = String(nameWithOwner).split('/');
   const states = state === 'closed' ? '[CLOSED,MERGED]' : '[OPEN]';

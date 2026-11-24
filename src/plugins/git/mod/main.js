@@ -8,6 +8,7 @@ import { AgentLinks } from './agent-links.js';
 import { AggregatePulls } from './aggregate.js';
 import { GitWebhooks } from './webhooks.js';
 import { GitNotices } from './notices.js';
+import * as host from './host.js';
 import { EnrollmentPicker } from './enrollment-picker.js';
 import { labelColors } from './label-colors.js';
 import { PinSwap, PIN_SWAP_MS } from './pin-swap.js';
@@ -17,7 +18,7 @@ import { headerTool, contextMenu, panelMessage } from './panel-kit.js';
 import { changePanel } from './panel-state.js';
 import { sidebarPanelEnabled } from './plugins.js';
 import { sidebarTitle } from './sidebar-title.js';
-import { pullListArgs, REPO_ARGS, countArgs, parseCounts, parsePullPage, agentPullNumber, pullRow, pullError, PR_FIELDS, PR_PAGE_SIZE } from './pulls.js';
+import { pullListArgs, REPO_ARGS, countArgs, parseCounts, parsePullPage, agentPullNumber, pullRow, pullError, PR_FIELDS, PR_PAGE_SIZE, pendingChecksArgs, parsePendingChecks, ChecksFallback } from './pulls.js';
 
 const VIEWS = ['open', 'closed'];
 const VIEW_KEY = 'custom.git.view';
@@ -63,11 +64,13 @@ export default class Changes extends View {
   }
 
   close() {
+    this.checksFallback?.stop();
     this.enrollmentPicker?.stop();this.aggregate?.stop();this.webhooks?.stop();this.notices?.stop();
     this.rootRequest=null;this.pullRequest=null;this.relatedRequest=null;
   }
 
   resetRepository() {
+    this.checksFallback?.stop();this.fallbackRequest=null;
     this.ciRevision=(this.ciRevision??0)+1;
     // Native size callbacks fire on size changes, not data resets. Keep the
     // controller's geometry for these same element IDs across repository loads.
@@ -253,7 +256,7 @@ export default class Changes extends View {
   // This one targeted lookup does not load earlier list pages or alter cursors.
   loadRelatedPull(cx) {
     const number = this.agentPull ?? location().pullNumber;
-    if (!this.repo || !number || !this.shown()) return;
+    if (!this.repo || !number || !this.shown() || this.fallbackRequest) return;
     const scope = JSON.stringify([this.context,this.repo.name,number]);
     if (this.relatedKey === scope) return;
     this.relatedKey = scope; this.relatedRequest = null;
@@ -272,8 +275,60 @@ export default class Changes extends View {
         if (!current() || result.code !== 0) return;
         const pr = JSON.parse(result.stdout);
         if (pr.number === number) {this.relatedPull = pullRow(pr,repo.owner);this.ciRevision=(this.ciRevision??0)+1;}
-      } catch {} finally { await Promise.resolve(); cx.notify(); }
+      } catch {} finally { if(this.relatedRequest===request)this.relatedRequest=null;await Promise.resolve();cx.notify(); }
     });
+  }
+
+  fallbackSnapshot() {
+    const aggregate=this.aggregate,task=this.context?.startsWith('tasks:');
+    const on=task?aggregate?.context?.machine:this.on;
+    let online=!on;
+    if(on)try {online=host.machines().some(m=>m.name===on && m.state==='connected');}catch {}
+    const enabled=this.shown() && online && (task
+      ? !aggregate?.context?.stale && aggregate?.currentContext()?.scope===aggregate?.context?.scope
+      : key()===this.context && Boolean(this.root && this.repo));
+    const uncovered=name=>Boolean(this.notices?.active && this.notices.members?.get(name.toLowerCase())!==true);
+    if(task) return {enabled,scope:JSON.stringify([this.context,on,this.view]),repositories:(aggregate?.repositories()??[])
+      .filter(name=>!this.foldedRepositories?.has(name)).map(name=>({name,uncovered:uncovered(name),rows:aggregate.rows(this.view).filter(pr=>pr.repo===name)}))};
+    const selection=this.pullSelection();
+    return {enabled,scope:JSON.stringify([this.context,on,this.view,this.repo?.name]),repositories:this.repo?[{name:this.repo.name,uncovered:uncovered(this.repo.name),rows:[...selection.liveRows,...(selection.active?[selection.active]:[])]}]:[]};
+  }
+
+  syncChecksFallback(cx) {
+    this.checksFallback ??= new ChecksFallback({snapshot:()=>this.fallbackSnapshot(),read:(repo,view,current)=>this.readPendingChecks(repo,view,current)});
+    this.checksFallback.sync(cx);
+  }
+
+  async readPendingChecks(repo,cx,current) {
+    const aggregate=this.context?.startsWith('tasks:')?this.aggregate:null;
+    if(this.pullLoading || this.relatedRequest || aggregate?.busy)return {busy:true};
+    const numbers=[...new Set(repo.rows.map(pr=>pr.number))],root=this.root,on=aggregate?aggregate.context.machine:this.on;
+    const request=this.fallbackRequest={};
+    if(aggregate)aggregate.fallbackBusy=true;
+    else {this.pullLoading=true;this.pullRequest=request;}
+    try {
+      if(!current())return;
+      const result=await exec('gh',pendingChecksArgs(numbers,repo.name),{...(root?{cwd:root}:{}),on,timeout:30000});
+      if(!current())return;
+      if(result.code!==0 || result.timed_out || result.timedOut || result.signal)throw Error(pullError(result));
+      const updates=parsePendingChecks(result.stdout,numbers);
+      const update=pr=>updates.has(pr?.number)?{...pr,checks:updates.get(pr.number),checksKnown:true}:pr;
+      if(aggregate) {
+        for(const entry of aggregate.entries.values())if(entry.link.repo===repo.name && entry.pr)entry.pr=update(entry.pr);
+      } else {
+        for(const state of VIEWS)if(this.pulls[state])this.pulls[state]=this.pulls[state].map(update);
+        this.relatedPull=update(this.relatedPull);
+      }
+      this.ciRevision=(this.ciRevision??0)+1;
+      cx.notify();
+      return {failed:false};
+    } catch(error) {
+      return {failed:true,rateLimited:/rate.?limit|secondary limit|abuse|429/i.test(String(error))};
+    } finally {
+      if(this.fallbackRequest===request)this.fallbackRequest=null;
+      if(aggregate) {aggregate.fallbackBusy=false;aggregate.pump(cx);}
+      else if(this.pullRequest===request) {this.pullLoading=false;this.flushWebhook(cx);}
+    }
   }
 
   syncTaskWebhooks(cx) {
@@ -314,6 +369,9 @@ export default class Changes extends View {
   flushWebhook(cx) {
     if (!this.webhookDirty || !this.repo || !this.root || this.pullLoading || !this.shown() || key() !== this.context) return;
     this.webhookDirty = false;
+    // The event snapshot owns the older pin too. An earlier targeted read must
+    // not overwrite its newer count after this refresh has published.
+    this.relatedRequest=null;
     const root=this.root,on=this.on,repo=this.repo,context=this.context;
     const request=this.pullRequest={};this.pullLoading=true;
     const current=()=>this.pullRequest===request && this.context===context && key()===context && this.repo===repo && this.shown();
@@ -761,6 +819,7 @@ export default class Changes extends View {
     this.enrollmentPicker ??= new EnrollmentPicker({focus:this.enrollmentFocus,current:()=>this.enrollmentPresentation(),
       onChoose:repository=>openSettings({section:'plugins',plugin:'git',pluginSection:'repository',pluginSearch:repository})});
     const enrollment=this.enrollmentPicker.render(t,setup?null:this.enrollmentPresentation());
+    this.syncChecksFallback(cx);
     const sweep=!aggregate.context.stale && this.shown() && this.ciSweep?.context===this.context ? this.ciSweep : null;
     return v_flex().id('changes').relative().size_full().min_h(0).rounded(8).overflow_hidden().bg(t.background).border_1().border_color(t.input).text_color(t.foreground).text_size(U.font)
       .child(h_flex().id('changes-header').relative().bg(t.surface).h(U.section).flex_none().pl(4).pr(U.gutter).gap(U.gap).items_center().border_b(1).border_color(t.border)
@@ -826,6 +885,7 @@ export default class Changes extends View {
     this.notices??=new GitNotices();
     const notice=this.notices.sync(cx,{enabled:this.shown(),repository:this.repo?.name,
       pending:Boolean(this.loading||(this.root&&!this.repo&&!this.pullError))});
+    this.syncChecksFallback(cx);
     const t = theme(), busy = Boolean(this.loading || this.pullLoading);
     const pullsUrl = this.repo?.url ? `${this.repo.url.replace(/\/$/, '')}/pulls` : null;
     const canOpenPulls = Boolean(this.root && pullsUrl), linkScope = this.context, repoName = this.repo?.name;

@@ -64,6 +64,9 @@ for(const mode of ['ordinary','pinned','scrolling','coordinator','ghost'])for(co
     for(const line of geometry.textLines.filter(l=>l.ancestors.includes(row)))assert.notEqual(line.text.trim(),'…');
     const task=find(row,`${prefix}pr-tasks-${id}`);
     if(task)assert.match(words(task).join(''),/^\d+\/\d+$/,'Tasks are whole compact fractions');
+    for(const line of geometry.textLines.filter(l=>task && l.ancestors.includes(task)))for(const ancestor of line.ancestors) {
+      const box=geometry.get(ancestor);assert.ok(line.x+line.naturalWidth<=box.x+box.width+1e-6,'Compact task fraction fits whole');
+    }
     const time=find(row,`${prefix}pr-time-${id}`);
     if(words(time).join(''))assert.match(words(time).join(''),/^\d+(?:s|m|h|d|mo|y) ago$/);
     const snapshot=Object.fromEntries(anchors.map(kind=>{
@@ -83,7 +86,9 @@ for(const mode of ['ordinary','pinned','scrolling','coordinator','ghost'])for(co
       if(!group)assert.equal(words(slot).join(''),'','No visible missing-data placeholder');
       if(group)assert.ok(group.attrs.tooltip?.[0],'Clipped content keeps its full value');
     }
-    const meta=find(row,`${prefix}pr-meta-${id}`),present=meta.kids.filter(n=>n.attrs.id).filter(n=>n.kids.length).length;
+    const meta=find(row,`${prefix}pr-meta-${id}`);
+    assert.ok(nodes(meta).every(n=>!n.attrs.truncate),'No metadata cell can paint a lone ellipsis');
+    const present=meta.kids.filter(n=>n.attrs.id).filter(n=>n.kids.length).length;
     assert.equal(meta.kids.filter(n=>!n.attrs.id&&!n.attrs.invisible).length,Math.max(0,present-1));
     if(pr.checks){const icon=geometry.get(find(row,`${prefix}pr-check-icon-${id}`));assert.equal(icon.width,12*zoom);assert.equal(icon.height,12*zoom);}
     assert.ok(nodes(row).every(n=>n.attrs.flex_wrap===undefined));
@@ -131,4 +136,4 @@ const counted=panel.pullRow(t,facts.pullRow({...source,statusCheckRollup:Array.f
 assertChecksFit(rowGeometry(counted,280),counted);
 find(counted,'pr-slot-checks-17').w(18);
 assert.throws(()=>assertChecksFit(rowGeometry(counted,280),counted),/Full count .* must fit/);
-console.log(`PASS ${comparisons} resolved-box comparisons: actual ordinary/pin/list/coordinator/ghost rows, optional agent/tasks/checks/labels/review/author/conflict, three widths, five zooms, inert blank cells, font-relative numeric versus absolute px line heights, text containment and 60 clipping mutations (synthetic, not GPUI pixels)`);
+console.log(`PASS ${comparisons} resolved-box comparisons: actual ordinary/pin/list/coordinator/ghost rows, optional agent/tasks/checks/labels/review/author/conflict, four widths, five zooms, inert blank cells, font-relative numeric versus absolute px line heights, text containment and 60 clipping mutations (synthetic, not GPUI pixels)`);

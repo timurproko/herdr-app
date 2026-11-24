@@ -1,4 +1,5 @@
-// Explicit task context, never a fake Git working directory. No CI polling.
+// Explicit task context, never a fake Git working directory. The panel's bounded
+// pending-check fallback shares this queue; settled/enrolled rows are event-only.
 import { exec, run } from './host.js';
 import { pluginPullContext, pluginEvent, sidebarPanelEnabled } from './plugins.js';
 import { location } from './location.js';
@@ -36,7 +37,7 @@ export class AggregatePulls {
     return true;
   }
   stop() {this.serial++;this.context=null;this.entries.clear();this.pending.clear();}
-  get busy() {return this.pending.size>0;}
+  get busy() {return this.pending.size>0 || Boolean(this.fallbackBusy);}
   eligible(entry, now = Date.now()) {
     if(!entry.pr)return false;
     if(['open','draft'].includes(entry.pr.state) || entry.link.targets.some(t=>!t.historical && typeof t.terminal==='string' && t.terminal))return true;
@@ -65,6 +66,7 @@ export class AggregatePulls {
   invalidate(repository=null) {for(const e of this.entries.values())if(!repository || e.link.repo===repository.toLowerCase())e.dirty=true;}
   refresh(cx) {pluginEvent('workspace.context.refresh',{cx,force:true});this.invalidate();this.pump(cx);}
   pump(cx) {
+    if(this.fallbackBusy)return;
     if(!this.context || this.context.stale || !this.shown() || this.currentContext()?.scope!==this.context.scope)return;
     const context=this.context,serial=this.serial;
     for(const [key,entry]of this.entries) {
