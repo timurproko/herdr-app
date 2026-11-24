@@ -355,8 +355,21 @@ historical rows and their errors cannot leave empty sections. Cold historical-on
 failures are a Closed history-load notice, not invented PR state. Execution results
 retain exit/signal/timeout facts: local spawn failures, abnormal Windows NTSTATUS
 and process timeouts offer Refresh to retry, not an automatic retry promise or a
-GitHub outage claim. Missing-resource/404 replies say not found, grouping repository/PR numbers without
-an account probe or a login-problem claim. Real permission/authentication refusals
+GitHub outage claim. Authoritative targeted task-PR absence (exact PR resource
+resolution or HTTP 404) clears that PR's facts and leaves no row, count, notice,
+hint, tooltip or empty repository header, for both live and historical sources.
+A module-session canonical repository/number cache survives entry resets, context
+changes and panel recreation. Historical-only misses remain suppressed for the
+session; live misses can recheck after five minutes on the existing shown-panel
+lifecycle, with unchanged concurrency/visibility guards and no new timer. A changed
+recorded URL reads immediately; no separate head discovery is introduced. Successful
+rechecks restore ordinary facts; real failures leave the absence cache and use the
+normal notice path. A separate session set deduplicates one sanitized customization
+console/log line per identity, even across successful or repeatedly missing rechecks.
+Uncertain repository resolution and arbitrary local not-found text remain errors,
+not cached PR absence. Explicit refusals and connectivity failures take precedence
+over quoted missing-resource text. No missing-PR account probe or login claim is
+introduced. Real permission/authentication refusals
 identify the repository and effective GitHub account (or honest unknown identity),
 with one identity read reused per repository/refresh and discarded afterward.
 Ordinary failed responses revalidate captured request/repository identity before

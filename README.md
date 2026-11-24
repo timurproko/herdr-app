@@ -752,6 +752,14 @@ undated historical closed PRs are excluded. Live-task PRs keep normal eligibilit
 regardless of age. Shared PRs are fetched/displayed/counted once, and a live task
 wins the robot. No-PR reviewer/scout tasks add nothing. Finishing the last worker
 does not discard the verified coordinator home's PR facts.
+A recorded task PR that GitHub confirms does not exist contributes nothing to
+Open or Closed, even for a live task: no row, notice, neutral hint or tooltip.
+The customization log gets one sanitized repository/number line per session.
+Historical misses stay cached for that session; live-task misses can be rechecked
+after five minutes by the existing shown-panel refresh lifecycle, or immediately
+for a changed recorded URL. There is no new timer or head-discovery request.
+Real permission/authentication refusals still identify the repository and account;
+network errors, rate limits and timeouts keep their existing notices.
 The panel keeps its normal Git title and controls, without an extra task heading
 or a generic incomplete-list notice. PR rows are grouped under repository headers
 using the same fold chevron and row style as Spaces machine headers. Click a

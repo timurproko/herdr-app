@@ -27,14 +27,17 @@ for(let n=1;n<=100;n++){
  prs.set(`${repo}#${n}`,{number:n,url,title:`Fixture ${n}`,state:n%2?'MERGED':'CLOSED',mergedAt:n%2?new Date(now-3600000).toISOString():null,closedAt:new Date(now-3600000).toISOString(),author:{login:'fixture'},body:'- [x] delivered',labels:n===1?Array.from({length:100},(_,i)=>({name:`label-${i}`,color:'d73a4a'})):[],statusCheckRollup:Array.from({length:11},(_,i)=>({name:`CI ${i}`,status:'COMPLETED',conclusion:'SUCCESS'}))});
 }
 context.links.push({url:'https://github.com/timurproko/crew/pull/36',task:'unread-history',terminal:null,historical:true});
+context.links.push({url:'https://github.com/timurproko/crew/pull/37',task:'retryable-history',terminal:null,historical:true});
 const cx={focus_handle(){assert.equal(rendering,false);return {};},notify(){assert.equal(rendering,false,'notify must yield out of render');},stop_propagation(){},timer:{every(){},after(){}},spawn(fn){jobs.push(fn(cx));}};
 const drain=async()=>{while(jobs.length)await Promise.all(jobs.splice(0));};
 const host={props:()=>null,theme:()=>theme,settings:()=>({zoom}),window:()=>({platform:'windows'}),layout:()=>({id:'panel',children:[{id:'panel-body',active:'changes'}]}),checking:()=>false,appHome:()=>'/fixture',shared:()=>null,setShared(){assert.equal(rendering,false);},notify(){assert.equal(rendering,false);},closeOverlay(){},openOverlay(){},nextCommand(){},run(){},
  exec:(command,args)=>{if(syncFailure)throw Error('fixture synchronous transport failure');assert.equal(rendering,false,'reads must yield out of render');reads++;
-  if(command==='node'&&args[0]==='-e')assert.fail('Not-found history must not start an account-diagnosis child');
+  if(command==='node'&&args[0]==='-e')assert.fail('Missing PRs and timeouts must not start an account-diagnosis child');
   if(command==='node')return Promise.resolve({code:0,stdout:JSON.stringify({setup:'ready',status:'ready'})});
   assert.equal(command,'gh');const key=`${args[args.indexOf('--repo')+1]}#${args[2]}`;
-  return Promise.resolve(prs.has(key)?{code:0,stdout:JSON.stringify(prs.get(key))}:{code:1,stderr:'GraphQL: Could not resolve to a PullRequest with the number of 36.'});
+  return Promise.resolve(prs.has(key)?{code:0,stdout:JSON.stringify(prs.get(key))}:key==='timurproko/crew#36'
+   ?{code:1,stderr:'GraphQL: Could not resolve to a PullRequest with the number of 36.'}
+   :{code:1,stderr:'execution timed out after 30000ms'});
  }};
 const {Main}=await loadMod({mod:'custom-changes',host,globals:{window:{paint_path:budgetElement},console:{...console,error:(...args)=>errors.push(args.join(' '))},localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>{assert.equal(rendering,false);storage.set(k,v);}}},modules:{
  'main.js':process.env.GIT_PANEL_MAIN??'src/plugins/git/mod/main.js','aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js','notices.js':process.env.GIT_PANEL_NOTICES??'src/plugins/git/mod/notices.js','label-colors.js':'src/plugins/git/mod/label-colors.js','enrollment-picker.js':'src/plugins/git/mod/enrollment-picker.js','choice-menu.js':'src/ui/choice-menu.js','ui.js':'src/ui/ui.js',
@@ -93,7 +96,9 @@ assert.ok(!nodes(cached).some(n=>String(n.attrs.id?.[0]).includes('-probe-time-f
 scrollTask(panel,cached,cx,0);tree=render();
 
 assert.ok(find(tree,'task-error-timurproko/crew'));assert.match(words(tree).join(' '),/Task PR history/);
-assert.equal(words(find(tree,'task-error-timurproko/crew')).join(' '),'Task PR history: timurproko/crew #36 not found');
+assert.equal(words(find(tree,'task-error-timurproko/crew')).join(' '),'Task PR history: Could not read pull requests; refresh to retry');
+assert.doesNotMatch(words(tree).join(' '),/#36|not found/,'Confirmed missing history has no notice, hint or tooltip');
+assert.equal(find(tree,'pr-timurproko/crew#36'),undefined);assert.equal(panel.aggregate.entries.get('timurproko/crew#36').error,null);
 assert.doesNotMatch(words(tree).join(' '),/GitHub account/);
 assert.ok(find(tree,'pr-agent-timurproko/crew#3'));assert.equal(find(tree,'pr-agent-timurproko/crew#1'),undefined);
 assert.equal(errors.length,0,'The screenshot-shaped fixture does not reproduce the native interruption');
@@ -120,4 +125,4 @@ assert.ok(errors.some(line=>line.includes('previous render did not complete')&&l
 // Section notices have their own attribution boundary too.
 assert.throws(()=>panel.renderPart('repository-notice:timurproko/crew',()=>{throw Error('notice fixture exception');}),/notice fixture exception/);
 assert.ok(errors.some(line=>line.includes('repository-notice:timurproko/crew')&&line.includes('notice fixture exception')));
-assert.ok(reads>=101);console.log(`Peak fixed render operations: ${peakOperations} / 10000`);console.log('PASS windowed 100-row Closed coordinator scrolling, probe cache, real aggregate/notices, inline-spawn guards and component/error diagnostics');
+assert.ok(reads>=102);console.log(`Peak fixed render operations: ${peakOperations} / 10000`);console.log('PASS windowed 100-row Closed coordinator scrolling, probe cache, real aggregate/notices, inline-spawn guards and component/error diagnostics');

@@ -34,7 +34,7 @@ for(const failure of [new Error('failed to spawn gh: EAGAIN'),{code:3221225794,s
  else{assert.doesNotMatch(text(errors(tree)[0]),/unreachable/);assert.match(text(errors(tree)[0]),failure.stderr?.includes('Repository')?/not found/:/refresh to retry/);}
 }
 // Distinct failures yield one truthful summary; partial recovery keeps the rest.
-failures.set(key(5),{code:3221225794,stderr:''});failures.set(key(6),{code:1,stderr:'HTTP 404: Not Found'});failures.set(key(7),{code:1,stderr:'Could not resolve host: api.github.com'});await refresh();
+failures.set(key(5),{code:3221225794,stderr:''});failures.set(key(6),{code:1,stderr:'GraphQL: Could not resolve to a Repository with the name example/crew'});failures.set(key(7),{code:1,stderr:'Could not resolve host: api.github.com'});await refresh();
 tree=render('closed');assert.equal(errors(tree).length,1);for(const part of ['local command','example/crew #6 not found','GitHub connection'])assert.ok(text(errors(tree)[0]).includes(part));
 failures.delete(key(5));await refresh();tree=render('closed');assert.equal(errors(tree).length,1);assert.doesNotMatch(text(errors(tree)[0]),/local command/);
 failures.clear();await refresh();assert.equal(errors(render('closed')).length,0);
@@ -50,7 +50,7 @@ context.links.unshift(live);failures.clear();await refresh();panel.render(cx);aw
 // Separate repository: same PR number, independent Open failure; healthy rows
 // and all other repository facts survive while notices remain repository scoped.
 context.links.push({url:url(5,other),task:'other',terminal:'other-worker',historical:false});facts.set(key(5,other),{number:5,url:url(5,other),state:'OPEN'});panel.render(cx);await drain();failures.set(key(5,other),new Error('execution timed out'));
-for(const n of [5,6,7])failures.set(key(n),{code:1,stderr:'HTTP 404: Not Found'});await refresh();
+for(const n of [5,6,7])failures.set(key(n),{code:1,stderr:'GraphQL: Could not resolve to a Repository with the name example/crew'});await refresh();
 tree=render('open');assert.equal(errors(tree).length,1);assert.ok(find(tree,`task-error-${other}`));checkRows(tree,[8]);checkRows(tree,[5],other);
 tree=render('closed');assert.equal(errors(tree).length,1);assert.ok(find(tree,`task-error-${repo}`));checkRows(tree,[5,6,7]);assert.equal(find(tree,`task-repo-${other}`),undefined,'Open rows and their failures do not keep a Closed section');
 const beforeFold=calls.length;find(tree,`task-repo-header-${repo}`).attrs.on_click[0]({},cx);tree=panel.render(cx);assert.equal(errors(tree).length,0);assert.ok(find(tree,'git-enrollment-footer'),'Folding hides the read notice, not enrollment');assert.equal(calls.length,beforeFold);assert.equal(panel.aggregate.counts().closed,3);
@@ -65,4 +65,16 @@ const beforeQuiet=calls.length;for(let i=0;i<4;i++)panel.render(cx);await drain(
 context.stale=true;panel.render(cx);panel.aggregate.refresh(cx);await drain();assert.equal(calls.length,beforeQuiet);assert.equal(socket.enabled,false);
 context.stale=false;shown=false;panel.render(cx);panel.aggregate.refresh(cx);await drain();assert.equal(calls.length,beforeQuiet);
 enabled=false;panel.aggregate.refresh(cx);await drain();assert.equal(calls.length,beforeQuiet);
-console.log('PASS rendered one-live/three-finished history, one truthful notice per repository/tab, local launch/abnormal/timeout, account access, real outage, recovery/folds/expiry and quiet disabled/stale paths');
+// Authoritative PR absence is different from uncertain repository resolution:
+// silent in both tabs, for live sources too, with no empty sections or enrollment.
+enabled=true;shown=true;context.stale=false;now-=DAY;context.links=[8,5,6,7].map(n=>({url:url(n),task:`task-${n}`,terminal:n===8?'live-worker':null,historical:n!==8}));
+failures.clear();await refresh();panel.render(cx);await drain();
+for(const n of [5,6])failures.set(key(n),{code:1,stderr:`GraphQL: Could not resolve to a PullRequest with the number of ${n}.`});
+await refresh();tree=render('closed');assert.equal(errors(tree).length,0);checkRows(tree,[7]);for(const n of [5,6])assert.equal(find(tree,`pr-${key(n)}`),undefined);assert.equal(panel.aggregate.counts().closed,1);
+// Drop the last found history row and the live row. No neutral hint/tooltip or
+// synthetic row replaces them, and no repository enrollment card is left over.
+for(const n of [7,8])failures.set(key(n),{code:1,stderr:'HTTP 404: Not Found'});await refresh();
+for(const tab of ['open','closed']){tree=render(tab);assert.equal(errors(tree).length,0);assert.equal(find(tree,`task-repo-${repo}`),undefined);assert.equal(find(tree,'git-enrollment-footer'),undefined);assert.equal(find(tree,'git-task-empty').kids[0],`No ${tab} pull requests`);assert.doesNotMatch(text(tree),/not found|Task PR history|check the recorded/);}
+const missingReads=calls.length;for(let i=0;i<3;i++){await refresh();panel.render(cx);}assert.equal(calls.length,missingReads,'No repeated missing history or live reads during the cooldown');
+panel.aggregate.stop();panel.render(cx);await drain();assert.equal(calls.length,missingReads,'Stop/recreation retains missing results for the module session');
+console.log('PASS rendered real read notices and silent missing live/history PRs, mixed rows, no empty sections, cache reuse and guarded lifecycle');
