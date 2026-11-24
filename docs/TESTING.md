@@ -375,9 +375,10 @@ three missing history items formerly caused three Node + three identity-gh reads
 they now cause none. Real permission refusals reuse a diagnostic across the whole
 refresh: at most **two Node carriers + two identity-gh calls** for two repositories,
 regardless of how many PRs fail. These counts exclude existing setup/enrollment
-workers and the gh wrapper's own unchanged internal processes. A separate
-pending-check fallback already batches up to 20 PRs per repository/chunk: two
-repositories with at most 20 pending PRs each use two carriers, not one per PR.
+workers and the gh wrapper's own unchanged internal processes. The safety reader uses the same repository-scoped transport: one carrier per
+thin state/summary batch (up to 40 PRs), with full-context batches (up to 20)
+only for changed heads/summaries, never a carrier per row. Coordinator safety
+selection follows its current presentation page rather than all loaded history.
 
 Ordinary list and webhook-page reads now include both totals in the same GraphQL
 snapshot, avoiding the count-only carrier/gh call. Three real paired crew
@@ -392,15 +393,21 @@ page applies both counts with one API request; partial responses retain fallback
 
 `tests/git-checks-fallback.test.mjs` drives the actual ordinary/coordinator snapshot,
 repository-batched reader and scheduler with fake clocks and GitHub transport. It
-covers pending 3/10 to 11/11 settlement and polling stop, preserved render values
+covers pending 3/10 to 11/11 settlement with continued open-state reads, preserved render values
 while in flight, hidden/offline cancellation, native remote `machines()` layout
 readiness without an `hc` state field (and refusal for loading/missing/unrelated
 layouts), failure retention and 90/180-second
-backoff, the 15-minute rate-limit floor, event-only enrolled rows, existing-queue
+backoff, the 15-minute rate-limit floor, 120-second enrolled safety reads, existing-queue
 contention, authoritative empty rollups and late hidden/replaced-context replies.
-The 120-row ordinary/coordinator cases require six command-line-bounded chunks,
-actually launch a harmless Node child with generated arguments, retain all rows on
-a failed second chunk, then retry successfully and stop on settlement.
+The 120-row ordinary expanded-list case uses three thin state/summary chunks and,
+only on changed heads/summaries, six 20-PR detail chunks. The same-sized coordinator
+inventory instead reads only the current bounded page and keeps off-page facts. They actually launch a
+harmless Node child with generated arguments, retain all rows on a failed second
+chunk, then retry successfully and continue while Open. Five- and thirty-row
+steady cycles require exactly one thin request with no per-context list; changed
+head/summary cases fetch only that row's contexts. Held probes refuse a competing
+cycle. Secondary failures with positive hourly quota retain values and honor a
+30-minute Retry-After; ordinary quota headers cannot misclassify auth failures.
 `tests/git-checks-order.test.mjs` injects newer publications while replies are held
 and asserts the single epoch/generation guard is wired into list, related/older,
 event, fallback and aggregate paths. Pagination also covers selecting an older PR
@@ -409,6 +416,25 @@ replacement (no stranded key/pin), and bounded retry after a failed lookup.
 Pagination and fleet fixtures also assert complete pending/success/failure and
 rerun counts through in-flight event follow-ups. These do not measure live GitHub
 latency, enroll hooks or use native UI/credentials.
+
+`tests/git-state-refresh.test.mjs` drives the actual ordinary/coordinator readers
+with fake GitHub state and held replies for merge, close, reopen and draft
+conversion through event and safety paths. It checks both totals, current state
+wording, completion timestamps, history without a robot, unchanged labels/tasks/
+review, unaffected order and no clear-to-empty intermediate frame. Pagination
+also covers a merge at the eleven-row/two-page boundary: the original depth and
+cursor repair survive removal, the unopened destination stays lazy, and its older
+merged pin appears once when loaded. These are packaged synthetic fixtures, not
+live delivery or native pixel evidence.
+
+`tests/git-safety-paging.test.mjs` composes the real coordinator page renderer,
+aggregate, safety scheduler and repository-scoped carrier. A 25-Open/5-Closed,
+two-repository inventory exercises current-page-only selection, merge/close tab
+totals, Previous/Show more, stale in-flight page replies, folds and both 45/120s
+cadences. Existing fallback/state tests also assert GH_REPO on every probe/detail
+API invocation. Pagination distinguishes its selected-state filter from the new
+combined totals fields, applies both totals on append and retains cursor-depth
+repair. The 100-row render operation budget remains separately enforced.
 
 ## Always-visible Git tab counts
 
@@ -650,7 +676,7 @@ provider through the package harness. Synthetic tasks/gh results cover coordinat
 non-repo routing, recorded working/reported links, missing/new links, duplicate
 cross-repository PR numbers, shared PR deduplication, scoped counts/errors, exact
 worker robots, absent extra task heading/incomplete notice, repository enrollment
-links, webhook burst coalescing, no periodic GitHub reads, hide/show catch-up and
+links, webhook burst coalescing, no membership-triggered GitHub reads, hide/show catch-up and
 stale completions. It loads the real shared UI header and covers machine-style
 chevron geometry, default expansion, independent repository folds, localStorage
 restore after panel recreation, temporary repository absence, tab/refresh changes,
@@ -679,7 +705,11 @@ worker preserving adoption), last-worker-exit scope continuity,
 recent/old/undated/invalid/future and exact
 24-hour Closed boundaries, unchanged live-task eligibility, accurate counts,
 excluded empty history headers, webhook reopen/close, three-read concurrency and
-stale robot refusal. Finished-task rows use the merged shared row's labels, absent
+stale robot refusal. It additionally drives the actual relay consumer with settled
+Open-to-Merged, close, reopen and draft transitions, including a merge during a held
+read, checking current totals and unaffected row order. The delivered-event case
+passes on the pre-fix source; this is not proof of the screenshot's missed-event
+cause or live relay delivery. Finished-task rows use the merged shared row's labels, absent
 Owner badge and centred metadata separators rather than a separate historical renderer. The provider also checks source size/task bounds and rejects
 another owner/home or machine. No fixture reads real task reports or GitHub.
 Recorded links deliberately do not guarantee pre-report PR discovery. Native pixels,

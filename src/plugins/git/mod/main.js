@@ -18,7 +18,7 @@ import { headerTool, contextMenu, panelMessage } from './panel-kit.js';
 import { changePanel } from './panel-state.js';
 import { sidebarPanelEnabled } from './plugins.js';
 import { sidebarTitle } from './sidebar-title.js';
-import { pullListArgs, REPO_ARGS, countArgs, parseCounts, parsePullPage, agentPullNumber, pullRow, pullError, PR_FIELDS, PR_PAGE_SIZE, repositoryRead, repositoryFailure, pendingChecksArgs, parsePendingChecks, ChecksFallback, PullFactsOrder, CHECKS_BATCH_SIZE } from './pulls.js';
+import { pullListArgs, REPO_ARGS, countArgs, parseCounts, parsePullPage, agentPullNumber, pullRow, pullError, PR_FIELDS, PR_PAGE_SIZE, repositoryRead, repositoryFailure, pendingChecksArgs, parsePendingChecks, refreshPullFacts, pullStateArgs, parsePullStates, pullPayload, pullRetryAfter, ChecksFallback, PullFactsOrder, CHECKS_BATCH_SIZE, STATE_BATCH_SIZE } from './pulls.js';
 
 const VIEWS = ['open', 'closed'];
 const VIEW_KEY = 'custom.git.view';
@@ -82,7 +82,7 @@ export default class Changes extends View {
     this.pinMotion ??= new PinSwap(); this.pinMotion.cancel();
     this.pullPresentation = null; this.agentPress = null;
     this.root = null; this.repo = null; this.counts = null; this.branch = null; this.agentPull = null;
-    this.pulls = { open: null, closed: null }; this.pullsAt = { open: 0, closed: 0 };
+    this.pulls = { open: null, closed: null }; this.pullsAt = { open: 0, closed: 0 };this.pullDepth={open:0,closed:0};
     this.pages = {open:{cursor:null,hasMore:false,expanded:false},closed:{cursor:null,hasMore:false,expanded:false}};
     this.pageError = null; this.loadingState = null; this.appending = false; this.scrollMotion = null;
     this.selection = null; this.agentRequest = null; this.agentResolved = null;
@@ -241,9 +241,11 @@ export default class Changes extends View {
         const existing = (append ? this.pulls[state] ?? [] : []).map(pr=>incoming.get(pr.number)??pr);
         const seen = new Set(existing.map(pr => pr.number));
         this.pulls[state] = [...existing, ...rows.filter(pr => !seen.has(pr.number))];
+        this.pullDepth[state]=append?(this.pullDepth[state]||1)+1:1;
+        this.reconcilePulls(rows);
         this.ciRevision=(this.ciRevision??0)+1;
         this.pages[state] = {cursor:page.cursor,hasMore:page.hasMore && page.cursor !== after,expanded:append};
-        this.counts = {...this.counts,[state]:page.total};
+        this.counts = page.counts ?? {...this.counts,[state]:page.total};
         this.pullsAt[state] = Date.now(); this.pullError = null;
         // All list and webhook reads share pullRequest/pullLoading: one writer.
         if (append) return;
@@ -269,6 +271,33 @@ export default class Changes extends View {
 
   publishPull(pr,read,repo=this.repo?.name) {
     return this.factOrder.publish(read,`${repo.toLowerCase()}#${pr.number}`,()=>pr);
+  }
+
+  // A narrow read can change tabs without clearing the loaded pages or pin.
+  // Preserve unaffected order; insert moved rows by the list's created-at order.
+  reconcilePulls(values) {
+    const updates=new Map(values.filter(Boolean).map(pr=>[pr.number,pr])),moved=new Map();
+    const group=pr=>['open','draft'].includes(pr.state)?'open':'closed';
+    for(const state of VIEWS)for(const old of this.pulls[state]??[]) {
+      const pr=updates.get(old.number)??old;
+      if(group(pr)!==state)moved.set(pr.number,pr);
+    }
+    for(const state of VIEWS) {
+      const old=this.pulls[state];if(!old)continue;
+      this.pullDepth[state]=Math.max(this.pullDepth[state]??0,Math.ceil(old.length/PR_PAGE_SIZE));
+      const rows=old.map(pr=>updates.get(pr.number)??pr).filter(pr=>group(pr)===state);
+      const seen=new Set(rows.map(pr=>pr.number));
+      for(const pr of moved.values())if(group(pr)===state && !seen.has(pr.number)) {
+        const index=rows.findIndex(row=>(Date.parse(row.createdAt)||row.number)<(Date.parse(pr.createdAt)||pr.number));
+        rows.splice(index<0?rows.length:index,0,pr);seen.add(pr.number);
+      }
+      this.pulls[state]=rows;
+    }
+    if(this.relatedPull && updates.has(this.relatedPull.number))this.relatedPull=updates.get(this.relatedPull.number);
+    // State changes can remove a cursor boundary. Renew expanded snapshots under
+    // the existing lease, retaining the exact loaded depth even after removals.
+    if(moved.size && VIEWS.some(state=>this.pages[state].hasMore))this.webhookDirty=true;
+    return moved.size>0;
   }
 
   // Keep an explicitly linked PR pinnable even when it is older than page 1.
@@ -300,7 +329,12 @@ export default class Changes extends View {
         const pr = JSON.parse(result.stdout);
         if (pr.number === number) {
           const published=this.publishPull(pullRow(pr,repo.owner),read,repo.name);accepted=published.accepted;
-          if(published.value)this.relatedPull=published.value;
+          if(published.value) {
+            const previous=this.relatedPull;
+            this.relatedPull=published.value;
+            const moved=this.reconcilePulls([published.value]);
+            if(moved || (previous && ['open','draft'].includes(previous.state)!==['open','draft'].includes(published.value.state)))this.webhookDirty=true;
+          }
           if(accepted)this.ciRevision=(this.ciRevision??0)+1;
         }
       } catch {} finally {
@@ -331,8 +365,13 @@ export default class Changes extends View {
       ? !aggregate?.context?.stale && aggregate?.currentContext()?.scope===aggregate?.context?.scope
       : key()===this.context && Boolean(this.root && this.repo));
     const uncovered=name=>Boolean(this.notices?.active && this.notices.members?.get(name.toLowerCase())!==true);
-    if(task) return {enabled,scope:JSON.stringify([this.context,on,this.view]),repositories:(aggregate?.repositories()??[])
-      .filter(name=>!this.foldedRepositories?.has(name)).map(name=>({name,uncovered:uncovered(name),rows:aggregate.rows(this.view).filter(pr=>pr.repo===name)}))};
+    if(task) {
+      const repositories=aggregate?.repositories()??[],rows=aggregate?.rows(this.view)??[];
+      const sections=repositories.map(repo=>({repo,rows:rows.filter(pr=>pr.repo===repo),error:aggregate.readNotice(repo,this.view)})).filter(section=>section.rows.length || section.error);
+      const paging=this.taskSections(sections,aggregate.context.scope);
+      const shownRows=paging.sections.filter(section=>!this.foldedRepositories?.has(section.repo)).flatMap(section=>section.rows);
+      return {enabled,scope:JSON.stringify([this.context,on,this.view,paging.page]),repositories:repositories.map(name=>({name,uncovered:uncovered(name),rows:shownRows.filter(pr=>pr.repo===name)}))};
+    }
     const selection=this.pullSelection();
     return {enabled,scope:JSON.stringify([this.context,on,this.view,this.repo?.name]),repositories:this.repo?[{name:this.repo.name,uncovered:uncovered(this.repo.name),rows:[...selection.liveRows,...(selection.active?[selection.active]:[])]}]:[]};
   }
@@ -349,29 +388,68 @@ export default class Changes extends View {
     const request=this.fallbackRequest={},order=aggregate?aggregate.factOrder:this.factOrder,read=order.begin();
     if(aggregate)aggregate.fallbackBusy=true;
     else {this.pullLoading=true;this.pullRequest=request;}
+    let retryAfter=0,rateLimited=false;
     try {
       if(!current())return;
-      const updates=new Map();
-      for(let at=0;at<numbers.length;at+=CHECKS_BATCH_SIZE) {
+      const updates=new Map(),previous=new Map(repo.rows.map(pr=>[pr.number,pr]));let counts=null;
+      const gh=async args=>{
+        if(!current())throw Error('Obsolete safety read');
+        const result=await repositoryRead(exec,args,repo.name,{...(root?{cwd:root}:{}),on,timeout:30000});
+        if(!current())throw Error('Obsolete safety read');
+        retryAfter=Math.max(retryAfter,pullRetryAfter(result));
+        if(result.code!==0 || result.timed_out || result.timedOut || result.signal) {
+          rateLimited=/rate.?limit|secondary.*limit|abuse|\b429\b/i.test(`${pullPayload(result.stdout)}\n${result.stderr??''}`) || /^HTTP[^\n]*\b429\b/im.test(result.stdout??'');
+          throw Object.assign(new Error(),await repositoryFailure(exec,result,repo.name,{...(root?{cwd:root}:{}),on}));
+        }
+        return pullPayload(result.stdout);
+      };
+      for(let at=0;at<numbers.length;at+=STATE_BATCH_SIZE) {
         if(!current())return;
-        const batch=numbers.slice(at,at+CHECKS_BATCH_SIZE);
-        const result=await repositoryRead(exec,pendingChecksArgs(batch,repo.name),repo.name,{...(root?{cwd:root}:{}),on,timeout:30000});
-        if(!current())return;
-        if(result.code!==0 || result.timed_out || result.timedOut || result.signal)throw Object.assign(new Error(),await repositoryFailure(exec,result,repo.name,{...(root?{cwd:root}:{}),on}));
-        for(const [number,value] of parsePendingChecks(result.stdout,batch))updates.set(number,value);
+        const batch=numbers.slice(at,at+STATE_BATCH_SIZE),stdout=await gh(pullStateArgs(batch,repo.name,!aggregate && at===0));
+        for(const [number,value] of parsePullStates(stdout,batch))updates.set(number,value);
+        if(!aggregate && at===0) {
+          counts=parseCounts(stdout);
+          if(!Number.isInteger(counts?.open) || !Number.isInteger(counts?.closed))throw Error('Incomplete pull request counts');
+        }
       }
+      const changed=[];
+      for(const [number,value]of updates) {
+        const old=order.published.get(`${repo.name.toLowerCase()}#${number}`)?.value??previous.get(number);
+        value.checks=value.checkSummary==null?null:old?.checks??null;
+        if(value.checkSummary!=null && (old?.checksKnown!==true || (old?.headRefOid??null)!==(value.headRefOid??null) || (old?.checkSummary??old?.checks?.state??null)!==value.checkSummary))changed.push(number);
+      }
+      for(let at=0;at<changed.length;at+=CHECKS_BATCH_SIZE) {
+        if(!current())return;
+        const batch=changed.slice(at,at+CHECKS_BATCH_SIZE),details=parsePendingChecks(await gh(pendingChecksArgs(batch,repo.name)),batch);
+        for(const [number,value]of details) {
+          const probe=updates.get(number);
+          if((probe.headRefOid??null)!==(value.headRefOid??null) || probe.state!==value.state || probe.isDraft!==value.isDraft)throw Error('Pull request changed during safety read');
+          probe.checks=value.checks;
+        }
+      }
+      if(!current())return;
       // Commit only a complete selection. Failed chunks retain every old row.
-      const update=pr=>updates.has(pr?.number)?order.publish(read,`${repo.name.toLowerCase()}#${pr.number}`,previous=>({...(previous??pr),checks:updates.get(pr.number),checksKnown:true})).value??pr:pr;
+      let accepted=true;
+      const update=pr=>{
+        if(!updates.has(pr?.number))return pr;
+        const published=order.publish(read,`${repo.name.toLowerCase()}#${pr.number}`,previous=>refreshPullFacts(previous??pr,updates.get(pr.number)));
+        accepted=accepted && published.accepted;return published.value??pr;
+      };
       if(aggregate) {
-        for(const entry of aggregate.entries.values())if(entry.link.repo===repo.name && entry.pr)entry.pr=update(entry.pr);
+        for(const entry of aggregate.entries.values())if(entry.link.repo===repo.name && entry.pr) {
+          entry.pr=update(entry.pr);
+          const at=Date.parse(entry.pr.mergedAt??entry.pr.closedAt??'');
+          entry.completedAt=at<=Date.now()?at:NaN;
+        }
       } else {
-        for(const state of VIEWS)if(this.pulls[state])this.pulls[state]=this.pulls[state].map(update);
-        this.relatedPull=update(this.relatedPull);
+        const refreshed=[...new Map([...VIEWS.flatMap(state=>this.pulls[state]??[]),...(this.relatedPull?[this.relatedPull]:[])].map(pr=>[pr.number,pr])).values()].map(update);
+        this.reconcilePulls(refreshed);
+        if(accepted)this.counts=counts;
       }
       this.ciRevision=(this.ciRevision??0)+1;
       return {failed:false};
     } catch(error) {
-      return {failed:true,rateLimited:/rate.?limit|secondary limit|abuse|429/i.test(String(error))};
+      return {failed:true,rateLimited:rateLimited || /rate.?limit|secondary.*limit|abuse|429/i.test(String(error)),retryAfter};
     } finally {
       if(this.fallbackRequest===request)this.fallbackRequest=null;
       if(aggregate) {aggregate.fallbackBusy=false;aggregate.pump(cx);cx.notify();}
@@ -436,7 +514,7 @@ export default class Changes extends View {
         const updates={};
         for(const state of VIEWS) {
           if(this.pulls[state]===null)continue;
-          const depth=Math.max(1,Math.ceil(this.pulls[state].length/PR_PAGE_SIZE));
+          const depth=Math.max(1,this.pullDepth[state]??0,Math.ceil(this.pulls[state].length/PR_PAGE_SIZE));
           let after=null,page,rows=[];
           for(let i=0;i<depth;i++) {
             page=parsePullPage(await gh(pullListArgs(state,repo.name,after)));
@@ -464,6 +542,7 @@ export default class Changes extends View {
           this.relatedPull=published?.value??null;
           this.relatedKey=published?.accepted?JSON.stringify([context,repo.name,number]):null;
         }
+        this.reconcilePulls([...VIEWS.flatMap(state=>this.pulls[state]??[]),...(this.relatedPull?[this.relatedPull]:[])]);
         this.counts=counts ?? this.counts;this.pullError=null;this.ciRevision=(this.ciRevision??0)+1;
         this.startCISweep(cx);
       } catch(e) { if(current()) {this.pullError=pullError(e);this.relatedKey=null;this.relatedRetry=null;} }
