@@ -5,7 +5,8 @@ Verdict: accepted only when an authorized human directly merges the containing e
 The maintainer integration decision accepts these scenarios:
 - Caught Git render failures log their actual error and innermost component while preserving native last-frame fallback.
 - Notice requests yield before synchronous transport failures can notify during render.
-- Native interruption remains unreproduced; a surviving abort marker provides best-effort component diagnostics on the next render.
+- Coordinator tabs replace bounded pages without extra reads or count changes; native-check render builds stay below 20 ms for thirty-row inventories.
+- Distinct-string native widths are cached by zoom, and coordinator rows bound pill elements while preserving full label tooltips.
 - Panel API and GraphQL reads set a nonempty per-child GH_REPO without changing explicit credentials or the global account.
 - Missing PRs are grouped as not found without account diagnosis; real permission refusals identify the repository and verified or unknown account.
 - Disabled, hidden or stale failed replies cannot start account follow-ups on their former repository or machine.
@@ -21,20 +22,21 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-24-fix-git-panel-errors/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-24-fix-git-panel-errors/acceptance.md",
   "finalizedDate": "2026-11-24",
-  "specBaseSha": "f6e03399d12a3292fdc16526c01f4334631cdcad",
+  "specBaseSha": "a2f344270efb05a71082310e9098ebb3c9ded0cb",
   "acceptanceScenarios": [
     "Caught Git render failures log their actual error and innermost component while preserving native last-frame fallback.",
     "Notice requests yield before synchronous transport failures can notify during render.",
-    "Native interruption remains unreproduced; a surviving abort marker provides best-effort component diagnostics on the next render.",
+    "Coordinator tabs replace bounded pages without extra reads or count changes; native-check render builds stay below 20 ms for thirty-row inventories.",
+    "Distinct-string native widths are cached by zoom, and coordinator rows bound pill elements while preserving full label tooltips.",
     "Panel API and GraphQL reads set a nonempty per-child GH_REPO without changing explicit credentials or the global account.",
     "Missing PRs are grouped as not found without account diagnosis; real permission refusals identify the repository and verified or unknown account.",
     "Disabled, hidden or stale failed replies cannot start account follow-ups on their former repository or machine.",
     "Complete page reads include both totals, and permission failures reuse one account diagnosis per repository per refresh rather than per PR.",
     "The host comparison records accepted 0.1.18 public capabilities, warned palette skip and owned feedback retention without live changes."
   ],
-  "archiveDigest": "d3e8f1125c046a3a49c425d2904d91da9dfa00112fb54a616fbc48d900e07a1e",
-  "specDigest": "c2a30b3bbd7454234b02c506e815c74a75cccd6fb4a2569dffa7fc61036018ad",
-  "tasksDigest": "6a4654007aa4d5529f4db99cc203d231e002812cfb1ef47cc74091896e84491e",
+  "archiveDigest": "2adde70b505fe15ab11f40bf18de8e48173845a95d0be69fa98285133a935ec3",
+  "specDigest": "ce662a66883ec2888d2d75fe65ec670fb61133c0082424c2716b4f0afdd6ca31",
+  "tasksDigest": "2ebffc9cb71dbe6ada5a661eedd2a6430bde6047c24f0c27256b45d7ea469df7",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []
 }
