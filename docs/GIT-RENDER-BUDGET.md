@@ -13,16 +13,16 @@ production paired scroll handlers reveal the full inventory and move to its end:
 
 | Loaded PR rows | Native render-build samples (ms) | Mean (ms) | PR rows built per render |
 |---|---|---:|---:|
-| 30 | 2, 2, 3, 3, 2 | 2.4 | 7 |
-| 60 | 2, 2, 3, 2, 2 | 2.2 | 7 |
-| 100 | 3, 3, 2, 2, 2 | 2.4 | 7 |
+| 30 | 3, 2, 3, 3, 2 | 2.6 | 7 |
+| 60 | 4, 2, 2, 2, 3 | 2.6 | 7 |
+| 100 | 2, 3, 2, 3, 3 | 2.6 | 7 |
 
 The viewport is 390×400 logical pixels. The raw results also record confirmed
 loaded-row counts and retained offsets (1970.5 / 4250.5 / 7290.5px). Scroll setup
 is outside the timed render; the complete render includes fresh native row builds,
 spacers, shared fades and chrome. These synthetic native builder times, at 1ms
 clock resolution, are not live desktop layout/paint or input-latency measurements.
-No watchdog is changed. The 100-row regression's observed peak is now **2,521**
+No watchdog is changed. The 100-row regression's observed peak is now **2,535**
 builder operations with the shared fades, below the unchanged 10,000 / 1,200
 operation/element ceilings. Every row remains reachable after incremental reveal.
 
