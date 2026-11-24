@@ -12,7 +12,9 @@ for(const coordinator of [false,true]) {
   let status={ok:3,total:10},machineShape=null,failAt=null,retryAfter=null,httpFailure=null;
   const context={scope:'home',machine:'pc2',links:[]};
   const h=await rowHarness({host:{machines:()=>machineShape??[{name:'pc2',layout:online?'ready':'loading'}],
-    exec:async(_cmd,args)=>{
+    exec:async(_cmd,args,options)=>{
+      assert.equal(options.env?.GH_REPO,'owner/repo','Both thin and detail probes must use the repository-scoped Node transport');
+      if(args[1]==='user')return {code:0,stdout:'fixture-user'};
       assert.equal(rendering,false,'No read during render');
       const numbers=[...args.find(a=>a.startsWith('query=')).matchAll(/pr(\d+):pullRequest/g)].map(m=>Number(m[1]));
       requests.push({args,numbers});
@@ -114,20 +116,24 @@ for(const coordinator of [false,true]) {
   before=requests.length;failAt=before+2;status={ok:11,total:11};sync();await advance(45000);
   assert.equal(requests.length,before+2,'Stop at a failed second chunk');
   assert.ok(rows().every(pr=>pr.checks.label==='3/10'),'Partial failure retains every old row');
-  failAt=requests.length+5;await advance(90000);
-  assert.equal(requests.length,before+7,'Stop on a failed second detail chunk after the three thin probes');
-  assert.ok(rows().every(pr=>pr.checks.label==='3/10'),'Partial detail success cannot publish a mixed selection');
-  failAt=null;await advance(180000);
-  const chunks=requests.slice(before+7);assert.equal(chunks.length,9,'Three thin probes plus six changed-row detail chunks');
-  assert.deepEqual(chunks.filter(c=>c.args.every(arg=>!arg.includes('contexts('))).flatMap(c=>c.numbers),large.map(pr=>pr.number));
+  if(!coordinator) {
+    failAt=requests.length+5;await advance(90000);
+    assert.equal(requests.length,before+7,'Stop on a failed second detail chunk after the three thin probes');
+    assert.ok(rows().every(pr=>pr.checks.label==='3/10'),'Partial detail success cannot publish a mixed selection');
+  }
+  const retryStart=requests.length;failAt=null;await advance(coordinator?90000:180000);
+  const selected=coordinator?large.slice(0,9):large;
+  const chunks=requests.slice(retryStart);assert.equal(chunks.length,coordinator?2:9,'Coordinator probes only its bounded presentation page; ordinary expanded lists retain chunking');
+  assert.deepEqual(chunks.filter(c=>c.args.every(arg=>!arg.includes('contexts('))).flatMap(c=>c.numbers),selected.map(pr=>pr.number));
   for(const call of requests.slice(before)) {
     assert.ok(call.numbers.length<=(call.args.some(arg=>arg.includes('contexts('))?facts.CHECKS_BATCH_SIZE:facts.STATE_BATCH_SIZE));assert.ok(call.args.join(' ').length<12000,'Bound argv below Windows process limits');
   }
   const child=spawnSync(process.execPath,['-e','process.exit(0)','--',...chunks[0].args],{encoding:'utf8',timeout:10000});
   assert.equal(child.error,undefined);assert.equal(child.status,0);
   assert.throws(()=>facts.pendingChecksArgs(large.map(pr=>pr.number),'owner/repo'),/oversized checks batch/);
-  assert.ok(rows().every(pr=>pr.checks.label==='11/11'));
-  before=requests.length;await advance(45000);assert.equal(requests.length,before+3,'Large settled inventories use only the thin state batches');
+  assert.ok(rows().slice(0,selected.length).every(pr=>pr.checks.label==='11/11'));
+  if(coordinator)assert.ok(rows().slice(selected.length).every(pr=>pr.checks.label==='3/10'),'Off-page inventory stays loaded but is not polled');
+  before=requests.length;await advance(45000);assert.equal(requests.length,before+(coordinator?1:3),'Settled visible rows use only thin state batches');
   shown=false;sync();before=requests.length;await advance(90000);assert.equal(requests.length,before);
   shown=true;
   for(const size of [5,30]) {

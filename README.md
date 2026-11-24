@@ -463,7 +463,10 @@ a **45-second fallback**. One coalesced repository job probes state, head SHA an
 rollup summary in bounded 40-PR chunks; only changed heads/summaries fetch full
 checks in 20-PR chunks. Unchanged 5- or 30-row selections use one thin request,
 without enumerating check contexts. Values stay displayed until the complete
-selection succeeds. Merge/close transitions move rows to Closed and update
+selection succeeds. Coordinator probes cover only the current presentation page,
+not folded or off-page rows; Previous/Show more keeps full counts and rejects
+old-page replies. All probe/detail API calls retain per-call repository routing.
+Merge/close transitions move rows to Closed and update
 both totals; finished-task history still uses GitHub's 24-hour completion bound.
 Reads stop on hide/disable, stale context or remote-machine disconnect; failures
 back off 90/180/360/720 seconds, with at least 15 minutes for primary or secondary
@@ -741,6 +744,13 @@ using the same fold chevron and row style as Spaces machine headers. Click a
 header to fold just that repository; sections start expanded and remember their
 state locally, including panel reopen/reload. Expanded and folded headers show
 only the canonical repository name and chevron, without per-repository counts.
+Long coordinator lists use **Previous / Show more** replacement pages, bounded to
+10 presentation items (headers, notices and PRs). Counts still cover the complete
+linked inventory; paging starts no reads and cannot accumulate an oversized
+render. Each tab remembers its page for that coordinator home. Repeated text uses
+cached native widths rather than duplicate probes; coordinator rows draw at most
+three label pills, with every complete label name retained in tooltips. See
+[the native build measurements and budget](docs/GIT-RENDER-BUDGET.md).
 Names use the released width and truncate with a full-name tooltip only when they
 do not fit. Open and Closed totals remain in the panel's top tabs and still include
 folded sections. These counts cover distinct linked PRs only, never all repository PRs.

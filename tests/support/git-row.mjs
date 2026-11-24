@@ -1,4 +1,5 @@
 import {loadMod} from '../../tools/plugin-harness.mjs';
+import {githubInvocation} from './github-read.mjs';
 import {element,svg,nodes,find,words} from './choice-menu.mjs';
 export {element,svg,nodes,find,words};
 export const t={background:'#191d28',foreground:'#eeeeee',muted:'#999999',dim:'#666666',raised:'#222222',hover:'#333333',border:'#444444',ansi1:'red',ansi2:'green',ansi3:'yellow',ansi5:'purple'};
@@ -8,7 +9,8 @@ export async function rowHarness({host={},modules={}}={}) {
   const chain=new Proxy({},{get:(_n,key)=>key==='build'?()=>({}):()=>chain});
   const {Main,facts,U,AggregatePulls}=await loadMod({mod:'custom-changes',globals:{window:{paint_path:element}},
     host:{props:()=>null,settings:()=>({zoom}),theme:()=>t,closeOverlay(){},openOverlay(){},nextCommand(){},run:(...args)=>focus.push(args),
-      layout:()=>({id:'panel',children:[{id:'panel-body',active:'changes'}]}),...host},
+      layout:()=>({id:'panel',children:[{id:'panel-body',active:'changes'}]}),...host,
+      ...(host.exec?{exec:(command,args,options)=>{const call=githubInvocation(command,args,options);return host.exec(call.command,call.args,call.options);}}:{})},
     modules:{'main.js':'src/plugins/git/mod/main.js','pulls.js':'src/plugins/git/mod/pulls.js','label-colors.js':'src/plugins/git/mod/label-colors.js',
       'ui.js':'src/ui/ui.js','gpui-kit':{View:class{},div:element,svg,PathBuilder:{stroke:()=>chain}},
       'gpui-base':{h_flex:()=>element().flex(),v_flex:()=>element().flex().flex_col(),Popover:{},Input:{}},
@@ -18,7 +20,7 @@ export async function rowHarness({host={},modules={}}={}) {
       'enrollment-picker.js':{EnrollmentPicker:class{}},'panel-pin.js':{panelPin:element},'sidebar-title.js':{sidebarTitle:element},
       'panel-state.js':{changePanel(){}},'settings-dialog.js':{openSettings(){}},'panel-kit.js':{headerTool:element,contextMenu:element,panelMessage:element},...modules},
     entry:'export {default as Main} from "./main.js"; export * as facts from "./pulls.js"; export {U} from "./ui.js"; export {AggregatePulls} from "./aggregate.js";'});
-  const panel=new Main();panel.resetRepository();panel.root='/repo';panel.repo={name:'owner/repo'};panel.context=JSON.stringify(['/repo',null]);panel.view='open';
+  const panel=new Main();panel.resetRepository();panel.root='/repo';panel.repo={name:'owner/repo'};panel.context=JSON.stringify(['/repo',null]);panel.view='open';panel.foldedRepositories=new Set();
   panel.agentLinks={related:()=>agent?{key:'agent',address:'t2'}:null};
   panel.aggregate={context:{scope:'home'},target:()=>agent?{terminal:'t2'}:null,focus:(...args)=>focus.push(args)};
   const cx={focus_handle(){if(rendering)throw Error('focus handle during render');return {};},notify(){if(rendering)throw Error('notify during render');},stop_propagation(){},spawn:fn=>fn(cx)};

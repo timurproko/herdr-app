@@ -11,10 +11,11 @@ for(const coordinator of [false,true])for(const via of ['safety','event']) {
   const jobs=[];
   const cx={notify(){},spawn(fn){jobs.push(Promise.resolve().then(()=>fn(cx)));},timer:{after(){}},stop_propagation(){}};
   const drain=async()=>{while(jobs.length)await Promise.all(jobs.splice(0));};
-  const h=await rowHarness({host:{exec:async(_cmd,args)=>{
+  const h=await rowHarness({host:{exec:async(_cmd,args,options)=>{
     reads++;let result;
     if(args[0]==='pr')result=data.get(Number(args[2]));
     else {
+      assert.equal(options.env?.GH_REPO,'owner/repo','Thin and event GraphQL reads share repository-scoped routing');
       const query=args.find(a=>a.startsWith('query='));
       const repository={open:{totalCount:[...data.values()].filter(pr=>pr.state==='OPEN').length},closed:{totalCount:[...data.values()].filter(pr=>pr.state!=='OPEN').length}};
       if(query.includes('pr5:pullRequest')) {
