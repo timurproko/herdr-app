@@ -1,6 +1,6 @@
 # Tasks
 
-The first two groups retain PR #40's already-delivered outcomes from the finalized original change. Group 3 is the new plan amendment and remains unimplemented pending approval.
+The first two groups retain PR #40's already-delivered outcomes from the finalized original change. Group 3 implements the approved chain amendment.
 
 ## 1. Fleet attachment updates while Settings remains open
 
@@ -14,10 +14,10 @@ The first two groups retain PR #40's already-delivered outcomes from the finaliz
 
 ## 3. Both attached expanded rows show aligned chain markers
 
-- [ ] 3.1 Apply the same attached-row chain/Crew trailing group to both verified pair members in Spaces.row, preserving shared asset/style and counts/worktree order; the worktree-layout fixture passes for both roles on local and remote machines.
-- [ ] 3.2 Extend metadata geometry cases for counts/worktree/unrelated tags, hidden worktree, renaming and detachment; assert one aligned chain column before the right-aligned Crew pills and no chain in compact rails or drag chips.
-- [ ] 3.3 Extend the mounted live-toggle regression to assert both chains appear after verification and disappear on disable without closing Settings, while pending and obsolete replies stay guarded and native shortcut digits remain unchanged.
-- [ ] 3.4 Update current README/testing descriptions to both-row chains and reconcile affected current OpenSpec requirements through this delta; strict specification validation and a search for obsolete coordinator-only current descriptions pass.
+- [x] 3.1 Apply the same attached-row chain/Crew trailing group to both verified pair members in Spaces.row, preserving shared asset/style and counts/worktree order; the worktree-layout fixture passes for both roles on local and remote machines.
+- [x] 3.2 Extend metadata geometry cases for counts/worktree/unrelated tags, hidden worktree, renaming and detachment; assert one aligned chain column before the right-aligned Crew pills and no chain in compact rails or drag chips.
+- [x] 3.3 Extend the mounted live-toggle regression to assert both chains appear after verification and disappear on disable without closing Settings, while pending and obsolete replies stay guarded and native shortcut digits remain unchanged.
+- [x] 3.4 Update current README/testing descriptions to both-row chains and reconcile affected current OpenSpec requirements through this delta; strict specification validation and a search for obsolete coordinator-only current descriptions pass.
 
 ## Workflow follow-up
 

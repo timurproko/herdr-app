@@ -105,14 +105,24 @@ async function mounted() {
     try{
      const rail=sidebar.view.compact(record,theme);
      assert.equal(find(rail,`space-badge-${record.w.id}`).kids[0],expected,'Compact rail advertises the same native shortcut');
+     assert.equal(find(rail,`space-link-${record.w.id}`),undefined,'Rail never shows a chain');
      sidebar.view.drag.leaving={id:record.w.id,phase:'arm'};
      const chip=sidebar.view.dragPreview(theme);
      assert.equal(chip.kids[0].kids[0],expected,'Drag chip retains that native number, not the projected position');
+     assert.equal(find(chip,`space-link-${record.w.id}`),undefined,'Drag chip never shows a chain');
     }finally{sidebar.view.drag.leaving=null;rendering=false;}
    }
    assert.equal(child.kids[0].attrs.bg[0],attached?theme.ansi2:theme.ansi3);
-   assert.equal(Boolean(find(sidebar.tree,`space-link-${q('coordinator')}`)),attached);
-   if(attached)assert.equal(parent.kids.at(-2).attrs.id[0],`space-link-${q('coordinator')}`,'Chain immediately precedes Crew');
+   for(const id of ['coordinator','fm-crew-home']){
+    const row=find(sidebar.tree,`space-content-${q(id)}`),chain=find(sidebar.tree,`space-link-${q(id)}`);
+    assert.equal(Boolean(chain),attached,'Both expanded-row chains follow the live preference and verified pair');
+    if(attached){
+     assert.equal(row.kids.at(-2),chain,'Each chain immediately precedes Crew');
+     assert.equal(row.kids.at(-1).attrs.id[0],`space-tag-${q(id)}-crew-0`);
+     assert.equal(chain.attrs.size[0],16);assert.equal(chain.kids[0].attrs.size[0],14);
+     assert.equal(chain.kids[0].attrs.text_color[0],theme.muted);
+    }
+   }
   }
   assert.equal(JSON.stringify({groups,panes,terminals,colors}),topology,'No native order, terminal, focus or saved colour mutation');
  };

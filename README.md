@@ -632,18 +632,19 @@ advertise the shortcut for the unrelated space. Consecutive numbers require an a
 native reorder, which this presentation-only switch does not perform.
 See the [Herdr 0.1.17 shipped shortcuts](https://github.com/herdrdev/herdr-app/blob/v0.1.17/defaults/keys.json)
 and [native index-selection implementation](https://github.com/herdrdev/herdr-app/blob/v0.1.17/src/window.rs#L3194-L3202).
-Its fill
-uses the coordinator's actual badge colour and follows recolouring without changing
-the fleet's saved colour. The expanded coordinator shows a small muted outline chain
-immediately before its Crew pill, matching the worktree marker's size and alignment,
-not a filled badge. Metadata order is counts, worktree, chain, then tags; with multiple
+The fleet badge's fill uses the coordinator's actual colour and follows recolouring
+without changing the fleet's saved colour. Both expanded attached rows show a small
+muted outline chain immediately before their Crew pills, matching the worktree
+marker's size and alignment, not a filled badge. The two chains line up in one
+column just left of the right-aligned Crew pills. Metadata order is counts, worktree, chain, then tags; with multiple
 tags, the chain/Crew group stays last and unrelated tags retain their relative order.
 No elbow or connector lines remain. The fleet name starts at the ordinary left edge;
 only inactive names are muted. Selected fleet names use the same foreground and normal
 weight as other selected spaces, with ordinary hover and selection backgrounds.
 Both expanded rows show the same Crew pill at the right; the pills share the same
 right edge. Renaming hides markers and tags; the Worktree icon switch hides only
-worktree markers, not the independent coordinator chain.
+worktree markers, not either row's independent chain. Both chains disappear on
+detachment; neither the compact rail nor a drag chip shows a chain.
 Choosing a colour or Automatic from either attached row edits the coordinator's
 colour; the fleet's saved colour and Automatic flag stay untouched. Its palette and
 mouse/keyboard choices use that same captured coordinator. Colour permission follows
@@ -655,7 +656,7 @@ choice; reopen after detachment to edit the fleet's own colour again. Disabling
 attachment or confirmed unlinking restores that independent fleet colour.
 Unrelated plugin tags remain; the compact rail stays badge-only. Refreshing Git or
 Crew, relay events, focus changes and unrelated pane changes do not temporarily remove
-the coordinator chain, shared badge colour or attached row order. The pair is a persisted property of its exact native
+either attached-row chain, shared badge colour or attached row order. The pair is a persisted property of its exact native
 space IDs and verified coordinator home/owner/adoption identity, not a temporary
 mode with a display timeout. Adding, renaming, removing or reordering unrelated
 spaces/tabs/panes on either machine cannot detach it. App restart, mod reload and
