@@ -2,7 +2,7 @@
 
 ## Context
 
-See proposal.md. The live preference lifecycle is already implemented in PR #40. The original change has been finalized as `openspec/changes/archive/2026-11-24-connect-toggle-live/`; preserve that archive instead of rewriting its recorded acceptance digests. This amendment stays in the same PR and links a new active delta for the additional appearance requirement.
+See proposal.md. The live preference lifecycle is already implemented in PR #40. The original change was finalized as `openspec/changes/archive/2026-11-24-connect-toggle-live/`. A separate active amendment initially failed the delivery bot's canonical-spec baseline check, since this branch already includes the original finalization. The approved amendment is therefore folded into that original linked change for supported bot re-finalization. The bot regenerates its acceptance record; the original version remains in commit `32942d1`. Product scope and the approved third outcome are unchanged.
 
 `Spaces.row` currently defines a coordinator-only predicate from `block.length > 1` and `block[0] === w.id`. That predicate controls both moving Crew last among unrelated tags and drawing the chain. The fleet already receives the same verified projected block, so expanding this predicate to either member is sufficient; no new reader or persisted state is needed.
 
@@ -37,7 +37,7 @@ Therefore a projected fleet labelled 2 while its native index is 3 would falsely
 
 Extend `spaces-worktree-layout.test.mjs` across both members, local/remote machines, worktree/count combinations, unrelated tags, renaming and hidden-worktree state. Assert shared chain slot/style and trailing edge, no chain when detached, and none in rail/chips. Extend the mounted Settings test to assert both chains appear/disappear without closing the dialog, including pending/obsolete replies. Keep focus/notify render guards.
 
-Update current README/testing guidance and the affected current specification through this change. Historical archives remain historical. No new layout dependency, asset or package mapping is required.
+Update current README/testing guidance and the affected current specification through the combined original change. This amendment plan is retained alongside it, and previous commits retain the original finalized version. No new layout dependency, asset or package mapping is required.
 
 ## Risks / Trade-offs
 

@@ -1,5 +1,11 @@
 # Design
 
+The approved follow-up is recorded in `amendments/align-attached-pair-chains/`.
+It extends the expanded chain treatment to both pair members and preserves native
+shortcut numbering. The combined delta/tasks are folded into this same linked
+change so its existing finalization record can be re-finalized on the current head.
+The original finalized version remains available in commit `32942d1`.
+
 ## Context
 
 See proposal.md for motivation. The source already writes the preference synchronously in the switch callback: `spaces-ui.js` calls `updateSpacePreferences` and notifies Settings. The setter writes `custom.spaces.preferences`, clears fleet read/link caches on transitions and clears durable display on disable. There is no deferred Settings-close save in this path.
