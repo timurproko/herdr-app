@@ -34,8 +34,8 @@ The maintainer integration decision accepts these scenarios:
     "Complete page reads include both totals, and permission failures reuse one account diagnosis per repository per refresh rather than per PR.",
     "The host comparison records accepted 0.1.18 public capabilities, warned palette skip and owned feedback retention without live changes."
   ],
-  "archiveDigest": "2adde70b505fe15ab11f40bf18de8e48173845a95d0be69fa98285133a935ec3",
-  "specDigest": "ce662a66883ec2888d2d75fe65ec670fb61133c0082424c2716b4f0afdd6ca31",
+  "archiveDigest": "28f83f83643b6ab88098a39ec8b390a02f40d5004d87c97e8486c12802f514be",
+  "specDigest": "98ba51933272e83f7799b1bced5de91169569c5b7e10ccad0ef959056547c984",
   "tasksDigest": "2ebffc9cb71dbe6ada5a661eedd2a6430bde6047c24f0c27256b45d7ea469df7",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []
