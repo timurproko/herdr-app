@@ -198,6 +198,20 @@ subsequent healthy delayed read verified at 4614 ms, with remembered picture at 
 The lost predecessor's private fixture command completion was also recorded; no person's
 processes were stopped, restarted or altered.
 
+A takeover rerun after the final reader/cache repairs used the current real home with
+separate Spaces, Settings and inventory-consumer copies. First pairing verified in
+797 ms and painted attached in 812 ms; remembered off/on painted attached in **6 ms**
+and verified in **706 ms**. Recorded commands took 744/508 ms; separate discovery took
+1251/1571 ms and completed 2101/2300 ms after on. One help probe served all four reads,
+decoder turns peaked at 5 ms, and native status had no errors. The attached screenshot
+showed adjacent rows, both chains/Crew pills and shared green numbered badges.
+A fresh owner-reload run with the same intentional four-second delay replaced the
+abandoned owner 2270 ms after its command started, rather than 45 seconds later.
+First verification including recovery took 7038 ms; subsequent remembered attachment
+took 17 ms while its healthy delayed verification took 4654 ms. Native status again
+had no errors. Abandoned commands can finish without returning their capability fact;
+that fault-injected case can therefore require another probe by the replacement.
+
 ## Regression and opt-in runner
 
 - `fleet-toggle-live.test.mjs`: mounted local/remote Settings/Spaces, repeated toggles,
