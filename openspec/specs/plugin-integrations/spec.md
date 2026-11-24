@@ -431,9 +431,9 @@ The coordinator Git overview SHALL render at most one PR-read failure notice per
 - **THEN** the applicable repository section shows one transient read-failure notice offering Refresh to retry rather than asserting that GitHub is unreachable
 - **AND** last-good eligible PR facts survive and the existing bounded refresh path remains without a new polling or automatic retry loop
 
-#### Scenario: Current account lacks repository permission
-- **WHEN** GitHub explicitly refuses repository or PR access because of permission or authentication
-- **THEN** the notice identifies the repository and known GitHub account or honest unknown identity rather than a GitHub connectivity outage
+#### Scenario: Current account cannot resolve the repository
+- **WHEN** GitHub answers that the repository or PR cannot be resolved or accessed with the current login
+- **THEN** the notice identifies access with the current GitHub account rather than a GitHub connectivity outage
 - **AND** the panel does not switch the login or discard healthy rows
 
 #### Scenario: Genuine connectivity failure
