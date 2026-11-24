@@ -28,6 +28,7 @@ const subscription = await loadMod({host:{shared:key=>store.get(key),checking:()
 let rendering = false;
 const duringRender = fn => { const before=rendering; rendering=true; try{return fn();}finally{rendering=before;} };
 let width = 248, nativeReady = false, coreReady = false, managed = false, failExec = false, transport = null;
+let nativeStatus = {};
 let clock = Date.now();
 class Clock extends Date { static now() { return clock; } }
 let next = { revision: 'a'.repeat(40), check: { checked: 1000, available: false } };
@@ -48,7 +49,7 @@ async function mount(kind, props) {
   const clone = value => value === undefined ? undefined : vm.runInContext(`JSON.parse(${JSON.stringify(JSON.stringify(value))})`, context);
   const noop = () => null;
   const host = {
-    props: () => clone(copy.props), theme: () => clone(theme), updates: () => clone({ app: { ready: nativeReady, updates: true }, core: { ready: coreReady, managed }, checks: true }),
+    props: () => clone(copy.props), theme: () => clone(theme), updates: () => clone({ app: { ready: nativeReady, updates: true }, core: { ready: coreReady, managed }, checks: true, ...nativeStatus }),
     window: () => clone({ platform: 'windows' }), layout: () => clone({ id: 'sidebar', size: { px: width } }),
     appHome: () => '/fixture', checking: () => false, shared: key => clone(store.get(key)),
     setShared(key, value) {
@@ -134,6 +135,41 @@ const markers = () => surfaces().map((tree, i) => marker(tree, i === 3 ? 7 : 6))
 assert.deepEqual(markers().map(Boolean), [false, false, false, false]);
 assert.equal(footer.timers.length, 0, 'Footer reader has no polling/controller');
 assert.ok(header.afters.some(timer => timer.at === clock+120000));
+// Capture descriptions from the real Settings renderer, retaining its native
+// row/control markup. Every native branch is audited, not just Custom running.
+const captureUpdateRows = () => {
+  const rows = [], original = settings.view.row;
+  settings.view.row = function(t, title, description, control) {
+    rows.push({ title, description }); return original.call(this, t, title, description, control);
+  };
+  try { settings.render(); return rows; } finally { settings.view.row = original; }
+};
+const nativeCases = [
+  { name: 'unchecked', status: {} },
+  { name: 'current', status: { checked: 1700000000 } },
+  { name: 'checking', status: { checking: true } },
+  { name: 'source builds', status: { app: { updates: false }, core: {}, checks: false } },
+  { name: 'ready', status: { app: { updates: true, ready: '0.1.18' }, core: { ready: '0.1.20' } }, control: 'st-app-update', label: 'Restart to update' },
+  { name: 'managed', status: { core: { managed: 'package manager' } } },
+  { name: 'updating', status: { core: { updating: true } } },
+  ...['fixture refusal', 'fixture refusal.', 'fixture refusal...', 'fixture refusal…', 'fixture refusal.  '].map(error => ({
+    name: `failed: ${error}`, status: { core: { error } }, expected: 'The update failed: fixture refusal.', control: 'st-core-retry', label: 'Try again',
+  })),
+];
+for (const test of nativeCases) {
+  nativeStatus = test.status;
+  const rows = captureUpdateRows();
+  assert.equal(rows.length, 3, test.name);
+  for (const row of rows) {
+    assert.match(row.description, /[^.]\.$/, `${test.name}: ${row.title}`);
+    assert.doesNotMatch(row.description, /\.\./, `${test.name}: ${row.title}`);
+  }
+  if (test.expected) assert.equal(rows[1].description, test.expected);
+  if (test.control) assert.ok(find(settings.tree, test.control).kids.includes(test.label), test.name);
+  if (test.name === 'updating') assert.equal(rows[1].description, 'Updating… your terminals keep running.');
+  if (test.name === 'checking') assert.ok(find(settings.tree, 'st-check-app').kids.includes('Checking…'));
+}
+nativeStatus = {}; settings.render();
 // Review regression: a failed manual check followed immediately by Updates
 // navigation must not turn the unchanged cached success into confirmation.
 // A frozen clock makes this exactly within the native three-second window.
