@@ -4,9 +4,11 @@
 
 See proposal.md for motivation. The source already writes the preference synchronously in the switch callback: `spaces-ui.js` calls `updateSpacePreferences` and notifies Settings. The setter writes `custom.spaces.preferences`, clears fleet read/link caches on transitions and clears durable display on disable. There is no deferred Settings-close save in this path.
 
-Attachment discovery currently starts from Crew's `spaces.refresh` and `workspace.context.refresh` events. Mounted Spaces emits the former at init and from its 250 ms lifecycle callback, not directly from the preference callback. Crew yields before verification and guards completion with the shared preference generation. The installed public SDK says `setShared` re-renders every mod; therefore the observed delay must not be explained away by assuming shared writes are silently local. The exact missed invalidation/lifecycle boundary still needs a reproducing trace before selecting the smallest fix.
+Attachment discovery currently starts from Crew's `spaces.refresh` and `workspace.context.refresh` events. Mounted Spaces emits the former at init and from its 250 ms lifecycle callback, not directly from the preference callback. Crew yields before verification and guards completion with the shared preference generation. The installed public SDK says `setShared` re-renders every mod; therefore the observed delay must not be explained away by assuming shared writes are silently local. The missing boundary is the preference event itself: there is no direct discovery trigger there. The mounted-dialog fixture fails before the fix with zero reads for both machines after draining all shared invalidations; only a later Spaces lifecycle event can start them. After emitting the existing generic refresh event from the switch, the same fixture starts both reads and renders the attached rows without advancing a timer or closing Settings.
 
 `tests/fleet-preferences.test.mjs` checks a switch callback and saved boolean, but does not mount a separate sidebar or assert its rows. That test cannot detect this report. Existing fleet refresh tests cover persistence and stale replies and must remain valid.
+
+Native baseline evidence on installed App 0.1.17 narrows the claim: disabling detached immediately with Settings open; enabling had a saved true preference and active read lease while still independent at one second, then showed the chain/shared colour/attached order by seven seconds with the same dialog still open and no errors. Thus a hard close-only repaint freeze was not reproduced on this run, and verification latency must not be called a failed repaint. The repair removes reliance on the next sidebar lifecycle tick; it does not claim to eliminate the bounded Crew verification read. Screenshots and selective state observations are kept under ignored `.artifacts/`, not committed as private UI data.
 
 ## Goals / Non-Goals
 
@@ -18,7 +20,7 @@ Attachment discovery currently starts from Crew's `spaces.refresh` and `workspac
 
 ### 1. Fix the demonstrated invalidation boundary, not a close handler
 
-Trace preference publication, sidebar repaint and verification start/completion during a mounted-dialog reproduction. Use the shared value as truth. If the missing step is verification scheduling, emit the existing generic workspace refresh moment from the switch event and preserve Crew's yielded read path. If the missing step is mounted-consumer reconciliation, repair that consumer's preference-change invalidation using the supported host lifecycle. Do not add an unconditional repeated notify, a new polling loop or a dependency on dialog close. This keeps the repair at the cause rather than disguising it with arbitrary delays.
+Emit the existing `workspace.context.refresh` plugin moment immediately after changing the fleet preference in the Settings event callback. Crew already yields before reading, so it can safely verify all relevant machines even with inline spawn. Shared publication already repaints the sidebar, as native disable demonstrated; no extra repaint machinery is needed. Do not add an unconditional repeated notify, a new polling loop or a dependency on dialog close. Other switches do not emit this fleet-specific lifecycle event.
 
 ### 2. Preserve verification and generation safety
 
@@ -30,7 +32,7 @@ UI callbacks and yielded lifecycle work own changes, reads and notifications. Si
 
 ### 4. Audit sibling switches without widening scope
 
-Both last-tab switches use the same synchronous preference setter. Confirmation reads preferences when a close is requested; empty-space reconciliation reads them in its existing 250 ms lifecycle. Inspect these paths with Settings open and document whether the shared propagation boundary also delays them. Change their code only if the same reproduced cause applies, preserving existing automatic-space and process-exit rules.
+Both last-tab switches use the same synchronous preference setter. `closeWithConfirmation` reads preferences when a close is requested; `reconcileSpaceStarts` reads them in its existing 250 ms lifecycle. Neither depends on fleet discovery or a Settings-close callback. The mounted fixture checks immediate saved values without new fleet requests; the existing close/lifecycle fixtures exercise consumers. No production change to either sibling is needed.
 
 ### 5. Model separate mounted consumers in regression coverage
 

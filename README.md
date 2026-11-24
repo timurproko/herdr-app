@@ -615,7 +615,13 @@ up newer metadata. Worktree dialogs keep the clicked folder rather than a later
 selected terminal's folder.
 
 **Settings → Spaces → Connect fleet space to coordinator** is off by default
-(`connectFleetToCoordinator`). When on with Crew enabled, a verified same-machine
+(`connectFleetToCoordinator`). Changes apply while Settings stays open: enabling
+starts fleet verification immediately for applicable machines and attaches as soon
+as it succeeds; disabling immediately restores independent rows and badge colours.
+Until the first successful verification, no attachment is guessed. The two last-tab
+switches on this page also save immediately; close actions and empty-space
+reconciliation read their current values without waiting for Settings to close.
+When on with Crew enabled, a verified same-machine
 fleet attaches below its coordinator with its own ordinary numbered badge (for
 example, **2 crew** below **1 coordinator**), in the same 16px rounded slot. Its fill
 uses the coordinator's actual badge colour and follows recolouring without changing
