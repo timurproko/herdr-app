@@ -184,7 +184,7 @@ Settings → Spaces SHALL expose **Connect fleet space to coordinator**, default
 - **AND** attachment does not silently reorder native spaces or remap shortcuts to make projected digits consecutive
 
 ### Requirement: Linked spaces reorder as one block
-Dragging either member of a verified coordinator/fleet pair SHALL reorder both as one same-machine block, with the coordinator before the fleet. The drag SHALL NOT split another linked block, cross machines, select a space, move tabs or restart terminals. Cancellation and stale relationships SHALL NOT commit an order change. Unlinked spaces SHALL retain ordinary reordering.
+Dragging either member of a displayed coordinator/fleet pair SHALL reorder both as one same-machine block, with the coordinator before the fleet. A remembered last-verified pair SHALL suffice for space-only ordering without fresh Crew status. The drag SHALL NOT split another linked block, cross machines, select a space, move tabs or restart terminals. Cancellation or changed captured pair identities SHALL NOT commit an order change. Unlinked spaces SHALL retain ordinary reordering.
 
 #### Scenario: Drag the coordinator or the fleet
 - **WHEN** the user drags either linked row to a valid position in its own machine group
@@ -209,7 +209,7 @@ Dragging either member of a verified coordinator/fleet pair SHALL reorder both a
 - **THEN** the destination resolves to an edge of that block rather than between its members
 
 #### Scenario: Cancellation or relationship changes
-- **WHEN** a gesture is cancelled, a member disappears, ownership changes, or the switch is disabled before release
+- **WHEN** a gesture is cancelled, a member disappears, completed verification changes the displayed pair, or the switch is disabled before release
 - **THEN** no stale block move is committed
 - **AND** cancellation never activates the grabbed row
 
@@ -219,10 +219,15 @@ Dragging either member of a verified coordinator/fleet pair SHALL reorder both a
 - **AND** it does not restore an old whole document or persist a retry for a later session
 
 #### Scenario: Ordinary spaces and worktrees
-- **WHEN** attachment is off or a dragged space has no verified link
+- **WHEN** attachment is off or a dragged space has no displayed current or remembered link
 - **THEN** the existing same-machine independent reorder behavior is preserved
 - **AND** its single preview chip retains that space's own numbered badge, independent colour and name
 - **AND** repository discovery does not regroup unrelated worktree spaces
+
+#### Scenario: Remembered link before background verification
+- **WHEN** both exact remembered space identities exist and attachment is enabled while verification is pending, failed or expired
+- **THEN** either row can be dragged as the same displayed block without awaiting Crew status
+- **AND** this permission covers only native space ordering, not tab or terminal movement, worker navigation, messaging or coordinator colour writes
 
 ### Requirement: Aligned space worktree markers
 In the expanded Spaces sidebar, plugin tags SHALL occupy the existing tag-only right edge, after any ahead/behind counts, worktree marker and attached-row chain. Worktree markers on rows without tags SHALL retain their existing alignment with the machine header's fold chevron. Worktree-icon visibility and rename behavior SHALL remain unchanged.
@@ -247,7 +252,7 @@ In the expanded Spaces sidebar, plugin tags SHALL occupy the existing tag-only r
 - **AND** visible plugin tags retain their trailing edge when the worktree marker is hidden, and renaming still hides the tags
 
 ### Requirement: Stable verified fleet presentation during refresh
-Verified fleet presentation SHALL be a persisted property of exact pair identity, not a temporary refresh mode. Unrelated changes SHALL NOT emit detached frames. Persisted facts SHALL restore the first native-space frame after restart or reload while background verification runs. Failures SHALL retain the pair while both native spaces exist; only completed contradictory evidence, explicit disablement or missing native spaces SHALL detach it. Retained display SHALL NOT authorize actions.
+Fleet presentation SHALL use a bounded host-local last-verified pair record independently of fresh action authority. With attachment enabled, exact remembered native space identities SHALL restore the first render before verification completes. Disablement SHALL hide but preserve memory. Failed, slow or abandoned reads SHALL retain it. Completed contradictory evidence or confirmed missing spaces SHALL clear or replace memory. Remembered presentation SHALL NOT grant fresh operational authority.
 
 #### Scenario: Successful refresh cycle
 - **WHEN** an attached fleet undergoes a delayed Crew status refresh from Git or Spaces and the completed result verifies the same pair
@@ -261,14 +266,14 @@ Verified fleet presentation SHALL be a persisted property of exact pair identity
 - **AND** a pending or subsequent successful same-binding refresh emits no detached sidebar projection
 
 #### Scenario: Failed or timed-out refresh
-- **WHEN** a previously verified pair's next status read fails, is malformed or times out
-- **THEN** its prior verified presentation remains while its two native spaces exist, until a completed read disproves it or the setting/plugin is turned off
+- **WHEN** a previously verified pair's next status read fails, is malformed, times out or expires without completing
+- **THEN** its remembered presentation remains while its two native spaces exist, until a completed read disproves it or the setting/plugin is turned off
 - **AND** elapsed time alone does not detach an unchanged pair, including long outages beyond the former 60-second window
 - **AND** retention is bounded to the exact machine/space/home identities with at most one verified pair per known machine, never fresh action authorization
 
 #### Scenario: Completed relationship change
 - **WHEN** a successful completed read establishes that the fleet or coordinator is gone or ownership identifies a different valid pair
-- **THEN** the prior attachment is removed or replaced atomically without a temporary unknown publication
+- **THEN** the prior attachment and remembered identity are removed or replaced atomically without a temporary unknown publication
 - **AND** a late result from an older read cannot resurrect it
 
 #### Scenario: No verified history
@@ -276,15 +281,25 @@ Verified fleet presentation SHALL be a persisted property of exact pair identity
 - **THEN** the sidebar remains unattached rather than creating a relationship from names, role hints or an unverified snapshot
 
 #### Scenario: Restart, mod reload or layout switch
-- **WHEN** a previously verified pair's two native spaces still exist after app restart, mod hot reload or a layout switch
+- **WHEN** a previously verified pair's two native spaces still exist after app restart, mod hot reload, update or a layout switch with attachment enabled
 - **THEN** the first available native-space frame restores its attached block, own numbered badges with shared coordinator colour, chains and Crew pills on both expanded rows from persisted sanitized identity facts before a status read completes
 - **AND** background verification can update or disprove that pair without an intermediate detached frame
 - **AND** persisted facts contain no reports, task records, PR inventory, credentials or transcripts and are not exported as portable preferences
 
 #### Scenario: Relevant identity changes during a read
 - **WHEN** the pair's owner/home or adoption evidence changes while verification is pending
-- **THEN** actions lose eligibility immediately but the previous verified display remains until the new read completes
+- **THEN** fresh operational actions lose eligibility immediately but the remembered display remains until the new read completes
 - **AND** missing native space identities or explicit disablement detach immediately rather than leaving ghost rows
+
+#### Scenario: Disable and restore remembered pairing
+- **WHEN** attachment or Crew is switched off and later enabled with both remembered native space identities still present
+- **THEN** off hides the link immediately without erasing its last verified pair record and on restores the picture in the same render with zero reads completed
+- **AND** background verification refreshes authority independently of the restored picture
+
+#### Scenario: Remembered space is absent
+- **WHEN** either exact remembered space identity is missing from the current native space snapshot
+- **THEN** that record contributes no attached rows and cannot be matched by another space's name
+- **AND** authoritative ready-layout absence clears the stale record outside render; an unready remote snapshot alone does not erase memory
 
 ### Requirement: Independent attached-space identity and tags
 Attached coordinator and fleet rows SHALL remain independently selectable native spaces with distinct tabs and terminals. Both expanded rows SHALL display the existing Crew pill with matching styling and a common trailing tag edge after counts and worktree markers. Both attached rows SHALL show a muted outline chain immediately before their Crew tags, aligned in one column. Unrelated plugin tags SHALL remain.
@@ -303,18 +318,18 @@ Attached coordinator and fleet rows SHALL remain independently selectable native
 - **AND** disabling Crew still hides Crew tags without closing or relocating either space
 
 ### Requirement: Live fleet attachment preference propagation
-Changes to the fleet attachment switch SHALL propagate to mounted Spaces while Settings remains open, without a close event, restart or further user interaction. Every enable, including repeated off/on cycles, SHALL immediately initiate required current verification and publish attachment as soon as it succeeds. Disablement SHALL immediately restore independent presentation. Applicable local and remote groups SHALL obey the same rule without unverified action authority.
+Changes to the fleet attachment switch SHALL propagate in the next render while Settings remains open. Enablement SHALL immediately show a valid remembered pair and start background verification; without memory it SHALL attach only after successful first verification. Disablement SHALL immediately hide attachment without erasing remembered identity. Local and ready remote groups SHALL obey the same rule without granting unverified operational authority.
 
 #### Scenario: Enable while Settings remains open
-- **WHEN** the user enables attachment with Settings open and a valid same-machine coordinator/fleet relationship can be verified
-- **THEN** required verification starts without waiting for dialog close or another lifecycle interaction
-- **AND** as soon as verification resolves, the fleet moves below its coordinator, native shortcut numbers remain truthful, matching chains appear immediately before both Crew pills and both badges use the coordinator's colour
+- **WHEN** the user enables attachment with Settings open and both spaces of a remembered same-machine pair still exist
+- **THEN** the next render shows the fleet below the coordinator, truthful native shortcut numbers, matching chains before both Crew pills and the coordinator's colour on both badges before any read completes
+- **AND** background verification starts without waiting for dialog close or another lifecycle interaction
 - **AND** Settings remains open and native space order, focus, tabs and terminals are unchanged
 
 #### Scenario: Disable while Settings remains open
 - **WHEN** the user disables attachment while Settings is open and an attached pair is visible
 - **THEN** the sidebar immediately returns to independent row order, retains each row's native shortcut number, removes both chains and restores the fleet's saved badge colour
-- **AND** no close event or further interaction is needed
+- **AND** no close event or further interaction is needed and remembered pair identity remains available for later enablement
 
 #### Scenario: Verification still pending or unavailable
 - **WHEN** enabling requires verification and no valid previously verified display identity is available
@@ -323,26 +338,26 @@ Changes to the fleet attachment switch SHALL propagate to mounted Spaces while S
 
 #### Scenario: Disable before verification completes
 - **WHEN** the user enables and then disables attachment while Settings stays open and the enable-time read is pending
-- **THEN** the sidebar remains independent after disabling and the superseded reply cannot restore attachment
-- **AND** a later explicit enable can start a current verification without closing Settings
+- **THEN** the sidebar remains independent after disabling and the superseded reply cannot restore attachment or overwrite remembered identity
+- **AND** a later explicit enable can restore valid memory and start current verification without closing Settings
 
 #### Scenario: Repeated verified off/on cycles
 - **WHEN** a verified attached pair is switched off and on repeatedly with Settings open, with immediate, one-second or fifteen-second off intervals
-- **THEN** each off transition immediately restores independent presentation and each on transition initiates current verification
-- **AND** the pair attaches again after the first successful current verification, without an additional freshness, attempt or abandoned-reader wait inherited from a prior toggle
-- **AND** for a successful local verification completing in less than two seconds, reattachment also completes in less than two seconds without dialog closure or unrelated events
-- **AND** ready remote machines attach after their own successful verification rather than waiting for another machine
+- **THEN** each off transition immediately restores independent presentation and each on transition restores the still-valid remembered pair in the same render and initiates background verification
+- **AND** no freshness, attempt, command latency or abandoned-reader wait delays that remembered picture
+- **AND** ready remote machines restore their own remembered pairs independently rather than waiting for another machine
 
 #### Scenario: Older reply after a newer toggle
 - **WHEN** a reply initiated before the last off/on sequence arrives before or after the current sequence's successful reply
-- **THEN** the older reply cannot replace current binding, presentation, verification age or retry state
+- **THEN** the older reply cannot replace current binding, presentation, verification age, remembered identity or retry state
 - **AND** rejecting it cannot discard or delay the current sequence's valid reply
 
 #### Scenario: Large verification response and interrupted processing
 - **WHEN** a valid supported status response of up to one MiB arrives during enablement
 - **THEN** bounded response processing publishes its verified pair without a watchdog interruption or dependence on closing Settings
 - **AND** if response processing is nevertheless abandoned, the existing lifecycle replaces its read within the next two-second recovery interval rather than waiting for the transport lease
-- **AND** transport commands retain their longer bounded execution allowance and superseded replies remain unable to publish
+- **AND** transport commands retain their bounded execution allowance and superseded replies remain unable to publish
+- **AND** interruption never removes an already remembered presentation
 
 #### Scenario: Pretty-printed large legacy status
 - **WHEN** legacy status emits a supported reply up to one MiB and 4096 tasks over tens of thousands of JSON lines
