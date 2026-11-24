@@ -174,9 +174,12 @@ enrollment (including unknown membership or missing setup), and a **120-second
 safety net** when enrolled, even during relay outages. Unenrolled pending/unknown
 checks also remain eligible. Settled or known-empty checks do not stop an open
 row's state reads: a later merge must leave Open without relying on another event.
-One coalesced repository job reads state, draft/completion/head facts and checks
-together in sequential GraphQL chunks of at most **20 PRs**. It preserves unrelated
-labels/tasks/reviews. Ordinary totals come from the same repository batch, not the
+One coalesced repository job probes only number, state, draft/completion dates,
+head SHA and the last commit's rollup **STATE**, in chunks of at most **40 PRs**.
+It does not enumerate check contexts for unchanged rows. Only a changed head or
+summary fetches full contexts, batched at **20 changed PRs** under the same lease.
+A null rollup is authoritative empty checks and needs no detail read. Unrelated
+labels/tasks/reviews remain intact. Ordinary totals come from the same repository batch, not the
 loaded subset; aggregate totals derive from eligible task rows, including the
 unchanged 24-hour historical completion bound. Commands stay below Windows'
 process-argument limit, including a 120-PR expanded list. The queue lease covers
@@ -190,13 +193,18 @@ Settled Closed rows need no periodic read; reopen is discovered by event/manual/
 show/reconnect refresh rather than polling all closed history.
 
 Failures retain last-good values and retry after **90s, 180s, 360s, then 720s** (the
-cap); a rate-limit refusal waits **at least 15 minutes**. A successful read restores
+cap); primary and secondary rate-limit refusals wait **at least 15 minutes**, or
+longer when Retry-After says so. Safety API responses include headers so numeric
+or date Retry-After is honored without a separate request. A secondary/burst refusal
+is still a rate limit when the hourly quota has points remaining; there is no
+immediate retry and no overlapping probe/detail cycle. A successful read restores
 the repository's 45/120-second cadence only if a shown row still needs it. No hooks are enrolled,
 accounts switched or relay credentials changed by this fallback.
 
 Healthy safety latency is up to **45 seconds unenrolled or 120 seconds enrolled,
-plus queue time and the GitHub reads** (one command per 20 eligible PRs, each with a
-30-second timeout). This is the scheduling bound after the preceding read; it is
+plus queue time and the GitHub reads** (each command has a
+30-second timeout). Unchanged selections need only one probe per 40 rows; changed
+rows add one detail command per 20 rows. This is the scheduling bound after the preceding read; it is
 not an unconditional wall-clock maximum across errors, stale/offline contexts or
 GitHub eventual consistency. Event-covered rows start after native relay dispatch
 and a microtask, without a configured debounce: latency includes GitHub delivery and
@@ -214,8 +222,20 @@ Failed/discarded standalone older-PR reads also release that key and use a bound
 10-second retry delay, rather than retrying on every render. Repository replacement
 invalidates old epochs; coordinator targeted reads and fallback use the same guard.
 
+For **5 or 30 unchanged shown rows**, estimated cost is one primary GraphQL point
+(the minimum per request) and one secondary read-query point per repository cycle.
+There are no per-context connections in that steady-state probe. If all 5 change,
+one follow-up detail batch adds roughly one point; if all 30 change, two batches
+add roughly two. These are query-shape estimates, not measurements or guarantees
+of GitHub's internal CPU limits. At 120/45 seconds this is about 0.5/1.33 steady
+requests per minute per repository; other agents/events add separate account load.
+GraphQL cannot condition field selection on a returned head/summary in that same
+response, so changed rows require a follow-up; unchanged rows do not.
+
 A shown settled Open/Draft PR that starts a rerun or merges without an event is
-rediscovered by the next successful safety cycle. Closed settled rows, folded
+rediscovered by the next successful safety cycle. Partial job-count changes with
+the same head and overall PENDING summary do not trigger detailed safety reads;
+those counts catch up on events/full refresh or when the head/summary changes. Closed settled rows, folded
 coordinator sections and hidden tabs are not periodically rediscovered. GitHub
 eventual consistency, failed reads and offline/stale contexts can retain old values
 until an applicable safety cycle or catch-up. A displayed **Add this repo in

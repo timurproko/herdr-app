@@ -3,7 +3,7 @@ import {rowHarness,find,t} from './support/git-row.mjs';
 
 const iso=ago=>new Date(Date.now()-ago).toISOString();
 const raw=(number,state='OPEN',isDraft=false)=>({number,title:`PR ${number}`,url:`https://github.com/owner/repo/pull/${number}`,state,isDraft,author:{login:'author'},createdAt:new Date(1700000000000+number*1000).toISOString(),closedAt:state==='OPEN'?null:iso(1000),mergedAt:state==='MERGED'?iso(1000):null,headRefName:`branch-${number}`,headRefOid:`sha-${number}`,body:'- [x] done',labels:[{name:'keep',color:'abcdef'}],reviewDecision:'APPROVED',statusCheckRollup:[{name:'CI',status:'COMPLETED',conclusion:'SUCCESS'}]});
-const graph=pr=>({...pr,commits:{nodes:[{commit:{statusCheckRollup:{contexts:{nodes:pr.statusCheckRollup}}}}]}});
+const graph=pr=>({...pr,commits:{nodes:[{commit:{statusCheckRollup:{state:'SUCCESS',contexts:{nodes:pr.statusCheckRollup}}}}]}});
 for(const coordinator of [false,true])for(const via of ['safety','event']) {
   const data=new Map([6,5,4,3,2,1].map(number=>[number,raw(number,number<3?'CLOSED':'OPEN')]));
   let held,fail=false,reads=0;

@@ -33,6 +33,16 @@ Shown Open/Draft PRs and uncovered pending/unknown checks SHALL refresh state an
 - **THEN** its last displayed value remains and failures back off before another eligible read
 - **AND** hidden, disabled or offline contexts start no fallback reads and late replies cannot overwrite a new context
 
+#### Scenario: Thin unchanged-row cycle
+- **WHEN** shown PR heads and overall check summaries remain unchanged during a safety cycle
+- **THEN** one bounded repository probe reads state, draft/completion/head facts and the rollup summary without requesting individual check contexts
+- **AND** full check contexts are fetched only for changed heads or summaries, under the same single-flight lease
+
+#### Scenario: Secondary rate limit
+- **WHEN** GitHub refuses a safety read with a secondary limit despite positive hourly quota
+- **THEN** last-good facts remain and no immediate retry occurs
+- **AND** the next attempt waits at least 15 minutes or a longer Retry-After value
+
 #### Scenario: Settled open PR changes state
 - **WHEN** a shown unenrolled PR with settled checks is merged, closed or converted to draft after its last successful refresh
 - **THEN** the next successful fallback cycle reads its current state alongside checks and reconciles its row and totals

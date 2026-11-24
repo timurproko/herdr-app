@@ -459,12 +459,16 @@ Disabling Git or closing its chrome owner closes transport; another mounted owne
 can take over. Failed reads retain the last good status. Events accelerate enrolled repository updates, with a **120-second safety net**
 for shown Open/Draft PRs even when checks have settled or the relay misses an event.
 Without confirmed enrollment, shown Open/Draft PRs and pending/unknown checks use
-a **45-second fallback**. One coalesced repository job reads current state and
-checks together in bounded 20-PR chunks, retaining displayed values until the
-complete selection succeeds. Merge/close transitions move rows to Closed and update
+a **45-second fallback**. One coalesced repository job probes state, head SHA and
+rollup summary in bounded 40-PR chunks; only changed heads/summaries fetch full
+checks in 20-PR chunks. Unchanged 5- or 30-row selections use one thin request,
+without enumerating check contexts. Values stay displayed until the complete
+selection succeeds. Merge/close transitions move rows to Closed and update
 both totals; finished-task history still uses GitHub's 24-hour completion bound.
 Reads stop on hide/disable, stale context or remote-machine disconnect; failures
-back off 90/180/360/720 seconds, with at least 15 minutes for rate limits.
+back off 90/180/360/720 seconds, with at least 15 minutes for primary or secondary
+rate limits and any longer Retry-After. Positive hourly quota does not bypass a
+secondary refusal.
 Healthy safety delay is up to the cadence plus queue/GitHub read time, not a fixed
 end-to-end SLA. See [refresh timing and stale-data limits](docs/GIT-WEBHOOKS.md#pending-checks-without-enrollment).
 Unconfigured/offline panels show a

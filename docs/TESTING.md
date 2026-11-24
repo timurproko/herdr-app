@@ -296,9 +296,14 @@ readiness without an `hc` state field (and refusal for loading/missing/unrelated
 layouts), failure retention and 90/180-second
 backoff, the 15-minute rate-limit floor, 120-second enrolled safety reads, existing-queue
 contention, authoritative empty rollups and late hidden/replaced-context replies.
-The 120-row ordinary/coordinator cases require six command-line-bounded chunks,
-actually launch a harmless Node child with generated arguments, retain all rows on
-a failed second chunk, then retry successfully and continue while Open.
+The 120-row ordinary/coordinator cases use three thin state/summary chunks and,
+only on changed heads/summaries, six 20-PR detail chunks. They actually launch a
+harmless Node child with generated arguments, retain all rows on a failed second
+chunk, then retry successfully and continue while Open. Five- and thirty-row
+steady cycles require exactly one thin request with no per-context list; changed
+head/summary cases fetch only that row's contexts. Held probes refuse a competing
+cycle. Secondary failures with positive hourly quota retain values and honor a
+30-minute Retry-After; ordinary quota headers cannot misclassify auth failures.
 `tests/git-checks-order.test.mjs` injects newer publications while replies are held
 and asserts the single epoch/generation guard is wired into list, related/older,
 event, fallback and aggregate paths. Pagination also covers selecting an older PR

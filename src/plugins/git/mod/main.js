@@ -18,7 +18,7 @@ import { headerTool, contextMenu, panelMessage } from './panel-kit.js';
 import { changePanel } from './panel-state.js';
 import { sidebarPanelEnabled } from './plugins.js';
 import { sidebarTitle } from './sidebar-title.js';
-import { pullListArgs, REPO_ARGS, countArgs, parseCounts, parsePullPage, agentPullNumber, pullRow, pullError, PR_FIELDS, PR_PAGE_SIZE, pendingChecksArgs, parsePendingChecks, refreshPullFacts, ChecksFallback, PullFactsOrder, CHECKS_BATCH_SIZE } from './pulls.js';
+import { pullListArgs, REPO_ARGS, countArgs, parseCounts, parsePullPage, agentPullNumber, pullRow, pullError, PR_FIELDS, PR_PAGE_SIZE, pendingChecksArgs, parsePendingChecks, refreshPullFacts, pullStateArgs, parsePullStates, pullPayload, pullRetryAfter, ChecksFallback, PullFactsOrder, CHECKS_BATCH_SIZE, STATE_BATCH_SIZE } from './pulls.js';
 
 const VIEWS = ['open', 'closed'];
 const VIEW_KEY = 'custom.git.view';
@@ -370,21 +370,46 @@ export default class Changes extends View {
     const request=this.fallbackRequest={},order=aggregate?aggregate.factOrder:this.factOrder,read=order.begin();
     if(aggregate)aggregate.fallbackBusy=true;
     else {this.pullLoading=true;this.pullRequest=request;}
+    let retryAfter=0,rateLimited=false;
     try {
       if(!current())return;
-      const updates=new Map();let counts=null;
-      for(let at=0;at<numbers.length;at+=CHECKS_BATCH_SIZE) {
+      const updates=new Map(),previous=new Map(repo.rows.map(pr=>[pr.number,pr]));let counts=null;
+      const gh=async args=>{
+        if(!current())throw Error('Obsolete safety read');
+        const result=await exec('gh',args,{...(root?{cwd:root}:{}),on,timeout:30000});
+        if(!current())throw Error('Obsolete safety read');
+        retryAfter=Math.max(retryAfter,pullRetryAfter(result));
+        if(result.code!==0 || result.timed_out || result.timedOut || result.signal) {
+          rateLimited=/rate.?limit|secondary.*limit|abuse|\b429\b/i.test(`${pullPayload(result.stdout)}\n${result.stderr??''}`) || /^HTTP[^\n]*\b429\b/im.test(result.stdout??'');
+          throw Error(pullError(result));
+        }
+        return pullPayload(result.stdout);
+      };
+      for(let at=0;at<numbers.length;at+=STATE_BATCH_SIZE) {
         if(!current())return;
-        const batch=numbers.slice(at,at+CHECKS_BATCH_SIZE);
-        const result=await exec('gh',pendingChecksArgs(batch,repo.name,!aggregate && at===0),{...(root?{cwd:root}:{}),on,timeout:30000});
-        if(!current())return;
-        if(result.code!==0 || result.timed_out || result.timedOut || result.signal)throw Error(pullError(result));
-        for(const [number,value] of parsePendingChecks(result.stdout,batch))updates.set(number,value);
+        const batch=numbers.slice(at,at+STATE_BATCH_SIZE),stdout=await gh(pullStateArgs(batch,repo.name,!aggregate && at===0));
+        for(const [number,value] of parsePullStates(stdout,batch))updates.set(number,value);
         if(!aggregate && at===0) {
-          counts=parseCounts(result.stdout);
+          counts=parseCounts(stdout);
           if(!Number.isInteger(counts?.open) || !Number.isInteger(counts?.closed))throw Error('Incomplete pull request counts');
         }
       }
+      const changed=[];
+      for(const [number,value]of updates) {
+        const old=order.published.get(`${repo.name.toLowerCase()}#${number}`)?.value??previous.get(number);
+        value.checks=value.checkSummary==null?null:old?.checks??null;
+        if(value.checkSummary!=null && (old?.checksKnown!==true || (old?.headRefOid??null)!==(value.headRefOid??null) || (old?.checkSummary??old?.checks?.state??null)!==value.checkSummary))changed.push(number);
+      }
+      for(let at=0;at<changed.length;at+=CHECKS_BATCH_SIZE) {
+        if(!current())return;
+        const batch=changed.slice(at,at+CHECKS_BATCH_SIZE),details=parsePendingChecks(await gh(pendingChecksArgs(batch,repo.name)),batch);
+        for(const [number,value]of details) {
+          const probe=updates.get(number);
+          if((probe.headRefOid??null)!==(value.headRefOid??null) || probe.state!==value.state || probe.isDraft!==value.isDraft)throw Error('Pull request changed during safety read');
+          probe.checks=value.checks;
+        }
+      }
+      if(!current())return;
       // Commit only a complete selection. Failed chunks retain every old row.
       let accepted=true;
       const update=pr=>{
@@ -406,7 +431,7 @@ export default class Changes extends View {
       this.ciRevision=(this.ciRevision??0)+1;
       return {failed:false};
     } catch(error) {
-      return {failed:true,rateLimited:/rate.?limit|secondary limit|abuse|429/i.test(String(error))};
+      return {failed:true,rateLimited:rateLimited || /rate.?limit|secondary.*limit|abuse|429/i.test(String(error)),retryAfter};
     } finally {
       if(this.fallbackRequest===request)this.fallbackRequest=null;
       if(aggregate) {aggregate.fallbackBusy=false;aggregate.pump(cx);cx.notify();}

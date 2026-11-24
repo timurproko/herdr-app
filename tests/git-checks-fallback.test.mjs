@@ -3,10 +3,13 @@ import {spawnSync} from 'node:child_process';
 import {rowHarness,find,words,t} from './support/git-row.mjs';
 
 const rollup=(ok,total)=>Array.from({length:total},(_,i)=>({name:`CI ${i}`,status:i<ok?'COMPLETED':'IN_PROGRESS',conclusion:i<ok?'SUCCESS':null}));
-const response=(numbers,status)=>JSON.stringify({data:{repository:{open:{totalCount:120},closed:{totalCount:27},...Object.fromEntries(numbers.map(number=>[`pr${number}`,{number,state:'OPEN',isDraft:false,createdAt:'2026-11-20T12:00:00Z',closedAt:null,mergedAt:null,commits:{nodes:[{commit:{statusCheckRollup:{contexts:{nodes:rollup(status.ok,status.total)}}}}]}}]))}}});
+const response=(numbers,status)=>JSON.stringify({data:{repository:{open:{totalCount:120},closed:{totalCount:27},...Object.fromEntries(numbers.map(number=>{
+  const value={...status,...status.rows?.get(number)};
+  return [`pr${number}`,{number,state:'OPEN',isDraft:false,createdAt:'2026-11-20T12:00:00Z',closedAt:null,mergedAt:null,headRefOid:value.head??null,commits:{nodes:[{commit:{statusCheckRollup:value.total?{state:value.ok<value.total?'PENDING':'SUCCESS',contexts:{nodes:rollup(value.ok,value.total)}}:null}}]}}];
+}))}}});
 for(const coordinator of [false,true]) {
   let now=0,shown=true,online=true,fail=false,rate=false,held=null,requests=[],tasks=[],timers=[],notifications=0,rendering=false;
-  let status={ok:3,total:10},machineShape=null,failAt=null;
+  let status={ok:3,total:10},machineShape=null,failAt=null,retryAfter=null,httpFailure=null;
   const context={scope:'home',machine:'pc2',links:[]};
   const h=await rowHarness({host:{machines:()=>machineShape??[{name:'pc2',layout:online?'ready':'loading'}],
     exec:async(_cmd,args)=>{
@@ -14,8 +17,9 @@ for(const coordinator of [false,true]) {
       const numbers=[...args.find(a=>a.startsWith('query=')).matchAll(/pr(\d+):pullRequest/g)].map(m=>Number(m[1]));
       requests.push({args,numbers});
       if(held)await held.promise;
+      if(httpFailure)return {code:1,stdout:httpFailure,stderr:''};
       const failed=fail || requests.length===failAt;
-      return {code:failed?1:0,stderr:failed?(rate?'API rate limit exceeded':'process could not start'):'',stdout:response(numbers,status)};
+      return {code:failed?1:0,stderr:failed?(rate?'GraphQL: API rate limit already exceeded for user ID 123 (hourly remaining 2800)' :'process could not start'):'',stdout:response(numbers,status),headers:retryAfter?{'retry-after':retryAfter}:undefined};
     }},modules:{'aggregate.js':'src/plugins/git/mod/aggregate.js','plugins.js':{sidebarPanelEnabled:()=>true,pluginPullContext:()=>context,pluginEvent(){}}}});
   const {panel,facts}=h;
   panel.on='pc2';h.place.on='pc2';panel.context=JSON.stringify([h.place.cwd,h.place.on]);panel.shown=()=>shown;
@@ -59,19 +63,22 @@ for(const coordinator of [false,true]) {
   assert.equal(words(find(panel.pullRow(t,rows()[0]),`pr-checks-${rows()[0].key??1}`)).join(''),'3/10');
   status={ok:11,total:11};held.resolve();held=null;await flush();
   assert.ok(rows().every(pr=>pr.checks.label==='11/11'));
-  await advance(45000);assert.equal(requests.length,2,'State refresh continues after checks settle');
+  assert.equal(requests.length,2,'A changed summary gets one changed-row detail batch');
+  assert.ok(requests[1].args.some(arg=>arg.includes('contexts(first:100)')));
+  await advance(45000);assert.equal(requests.length,3,'State refresh continues after checks settle');
+  assert.ok(requests[2].args.every(arg=>!arg.includes('contexts(')),'Unchanged rows request no per-context lists');
   assert.ok(requests[0].args.some(arg=>arg.includes('state isDraft')),'Every safety query includes state and checks');
   if(!coordinator)assert.deepEqual({...panel.counts},{open:120,closed:27},'Repository totals are authoritative, not counts of the loaded subset');
 
   let before=requests.length;
-  rows()[0].checks=facts.checks(rollup(0,10));shown=false;await advance(45000);assert.equal(requests.length,before);
+  rows()[0].checks=facts.checks(rollup(0,10));rows()[0].checkSummary='pending';shown=false;await advance(45000);assert.equal(requests.length,before);
   shown=true;sync();online=false;await advance(45000);assert.equal(requests.length,before);
   online=true;sync();fail=true;
   await advance(45000);assert.equal(requests.length,++before);assert.equal(rows()[0].checks.label,'0/10','Failure keeps last-good count');
   await advance(89999);assert.equal(requests.length,before);await advance(1);assert.equal(requests.length,++before);
-  rate=true;await advance(180000);assert.equal(requests.length,++before);
-  await advance(899999);assert.equal(requests.length,before,'Rate limit waits at least 15 minutes');
-  rate=false;fail=false;status={ok:10,total:10};await advance(1);assert.equal(requests.length,++before);assert.equal(rows()[0].checks.label,'10/10');
+  rate=true;retryAfter='1800';await advance(180000);assert.equal(requests.length,++before);
+  await advance(1799999);assert.equal(requests.length,before,'Secondary rate limit honors Retry-After longer than the 15-minute floor');
+  rate=false;retryAfter=null;fail=false;status={ok:10,total:10};await advance(1);before=requests.length;assert.equal(rows()[0].checks.label,'10/10');
 
   // The safety net survives a missed event or relay outage without tight polling.
   panel.notices.relay='https://relay.example';panel.notices.members.set('owner/repo',true);sync();
@@ -87,7 +94,7 @@ for(const coordinator of [false,true]) {
   rows()[0].checks=null;rows()[0].checksKnown=false;status={ok:0,total:0};sync();await advance(45000);
   assert.equal(requests.length,++before);assert.equal(rows()[0].checks,null);assert.equal(rows()[0].checksKnown,true);
   await advance(45000);assert.equal(requests.length,++before,'Known-empty open rows still need state repair');
-  rows()[0].checks=facts.checks(rollup(2,10));held={};held.promise=new Promise(resolve=>held.resolve=resolve);
+  rows()[0].checks=facts.checks(rollup(2,10));rows()[0].checkSummary='pending';held={};held.promise=new Promise(resolve=>held.resolve=resolve);
   await advance(45000);assert.equal(requests.length,++before);
   shown=false;sync();status={ok:10,total:10};held.resolve();held=null;await flush();
   assert.equal(rows()[0].checks.label,'2/10','Hiding during a read suppresses its late result');
@@ -97,24 +104,55 @@ for(const coordinator of [false,true]) {
   panel.context='replacement';sync();held.resolve();held=null;await flush();
   assert.equal(rows()[0].checks.label,'2/10','Replacement context refuses an old result');
   assert.throws(()=>facts.parsePendingChecks('{"data":{"repository":{}}}',[1]),/Incomplete checks/);
+  assert.equal(facts.pullPayload('HTTP/2.0 403 Forbidden\r\nRetry-After: 1800\r\n\r\n{}'),'{}');
+  assert.equal(facts.pullRetryAfter({stderr:'Retry-After: 1800'}),1800000);
+  assert.equal(facts.pullRetryAfter({headers:{'Retry-After':new Date(1800000).toUTCString()}},0),1800000);
 
   panel.context=coordinator?'tasks:home':JSON.stringify([h.place.cwd,h.place.on]);panel.checksFallback.stop();
   const large=Array.from({length:120},(_,i)=>facts.pullRow(raw(1001+i),'owner'));install(large);
   before=requests.length;failAt=before+2;status={ok:11,total:11};sync();await advance(45000);
   assert.equal(requests.length,before+2,'Stop at a failed second chunk');
   assert.ok(rows().every(pr=>pr.checks.label==='3/10'),'Partial failure retains every old row');
-  failAt=null;await advance(90000);
-  const chunks=requests.slice(before+2);assert.equal(chunks.length,6);
-  assert.deepEqual(chunks.flatMap(c=>c.numbers),large.map(pr=>pr.number));
+  failAt=requests.length+5;await advance(90000);
+  assert.equal(requests.length,before+7,'Stop on a failed second detail chunk after the three thin probes');
+  assert.ok(rows().every(pr=>pr.checks.label==='3/10'),'Partial detail success cannot publish a mixed selection');
+  failAt=null;await advance(180000);
+  const chunks=requests.slice(before+7);assert.equal(chunks.length,9,'Three thin probes plus six changed-row detail chunks');
+  assert.deepEqual(chunks.filter(c=>c.args.every(arg=>!arg.includes('contexts('))).flatMap(c=>c.numbers),large.map(pr=>pr.number));
   for(const call of requests.slice(before)) {
-    assert.ok(call.numbers.length<=facts.CHECKS_BATCH_SIZE);assert.ok(call.args.join(' ').length<12000,'Bound argv below Windows process limits');
+    assert.ok(call.numbers.length<=(call.args.some(arg=>arg.includes('contexts('))?facts.CHECKS_BATCH_SIZE:facts.STATE_BATCH_SIZE));assert.ok(call.args.join(' ').length<12000,'Bound argv below Windows process limits');
   }
   const child=spawnSync(process.execPath,['-e','process.exit(0)','--',...chunks[0].args],{encoding:'utf8',timeout:10000});
   assert.equal(child.error,undefined);assert.equal(child.status,0);
   assert.throws(()=>facts.pendingChecksArgs(large.map(pr=>pr.number),'owner/repo'),/oversized checks batch/);
   assert.ok(rows().every(pr=>pr.checks.label==='11/11'));
-  before=requests.length;await advance(45000);assert.equal(requests.length,before+6,'Large settled open inventories remain state-eligible');
+  before=requests.length;await advance(45000);assert.equal(requests.length,before+3,'Large settled inventories use only the thin state batches');
   shown=false;sync();before=requests.length;await advance(90000);assert.equal(requests.length,before);
+  shown=true;
+  for(const size of [5,30]) {
+    const values=Array.from({length:size},(_,i)=>facts.pullRow({...raw(2001+i),headRefOid:'baseline',statusCheckRollup:rollup(11,11)},'owner'));install(values);
+    (coordinator?panel.aggregate.factOrder:panel.factOrder).reset();
+    status={ok:11,total:11,head:'baseline'};before=requests.length;
+    held={};held.promise=new Promise(resolve=>held.resolve=resolve);
+    const steady=panel.readPendingChecks({name:'owner/repo',rows:rows()},cx,()=>shown);await flush();
+    assert.equal((await panel.readPendingChecks({name:'owner/repo',rows:rows()},cx,()=>shown)).busy,true,'No cycle overlaps its in-flight repository lease');
+    assert.equal(requests.length,before+1);
+    held.resolve();held=null;await steady;
+    assert.ok(requests.at(-1).args.every(arg=>!arg.includes('contexts(')),`${size} unchanged rows use one thin request and zero context lists`);
+    status.rows=new Map([[2001,{head:'next-head'}]]);before=requests.length;
+    await panel.readPendingChecks({name:'owner/repo',rows:rows()},cx,()=>shown);
+    assert.equal(requests.length,before+2);assert.deepEqual(requests.at(-1).numbers,[2001],'Only a changed head requests full contexts');
+    status.rows.set(2002,{ok:0,total:1});before=requests.length;
+    await panel.readPendingChecks({name:'owner/repo',rows:rows()},cx,()=>shown);
+    assert.equal(requests.length,before+2);assert.deepEqual(requests.at(-1).numbers,[2002],'Only a changed summary requests full contexts');
+    assert.equal(rows().find(pr=>pr.number===2002).checks.label,'0/1');
+    before=requests.length;await panel.readPendingChecks({name:'owner/repo',rows:rows()},cx,()=>shown);
+    assert.equal(requests.length,before+1);assert.ok(requests.at(-1).args.every(arg=>!arg.includes('contexts(')),'Unchanged pending summaries also remain thin');
+  }
+  httpFailure='HTTP/2.0 401 Unauthorized\r\nX-RateLimit-Remaining: 2800\r\n\r\n{"message":"Bad credentials"}';
+  assert.equal((await panel.readPendingChecks({name:'owner/repo',rows:rows()},cx,()=>true)).rateLimited,false,'Ordinary quota headers do not turn authentication failures into secondary limits');
+  httpFailure='HTTP/2.0 403 Forbidden\r\nX-RateLimit-Remaining: 2800\r\n\r\n{"message":"You have exceeded a secondary rate limit"}';
+  assert.equal((await panel.readPendingChecks({name:'owner/repo',rows:rows()},cx,()=>true)).rateLimited,true,'A secondary refusal in stdout is a rate limit despite positive hourly remaining');
   assert.ok(notifications>0);await Promise.all(tasks);
 }
 console.log('PASS ordinary/coordinator state+checks safety: 45s unenrolled / 120s enrolled, settled and empty open rows, bounded 120-row chunks, full publication, retained failures/backoff, visibility/offline/context cancellation and shared queue (synthetic clocks/transport)');

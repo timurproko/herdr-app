@@ -71,7 +71,7 @@ export class ChecksFallback {
       if(result?.busy)job.due=this.now()+1000;
       else if(result?.failed) {
         job.failures++;
-        job.due=this.now()+Math.max(result.rateLimited?900000:0,Math.min(720000,CHECKS_INTERVAL*2**Math.min(job.failures,4)));
+        job.due=this.now()+Math.max(result.rateLimited?900000:0,result.retryAfter??0,Math.min(720000,CHECKS_INTERVAL*2**Math.min(job.failures,4)));
       } else {job.failures=0;job.due=this.now()+job.interval;}
     }
     this.sync(cx);
@@ -83,15 +83,44 @@ export class ChecksFallback {
 // Keep each query comfortably below Windows' 32K argv ceiling, including
 // quoting/remote wrappers. A repository job holds its lease across all chunks.
 export const CHECKS_BATCH_SIZE = 20;
+export const STATE_BATCH_SIZE = 40;
+const summaryState=value=>value==null?null:['SUCCESS'].includes(value)?'success':['FAILURE','ERROR'].includes(value)?'failure':['PENDING','EXPECTED'].includes(value)?'pending':undefined;
+// gh --include exposes Retry-After on failures; pure JSON remains useful in fixtures.
+export function pullPayload(stdout) {
+  const text=String(stdout??'');
+  return /^HTTP\//i.test(text)?text.slice(text.search(/\r?\n\r?\n/)).trim():text;
+}
+export function pullRetryAfter(result,now=Date.now()) {
+  const header=result?.headers?.['retry-after']??result?.headers?.['Retry-After']??/^retry-after:\s*([^\r\n]+)/im.exec(`${result?.stdout??''}\n${result?.stderr??''}`)?.[1];
+  if(header==null)return 0;
+  const seconds=Number(header);
+  return Number.isFinite(seconds)?Math.max(0,seconds*1000):Math.max(0,Date.parse(header)-now)||0;
+}
+export function pullStateArgs(numbers,nameWithOwner,includeCounts=false) {
+  const [owner,name]=nameWithOwner.split('/');
+  if(!numbers.length || numbers.length>STATE_BATCH_SIZE || numbers.some(n=>!Number.isSafeInteger(n)||n<1))throw Error('Invalid or oversized state batch');
+  const fields=numbers.map(n=>`pr${n}:pullRequest(number:${n}){number state isDraft mergedAt closedAt headRefOid commits(last:1){nodes{commit{statusCheckRollup{state}}}}}`).join(' ');
+  return ['api','graphql','--include','-f',`query=query($owner:String!,$name:String!){repository(owner:$owner,name:$name){${fields}${includeCounts?' open:pullRequests(states:OPEN){totalCount} closed:pullRequests(states:[CLOSED,MERGED]){totalCount}':''}}}`,'-F',`owner=${owner}`,'-F',`name=${name}`];
+}
+export function parsePullStates(stdout,numbers) {
+  const data=JSON.parse(pullPayload(stdout));
+  if(data.errors?.length)throw Error(data.errors.map(e=>[e.type,e.message].filter(Boolean).join(': ')).join('; '));
+  return new Map(numbers.map(number=>{
+    const pr=data.data?.repository?.[`pr${number}`],rollup=pr?.commits?.nodes?.[0]?.commit?.statusCheckRollup;
+    const checkSummary=summaryState(rollup?.state);
+    if(pr?.number!==number || !Array.isArray(pr.commits?.nodes) || !['OPEN','CLOSED','MERGED'].includes(pr.state) || typeof pr.isDraft!=='boolean' || checkSummary===undefined || (rollup && !rollup.state))throw Error('Incomplete PR state/summary response');
+    return [number,{...pr,checkSummary}];
+  }));
+}
 export function pendingChecksArgs(numbers, nameWithOwner, includeCounts = false) {
   const [owner,name]=nameWithOwner.split('/');
   if(!numbers.length || numbers.length>CHECKS_BATCH_SIZE || numbers.some(n=>!Number.isSafeInteger(n)||n<1))throw Error('Invalid or oversized checks batch');
-  const fields=numbers.map(n=>`pr${n}:pullRequest(number:${n}){number state isDraft createdAt mergedAt closedAt headRefName headRefOid mergeable commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){pageInfo{hasNextPage} nodes{... on CheckRun{name status conclusion startedAt completedAt detailsUrl checkSuite{workflowRun{workflow{name}}}} ... on StatusContext{context state createdAt}}}}}}}}`).join(' ');
-  return ['api','graphql','-f',`query=query($owner:String!,$name:String!){repository(owner:$owner,name:$name){${fields}${includeCounts?' open:pullRequests(states:OPEN){totalCount} closed:pullRequests(states:[CLOSED,MERGED]){totalCount}':''}}}`,'-F',`owner=${owner}`,'-F',`name=${name}`];
+  const fields=numbers.map(n=>`pr${n}:pullRequest(number:${n}){number state isDraft headRefOid commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){pageInfo{hasNextPage} nodes{... on CheckRun{name status conclusion startedAt completedAt detailsUrl checkSuite{workflowRun{workflow{name}}}} ... on StatusContext{context state createdAt}}}}}}}}`).join(' ');
+  return ['api','graphql','--include','-f',`query=query($owner:String!,$name:String!){repository(owner:$owner,name:$name){${fields}${includeCounts?' open:pullRequests(states:OPEN){totalCount} closed:pullRequests(states:[CLOSED,MERGED]){totalCount}':''}}}`,'-F',`owner=${owner}`,'-F',`name=${name}`];
 }
 export function parsePendingChecks(stdout,numbers) {
-  const data=JSON.parse(stdout);
-  if(data.errors?.length)throw Error(data.errors.map(e=>e.message).join('; '));
+  const data=JSON.parse(pullPayload(stdout));
+  if(data.errors?.length)throw Error(data.errors.map(e=>[e.type,e.message].filter(Boolean).join(': ')).join('; '));
   return new Map(numbers.map(number=>{
     const pr=data.data?.repository?.[`pr${number}`];
     if(pr?.number!==number || !Array.isArray(pr.commits?.nodes) || !['OPEN','CLOSED','MERGED'].includes(pr.state) || typeof pr.isDraft!=='boolean')throw Error('Incomplete checks/state response');
@@ -105,7 +134,7 @@ export function parsePendingChecks(stdout,numbers) {
 export function pullListArgs(state, nameWithOwner, after = null) {
   const [owner, name] = String(nameWithOwner).split('/');
   const states = state === 'closed' ? '[CLOSED,MERGED]' : '[OPEN]';
-  const query = `query($owner:String!,$name:String!,$after:String){repository(owner:$owner,name:$name){pullRequests(first:${PR_PAGE_SIZE},after:$after,states:${states},orderBy:{field:CREATED_AT,direction:DESC}){totalCount pageInfo{hasNextPage endCursor} nodes{number title url state isDraft author{login} createdAt mergedAt closedAt body reviewDecision headRefName headRefOid mergeable labels(first:100){nodes{name color}} commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){nodes{... on CheckRun{name status conclusion startedAt completedAt detailsUrl checkSuite{workflowRun{workflow{name}}}} ... on StatusContext{context state createdAt}}}}}}}}}}}`;
+  const query = `query($owner:String!,$name:String!,$after:String){repository(owner:$owner,name:$name){pullRequests(first:${PR_PAGE_SIZE},after:$after,states:${states},orderBy:{field:CREATED_AT,direction:DESC}){totalCount pageInfo{hasNextPage endCursor} nodes{number title url state isDraft author{login} createdAt mergedAt closedAt body reviewDecision headRefName headRefOid mergeable labels(first:100){nodes{name color}} commits(last:1){nodes{commit{statusCheckRollup{state contexts(first:100){nodes{... on CheckRun{name status conclusion startedAt completedAt detailsUrl checkSuite{workflowRun{workflow{name}}}} ... on StatusContext{context state createdAt}}}}}}}}}}}`;
   return ['api', 'graphql', '-f', `query=${query}`, '-F', `owner=${owner}`, '-F', `name=${name}`,
     ...(after ? ['-f', `after=${after}`] : [])];
 }
@@ -116,6 +145,7 @@ export function parsePullPage(stdout) {
   const page = result.data?.repository?.pullRequests;
   if (!Array.isArray(page?.nodes)) throw new Error('Cannot load pull requests');
   const pulls = page.nodes.map(pr => ({...pr,
+    checkSummary:summaryState(pr.commits?.nodes?.[0]?.commit?.statusCheckRollup?.state),
     statusCheckRollup: pr.commits?.nodes?.[0]?.commit?.statusCheckRollup?.contexts?.nodes?.map(check => ({...check,
       workflowName:check.checkSuite?.workflowRun?.workflow?.name ?? null,
     })) ?? [],
@@ -212,7 +242,7 @@ export function pullLabels(value) {
 
 // One row's facts from a gh JSON entry. `owner` is the repo owner's login.
 export function pullRow(pr, owner, now = Date.now()) {
-  const login = pr.author?.login ?? '';
+  const login = pr.author?.login ?? '',checkFacts=checks(pr.statusCheckRollup);
   const state = pr.state === 'MERGED' ? 'merged' : pr.state === 'CLOSED' ? 'closed' : pr.isDraft ? 'draft' : 'open';
   const when = state === 'merged' ? `merged ${ago(pr.mergedAt ?? pr.closedAt, now)}`
     : state === 'closed' ? `closed ${ago(pr.closedAt, now)}` : `opened ${ago(pr.createdAt, now)}`;
@@ -226,15 +256,15 @@ export function pullRow(pr, owner, now = Date.now()) {
     compactWhen: when.replace(/^(?:opened|closed|merged) /, '').replace(/ (second|minute|hour|day|month|year)s? ago$/, (_m, unit) => `${({second:'s',minute:'m',hour:'h',day:'d',month:'mo',year:'y'})[unit]} ago`),
     checksKnown: Array.isArray(pr.statusCheckRollup),
     owner: Boolean(owner && login && login.toLowerCase() === String(owner).toLowerCase()),
-    tasks: tasks(pr.body), checks: checks(pr.statusCheckRollup), labels: pullLabels(pr.labels),
+    tasks: tasks(pr.body), checks: checkFacts, checkSummary:pr.checkSummary??checkFacts?.state??null, labels: pullLabels(pr.labels),
     review: pr.reviewDecision === 'APPROVED' ? 'approved' : pr.reviewDecision === 'CHANGES_REQUESTED' ? 'changes' : null,
   };
 }
 
 // Apply the deliberately narrow safety read without erasing labels/tasks/review.
 export function refreshPullFacts(pr, value) {
-  const {state,meta,byline,when,compactWhen,mergeConflict,headRefName,headRefOid,createdAt,mergedAt,closedAt}=pullRow({...value,author:{login:pr.login}});
-  return {...pr,state,meta,byline,when,compactWhen,mergeConflict,headRefName,headRefOid,createdAt,mergedAt,closedAt,checks:value.checks,checksKnown:true};
+  const {state,meta,byline,when,compactWhen,mergeConflict,headRefName,headRefOid,createdAt,mergedAt,closedAt}=pullRow({...value,createdAt:pr.createdAt,headRefName:pr.headRefName,mergeable:pr.mergeConflict?'CONFLICTING':null,author:{login:pr.login}});
+  return {...pr,state,meta,byline,when,compactWhen,mergeConflict,headRefName,headRefOid,createdAt,mergedAt,closedAt,checks:value.checks,checkSummary:value.checkSummary,checksKnown:true};
 }
 
 // Session-owned PR badges can differ from the parent shell's branch.

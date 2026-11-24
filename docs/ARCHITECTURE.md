@@ -729,9 +729,13 @@ identity before reads and writes. `pulls.js` owns one-shot state-and-check safet
 outages. Uncovered pending/unknown checks also remain eligible. One repository batch
 shares the ordinary pull lease or aggregate queue, with 90/180/360/720-second failure
 backoff and at least 15 minutes for rate limits. Visibility, offline machines, scope
-and fresh coordinator identity are rechecked at dispatch/publication. The narrow
-batch reads state, draft/completion/head facts and checks, retaining labels/tasks/
-review and all displayed values during reads. Ordinary totals are repository-wide;
+and fresh coordinator identity are rechecked at dispatch/publication. The thin probe
+reads only number, state, draft/completion/head facts and the last commit's rollup
+STATE (40-PR chunks). Only changed heads/summaries fetch contexts (20-PR chunks),
+under the same non-overlapping lease. Unchanged 5/30-row cycles use one request
+and no context lists. Primary/secondary refusals keep values for at least 15
+minutes or a longer Retry-After; hourly remaining quota cannot override that.
+Labels/tasks/review and all displayed values remain during reads. Ordinary totals are repository-wide;
 aggregate totals and 24-hour history eligibility derive from current task PR state.
 Full metadata/pagination refreshes still use event/manual reads.
 The local branch/footer and agent-link discovery lifecycle is separate.
