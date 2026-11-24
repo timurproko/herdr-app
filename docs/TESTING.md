@@ -380,6 +380,20 @@ process/provider responses, not proof that the original installed-app incident w
 caused by Windows load or an account switch; the real-provider four-PR diagnostic
 succeeded and no original failing process result was recovered.
 
+`tests/fleet-toggle-live.test.mjs` mounts separate Settings-page and Spaces sandboxes
+with the real registry, Crew reader, sidebar lifecycle, row renderer, badge colours
+and shared-state invalidation queue. Local/remote assertions cover both toggle
+directions without advancing a timer or closing Settings, pending verification,
+transport/negative results, enable-disable-enable with obsolete replies and sibling
+switch writes. Both expanded-row chains appear immediately before their Crew pills
+after verification and disappear on disable. Expanded rows, compact rails and drag
+chips retain native shortcut indices, and rails/chips never render chains. Render guards reject notifications, focus allocation, IO and shared
+writes. The original source fails because the toggle starts zero reads until a
+later Spaces lifecycle event. This fixture proves direct scheduling and rendered
+rows, not native pixel timing. A read-only-state/native screenshot baseline on
+0.1.17 showed verification pending at one second and attachment by seven seconds
+with Settings still open; it did not reproduce a hard close-only repaint freeze.
+
 `tests/fleet-preferences.test.mjs` covers the actual Spaces preference and Settings
 switch, explicit durable-identity clearing on disable, old/new snapshot round trips
 and durable/runtime-identity exclusion in disposable
@@ -407,10 +421,14 @@ grabbed-row chip (`2 crew` or `1 coordinator`) with its own number/name and shar
 coordinator fill from either grabbed member (including arm/return/fade), no stacked
 preview or floating chain icon, and each expanded/compact row's own numbered badge
 while preserving ordinary worktree order. Geometry assertions compare numbered badge
-boxes (16px, 4px rounding) and the coordinator's trailing chain slot with the worktree
-marker: a 14px muted outline glyph in the ordinary centred slot, without a filled
-background. Counts precede worktree, then chain/Crew; unrelated tags retain their
-relative order before the trailing chain/Crew group.
+boxes (16px, 4px rounding) and both attached rows' trailing chain slots with the
+worktree marker: matching 14px muted outline glyphs in ordinary centred 16px slots,
+without a filled background. Equal Crew text/style, right inset, gap and slot
+geometry put both chains in one column independently of preceding metadata.
+Counts precede worktree, then chain/Crew; unrelated tags retain their relative
+order before the trailing chain/Crew group on both members. Detachment removes
+both chains; hidden worktree icons do not, and renaming suppresses the edited
+row's markers/tags. These are render-tree constraints, not native pixel evidence.
 The real colour resolver covers distinct coordinator/fleet colours, named and hex
 overrides, recolouring between renders, and retained display identity in both modes;
 missing/cross-machine parents cannot lend colour. Fleet names share ordinary names'
@@ -424,8 +442,9 @@ fixtures retain Crew tags on both attached rows through refresh, finished fleets
 and cold restoration, restore ordinary worker tag rules on confirmed detach/attachment-off,
 and hide all Crew tags when the plugin is disabled; tag reads start no discovery or state writes.
 Worktree layout fixtures compare the real shared Crew pill styling and trailing
-placement on both attached rows: counts and worktree markers precede plugin pills,
-and a tag-only coordinator and a tagged fleet share the same right inset. Local/remote,
+placement on both attached rows: counts and worktree markers precede matching
+chain/Crew groups, and a coordinator without a worktree marker and a tagged fleet
+share the same chain column and Crew right inset. Local/remote,
 ordinary/attached and multiple-tag cases keep the final pill at that edge while
 untagged branch slots retain the machine-chevron axis. Long names, active/inactive
 rows, hidden icons and rename mode are covered. Compact rail fixtures

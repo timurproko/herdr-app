@@ -4,7 +4,7 @@ import {realUi} from './support/panel-kit.mjs';
 import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';
 function element(){const n={attrs:{},kids:[]};let p;return p=new Proxy(n,{get:(o,k)=>k in o?o[k]:k==='when'?(yes,fn)=>yes?fn(p):p:k==='child'?child=>{o.kids.push(child);return p;}:k==='children'?children=>{o.attrs.children=[children];o.kids.push(...children);return p;}:(...args)=>{o.attrs[k]=args;return p;}});}
 const find=(n,id)=>n?.attrs?.id?.[0]===id?n:n?.kids?.map(child=>find(child,id)).find(Boolean);
-const drag={view:null,item:(e,_id,options)=>{e.itemOptions=options;return e;},sourceLayer:e=>e,guard:fn=>fn};let hostSpaces=[];
+const drag={view:null,control:e=>e,item:(e,_id,options)=>{e.itemOptions=options;return e;},sourceLayer:e=>e,guard:fn=>fn};let hostSpaces=[];
 const context={...links,pluginWorkspaceLinks:()=>[],View:class{},div:element,h_flex:element,v_flex:element,svg:path=>element().asset(path),slot:child=>element().size(16).child(child),badge:realUi(element).badge,itemHover:realUi(element).itemHover,spaceBadgeColor:realUi(element).spaceBadgeColor,reorder:()=>drag,spaces:()=>hostSpaces,panes:()=>[],pluginSpaceTags:()=>[],rolePill:realUi(element).rolePill,displaySpace:s=>s,spaceDirectory:s=>({cwd:s.folder}),shared:key=>key==='custom.plugins'?{git:{enabled:false}}:{},run(){assert.fail('Rendering must not navigate or move spaces');},U:{font:12,row:28,control:28,icon:16,gap:8,radius:6,smallIcon:14}};
 const source=fs.readFileSync(new URL('../src/features/spaces/main.js',import.meta.url),'utf8').replace(/^import .*;\r?\n/gm,'').replace('export default class Spaces','class Spaces').replace(/export /g,'')+'\nglobalThis.Spaces=Spaces;';vm.runInNewContext(source,context);
 vm.runInContext(fs.readFileSync(new URL('../src/ui/space-title.js',import.meta.url),'utf8').replace(/^import .*;\r?\n/gm,'').replace('export function','function'),context);
@@ -76,7 +76,7 @@ for (const machine of [null,'pc2']) {
  view.git={[key(s)]:{linked:true}};s.folder='/new/unknown';view.menu(s);
  assert.equal(overlays.at(-1).props.target.checkout,'unknown');
 }
-// Attached rows keep their own numbers; only the coordinator has a trailing chain.
+// Both attached rows keep native shortcut numbers and matching trailing chains.
 context.pluginWorkspaceLinks=()=>[{parent:'parent',child:'worktree-a',binding:'pair'}];
 const projected=view.ordered(),parentAt=projected.findIndex(r=>r.w.id==='parent');
 assert.equal(projected[parentAt+1].w.id,'worktree-a');assert.equal(projected[parentAt+1].linked,true);
@@ -101,7 +101,9 @@ for(const [row,content] of [[parentRow,parentContent],[ordinaryRow,ordinaryConte
 assert.equal(fleetBadge.attrs.bg[0],parentContent.kids[0].attrs.bg[0],'Fleet shell uses the coordinator badge fill');
 assert.equal(fleetBadge.attrs.rounded[0],4);assert.equal(fleetBadge.attrs.text_color[0],'#ffffff');
 assert.equal(fleetBadge.kids[0],String(projected[parentAt+1].i+1),'Fleet retains its own list number');
-assert.equal(find(fleetRow,'space-link-worktree-a'),undefined);
+const fleetChain=find(fleetRow,'space-link-worktree-a');
+assert.ok(fleetChain,'Attached fleet has the same trailing chain as its coordinator');
+assert.equal(fleetContent.kids.at(-2),fleetChain,'Fleet chain immediately precedes Crew');
 const chain=find(parentRow,'space-link-parent');
 assert.equal(chain.attrs.size[0],16);assert.equal(chain.attrs.bg,undefined);
 assert.equal(chain.kids[0].attrs.asset[0],'mods/custom-spaces/link.svg');assert.equal(chain.kids[0].attrs.size[0],14);
@@ -134,29 +136,41 @@ for(const machine of [null,'pc2']) {
  }
  assert.deepEqual(pills[1],pills[0],'The real shared rolePill styling matches on both attached rows');
 }
-// Full coordinator metadata matrix: count/worktree/chain/tag order and hidden states.
-for(const machine of [null,'pc2'])for(const worktree of [false,true])for(const counts of [false,true]) {
- const record={...projected[parentAt],w:{...projected[parentAt].w,machine}};
+// Both-role metadata matrix: shared trailing geometry is independent of preceding
+// counts/worktrees and unrelated tags. Matching Crew text/styles fix its width;
+// the same right inset, gap and chain slot fix the chain column without guessing
+// a font's measured pixel width. These are render-tree, not native pixel checks.
+let trailingGeometry;
+for(const machine of [null,'pc2'])for(const role of [0,1])for(const worktree of [false,true])for(const counts of [false,true]) {
+ const source=projected[parentAt+role],id=source.w.id;
+ const record={...source,w:{...source.w,machine}};
  const originalTags=context.pluginSpaceTags;
- context.pluginSpaceTags=()=>[{plugin:'crew',label:'Crew',tooltip:'Coordinator'},{plugin:'other',label:'Other',tooltip:'Unrelated'},{plugin:'last',label:'Last'}];
+ context.pluginSpaceTags=()=>[{plugin:'crew',label:'Crew',tooltip:role?'Worker':'Coordinator'},{plugin:'other',label:'Other',tooltip:'Unrelated'},{plugin:'last',label:'Last'}];
  const row=view.row({...record,g:{linked:worktree,ahead:counts?2:0,behind:counts?1:0},tree:null},theme);
- const content=find(row,'space-content-parent'),link=find(row,'space-link-parent'),crew=find(row,'space-tag-parent-crew-0');
- assert.equal(content.kids.at(-1),crew);assert.equal(content.kids.at(-2),link);
- assert.equal(crew.attrs.mr[0],-5);assert.equal(crew.attrs.tooltip[0],'Coordinator');
- assert.equal(find(row,'space-tag-parent-other-1').attrs.tooltip[0],'Unrelated');
- assert.ok(content.kids.indexOf(find(row,'space-tag-parent-other-1'))<content.kids.indexOf(find(row,'space-tag-parent-last-2')),'Other tags retain relative order');
- const marker=find(row,'space-worktree-parent');assert.equal(Boolean(marker),worktree);
- assert.ok(content.kids.indexOf(content.kids[2])<content.kids.indexOf(link));
+ const content=find(row,`space-content-${id}`),link=find(row,`space-link-${id}`),crew=find(row,`space-tag-${id}-crew-0`);
+ assert.ok(link);assert.equal(content.kids.at(-1),crew);assert.equal(content.kids.at(-2),link);
+ assert.equal(crew.attrs.mr[0],-5);assert.equal(crew.attrs.tooltip[0],role?'Worker':'Coordinator');
+ assert.equal(find(row,`space-tag-${id}-other-1`).attrs.tooltip[0],'Unrelated');
+ assert.ok(content.kids.indexOf(find(row,`space-tag-${id}-other-1`))<content.kids.indexOf(find(row,`space-tag-${id}-last-2`)),'Other tags retain relative order');
+ const marker=find(row,`space-worktree-${id}`);assert.equal(Boolean(marker),worktree);
+ const tail=content.kids[2];assert.ok(content.kids.indexOf(tail)<content.kids.indexOf(link));
+ if(counts)assert.deepEqual(tail.kids.map(n=>n.kids[0]),['↑2','↓1']);
  if(marker)assert.ok(content.kids.indexOf(marker)<content.kids.indexOf(link));
+ const {id:linkId,...slotStyle}=link.attrs,{id:crewId,tooltip,...pillStyle}=crew.attrs;
+ const geometry=JSON.stringify({right:row.attrs.px[0]+crew.attrs.mr[0],gap:content.attrs.gap,align:content.attrs.items_center,slot:slotStyle,glyph:link.kids[0].attrs,pill:pillStyle,label:crew.kids});
+ trailingGeometry??=geometry;assert.equal(geometry,trailingGeometry,'Both chains share one right-anchored column, size, muted outline style and vertical alignment');
+ assert.equal(link.attrs.size[0],16);assert.equal(link.kids[0].attrs.size[0],14);assert.equal(link.kids[0].attrs.text_color[0],theme.muted);
  context.__store.set('spaces.show.worktree',false);
  const hidden=view.row({...record,g:{linked:true}},theme);
- assert.equal(find(hidden,'space-worktree-parent'),undefined);assert.ok(find(hidden,'space-link-parent'),'Worktree visibility does not hide relationship');
+ assert.equal(find(hidden,`space-worktree-${id}`),undefined);assert.ok(find(hidden,`space-link-${id}`),'Worktree visibility does not hide either relationship marker');
  context.__store.delete('spaces.show.worktree');
- view.rename={id:'parent'};
+ view.rename={id};
  const editing=view.row({...record,g:{linked:true}},theme);
- assert.equal(find(editing,'space-link-parent'),undefined);assert.equal(find(editing,'space-worktree-parent'),undefined);assert.equal(find(editing,'space-tag-parent-crew-0'),undefined);
+ assert.equal(find(editing,`space-link-${id}`),undefined);assert.equal(find(editing,`space-worktree-${id}`),undefined);assert.equal(find(editing,`space-tag-${id}-crew-0`),undefined);
  view.rename=null;
- assert.equal(find(view.row({...record,block:['parent']},theme),'space-link-parent'),undefined,'Detached coordinator has no chain');
+ assert.equal(find(view.row({...record,block:[id]},theme),`space-link-${id}`),undefined,'Detached member has no chain');
+ assert.equal(find(view.row({...record,block:['missing','unrelated']},theme),`space-link-${id}`),undefined,'A row outside a projected pair has no chain');
+ assert.equal(find(view.compact(record,theme),`space-link-${id}`),undefined,'Rail stays chain-free');
  context.pluginSpaceTags=originalTags;
 }
 const vector=fs.readFileSync(new URL('../src/shared/link.svg',import.meta.url),'utf8');
@@ -285,20 +299,24 @@ for(const machine of [null,'pc2']) {
   }
  }
 }
-// Reproduce the screenshot: tag-only coordinator, counts + marker + tag on fleet.
+// Reproduce the screenshot: both attached rows have chains, with fleet counts
+// and worktree to the left of its chain rather than displacing the Crew edge.
 for(const machine of [null,'pc2'])for(const active of [false,true]) {
  context.__tags=[{plugin:'crew',label:'Crew'}];
- const parent=view.row({w:{id:'parent',name:'coordinator',machine},i:0},theme);
- const fleet=view.row({w:{id:'worktree-a',name:'long-fleet-name-that-truncates',machine,active},i:1,linked:true,g:{linked:true,ahead:2,behind:1}},theme);
+ const block=['parent','worktree-a'];
+ const parent=view.row({w:{id:'parent',name:'coordinator',machine},i:0,block},theme);
+ const fleet=view.row({w:{id:'worktree-a',name:'long-fleet-name-that-truncates',machine,active},i:1,linked:true,block,g:{linked:true,ahead:2,behind:1}},theme);
  const content=find(fleet,'space-content-worktree-a'),tail=content.kids[2],marker=find(fleet,'space-worktree-worktree-a');
  assert.deepEqual(tail.kids.map(n=>n.kids[0]),['↑2','↓1'],'Counts stay together before the marker');
  assert.equal(content.kids.indexOf(tail)+1,content.kids.indexOf(marker));
+ assert.equal(content.kids.indexOf(marker)+1,content.kids.indexOf(find(fleet,'space-link-worktree-a')),'Fleet metadata is counts, worktree, chain, Crew');
+ assert.ok(find(parent,'space-link-parent'));assert.equal(content.kids.at(-2),find(fleet,'space-link-worktree-a'));
  assert.equal(content.kids.at(-1).attrs.id[0],'space-tag-worktree-a-crew-0');
  const parentContent=find(parent,'space-content-parent');
  assert.equal(parent.attrs.px[0]+parentContent.kids.at(-1).attrs.mr[0],fleet.attrs.px[0]+content.kids.at(-1).attrs.mr[0],'Screenshot Crew pills have exactly the same right inset');
  context.__store.set('spaces.show.worktree',false);
- const hidden=view.row({w:{id:'worktree-a',name:'fleet',machine},i:1,linked:true,g:{linked:true,ahead:2}},theme);
- assert.equal(find(hidden,'space-worktree-worktree-a'),undefined);
+ const hidden=view.row({w:{id:'worktree-a',name:'fleet',machine},i:1,linked:true,block,g:{linked:true,ahead:2}},theme);
+ assert.equal(find(hidden,'space-worktree-worktree-a'),undefined);assert.ok(find(hidden,'space-link-worktree-a'));
  assert.equal(find(hidden,'space-content-worktree-a').kids.at(-1).attrs.mr[0],-5,'Hiding a marker cannot move the tag');
  context.__store.clear();
 }
@@ -315,4 +333,4 @@ drag.take=()=>({kind:'drop',id:'worktree-a',target:'other',meta:{sources:['workt
 drag.take=()=>({kind:'drop',id:'other',target:'parent',meta:{sources:['other']}});view.drop('parent',{});
 assert.equal(guardedCalls.length,0,'Neither grabbing nor targeting a retained unverified pair authorizes a move');
 drag.take=()=>({kind:'click',id:'worktree-a'});view.drop('worktree-a',{});assert.equal(guardedCalls[0][0],'space.select','Ordinary click selection remains available');
-console.log('PASS: first-frame local/remote checkout snapshots; aligned tagged/child worktrees, own numbered badges, muted coordinator chain and ordinary selected fleet names, single grabbed-row drag chip, retained-pair action guards, preserved user order and cross-machine drag guards (dummy Core only)');
+console.log('PASS: first-frame local/remote checkout snapshots; aligned tagged/child worktrees, native numbered badges, aligned chains on both attached rows and ordinary selected fleet names, single grabbed-row drag chip, retained-pair action guards, preserved user order and cross-machine drag guards (dummy Core only)');

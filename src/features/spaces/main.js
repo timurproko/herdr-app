@@ -442,6 +442,8 @@ export default class Spaces extends View {
   }
 
   // Display identity only: the projected parent supplies colour, never action authority.
+  // i is the native space.select/Alt+N index, not the projected row position.
+  // Changing only the digit would advertise a shortcut for another space.
   spaceBadge({ w, i, linked = false, block }, t) {
     const parent = linked && spaces().find(s => s.id === block?.[0] && (s.machine ?? null) === (w.machine ?? null));
     const fill = spaceBadgeColor(t, parent || w, shared('space.colors') ?? {});
@@ -454,10 +456,10 @@ export default class Spaces extends View {
     const drag = this.drag, d = drag.view;
     const fromIndex = d ? this.ordered().findIndex(r => r.w.id === d.id) : -1;
     const worktree = !edit && Boolean(g?.linked || tree) && shows("spaces.show.worktree");
-    const coordinator = !edit && block?.length > 1 && block[0] === w.id;
+    const attached = !edit && block?.length > 1 && block.includes(w.id);
     const tags = (edit ? [] : pluginSpaceTags(w)).map((tag, index) => ({...tag, index}));
     // Keep unrelated tags stable; the chain/Crew group stays at the trailing edge.
-    const trailing = coordinator ? [...tags.filter(tag => tag.plugin !== 'crew'), ...tags.filter(tag => tag.plugin === 'crew')] : tags;
+    const trailing = attached ? [...tags.filter(tag => tag.plugin !== 'crew'), ...tags.filter(tag => tag.plugin === 'crew')] : tags;
     return drag.item(v_flex()
       .relative()
       .id(`space-${w.id}`)
@@ -518,7 +520,7 @@ export default class Spaces extends View {
           .when(worktree, el => el.child(slot(svg("mods/custom-workspace-chrome/branch.svg").size(U.smallIcon).text_color(t.muted))
             .id(`space-worktree-${w.id}`).when(!tags.length, e => e.mr(-4)).tooltip('Git worktree')))
           .when(!edit, el => el.children(trailing.flatMap((tag, k, all) => [
-            ...(coordinator && tag.plugin === 'crew' ? [slot(svg('mods/custom-spaces/link.svg').size(U.smallIcon).text_color(t.muted))
+            ...(attached && tag.plugin === 'crew' ? [slot(svg('mods/custom-spaces/link.svg').size(U.smallIcon).text_color(t.muted))
               .id(`space-link-${w.id}`)] : []),
             rolePill(t, tag.label, { status: true }).id(`space-tag-${w.id}-${tag.plugin}-${tag.index}`)
               .when(k === all.length - 1, e => e.mr(-5))
