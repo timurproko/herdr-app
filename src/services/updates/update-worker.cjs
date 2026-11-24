@@ -69,6 +69,13 @@ function outcome(result) {
   if (!success(local)) return { state: 'failed', error: shortError(result?.error || local?.reason || 'Desktop returned no successful result') };
   return { state: result.results.some(row => row.machine !== 'local' && !success(row) && !peerSkipKind(row)) ? 'partial' : 'complete', error: null };
 }
+function deploymentTarget(job, result) {
+  // Carried desktop provenance can belong to an earlier run. Prefer this run's
+  // local attempt, or its fetched source while inventory/install is still busy.
+  if (!job?.token || result?.token !== job.token || !Number.isFinite(result.at) || result.at < job.started) return null;
+  const local = result.results?.find(row => row.machine === 'local');
+  return [local?.commit, result.target].find(value => typeof value === 'string' && /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i.test(value)) || null;
+}
 function inspect(home, { now = Date.now, isAlive = alive } = {}) {
   const p = files(home), result = read(p.result);
   let job = read(p.status);
@@ -90,6 +97,8 @@ function inspect(home, { now = Date.now, isAlive = alive } = {}) {
       && result?.complete === true && result.token === job.token && result.at >= job.started) {
     job = { ...job, ...outcome(result) };
   }
+  const target = deploymentTarget(job, result);
+  if (target) job = { ...job, target };
   const details = job && fs.existsSync(p.log) ? { kind: 'log', path: p.log }
     : result && (!job || result.token === job.token) ? { kind: 'result', path: p.result } : null;
   // Plain CLI runs have no Settings job. Preserve their terminal outcome (and
@@ -163,7 +172,7 @@ function noRedirect(file) {
     if (path.dirname(part) === part) break;
   }
 }
-function prepareClone({ userHome = os.homedir(), run = command, env = process.env, log = () => {} } = {}) {
+function prepareClone({ userHome = os.homedir(), run = command, env = process.env, log = () => {}, onTarget = () => {} } = {}) {
   const root = path.join(userHome, '.local/share/herdr-app');
   const gitEnv = { ...env, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never' };
   noRedirect(root);
@@ -192,6 +201,7 @@ function prepareClone({ userHome = os.homedir(), run = command, env = process.en
   git(['fetch', 'origin']);
   const target = git(['rev-parse', '--verify', 'origin/main^{commit}']);
   git(['merge-base', '--is-ancestor', 'HEAD', target]);
+  onTarget(target);
   log(git(['merge', '--ff-only', target]));
   if (git(['symbolic-ref', '--quiet', '--short', 'HEAD']) !== 'main' || git(['status', '--porcelain', '--untracked-files=all'])) throw Error('Managed source changed during bootstrap');
   const probe = run(process.execPath, [path.join(root, 'tools/deploy-all.mjs'), '--protocol'], { cwd: root, env: gitEnv, timeout: 15000 });
@@ -212,13 +222,15 @@ async function runUpdate(home, token, { userHome, run = command, spawn = cp.spaw
   atomic(p.status, job);
   const log = text => { if (text) fs.appendFileSync(p.log, text.endsWith('\n') ? text : text + '\n'); };
   const finish = (state, error, release = state !== 'unknown') => {
-    job = { ...job, state, error: error ? shortError(error) : null, finished: now() };
+    job = { ...job, target: deploymentTarget(job, read(p.result)) || job.target, state, error: error ? shortError(error) : null, finished: now() };
     atomic(p.status, job);
     if (release) unlock(p, token);
     return job;
   };
   try {
-    const root = prepareClone({ userHome, run, log });
+    const root = prepareClone({ userHome, run, log, onTarget(target) {
+      job = { ...job, target }; atomic(p.status, job);
+    } });
     if (now() >= job.deadline) return finish('unknown', 'Update deadline exceeded', false);
     job = { ...job, phase: 'deploying' }; atomic(p.status, job);
     // CLI already owns the result writer, full pipeline and peer eligibility.
