@@ -275,7 +275,8 @@ invalid label colours are covered separately from the upstream formula.
 
 The same fixture checks 3px muted round separators,
 optically lowered 1.5 logical pixels from the parent line-box centre with equal 6px gaps,
-in bylines and every status/review/label boundary. Zoom cases from 75% to 200% retain
+in bylines and between left-status groups, never before the right-anchored label group.
+Zoom cases from 75% to 200%, including 130%, retain
 the same logical offset; comparison with the old separator tree protects neighbouring
 text, icons, pills and row geometry. Missing-group combinations have no leading/trailing
 or orphan painted dots; only present groups and separators occupy horizontal space.
@@ -327,15 +328,22 @@ shared row trees using a deterministic flex/absolute layout model with real `U`
 metrics and content-dependent text widths. It dispatches the actual native-size
 callbacks after layout (including clipped invisible natural-width probes), rerenders
 until changed-only measurements converge, and excludes invisible probe text from
-paint assertions. At 280/320/360/390/480 logical-pixel widths and 75/100/125/150/200%
-zoom, 47,250 comparisons protect title right edges, state/robot and whole-line
+paint assertions. At 280/320/360/390/480 logical-pixel widths and 75/100/125/130/150/200%
+zoom, 56,700 comparisons protect title right edges, state/robot and whole-line
 boxes, line heights, 74px row heights and following-row positions across ordinary,
 pinned, scrolling, coordinator and ghost paths in Open/Closed/merged states.
 Optional agent transitions, untouched/partial/done and multi-digit tasks/checks,
 pending/success/failure icons, absent/long/multiple labels, review decisions and
 missing authors preserve those vertical/title boxes, not obsolete horizontal cell
-reservations. Separate assertions require natural group widths, constant 6px gaps
-beside 3px dots, left alignment, absent-group removal and trailing free space.
+reservations. Separate assertions require natural left-group widths, constant 6px
+gaps beside 3px dots, absent-group removal and unchanged byline flow. Assigned
+labels instead share the outer robot-control/content right edge, with spare space
+before them and no joining dot. Cross-row Review/Rework/Approved cases compare
+actual pill edges across task progress and missing/one-/two-/three-digit checks,
+including 130% zoom. Both group and trailing-pill edges remain anchored when a
+multi-label strip clips. Mutation tests reject left-aligned pills and a restored
+joining dot. Separate review-decision text yields before label words after task
+compaction; checks and compact fractions remain complete.
 Full probe widths independently determine when the complete line fits: every fitting
 value must remain full and unshortened. Screenshot-shaped 390px cases retain both
 2 tasks done and opened 4 hours ago at every zoom. Exact fit thresholds assert

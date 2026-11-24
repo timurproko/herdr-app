@@ -658,8 +658,8 @@ export default class Changes extends View {
       .child(div().min_w(0).overflow_hidden().whitespace_nowrap().child(label.name));
   }
 
-  // Natural-width runs. Native probes measure full/compact alternatives without
-  // affecting layout; only real whole-line overflow selects a shorter variant.
+  // Natural-width runs, with an optional right-anchored final group. Native
+  // probes measure both sides together; only whole-line overflow shortens text.
   // Keep geometry by native element ID (not PR-data revision): unchanged sizes
   // need not be reported again by the host after a refresh or context switch.
   pullLine(t, id, items, clipOrder = []) {
@@ -675,7 +675,11 @@ export default class Changes extends View {
     const widths = items.map(item => sizes[`${item.kind}-full`]);
     const ready = Number.isFinite(sizes.available) && widths.every(Number.isFinite);
     const compact = new Set();
-    const total = () => widths.reduce((sum, width) => sum + width, 0) + Math.max(0, widths.filter(width => width > 0).length - 1) * 15;
+    const total = () => {
+      const left = items.filter((item, index) => !item.trailing && widths[index] > 0).length;
+      const right = items.some((item, index) => item.trailing && widths[index] > 0);
+      return widths.reduce((sum, width) => sum + width, 0) + Math.max(0, left - 1) * 15 + (left && right ? 6 : 0);
+    };
     if (ready) {
       for (const [index, item] of items.entries()) {
         if (total() <= sizes.available + 0.01) break;
@@ -698,6 +702,9 @@ export default class Changes extends View {
       .children(visible.flatMap(({item, index}, at) => {
         const node = item.render(compact.has(item.kind), false).flex_none()
           .when(ready && clipOrder.includes(item.kind), el => el.w(widths[index]));
+        // The flexible slot owns only the free space, never the task/check
+        // cells. There is one normal gap, but no dot, before assigned labels.
+        if (item.trailing) return [h_flex().id(`${id}-right`).flex_1().min_w(0).h(18).justify_end().overflow_hidden().child(node)];
         return at ? [this.metaSeparator(t), node] : [node];
       }));
     // These absolute invisible children are outside the visible run, so their
@@ -736,11 +743,11 @@ export default class Changes extends View {
           .child(div().id(groupId('check-icon', probe)).size(U.tinyIcon).flex_none().flex().items_center().justify_center().child(icon.flex_none()))
           .child(div().flex_none().whitespace_nowrap().underline().child(pr.checks.label));
       }}] : []),
-      ...(labels.length ? [{kind:'labels', render:(_short, probe) => h_flex().id(groupId('labels', probe)).min_w(0).h(18).gap(4).items_center().overflow_hidden()
-        .tooltip(labels.map(label => label.name).join('\n'))
-        .children(labels.map((label, index) => this.labelPill(t, label, `${groupId('label', probe)}-${index}`)))}] : []),
       ...(pr.review ? [{kind:'review', render:(_short, probe) => text('review', pr.review === 'approved' ? 'Approved' : 'Changes requested',
         pr.review === 'approved' ? 'Approved' : 'Changes requested', probe).text_color(pr.review === 'approved' ? t.ansi2 : t.ansi1)}] : []),
+      ...(labels.length ? [{kind:'labels', trailing:true, render:(_short, probe) => h_flex().id(groupId('labels', probe)).min_w(0).h(18).gap(4).items_center().justify_end().overflow_hidden()
+        .tooltip(labels.map(label => label.name).join('\n'))
+        .children(labels.map((label, index) => this.labelPill(t, label, `${groupId('label', probe)}-${index}`)))}] : []),
     ], ['review', 'labels']);
     meta.line.tooltip([pr.tasks?.label, pr.checks?.label, ...labels.map(label => label.name),
       pr.review ? (pr.review === 'approved' ? 'Approved' : 'Changes requested') : null].filter(Boolean).join('\n'));

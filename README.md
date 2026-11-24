@@ -381,18 +381,24 @@ All PR rows, including coordinator/fleet rows and both Open/Closed tabs, omit th
 Owner badge. Every PR block uses the same three fixed lines: a 20px title, an
 18px number/author/time line and an 18px metadata line, for a 74px block including
 spacing. A blank 24px robot slot keeps titles' truncation boundaries identical
-with or without a related agent. The state icon also stays fixed. The two lower
-lines flow naturally from the left: **number · author · opened 4 hours ago** and
-**tasks · checks · assigned GitHub labels · review decision**, with constant gaps
-and unused space at the end, not stretched columns. Missing groups consume no
-horizontal space. Full task and time wording stays visible while its whole line
-fits, including around 390px panel width. Only real overflow selects whole task
-fractions such as **2/2** or a compact time such as **27m ago** before clipping
-secondary author, label or review text. Checks always keep their complete natural
-icon/count width, including realistic three-digit totals; they never shrink into
-an ellipsis. All full values remain in tooltips. Late facts may move neighboring
-items horizontally in their fixed order, but never change the three line positions,
-74px block height or title/robot reservation. Native post-layout measurements of
+with or without a related agent. The state icon also stays fixed. The byline flows
+naturally from the left: **number · author · opened 4 hours ago**, with constant
+gaps and unused space at the end. The metadata line keeps **tasks · checks · review
+decision** naturally on the left, while assigned GitHub label pills form one
+right-aligned group in their existing order, with no dot before it. The trailing
+pill ends at the content area's right edge—the outer edge of the title's reserved
+robot control, not its inset glyph. Free space is between the left run and pills,
+so changing or missing task/check values never move that right edge. Without labels,
+there is no right-hand placeholder or reservation. Full task and time wording
+stays visible while its whole line fits, including around 390px panel width. Only
+real overflow selects whole task fractions such as **2/2** or a compact time such
+as **27m ago**. If metadata still overflows, separate review-decision text yields
+first, then the bounded label group clips; checks and compact task fractions stay
+complete, without overlap or lone ellipses. Byline overflow clips secondary author
+text only after compacting time. Checks always keep their complete natural icon/count
+width, including realistic three-digit totals. All full values remain in tooltips.
+Late facts may move left-run neighbors, but never the pill group's right anchor,
+three line positions, 74px block height or title/robot reservation. Native post-layout measurements of
 clipped invisible probes choose shortening; there is no guessed character budget,
 percentage allocation, render-time notification or extra visible line.
 Labels keep their exact GitHub names (including emoji) in fully rounded 18px pills.
