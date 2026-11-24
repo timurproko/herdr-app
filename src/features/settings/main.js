@@ -28,7 +28,7 @@ import { initPermissions, reloadPermissions, corePage, coreEditorActions } from 
 import { M, sectionAction, sectionRow, modalFooter } from './modal-layout.js';
 import { initCustomizationUpdates, refreshCustomizationUpdates, customizationUpdateAvailable, customizationUpdateSnapshot } from './customization-updates.js';
 import { customizationUpdateRow } from './customization-update-row.js';
-import { CUSTOMIZATION_UPDATE_KEY } from './customization-update-model.js';
+import { CUSTOMIZATION_UPDATE_KEY, updateSentence } from './customization-update-model.js';
 import { initUpdateCheckFeedback, updateCheckSlot } from './update-check-feedback.js';
 
 const I = (name) => `mods/custom-settings/${name}.svg`;
@@ -895,7 +895,7 @@ export default class Settings extends View {
       : c.updating
         ? ["Updating\u2026 your terminals keep running.", null]
         : c.error
-          ? [`The update failed: ${c.error}`, primary("st-core-retry", "Try again", () => run("app.update_core"))]
+          ? [updateSentence(`The update failed: ${c.error}`), primary("st-core-retry", "Try again", () => run("app.update_core"))]
           : c.ready
             ? [`${c.ready} is ready. Your terminals keep running through it.`, primary("st-core-update", "Update herdr-core", () => run("app.update_core"))]
             : u.checks
