@@ -453,7 +453,8 @@ selecting another repository stops hidden panel reads, not update notifications.
 Disabling Git or closing its chrome owner closes transport; another mounted owner
 can take over. Failed reads retain the last good status. Enrolled repositories use **events only**, not periodic CI polling. Without live
 setup or enrollment, shown pending/unknown checks have a **45-second fallback**:
-one coalesced repository request reads just those PRs, retaining displayed values.
+one coalesced repository job reads just those PRs in bounded 20-PR chunks,
+retaining displayed values until the complete selection succeeds.
 It stops on settlement, hide/disable, stale context or remote-machine disconnect;
 failures back off 90/180/360/720 seconds, with at least 15 minutes for rate limits.
 Settled rows are never polled. See [refresh timing and stale-data limits](docs/GIT-WEBHOOKS.md#pending-checks-without-enrollment).

@@ -694,6 +694,21 @@ are rechecked at dispatch/publication. Full row facts/pagination remain event/ma
 reads; the fallback replaces checks only and retains displayed values during reads.
 The local branch/footer and agent-link discovery lifecycle is separate.
 
+**Check-fact ordering rule:** every list, targeted/older-PR, fallback and event
+read carries a context epoch and monotonically issued read generation. Publication
+is per repository/PR: a reply from an invalid epoch or older than that PR's
+published generation is discarded. All ordinary paths share one snapshot lease;
+older-PR reads cannot start during a list/event/fallback snapshot, and events
+coalesce behind any current reader. Aggregate targeted reads and fallback share
+the same per-PR publication guard and aggregate queue. A discarded or failed read
+never leaves a lookup cache key blocking the next attempt; failed replacement
+snapshots release the related-PR cache key while retaining last-good rows. Failed
+standalone older-PR reads use a separate 10-second retry deadline (not a cached
+success key) to avoid a render-driven failure loop.
+Fallback selections are split into at most 20 PRs per command-line chunk under the same
+repository lease, checked again before each command and committed only after the
+complete selection succeeds. No oversized selection is retried unchanged.
+
 The explicitly configured private Cloudflare Worker uses
 a hibernating Durable Object. It verifies raw-body GitHub HMAC, bounds input and
 clients, authenticates WebSocket subscribers, and forwards only invalidation

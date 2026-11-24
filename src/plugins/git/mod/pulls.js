@@ -3,6 +3,23 @@
 export const PR_FIELDS = 'number,title,url,state,isDraft,author,createdAt,mergedAt,closedAt,body,statusCheckRollup,reviewDecision,headRefName,headRefOid,mergeable,labels';
 export const PR_PAGE_SIZE = 10;
 
+// Single publication rule for every PR-read path. Queue ownership determines
+// read order; epochs invalidate old contexts, and generations prevent late
+// replies from replacing a newer published PR. No read path bypasses this gate.
+export class PullFactsOrder {
+  constructor() {this.epoch=0;this.generation=0;this.published=new Map();}
+  reset() {this.epoch++;this.published.clear();}
+  begin() {return {epoch:this.epoch,generation:++this.generation};}
+  publish(read,key,update) {
+    if(read.epoch!==this.epoch)return {accepted:false,value:null};
+    const previous=this.published.get(key);
+    if(previous && previous.generation>read.generation)return {accepted:false,value:previous.value};
+    const value=update(previous?.value);
+    this.published.set(key,{generation:read.generation,value});
+    return {accepted:true,value};
+  }
+}
+
 // Pending-only scheduler. One-shot wakeups always recheck the live snapshot;
 // reads share the panel queue and never poll settled/event-covered rows.
 export const CHECKS_INTERVAL = 45000;
@@ -57,9 +74,12 @@ export class ChecksFallback {
 
 // One request per repository, only the currently shown pending PRs. Reuse the
 // same newest-workflow facts as list reads; never replace unrelated row facts.
+// Keep each query comfortably below Windows' 32K argv ceiling, including
+// quoting/remote wrappers. A repository job holds its lease across all chunks.
+export const CHECKS_BATCH_SIZE = 20;
 export function pendingChecksArgs(numbers, nameWithOwner) {
   const [owner,name]=nameWithOwner.split('/');
-  if(!numbers.length || numbers.some(n=>!Number.isSafeInteger(n)||n<1))throw Error('Invalid checks selection');
+  if(!numbers.length || numbers.length>CHECKS_BATCH_SIZE || numbers.some(n=>!Number.isSafeInteger(n)||n<1))throw Error('Invalid or oversized checks batch');
   const fields=numbers.map(n=>`pr${n}:pullRequest(number:${n}){number commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){pageInfo{hasNextPage} nodes{... on CheckRun{name status conclusion startedAt completedAt detailsUrl checkSuite{workflowRun{workflow{name}}}} ... on StatusContext{context state createdAt}}}}}}}}`).join(' ');
   return ['api','graphql','-f',`query=query($owner:String!,$name:String!){repository(owner:$owner,name:$name){${fields}}}`,'-F',`owner=${owner}`,'-F',`name=${name}`];
 }

@@ -296,6 +296,14 @@ readiness without an `hc` state field (and refusal for loading/missing/unrelated
 layouts), failure retention and 90/180-second
 backoff, the 15-minute rate-limit floor, event-only enrolled rows, existing-queue
 contention, authoritative empty rollups and late hidden/replaced-context replies.
+The 120-row ordinary/coordinator cases require six command-line-bounded chunks,
+actually launch a harmless Node child with generated arguments, retain all rows on
+a failed second chunk, then retry successfully and stop on settlement.
+`tests/git-checks-order.test.mjs` injects newer publications while replies are held
+and asserts the single epoch/generation guard is wired into list, related/older,
+event, fallback and aggregate paths. Pagination also covers selecting an older PR
+during a held webhook snapshot (no competing read), an older lookup before a failed
+replacement (no stranded key/pin), and bounded retry after a failed lookup.
 Pagination and fleet fixtures also assert complete pending/success/failure and
 rerun counts through in-flight event follow-ups. These do not measure live GitHub
 latency, enroll hooks or use native UI/credentials.

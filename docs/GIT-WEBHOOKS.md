@@ -171,9 +171,12 @@ Reconnect and manual Refresh also replace label facts, with no label polling.
 
 While Git is shown, pending/in-progress checks (or an unknown rollup) in a repository
 without confirmed live enrollment get a **45-second fallback** (including unknown
-membership or missing setup). Confirmed enrolled repositories never poll. One batched
-GraphQL request per repository reads only those PRs' checks; known empty rollups and
-settled rows are not polled. Coordinator folded sections and the other Open/Closed
+membership or missing setup). Confirmed enrolled repositories never poll. One
+coalesced repository job reads only those PRs' checks in sequential GraphQL chunks
+of at most **20 PRs**. Commands stay comfortably below Windows' process-argument
+limit, including a 120-PR expanded list. The queue lease covers every chunk; values
+publish only after the complete selection succeeds. Known empty rollups and settled
+rows are not polled. Coordinator folded sections and the other Open/Closed
 tab are not eligible. Reads share the existing ordinary/aggregate queue; contention
 rechecks eligibility after one second rather than starting a parallel request.
 Prior row values stay on screen during reads. Hidden/disabled panels, changed
@@ -185,13 +188,22 @@ cap); a rate-limit refusal waits **at least 15 minutes**. A successful read rest
 the 45-second cadence only if a shown row still needs it. No hooks are enrolled,
 accounts switched or relay credentials changed by this fallback.
 
-Healthy fallback latency is up to 45 seconds **plus queue time and one GitHub read**
-(30-second command timeout). Event-covered rows start after native relay dispatch
+Healthy fallback latency is up to 45 seconds **plus queue time and the GitHub reads**
+(one command per 20 pending PRs, each with a 30-second timeout). Event-covered rows start after native relay dispatch
 and a microtask, without a configured debounce: latency includes GitHub delivery and
 data propagation, any existing request, and the authoritative reads. Ordinary events
 publish after all loaded pages, an older linked PR when needed and counts; coordinator
 reads queue at most three targeted requests. There is no fixed end-to-end short SLA.
 These are source-derived timings, not measured live delivery evidence.
+
+All PR read paths carry an epoch/generation and share the per-PR publication rule:
+older replies cannot replace newer published facts. Ordinary list, related/older,
+event and fallback reads share one queue; changing selection during an event cannot
+start a competing targeted read. A failed event snapshot releases the related-PR
+lookup key so the active PR can retry, without losing a previously loaded pin.
+Failed/discarded standalone older-PR reads also release that key and use a bounded
+10-second retry delay, rather than retrying on every render. Repository replacement
+invalidates old epochs; coordinator targeted reads and fallback use the same guard.
 
 A settled PR that starts a new rerun without an event is not automatically rediscovered
 by the fallback: it is deliberately not polled. Manual Refresh, opening or reconnect

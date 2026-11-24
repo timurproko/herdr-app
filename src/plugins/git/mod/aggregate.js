@@ -3,7 +3,7 @@
 import { exec, run } from './host.js';
 import { pluginPullContext, pluginEvent, sidebarPanelEnabled } from './plugins.js';
 import { location } from './location.js';
-import { PR_FIELDS, pullRow, pullFailure } from './pulls.js';
+import { PR_FIELDS, pullRow, pullFailure, PullFactsOrder } from './pulls.js';
 export function taskPullLink(url) {
   const match=/^https:\/\/github\.com\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\/pull\/([1-9]\d*)\/?$/.exec(url??'');
   const number=Number(match?.[2]);
@@ -11,7 +11,7 @@ export function taskPullLink(url) {
 }
 const HISTORY_MS = 24 * 60 * 60 * 1000;
 export class AggregatePulls {
-  constructor({shown,onUpdate}) {this.shown=shown;this.onUpdate=onUpdate;this.entries=new Map();this.pending=new Map();this.serial=0;}
+  constructor({shown,onUpdate}) {this.shown=shown;this.onUpdate=onUpdate;this.entries=new Map();this.pending=new Map();this.serial=0;this.factOrder=new PullFactsOrder();}
   currentContext({presentation = false} = {}) {
     const context=sidebarPanelEnabled('changes') ? pluginPullContext(location().space,{presentation}) : null;
     return !presentation && context?.stale ? null : context;
@@ -19,11 +19,11 @@ export class AggregatePulls {
   sync(cx) {
     if(this.shown()) pluginEvent('workspace.context.refresh',{cx});
     const context=this.currentContext({presentation:true}), previous=this.context;
-    if(context?.scope!==previous?.scope) {this.serial++;this.entries.clear();this.pending.clear();}
+    if(context?.scope!==previous?.scope) {this.serial++;this.factOrder.reset();this.entries.clear();this.pending.clear();}
     this.context=context;
     if(!context) return false;
     if(context.stale) {
-      if(!previous?.stale) {this.serial++;this.pending.clear();for(const entry of this.entries.values())entry.dirty=true;}
+      if(!previous?.stale) {this.serial++;this.factOrder.reset();this.pending.clear();for(const entry of this.entries.values())entry.dirty=true;}
       // Retain only already-loaded same-home rows. Empty stale links are not
       // an authoritative deletion, nor permission to read or navigate.
       return true;
@@ -32,11 +32,11 @@ export class AggregatePulls {
     for(const source of context.links) {const link=taskPullLink(source.url);if(!link)continue;const entry=links.get(link.key)??{...link,targets:[]};entry.targets.push({terminal:source.terminal,task:source.task,historical:source.historical===true});links.set(link.key,entry);}
     for(const key of this.entries.keys()) if(!links.has(key)) {this.entries.delete(key);this.pending.delete(key);}
     for(const [key,link]of links) {const old=this.entries.get(key);if(old)old.link=link;else this.entries.set(key,{link,dirty:true,pr:null,error:null});}
-    if(!this.shown()) {this.serial++;this.pending.clear();for(const e of this.entries.values())e.dirty=true;}
+    if(!this.shown()) {this.serial++;this.factOrder.reset();this.pending.clear();for(const e of this.entries.values())e.dirty=true;}
     else this.pump(cx);
     return true;
   }
-  stop() {this.serial++;this.context=null;this.entries.clear();this.pending.clear();}
+  stop() {this.serial++;this.factOrder.reset();this.context=null;this.entries.clear();this.pending.clear();}
   get busy() {return this.pending.size>0 || Boolean(this.fallbackBusy);}
   eligible(entry, now = Date.now()) {
     if(!entry.pr)return false;
@@ -72,7 +72,7 @@ export class AggregatePulls {
     for(const [key,entry]of this.entries) {
       if(this.pending.size>=3)break;
       if(!entry.dirty || this.pending.has(key))continue;
-      entry.dirty=false;const token={};this.pending.set(key,token);
+      entry.dirty=false;const token={},read=this.factOrder.begin();this.pending.set(key,token);
       const current=()=>this.serial===serial && this.shown() && this.currentContext()?.scope===context.scope && this.pending.get(key)===token && this.entries.get(key)===entry
         && this.currentContext()?.links.some(l=>taskPullLink(l.url)?.key===key);
       cx.spawn(async view=>{
@@ -84,7 +84,9 @@ export class AggregatePulls {
           if(result.code!==0 || result.timed_out || result.timedOut || result.signal) {entry.error=pullFailure(result);return;}
           const value=JSON.parse(result.stdout);
           if(value.number!==entry.link.number || taskPullLink(value.url)?.key!==key)throw Error('Pull request identity mismatch');
-          entry.pr={...pullRow(value,entry.link.repo.split('/')[0]),key,repo:entry.link.repo};
+          const published=this.factOrder.publish(read,key,()=>({...pullRow(value,entry.link.repo.split('/')[0]),key,repo:entry.link.repo}));
+          if(!published.accepted) {entry.dirty=true;return;}
+          entry.pr=published.value;
           const completedAt=Date.parse(value.mergedAt??value.closedAt??'');
           entry.completedAt=completedAt<=Date.now()?completedAt:NaN;entry.error=null;updated=true;
         }catch(e){if(current())entry.error=pullFailure(e);}

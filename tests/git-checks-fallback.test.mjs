@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
 import {rowHarness,find,words,t} from './support/git-row.mjs';
 
 const rollup=(ok,total)=>Array.from({length:total},(_,i)=>({name:`CI ${i}`,status:i<ok?'COMPLETED':'IN_PROGRESS',conclusion:i<ok?'SUCCESS':null}));
 const response=(numbers,ok,total)=>JSON.stringify({data:{repository:Object.fromEntries(numbers.map(number=>[`pr${number}`,{number,commits:{nodes:[{commit:{statusCheckRollup:{contexts:{nodes:rollup(ok,total)}}}}]}}]))}});
 for(const coordinator of [false,true]) {
   let now=0,shown=true,online=true,fail=false,rate=false,held=null,requests=[],tasks=[],timers=[],notifications=0,rendering=false;
-  let status={ok:3,total:10},machineShape=null;
+  let status={ok:3,total:10},machineShape=null,failAt=null;
   const context={scope:'home',machine:'pc2',links:[{url:'https://github.com/owner/repo/pull/1',terminal:'pc2/t1'}]};
   const h=await rowHarness({host:{machines:()=>machineShape??[{name:'pc2',layout:online?'ready':'loading'}],
     exec:async(_cmd,args)=>{
@@ -13,7 +14,8 @@ for(const coordinator of [false,true]) {
       const numbers=[...args.find(a=>a.startsWith('query=')).matchAll(/pr(\d+):pullRequest/g)].map(m=>Number(m[1]));
       requests.push({args,numbers});
       if(held)await held.promise;
-      return {code:fail?1:0,stderr:fail?(rate?'API rate limit exceeded':'process could not start'):'',stdout:response(numbers,status.ok,status.total)};
+      const failed=fail || requests.length===failAt;
+      return {code:failed?1:0,stderr:failed?(rate?'API rate limit exceeded':'process could not start'):'',stdout:response(numbers,status.ok,status.total)};
     }},modules:{'aggregate.js':'src/plugins/git/mod/aggregate.js','plugins.js':{sidebarPanelEnabled:()=>true,pluginPullContext:()=>context,pluginEvent(){}}}});
   const {panel,facts}=h;
   panel.on='pc2';h.place.on='pc2';panel.context=JSON.stringify([h.place.cwd,h.place.on]);
@@ -99,6 +101,35 @@ for(const coordinator of [false,true]) {
   panel.context='replacement';sync();held.resolve();held=null;await flush();
   assert.equal(rows()[0].checks.label,'2/10','Replacement context refuses an old result');
   assert.throws(()=>facts.parsePendingChecks('{"data":{"repository":{}}}',[1]),/Incomplete checks/);
+  // Expanded ordinary pages / coordinator inventories can contain 120 pending
+  // PRs. Chunk within one repository lease, never launch a 35K Windows argv.
+  panel.context=coordinator?'tasks:home':JSON.stringify([h.place.cwd,h.place.on]);
+  panel.checksFallback.stop();
+  const large=Array.from({length:120},(_,i)=>facts.pullRow(raw(1001+i),'owner'));
+  if(coordinator) {
+    panel.aggregate.entries.clear();
+    for(const pr of large) {
+      pr.key=`owner/repo#${pr.number}`;pr.repo='owner/repo';
+      panel.aggregate.entries.set(pr.key,{pr,dirty:false,link:{repo:'owner/repo',number:pr.number,key:pr.key,targets:[{terminal:'pc2/t1'}]}});
+    }
+    context.links=large.map(pr=>({url:pr.url,terminal:'pc2/t1'}));
+  } else {panel.pulls.open=large;panel.agentPull=null;panel.relatedPull=null;}
+  const before=requests.length;failAt=before+2;status={ok:11,total:11};sync();await advance(45000);
+  assert.equal(requests.length,before+2,'Stop at a failed second chunk instead of starting the remaining commands');
+  assert.ok(rows().every(pr=>pr.checks.label==='3/10'),'A partial batch failure retains every old row');
+  failAt=null;await advance(90000);
+  const chunks=requests.slice(before+2);
+  assert.equal(chunks.length,6,'120 pending rows use six bounded, sequential chunks');
+  assert.deepEqual(chunks.flatMap(c=>c.numbers),large.map(pr=>pr.number),'Every selected PR is read exactly once on retry');
+  for(const call of requests.slice(before)) {
+    assert.ok(call.numbers.length<=facts.CHECKS_BATCH_SIZE);
+    assert.ok(call.args.join(' ').length<8000,'Bound the complete argv well below Windows process limits');
+  }
+  const child=spawnSync(process.execPath,['-e','process.exit(0)','--',...chunks[0].args],{encoding:'utf8',timeout:10000});
+  assert.equal(child.error,undefined,'The generated command must actually start as a harmless Node child');assert.equal(child.status,0);
+  assert.throws(()=>facts.pendingChecksArgs(large.map(pr=>pr.number),'owner/repo'),/oversized checks batch/);
+  assert.ok(rows().every(pr=>pr.checks.label==='11/11'),'Publish the complete repository selection only after all chunks succeed');
+  const settledRequests=requests.length;await advance(90000);assert.equal(requests.length,settledRequests,'Settling a large selection stops polling too');
   assert.ok(notifications>0);
   await Promise.all(tasks);
 }
