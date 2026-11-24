@@ -98,9 +98,11 @@ try {
     view.pluginChecks.git.items=[{...result(),rows:rows(20)}];measure(20);
     view.pluginChecks.git.items=[result()];measure(current.length);
     // Requirements and Settings share the same disclosure measurement path.
+    view.pluginChecks.git.items=[...original.filter(p=>!p.section).map(p=>({...p,status:'ready'})),result()];
     for(const section of ['requirements','settings']) {
       view.pluginOpen[`git-${section}`]=true;
       const sibling=`st-plugin-git-${section}`,body=find(render(),sibling+'-body'),actual=height(body);
+      assert.ok(actual>16,`${section} contains real rows, not just an empty padding shell`);
       body.attrs.on_size_change[0]({height:actual*zoom},cx);
       assert.ok(Math.abs(val(find(render(),sibling+'-clip'),'h')-actual)<=0.5,`${section} has no zoom-inflated tail`);
     }
