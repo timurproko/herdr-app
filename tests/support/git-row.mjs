@@ -4,11 +4,11 @@ import {element,svg,nodes,find,words} from './choice-menu.mjs';
 export {element,svg,nodes,find,words};
 export const t={background:'#191d28',foreground:'#eeeeee',muted:'#999999',dim:'#666666',raised:'#222222',hover:'#333333',border:'#444444',ansi1:'red',ansi2:'green',ansi3:'yellow',ansi5:'purple'};
 export async function rowHarness({host={},modules={}}={}) {
-  let zoom=1,agent=false,rendering=false;
+  let zoom=1,font='Geist',agent=false,rendering=false;
   const place={cwd:'/repo',on:null,terminal:'t1'},focus=[];
   const chain=new Proxy({},{get:(_n,key)=>key==='build'?()=>({}):()=>chain});
   const {Main,facts,U,AggregatePulls}=await loadMod({mod:'custom-changes',globals:{window:{paint_path:element}},
-    host:{props:()=>null,settings:()=>({zoom}),theme:()=>t,closeOverlay(){},openOverlay(){},nextCommand(){},run:(...args)=>focus.push(args),
+    host:{props:()=>null,settings:()=>({zoom,ui_font_family:font}),theme:()=>t,closeOverlay(){},openOverlay(){},nextCommand(){},run:(...args)=>focus.push(args),
       layout:()=>({id:'panel',children:[{id:'panel-body',active:'changes'}]}),...host,
       ...(host.exec?{exec:(command,args,options)=>{const call=githubInvocation(command,args,options);return host.exec(call.command,call.args,call.options);}}:{})},
     modules:{'main.js':'src/plugins/git/mod/main.js','pulls.js':'src/plugins/git/mod/pulls.js','label-colors.js':'src/plugins/git/mod/label-colors.js',
@@ -28,16 +28,16 @@ export async function rowHarness({host={},modules={}}={}) {
   const settle=(build,width,zoom=1,height)=>{
     // Native post-layout callbacks, not render-time heuristics. Include hidden
     // intrinsic probes; visible text assertions below exclude their paint.
-    for(let pass=0;pass<8;pass++) {
+    for(let pass=0;pass<20;pass++) {
       const tree=render(build),geometry=rowGeometry(tree,width,zoom,height);let changed=false;
-      for(const node of nodes(tree))if(/pr-(?:byline|meta|title|label)-/.test(node.attrs?.id?.[0]??'')) {
+      for(const node of nodes(tree))if(/pr-(?:byline|meta|title|label)-|^task-repo-name-|^git-repo-name/.test(node.attrs?.id?.[0]??'')) {
         const callback=node.attrs.on_size_change?.[0];if(callback)callback(geometry.get(node),{...cx,notify(){changed=true;}});
       }
       if(!changed)return {tree,geometry};
     }
     throw Error('Natural row layout must converge without a measurement/render loop');
   };
-  return {panel,facts,U,AggregatePulls,cx,render,settle,focus,place,setAgent:value=>{agent=value;},setZoom:value=>{zoom=value;}};
+  return {panel,facts,U,AggregatePulls,cx,render,settle,focus,place,setAgent:value=>{agent=value;},setZoom:value=>{zoom=value;},setFont:value=>{font=value;}};
 }
 
 // Deterministic flex/absolute box model for these real render trees, not GPUI

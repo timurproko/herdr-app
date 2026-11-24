@@ -367,6 +367,42 @@ These are synthetic native-element/layout assertions, not live hover pixels.
 | Review | Full hidden decision, including a completely clipped value |
 | State icon | Unstated state or Merge conflicts, not an already visible state word |
 | Robot | Known current agent name; no invented name or changed action authority |
+| Combined metadata/byline/label strip or whole row | No repeat-only summary of complete visible parts; surviving strip targets expose only hidden/omitted values |
+
+The screenshot-shaped `3 tasks done / 11/11 / Rework` case explicitly checks
+metadata, byline, label-group and whole-row ancestor targets at 390px and
+100%/130% in both views; complete visible values cannot resurrect a summary.
+
+## Readable Git ellipses
+
+`tests/git-row-ellipsis.test.mjs` settles 540 shared-row cases across ordinary,
+pinned, scrolling, coordinator and both ghost paths in Open/Closed/merged states,
+280–480px and 75–200% including 130%. Rendered overflow ends in literal U+2026;
+the suffix uses normal-weight Segoe UI while title content stays semibold.
+The complete suffix box stays inside the existing line, measured prefix text
+fits beside it, and wrong-glyph/vertical-clipping mutations fail. Fitting titles
+remain unchanged without a tooltip. Folded/expanded repository sections and
+ordinary repository headers share the helper and preserve their 18px text line;
+PR title lines stay 20px and blocks 74px. Unicode surrogate pairs, common combining
+marks, variation selectors, skin modifiers and ZWJ runs keep their boundaries.
+Prefix candidates use the same bounded cache, not guessed character budgets.
+
+The opt-in Windows `tests/features/git-row-ellipsis-native.mjs --run --diagnose`
+compares native/literal U+2026 in explicit Geist, both weights, 18/20/32px lines,
+and Segoe UI at 100%/130%. Without `--diagnose`, it captures the actual packaged
+helper before/after and checks native prefix convergence. It creates only its
+own disposable app home under `.artifacts/`, selects an unavailable Core binary,
+starts no terminals and never changes the live app or preferences. It kills only
+its own app process; this fixture is not a hosted test or a live deployment.
+
+On Windows App 0.1.18 the Geist glyph forms a flat stroke in native truncation
+**and literal unclipped text**, at normal and semibold weights; a taller line
+does not fix it. This rules out a custom underscore suffix, title-only bolding
+and the fixed 20px clipping as the cause. Segoe UI renders distinct dots, so the
+fix uses that face only for the suffix after native-width prefix fitting.
+Four native diagnosis/fix captures at both requested zooms had no host errors;
+this proves the reproduced typography mechanism, not real repository data,
+native pointer-hover behavior or other operating systems' font availability.
 
 ## Coordinator render error diagnostics
 

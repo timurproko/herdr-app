@@ -755,7 +755,7 @@ export default class Changes extends View {
     return `${settings().zoom > 0 ? settings().zoom : 1}\0${settings().ui_font_family??''}\0text:${style}\0${value}`;
   }
 
-  textWidthProbe(id, value, style, build) {
+  textWidthProbe(id, value, style, build, current = () => true) {
     this.pullTextWidths ??= new Map();this.pullTextPending ??= new Set();this.pullTextRequests ??= new Map();
     const key=this.textWidthKey(value,style),context=this.context,zoom=settings().zoom>0?settings().zoom:1;
     if(this.pullTextWidths.has(key)||this.pullTextPending.has(key))return null;
@@ -768,14 +768,14 @@ export default class Changes extends View {
     return div().absolute().left(0).top(0).w(0).h(0).overflow_hidden().invisible().flex()
       .child(build(value).id(`${id}-intrinsic-measure-${request}`).flex_none().whitespace_nowrap()
         .on_size_change((size,cx)=>{
-          if(this.context!==context||!this.shown()||this.textWidthKey(value,style)!==key||!Number.isFinite(size.width)||this.pullTextRequests.get(key)!==request)return;
+          if(this.context!==context||!this.shown()||!current()||this.textWidthKey(value,style)!==key||!Number.isFinite(size.width)||this.pullTextRequests.get(key)!==request)return;
           this.pullTextRequests.delete(key);this.pullTextWidths.set(key,size.width/zoom);
           if(this.pullTextWidths.size>TEXT_CACHE_LIMIT)this.pullTextWidths.delete(this.pullTextWidths.keys().next().value);
           cx.notify();
         }));
   }
 
-  measuredText(id,value,{font=11,height=18,weight='normal',truncate=false}={}) {
+  measuredText(id,value,{font=11,height=18,weight='normal',truncate=false,current=()=>true}={}) {
     this.pullTextBoxes ??= new Map();
     const style=`${font}:${weight}`,key=this.textWidthKey(value,style),context=this.context,zoom=settings().zoom>0?settings().zoom:1;
     let sizes=this.pullTextBoxes.get(id);
@@ -783,19 +783,50 @@ export default class Changes extends View {
       sizes={key};this.pullTextBoxes.set(id,sizes);
       if(this.pullTextBoxes.size>TEXT_CACHE_LIMIT)this.pullTextBoxes.delete(this.pullTextBoxes.keys().next().value);
     }
-    const build=text=>div().text_size(font).line_height(`${height}px`).when(weight==='semibold',el=>el.font_semibold()).child(text);
-    const probe=this.textWidthProbe(id,value,style,build),natural=this.pullTextWidths.get(key);
+    const build=text=>div().text_size(font).line_height(`${height}px`).when(weight==='semibold',el=>el.font_semibold()).when(weight!=='semibold',el=>el.font_normal()).child(text);
+    const probe=this.textWidthProbe(id,value,style,build,current),natural=this.pullTextWidths.get(key);
     const clipped=Number.isFinite(natural)&&Number.isFinite(sizes.available)&&natural>sizes.available+0.01;
+    const probes=[probe];let content=value;
+    if(truncate&&clipped) {
+      // Geist's U+2026 rasterizes as a flat stroke even without truncation or
+      // clipping. Keep the title face/weight; give only the suffix a clear face.
+      const suffixStyle=`${font}:normal:Segoe UI`,suffixKey=this.textWidthKey('…',suffixStyle);
+      const suffix=text=>div().text_size(font).line_height(`${height}px`).font_family('Segoe UI').font_normal().child(text);
+      probes.push(this.textWidthProbe(`${id}-ellipsis`,'…',suffixStyle,suffix,current));
+      const suffixWidth=this.pullTextWidths.get(suffixKey);
+      let prefix=value;
+      if(Number.isFinite(suffixWidth)) {
+        const fitKey=`${key}\0${sizes.available}\0${suffixWidth}`;
+        if(sizes.fit?.key!==fitKey) {
+          const parts=[];
+          for(const point of Array.from(value)) {
+            const code=point.codePointAt(0),last=parts.at(-1);
+            if(last&&(/[\u0300-\u036f\u1ab0-\u1aff\u1dc0-\u1dff\u20d0-\u20ff\ufe00-\ufe0f\ufe20-\ufe2f\u200d]/u.test(point)||last.endsWith('\u200d')||(code>=0x1f3fb&&code<=0x1f3ff)))parts[parts.length-1]+=point;
+            else parts.push(point);
+          }
+          sizes.fit={key:fitKey,parts,low:0,high:parts.length};
+        }
+        const fit=sizes.fit,available=Math.max(0,sizes.available-suffixWidth);
+        while(fit.high-fit.low>1) {
+          const mid=Math.floor((fit.low+fit.high)/2),candidate=fit.parts.slice(0,mid).join(''),width=this.pullTextWidths.get(this.textWidthKey(candidate,style));
+          if(!Number.isFinite(width)) {probes.push(this.textWidthProbe(`${id}-prefix`,candidate,style,build,current));break;}
+          if(width<=available+0.01)fit.low=mid;else fit.high=mid;
+        }
+        if(fit.high-fit.low<=1)prefix=fit.parts.slice(0,fit.low).join('').trimEnd();
+      }
+      content=h_flex().w_full().min_w(0).h(height).items_center()
+        .child(div().flex_1().min_w(0).h(height).whitespace_nowrap().overflow_hidden().child(prefix))
+        .child(suffix('…').id(`${id}-ellipsis`).h(height).flex_none());
+    }
     return div().id(id).min_w(0).h(height).relative().overflow_hidden().text_size(font).line_height(`${height}px`)
-      .when(weight==='semibold',el=>el.font_semibold())
+      .when(weight==='semibold',el=>el.font_semibold()).when(weight!=='semibold',el=>el.font_normal())
       .on_size_change((size,cx)=>{
-        if(this.context!==context||!this.shown()||this.textWidthKey(value,style)!==key||this.pullTextBoxes.get(id)!==sizes||!Number.isFinite(size.width))return;
+        if(this.context!==context||!this.shown()||!current()||this.textWidthKey(value,style)!==key||this.pullTextBoxes.get(id)!==sizes||!Number.isFinite(size.width))return;
         const width=size.width/zoom;if(Math.abs((sizes.available??-1)-width)<0.01)return;
         sizes.available=width;cx.notify();
       })
       .when(clipped,el=>el.tooltip(value))
-      .when(truncate,el=>el.truncate()).when(!truncate,el=>el.whitespace_nowrap())
-      .child(value).when(Boolean(probe),el=>el.child(probe));
+      .whitespace_nowrap().child(content).children(probes.filter(Boolean));
   }
 
   labelPill(t, label, id, probe = false) {
@@ -1071,24 +1102,8 @@ export default class Changes extends View {
   }
 
   repositoryNameLabel(repo,scope) {
-    this.repositoryNameSizes ??= new Map();
-    const id=`task-repo-name-${scope}-${repo}`;
-    const sizes=this.repositoryNameSizes.get(id)??{};
-    const overflowing=()=>Number.isFinite(sizes.available)&&Number.isFinite(sizes.intrinsic)&&sizes.intrinsic>sizes.available+0.5;
-    const measure=(kind,size,cx)=>{
-      if(!this.shown() || this.aggregate?.currentContext({presentation:true})?.scope!==scope || !this.aggregate.repositories().includes(repo) || !Number.isFinite(size.width))return;
-      const before=overflowing();sizes[kind]=size.width;this.repositoryNameSizes.set(id,sizes);
-      if(before!==overflowing())cx.notify();
-    };
-    // A non-shrinking invisible flex child measures the same text's natural width.
-    // Its absolute clipped parent cannot reserve width or add a line to the header.
-    return div().id(id).flex_1().min_w(0).relative().overflow_hidden()
-      .on_size_change((size,cx)=>measure('available',size,cx))
-      .when(overflowing(),el=>el.tooltip(repo))
-      .child(div().truncate().child(repo))
-      .child(div().absolute().left(0).top(0).flex().invisible()
-        .child(div().id(`${id}-probe`).flex_none().whitespace_nowrap().child(repo)
-          .on_size_change((size,cx)=>measure('intrinsic',size,cx))));
+    return this.measuredText(`task-repo-name-${scope}-${repo}`,repo,{font:U.meta,height:18,truncate:true,
+      current:()=>(this.aggregate?.currentContext?.({presentation:true})??this.aggregate?.context)?.scope===scope&&(!this.aggregate?.repositories||this.aggregate.repositories().includes(repo))}).flex_1();
   }
 
   repositorySection(t, {repo, rows, error}, scope) {
@@ -1160,10 +1175,6 @@ export default class Changes extends View {
     const repositories=aggregate.repositories(), rows=aggregate.rows(this.view);
     const sections=repositories.map(repo=>({repo,rows:rows.filter(pr=>pr.repo===repo),error:aggregate.readNotice(repo,this.view)}))
       .filter(section=>section.rows.length || section.error);
-    if(this.repositoryNameSizes){
-      const ids=new Set(repositories.map(repo=>`task-repo-name-${scope}-${repo}`));
-      for(const id of this.repositoryNameSizes.keys())if(!ids.has(id))this.repositoryNameSizes.delete(id);
-    }
     const paging=this.taskSections(sections,scope);
     this.notices ??= new GitNotices();
     const notices=new Map(repositories.map(repo=>[repo,this.notices.sync(cx,{enabled:this.shown() && !aggregate.context.stale,repository:repo})]));
@@ -1267,8 +1278,8 @@ export default class Changes extends View {
         })
         .child(sidebarTitle(t, 'changes', 'git-title'))
         .child(h_flex().id('git-repo-slot').flex_1().min_w(0).pr(U.insetControl * toolCount + 4 * (toolCount - 1) + 16 - U.gutter).items_center()
-          .when(Boolean(this.root && this.repo?.url && this.repo?.name), el=>el.child(div().id('git-repo-name').min_w(0).max_w_full().flex_shrink(1).truncate()
-            .text_size(U.meta).text_color(t.dim).tooltip(this.repo.url).child(this.repo.name.split('/').at(-1)))))
+          .when(Boolean(this.root && this.repo?.url && this.repo?.name), el=>el.child(this.measuredText('git-repo-name',this.repo.name.split('/').at(-1),{font:U.meta,height:18,truncate:true}).max_w_full().flex_shrink(1)
+            .text_color(t.dim).tooltip(this.repo.url))))
         .child(reveal(headerTools(h_flex()).id('git-actions').bg(t.surface), this.headerHovered)
           .when(Boolean(this.root), el => el.child(refreshButton(t, { id: 'git-refresh', icon: 'mods/custom-changes/refresh.svg', label: 'Refresh', busy, spinning: Boolean(this.root), owner: this, scope: this.context,
             enabled: this.headerHovered && Boolean(this.root), size: U.insetControl, iconSize: U.tinyIcon, radius: U.insetRadius, color: t.dim, hover: subtleActionFill(t),

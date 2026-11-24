@@ -34,6 +34,14 @@ for(const coordinator of [false,true])for(const ghost of [false,true])for(const 
   assert.ok(nodes(tree).filter(n=>n.attrs.invisible).every(n=>nodes(n).every(p=>!tip(p))),'Hidden probes do not own hover tooltips');
   comparisons++;
 }
+// Screenshot-7ac98f07f5: the strip/row must not repeat an entirely visible
+// "3 tasks done / 11/11 / Rework" summary, even when hovering beside the pill.
+for(const coordinator of [false,true])for(const zoom of [1,1.3]) {
+  const f=fixture({body:'- [x] one\n- [x] two\n- [x] three',reviewDecision:null,labels:[{name:'🤖 Rework',color:'840479'}],statusCheckRollup:Array.from({length:11},(_,i)=>({name:`CI ${i}`,status:'COMPLETED',conclusion:'SUCCESS'}))},390,zoom,coordinator);
+  for(const kind of ['tasks','checks','labels','meta','byline'])assert.equal(tip(f.get(kind)),undefined,`Complete screenshot ${kind} has no combined/repeat-only hover`);
+  assert.equal(tip(f.tree),undefined,'Whole-row tooltip cannot resurrect the summary');
+  assert.equal(tip(f.get('labels').kids[0]),undefined);
+}
 // Details use the same newest-workflow and rerun filtering as counts, not stale failures.
 const check=(name,id,conclusion,status='COMPLETED',startedAt='2026-11-20T10:00:00Z')=>({name,workflowName:'CI',conclusion,status,startedAt,detailsUrl:`https://github.com/owner/repo/actions/runs/${id}/job/1`});
 assert.equal(facts.checks([check('removed',1,'FAILURE'),check('build',2,'SUCCESS')]).details,undefined);
@@ -50,6 +58,9 @@ const old=probes[0].attrs.on_size_change[0];panel.context='changed';let notify=0
 panel.context='ordinary';h.setZoom(1.3);old({width:999},{notify(){notify++;}});assert.equal(notify,0,'Prior zoom cannot poison the cache');
 h.setZoom(1);const settled=h.settle(build,480);assert.equal(nodes(settled.tree).filter(n=>n.attrs.id?.[0]?.includes('-intrinsic-measure-')).length,0,'Warm rows add no intrinsic probe');
 const style=h.render(()=>panel.measuredText('pr-title-style','shared',{font:13,height:20,weight:'normal'}));assert.equal(nodes(style).filter(n=>n.attrs.id?.[0]?.includes('-intrinsic-measure-')).length,1,'Different font weight is separately measured');
+h.setFont('Segoe UI');const changedFont=h.render(build);
+assert.equal(nodes(changedFont).filter(n=>n.attrs.id?.[0]?.includes('-intrinsic-measure-')).length,1,'Interface font changes need a fresh intrinsic width');
+const priorFont=nodes(changedFont).find(n=>n.attrs.id?.[0]?.includes('-intrinsic-measure-')).attrs.on_size_change[0];h.setFont('Geist');priorFont({width:999},{notify(){notify++;}});assert.equal(notify,0,'Prior font callbacks cannot poison the cache');
 for(let i=0;i<520;i++) {
   const tree=h.render(()=>panel.measuredText(`pr-title-cache-${i}`,`string ${i}`,{font:13,height:20})),g=rowGeometry(tree,480);
   for(const node of nodes(tree))if(node.attrs.id?.[0]?.includes('-intrinsic-measure-'))node.attrs.on_size_change[0](g.get(node),h.cx);

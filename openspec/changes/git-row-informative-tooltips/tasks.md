@@ -16,10 +16,10 @@
 
 ## 3. Truncated Git titles and headers use a readable contained Unicode ellipsis
 
-- [ ] 3.1 Diagnose native suffix, selected face/weight and glyph clipping at 100%/130%, comparing PR titles, repository/panel headers and lower-line text; record the actual cause and native-versus-proxy evidence rather than inferring it from the screenshot alone.
-- [ ] 3.2 Apply only the diagnosis-matched customization remedy from the design, preserving the original full string and existing measurements; a fitting string remains unchanged and an overflowing rendered string ends in U+2026 without a host patch or extra probes.
-- [ ] 3.3 Add title/header suffix and glyph-containment regressions for ordinary/pinned/scrolling/coordinator/ghost and folded-header paths at both requested zooms; mutation cases detect baseline-only clipping or an underscore/ASCII-period suffix while 20px/74px geometry and icon offsets remain unchanged.
-- [ ] 3.4 Document the diagnosed cause, chosen font/containment remedy, exact visual evidence and remaining native limits; focused tooltip/ellipsis and geometry suites pass with no unrelated header-hover, paging or rate-limit edits.
+- [x] 3.1 Diagnose native suffix, selected face/weight and glyph clipping at 100%/130%, comparing PR titles, repository/panel headers and lower-line text; record the actual cause and native-versus-proxy evidence rather than inferring it from the screenshot alone.
+- [x] 3.2 Apply only the diagnosis-matched customization remedy from the design, preserving the original full string and existing measurements; a fitting string remains unchanged and an overflowing rendered string ends in U+2026 without a host patch or extra probes.
+- [x] 3.3 Add title/header suffix and glyph-containment regressions for ordinary/pinned/scrolling/coordinator/ghost and folded-header paths at both requested zooms; mutation cases detect baseline-only clipping or an underscore/ASCII-period suffix while 20px/74px geometry and icon offsets remain unchanged.
+- [x] 3.4 Document the diagnosed cause, chosen font/containment remedy, exact visual evidence and remaining native limits; focused tooltip/ellipsis and geometry suites pass with no unrelated header-hover, paging or rate-limit edits.
 
 ## Workflow follow-up
 

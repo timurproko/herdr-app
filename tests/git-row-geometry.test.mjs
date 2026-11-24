@@ -58,7 +58,7 @@ function assertTextFits(geometry,row) {
     const cell=[...line.ancestors].reverse().find(node=>/^(?:swap-)?pr-(?:title-line|byline|meta)-/.test(node.attrs?.id?.[0]??''));
     assert.ok(cell,`Missing containing line for ${line.text}`);
     assert.ok(line.lineHeight<=geometry.get(cell).height+1e-6,`${cell.attrs.id[0]} text line height ${line.lineHeight} exceeds cell ${geometry.get(cell).height}: ${line.text}`);
-    assert.notEqual(line.text.trim(),'…');
+    if(line.text.trim()==='…')assert.ok(line.ancestors.some(node=>node.attrs.id?.[0]?.endsWith('-ellipsis')),'Only an explicitly styled title suffix may be a standalone ellipsis; metadata must not collapse to one');
   }
 }
 function assertNaturalRun(geometry,line,zoom) {

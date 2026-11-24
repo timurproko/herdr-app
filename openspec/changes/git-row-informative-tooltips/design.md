@@ -4,7 +4,7 @@
 
 See proposal.md for motivation. The icon correction is implemented in `7d714fb`; the tooltip and ellipsis additions are not. PR #61 was subsequently refreshed automatically with main's header-hover change; that refresh does not implement either addition.
 
-`main.js` unconditionally assigns repeat-only tooltips to title, byline, task/check groups, label strip/pills and review text. `pullLine` already knows available/full/compact widths and final clipping allocations. Title rendering uses native `.truncate()` at 13px semibold with a 20px line; repository and panel-name headers also use native truncation. There is no custom underscore or ASCII-dot suffix in these callers. The native SDK documents `.truncate()` as using an ellipsis, but the screenshot alone does not establish whether the reported flat mark is face/weight rasterization or vertical clipping.
+`main.js` unconditionally assigns repeat-only tooltips to title, byline, task/check groups, label strip/pills and review text. `pullLine` already knows available/full/compact widths and final clipping allocations. Title rendering uses native `.truncate()` at 13px semibold with a 20px line; repository and panel-name headers also use native truncation. There is no custom underscore or ASCII-dot suffix in these callers. The native SDK documents `.truncate()` as using an ellipsis. Disposable App 0.1.18 captures at 100%/130% now reproduce the flat stroke in explicit Geist with both native truncation and literal U+2026, normal/semibold weights and a taller line. Segoe UI paints distinct dots: the cause is the Geist glyph at these sizes, not a custom suffix or vertical clipping.
 
 Existing tests explicitly require unconditional pill/byline values and no robot tooltip; those expectations must change intentionally, not be bypassed. Existing PR facts retain timestamps; `checks()` currently drops individual check names after computing newest-run counts. Ordinary related-agent targets and coordinator targets currently expose different identity shapes.
 
@@ -46,7 +46,7 @@ Metadata decisions reuse `pullLine`'s current measurements, including clipping o
 
 Compare actual U+2026 and ordinary letter bounds in the title's selected face/weight at 100% and 130%, against byline/metadata and repository/header rendering. Inspect the native suffix semantics read-only. Keep 20px title and 74px row boxes unchanged.
 
-If only vertical clipping is responsible, correct inherited line/overflow containment locally. If the selected semibold face squashes the glyph, use a supported fallback face/normal weight for the suffix, preserving title content weight. If manual truncation is necessary, only use measured native widths from the non-probe route above (or a separately approved measurement exception), append one U+2026, and preserve the full original for tooltip/accessibility. A custom suffix, if discovered below these callers, must be U+2026. Three ASCII periods are not the default remedy. No host patch is authorized.
+The diagnosed remedy is native-width prefix fitting plus one literal U+2026 in normal-weight Segoe UI; only the suffix changes face/weight. Binary search chooses the fitting prefix from real cached native widths, retaining Unicode code points and common combining/ZWJ clusters. Each distinct candidate uses the approved bounded shared cache, not a recurring per-row probe or character-budget estimate. Native layout callbacks drive convergence without a JavaScript frame loop. Preserve the complete original for informative tooltips. Fitting strings are unchanged. There is no ASCII-period substitution or host patch.
 
 ### Preserve the existing delivered geometry
 
@@ -55,7 +55,7 @@ Keep the task/check +1px relative offsets, 18px metadata/byline lines, 20px titl
 ## Risks / Trade-offs
 
 - Cold title/pill fit facts → Use the approved bounded shared cache; suppress repeat-only tips until measurements resolve, and reject stale callbacks.
-- Native face/rasterization cause remains unproven → Capture explicit diagnosis at both requested zooms and choose only the corresponding customization remedy.
+- Font availability outside Windows is unverified → Native evidence is explicitly Windows-only; retain this limitation rather than claiming cross-platform pixel validation.
 - Parent tooltips can duplicate suppressed child values → Assert the complete ancestor hover chain as well as each item's tooltip.
 - Additional check details can regress rerun ordering → Keep names inside the existing newest-workflow selection and test event/fallback updates without new reads.
 - Agent names can be stale → Bind display identity to the existing exact target and preserve captured click guards; do not use names as identifiers.

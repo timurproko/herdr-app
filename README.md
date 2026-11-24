@@ -389,7 +389,13 @@ showing an earlier attempt's result. Untouched body checklists show a muted
 checklist icon and **2 tasks** (or **1 task**), not **0 of 2 tasks**. Partial
 progress keeps its ring; completed lists keep their purple check and done label.
 All PR rows, including coordinator/fleet rows and both Open/Closed tabs, omit the
-Owner badge. Every PR block uses the same three fixed lines: a 20px title, an
+Owner badge. Truncated PR titles, repository section names and the Git repository header end
+in one Unicode ellipsis (`…`). Geist's small-size ellipsis can paint as a flat
+stroke even when unclipped; only the suffix uses normal-weight Segoe UI, keeping
+the original title face/weight. Native-width prefix fitting shares the bounded
+cache, including distinct prefixes; there are no guessed character budgets or
+recurring per-row probes. Fitting text is unchanged. Every PR block uses the
+same three fixed lines: a 20px title, an
 18px number/author/time line and an 18px metadata line, for a 74px block including
 spacing. A blank 24px robot slot keeps titles' truncation boundaries identical
 with or without a related agent. Robot slots, label pills and the repository headers'
@@ -534,7 +540,7 @@ PRs keep their usual icons. Push events also refresh facts after base-branch cha
 PRs with a related live agent show a separate white/foreground robot beside
 the title, matching the Agents sidebar. The original colored PR icon stays.
 The robot uses the usual rounded inset-icon hover tint, distinct from the
-row's hover, and no tooltip; clicking opens
+row's hover, with a tooltip only for a known agent name; clicking opens
 the agent's existing tab without opening GitHub.
 The rest of the row still opens GitHub. Right-click any PR (pinned or scrolling,
 Open or Closed) for the same menu as Files: **Open...**, a divider, then **Copy path**.
