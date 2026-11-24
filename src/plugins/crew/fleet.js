@@ -2,7 +2,7 @@
 import { shared, setShared, spaces, panes, terminals, machines, checking, FLEET_DISPLAY_KEY, fleetDisplayChangeAllowed, updateFleetDisplay } from '../api.js';
 import { fleetError, fleetGeneration, recordFleetFailure, resolveFleetFailure, fleetVerification, fleetRetry, deferFleetRetry, clearFleetRetry, clearFleetRetries } from './fleet-diagnostics.js';
 export const FLEET_KEY = 'custom.fleet.links', DISPLAY_KEY = FLEET_DISPLAY_KEY;
-const READS = 'custom.fleet.reads', TTL = 10000, EXPIRY = 30000, READ_LEASE = 45000;
+const READS = 'custom.fleet.reads', TTL = 10000, EXPIRY = 30000, READ_LEASE = 45000, PROCESSING_LEASE = 2000;
 // Only reads witnessed by this running mod can authorize actions. Persisted
 // timestamps/tokens alone are display history, not cold-start verification.
 const verifiedTokens = new Map(), pendingTokens = new Map();
@@ -16,7 +16,7 @@ function coordinatorCandidate(machine, snapshot) {
     .flatMap(t=>{
       const members=snapshot.all.filter(p=>p.terminal===t.address && !p.mod);
       const groups=members.length===1 ? snapshot.groups.filter(s=>(s.machine??null)===machine && s.tabs?.some(tab=>tab.id===members[0].tab)) : [];
-      return groups.length===1 ? [{parent:groups[0].id,owner:t.address}] : [];
+      return groups.length===1 ? [{parent:groups[0].id,owner:t.address,ownerTab:members[0].tab,ownerPane:members[0].pane??null}] : [];
     });
   return candidates.length===1 ? candidates[0] : null;
 }
@@ -231,23 +231,36 @@ export function refreshFleets(cx, readStatus, force = false) {
       if(pending.token!==entry?.attemptToken)pendingTokens.set(key,pending.token);
       if(pending.token!==entry?.attemptToken || witnessed(key,pending.token))continue;
     }
+    // Only a received reply's abandoned continuation bypasses attempt/backoff
+    // gates. The command is already finished; replacing it cannot overlap IO.
+    const abandonedProcessing=pending?.phase==='processing' && pending.until<=now;
     const sameAttempt=(entry?.attemptSignature??entry?.signature)===sig, retry=sameAttempt?fleetRetry(machine):null;
-    if(!force && retry && now<retry.nextAt)continue;
-    if(!force && !retry && witnessed(key,entry?.attemptToken) && sameAttempt && now-(entry.attemptAt??entry.at)<TTL)continue;
+    if(!force && !abandonedProcessing && retry && now<retry.nextAt)continue;
+    if(!force && !abandonedProcessing && !retry && witnessed(key,entry?.attemptToken) && sameAttempt && now-(entry.attemptAt??entry.at)<TTL)continue;
     if(pending && pending.until<=now)recordFleetFailure(machine,'expired-read',pending.generation??fleetGeneration(),{discard:true,subject:pending.subject??coordinatorCandidate(machine,snapshot)});
     const token=`${now}-${Math.random()}`, generation=fleetGeneration(), subject=coordinatorCandidate(machine,snapshot);
     pendingTokens.set(key,token);
-    setShared(READS,{...shared(READS),[key]:{token,until:now+READ_LEASE,generation,subject}});
+    setShared(READS,{...shared(READS),[key]:{token,until:now+READ_LEASE,transportUntil:now+READ_LEASE,phase:'transport',generation,subject}});
     cx.spawn(async view=> {
       const obsolete=()=>fleetGeneration()!==generation ? 'obsolete-generation' : !enabled() ? 'disabled' :
         shared(READS)?.[key]?.token!==token ? 'replaced-read' : shared(READS)[key].until<=Date.now() ? 'expired-read' :
         signature(machine,model(),reference)!==sig ? 'obsolete-identity' :
         shared(FLEET_KEY) && shared(FLEET_KEY).version!==1 ? 'replaced-read' : null;
       const current=()=>!obsolete();
-      const discard=reason=>recordFleetFailure(machine,reason,generation,{discard:true,subject});
+      let expiredProcessing=false;
+      const discard=reason=>{
+        if(reason==='expired-read' && shared(READS)?.[key]?.phase==='processing')expiredProcessing=true;
+        recordFleetFailure(machine,reason,generation,{discard:true,subject});
+      };
       try {
         await Promise.resolve();if(!current()) {discard(obsolete());return;}
-        const output=await readStatus(machine,{current});
+        const progress=phase=>{
+          if(!current() || !['transport','processing'].includes(phase))return;
+          const reads=shared(READS), pending=reads[key];
+          setShared(READS,{...reads,[key]:{...pending,phase,
+            until:phase==='processing'?Math.min(pending.transportUntil,Date.now()+PROCESSING_LEASE):pending.transportUntil}});
+        };
+        const output=await readStatus(machine,{current,progress,yieldTurn:()=>new Promise(resolve=>view.timer.after(0,resolve))});
         if(!current()) {discard(obsolete());return;}
         let status;
         try {status=recordedSource(output);} catch {throw fleetError('invalid-status');}
@@ -278,7 +291,10 @@ export function refreshFleets(cx, readStatus, force = false) {
             ...latest?.entries?.[key],machine,attemptAt:Date.now(),attemptToken:token,attemptSignature:signature(machine,model(),savedDisplays().find(d=>d.machine===machine)??latest?.entries?.[key]?.identity??reference)}}});
         } else discard(obsolete());
       } finally {
-        if(shared(READS)?.[key]?.token===token) {const reads={...shared(READS)};delete reads[key];setShared(READS,reads);}
+        // If a late decoder resumes before the lifecycle, keep its expired
+        // processing lease as the recovery marker. Deleting it would let a
+        // previous witnessed success's ten-second TTL suppress the next read.
+        if(shared(READS)?.[key]?.token===token && !expiredProcessing) {const reads={...shared(READS)};delete reads[key];setShared(READS,reads);}
         view.notify();
       }
     });
@@ -292,7 +308,11 @@ export function invalidateFleet() {
 }
 export function fleetPullContext(space, {presentation = false} = {}) {
   const context=fleetContexts().find(c=>c.parent===space && c.taskMembershipVerified);
-  if(context)return {...context,kind:'tasks',scope:context.pullScope,stale:false,links:context.tasks.filter(t=>t.pr).map(t=>({url:t.pr,terminal:t.terminal,task:t.id,historical:t.historical===true}))};
+  if(context) {
+    const display=fleetContexts({presentation:true}).find(d=>d.parent===space && d.pullScope===context.pullScope);
+    if(!context.child && !display && !context.tasks.some(t=>canonicalPull(t.pr)))return null;
+    return {...context,kind:'tasks',scope:context.pullScope,stale:false,links:context.tasks.filter(t=>t.pr).map(t=>({url:t.pr,terminal:t.terminal,task:t.id,historical:t.historical===true}))};
+  }
   if(!presentation || !enabled())return null;
   let identity=fleetContexts({presentation:true}).find(c=>c.parent===space);
   // In this runtime, retain the same live owner/home independently of the child.
@@ -306,13 +326,20 @@ export function fleetPullContext(space, {presentation = false} = {}) {
       }
   }
   if(identity) {
-    const candidate=coordinatorCandidate(identity.machine,model());
-    const verification=candidate?.parent===identity.parent && candidate.owner===identity.owner ? fleetVerification(identity.machine,candidate) : null;
-    return {...identity,kind:'tasks',scope:identity.pullScope,stale:true,links:[],verification};
+    const snapshot=model(),candidate=coordinatorCandidate(identity.machine,snapshot),owner=bindFleet({home:identity.home,owner:{terminal:identity.owner,live:true},tasks:[]},identity.machine,snapshot);
+    const sameCandidate=!candidate || ['parent','owner','ownerTab','ownerPane'].every(k=>candidate[k]===identity[k]);
+    if(sameCandidate && owner?.pullScope===identity.pullScope)return {...identity,kind:'tasks',scope:identity.pullScope,stale:true,links:[],verification:fleetVerification(identity.machine,identity)};
   }
   const snapshot=model(), group=snapshot.groups.find(s=>s.id===space);
   if(!group)return null;
-  const machine=group.machine??null, candidate=coordinatorCandidate(machine,snapshot), verification=fleetVerification(machine,candidate);
-  return candidate?.parent===space && verification && !['no-owner','identity-mismatch','no-fleet'].includes(verification.reason)
-    ? {...candidate,machine,kind:'tasks',scope:JSON.stringify(['fleet-waiting',machine,candidate.parent,candidate.owner]),stale:true,links:[],verification} : null;
+  const machine=group.machine??null,candidate=coordinatorCandidate(machine,snapshot);
+  if(candidate?.parent!==space)return null;
+  const state=shared(FLEET_KEY),key=machine??'local',entry=state?.version===1?state.entries?.[key]:null;
+  // Only a witnessed completed negative for these CURRENT dependencies can
+  // suppress Loading. A prior owner's negative (or a diagnostic alone) cannot.
+  const negative=entry?.status && entry.binding===null && locallyVerified(key,entry) && entry.signature===signature(machine,snapshot,null);
+  if(negative)return null;
+  const fact=fleetVerification(machine,candidate);
+  const verification=fact && !['no-owner','identity-mismatch','no-fleet'].includes(fact.reason)?fact:null;
+  return {...candidate,machine,kind:'tasks',scope:JSON.stringify(['fleet-waiting',machine,candidate.parent,candidate.owner,candidate.ownerTab,candidate.ownerPane]),stale:true,links:[],verification};
 }

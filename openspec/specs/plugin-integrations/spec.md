@@ -644,8 +644,23 @@ A same-context PR refresh SHALL retain previously displayed rows, pin geometry a
 
 #### Scenario: Loading and fleet verification
 - **WHEN** the panel is loading or the same coordinator home temporarily loses fresh verification
-- **THEN** loading or verifying feedback does not add row lines or displace retained rows
-- **AND** cold start without prior rows retains truthful waiting feedback without inventing PRs, counts or visible skeleton values
+- **THEN** retained rows keep their Stale treatment without additional loading lines or displacement
+- **AND** without prior rows verification uses the ordinary panel's working bulb and Loading wording, with no extra Verifying header, invented PRs, counts or visible skeleton values
+
+#### Scenario: Off and on with slow or failed first verification
+- **WHEN** a verified coordinator list is switched off and back on and the first current read is slow, interrupted or fails
+- **THEN** off uses ordinary Git and clears inventory; on shows standard Loading for the current coordinator candidate, never Not a git repository while verification is pending or awaiting retry
+- **AND** no previous inventory returns across off/on; Stale retains only its existing same-context meaning and grants no GitHub reads or worker navigation
+
+#### Scenario: Negative completes before toggle without a panel render
+- **WHEN** authoritative absence completes without a Git render, then attachment is switched off/on and the new verification is pending or fails
+- **THEN** the panel shows Loading with no old inventory or Stale resurrection
+- **AND** only the new verification's fresh result can populate its list
+
+#### Scenario: Changed coordinator owner with verification pending
+- **WHEN** a previous owner has a positive or negative result and a different current labelled coordinator owner begins verification
+- **THEN** the current candidate shows standard Loading rather than the ordinary folder view or the previous inventory
+- **AND** only a witnessed authoritative negative matching the current dependency identity can suppress that candidate's Loading state
 
 #### Scenario: Authoritative context or membership change
 - **WHEN** a different machine, folder or coordinator home is selected, a repository is definitively absent, or authoritative PR/task membership changes
@@ -743,7 +758,7 @@ Failed, unmatched and discarded fleet verification attempts SHALL retain a bound
 
 #### Scenario: Existing verification feedback
 - **WHEN** the selected coordinator has a relevant last verification failure
-- **THEN** its existing Verifying, Waiting for fleet verification or Stale presentation exposes the sanitized reason and time through existing verification feedback rather than adding UI controls or notifications
+- **THEN** a tooltip on the standard Loading working bulb or retained Stale indicator exposes the sanitized reason and time without adding header text, UI controls or notifications
 - **AND** a cold unverified coordinator candidate gains no attachment, PR inventory, GitHub-read permission or worker-navigation authority from that feedback
 
 #### Scenario: Runtime privacy and retention
