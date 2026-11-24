@@ -6,6 +6,7 @@ const folded=new Set(),w=new TaskWindow();
 const project=()=>w.project(sections,folded,28,2,'1:390');
 project();assert.equal(w.length,10);assert.equal(w.height,28+2+9*76);
 assert.equal(w.range().items.length,10);assert.equal(w.range().visible.length,0,'Cold unmeasured rows cannot authorize probes');
+w.move(109,400);assert.equal(w.range().visible[0].number,2,'A row whose trailing gap alone intersects the viewport is not safety-visible');
 const seen=new Set();
 for(let offset=0;offset<10000;offset+=200) {
  w.move(offset,400);const range=w.range();

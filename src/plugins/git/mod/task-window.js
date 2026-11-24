@@ -57,7 +57,7 @@ export class TaskWindow {
     const first = this.index(start), last = Math.min(this.length,this.index(end) + 1);
     const from = this.viewport ? this.index(Math.max(0,start - 74)) : 0;
     const to = this.viewport ? Math.min(this.length,this.index(end + 74) + 1) : Math.min(10,this.length);
-    const visible = this.viewport ? this.items.slice(first,last).filter((item,i) => item.row && this.starts[first+i] < end).map(item=>item.row) : [];
+    const visible = this.viewport ? this.items.slice(first,last).filter((item,i) => item.row && this.starts[first+i] < end && this.starts[first+i] + item.height > start).map(item=>item.row) : [];
     const selection = visible.map(row=>row.key).join('\0');
     if (this.selection !== selection) { this.selection = selection;this.generation++; }
     return {from,to,items:this.items.slice(from,to),top:this.starts[from] ?? 0,bottom:this.height-(this.starts[to] ?? this.height),visible};
