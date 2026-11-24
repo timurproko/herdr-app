@@ -2,7 +2,7 @@
 
 ## Context
 
-See `proposal.md` for motivation and `stopgap.md` for the separately deliverable first stage. This is a plan only. No runtime implementation, installed-file mutation, deployment, restart, workflow dispatch or variable write has occurred.
+See `proposal.md` for motivation and `stopgap.md` for the separately deliverable first stage. This records the approved design; implementation progress is in tasks.md. Investigation and implementation do not mutate installed app files, deploy, restart, dispatch upstream-sync workflows or write repository variables.
 
 ### Immutable evidence
 
@@ -117,8 +117,8 @@ Exact procedure from `docs/HERDR-UPGRADES.md` and `.github/workflows/herdr-upstr
 
 ## Migration Plan
 
-1. Await approval. Deliver the narrowly scoped 0.1.18 stop-gap from `stopgap.md` in its own small PR/task; leave 0.1.17 replacements intact. No promise of recovery until the person's normal update actually installs it.
-2. Implement this owned replacement on the same existing branch/PR after approval, updating it with merged stop-gap/main without touching other tasks. Ship through normal customization Update only.
+1. Approval assigned the narrowly scoped 0.1.18 stop-gap from `stopgap.md` to a separate worker/PR. It may land before or after this owned replacement; retirement must tolerate both orders. No promise of recovery until the person's normal update actually installs a merged change.
+2. Implement this approved owned replacement on the same existing branch/PR, updating it with merged stop-gap/main without touching other tasks. Ship through normal customization Update only.
 3. On full install, stage owned payload and capability checks, establish/repair binding, reconcile native reload diagnostics, then retire palette patch safely; retain feedback. Startup/hot reload self-check maintains the same policy.
 4. Rollback/remove uses target-key baseline and ownership checks, restoring only unchanged owned values and exact known native bytes. Later personal edits stop rollback. Disabling/removing Custom intentionally stops repair and returns its shortcut scope to native behavior; no background service survives it.
 

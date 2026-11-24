@@ -34,7 +34,7 @@ export function build(root = project) {
   // build-injected dependencies; feature code still imports only local ./ files.
   for (const name of ['identity.js', 'terminal-labels.js', 'compatibility.js', 'host.js']) {
     const source=`src/integration/herdr/${name}`, bytes=fs.readFileSync(path.join(root,source));
-    for (const dest of [`lib/${name}`, ...config.features.map(f=>`mods/${f.mod}/${name}`)]) entries.set(dest.toLowerCase(),{dest,source,bytes});
+    for (const dest of [`lib/${name}`, ...(name==='compatibility.js'?['scripts/compatibility.js']:[]), ...config.features.map(f=>`mods/${f.mod}/${name}`)]) entries.set(dest.toLowerCase(),{dest,source,bytes});
   }
   // Pure agent adapters are injected as one self-contained tree, like the host
   // facade. Registration stays outside UI and optional feature-plugin switches.
@@ -78,7 +78,7 @@ export function build(root = project) {
   for (const {dest,source,bytes} of entries.values()) {
     const privateFile=/^(mods\/custom-[a-z-]+\/|layouts\/Custom\.json$|layouts\/custom\.svg$|themes\/Custom\.json$)/.test(dest) && !dest.includes('.test.');
     if (privateFile) payload[dest]={source,hash:digest(bytes)};
-    const workerFile=/^(lib\/|frame-patches\/)/.test(dest) && !dest.endsWith('.md') || /^scripts\/(frame-(?:registry|patch)|startup-frames|palette-manifests|palette-policy|terminal-input|readline-paste|feedback-draft)\.mjs$/.test(dest) || dest==='scripts/a1-session-report.js' || ['scripts/palette-binding.js','scripts/palette-capabilities.js','scripts/compatibility.js'].includes(dest);
+    const workerFile=/^(lib\/|frame-patches\/)/.test(dest) && !dest.endsWith('.md') || /^scripts\/(frame-(?:registry|patch)|startup-frames|palette-manifests|palette-policy|retire-palette|terminal-input|readline-paste|feedback-draft)\.mjs$/.test(dest) || dest==='scripts/a1-session-report.js' || ['scripts/palette-binding.js','scripts/palette-capabilities.js','scripts/compatibility.js'].includes(dest);
     if(workerFile || dest.startsWith('shell/') || exportScripts.has(dest))payload[`.customizations/runtime/${dest}`]={source,hash:digest(bytes),from:dest};
   }
   // Unlike development-only scripts, every exporter import must be installed.

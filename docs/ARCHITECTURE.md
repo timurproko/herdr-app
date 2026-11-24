@@ -1154,8 +1154,16 @@ See [the decision and limits](TAB-MOVE-ADR.md) and
 
 ## Native patch policy
 
-The active registry contains only `frame/palette` and `frame/feedback`. A new patch
-must have all of the following before approval:
+The registry retains `frame/palette` for historical recovery and `frame/feedback`
+for the optional active exception. Custom now owns `mods/custom-palette`: normal
+full install and mounted startup maintain its Custom-scoped user binding through
+expected-value writes, an ownership record and visible diagnostics. Once owned
+intent exists, palette native refresh is disabled even if retirement must defer;
+retirement preserves current/unknown stock and personal edits, never assumes an
+old backup matches the current binary. Feedback remains independent. See
+[the palette ownership and persistence contract](PALETTE.md).
+
+A new patch must have all of the following before approval:
 
 - no supported private-mod/facade alternative;
 - exact reviewed stock baseline(s);

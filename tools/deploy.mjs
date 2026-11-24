@@ -143,7 +143,15 @@ export function doctor(home=defaultHome()) {
       else if(!inspection.active)issues.push(`Compatibility patch ${patch.id} reset/modified; reviewed repair required.`);
     }catch(error){issues.push(`Compatibility patch ${patch.id}: ${error.stderr?.toString().trim()||error.message}`);}
   }
-  return {ok:issues.length===0,version,reviewedVersion:state.supportedHerdr?.includes(version)??false,issues,advisories,patches,ownedFiles:Object.keys(state.files).length};
+  let palette=null;
+  const paletteWorker=path.join(home,'.customizations/runtime/scripts/palette-policy.mjs');
+  if(state.files['mods/custom-palette/main.js']&&fs.existsSync(paletteWorker))try{
+    const plan=JSON.parse(cp.execFileSync(process.execPath,[paletteWorker,'preflight',home],{encoding:'utf8',timeout:15000,windowsHide:true}));
+    palette={status:plan.status??'awaiting-native-keys',configured:plan.status==='already-current'&&!plan.changed};
+    if(plan.deferred)advisories.push('Custom palette awaits native keys at desktop startup.');
+    else if(!palette.configured)issues.push('Custom palette binding/intent needs guarded repair.');
+  }catch{issues.push('Custom palette binding policy conflict; inspect the visible repair warning.');}
+  return {ok:issues.length===0,version,reviewedVersion:state.supportedHerdr?.includes(version)??false,issues,advisories,patches,palette,ownedFiles:Object.keys(state.files).length};
 }
 export function nativeCheck(home=defaultHome()) {
   const state=json(contained(home,'.customizations/manifest.json'));if(!state)throw Error('No Custom deployment.');
@@ -161,9 +169,10 @@ export function remove(home=defaultHome()) {
     if(changed.some(j=>j.rel!=='layouts/Custom.json'))throw Error('Modified owned files; removal refused. Run doctor.');
     const runtime=path.join(home,'.customizations/runtime');
     const registry=json(path.join(runtime,'frame-patches/registry.json'));
-    if(fs.existsSync(path.join(home,'.customizations/terminal-input.json')))cp.execFileSync(process.execPath,[path.join(runtime,'scripts/terminal-input.mjs'),'restore',home],{encoding:'utf8',timeout:30000});
-    for(const patch of registry?.patches??[])if(fs.existsSync(path.join(home,`.customizations/frame-${patch.id}.json`)))cp.execFileSync(process.execPath,[path.join(runtime,'scripts/frame-patch.mjs'),'restore',patch.id,home],{encoding:'utf8',timeout:30000});
     const paletteWorker=path.join(runtime,'scripts/palette-policy.mjs');
+    if(fs.existsSync(paletteWorker))cp.execFileSync(process.execPath,[paletteWorker,'remove-plan',home],{encoding:'utf8',timeout:15000,windowsHide:true});
+    if(fs.existsSync(path.join(home,'.customizations/terminal-input.json'))) cp.execFileSync(process.execPath,[path.join(runtime,'scripts/terminal-input.mjs'),'restore',home],{encoding:'utf8',timeout:30000});
+    for(const patch of registry?.patches??[])if(fs.existsSync(path.join(home,`.customizations/frame-${patch.id}.json`)))cp.execFileSync(process.execPath,[path.join(runtime,'scripts/frame-patch.mjs'),'restore',patch.id,home],{encoding:'utf8',timeout:30000});
     if(fs.existsSync(paletteWorker))cp.execFileSync(process.execPath,[paletteWorker,'remove',home],{encoding:'utf8',timeout:15000,windowsHide:true});
     for(const j of files)if(fs.existsSync(j.file)&&digest(fs.readFileSync(j.file))===j.hash)fs.unlinkSync(j.file);
     fs.unlinkSync(path.join(home,'.customizations/manifest.json'));

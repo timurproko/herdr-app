@@ -1,6 +1,13 @@
 # Optional native compatibility patches
 
-These two frame-only exceptions are not the normal feature architecture. Prefer
+The palette entry is retained for historical migration/recovery and the separate
+reviewed stop-gap; the durable palette is now the owned `custom-palette` mod.
+Once owned binding intent exists, automatic/native apply never re-enables the
+palette patch. Guarded retirement restores only proven current stock or preserves
+unknown targets with explicit recovery evidence; feedback is independent. See
+[owned palette policy](../../../docs/PALETTE.md).
+
+These frame-only exceptions are not the normal feature architecture. Prefer
 private mods/layouts/themes and supported Herdr APIs. Built-in mod patches were
 retired because Herdr quarantines them into `*-edited*` recovery directories and
 warns on relaunch. A new exception requires explicit approval; never rebuild or

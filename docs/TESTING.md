@@ -288,6 +288,24 @@ is unchanged. Installed 0.1.17 stock was separately compared read-only; provenan
 and limitations are in HERDR-0.1.17-NATIVE-PATCHES.md. No deployment or live UI
 interaction is implied by fixture success.
 
+## Owned palette and persistent key policy
+
+The owned model/UI/persistence/retirement suites (`tests/owned-palette-*.test.mjs`)
+use the real pinned 0.1.18 palette and both public SDK declarations alongside the
+retained 0.1.17 original. They compare native catalogs/themes/manifest validation,
+IDs, hotkeys and clone dispatch; exercise the packaged search/virtual list and
+heading/fade/scrollbar events; and run isolated install/reset/reload/CAS/rollback
+and local/pc2/Core-only fixtures. Retirement covers masked/reset 0.1.17/0.1.18,
+both landing orders with a synthetic stop-gap replacement, late record replay,
+unknown-target preservation and feedback isolation. The synthetic replacement is
+not shipped native patch support. Key reset tests explicitly start with stock
+Ctrl+Shift+P -> app.palette, repair it and simulate the host mod.open toggle.
+
+These tests do not prove actual native event dispatch, focus or pixels; those
+remain separately authorized live/disposable-native validation. No suite installs
+into the person's app, activates migration variables, restarts a process or runs
+live SSH/Core operations. See [ownership and limits](PALETTE.md).
+
 ## Git PR label facts
 
 Pull facts, pagination, fleet and webhook fixtures cover assigned label names/colours

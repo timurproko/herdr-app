@@ -56,7 +56,7 @@ stable independently of the layout's display name.
 
 ### Herdr facade
 
-All 17 private mods and both retained frame compatibility patches import `./host.js`;
+Private mods and retained frame compatibility code import `./host.js`;
 only `src/integration/herdr/host.js` imports the native `herdr` module. It preserves
 native call arity, normalizes collection/object boundaries, produces actionable
 missing-API errors, and resolves commands/API aliases through
@@ -1461,8 +1461,14 @@ exact review-list membership—gate deployment. Record an actual review and any
 needed aliases in the facade profile separately; never add a version merely to
 unblock deployment. **Do not rebuild the native app as a workaround**.
 
-Two approved frame-only exceptions remain: palette and feedback. Each has a
-reviewed stock snapshot, opt-in record, hashes and restore support.
+Custom's command palette is now an owned `custom-palette` mod, opened by its
+Ctrl+Shift+P shortcut and status-bar button, not a native frame patch. Normal full
+updates and mounted startup/reload checks retain and repair the user-key binding;
+failures show **Palette needs attention · Retry**, never silent vanilla success.
+See [palette behavior, persistence and limits](docs/PALETTE.md).
+Feedback remains an optional reviewed frame exception. Historical palette patches
+remain available only for guarded recovery/migration, with reviewed stock snapshots,
+opt-in records, hashes and restore support.
 Custom's feedback dialog uses muted **Drag or add images to attach them.** helper
 text under Attachments and a **+ Add image** action. The helper matches the JSON
 preview description, with thumbnails
@@ -1504,19 +1510,20 @@ implicit pane-close requests retain native validation. Direct native/CLI command
 outside these Custom entry points still use Herdr's stock confirmation; no
 supported global confirmation override exists, and the shipped Confirm mod is
 never patched.
-Install/layout entry repairs only prior opt-ins. Unknown native bytes are skipped
-with an advisory, not a failed deploy; personal dependency conflicts and corrupt
-records still fail. Reviewed 0.1.16/0.1.17 originals support refresh for prior
-opt-ins. On 0.1.17, Custom's palette styling, fixed headings, fades, keyboard
-navigation, Usage entry and Custom command routing return **without losing native
-dynamic light/dark/layout-filtered theme choices**. Feedback's JavaScript did not
-change: its old rejection was a false negative caused by incorrect canonical
-originals. Its compact attachments, Add image, expandable JSON details and Feedback
-sent view refresh again. Other layouts retain native presentation and routing.
-Unknown future stock remains untouched, or an old owned patch is retained without
-refresh; that patch's advisory never blocks an otherwise successful install/update.
-Restoring unsupported styling needs reviewed native originals and a patch rebase,
-not a version allowlist. See [review provenance](docs/HERDR-0.1.17-NATIVE-PATCHES.md)
+The owned palette preserves Custom styling, fixed headings, fades, keyboard
+navigation, enabled Usage and safe Custom command routing, plus native dynamic
+theme filtering and 0.1.18 manifest palette entries. Its user binding is scoped to
+Custom; explicit native app.palette calls and other layouts remain native. Public
+capabilities, not palette source bytes or reviewed-version membership, gate it.
+After owned routing is staged, installation/startup retires the previous palette
+patch without downgrading current native stock or altering feedback. Unknown targets
+are preserved with an archived recovery record; ambiguous masked-stock provenance
+or personal helper edits report deferred/conflicting retirement rather than forcing
+writes. This tolerates either landing order of the separate 0.1.18 stop-gap.
+Feedback repair still refreshes only prior opt-ins. Unknown native bytes skip with
+an advisory; personal conflicts and corrupt records retain failure reporting.
+Native source edits cannot disable the owned palette, but removed public APIs,
+permissions or personal key collisions still require visible attention. See [review provenance](docs/HERDR-0.1.17-NATIVE-PATCHES.md)
 and the native patch policy for safeguards. The worker is deployed with the customization and does not
 need this source folder.
 

@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import {build} from '../tools/build.mjs';
 import {deploy} from '../tools/deploy.mjs';
 import {rollback} from '../tools/rollback.mjs';
+import {restoreStartupFrames} from '../tools/runtime/startup-frames.mjs';
 import {guardPaletteHome,installPalettePolicy,removePalettePolicy} from '../tools/runtime/palette-policy.mjs';
 import {planBinding,reconcileBinding,restoreBinding,boundedLog,PALETTE_ACTION,PALETTE_SCOPE} from '../src/features/palette/binding.js';
 import {checkPaletteFacts,missingPaletteUi} from '../src/integration/herdr/palette-capabilities.js';
@@ -76,7 +77,7 @@ try{
  const mounted=path.join(temp,'mounted');put(path.join(mounted,'keys.json'),stock);put(path.join(mounted,'gpui-kit.d.ts'),gpui);deploy(output,mounted);put(path.join(mounted,'keys.json'),stock);
  const shared=new Map([['layout','Custom']]),timers=[],tasks=[],notifications=[];let checks=false,fail=false,guards=0;
  const catalog=()=>{const value=JSON.parse(raw(path.join(mounted,'keys.json'))??stock);return Object.entries(value).flatMap(([section,items])=>Object.entries(items).map(([keys,action])=>({section,keys,action})));};
- const api={appHome:()=>mounted,checking:()=>checks,hostVersion:()=> '0.1.18',requireHostCapabilities(){},commands:()=>[{name:'mod.open',args:[{name:'name'}]}],keys:catalog,notify:n=>notifications.push(n),window:()=>({active:true}),shared:k=>shared.get(k),setShared:(k,v)=>shared.set(k,v),readTextFile:async p=>raw(p),writeTextFile:async(p,v,old)=>{if(fail)throw Error('denied');assert.equal(raw(p),old);put(p,v);},exec:async()=>{guards++;try{guardPaletteHome(mounted,{startup:true});return {code:0,stdout:'{"ok":true}'};}catch{return {code:1,stderr:'{}'};}}};
+ const api={appHome:()=>mounted,checking:()=>checks,hostVersion:()=> '0.1.18',requireHostCapabilities(){},commands:()=>[{name:'mod.open',args:[{name:'name'}]}],keys:catalog,notify:n=>notifications.push(n),window:()=>({active:true}),shared:k=>shared.get(k),setShared:(k,v)=>shared.set(k,v),readTextFile:async p=>raw(p),writeTextFile:async(p,v,old)=>{if(fail)throw Error('denied');assert.equal(raw(p),old);put(p,v);},exec:async(_command,args)=>{if(args[0].endsWith('startup-frames.mjs'))return {code:0,stdout:JSON.stringify(restoreStartupFrames(mounted,path.join(mounted,'.customizations/runtime')))};guards++;try{guardPaletteHome(mounted,{startup:true});return {code:0,stdout:'{"ok":true}'};}catch{return {code:1,stderr:'{}'};}}};
  const context=vm.createContext({console,Date,Math}),cache=new Map();
  const synthetic=values=>new vm.SyntheticModule(Object.keys(values),function(){for(const[k,v]of Object.entries(values))this.setExport(k,v);},{context});
  const moduleFor=file=>{if(!cache.has(file))cache.set(file,new vm.SourceTextModule(fs.readFileSync(file,'utf8'),{context,identifier:file}));return cache.get(file);};

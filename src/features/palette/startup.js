@@ -51,7 +51,13 @@ export function initPalettePolicy(owner,cx){
         await cx.sleep(1100);if(!live())return;
         const bound=keys().some(b=>b.section===PALETTE_SCOPE&&b.keys===PALETTE_KEY&&b.action===PALETTE_ACTION);
         if(!bound||await readTextFile(`${home}/keys.error`))throw Error('Host key reload reports an error or missing palette binding');
-        status={...status,configured:true};
+        const result=await exec('node',[`${home}/.customizations/runtime/scripts/startup-frames.mjs`,home],{on:null,timeout:15000});
+        if(!live())return;
+        if(result.code===75)throw Error('Palette repair waits for compatibility retirement');
+        if(result.code!==0)throw Error('Owned palette native-patch retirement could not run');
+        const retirement=JSON.parse(result.stdout).frames?.palette;
+        if(retirement?.ok!==true||retirement.deferred)throw Error('Owned palette native-patch retirement conflict; old files were preserved');
+        status={...status,configured:true,retirement:retirement.status};
       }catch(error){
         if(String(error?.message??'').startsWith('Palette repair waits')){signature=null;if(live())setShared(LEASE,null);return;}
         status={ok:false,status:'repair-failed',error:safeFailure(error)};

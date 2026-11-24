@@ -71,3 +71,28 @@ frame/key resets, missing defaults, update and reload, ownership/permission/CAS
 failures, duplicate copies, retry notifications, rollback and Core-only exclusion.
 Real native key dispatch/focus and pixel proof remain separately authorized manual
 validation; no live app deployment is part of these tests.
+
+## Native patch retirement
+
+After owned payload, binding and capabilities are staged, install/startup stops
+palette native refresh and retires a previous opt-in. The registry is retained for
+historical recovery and the separate stop-gap, not as a continuing palette
+implementation. Both possible merge orders are covered: a later legacy opt-in is
+retired again, while explicit native apply refuses once owned intent exists.
+
+Exact owned native code is restored only from reviewed **current-host** stock,
+including when old code masks an update. Exact current stock is never overwritten
+by an older backup. Personal helper conflicts/corrupt records refuse before writes;
+masked unreviewed provenance defers retirement and leaves files/opt-in intact, with
+visible attention, but never reapplies the native patch. An unknown entrypoint may
+be new stock or a personal edit: preserve its entire frame tree and explicitly
+archive management without classifying those bytes as reviewed. Recovery records
+live under `.customizations/recovery/palette-retirement/`; the retirement marker
+records preserved native files instead of claiming complete file cleanup. Feedback
+files/opt-in are unchanged. None of this opts in a patch, deploys or restarts Herdr.
+
+History seeds, binding intent, repair logs, leases and retirement/recovery records
+are local runtime data, outside portable preference exports. Ordinary uninstall
+restores only the owned key baseline; later personal edits block removal. Full
+rollback journals also check key/intent hashes before restoring them. The broader
+source and native provenance safeguards remain intact.

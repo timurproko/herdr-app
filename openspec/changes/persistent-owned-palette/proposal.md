@@ -11,7 +11,7 @@ Herdr 0.1.18 changed its private palette source, correctly disabling our reviewe
 - Own the Custom-scoped Ctrl+Shift+P mapping in the selected desktop home's user `keys.json`, not Herdr defaults or a runtime override of `app.palette`. Route the Custom status-bar entry to the same mod.
 - Persist ownership independently of shared UI state. Full installation and mounted Custom startup/reload self-checks repair stock/missing mappings automatically, check binding configuration and host reload errors, log repairs and surface failures visibly without silently treating vanilla as success.
 - After successful migration, retire palette native-patch refresh and safely remove its owned installation; preserve unrelated feedback, other layouts and personal edits.
-- First offer a separate small 0.1.18 reviewed-patch stop-gap PR, described in `stopgap.md`, for earlier restoration through the person's normal update. This draft plans the durable replacement; it does not implement or deploy either stage.
+- A separate worker delivers the small 0.1.18 reviewed-patch stop-gap PR described in `stopgap.md`. This PR implements only the durable replacement, tolerating either landing order; installation remains the person's normal update.
 
 ## Capabilities
 

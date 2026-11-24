@@ -1,6 +1,6 @@
 # Tasks
 
-The four groups match this draft PR's Implementation outcomes in order. Stage 1 is separately scoped in `stopgap.md`; its own implementation checklist belongs to that separate approved PR, not this replacement's completion ticks. All tasks below are unimplemented and await approval.
+The four groups match this draft PR's Implementation outcomes in order. Stage 1 is separately scoped in `stopgap.md`; its own implementation checklist belongs to that separate approved PR, not this replacement's completion ticks. Implementation is approved and progress is recorded below; no deployment or upstream-sync activation is authorized.
 
 ## 1. Owned command catalog and safe routing
 
@@ -27,13 +27,13 @@ The four groups match this draft PR's Implementation outcomes in order. Stage 1 
 
 ## 4. Safe native palette retirement and normal update integration
 
-- [ ] 4.1 Stage and check owned payload/binding before disabling native palette refresh in installer/startup paths; fixtures cover fresh install and upgrade from both legacy and 0.1.18 stop-gap while retaining feedback refresh and all public host gates.
-- [ ] 4.2 Retire only recognized owned palette entrypoint/helpers/opt-in with current-native provenance and retained recovery records; fixture masked 0.1.17-to-0.1.18 upgrade, stock reset, future unknown stock, corrupt records and personal helper edits without downgrade or broad cleanup.
-- [ ] 4.3 Integrate owned palette assets, policy/history/log exclusion and removal/rollback into normal customization update packaging; fixture checkout-independent installed execution, ordinary updater replacement and later-edit-safe rollback, and update README/architecture/commands/testing guidance with final ownership and limits.
-- [ ] 4.4 Execute quick targeted palette, key persistence, packaging and retirement fixtures plus plan/spec validation; report exact results and any unavailable native interaction/pixel checks, with no installed app changes, restart or live session testing.
+- [x] 4.1 Stage and check owned payload/binding before disabling native palette refresh in installer/startup paths; fixtures cover fresh install and upgrade from both legacy and 0.1.18 stop-gap while retaining feedback refresh and all public host gates.
+- [x] 4.2 Retire only recognized owned palette entrypoint/helpers/opt-in with current-native provenance and retained recovery records; fixture masked 0.1.17-to-0.1.18 upgrade, stock reset, future unknown stock, corrupt records and personal helper edits without downgrade or broad cleanup.
+- [x] 4.3 Integrate owned palette assets, policy/history/log exclusion and removal/rollback into normal customization update packaging; fixture checkout-independent installed execution, ordinary updater replacement and later-edit-safe rollback, and update README/architecture/commands/testing guidance with final ownership and limits.
+- [x] 4.4 Execute quick targeted palette, key persistence, packaging and retirement fixtures plus plan/spec validation; report exact results and any unavailable native interaction/pixel checks, with no installed app changes, restart or live session testing.
 
 ## Workflow follow-up
 
-- Await maintainer plan approval before implementing either stage. The replacement stays in this task's existing PR/branch; approved stop-gap gets a distinct task/PR as described in `stopgap.md`.
+- The maintainer approved this replacement on its existing PR/branch and assigned the approved stop-gap to a separate worker/task/PR. Either landing order is supported; no stop-gap implementation belongs here.
 - Upstream-sync activation requires separate explicit authorization for timurproko/herdr-app and the successful hosted probe/variables in `design.md`; no workflow or variable change belongs to this plan-only task.
 - No agent readiness promotion or merge is authorized. Installation occurs through the person's normal update after maintainer merge, not from this worktree.

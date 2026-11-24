@@ -37,29 +37,34 @@ export function paletteInstallPlan(home){
   const keyRaw=read(path.join(home,'keys.json')),recordRaw=read(path.join(home,'.customizations/palette-binding.json'));
   // A not-yet-started desktop has no native defaults to merge. Startup uses keys()'s
   // native fallback listing; installation never invents a release's default keys.
-  if(keyRaw===null)return {deferred:true};
+  if(keyRaw===null){const plan=planBinding(null,recordRaw,{install:true,defaults:{}});return {...plan,keys:null,keyRaw,recordRaw,changed:plan.record!==recordRaw,deferred:true};}
   return {...planBinding(keyRaw,recordRaw,{install:true}),keyRaw,recordRaw};
 }
 export async function installPalettePolicy(home){
   guardPaletteHome(home);const plan=paletteInstallPlan(home);
-  if(plan.deferred)return {ok:true,status:'awaiting-native-keys',deferred:true};
   if(plan.record!==plan.recordRaw)cas(home,'.customizations/palette-binding.json',plan.record,plan.recordRaw);
-  if(plan.keys!==plan.keyRaw)cas(home,'keys.json',plan.keys,plan.keyRaw);
+  if(!plan.deferred&&plan.keys!==plan.keyRaw)cas(home,'keys.json',plan.keys,plan.keyRaw);
   let history='preserved';
   const seed=safePalettePath(home,'.customizations/palette-recent.json');
   if(read(seed)===null){try{cas(home,'.customizations/palette-recent.json',JSON.stringify({version:1,recent:await legacyRecent(home)})+'\n',null);history='seeded';}catch{history='legacy-history-unavailable';}}
-  const status={ok:true,status:plan.status,changed:plan.changed,history};
+  const status={ok:true,status:plan.deferred?'awaiting-native-keys':plan.status,changed:plan.changed,history,...(plan.deferred?{deferred:true}:{})};
   const file=safePalettePath(home,'.customizations/palette.log'),before=read(file);if(plan.changed||history==='legacy-history-unavailable')cas(home,'.customizations/palette.log',boundedLog(before,status),before);
   return status;
 }
+export function paletteRemovalPlan(home){
+  const recordFile=safePalettePath(home,'.customizations/palette-binding.json'),record=read(recordFile);
+  if(record===null)return {removed:false};
+  const before=read(safePalettePath(home,'keys.json')),after=restoreBinding(before,record);
+  return {removed:true,before,after,record};
+}
 export function removePalettePolicy(home){
-  const recordFile=safePalettePath(home,'.customizations/palette-binding.json'),record=read(recordFile);if(record===null)return {removed:false};
-  const file=safePalettePath(home,'keys.json'),before=read(file),after=restoreBinding(before,record);
-  if(after!==before)cas(home,'keys.json',after,before);
-  if(read(recordFile)!==record)throw Error('Concurrent palette ownership edit');fs.unlinkSync(recordFile);return {removed:true};
+  const plan=paletteRemovalPlan(home);if(!plan.removed)return plan;
+  if(plan.after!==plan.before)cas(home,'keys.json',plan.after,plan.before);
+  const recordFile=safePalettePath(home,'.customizations/palette-binding.json');
+  if(read(recordFile)!==plan.record)throw Error('Concurrent palette ownership edit');fs.unlinkSync(recordFile);return {removed:true};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href){
   try{const [action,home]=process.argv.slice(2);if(!home)throw Error('App home required');
-    const value=action==='preflight'?paletteInstallPlan(home):action==='inspect'?guardPaletteHome(home,{startup:true}):action==='install'?await installPalettePolicy(home):action==='remove'?removePalettePolicy(home):(()=>{throw Error('Unknown palette policy operation');})();console.log(JSON.stringify(value));
+    const value=action==='preflight'?paletteInstallPlan(home):action==='inspect'?guardPaletteHome(home,{startup:true}):action==='install'?await installPalettePolicy(home):action==='remove-plan'?paletteRemovalPlan(home):action==='remove'?removePalettePolicy(home):(()=>{throw Error('Unknown palette policy operation');})();console.log(JSON.stringify(value));
   }catch(error){console.error(JSON.stringify({ok:false,error:error.message}));process.exitCode=1;}
 }
