@@ -471,10 +471,11 @@ export default class Changes extends View {
   agentButton(t, pr, interactive = true) {
     if(pr.key) {
       const target=this.aggregate?.target(pr),scope=this.aggregate?.context?.scope;
-      return target ? div().id(`pr-agent-${pr.key}`).size(U.insetControl).flex_none().flex().items_center().justify_center()
-        .rounded(U.insetRadius).text_color(t.foreground).cursor_pointer().role('button').accessibility_label(`Open related agent for ${pr.repo} #${pr.number}`)
-        .hover(s=>s.bg(subtleActionFill(t))).on_mouse_down('left',(_e,cx)=>cx.stop_propagation())
-        .on_click((_e,cx)=>{cx.stop_propagation();this.aggregate.focus(pr,target,scope);})
+      return target ? div().id(`${interactive ? '' : 'swap-'}pr-agent-${pr.key}`).absolute().left(0).top((20-U.insetControl)/2)
+        .size(U.insetControl).flex_none().flex().items_center().justify_center().rounded(U.insetRadius).text_color(t.foreground)
+        .when(interactive, el=>el.cursor_pointer().role('button').accessibility_label(`Open related agent for ${pr.repo} #${pr.number}`)
+          .hover(s=>s.bg(subtleActionFill(t))).on_mouse_down('left',(_e,cx)=>cx.stop_propagation())
+          .on_click((_e,cx)=>{cx.stop_propagation();this.aggregate.focus(pr,target,scope);}))
         .child(svg('icons/agent.svg').size(U.icon)) : null;
     }
     const agent = this.agentLinks?.related(pr, this.repo?.name, location().terminal);
@@ -550,37 +551,49 @@ export default class Changes extends View {
     const agentButton = this.agentButton(t, pr, !ghost);
     const dot = () => this.metaSeparator(t);
     const labels = pr.labels ?? [];
-    const groups = [];
-    if (pr.tasks) groups.push(h_flex().id(`${prefix}pr-tasks-${rowId}`).min_w(0).flex_shrink(1).overflow_hidden().gap(4).items_center()
-      .tooltip(pr.tasks.label).child(this.taskIcon(t, pr.tasks).flex_none()).child(div().min_w(0).truncate().child(pr.tasks.label)));
+    const groups = [null,null,null,null];
+    if (pr.tasks) groups[0] = h_flex().id(`${prefix}pr-tasks-${rowId}`).w_full().min_w(0).h(18).overflow_hidden().gap(4).items_center()
+      .tooltip(pr.tasks.label).child(this.taskIcon(t, pr.tasks).flex_none()).child(div().min_w(0).truncate().child(pr.tasks.label));
     const checkColor = pr.checks?.state === 'success' ? t.ansi2 : pr.checks?.state === 'failure' ? t.ansi1 : t.ansi3;
     const checkIcon = pr.checks?.state === 'success' ? svg('mods/custom-workspace-chrome/check.svg').size(U.tinyIcon).text_color(checkColor)
       : pr.checks?.state === 'failure' ? svg('mods/custom-workspace-chrome/x.svg').size(U.tinyIcon).text_color(checkColor)
       : div().size(8).flex_none().rounded_full().bg(checkColor);
-    if (pr.checks) groups.push(h_flex().id(`${prefix}pr-checks-${rowId}`).min_w(0).flex_shrink(1).overflow_hidden().gap(4).items_center()
-      .tooltip(pr.checks.label).child(checkIcon.flex_none()).child(div().min_w(0).truncate().underline().child(pr.checks.label)));
-    if (labels.length) groups.push(h_flex().id(`${prefix}pr-labels-${rowId}`).flex_1().min_w(0).h(18).gap(4).items_center().overflow_hidden()
+    if (pr.checks) groups[1] = h_flex().id(`${prefix}pr-checks-${rowId}`).w_full().min_w(0).h(18).overflow_hidden().gap(4).items_center()
+      .tooltip(pr.checks.label)
+      .child(div().id(`${prefix}pr-check-icon-${rowId}`).size(U.tinyIcon).flex_none().flex().items_center().justify_center().child(checkIcon.flex_none()))
+      .child(div().min_w(0).truncate().underline().child(pr.checks.label));
+    if (labels.length) groups[2] = h_flex().id(`${prefix}pr-labels-${rowId}`).flex_1().min_w(0).h(18).gap(4).items_center().overflow_hidden()
       .tooltip(labels.map(label => label.name).join('\n'))
-      .children(labels.map((label,index) => this.labelPill(t,label,`${prefix}pr-label-${rowId}-${index}`))));
-    if (pr.review) groups.push(div().id(`${prefix}pr-review-${rowId}`).min_w(0).truncate()
-      .text_color(pr.review === 'approved' ? t.ansi2 : t.ansi1).child(pr.review === 'approved' ? 'Approved' : 'Changes requested'));
-    return h_flex().id(`${prefix}pr-${rowId}`).w_full().flex_none().px(8).py(6).gap(U.gap).items_start().rounded(U.radius)
+      .children(labels.map((label,index) => this.labelPill(t,label,`${prefix}pr-label-${rowId}-${index}`)));
+    const review = pr.review === 'approved' ? 'Approved' : 'Changes requested';
+    if (pr.review) groups[3] = div().id(`${prefix}pr-review-${rowId}`).w_full().min_w(0).truncate().tooltip(review)
+      .text_color(pr.review === 'approved' ? t.ansi2 : t.ansi1).child(review);
+    // Zero-basis weighted cells share only the space left after fixed gutters.
+    // Intrinsic text/pill widths and absent facts cannot redistribute that space.
+    const cells = groups.map((group,index) => h_flex().id(`${prefix}pr-slot-${['tasks','checks','labels','review'][index]}-${rowId}`)
+      .flex_basis(0).flex_grow([28,14,38,20][index]).flex_shrink(1).min_w(0).h(18).min_h(18).max_h(18).items_center().overflow_hidden()
+      .when(Boolean(group), el=>el.child(group)));
+    return h_flex().id(`${prefix}pr-${rowId}`).w_full().h(74).min_h(74).max_h(74).flex_none().px(8).py(6).gap(U.gap).items_start().rounded(U.radius)
       .when(!ghost, el => el.cursor_pointer().role('button').accessibility_label(`Open pull request #${pr.number} on GitHub`)
         .hover(s => s.bg(t.hover)).on_click(() => this.openPull(pr))
         .on_mouse_down('right', (_event, cx) => { cx.stop_propagation(); this.showPullMenu(pr, cx); })
         .when(!pr.key, el=>el.on_size_change(size => this.pinMotion?.measureRow(pr.number,size,settings().zoom))
           .on_mouse_move(event => this.pinMotion?.rowPointer(pr.number,event))))
-      .child(div().h(20).flex_none().flex().items_center().child(this.pullIcon(t, pr)))
+      .child(div().id(`${prefix}pr-state-slot-${rowId}`).w(U.icon).h(20).flex_none().flex().items_center().child(this.pullIcon(t, pr)))
       .child(v_flex().flex_1().min_w(0).gap(3)
-        .child(h_flex().w_full().min_w(0).gap(4).items_center()
-          .child(div().id(`${prefix}pr-title-${rowId}`).flex_1().min_w(0).truncate().text_size(U.font).font_semibold().text_color(t.foreground).child(pr.title))
-          .when(Boolean(agentButton), el => el.child(agentButton)))
-        .child(h_flex().id(`${prefix}pr-byline-${rowId}`).w_full().min_w(0).gap(6).items_center().text_size(11).text_color(t.muted).overflow_hidden()
-          .child(div().flex_none().child(`#${pr.number}`)).child(dot())
-          .child(div().min_w(0).truncate().tooltip(pr.meta ?? '').child(pr.byline ?? '')))
-        .child(h_flex().id(`${prefix}pr-meta-${rowId}`).w_full().min_w(0).h(18).gap(6).items_center().overflow_hidden().text_size(11).text_color(t.muted)
+        .child(h_flex().id(`${prefix}pr-title-line-${rowId}`).w_full().min_w(0).h(20).min_h(20).max_h(20).flex_none().gap(4).items_center().line_height(20)
+          .child(div().id(`${prefix}pr-title-${rowId}`).flex_1().min_w(0).h(20).truncate().text_size(U.font).font_semibold().text_color(t.foreground).tooltip(pr.title).child(pr.title))
+          .child(div().id(`${prefix}pr-agent-slot-${rowId}`).w(U.insetControl).h(20).flex_none().relative()
+            .when(Boolean(agentButton), el => el.child(agentButton))))
+        .child(h_flex().id(`${prefix}pr-byline-${rowId}`).w_full().min_w(0).h(18).min_h(18).max_h(18).flex_none().gap(6).items_center().line_height(18).text_size(11).text_color(t.muted).overflow_hidden()
+          .child(div().id(`${prefix}pr-number-${rowId}`).w(48).h(18).flex_none().truncate().child(`#${pr.number}`))
+          .child(dot().when(!pr.byline, el=>el.invisible()))
+          .child(h_flex().flex_1().min_w(0).h(18).gap(4).items_center().tooltip(pr.meta ?? '')
+            .child(div().id(`${prefix}pr-author-${rowId}`).flex_basis(0).flex_grow(45).min_w(0).h(18).truncate().child(pr.when && pr.login ? `${pr.login} ` : ''))
+            .child(div().id(`${prefix}pr-time-${rowId}`).flex_basis(0).flex_grow(55).min_w(0).h(18).truncate().child(pr.when ?? pr.byline ?? ''))))
+        .child(h_flex().id(`${prefix}pr-meta-${rowId}`).w_full().min_w(0).h(18).min_h(18).max_h(18).flex_none().gap(6).items_center().overflow_hidden().line_height(18).text_size(11).text_color(t.muted)
           .when(labels.length > 0, el => el.tooltip(labels.map(label => label.name).join('\n')))
-          .children(groups.flatMap((group,index) => index ? [dot(),group] : [group]))));
+          .children(cells.flatMap((cell,index) => index ? [dot().when(!groups[index] || !groups.slice(0,index).some(Boolean), el=>el.invisible()),cell] : [cell]))));
   }
 
   swapOverlay(t, swap) {

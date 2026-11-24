@@ -87,7 +87,7 @@ for(t.background of ['#191d28','#ffffff','#191d28'])for(zoom of [0.75,1,1.25,1.5
   const row=panel.pullRow(t,pr,ghost),meta=find(row,`${prefix}pr-meta-${id}`),byline=find(row,`${prefix}pr-byline-${id}`);
   assert.equal(find(row,`${prefix}pr-owner-${id}`),undefined);assert.ok(!text(row).includes('Owner'));
   assert.equal(text(byline),`#17${pr.byline}`);assert.equal(byline.attrs.overflow_hidden.length,0);
-  assert.deepEqual(meta.kids.filter(n=>n.attrs.id).map(n=>n.attrs.id[0]),['tasks','checks','labels','review'].map(kind=>`${prefix}pr-${kind}-${id}`));
+  assert.deepEqual(meta.kids.filter(n=>n.attrs.id).map(n=>n.kids[0].attrs.id[0]),['tasks','checks','labels','review'].map(kind=>`${prefix}pr-${kind}-${id}`));
   assert.equal(meta.attrs.h[0],18);assert.equal(meta.attrs.min_w[0],0);assert.equal(meta.attrs.flex_wrap,undefined);assert.ok(meta.attrs.overflow_hidden);
   const strip=find(row,`${prefix}pr-labels-${id}`);assert.equal(strip.attrs.min_w[0],0);assert.equal(strip.attrs.h[0],18);assert.ok(strip.attrs.flex_1);assert.ok(strip.attrs.overflow_hidden);
   assert.equal(strip.attrs.tooltip[0],labels.map(l=>l.name).join('\n'));
@@ -133,16 +133,22 @@ for(t.background of ['#191d28','#ffffff','#191d28'])for(zoom of [0.75,1,1.25,1.5
 for(const tasks of [false,true])for(const checks of [false,true])for(const assigned of [[],labels]) {
   const pr=facts.pullRow({...source,state:'OPEN',body:tasks?source.body:'',statusCheckRollup:checks?source.statusCheckRollup:[],labels:assigned,reviewDecision:''},'owner');
   const row=panel.pullRow(t,pr),meta=find(row,'pr-meta-17');
-  const groups=meta.kids.filter(n=>n.attrs.id);
+  const slots=meta.kids.filter(n=>n.attrs.id),groups=slots.flatMap(n=>n.kids);
   assert.deepEqual(groups.map(n=>n.attrs.id[0]),[...(tasks?['pr-tasks-17']:[]),...(checks?['pr-checks-17']:[]),...(assigned.length?['pr-labels-17']:[])]);
-  assert.equal(meta.kids.length,groups.length?groups.length*2-1:0,'No leading/trailing or empty separators');
+  assert.equal(meta.kids.length,7,'Four cells and three gutters always reserve the same geometry');
   assert.equal(meta.attrs.h[0],18,'Label add/remove cannot change status height');
-  if(groups.length) {
-    assert.equal(meta.kids[0],groups[0]);assert.equal(meta.kids.at(-1),groups.at(-1));
-    for(let at=1;at<meta.kids.length;at+=2) {
-      assert.equal(meta.kids[at].attrs.size[0],3);
-      assert.ok(meta.kids[at-1].attrs.id);assert.ok(meta.kids[at+1].attrs.id,'Dot always has present neighbours');
+  const visibleDots=meta.kids.filter(n=>!n.attrs.id && !n.attrs.invisible);
+  assert.equal(visibleDots.length,Math.max(0,groups.length-1),'No leading, trailing or doubled painted dots');
+  for(let at=1;at<meta.kids.length;at+=2) {
+    const dot=meta.kids[at];assert.equal(dot.attrs.size[0],3);
+    if(!dot.attrs.invisible) {
+      assert.ok(meta.kids[at+1].kids.length,'A visible dot precedes present content');
+      assert.ok(meta.kids.slice(0,at).some(n=>n.attrs.id && n.kids.length),'A visible dot follows earlier content');
     }
+  }
+  for(const slot of slots) {
+    assert.equal(slot.attrs.flex_basis[0],0);assert.equal(slot.attrs.min_w[0],0,'Slots can shrink in narrow panels');
+    if(!slot.kids.length)assert.equal(text(slot),'','Empty layout cells have no visible placeholder');
   }
   for(const group of groups)assert.equal(group.attrs.min_w[0],0,'Groups can shrink in narrow panels');
   if(!assigned.length)assert.equal(find(row,'pr-labels-17'),undefined,'No label placeholder');

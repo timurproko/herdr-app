@@ -278,12 +278,30 @@ optically lowered 1.5 logical pixels from the parent line-box centre with equal 
 in bylines and every status/review/label boundary. Zoom cases from 75% to 200% retain
 the same logical offset; comparison with the old separator tree protects neighbouring
 text, icons, pills and row geometry. Missing-group combinations have no leading/trailing
-or orphan dots.
+or orphan painted dots; the four cell containers and three separator gutters remain
+mounted, with empty cells containing no text, pills or controls.
 Pagination/fleet fixtures also assert labels
 in actual pinned/scrolling and coordinator render paths; existing menu and pin-swap
 fixtures protect captured URLs, callbacks and measured motion. These prove render-tree
 constraints, not GPUI pixel layout, tooltip hit-testing or native animation appearance.
 No deployment or live label mutation is performed.
+
+## Stable Git row geometry
+
+`node --experimental-vm-modules tests/git-row-geometry.test.mjs` resolves the actual
+shared row trees using a deterministic flex/absolute layout model with real `U`
+metrics and content-dependent text widths. At 280/360/480 logical-pixel widths and
+75/100/125/150/200% zoom, it compares title right edges, state/robot/byline/metadata
+anchors, line heights, 74px row heights and following-row positions across ordinary,
+pinned, scrolling, coordinator and ghost paths in Open/Closed/merged states.
+Optional agent transitions, untouched/partial/done and multi-digit tasks/checks,
+pending/success/failure icons, absent/long/multiple labels, review decisions and
+missing authors do not change those boxes. Empty robot slots are inert; ghost
+robots cannot navigate. Removing the reserved robot or making a metadata cell
+content-sized deliberately changes the oracle, demonstrating mutation sensitivity.
+Existing label-colour/tooltip, PR-action and pin-motion regressions remain intact.
+These are synthetic resolved-box comparisons, not native GPUI pixels or visual
+interaction evidence; no app, session, credential or deployment is used.
 
 ## Connected fleet fixtures
 
