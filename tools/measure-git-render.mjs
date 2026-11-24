@@ -59,13 +59,16 @@ export default class Fixture extends Changes {
      w.metrics.contentMotion(event,'move');this.taskViewportMotion(w,'fixture',{...event,bounds:{x:0,y:0,width:390,height:400}},'move',cx);
    }
    this.taskMeasure(w,'fixture','content',{width:390,height:w.height+8},cx);
+   const end={position:{x:50,y:100},bounds:{x:0,y:-w.max,width:390,height:w.height+8},delta:{y:0}};
+   w.metrics.contentMotion(end,'move');this.taskViewportMotion(w,'fixture',{...end,bounds:{x:0,y:0,width:390,height:400}},'move',cx);
+   this.fixtureLoaded=w.items.slice(0,w.length).filter(item=>item.row).length;this.fixtureOffset=w.offset;
  }
  this.profile={visible:0,probes:0,pills:0,rows:[]};
  const label=this.labelPill;this.labelPill=(...args)=>{const start=Date.now();const r=label.apply(this,args);this.profile.pills+=Date.now()-start;return r;};
  const row=this.pullRow;this.pullRow=(...args)=>{const start=Date.now();const r=row.apply(this,args);this.profile.rows.push(Date.now()-start);return r;};
  }
  shown(){return true;}
- render(cx){const start=Date.now();const tree=this.renderAggregate(cx,theme());console.error('PROFILE '+JSON.stringify({variant:'${variant}',count:${count},sample:${sample},total:Date.now()-start,...this.profile}));return tree;}
+ render(cx){const start=Date.now();const tree=this.renderAggregate(cx,theme());console.error('PROFILE '+JSON.stringify({variant:'${variant}',count:${count},sample:${sample},total:Date.now()-start,loaded:this.fixtureLoaded??${count},offset:this.fixtureOffset??0,...this.profile}));return tree;}
 }
 `);
  const result=cp.spawnSync(executable,['check',dir],{encoding:'utf8',timeout:30000,windowsHide:true,env:{...process.env,HERDR_APP_HOME:home}});

@@ -392,7 +392,8 @@ regardless of how many PRs fail. These counts exclude existing setup/enrollment
 workers and the gh wrapper's own unchanged internal processes. The safety reader uses the same repository-scoped transport: one carrier per
 thin state/summary batch (up to 40 PRs), with full-context batches (up to 20)
 only for changed heads/summaries, never a carrier per row. Coordinator safety
-selection follows its current presentation page rather than all loaded history.
+selection follows its measured viewport window rather than all revealed history
+or overscan-only rows.
 
 Ordinary list and webhook-page reads now include both totals in the same GraphQL
 snapshot, avoiding the count-only carrier/gh call. Three real paired crew
@@ -415,7 +416,7 @@ backoff, the 15-minute rate-limit floor, 120-second enrolled safety reads, exist
 contention, authoritative empty rollups and late hidden/replaced-context replies.
 The 120-row ordinary expanded-list case uses three thin state/summary chunks and,
 only on changed heads/summaries, six 20-PR detail chunks. The same-sized coordinator
-inventory instead reads only the current bounded page and keeps off-page facts. They actually launch a
+inventory instead reads only viewport-intersecting rows and keeps off-window facts. They actually launch a
 harmless Node child with generated arguments, retain all rows on a failed second
 chunk, then retry successfully and continue while Open. Five- and thirty-row
 steady cycles require exactly one thin request with no per-context list; changed
@@ -441,11 +442,11 @@ cursor repair survive removal, the unopened destination stays lazy, and its olde
 merged pin appears once when loaded. These are packaged synthetic fixtures, not
 live delivery or native pixel evidence.
 
-`tests/git-safety-paging.test.mjs` composes the real coordinator page renderer,
+`tests/git-safety-paging.test.mjs` composes the real coordinator window renderer,
 aggregate, safety scheduler and repository-scoped carrier. A 25-Open/5-Closed,
-two-repository inventory exercises current-page-only selection, merge/close tab
-totals, Previous/Show more, stale in-flight page replies, folds and both 45/120s
-cadences. Existing fallback/state tests also assert GH_REPO on every probe/detail
+two-repository inventory exercises viewport-only selection, merge/close tab
+totals, overscan exclusion, stale in-flight replies after scroll/tab-away-and-back,
+folds and both 45/120s cadences. Scroll events themselves start no reads. Existing fallback/state tests also assert GH_REPO on every probe/detail
 API invocation. Pagination distinguishes its selected-state filter from the new
 combined totals fields, applies both totals on append and retains cursor-depth
 repair. The 100-row render operation budget remains separately enforced.
@@ -539,11 +540,24 @@ independent geometry oracle. Robot/chevron glyph centres align despite their
 line positions and 74px rows remain. Expanded/folded header slots stay aligned.
 Mutations restoring old row/header insets or adding an unaccounted border fail.
 Existing row/fold/menu fixtures retain callbacks and tooltip coverage. Another
-1,500 comparisons exercise the actual replacement-page renderer with 25 PRs,
-Previous/Show more, continuation headers and warm distinct-string measurements
-in both tabs across the same width/zoom matrix. Paging and render-budget bounds
-remain owned by the unchanged 100-row panel regression. These are synthetic
+3,840 comparisons exercise the actual windowed-scroll renderer with 25 PRs,
+stable native list IDs and warm distinct-string measurements in both tabs across
+the same width/zoom matrix. The extended 100-row panel regression scrolls to reveal
+every row while retaining the existing operation/element ceilings. These are synthetic
 resolved-box checks, not live GPUI pixel or deployment evidence.
+
+## Windowed Git scroll fixtures
+
+`tests/git-scroll-window.test.mjs` checks exact spacers, ten-item reveal, all-100-row
+reachability, bounded overscan, insertion anchors, folds and notice-height updates.
+`tests/git-scroll-anchor.test.mjs` exercises yielded native scroll-handle requests,
+retired-handle release and obsolete-scope refusal without render effects.
+`tests/git-scroll-fades.test.mjs` checks both views at 75/100/130/200% zoom using
+actual shared `SidebarScrollState` and passive `topFade`/`bottomFade`: start, middle,
+end, fitting content, scrollbar motion, resize and folds, plus byte-identical shared
+packaging. `tools/measure-git-render.mjs` records five disposable native render-build
+samples after revealing 30/60/100 rows through the production scroll handlers;
+these are not live desktop paint/input timings or deployment evidence.
 
 ## Connected fleet fixtures
 

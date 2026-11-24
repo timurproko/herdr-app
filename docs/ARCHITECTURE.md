@@ -756,9 +756,11 @@ and no context lists. Primary/secondary refusals keep values for at least 15
 minutes or a longer Retry-After; hourly remaining quota cannot override that.
 Labels/tasks/review and all displayed values remain during reads. Ordinary totals are repository-wide;
 aggregate totals and 24-hour history eligibility derive from current task PR state.
-Coordinator safety selection uses the same bounded presentation page, with page
-identity in the request scope so Previous/Show more rejects obsolete replies.
-Full tab totals and the event inventory remain independent of paging. Thin/detail
+Coordinator safety selection uses only measured viewport-intersecting PRs,
+not overscan-only, folded or off-window revealed rows. A monotonic window/tab
+selection generation rejects obsolete replies even after scroll-away-and-back.
+Scrolling starts no extra probes or inventory reads; normal cadence consumes the
+new selection. Full tab totals and the event inventory remain independent of it. Thin/detail
 API reads use repositoryRead's per-child GH_REPO transport and guarded refusal
 diagnostics; complete ordinary pages apply their combined totals even on append.
 Full metadata/pagination refreshes still use event/manual reads.

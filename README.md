@@ -472,9 +472,10 @@ a **45-second fallback**. One coalesced repository job probes state, head SHA an
 rollup summary in bounded 40-PR chunks; only changed heads/summaries fetch full
 checks in 20-PR chunks. Unchanged 5- or 30-row selections use one thin request,
 without enumerating check contexts. Values stay displayed until the complete
-selection succeeds. Coordinator probes cover only the current presentation page,
-not folded or off-page rows; Previous/Show more keeps full counts and rejects
-old-page replies. All probe/detail API calls retain per-call repository routing.
+selection succeeds. Coordinator probes cover only rows intersecting the measured viewport window,
+not folded, overscan-only or off-window revealed rows. Scrolling keeps full counts,
+starts no extra probes or inventory reads, and invalidates held replies from an
+older window even after scrolling away and back. All probe/detail API calls retain per-call repository routing.
 Merge/close transitions move rows to Closed and update
 both totals; finished-task history still uses GitHub's 24-hour completion bound.
 Reads stop on hide/disable, stale context or remote-machine disconnect; failures

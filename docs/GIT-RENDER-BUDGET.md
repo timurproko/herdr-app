@@ -6,7 +6,27 @@ it materially increased that cost, but the reported live `interrupted` banner
 has **not** been reproduced by the disposable native checker. PR #39's fixed
 row geometry alone is not established as the introducing cause of that banner.
 
-## Measurements
+## Windowed scrolling measurements
+
+Five cold disposable native checks per size, Windows / Herdr 0.1.18, after the
+production paired scroll handlers reveal the full inventory and move to its end:
+
+| Loaded PR rows | Native render-build samples (ms) | Mean (ms) | PR rows built per render |
+|---|---|---:|---:|
+| 30 | 2, 2, 2, 1, 2 | 1.8 | 7 |
+| 60 | 1, 2, 2, 3, 2 | 2.0 | 7 |
+| 100 | 3, 2, 2, 3, 3 | 2.6 | 7 |
+
+The viewport is 390×400 logical pixels. The raw results also record confirmed
+loaded-row counts and retained offsets (1970.5 / 4250.5 / 7290.5px). Scroll setup
+is outside the timed render; the complete render includes fresh native row builds,
+spacers, shared fades and chrome. These synthetic native builder times, at 1ms
+clock resolution, are not live desktop layout/paint or input-latency measurements.
+No watchdog is changed. The 100-row regression's observed peak is now **2,521**
+builder operations with the shared fades, below the unchanged 10,000 / 1,200
+operation/element ceilings. Every row remains reachable after incremental reveal.
+
+## Historical replacement-page measurements
 
 `node tools/measure-git-render.mjs` now measures 30/60/100 loaded rows after
 production scroll handlers reveal them, including deep-window renders; its five

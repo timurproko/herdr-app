@@ -372,8 +372,8 @@ export default class Changes extends View {
       const repositories=aggregate?.repositories()??[],rows=aggregate?.rows(this.view)??[];
       const sections=repositories.map(repo=>({repo,rows:rows.filter(pr=>pr.repo===repo),error:aggregate.readNotice(repo,this.view)})).filter(section=>section.rows.length || section.error);
       const paging=this.taskSections(sections,aggregate.context.scope);
-      const shownRows=paging.sections.filter(section=>!this.foldedRepositories?.has(section.repo)).flatMap(section=>section.rows);
-      return {enabled,scope:JSON.stringify([this.context,on,this.view,paging.page]),repositories:repositories.map(name=>({name,uncovered:uncovered(name),rows:shownRows.filter(pr=>pr.repo===name)}))};
+      const shownRows=paging.visible;
+      return {enabled,scope:JSON.stringify([this.context,on,this.view,this.taskSelectionEpoch,paging.window.generation]),repositories:repositories.map(name=>({name,uncovered:uncovered(name),rows:shownRows.filter(pr=>pr.repo===name)}))};
     }
     const selection=this.pullSelection();
     return {enabled,scope:JSON.stringify([this.context,on,this.view,this.repo?.name]),repositories:this.repo?[{name:this.repo.name,uncovered:uncovered(this.repo.name),rows:[...selection.liveRows,...(selection.active?[selection.active]:[])]}]:[]};
@@ -945,7 +945,7 @@ export default class Changes extends View {
   }
 
   ordinaryScrollState(state) {
-    if(this.ordinaryScrollScope!==this.context) {this.ordinaryScrollScope=this.context;this.ordinaryScroll=new Map();}
+    if(!this.ordinaryScroll || this.ordinaryScrollScope!==this.context) {this.ordinaryScrollScope=this.context;this.ordinaryScroll=new Map();}
     let metrics=this.ordinaryScroll.get(state);
     if(!metrics) {metrics=new SidebarScrollState();this.ordinaryScroll.set(state,metrics);}
     return metrics;
@@ -1062,7 +1062,7 @@ export default class Changes extends View {
         }))))
       .when(!folded && body.length>0, el => el.child(v_flex().id(`task-repo-body-${repo}`).flex_none()
         .children(body.map(item=>div().id(`task-item-${item.key}`).flex_none().h(item.height+item.gap)
-          .child(item.row ? this.pullRow(t,item.row) : this.renderPart(`repository-notice:${repo}`,()=>div().id(`task-error-${repo}`).px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(item.error)
+          .child(item.row ? this.pullRow(t,item.row) : this.renderPart(`repository-notice:${repo}`,()=>div().id(`task-error-${repo}`).flex_none().w_full().px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(item.error)
             .on_size_change((size,cx)=>{
               if(!this.taskWindowCurrent(window,scope) || !Number.isFinite(size.height))return;
               const height=size.height/window.zoom;
@@ -1082,7 +1082,17 @@ export default class Changes extends View {
       window=new TaskWindow();window.key=key;window.metrics=new SidebarScrollState();
       this.taskWindows.set(key,window);
     }
+    if(this.selectedTaskWindow!==window) {
+      this.selectedTaskWindow=window;this.taskSelectionEpoch=(this.taskSelectionEpoch??0)+1;
+    }
     const zoom=settings().zoom||1;
+    if(window.zoom && window.zoom!==zoom) {
+      // Retained native scrolling is logical-pixel based; paired event bounds
+      // are window pixels. Rebase cached metrics before new zoom callbacks.
+      window.metrics.offset=window.offset*zoom;
+      window.metrics.viewport=window.viewport*zoom;
+      window.metrics.content=(window.height+8)*zoom;
+    }
     window.zoom=zoom;
     window.project(sections,this.foldedRepositories,U.control,U.rowGap,`${zoom}:${window.width??0}`);
     const range=window.range(),visible=[];
@@ -1091,7 +1101,7 @@ export default class Changes extends View {
       if(section?.repo!==item.repo) {section={repo:item.repo,items:[],rows:[]};visible.push(section);}
       section.items.push(item);if(item.row)section.rows.push(item.row);
     }
-    return {...range,sections:visible,window,key,page:window.generation};
+    return {...range,sections:visible,window,key};
   }
 
   taskWindowCurrent(window,scope) {

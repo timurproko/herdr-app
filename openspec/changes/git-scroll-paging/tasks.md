@@ -16,7 +16,7 @@
 
 ## 3. Coordinator safety probes follow viewport rows and reject obsolete window replies without widening reads
 
-- [ ] 3.1 Replace aggregate page-based fallback snapshots with actual viewport-intersecting PR identities and a monotonic selection generation; extend `tests/git-safety-paging.test.mjs` for overscan/fold/off-window exclusion and held replies after scroll-away-and-back, tab changes and refreshed projections.
-- [ ] 3.2 Retain 45/120-second cadence, backoff, merge/close totals, thin probes, per-call repository routing and existing ordinary safety selection; update safety/fallback fixtures to prove scrolling itself starts no extra probes or full-inventory reads.
-- [ ] 3.3 Update webhook and architecture scope wording from current page to viewport window, matching implemented behavior and documenting retained stale-data limits.
-- [ ] 3.4 Once no other suite is running, run `CI=true npm run test:ci` for integration, repeat the 30/60/100 native measurements on the final implementation and inspect checks for the exact pushed head; report actual statuses, timing scope and any remaining gaps without marking the PR ready or merging it.
+- [x] 3.1 Replace aggregate page-based fallback snapshots with actual viewport-intersecting PR identities and a monotonic selection generation; extend `tests/git-safety-paging.test.mjs` for overscan/fold/off-window exclusion and held replies after scroll-away-and-back, tab changes and refreshed projections.
+- [x] 3.2 Retain 45/120-second cadence, backoff, merge/close totals, thin probes, per-call repository routing and existing ordinary safety selection; update safety/fallback fixtures to prove scrolling itself starts no extra probes or full-inventory reads.
+- [x] 3.3 Update webhook and architecture scope wording from current page to viewport window, matching implemented behavior and documenting retained stale-data limits.
+- [x] 3.4 Once no other suite is running, run `CI=true npm run test:ci` for integration, repeat the 30/60/100 native measurements on the final implementation and inspect checks for the exact pushed head; report actual statuses, timing scope and any remaining gaps without marking the PR ready or merging it.
