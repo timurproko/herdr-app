@@ -53,5 +53,6 @@ assert.equal(identityReads-baseline,2);assert.equal(cohort.diagnostics.size,0,'C
 assert.match(cohort.readNotice('owner/crew','closed'),/not accessible with the GitHub account fixture-account/);
 cohort.refresh(cx);await drain();assert.equal(identityReads-baseline,4,'Refresh re-verifies each repository account');
 refusal='HTTP 404: Not Found';cohort.refresh(cx);await drain();assert.equal(identityReads-baseline,4,'Two-repo not-found refresh starts zero identity children');
-assert.equal(cohort.readNotice('owner/crew','closed'),'Task PR history: owner/crew #1, #2, #3, #4, #5, #6 not found');
+assert.equal(cohort.readNotice('owner/crew','closed'),null,'Confirmed missing task PRs are silent');
+assert.equal(cohort.repositories().length,0);cohort.refresh(cx);await drain();assert.equal(identityReads-baseline,4);
 console.log('PASS per-call GH_REPO for API/GraphQL, empty/wrong ambient context, remote/cwd preservation, explicit tokens untouched, effective login/unknown refusals and no account switching');

@@ -344,12 +344,13 @@ export function pullFailure(e, stderr = '') {
   if (/rate limit|HTTP 429|secondary rate/i.test(text)) return failure('rate', 'Could not read pull requests: GitHub rate limit exceeded');
   if (/auth login|not logged in|authentication|HTTP 401|bad credentials/i.test(text)) return failure('auth', 'Sign in first: gh auth login');
   if (/no git remotes|could not determine|none of the git remotes|not a git repository|no remotes/i.test(text)) return failure('repository', 'No GitHub repository');
-  if (/could not resolve to|could not resolve (?:repository|pull request)|HTTP 404|\bnot found\b/i.test(text)) return failure('notfound', 'Repository or pull request not found');
+  // Explicit refusals/connectivity errors win even if stderr also quotes a
+  // missing-resource message. Such failures must never enter a negative cache.
   if (/HTTP 403|not accessible|resource not accessible|permission denied/i.test(text)) return failure('access', 'Repository or pull request is not accessible with the GitHub account');
-  if (/HTTP [45]\d\d|GraphQL:/i.test(text)) return failure('response', 'Could not read pull requests: GitHub returned an error');
-  // Resource resolution, a local command timeout and arbitrary mentions of
-  // "network" must not be mistaken for a DNS/connection failure.
   if (/could not resolve host|no such host|\bENOTFOUND\b|\bEAI_AGAIN\b|network is unreachable|network is down|connection refused|connection reset|failed to connect|TLS handshake timeout|dial tcp.*(?:timeout|timed out)|connect(?:ion)?[^\n]*timed out/i.test(text)) return failure('unreachable', 'GitHub is unreachable');
+  if (/HTTP 5\d\d/i.test(text)) return failure('response', 'Could not read pull requests: GitHub returned an error');
+  if (/could not resolve to|could not resolve (?:repository|pull request)|HTTP 404|\bnot found\b/i.test(text)) return failure('notfound', 'Repository or pull request not found');
+  if (/HTTP [45]\d\d|GraphQL:/i.test(text)) return failure('response', 'Could not read pull requests: GitHub returned an error');
   if (/timeout|timed out/i.test(text) || (e && typeof e === 'object' && 'code' in e && !detail)) return transient();
   if (e instanceof SyntaxError) return failure('response', 'Could not read pull requests: invalid GitHub response');
   return failure('read', detail.split('\n')[0].slice(0,240) || 'Cannot load pull requests');
