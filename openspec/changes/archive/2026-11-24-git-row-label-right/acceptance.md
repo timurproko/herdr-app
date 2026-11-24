@@ -17,7 +17,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-24-git-row-label-right/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-24-git-row-label-right/acceptance.md",
   "finalizedDate": "2026-11-24",
-  "specBaseSha": "67f7f597c08871241258b4593e18c2c5d987fefd",
+  "specBaseSha": "9a264db3a6ff166facb24c26497b401d930f801b",
   "acceptanceScenarios": [
     "Assigned pills keep their order and align with the outer robot-control edge across ordinary, pinned, scrolling, coordinator and motion-preview rows.",
     "Tasks and checks retain natural left widths and gaps; no dot precedes labels and unlabeled rows have no right-hand placeholder.",
