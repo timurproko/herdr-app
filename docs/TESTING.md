@@ -84,9 +84,14 @@ failure/recovery details and launch blocking after a successful main check.
 confirmation path, success/expiry and unchanged busy/error/unknown states. Its
 known/missing-revision matrix exercises the real model and row renderer across
 idle, checking, available, launching/running, failed, partial and unknown-outcome
-states. Launching, pending-receipt, active-running and replacement cases assert the
-exact **Updating…** description with the unchanged disabled **Updating…** button;
-other state wording stays unchanged. Unknown revisions show only `herdr-app-custom` with no trailing space;
+states. Launching, pending-receipt, active-running and replacement cases assert
+**Updating to 4c4bff1** from the published target, or **Updating** without an ellipsis
+until a valid target arrives, with the unchanged disabled **Updating…** button.
+Peer-only catch-up says **Updating other machines to 4c4bff1**, with a targetless
+**Updating other machines** fallback. Fixtures distinguish installed and target
+revisions, reject malformed or foreign-run targets, preserve launch scope through
+replacement and prevent desktop-phase completion from inventing peer-only scope;
+other state wording and the native action-slot geometry stay unchanged. Unknown revisions show only `herdr-app-custom` with no trailing space;
 known revisions retain their seven-character suffix. Missing evidence cannot claim
 current even with a cached no-update result. The check fixture separately confirms
 that changed ownership evidence still offers Update after a successful main read.
@@ -94,8 +99,8 @@ A focused Settings copy assertion preserves the exact short paragraph from befor
 PR 20, including corner indicators and herdr-core terminal-continuity guidance,
 without Custom cadence or relay details. Fresh
 module graphs and owners simulate replacement before the launch receipt, during
-running work and just after completion. Shared provisional launch feedback stays
-Updating until durable status acknowledges it, or becomes unknown after the
+running work and just after completion. Shared provisional launch feedback keeps its
+known target and peer-only scope until durable status acknowledges it, or becomes unknown after the
 22-second transport bound; obsolete replies cannot overwrite newer receipts.
 The real Settings controller harness covers the same section-and-row flow together,
 including final success, partial, failure and unknown outcomes. No fixture launches
