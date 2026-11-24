@@ -2,9 +2,9 @@
 
 ## 1. Revealed coordinator rows remain mounted with safe per-row caches and a measured render budget
 
-- [ ] 1.1 Replace viewport ranges/spacers with a retained revealed prefix; update mounted-row and native-scroll-without-JS-callback regressions so every revealed row remains reachable and no spacer can be exposed.
-- [ ] 1.2 Memoize pure row facts/IDs/styles/layout decisions while preserving measurement/label caches and fresh callbacks; extend cache invalidation and row geometry regressions.
-- [ ] 1.3 Measure complete cold/warm renders at 30/60/100/200 mounted rows, target below 20ms at 100, and enforce a measured safe cap with one end Show more row only if 200 exceeds about 35ms; update native tooling, deterministic mounted-budget regression and budget documentation.
+- [x] 1.1 Replace viewport ranges/spacers with a retained revealed prefix; update mounted-row and native-scroll-without-JS-callback regressions so every revealed row remains reachable and no spacer can be exposed.
+- [x] 1.2 Memoize pure row facts/IDs/styles/layout decisions while preserving measurement/label caches and fresh callbacks; extend cache invalidation and row geometry regressions.
+- [x] 1.3 Measure complete cold/warm renders at 30/60/100/200 mounted rows, target below 20ms at 100, and enforce a measured safe cap with one end Show more row only if 200 exceeds about 35ms; update native tooling, deterministic mounted-budget regression and budget documentation.
 
 ## 2. Native handle geometry drives fades, incremental reveal and repainting anchor corrections
 

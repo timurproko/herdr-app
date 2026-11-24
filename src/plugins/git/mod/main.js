@@ -2,7 +2,8 @@
 import { View, div, svg, PathBuilder } from 'gpui-kit';
 import { v_flex, h_flex } from 'gpui-base';
 import * as base from 'gpui-base';
-import { TaskWindow } from './task-window.js';
+import { TaskReveal } from './task-reveal.js';
+import { RowPresentations } from './row-presentation.js';
 import { SidebarScrollState } from './sidebar-scroll.js';
 import { topFade, bottomFade } from './scroll-fade.js';
 import { U, headerTools, reveal, subtleActionFill, refreshButton, sidebarSectionHeader } from './ui.js';
@@ -748,7 +749,8 @@ export default class Changes extends View {
   }
 
   labelPill(t, label, id) {
-    const {background,foreground,border} = labelColors(t,label.color);
+    this.rowPresentations ??= new RowPresentations();
+    const {background,foreground,border} = this.rowPresentations.labelStyle(t,label.color,labelColors);
     // Border-box: 4px padding + 1px border preserves the original 5px inset.
     return h_flex().id(id).flex_none().min_w(0).max_w_full().h(18).px(4).border_1().border_color(border).rounded_full()
       .items_center().overflow_hidden().bg(background).text_color(foreground).tooltip(label.name)
@@ -779,34 +781,13 @@ export default class Changes extends View {
       if (Math.abs((sizes[name] ?? -1) - width) < 0.01) return;
       sizes[name] = width; this.pullLineSizes.set(id, sizes); cx.notify();
     };
-    const widths = items.map(item => sizes[`${item.kind}-full`]);
-    const ready = Number.isFinite(sizes.available) && widths.every(Number.isFinite);
-    const compact = new Set();
-    const total = () => {
-      const left = items.filter((item, index) => !item.trailing && widths[index] > 0).length;
-      const right = items.some((item, index) => item.trailing && widths[index] > 0);
-      return widths.reduce((sum, width) => sum + width, 0) + Math.max(0, left - 1) * 15 + (left && right ? 6 : 0);
-    };
-    if (ready) {
-      for (const [index, item] of items.entries()) {
-        if (total() <= sizes.available + 0.01) break;
-        if (item.compact && Number.isFinite(sizes[`${item.kind}-compact`])) {
-          compact.add(item.kind); widths[index] = sizes[`${item.kind}-compact`];
-        }
-      }
-      // Never shrink tasks/checks/time into unreadable fragments. Secondary
-      // text loses width only after semantic shortening has been exhausted.
-      for (const kind of clipOrder) {
-        const index = items.findIndex(item => item.kind === kind);
-        if (index < 0 || total() <= sizes.available + 0.01) continue;
-        widths[index] = Math.max(0, widths[index] - (total() - sizes.available));
-      }
-    }
-    const visible = items.map((item, index) => ({item, index})).filter(({index}) => !ready || widths[index] > 0);
-    const line = h_flex().id(id).w_full().min_w(0).h(18).min_h(18).max_h(18).flex_none().gap(6).items_center()
+    this.rowPresentations ??= new RowPresentations();
+    const {widths,ready,compact,visible}=this.rowPresentations.layout(id,sizes,items,clipOrder);
+    const line = h_flex().id(id).w_full().min_w(0).h(18).flex_none().gap(6).items_center()
       .overflow_hidden().line_height('18px').text_size(11).text_color(t.muted)
       .on_size_change((size, cx) => measure('available', size, cx))
-      .children(visible.flatMap(({item, index}, at) => {
+      .children(visible.flatMap((index, at) => {
+        const item=items[index];
         const node = item.render(compact.has(item.kind), false).flex_none()
           .when(ready && clipOrder.includes(item.kind), el => el.w(widths[index]));
         // The flexible slot owns only the free space, never the task/check
@@ -816,9 +797,7 @@ export default class Changes extends View {
       }));
     // These absolute invisible children are outside the visible run, so their
     // text never adds a line, gap, hover target or horizontal reservation.
-    const probes = div().id(`${id}-probes`).absolute().left(0).top(0).w(0).h(0).overflow_hidden().invisible()
-      .text_size(11).line_height('18px')
-      .children(items.flatMap(item => [false, ...(item.compact ? [true] : [])].flatMap(short => {
+    const pending = items.flatMap(item => [false, ...(item.compact ? [true] : [])].flatMap(short => {
         const key = keyed ? textKey(item, short) : null;
         if (key && (this.pullTextWidths.has(key) || this.pullTextPending.has(key))) return [];
         let measurement;
@@ -843,7 +822,9 @@ export default class Changes extends View {
             }
             measure(`${item.kind}-${short ? 'compact' : 'full'}`, size, cx);
           }))];
-      })));
+      }));
+    const probes = pending.length ? div().id(`${id}-probes`).absolute().left(0).top(0).w(0).h(0).overflow_hidden().invisible()
+      .text_size(11).line_height('18px').children(pending) : null;
     return {line, probes};
   }
 
@@ -869,28 +850,21 @@ export default class Changes extends View {
     const agentButton = this.agentButton(t, pr, !ghost);
     // Cache presentation by immutable fact identity; never retain native rows:
     // their event callbacks belong to the current native snapshot build.
-    this.pullPresentations ??= new WeakMap();
-    let presentation = this.pullPresentations.get(pr);
-    const labelLimit=this.context?.startsWith('tasks:') ? 3 : Infinity;
-    if (!presentation || presentation.source!==pr.labels || presentation.limit!==labelLimit) {
-      const allLabels = pr.labels ?? [];
-      presentation = {source:pr.labels,limit:labelLimit,labels:allLabels.slice(0,labelLimit),labelNames:allLabels.map(label=>label.name).join('\n')};
-      this.pullPresentations.set(pr,presentation);
-    }
-    const {labels,labelNames} = presentation;
-    const groupId = (kind, probe) => `${prefix}pr-${kind}-${rowId}${probe ? '-probe' : ''}`;
+    this.rowPresentations ??= new RowPresentations();
+    const {facts:presentation,id:groupId}=this.rowPresentations.get(pr,this.context?.startsWith('tasks:')?3:Infinity,ghost);
+    const {labels,labelNames}=presentation;
     const text = (kind, value, tooltip, probe) => div().id(groupId(kind, probe)).min_w(0).h(18)
       .overflow_hidden().whitespace_nowrap().tooltip(tooltip).child(value);
     const byline = this.pullLine(t, `${prefix}pr-byline-${rowId}`, [
-      {kind:'number', measureKey:`#${pr.number}`, render:(_short, probe) => text('number', `#${pr.number}`, pr.meta ?? '', probe)},
+      {kind:'number', measureKey:presentation.number, render:(_short, probe) => text('number', presentation.number, pr.meta ?? '', probe)},
       ...(pr.login ? [{kind:'author', measureKey:pr.login, render:(_short, probe) => text('author', pr.login, pr.meta ?? '', probe)}] : []),
       ...(pr.when ? [{kind:'time', measureKey:pr.when, compactKey:pr.compactWhen, compact:true, render:(short, probe) => text('time', short ? pr.compactWhen : pr.when, pr.meta ?? '', probe)}] : []),
     ], ['author']);
     byline.line.tooltip(pr.meta ?? '');
     const meta = this.pullLine(t, `${prefix}pr-meta-${rowId}`, [
-      ...(pr.tasks ? [{kind:'tasks', measureKey:pr.tasks.label, compactKey:`${pr.tasks.done}/${pr.tasks.total}`, compact:true, render:(short, probe) => h_flex().id(groupId('tasks', probe)).min_w(0).h(18).gap(4).items_center()
+      ...(pr.tasks ? [{kind:'tasks', measureKey:pr.tasks.label, compactKey:presentation.taskFraction, compact:true, render:(short, probe) => h_flex().id(groupId('tasks', probe)).min_w(0).h(18).gap(4).items_center()
         .tooltip(pr.tasks.label).child((probe ? div().size(U.tinyIcon) : this.taskIcon(t, pr.tasks)).flex_none())
-        .child(div().flex_none().whitespace_nowrap().child(short ? `${pr.tasks.done}/${pr.tasks.total}` : pr.tasks.label))}] : []),
+        .child(div().flex_none().whitespace_nowrap().child(short ? presentation.taskFraction : pr.tasks.label))}] : []),
       ...(pr.checks ? [{kind:'checks', measureKey:pr.checks.label, render:(_short, probe) => {
         const color = pr.checks.state === 'success' ? t.ansi2 : pr.checks.state === 'failure' ? t.ansi1 : t.ansi3;
         const icon = pr.checks.state === 'success' ? svg('mods/custom-workspace-chrome/check.svg').size(U.tinyIcon).text_color(color)
@@ -900,29 +874,28 @@ export default class Changes extends View {
           .child(div().id(groupId('check-icon', probe)).size(U.tinyIcon).flex_none().flex().items_center().justify_center().child(icon.flex_none()))
           .child(div().flex_none().whitespace_nowrap().underline().child(pr.checks.label));
       }}] : []),
-      ...(pr.review ? [{kind:'review', measureKey:pr.review, render:(_short, probe) => text('review', pr.review === 'approved' ? 'Approved' : 'Changes requested',
-        pr.review === 'approved' ? 'Approved' : 'Changes requested', probe).text_color(pr.review === 'approved' ? t.ansi2 : t.ansi1)}] : []),
-      ...(labels.length ? [{kind:'labels', trailing:true, measureKey:labels.map(label=>label.name).join('\0'), render:(_short, probe) => h_flex().id(groupId('labels', probe)).min_w(0).h(18).gap(4).items_center().justify_end().overflow_hidden()
+      ...(pr.review ? [{kind:'review', measureKey:pr.review, render:(_short, probe) => text('review', presentation.review, presentation.review, probe).text_color(pr.review === 'approved' ? t.ansi2 : t.ansi1)}] : []),
+      ...(labels.length ? [{kind:'labels', trailing:true, measureKey:presentation.labelKey, render:(_short, probe) => h_flex().id(groupId('labels', probe)).min_w(0).h(18).gap(4).items_center().justify_end().overflow_hidden()
         .tooltip(labelNames)
         .children(labels.map((label, index) => this.labelPill(t, label, `${groupId('label', probe)}-${index}`)))}] : []),
     ], ['review', 'labels']);
-    meta.line.tooltip([pr.tasks?.label, pr.checks?.label, labelNames,
-      pr.review ? (pr.review === 'approved' ? 'Approved' : 'Changes requested') : null].filter(Boolean).join('\n'));
+    meta.line.tooltip(presentation.tooltip);
     // Spaces' row padding (8) minus its trailing pill margin (5) leaves 3px inside the highlight.
-    return h_flex().id(`${prefix}pr-${rowId}`).relative().w_full().h(74).min_h(74).max_h(74).flex_none().pl(8).pr(3).py(6).gap(U.gap).items_start().rounded(U.radius)
-      .when(!ghost, el => el.cursor_pointer().role('button').accessibility_label(`Open pull request #${pr.number} on GitHub`)
+    return h_flex().id(`${prefix}pr-${rowId}`).relative().w_full().h(74).flex_none().pl(8).pr(3).py(6).gap(U.gap).items_start().rounded(U.radius)
+      .when(!ghost, el => el.cursor_pointer().role('button').accessibility_label(presentation.accessibility)
         .hover(s => s.bg(t.hover)).on_click(() => this.openPull(pr))
         .on_mouse_down('right', (_event, cx) => { cx.stop_propagation(); this.showPullMenu(pr, cx); })
         .when(!pr.key, el=>el.on_size_change(size => this.pinMotion?.measureRow(pr.number,size,settings().zoom))
           .on_mouse_move(event => this.pinMotion?.rowPointer(pr.number,event))))
       .child(div().id(`${prefix}pr-state-slot-${rowId}`).w(U.icon).h(20).flex_none().flex().items_center().child(this.pullIcon(t, pr)))
       .child(v_flex().flex_1().min_w(0).gap(3)
-        .child(h_flex().id(`${prefix}pr-title-line-${rowId}`).w_full().min_w(0).h(20).min_h(20).max_h(20).flex_none().gap(4).items_center().line_height('20px')
+        .child(h_flex().id(`${prefix}pr-title-line-${rowId}`).w_full().min_w(0).h(20).flex_none().gap(4).items_center().line_height('20px')
           .child(div().id(`${prefix}pr-title-${rowId}`).flex_1().min_w(0).h(20).truncate().text_size(U.font).font_semibold().text_color(t.foreground).tooltip(pr.title).child(pr.title))
           .child(div().id(`${prefix}pr-agent-slot-${rowId}`).w(U.insetControl).h(20).flex_none().relative()
             .when(Boolean(agentButton), el => el.child(agentButton))))
         .child(byline.line).child(meta.line))
-      .child(byline.probes).child(meta.probes);
+      .when(Boolean(byline.probes),el=>el.child(byline.probes))
+      .when(Boolean(meta.probes),el=>el.child(meta.probes));
   }
 
   swapOverlay(t, swap) {
@@ -1110,7 +1083,7 @@ export default class Changes extends View {
     }
     let window=this.taskWindows.get(key);
     if(!window) {
-      window=new TaskWindow();window.key=key;window.metrics=new SidebarScrollState();
+      window=new TaskReveal();window.key=key;window.metrics=new SidebarScrollState();
       window.measurement=this.taskMeasureSequence=(this.taskMeasureSequence??0)+1;
       this.taskWindows.set(key,window);
     }
@@ -1158,6 +1131,14 @@ export default class Changes extends View {
     if(window.move(window.metrics.offset/window.zoom,window.metrics.viewport/window.zoom))cx.notify();
   }
 
+  nextTaskChunk(window,scope,cx) {
+    if(!this.taskWindowCurrent(window,scope) || !window.canTurn)return;
+    window.handle?.release();window.handle=null;window.nextChunk();
+    window.measurement=this.taskMeasureSequence=(this.taskMeasureSequence??0)+1;
+    window.metrics.setMetrics({offset:0,content:window.contentHeight*window.zoom});
+    cx.notify();
+  }
+
   applyTaskAnchor(window,scope,cx) {
     if(this.retiredTaskHandles?.length) {
       const retired=this.retiredTaskHandles;this.retiredTaskHandles=[];
@@ -1172,6 +1153,7 @@ export default class Changes extends View {
       window.handle.scroll_to_item(1);
       window.metrics.setMetrics({offset:window.offset*window.zoom,content:(window.height+8)*window.zoom});
       window.metrics.update(cx);
+      cx.notify(); // Native scroll_to_item queues layout; it never schedules one.
     });
   }
 
@@ -1227,9 +1209,11 @@ export default class Changes extends View {
               .on_size_change((size,cx)=>this.taskMeasure(taskWindow,scope,'content',size,cx,taskZoom))
               .on_scroll_wheel(event=>taskWindow.metrics.contentMotion(event,'wheel'))
               .on_mouse_move(event=>taskWindow.metrics.contentMotion(event,'move'))
-              .child(div().id('task-pulls-spacer-top').flex_none().h(paging.top))
               .children(paging.sections.map(section => this.renderPart(`repository-section:${section.repo}`,()=>this.repositorySection(t, section, scope,taskWindow))))
-              .child(div().id('task-pulls-spacer-bottom').flex_none().h(paging.bottom))
+              .when(taskWindow.canTurn,el=>el.child(div().id('task-pulls-more').h(28).flex_none().px(8).text_size(U.meta).text_color(t.dim).cursor_pointer().role('button')
+                .accessibility_label(taskWindow.more?'Show more task pull requests':'Show first task pull requests again')
+                .tooltip(taskWindow.more?'Show the next mounted batch':'Return to the first mounted batch')
+                .on_click((_event,cx)=>this.nextTaskChunk(taskWindow,scope,cx)).child('Show more')))
               .when(!sections.length,el=>el.child(panelMessage(t,'git-task-empty',{text:verifying || aggregate.busy?'Loading':`No ${this.view} pull requests`,loading:verifying || aggregate.busy,rowInset:2})
                 .when(verifying,message=>message.tooltip(verificationHint)))))
             .when(Boolean(taskWindow.correction),el=>el.child(div().id('task-pulls-anchor').absolute().left(0).w(1).h(1)

@@ -2,7 +2,8 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
 const files={
- './task-window.js':'../../src/plugins/git/mod/task-window.js',
+ './task-reveal.js':'../../src/plugins/git/mod/task-reveal.js',
+ './row-presentation.js':'../../src/plugins/git/mod/row-presentation.js',
  './sidebar-scroll.js':'../../src/ui/sidebar-scroll.js',
  './scroll-fade.js':'../../src/ui/scroll-fade.js',
 };

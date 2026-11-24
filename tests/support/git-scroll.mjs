@@ -7,11 +7,11 @@ export const taskContent=tree=>nodes(tree).find(node=>String(node.attrs.id?.[0])
 export const activeContent=(tree,number)=>nodes(tree).find(node=>String(node.attrs.id?.[0]).startsWith(`active-pull-content-${number}-`));
 export function measureTask(panel,tree,cx,height=400,width=390,zoom=1) {
   frame(tree).attrs.on_size_change[0]({height:height*zoom,width:width*zoom},cx);
-  taskContent(tree).attrs.on_size_change[0]({height:(taskWindow(panel).height+8)*zoom,width:width*zoom},cx);
+  taskContent(tree).attrs.on_size_change[0]({height:taskWindow(panel).contentHeight*zoom,width:width*zoom},cx);
 }
 export function scrollTask(panel,tree,cx,offset,height=400,zoom=1,kind='move') {
   const content=taskContent(tree), viewport=frame(tree);
-  const size=(taskWindow(panel).height+8)*zoom;
+  const size=taskWindow(panel).contentHeight*zoom;
   // The content's padded outer box starts at the viewport origin before scrolling.
   const event={position:{x:50,y:100},bounds:{x:0,y:0,width:390*zoom,height:height*zoom},delta:{y:0}};
   content.attrs[kind==='wheel'?'on_scroll_wheel':'on_mouse_move'][0]({...event,bounds:{...event.bounds,y:-offset*zoom,height:size}});

@@ -1,6 +1,8 @@
 // Complete packaged coordinator rendering; fake host IO only, never the live app.
 import assert from 'node:assert/strict';
 import {loadMod} from '../tools/plugin-harness.mjs';
+import {MAX_MOUNTED_ROWS} from '../src/plugins/git/mod/task-reveal.js';
+const OP_BUDGET=MAX_MOUNTED_ROWS*300+2000;
 import {measureTask,scrollTask,taskWindow} from './support/git-scroll.mjs';
 import {element,svg,Popover,find,words,nodes,theme} from './support/choice-menu.mjs';
 let rendering=false,reads=0,syncFailure=false,operations=0,peakOperations=0,zoom=1;
@@ -46,31 +48,34 @@ const {Main}=await loadMod({mod:'custom-changes',host,globals:{window:{paint_pat
  'location.js':{location:()=>({space:'coordinator',cwd:'/home',on:null,terminal:'owner'})},'agent-links.js':{AgentLinks:class{}},'pin-swap.js':{PinSwap:class{cancel(){}},PIN_SWAP_MS:320},'webhooks.js':{GitWebhooks:class{sync(){}stop(){}}},'panel-pin.js':{panelPin:element},'sidebar-title.js':{sidebarTitle:element},'settings-dialog.js':{openSettings(){}},'panel-state.js':{changePanel(){}},'space-color-state.js':{currentSpaceColor:()=>null},'panel-kit.js':{headerTool:element,contextMenu:element,panelMessage:(_t,id,o)=>element().id(id).child(o.text)},
  },entry:'export {default as Main} from "./main.js";'});
 const panel=new Main();panel.init({},cx);await drain();
-const render=()=>{operations=0;rendering=true;try{return panel.render(cx);}finally{rendering=false;peakOperations=Math.max(peakOperations,operations);assert.ok(operations<10000,`Fixed render operation budget: ${operations}`);}};
+const render=()=>{operations=0;rendering=true;try{return panel.render(cx);}finally{rendering=false;peakOperations=Math.max(peakOperations,operations);assert.ok(operations<OP_BUDGET,`Mounted render operation budget: ${operations}`);}};
 let tree=render();await drain();tree=render();await drain();
-// Reveal all 100 rows through native-style scroll events. Row builds remain
-// viewport-bounded even after the entire inventory is loaded.
+// Every revealed row remains mounted. The measured safe batch cap, not
+// viewport spacers, bounds fresh native trees and callback registration.
 const rowNodes=tree=>nodes(tree).filter(n=>/^pr-timurproko\/(?:crew|herdr-app)#\d+$/.test(n.attrs.id?.[0]??''));
 const budget=tree=>{
- const rows=rowNodes(tree);assert.ok(rows.length<=10);
- assert.ok(nodes(tree).length<1200,'Fixed cold render element budget for 100 Closed PRs');
+ const rows=rowNodes(tree);assert.ok(rows.length<=MAX_MOUNTED_ROWS);
+ assert.ok(nodes(tree).length<MAX_MOUNTED_ROWS*125+500,'Mounted batch element budget');
  for(const row of rows)assert.ok(nodes(row).length<125,'Bounded visible + probe elements per PR');
 };
 budget(tree);
 const firstTree=tree,seen=new Set(),beforeScroll=reads;
 measureTask(panel,tree,cx);tree=render();
-for(let offset=0;offset<9000;offset+=250){
+let offset=0;
+for(let step=0;step<200;step++){
  scrollTask(panel,tree,cx,offset);tree=render();measureTask(panel,tree,cx);
  budget(tree);for(const row of rowNodes(tree))seen.add(row.attrs.id[0].slice(3));
- assert.equal(find(tree,'task-pulls-more'),undefined);assert.equal(find(tree,'task-pulls-pages'),undefined);
- if(taskWindow(panel).limit>=taskWindow(panel).items.length && taskWindow(panel).offset>=taskWindow(panel).max)break;
+ assert.equal(find(tree,'task-pulls-pages'),undefined);assert.equal(find(tree,'task-pulls-spacer-top'),undefined);assert.equal(find(tree,'task-pulls-spacer-bottom'),undefined);
+ const list=taskWindow(panel);if(seen.size===100)break;
+ if(list.atCap){find(tree,'task-pulls-more').attrs.on_click[0]({},cx);tree=render();measureTask(panel,tree,cx);offset=0;}else offset+=250;
 }
 assert.deepEqual([...seen].sort(),[...prs.keys()].sort());
 assert.equal(reads,beforeScroll,'Revealing the known inventory starts no reads');
-assert.ok(rowNodes(tree).length<10,'A fully loaded 100-row list still builds only the viewport window');
+assert.ok(rowNodes(tree).length>10,'Previously revealed rows stay mounted outside the viewport');
 const retainedOffset=taskWindow(panel).offset;
 panel.view='open';render();panel.view='closed';tree=render();
 assert.equal(taskWindow(panel).offset,retainedOffset);assert.equal(reads,beforeScroll);
+if(taskWindow(panel).start>0){while(taskWindow(panel).more)taskWindow(panel).revealMore();panel.nextTaskChunk(taskWindow(panel),context.scope,cx);}
 scrollTask(panel,tree,cx,0);tree=render();
 assert.ok(find(tree,'pr-timurproko/crew#1'));
 assert.equal(nodes(find(tree,'pr-labels-timurproko/crew#1')).filter(n=>/^pr-label-timurproko/.test(n.attrs.id?.[0]??'')).length,3);
@@ -125,4 +130,4 @@ assert.ok(errors.some(line=>line.includes('previous render did not complete')&&l
 // Section notices have their own attribution boundary too.
 assert.throws(()=>panel.renderPart('repository-notice:timurproko/crew',()=>{throw Error('notice fixture exception');}),/notice fixture exception/);
 assert.ok(errors.some(line=>line.includes('repository-notice:timurproko/crew')&&line.includes('notice fixture exception')));
-assert.ok(reads>=102);console.log(`Peak fixed render operations: ${peakOperations} / 10000`);console.log('PASS windowed 100-row Closed coordinator scrolling, probe cache, real aggregate/notices, inline-spawn guards and component/error diagnostics');
+assert.ok(reads>=102);console.log(`Peak mounted render operations: ${peakOperations} / ${OP_BUDGET}`);console.log('PASS mounted 100-row Closed coordinator scrolling, probe cache, real aggregate/notices, inline-spawn guards and component/error diagnostics');
