@@ -88,6 +88,8 @@
     "nodeWorkers": ["a1-colors/session-color.cjs"]
   },
   "files": {
+    "lib/palette-model.js": "src/features/palette/model.js",
+    "scripts/palette-manifests.mjs": "src/services/palette-manifests.mjs",
     "mods/custom-agents/space-color-state.js": "src/shared/space-color-state.js",
     "baselines/0.1.13.json": "upstream/baselines/0.1.13.json",
     "baselines/0.1.14.json": "upstream/baselines/0.1.14.json",

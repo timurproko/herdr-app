@@ -4,10 +4,10 @@ The four groups match this draft PR's Implementation outcomes in order. Stage 1 
 
 ## 1. Owned command catalog and safe routing
 
-- [ ] 1.1 Add the palette model and narrow installed manifest reader under owned feature/service sources, packaging every import/worker in `customization.json`; check build dependency closure and bounded metadata-only worker fixtures, including an app home outside login home.
-- [ ] 1.2 Preserve host commands/layouts/themes, native manifest validation/canonical IDs/deduplication, object/shorthand shortcut matching and explicit clone args; compare catalog and dispatch against pinned real 0.1.18 stock and retained 0.1.17 originals in focused fixtures, recording source SHA/length/provenance without manufacturing native permission.
-- [ ] 1.3 Reuse activation-only Custom Settings/picker/rename/close routing, explicit-target preservation and enabled-Usage policy; cover each route and plugin disablement in model/dispatch regressions and document the native command interception boundary.
-- [ ] 1.4 Give owned history a stable runtime key and narrowly migrate recognized legacy recent IDs during normal installation; fixture restart/overlay-ID changes, malformed old stores and unrelated-state preservation, and document local-only history ownership.
+- [x] 1.1 Add the palette model and narrow installed manifest reader under owned feature/service sources, packaging every import/worker in `customization.json`; check build dependency closure and bounded metadata-only worker fixtures, including an app home outside login home.
+- [x] 1.2 Preserve host commands/layouts/themes, native manifest validation/canonical IDs/deduplication, object/shorthand shortcut matching and explicit clone args; compare catalog and dispatch against pinned real 0.1.18 stock and retained 0.1.17 originals in focused fixtures, recording source SHA/length/provenance without manufacturing native permission.
+- [x] 1.3 Reuse activation-only Custom Settings/picker/rename/close routing, explicit-target preservation and enabled-Usage policy; cover each route and plugin disablement in model/dispatch regressions and document the native command interception boundary.
+- [x] 1.4 Give owned history a stable runtime key and narrowly migrate recognized legacy recent IDs during normal installation; fixture restart/overlay-ID changes, malformed old stores and unrelated-state preservation, and document local-only history ownership.
 
 ## 2. Focused Custom palette overlay
 
