@@ -19,7 +19,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-24-refresh-git-pull-state/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-24-refresh-git-pull-state/acceptance.md",
   "finalizedDate": "2026-11-24",
-  "specBaseSha": "67f7f597c08871241258b4593e18c2c5d987fefd",
+  "specBaseSha": "9a264db3a6ff166facb24c26497b401d930f801b",
   "acceptanceScenarios": [
     "Shown Open and Draft PRs receive state-and-check safety reads every 45 seconds unenrolled or 120 seconds enrolled, including settled checks.",
     "Merge, close, reopen and draft transitions reconcile rows and both tab totals without clearing loaded content or duplicating pins.",
