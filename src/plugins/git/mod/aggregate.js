@@ -39,7 +39,7 @@ export class AggregatePulls {
   sync(cx) {
     if(this.shown()) pluginEvent('workspace.context.refresh',{cx});
     const context=this.currentContext({presentation:true}), previous=this.context;
-    if(context?.scope!==previous?.scope) {this.serial++;this.factOrder.reset();this.entries.clear();this.pending.clear();this.diagnostics.clear();}
+    if(context?.scope!==previous?.scope) {this.readWake=null;this.serial++;this.factOrder.reset();this.entries.clear();this.pending.clear();this.diagnostics.clear();}
     this.context=context;
     if(!context) return false;
     if(context.stale) {
@@ -111,6 +111,7 @@ export class AggregatePulls {
       const group=groups.get(entry.link.repo)??[];group.push(entry);groups.set(entry.link.repo,group);
     }
     for(const [repository,entries]of groups)for(let at=0;at<entries.length;at+=20) {
+      if([...this.pending.keys()].some(key=>this.entries.get(key)?.link.repo===repository))break;
       if(new Set(this.pending.values()).size>=3)return;
       const batch=entries.slice(at,at+20),token={},read=this.factOrder.begin();
       for(const entry of batch) {entry.dirty=false;this.pending.set(entry.link.key,token);}

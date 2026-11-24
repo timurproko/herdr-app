@@ -29,25 +29,26 @@ export function retryRead(owner, cx, error, run) {
 export class GitReads {
   constructor({now=()=>Date.now(),log=line=>console.log(line)}={}) {this.now=now;this.log=log;this.routes=new Map();this.pending=new Map();this.facts=new Map();this.targets=new Map();this.lists=new Map();this.generation=0;this.versions=new Map();}
   route(options={}) {return JSON.stringify([options.on??null,options.credentialScope??null]);}
-  state(options) {const key=this.route(options);if(!this.routes.has(key))this.routes.set(key,{until:0,episode:false});return this.routes.get(key);}
+  state(options) {const key=options?.on??'';if(!this.routes.has(key))this.routes.set(key,{until:0,episode:false});return this.routes.get(key);}
   refusal(result,repository,options={}) {
-    const state=this.state(options);state.until=this.now()+Math.max(900000,pullRetryAfter(result,this.now()));
+    const state=this.state(options);state.version=(state.version??0)+1;state.until=Math.max(state.until??0,this.now()+Math.max(900000,pullRetryAfter(result,this.now())));
     if(!state.episode) {state.episode=true;try{this.log(`[custom-changes] GitHub rate refusal; reads paused (${repository??'repository lookup'})`);}catch {}}
     return Object.assign(new Error('GitHub read deferred'),{kind:'rate',quiet:true,retryAt:state.until});
   }
   async read(key,repository,options,run) {
     if(options.current && !options.current())throw Object.assign(new Error('Obsolete GitHub read'),{quiet:true,retryAt:this.now()+10000});
-    const state=this.state(options),id=JSON.stringify([this.route(options),repository?.toLowerCase()??options.cwd??'',key]);
+    const state=this.state(options),id=JSON.stringify([this.route(options),repository?.toLowerCase()??[options.cwd??'',++this.generation],key]);
     if(this.pending.has(id))return this.pending.get(id);
     if(state.until>this.now()) {
       if(options.manual?.remaining>0)options.manual.remaining--;
       else throw Object.assign(new Error('GitHub read deferred'),{kind:'rate',quiet:true,retryAt:state.until});
     }
+    const admitted=state.version??0;
     const job=(async()=>{
       if(options.current && !options.current())throw Object.assign(new Error('Obsolete GitHub read'),{quiet:true,retryAt:this.now()+10000});
       const result=await run();
       if(rateRefusal(result))throw this.refusal(result,repository,options);
-      if(result?.code===0 && !result.signal && !result.timed_out && !result.timedOut) {state.until=0;state.episode=false;}
+      if((state.version??0)===admitted && result?.code===0 && !result.signal && !result.timed_out && !result.timedOut) {state.until=0;state.episode=false;}
       return result;
     })();
     this.pending.set(id,job);
@@ -67,10 +68,10 @@ export function rateRefusal(result) {
     || /^HTTP[^\n]*\b429\b/im.test(result?.stdout??'');
 }
 export function repositoryRead(exec, args, repository, options = {}) {
+  if(args[0]==='api' && (typeof repository!=='string' || repository.trim()!==repository || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) || repository.split('/').some(p=>p==='.'||p==='..')))throw Error('Invalid GitHub repository');
   const {current,manual,credentialScope,skipList,generation,...native}=options;
   return gitReads(exec).read(args,repository,options,()=>{
     if(args[0]!=='api')return exec('gh',args,native);
-    if(typeof repository!=='string' || repository.trim()!==repository || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) || repository.split('/').some(p=>p==='.'||p==='..'))throw Error('Invalid GitHub repository');
     return exec('node',['-e',GH_REPOSITORY_ENV,repository,JSON.stringify(args),String(Math.max(1,Math.min(native.timeout??30000,30000)-1000))],native);
   });
 }
@@ -241,12 +242,12 @@ export function pullListArgs(state, nameWithOwner, after = null) {
   const states = state === 'closed' ? '[CLOSED,MERGED]' : '[OPEN]';
   let query = `query($owner:String!,$name:String!,$after:String){repository(owner:$owner,name:$name){open:pullRequests(states:OPEN){totalCount} closed:pullRequests(states:[CLOSED,MERGED]){totalCount} pullRequests(first:${PR_PAGE_SIZE},after:$after,states:${states},orderBy:{field:CREATED_AT,direction:DESC}){totalCount pageInfo{hasNextPage endCursor} nodes{number title url state isDraft author{login} createdAt mergedAt closedAt body reviewDecision headRefName headRefOid mergeable labels(first:100){nodes{name color}} commits(last:1){nodes{commit{statusCheckRollup{state}}}}}}}}`;
   if(state==='closed')query=query.replace(/nodes\{number title[\s\S]*$/, 'nodes{number}}}}');
-  return ['api', 'graphql', '-f', `query=${query}`, '-F', `owner=${owner}`, '-F', `name=${name}`,
+  return ['api', 'graphql', '--include', '-f', `query=${query}`, '-F', `owner=${owner}`, '-F', `name=${name}`,
     ...(after ? ['-f', `after=${after}`] : [])];
 }
 
 export function parsePullPage(stdout) {
-  const result = JSON.parse(stdout || '{}');
+  const result = JSON.parse(pullPayload(stdout) || '{}');
   if (result.errors?.length) throw new Error(result.errors.map(e => e.message).join('; '));
   const repo=result.data?.repository, page=repo?.pullRequests;
   if (!Array.isArray(page?.nodes)) throw new Error('Cannot load pull requests');
@@ -352,6 +353,7 @@ export async function readTargetPulls(exec,numbers,repository,options={}) {
       // Install a rejection handler immediately, including when an earlier chunk fails.
       value.catch(()=>{}).finally(()=>{if(session.targets.get(key)===value)session.targets.delete(key);});
     }
+    await job; // Keep large targeted selections sequential within a repository.
   }
   for(const [number,promise]of waiting)result.set(number,await promise);
   return result;
@@ -360,11 +362,11 @@ export const REPO_ARGS = ['repo', 'view', '--json', 'nameWithOwner,owner,url'];
 export function countArgs(nameWithOwner) {
   const [owner, name] = String(nameWithOwner).split('/');
   const query = `query($owner:String!,$name:String!){repository(owner:$owner,name:$name){open:pullRequests(states:OPEN){totalCount} closed:pullRequests(states:[CLOSED,MERGED]){totalCount}}}`;
-  return ['api', 'graphql', '-f', `query=${query}`, '-F', `owner=${owner}`, '-F', `name=${name}`];
+  return ['api', 'graphql', '--include', '-f', `query=${query}`, '-F', `owner=${owner}`, '-F', `name=${name}`];
 }
 export function parseCounts(stdout) {
   try {
-    const repo = JSON.parse(stdout)?.data?.repository;
+    const repo = JSON.parse(pullPayload(stdout))?.data?.repository;
     if (!repo) return null;
     return { open: repo.open?.totalCount ?? null, closed: repo.closed?.totalCount ?? null };
   } catch { return null; }

@@ -83,7 +83,7 @@ fact(6,'OPEN',undefined,'example/old');socket.onChange({repository:'example/old'
 // actual Crew provider and aggregate. No missing event is invented as a diagnosis.
 state['custom.plugins'].git.settings={relay:'https://relay.test'};
 const relay=state['custom.git.relay-runtime']={scope:'history-events',status:'connected',ready:1,repositories:{'example/repo':{revision:1}}};
-panel.webhooks=new GitWebhooks();
+panel.webhooks=new GitWebhooks({debounce:0});panel.syncTaskWebhooks(cx);await drain();
 const event=()=>{relay.repositories['example/repo'].revision++;panel.syncTaskWebhooks(cx);};
 fact(2,'OPEN');event();await drain();
 assert.ok(panel.aggregate.rows('open').some(pr=>pr.number===2));

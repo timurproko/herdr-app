@@ -204,6 +204,9 @@ await reply(firstA,'D:/stale'); assert.equal(view.root,null); assert.equal(view.
 await reply(secondA,repo); await reply(b,'',128); assert.equal(view.root,repo);
 
 // Late repo discovery must not restore the old header or overwrite new busy state.
+// These explicit GitHub scenarios have a shown panel; hidden panels now refuse
+// even forced starts. Restore the hidden local-context fixture afterward.
+const hiddenShown=view.shown;view.shown=()=>true;
 view.loadPulls('open',cx,true); const oldRepo = await take('gh','repo');
 select(home); await reply(take('git'),'',128);
 select(repo); await reply(take('git'),repo);
@@ -250,7 +253,7 @@ view.loadPulls('open',cx,true); const failure = await take('gh','api');
 select(home); const homeGit = await take('git');
 failure.reject(new Error('old machine offline')); await tick();
 assert.equal(view.pullError,null); assert.equal(view.loading,true);
-await reply(homeGit,'',128);
+await reply(homeGit,'',128);view.shown=hiddenShown;
 // A delayed branch reply cannot restore another terminal's highlight.
 select(repo);
 let releaseBranch;

@@ -18,7 +18,7 @@ import { headerTool, contextMenu, panelMessage } from './panel-kit.js';
 import { changePanel } from './panel-state.js';
 import { sidebarPanelEnabled } from './plugins.js';
 import { sidebarTitle } from './sidebar-title.js';
-import { pullListArgs, REPO_ARGS, countArgs, parseCounts, parsePullPage, agentPullNumber, pullRow, pullError, PR_FIELDS, PR_PAGE_SIZE, repositoryRead, repositoryFailure, quietRead, retryRead, readPullPage, readTargetPulls, rememberPull, pendingChecksArgs, parsePendingChecks, refreshPullFacts, pullStateArgs, parsePullStates, pullPayload, pullRetryAfter, ChecksFallback, PullFactsOrder, CHECKS_BATCH_SIZE, STATE_BATCH_SIZE } from './pulls.js';
+import { REPO_ARGS, countArgs, parseCounts, agentPullNumber, pullError, PR_PAGE_SIZE, repositoryRead, repositoryFailure, quietRead, retryRead, readPullPage, readTargetPulls, rememberPull, pendingChecksArgs, parsePendingChecks, refreshPullFacts, pullStateArgs, parsePullStates, pullPayload, pullRetryAfter, ChecksFallback, PullFactsOrder, CHECKS_BATCH_SIZE, STATE_BATCH_SIZE } from './pulls.js';
 
 const VIEWS = ['open', 'closed'];
 const VIEW_KEY = 'custom.git.view';
@@ -49,7 +49,7 @@ export default class Changes extends View {
     // Focus outlives render; the host forbids allocating handles in renderAggregate.
     this.enrollmentFocus = cx.focus_handle();
     this.headerHovered = false;
-    this.agentLinks = new AgentLinks(() => sidebarPanelEnabled('changes'));
+    this.agentLinks = new AgentLinks(() => this.shown());
     let view = null;
     try { view = localStorage.getItem(VIEW_KEY); } catch {}
     this.view = VIEWS.includes(view) ? view : 'open';
@@ -189,6 +189,7 @@ export default class Changes extends View {
     if (!VIEWS.includes(view) || view === this.view) return;
     this.pinMotion?.cancel();this.enrollmentPicker?.stop();
     this.view = view;
+    if(this.repo && this.pulls[view]!==null)this.webhookDirty=true;
     try { localStorage.setItem(VIEW_KEY, view); } catch {}
     cx.notify();
   }
@@ -196,6 +197,9 @@ export default class Changes extends View {
   // Only a shown Git panel talks to GitHub; a hidden stack child stays quiet.
   shown() {
     if (!sidebarPanelEnabled('changes')) return false;
+    try {if(window()?.active===false)return false;}catch {} // Older hosts may not expose activity.
+    const on=this.context?.startsWith('tasks:')?this.aggregate?.context?.machine:location().on;
+    if(on)try {if(!host.machines().some(machine=>machine.name===on && machine.layout==='ready'))return false;}catch {}
     const root = layout(), panel = find(root, 'panel'), body = find(root, 'panel-body');
     return Boolean(panel && !panel.hidden && (!body || body.active === 'changes'));
   }
@@ -227,6 +231,7 @@ export default class Changes extends View {
           repo=this.repo={ name: value.nameWithOwner, owner: value.owner?.login ?? value.nameWithOwner.split('/')[0], url: value.url ?? `https://github.com/${value.nameWithOwner}` };
         }
         repository=repo.name;
+        this.syncWebhooks(cx); // Capture revisions before the snapshot, not after it.
         const page = await readPullPage(exec,state,repository,after,{cwd:root,on,timeout:30000,current:()=>current()&&this.shown(),manual:this.manualRead});
         if (!current()) return;
         const rows = page.rows.map(pr => this.publishPull(pr,read).value).filter(Boolean);
@@ -249,7 +254,7 @@ export default class Changes extends View {
         if (!current()) return;
         this.counts = page.counts ?? (counts?.code===0?parseCounts(counts.stdout):null) ?? this.counts;
       } catch (e) {
-        if (current()) {
+        if (current() && this.shown()) {
           if(retryRead(this,cx,e,view=>{if(this.shown() && this.context===context)this.loadPulls(state,view,true,true,append);}))return;
           const failure=await repositoryFailure(exec,e,repository,{cwd:root,on,current:()=>current()&&this.shown()});
           if(!current())return;
@@ -271,9 +276,10 @@ export default class Changes extends View {
 
   // A narrow read can change tabs without clearing the loaded pages or pin.
   // Preserve unaffected order; insert moved rows by the list's created-at order.
-  reconcilePulls(values) {
+  reconcilePulls(values,previous=[]) {
     const updates=new Map(values.filter(Boolean).map(pr=>[pr.number,pr])),moved=new Map();
     const group=pr=>['open','draft'].includes(pr.state)?'open':'closed';
+    for(const old of previous.filter(Boolean)) {const pr=updates.get(old.number);if(pr && group(pr)!==group(old))moved.set(pr.number,pr);}
     for(const state of VIEWS)for(const old of this.pulls[state]??[]) {
       const pr=updates.get(old.number)??old;
       if(group(pr)!==state)moved.set(pr.number,pr);
@@ -328,7 +334,7 @@ export default class Changes extends View {
           if(published.value) {
             const previous=this.relatedPull;
             this.relatedPull=published.value;
-            const moved=this.reconcilePulls([published.value]);
+            const moved=this.reconcilePulls([published.value],[previous]);
             if(moved || (previous && ['open','draft'].includes(previous.state)!==['open','draft'].includes(published.value.state)))this.webhookDirty=true;
           }
           if(accepted)this.ciRevision=(this.ciRevision??0)+1;
@@ -396,7 +402,6 @@ export default class Changes extends View {
         if(!current())throw Error('Obsolete safety read');
         retryAfter=Math.max(retryAfter,pullRetryAfter(result));
         if(result.code!==0 || result.timed_out || result.timedOut || result.signal) {
-          rateLimited=/rate.?limit|secondary.*limit|abuse|\b429\b/i.test(`${pullPayload(result.stdout)}\n${result.stderr??''}`) || /^HTTP[^\n]*\b429\b/im.test(result.stdout??'');
           throw Object.assign(new Error(),await repositoryFailure(exec,result,repo.name,{...(root?{cwd:root}:{}),on}));
         }
         return pullPayload(result.stdout);
@@ -462,6 +467,7 @@ export default class Changes extends View {
     const aggregate=this.aggregate,scope=aggregate.context.scope;
     const repositories=[...new Set([...aggregate.entries.values()].map(e=>e.link.repo))].sort();
     this.webhooks.sync(cx,{enabled:this.shown() && !aggregate.context.stale && repositories.length>0,scope:JSON.stringify(['tasks',scope,repositories]),repositories,
+      catchup:false, // Aggregate sync already owns cold/return catch-up demand.
       isCurrent:()=>this.shown() && !aggregate.context.stale && aggregate.currentContext()?.scope===scope && this.context===`tasks:${scope}`,
       onChange:(event,view)=> {
         if(!this.shown() || aggregate.currentContext()?.scope!==scope || this.context!==`tasks:${scope}`)return;
@@ -475,7 +481,7 @@ export default class Changes extends View {
     const shown = this.shown(), context=this.context, repo=this.repo;
     if (shown && this.webhookShown === false && this.repo) this.webhookDirty = true;
     this.webhookShown = shown;
-    this.webhooks.sync(cx, {enabled:shown && Boolean(this.repo),scope:JSON.stringify([this.context,this.repo?.name]),repository:this.repo?.name,
+    this.webhooks.sync(cx, {enabled:shown && Boolean(this.repo),scope:JSON.stringify([this.context,this.repo?.name]),repository:this.repo?.name,catchup:false, // Cold reads and webhookShown already own catch-up demand.
       isCurrent:()=>this.shown() && this.context===context && key()===context && this.repo===repo,
       onChange:(event,cx) => this.queueWebhook(event,cx)});
     if (!this.shown()) this.ciSweep = null;
@@ -511,8 +517,8 @@ export default class Changes extends View {
           if(r.code!==0 || r.timed_out || r.timedOut || r.signal)throw Object.assign(new Error(),await repositoryFailure(exec,r,repo.name,{cwd:root,on}));
           return r.stdout;
         };
-        const updates={};
-        for(const state of VIEWS) {
+        const updates={},previousRows=VIEWS.flatMap(state=>this.pulls[state]??[]);
+        for(const state of [this.view]) {
           if(this.pulls[state]===null)continue;
           const depth=Math.max(1,this.pullDepth[state]??0,Math.ceil(this.pulls[state].length/PR_PAGE_SIZE));
           let after=null,page,rows=[];
@@ -525,8 +531,12 @@ export default class Changes extends View {
           const seen=new Set();rows=rows.filter(pr=>!seen.has(pr.number) && seen.add(pr.number));
           updates[state]={rows,page};
         }
+        const missing=previousRows.filter(pr=>['open','draft'].includes(pr.state) && updates.open && !updates.open.rows.some(row=>row.number===pr.number));
+        const transitions=missing.length?await readTargetPulls(exec,missing.map(pr=>pr.number),repo.name,{cwd:root,on,timeout:30000,current,manual:this.manualRead}):new Map();
+        for(const value of transitions.values())if(value.error)throw Object.assign(new Error(),value.error);
         const number=this.agentPull ?? location().pullNumber;
-        let related=number ? Object.values(updates).flatMap(u=>u.rows).find(pr=>pr.number===number) : null;
+        let related=number?transitions.get(number)?.row:null;
+        related??=number ? Object.values(updates).flatMap(u=>u.rows).find(pr=>pr.number===number) : null;
         if(number && !related) {
           const value=(await readTargetPulls(exec,[number],repo.name,{cwd:root,on,timeout:30000,current,manual:this.manualRead})).get(number);
           if(value.error)throw Object.assign(new Error(),value.error);
@@ -543,7 +553,7 @@ export default class Changes extends View {
           this.relatedPull=published?.value??null;
           this.relatedKey=published?.accepted?JSON.stringify([context,repo.name,number]):null;
         }
-        this.reconcilePulls([...VIEWS.flatMap(state=>this.pulls[state]??[]),...(this.relatedPull?[this.relatedPull]:[])]);
+        this.reconcilePulls([...Object.keys(updates).flatMap(state=>this.pulls[state]??[]),...[...transitions.values()].map(value=>value.row),...(this.relatedPull?[this.relatedPull]:[])],previousRows);
         this.counts=counts ?? this.counts;this.pullError=null;this.ciRevision=(this.ciRevision??0)+1;
         this.startCISweep(cx);
       } catch(e) { if(current()) {
@@ -1220,7 +1230,7 @@ export default class Changes extends View {
             onClick: (_e, cx) => {
               if (!this.root || this.loading || this.pullLoading) return;
               this.webhooks?.retryNow();this.notices?.retryNow();
-              this.manualRead={remaining:1};this.readWake=null;
+              this.manualRead={remaining:1};this.readWake=null;this.agentLinks?.invalidate?.();
               this.refresh(cx); this.loadPulls(this.view, cx, true);
             } })))
           .child(panelPin(t,{id:'git-pin',enabled:this.headerHovered}))

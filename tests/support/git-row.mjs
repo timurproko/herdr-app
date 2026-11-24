@@ -7,16 +7,17 @@ export async function rowHarness({host={},modules={},globals={}}={}) {
   let zoom=1,agent=false,rendering=false;
   const place={cwd:'/repo',on:null,terminal:'t1'},focus=[];
   const chain=new Proxy({},{get:(_n,key)=>key==='build'?()=>({}):()=>chain});
+  const transport=host.exec?((command,args,options)=>{const call=githubInvocation(command,args,options);return host.exec(call.command,call.args,call.options);}):undefined;
   const {Main,facts,U,AggregatePulls}=await loadMod({mod:'custom-changes',globals:{window:{paint_path:element},...globals},
     host:{props:()=>null,settings:()=>({zoom}),theme:()=>t,closeOverlay(){},openOverlay(){},nextCommand(){},run:(...args)=>focus.push(args),
       layout:()=>({id:'panel',children:[{id:'panel-body',active:'changes'}]}),...host,
-      ...(host.exec?{exec:(command,args,options)=>{const call=githubInvocation(command,args,options);return host.exec(call.command,call.args,call.options);}}:{})},
+      ...(transport?{exec:transport}:{})},
     modules:{'main.js':'src/plugins/git/mod/main.js','pulls.js':'src/plugins/git/mod/pulls.js','label-colors.js':'src/plugins/git/mod/label-colors.js',
       'ui.js':'src/ui/ui.js','gpui-kit':{View:class{},div:element,svg,PathBuilder:{stroke:()=>chain}},
       'gpui-base':{h_flex:()=>element().flex(),v_flex:()=>element().flex().flex_col(),Popover:{},Input:{}},
       'pin-swap.js':'src/plugins/git/mod/pin-swap.js',
       'location.js':{location:()=>place},'plugins.js':{sidebarPanelEnabled:()=>true},'agent-links.js':{AgentLinks:class{}},
-      'aggregate.js':{AggregatePulls:class{}},'webhooks.js':{GitWebhooks:class{}},'notices.js':{GitNotices:class{}},
+      'aggregate.js':{AggregatePulls:class{}},'webhooks.js':{GitWebhooks:class{sync(){}stop(){}}},'notices.js':{GitNotices:class{}},
       'enrollment-picker.js':{EnrollmentPicker:class{}},'panel-pin.js':{panelPin:element},'sidebar-title.js':{sidebarTitle:element},
       'panel-state.js':{changePanel(){}},'settings-dialog.js':{openSettings(){}},'panel-kit.js':{headerTool:element,contextMenu:element,panelMessage:element},...modules},
     entry:'export {default as Main} from "./main.js"; export * as facts from "./pulls.js"; export {U} from "./ui.js"; export {AggregatePulls} from "./aggregate.js";'});
@@ -37,7 +38,7 @@ export async function rowHarness({host={},modules={},globals={}}={}) {
     }
     throw Error('Natural row layout must converge without a measurement/render loop');
   };
-  return {panel,facts,U,AggregatePulls,cx,render,settle,focus,place,setAgent:value=>{agent=value;},setZoom:value=>{zoom=value;}};
+  return {panel,facts,U,AggregatePulls,cx,transport,render,settle,focus,place,setAgent:value=>{agent=value;},setZoom:value=>{zoom=value;}};
 }
 
 // Deterministic flex/absolute box model for these real render trees, not GPUI

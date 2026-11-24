@@ -1,6 +1,7 @@
 // Execute the actual per-child env worker with fake process IO and gh, never credentials/network.
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
+import {legacyTargetResponses} from './support/github-read.mjs';
 import {loadMod} from '../tools/plugin-harness.mjs';
 const {repositoryRead,repositoryFailure,GH_REPOSITORY_ENV,pullListArgs,countArgs}=await loadMod({host:{},modules:{'pulls.js':'src/plugins/git/mod/pulls.js'},entry:'export * from "./pulls.js";'});
 for(const ambient of [{},{GH_REPO:''},{GH_REPO:'unrelated/work',GH_HOST:'github.com'},{GH_TOKEN:'fixture-token',GITHUB_TOKEN:'fixture-other',GH_REPO:'wrong/repo'}]){
@@ -18,7 +19,7 @@ for(const ambient of [{},{GH_REPO:''},{GH_REPO:'unrelated/work',GH_HOST:'github.
  };
  for(const repo of ['owner/crew','work/other'])for(const args of [pullListArgs('closed',repo),countArgs(repo),['api',`repos/${repo}/actions/runs`]]){
   const options={cwd:'/unrelated-worktree',on:'pc2',timeout:30000};await repositoryRead(exec,args,repo,options);
-  assert.equal(calls.at(-1).args[2],repo);assert.equal(calls.at(-1).options,options,'Machine/cwd/outer timeout unchanged');
+  assert.equal(calls.at(-1).args[2],repo);assert.deepEqual({...calls.at(-1).options},options,'Machine/cwd/outer timeout unchanged');
  }
  const refused=await repositoryFailure(exec,{code:1,stderr:'HTTP 403: Resource not accessible by integration'},'owner/crew',{on:'pc2'});
  assert.equal(refused.account,'fixture-account');assert.match(refused.message,/owner\/crew not accessible with the GitHub account fixture-account/);
@@ -39,7 +40,7 @@ for(const stderr of ['HTTP 404: Not Found','GraphQL: Could not resolve to a Pull
 }
 let release,visible=true,holdIdentity=true,identityReads=0,refusal='HTTP 403: Resource not accessible by integration';
 const binding={scope:'home',links:[{url:'https://github.com/owner/crew/pull/36',historical:true}]},jobs=[];
-const {AggregatePulls}=await loadMod({host:{exec:async(command)=>{if(command==='gh')return {code:1,stderr:refusal};identityReads++;return holdIdentity?new Promise(resolve=>release=resolve):{code:0,stdout:'fixture-account'};},run(){}},modules:{'aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js','plugins.js':{sidebarPanelEnabled:()=>true,pluginPullContext:()=>binding,pluginEvent(){}},'location.js':{location:()=>({space:'coordinator'})}},entry:'export {AggregatePulls} from "./aggregate.js";'});
+const {AggregatePulls}=await loadMod({host:{exec:legacyTargetResponses(async(command)=>{if(command==='gh')return {code:1,stderr:refusal};identityReads++;return holdIdentity?new Promise(resolve=>release=resolve):{code:0,stdout:'fixture-account'};}),run(){}},modules:{'aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js','plugins.js':{sidebarPanelEnabled:()=>true,pluginPullContext:()=>binding,pluginEvent(){}},'location.js':{location:()=>({space:'coordinator'})}},entry:'export {AggregatePulls} from "./aggregate.js";'});
 const cx={notify(){},spawn(fn){jobs.push(fn(cx));}},aggregate=new AggregatePulls({shown:()=>visible});aggregate.sync(cx);
 for(let i=0;i<20&&!release;i++)await Promise.resolve();assert.equal(typeof release,'function');
 const old=aggregate.entries.get('owner/crew#36');binding.scope='replacement';visible=false;

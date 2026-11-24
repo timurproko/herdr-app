@@ -9,6 +9,27 @@ selection: it includes installed Core/private-profile assumptions and Windows
 recycle operations. Do not run the broad command on a working installation just
 to reproduce hosted CI.
 
+## Git read-budget and refusal fixtures
+
+`tests/git-rate-quiet.test.mjs` exercises strict primary/secondary refusal handling,
+episodes, Retry-After, manual bypass and the older-success/cooldown race.
+`tests/git-target-reads.test.mjs` covers shared target subscriptions, per-alias
+failures, final caching and changed-only details. `tests/git-read-scheduling.test.mjs`
+uses fake timers for two-second repository windows and inactive/return gating.
+`tests/git-request-budget.test.mjs` measures the actual frozen before controller
+and the changed controller against synthetic transport; its baseline blobs live
+in `tests/fixtures/git-before/` so shallow/offline CI needs no history fetch.
+`tests/git-membership-budget.test.mjs` measures named-account REST batching.
+These are deterministic API-operation counts, not live wire, latency or billing
+measurements. See [the complete budget](GIT-REQUEST-BUDGET.md).
+
+Old semantic fleet fixtures adapt their per-PR data suppliers into GraphQL alias
+responses, and inject explicit contradictory evidence where final facts change.
+They do not measure request counts. Ordinary pagination now exercises real
+membership/metadata/detail query shapes for both tabs, rather than assuming
+`gh pr view` for each row. No fixture accesses live credentials, changes relay
+setup or launches an agent.
+
 ## Supported hosted subset
 
 The existing Windows/Ubuntu matrix invokes `npm run test:ci` on **Node 24**.

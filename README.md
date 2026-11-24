@@ -472,8 +472,13 @@ preference exports; customization deployment itself provisions no account/servic
 
 Enabled Git shares one authenticated native WebSocket from mounted non-footer
 chrome, with a short owner lease across duplicate mounts/windows. Relevant events
-refresh all loaded Open/Closed pages and an explicitly linked older PR; expanded
-lists retain their depth and renewed cursors. Bursts coalesce, reconnect/open catches
+refresh mutable facts in affected repositories and the selected ordinary tab,
+including an explicitly linked older PR; expanded lists retain their depth and
+renewed cursors. Hidden Closed pages are not reread; known final rows use a session
+cache. Two-second event windows and shared in-flight reads reduce bursts. Explicit
+inactive windows pause reads and catch up once on return. Rate refusals stay quiet
+with retained rows/counts or cold Loading, existing cooldown and manual retry.
+See the [measured request budget and final-cache limits](docs/GIT-REQUEST-BUDGET.md). Bursts coalesce, reconnect/open catches
 up, and stale replies cannot update another machine/repository. Hiding Git or
 selecting another repository stops hidden panel reads, not update notifications.
 Disabling Git or closing its chrome owner closes transport; another mounted owner

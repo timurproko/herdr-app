@@ -29,7 +29,23 @@ export function agentTargets() {
 }
 
 export class AgentLinks {
-  constructor(enabled = () => true) { this.enabled = enabled; this.entries = new Map(); this.pending = new Map(); }
+  constructor(enabled = () => true) { this.enabled = enabled; this.entries = new Map(); this.pending = new Map(); this.repositories=new Map(); }
+
+  invalidate() {this.repositories.clear();for(const entry of this.entries.values())entry.at=0;}
+  async repository(target) {
+    const key=JSON.stringify([target.on,target.cwd]);
+    // Local configuration is not a GitHub read. Changing origins/upstream must
+    // invalidate canonical identity without polling GitHub every footer TTL.
+    const config=await exec('git',['config','--local','--get-regexp','^(remote\\..*\\.(url|pushurl)|branch\\..*\\.(remote|merge))$'],{cwd:target.cwd,on:target.on,timeout:15000}).catch(()=>null);
+    if(!this.enabled())return null;
+    const fingerprint=config && [0,1].includes(config.code) && !config.signal && !config.timed_out ? config.stdout : null;
+    const cached=this.repositories.get(key);
+    if(fingerprint!=null && cached?.fingerprint===fingerprint)return cached.repo;
+    const result=await repositoryRead(exec,REPO_ARGS,null,{cwd:target.cwd,on:target.on,timeout:15000,current:()=>this.enabled()});
+    const repo=result.code===0?repositoryName(result.stdout):null;
+    if(repo && fingerprint!=null)this.repositories.set(key,{fingerprint,repo});
+    return repo;
+  }
 
   refresh(cx) {
     if (!this.enabled()) return;
@@ -50,8 +66,7 @@ export class AgentLinks {
         try {
           const folder = JSON.stringify([target.on,target.cwd]);
           if (!folders.has(folder)) folders.set(folder,
-            repositoryRead(exec,REPO_ARGS,null,{cwd:target.cwd,on:target.on,timeout:15000,current:()=>this.enabled()})
-              .then(r => r.code === 0 ? repositoryName(r.stdout) : null).catch(() => null));
+            this.repository(target).catch(() => null));
           const repo = await folders.get(folder);
           if (!this.enabled()) return;
           let number = target.number;

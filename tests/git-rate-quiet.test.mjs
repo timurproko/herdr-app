@@ -31,6 +31,10 @@ await reads.read('a','owner/a',{on:'peer'},()=>({code:0}));
 let resolve;const shared=new f.GitReads();const run=()=>{calls++;return new Promise(r=>resolve=r);};
 const start=calls,a=shared.read('same','owner/repo',{},run),b=shared.read('same','OWNER/REPO',{},run);
 assert.equal(calls-start,1);resolve({code:0});await Promise.all([a,b]);
+const racing=new f.GitReads({now:()=>now,log(){}});let finish;
+const older=racing.read('old','owner/a',{},()=>new Promise(resolve=>finish=resolve));
+await assert.rejects(racing.read('refused','owner/b',{},refused));finish({code:0});await older;
+await assert.rejects(racing.read('next','owner/a',{},()=>assert.fail('Older success must not bypass newer cooldown')),e=>e.quiet);
 const tick=async()=>{for(let i=0;i<60;i++)await Promise.resolve();};
 for(const initial of [true,false]) {
  const h=await rowHarness({host:{exec:async()=>({code:1,stderr:'GraphQL: API rate limit already exceeded for user ID 123'})},modules:{'panel-kit.js':{headerTool:element,contextMenu:element,panelMessage:(_t,id,o)=>element().id(id).child(o.text)}}});

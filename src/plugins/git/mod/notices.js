@@ -22,16 +22,17 @@ export class GitNotices {
     const choices=this.setup===true && this.relay ? [...new Set(repositories.map(repo=>repositoryName(repo)?.toLowerCase()).filter(name=>name&&this.members.get(name)===false))] : [];
     return {choices,key:JSON.stringify([this.scope,this.serial,this.setup,choices])};
   }
-  request(cx,mode,repository,callback){
+  request(cx,mode,repository,callback,yielded=false){
     const serial=this.serial,relay=this.relay,account=this.account;
     cx.spawn(async cx=>{
       // spawn can begin inline in render; even a synchronous exec refusal must
       // not run the fallback callback/notify in that render transaction.
-      await Promise.resolve();
+      if(!yielded)await Promise.resolve();
       if(!this.active||this.serial!==serial)return;
       let result;try{
         const args=[pluginFile('git','setup.cjs'),mode,credentialPath(appHome()),relay,repository??'',account];
-        const r=await gitReads(exec).read(args,repository,{credentialScope:account,current:()=>this.active&&this.serial===serial},()=>exec('node',args,{timeout:45000}));
+        const run=()=>exec('node',args,{timeout:45000});
+        const r=mode==='notice'?await run():await gitReads(exec).read(args,repository,{credentialScope:account,current:()=>this.active&&this.serial===serial},run);
         result=JSON.parse(r.stdout);
       }catch(error){
         if(quietRead(error)) {retryRead(this,cx,error,view=>{if(this.active&&this.serial===serial)this.request(view,mode,repository,callback);});return;}
@@ -41,6 +42,25 @@ export class GitNotices {
       callback(result);if(this.active)cx.notify();
     });
   }
+  membership(cx,name) {
+    this.memberQueue??=new Set();this.memberQueue.add(name);
+    if(this.memberJob)return;
+    const token=this.memberJob={},serial=this.serial;
+    cx.spawn(async view=>{
+      await Promise.resolve();
+      if(this.memberJob!==token || !this.active || this.serial!==serial)return;
+      const names=[...this.memberQueue];this.memberQueue.clear();this.memberJob=null;
+      const mode=names.length===1?'notice-repository':'notice-repositories',argument=names.length===1?names[0]:JSON.stringify(names);
+      this.request(view,mode,argument,result=>{
+        for(const name of names) {
+          const value=names.length===1?result:result.members?.[name]??{};
+          if(value.status==='ready')this.members.set(name,true);
+          else if(value.status==='missing'&&value.fix!==null)this.members.set(name,false);
+          else {this.members.set(name,'unknown');if(value.status==='missing'&&value.fix===null)this.setup=false;}
+        }
+      },true);
+    });
+  }
   sync(cx,{enabled,repository}){
     if(!enabled||checking()){this.stop();return null;}this.active=true;
     // Enrollment belongs only to the currently resolved repository. Never carry
@@ -48,7 +68,7 @@ export class GitNotices {
     if(this.message==='repository')this.message=null;
     const {raw,account,relay,snapshot,scope}=this.configuration();
     if(scope!==this.scope){
-      this.scope=scope;this.serial++;this.relay=relay;this.account=account;this.members=new Map();
+      this.scope=scope;this.serial++;this.memberQueue=new Set();this.memberJob=null;this.relay=relay;this.account=account;this.members=new Map();
       // Preserve the last confirmed global result while rechecking. Unknown
       // initialization is quiet; it must not briefly claim setup is missing.
       if(this.previousRelay!==raw)this.setup=undefined;
@@ -67,11 +87,7 @@ export class GitNotices {
     if(!name)return this.message=null;
     if(!this.members.has(name)){
       this.members.set(name,'pending');
-      this.request(cx,'notice-repository',name,result=>{
-        if(result.status==='ready')this.members.set(name,true);
-        else if(result.status==='missing'&&result.fix!==null)this.members.set(name,false);
-        else {this.members.set(name,'unknown');if(result.status==='missing'&&result.fix===null)this.setup=false;}
-      });
+      this.membership(cx,name);
     }
     // Pending/unknown enrollment stays quiet. Cached results for the same repo
     // still render synchronously, without another check or an empty frame.

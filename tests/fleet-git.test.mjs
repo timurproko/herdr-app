@@ -107,7 +107,7 @@ websocket.onChange({repository:'example/a'},cx);websocket.onChange({repository:'
 waiting.shift()();await tick();assert.equal(calls.length,before+2,'A burst produces only one coalesced follow-up');waiting.shift()();await drain();assert.ok(panel.ciSweep,'Task-linked running CI uses the header sweep');
 // The actual relay consumer is called by render, not an asynchronous socket.
 // Exercise the real fleet callback/sweep under an immediate-spawn render guard.
-const savedWebhooks=panel.webhooks;panel.webhooks=new GitWebhooks();defer=false;
+const savedWebhooks=panel.webhooks;panel.webhooks=new GitWebhooks({debounce:0});defer=false;
 state['custom.plugins'].git.settings={relay:'https://relay.test'};
 const relayState=state['custom.git.relay-runtime']={scope:'fleet-render',status:'connected',ready:1,repositories:{'example/a':{revision:1}}};
 const renderCx={...cx,spawn:fn=>jobs.push(fn(renderCx))};
@@ -115,11 +115,11 @@ const renderSync=()=>{rendering=true;try{panel.syncTaskWebhooks(renderCx);}final
 assert.ok(panel.aggregate.rows('open')[0].checks.pending>0);panel.ciSweep=null;
 before=calls.length;renderSync();
 assert.equal(calls.length,before,'fleet render must not start GitHub reads');assert.equal(panel.ciSweep,null,'fleet render must not arm a sweep synchronously');
-await drain();assert.equal(calls.length,before+2);assert.ok(panel.ciSweep,'deferred delivery still arms the native sweep');
+await drain();assert.equal(calls.length,before,'Consumer initialization must not duplicate already-loaded inventory');assert.equal(panel.ciSweep,null);
 // A new revision and repeated renders coalesce into one deferred refresh.
 panel.ciSweep=null;relayState.repositories['example/a'].revision++;
 before=calls.length;renderSync();renderSync();renderSync();assert.equal(calls.length,before);
-await drain();assert.equal(calls.length,before+2);assert.ok(panel.ciSweep);
+await drain();assert.equal(calls.length,before+1,'Only the affected repository refreshes');assert.ok(panel.ciSweep);
 // Disable/hide/context changes between render and delivery cannot start work.
 for(const change of ['disable','hide','context']){
  panel.ciSweep=null;relayState.repositories['example/a'].revision++;before=calls.length;renderSync();

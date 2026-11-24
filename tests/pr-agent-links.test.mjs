@@ -41,6 +41,7 @@ const host={
   run:(...args)=>actions.push(args),
   exec:async(cmd,args,options)=>{
     calls.push({cmd,args,options});
+    if(cmd==='git')return {code:0,stdout:remotes.get(JSON.stringify([options.on,options.cwd]))??''};
     assert.equal(cmd,'gh'); assert.deepEqual(Array.from(args),['repo','view','--json','nameWithOwner,owner,url']);
     if (heldRemote) {const result=heldRemote;heldRemote=null;return result;}
     return {code:0,stdout:remotes.get(JSON.stringify([options.on,options.cwd]))??''};
@@ -125,7 +126,9 @@ assert.equal(links.related(pr,'owner/repo','pc2/t6').address,'pc2/t6','Selected 
 assert.equal(links.related(pr,'owner/repo').address,'pc2/t1','Otherwise stable model order');
 // Recheck after TTL without a parallel retry burst.
 for(const entry of links.entries.values())entry.at=0;
+const beforeTTL=calls.filter(c=>c.cmd==='gh').length;
 screens.set('pc2/t1',footer(930));links.refresh(cx);links.refresh(cx);await tick();
+assert.equal(calls.filter(c=>c.cmd==='gh').length,beforeTTL,'Unchanged folder fingerprints need no GitHub reread at the footer TTL');
 assert.equal(links.related({...pr,number:930},'owner/repo').address,'pc2/t1');
 
 // Message actions revalidate the same robot mapping instead of trusting its TTL cache.

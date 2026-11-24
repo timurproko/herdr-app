@@ -3,11 +3,9 @@
 // not production latency or live hourly charges. No real credentials/network.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {execFileSync} from 'node:child_process';
 import {loadMod} from '../tools/plugin-harness.mjs';
 import {githubInvocation} from './support/github-read.mjs';
 fs.mkdirSync('.artifacts/git-budget',{recursive:true});
-for(const name of ['pulls','aggregate'])fs.writeFileSync(`.artifacts/git-budget/before-${name}.js`,execFileSync('git',['show',`386fcc4:src/plugins/git/mod/${name}.js`],{encoding:'utf8'}));
 const urls=[],raw=new Map();
 for(let number=1;number<=35;number++) {
  const repo=number<=18?'example/a':'example/b',open=number<=3||number===19||number===20,url=`https://github.com/${repo}/pull/${number}`;
@@ -17,6 +15,7 @@ for(let number=1;number<=35;number++) {
 async function measure(before) {
  const calls=[],jobs=[],timers=[],context={scope:'home',machine:null,links:urls};
  let active=true;
+ const relay={scope:'relay',ready:1,status:'connected',repositories:{'example/a':{revision:1},'example/b':{revision:1}}};
  const exec=async(command,args,options)=>{
   const call=githubInvocation(command,args,options);args=call.args;calls.push(args);
   if(args[0]==='pr')return {code:0,stdout:JSON.stringify(raw.get(`${args[args.indexOf('--repo')+1]}#${args[2]}`))};
@@ -28,7 +27,7 @@ async function measure(before) {
   }));
   return {code:0,stdout:JSON.stringify({data:{repository:values}})};
  };
- const m=await loadMod({host:{exec,run(){}},modules:{'pulls.js':before?'.artifacts/git-budget/before-pulls.js':'src/plugins/git/mod/pulls.js','aggregate.js':before?'.artifacts/git-budget/before-aggregate.js':'src/plugins/git/mod/aggregate.js','plugins.js':{sidebarPanelEnabled:()=>true,pluginPullContext:()=>context,pluginEvent(){}},'location.js':{location:()=>({})}},entry:'export {AggregatePulls} from "./aggregate.js";'});
+ const m=await loadMod({host:{exec,run(){},shared:()=>relay,setShared(){},checking:()=>false},modules:{'pulls.js':before?'tests/fixtures/git-before/pulls.js':'src/plugins/git/mod/pulls.js','aggregate.js':before?'tests/fixtures/git-before/aggregate.js':'src/plugins/git/mod/aggregate.js','webhooks.js':before?'tests/fixtures/git-before/webhooks.js':'src/plugins/git/mod/webhooks.js','plugins.js':{sidebarPanelEnabled:()=>true,pluginPullContext:()=>context,pluginEvent(){},pluginById:()=>({}),pluginSetting:()=> 'https://relay.example'},'location.js':{location:()=>({})}},globals:{URL},entry:'export {AggregatePulls} from "./aggregate.js";export {GitWebhooks} from "./webhooks.js";'});
  const cx={notify(){},spawn(fn){jobs.push(fn(cx));},timer:{after(ms,fn){timers.push({ms,fn});}}};
  const drain=async()=>{while(jobs.length)await Promise.all(jobs.splice(0));};
  const panel=new m.AggregatePulls({shown:()=>active});panel.sync(cx);await drain();
@@ -37,12 +36,20 @@ async function measure(before) {
  panel.refresh(cx);await drain();measured.refresh=calls.length;calls.length=0;
  panel.invalidate('example/a');panel.pump(cx);await drain();measured.oneRepository=calls.length;calls.length=0;
  panel.rows('open');panel.rows('closed');measured.tabs=calls.length;
+ const consumer=new m.GitWebhooks(),consume=()=>consumer.sync(cx,{enabled:active,scope:'home',repositories:['example/a','example/b'],catchup:false,onChange:event=>{panel.invalidate(event?.repository??null);panel.pump(cx);}});
+ const flush=async()=>{await drain();while(timers.length){timers.shift().fn(cx);await drain();}};
+ consume();await flush();measured.initialCatchup=calls.length;calls.length=0;
+ relay.repositories['example/a'].revision++;consume();await flush();measured.relayA=calls.length;calls.length=0;
+ for(let i=0;i<3;i++){relay.repositories['example/a'].revision++;consume();await drain();}
+ await flush();measured.burstA=calls.length;calls.length=0;
  active=false;panel.invalidate();panel.pump(cx);await drain();measured.hidden=calls.length;
+ panel.sync(cx);active=true;panel.sync(cx);await drain();measured.return=calls.length;calls.length=0;
+ for(const pr of raw.values())if(pr.state==='OPEN')pr.headRefOid+='-changed';panel.refresh(cx);await drain();measured.changed=calls.length;
  return measured;
 }
 const before=await measure(true),after=await measure(false);
-assert.deepEqual(before,{cold:35,refresh:35,oneRepository:18,tabs:0,hidden:0});
-assert.deepEqual(after,{cold:4,refresh:2,oneRepository:1,tabs:0,hidden:0});
+assert.deepEqual(before,{cold:35,refresh:35,oneRepository:18,tabs:0,initialCatchup:35,relayA:35,burstA:105,hidden:0,return:35,changed:35});
+assert.deepEqual(after,{cold:4,refresh:2,oneRepository:1,tabs:0,initialCatchup:0,relayA:1,burstA:1,hidden:0,return:2,changed:4});
 fs.writeFileSync('.artifacts/git-budget/measured.json',JSON.stringify({before,after},null,2)+'\n');
 console.log(JSON.stringify({before,after}));
 console.log('PASS measured real-controller before/after 2 repositories, 5 Open / 30 Closed request budgets; final rows cached and tabs/hidden reads stay zero');
