@@ -137,6 +137,7 @@ async function mounted({enabled=false,initialMode='success',selected='coordinato
  await drain();frame(false);
  return{state,settings,get sidebar(){return sidebar;},requests,flip,drain,tick,paint,frame,release,setMode:value=>mode=value,
   async pulse(ms,wait=true){now+=ms;for(const copy of copies)if(copy.active)for(const timer of copy.timers)if(timer.ms===250)timer.fn(copy.cx);await (wait?drain():tick());},
+  advance(ms){now+=ms;},
   resumeYields(){for(const resume of yielded.splice(0))resume();},
   async replaceSidebar(){sidebar.active=false;sidebar=await mount('spaces');await tick();},get now(){return now;}};
 }
@@ -224,6 +225,33 @@ for(const warm of [false,true]) {
  const current=plain(x.state['custom.fleet.links']);
  x.resumeYields();await x.drain();x.frame(true);
  assert.deepEqual(plain(x.state['custom.fleet.links']),current,'Even a resumed obsolete continuation cannot replace recovered facts');
+}
+// The expired continuation can resume BEFORE the lifecycle sees its deadline.
+// Spaces must witness the prior success so its ordinary ten-second TTL is
+// genuinely eligible to hide a lost recovery marker in this ordering.
+for(const warm of [true,false]) {
+ const x=await mounted({selected:'fm-crew-home',workers:7});
+ if(warm) {
+  x.flip('fleet');await x.drain();x.frame(true);
+  x.sidebar.api.r.pluginEvent('workspace.context.refresh',{cx:x.sidebar.cx,force:true});
+  await x.drain();x.frame(true);
+  assert.ok(x.sidebar.api.r.pluginPullContext('coordinator'),'Spaces witnessed the successful warm read');
+ }
+ x.setMode('interrupt');
+ if(warm)x.sidebar.api.r.pluginEvent('workspace.context.refresh',{cx:x.sidebar.cx,force:true});else x.flip('fleet');
+ await x.tick();const before=x.requests.length;
+ const leases=plain(x.state['custom.fleet.reads']),prior=plain(x.state['custom.fleet.links']);
+ x.advance(2100); // No lifecycle callback: the decoder wins the event ordering.
+ x.setMode('success');x.resumeYields();await x.drain();x.frame(warm);
+ assert.deepEqual(plain(x.state['custom.fleet.links']),prior,'Expired processing cannot publish or renew freshness');
+ await x.pulse(150);x.frame(true); // First lifecycle observation is at 2250 ms.
+ assert.equal(x.requests.length,before+2,'Resume-before-tick must restart local and remote verification at the next lifecycle, not the old ten-second TTL');
+ for(const key of ['local','pc2']) {
+  assert.equal(x.state['custom.fleet.diagnostics'].entries[key].lastDiscard.reason,'expired-read');
+  assert.notEqual(x.state['custom.fleet.links'].entries[key].token,leases[key].token);
+  assert.equal(x.state['custom.fleet.links'].entries[key].at,x.now);
+  assert.equal(x.state['custom.fleet.reads']?.[key],undefined,'The replacement completes and retires its own lease');
+ }
 }
 {
  const x=await mounted({selected:'fm-crew-home',workers:7});x.setMode('large');

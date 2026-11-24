@@ -546,7 +546,10 @@ workers, 0/1/15-second off intervals, old success/failure replies in both orders
 local/ready-remote groups, supported one-MiB status replies and a lost decoder turn.
 A two-second raw-response processing deadline recovers both cold and warm readers
 without finally or the old successful-attempt TTL, and resumed obsolete work cannot
-overwrite recovered state. `src/plugins/crew/base64.test.mjs` checks bounded string
+overwrite recovered state. Resume-before-replacement is covered separately: after
+Spaces witnesses warm verification, a withheld decoder resumes at 2100 ms without
+a lifecycle tick; the next tick at 2250 ms starts both local and remote reads rather
+than waiting for the old ten-second TTL. Cold verification uses the same ordering. `src/plugins/crew/base64.test.mjs` checks bounded string
 calls, real-turn yield boundaries, cancellation, split UTF-8 and 4096-task validation.
 `fleet-command.test.mjs` executes the actual Windows PowerShell projection against a
 disposable CLI, including advertised view/legacy branches, exact stderr/exit codes,

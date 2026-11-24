@@ -247,7 +247,11 @@ export function refreshFleets(cx, readStatus, force = false) {
         signature(machine,model(),reference)!==sig ? 'obsolete-identity' :
         shared(FLEET_KEY) && shared(FLEET_KEY).version!==1 ? 'replaced-read' : null;
       const current=()=>!obsolete();
-      const discard=reason=>recordFleetFailure(machine,reason,generation,{discard:true,subject});
+      let expiredProcessing=false;
+      const discard=reason=>{
+        if(reason==='expired-read' && shared(READS)?.[key]?.phase==='processing')expiredProcessing=true;
+        recordFleetFailure(machine,reason,generation,{discard:true,subject});
+      };
       try {
         await Promise.resolve();if(!current()) {discard(obsolete());return;}
         const progress=phase=>{
@@ -287,7 +291,10 @@ export function refreshFleets(cx, readStatus, force = false) {
             ...latest?.entries?.[key],machine,attemptAt:Date.now(),attemptToken:token,attemptSignature:signature(machine,model(),savedDisplays().find(d=>d.machine===machine)??latest?.entries?.[key]?.identity??reference)}}});
         } else discard(obsolete());
       } finally {
-        if(shared(READS)?.[key]?.token===token) {const reads={...shared(READS)};delete reads[key];setShared(READS,reads);}
+        // If a late decoder resumes before the lifecycle, keep its expired
+        // processing lease as the recovery marker. Deleting it would let a
+        // previous witnessed success's ten-second TTL suppress the next read.
+        if(shared(READS)?.[key]?.token===token && !expiredProcessing) {const reads={...shared(READS)};delete reads[key];setShared(READS,reads);}
         view.notify();
       }
     });

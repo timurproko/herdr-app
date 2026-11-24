@@ -101,8 +101,12 @@ Raw receipt is published **before** JSON parsing or decoding. The runtime reader
 then has a two-second processing deadline. If its continuation disappears, the
 existing 250 ms Spaces lifecycle replaces that reader on expiry, without waiting
 for finally, the ten-second attempt TTL or the transport lease. The finished
-command cannot overlap another command. Capability fallback returns to transport
-phase within the original finite transport deadline. Older unphased leases remain
+command cannot overlap another command. If a late decoder resumes after that
+deadline but before the lifecycle tick, its expired processing lease is retained
+as a recovery marker rather than deleted by finally; otherwise a warm reader's
+previous ten-second attempt TTL could suppress recovery. Successful completions
+and ordinary failures still retire their leases. Capability fallback returns to
+transport phase within the original finite transport deadline. Older unphased leases remain
 finite at their original deadline; they cannot be assumed to have received data.
 No generation, token, exact identity, freshness or action-authority guard is relaxed.
 
@@ -112,8 +116,10 @@ No generation, token, exact identity, freshness or action-authority guard is rel
 workers, local/ready-remote groups, repeated 0/1/15-second off intervals, delayed
 old success/failure replies in both orders, one-MiB replies, and a deliberately
 lost decoder turn. Both cold and warm abandoned processing recover at two seconds,
-including within a previous successful attempt's ten-second TTL. Resuming the old
-continuation cannot overwrite the recovered binding, lease or freshness.
+including within a previous successful attempt's ten-second TTL. Both continuation
+orders are covered: resumption after replacement cannot overwrite recovered facts;
+resumption at 2100 ms before any lifecycle callback still starts fresh local/remote
+verification at the first tick at 2250 ms, without renewing old freshness.
 
 `src/plugins/crew/base64.test.mjs` covers bulk-call bounds, UTF-8 across byte/string
 piece boundaries, cancellation between pieces, one MiB and 4096-task validation.
