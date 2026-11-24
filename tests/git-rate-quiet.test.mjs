@@ -19,6 +19,10 @@ for(const result of [
  {code:-1073741502,stderr:'API rate limit exceeded'},
  {code:0,stdout:'malformed rate limit response'},
  {code:0,stdout:'{"message":"rate limit exceeded"}'},
+ {code:1,stderr:'GraphQL: Cannot query field rateLimit on type Query'},
+ {code:'ENOTFOUND',message:'DNS lookup failed; check API rate limits'},
+ {code:'EAGAIN',message:'Failed to spawn gh; check API rate limits'},
+ new SyntaxError('Invalid JSON near API rate limit text'),
  {code:1,stdout:'HTTP/2.0 401 Unauthorized\r\nX-RateLimit-Remaining: 3300\r\n\r\n{"message":"Bad credentials"}' },
 ])assert.equal(f.rateRefusal(result),false,JSON.stringify(result));
 let now=0,calls=0;const logs=[],reads=new f.GitReads({now:()=>now,log:line=>logs.push(line)});
@@ -42,6 +46,18 @@ const credits=new f.GitReads({now:()=>now,log(){}}),ticket={remaining:1};
 await credits.read('healthy','owner/repo',{manual:ticket},()=>({code:0}));assert.equal(ticket.remaining,0);
 await assert.rejects(credits.read('rate','owner/repo',{},refused));
 await assert.rejects(credits.read('automatic','owner/repo',{manual:ticket},()=>assert.fail('A healthy manual click cannot become a later automatic bypass')),e=>e.quiet);
+const rejected=new f.GitReads({now:()=>now,log(){}});
+await assert.rejects(rejected.read('throw','owner/repo',{},async()=>{throw Error('GraphQL: API rate limit exceeded');}),e=>e.quiet&&e.kind==='rate');
+const malformed=new f.GitReads({log(){}});
+await assert.rejects(malformed.read('syntax','owner/repo',{},async()=>{throw new SyntaxError('Invalid JSON near API rate limit');}),e=>e.name==='SyntaxError'&&!e.quiet);
+const serial=new f.GitReads();let finishSerial,serialCalls=0;
+const first=serial.read('first','owner/repo',{},()=>{serialCalls++;return new Promise(resolve=>finishSerial=resolve);});
+const second=serial.read('different-shape','owner/repo',{},()=>{serialCalls++;return {code:0};});
+assert.equal(serialCalls,1,'Different shapes queue behind the repository in-flight read');finishSerial({code:0});await Promise.all([first,second]);assert.equal(serialCalls,2);assert.equal(serial.tails.size,0);
+let eligible=true;
+const third=serial.read('third','owner/repo',{},()=>new Promise(resolve=>finishSerial=resolve));
+const cancelled=serial.read('cancelled','owner/repo',{current:()=>eligible},()=>assert.fail('Queued obsolete work cannot dispatch'));
+eligible=false;finishSerial({code:0});await third;await assert.rejects(cancelled,e=>e.quiet);assert.equal(serial.tails.size,0);
 const tick=async()=>{for(let i=0;i<60;i++)await Promise.resolve();};
 for(const initial of [true,false]) {
  const h=await rowHarness({host:{exec:async()=>({code:1,stderr:'GraphQL: API rate limit already exceeded for user ID 123'})},modules:{'panel-kit.js':{headerTool:element,contextMenu:element,panelMessage:(_t,id,o)=>element().id(id).child(o.text)}}});

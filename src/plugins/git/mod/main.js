@@ -18,7 +18,7 @@ import { headerTool, contextMenu, panelMessage } from './panel-kit.js';
 import { changePanel } from './panel-state.js';
 import { sidebarPanelEnabled } from './plugins.js';
 import { sidebarTitle } from './sidebar-title.js';
-import { REPO_ARGS, countArgs, parseCounts, agentPullNumber, pullError, PR_PAGE_SIZE, repositoryRead, repositoryFailure, quietRead, retryRead, readPullPage, readTargetPulls, rememberPull, pendingChecksArgs, parsePendingChecks, refreshPullFacts, pullStateArgs, parsePullStates, pullPayload, pullRetryAfter, ChecksFallback, PullFactsOrder, CHECKS_BATCH_SIZE, STATE_BATCH_SIZE } from './pulls.js';
+import { REPO_ARGS, countArgs, parseCounts, agentPullNumber, pullError, PR_PAGE_SIZE, repositoryRead, repositoryFailure, quietRead, retryRead, readPullPage, readTargetPulls, rememberPull, retimePull, pendingChecksArgs, parsePendingChecks, refreshPullFacts, pullStateArgs, parsePullStates, pullPayload, pullRetryAfter, ChecksFallback, PullFactsOrder, CHECKS_BATCH_SIZE, STATE_BATCH_SIZE } from './pulls.js';
 
 const VIEWS = ['open', 'closed'];
 const VIEW_KEY = 'custom.git.view';
@@ -152,6 +152,7 @@ export default class Changes extends View {
 
   syncAggregate(cx) {
     this.aggregate ??= new AggregatePulls({shown:()=>this.shown(),onUpdate:view=>this.startCISweep(view)});
+    if(this.readPaused && this.shown() && this.aggregate.context) {this.aggregate.invalidate();this.readPaused=false;}
     if(!this.aggregate.sync(cx)) return false;
     const scope=`tasks:${this.aggregate.context.scope}`;
     if(this.context!==scope) {
@@ -197,11 +198,13 @@ export default class Changes extends View {
   // Only a shown Git panel talks to GitHub; a hidden stack child stays quiet.
   shown() {
     if (!sidebarPanelEnabled('changes')) return false;
-    try {if(window()?.active===false)return false;}catch {} // Older hosts may not expose activity.
+    try {if(window()?.active===false) {this.readPaused=true;return false;}}catch {} // Older hosts may not expose activity.
     const on=this.context?.startsWith('tasks:')?this.aggregate?.context?.machine:location().on;
-    if(on)try {if(!host.machines().some(machine=>machine.name===on && machine.layout==='ready'))return false;}catch {}
+    if(on)try {if(!host.machines().some(machine=>machine.name===on && machine.layout==='ready')) {this.readPaused=true;return false;}}catch {}
     const root = layout(), panel = find(root, 'panel'), body = find(root, 'panel-body');
-    return Boolean(panel && !panel.hidden && (!body || body.active === 'changes'));
+    const shown=Boolean(panel && !panel.hidden && (!body || body.active === 'changes'));
+    if(!shown)this.readPaused=true;
+    return shown;
   }
 
   pullsDue(state) {
@@ -213,6 +216,7 @@ export default class Changes extends View {
     const after = append ? this.pages[state].cursor : null;
     if (append && (!this.pages[state].hasMore || !after || state !== this.view || !this.shown())) return;
     const root = this.root, on = this.on, context = this.context;
+    if(!append) {this.readPaused=false;this.webhookShown=true;} // This new snapshot satisfies return demand.
     const request = this.pullRequest = {},read=this.factOrder.begin();
     let repo=this.repo,repository=repo?.name;
     const current = () => sidebarPanelEnabled('changes') && this.pullRequest === request && this.root === root && this.context === context && key() === context && this.repo===repo && this.repo?.name===repository;
@@ -479,7 +483,8 @@ export default class Changes extends View {
   syncWebhooks(cx) {
     this.webhooks ??= new GitWebhooks();
     const shown = this.shown(), context=this.context, repo=this.repo;
-    if (shown && this.webhookShown === false && this.repo) this.webhookDirty = true;
+    if (shown && (this.webhookShown === false || this.readPaused) && this.repo) this.webhookDirty = true;
+    if(shown)this.readPaused=false;
     this.webhookShown = shown;
     this.webhooks.sync(cx, {enabled:shown && Boolean(this.repo),scope:JSON.stringify([this.context,this.repo?.name]),repository:this.repo?.name,catchup:false, // Cold reads and webhookShown already own catch-up demand.
       isCurrent:()=>this.shown() && this.context===context && key()===context && this.repo===repo,
@@ -1198,6 +1203,11 @@ export default class Changes extends View {
     if (this.renderPart('coordinator-context',()=>this.syncAggregate(cx))) return this.renderPart('coordinator',()=>this.renderAggregate(cx,theme()));
     this.enrollmentPicker?.stop();
     if (key() !== this.context) this.refresh(cx, false);
+    for(const state of VIEWS)if(this.pulls[state]) {
+      const old=this.pulls[state],rows=old.map(pr=>retimePull(pr));
+      if(rows.some((pr,index)=>pr!==old[index]))this.pulls[state]=rows;
+    }
+    if(this.relatedPull)this.relatedPull=retimePull(this.relatedPull);
     this.syncAgent(cx);
     if (this.shown() && this.pullsDue(this.view)) this.loadPulls(this.view, cx, false, false);
     this.loadRelatedPull(cx);

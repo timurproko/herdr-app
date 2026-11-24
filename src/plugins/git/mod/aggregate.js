@@ -3,7 +3,7 @@
 import { exec, run } from './host.js';
 import { pluginPullContext, pluginEvent, sidebarPanelEnabled } from './plugins.js';
 import { location } from './location.js';
-import { pullFailure, repositoryFailure, readTargetPulls, finalPull, quietRead, retryRead, PullFactsOrder } from './pulls.js';
+import { pullFailure, repositoryFailure, readTargetPulls, finalPull, retimePull, quietRead, retryRead, PullFactsOrder } from './pulls.js';
 export function taskPullLink(url) {
   const match=/^https:\/\/github\.com\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\/pull\/([1-9]\d*)\/?$/.exec(url??'');
   const number=Number(match?.[2]);
@@ -54,6 +54,7 @@ export class AggregatePulls {
     for(const [key,link]of links) {
       const old=this.entries.get(key);if(old)old.link=link;else this.entries.set(key,{link,dirty:true,pr:null,error:null});
       const entry=this.entries.get(key),missingAt=missingPulls.get(key);
+      if(entry.pr)entry.pr=retimePull(entry.pr);
       if(missingAt!==undefined) {
         entry.pr=null;entry.error=null;entry.missing=true;
         // Use the existing shown-panel lifecycle, never a new retry timer.

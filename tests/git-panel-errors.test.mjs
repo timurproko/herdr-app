@@ -85,9 +85,10 @@ const cacheSize=panel.pullTextWidths.size;probe.attrs.on_size_change[0]({width:9
 assert.equal(panel.pullTextWidths.size,cacheSize,'Late prior-zoom probe cannot poison current geometry');
 zoom=1;cached=render();assert.equal(find(cached,probe.attrs.id[0]),undefined,'Returning to a measured zoom reuses its widths');
 const changedPr=panel.aggregate.entries.get('timurproko/crew#1').pr;
-const originalWhen=changedPr.when;changedPr.when='merged 1 hour earlier';cached=render();
-const changedTime=nodes(cached).find(n=>String(n.attrs.id?.[0]).includes('-probe-time-full')&&words(n).join('')===changedPr.when);
-assert.ok(changedTime);assert.notEqual(changedTime.attrs.id[0],timeProbes[0].attrs.id[0],'New strings need new native IDs even if their width is unchanged');changedPr.when=originalWhen;
+const originalPr={...changedPr};changedPr.mergedAt=new Date(now-7200000).toISOString();cached=render();
+const changedWhen=panel.aggregate.entries.get('timurproko/crew#1').pr.when;
+const changedTime=nodes(cached).find(n=>String(n.attrs.id?.[0]).includes('-probe-time-full')&&words(n).join('')===changedWhen);
+assert.ok(changedTime);assert.notEqual(changedTime.attrs.id[0],timeProbes[0].attrs.id[0],'New strings need new native IDs even if their width is unchanged');panel.aggregate.entries.get('timurproko/crew#1').pr=originalPr;
 const time=timeProbes[0];time.attrs.on_size_change[0]({width:120,height:18},cx);
 find(render(),'task-pulls-more').attrs.on_click[0]({},cx);cached=render();
 assert.ok(!nodes(cached).some(n=>String(n.attrs.id?.[0]).includes('-probe-time-full')&&words(n).join('')===words(time).join('')),'Later pages reuse distinct-string measurements');

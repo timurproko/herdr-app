@@ -22,4 +22,16 @@ assert.equal(ordinary.key,undefined);assert.equal(ordinary.repo,undefined,'Coord
 await f.readTargetPulls(exec,[3],'owner/repo',{on:'peer'});assert.equal(calls.length,4,'Another machine cannot inherit cached facts');
 assert.ok(calls.every(c=>c.numbers.length<=20));
 assert.throws(()=>f.targetPullArgs(Array.from({length:21},(_,i)=>i+1),'owner/repo'),/Invalid targeted batch/);
+let unblock;const selectionCalls=[];
+const metadata=n=>({number:n,url:`https://github.com/owner/repo/pull/${n}`,state:'OPEN',isDraft:false,headRefOid:'new',commits:{nodes:[{commit:{statusCheckRollup:null}}]}});
+const selectionExec=async(command,args,options)=>{
+ const call=githubInvocation(command,args,options),query=call.args.find(a=>a.startsWith('query='));selectionCalls.push(query);
+ if(query.includes('pullRequests(first:')) {await new Promise(resolve=>unblock=resolve);return {code:0,stdout:JSON.stringify({data:{repository:{pullRequests:{nodes:[metadata(3)],pageInfo:{hasNextPage:false,endCursor:null}}}}})};}
+ return {code:0,stdout:JSON.stringify({data:{repository:{pr908:metadata(908)}}})};
+};
+f.rememberPull(selectionExec,'owner/repo',f.pullRow({number:908,state:'OPEN',headRefOid:'old',statusCheckRollup:[]}));
+const page=f.readPullPage(selectionExec,'open','owner/repo'),older=f.readTargetPulls(selectionExec,[908],'owner/repo');unblock();await page;
+assert.equal((await older).get(908).row.headRefOid,'new');assert.equal(selectionCalls.length,2,'An in-flight first page cannot satisfy an older Open PR it did not contain');
+const date=Date.UTC(2026,0,1),final=f.pullRow({number:9,state:'MERGED',mergedAt:new Date(date).toISOString(),labels:[{name:'kept',color:'abcdef'}],statusCheckRollup:[]},'owner',date+1000);
+const aged=f.retimePull(final,date+3600000);assert.equal(aged.when,'merged 1 hour ago');assert.equal(aged.checks,final.checks);assert.equal(aged.labels,final.labels);assert.equal(f.retimePull(aged,date+3600000),aged,'Local aging does not reread facts or churn an unchanged row');
 console.log('PASS overlapping ordinary/coordinator target facts, stale-subscriber isolation, per-alias access/absence, changed-only details, final cache and machine isolation');

@@ -27,7 +27,7 @@ export function retryRead(owner, cx, error, run) {
   return true;
 }
 export class GitReads {
-  constructor({now=()=>Date.now(),log=line=>console.log(line)}={}) {this.now=now;this.log=log;this.routes=new Map();this.pending=new Map();this.facts=new Map();this.targets=new Map();this.lists=new Map();this.generation=0;this.versions=new Map();}
+  constructor({now=()=>Date.now(),log=line=>console.log(line)}={}) {this.now=now;this.log=log;this.routes=new Map();this.pending=new Map();this.tails=new Map();this.facts=new Map();this.targets=new Map();this.lists=new Map();this.generation=0;this.versions=new Map();}
   route(options={}) {return JSON.stringify([options.on??null,options.credentialScope??null]);}
   state(options) {const key=options?.on??'';if(!this.routes.has(key))this.routes.set(key,{until:0,episode:false});return this.routes.get(key);}
   refusal(result,repository,options={}) {
@@ -42,29 +42,34 @@ export class GitReads {
     if(bypass)options.manual.remaining--; // An earlier healthy click is not a future bypass credit.
     if(this.pending.has(id))return this.pending.get(id);
     if(state.until>this.now() && !bypass)throw Object.assign(new Error('GitHub read deferred'),{kind:'rate',quiet:true,retryAt:state.until});
-    const admitted=state.version??0;
+    const scope=repository?JSON.stringify([this.route(options),repository.toLowerCase()]):null,previous=scope?this.tails.get(scope):null;
     const job=(async()=>{
+      if(previous)await previous.catch(()=>{});
+      if(state.until>this.now() && !bypass)throw Object.assign(new Error('GitHub read deferred'),{kind:'rate',quiet:true,retryAt:state.until});
       if(options.current && !options.current())throw Object.assign(new Error('Obsolete GitHub read'),{quiet:true,retryAt:this.now()+10000});
-      const result=await run();
+      const admitted=state.version??0;let result;
+      try{result=await run();}catch(error){if(rateRefusal(error))throw this.refusal(error,repository,options);throw error;}
       if(rateRefusal(result))throw this.refusal(result,repository,options);
       if((state.version??0)===admitted && result?.code===0 && !result.signal && !result.timed_out && !result.timedOut) {state.until=0;state.episode=false;}
       return result;
     })();
-    this.pending.set(id,job);
-    try{return await job;}finally{if(this.pending.get(id)===job)this.pending.delete(id);}
+    this.pending.set(id,job);if(scope)this.tails.set(scope,job);
+    try{return await job;}finally{if(this.pending.get(id)===job)this.pending.delete(id);if(scope && this.tails.get(scope)===job)this.tails.delete(scope);}
   }
 }
 export function gitReads(exec) {if(!readers.has(exec))readers.set(exec,new GitReads());return readers.get(exec);}
 export function rateRefusal(result) {
-  if(result?.kind==='rate' || result?.rateLimited===true)return true;
+  if(result?.name==='SyntaxError')return false;
   const code=Number(result?.code);
-  if(result?.signal || result?.timed_out || result?.timedOut || code<0 || code>=0x80000000)return false;
+  if(result?.signal || result?.timed_out || result?.timedOut || code<0 || code>=0x80000000
+      || /^(?:ENOTFOUND|EAI_AGAIN|ECONN\w*|ETIMEDOUT|EHOSTUNREACH|ENETUNREACH|EPIPE|ENOENT|EAGAIN|ENOMEM|EPERM|EACCES)$/i.test(String(result?.code??'')))return false;
+  if(result?.kind==='rate' || result?.rateLimited===true)return true;
   let payload;try{payload=JSON.parse(pullPayload(result?.stdout));}catch {}
   if(payload?.rateLimited===true)return true;
   const responseMessage=(Number(result?.code)!==0 || /^HTTP[^\n]*\b[45]\d\d\b/im.test(result?.stdout??''))?payload?.message:null;
   const text=[result?.stderr,result?.message,responseMessage,...(payload?.errors??[]).map(e=>`${e.type??''} ${e.message??''}`)].filter(Boolean).join('\n');
-  if(/auth login|not logged in|bad credentials|HTTP 401|permission denied|resource not accessible|timed? out|timeout|could not resolve host|network is unreachable/i.test(text))return false;
-  return /(?:API |secondary |primary )?rate[ -]?limit(?:ed| exceeded| already exceeded| has been exceeded|ing)?|RATE_LIMITED|HTTP 429|abuse detection mechanism|secondary.*limit/i.test(text)
+  if(/auth login|not logged in|bad credentials|HTTP 401|permission denied|resource not accessible|timed? out|timeout|could not resolve host|network is unreachable|cannot start|failed to (?:start|spawn|execute)|\bEAGAIN\b|\bENOMEM\b|process init/i.test(text))return false;
+  return /\b(?:API|GitHub|secondary|primary) rate[ -]limit\b|\brate[ -]limit (?:already |has been |is )?(?:exceeded|reached|exhausted)\b|\bRATE_LIMITED\b|\bHTTP 429\b|abuse detection mechanism/i.test(text)
     || /^HTTP[^\n]*\b429\b/im.test(result?.stdout??'');
 }
 export function repositoryRead(exec, args, repository, options = {}) {
@@ -325,10 +330,11 @@ export function targetPullArgs(numbers,repository) {
 export async function readTargetPulls(exec,numbers,repository,options={}) {
   const session=gitReads(exec),result=new Map(),waiting=[],fresh=[];
   const list=options.skipList?null:session.lists.get(JSON.stringify([session.route(options),repository.toLowerCase()]));
-  if(list) {list.consumers?.push(options.current??(()=>true));await list;}
+  let covered=new Set();
+  if(list) {list.consumers?.push(options.current??(()=>true));const page=await list;covered=new Set(page.rows.map(pr=>pr.number));}
   for(const number of numbers) {
     const key=factKey(session,repository,number,options),known=session.facts.get(key);
-    if(known && (finalPull(known)||list))result.set(number,{row:known});
+    if(known && (finalPull(known)||covered.has(number)))result.set(number,{row:known});
     else if(session.targets.has(key)) {const pending=session.targets.get(key);pending.consumers?.push(options.current??(()=>true));waiting.push([number,pending]);}
     else fresh.push(number);
   }
@@ -468,6 +474,15 @@ export function pullRow(pr, owner, now = Date.now()) {
   };
 }
 
+// Relative wording is presentation, not a cached GitHub fact. Final rows age
+// locally without rereading their body, labels, state or checks.
+export function retimePull(pr,now=Date.now()) {
+  if(!pr || !(pr.createdAt || pr.closedAt || pr.mergedAt))return pr;
+  const when=pr.state==='merged'?`merged ${ago(pr.mergedAt??pr.closedAt,now)}`:pr.state==='closed'?`closed ${ago(pr.closedAt,now)}`:`opened ${ago(pr.createdAt,now)}`;
+  if(when===pr.when)return pr;
+  return {...pr,when,byline:`${pr.login?`${pr.login} `:''}${when}`,meta:`#${pr.number} · ${pr.login?`${pr.login} `:''}${when}`,
+    compactWhen:when.replace(/^(?:opened|closed|merged) /,'').replace(/ (second|minute|hour|day|month|year)s? ago$/,(_m,unit)=>`${({second:'s',minute:'m',hour:'h',day:'d',month:'mo',year:'y'})[unit]} ago`)};
+}
 // Apply the deliberately narrow safety read without erasing labels/tasks/review.
 export function refreshPullFacts(pr, value) {
   const {state,meta,byline,when,compactWhen,mergeConflict,headRefName,headRefOid,createdAt,mergedAt,closedAt}=pullRow({...value,createdAt:pr.createdAt,headRefName:pr.headRefName,mergeable:pr.mergeConflict?'CONFLICTING':null,author:{login:pr.login}});

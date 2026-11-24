@@ -23,4 +23,9 @@ for(const visible of [false,true]) {
 // is selected. The actual before/after controller fixture counts the full jobs.
 const h=await rowHarness();h.panel.view='open';h.panel.pulls.open=[];h.panel.pulls.closed=[];
 assert.equal(h.panel.shown(),true,'Unknown activity remains compatible');
+let windowActive=false,returnReads=0;
+const resumed=await rowHarness({host:{window:()=>({active:windowActive}),exec:async()=>{returnReads++;return {code:0,stdout:JSON.stringify({data:{repository:{open:{totalCount:0},closed:{totalCount:0},pullRequests:{nodes:[],pageInfo:{hasNextPage:false,endCursor:null}}}}})};}}});
+resumed.panel.aggregate=null;resumed.panel.pulls.open=[];assert.equal(resumed.panel.shown(),false); // Timer gate, no inactive paint.
+windowActive=true;resumed.panel.syncWebhooks(resumed.cx);for(let i=0;i<60;i++)await Promise.resolve();assert.equal(returnReads,1);
+resumed.panel.syncWebhooks(resumed.cx);for(let i=0;i<30;i++)await Promise.resolve();assert.equal(returnReads,1,'Return catches up once even when a minimized window never painted its inactive state');
 console.log('PASS two-second repository burst windows, cold-load deduplication, activity cancellation/one catch-up and explicit inactive list gates');

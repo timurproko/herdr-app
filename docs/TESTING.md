@@ -20,6 +20,9 @@ uses fake timers for two-second repository windows and inactive/return gating.
 and the changed controller against synthetic transport; its baseline blobs live
 in `tests/fixtures/git-before/` so shallow/offline CI needs no history fetch.
 `tests/git-membership-budget.test.mjs` measures named-account REST batching.
+`tests/git-worker-rate-headers.test.mjs` runs the actual worker transport with a
+fake child to check numeric/date Retry-After, paginated header stripping and strict
+permission/process/timeout exclusions without reading real credentials.
 These are deterministic API-operation counts, not live wire, latency or billing
 measurements. See [the complete budget](GIT-REQUEST-BUDGET.md).
 
