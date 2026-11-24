@@ -528,6 +528,23 @@ until their individual replacements arrive. Its existing hide/show, stale/Verify
 cold waiting and exact worker-action refusal cases remain. No aggregate retention
 rewrite was needed: those same-home guards already preserve loaded facts.
 
+`tests/git-right-edge.test.mjs` additionally compares complete ordinary and
+coordinator Git render trees (including the panel border, pinned/list padding and
+motion overlays) against the actual Spaces chrome, sidebar scroll and Crew-tagged
+row renderers. Across 280/320/360/390/480px and 75/100/125/130/150/200% zoom,
+1,440 row comparisons require robot slots, header chevron slots and actual label
+pills to share Spaces' 11px trailing inset. Negative Spaces pill margins have an
+independent geometry oracle. Robot/chevron glyph centres align despite their
+16px/14px SVG sizes; 24px hit targets, inert missing-agent reservations, fixed
+line positions and 74px rows remain. Expanded/folded header slots stay aligned.
+Mutations restoring old row/header insets or adding an unaccounted border fail.
+Existing row/fold/menu fixtures retain callbacks and tooltip coverage. Another
+1,500 comparisons exercise the actual replacement-page renderer with 25 PRs,
+Previous/Show more, continuation headers and warm distinct-string measurements
+in both tabs across the same width/zoom matrix. Paging and render-budget bounds
+remain owned by the unchanged 100-row panel regression. These are synthetic
+resolved-box checks, not live GPUI pixel or deployment evidence.
+
 ## Connected fleet fixtures
 
 `tests/fleet-diagnostics.test.mjs` loads the packaged Crew provider/transport and

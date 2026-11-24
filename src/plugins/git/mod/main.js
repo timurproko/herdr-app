@@ -903,7 +903,8 @@ export default class Changes extends View {
     ], ['review', 'labels']);
     meta.line.tooltip([pr.tasks?.label, pr.checks?.label, labelNames,
       pr.review ? (pr.review === 'approved' ? 'Approved' : 'Changes requested') : null].filter(Boolean).join('\n'));
-    return h_flex().id(`${prefix}pr-${rowId}`).relative().w_full().h(74).min_h(74).max_h(74).flex_none().px(8).py(6).gap(U.gap).items_start().rounded(U.radius)
+    // Panel border (1) + list inset (4) + row padding (6) matches Spaces' 11px Crew edge.
+    return h_flex().id(`${prefix}pr-${rowId}`).relative().w_full().h(74).min_h(74).max_h(74).flex_none().pl(8).pr(6).py(6).gap(U.gap).items_start().rounded(U.radius)
       .when(!ghost, el => el.cursor_pointer().role('button').accessibility_label(`Open pull request #${pr.number} on GitHub`)
         .hover(s => s.bg(t.hover)).on_click(() => this.openPull(pr))
         .on_mouse_down('right', (_event, cx) => { cx.stop_propagation(); this.showPullMenu(pr, cx); })
@@ -1033,7 +1034,7 @@ export default class Changes extends View {
   repositorySection(t, {repo, rows, error}, scope) {
     const aggregate = this.aggregate, folded = this.foldedRepositories.has(repo);
     return v_flex().id(`task-repo-${repo}`).w_full().flex_none().gap(U.rowGap)
-      .child(sidebarSectionHeader(t, {id:`task-repo-header-${repo}`, label:repo, open:!folded, children:[
+      .child(sidebarSectionHeader(t, {id:`task-repo-header-${repo}`, label:repo, open:!folded, trailingSize:U.insetControl, trailingInset:6, children:[
         this.repositoryNameLabel(repo,scope),
       ]}).cursor_pointer().hover(s => s.bg(t.selected))
         .on_click((_e, cx) => {
