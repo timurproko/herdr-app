@@ -456,13 +456,24 @@ lists retain their depth and renewed cursors. Bursts coalesce, reconnect/open ca
 up, and stale replies cannot update another machine/repository. Hiding Git or
 selecting another repository stops hidden panel reads, not update notifications.
 Disabling Git or closing its chrome owner closes transport; another mounted owner
-can take over. Failed reads retain the last good status. Enrolled repositories use **events only**, not periodic CI polling. Without live
-setup or enrollment, shown pending/unknown checks have a **45-second fallback**:
-one coalesced repository job reads just those PRs in bounded 20-PR chunks,
-retaining displayed values until the complete selection succeeds.
-It stops on settlement, hide/disable, stale context or remote-machine disconnect;
-failures back off 90/180/360/720 seconds, with at least 15 minutes for rate limits.
-Settled rows are never polled. See [refresh timing and stale-data limits](docs/GIT-WEBHOOKS.md#pending-checks-without-enrollment).
+can take over. Failed reads retain the last good status. Events accelerate enrolled repository updates, with a **120-second safety net**
+for shown Open/Draft PRs even when checks have settled or the relay misses an event.
+Without confirmed enrollment, shown Open/Draft PRs and pending/unknown checks use
+a **45-second fallback**. One coalesced repository job probes state, head SHA and
+rollup summary in bounded 40-PR chunks; only changed heads/summaries fetch full
+checks in 20-PR chunks. Unchanged 5- or 30-row selections use one thin request,
+without enumerating check contexts. Values stay displayed until the complete
+selection succeeds. Coordinator probes cover only the current presentation page,
+not folded or off-page rows; Previous/Show more keeps full counts and rejects
+old-page replies. All probe/detail API calls retain per-call repository routing.
+Merge/close transitions move rows to Closed and update
+both totals; finished-task history still uses GitHub's 24-hour completion bound.
+Reads stop on hide/disable, stale context or remote-machine disconnect; failures
+back off 90/180/360/720 seconds, with at least 15 minutes for primary or secondary
+rate limits and any longer Retry-After. Positive hourly quota does not bypass a
+secondary refusal.
+Healthy safety delay is up to the cadence plus queue/GitHub read time, not a fixed
+end-to-end SLA. See [refresh timing and stale-data limits](docs/GIT-WEBHOOKS.md#pending-checks-without-enrollment).
 Unconfigured/offline panels show a
 compact bottom info card **Set up Git in Settings** only when global setup is
 missing. With setup ready, an unenrolled Git repository instead shows **Add this repo in Settings**. Enabled repos and non-Git agents have
@@ -767,9 +778,9 @@ authentication errors and timeouts never mean no PR. Discovery has a 25-second
 transport allowance, its plain fallback has 15 seconds, and a shared 45-second
 in-flight lease prevents duplicate reads. The existing ten-second local refresh
 cadence and 30-second action freshness stay unchanged. No Crew records are written.
-The existing webhook connection refreshes only relevant linked repositories; unchanged PR/CI
-settled facts are not polled; shown pending checks without live enrollment use the
-same bounded fallback as ordinary Git. Manual Refresh remains available. Repository errors stay in their sections. Confirmed unenrolled repositories share
+The existing webhook connection refreshes relevant linked repositories. Shown
+Open/Draft rows also use ordinary Git's bounded state-and-check safety reads:
+45 seconds unenrolled or 120 seconds enrolled, including settled checks. Manual Refresh remains available. Repository errors stay in their sections. Confirmed unenrolled repositories share
 one **Add this repo in Settings** card pinned below the scrolling list, so folding
 or scrolling cannot hide it. Its account-style dropdown opens upward with canonical
 repository names in inventory order, even for one choice, including repositories

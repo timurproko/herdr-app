@@ -1,5 +1,5 @@
 // Explicit task context, never a fake Git working directory. The panel's bounded
-// pending-check fallback shares this queue; settled/enrolled rows are event-only.
+// state/check safety reads share this queue, including settled/enrolled open rows.
 import { exec, run } from './host.js';
 import { pluginPullContext, pluginEvent, sidebarPanelEnabled } from './plugins.js';
 import { location } from './location.js';
