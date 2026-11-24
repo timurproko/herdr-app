@@ -283,7 +283,7 @@ export default class Changes extends View {
     const aggregate=this.aggregate,task=this.context?.startsWith('tasks:');
     const on=task?aggregate?.context?.machine:this.on;
     let online=!on;
-    if(on)try {online=host.machines().some(m=>m.name===on && m.state==='connected');}catch {}
+    if(on)try {online=host.machines().some(m=>m.name===on && m.layout==='ready');}catch {}
     const enabled=this.shown() && online && (task
       ? !aggregate?.context?.stale && aggregate?.currentContext()?.scope===aggregate?.context?.scope
       : key()===this.context && Boolean(this.root && this.repo));

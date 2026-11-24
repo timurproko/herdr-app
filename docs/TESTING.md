@@ -291,7 +291,9 @@ No deployment or live label mutation is performed.
 `tests/git-checks-fallback.test.mjs` drives the actual ordinary/coordinator snapshot,
 repository-batched reader and scheduler with fake clocks and GitHub transport. It
 covers pending 3/10 to 11/11 settlement and polling stop, preserved render values
-while in flight, hidden/offline cancellation, failure retention and 90/180-second
+while in flight, hidden/offline cancellation, native remote `machines()` layout
+readiness without an `hc` state field (and refusal for loading/missing/unrelated
+layouts), failure retention and 90/180-second
 backoff, the 15-minute rate-limit floor, event-only enrolled rows, existing-queue
 contention, authoritative empty rollups and late hidden/replaced-context replies.
 Pagination and fleet fixtures also assert complete pending/success/failure and

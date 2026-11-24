@@ -5,9 +5,9 @@ const rollup=(ok,total)=>Array.from({length:total},(_,i)=>({name:`CI ${i}`,statu
 const response=(numbers,ok,total)=>JSON.stringify({data:{repository:Object.fromEntries(numbers.map(number=>[`pr${number}`,{number,commits:{nodes:[{commit:{statusCheckRollup:{contexts:{nodes:rollup(ok,total)}}}}]}}]))}});
 for(const coordinator of [false,true]) {
   let now=0,shown=true,online=true,fail=false,rate=false,held=null,requests=[],tasks=[],timers=[],notifications=0,rendering=false;
-  let status={ok:3,total:10};
+  let status={ok:3,total:10},machineShape=null;
   const context={scope:'home',machine:'pc2',links:[{url:'https://github.com/owner/repo/pull/1',terminal:'pc2/t1'}]};
-  const h=await rowHarness({host:{machines:()=>[{name:'pc2',state:online?'connected':'disconnected'}],
+  const h=await rowHarness({host:{machines:()=>machineShape??[{name:'pc2',layout:online?'ready':'loading'}],
     exec:async(_cmd,args)=>{
       assert.equal(rendering,false,'No read during render');
       const numbers=[...args.find(a=>a.startsWith('query=')).matchAll(/pr(\d+):pullRequest/g)].map(m=>Number(m[1]));
@@ -44,7 +44,17 @@ for(const coordinator of [false,true]) {
     }
     now=end;await flush();
   };
-  sync();await advance(44999);assert.equal(requests.length,0);
+  // Native machines() exposes layout readiness, not hc machine ls's state.
+  // Exercise the actual shape in both ordinary and coordinator remote paths.
+  assert.equal(panel.fallbackSnapshot().enabled,true,'Native pc2 layout ready enables remote fallback without a state field');
+  for(const unavailable of [[{name:'pc2',layout:'loading'}],[{name:'pc2'}],[{name:'pc2',state:'connected'}],[{name:'other',layout:'ready'}],[]]) {
+    machineShape=unavailable;
+    assert.equal(panel.fallbackSnapshot().enabled,false,'Only the selected native ready layout authorizes remote reads');
+    sync();assert.equal(timers.length,0,'Unavailable native layouts arm no fallback timer');
+  }
+  machineShape=null;sync();
+  assert.equal(timers.length,1);assert.equal(timers[0].at,45000,'Native ready machine arms the pending-check fallback');
+  await advance(44999);assert.equal(requests.length,0);
   held={};held.promise=new Promise(resolve=>held.resolve=resolve);
   await advance(1);assert.equal(requests.length,1);assert.deepEqual(requests[0].numbers,[1,2],'One repository request excludes settled PR 3');
   assert.equal(rows()[0].checks.label,'3/10','Previous value remains while reading');
@@ -92,4 +102,4 @@ for(const coordinator of [false,true]) {
   assert.ok(notifications>0);
   await Promise.all(tasks);
 }
-console.log('PASS actual ordinary/coordinator pending checks fallback: batched repository requests, full count retention, settlement stop, hidden/offline stop, failure/rate-limit backoff, enrolled event-only, queue contention and authoritative empty rollups (synthetic clock/transport)');
+console.log('PASS native layout-ready ordinary/coordinator remote fallback (no hc state dependency), non-ready/missing/other-machine refusal: batched repository requests, full count retention, settlement stop, hidden/offline stop, failure/rate-limit backoff, enrolled event-only, queue contention and authoritative empty rollups (synthetic clock/transport)');
