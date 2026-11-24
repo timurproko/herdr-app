@@ -8,7 +8,8 @@ A verified coordinator/fleet pair can remain visually detached after switching a
 
 - Make repeated verified-on → off → on cycles publish attachment after the first successful current-generation verification, including immediate, one-second and fifteen-second off intervals.
 - Reproduce through the packaged Settings page, Spaces lifecycle and separate Crew provider instances with retained shared facts; preserve diagnostics from the failing sequence rather than assuming a cause.
-- Fix only the demonstrated generation, lease, eligibility or publication defect; keep obsolete replies rejected and keep disablement immediate.
+- Fix the reproduced native response-decoder watchdog interruption with bounded bulk decoding, projected status fields and a lifecycle-owned response-processing deadline independent of finally; keep obsolete replies rejected and disablement immediate.
+- Prefer the separately supplied Crew `--view fleet` capability when explicitly advertised, falling back to projected legacy `--all` status without changing historical Open/Draft PR eligibility.
 - Extend the existing regression to cover repeated cycles, local and ready remote machines, delayed replies, independent badge colours and both attachment chains without closing Settings.
 
 ## Capabilities
@@ -19,7 +20,7 @@ None.
 
 ### Modified Capabilities
 
-- `workspace-experience`: make repeated off/on reattachment explicit in the live fleet preference contract, including verification completion and obsolete-reply boundaries.
+- `workspace-experience`: make repeated off/on reattachment explicit in the live fleet preference contract, including verification completion, interrupted processing and obsolete-reply boundaries.
 
 ## Impact
 

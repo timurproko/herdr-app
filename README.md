@@ -643,10 +643,16 @@ can show **Waiting for fleet verification**, never an inferred attachment or PR 
 The local `.customizations/fleet-verification.log` keeps at most 128 lines / 64 KiB,
 deduplicating an unchanged reason episode without raw command output or secrets.
 Neither diagnostics nor the log is a portable preference. Log-write errors cannot
-block verification. The installed-tool discovery command allows 25 seconds, with
-one 15-second recorded-only fallback solely for an explicit unsupported flag;
-the shared 45-second read lease bounds abandoned reads after a reload. A timeout
-is not proof of absent ownership. Spaces already checks its lifecycle every 250 ms;
+block verification. The reader prefers Crew's explicitly advertised `--view fleet`
+and otherwise projects the legacy `--all` reply to the fields it needs before
+native decoding. Finished Open/Draft task PRs are never removed by task age.
+Discovery allows 25 seconds, recorded-only fallback 15 seconds, and exact
+capability refusals share a 40-second command budget inside the 45-second transport
+lease. Large replies decode in bounded native task turns. Raw receipt starts a
+separate two-second processing deadline: the existing Spaces lifecycle can replace
+an interrupted continuation without its finally block or a 45-second wait.
+A timeout is not proof of absent ownership. See [the transport contract,
+reproduced watchdog failure and regression evidence](docs/FLEET-STATUS.md). Spaces already checks its lifecycle every 250 ms;
 healthy status reads use a ten-second TTL. Failed verification now backs off for
 **2 s, 5 s, then every 10 s** between completed attempts, never slower than the
 previous ten-second attempt cadence. There are no longer reason-specific delays;

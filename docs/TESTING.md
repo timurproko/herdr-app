@@ -439,6 +439,31 @@ prove scheduling and rendered rows, not native pixel timing. A read-only-state/n
 0.1.17 showed verification pending at one second and attachment by seven seconds
 with Settings still open; it did not reproduce a hard close-only repaint freeze.
 
+The repeated-toggle regression now covers selected coordinator/fleet, one/seven
+workers, 0/1/15-second off intervals, old success/failure replies in both orders,
+local/ready-remote groups, supported one-MiB status replies and a lost decoder turn.
+A two-second raw-response processing deadline recovers both cold and warm readers
+without finally or the old successful-attempt TTL, and resumed obsolete work cannot
+overwrite recovered state. `src/plugins/crew/base64.test.mjs` checks bounded string
+calls, real-turn yield boundaries, cancellation, split UTF-8 and 4096-task validation.
+`fleet-command.test.mjs` executes the actual Windows PowerShell projection against a
+disposable CLI, including advertised view/legacy branches, exact stderr/exit codes,
+large unused fields, old Open history and malformed-shape preservation.
+
+The opt-in `tests/features/fleet-toggle-native.mjs --run` creates only a disposable
+app/Core session with eight inert Node terminals, selects the actual seven-tab
+fleet and focuses a worker before opening packaged Settings. Synthetic Crew output
+alone replaces transport. The pre-fix App 0.1.17 reproduction interrupted the old
+decoder on a valid approximately 925 KiB reply and left on plus independent rows;
+PR 44 recorded expired-read with attempted/current generation 2 after 45 seconds.
+The fixed native matrix attaches one-MiB replies (including 4096 tasks) in
+1322–1486 ms for a 750 ms command, with decoder pieces at most 24 ms and status
+parse/validation at most 16 ms. A deliberately uncatchable interruption was replaced
+after 2084 ms, independent of finally. This proves the reproduced watchdog mechanism,
+not the original person's exact response/load. No real A1, Crew/GitHub/SSH transport
+or user installation is exercised. See [full evidence and the expected separate
+Crew capability](FLEET-STATUS.md).
+
 `tests/fleet-preferences.test.mjs` covers the actual Spaces preference and Settings
 switch, explicit durable-identity clearing on disable, old/new snapshot round trips
 and durable/runtime-identity exclusion in disposable
@@ -608,7 +633,7 @@ popup pixels; explicit/repeated shortcut detection remains outside the best-effo
 | `tests/a1-api-candidate.test.mjs` | Both | Requires a separately built external A1 checkout and tsx. Normal A1 client/color tests remain included. |
 | `tests/regression/test.mjs` / test:integration | Both | Installed Herdr binary, stock baseline/layout and real host files. Mock UI cases remain inside this original integration file, not extracted. Its historical theme-selection assertion is not claimed fixed or rerun. |
 | tools/validate-native.mjs / test:native | Both | Native Herdr checks, even though its app home is disposable. |
-| 20 scripts under tests/features/ outside new-menu | Both | Native rendering/checks, preview UI or actual click/screenshot handling. The two new-menu unit tests remain included. |
+| 21 scripts under tests/features/ outside new-menu | Both | Native rendering/checks, preview UI or actual click/screenshot handling. The two new-menu unit tests remain included. |
 | Live smoke/inspection/Core/relay/provider/deploy/preference tools | Both | Operational effects, real services, sessions, credentials or native installation; not invoked. |
 
 Any additional unsupported unmodified suite discovered on hosted runners is listed

@@ -2,7 +2,7 @@
 import { shared, setShared, spaces, panes, terminals, machines, checking, FLEET_DISPLAY_KEY, fleetDisplayChangeAllowed, updateFleetDisplay } from '../api.js';
 import { fleetError, fleetGeneration, recordFleetFailure, resolveFleetFailure, fleetVerification, fleetRetry, deferFleetRetry, clearFleetRetry, clearFleetRetries } from './fleet-diagnostics.js';
 export const FLEET_KEY = 'custom.fleet.links', DISPLAY_KEY = FLEET_DISPLAY_KEY;
-const READS = 'custom.fleet.reads', TTL = 10000, EXPIRY = 30000, READ_LEASE = 45000;
+const READS = 'custom.fleet.reads', TTL = 10000, EXPIRY = 30000, READ_LEASE = 45000, PROCESSING_LEASE = 2000;
 // Only reads witnessed by this running mod can authorize actions. Persisted
 // timestamps/tokens alone are display history, not cold-start verification.
 const verifiedTokens = new Map(), pendingTokens = new Map();
@@ -231,13 +231,16 @@ export function refreshFleets(cx, readStatus, force = false) {
       if(pending.token!==entry?.attemptToken)pendingTokens.set(key,pending.token);
       if(pending.token!==entry?.attemptToken || witnessed(key,pending.token))continue;
     }
+    // Only a received reply's abandoned continuation bypasses attempt/backoff
+    // gates. The command is already finished; replacing it cannot overlap IO.
+    const abandonedProcessing=pending?.phase==='processing' && pending.until<=now;
     const sameAttempt=(entry?.attemptSignature??entry?.signature)===sig, retry=sameAttempt?fleetRetry(machine):null;
-    if(!force && retry && now<retry.nextAt)continue;
-    if(!force && !retry && witnessed(key,entry?.attemptToken) && sameAttempt && now-(entry.attemptAt??entry.at)<TTL)continue;
+    if(!force && !abandonedProcessing && retry && now<retry.nextAt)continue;
+    if(!force && !abandonedProcessing && !retry && witnessed(key,entry?.attemptToken) && sameAttempt && now-(entry.attemptAt??entry.at)<TTL)continue;
     if(pending && pending.until<=now)recordFleetFailure(machine,'expired-read',pending.generation??fleetGeneration(),{discard:true,subject:pending.subject??coordinatorCandidate(machine,snapshot)});
     const token=`${now}-${Math.random()}`, generation=fleetGeneration(), subject=coordinatorCandidate(machine,snapshot);
     pendingTokens.set(key,token);
-    setShared(READS,{...shared(READS),[key]:{token,until:now+READ_LEASE,generation,subject}});
+    setShared(READS,{...shared(READS),[key]:{token,until:now+READ_LEASE,transportUntil:now+READ_LEASE,phase:'transport',generation,subject}});
     cx.spawn(async view=> {
       const obsolete=()=>fleetGeneration()!==generation ? 'obsolete-generation' : !enabled() ? 'disabled' :
         shared(READS)?.[key]?.token!==token ? 'replaced-read' : shared(READS)[key].until<=Date.now() ? 'expired-read' :
@@ -247,7 +250,13 @@ export function refreshFleets(cx, readStatus, force = false) {
       const discard=reason=>recordFleetFailure(machine,reason,generation,{discard:true,subject});
       try {
         await Promise.resolve();if(!current()) {discard(obsolete());return;}
-        const output=await readStatus(machine,{current});
+        const progress=phase=>{
+          if(!current() || !['transport','processing'].includes(phase))return;
+          const reads=shared(READS), pending=reads[key];
+          setShared(READS,{...reads,[key]:{...pending,phase,
+            until:phase==='processing'?Math.min(pending.transportUntil,Date.now()+PROCESSING_LEASE):pending.transportUntil}});
+        };
+        const output=await readStatus(machine,{current,progress,yieldTurn:()=>new Promise(resolve=>view.timer.after(0,resolve))});
         if(!current()) {discard(obsolete());return;}
         let status;
         try {status=recordedSource(output);} catch {throw fleetError('invalid-status');}

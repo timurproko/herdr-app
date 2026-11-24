@@ -38,6 +38,12 @@ Changes to the fleet attachment switch SHALL propagate to mounted Spaces while S
 - **THEN** the older reply cannot replace current binding, presentation, verification age or retry state
 - **AND** rejecting it cannot discard or delay the current sequence's valid reply
 
+#### Scenario: Large verification response and interrupted processing
+- **WHEN** a valid supported status response of up to one MiB arrives during enablement
+- **THEN** bounded response processing publishes its verified pair without a watchdog interruption or dependence on closing Settings
+- **AND** if response processing is nevertheless abandoned, the existing lifecycle replaces its read within the next two-second recovery interval rather than waiting for the transport lease
+- **AND** transport commands retain their longer bounded execution allowance and superseded replies remain unable to publish
+
 #### Scenario: Other Spaces switches
 - **WHEN** the user changes either last-tab switch with Settings still open
 - **THEN** the new preference is available to subsequent close actions and normal empty-space reconciliation without requiring Settings to close
