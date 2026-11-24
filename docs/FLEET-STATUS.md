@@ -123,12 +123,12 @@ ordinary panelMessage **Loading** working bulb, including before any failure.
 There is no special **Verifying** header and no plain waiting sentence; sanitized
 reason/time/generation remain in the loading tooltip. A previously loaded list
 retains its existing **Stale** treatment, folds and counts without reads or worker
-actions. Off displays ordinary Git but keeps one private last inventory; on may
-restore it only through the provider's session-only retained identity with the
-same machine/owner/parent/tab/pane and extant nonconflicting fleet. No inventory
-is persisted or converted into current authority. Changed identity, authoritative
-absence or a cold module cannot inherit those rows. Enabled pending/recovery
-never substitutes the coordinator's ordinary Not a git repository result.
+actions during an existing same-context outage. Off clears inventory and shows
+ordinary Git. On never resurrects an old list: a current coordinator candidate
+shows Loading until fresh facts arrive, including failed reads awaiting retry.
+There is no retained-previous-inventory feature or cache. Only a witnessed negative
+whose dependency signature matches the current native identity suppresses Loading;
+previous owner/identity evidence, including negative diagnostics, cannot do so.
 Historical PR scope for a still-verified owner/home remains independent of whether
 a live worker is present, as before.
 

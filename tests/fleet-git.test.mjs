@@ -42,18 +42,39 @@ assert.ok(calls.every(args=>args.at(-1).split(',').includes('labels')));assert.e
 assert.ok(find(tree,'pr-labels-example/a#12'),'Coordinator rows use the shared labels row');
 // The mounted provider/panel must survive a real off/on invalidation while the
 // first on-read is slow or fails. Off uses ordinary Git; on never flashes the
-// ordinary non-repository result or loses the same-session last verified list.
+// ordinary non-repository result. No old inventory survives an off/on cycle.
 for(const outcome of ['slow','failed']) {
- const inventory=[...panel.aggregate.entries.values()],reads=calls.length,robot=find(tree,'pr-agent-example/a#12');
+ const reads=calls.length,robot=find(tree,'pr-agent-example/a#12');
  state['custom.spaces.preferences'].connectFleetToCoordinator=false;f.invalidateFleet();tree=panel.render(cx);await drain();tree=panel.render(cx);
  assert.match(text(tree),/Not a git repository/);assert.equal(panel.aggregate.entries.size,0);
  state['custom.spaces.preferences'].connectFleetToCoordinator=true;f.invalidateFleet();holdStatus=outcome==='slow';failStatus=outcome==='failed';
- const retainedFrame=()=>{tree=panel.render(cx);assert.doesNotMatch(text(tree),/Not a git repository|Waiting for fleet verification|Verifying/);assert.equal(find(tree,'git-task-stale').kids[0],'Stale');assert.ok(find(tree,'pr-example/a#12'));assert.ok(inventory.every(e=>panel.aggregate.entries.get(e.link.key)===e));assert.equal(r.pluginPullContext('coordinator'),null);assert.equal(find(tree,'pr-agent-example/a#12'),undefined);};
+ const retainedFrame=()=>{tree=panel.render(cx);assert.doesNotMatch(text(tree),/Not a git repository|Waiting for fleet verification|Verifying|Stale/);assert.equal(text(find(tree,'git-task-empty')).trim(),'Loading');assert.equal(panel.aggregate.entries.size,0);assert.deepEqual(JSON.parse(JSON.stringify(panel.aggregate.counts())),{open:0,closed:0});assert.equal(r.pluginPullContext('coordinator'),null);assert.equal(find(tree,'pr-agent-example/a#12'),undefined);};
  retainedFrame();for(let i=0;i<30;i++)await Promise.resolve();retainedFrame();
- const navigations=focus.length;robot.attrs.on_click[0]({},cx);assert.equal(focus.length,navigations);assert.equal(calls.length,reads,'Stale inventory grants no GitHub IO');
+ const navigations=focus.length;robot.attrs.on_click[0]({},cx);assert.equal(focus.length,navigations);assert.equal(calls.length,reads,'Pending verification grants no GitHub IO');
  if(holdStatus){holdStatus=false;releaseStatus();await drain();}else {await drain();retainedFrame();failStatus=false;f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();}
  tree=panel.render(cx);await drain();tree=panel.render(cx);assert.equal(find(tree,'git-task-stale'),undefined);assert.ok(find(tree,'pr-agent-example/a#12'));
 }
+// Completion-before-toggle: an authoritative negative completes WITHOUT Git
+// rendering, then off/on clears that evidence. Loading precedes ONLY fresh rows.
+status.owner.live=false;f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();
+assert.equal(Object.keys(state[f.DISPLAY_KEY].entries).length,0);assert.ok(find(tree,'pr-example/a#12'),'Git has not rendered the negative completion');
+state['custom.spaces.preferences'].connectFleetToCoordinator=false;f.invalidateFleet();
+state['custom.spaces.preferences'].connectFleetToCoordinator=true;f.invalidateFleet();
+status.owner.live=true;status.tasks[0].pr=status.tasks[2].pr=url('fresh');holdStatus=true;
+tree=panel.render(cx);for(let i=0;i<30;i++)await Promise.resolve();tree=panel.render(cx);
+assert.equal(text(find(tree,'git-task-empty')).trim(),'Loading');assert.equal(panel.aggregate.entries.size,0);assert.equal(find(tree,'git-task-stale'),undefined);assert.equal(find(tree,'pr-example/a#12'),undefined);assert.doesNotMatch(text(tree),/Not a git repository/);
+holdStatus=false;releaseStatus();await drain();tree=panel.render(cx);await drain();tree=panel.render(cx);
+assert.ok(find(tree,'pr-example/fresh#12'));assert.equal(find(tree,'pr-example/a#12'),undefined,'Completed negative cannot be undone by resurrecting the previous inventory');
+status.tasks[0].pr=status.tasks[2].pr=url('a');f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();tree=panel.render(cx);await drain();tree=panel.render(cx);
+// Previous-owner negative: new labelled owner + pending read must show Loading,
+// not ordinary Git. The old negative's broad dependency signature no longer fits.
+status.owner.live=false;f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();
+list[0].address=all[0].terminal=status.owner.terminal='t-new';status.owner.live=true;holdStatus=true;
+tree=panel.render(cx);for(let i=0;i<30;i++)await Promise.resolve();tree=panel.render(cx);
+assert.equal(state['custom.fleet.reads'].local.subject.owner,'t-new');assert.equal(state['custom.fleet.reads'].local.phase,'transport');
+assert.equal(text(find(tree,'git-task-empty')).trim(),'Loading');assert.doesNotMatch(text(tree),/Not a git repository|Stale/);assert.equal(panel.aggregate.entries.size,0);assert.equal(r.pluginPullContext('coordinator'),null);
+holdStatus=false;releaseStatus();await drain();tree=panel.render(cx);await drain();tree=panel.render(cx);assert.ok(find(tree,'pr-example/a#12'));assert.equal(r.pluginPullContext('coordinator').owner,'t-new');
+list[0].address=all[0].terminal=status.owner.terminal='t1';f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();tree=panel.render(cx);await drain();tree=panel.render(cx);
 // The same identity guard applies to retained shared display, not only the
 // off/on cache. A warm owner move cannot keep the old inventory while failing.
 failStatus=true;const warmPane=all[0].pane;all[0].pane='warm-owner-moved';tree=panel.render(cx);

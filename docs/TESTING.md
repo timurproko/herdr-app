@@ -529,8 +529,11 @@ Synchronous transport throws cannot notify or allocate focus during render.
 refresh, partial PR failure and reconnect recovery, preserving prior rows/counts
 until their individual replacements arrive. It also exercises real off/on
 invalidation with slow/failed first reads: enabled verification never renders
-Not a git repository, same-identity session inventory returns Stale, and changed
-native owner membership or authoritative absence cannot reuse it. Cold waiting
+Not a git repository and old inventory never returns across off/on. It covers a
+negative completing before any Git render followed by off/on (Loading then only
+fresh rows), and a previous owner's negative followed by a changed labelled owner
+with a pending read (Loading, not ordinary Git). Existing same-context Stale
+retention is unchanged; no additional presentation cache exists. Cold waiting
 uses the actual standard panelMessage Loading bulb, with no Verifying header;
 leaving a cold waiting context without any cache is covered too.
 

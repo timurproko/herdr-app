@@ -22,9 +22,18 @@ A same-context PR refresh SHALL retain previously displayed rows, pin geometry a
 
 #### Scenario: Off and on with slow or failed first verification
 - **WHEN** a verified coordinator list is switched off and back on and the first current read is slow, interrupted or fails
-- **THEN** off uses ordinary Git, but enabled pending verification never substitutes Not a git repository
-- **AND** the same session's last list returns marked Stale only for matching machine, owner, parent, native owner membership and extant nonconflicting fleet identity
-- **AND** an unknown or changed identity cannot inherit the list, authoritative absence ends the applicable fleet context, and retained presentation grants no GitHub reads or worker navigation
+- **THEN** off uses ordinary Git and clears inventory; on shows standard Loading for the current coordinator candidate, never Not a git repository while verification is pending or awaiting retry
+- **AND** no previous inventory returns across off/on; Stale retains only its existing same-context meaning and grants no GitHub reads or worker navigation
+
+#### Scenario: Negative completes before toggle without a panel render
+- **WHEN** authoritative absence completes without a Git render, then attachment is switched off/on and the new verification is pending or fails
+- **THEN** the panel shows Loading with no old inventory or Stale resurrection
+- **AND** only the new verification's fresh result can populate its list
+
+#### Scenario: Changed coordinator owner with verification pending
+- **WHEN** a previous owner has a positive or negative result and a different current labelled coordinator owner begins verification
+- **THEN** the current candidate shows standard Loading rather than the ordinary folder view or the previous inventory
+- **AND** only a witnessed authoritative negative matching the current dependency identity can suppress that candidate's Loading state
 
 #### Scenario: Authoritative context or membership change
 - **WHEN** a different machine, folder or coordinator home is selected, a repository is definitively absent, or authoritative PR/task membership changes

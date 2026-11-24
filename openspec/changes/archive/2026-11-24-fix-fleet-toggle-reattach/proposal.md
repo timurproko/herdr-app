@@ -12,7 +12,7 @@ A verified coordinator/fleet pair can remain visually detached after switching a
 - Prefer the separately supplied Crew `--view fleet` capability when explicitly advertised, falling back to projected legacy `--all` status without changing historical Open/Draft PR eligibility.
 - Extend the existing regression to cover repeated cycles, local and ready remote machines, delayed replies, independent badge colours and both attachment chains without closing Settings.
 - Collect multiline legacy output and project tasks in linear time, covering 50k-line replies and measuring the entire real Windows PowerShell/native path at 10 KiB, 400 KiB and one MiB.
-- Keep enabled coordinator verification in the Git panel's standard Loading state without an extra header label, or retain the same session's exact-identity inventory as Stale across off/on; never fall back to Not a git repository merely because verification is pending.
+- Keep pending verification for the current coordinator candidate in the standard Loading state without an extra header label; off/on clears inventory rather than restoring an old list, and only current-identity negative evidence can select ordinary folder Git.
 
 ## Capabilities
 
@@ -23,7 +23,7 @@ None.
 ### Modified Capabilities
 
 - `workspace-experience`: make repeated off/on reattachment explicit in the live fleet preference contract, including verification completion, interrupted processing, linear large-reply transport and obsolete-reply boundaries.
-- `plugin-integrations`: preserve same-identity session PR inventory during re-verification and use standard empty Loading feedback with sanitized diagnostic tooltips.
+- `plugin-integrations`: use standard empty Loading feedback for the current coordinator candidate with sanitized diagnostic tooltips, no cross-toggle inventory retention and current-dependency-scoped negative evidence.
 
 ## Impact
 

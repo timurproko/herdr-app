@@ -264,13 +264,13 @@ leases are not fresh verification. Drops on/from a retained unverified block ref
 to move, never fall back to a single-space reorder. Git requests presentation context
 only to retain already-loaded same-home rows/counts/folds with a Stale badge, or a
 standard Loading bulb with no extra header label or restored inventory on cold start.
-An attachment off/on round trip retains only a bounded in-memory presentation
-identity and the controller's last verified inventory; neither is persisted or
-used for attachment/authority. Native machine/owner/parent/tab/pane and extant,
-nonconflicting child identity must still match before that last list can return
-as Stale. Off hides it, and changed identity or authoritative absence cannot
-select incompatible cached rows. Enabled pending verification never falls back
-to an ordinary coordinator folder probe or Not a git repository. It starts no task
+There is no cross-toggle identity/inventory cache. Off or a scope change clears
+the aggregate's entries; on shows Loading until fresh verification and facts arrive.
+Existing same-context outages retain their pre-existing Stale meaning only.
+Enabled current coordinator candidates pending verification or retry never fall
+back to ordinary folder Git. Only a witnessed completed negative whose dependency
+signature still matches the current native snapshot suppresses Loading. Old owner
+results and diagnostic reasons alone never decide a new candidate's empty state. It starts no task
 GitHub reads or worker navigation from stale context, and pauses its relay consumer,
 not the chrome-owned shared broker or independent update checks. Fresh verification
 resumes targeted reads and controls; different selected spaces or confirmed ownership

@@ -6,9 +6,6 @@ const READS = 'custom.fleet.reads', TTL = 10000, EXPIRY = 30000, READ_LEASE = 45
 // Only reads witnessed by this running mod can authorize actions. Persisted
 // timestamps/tokens alone are display history, not cold-start verification.
 const verifiedTokens = new Map(), pendingTokens = new Map();
-// Session-only Git presentation identity, never attachment/action evidence.
-// Off clears authority and display, but a later on may show the same old list.
-const pullPresentation = new Map();
 const enabled = () => shared('custom.spaces.preferences')?.connectFleetToCoordinator === true && shared('custom.plugins')?.crew?.enabled === true;
 const machineOf = address => address?.includes('/') ? address.split('/')[0] : null;
 const qualify = (address, machine) => typeof address !== 'string' || !address || (address.includes('/') && machineOf(address) !== machine) ? null : machine && !address.includes('/') ? `${machine}/${address}` : address;
@@ -309,27 +306,11 @@ export function invalidateFleet() {
   setShared(FLEET_KEY,null);setShared(READS,{});updateFleetDisplay(null,null,{disabled:!enabled()});
   verifiedTokens.clear();pendingTokens.clear();
 }
-function pullIdentityMatches(identity, snapshot, requireChild=false) {
-  const owner=snapshot.list.find(t=>t.address===identity.owner && t.state==='live'),members=snapshot.all.filter(p=>p.terminal===identity.owner && !p.mod);
-  const groups=members.length===1?snapshot.groups.filter(s=>(s.machine??null)===identity.machine && s.tabs?.some(t=>t.id===members[0].tab)):[];
-  if(!owner || groups.length!==1 || groups[0].id!==identity.parent || (members[0].tab??null)!==identity.ownerTab || (members[0].pane??null)!==identity.ownerPane)return false;
-  const child=snapshot.groups.find(s=>s.id===identity.child && (s.machine??null)===identity.machine);
-  // A witnessed owner/home may retain historical Git scope without its child;
-  // restoring after off/on requires the extant pair, not that weaker evidence.
-  if(!child)return !requireChild;
-  const tabs=new Set(child.tabs?.map(t=>t.id)??[]),workers=new Set(snapshot.all.filter(p=>tabs.has(p.tab) && !p.mod).map(p=>p.terminal));
-  return !snapshot.list.some(t=>workers.has(t.address) && t.state==='live' && (t.labels?.['crew.task'] || t.labels?.['crew.home']) &&
-    (t.labels?.['crew.home']!==identity.adoption || t.labels?.['herdr.space']!==identity.child.split('/').at(-1)));
-}
 export function fleetPullContext(space, {presentation = false} = {}) {
   const context=fleetContexts().find(c=>c.parent===space && c.taskMembershipVerified);
   if(context) {
     const display=fleetContexts({presentation:true}).find(d=>d.parent===space && d.pullScope===context.pullScope);
-    if(!context.child && !display && !context.tasks.some(t=>canonicalPull(t.pr))) {pullPresentation.delete(context.machine??'local');return null;}
-    if(display) {
-      pullPresentation.set(context.machine??'local',display);
-      if(pullPresentation.size>256)pullPresentation.delete(pullPresentation.keys().next().value);
-    }
+    if(!context.child && !display && !context.tasks.some(t=>canonicalPull(t.pr)))return null;
     return {...context,kind:'tasks',scope:context.pullScope,stale:false,links:context.tasks.filter(t=>t.pr).map(t=>({url:t.pr,terminal:t.terminal,task:t.id,historical:t.historical===true}))};
   }
   if(!presentation || !enabled())return null;
@@ -345,20 +326,20 @@ export function fleetPullContext(space, {presentation = false} = {}) {
       }
   }
   if(identity) {
-    const snapshot=model(),candidate=coordinatorCandidate(identity.machine,snapshot);
-    if(pullPresentation.get(identity.machine??'local')?.pullScope!==identity.pullScope)pullPresentation.delete(identity.machine??'local');
-    if(pullIdentityMatches(identity,snapshot))return {...identity,kind:'tasks',scope:identity.pullScope,stale:true,links:[],verification:fleetVerification(identity.machine,candidate??identity)};
-    pullPresentation.delete(identity.machine??'local');
+    const snapshot=model(),candidate=coordinatorCandidate(identity.machine,snapshot),owner=bindFleet({home:identity.home,owner:{terminal:identity.owner,live:true},tasks:[]},identity.machine,snapshot);
+    const sameCandidate=!candidate || ['parent','owner','ownerTab','ownerPane'].every(k=>candidate[k]===identity[k]);
+    if(sameCandidate && owner?.pullScope===identity.pullScope)return {...identity,kind:'tasks',scope:identity.pullScope,stale:true,links:[],verification:fleetVerification(identity.machine,identity)};
   }
   const snapshot=model(), group=snapshot.groups.find(s=>s.id===space);
   if(!group)return null;
-  const machine=group.machine??null, candidate=coordinatorCandidate(machine,snapshot),key=machine??'local',retained=pullPresentation.get(key),entry=shared(FLEET_KEY)?.entries?.[key];
-  const verification=fleetVerification(machine,candidate??(retained?.parent===space?retained:null));
-  if(entry?.status && entry.binding===null && locallyVerified(key,entry) || verification && ['no-owner','identity-mismatch','no-fleet'].includes(verification.reason)) {pullPresentation.delete(key);return null;}
-  // Reuse only a witnessed identity with unchanged native owner membership and
-  // extant nonconflicting fleet. This scope has NO links or action authority.
-  if(retained?.parent===space && pullIdentityMatches(retained,snapshot,true))return {...retained,kind:'tasks',scope:retained.pullScope,stale:true,links:[],verification};
-  pullPresentation.delete(key);
+  const machine=group.machine??null,candidate=coordinatorCandidate(machine,snapshot);
   if(candidate?.parent!==space)return null;
+  const state=shared(FLEET_KEY),key=machine??'local',entry=state?.version===1?state.entries?.[key]:null;
+  // Only a witnessed completed negative for these CURRENT dependencies can
+  // suppress Loading. A prior owner's negative (or a diagnostic alone) cannot.
+  const negative=entry?.status && entry.binding===null && locallyVerified(key,entry) && entry.signature===signature(machine,snapshot,null);
+  if(negative)return null;
+  const fact=fleetVerification(machine,candidate);
+  const verification=fact && !['no-owner','identity-mismatch','no-fleet'].includes(fact.reason)?fact:null;
   return {...candidate,machine,kind:'tasks',scope:JSON.stringify(['fleet-waiting',machine,candidate.parent,candidate.owner,candidate.ownerTab,candidate.ownerPane]),stale:true,links:[],verification};
 }

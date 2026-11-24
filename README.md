@@ -730,9 +730,10 @@ Retained visuals are not action permission: pair moves and Git/worker actions
 still require fresh exact live identity. An unverified coordinator Git panel keeps
 its loaded rows and folds with **Stale**, or shows the standard **Loading** bulb
 without special header text on cold start. After off/on, a slow or failed first
-read never substitutes **Not a git repository** while enabled: the same session's
-last list returns only for the same native coordinator/fleet identity. Off hides
-that list; changed identity or authoritative absence invalidates it. No new GitHub
+read shows **Loading**, not **Not a git repository**, for the current coordinator
+candidate. Off clears the inventory; on never restores a previous list as Stale.
+Only authoritative negative evidence for the current dependency identity returns
+to ordinary folder Git; a previous owner's result cannot suppress Loading. No new GitHub
 reads or worker navigation are allowed until verification succeeds.
 Only sanitized pair identity is persisted for restoration, not task/PR inventory,
 reports or credentials; it is never exported as a portable preference.
