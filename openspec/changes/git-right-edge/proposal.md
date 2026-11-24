@@ -19,7 +19,7 @@ None.
 
 ### Modified Capabilities
 
-- `plugin-integrations`: Specify the shared trailing inset and slot/glyph alignment across Git row variants and coordinator repository headers.
+- `plugin-integrations`: Specify the shared trailing inset and slot/glyph alignment across Git row variants and coordinator repository headers; carry the unmerged dependency's existing label/metadata/geometry deltas forward for combined bot finalization against main.
 
 ## Impact
 

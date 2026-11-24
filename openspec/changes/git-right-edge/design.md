@@ -16,4 +16,4 @@ Resolve actual complete Git render trees, including their border and list/overla
 
 ## Scope
 
-No navigation, data/CI reads, service or preference changes. No edits to PRs #45, #49 or #51. The branch first fast-forwarded to the unmerged PR #48 head as explicitly requested.
+No navigation, data/CI reads, service or preference changes. No edits to PRs #45, #49 or #51. The branch first fast-forwarded to the unmerged PR #48 head as explicitly requested. Because that head already synced its specs ahead of main, this change carries its exact three requirement deltas too, while canonical specs return to main for bot-owned finalization. This preserves the inherited behavior in the final combined spec without editing PR #48 or bypassing delivery checks.
