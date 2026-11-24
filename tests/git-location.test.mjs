@@ -1,3 +1,4 @@
+import {githubInvocation} from './support/github-read.mjs';
 import assert from 'node:assert/strict';
 import {withKitUi} from './support/panel-kit.mjs';
 import fs from 'node:fs';
@@ -34,6 +35,8 @@ const native = {
   home:()=>home, theme:()=>({dim:'dim',hover:'hover',foreground:'foreground'}), layout:()=>null, window:()=>({platform:'windows'}), run(){}, openOverlay(){}, props:()=>null, closeOverlay(){}, notify(){}, nextCommand(){},
   hc:args=> { screenCalls.push(args); return Promise.resolve(screenReply); },
   exec:(cmd,args,options)=> {
+    ({command:cmd,args,options}=githubInvocation(cmd,args,options));
+    if(args[0]==='api'&&args[1]==='user')return Promise.resolve({code:0,stdout:'fixture-user'});
     if (cmd === 'git' && args[0] === 'rev-parse') assert.equal(rendering,false,'Root probes yield even when spawn starts inline in render');
     if (cmd === 'git' && args[0] === 'symbolic-ref') {
       branchCalls.push({args,options});
