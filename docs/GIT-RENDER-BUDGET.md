@@ -13,9 +13,9 @@ production paired scroll handlers reveal the full inventory and move to its end:
 
 | Loaded PR rows | Native render-build samples (ms) | Mean (ms) | PR rows built per render |
 |---|---|---:|---:|
-| 30 | 2, 2, 2, 2, 3 | 2.2 | 7 |
-| 60 | 2, 2, 2, 2, 3 | 2.2 | 7 |
-| 100 | 2, 2, 3, 2, 2 | 2.2 | 7 |
+| 30 | 2, 2, 3, 3, 2 | 2.4 | 7 |
+| 60 | 2, 2, 3, 2, 2 | 2.2 | 7 |
+| 100 | 3, 3, 2, 2, 2 | 2.4 | 7 |
 
 The viewport is 390×400 logical pixels. The raw results also record confirmed
 loaded-row counts and retained offsets (1970.5 / 4250.5 / 7290.5px). Scroll setup
@@ -76,6 +76,53 @@ A differential native check with all tooltip registrations removed measured
 2.0 / 2.4 ms (versus 2.2 / 2.6). Tooltip deltas are at the timer/noise floor;
 measurement probes, not tooltips or the history notice, dominate the observed
 increase. The tool accepts `post42-no-tooltips current-no-tooltips` to repeat it.
+
+## Measurement lifetime audit
+
+Native size callbacks fire only when an element ID is new or its dimensions
+change. `tests/git-measurement-lifecycle.test.mjs` retains historical ID/size facts
+and deliberately suppresses unchanged callbacks; it covers these ownership rules:
+
+- **Wrapped notices:** the actual measuring child is keyed by the full text,
+  width/zoom `measureKey` and window lifetime. A replacement 41px notice with
+  identical dimensions is measured again rather than remaining at the 24.5px
+  fallback. Returning to an already-measured key reuses its correct height;
+  obsolete notice-key callbacks cannot update the current projection.
+- **Ordinary viewport/content:** the physical viewport height belongs to the
+  persistent `pulls-scroll-frame`, not a tab or folder. New states inherit it.
+  Content measurements have fresh activation/owner IDs, including tab return,
+  context replacement and zoom, so an equal-height list still gets its required
+  callback without resetting the native scrolling list's ID.
+- **Ordinary live zoom:** offset/content caches rebase from their previous zoom;
+  the frame's physical height is not rescaled when no native size event fires.
+  Old-zoom/activation content callbacks are rejected. The 2400/400/1000px case
+  keeps offset 500px and 300px remaining after changing from 100% to 50%.
+- **Coordinator lifecycle/zoom:** fresh window owners get fresh frame/content
+  measurement identities, including home-away-home. An unchanged physical frame
+  stays measured during live zoom; its logical viewport is recomputed, and
+  content has a zoom-keyed measurement callback.
+- **Repository header labels:** removing a repository prunes its geometry cache;
+  reappearance gives available/natural-width probes a fresh cache-owner token.
+  Late prior-owner or prior-zoom callbacks are rejected. Widths are raw native
+  pixels, so unchanged dimensions need no renormalization.
+- **PR line/probe caches (unchanged):** geometry remains keyed by native row/line
+  ID through data refreshes; fixed 18px line boxes and 74px rows change physical
+  height on zoom. Coordinator intrinsic keys include zoom/style/exact text, and
+  request sequence IDs renew after context reset or eviction. Existing stale-zoom,
+  changed-string and cache-reuse regressions remain in the 100-row fixture.
+- **Pin geometry/reveal:** body dimensions are retained in raw pixels and
+  normalized for the current zoom even if its frame never resizes. Fixed-height
+  row measurements remain retained through data resets. Returning to a previous
+  active PR uses a new reveal identity rather than waiting for a size change at
+  an already-known ID.
+- **Animation/other chrome (unchanged):** CI sweep tracks and pin-swap arming
+  elements already use monotonic animation IDs with current-object guards.
+  Enrollment/choice-menu anchors and count badges have no discarded native-size
+  cache requiring another callback. Label, ring and fade presentation caches hold
+  immutable facts/paths, not native dimension measurements.
+
+No render-time notification, focus allocation, polling or GitHub read is added
+by these lifecycle repairs. Stable list IDs retain native scroll positions.
 
 ## Bounds and cache ownership
 

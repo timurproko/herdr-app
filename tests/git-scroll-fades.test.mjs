@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {rowHarness,find,nodes,t} from './support/git-row.mjs';
-import {measureTask,scrollTask,taskWindow} from './support/git-scroll.mjs';
+import {measureTask,scrollTask,taskWindow,ordinaryContent} from './support/git-scroll.mjs';
 const manifest=JSON.parse(fs.readFileSync(new URL('../src/plugins/git/panel.json',import.meta.url)));
 assert.equal(manifest.shared['sidebar-scroll.js'],'src/ui/sidebar-scroll.js');
 assert.equal(manifest.shared['scroll-fade.js'],'src/ui/scroll-fade.js');
@@ -20,13 +20,13 @@ for(const coordinator of [false,true])for(const zoom of [0.75,1,1.3,2]) {
  let tree=render();
  const measure=(height=400,content=2400)=>{
   if(coordinator)measureTask(panel,tree,cx,height,390,zoom);
-  else {find(tree,'pulls-scroll-frame').attrs.on_size_change[0]({width:390*zoom,height:height*zoom},cx);find(tree,'pulls-content').attrs.on_size_change[0]({width:390*zoom,height:content*zoom},cx);}
+  else {find(tree,'pulls-scroll-frame').attrs.on_size_change[0]({width:390*zoom,height:height*zoom},cx);ordinaryContent(tree).attrs.on_size_change[0]({width:390*zoom,height:content*zoom},cx);}
  };
  const scroll=offset=>{
   if(coordinator)scrollTask(panel,tree,cx,offset,400,zoom);
   else {
    const event={position:{x:50,y:100},bounds:{x:0,y:0,width:390*zoom,height:400*zoom},delta:{y:0}};
-   find(tree,'pulls-content').attrs.on_mouse_move[0]({...event,bounds:{...event.bounds,y:-offset*zoom,height:2400*zoom}});
+   ordinaryContent(tree).attrs.on_mouse_move[0]({...event,bounds:{...event.bounds,y:-offset*zoom,height:2400*zoom}});
    find(tree,'pulls-scroll-frame').attrs.on_mouse_move[0](event,cx);
   }
   tree=render();

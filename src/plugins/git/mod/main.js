@@ -947,13 +947,34 @@ export default class Changes extends View {
   ordinaryScrollState(state) {
     if(!this.ordinaryScroll || this.ordinaryScrollScope!==this.context) {this.ordinaryScrollScope=this.context;this.ordinaryScroll=new Map();}
     let metrics=this.ordinaryScroll.get(state);
-    if(!metrics) {metrics=new SidebarScrollState();this.ordinaryScroll.set(state,metrics);}
+    if(!metrics) {
+      metrics=new SidebarScrollState();this.ordinaryScroll.set(state,metrics);
+    }
+    if(this.selectedOrdinaryMetrics!==metrics) {
+      this.selectedOrdinaryMetrics=metrics;
+      metrics.measurement=this.ordinaryMeasureSequence=(this.ordinaryMeasureSequence??0)+1;
+    }
+    const zoom=settings().zoom>0?settings().zoom:1;
+    if(metrics.zoom && metrics.zoom!==zoom) {
+      metrics.offset*=zoom/metrics.zoom;metrics.content*=zoom/metrics.zoom;
+    }
+    metrics.zoom=zoom;
+    // This physical frame survives tab/context changes. Its unchanged native
+    // dimensions will not be emitted again for a newly created tab state.
+    metrics.viewport=this.ordinaryViewportHeight??metrics.viewport;
     return metrics;
+  }
+
+  measureOrdinaryViewport(size,cx) {
+    if(!Number.isFinite(size.height))return;
+    this.ordinaryViewportHeight=Math.max(0,size.height);
+    this.ordinaryScroll?.get(this.view)?.measure('viewport',size,cx);
   }
 
   renderPulls(t) {
     const state = this.view, list = this.pulls[state], {liveRows,active} = this.pullSelection();
-    const metrics=this.ordinaryScrollState(state);
+    const metrics=this.ordinaryScrollState(state), zoom=metrics.zoom, measurement=metrics.measurement;
+    this.pinMotion?.rebaseZoom?.(zoom);
     this.pinMotion?.active(this.context,state);
     this.pinMotion?.resolve(location().terminal,active?.number,this.agentResolved === agentKey(location()));
     const retained = this.pinMotion?.current;
@@ -964,7 +985,7 @@ export default class Changes extends View {
     const pinKey = JSON.stringify([this.context,state,pinned?.number ?? null]);
     if (pinKey !== this.pinKey) {
       this.pinRevealed = this.pinKey == null || !pinned || Boolean(retained) || settled;
-      this.pinKey = pinKey;
+      this.pinKey = pinKey;this.pinRevealSequence=(this.pinRevealSequence??0)+1;
     }
     const remaining = rows.filter(pr => pr !== pinned);
     const empty = this.error || this.pullError || (!this.root ? (this.loading ? 'Loading…' : 'No folder')
@@ -979,7 +1000,7 @@ export default class Changes extends View {
       .when(Boolean(pinned), el => el
         .child(v_flex().id('active-pull').relative().flex_none().p(4)
           .child(div().id('active-pull-rail').absolute().left(0).top(0).bottom(0).w(2).bg(t.accent))
-          .child(v_flex().id(`active-pull-content-${pinned.number}`).w_full()
+          .child(v_flex().id(`active-pull-content-${pinned.number}-${this.pinRevealSequence}`).w_full()
             .opacity(this.pinRevealed ? 1 : 0.75).transition('opacity', {duration:120,easing:'ease-out'})
             .on_size_change((_size, cx) => {
               if (this.pinKey === pinKey && !this.pinRevealed) { this.pinRevealed = true; cx.notify(); }
@@ -987,12 +1008,15 @@ export default class Changes extends View {
             .child(this.pullRow(t, pinned).when(Boolean(swap), el => el.invisible()))))
         .child(div().id('active-pull-divider').h(1).flex_none().bg(t.border)))
       .child(v_flex().id('pulls-scroll-frame').relative().flex_1().min_h(0).overflow_hidden()
-        .on_size_change((size,cx)=>metrics.measure('viewport',size,cx))
+        .on_size_change((size,cx)=>this.measureOrdinaryViewport(size,cx))
         .on_scroll_wheel((event, cx) => {this.scrollMotionAt(event, 'wheel', state, cx);metrics.viewportMotion(event,'wheel',cx);})
         .on_mouse_move((event, cx) => {this.scrollMotionAt(event, 'move', state, cx);metrics.viewportMotion(event,'move',cx);})
         .child(v_flex().id(`pulls-list-${state}`).flex_1().min_h(0).overflow_y_scrollbar()
-          .child(v_flex().id('pulls-content').w_full().flex_none().gap(U.rowGap).p(4)
-            .on_size_change((size,cx)=>metrics.measure('content',size,cx))
+          .child(v_flex().id(`pulls-content-${metrics.measurement}-${zoom}`).w_full().flex_none().gap(U.rowGap).p(4)
+            .on_size_change((size,cx)=>{
+              if(this.ordinaryScroll?.get(this.view)!==metrics || metrics.measurement!==measurement || (settings().zoom>0?settings().zoom:1)!==zoom)return;
+              metrics.measure('content',size,cx);
+            })
             .on_scroll_wheel(event => {this.contentMotion(event, 'wheel', state);metrics.contentMotion(event,'wheel');})
             .on_mouse_move(event => {this.contentMotion(event, 'move', state);metrics.contentMotion(event,'move');})
             .children(remaining.map(pr => this.pullRow(t, pr)
@@ -1028,21 +1052,26 @@ export default class Changes extends View {
   repositoryNameLabel(repo,scope) {
     this.repositoryNameSizes ??= new Map();
     const id=`task-repo-name-${scope}-${repo}`;
-    const sizes=this.repositoryNameSizes.get(id)??{};
+    let sizes=this.repositoryNameSizes.get(id);
+    if(!sizes) {
+      sizes={measurement:this.repositoryNameMeasureSequence=(this.repositoryNameMeasureSequence??0)+1};
+      this.repositoryNameSizes.set(id,sizes);
+    }
+    const zoom=settings().zoom>0?settings().zoom:1;
     const overflowing=()=>Number.isFinite(sizes.available)&&Number.isFinite(sizes.intrinsic)&&sizes.intrinsic>sizes.available+0.5;
     const measure=(kind,size,cx)=>{
-      if(!this.shown() || this.aggregate?.currentContext({presentation:true})?.scope!==scope || !this.aggregate.repositories().includes(repo) || !Number.isFinite(size.width))return;
+      if(!this.shown() || (settings().zoom>0?settings().zoom:1)!==zoom || this.repositoryNameSizes.get(id)!==sizes || this.aggregate?.currentContext({presentation:true})?.scope!==scope || !this.aggregate.repositories().includes(repo) || !Number.isFinite(size.width))return;
       const before=overflowing();sizes[kind]=size.width;this.repositoryNameSizes.set(id,sizes);
       if(before!==overflowing())cx.notify();
     };
     // A non-shrinking invisible flex child measures the same text's natural width.
     // Its absolute clipped parent cannot reserve width or add a line to the header.
     return div().id(id).flex_1().min_w(0).relative().overflow_hidden()
-      .on_size_change((size,cx)=>measure('available',size,cx))
       .when(overflowing(),el=>el.tooltip(repo))
-      .child(div().truncate().child(repo))
+      .child(div().id(`${id}-available-${sizes.measurement}`).w_full().truncate().child(repo)
+        .on_size_change((size,cx)=>measure('available',size,cx)))
       .child(div().absolute().left(0).top(0).flex().invisible()
-        .child(div().id(`${id}-probe`).flex_none().whitespace_nowrap().child(repo)
+        .child(div().id(`${id}-probe-${sizes.measurement}`).flex_none().whitespace_nowrap().child(repo)
           .on_size_change((size,cx)=>measure('intrinsic',size,cx))));
   }
 
@@ -1062,13 +1091,14 @@ export default class Changes extends View {
         }))))
       .when(!folded && body.length>0, el => el.child(v_flex().id(`task-repo-body-${repo}`).flex_none()
         .children(body.map(item=>div().id(`task-item-${item.key}`).flex_none().h(item.height+item.gap)
-          .child(item.row ? this.pullRow(t,item.row) : this.renderPart(`repository-notice:${repo}`,()=>div().id(`task-error-${repo}`).flex_none().w_full().px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(item.error)
+          .child(item.row ? this.pullRow(t,item.row) : this.renderPart(`repository-notice:${repo}`,()=>div().id(`task-error-${repo}`).flex_none().w_full()
+            .child(div().id(`task-notice-measure-${window.measurement}-${encodeURIComponent(item.measureKey)}`).flex_none().w_full().px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(item.error)
             .on_size_change((size,cx)=>{
-              if(!this.taskWindowCurrent(window,scope) || !Number.isFinite(size.height))return;
+              if(!this.taskWindowCurrent(window,scope) || !window.items.some(current=>current.measureKey===item.measureKey) || !Number.isFinite(size.height))return;
               const height=size.height/window.zoom;
               if(window.noticeHeights.get(item.measureKey)===height)return;
               window.noticeHeights.set(item.measureKey,height);cx.notify();
-            })))))));
+            }))))))));
   }
 
   taskSections(sections, scope) {
@@ -1080,6 +1110,7 @@ export default class Changes extends View {
     let window=this.taskWindows.get(key);
     if(!window) {
       window=new TaskWindow();window.key=key;window.metrics=new SidebarScrollState();
+      window.measurement=this.taskMeasureSequence=(this.taskMeasureSequence??0)+1;
       this.taskWindows.set(key,window);
     }
     if(this.selectedTaskWindow!==window) {
@@ -1090,7 +1121,9 @@ export default class Changes extends View {
       // Retained native scrolling is logical-pixel based; paired event bounds
       // are window pixels. Rebase cached metrics before new zoom callbacks.
       window.metrics.offset=window.offset*zoom;
-      window.metrics.viewport=window.viewport*zoom;
+      // The frame is measured in physical pixels and can stay exactly the
+      // same size during zoom. Do not rescale a measurement that will not fire.
+      window.viewport=window.metrics.viewport/zoom;
       window.metrics.content=(window.height+8)*zoom;
     }
     window.zoom=zoom;
@@ -1109,8 +1142,8 @@ export default class Changes extends View {
       && this.taskWindows?.get(`${scope}\0${this.view}`)===window;
   }
 
-  taskMeasure(window,scope,which,size,cx) {
-    if(!this.taskWindowCurrent(window,scope))return;
+  taskMeasure(window,scope,which,size,cx,zoom=window.zoom) {
+    if(!this.taskWindowCurrent(window,scope) || (which==='content' && window.zoom!==zoom))return;
     // Handles are created after layout, never in render; they retain the same
     // native list's position across appends and same-home refreshes.
     if(!window.handle && base.ScrollHandle) {window.handle=base.ScrollHandle.new();cx.notify();}
@@ -1154,7 +1187,7 @@ export default class Changes extends View {
       const ids=new Set(repositories.map(repo=>`task-repo-name-${scope}-${repo}`));
       for(const id of this.repositoryNameSizes.keys())if(!ids.has(id))this.repositoryNameSizes.delete(id);
     }
-    const paging=this.taskSections(sections,scope), taskWindow=paging.window;
+    const paging=this.taskSections(sections,scope), taskWindow=paging.window, taskZoom=taskWindow.zoom;
     this.applyTaskAnchor(taskWindow,scope,cx);
     this.notices ??= new GitNotices();
     const notices=new Map(repositories.map(repo=>[repo,this.notices.sync(cx,{enabled:this.shown() && !aggregate.context.stale,repository:repo})]));
@@ -1183,14 +1216,14 @@ export default class Changes extends View {
         .child(this.segment(t,'git-view-open','Open',counts.open,this.view==='open',view=>this.setView('open',view)))
         .child(this.segment(t,'git-view-closed','Closed',counts.closed,this.view==='closed',view=>this.setView('closed',view))))
       .child(v_flex().id('task-pulls-scroll').relative().flex_1().min_h(0).overflow_hidden()
-        .child(v_flex().id(`task-pulls-frame-${scope}-${this.view}`).relative().flex_1().min_h(0).overflow_hidden()
+        .child(v_flex().id(`task-pulls-frame-${scope}-${this.view}-${taskWindow.measurement}`).relative().flex_1().min_h(0).overflow_hidden()
           .on_size_change((size,cx)=>this.taskMeasure(taskWindow,scope,'viewport',size,cx))
           .on_scroll_wheel((event,cx)=>this.taskViewportMotion(taskWindow,scope,event,'wheel',cx))
           .on_mouse_move((event,cx)=>this.taskViewportMotion(taskWindow,scope,event,'move',cx))
           .child(v_flex().id(`task-pulls-list-${scope}-${this.view}`).flex_1().min_h(0).overflow_y_scrollbar()
             .when(Boolean(taskWindow.handle),el=>el.track_scroll(taskWindow.handle))
-            .child(v_flex().id('task-pulls-content').w_full().flex_none().p(4)
-              .on_size_change((size,cx)=>this.taskMeasure(taskWindow,scope,'content',size,cx))
+            .child(v_flex().id(`task-pulls-content-${taskWindow.measurement}-${taskWindow.zoom}`).w_full().flex_none().p(4)
+              .on_size_change((size,cx)=>this.taskMeasure(taskWindow,scope,'content',size,cx,taskZoom))
               .on_scroll_wheel(event=>taskWindow.metrics.contentMotion(event,'wheel'))
               .on_mouse_move(event=>taskWindow.metrics.contentMotion(event,'move'))
               .child(div().id('task-pulls-spacer-top').flex_none().h(paging.top))

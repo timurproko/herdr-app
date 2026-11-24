@@ -93,7 +93,7 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
   }
 }
 // Exercise main's windowed scroll renderer and warm distinct-string widths.
-const {measureTask,scrollTask,taskWindow}=await import('./support/git-scroll.mjs');
+const {measureTask,scrollTask,taskWindow,taskContent}=await import('./support/git-scroll.mjs');
 let pagedComparisons=0;
 for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,2])for(const view of ['open','closed']) {
   h.setZoom(zoom);h.setAgent(true);panel.view=view;panel.pinMotion=null;panel.taskWindows?.clear();panel.foldedRepositories.clear();
@@ -106,7 +106,7 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
   while(true) {
     const {tree,geometry}=h.settle(()=>panel.render(h.cx),width,zoom,600);
     const viewport=find(tree,`task-pulls-list-home-${view}`);
-    assert.ok(viewport,'Continuous scrolling retains one native scroll identity');assert.equal(find(tree,'task-pulls-content').attrs.p[0],4);
+    assert.ok(viewport,'Continuous scrolling retains one native scroll identity');assert.equal(taskContent(tree).attrs.p[0],4);
     assert.equal(find(tree,'task-pulls-pages'),undefined);
     const header=find(tree,'task-repo-header-owner/repo');if(header)near(right(geometry.get(header.kids.at(-1))),expected,'Header slot shares the Spaces edge');
     const visible=nodes(viewport).filter(node=>/^pr-owner\/repo#\d+$/.test(node.attrs.id?.[0]??''));

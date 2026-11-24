@@ -1,5 +1,6 @@
 import {githubInvocation} from './support/github-read.mjs';
 import assert from 'node:assert/strict';
+import {ordinaryContent} from './support/git-scroll.mjs';
 import {scrollModule,Background} from './support/git-scroll-modules.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -327,7 +328,7 @@ for (const state of ['open','closed']) for (const count of [0,1,2,50]) {
       const rail = find(pinned,'active-pull-rail');
       assert.ok(pinned.attrs.relative,'The block anchors its decorative rail');
       assert.equal(pinned.attrs.border_l,undefined,'The rail consumes no layout width');
-      assert.equal(pinned.attrs.p[0],find(scroll,'pulls-content').attrs.p[0],'Pinned and regular rows have identical gutters');
+      assert.equal(pinned.attrs.p[0],ordinaryContent(scroll).attrs.p[0],'Pinned and regular rows have identical gutters');
       assert.ok(rail.attrs.absolute,'The rail is outside normal layout');
       assert.equal(rail.attrs.left[0],0);
       assert.equal(rail.attrs.top[0],0);

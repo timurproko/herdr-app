@@ -551,6 +551,14 @@ resolved-box checks, not live GPUI pixel or deployment evidence.
 
 ## Windowed Git scroll fixtures
 
+`tests/git-measurement-lifecycle.test.mjs` models native size-change-only events
+with a retained element-ID/dimension cache, not unconditional layout callbacks.
+It covers equal-height wrapped-notice replacement, ordinary tab/context changes,
+live ordinary/coordinator zoom with an unchanged physical viewport, coordinator
+home-away-home, recreated header caches and pin body/reveal lifetimes. See the
+[measurement audit](GIT-RENDER-BUDGET.md#measurement-lifetime-audit) for the full
+cache ownership inventory and unchanged paths checked.
+
 `tests/git-scroll-window.test.mjs` checks exact spacers, ten-item reveal, all-100-row
 reachability, bounded overscan, insertion anchors, folds and notice-height updates.
 `tests/git-scroll-anchor.test.mjs` exercises yielded native scroll-handle requests,
