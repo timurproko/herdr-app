@@ -32,11 +32,11 @@ const page = (start,count,cursor,hasMore=true,labels=[],rollup=[]) => JSON.strin
 async function harness(state) {
   const context = vm.createContext({localStorage:{getItem:()=>null,setItem(){}}});
   const place = {cwd:'/repo',on:'pc2',terminal:'pc2/t1',space:'pc2/s1',tab:'pc2/tab'};
-  const pending = [], tasks = [], calls = [], timers=[];
-  let syncError=null;
-  const host = {settings:()=>({zoom:1}),theme:()=>({}),layout:()=>({id:'panel',children:[{id:'panel-body',active:'changes'}]}),
+  const pending = [], tasks = [], calls = [], timers=[],identityCalls=[];
+  let syncError=null,enabled=true,shown=true;
+  const host = {settings:()=>({zoom:1}),theme:()=>({}),layout:()=>({id:'panel',hidden:!shown,children:[{id:'panel-body',active:'changes'}]}),
     window:()=>({platform:'windows'}),hc:async()=>({code:1}),run(){},openOverlay(){},props:()=>null,closeOverlay(){},notify(){},nextCommand(){},
-    exec:(cmd,args,options)=>{if(syncError)throw syncError;({command:cmd,args,options}=githubInvocation(cmd,args,options));if(args[0]==='api'&&args[1]==='user')return Promise.resolve({code:0,stdout:'fixture-user'});return new Promise((resolve,reject)=>{const call={cmd,args,options,resolve,reject};pending.push(call);calls.push(call);});},
+    exec:(cmd,args,options)=>{if(syncError)throw syncError;({command:cmd,args,options}=githubInvocation(cmd,args,options));if(args[0]==='api'&&args[1]==='user'){identityCalls.push({args,options});return Promise.resolve({code:0,stdout:'fixture-user'});}return new Promise((resolve,reject)=>{const call={cmd,args,options,resolve,reject};pending.push(call);calls.push(call);});},
   };
   const modules = {
     './enrollment-picker.js':{EnrollmentPicker:class{}},
@@ -50,7 +50,7 @@ async function harness(state) {
     './host.js':host,'./location.js':{location:()=>place},
     './agent-links.js':{AgentLinks:class { related(){return null;} refresh(){} }},
     './pin-swap.js':{PinSwap,PIN_SWAP_MS},
-    './plugins.js':{sidebarPanelEnabled:()=>true},'./sidebar-title.js':{sidebarTitle:element},
+    './plugins.js':{sidebarPanelEnabled:()=>enabled},'./sidebar-title.js':{sidebarTitle:element},
     './panel-pin.js':{panelPin:(_t,{id})=>element().id(id)},'./panel-state.js':{changePanel(){}},
 
     './ui.js':{U:{},panelTitle:element,headerTools:x=>x,reveal:x=>x,subtleActionFill:()=>'',refreshButton:element,emptyState:element,menuSurface:(_t,el)=>el,menuHeading:(_t,text)=>element().child(text),slot:el=>el},
@@ -85,7 +85,21 @@ async function harness(state) {
     content.attrs[method][0](event,cx);
     frame.attrs[method][0]({...event,bounds:{y:0,height:600}},cx);
   };
-  return {view,cx,pending,tasks,calls,timers,place,take,reply,tick,render,scroll,guarded,failTransport:value=>{syncError=value;}};
+  return {view,cx,pending,tasks,calls,timers,place,take,reply,tick,render,scroll,guarded,identityCalls,setEnabled:value=>{enabled=value;},setShown:value=>{shown=value;},failTransport:value=>{syncError=value;}};
+}
+
+// A failed obsolete response cannot start identity diagnosis on its old machine.
+for(const refusal of ['HTTP 404: Not Found','HTTP 403: Resource not accessible by integration'])for(const invalidate of ['disabled','hidden','context','machine','repository','repository-name']) {
+  const h=await harness('open');h.view.loadPulls('open',h.cx,true);const call=h.take();
+  if(invalidate==='disabled')h.setEnabled(false);
+  if(invalidate==='hidden')h.setShown(false);
+  if(invalidate==='machine')h.place.on='other-machine';
+  if(invalidate==='repository-name')h.view.repo.name='other/changed';
+  if(invalidate==='context')h.place.cwd='/another-repository';
+  if(invalidate==='repository')h.view.repo={name:'other/repository',owner:'other'};
+  call.resolve({code:1,stderr:refusal});await h.tick();
+  assert.equal(h.identityCalls.length,0,`${invalidate} refusal must not start account diagnosis`);
+  assert.equal(h.calls.length,1);assert.equal(h.pending.length,0);assert.equal(h.view.pullError,null);
 }
 
 // Folder Git retains execution facts too; empty NTSTATUS/command timeouts
@@ -93,12 +107,22 @@ async function harness(state) {
 for(const [result,message] of [
   [{code:3221225794,stderr:''},'Could not read pull requests; refresh to retry'],
   [{code:0,timed_out:true,stderr:''},'Could not read pull requests; refresh to retry'],
-  [{code:1,stderr:'GraphQL: Could not resolve to a Repository with the name owner/repo'},'Repository or pull request is not accessible with the current GitHub account'],
+  [{code:1,stderr:'GraphQL: Could not resolve to a Repository with the name owner/repo'},'owner/repo not found'],
   [{code:1,stderr:'Could not resolve host: api.github.com'},'GitHub is unreachable'],
 ]) {
   const h=await harness('open');h.view.pulls.open=[{number:1,state:'open'}];
   h.view.loadPulls('open',h.cx,true);h.take().resolve(result);await h.tick();
-  assert.equal(h.view.pullError,message+(result.stderr?.includes('resolve to')?': owner/repo (GitHub account: fixture-user)':''));assert.equal(h.view.pulls.open.length,1);assert.equal(h.pending.length,0);
+  assert.equal(h.view.pullError,message);assert.equal(h.view.pulls.open.length,1);assert.equal(h.pending.length,0);
+}
+
+// Both totals are batched into a real page's GraphQL query: one Node child,
+// not a second count-only API process. Partial fixtures retain the old fallback.
+{
+  const h=await harness('open');h.view.loadPulls('open',h.cx,true);
+  assert.ok(h.pending[0].args.some(arg=>arg.includes('open:pullRequests(states:OPEN)')&&arg.includes('closed:pullRequests(states:[CLOSED,MERGED])')));
+  const response=JSON.parse(page(1,10,'page-1',true));Object.assign(response.data.repository,{open:{totalCount:100},closed:{totalCount:200}});
+  await h.reply(JSON.stringify(response));
+  assert.equal(h.calls.length,1);assert.equal(h.pending.length,0);assert.deepEqual({...h.view.counts},{open:100,closed:200});
 }
 
 for(const state of ['open','closed']) {

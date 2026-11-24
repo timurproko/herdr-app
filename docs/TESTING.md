@@ -319,23 +319,54 @@ token/host preservation, invalid repository rejection and validated account outp
 PR reads keep their explicit `--repo` flag. Root discovery before a repository is
 known remains cwd-based. No global login or process environment is changed.
 
-On access/auth refusal, one bounded account diagnostic per failed PR uses `gh api
-user --jq .login` with the same repository routing and inherited credential, not
-`gh auth status`'s global active account. Notices include canonical repository,
-refused PR numbers and that effective login; failed/invalid identity reads say
-`GitHub account: unknown`. No token is read into JS, put in argv, logged or shared.
-Late identity results retain the original request's freshness checks.
+Missing-resource/HTTP 404 replies say `not found`, with grouped repository/PR
+numbers and **no** login-problem wording or account lookup. Real permission/auth
+refusals share one bounded `gh api user --jq .login` diagnostic per repository in
+the current refresh, using the same routing/credential rather than the global
+active account. Notices name the effective account or explicitly `(unknown)`;
+the cohort cache is discarded afterward and the next refresh re-verifies it.
+No token is returned to UI JS, put in argv, logged or shared. The ordinary reader
+captures its original repository and checks request freshness before diagnosis,
+not only before publication. Pagination regressions cover disabled/hidden Git,
+changed folder/machine and replaced or mutated repository responses (404 and 403).
 
 The reported crew history notice was reproduced read-only for recorded PRs #36,
 #37 and #38: the explicitly targeted reads return `Could not resolve to a
 PullRequest` as timurproko, while crew #1–#9 and herdr-app #41/#43 succeed. The
-notice is therefore honest about inaccessible recorded items; this does not
-establish a wrapper defect and no record, account or MyConfigs file is changed.
+notice now reports these missing records as `Task PR history: timurproko/crew
+#36, #37, #38 not found`, not as a login problem. This does not establish a wrapper defect and no record, account or MyConfigs file is changed.
 Local native exec defaults to user home and inherits the desktop environment.
 The Core reproduction matched the documented command/cwd and had GH_REPO/GH_HOST
 unset and no explicit tokens, but it cannot prove the already-running desktop's
 inherited environment. Existing pagination, full-panel and read-notice fixtures
 also cover the scoped notice and preserve healthy rows/history eligibility.
+
+### Environment carrier process and latency budget
+
+Read-only user-home/Core measurements on this Windows installation: bare Node
+startup median **36.8 ms** (9 samples); paired `gh --version` runs add median
+**49.6 ms** (9 pairs), and paired `gh api user` runs add median **45.8 ms**
+(5 pairs). Network variance means the API difference is not a precise startup
+estimate. The extra process is therefore not treated as free.
+
+A normal coordinator refresh with two repositories launches **zero extra Node
+carriers** for targeted PR reads: `gh pr view --repo` is direct. The reported
+three missing history items formerly caused three Node + three identity-gh reads;
+they now cause none. Real permission refusals reuse a diagnostic across the whole
+refresh: at most **two Node carriers + two identity-gh calls** for two repositories,
+regardless of how many PRs fail. These counts exclude existing setup/enrollment
+workers and the gh wrapper's own unchanged internal processes. A separate
+pending-check fallback already batches up to 20 PRs per repository/chunk: two
+repositories with at most 20 pending PRs each use two carriers, not one per PR.
+
+Ordinary list and webhook-page reads now include both totals in the same GraphQL
+snapshot, avoiding the count-only carrier/gh call. Three real paired crew
+list/count reads measured **2966→2383 ms, 2398→1977 ms, 2360→1751 ms**, reducing
+two Node carriers to one (421–609 ms saved in these samples). This measures the
+transport only, not native UI timing. `git-repository-routing` asserts two identity
+children for twelve permission failures over two repositories, zero for missing
+items and fresh diagnoses on the next refresh. Pagination asserts a complete
+page applies both counts with one API request; partial responses retain fallback.
 
 ## Pending Git checks fallback
 

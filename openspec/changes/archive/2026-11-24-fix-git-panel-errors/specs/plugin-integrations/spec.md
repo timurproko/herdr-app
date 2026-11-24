@@ -15,13 +15,33 @@ Per-repository GitHub reads SHALL explicitly identify the canonical repository i
 - **THEN** the invocation also supplies repository context recognized by the wrapper and supported by that command
 - **AND** a repository named only inside the query or API path does not count as explicit routing
 
+#### Scenario: Complete page includes both totals
+- **WHEN** a repository list read supplies rows and both Open/Closed totals
+- **THEN** the panel applies that snapshot without an additional count-only CLI call
+- **AND** expanded pages, stale responses and repository routing retain their existing bounds
+
 #### Scenario: Explicit user credential
 - **WHEN** the execution environment supplies an explicit GitHub token
 - **THEN** the app does not replace it or change the active CLI account to make a read succeed
 - **AND** any resulting access refusal remains an honest scoped failure
 
 ### Requirement: Identifiable GitHub access refusal
-A GitHub access refusal SHALL identify the refused canonical repository and the known account or credential context. If the effective login is unavailable, the notice SHALL state that uncertainty rather than claiming the active CLI login was used. Credential values SHALL never appear in notices, logs, shared state or public evidence.
+A GitHub access refusal SHALL identify the refused canonical repository and the known account or credential context. If the effective login is unavailable, the notice SHALL state that uncertainty rather than claiming the active CLI login was used. Credential values SHALL never appear in notices, logs, shared state or public evidence. Missing-resource responses SHALL say not found without claiming a login problem.
+
+#### Scenario: Missing recorded pull requests
+- **WHEN** GitHub reports a missing pull request through resource resolution or HTTP 404
+- **THEN** one notice names its repository and missing PR numbers followed by not found
+- **AND** the failure starts no account diagnosis and does not describe an authentication or permission problem
+
+#### Scenario: Obsolete refusal arrives
+- **WHEN** a failed read completes after Git is disabled, the panel is hidden, or the captured repository, machine or request context changes
+- **THEN** it starts no account-diagnosis follow-up for the obsolete request
+- **AND** it cannot publish an error into the new context
+
+#### Scenario: Several permission refusals in one refresh
+- **WHEN** several PR reads in the same repository refresh receive real permission refusals
+- **THEN** they reuse at most one effective-account diagnosis for that repository in that refresh
+- **AND** a later refresh re-verifies the account rather than retaining an old login identity
 
 #### Scenario: Inaccessible historical item
 - **WHEN** a recorded historical task PR is genuinely inaccessible under the execution credential

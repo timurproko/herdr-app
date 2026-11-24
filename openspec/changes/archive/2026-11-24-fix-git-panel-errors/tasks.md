@@ -17,6 +17,10 @@
 - [x] 2.5 Document history-read cause and routing regressions; compare host 0.1.18 render/text/machine/process contracts and record gate acceptance, palette skip and retained feedback ownership in the diagnostic review without altering live files.
 - [x] 2.6 Run CI=true npm run test:ci once after confirming no other suite is running; record its three stale fixture failures and repair them with passing focused tests, preserving final-head hosted checks as the handoff gate.
 
+- [x] 2.7 Reproduce the reviewer's disabled-Git stale failure, then guard before account diagnosis and capture repository identity; pass 404/403 disabled, hidden, folder/machine and replaced/mutated repository regressions.
+- [x] 2.8 Separate missing-resource responses from real permission/auth refusals, group exact missing PR numbers as not found without account lookup, and retain honest login/unknown wording for real refusals.
+- [x] 2.9 Measure Windows per-call Node overhead, batch page/count GraphQL snapshots and share permission diagnostics per repository/refresh; verify zero identity children for missing items and two for twelve permission failures across two repositories.
+
 ## Workflow follow-up
 
 - Inspect hosted required checks on the exact final head and report actual status before handoff; never personally ready or merge the PR.

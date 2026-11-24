@@ -206,24 +206,31 @@ export default class Changes extends View {
     if (append && (!this.pages[state].hasMore || !after || state !== this.view || !this.shown())) return;
     const root = this.root, on = this.on, context = this.context;
     const request = this.pullRequest = {},read=this.factOrder.begin();
-    const current = () => sidebarPanelEnabled('changes') && this.pullRequest === request && this.root === root && this.context === context && key() === context;
+    let repo=this.repo,repository=repo?.name;
+    const current = () => sidebarPanelEnabled('changes') && this.pullRequest === request && this.root === root && this.context === context && key() === context && this.repo===repo && this.repo?.name===repository;
     this.pullLoading = true; this.loadingState = state; this.appending = append; this.pageError = null;
     if (notify) cx.notify();
     cx.spawn(async cx => {
       try {
-        const gh = args => repositoryRead(exec, args, this.repo?.name, { cwd: root, on, timeout: 30000 });
-        if (!this.repo) {
+        const gh = args => repositoryRead(exec, args, repository, { cwd: root, on, timeout: 30000 });
+        if (!repo) {
           const r = await gh(REPO_ARGS);
           if (!current()) return;
           if (r.code !== 0 || r.timed_out || r.timedOut || r.signal) throw new Error(pullError(r));
-          const repo = JSON.parse(r.stdout || '{}');
-          if (!repo?.nameWithOwner) throw new Error('No GitHub repository');
+          const value = JSON.parse(r.stdout || '{}');
+          if (!value?.nameWithOwner) throw new Error('No GitHub repository');
           if (!current()) return;
-          this.repo = { name: repo.nameWithOwner, owner: repo.owner?.login ?? repo.nameWithOwner.split('/')[0], url: repo.url ?? `https://github.com/${repo.nameWithOwner}` };
+          repo=this.repo={ name: value.nameWithOwner, owner: value.owner?.login ?? value.nameWithOwner.split('/')[0], url: value.url ?? `https://github.com/${value.nameWithOwner}` };
         }
-        const list = await gh(pullListArgs(state, this.repo.name, after));
-        if (list.code !== 0 || list.timed_out || list.timedOut || list.signal) throw Object.assign(new Error(),await repositoryFailure(exec,list,this.repo.name,{cwd:root,on}));
+        repository=repo.name;
+        const list = await gh(pullListArgs(state, repository, after));
+        // A refused obsolete read is not permission to start another request,
+        // especially an account probe on the previous machine/repository.
         if (!current()) return;
+        if (list.code !== 0 || list.timed_out || list.timedOut || list.signal) {
+          if(!this.shown())return;
+          throw Object.assign(new Error(),await repositoryFailure(exec,list,repository,{cwd:root,on}));
+        }
         const page = parsePullPage(list.stdout);
         const rows = page.pulls.map(pr => this.publishPull(pullRow(pr,this.repo.owner),read).value).filter(Boolean);
         const incoming=new Map(rows.map(pr=>[pr.number,pr]));
@@ -237,9 +244,11 @@ export default class Changes extends View {
         // All list and webhook reads share pullRequest/pullLoading: one writer.
         if (append) return;
         this.relatedKey = null;this.relatedRetry=null;
-        const counts = await gh(countArgs(this.repo.name)).catch(() => null);
+        // Real pages include both totals in the same GraphQL request, avoiding
+        // another Node/gh launch. Retain compatibility with partial responses.
+        const counts = page.counts ? null : await gh(countArgs(repository)).catch(() => null);
         if (!current()) return;
-        if (counts?.code === 0) this.counts = parseCounts(counts.stdout) ?? this.counts;
+        this.counts = page.counts ?? (counts?.code===0?parseCounts(counts.stdout):null) ?? this.counts;
       } catch (e) {
         if (current()) {
           if (append) this.pageError = {state,message:pullError(e)};
@@ -440,7 +449,7 @@ export default class Changes extends View {
           const data=JSON.parse(await gh(['pr','view',String(number),'--repo',repo.name,'--json',PR_FIELDS]));
           if(data.number===number)related=pullRow(data,repo.owner);
         }
-        const counts=parseCounts(await gh(countArgs(repo.name)));
+        const counts=Object.values(updates).map(update=>update.page.counts).find(Boolean) ?? parseCounts(await gh(countArgs(repo.name)));
         if(!current())return;
         for(const [state,{rows,page}] of Object.entries(updates)) {
           this.pulls[state]=rows.map(pr=>this.publishPull(pr,read,repo.name).value).filter(Boolean);this.pullsAt[state]=Date.now();

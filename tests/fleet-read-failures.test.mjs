@@ -24,7 +24,8 @@ assert.equal(calls.length,4);assert.ok(peak<=3);assert.equal(JSON.stringify(a.co
 assert.deepEqual(Array.from(a.rows('open'),p=>p.number),[8]);assert.deepEqual(Array.from(a.rows('closed'),p=>p.number),[5,6,7]);
 for(const p of a.rows('closed'))assert.equal(a.target(p),null);assert.equal(a.target(a.rows('open')[0]).terminal,'live-worker');
 const transient='Could not read pull requests; refresh to retry';
-const access='Repository or pull request is not accessible with the current GitHub account';
+const access='Repository or pull request is not accessible with the GitHub account';
+const missing='Repository or pull request not found';
 const cases=[
  [new Error('failed to spawn gh: EAGAIN'),'transient',transient],
  [new Error('cannot start gh: process initialisation failed (0xC0000142)'),'transient',transient],
@@ -35,9 +36,9 @@ const cases=[
  [{code:0,timed_out:true,stderr:''},'transient',transient],
  [new Error('execution timed out after 30000ms'),'transient',transient],
  [new Error('request timeout'),'transient',transient],
- [{code:1,stderr:'GraphQL: Could not resolve to a Repository with the name example/crew. (repository)'},'access',access],
- [{code:1,stderr:'GraphQL: Could not resolve to a PullRequest with the number of 5. (repository.pullRequest)'},'access',access],
- [{code:1,stderr:'HTTP 404: Not Found'},'access',access],
+ [{code:1,stderr:'GraphQL: Could not resolve to a Repository with the name example/crew. (repository)'},'notfound',missing],
+ [{code:1,stderr:'GraphQL: Could not resolve to a PullRequest with the number of 5. (repository.pullRequest)'},'notfound',missing],
+ [{code:1,stderr:'HTTP 404: Not Found'},'notfound',missing],
  [{code:1,stderr:'HTTP 403: Resource not accessible by integration'},'access',access],
  [{code:1,stderr:'HTTP 401: Bad credentials'},'auth','Sign in first: gh auth login'],
  [{code:1,stderr:'HTTP 403: API rate limit exceeded'},'rate','Could not read pull requests: GitHub rate limit exceeded'],
@@ -53,7 +54,7 @@ for(const [failure,kind,message]of cases){
  assert.equal(pullError(failure),message);
  for(const n of [5,6,7])failures.set(key(n),failure);
  a.invalidate();a.pump(cx);await drain();assert.equal(JSON.stringify(a.counts()),JSON.stringify({open:1,closed:3}));
- for(const n of [5,6,7]){const e=a.entries.get(key(n));assert.equal(e.error.kind,kind);assert.equal(e.error.message,message+(['access','auth'].includes(kind)?': example/crew (GitHub account: fixture-user)':''));assert.equal(e.pr.state,'merged');}
+ for(const n of [5,6,7]){const e=a.entries.get(key(n));assert.equal(e.error.kind,kind);assert.equal(e.error.message,kind==='notfound'?'example/crew not found':['access','auth'].includes(kind)?`example/crew not accessible with the GitHub account fixture-user${kind==='auth'?'; sign in with gh auth login':''}`:message);assert.equal(e.pr.state,'merged');}
  assert.equal(a.entries.get(key(8)).error,null,'Healthy live row survives failed historical reads');
 }
 assert.equal(pullError(new Error('cannot start gh: program not found')),'GitHub CLI (gh) is not installed');

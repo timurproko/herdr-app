@@ -19,16 +19,27 @@ export function repositoryRead(exec, args, repository, options = {}) {
 
 // Diagnose with the same repository routing and inherited credential, not the
 // globally active gh login. Only a validated public login leaves the child.
-export async function repositoryFailure(exec, result, repository, options = {}) {
+export async function repositoryFailure(exec, result, repository, options = {}, diagnostics = null) {
   const failure=pullFailure(result);
-  if(!repository || !['access','auth'].includes(failure.kind))return failure;
-  let account=null;
-  try {
-    const identity=await repositoryRead(exec,['api','user','--jq','.login'],repository,{...options,timeout:5000});
-    const login=identity.stdout?.trim();
-    if(identity.code===0 && !identity.signal && !identity.timed_out && /^[a-z\d][a-z\d-]{0,38}(?:\[bot\])?$/i.test(login??''))account=login;
-  } catch {} // Failure to identify is uncertainty, not permission to switch login.
-  return {...failure,repository,account,message:`${failure.message}: ${repository} (GitHub account: ${account??'unknown'})`};
+  if(!repository)return failure;
+  // GitHub's missing-resource response is not evidence of an account problem.
+  if(failure.kind==='notfound')return {...failure,repository,message:`${repository} not found`};
+  if(!['access','auth'].includes(failure.kind))return failure;
+  const key=JSON.stringify([repository,options.on??null,options.cwd??null]);
+  let identity=diagnostics?.get(key);
+  if(!identity) {
+    identity=(async()=>{
+      try {
+        const result=await repositoryRead(exec,['api','user','--jq','.login'],repository,{...options,timeout:5000});
+        const login=result.stdout?.trim();
+        if(result.code===0 && !result.signal && !result.timed_out && !result.timedOut && /^[a-z\d][a-z\d-]{0,38}(?:\[bot\])?$/i.test(login??''))return login;
+      } catch {} // Unknown identity never permits a login switch.
+      return null;
+    })();
+    diagnostics?.set(key,identity);
+  }
+  const account=await identity;
+  return {...failure,repository,account,message:`${repository} not accessible with the GitHub account ${account??'(unknown)'}${failure.kind==='auth'?'; sign in with gh auth login':''}`};
 }
 
 // Single publication rule for every PR-read path. Queue ownership determines
@@ -127,7 +138,7 @@ export function parsePendingChecks(stdout,numbers) {
 export function pullListArgs(state, nameWithOwner, after = null) {
   const [owner, name] = String(nameWithOwner).split('/');
   const states = state === 'closed' ? '[CLOSED,MERGED]' : '[OPEN]';
-  const query = `query($owner:String!,$name:String!,$after:String){repository(owner:$owner,name:$name){pullRequests(first:${PR_PAGE_SIZE},after:$after,states:${states},orderBy:{field:CREATED_AT,direction:DESC}){totalCount pageInfo{hasNextPage endCursor} nodes{number title url state isDraft author{login} createdAt mergedAt closedAt body reviewDecision headRefName headRefOid mergeable labels(first:100){nodes{name color}} commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){nodes{... on CheckRun{name status conclusion startedAt completedAt detailsUrl checkSuite{workflowRun{workflow{name}}}} ... on StatusContext{context state createdAt}}}}}}}}}}}`;
+  const query = `query($owner:String!,$name:String!,$after:String){repository(owner:$owner,name:$name){open:pullRequests(states:OPEN){totalCount} closed:pullRequests(states:[CLOSED,MERGED]){totalCount} pullRequests(first:${PR_PAGE_SIZE},after:$after,states:${states},orderBy:{field:CREATED_AT,direction:DESC}){totalCount pageInfo{hasNextPage endCursor} nodes{number title url state isDraft author{login} createdAt mergedAt closedAt body reviewDecision headRefName headRefOid mergeable labels(first:100){nodes{name color}} commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){nodes{... on CheckRun{name status conclusion startedAt completedAt detailsUrl checkSuite{workflowRun{workflow{name}}}} ... on StatusContext{context state createdAt}}}}}}}}}}}`;
   return ['api', 'graphql', '-f', `query=${query}`, '-F', `owner=${owner}`, '-F', `name=${name}`,
     ...(after ? ['-f', `after=${after}`] : [])];
 }
@@ -135,7 +146,7 @@ export function pullListArgs(state, nameWithOwner, after = null) {
 export function parsePullPage(stdout) {
   const result = JSON.parse(stdout || '{}');
   if (result.errors?.length) throw new Error(result.errors.map(e => e.message).join('; '));
-  const page = result.data?.repository?.pullRequests;
+  const repo=result.data?.repository, page=repo?.pullRequests;
   if (!Array.isArray(page?.nodes)) throw new Error('Cannot load pull requests');
   const pulls = page.nodes.map(pr => ({...pr,
     statusCheckRollup: pr.commits?.nodes?.[0]?.commit?.statusCheckRollup?.contexts?.nodes?.map(check => ({...check,
@@ -144,7 +155,9 @@ export function parsePullPage(stdout) {
   }));
   const cursor = page.pageInfo?.endCursor ?? null;
   if (page.pageInfo?.hasNextPage && !cursor) throw new Error('Missing pull-request page cursor');
-  return {pulls, cursor, hasMore:Boolean(page.pageInfo?.hasNextPage), total:page.totalCount ?? null};
+  const counts=Number.isSafeInteger(repo.open?.totalCount) && Number.isSafeInteger(repo.closed?.totalCount)
+    ? {open:repo.open.totalCount,closed:repo.closed.totalCount} : null;
+  return {pulls, cursor, hasMore:Boolean(page.pageInfo?.hasNextPage), total:page.totalCount ?? null,counts};
 }
 export const REPO_ARGS = ['repo', 'view', '--json', 'nameWithOwner,owner,url'];
 export function countArgs(nameWithOwner) {
@@ -267,7 +280,7 @@ export function parsePulls(stdout) {
 export function pullFailure(e, stderr = '') {
   // Already classified at the repository boundary; don't erase its identity
   // when the controller applies its ordinary error presentation.
-  if(e?.repository && ['access','auth'].includes(e.kind) && typeof e.message==='string')return e;
+  if(e?.repository && ['access','auth','notfound'].includes(e.kind) && typeof e.message==='string')return e;
   const detail = String(stderr || e?.stderr || e?.message || (typeof e === 'string' ? e : '')).trim();
   const text = `${e?.code ?? ''} ${detail}`;
   const failure = (kind, message) => ({kind, message});
@@ -282,7 +295,8 @@ export function pullFailure(e, stderr = '') {
   if (/rate limit|HTTP 429|secondary rate/i.test(text)) return failure('rate', 'Could not read pull requests: GitHub rate limit exceeded');
   if (/auth login|not logged in|authentication|HTTP 401|bad credentials/i.test(text)) return failure('auth', 'Sign in first: gh auth login');
   if (/no git remotes|could not determine|none of the git remotes|not a git repository|no remotes/i.test(text)) return failure('repository', 'No GitHub repository');
-  if (/could not resolve to|could not resolve (?:repository|pull request)|HTTP (?:403|404)|not found|not accessible|resource not accessible|permission denied/i.test(text)) return failure('access', 'Repository or pull request is not accessible with the current GitHub account');
+  if (/could not resolve to|could not resolve (?:repository|pull request)|HTTP 404|\bnot found\b/i.test(text)) return failure('notfound', 'Repository or pull request not found');
+  if (/HTTP 403|not accessible|resource not accessible|permission denied/i.test(text)) return failure('access', 'Repository or pull request is not accessible with the GitHub account');
   if (/HTTP [45]\d\d|GraphQL:/i.test(text)) return failure('response', 'Could not read pull requests: GitHub returned an error');
   // Resource resolution, a local command timeout and arbitrary mentions of
   // "network" must not be mistaken for a DNS/connection failure.

@@ -31,11 +31,11 @@ for(const failure of [new Error('failed to spawn gh: EAGAIN'),{code:3221225794,s
  tree=render('open');checkRows(tree,[8]);assert.equal(errors(tree).length,0,'No finished Closed read errors in Open');
  tree=render('closed');checkRows(tree,[5,6,7]);assert.equal(errors(tree).length,1,'Exactly one notice, not three PR errors');assert.ok(find(tree,`task-error-${repo}`));
  if(failure.stderr?.includes('resolve host'))assert.match(text(errors(tree)[0]),/GitHub is unreachable/);
- else{assert.doesNotMatch(text(errors(tree)[0]),/unreachable/);assert.match(text(errors(tree)[0]),failure.stderr?.includes('Repository')?/current GitHub account/:/refresh to retry/);}
+ else{assert.doesNotMatch(text(errors(tree)[0]),/unreachable/);assert.match(text(errors(tree)[0]),failure.stderr?.includes('Repository')?/not found/:/refresh to retry/);}
 }
 // Distinct failures yield one truthful summary; partial recovery keeps the rest.
 failures.set(key(5),{code:3221225794,stderr:''});failures.set(key(6),{code:1,stderr:'HTTP 404: Not Found'});failures.set(key(7),{code:1,stderr:'Could not resolve host: api.github.com'});await refresh();
-tree=render('closed');assert.equal(errors(tree).length,1);for(const part of ['local command','current GitHub account','GitHub connection'])assert.ok(text(errors(tree)[0]).includes(part));
+tree=render('closed');assert.equal(errors(tree).length,1);for(const part of ['local command','example/crew #6 not found','GitHub connection'])assert.ok(text(errors(tree)[0]).includes(part));
 failures.delete(key(5));await refresh();tree=render('closed');assert.equal(errors(tree).length,1);assert.doesNotMatch(text(errors(tree)[0]),/local command/);
 failures.clear();await refresh();assert.equal(errors(render('closed')).length,0);
 // Unknown historical state is a Closed history-load notice, not an Open error.

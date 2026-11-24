@@ -306,8 +306,12 @@ historical rows and their errors cannot leave empty sections. Cold historical-on
 failures are a Closed history-load notice, not invented PR state. Execution results
 retain exit/signal/timeout facts: local spawn failures, abnormal Windows NTSTATUS
 and process timeouts offer Refresh to retry, not an automatic retry promise or a
-GitHub outage claim. GitHub account/resource refusals identify current-account
-access; only explicit DNS/connection failures mean GitHub is unreachable. Mixed
+GitHub outage claim. Missing-resource/404 replies say not found, grouping repository/PR numbers without
+an account probe or a login-problem claim. Real permission/authentication refusals
+identify the repository and effective GitHub account (or honest unknown identity),
+with one identity read reused per repository/refresh and discarded afterward.
+Ordinary failed responses revalidate captured request/repository identity before
+starting that diagnosis. Only explicit DNS/connection failures mean GitHub is unreachable. Mixed
 causes reduce to one truthful summary; partial recovery removes only recovered
 failures. Setup is global and enrollment links capture each repository. Hidden/disabled or
 superseded contexts cannot start follow-ups or publish stale results. Neither
