@@ -34,6 +34,7 @@ const native = {
   home:()=>home, theme:()=>({dim:'dim',hover:'hover',foreground:'foreground'}), layout:()=>null, window:()=>({platform:'windows'}), run(){}, openOverlay(){}, props:()=>null, closeOverlay(){}, notify(){}, nextCommand(){},
   hc:args=> { screenCalls.push(args); return Promise.resolve(screenReply); },
   exec:(cmd,args,options)=> {
+    if (cmd === 'git' && args[0] === 'rev-parse') assert.equal(rendering,false,'Root probes yield even when spawn starts inline in render');
     if (cmd === 'git' && args[0] === 'symbolic-ref') {
       branchCalls.push({args,options});
       if (heldBranch) { const promise = heldBranch; heldBranch = null; return promise; }
@@ -129,19 +130,20 @@ const view = new main.namespace.default();
 const cx = {focus_handle(){assert.equal(rendering,false,'No focus allocation from render');return {};},spawn:fn=>tasks.push(fn(cx)),notify:()=>assert.equal(rendering,false,'No synchronous notify from render'),timer:{every(){}}};
 const render = () => {rendering=true;try{return view.render(cx);}finally{rendering=false;}};
 const tick = async () => {for(let i=0;i<16;i++) await Promise.resolve();};
-function take(cmd,subcommand) {
+async function take(cmd,subcommand) {
+  await tick();
   const index = pending.findIndex(call=>call.cmd===cmd && (!subcommand || call.args[0]===subcommand));
   assert.ok(index>=0,`Expected pending ${cmd} ${subcommand ?? ''}`);
   return pending.splice(index,1)[0];
 }
-async function reply(call,stdout='',code=0) {call.resolve({stdout,code,stderr:''});await tick();}
+async function reply(call,stdout='',code=0) {(await call).resolve({stdout,code,stderr:code===128?'fatal: not a git repository (or any of the parent directories): .git':''});await tick();}
 function select(cwd) {terminal.labels['custom.cwd']=cwd;render();}
 function seedRepo() {
   view.repo={name:'example/xrbuild',owner:'example'};
   view.pulls={open:[{number:1}],closed:[]}; view.counts={open:1,closed:6};
 }
 view.init({},cx);
-let git = take('git');
+let git = await take('git');
 assert.equal(git.options.cwd,home); assert.equal(git.options.on,'pc2');
 await reply(git,'',128);
 assert.equal(view.root,null); assert.equal(view.repo,null); assert.equal(view.error,'Not a git repository');
@@ -151,9 +153,9 @@ assert.equal(pending.length,0,'Non-repo home never starts GitHub requests');
 // project labels change. Pending replies from its old worktree cannot restore it.
 terminal.foreground={name:'node.exe',cwd:home};terminal.report={app:'a1'};
 Object.assign(terminal.labels,a1Labels);
-render();const firstWorktree=take('git');
+render();const firstWorktree=await take('git');
 assert.equal(firstWorktree.options.cwd,a1Labels['a1.cwd']);assert.equal(firstWorktree.options.on,'pc2');
-terminal.labels['a1.cwd']='D:/worktrees/second';render();const secondWorktree=take('git');
+terminal.labels['a1.cwd']='D:/worktrees/second';render();const secondWorktree=await take('git');
 await reply(firstWorktree,'D:/worktrees/stale');assert.equal(view.root,null);assert.equal(view.loading,true);
 await reply(secondWorktree,'D:/worktrees/second');assert.equal(view.root,'D:/worktrees/second');
 assert.equal(branchCalls.at(-1).options.cwd,'D:/worktrees/second');
@@ -162,12 +164,12 @@ assert.equal(view.error,'Not a git repository','Detach to nonrepository home cle
 for(const key of Object.keys(a1Labels))delete terminal.labels[key];
 terminal.report={app:'claude-code'};
 Object.assign(terminal.labels,{'custom.claude.session':'fixture-instance','custom.claude.at':String(Date.now()),'custom.claude.cwd':'D:/worktrees/claude'});
-render();const claudeRoot=take('git');
+render();const claudeRoot=await take('git');
 assert.equal(claudeRoot.options.cwd,'D:/worktrees/claude','The same generic resolver accepts Claude session roots over stale Node cwd');
 assert.equal(claudeRoot.options.on,'pc2');
 await reply(claudeRoot,'D:/worktrees/claude');assert.equal(view.root,'D:/worktrees/claude');
-terminal.labels['custom.claude.cwd']='D:/worktrees/claude-next';render();const staleClaude=take('git');
-terminal.labels['custom.claude.at']=String(Date.now()-90_001);render();const expiredClaude=take('git');
+terminal.labels['custom.claude.cwd']='D:/worktrees/claude-next';render();const staleClaude=await take('git');
+terminal.labels['custom.claude.at']=String(Date.now()-90_001);render();const expiredClaude=await take('git');
 assert.equal(expiredClaude.options.cwd,home,'Expired capabilities retain generic foreground fallback');
 await reply(staleClaude,'D:/worktrees/claude-next');assert.equal(view.root,null);await reply(expiredClaude,'',128);
 for(const key of ['custom.claude.session','custom.claude.at','custom.claude.cwd'])delete terminal.labels[key];delete terminal.report;
@@ -184,25 +186,25 @@ assert.equal(view.root,null); assert.equal(view.repo,null); assert.equal(view.co
 await reply(take('git'),'',128);
 
 // A slow old git request must not block a new location or turn off its spinner.
-select(repo); const oldGit = take('git');
-select(home); const newGit = take('git');
+select(repo); const oldGit = await take('git');
+select(home); const newGit = await take('git');
 assert.equal(newGit.options.cwd,home);
 await reply(oldGit,repo);
 assert.equal(view.root,null); assert.equal(view.loading,true);
 await reply(newGit,'',128); assert.equal(view.loading,false);
 
 // A -> B -> A must reject the first A even though its string context matches.
-select(repo); const firstA = take('git');
-select(home); const b = take('git');
-select(repo); const secondA = take('git');
+select(repo); const firstA = await take('git');
+select(home); const b = await take('git');
+select(repo); const secondA = await take('git');
 await reply(firstA,'D:/stale'); assert.equal(view.root,null); assert.equal(view.branch,null); assert.equal(view.loading,true);
 await reply(secondA,repo); await reply(b,'',128); assert.equal(view.root,repo);
 
 // Late repo discovery must not restore the old header or overwrite new busy state.
-view.loadPulls('open',cx,true); const oldRepo = take('gh','repo');
+view.loadPulls('open',cx,true); const oldRepo = await take('gh','repo');
 select(home); await reply(take('git'),'',128);
 select(repo); await reply(take('git'),repo);
-view.loadPulls('open',cx,true); const newRepo = take('gh','repo');
+view.loadPulls('open',cx,true); const newRepo = await take('gh','repo');
 await reply(oldRepo,JSON.stringify({nameWithOwner:'wrong/old'}));
 assert.equal(view.repo,null); assert.equal(view.pullLoading,true);
 // Same-folder agents/tabs share an in-flight repository request and its data.
@@ -215,7 +217,7 @@ assert.equal(view.root,repo);assert.equal(view.context,sharedContext);assert.equ
 assert.equal(view.pullLoading,true,'The shared GitHub request remains active');
 await reply(newRepo,JSON.stringify({nameWithOwner:'example/xrbuild'}));
 assert.equal(view.repo.name,'example/xrbuild','A shared in-flight reply is accepted after switching agents');
-const list = take('gh','api');
+const list = await take('gh','api');
 const sharedPulls=view.pulls,sharedPages=view.pages,sharedCounts=view.counts;
 view.pages.open={cursor:'page-two',hasMore:true,expanded:true};
 selectedTab.name='906';selectedTab.named=true;render();
@@ -236,13 +238,13 @@ render(); await reply(take('git'),'',128); assert.equal(view.repo,null);
 
 // Delayed counts/errors/finalizers cannot leak across a context change either.
 select(repo); await reply(take('git'),repo); seedRepo();
-view.loadPulls('open',cx,true); await reply(take('gh','api'),JSON.stringify({data:{repository:{pullRequests:{nodes:[],totalCount:0,pageInfo:{hasNextPage:false,endCursor:null}}}}})); const counts = take('gh','api');
+view.loadPulls('open',cx,true); await reply(take('gh','api'),JSON.stringify({data:{repository:{pullRequests:{nodes:[],totalCount:0,pageInfo:{hasNextPage:false,endCursor:null}}}}})); const counts = await take('gh','api');
 select(home); await reply(take('git'),'',128);
 await reply(counts,JSON.stringify({data:{repository:{open:{totalCount:99},closed:{totalCount:99}}}}));
 assert.equal(view.counts,null); assert.equal(view.repo,null);
 select(repo); await reply(take('git'),repo); seedRepo();
-view.loadPulls('open',cx,true); const failure = take('gh','api');
-select(home); const homeGit = take('git');
+view.loadPulls('open',cx,true); const failure = await take('gh','api');
+select(home); const homeGit = await take('git');
 failure.reject(new Error('old machine offline')); await tick();
 assert.equal(view.pullError,null); assert.equal(view.loading,true);
 await reply(homeGit,'',128);
@@ -259,6 +261,11 @@ assert.equal(view.branch,null); assert.equal(view.root,null);
 select(repo); await reply(take('git'),repo);
 branch = 'fix/next-agent'; view.refresh(cx); await reply(take('git'),repo);
 assert.equal(view.branch,'fix/next-agent');
+for(const failure of [{code:0,stdout:'wrong',timed_out:true},{code:128,stdout:'',stderr:'permission denied'},null]){
+  heldBranch=Promise.resolve(failure);view.refresh(cx);await reply(take('git'),repo);
+  assert.equal(view.branch,'fix/next-agent','An inconclusive branch refresh cannot unpin the loaded branch PR');
+  assert.equal(view.error,'Could not read branch; refresh to retry');
+}
 branch = null; view.refresh(cx); await reply(take('git'),repo);
 assert.equal(view.branch,null,'Detached HEAD does not select any PR');
 assert.equal(view.root,repo,'No symbolic branch does not lose the repository');
@@ -377,6 +384,33 @@ assert.equal(view.root,worktree);assert.equal(view.pulls.open,previousRows);
 assert.equal(view.agentPull,2);assert.equal(view.pinMotion.current.phase,'start');
 assert.equal(view.pullPresentation.pinned,one,'Resolved facts do not prematurely reparent the old pin');
 view.pinMotion.cancel();render();view.shown=originalShown;
+
+// Same-context root failures are uncertainty, not repository removal. Sample
+// real row IDs before/during/after reads and preserve native geometry references.
+const ids=node=>{const result=[];const walk=n=>{if(/^pr-\d+$/.test(n?.attrs?.id?.[0]??''))result.push(n.attrs.id[0]);for(const child of n?.kids??[])walk(child);};walk(node);return result;};
+const kept={root:view.root,repo:view.repo,pulls:view.pulls,pages:view.pages,counts:view.counts,body:view.pinMotion.bodySize,rows:view.pinMotion.sizes};
+const rowsBefore=ids(view.renderPulls(native.theme()));
+for(const result of [
+  Error('spawn failed'),{code:0,stdout:worktree,timed_out:true},
+  {code:128,stderr:'fatal: not a git repository: .git',signal:'SIGTERM'},
+  {code:3221225794,stderr:''},{code:-1073741502,stderr:''},
+  {code:128,stderr:'fatal: cannot chdir: Permission denied'},
+  {code:0,stdout:''},
+]){
+  view.refresh(cx);assert.deepEqual(ids(view.renderPulls(native.theme())),rowsBefore,'Pending root lookup keeps rows');
+  const request=await take('git');
+  if(result instanceof Error)request.reject(result);else request.resolve({stdout:'',stderr:'',...result});
+  await tick();
+  assert.equal(view.root,kept.root);assert.equal(view.repo,kept.repo);assert.equal(view.pulls,kept.pulls);assert.equal(view.pages,kept.pages);assert.equal(view.counts,kept.counts);
+  assert.equal(view.pinMotion.bodySize,kept.body);assert.equal(view.pinMotion.sizes,kept.rows);assert.equal(view.loading,false);
+  assert.deepEqual(ids(view.renderPulls(native.theme())),rowsBefore,'A failed root read cannot emit an empty frame');
+  assert.equal(findId(view.renderPulls(native.theme()),'git-read-error').kids[0],'Could not read repository; refresh to retry');
+}
+view.refresh(cx);await reply(take('git'),worktree);
+assert.equal(view.error,null);assert.deepEqual(ids(view.renderPulls(native.theme())),rowsBefore);assert.equal(view.pages,kept.pages);
+// Only a normal, explicit Git non-repository refusal is affirmative absence.
+view.refresh(cx);await reply(take('git'),'',128);
+assert.equal(view.root,null);assert.equal(view.repo,null);assert.equal(view.pulls.open,null);assert.equal(view.error,'Not a git repository');
 await Promise.all(tasks);
 assert.equal(pending.length,0);
 console.log('PASS: Git live shell cwd, selected tab/machine, non-repo clearing, pending git/GitHub replies and A-B-A race protection');

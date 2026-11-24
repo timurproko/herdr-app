@@ -303,6 +303,22 @@ Existing label-colour/tooltip, PR-action and pin-motion regressions remain intac
 These are synthetic resolved-box comparisons, not native GPUI pixels or visual
 interaction evidence; no app, session, credential or deployment is used.
 
+The same fixture compares Open/Closed segment positions for unknown, zero and
+multi-digit counts; empty badge reservations have no fabricated values.
+`tests/git-location.test.mjs` now samples actual rendered row identities through
+pending/rejected/timed-out/signaled/abnormal/permission-denied/empty root replies,
+checks root/repository/count/page and native pin-size retention, then verifies
+successful recovery and explicit non-repository clearing. Root reads yield out of
+render even with inline spawn. `tests/pulls-pagination.test.mjs` samples manual
+and staged webhook refreshes, including a targeted older active PR after page-one
+replacement and a failed reread; the pin stays mounted until its facts are ready.
+Synchronous transport throws cannot notify or allocate focus during render.
+`tests/fleet-git.test.mjs` renders with inline-spawn guards during deferred same-home
+refresh, partial PR failure and reconnect recovery, preserving prior rows/counts
+until their individual replacements arrive. Its existing hide/show, stale/Verifying,
+cold waiting and exact worker-action refusal cases remain. No aggregate retention
+rewrite was needed: those same-home guards already preserve loaded facts.
+
 ## Connected fleet fixtures
 
 `tests/fleet-read-failures.test.mjs` and `tests/fleet-read-notices.test.mjs`

@@ -111,10 +111,17 @@ export default class Changes extends View {
     this.loading = true;
     if (notify) cx.notify();
     cx.spawn(async cx => {
+      await Promise.resolve(); // spawn may begin inline during render
+      if (!current()) return;
       try {
         const top = await exec('git', ['rev-parse', '--show-toplevel'], { cwd, on, timeout: 15000 });
         if (!current()) return;
-        const root = top.code === 0 ? top.stdout.trim() : null;
+        const abnormal = top.timed_out || top.timedOut || top.signal || top.code < 0 || top.code >= 0x80000000;
+        const root = !abnormal && top.code === 0 ? top.stdout.trim() : null;
+        const absent = !abnormal && top.code === 128 && /(?:^|\n)fatal: not a git repository(?:[ (:]|$)/i.test(top.stderr ?? '');
+        // A timeout, failed spawn or unreadable mount is not proof that a known
+        // repository disappeared. Retain its rows until we have a real result.
+        if (!root && !absent) throw Error('Could not read repository; refresh to retry');
         const retained = root && this.pinMotion?.current?.context === context && this.pinMotion.current.repo === this.repo?.name;
         if (!root || (root !== this.root && !retained)) this.resetRepository();
         this.root = root;
@@ -124,11 +131,14 @@ export default class Changes extends View {
           // launch folder. Detached HEAD has no related branch to highlight.
           const head = await exec('git', ['symbolic-ref', '--quiet', '--short', 'HEAD'], { cwd, on, timeout: 15000 }).catch(() => null);
           if (!current()) return;
-          this.branch = head?.code === 0 ? head.stdout.trim() || null : null;
+          if (head && !head.timed_out && !head.timedOut && !head.signal && [0,1].includes(head.code)) {
+            this.branch = head.code === 0 ? head.stdout.trim() || null : null;
+          } else this.error = 'Could not read branch; refresh to retry';
           this.syncAgent(cx, true);
         }
-      } catch (e) { if (current()) { this.resetRepository(); this.error = String(e); } }
-      finally { if (this.rootRequest === request) this.loading = false; cx.notify(); }
+      } catch {
+        if (current()) this.error = 'Could not read repository; refresh to retry';
+      } finally { if (this.rootRequest === request) this.loading = false; cx.notify(); }
     });
   }
 
@@ -159,7 +169,7 @@ export default class Changes extends View {
     // not briefly drop into the list and jump back up on every agent switch.
     cx.spawn(async cx => {
       try {
-        const screen = await hc(['read', target.terminal, '--json', '--lines', '0']).catch(() => null);
+        const screen = await Promise.resolve().then(()=>hc(['read', target.terminal, '--json', '--lines', '0'])).catch(() => null);
         if (!sidebarPanelEnabled('changes') || this.agentRequest !== request || this.context !== context || key() !== context || agentKey(location()) !== selection) return;
         this.agentPull = screen?.code === 0 ? agentPullNumber(screen.stdout, target.app) : null;
         this.agentResolved = selection;
@@ -231,6 +241,7 @@ export default class Changes extends View {
           else { this.pullError = pullError(e); this.pullsAt[state] = Date.now(); }
         }
       } finally {
+        await Promise.resolve(); // even a synchronous transport throw must yield
         if (this.pullRequest === request) { this.pullLoading = false; this.loadingState = null; this.appending = false; }
         this.flushWebhook(cx);
         cx.notify();
@@ -245,7 +256,10 @@ export default class Changes extends View {
     if (!this.repo || !number || !this.shown()) return;
     const scope = JSON.stringify([this.context,this.repo.name,number]);
     if (this.relatedKey === scope) return;
-    this.relatedKey = scope; this.relatedPull = null; this.relatedRequest = null;
+    this.relatedKey = scope; this.relatedRequest = null;
+    // Manual page-one refresh may need to re-read the older active PR. Keep its
+    // pin mounted while that same-number replacement is pending or fails.
+    if (this.relatedPull?.number !== number) this.relatedPull = null;
     const known = [...(this.pulls.open ?? []), ...(this.pulls.closed ?? [])].find(pr => pr.number === number);
     if (known) { this.relatedPull = known; return; }
     const context = this.context, repo = this.repo, root = this.root, on = this.on;
@@ -258,7 +272,7 @@ export default class Changes extends View {
         if (!current() || result.code !== 0) return;
         const pr = JSON.parse(result.stdout);
         if (pr.number === number) {this.relatedPull = pullRow(pr,repo.owner);this.ciRevision=(this.ciRevision??0)+1;}
-      } catch {} finally { cx.notify(); }
+      } catch {} finally { await Promise.resolve(); cx.notify(); }
     });
   }
 
@@ -455,8 +469,10 @@ export default class Changes extends View {
       .text_size(U.meta).text_color(on ? t.foreground : t.muted).when(on, el => el.font_semibold())
       .hover(s => s.bg(t.hover)).on_click((_e, cx) => onClick(cx))
       .child(label)
-      .when(count != null, el => el.child(div().min_w(18).px(5).h(16).flex().items_center().justify_center().rounded_full()
-        .bg(on ? t.selected : t.raised).text_size(10).font_medium().text_color(on ? t.foreground : t.muted).child(String(count))));
+      .child(div().id(`${id}-count-slot`).w(32).h(16).flex_none()
+        .when(count != null, el => el.child(div().w_full().min_w(0).px(5).h(16).flex().items_center().justify_center().rounded_full()
+          .bg(on ? t.selected : t.raised).text_size(10).font_medium().text_color(on ? t.foreground : t.muted).tooltip(String(count))
+          .child(div().min_w(0).truncate().child(String(count))))));
   }
 
   pullIcon(t, pr) {
@@ -632,7 +648,7 @@ export default class Changes extends View {
       this.pinKey = pinKey;
     }
     const remaining = rows.filter(pr => pr !== pinned);
-    const empty = this.pullError || (!this.root ? (this.error || (this.loading ? 'Loading…' : 'No folder'))
+    const empty = this.error || this.pullError || (!this.root ? (this.loading ? 'Loading…' : 'No folder')
       : list === null ? 'Loading…' : `No ${state} pull requests`);
     return v_flex().id('pulls-body').relative().flex_1().min_h(0).overflow_hidden()
       .on_size_change((size, cx) => {
@@ -661,7 +677,7 @@ export default class Changes extends View {
             .children(remaining.map(pr => this.pullRow(t, pr)
               .when(Boolean(swap?.cards.some(card => card.pr.number === pr.number)), el => el.invisible())))
             .when(!rows.length, el => el.child(panelMessage(t, 'git-empty', { text: empty, loading: empty === 'Loading…', rowInset: 2 })))
-            .when(Boolean(list?.length) && Boolean(this.pullError), el => el.child(div().px(8).py(4).text_size(11).text_color(t.ansi1).child(this.pullError)))
+            .when(Boolean(rows.length) && Boolean(this.error || this.pullError), el => el.child(div().id('git-read-error').px(8).py(4).text_size(11).text_color(t.ansi1).child(this.error || this.pullError)))
             .when(this.pageError?.state === state, el => el.child(div().px(8).py(4).text_size(11).text_color(t.ansi1).child(this.pageError.message)))
             .when(Boolean(this.pages[state]?.hasMore), el => el.child(div().id('pulls-more').p(8).text_size(11).text_color(t.dim)
               .role('button').accessibility_label('Load 10 more pull requests').disabled(this.pullLoading)

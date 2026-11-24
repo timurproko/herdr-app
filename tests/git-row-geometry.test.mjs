@@ -59,6 +59,19 @@ for(const mode of ['ordinary','pinned','scrolling','coordinator','ghost'])for(co
     assert.deepEqual(build(overrides,agent),baseline,`${mode}/${state} width=${width} zoom=${zoom} ${name} agent=${agent}`);comparisons++;
   }
 }
+// The optional count badge must not move the neighboring Closed tab when data
+// arrives. Unknown values reserve geometry without inventing a zero count.
+for(const width of [280,360,480])for(const zoom of [0.75,1,1.25,1.5,2]){
+  let baseline;
+  for(const count of [null,0,1,99999]){
+    const tree=h.render(()=>element().flex().gap(2).children([
+      panel.segment(t,'open','Open',count,true,()=>{}),panel.segment(t,'closed','Closed',count,false,()=>{}),
+    ]));
+    const boxes=rowGeometry(tree,width,zoom),snapshot=['open','closed','open-count-slot','closed-count-slot'].map(id=>plain(boxes.get(find(tree,id))));
+    baseline??=snapshot;assert.deepEqual(snapshot,baseline,`count=${count} width=${width} zoom=${zoom}`);
+    if(count===null)assert.equal(words(find(tree,'open-count-slot')).join(''),'');
+  }
+}
 // Mutation sensitivity: the solver sees the original disappearing-robot defect,
 // and a content-sized metadata cell would move its neighbors.
 h.setAgent(false);const pr=facts.pullRow(source,'owner');const row=panel.pullRow(t,pr),before=rowGeometry(row,360).get(find(row,'pr-title-17'));

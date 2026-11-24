@@ -136,6 +136,21 @@ for(const action of ['unlabeled','labeled']) {
   for(const tab of ['open','closed'])assert.equal(panel.aggregate.rows(tab)[0].labels.length,assignedLabels.length);
 }
 defer=true;
+// Same-home refresh keeps each loaded row until its own replacement is ready;
+// even a partial failure cannot substitute Loading/empty for the known facts.
+const pendingFacts=new Map([...panel.aggregate.entries].map(([key,e])=>[key,e.pr]));
+const pendingCounts=JSON.stringify(panel.aggregate.counts()),pendingScope=panel.aggregate.context.scope;
+const retainedFrame=()=>{
+ rendering=true;try{tree=panel.render(renderCx);}finally{rendering=false;}
+ assert.equal(panel.aggregate.context.scope,pendingScope);assert.equal(JSON.stringify(panel.aggregate.counts()),pendingCounts);
+ assert.ok(find(tree,'pr-example/b#12'));assert.equal(find(tree,'git-task-empty'),undefined);
+};
+panel.aggregate.refresh(cx);await tick();retainedFrame();
+for(const [key,pr]of pendingFacts)assert.equal(panel.aggregate.entries.get(key).pr,pr,'No pending refresh clears a loaded PR');
+failRepo='example/b';while(waiting.length)waiting.shift()();await drain();retainedFrame();
+assert.equal(panel.aggregate.entries.get('example/b#12').pr,pendingFacts.get('example/b#12'),'The failed row retains its last-good facts');
+assert.ok(find(tree,'task-error-example/b'));failRepo=null;
+websocket.onChange(null,cx);await tick();retainedFrame();while(waiting.length)waiting.shift()();await drain();retainedFrame();assert.equal(find(tree,'task-error-example/b'),undefined);
 // Hide/disable invalidates in-flight writes and starts no follow-up or polling.
 before=calls.length;panel.aggregate.refresh(cx);await tick();shown=false;panel.render(cx);while(waiting.length)waiting.shift()();await drain();assert.equal(calls.length,before+2);assert.equal(websocket.enabled,false);assert.equal(panel.aggregate.busy,false);
 shown=true;defer=false;panel.render(cx);await drain();assert.equal(calls.length,before+4,'Showing again catches up both linked repositories');

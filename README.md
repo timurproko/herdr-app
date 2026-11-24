@@ -242,7 +242,14 @@ errors are applied immediately, and longer requests spin until completion.
 The visual minimum is scoped to the clicked control and its machine/folder or
 Settings section, so switching context does not inherit another refresh.
 Refresh controls and the Usage settings gear have no hover tooltips;
-accessibility labels remain available.
+accessibility labels remain available. Git keeps loaded rows, counts, pagination and
+pin measurements while a same-context refresh runs or a Git-root/branch probe
+fails inconclusively. An older active PR also stays pinned during its targeted
+reread after page-one refresh. Only an authoritative replacement, proven
+non-repository or actual context change clears incompatible facts. Open/Closed
+count badges reserve their width before totals arrive, without displaying fake
+zeroes. Cold loading and coordinator Verifying remain panel feedback, never
+placeholder PR rows.
 Git's event-driven CI line sits immediately below its header and applies to
 all PRs, not just the pinned block. Rotation and line motion use native animation,
 not JavaScript frame timers. This applies to Settings, Files, file-pane

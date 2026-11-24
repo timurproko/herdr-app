@@ -32,9 +32,10 @@ async function harness(state) {
   const context = vm.createContext({localStorage:{getItem:()=>null,setItem(){}}});
   const place = {cwd:'/repo',on:'pc2',terminal:'pc2/t1',space:'pc2/s1',tab:'pc2/tab'};
   const pending = [], tasks = [], calls = [];
+  let syncError=null;
   const host = {settings:()=>({zoom:1}),theme:()=>({}),layout:()=>({id:'panel',children:[{id:'panel-body',active:'changes'}]}),
     window:()=>({platform:'windows'}),hc:async()=>({code:1}),run(){},openOverlay(){},props:()=>null,closeOverlay(){},notify(){},nextCommand(){},
-    exec:(cmd,args,options)=>new Promise((resolve,reject)=>{const call={cmd,args,options,resolve,reject};pending.push(call);calls.push(call);}),
+    exec:(cmd,args,options)=>{if(syncError)throw syncError;return new Promise((resolve,reject)=>{const call={cmd,args,options,resolve,reject};pending.push(call);calls.push(call);});},
   };
   const modules = {
     './enrollment-picker.js':{EnrollmentPicker:class{}},
@@ -69,11 +70,13 @@ async function harness(state) {
   const view = new main.namespace.default();
   view.resetRepository();view.view=state;view.root='/repo';view.on='pc2';view.context=JSON.stringify([place.cwd,place.on]);
   view.repo={name:'owner/repo',owner:'owner'};
-  const cx = {notify(){},spawn:fn=>tasks.push(fn(cx))};
+  let rendering=false;
+  const cx = {notify(){assert.equal(rendering,false,'No synchronous notification during render, even with inline spawn');},focus_handle(){assert.equal(rendering,false,'No render-time focus allocation');return {};},spawn:fn=>tasks.push(fn(cx))};
+  const guarded=fn=>{rendering=true;try{return fn();}finally{rendering=false;}};
   const tick = async()=>{for(let i=0;i<16;i++)await Promise.resolve();};
   const take = ()=>{assert.ok(pending.length,'Expected one request');return pending.shift();};
   async function reply(stdout,code=0) {const call=take();call.resolve({code,stdout,stderr:code?'network failed':''});await tick();return call;}
-  const render = ()=>view.renderPulls({hover:'hover',border:'border'});
+  const render = ()=>guarded(()=>view.renderPulls({hover:'hover',border:'border'}));
   const scroll = (bottom,delta=-40,kind='wheel')=>{
     const tree=render(),content=find(tree,'pulls-content'),frame=find(tree,'pulls-scroll-frame');
     const event={position:{x:10,y:500},delta:{y:delta},bounds:{y:bottom-1000,height:1000}};
@@ -81,7 +84,7 @@ async function harness(state) {
     content.attrs[method][0](event,cx);
     frame.attrs[method][0]({...event,bounds:{y:0,height:600}},cx);
   };
-  return {view,cx,pending,tasks,calls,place,take,reply,tick,render,scroll};
+  return {view,cx,pending,tasks,calls,place,take,reply,tick,render,scroll,guarded,failTransport:value=>{syncError=value;}};
 }
 
 // Folder Git retains execution facts too; empty NTSTATUS/command timeouts
@@ -167,6 +170,9 @@ for(const state of ['open','closed']) {
   v.loadPulls(state,h.cx,true);
   assert.ok(!h.pending[0].args.some(a=>a.startsWith('after=')));
   assert.equal(v.pulls[state].length,21);
+  const beforeRefresh=h.render(),oldRows=v.pulls[state],oldPages=v.pages[state];
+  assert.ok(find(beforeRefresh,'pr-1'));assert.equal(find(beforeRefresh,'git-empty'),undefined);
+  h.render();assert.equal(v.pulls[state],oldRows);assert.equal(v.pages[state],oldPages);
   await h.reply(page(200,10,'new-1'));await h.reply('{}');
   assert.equal(v.pulls[state].length,10);assert.equal(v.pages[state].expanded,false);
   assert.equal(v.pulls[state][0].number,200);
@@ -181,6 +187,23 @@ for(const state of ['open','closed']) {
   assert.ok(find(find(h.render(),'active-pull'),'pr-908'));
   assert.equal(v.pulls[state].length,10);assert.equal(v.pages[state].cursor,'new-1');
   v.loadRelatedPull(h.cx);assert.equal(h.pending.length,0,'Related lookups are cached');
+  // Refreshing page one must not unpin an older PR during its targeted reread.
+  const retainedRelated=v.relatedPull,relatedFrame=()=>{
+    assert.equal(v.relatedPull,retainedRelated);assert.ok(find(find(h.render(),'active-pull'),'pr-908'));assert.equal(find(h.render(),'git-empty'),undefined);
+  };
+  v.loadPulls(state,h.cx,true);relatedFrame();
+  await h.reply(page(200,10,'new-1'));relatedFrame();await h.reply('{}');
+  h.guarded(()=>v.loadRelatedPull(h.cx));relatedFrame();
+  await h.reply('',1);relatedFrame();
+  v.relatedKey=null;h.guarded(()=>v.loadRelatedPull(h.cx));relatedFrame();
+  await h.reply(JSON.stringify({number:908,title:'Refreshed older PR',state:state==='open'?'OPEN':'MERGED',labels:[{name:'🤖 Under review',color:'840479'}]}));
+  assert.equal(v.relatedPull.title,'Refreshed older PR');assert.ok(find(find(h.render(),'active-pull'),'pr-908'));
+  // Synchronous transport refusal cannot notify inline from render either.
+  h.failTransport(Error('synchronous transport refusal'));
+  h.guarded(()=>v.loadPulls(state,h.cx,true,false));await h.tick();
+  assert.equal(v.pullLoading,false);assert.ok(find(h.render(),'pr-200'));
+  v.relatedKey=null;h.guarded(()=>v.loadRelatedPull(h.cx));await h.tick();assert.ok(find(find(h.render(),'active-pull'),'pr-908'));
+  h.failTransport(null);v.pullError=null;
   v.pulls[state].push(v.relatedPull);
   const linked=h.render();
   assert.ok(find(find(linked,'active-pull'),'pr-908'));
@@ -198,7 +221,11 @@ for(const state of ['open','closed']) {
     if(cycle!==1)v.queueWebhook({repository:'owner/repo',event:'pull_request',action:cycle===2?'unlabeled':'labeled'},h.cx);
     await h.tick();
     if(cycle===0){v.queueWebhook({repository:'owner/repo',event:'pull_request'},h.cx);v.queueWebhook({repository:'owner/repo',event:'pull_request'},h.cx);}
+    const oldOpen=v.pulls.open,oldClosed=v.pulls.closed,oldPin=v.relatedPull,oldCursor=v.pages[state].cursor;
+    assert.ok(find(find(h.render(),'active-pull'),'pr-908'));
     await h.reply(page(200,10,'refresh-open',true,assigned));
+    assert.equal(v.pulls.open,oldOpen);assert.equal(v.pulls.closed,oldClosed);assert.equal(v.relatedPull,oldPin);assert.equal(v.pages[state].cursor,oldCursor,'Webhook snapshots do not partially replace mounted pages');
+    assert.ok(find(find(h.render(),'active-pull'),'pr-908'));
     await h.reply(page(100,10,'refresh-closed',true,assigned));
     const targeted=h.pending[0];assert.equal(targeted.args[0],'pr');assert.ok(targeted.args.at(-1).includes('labels'));
     await h.reply(JSON.stringify({number:908,state:state==='open'?'OPEN':'MERGED',labels:assigned}));

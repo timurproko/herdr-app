@@ -10,11 +10,11 @@
 
 ## 2. Same-context refresh preserves displayed rows until replacement facts are ready
 
-- [ ] 2.1 Preserve last-good ordinary repository rows/counts/pages/pin measurements on inconclusive same-context root-probe failure, retaining immediate invalidation for unrelated contexts and proven non-repositories; verify deferred root-success, transport/process failure, definitive absence and obsolete-reply cases in the location/pagination fixtures.
-- [ ] 2.2 Add render snapshots during manual, webhook, reconnect/show and aggregate refreshes, including partial PR-read failure and stale/Verifying transitions; verify existing rows/IDs/order/scroll geometry remain until each successful replacement, webhook pagination depth is preserved, and cold waiting shows no fabricated rows or values.
-- [ ] 2.3 Reserve optional panel count/status geometry wherever the deferred panel fixture demonstrates arrival-driven reflow, and fix any demonstrated same-home aggregate clearing path without changing identity/eligibility policy; verify loading feedback cannot displace retained rows and true home/repository/tab changes still obey existing guards.
-- [ ] 2.4 Extend immediate-spawn render guards and stale worker-action tests across the modified refresh paths; verify no render-time focus allocation or notification, no stale coordinator reads/navigation and no additional polling or real host operations.
-- [ ] 2.5 Update README and docs/TESTING.md with refresh-retention boundaries and evidence limitations; verify focused pagination, location, fleet, label and pin regressions pass without reducing existing safety assertions.
+- [x] 2.1 Preserve last-good ordinary repository rows/counts/pages/pin measurements on inconclusive same-context root-probe failure, retaining immediate invalidation for unrelated contexts and proven non-repositories; verify deferred root-success, transport/process failure, definitive absence and obsolete-reply cases in the location/pagination fixtures.
+- [x] 2.2 Add render snapshots during manual, webhook, reconnect/show and aggregate refreshes, including partial PR-read failure and stale/Verifying transitions; verify existing rows/IDs/order/scroll geometry remain until each successful replacement, webhook pagination depth is preserved, and cold waiting shows no fabricated rows or values.
+- [x] 2.3 Reserve optional panel count/status geometry wherever the deferred panel fixture demonstrates arrival-driven reflow, and fix any demonstrated same-home aggregate clearing path without changing identity/eligibility policy; verify loading feedback cannot displace retained rows and true home/repository/tab changes still obey existing guards.
+- [x] 2.4 Extend immediate-spawn render guards and stale worker-action tests across the modified refresh paths; verify no render-time focus allocation or notification, no stale coordinator reads/navigation and no additional polling or real host operations.
+- [x] 2.5 Update README and docs/TESTING.md with refresh-retention boundaries and evidence limitations; verify focused pagination, location, fleet, label and pin regressions pass without reducing existing safety assertions.
 
 ## Workflow follow-up
 
