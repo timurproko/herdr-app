@@ -558,9 +558,15 @@ replacement and a failed reread; the pin stays mounted until its facts are ready
 Synchronous transport throws cannot notify or allocate focus during render.
 `tests/fleet-git.test.mjs` renders with inline-spawn guards during deferred same-home
 refresh, partial PR failure and reconnect recovery, preserving prior rows/counts
-until their individual replacements arrive. Its existing hide/show, stale/Verifying,
-cold waiting and exact worker-action refusal cases remain. No aggregate retention
-rewrite was needed: those same-home guards already preserve loaded facts.
+until their individual replacements arrive. It also exercises real off/on
+invalidation with slow/failed first reads: enabled verification never renders
+Not a git repository and old inventory never returns across off/on. It covers a
+negative completing before any Git render followed by off/on (Loading then only
+fresh rows), and a previous owner's negative followed by a changed labelled owner
+with a pending read (Loading, not ordinary Git). Existing same-context Stale
+retention is unchanged; no additional presentation cache exists. Cold waiting
+uses the actual standard panelMessage Loading bulb, with no Verifying header;
+leaving a cold waiting context without any cache is covered too.
 
 `tests/git-right-edge.test.mjs` additionally compares complete ordinary and
 coordinator Git render trees (including the panel border, pinned/list padding and
@@ -597,8 +603,8 @@ status exit, malformed status, layout/membership uncertainty, authoritative abse
 and generation/identity/lease discards; checks reason/time/generation, duplicate
 mod deduplication, fixed bounds and logging-failure isolation; and rejects raw
 secret-bearing process output in facts/logs. Render inspection is effect-free.
-The real Git fixture exercises existing Stale/Verifying tooltip details and cold
-waiting without display history, PR inventory, folder probes or worker authority.
+The real Git fixture exercises Stale/Loading tooltip details and cold Loading
+without display history, PR inventory, folder probes or worker authority.
 Preference round trips explicitly exclude the diagnostic key. These are synthetic
 failures, not evidence that the original recovered incident was a timeout or any
 other particular cause; no live installation, settings or process is changed.
@@ -663,6 +669,49 @@ context recovers only after witnessed verification on both machines. These fixtu
 prove scheduling and rendered rows, not native pixel timing. A read-only-state/native screenshot baseline on
 0.1.17 showed verification pending at one second and attachment by seven seconds
 with Settings still open; it did not reproduce a hard close-only repaint freeze.
+
+The repeated-toggle regression now covers selected coordinator/fleet, one/seven
+workers, 0/1/15-second off intervals, old success/failure replies in both orders,
+local/ready-remote groups, supported one-MiB status replies and a lost decoder turn.
+A two-second raw-response processing deadline recovers both cold and warm readers
+without finally or the old successful-attempt TTL, and resumed obsolete work cannot
+overwrite recovered state. Resume-before-replacement is covered separately: after
+Spaces witnesses warm verification, a withheld decoder resumes at 2100 ms without
+a lifecycle tick; the next tick at 2250 ms starts both local and remote reads rather
+than waiting for the old ten-second TTL. Cold verification uses the same ordering. `src/plugins/crew/base64.test.mjs` checks bounded string
+calls, real-turn yield boundaries, cancellation, split UTF-8 and 4096-task validation.
+`fleet-command.test.mjs` executes the actual Windows PowerShell projection against a
+disposable CLI, including advertised view/legacy branches, exact stderr/exit codes,
+large unused fields, old Open history and malformed-shape preservation. Pretty
+legacy fixtures scale together from 5k/400 tasks to 20k/1600 and 50k/4096 lines/tasks;
+whole-wrapper wall-time ratios reject superlinear collection/projection growth.
+The original growing-array collector times out on this regression.
+
+The opt-in `tests/features/fleet-toggle-native.mjs --run` creates only a disposable
+app/Core session with eight inert Node terminals, selects the actual seven-tab
+fleet and focuses a worker before opening packaged Settings. Synthetic Crew output
+alone replaces transport. The pre-fix App 0.1.17 reproduction interrupted the old
+decoder on a valid approximately 925 KiB reply and left on plus independent rows;
+PR 44 recorded expired-read with attempted/current generation 2 after 45 seconds.
+The fixed native matrix attaches one-MiB replies (including 4096 tasks) in
+1322–1486 ms for a 750 ms command, with decoder pieces at most 24 ms and status
+parse/validation at most 16 ms. A deliberately uncatchable interruption was replaced
+after 2084 ms, independent of finally. This proves the reproduced watchdog mechanism,
+not the original person's exact response/load. No real A1, Crew/GitHub/SSH transport
+or user installation is exercised. See [full evidence and the expected separate
+Crew capability](FLEET-STATUS.md).
+
+The additional opt-in `tests/features/fleet-transport-native.mjs --run --git-preview`
+uses the **real Core exec / Windows PowerShell / projection / hc Base64 / native
+decoder** path, not a synthetic transport. Only its legacy Crew CLI's data is fake;
+10 KiB, 400 KiB/237 tasks and one MiB/4096-task replies are pretty-printed. It records
+command wall time, projected UTF-8 bytes, whole decoder turns (including setup/final
+join, excluding waits), and actual Settings-on-to-display publication. Its child
+PowerShell pins and guards the disposable Crew path explicitly because Core exec
+constructs its own environment. A final three-second read produces the native
+Custom-theme Loading screenshot with no Settings/What's New overlay covering it.
+It never targets the person's app/Core session. See the measured table in
+[FLEET-STATUS.md](FLEET-STATUS.md#whole-path-windows-measurement).
 
 `tests/fleet-preferences.test.mjs` covers the actual Spaces preference and Settings
 switch, explicit durable-identity clearing on disable, old/new snapshot round trips
@@ -765,7 +814,7 @@ names have no tooltip, overflowing names do, widening removes it, repeated callb
 never loop notifications and old-scope measurements are ignored. The invisible
 probe is clipped and absolute so no count-width placeholder or extra row remains.
 Long outages retain rows/counts/folds with Stale and no robot,
-read or live-consumer authority; cold controllers render Verifying/waiting without
+read or live-consumer authority; cold controllers render standard Loading without
 persisted PR inventory or folder fallback. Fresh verification restores controls.
 Immediate-spawn guards reject synchronous notify, shared writes and new IO.
 No fixture uses real Core, credentials, GitHub, terminals, native input or deployment.
@@ -837,7 +886,7 @@ popup pixels; explicit/repeated shortcut detection remains outside the best-effo
 | `tests/a1-api-candidate.test.mjs` | Both | Requires a separately built external A1 checkout and tsx. Normal A1 client/color tests remain included. |
 | `tests/regression/test.mjs` / test:integration | Both | Installed Herdr binary, stock baseline/layout and real host files. Mock UI cases remain inside this original integration file, not extracted. Its historical theme-selection assertion is not claimed fixed or rerun. |
 | tools/validate-native.mjs / test:native | Both | Native Herdr checks, even though its app home is disposable. |
-| 20 scripts under tests/features/ outside new-menu | Both | Native rendering/checks, preview UI or actual click/screenshot handling. The two new-menu unit tests remain included. |
+| 21 scripts under tests/features/ outside new-menu | Both | Native rendering/checks, preview UI or actual click/screenshot handling. The two new-menu unit tests remain included. |
 | Live smoke/inspection/Core/relay/provider/deploy/preference tools | Both | Operational effects, real services, sessions, credentials or native installation; not invoked. |
 
 Any additional unsupported unmodified suite discovered on hosted runners is listed
@@ -902,7 +951,7 @@ only the demonstrated Windows Git-sh fixture remains an observed suite exclusion
 ## Exact selected source entries
 
 The list below is generated from CI selection, not inferred from naming. On Node
-24 the current selection is **154 Ubuntu / 153 Windows entries**, with two/three
+24 the current selection is **178 Ubuntu / 177 Windows entries**, with two/three
 explicit exclusions respectively. The installed directory-loader fixture now runs
 on both; the preference-home and four runtime-contract suites are included. It includes scaffold/aggregator tests. Earlier Node 20 attempts selected
 122/121 and then 119/119 entries while diagnosing the crashes; those temporary
@@ -963,6 +1012,7 @@ tests/agent-context.test.mjs
 tests/agent-rename.test.mjs
 tests/agents-grouping.test.mjs
 tests/architecture.test.mjs
+tests/choice-menu.test.mjs
 tests/ci-message.test.mjs
 tests/claude-isolation.test.mjs
 tests/claude-session-account.test.mjs
@@ -986,25 +1036,42 @@ tests/files-plugin-tabs.test.mjs
 tests/files-refresh-policy.test.mjs
 tests/firstmate-profile-role.test.mjs
 tests/fleet-color-menu.test.mjs
+tests/fleet-diagnostics.test.mjs
+tests/fleet-discovery.test.mjs
+tests/fleet-enrollment.test.mjs
 tests/fleet-git.test.mjs
 tests/fleet-history.test.mjs
 tests/fleet-preferences.test.mjs
+tests/fleet-read-failures.test.mjs
+tests/fleet-read-notices.test.mjs
 tests/fleet-reorder.test.mjs
+tests/fleet-toggle-live.test.mjs
 tests/folder-browser-multi.test.mjs
 tests/folder-content.test.mjs
 tests/frame-upgrade.test.mjs
+tests/git-checks-fallback.test.mjs
+tests/git-checks-order.test.mjs
 tests/git-ci-fix.test.mjs
 tests/git-context-menu.test.mjs
 tests/git-core-monitor.test.mjs
+tests/git-count-badges.test.mjs
 tests/git-github-accounts.test.mjs
 tests/git-location.test.mjs
 tests/git-monitor-settings.test.mjs
 tests/git-notices.test.mjs
+tests/git-panel-errors.test.mjs
 tests/git-relay-lifecycle.test.mjs
 tests/git-repository-checkboxes.test.mjs
 tests/git-repository-cli.test.mjs
+tests/git-repository-routing.test.mjs
+tests/git-row-geometry.test.mjs
 tests/git-row-labels.test.mjs
 tests/git-webhooks.test.mjs
+tests/herdr-upgrade-evaluate.test.mjs
+tests/herdr-upgrade-publish.test.mjs
+tests/herdr-upgrade-refresh.test.mjs
+tests/herdr-upgrade-releases.test.mjs
+tests/herdr-upgrade-report.test.mjs
 tests/host-facade.test.mjs
 tests/host-gate.test.mjs
 tests/installed-export.test.mjs
@@ -1018,6 +1085,7 @@ tests/palette-native-stock.test.mjs
 tests/pin-swap.test.mjs
 tests/pinned-pr-refresh.test.mjs
 tests/plugin-prerequisite-ui.test.mjs
+tests/plugin-section-geometry.test.mjs
 tests/plugin-ui-contract.test.mjs
 tests/plugins.test.mjs
 tests/pr-agent-links.test.mjs
@@ -1061,7 +1129,11 @@ tests/usage-plugin.test.mjs
 src/plugins/a1-colors/session-name.test.mjs
 src/plugins/a1-colors/session-sync.test.mjs
 src/plugins/a1-colors/settings.test.mjs
+src/plugins/crew/base64.test.mjs
+src/plugins/crew/fleet-command.test.mjs
+src/plugins/crew/fleet-discovery.test.mjs
 src/plugins/crew/fleet-refresh.test.mjs
+src/plugins/crew/fleet-transport.test.mjs
 src/plugins/crew/fleet.test.mjs
 src/plugins/crew/plugin.test.mjs
 scripts/ci-required.test.mjs

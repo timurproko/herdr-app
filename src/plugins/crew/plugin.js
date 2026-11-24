@@ -9,6 +9,7 @@
 import { hc, shared, setShared, panes, terminals } from '../api.js';
 import { refreshFleets, fleetContexts, fleetPullContext, fleetColorAllowed, invalidateFleet } from './fleet.js';
 import { fleetError } from './fleet-diagnostics.js';
+import { fleetStatusScript } from './fleet-command.js';
 
 const winPath = path => String(path).replace(/\//g, '\\');
 const CHECK_TIMEOUT = 15, INSTALL_TIMEOUT = 300;
@@ -18,35 +19,70 @@ const psQuote = text => "'" + String(text).replace(/['‘’‚‛]/g, "$&$&") +
 // --- hc exec ---------------------------------------------------------------
 
 const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-// Base64 to UTF-8 text without relying on atob/Buffer/TextDecoder in the mod runtime.
-export function decodeBase64(text) {
+const B64_VALUES = new Uint8Array(123);
+for (let i = 0; i < B64.length; i++) B64_VALUES[B64.charCodeAt(i)] = i;
+const BASE64_PIECE = 65536; // at most 48 KiB of bytes per native task turn
+// Fixed-size buffers, bulk strings, and up to three carried UTF-8 bytes. The
+// fleet reader yields REAL native task turns between pieces, not microtasks
+// (which share one watchdog budget). Small setup calls retain the sync helper.
+function* base64Pieces(text) {
   const clean = String(text ?? '').replace(/[^A-Za-z0-9+/]/g, '');
-  const bytes = [];
-  for (let i = 0; i < clean.length; i += 4) {
-    const n = [0, 1, 2, 3].map(k => B64.indexOf(clean[i + k] ?? 'A'));
-    const v = (n[0] << 18) | (n[1] << 12) | (n[2] << 6) | n[3];
-    bytes.push((v >> 16) & 255);
-    if (i + 2 < clean.length) bytes.push((v >> 8) & 255);
-    if (i + 3 < clean.length) bytes.push(v & 255);
+  const bytes = new Uint8Array(BASE64_PIECE / 4 * 3 + 3), units = new Uint16Array(4096);
+  let carry = 0;
+  for (let start = 0; start < clean.length; start += BASE64_PIECE) {
+    const end = Math.min(clean.length, start + BASE64_PIECE), last = end === clean.length;
+    let count = carry;
+    for (let i = start; i < end; i += 4) {
+      const v = (B64_VALUES[clean.charCodeAt(i)] << 18) | (B64_VALUES[clean.charCodeAt(i + 1)] << 12) |
+        (B64_VALUES[clean.charCodeAt(i + 2)] << 6) | B64_VALUES[clean.charCodeAt(i + 3)];
+      bytes[count++] = (v >> 16) & 255;
+      if (i + 2 < end) bytes[count++] = (v >> 8) & 255;
+      if (i + 3 < end) bytes[count++] = v & 255;
+    }
+    const parts = [];
+    let i = 0, used = 0;
+    for (; i < count;) {
+      const b = bytes[i];
+      const size = b < 0x80 ? 1 : b >= 0xf0 ? 4 : b >= 0xe0 ? 3 : b >= 0xc0 ? 2 : 1;
+      if (!last && i + size > count) break;
+      let cp = size === 1 ? b : b & (0xff >> (size + 1));
+      for (let k = 1; k < size; k++) cp = (cp << 6) | ((i + k < count ? bytes[i + k] : 0) & 63);
+      if (cp > 0x10ffff || cp >= 0xd800 && cp <= 0xdfff) cp = 0xfffd;
+      if (cp > 0xffff) {
+        cp -= 0x10000;
+        units[used++] = 0xd800 + (cp >> 10); units[used++] = 0xdc00 + (cp & 1023);
+      } else units[used++] = cp;
+      i += size;
+      if (used >= units.length - 1) { parts.push(String.fromCharCode(...units.subarray(0, used))); used = 0; }
+    }
+    if (used) parts.push(String.fromCharCode(...units.subarray(0, used)));
+    carry = Math.max(0, count - i);
+    for (let k = 0; k < carry; k++) bytes[k] = bytes[i + k];
+    yield {text:parts.join(''),last};
   }
-  let out = '';
-  for (let i = 0; i < bytes.length;) {
-    const b = bytes[i];
-    const size = b < 0x80 ? 1 : b >= 0xf0 ? 4 : b >= 0xe0 ? 3 : b >= 0xc0 ? 2 : 1;
-    let cp = size === 1 ? b : b & (0xff >> (size + 1));
-    for (let k = 1; k < size; k++) cp = (cp << 6) | ((bytes[i + k] ?? 0) & 63);
-    out += String.fromCodePoint(size > 1 && (cp > 0x10ffff || (cp >= 0xd800 && cp <= 0xdfff)) ? 0xfffd : cp);
-    i += size;
+}
+export function decodeBase64(text) {
+  return [...base64Pieces(text)].map(piece=>piece.text).join('');
+}
+export async function decodeBase64Reply(text, {yieldTurn = () => Promise.resolve(), current = () => true} = {}) {
+  const parts = [];
+  if (!current()) throw fleetError('obsolete-generation');
+  for (const piece of base64Pieces(text)) {
+    parts.push(piece.text);
+    if (!piece.last) { await yieldTurn(); if (!current()) throw fleetError('obsolete-generation'); }
   }
-  return out;
+  return parts.join('');
 }
 
 const json = text => { try { return JSON.parse(String(text ?? '').trim()); } catch { return null; } };
 
 // Runs one program on the chosen machine (null: this computer) without a terminal.
 // { code, stdout, stderr, missing } — missing: the program is not on that machine's PATH.
-export async function on(machine, argv, { timeout = 60 } = {}) {
+export async function on(machine, argv, { timeout = 60, received = () => {}, decode = decodeBase64 } = {}) {
   const r = await hc(['exec', ...(machine ? ['--on', machine] : []), '--timeout', String(timeout), '--json', '--', ...argv]);
+  // A native watchdog interrupt is uncatchable. Publish receipt before ANY
+  // synchronous JSON/Base64 work, so lifecycle recovery does not need finally.
+  received();
   // hc reports its own failures as {"error": …}; on stdout or stderr depending on version.
   const out = json(r?.stdout) ?? json(r?.stderr);
   if (out?.error) {
@@ -54,7 +90,7 @@ export async function on(machine, argv, { timeout = 60 } = {}) {
     throw new Error(String(out.error.message || out.error.kind || 'hc exec failed'));
   }
   if (!out || typeof out.code !== 'number' && !out.timed_out) throw new Error(String(r?.stderr || r?.stdout || 'hc exec failed').trim().slice(0, 300));
-  const stdout = decodeBase64(out.stdout), stderr = decodeBase64(out.stderr);
+  const stdout = await decode(out.stdout), stderr = await decode(out.stderr);
   if (out.timed_out) return { code: null, stdout, stderr: stderr || `Timed out after ${timeout} s.`, missing: false, timedOut: true };
   return { code: out.code, stdout, stderr, missing: false };
 }
@@ -479,30 +515,46 @@ const UPDATE_CREW = Object.freeze({ label: 'Update', statusLabel: 'Updating', ru
 // stays).
 
 // One `crew project …` call. Arguments are passed as quoted PowerShell strings.
-const crewCommandScript = args => [
+const crewCommandPrelude = () => [
   "$ErrorActionPreference = 'Stop'",
   `$root = ${CREW_ROOT}; ${PICK_TOOL}; $main = Join-Path $tool 'crew.mjs'`,
   "if (-not (Test-Path -LiteralPath $main -PathType Leaf)) { [Console]::Error.WriteLine('The crew tool is not installed.'); exit 1 }",
+];
+const crewCommandScript = args => [
+  ...crewCommandPrelude(),
   `& node $main ${args[0]} ${args.slice(1).map(psQuote).join(' ')}`,
   'exit $LASTEXITCODE',
 ].join('\n');
 export const crewProjectScript = args => crewCommandScript(['project', ...args]);
-const DISCOVERY_TIMEOUT = 25, RECORDED_TIMEOUT = 15;
+export const crewFleetStatusScript = options => fleetStatusScript(crewCommandPrelude(),options);
+const DISCOVERY_TIMEOUT = 25, RECORDED_TIMEOUT = 15, TRANSPORT_BUDGET = 40000;
 // Only a complete usage refusal for this exact flag is capability evidence.
 // Arbitrary stderr, auth failures, timeouts and transport errors are not retries.
 const unsupportedDiscovery = result => [1,2].includes(result.code) && !result.timedOut && !result.missing && !result.stdout.trim() &&
   /^(?:crew:\s*)?(?:unknown|unrecognized|unsupported) (?:option|flag|argument):? ['"]?--discover-prs['"]?\.?$/i.test(result.stderr.trim());
-export const readFleetStatus = async (machine, {current = () => true} = {}) => {
+const unsupportedFleetView = result => [1,2].includes(result.code) && !result.timedOut && !result.missing && !result.stdout.trim() &&
+  /^(?:crew:\s*)?(?:unknown|unrecognized|unsupported) (?:(?:option|flag|argument):? ['"]?--view['"]?(?:[ =]['"]?fleet['"]?)?|view:? ['"]?fleet['"]?)\.?$/i.test(result.stderr.trim());
+export const readFleetStatus = async (machine, {current = () => true, progress = () => {}, yieldTurn} = {}) => {
   if(!current()) throw fleetError('obsolete-generation');
-  let result, timeout=DISCOVERY_TIMEOUT;
+  const deadline=Date.now()+TRANSPORT_BUDGET;
+  let timeout=DISCOVERY_TIMEOUT, legacy=false;
+  const received=()=>progress('processing'), decode=text=>decodeBase64Reply(text,{yieldTurn,current});
+  const ask=async (discover, allowance)=>{
+    if(!current())throw fleetError('obsolete-generation');
+    const remaining=deadline-Date.now();
+    if(remaining<=0)throw fleetError('status-timeout',{timeout:TRANSPORT_BUDGET/1000});
+    timeout=Math.min(allowance,Math.max(1,Math.floor(remaining/1000)));
+    progress('transport');
+    return powershell(machine,crewFleetStatusScript({discover,legacy}),{timeout,received,decode});
+  };
+  let result;
   try {
-    result = await powershell(machine, crewCommandScript(['status', '--all', '--json', '--discover-prs']), {timeout});
-    // Only explicit capability evidence allows a separate, bounded fallback.
-    if(unsupportedDiscovery(result) && current()) {
-      timeout=RECORDED_TIMEOUT;
-      result = await powershell(machine, crewCommandScript(['status', '--all', '--json']), {timeout});
-    }
-  } catch { throw fleetError('transport-error'); }
+    result=await ask(true,DISCOVERY_TIMEOUT);
+    // A stale/incorrect help advertisement can receive an exact view refusal.
+    // No auth/transport failure or arbitrary stderr permits another command.
+    if(unsupportedFleetView(result) && current()) {legacy=true;result=await ask(true,DISCOVERY_TIMEOUT);}
+    if(unsupportedDiscovery(result) && current()) result=await ask(false,RECORDED_TIMEOUT);
+  } catch(error) { throw error?.reason?error:fleetError('transport-error'); }
   if(result.timedOut) throw fleetError('status-timeout',{timeout});
   if(result.code!==0) throw fleetError('status-exit',{code:result.code});
   return result.stdout;

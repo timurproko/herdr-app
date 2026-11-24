@@ -18,16 +18,22 @@ const find=(tree,id)=>nodes(tree).find(e=>e.attrs.id?.[0]===id);
 const plain=value=>JSON.parse(JSON.stringify(value));
 const theme={foreground:'#eeeeee',muted:'#aaaaaa',dim:'#888888',chrome:'#111111',background:'#222222',border:'#444444',selected:'#333333',hover:'#333333',ansi2:'#22aa44',ansi3:'#cc8833',ansi6:'#11aaaa'};
 
-async function mounted({enabled=false,initialMode='success'} = {}) {
+async function mounted({enabled=false,initialMode='success',selected='coordinator',workers=1} = {}) {
  const state={'custom.plugins':{crew:{enabled:true}},'custom.spaces.preferences':{connectFleetToCoordinator:enabled}},copies=[],refreshes=new Set(),jobs=[],requests=[];
  let rendering=false,dialogOpen=true,mode=initialMode,now=100000;
- const pending=[];
+ const pending=[],yielded=[];
  const groups=[],panes=[],terminals=[];
  for(const machine of [null,'pc2']) {
   const q=id=>machine?`${machine}/${id}`:id;
-  groups.push({id:q('coordinator'),name:'coordinator',machine,tabs:[{id:q('c')}]},{id:q('other'),name:'other',machine,tabs:[]},{id:q('fm-crew-home'),name:'fleet',machine,tabs:[{id:q('w')}]});
-  panes.push({tab:q('c'),pane:q('cp'),terminal:q('t1')},{tab:q('w'),pane:q('wp'),terminal:q('t2')});
-  terminals.push({address:q('t1'),state:'live',labels:{'custom.crew.home':'1'}},{address:q('t2'),state:'live',labels:{'crew.task':'task','crew.home':'home','herdr.space':'fm-crew-home'}});
+  groups.push({id:q('coordinator'),name:'coordinator',machine,active:selected==='coordinator',tabs:[{id:q('c')}]},
+   {id:q('other'),name:'other',machine,tabs:[]},
+   {id:q('fm-crew-home'),name:'fleet',machine,active:selected==='fm-crew-home',tabs:Array.from({length:workers},(_,i)=>({id:q(i===0?'w':`w${i}`),active:i===0}))});
+  panes.push({tab:q('c'),pane:q('cp'),terminal:q('t1')});
+  terminals.push({address:q('t1'),state:'live',labels:{'custom.crew.home':'1'}});
+  for(let i=0;i<workers;i++) {
+   panes.push({tab:q(i===0?'w':`w${i}`),pane:q(i===0?'wp':`wp${i}`),terminal:q(`t${i+2}`),active:selected==='fm-crew-home'&&i===0});
+   terminals.push({address:q(`t${i+2}`),state:'live',labels:{'crew.task':i===0?'task':`task${i}`,'crew.home':'home','herdr.space':'fm-crew-home'}});
+  }
  }
  const colors=Object.fromEntries(groups.map(s=>[s.id,s.name==='coordinator'?theme.ansi2:s.name==='fleet'?theme.ansi3:theme.ansi6]));
  state['space.colors']={...colors};state['custom.space-colors']={...colors};
@@ -35,18 +41,19 @@ async function mounted({enabled=false,initialMode='success'} = {}) {
  const assertEvent=()=>assert.equal(rendering,false,'No render-time effects');
  const host={shared:k=>state[k],setShared(k,v){assertEvent();if(JSON.stringify(state[k])===JSON.stringify(v))return;state[k]=plain(v);for(const copy of copies)refreshes.add(copy);},
   spaces:()=>groups,panes:()=>panes,terminals:()=>terminals,machines:()=>[{name:null,layout:'ready'},{name:'pc2',layout:'ready'}],checking:()=>false,
-  props:()=>({}),theme:()=>theme,layout:()=>({id:'sidebar',size:{px:248}}),window:()=>({active:true}),settings:()=>({zoom:1}),
+  props:()=>({}),focused:()=>({space:selected,tab:selected==='coordinator'?'c':'w',pane:selected==='coordinator'?'cp':'wp',terminal:selected==='coordinator'?'t1':'t2',app:'a1'}),theme:()=>theme,layout:()=>({id:'sidebar',size:{px:248}}),window:()=>({active:true}),settings:()=>({zoom:1}),
   notify(){assert.fail('No toast');},run(){assert.fail('No native mutation');},openOverlay(){assert.fail('No overlay replacement');},closeOverlay(){dialogOpen=false;assert.fail('The dialog must stay open');},
   exec(){assert.fail('No Git probe');},watchFolder(){assert.fail('No watcher');},
   async hc(args){assertEvent();if(args[0]==='machine')return {code:0,stdout:'{"machines":[]}'};
    assert.match(args.at(-1),/status '--all' '--json' '--discover-prs'/);
    const machine=args.includes('--on')?args[args.indexOf('--on')+1]:null;
    requests.push(machine);
-   const result={home:`${machine??'local'}/.crew`,owner:{terminal:'t1',live:true},tasks:[{id:'task',terminal:'t2',state:'working',pr:null}]};
+   const result={home:`${machine??'local'}/.crew`,owner:{terminal:'t1',live:true},tasks:Array.from({length:workers},(_,i)=>({id:i===0?'task':`task${i}`,terminal:`t${i+2}`,state:'working',pr:null}))};
    const reply=type=>{
     if(type==='error')throw Error('Verification transport failed');
     if(type==='timeout')return {code:0,stdout:JSON.stringify({code:null,timed_out:true,stdout:'',stderr:''})};
     const output=type==='ambiguous'?{...result,owner:null}:result;
+    if(['large','interrupt'].includes(type)) {output.padding='';output.padding='x'.repeat(1048576-JSON.stringify(output).length);}
     return {code:0,stdout:JSON.stringify({code:0,stdout:Buffer.from(JSON.stringify(output)).toString('base64'),stderr:''})};
    };
    if(mode==='defer')return new Promise((resolve,reject)=>pending.push(type=>{try{resolve(reply(type));}catch(error){reject(error);}}));
@@ -66,7 +73,7 @@ async function mounted({enabled=false,initialMode='success'} = {}) {
  const mount=async(kind)=>{
   const timers=[],copy={active:true};
   const cx={notify(){assertEvent();refreshes.add(copy);},focus_handle(){assertEvent();return{focus(){assertEvent();}};},
-   spawn(fn){const job=Promise.resolve(fn(cx));jobs.push(job);return job;},timer:{every(ms,fn){timers.push({ms,fn});},after(){assert.fail('Recovery must not add a second scheduler');}},stop_propagation(){}};
+   spawn(fn){const job=Promise.resolve(fn(cx));jobs.push(job);return job;},timer:{every(ms,fn){timers.push({ms,fn});},after(ms,fn){assert.equal(ms,0,'Only bounded reply decoding can yield a task turn; recovery uses the existing lifecycle');if(mode==='interrupt')yielded.push(()=>fn(cx));else jobs.push(Promise.resolve().then(()=>fn(cx)));}},stop_propagation(){}};
   const api=await loadMod({host,mod:`custom-${kind}`,globals:{localStorage:{getItem:()=>null,setItem(){}},Date:class extends Date{static now(){return now;}}},
    modules:{...common,'main.js':'src/features/spaces/main.js','spaces-ui.js':'src/features/settings/spaces-ui.js'},
    entry:kind==='settings'?'export {spacesPage} from "./spaces-ui.js";export * as r from "./plugins.js";':'export {default as Spaces} from "./main.js";export * as r from "./plugins.js";'});
@@ -84,7 +91,7 @@ async function mounted({enabled=false,initialMode='success'} = {}) {
  const paint=()=>{for(const copy of [...refreshes]){refreshes.delete(copy);if(!copy.active)continue;rendering=true;try{copy.render();}finally{rendering=false;}}};
  const drain=async()=>{while(jobs.length){await Promise.all(jobs.splice(0));}paint();};
  const tick=async()=>{for(let i=0;i<30;i++)await Promise.resolve();paint();};
- const release=(count=pending.length,type='success')=>{assert.ok(count<=pending.length);for(let i=0;i<count;i++)pending.shift()(type);};
+ const release=(count=pending.length,type='success',offset=0)=>{assert.ok(count+offset<=pending.length);for(const done of pending.splice(offset,count))done(type);};
  const flip=key=>{assert.ok(dialogOpen);find(settings.tree,`st-spaces-${key}`).attrs.on_click[0]({},settings.cx);paint();};
  const rows=machine=>nodes(sidebar.tree).filter(n=>n.attrs.id?.[0]?.startsWith('space-content-')).filter(n=>groups.find(s=>`space-content-${s.id}`===n.attrs.id[0])?.machine===machine);
  const frame=attached=>{
@@ -130,7 +137,129 @@ async function mounted({enabled=false,initialMode='success'} = {}) {
  await drain();frame(false);
  return{state,settings,get sidebar(){return sidebar;},requests,flip,drain,tick,paint,frame,release,setMode:value=>mode=value,
   async pulse(ms,wait=true){now+=ms;for(const copy of copies)if(copy.active)for(const timer of copy.timers)if(timer.ms===250)timer.fn(copy.cx);await (wait?drain():tick());},
+  advance(ms){now+=ms;},
+  resumeYields(){for(const resume of yielded.splice(0))resume();},
   async replaceSidebar(){sidebar.active=false;sidebar=await mount('spaces');await tick();},get now(){return now;}};
+}
+
+// Retain the same Settings/Spaces/provider graphs through real off intervals
+// and through timer callbacks during a sub-two-second verification. In
+// particular, do not rebuild a fresh link or replace a provider between flips.
+for(const selected of ['coordinator','fm-crew-home'])for(const workers of [1,7])for(const delay of [0,1000,15000]) {
+ const x=await mounted({selected,workers});x.flip('fleet');await x.drain();x.frame(true);
+ for(let cycle=0;cycle<3;cycle++) {
+  x.flip('fleet');await x.drain();x.frame(false);
+  const before=x.requests.length;
+  for(let elapsed=0;elapsed<delay;elapsed+=250)await x.pulse(250);
+  assert.equal(x.requests.length,before,'Off never starts verification, even beyond the attempt TTL');
+  x.setMode('defer');const start=x.now;x.flip('fleet');await x.tick();x.frame(false);
+  const generation=x.state['custom.fleet.generation'];
+  assert.equal(x.requests.length,before+2,'Each on immediately starts a local and a remote verification');
+  for(let elapsed=0;elapsed<750;elapsed+=250)await x.pulse(250,false);
+  assert.equal(x.requests.length,before+2,'The real Spaces timer joins each generation’s reader');
+  x.release();await x.drain();x.frame(true);
+  assert.ok(x.now-start<2000,'One sub-two-second status completion suffices to reattach');
+  assert.equal(x.state['custom.fleet.generation'],generation,'No consumer invalidates the on generation');
+  for(const key of ['local','pc2']) {
+   assert.equal(x.state['custom.fleet.diagnostics']?.entries?.[key]?.lastDiscard,undefined,
+    'Ordinary repeated off/on cycles must not discard current verification');
+   assert.equal(x.state['custom.fleet.reads']?.[key],undefined,'Successful verification retires its lease');
+  }
+  x.setMode('success');
+ }
+}
+
+// An already witnessed reader from before off retains its actual callback and
+// shared lease history. Completing it must neither retire the new reader nor
+// overwrite its result, regardless of selected space and reply ordering.
+for(const selected of ['coordinator','fm-crew-home'])for(const delay of [0,1000,15000])
+ for(const oldFirst of [false,true])for(const oldReply of ['success','error']) {
+ const x=await mounted({selected,workers:7});x.flip('fleet');await x.drain();x.frame(true);
+ x.setMode('defer');
+ x.sidebar.api.r.pluginEvent('workspace.context.refresh',{cx:x.sidebar.cx,force:true});await x.tick();
+ const oldGeneration=x.state['custom.fleet.generation'];const before=x.requests.length;
+ x.flip('fleet');await x.tick();x.frame(false);
+ for(let elapsed=0;elapsed<delay;elapsed+=250)await x.pulse(250,false);
+ x.flip('fleet');await x.tick();x.frame(false);
+ assert.equal(x.state['custom.fleet.generation'],oldGeneration+2);
+ assert.equal(x.requests.length,before+2,'A pre-off lease cannot block the latest on');
+ const leases=plain(x.state['custom.fleet.reads']);
+ // Model status taking several seconds under load, not just a synchronous
+ // promise. TTL and timer events must not replace a valid current reader.
+ for(let elapsed=0;elapsed<3500;elapsed+=250)await x.pulse(250,false);
+ assert.equal(x.requests.length,before+2,'Slow current verification remains single-flight');
+ if(oldFirst) {
+  x.release(2,oldReply);await x.tick();x.frame(false);
+  assert.deepEqual(plain(x.state['custom.fleet.reads']),leases,'Obsolete callback cannot release its successor’s lease');
+  x.release();await x.drain();x.frame(true);
+ } else {
+  x.release(2,'success',2);await x.tick();x.frame(true);
+  const latest=plain(x.state['custom.fleet.links']),display=plain(x.state['custom.fleet.display']);
+  x.release(2,oldReply);await x.drain();x.frame(true);
+  assert.deepEqual(plain(x.state['custom.fleet.links']),latest,'Old success or failure cannot overwrite the latest status, token or freshness');
+  assert.deepEqual(plain(x.state['custom.fleet.display']),display);
+ }
+ for(const key of ['local','pc2']) {
+  assert.equal(x.state['custom.fleet.diagnostics'].entries[key].lastDiscard.reason,'obsolete-generation');
+  assert.equal(x.state['custom.fleet.diagnostics'].entries[key].retry??null,null,'Obsolete replies cannot schedule recovery');
+ }
+}
+
+// A lost native continuation cannot execute catch/finally. Simulate it by
+// withholding a real decoder turn after raw-reply receipt, not by rejecting IO.
+for(const warm of [false,true]) {
+ const x=await mounted({selected:'fm-crew-home',workers:7});
+ if(warm){x.flip('fleet');await x.drain();x.frame(true);}
+ x.setMode('interrupt');
+ if(warm)x.sidebar.api.r.pluginEvent('workspace.context.refresh',{cx:x.sidebar.cx,force:true});else x.flip('fleet');
+ await x.tick();x.frame(warm);
+ const before=x.requests.length,started=x.now;
+ for(const key of ['local','pc2']) {
+  const lease=x.state['custom.fleet.reads'][key];
+  assert.equal(lease.phase,'processing');assert.equal(lease.until,started+2000);assert.equal(lease.transportUntil,started+45000);
+ }
+ x.setMode('success');await x.pulse(1999,false);assert.equal(x.requests.length,before);
+ await x.pulse(1,false);x.frame(true);
+ assert.equal(x.requests.length,before+2,'Existing lifecycle replaces abandoned response processing at two seconds, even inside a prior successful attempt TTL');
+ for(const key of ['local','pc2'])assert.equal(x.state['custom.fleet.diagnostics'].entries[key].lastDiscard.reason,'expired-read');
+ const current=plain(x.state['custom.fleet.links']);
+ x.resumeYields();await x.drain();x.frame(true);
+ assert.deepEqual(plain(x.state['custom.fleet.links']),current,'Even a resumed obsolete continuation cannot replace recovered facts');
+}
+// The expired continuation can resume BEFORE the lifecycle sees its deadline.
+// Spaces must witness the prior success so its ordinary ten-second TTL is
+// genuinely eligible to hide a lost recovery marker in this ordering.
+for(const warm of [true,false]) {
+ const x=await mounted({selected:'fm-crew-home',workers:7});
+ if(warm) {
+  x.flip('fleet');await x.drain();x.frame(true);
+  x.sidebar.api.r.pluginEvent('workspace.context.refresh',{cx:x.sidebar.cx,force:true});
+  await x.drain();x.frame(true);
+  assert.ok(x.sidebar.api.r.pluginPullContext('coordinator'),'Spaces witnessed the successful warm read');
+ }
+ x.setMode('interrupt');
+ if(warm)x.sidebar.api.r.pluginEvent('workspace.context.refresh',{cx:x.sidebar.cx,force:true});else x.flip('fleet');
+ await x.tick();const before=x.requests.length;
+ const leases=plain(x.state['custom.fleet.reads']),prior=plain(x.state['custom.fleet.links']);
+ x.advance(2100); // No lifecycle callback: the decoder wins the event ordering.
+ x.setMode('success');x.resumeYields();await x.drain();x.frame(warm);
+ assert.deepEqual(plain(x.state['custom.fleet.links']),prior,'Expired processing cannot publish or renew freshness');
+ await x.pulse(150);x.frame(true); // First lifecycle observation is at 2250 ms.
+ assert.equal(x.requests.length,before+2,'Resume-before-tick must restart local and remote verification at the next lifecycle, not the old ten-second TTL');
+ for(const key of ['local','pc2']) {
+  assert.equal(x.state['custom.fleet.diagnostics'].entries[key].lastDiscard.reason,'expired-read');
+  assert.notEqual(x.state['custom.fleet.links'].entries[key].token,leases[key].token);
+  assert.equal(x.state['custom.fleet.links'].entries[key].at,x.now);
+  assert.equal(x.state['custom.fleet.reads']?.[key],undefined,'The replacement completes and retires its own lease');
+ }
+}
+{
+ const x=await mounted({selected:'fm-crew-home',workers:7});x.setMode('large');
+ for(let cycle=0;cycle<3;cycle++) {
+  x.flip('fleet');await x.drain();x.frame(true);
+  for(const key of ['local','pc2'])assert.equal(x.state['custom.fleet.links'].entries[key].status.tasks.length,7,'A supported one-MiB reply survives bounded decoding and status parsing');
+  x.flip('fleet');await x.drain();x.frame(false);
+ }
 }
 
 const m=await mounted();

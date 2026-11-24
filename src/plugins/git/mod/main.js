@@ -1095,6 +1095,9 @@ export default class Changes extends View {
     this.pullTextPending = new Set();
     if (this.pullTextScope!==this.context) {this.pullTextRequests=new Map();this.pullTextScope=this.context;}
     const aggregate=this.aggregate,counts=aggregate.counts(),scope=aggregate.context.scope;
+    const hasInventory=[...aggregate.entries.values()].some(e=>e.pr),verifying=aggregate.context.stale && !hasInventory;
+    const verificationHint='Fleet status is unverified; actions are paused until fresh verification' + (aggregate.context.verification
+      ? `\n${aggregate.context.verification.reason} at ${new Date(aggregate.context.verification.at).toISOString()} (generation ${aggregate.context.verification.generation})` : '');
     // Membership is cross-tab: enrollment and updates must retain hidden sections.
     const repositories=aggregate.repositories(), rows=aggregate.rows(this.view);
     const sections=repositories.map(repo=>({repo,rows:rows.filter(pr=>pr.repo===repo),error:aggregate.readNotice(repo,this.view)}))
@@ -1116,11 +1119,8 @@ export default class Changes extends View {
       .child(h_flex().id('changes-header').relative().bg(t.surface).h(U.section).flex_none().pl(4).pr(U.gutter).gap(U.gap).items_center().border_b(1).border_color(t.border)
         .on_hover((hovered,view)=>{this.headerHovered=hovered;view.notify();})
         .child(sidebarTitle(t,'changes','git-title'))
-        .when(aggregate.context.stale, el=>el.child(div().id('git-task-stale').flex_none().text_size(U.meta).text_color(t.dim)
-          .child([...aggregate.entries.values()].some(e=>e.pr)?'Stale':'Verifying')
-          .tooltip('Fleet status is unverified; actions are paused until fresh verification' + (aggregate.context.verification
-            ? `\n${aggregate.context.verification.reason} at ${new Date(aggregate.context.verification.at).toISOString()} (generation ${aggregate.context.verification.generation})`
-            : ''))))
+        .when(aggregate.context.stale && hasInventory, el=>el.child(div().id('git-task-stale').flex_none().text_size(U.meta).text_color(t.dim)
+          .child('Stale').tooltip(verificationHint)))
         .child(reveal(headerTools(h_flex()).id('git-actions').bg(t.surface),this.headerHovered)
           .child(refreshButton(t,{id:'git-refresh',icon:'mods/custom-changes/refresh.svg',label:'Refresh',busy:aggregate.busy,spinning:aggregate.busy,
             owner:this,scope:this.context,enabled:this.headerHovered,size:U.insetControl,iconSize:U.tinyIcon,radius:U.insetRadius,color:t.dim,hover:subtleActionFill(t),
@@ -1133,7 +1133,8 @@ export default class Changes extends View {
       .child(v_flex().id('task-pulls-scroll').flex_1().min_h(0).overflow_hidden()
         .child(v_flex().id(`task-pulls-page-${scope}-${this.view}-${paging.page}`).flex_1().min_h(0).overflow_y_scrollbar().p(4)
           .children(paging.sections.map(section => this.renderPart(`repository-section:${section.repo}`,()=>this.repositorySection(t, section, scope))))
-          .when(!sections.length,el=>el.child(panelMessage(t,'git-task-empty',{text:aggregate.context.stale?'Waiting for fleet verification':aggregate.busy?'Loading…':`No ${this.view} pull requests`,loading:!aggregate.context.stale && aggregate.busy,rowInset:2})))))
+          .when(!sections.length,el=>el.child(panelMessage(t,'git-task-empty',{text:verifying || aggregate.busy?'Loading':`No ${this.view} pull requests`,loading:verifying || aggregate.busy,rowInset:2})
+            .when(verifying,message=>message.tooltip(verificationHint))))))
       .when(Boolean(paging.last),el=>el.child(this.taskPageControl(t,paging,scope)))
       .when(setup,el=>el.child(this.liveCIInfo(t)))
       .when(Boolean(enrollment),el=>el.child(enrollment))
