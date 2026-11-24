@@ -533,11 +533,21 @@ coordinator Git render trees (including the panel border, pinned/list padding an
 motion overlays) against the actual Spaces chrome, sidebar scroll and Crew-tagged
 row renderers. Across 280/320/360/390/480px and 75/100/125/130/150/200% zoom,
 1,440 row comparisons require robot slots, header chevron slots and actual label
-pills to share Spaces' 11px trailing inset. Negative Spaces pill margins have an
-independent geometry oracle. Robot/chevron glyph centres align despite their
+pills to share the actual Spaces Crew pill's inset from its own row highlight,
+not its sidebar edge: 8px row padding minus the final pill's 5px negative margin
+leaves 3px. Both actual Spaces rows supply the oracle. Separate assertions retain
+Spaces' 8px sidebar-to-highlight inset and Git's 5px panel-to-highlight inset;
+Git's controls now end 8px from its panel versus Spaces' unchanged 11px.
+Renderer measurements at 100% / 130% zoom give Spaces highlight-to-pill gaps of
+3px / 3.9px, unchanged, and Git highlight-to-robot-hover-box/pill gaps changing
+from 6px / 7.8px to 3px / 3.9px. Neither row highlight moves. Negative Spaces
+pill margins have an independent geometry oracle. Robot/chevron glyph centres align despite their
 16px/14px SVG sizes; 24px hit targets, inert missing-agent reservations, fixed
 line positions and 74px rows remain. Expanded/folded header slots stay aligned.
-Mutations restoring old row/header insets or adding an unaccounted border fail.
+Mutations restoring 6px row/header insets, shrinking the chevron slot or adding
+an unaccounted border fail; the latter is checked against the highlight-to-panel
+inset because a row-relative-only oracle cannot detect a shifted highlight.
+Title truncation boundaries stay identical with and without an agent.
 Existing row/fold/menu fixtures retain callbacks and tooltip coverage. Another
 1,500 comparisons exercise the actual replacement-page renderer with 25 PRs,
 Previous/Show more, continuation headers and warm distinct-string measurements
