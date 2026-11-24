@@ -5,6 +5,28 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const worker = require('../src/services/updates/update-worker.cjs');
+// The supervisor durably publishes status before releasing its token's lock.
+// A different process may observe those two operations on separate polls.
+async function waitForCompletion(snapshot, { pause = () => new Promise(resolve => setTimeout(resolve, 50)), attempts = 100 } = {}) {
+  let current;
+  for (let i = 0; i < attempts; i++) {
+    current = snapshot();
+    if (current.job?.state === 'complete' && !current.locked) return current.job;
+    await pause();
+  }
+  assert.fail(`Detached update did not finish and release its lock: ${JSON.stringify(current)}`);
+}
+// Deterministically exercise the inter-process window that failed on Ubuntu;
+// neither a published completion nor an unlocked but unfinished job is enough.
+{
+  let polls = 0, pauses = 0;
+  const job = await waitForCompletion(() => ({ job: { state: 'complete' }, locked: ++polls < 3 }),
+    { pause: async () => { pauses++; } });
+  assert.equal(job.state, 'complete'); assert.equal(polls, 3); assert.equal(pauses, 2);
+  for (const current of [{ job: { state: 'complete' }, locked: true }, { job: { state: 'running' }, locked: false }, { job: { state: 'unknown' }, locked: true }]) {
+    await assert.rejects(waitForCompletion(() => current, { attempts: 2, pause: async () => {} }), /did not finish and release its lock/);
+  }
+}
 fs.mkdirSync(path.resolve('.artifacts'), { recursive: true });
 const base = fs.mkdtempSync(path.resolve('.artifacts/update-detach-'));
 try {
@@ -34,12 +56,7 @@ try {
   assert.ok(['running', 'complete'].includes(reply.job.state), JSON.stringify(reply));
   fs.writeFileSync(installed, 'replaced mod'); // supervisor no longer needs installed code
   const p = worker.files(home);
-  let job;
-  for (let i = 0; i < 100; i++) {
-    job = worker.read(p.status);
-    if (job.state === 'complete') break;
-    await new Promise(resolve => setTimeout(resolve, 50));
-  }
+  const job = await waitForCompletion(() => ({ job: worker.read(p.status), locked: fs.existsSync(p.lock) }));
   assert.equal(job.state, 'complete', JSON.stringify(job));
   assert.equal(fs.existsSync(p.lock), false);
   assert.equal(worker.read(p.result).token, job.token);
