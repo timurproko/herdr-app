@@ -302,6 +302,35 @@ Attached coordinator and fleet rows SHALL remain independently selectable native
 - **THEN** the rows retain their separate native identities and ordinary plugin tag rules without either attachment chain or inherited fleet colour
 - **AND** disabling Crew still hides Crew tags without closing or relocating either space
 
+### Requirement: Live fleet attachment preference propagation
+Changes to the fleet attachment switch SHALL propagate to mounted Spaces while Settings remains open, without a close event, restart or further user interaction. Enabling SHALL immediately initiate any required verification and publish the verified presentation as soon as it resolves. Disabling SHALL immediately restore independent presentation. This SHALL apply to every applicable local or remote machine group without granting unverified action authority.
+
+#### Scenario: Enable while Settings remains open
+- **WHEN** the user enables attachment with Settings open and a valid same-machine coordinator/fleet relationship can be verified
+- **THEN** required verification starts without waiting for dialog close or another lifecycle interaction
+- **AND** as soon as verification resolves, the fleet moves below its coordinator, native shortcut numbers remain truthful, matching chains appear immediately before both Crew pills and both badges use the coordinator's colour
+- **AND** Settings remains open and native space order, focus, tabs and terminals are unchanged
+
+#### Scenario: Disable while Settings remains open
+- **WHEN** the user disables attachment while Settings is open and an attached pair is visible
+- **THEN** the sidebar immediately returns to independent row order, retains each row's native shortcut number, removes both chains and restores the fleet's saved badge colour
+- **AND** no close event or further interaction is needed
+
+#### Scenario: Verification still pending or unavailable
+- **WHEN** enabling requires verification and no valid previously verified display identity is available
+- **THEN** no relationship, inherited badge colour or attachment chain is fabricated before the read succeeds
+- **AND** a failed or ambiguous read leaves the spaces independent rather than attaching an unverified pair
+
+#### Scenario: Disable before verification completes
+- **WHEN** the user enables and then disables attachment while Settings stays open and the enable-time read is pending
+- **THEN** the sidebar remains independent after disabling and the superseded reply cannot restore attachment
+- **AND** a later explicit enable can start a current verification without closing Settings
+
+#### Scenario: Other Spaces switches
+- **WHEN** the user changes either last-tab switch with Settings still open
+- **THEN** the new preference is available to subsequent close actions and normal empty-space reconciliation without requiring Settings to close
+- **AND** their existing confirmation, process-exit and automatic-space exceptions remain unchanged
+
 ### Requirement: Quiet Core apply footer
 Custom Settings → Core SHALL keep its pre-Apply hint unchanged while applying and restarting, without duplicating runtime progress in the footer. The Status row SHALL retain runtime progress and failures SHALL remain visible in the existing page error area. The footer SHALL retain its geometry through completion, with an empty hint and disabled Discard/Apply when no changes remain.
 
@@ -348,32 +377,3 @@ After apply, Core Settings SHALL restore eligible runtime controls as soon as fr
 - **WHEN** the user changes machines during completion or verification fails
 - **THEN** completion cannot enable another machine's controls or grant permission from cached facts
 - **AND** existing error and offline behavior is preserved
-
-### Requirement: Live fleet attachment preference propagation
-Changes to the fleet attachment switch SHALL propagate to mounted Spaces while Settings remains open, without a close event, restart or further user interaction. Enabling SHALL immediately initiate any required verification and publish the verified presentation as soon as it resolves. Disabling SHALL immediately restore independent presentation. This SHALL apply to every applicable local or remote machine group without granting unverified action authority.
-
-#### Scenario: Enable while Settings remains open
-- **WHEN** the user enables attachment with Settings open and a valid same-machine coordinator/fleet relationship can be verified
-- **THEN** required verification starts without waiting for dialog close or another lifecycle interaction
-- **AND** as soon as verification resolves, the fleet moves below its coordinator, native shortcut numbers remain truthful, matching chains appear immediately before both Crew pills and both badges use the coordinator's colour
-- **AND** Settings remains open and native space order, focus, tabs and terminals are unchanged
-
-#### Scenario: Disable while Settings remains open
-- **WHEN** the user disables attachment while Settings is open and an attached pair is visible
-- **THEN** the sidebar immediately returns to independent row order, retains each row's native shortcut number, removes both chains and restores the fleet's saved badge colour
-- **AND** no close event or further interaction is needed
-
-#### Scenario: Verification still pending or unavailable
-- **WHEN** enabling requires verification and no valid previously verified display identity is available
-- **THEN** no relationship, inherited badge colour or attachment chain is fabricated before the read succeeds
-- **AND** a failed or ambiguous read leaves the spaces independent rather than attaching an unverified pair
-
-#### Scenario: Disable before verification completes
-- **WHEN** the user enables and then disables attachment while Settings stays open and the enable-time read is pending
-- **THEN** the sidebar remains independent after disabling and the superseded reply cannot restore attachment
-- **AND** a later explicit enable can start a current verification without closing Settings
-
-#### Scenario: Other Spaces switches
-- **WHEN** the user changes either last-tab switch with Settings still open
-- **THEN** the new preference is available to subsequent close actions and normal empty-space reconciliation without requiring Settings to close
-- **AND** their existing confirmation, process-exit and automatic-space exceptions remain unchanged
