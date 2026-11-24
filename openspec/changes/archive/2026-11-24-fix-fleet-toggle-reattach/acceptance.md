@@ -20,7 +20,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-24-fix-fleet-toggle-reattach/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-24-fix-fleet-toggle-reattach/acceptance.md",
   "finalizedDate": "2026-11-24",
-  "specBaseSha": "3bf9eb078d4f91fc6e0e72033babac6cdbcc88d5",
+  "specBaseSha": "386fcc4a01a4ed4ba6e0ec04792dd8ba34322d09",
   "acceptanceScenarios": [
     "Large fleet responses decode in bounded native task turns while Settings remains open on the selected fleet.",
     "Multiline legacy status collection and field projection scale linearly within the supported payload and task limits.",
@@ -31,7 +31,7 @@ The maintainer integration decision accepts these scenarios:
     "Generation, token, exact identity and action-freshness guards continue rejecting obsolete replies and unverified actions."
   ],
   "archiveDigest": "f910ced37b31ae29373147689a18a1c4c70fff2275cde2887f8f3ec695ff3666",
-  "specDigest": "4a780ae3a8fa632e9307b5848f76a152ab86cf4416dc48c18280f0836e2baf02",
+  "specDigest": "5ebf9cf4186ba722c7bce3fea4c2920514fe7af4d2b98324314d953633d9d1b3",
   "tasksDigest": "3dd1d8ff93b0a914bd898e4c7c0b3ab1c10d4b21486c5c2667adb2e35f3dee59",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []
