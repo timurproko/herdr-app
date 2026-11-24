@@ -19,7 +19,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-24-fleet-verification-recovery/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-24-fleet-verification-recovery/acceptance.md",
   "finalizedDate": "2026-11-24",
-  "specBaseSha": "70fd212c94505a4d7b85d84cdefccc218f19e473",
+  "specBaseSha": "f6e03399d12a3292fdc16526c01f4334631cdcad",
   "acceptanceScenarios": [
     "Failed and discarded verification records retain sanitized reason, time and generation without replacing newer binding facts or extending action freshness.",
     "The local fleet log stays within 128 lines and 64 KiB, suppresses unchanged reason episodes and never records raw process output or credentials.",
