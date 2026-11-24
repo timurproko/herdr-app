@@ -315,7 +315,15 @@ or an applicable `readNotice`, before applying folds. Empty sections have no hea
 but disappearing sections retain saved fold keys. A settled tab with no qualifying
 sections uses ordinary Git's **No open pull requests** / **No closed pull requests**;
 notice-only and folded eligible sections are not empty. Pending/unverified feedback
-is unchanged. The cross-tab repository inventory remains separate from this render
+is unchanged. The selected presentation is sliced into replacement pages of ten
+items including headers, notices and rows, with repeated continuation headers.
+Paging applies after folding, preserves full counts/inventory and starts no IO;
+its per-page scroll identity resets position and Previous/Show more remain outside
+the viewport. Page state is per coordinator home and tab. Distinct-string native
+probe widths use a bounded zoom/style-keyed cache; PR label presentation caches
+immutable facts, never native callback-bearing elements. Coordinator rows build
+at most three pills but retain all names in metadata/strip tooltips. See
+[GIT-RENDER-BUDGET.md](GIT-RENDER-BUDGET.md) for measurements and native-check limits. The cross-tab repository inventory remains separate from this render
 projection so membership reads, enrollment and webhook updates do not lose hidden sections.
 
 Coordinator enrollment uses one non-shrinking footer after `task-pulls-scroll`.
@@ -345,8 +353,12 @@ historical rows and their errors cannot leave empty sections. Cold historical-on
 failures are a Closed history-load notice, not invented PR state. Execution results
 retain exit/signal/timeout facts: local spawn failures, abnormal Windows NTSTATUS
 and process timeouts offer Refresh to retry, not an automatic retry promise or a
-GitHub outage claim. GitHub account/resource refusals identify current-account
-access; only explicit DNS/connection failures mean GitHub is unreachable. Mixed
+GitHub outage claim. Missing-resource/404 replies say not found, grouping repository/PR numbers without
+an account probe or a login-problem claim. Real permission/authentication refusals
+identify the repository and effective GitHub account (or honest unknown identity),
+with one identity read reused per repository/refresh and discarded afterward.
+Ordinary failed responses revalidate captured request/repository identity before
+starting that diagnosis. Only explicit DNS/connection failures mean GitHub is unreachable. Mixed
 causes reduce to one truthful summary; partial recovery removes only recovered
 failures. Setup is global and enrollment links capture each repository. Hidden/disabled or
 superseded contexts cannot start follow-ups or publish stale results. Neither
@@ -724,13 +736,25 @@ transport scope; stop/replacement invalidates queued callbacks. Hidden panels st
 do no PR/agent reads. GitHub events and successful reconnection invalidate every
 loaded page rather than just the pinned PR. Snapshot refreshes are single-flight with one coalesced dirty
 flag, retain expanded depth, renew cursors, and guard repository/machine/request
-identity before reads and writes. Enrolled repositories and settled rows are never
-polled. `pulls.js` owns a one-shot 45-second pending/unknown-check fallback for shown
-rows lacking setup/enrollment; one repository batch shares the ordinary pull lease
-or aggregate queue, with 90/180/360/720-second failure backoff and at least 15 minutes
-for rate limits. Visibility, offline machines, scope and fresh coordinator identity
-are rechecked at dispatch/publication. Full row facts/pagination remain event/manual
-reads; the fallback replaces checks only and retains displayed values during reads.
+identity before reads and writes. `pulls.js` owns one-shot state-and-check safety reads for shown Open/Draft rows:
+45 seconds without confirmed enrollment, 120 seconds enrolled even during relay
+outages. Uncovered pending/unknown checks also remain eligible. One repository batch
+shares the ordinary pull lease or aggregate queue, with 90/180/360/720-second failure
+backoff and at least 15 minutes for rate limits. Visibility, offline machines, scope
+and fresh coordinator identity are rechecked at dispatch/publication. The thin probe
+reads only number, state, draft/completion/head facts and the last commit's rollup
+STATE (40-PR chunks). Only changed heads/summaries fetch contexts (20-PR chunks),
+under the same non-overlapping lease. Unchanged 5/30-row cycles use one request
+and no context lists. Primary/secondary refusals keep values for at least 15
+minutes or a longer Retry-After; hourly remaining quota cannot override that.
+Labels/tasks/review and all displayed values remain during reads. Ordinary totals are repository-wide;
+aggregate totals and 24-hour history eligibility derive from current task PR state.
+Coordinator safety selection uses the same bounded presentation page, with page
+identity in the request scope so Previous/Show more rejects obsolete replies.
+Full tab totals and the event inventory remain independent of paging. Thin/detail
+API reads use repositoryRead's per-child GH_REPO transport and guarded refusal
+diagnostics; complete ordinary pages apply their combined totals even on append.
+Full metadata/pagination refreshes still use event/manual reads.
 The local branch/footer and agent-link discovery lifecycle is separate.
 
 **Check-fact ordering rule:** every list, targeted/older-PR, fallback and event
@@ -744,8 +768,8 @@ never leaves a lookup cache key blocking the next attempt; failed replacement
 snapshots release the related-PR cache key while retaining last-good rows. Failed
 standalone older-PR reads use a separate 10-second retry deadline (not a cached
 success key) to avoid a render-driven failure loop.
-Fallback selections are split into at most 20 PRs per command-line chunk under the same
-repository lease, checked again before each command and committed only after the
+Safety selections use at most 40 PRs per thin command and 20 per changed-row detail
+command under the same repository lease, checked again before each command and committed only after the
 complete selection succeeds. No oversized selection is retried unchanged.
 
 The explicitly configured private Cloudflare Worker uses

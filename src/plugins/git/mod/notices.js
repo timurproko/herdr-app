@@ -24,6 +24,9 @@ export class GitNotices {
   request(cx,mode,repository,callback){
     const serial=this.serial,relay=this.relay,account=this.account;
     cx.spawn(async cx=>{
+      // spawn can begin inline in render; even a synchronous exec refusal must
+      // not run the fallback callback/notify in that render transaction.
+      await Promise.resolve();
       if(!this.active||this.serial!==serial)return;
       let result;try{
         const r=await exec('node',[pluginFile('git','setup.cjs'),mode,credentialPath(appHome()),relay,repository??'',account],{timeout:45000});

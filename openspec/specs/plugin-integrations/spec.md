@@ -125,12 +125,12 @@ With attachment and Git enabled, selecting a verified coordinator SHALL show ded
 - **THEN** aggregate work stops and Git resumes its existing selected-folder behavior, including its ordinary pin, pagination and repository actions
 
 ### Requirement: Bounded aggregate reads and invalidation
-Aggregate reads SHALL be read-only, machine-bound and limited to a shown enabled Git panel. New local task links SHALL trigger targeted PR reads. CI SHALL use authenticated events or explicit refresh, with a bounded pending/unknown-only fallback for repositories lacking live coverage. Selection, plugin or ownership changes SHALL invalidate stale responses and captured actions. One repository's failure SHALL NOT erase valid rows from another.
+Aggregate reads SHALL be read-only, machine-bound and limited to a shown enabled Git panel. New local task links SHALL trigger targeted PR reads. PR state and checks SHALL use authenticated events or explicit refresh, with a bounded fallback for shown Open/Draft or uncovered pending/unknown-check rows. Selection, plugin or ownership changes SHALL invalidate stale responses and captured actions. One repository's failure SHALL NOT erase valid rows from another.
 
 #### Scenario: Refresh and repository events
 - **WHEN** the panel opens, the user refreshes, or a relevant authenticated repository event arrives
-- **THEN** it refreshes the appropriate linked PR facts and retains unaffected repository rows
-- **AND** timer-based local Crew membership checks do not periodically re-fetch unchanged GitHub PR or CI facts
+- **THEN** it refreshes the appropriate linked PR state and checks and retains unaffected repository rows
+- **AND** timer-based local Crew membership checks do not themselves periodically re-fetch unchanged GitHub PR or CI facts
 
 #### Scenario: Hide, disable or switch during a request
 - **WHEN** Git is hidden or disabled, Crew or attachment is disabled, or the selected coordinator binding changes during a read
@@ -411,7 +411,7 @@ Closed tasks from the verified coordinator's crew home SHALL contribute their va
 - **WHEN** historical candidates are read or updated by the shown enabled aggregate panel
 - **THEN** status includes closed tasks through `--all --json`, requests discovery when supported, and retains response-size, task-count and finite transport bounds
 - **AND** targeted GitHub reads retain their concurrency bound
-- **AND** existing webhook/manual refresh handles merge, close and reopen transitions without repository-wide inventory or periodic polling of unchanged GitHub facts
+- **AND** webhook/manual refresh and the eligible state-and-check fallback handle merge, close and reopen transitions without repository-wide inventory
 
 ### Requirement: Truthful repository-scoped pull request read notices
 The coordinator Git overview SHALL render at most one PR-read failure notice per repository section in the selected tab. Notices SHALL describe the failed operation and distinguish GitHub responses from genuine transport unreachability. Cached PR state SHALL scope failures to the appropriate tab without erasing healthy rows or bypassing history eligibility.
@@ -648,24 +648,39 @@ Ordinary and coordinator Git views SHALL always display Open and Closed count ba
 - **AND** only a real context change clears incompatible counts back to the first-load presentation
 
 ### Requirement: Pending checks fallback without live coverage
-Shown pending or unknown checks without repository live coverage SHALL refresh at 45-second intervals through one coalesced repository job using the existing request queue. Failed reads SHALL retain prior values and back off exponentially; rate limits SHALL delay retries at least 15 minutes. Settled or enrolled rows SHALL NOT be polled. Hidden, disabled, offline or superseded contexts SHALL stop fallback reads.
+Shown Open/Draft PRs and uncovered pending/unknown checks SHALL refresh state and checks through coalesced repository jobs on the existing queue: every 45 seconds unenrolled or 120 seconds enrolled, independent of relay connectivity. Failures SHALL retain values and back off exponentially; rate limits SHALL delay retries at least 15 minutes. Hidden, disabled, offline or superseded contexts SHALL stop reads.
 
 #### Scenario: Pending checks settle
-- **WHEN** an unenrolled shown PR has pending checks and its fallback read returns settled checks
-- **THEN** the count updates in place and subsequent fallback timers start no reads for that settled row
-- **AND** a confirmed empty rollup is settled rather than unknown
+- **WHEN** an unenrolled shown Open/Draft PR has pending checks and its fallback read returns settled checks
+- **THEN** the count updates in place and the fallback continues reading that shown open PR's state and checks at its normal cadence
+- **AND** a confirmed empty rollup is settled rather than unknown but does not stop an open row's state refresh
 
 #### Scenario: Failure and visibility
 - **WHEN** a fallback read fails or the panel is hidden, disabled or its machine goes offline
 - **THEN** its last displayed value remains and failures back off before another eligible read
 - **AND** hidden, disabled or offline contexts start no fallback reads and late replies cannot overwrite a new context
 
+#### Scenario: Thin unchanged-row cycle
+- **WHEN** shown PR heads and overall check summaries remain unchanged during a safety cycle
+- **THEN** one bounded repository probe reads state, draft/completion/head facts and the rollup summary without requesting individual check contexts
+- **AND** full check contexts are fetched only for changed heads or summaries, under the same single-flight lease
+
+#### Scenario: Secondary rate limit
+- **WHEN** GitHub refuses a safety read with a secondary limit despite positive hourly quota
+- **THEN** last-good facts remain and no immediate retry occurs
+- **AND** the next attempt waits at least 15 minutes or a longer Retry-After value
+
+#### Scenario: Settled open PR changes state
+- **WHEN** a shown unenrolled PR with settled checks is merged, closed or converted to draft after its last successful refresh
+- **THEN** the next successful fallback cycle reads its current state alongside checks and reconciles its row and totals
+- **AND** settlement alone cannot leave it indefinitely in Open after closure
+
 ### Requirement: Completion-driven Git checks freshness
-A shown, enabled Git panel with an enrolled repository and healthy relay SHALL refresh loaded checks from authoritative GitHub reads after relevant completion events, including events during an in-flight refresh. Reconnect and reopening SHALL catch up. The app SHALL retain latest-workflow/rerun semantics without polling settled or enrolled rows and document latency dependencies and conditions that retain stale counts.
+A shown, enabled Git panel with an enrolled repository and healthy relay SHALL refresh loaded PR state and checks from authoritative GitHub reads after relevant events, including events during an in-flight refresh. Reconnect and reopening SHALL catch up. The app SHALL retain latest-workflow/rerun semantics with a 120-second shown-open safety net and document latency dependencies and conditions that retain stale facts.
 
 #### Scenario: Completion and rerun update loaded rows
 - **WHEN** authenticated check, status or workflow invalidation arrives for a loaded ordinary or coordinator repository after checks change
-- **THEN** refreshed icon/count values match the latest authoritative checks, including partial completion and reruns
+- **THEN** refreshed icon/count values match the latest authoritative checks, including partial completion and reruns, and include current PR state
 - **AND** pinned, unpinned and explicitly linked older rows receive the refresh without requiring agent selection changes
 
 #### Scenario: Completion during an in-flight read
@@ -676,8 +691,8 @@ A shown, enabled Git panel with an enrolled repository and healthy relay SHALL r
 #### Scenario: Refresh timing and unavailable live updates
 - **WHEN** refresh behavior is documented or reported
 - **THEN** it distinguishes event receipt, request queue/read latency and GitHub data propagation from measured end-to-end latency
-- **AND** it states how absent enrollment uses pending-only fallback, while relay outages, hidden or disabled panels, unverified coordinator context, missed events and failed reads can retain old counts until the applicable fallback, catch-up or manual refresh
-- **AND** it does not promise a bounded live-update delay when those prerequisites or successful authoritative reads are absent
+- **AND** it states that absent enrollment uses a 45-second shown-open state-and-check fallback, and enrolled shown Open/Draft rows use a 120-second safety net; hidden or disabled panels, unverified coordinator context and failed reads can retain stale facts until the applicable fallback, catch-up or manual refresh
+- **AND** it does not promise a bounded live-update delay when those prerequisites or successful reads are absent
 
 ### Requirement: Sanitized fleet verification diagnostics
 Failed, unmatched and discarded fleet verification attempts SHALL retain a bounded machine-scoped reason, timestamp and attempted generation in runtime-only diagnostics. The customization log SHALL receive a bounded deduplicated line without raw command output, credentials, reports or task inventory. Late diagnostics SHALL NOT replace newer verification facts or grant action authority. Diagnostic persistence failure SHALL NOT prevent verification or recovery.
@@ -758,3 +773,111 @@ Git PR rows and coordinator repository headers SHALL share the actual Spaces Cre
 - **WHEN** an agent is absent, a repository header folds or a PR is pinned, scrolled or shown as a motion-preview row
 - **THEN** the shared trailing edge and existing row/header heights and line positions are preserved
 - **AND** the absent robot reservation remains inert, live robot hit targets remain 24px square, ghost robots remain noninteractive and existing tooltips and captured actions remain unchanged
+
+### Requirement: Unambiguous repository account routing
+Per-repository GitHub reads SHALL explicitly identify the canonical repository in a form understood by repository-aware CLI wrappers, independently of the working directory. App-supplied GH_REPO SHALL NOT be empty. Reads SHALL NOT switch global GitHub accounts, override explicit user credentials, or infer routing from repository names embedded only in API paths or request bodies.
+
+#### Scenario: Coordinator home with multiple repositories
+- **WHEN** a coordinator outside a Git repository reads task PRs for two repositories
+- **THEN** each read explicitly identifies its own canonical repository to the CLI wrapper
+- **AND** neither read depends on the coordinator folder, an unrelated worktree origin, or empty GH_REPO
+
+#### Scenario: Repository GraphQL and API reads
+- **WHEN** a per-repository read uses GraphQL or an API path rather than a PR command
+- **THEN** the invocation also supplies repository context recognized by the wrapper and supported by that command
+- **AND** a repository named only inside the query or API path does not count as explicit routing
+
+#### Scenario: Complete page includes both totals
+- **WHEN** a repository list read supplies rows and both Open/Closed totals
+- **THEN** the panel applies that snapshot without an additional count-only CLI call
+- **AND** expanded pages, stale responses and repository routing retain their existing bounds
+
+#### Scenario: Explicit user credential
+- **WHEN** the execution environment supplies an explicit GitHub token
+- **THEN** the app does not replace it or change the active CLI account to make a read succeed
+- **AND** any resulting access refusal remains an honest scoped failure
+
+### Requirement: Identifiable GitHub access refusal
+A GitHub access refusal SHALL identify the refused canonical repository and the known account or credential context. If the effective login is unavailable, the notice SHALL state that uncertainty rather than claiming the active CLI login was used. Credential values SHALL never appear in notices, logs, shared state or public evidence. Missing-resource responses SHALL say not found without claiming a login problem.
+
+#### Scenario: Missing recorded pull requests
+- **WHEN** GitHub reports a missing pull request through resource resolution or HTTP 404
+- **THEN** one notice names its repository and missing PR numbers followed by not found
+- **AND** the failure starts no account diagnosis and does not describe an authentication or permission problem
+
+#### Scenario: Obsolete refusal arrives
+- **WHEN** a failed read completes after Git is disabled, the panel is hidden, or the captured repository, machine or request context changes
+- **THEN** it starts no account-diagnosis follow-up for the obsolete request
+- **AND** it cannot publish an error into the new context
+
+#### Scenario: Several permission refusals in one refresh
+- **WHEN** several PR reads in the same repository refresh receive real permission refusals
+- **THEN** they reuse at most one effective-account diagnosis for that repository in that refresh
+- **AND** a later refresh re-verifies the account rather than retaining an old login identity
+
+#### Scenario: Inaccessible historical item
+- **WHEN** a recorded historical task PR is genuinely inaccessible under the execution credential
+- **THEN** its repository retains one applicable scoped notice with repository and account or credential context
+- **AND** healthy rows and repositories remain displayed without automatic account switching or suppression of the refusal
+
+#### Scenario: Account identity unknown
+- **WHEN** the failed read does not establish the effective GitHub login
+- **THEN** the notice names the repository and identifies the account as unknown or the credential context as unverified
+- **AND** it does not assume a wrapper's owner mapping proves the server-authenticated login
+
+### Requirement: Diagnosable coordinator render failures
+Caught Git render failures SHALL log the actual error text and innermost failing row, section or notice component before preserving native last-frame fallback. A surviving component marker after an uncatchable native abort SHALL be reported on the next render attempt, explicitly distinguishing incomplete-render evidence from a known exception or timeout cause.
+
+#### Scenario: Caught failure while rendering mixed history
+- **WHEN** Closed contains two repositories with merged and closed-unmerged rows, historical and live-agent targets, and a section read notice, and a row or notice renderer throws
+- **THEN** the log identifies its actual error and innermost component without replacing them with a generic outer-panel error
+- **AND** the error still reaches the host's last-good-frame fallback
+
+#### Scenario: Native interruption leaves a surviving marker
+- **WHEN** a native abort bypasses JavaScript catch/finally and a later render observes the prior component marker
+- **THEN** it logs the last entered component and an explicitly incomplete-render diagnostic
+- **AND** it refers to the native banner or host log for the exact unavailable native error rather than inventing a cause
+
+#### Scenario: Synchronous notice transport refusal
+- **WHEN** the host begins a notice request inline during render and its transport fails synchronously
+- **THEN** request fallback and notification happen only after yielding out of render
+- **AND** healthy repository rows and section notices retain their ordinary presentation
+
+### Requirement: Bounded coordinator render work
+Coordinator Open and Closed presentation SHALL use replacement pages of at most ten inventory presentation items including headers, notices and PRs. Continuation headers MAY repeat. Paging SHALL preserve full linked-PR counts, folds, inventory and action authority without starting reads or appending an unbounded native tree.
+
+#### Scenario: Long Closed inventory
+- **WHEN** a coordinator has one hundred eligible Closed PRs across repositories
+- **THEN** each render builds only its bounded page and Previous or Show more makes every PR reachable
+- **AND** page controls and enrollment remain outside the page-specific scrolling viewport
+- **AND** a deterministic regression enforces a fixed builder-operation ceiling and bounded native elements per PR
+
+#### Scenario: Repeated row text and labels
+- **WHEN** coordinator rows share natural-width metadata strings
+- **THEN** native intrinsic widths are measured once per distinct zoom, style and string in a bounded cache, with at most one pending probe per snapshot
+- **AND** current available line width still selects semantic shortening without guessed character budgets
+- **AND** stale-context or prior-zoom callbacks cannot poison current measurements
+- **AND** each row builds at most three label pills while full assigned label names remain available in tooltips
+
+#### Scenario: Snapshot-safe row caching
+- **WHEN** unchanged PR facts are rendered again
+- **THEN** pure presentation and text measurements may be reused while interactive native elements register callbacks in the current snapshot
+- **AND** native measurements are reported with their scope rather than claimed as live desktop paint or click latency
+
+### Requirement: Coherent pull request state transitions
+Every successful row refresh SHALL read authoritative Open/Draft/Merged/Closed state with checks. Ordinary and coordinator views SHALL reconcile tab membership, state presentation and totals without duplicate identities or a clear-to-empty intermediate frame. Failed reads SHALL preserve last-good facts. Coordinator counts SHALL remain task-scoped; ordinary counts SHALL remain repository-wide.
+
+#### Scenario: Settled open row merges or closes
+- **WHEN** a loaded PR with settled checks merges or closes and the next event, fallback or manual refresh succeeds
+- **THEN** it leaves Open and appears in Closed with its authoritative merged/closed presentation, subject to coordinator history eligibility
+- **AND** both totals change in the same committed presentation while unaffected rows retain relative order and loaded content does not flicker to empty
+
+#### Scenario: Reopened or draft row
+- **WHEN** a refresh observes a Closed PR reopened or an Open PR converted to Draft
+- **THEN** reopening moves the row to Open and updates both totals, while draft conversion updates its icon without changing Open membership or counts
+- **AND** stale responses cannot restore its former state, duplicate a pin or overwrite another repository's facts
+
+#### Scenario: History does not pin a merged row in Open
+- **WHEN** a finished task's previously open PR is now merged or closed
+- **THEN** retention uses its new GitHub completion timestamp and Closed eligibility rather than retaining its former Open membership
+- **AND** unrelated row order, saved folds and ordinary pagination and pin geometry remain intact

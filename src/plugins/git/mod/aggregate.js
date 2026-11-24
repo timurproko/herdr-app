@@ -1,9 +1,9 @@
 // Explicit task context, never a fake Git working directory. The panel's bounded
-// pending-check fallback shares this queue; settled/enrolled rows are event-only.
+// state/check safety reads share this queue, including settled/enrolled open rows.
 import { exec, run } from './host.js';
 import { pluginPullContext, pluginEvent, sidebarPanelEnabled } from './plugins.js';
 import { location } from './location.js';
-import { PR_FIELDS, pullRow, pullFailure, PullFactsOrder } from './pulls.js';
+import { PR_FIELDS, pullRow, repositoryFailure, PullFactsOrder } from './pulls.js';
 export function taskPullLink(url) {
   const match=/^https:\/\/github\.com\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\/pull\/([1-9]\d*)\/?$/.exec(url??'');
   const number=Number(match?.[2]);
@@ -11,7 +11,7 @@ export function taskPullLink(url) {
 }
 const HISTORY_MS = 24 * 60 * 60 * 1000;
 export class AggregatePulls {
-  constructor({shown,onUpdate}) {this.shown=shown;this.onUpdate=onUpdate;this.entries=new Map();this.pending=new Map();this.serial=0;this.factOrder=new PullFactsOrder();}
+  constructor({shown,onUpdate}) {this.shown=shown;this.onUpdate=onUpdate;this.entries=new Map();this.pending=new Map();this.diagnostics=new Map();this.serial=0;this.factOrder=new PullFactsOrder();}
   currentContext({presentation = false} = {}) {
     const context=sidebarPanelEnabled('changes') ? pluginPullContext(location().space,{presentation}) : null;
     return !presentation && context?.stale ? null : context;
@@ -19,11 +19,11 @@ export class AggregatePulls {
   sync(cx) {
     if(this.shown()) pluginEvent('workspace.context.refresh',{cx});
     const context=this.currentContext({presentation:true}), previous=this.context;
-    if(context?.scope!==previous?.scope) {this.serial++;this.factOrder.reset();this.entries.clear();this.pending.clear();}
+    if(context?.scope!==previous?.scope) {this.serial++;this.factOrder.reset();this.entries.clear();this.pending.clear();this.diagnostics.clear();}
     this.context=context;
     if(!context) return false;
     if(context.stale) {
-      if(!previous?.stale) {this.serial++;this.factOrder.reset();this.pending.clear();for(const entry of this.entries.values())entry.dirty=true;}
+      if(!previous?.stale) {this.serial++;this.factOrder.reset();this.pending.clear();this.diagnostics.clear();for(const entry of this.entries.values())entry.dirty=true;}
       // Retain only already-loaded same-home rows. Empty stale links are not
       // an authoritative deletion, nor permission to read or navigate.
       return true;
@@ -32,11 +32,11 @@ export class AggregatePulls {
     for(const source of context.links) {const link=taskPullLink(source.url);if(!link)continue;const entry=links.get(link.key)??{...link,targets:[]};entry.targets.push({terminal:source.terminal,task:source.task,historical:source.historical===true});links.set(link.key,entry);}
     for(const key of this.entries.keys()) if(!links.has(key)) {this.entries.delete(key);this.pending.delete(key);}
     for(const [key,link]of links) {const old=this.entries.get(key);if(old)old.link=link;else this.entries.set(key,{link,dirty:true,pr:null,error:null});}
-    if(!this.shown()) {this.serial++;this.factOrder.reset();this.pending.clear();for(const e of this.entries.values())e.dirty=true;}
+    if(!this.shown()) {this.serial++;this.factOrder.reset();this.pending.clear();this.diagnostics.clear();for(const e of this.entries.values())e.dirty=true;}
     else this.pump(cx);
     return true;
   }
-  stop() {this.serial++;this.factOrder.reset();this.context=null;this.entries.clear();this.pending.clear();}
+  stop() {this.serial++;this.factOrder.reset();this.context=null;this.entries.clear();this.pending.clear();this.diagnostics.clear();}
   get busy() {return this.pending.size>0 || Boolean(this.fallbackBusy);}
   eligible(entry, now = Date.now()) {
     if(!entry.pr)return false;
@@ -53,9 +53,13 @@ export class AggregatePulls {
       // reads belong to the history notice, never to the live Open list.
       : state==='closed' || e.link.targets.some(t=>!t.historical && t.terminal)));
     if(!failed.length)return null;
-    const messages=[...new Set(failed.map(e=>e.error.message))];
-    const categories={cli:'GitHub CLI unavailable',transient:'local command failed or timed out',auth:'GitHub sign-in required',repository:'repository unavailable',access:'current GitHub account access',rate:'GitHub rate limit',response:'GitHub response error',unreachable:'GitHub connection failed',read:'PR read failed'};
-    const message=messages.length===1 ? messages[0] : `Could not read some pull requests (${[...new Set(failed.map(e=>categories[e.error.kind]))].join('; ')}); refresh to retry`;
+    const missing=failed.filter(e=>e.error.kind==='notfound'),other=failed.filter(e=>e.error.kind!=='notfound');
+    const missingMessage=missing.length?`${repository} ${[...new Set(missing.map(e=>`#${e.link.number}`))].join(', ')} not found`:null;
+    const messages=[...new Set([missingMessage,...other.map(e=>e.error.message)].filter(Boolean))];
+    const categories={cli:'GitHub CLI unavailable',transient:'local command failed or timed out',auth:'GitHub sign-in required',repository:'repository unavailable',access:'GitHub account access',rate:'GitHub rate limit',response:'GitHub response error',unreachable:'GitHub connection failed',read:'PR read failed'};
+    let message=messages.length===1 ? messages[0] : `Could not read some pull requests (${[...new Set([missingMessage,...other.map(e=>e.error.repository ? e.error.message : categories[e.error.kind])].filter(Boolean))].join('; ')}); refresh to retry`;
+    const refused=failed.filter(e=>['access','auth'].includes(e.error.kind)).map(e=>`#${e.link.number}`);
+    if(refused.length)message+=` · PR ${[...new Set(refused)].join(', ')}`;
     return failed.every(e=>!e.pr && e.link.targets.every(t=>t.historical)) ? `Task PR history: ${message}` : message;
   }
   repositories() {
@@ -63,7 +67,7 @@ export class AggregatePulls {
     return [...new Set([...this.entries.values()].filter(e=>!e.pr || this.eligible(e,now)).map(e=>e.link.repo))].sort();
   }
   counts() {return {open:this.rows('open').length,closed:this.rows('closed').length};}
-  invalidate(repository=null) {for(const e of this.entries.values())if(!repository || e.link.repo===repository.toLowerCase())e.dirty=true;}
+  invalidate(repository=null) {this.diagnostics.clear();for(const e of this.entries.values())if(!repository || e.link.repo===repository.toLowerCase())e.dirty=true;}
   refresh(cx) {pluginEvent('workspace.context.refresh',{cx,force:true});this.invalidate();this.pump(cx);}
   pump(cx) {
     if(this.fallbackBusy)return;
@@ -81,7 +85,11 @@ export class AggregatePulls {
           await Promise.resolve();if(!current())return;
           const result=await exec('gh',['pr','view',String(entry.link.number),'--repo',entry.link.repo,'--json',PR_FIELDS],{on:context.machine,timeout:30000});
           if(!current())return;
-          if(result.code!==0 || result.timed_out || result.timedOut || result.signal) {entry.error=pullFailure(result);return;}
+          if(result.code!==0 || result.timed_out || result.timedOut || result.signal) {
+            const failure=await repositoryFailure(exec,result,entry.link.repo,{on:context.machine},this.diagnostics);
+            if(current())entry.error=failure;
+            return;
+          }
           const value=JSON.parse(result.stdout);
           if(value.number!==entry.link.number || taskPullLink(value.url)?.key!==key)throw Error('Pull request identity mismatch');
           const published=this.factOrder.publish(read,key,()=>({...pullRow(value,entry.link.repo.split('/')[0]),key,repo:entry.link.repo}));
@@ -89,10 +97,18 @@ export class AggregatePulls {
           entry.pr=published.value;
           const completedAt=Date.parse(value.mergedAt??value.closedAt??'');
           entry.completedAt=completedAt<=Date.now()?completedAt:NaN;entry.error=null;updated=true;
-        }catch(e){if(current())entry.error=pullFailure(e);}
+        }catch(e){
+          if(current()) {
+            const failure=await repositoryFailure(exec,e,entry.link.repo,{on:context.machine},this.diagnostics);
+            if(current())entry.error=failure;
+          }
+        }
         finally {
           if(this.pending.get(key)===token)this.pending.delete(key);
           if(this.serial===serial && this.shown())this.pump(view);
+          // Share one identity read per repository only within this refresh.
+          // Never reuse a prior refresh's login after an account change.
+          if(!this.pending.size && ![...this.entries.values()].some(e=>e.dirty))this.diagnostics.clear();
           view.notify();
         }
         // Presentation callback failures are not failed GitHub reads.

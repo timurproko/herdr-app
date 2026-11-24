@@ -16,4 +16,8 @@ Resolve actual complete Git render trees, including their border and list/overla
 
 ## Scope
 
-No navigation, data/CI reads, service or preference changes. No edits to PRs #45, #49 or #51. The branch first fast-forwarded to the unmerged PR #48 head as explicitly requested. Because that head already synced its specs ahead of main, this change carries its exact three requirement deltas too, while canonical specs return to main for bot-owned finalization. This preserves the inherited behavior in the final combined spec without editing PR #48 or bypassing delivery checks.
+No navigation, data/CI reads, service or preference changes. No edits to PRs #45, #49 or #51. The branch first fast-forwarded to PR #48's then-unmerged head as explicitly requested. Once #48 merged, current main was merged into this branch; its three inherited requirement deltas were removed from this change because main now owns them. Main's finalized #48 archive is retained unchanged.
+
+## Integration with bounded rendering
+
+Keep main's replacement coordinator pages, distinct-string measurement keys, snapshot-safe probe identities and three-pill coordinator limit. Only the Git row's trailing padding and the header's trailing reservation differ from main. Complete-panel geometry follows the page-specific scrolling viewport and exercises replacement pages without bypassing the actual paging renderer. The existing 100-row render-budget regression must keep passing unchanged.

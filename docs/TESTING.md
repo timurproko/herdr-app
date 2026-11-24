@@ -74,7 +74,24 @@ managed-source refusal, clone-on-Update, deadlines, reload/late-result recovery,
 main-only checks/coalescing, one-button states, dots, packaging and preference
 exclusion. The runner fixture also upgrades a pre-feature clean clone through a local bare
 origin and a fresh protocol-capable CLI, and simulates the installer's eight-minute
-Windows timeout to verify unknown status/lock retention after Check. The pipeline
+Windows timeout to verify unknown status/lock retention after Check. Its target
+advancement cases use real local bare Git origins, worker preparation/inspection and
+the real deploy:all result recorder: check at A, publish B before Update, then
+publish C before deploy:all's fetch. Even before inventory or installation finishes,
+the source receipt must identify C rather than carried installed provenance. During
+a mocked connected peer's deployment, the row must use C from the same-run desktop
+attempt, not A or bootstrap target B. The title retains verified pre-update provenance
+during launch, fetch and installation, omits it if ownership changes before success,
+and switches to C only when the real recorder verifies desktop success. While peers
+remain active, the description then says Updating other machines to C, including
+with no remembered launch progress after replacement. Completion plus a fresh check
+restores Up to date. Real-recorder failure cases cover pre-install refusal retaining
+the previous revision, desktop failure invalidating it, and peer failure retaining
+the newly installed revision with the partial-outcome warning.
+Both ordinary updates and initially peer-only catch-up are covered; foreign tokens,
+pre-launch timestamps, carried desktop-only provenance and malformed commits cannot
+replace the active target. No fixture invents the worker's target receipt for this
+advancement regression. The pipeline
 fixture runs ordinary npm deploy:all with an offline peer and verifies successful,
 warning-free desktop presentation after checking, while its matching result still
 records the skip and an unrelated old Settings log is not advertised. It also runs the real
@@ -84,9 +101,15 @@ failure/recovery details and launch blocking after a successful main check.
 confirmation path, success/expiry and unchanged busy/error/unknown states. Its
 known/missing-revision matrix exercises the real model and row renderer across
 idle, checking, available, launching/running, failed, partial and unknown-outcome
-states. Launching, pending-receipt, active-running and replacement cases assert the
-exact **Updating…** description with the unchanged disabled **Updating…** button;
-other state wording stays unchanged. Unknown revisions show only `herdr-app-custom` with no trailing space;
+states. Launching, pending-receipt, active-running and replacement cases assert
+**Updating to 4c4bff1** from the published target, or **Updating** without an ellipsis
+until a valid target arrives, with the unchanged disabled **Updating…** button.
+Peer-only catch-up says **Updating other machines to 4c4bff1**, with a targetless
+**Updating other machines** fallback. Fixtures distinguish installed and target
+revisions, reject malformed or foreign-run targets, preserve launch scope through
+replacement and narrow scope after verified desktop completion without inferring
+installation from the target alone;
+other state wording and the native action-slot geometry stay unchanged. Unknown revisions show only `herdr-app-custom` with no trailing space;
 known revisions retain their seven-character suffix. Missing evidence cannot claim
 current even with a cached no-update result. The check fixture separately confirms
 that changed ownership evidence still offers Update after a successful main read.
@@ -94,8 +117,8 @@ A focused Settings copy assertion preserves the exact short paragraph from befor
 PR 20, including corner indicators and herdr-core terminal-continuity guidance,
 without Custom cadence or relay details. Fresh
 module graphs and owners simulate replacement before the launch receipt, during
-running work and just after completion. Shared provisional launch feedback stays
-Updating until durable status acknowledges it, or becomes unknown after the
+running work and just after completion. Shared provisional launch feedback keeps its
+known target and peer-only scope until durable status acknowledges it, or becomes unknown after the
 22-second transport bound; obsolete replies cannot overwrite newer receipts.
 The real Settings controller harness covers the same section-and-row flow together,
 including final success, partial, failure and unknown outcomes. No fixture launches
@@ -137,7 +160,12 @@ boundary. All transports/installers are synthetic; no live pc2 or native UI is u
 Unknown CLI receipts block even before peers finish and when no Settings lock
 exists; stale completed Settings jobs cannot hide the latest CLI outcome. The detach fixture
 runs actual detached Node supervision with synthetic Git and deploy CLI; it does
-not prove survival under the real Herdr/Core process lifecycle. All use checkout `.artifacts/` homes; exec, peer transport and deployment
+not prove survival under the real Herdr/Core process lifecycle. Its bounded wait
+requires both completed status and released lock: the supervisor deliberately writes
+status before unlocking, and another process can observe that intermediate state.
+Deterministic snapshots cover delayed unlock and reject a permanent lock, an
+unfinished unlocked job and an unknown outcome; receipt/token assertions remain.
+This avoids the Ubuntu completion/lock race without changing production ordering. All use checkout `.artifacts/` homes; exec, peer transport and deployment
 are mocked/synthetic. Real-app steps are in COMMANDS.md; no live home, machine,
 terminal, account or native UI is used by these suites.
 CI otherwise executes library fixtures, not real-home
@@ -287,19 +315,113 @@ fixtures protect captured URLs, callbacks and measured motion. These prove rende
 constraints, not GPUI pixel layout, tooltip hit-testing or native animation appearance.
 No deployment or live label mutation is performed.
 
+## Coordinator render error diagnostics
+
+`node --experimental-vm-modules tests/git-panel-errors.test.mjs` exercises the
+packaged controller, aggregate reader, real notices and UI with 100 Closed rows
+across two repositories, a history read notice, merged/closed-unmerged states and
+live/historical agent variants. A fixed 10,000-builder-operation / 1,200-element
+budget bounds each replacement page; every row is reachable, even a 100-label PR
+builds fewer than 125 elements, and paging adds no reads. Distinct-string probes,
+cache reuse across pages, zoom invalidation and stale measurement refusal have
+regressions. The disposable native 30/60-row measurements and their exact scope
+are recorded in [GIT-RENDER-BUDGET.md](GIT-RENDER-BUDGET.md). It uses inline spawn and render-side-effect guards.
+A synchronous notice transport failure previously reached fallback `notify` during
+render; yielding before request work fixes that proven path (present since import
+PR #1). This is **not** a reproduction of the screenshot's native `interrupted`
+error, and no introducing merged change for that error has been established.
+
+Herdr 0.1.17/0.1.18's unchanged QuickJS sandbox has a 50 ms render/layout deadline and an
+uncatchable interrupt. Node fixture timing is not evidence of native budget safety.
+Caught render errors now log `[custom-changes] render failed` with exact error,
+stack and innermost row/section/notice component, then rethrow so native last-frame
+fallback remains. An uncatchable abort can leave an in-memory component marker:
+the next render logs `previous render did not complete` with that component. Its
+message explicitly defers the exact native error to the host banner/log; it does
+not invent an exception or claim that the prior frame timed out. If no later
+render occurs, JS cannot emit that next-attempt diagnostic. No live app is changed
+or restarted by this fixture.
+
+## Git repository routing and access refusals
+
+`node --experimental-vm-modules tests/git-repository-routing.test.mjs` executes the
+actual per-child environment script with synthetic process/CLI IO. Panel API and
+GraphQL reads use `GH_REPO=owner/name` only in that child; the public host exec API
+has no environment option and `gh api` does not accept `-R`. The fixture covers
+absent, empty and wrong ambient GH_REPO, unrelated cwd, remote options, explicit
+token/host preservation, invalid repository rejection and validated account output.
+PR reads keep their explicit `--repo` flag. Root discovery before a repository is
+known remains cwd-based. No global login or process environment is changed.
+
+Missing-resource/HTTP 404 replies say `not found`, with grouped repository/PR
+numbers and **no** login-problem wording or account lookup. Real permission/auth
+refusals share one bounded `gh api user --jq .login` diagnostic per repository in
+the current refresh, using the same routing/credential rather than the global
+active account. Notices name the effective account or explicitly `(unknown)`;
+the cohort cache is discarded afterward and the next refresh re-verifies it.
+No token is returned to UI JS, put in argv, logged or shared. The ordinary reader
+captures its original repository and checks request freshness before diagnosis,
+not only before publication. Pagination regressions cover disabled/hidden Git,
+changed folder/machine and replaced or mutated repository responses (404 and 403).
+
+The reported crew history notice was reproduced read-only for recorded PRs #36,
+#37 and #38: the explicitly targeted reads return `Could not resolve to a
+PullRequest` as timurproko, while crew #1–#9 and herdr-app #41/#43 succeed. The
+notice now reports these missing records as `Task PR history: timurproko/crew
+#36, #37, #38 not found`, not as a login problem. This does not establish a wrapper defect and no record, account or MyConfigs file is changed.
+Local native exec defaults to user home and inherits the desktop environment.
+The Core reproduction matched the documented command/cwd and had GH_REPO/GH_HOST
+unset and no explicit tokens, but it cannot prove the already-running desktop's
+inherited environment. Existing pagination, full-panel and read-notice fixtures
+also cover the scoped notice and preserve healthy rows/history eligibility.
+
+### Environment carrier process and latency budget
+
+Read-only user-home/Core measurements on this Windows installation: bare Node
+startup median **36.8 ms** (9 samples); paired `gh --version` runs add median
+**49.6 ms** (9 pairs), and paired `gh api user` runs add median **45.8 ms**
+(5 pairs). Network variance means the API difference is not a precise startup
+estimate. The extra process is therefore not treated as free.
+
+A normal coordinator refresh with two repositories launches **zero extra Node
+carriers** for targeted PR reads: `gh pr view --repo` is direct. The reported
+three missing history items formerly caused three Node + three identity-gh reads;
+they now cause none. Real permission refusals reuse a diagnostic across the whole
+refresh: at most **two Node carriers + two identity-gh calls** for two repositories,
+regardless of how many PRs fail. These counts exclude existing setup/enrollment
+workers and the gh wrapper's own unchanged internal processes. The safety reader uses the same repository-scoped transport: one carrier per
+thin state/summary batch (up to 40 PRs), with full-context batches (up to 20)
+only for changed heads/summaries, never a carrier per row. Coordinator safety
+selection follows its current presentation page rather than all loaded history.
+
+Ordinary list and webhook-page reads now include both totals in the same GraphQL
+snapshot, avoiding the count-only carrier/gh call. Three real paired crew
+list/count reads measured **2966→2383 ms, 2398→1977 ms, 2360→1751 ms**, reducing
+two Node carriers to one (421–609 ms saved in these samples). This measures the
+transport only, not native UI timing. `git-repository-routing` asserts two identity
+children for twelve permission failures over two repositories, zero for missing
+items and fresh diagnoses on the next refresh. Pagination asserts a complete
+page applies both counts with one API request; partial responses retain fallback.
+
 ## Pending Git checks fallback
 
 `tests/git-checks-fallback.test.mjs` drives the actual ordinary/coordinator snapshot,
 repository-batched reader and scheduler with fake clocks and GitHub transport. It
-covers pending 3/10 to 11/11 settlement and polling stop, preserved render values
+covers pending 3/10 to 11/11 settlement with continued open-state reads, preserved render values
 while in flight, hidden/offline cancellation, native remote `machines()` layout
 readiness without an `hc` state field (and refusal for loading/missing/unrelated
 layouts), failure retention and 90/180-second
-backoff, the 15-minute rate-limit floor, event-only enrolled rows, existing-queue
+backoff, the 15-minute rate-limit floor, 120-second enrolled safety reads, existing-queue
 contention, authoritative empty rollups and late hidden/replaced-context replies.
-The 120-row ordinary/coordinator cases require six command-line-bounded chunks,
-actually launch a harmless Node child with generated arguments, retain all rows on
-a failed second chunk, then retry successfully and stop on settlement.
+The 120-row ordinary expanded-list case uses three thin state/summary chunks and,
+only on changed heads/summaries, six 20-PR detail chunks. The same-sized coordinator
+inventory instead reads only the current bounded page and keeps off-page facts. They actually launch a
+harmless Node child with generated arguments, retain all rows on a failed second
+chunk, then retry successfully and continue while Open. Five- and thirty-row
+steady cycles require exactly one thin request with no per-context list; changed
+head/summary cases fetch only that row's contexts. Held probes refuse a competing
+cycle. Secondary failures with positive hourly quota retain values and honor a
+30-minute Retry-After; ordinary quota headers cannot misclassify auth failures.
 `tests/git-checks-order.test.mjs` injects newer publications while replies are held
 and asserts the single epoch/generation guard is wired into list, related/older,
 event, fallback and aggregate paths. Pagination also covers selecting an older PR
@@ -308,6 +430,25 @@ replacement (no stranded key/pin), and bounded retry after a failed lookup.
 Pagination and fleet fixtures also assert complete pending/success/failure and
 rerun counts through in-flight event follow-ups. These do not measure live GitHub
 latency, enroll hooks or use native UI/credentials.
+
+`tests/git-state-refresh.test.mjs` drives the actual ordinary/coordinator readers
+with fake GitHub state and held replies for merge, close, reopen and draft
+conversion through event and safety paths. It checks both totals, current state
+wording, completion timestamps, history without a robot, unchanged labels/tasks/
+review, unaffected order and no clear-to-empty intermediate frame. Pagination
+also covers a merge at the eleven-row/two-page boundary: the original depth and
+cursor repair survive removal, the unopened destination stays lazy, and its older
+merged pin appears once when loaded. These are packaged synthetic fixtures, not
+live delivery or native pixel evidence.
+
+`tests/git-safety-paging.test.mjs` composes the real coordinator page renderer,
+aggregate, safety scheduler and repository-scoped carrier. A 25-Open/5-Closed,
+two-repository inventory exercises current-page-only selection, merge/close tab
+totals, Previous/Show more, stale in-flight page replies, folds and both 45/120s
+cadences. Existing fallback/state tests also assert GH_REPO on every probe/detail
+API invocation. Pagination distinguishes its selected-state filter from the new
+combined totals fields, applies both totals on append and retains cursor-depth
+repair. The 100-row render operation budget remains separately enforced.
 
 ## Always-visible Git tab counts
 
@@ -397,8 +538,12 @@ independent geometry oracle. Robot/chevron glyph centres align despite their
 16px/14px SVG sizes; 24px hit targets, inert missing-agent reservations, fixed
 line positions and 74px rows remain. Expanded/folded header slots stay aligned.
 Mutations restoring old row/header insets or adding an unaccounted border fail.
-Existing row/fold/menu fixtures retain callbacks and tooltip coverage. These are
-synthetic resolved-box checks, not live GPUI pixel or deployment evidence.
+Existing row/fold/menu fixtures retain callbacks and tooltip coverage. Another
+1,500 comparisons exercise the actual replacement-page renderer with 25 PRs,
+Previous/Show more, continuation headers and warm distinct-string measurements
+in both tabs across the same width/zoom matrix. Paging and render-budget bounds
+remain owned by the unchanged 100-row panel regression. These are synthetic
+resolved-box checks, not live GPUI pixel or deployment evidence.
 
 ## Connected fleet fixtures
 
@@ -544,7 +689,7 @@ provider through the package harness. Synthetic tasks/gh results cover coordinat
 non-repo routing, recorded working/reported links, missing/new links, duplicate
 cross-repository PR numbers, shared PR deduplication, scoped counts/errors, exact
 worker robots, absent extra task heading/incomplete notice, repository enrollment
-links, webhook burst coalescing, no periodic GitHub reads, hide/show catch-up and
+links, webhook burst coalescing, no membership-triggered GitHub reads, hide/show catch-up and
 stale completions. It loads the real shared UI header and covers machine-style
 chevron geometry, default expansion, independent repository folds, localStorage
 restore after panel recreation, temporary repository absence, tab/refresh changes,
@@ -573,7 +718,11 @@ worker preserving adoption), last-worker-exit scope continuity,
 recent/old/undated/invalid/future and exact
 24-hour Closed boundaries, unchanged live-task eligibility, accurate counts,
 excluded empty history headers, webhook reopen/close, three-read concurrency and
-stale robot refusal. Finished-task rows use the merged shared row's labels, absent
+stale robot refusal. It additionally drives the actual relay consumer with settled
+Open-to-Merged, close, reopen and draft transitions, including a merge during a held
+read, checking current totals and unaffected row order. The delivered-event case
+passes on the pre-fix source; this is not proof of the screenshot's missed-event
+cause or live relay delivery. Finished-task rows use the merged shared row's labels, absent
 Owner badge and centred metadata separators rather than a separate historical renderer. The provider also checks source size/task bounds and rejects
 another owner/home or machine. No fixture reads real task reports or GitHub.
 Recorded links deliberately do not guarantee pre-report PR discovery. Native pixels,

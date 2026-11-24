@@ -18,7 +18,7 @@ import { headerTool, contextMenu, panelMessage } from './panel-kit.js';
 import { changePanel } from './panel-state.js';
 import { sidebarPanelEnabled } from './plugins.js';
 import { sidebarTitle } from './sidebar-title.js';
-import { pullListArgs, REPO_ARGS, countArgs, parseCounts, parsePullPage, agentPullNumber, pullRow, pullError, PR_FIELDS, PR_PAGE_SIZE, pendingChecksArgs, parsePendingChecks, ChecksFallback, PullFactsOrder, CHECKS_BATCH_SIZE } from './pulls.js';
+import { pullListArgs, REPO_ARGS, countArgs, parseCounts, parsePullPage, agentPullNumber, pullRow, pullError, PR_FIELDS, PR_PAGE_SIZE, repositoryRead, repositoryFailure, pendingChecksArgs, parsePendingChecks, refreshPullFacts, pullStateArgs, parsePullStates, pullPayload, pullRetryAfter, ChecksFallback, PullFactsOrder, CHECKS_BATCH_SIZE, STATE_BATCH_SIZE } from './pulls.js';
 
 const VIEWS = ['open', 'closed'];
 const VIEW_KEY = 'custom.git.view';
@@ -26,6 +26,10 @@ const FOLDED_REPOS_KEY = 'custom.git.task-repositories.folded';
 const LOCAL_CONTEXT_TTL = 10000; // shell branch/footer only, never a GitHub poll
 const CI_SWEEP_MS = 2400;
 const CI_SWEEP_WIDTH = 96;
+// Include headers/notices in the budget, not only PRs. Pages replace rather
+// than append: no amount of Show more clicks can recreate an unbounded render.
+const TASK_PAGE_SIZE = 10;
+const TEXT_CACHE_LIMIT = 512;
 const ciPending = pr => ['open','draft'].includes(pr?.state) && pr.checks?.pending > 0;
 function find(node, id) { return node?.id === id ? node : (node?.children ?? []).map(c => find(c, id)).find(Boolean); }
 // Repository data survives agent/tab changes in the same machine and folder.
@@ -78,7 +82,7 @@ export default class Changes extends View {
     this.pinMotion ??= new PinSwap(); this.pinMotion.cancel();
     this.pullPresentation = null; this.agentPress = null;
     this.root = null; this.repo = null; this.counts = null; this.branch = null; this.agentPull = null;
-    this.pulls = { open: null, closed: null }; this.pullsAt = { open: 0, closed: 0 };
+    this.pulls = { open: null, closed: null }; this.pullsAt = { open: 0, closed: 0 };this.pullDepth={open:0,closed:0};
     this.pages = {open:{cursor:null,hasMore:false,expanded:false},closed:{cursor:null,hasMore:false,expanded:false}};
     this.pageError = null; this.loadingState = null; this.appending = false; this.scrollMotion = null;
     this.selection = null; this.agentRequest = null; this.agentResolved = null;
@@ -206,40 +210,51 @@ export default class Changes extends View {
     if (append && (!this.pages[state].hasMore || !after || state !== this.view || !this.shown())) return;
     const root = this.root, on = this.on, context = this.context;
     const request = this.pullRequest = {},read=this.factOrder.begin();
-    const current = () => sidebarPanelEnabled('changes') && this.pullRequest === request && this.root === root && this.context === context && key() === context;
+    let repo=this.repo,repository=repo?.name;
+    const current = () => sidebarPanelEnabled('changes') && this.pullRequest === request && this.root === root && this.context === context && key() === context && this.repo===repo && this.repo?.name===repository;
     this.pullLoading = true; this.loadingState = state; this.appending = append; this.pageError = null;
     if (notify) cx.notify();
     cx.spawn(async cx => {
       try {
-        const gh = args => exec('gh', args, { cwd: root, on, timeout: 30000 });
-        if (!this.repo) {
+        const gh = args => repositoryRead(exec, args, repository, { cwd: root, on, timeout: 30000 });
+        if (!repo) {
           const r = await gh(REPO_ARGS);
           if (!current()) return;
           if (r.code !== 0 || r.timed_out || r.timedOut || r.signal) throw new Error(pullError(r));
-          const repo = JSON.parse(r.stdout || '{}');
-          if (!repo?.nameWithOwner) throw new Error('No GitHub repository');
+          const value = JSON.parse(r.stdout || '{}');
+          if (!value?.nameWithOwner) throw new Error('No GitHub repository');
           if (!current()) return;
-          this.repo = { name: repo.nameWithOwner, owner: repo.owner?.login ?? repo.nameWithOwner.split('/')[0], url: repo.url ?? `https://github.com/${repo.nameWithOwner}` };
+          repo=this.repo={ name: value.nameWithOwner, owner: value.owner?.login ?? value.nameWithOwner.split('/')[0], url: value.url ?? `https://github.com/${value.nameWithOwner}` };
         }
-        const list = await gh(pullListArgs(state, this.repo.name, after));
-        if (list.code !== 0 || list.timed_out || list.timedOut || list.signal) throw new Error(pullError(list));
+        repository=repo.name;
+        const list = await gh(pullListArgs(state, repository, after));
+        // A refused obsolete read is not permission to start another request,
+        // especially an account probe on the previous machine/repository.
         if (!current()) return;
+        if (list.code !== 0 || list.timed_out || list.timedOut || list.signal) {
+          if(!this.shown())return;
+          throw Object.assign(new Error(),await repositoryFailure(exec,list,repository,{cwd:root,on}));
+        }
         const page = parsePullPage(list.stdout);
         const rows = page.pulls.map(pr => this.publishPull(pullRow(pr,this.repo.owner),read).value).filter(Boolean);
         const incoming=new Map(rows.map(pr=>[pr.number,pr]));
         const existing = (append ? this.pulls[state] ?? [] : []).map(pr=>incoming.get(pr.number)??pr);
         const seen = new Set(existing.map(pr => pr.number));
         this.pulls[state] = [...existing, ...rows.filter(pr => !seen.has(pr.number))];
+        this.pullDepth[state]=append?(this.pullDepth[state]||1)+1:1;
+        this.reconcilePulls(rows);
         this.ciRevision=(this.ciRevision??0)+1;
         this.pages[state] = {cursor:page.cursor,hasMore:page.hasMore && page.cursor !== after,expanded:append};
-        this.counts = {...this.counts,[state]:page.total};
+        this.counts = page.counts ?? {...this.counts,[state]:page.total};
         this.pullsAt[state] = Date.now(); this.pullError = null;
         // All list and webhook reads share pullRequest/pullLoading: one writer.
         if (append) return;
         this.relatedKey = null;this.relatedRetry=null;
-        const counts = await gh(countArgs(this.repo.name)).catch(() => null);
+        // Real pages include both totals in the same GraphQL request, avoiding
+        // another Node/gh launch. Retain compatibility with partial responses.
+        const counts = page.counts ? null : await gh(countArgs(repository)).catch(() => null);
         if (!current()) return;
-        if (counts?.code === 0) this.counts = parseCounts(counts.stdout) ?? this.counts;
+        this.counts = page.counts ?? (counts?.code===0?parseCounts(counts.stdout):null) ?? this.counts;
       } catch (e) {
         if (current()) {
           if (append) this.pageError = {state,message:pullError(e)};
@@ -256,6 +271,33 @@ export default class Changes extends View {
 
   publishPull(pr,read,repo=this.repo?.name) {
     return this.factOrder.publish(read,`${repo.toLowerCase()}#${pr.number}`,()=>pr);
+  }
+
+  // A narrow read can change tabs without clearing the loaded pages or pin.
+  // Preserve unaffected order; insert moved rows by the list's created-at order.
+  reconcilePulls(values) {
+    const updates=new Map(values.filter(Boolean).map(pr=>[pr.number,pr])),moved=new Map();
+    const group=pr=>['open','draft'].includes(pr.state)?'open':'closed';
+    for(const state of VIEWS)for(const old of this.pulls[state]??[]) {
+      const pr=updates.get(old.number)??old;
+      if(group(pr)!==state)moved.set(pr.number,pr);
+    }
+    for(const state of VIEWS) {
+      const old=this.pulls[state];if(!old)continue;
+      this.pullDepth[state]=Math.max(this.pullDepth[state]??0,Math.ceil(old.length/PR_PAGE_SIZE));
+      const rows=old.map(pr=>updates.get(pr.number)??pr).filter(pr=>group(pr)===state);
+      const seen=new Set(rows.map(pr=>pr.number));
+      for(const pr of moved.values())if(group(pr)===state && !seen.has(pr.number)) {
+        const index=rows.findIndex(row=>(Date.parse(row.createdAt)||row.number)<(Date.parse(pr.createdAt)||pr.number));
+        rows.splice(index<0?rows.length:index,0,pr);seen.add(pr.number);
+      }
+      this.pulls[state]=rows;
+    }
+    if(this.relatedPull && updates.has(this.relatedPull.number))this.relatedPull=updates.get(this.relatedPull.number);
+    // State changes can remove a cursor boundary. Renew expanded snapshots under
+    // the existing lease, retaining the exact loaded depth even after removals.
+    if(moved.size && VIEWS.some(state=>this.pages[state].hasMore))this.webhookDirty=true;
+    return moved.size>0;
   }
 
   // Keep an explicitly linked PR pinnable even when it is older than page 1.
@@ -287,7 +329,12 @@ export default class Changes extends View {
         const pr = JSON.parse(result.stdout);
         if (pr.number === number) {
           const published=this.publishPull(pullRow(pr,repo.owner),read,repo.name);accepted=published.accepted;
-          if(published.value)this.relatedPull=published.value;
+          if(published.value) {
+            const previous=this.relatedPull;
+            this.relatedPull=published.value;
+            const moved=this.reconcilePulls([published.value]);
+            if(moved || (previous && ['open','draft'].includes(previous.state)!==['open','draft'].includes(published.value.state)))this.webhookDirty=true;
+          }
           if(accepted)this.ciRevision=(this.ciRevision??0)+1;
         }
       } catch {} finally {
@@ -318,8 +365,13 @@ export default class Changes extends View {
       ? !aggregate?.context?.stale && aggregate?.currentContext()?.scope===aggregate?.context?.scope
       : key()===this.context && Boolean(this.root && this.repo));
     const uncovered=name=>Boolean(this.notices?.active && this.notices.members?.get(name.toLowerCase())!==true);
-    if(task) return {enabled,scope:JSON.stringify([this.context,on,this.view]),repositories:(aggregate?.repositories()??[])
-      .filter(name=>!this.foldedRepositories?.has(name)).map(name=>({name,uncovered:uncovered(name),rows:aggregate.rows(this.view).filter(pr=>pr.repo===name)}))};
+    if(task) {
+      const repositories=aggregate?.repositories()??[],rows=aggregate?.rows(this.view)??[];
+      const sections=repositories.map(repo=>({repo,rows:rows.filter(pr=>pr.repo===repo),error:aggregate.readNotice(repo,this.view)})).filter(section=>section.rows.length || section.error);
+      const paging=this.taskSections(sections,aggregate.context.scope);
+      const shownRows=paging.sections.filter(section=>!this.foldedRepositories?.has(section.repo)).flatMap(section=>section.rows);
+      return {enabled,scope:JSON.stringify([this.context,on,this.view,paging.page]),repositories:repositories.map(name=>({name,uncovered:uncovered(name),rows:shownRows.filter(pr=>pr.repo===name)}))};
+    }
     const selection=this.pullSelection();
     return {enabled,scope:JSON.stringify([this.context,on,this.view,this.repo?.name]),repositories:this.repo?[{name:this.repo.name,uncovered:uncovered(this.repo.name),rows:[...selection.liveRows,...(selection.active?[selection.active]:[])]}]:[]};
   }
@@ -336,29 +388,68 @@ export default class Changes extends View {
     const request=this.fallbackRequest={},order=aggregate?aggregate.factOrder:this.factOrder,read=order.begin();
     if(aggregate)aggregate.fallbackBusy=true;
     else {this.pullLoading=true;this.pullRequest=request;}
+    let retryAfter=0,rateLimited=false;
     try {
       if(!current())return;
-      const updates=new Map();
-      for(let at=0;at<numbers.length;at+=CHECKS_BATCH_SIZE) {
+      const updates=new Map(),previous=new Map(repo.rows.map(pr=>[pr.number,pr]));let counts=null;
+      const gh=async args=>{
+        if(!current())throw Error('Obsolete safety read');
+        const result=await repositoryRead(exec,args,repo.name,{...(root?{cwd:root}:{}),on,timeout:30000});
+        if(!current())throw Error('Obsolete safety read');
+        retryAfter=Math.max(retryAfter,pullRetryAfter(result));
+        if(result.code!==0 || result.timed_out || result.timedOut || result.signal) {
+          rateLimited=/rate.?limit|secondary.*limit|abuse|\b429\b/i.test(`${pullPayload(result.stdout)}\n${result.stderr??''}`) || /^HTTP[^\n]*\b429\b/im.test(result.stdout??'');
+          throw Object.assign(new Error(),await repositoryFailure(exec,result,repo.name,{...(root?{cwd:root}:{}),on}));
+        }
+        return pullPayload(result.stdout);
+      };
+      for(let at=0;at<numbers.length;at+=STATE_BATCH_SIZE) {
         if(!current())return;
-        const batch=numbers.slice(at,at+CHECKS_BATCH_SIZE);
-        const result=await exec('gh',pendingChecksArgs(batch,repo.name),{...(root?{cwd:root}:{}),on,timeout:30000});
-        if(!current())return;
-        if(result.code!==0 || result.timed_out || result.timedOut || result.signal)throw Error(pullError(result));
-        for(const [number,value] of parsePendingChecks(result.stdout,batch))updates.set(number,value);
+        const batch=numbers.slice(at,at+STATE_BATCH_SIZE),stdout=await gh(pullStateArgs(batch,repo.name,!aggregate && at===0));
+        for(const [number,value] of parsePullStates(stdout,batch))updates.set(number,value);
+        if(!aggregate && at===0) {
+          counts=parseCounts(stdout);
+          if(!Number.isInteger(counts?.open) || !Number.isInteger(counts?.closed))throw Error('Incomplete pull request counts');
+        }
       }
+      const changed=[];
+      for(const [number,value]of updates) {
+        const old=order.published.get(`${repo.name.toLowerCase()}#${number}`)?.value??previous.get(number);
+        value.checks=value.checkSummary==null?null:old?.checks??null;
+        if(value.checkSummary!=null && (old?.checksKnown!==true || (old?.headRefOid??null)!==(value.headRefOid??null) || (old?.checkSummary??old?.checks?.state??null)!==value.checkSummary))changed.push(number);
+      }
+      for(let at=0;at<changed.length;at+=CHECKS_BATCH_SIZE) {
+        if(!current())return;
+        const batch=changed.slice(at,at+CHECKS_BATCH_SIZE),details=parsePendingChecks(await gh(pendingChecksArgs(batch,repo.name)),batch);
+        for(const [number,value]of details) {
+          const probe=updates.get(number);
+          if((probe.headRefOid??null)!==(value.headRefOid??null) || probe.state!==value.state || probe.isDraft!==value.isDraft)throw Error('Pull request changed during safety read');
+          probe.checks=value.checks;
+        }
+      }
+      if(!current())return;
       // Commit only a complete selection. Failed chunks retain every old row.
-      const update=pr=>updates.has(pr?.number)?order.publish(read,`${repo.name.toLowerCase()}#${pr.number}`,previous=>({...(previous??pr),checks:updates.get(pr.number),checksKnown:true})).value??pr:pr;
+      let accepted=true;
+      const update=pr=>{
+        if(!updates.has(pr?.number))return pr;
+        const published=order.publish(read,`${repo.name.toLowerCase()}#${pr.number}`,previous=>refreshPullFacts(previous??pr,updates.get(pr.number)));
+        accepted=accepted && published.accepted;return published.value??pr;
+      };
       if(aggregate) {
-        for(const entry of aggregate.entries.values())if(entry.link.repo===repo.name && entry.pr)entry.pr=update(entry.pr);
+        for(const entry of aggregate.entries.values())if(entry.link.repo===repo.name && entry.pr) {
+          entry.pr=update(entry.pr);
+          const at=Date.parse(entry.pr.mergedAt??entry.pr.closedAt??'');
+          entry.completedAt=at<=Date.now()?at:NaN;
+        }
       } else {
-        for(const state of VIEWS)if(this.pulls[state])this.pulls[state]=this.pulls[state].map(update);
-        this.relatedPull=update(this.relatedPull);
+        const refreshed=[...new Map([...VIEWS.flatMap(state=>this.pulls[state]??[]),...(this.relatedPull?[this.relatedPull]:[])].map(pr=>[pr.number,pr])).values()].map(update);
+        this.reconcilePulls(refreshed);
+        if(accepted)this.counts=counts;
       }
       this.ciRevision=(this.ciRevision??0)+1;
       return {failed:false};
     } catch(error) {
-      return {failed:true,rateLimited:/rate.?limit|secondary limit|abuse|429/i.test(String(error))};
+      return {failed:true,rateLimited:rateLimited || /rate.?limit|secondary.*limit|abuse|429/i.test(String(error)),retryAfter};
     } finally {
       if(this.fallbackRequest===request)this.fallbackRequest=null;
       if(aggregate) {aggregate.fallbackBusy=false;aggregate.pump(cx);cx.notify();}
@@ -415,15 +506,15 @@ export default class Changes extends View {
         this.startCISweep(cx);
         const gh=async args=>{
           if(!current())throw Error('Obsolete request');
-          const r=await exec('gh',args,{cwd:root,on,timeout:30000});
+          const r=await repositoryRead(exec,args,repo.name,{cwd:root,on,timeout:30000});
           if(!current())throw Error('Obsolete request');
-          if(r.code!==0 || r.timed_out || r.timedOut || r.signal)throw Error(pullError(r));
+          if(r.code!==0 || r.timed_out || r.timedOut || r.signal)throw Object.assign(new Error(),await repositoryFailure(exec,r,repo.name,{cwd:root,on}));
           return r.stdout;
         };
         const updates={};
         for(const state of VIEWS) {
           if(this.pulls[state]===null)continue;
-          const depth=Math.max(1,Math.ceil(this.pulls[state].length/PR_PAGE_SIZE));
+          const depth=Math.max(1,this.pullDepth[state]??0,Math.ceil(this.pulls[state].length/PR_PAGE_SIZE));
           let after=null,page,rows=[];
           for(let i=0;i<depth;i++) {
             page=parsePullPage(await gh(pullListArgs(state,repo.name,after)));
@@ -440,7 +531,7 @@ export default class Changes extends View {
           const data=JSON.parse(await gh(['pr','view',String(number),'--repo',repo.name,'--json',PR_FIELDS]));
           if(data.number===number)related=pullRow(data,repo.owner);
         }
-        const counts=parseCounts(await gh(countArgs(repo.name)));
+        const counts=Object.values(updates).map(update=>update.page.counts).find(Boolean) ?? parseCounts(await gh(countArgs(repo.name)));
         if(!current())return;
         for(const [state,{rows,page}] of Object.entries(updates)) {
           this.pulls[state]=rows.map(pr=>this.publishPull(pr,read,repo.name).value).filter(Boolean);this.pullsAt[state]=Date.now();
@@ -451,6 +542,7 @@ export default class Changes extends View {
           this.relatedPull=published?.value??null;
           this.relatedKey=published?.accepted?JSON.stringify([context,repo.name,number]):null;
         }
+        this.reconcilePulls([...VIEWS.flatMap(state=>this.pulls[state]??[]),...(this.relatedPull?[this.relatedPull]:[])]);
         this.counts=counts ?? this.counts;this.pullError=null;this.ciRevision=(this.ciRevision??0)+1;
         this.startCISweep(cx);
       } catch(e) { if(current()) {this.pullError=pullError(e);this.relatedKey=null;this.relatedRetry=null;} }
@@ -665,10 +757,20 @@ export default class Changes extends View {
   pullLine(t, id, items, clipOrder = []) {
     this.pullLineSizes ??= new Map();
     const sizes = this.pullLineSizes.get(id) ?? {};
+    this.pullTextWidths ??= new Map();
+    this.pullTextPending ??= new Set();
+    this.pullTextRequests ??= new Map();
+    const zoom = settings().zoom > 0 ? settings().zoom : 1;
     const context = this.context;
+    const textKey = (item, short) => `${zoom}\0${item.kind}\0${short ? item.compactKey : item.measureKey}`;
+    const keyed = this.context?.startsWith('tasks:') && items.every(item => item.measureKey != null);
+    for (const item of items) for (const short of [false, ...(item.compact ? [true] : [])]) {
+      const name = `${item.kind}-${short ? 'compact' : 'full'}`;
+      if (keyed) sizes[name] = this.pullTextWidths.get(textKey(item, short));
+    }
     const measure = (name, size, cx) => {
-      if (this.context !== context || !this.shown() || !Number.isFinite(size.width)) return;
-      const width = size.width / (settings().zoom > 0 ? settings().zoom : 1);
+      if (this.context !== context || !this.shown() || !Number.isFinite(size.width) || (settings().zoom > 0 ? settings().zoom : 1) !== zoom) return;
+      const width = size.width / zoom;
       if (Math.abs((sizes[name] ?? -1) - width) < 0.01) return;
       sizes[name] = width; this.pullLineSizes.set(id, sizes); cx.notify();
     };
@@ -711,30 +813,80 @@ export default class Changes extends View {
     // text never adds a line, gap, hover target or horizontal reservation.
     const probes = div().id(`${id}-probes`).absolute().left(0).top(0).w(0).h(0).overflow_hidden().invisible()
       .text_size(11).line_height('18px')
-      .children(items.flatMap(item => [false, ...(item.compact ? [true] : [])].map(short =>
-        h_flex().absolute().left(0).top(0).child(item.render(short, true).flex_none()
-          .id(`${id}-probe-${item.kind}-${short ? 'compact' : 'full'}`)
-          .on_size_change((size, cx) => measure(`${item.kind}-${short ? 'compact' : 'full'}`, size, cx))))));
+      .children(items.flatMap(item => [false, ...(item.compact ? [true] : [])].flatMap(short => {
+        const key = keyed ? textKey(item, short) : null;
+        if (key && (this.pullTextWidths.has(key) || this.pullTextPending.has(key))) return [];
+        let measurement;
+        if (key) {
+          this.pullTextPending.add(key);
+          measurement=this.pullTextRequests.get(key);
+          if (measurement == null) {
+            measurement=this.pullTextSequence=(this.pullTextSequence??0)+1;
+            this.pullTextRequests.set(key,measurement);
+            if (this.pullTextRequests.size>TEXT_CACHE_LIMIT) this.pullTextRequests.delete(this.pullTextRequests.keys().next().value);
+          }
+        }
+        return [h_flex().absolute().left(0).top(0).child(item.render(short, true).flex_none()
+          .id(`${id}-probe-${item.kind}-${short ? 'compact' : 'full'}${key ? `-measure-${measurement}` : ''}`)
+          .on_size_change((size, cx) => {
+            if (this.context !== context || !this.shown() || !Number.isFinite(size.width) || (settings().zoom > 0 ? settings().zoom : 1) !== zoom) return;
+            if (key) {
+              if (this.pullTextRequests.get(key)!==measurement) return;
+              this.pullTextRequests.delete(key);
+              this.pullTextWidths.set(key, size.width / zoom);
+              if (this.pullTextWidths.size > TEXT_CACHE_LIMIT) this.pullTextWidths.delete(this.pullTextWidths.keys().next().value);
+            }
+            measure(`${item.kind}-${short ? 'compact' : 'full'}`, size, cx);
+          }))];
+      })));
     return {line, probes};
   }
 
+  // Keep the innermost component if the native VM aborts before JS can catch.
+  renderPart(component, build) {
+    const previous=this.renderComponent;this.renderComponent=component;
+    try { return build(); }
+    catch(error) {
+      if(this.reportedRenderError!==error) {
+        this.reportedRenderError=error;
+        console.error('[custom-changes] render failed',JSON.stringify({component,view:this.view,error:String(error?.message??error),stack:error?.stack??null}));
+      }
+      throw error; // Preserve the host's last-good-frame fallback.
+    } finally { this.renderComponent=previous; }
+  }
+
   pullRow(t, pr, ghost = false) {
+    return this.renderPart(`pull-row:${pr.key??pr.number}`,()=>this.renderPullRow(t,pr,ghost));
+  }
+
+  renderPullRow(t, pr, ghost = false) {
     const prefix = ghost ? 'swap-' : '', rowId = pr.key ?? pr.number;
-    const agentButton = this.agentButton(t, pr, !ghost), labels = pr.labels ?? [];
+    const agentButton = this.agentButton(t, pr, !ghost);
+    // Cache presentation by immutable fact identity; never retain native rows:
+    // their event callbacks belong to the current native snapshot build.
+    this.pullPresentations ??= new WeakMap();
+    let presentation = this.pullPresentations.get(pr);
+    const labelLimit=this.context?.startsWith('tasks:') ? 3 : Infinity;
+    if (!presentation || presentation.source!==pr.labels || presentation.limit!==labelLimit) {
+      const allLabels = pr.labels ?? [];
+      presentation = {source:pr.labels,limit:labelLimit,labels:allLabels.slice(0,labelLimit),labelNames:allLabels.map(label=>label.name).join('\n')};
+      this.pullPresentations.set(pr,presentation);
+    }
+    const {labels,labelNames} = presentation;
     const groupId = (kind, probe) => `${prefix}pr-${kind}-${rowId}${probe ? '-probe' : ''}`;
     const text = (kind, value, tooltip, probe) => div().id(groupId(kind, probe)).min_w(0).h(18)
       .overflow_hidden().whitespace_nowrap().tooltip(tooltip).child(value);
     const byline = this.pullLine(t, `${prefix}pr-byline-${rowId}`, [
-      {kind:'number', render:(_short, probe) => text('number', `#${pr.number}`, pr.meta ?? '', probe)},
-      ...(pr.login ? [{kind:'author', render:(_short, probe) => text('author', pr.login, pr.meta ?? '', probe)}] : []),
-      ...(pr.when ? [{kind:'time', compact:true, render:(short, probe) => text('time', short ? pr.compactWhen : pr.when, pr.meta ?? '', probe)}] : []),
+      {kind:'number', measureKey:`#${pr.number}`, render:(_short, probe) => text('number', `#${pr.number}`, pr.meta ?? '', probe)},
+      ...(pr.login ? [{kind:'author', measureKey:pr.login, render:(_short, probe) => text('author', pr.login, pr.meta ?? '', probe)}] : []),
+      ...(pr.when ? [{kind:'time', measureKey:pr.when, compactKey:pr.compactWhen, compact:true, render:(short, probe) => text('time', short ? pr.compactWhen : pr.when, pr.meta ?? '', probe)}] : []),
     ], ['author']);
     byline.line.tooltip(pr.meta ?? '');
     const meta = this.pullLine(t, `${prefix}pr-meta-${rowId}`, [
-      ...(pr.tasks ? [{kind:'tasks', compact:true, render:(short, probe) => h_flex().id(groupId('tasks', probe)).min_w(0).h(18).gap(4).items_center()
+      ...(pr.tasks ? [{kind:'tasks', measureKey:pr.tasks.label, compactKey:`${pr.tasks.done}/${pr.tasks.total}`, compact:true, render:(short, probe) => h_flex().id(groupId('tasks', probe)).min_w(0).h(18).gap(4).items_center()
         .tooltip(pr.tasks.label).child((probe ? div().size(U.tinyIcon) : this.taskIcon(t, pr.tasks)).flex_none())
         .child(div().flex_none().whitespace_nowrap().child(short ? `${pr.tasks.done}/${pr.tasks.total}` : pr.tasks.label))}] : []),
-      ...(pr.checks ? [{kind:'checks', render:(_short, probe) => {
+      ...(pr.checks ? [{kind:'checks', measureKey:pr.checks.label, render:(_short, probe) => {
         const color = pr.checks.state === 'success' ? t.ansi2 : pr.checks.state === 'failure' ? t.ansi1 : t.ansi3;
         const icon = pr.checks.state === 'success' ? svg('mods/custom-workspace-chrome/check.svg').size(U.tinyIcon).text_color(color)
           : pr.checks.state === 'failure' ? svg('mods/custom-workspace-chrome/x.svg').size(U.tinyIcon).text_color(color)
@@ -743,13 +895,13 @@ export default class Changes extends View {
           .child(div().id(groupId('check-icon', probe)).size(U.tinyIcon).flex_none().flex().items_center().justify_center().child(icon.flex_none()))
           .child(div().flex_none().whitespace_nowrap().underline().child(pr.checks.label));
       }}] : []),
-      ...(pr.review ? [{kind:'review', render:(_short, probe) => text('review', pr.review === 'approved' ? 'Approved' : 'Changes requested',
+      ...(pr.review ? [{kind:'review', measureKey:pr.review, render:(_short, probe) => text('review', pr.review === 'approved' ? 'Approved' : 'Changes requested',
         pr.review === 'approved' ? 'Approved' : 'Changes requested', probe).text_color(pr.review === 'approved' ? t.ansi2 : t.ansi1)}] : []),
-      ...(labels.length ? [{kind:'labels', trailing:true, render:(_short, probe) => h_flex().id(groupId('labels', probe)).min_w(0).h(18).gap(4).items_center().justify_end().overflow_hidden()
-        .tooltip(labels.map(label => label.name).join('\n'))
+      ...(labels.length ? [{kind:'labels', trailing:true, measureKey:labels.map(label=>label.name).join('\0'), render:(_short, probe) => h_flex().id(groupId('labels', probe)).min_w(0).h(18).gap(4).items_center().justify_end().overflow_hidden()
+        .tooltip(labelNames)
         .children(labels.map((label, index) => this.labelPill(t, label, `${groupId('label', probe)}-${index}`)))}] : []),
     ], ['review', 'labels']);
-    meta.line.tooltip([pr.tasks?.label, pr.checks?.label, ...labels.map(label => label.name),
+    meta.line.tooltip([pr.tasks?.label, pr.checks?.label, labelNames,
       pr.review ? (pr.review === 'approved' ? 'Approved' : 'Changes requested') : null].filter(Boolean).join('\n'));
     // Panel border (1) + list inset (4) + row padding (6) matches Spaces' 11px Crew edge.
     return h_flex().id(`${prefix}pr-${rowId}`).relative().w_full().h(74).min_h(74).max_h(74).flex_none().pl(8).pr(6).py(6).gap(U.gap).items_start().rounded(U.radius)
@@ -894,10 +1046,52 @@ export default class Changes extends View {
         }))
       .when(!folded, el => el.child(v_flex().id(`task-repo-body-${repo}`).gap(U.rowGap)
         .children(rows.map(pr => this.pullRow(t, pr)))
-        .when(Boolean(error), body => body.child(div().id(`task-error-${repo}`).px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(error)))));
+        .when(Boolean(error), body => body.child(this.renderPart(`repository-notice:${repo}`,()=>div().id(`task-error-${repo}`).px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(error))))));
+  }
+
+  taskSections(sections, scope) {
+    const key = `${scope}\0${this.view}`;
+    if (this.taskPageScope !== scope) { this.taskPages = new Map();this.taskPageScope=scope; }
+    this.taskPages ??= new Map();
+    const items = [];
+    for (const section of sections) {
+      items.push({section,header:true});
+      if (this.foldedRepositories.has(section.repo)) continue;
+      for (const row of section.rows) items.push({section,row});
+      if (section.error) items.push({section,error:section.error});
+    }
+    const last = Math.max(0,Math.ceil(items.length / TASK_PAGE_SIZE)-1);
+    const page = Math.min(this.taskPages.get(key) ?? 0,last);
+    const visible = [];
+    for (const item of items.slice(page*TASK_PAGE_SIZE,(page+1)*TASK_PAGE_SIZE)) {
+      let section = visible[visible.length-1];
+      if (section?.repo !== item.section.repo) {
+        section = {repo:item.section.repo,rows:[],error:null};visible.push(section);
+      }
+      if (item.row) section.rows.push(item.row);
+      if (item.error) section.error=item.error;
+    }
+    return {sections:visible,page,last,key};
+  }
+
+  taskPageControl(t, paging, scope) {
+    if (!paging.last) return null;
+    const change = (page,cx) => {
+      if (!this.shown() || this.aggregate?.currentContext({presentation:true})?.scope !== scope || `${scope}\0${this.view}` !== paging.key) return;
+      this.taskPages.set(paging.key,page);cx.notify();
+    };
+    return h_flex().id('task-pulls-pages').flex_none().p(8).gap(12).text_size(U.meta).text_color(t.dim)
+      .when(paging.page>0,el=>el.child(div().id('task-pulls-previous').cursor_pointer().role('button').accessibility_label('Show previous task pull requests')
+        .on_click((_e,cx)=>change(paging.page-1,cx)).child('Previous')))
+      .child(div().child(`${paging.page+1} / ${paging.last+1}`))
+      .when(paging.page<paging.last,el=>el.child(div().id('task-pulls-more').cursor_pointer().role('button').accessibility_label('Show more task pull requests')
+        .on_click((_e,cx)=>change(paging.page+1,cx)).child('Show more')));
   }
 
   renderAggregate(cx,t) {
+    // Dedupe only within this snapshot; unacknowledged probes retry next frame.
+    this.pullTextPending = new Set();
+    if (this.pullTextScope!==this.context) {this.pullTextRequests=new Map();this.pullTextScope=this.context;}
     const aggregate=this.aggregate,counts=aggregate.counts(),scope=aggregate.context.scope;
     // Membership is cross-tab: enrollment and updates must retain hidden sections.
     const repositories=aggregate.repositories(), rows=aggregate.rows(this.view);
@@ -907,6 +1101,7 @@ export default class Changes extends View {
       const ids=new Set(repositories.map(repo=>`task-repo-name-${scope}-${repo}`));
       for(const id of this.repositoryNameSizes.keys())if(!ids.has(id))this.repositoryNameSizes.delete(id);
     }
+    const paging=this.taskSections(sections,scope);
     this.notices ??= new GitNotices();
     const notices=new Map(repositories.map(repo=>[repo,this.notices.sync(cx,{enabled:this.shown() && !aggregate.context.stale,repository:repo})]));
     const setup=repositories.length ? [...notices.values()].includes('setup') : this.notices.sync(cx,{enabled:this.shown() && !aggregate.context.stale,repository:null})==='setup';
@@ -933,9 +1128,11 @@ export default class Changes extends View {
       .child(h_flex().id('git-views').h(40).flex_none().px(4).gap(2).items_center().border_b(1).border_color(t.border)
         .child(this.segment(t,'git-view-open','Open',counts.open,this.view==='open',view=>this.setView('open',view)))
         .child(this.segment(t,'git-view-closed','Closed',counts.closed,this.view==='closed',view=>this.setView('closed',view))))
-      .child(v_flex().id('task-pulls-scroll').flex_1().min_h(0).overflow_y_scrollbar().p(4)
-        .children(sections.map(section => this.repositorySection(t, section, scope)))
-        .when(!sections.length,el=>el.child(panelMessage(t,'git-task-empty',{text:aggregate.context.stale?'Waiting for fleet verification':aggregate.busy?'Loading…':`No ${this.view} pull requests`,loading:!aggregate.context.stale && aggregate.busy,rowInset:2}))))
+      .child(v_flex().id('task-pulls-scroll').flex_1().min_h(0).overflow_hidden()
+        .child(v_flex().id(`task-pulls-page-${scope}-${this.view}-${paging.page}`).flex_1().min_h(0).overflow_y_scrollbar().p(4)
+          .children(paging.sections.map(section => this.renderPart(`repository-section:${section.repo}`,()=>this.repositorySection(t, section, scope))))
+          .when(!sections.length,el=>el.child(panelMessage(t,'git-task-empty',{text:aggregate.context.stale?'Waiting for fleet verification':aggregate.busy?'Loading…':`No ${this.view} pull requests`,loading:!aggregate.context.stale && aggregate.busy,rowInset:2})))))
+      .when(Boolean(paging.last),el=>el.child(this.taskPageControl(t,paging,scope)))
       .when(setup,el=>el.child(this.liveCIInfo(t)))
       .when(Boolean(enrollment),el=>el.child(enrollment))
       .when(Boolean(sweep),el=>el.child(this.sweepLayer(t,sweep).top(U.section)));
@@ -963,13 +1160,26 @@ export default class Changes extends View {
   }
 
   render(cx) {
+    this.pullTextPending = new Set();
+    // QuickJS's deadline interrupt is deliberately uncatchable. A surviving
+    // marker on the next attempt is evidence of an aborted frame, not its cause.
+    if(this.renderAttempt) console.error('[custom-changes] previous render did not complete',JSON.stringify({component:this.renderComponent??'panel',view:this.view,error:'Native interruption or aborted render; consult the host error banner/log for the exact error'}));
+    this.renderAttempt=true;this.reportedRenderError=null;
+    try {
+      const tree=this.renderPart('panel',()=>this.renderPanel(cx));
+      this.renderAttempt=false;
+      return tree;
+    } catch(error) { this.renderAttempt=false;throw error; }
+  }
+
+  renderPanel(cx) {
     if (!sidebarPanelEnabled('changes')) {
       this.enrollmentPicker?.stop();this.webhooks?.stop();this.notices?.stop();this.aggregate?.stop();
       this.resetRepository(); this.rootRequest = null; this.loading = false; this.context = null;
       return div();
     }
     if (this.pullMenu) return this.renderPullMenu(theme());
-    if (this.syncAggregate(cx)) return this.renderAggregate(cx,theme());
+    if (this.renderPart('coordinator-context',()=>this.syncAggregate(cx))) return this.renderPart('coordinator',()=>this.renderAggregate(cx,theme()));
     this.enrollmentPicker?.stop();
     if (key() !== this.context) this.refresh(cx, false);
     this.syncAgent(cx);

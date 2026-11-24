@@ -83,14 +83,15 @@ export function resultRecorder(env = process.env, dryRun = false) {
   const file = path.join(home, '.customizations/deploy-all-result.json');
   let previous = null, localRecorded = false;
   try { previous = JSON.parse(fs.readFileSync(file, 'utf8')); } catch {}
-  let desktop = previous?.desktop ?? null;
+  let desktop = previous?.desktop ?? null, target = null;
   const peerName = name => typeof name === 'string' && name !== 'local' && !name.startsWith('(') && name.length <= 200 && name.trim() === name && name.length > 0 && !/[\x00-\x1f\x7f]/.test(name);
   const offline = row => row?.action === 'skipped' && row.outcome !== 'unknown' && /^offline \((?:offline|unreachable|disconnected)\)$/.test(row.reason);
   // An explicit empty set means resolved; only legacy receipts infer from rows.
   const saved = Array.isArray(previous?.deferredPeers) ? previous.deferredPeers
     : (Array.isArray(previous?.results) ? previous.results : []).filter(offline).map(row => row.machine);
   const deferred = new Set(saved.filter(peerName).slice(0, 256));
-  return (results, complete = false, error = null, inventoryNames = null) => {
+  return (results, complete = false, error = null, inventoryNames = null, sourceTarget = null) => {
+    if (typeof sourceTarget === 'string' && /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i.test(sourceTarget)) target = sourceTarget;
     for (const row of results) {
       if (!peerName(row.machine)) continue;
       if (['deployed', 'already current'].includes(row.action) || (row.action === 'skipped' && row.reason === 'needs its own full deploy' && row.outcome !== 'unknown')) deferred.delete(row.machine);
@@ -106,7 +107,7 @@ export function resultRecorder(env = process.env, dryRun = false) {
     } else if (local?.action === 'failed' || error) {
       desktop = desktop ? { ...desktop, verified: false } : null;
     }
-    const value = { version: 1, token: env.HERDR_UPDATE_RUN_ID || null, at: Date.now(), complete, desktop, deferredPeers: [...deferred].sort(), results, error };
+    const value = { version: 1, token: env.HERDR_UPDATE_RUN_ID || null, at: Date.now(), complete, target, desktop, deferredPeers: [...deferred].sort(), results, error };
     fs.mkdirSync(path.dirname(file), { recursive: true });
     const temp = `${file}.${randomUUID()}.tmp`;
     try { fs.writeFileSync(temp, JSON.stringify(value, null, 2) + '\n'); fs.renameSync(temp, file); }
@@ -126,6 +127,9 @@ export function deployAll(args = [], { root = project, log = console.log, hostna
     record([], true, error.message);
     return { code: 1, results: [] };
   }
+  // Publish the fetched source before inventory/install; it may be newer than
+  // the supervisor's bootstrap fetch. This is a target, not installed evidence.
+  record([], false, null, null, source.commit);
   const results = [];
   let machines = [], inventoryKnown = false;
   try { machines = inventory(options.run || worker.runCommand, options.env || process.env); inventoryKnown = true; }

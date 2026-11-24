@@ -465,13 +465,24 @@ lists retain their depth and renewed cursors. Bursts coalesce, reconnect/open ca
 up, and stale replies cannot update another machine/repository. Hiding Git or
 selecting another repository stops hidden panel reads, not update notifications.
 Disabling Git or closing its chrome owner closes transport; another mounted owner
-can take over. Failed reads retain the last good status. Enrolled repositories use **events only**, not periodic CI polling. Without live
-setup or enrollment, shown pending/unknown checks have a **45-second fallback**:
-one coalesced repository job reads just those PRs in bounded 20-PR chunks,
-retaining displayed values until the complete selection succeeds.
-It stops on settlement, hide/disable, stale context or remote-machine disconnect;
-failures back off 90/180/360/720 seconds, with at least 15 minutes for rate limits.
-Settled rows are never polled. See [refresh timing and stale-data limits](docs/GIT-WEBHOOKS.md#pending-checks-without-enrollment).
+can take over. Failed reads retain the last good status. Events accelerate enrolled repository updates, with a **120-second safety net**
+for shown Open/Draft PRs even when checks have settled or the relay misses an event.
+Without confirmed enrollment, shown Open/Draft PRs and pending/unknown checks use
+a **45-second fallback**. One coalesced repository job probes state, head SHA and
+rollup summary in bounded 40-PR chunks; only changed heads/summaries fetch full
+checks in 20-PR chunks. Unchanged 5- or 30-row selections use one thin request,
+without enumerating check contexts. Values stay displayed until the complete
+selection succeeds. Coordinator probes cover only the current presentation page,
+not folded or off-page rows; Previous/Show more keeps full counts and rejects
+old-page replies. All probe/detail API calls retain per-call repository routing.
+Merge/close transitions move rows to Closed and update
+both totals; finished-task history still uses GitHub's 24-hour completion bound.
+Reads stop on hide/disable, stale context or remote-machine disconnect; failures
+back off 90/180/360/720 seconds, with at least 15 minutes for primary or secondary
+rate limits and any longer Retry-After. Positive hourly quota does not bypass a
+secondary refusal.
+Healthy safety delay is up to the cadence plus queue/GitHub read time, not a fixed
+end-to-end SLA. See [refresh timing and stale-data limits](docs/GIT-WEBHOOKS.md#pending-checks-without-enrollment).
 Unconfigured/offline panels show a
 compact bottom info card **Set up Git in Settings** only when global setup is
 missing. With setup ready, an unenrolled Git repository instead shows **Add this repo in Settings**. Enabled repos and non-Git agents have
@@ -742,6 +753,13 @@ using the same fold chevron and row style as Spaces machine headers. Click a
 header to fold just that repository; sections start expanded and remember their
 state locally, including panel reopen/reload. Expanded and folded headers show
 only the canonical repository name and chevron, without per-repository counts.
+Long coordinator lists use **Previous / Show more** replacement pages, bounded to
+10 presentation items (headers, notices and PRs). Counts still cover the complete
+linked inventory; paging starts no reads and cannot accumulate an oversized
+render. Each tab remembers its page for that coordinator home. Repeated text uses
+cached native widths rather than duplicate probes; coordinator rows draw at most
+three label pills, with every complete label name retained in tooltips. See
+[the native build measurements and budget](docs/GIT-RENDER-BUDGET.md).
 Names use the released width and truncate with a full-name tooltip only when they
 do not fit. Open and Closed totals remain in the panel's top tabs and still include
 folded sections. These counts cover distinct linked PRs only, never all repository PRs.
@@ -763,9 +781,9 @@ authentication errors and timeouts never mean no PR. Discovery has a 25-second
 transport allowance, its plain fallback has 15 seconds, and a shared 45-second
 in-flight lease prevents duplicate reads. The existing ten-second local refresh
 cadence and 30-second action freshness stay unchanged. No Crew records are written.
-The existing webhook connection refreshes only relevant linked repositories; unchanged PR/CI
-settled facts are not polled; shown pending checks without live enrollment use the
-same bounded fallback as ordinary Git. Manual Refresh remains available. Repository errors stay in their sections. Confirmed unenrolled repositories share
+The existing webhook connection refreshes relevant linked repositories. Shown
+Open/Draft rows also use ordinary Git's bounded state-and-check safety reads:
+45 seconds unenrolled or 120 seconds enrolled, including settled checks. Manual Refresh remains available. Repository errors stay in their sections. Confirmed unenrolled repositories share
 one **Add this repo in Settings** card pinned below the scrolling list, so folding
 or scrolling cannot hide it. Its account-style dropdown opens upward with canonical
 repository names in inventory order, even for one choice, including repositories
@@ -1278,8 +1296,24 @@ Ordinary navigation is not remembered. A new opening honors its requested page o
 starts on Look; unqualified direct mod opens also keep that default rather than
 trusting an overlay ID. The update-only resume hint is runtime state, never a
 portable preference.
-Shared launch feedback keeps the row on Updating before the detached runner's
-receipt arrives; a lost receipt becomes outcome unknown, not stale Up to date.
+While launching or running, the description says **Updating to 4c4bff1**, using
+the published target's seven-character revision, or **Updating** without an ellipsis
+until the target is known. The worker publishes its fetched main target before
+deployment; if deploy:all fetches newer main again, its run-qualified source target
+replaces that target before installation starts. The same-run desktop attempt
+remains authoritative while peers are still running. A cached availability check
+cannot keep advertising an older commit. The title follows verified installed provenance,
+not the fetched target: it retains the previous revision until desktop installation
+succeeds (or omits the revision if ownership evidence changes before success).
+Once the desktop succeeds, the title shows its new installed revision even while
+peers are still deploying, and the description switches to **Updating other machines
+to 4c4bff1**. Peer-only catch-up on an already-current desktop uses that same wording
+(or **Updating other machines** until the target is known). If main advances beyond that desktop revision before Update, the row
+switches to ordinary **Updating to** the new target instead of claiming peer-only
+work. The disabled button stays **Updating…**; the row layout and other states
+are unchanged. Shared launch feedback retains that target and scope before the detached
+runner's receipt arrives and across Settings replacement; a lost receipt becomes
+outcome unknown, not stale Up to date.
 Reload/closing Settings does not cancel or repeat an update. Offline/unreachable peers
 and peers deliberately excluded as **needs its own full deploy** do not make a successful
 desktop update partial: after reconciliation the row is normally Up to date, without a

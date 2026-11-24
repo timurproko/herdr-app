@@ -17,7 +17,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-24-git-row-label-right/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-24-git-row-label-right/acceptance.md",
   "finalizedDate": "2026-11-24",
-  "specBaseSha": "a2f344270efb05a71082310e9098ebb3c9ded0cb",
+  "specBaseSha": "27b86acb73a08249736ede24fb09cd95a355d492",
   "acceptanceScenarios": [
     "Assigned pills keep their order and align with the outer robot-control edge across ordinary, pinned, scrolling, coordinator and motion-preview rows.",
     "Tasks and checks retain natural left widths and gaps; no dot precedes labels and unlabeled rows have no right-hand placeholder.",
@@ -25,7 +25,7 @@ The maintainer integration decision accepts these scenarios:
     "Geometry regressions cover changing and absent checks at 280–480px widths and 75–200% zoom, including 130%, with unchanged three-line blocks and title slots."
   ],
   "archiveDigest": "235b50cd18c39bdc96cd5f9d3fb0a28f7b83253c2ef06657ac79aa3de301eb7e",
-  "specDigest": "efddfb64956d004425eb516d959f5aa3fed94eb89ee465ecf208d4fef1edc771",
+  "specDigest": "87ac96d04c6394d7423ff39c2577bc619b732496df6d2707890bae96a118e1ca",
   "tasksDigest": "3f1547e80ec26fa8a53cf784a1f47d0ede641b08b80e7d01624aef63ba6372bb",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []
