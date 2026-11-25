@@ -12,4 +12,4 @@
 
 ## 3. Spec and docs describe the leading dot
 
-- [ ] 3.1 Update `docs/PLUGIN-UI.md` naming description to include one leading dot and the already-added case.
+- [x] 3.1 Update `docs/PLUGIN-UI.md` naming description to include one leading dot and the already-added case.
