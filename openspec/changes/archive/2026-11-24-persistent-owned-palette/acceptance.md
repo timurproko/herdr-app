@@ -26,8 +26,8 @@ The maintainer integration decision accepts these scenarios:
     "Palette retirement preserves current or unknown native stock, feedback and recovery evidence while refusing personal conflicts and tolerating either stop-gap landing order.",
     "Native app.palette calls, other layouts and Core-only shell deployment remain native and no live app deployment, restart or upstream-sync activation is performed."
   ],
-  "archiveDigest": "1a186b7492276f80c05000181e8cd51736aa32fb9cc8a33bb25427a2a74cb475",
-  "specDigest": "929f649e171d9e818d701e9dd7e528536f7f1f71ab77de530abd2da7dfcb321e",
+  "archiveDigest": "21b11abafc2f87e46b489298da5d45b02e2580f05b34e4e92911f982875c8a9b",
+  "specDigest": "5cb18330942335e798c6b051452316deb0523b49a8c870c60792d67710ffd055",
   "tasksDigest": "7e4cb1ea607703c9fdb9b826f8c8468e1368c28af5380180114c04974796efec",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []
