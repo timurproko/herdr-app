@@ -28,11 +28,11 @@ async function fixture(machine=null,phase='live',restart=false) {
   {address:id('t2'),state:'live',labels:{'crew.task':'task','crew.home':'home','herdr.space':'fm-crew-home'}}];
  const status={home:'C:/fixture/.crew',owner:{terminal:'t1',live:true},tasks:[{id:'task',terminal:'t2',state:'working',pr:null}]};
  let props={tab:'space',target:{id:child},overlay:'colour-menu'},requests=0,insideInit=false,hold=false,fail=false,now=100000,nativeLayout='ready';
- const jobs=[],waiting=[],warnings=[],closed=[];
+ const jobs=[],waiting=[],warnings=[],closed=[];let sidebar,menu;
  const cx={focus_handle:()=>({focus(){}}),notify(){assert.equal(insideInit,false,'No synchronous notification in menu init');},stop_propagation(){},
   spawn(fn){jobs.push(Promise.resolve(fn(cx)));}}; // Native spawn may begin inline.
- const drain=async()=>{while(jobs.length)await Promise.all(jobs.splice(0));};
- const host={shared:k=>state[k],setShared:(k,v)=>{assert.equal(insideInit,false,'Lifecycle must yield before shared writes');state[k]=v;},
+ const drain=async()=>{await Promise.resolve();if(state['custom.fleet.request'])sidebar.registry.pluginEvent('spaces.refresh',{cx});while(jobs.length)await Promise.all(jobs.splice(0));};
+ const host={shared:k=>state[k],setShared:(k,v)=>{assert.equal(insideInit,false,'Lifecycle must yield before shared writes');state[k]=v;if(k==='custom.fleet.reads'&&menu)menu.registry.pluginWorkspaceLinks({presentation:true});},
   spaces:()=>groups,panes:()=>panes,terminals:()=>terminals,machines:()=>[{name:machine,layout:nativeLayout}],checking:()=>false,
   props:()=>props,agents:()=>[],keys:()=>[],updates:()=>({app:{ready:null}}),theme:()=>({foreground:'#eeeeee',muted:'#aaaaaa',dim:'#888888',hover:'#333333',border:'#444444',popover:'#222222'}),
   closeOverlay:o=>closed.push(o),openOverlay(){assert.fail('Unexpected overlay');},notify:n=>warnings.push(n),run(){assert.fail('No native command');},
@@ -41,7 +41,7 @@ async function fixture(machine=null,phase='live',restart=false) {
    return {code:0,stdout:JSON.stringify({code:0,stdout:Buffer.from(JSON.stringify(status)).toString('base64'),stderr:'',timed_out:false})};}};
  const load=mod=>loadMod({host,modules,mod,globals:{Date:class extends Date{static now(){return now;}}},
   entry:`export * as registry from './plugins.js';${mod==='custom-menu'?"export {default as Menu} from './main.js';":''}`});
- let sidebar=await load('custom-spaces');
+ sidebar=await load('custom-spaces');
  sidebar.registry.pluginEvent('spaces.refresh',{cx});await drain();
  assert.equal(sidebar.registry.pluginWorkspaceLinks().length,1,'Sidebar freshly verifies its own packaged provider');
  if(phase!=='live') {
@@ -57,7 +57,7 @@ async function fixture(machine=null,phase='live',restart=false) {
   sidebar=await load('custom-spaces');
   assert.equal(sidebar.registry.pluginWorkspaceLinks().length,0,'Restart cannot trust persisted success tokens');
  }
- const menu=await load('custom-menu');
+ menu=await load('custom-menu');
  assert.equal(menu.registry.pluginWorkspaceLinks({presentation:true}).length,1,'Shared identity restores the menu presentation');
  assert.equal(menu.registry.pluginWorkspaceLinks().length,0,'Sidebar verification does not authorize a separate menu instance');
  const open=(source=child)=>{props={...props,target:{id:source}};const view=new menu.Menu();insideInit=true;try{view.init({},cx);}finally{insideInit=false;}return view;};
@@ -73,7 +73,7 @@ for(const machine of [null,'pc2'])for(const phase of phases)for(const restart of
  assert.equal(f.requests,requests,'Opening queues verification without synchronous IO');
  view.chooseColor('ansi5',f.cx);assert.equal(f.palette(),before,'A click before menu verification cannot borrow the sidebar proof');
  await f.drain();
- assert.equal(f.requests,requests+1,'A cold menu initiates its own bounded status read through the generic lifecycle');
+ assert.equal(f.requests,requests+1,'A cold menu requests bounded verification owned by the recurring Spaces lifecycle');
  assert.equal(f.menu.registry.pluginWorkspaceLinks().length,phase==='live'?1:0,'Colour permission must not broaden live move/worker links');
  assert.equal(view.colorReady(),true,`${machine}/${phase}/restart=${restart}/${origin}: freshly verified displayed binding permits colour`);
  const tree=view.render(f.cx);

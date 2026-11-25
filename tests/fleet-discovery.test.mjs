@@ -46,7 +46,7 @@ const host={shared:k=>state[k],setShared:(k,v)=>state[k]=v,spaces:()=>groups,pan
     if(mode==='auth')return result('',1,'GitHub authentication failed');
     if(mode==='unsupported' && script.includes("'--discover-prs'"))return result('',1,'crew: Unknown option: --discover-prs');
     const value=JSON.parse(JSON.stringify(status));
-    if(mode!=='v1')value.prDiscovery=mode==='unknown'?{version:99}:undefined;
+    if(mode!=='v1'||!script.includes("'--discover-prs'"))value.prDiscovery=mode==='unknown'?{version:99}:undefined;
     return result(JSON.stringify(value));
   },
   exec:async(command,args)=>{
@@ -60,9 +60,9 @@ const modules={'enrollment-picker.js':'src/plugins/git/mod/enrollment-picker.js'
 host.exec=legacyTargetResponses(host.exec);
 const {Main,r,f}=await loadMod({host,modules,globals:{Date:class extends Date{static now(){return now;}},localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v)}},mod:'custom-changes',
   entry:'export {default as Main} from "./main.js";export * as r from "./plugins.js";export * as f from "./plugins/crew/fleet.js";'});
-const refresh=async()=>{r.pluginEvent('workspace.context.refresh',{cx,force:true});await drain();};
-await refresh();assert.equal(statusCalls.length,1);assert.match(statusCalls[0].at(-1),/'--discover-prs'/);
-assert.equal(statusCalls[0][statusCalls[0].indexOf('--timeout')+1],'25');
+const refresh=async()=>{r.pluginEvent('spaces.refresh',{cx,force:true});await drain();r.pluginEvent('workspace.context.refresh',{cx});await drain();};
+await refresh();assert.equal(statusCalls.length,2);assert.doesNotMatch(statusCalls[0].at(-1),/'--discover-prs'/);assert.match(statusCalls[1].at(-1),/'--discover-prs'/);
+assert.equal(statusCalls[0][statusCalls[0].indexOf('--timeout')+1],'15');assert.equal(statusCalls[1][statusCalls[1].indexOf('--timeout')+1],'25');
 const firstContext=r.pluginPullContext('coordinator'),scope=firstContext.scope,binding=firstContext.binding;
 assert.equal(firstContext.discovery.version,1);assert.equal(firstContext.discovery.tasks.length,9);
 assert.equal(firstContext.discovery.tasks.find(t=>t.task==='scout').status,'none');assert.equal(firstContext.discovery.tasks.find(t=>t.task==='budget').status,'unavailable');
@@ -103,7 +103,7 @@ assert.equal(pullCalls.length,loaded+1,'Historical aging is local and does not a
 // Successful older/unknown versions reuse recorded links from that same read.
 for(const compatibility of ['legacy','unknown','unsupported']) {
   mode=compatibility;const before=statusCalls.length;await refresh();tree=await paint();
-  assert.equal(statusCalls.length-before,compatibility==='unsupported'?2:1);
+  assert.equal(statusCalls.length-before,compatibility==='unsupported'?3:2,'Recorded verification precedes separate discovery and its exact capability fallback');
   if(compatibility==='unsupported'){
     assert.doesNotMatch(statusCalls.at(-1).at(-1),/'--discover-prs'/);
     assert.equal(statusCalls.at(-1)[statusCalls.at(-1).indexOf('--timeout')+1],'15');

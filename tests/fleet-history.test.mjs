@@ -26,7 +26,7 @@ const modules={'label-colors.js':'src/plugins/git/mod/label-colors.js','enrollme
  'relay-consumer.js':'src/plugins/git/mod/webhooks.js','webhooks.js':{GitWebhooks:class{sync(_cx,options){socket=options;}stop(){}retryNow(){}}},'notices.js':{GitNotices:class{sync(){return null;}presentation(){return null;}stop(){}retryNow(){}}}};
 host.exec=legacyTargetResponses(host.exec);
 const {Main,r,GitWebhooks,gitReads}=await loadMod({host,modules,globals:{URL,Date:class extends Date{static now(){return now;}},localStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value)}},mod:'custom-changes',entry:'export {default as Main} from "./main.js";export * as r from "./plugins.js";export {GitWebhooks} from "./relay-consumer.js";export {gitReads} from "./pulls.js";'});
-const refreshStatus=async()=>{r.pluginEvent('workspace.context.refresh',{cx,force:true});await drain();};
+const refreshStatus=async()=>{r.pluginEvent('spaces.refresh',{cx,force:true});await drain();};
 await refreshStatus();assert.equal(statusReads,1);
 const panel=new Main();panel.init({},cx);await drain();panel.render(cx);await drain();let tree=panel.render(cx);
 // Later row-change cases explicitly invalidate cached facts; generic events
