@@ -5,6 +5,12 @@ import os from 'node:os';
 import cp from 'node:child_process';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {digest,read,put,json,contained,safeRelative} from './files.mjs';
+// Resolve the current implementation, not the older worker a rollback restores.
+export function reconcilePalette(home){
+  const directory=path.dirname(fileURLToPath(import.meta.url)),development=path.join(directory,'runtime/palette-policy.mjs');
+  const worker=fs.existsSync(development)?development:path.join(directory,'palette-policy.mjs');
+  return JSON.parse(cp.execFileSync(process.execPath,[worker,'reconcile',home],{encoding:'utf8',timeout:15000,windowsHide:true}));
+}
 export const defaultHome=()=>process.env.HERDR_APP_HOME||path.join(os.homedir(),'.config/herdr-app');
 export const shellPaths=['bash-cwd-loader.sh','bash-cwd.sh','powershell-cwd.ps1','revision'].map(name=>`.customizations/runtime/shell/${name}`);
 export const shellRevisionPath=shellPaths.at(-1);
@@ -75,6 +81,11 @@ export function deploy(root,home=defaultHome(),{adopt={},repair=true,sources=nul
       if(current!==null&&actual!==next&&!owned&&!(rel===layoutFile&&old?.layoutBase))throw Error(`Personal file conflict: ${rel}; nothing deployed.`);
       files[rel]=next;jobs.push({rel,file,current,bytes,before:actual});
     }
+    // Preflight conflicts before payload writes; final reconciliation derives
+    // policy from the resulting installed payload, never a key rollback snapshot.
+    const paletteWorker=path.join(root,'scripts/palette-policy.mjs');
+    if(!shellOnly&&files['mods/custom-palette/main.js']&&fs.existsSync(paletteWorker))
+      cp.execFileSync(process.execPath,[paletteWorker,'preflight',home],{encoding:'utf8',timeout:15000,windowsHide:true});
     const stale=Object.entries(old?.files??{}).filter(([rel])=>!Object.hasOwn(files,rel)).map(([rel,hash])=>({rel,file:contained(home,rel),hash}));
     for(const item of stale)if(fs.existsSync(item.file)&&digest(fs.readFileSync(item.file))!==item.hash)throw Error(`Modified obsolete file: ${item.rel}; nothing deployed.`);
     const changed=jobs.filter(j=>j.before!==digest(j.bytes));
@@ -111,10 +122,11 @@ export function deploy(root,home=defaultHome(),{adopt={},repair=true,sources=nul
     for(const j of stale){if(fs.existsSync(j.file)){if(digest(fs.readFileSync(j.file))!==j.hash)throw Error(`Concurrent obsolete edit: ${j.rel}`);fs.unlinkSync(j.file);}}
     if(!retained)put(prefsFile,nextPrefs,digest(prefsRaw));
     put(stateFile,nextManifest);
+    const palette=shellOnly?null:reconcilePalette(home);
     // Native compatibility patches are not regular payload. Refresh only existing opt-ins.
     let patches=null;
-    if(repair&&!shellOnly){const worker=path.join(owner,'runtime/scripts/startup-frames.mjs');if(fs.existsSync(worker)){const output=cp.execFileSync(process.execPath,[worker,home],{encoding:'utf8',timeout:30000,windowsHide:true});patches=JSON.parse(output);}}
-    return {changed:changed.length,removed:stale.length,patches,backup,...(retained?{...(shellOnly?{scope:'shell'}:{sources}),preserved:Object.keys(old?.files??{}).filter(rel=>!selected.some(([target])=>target===rel)).length}:{})};
+    if(!shellOnly&&(repair||palette?.nativeRefreshRequired)){const worker=path.join(owner,'runtime/scripts/startup-frames.mjs');if(fs.existsSync(worker)){const output=cp.execFileSync(process.execPath,[worker,home],{encoding:'utf8',timeout:30000,windowsHide:true});patches=JSON.parse(output);}}
+    return {changed:changed.length,removed:stale.length,patches,palette,backup,...(retained?{...(shellOnly?{scope:'shell'}:{sources}),preserved:Object.keys(old?.files??{}).filter(rel=>!selected.some(([target])=>target===rel)).length}:{})};
   });
 }
 export function doctor(home=defaultHome()) {
@@ -135,7 +147,15 @@ export function doctor(home=defaultHome()) {
       else if(!inspection.active)issues.push(`Compatibility patch ${patch.id} reset/modified; reviewed repair required.`);
     }catch(error){issues.push(`Compatibility patch ${patch.id}: ${error.stderr?.toString().trim()||error.message}`);}
   }
-  return {ok:issues.length===0,version,reviewedVersion:state.supportedHerdr?.includes(version)??false,issues,advisories,patches,ownedFiles:Object.keys(state.files).length};
+  let palette=null;
+  const paletteWorker=path.join(home,'.customizations/runtime/scripts/palette-policy.mjs');
+  if(state.files['mods/custom-palette/main.js']&&fs.existsSync(paletteWorker))try{
+    const plan=JSON.parse(cp.execFileSync(process.execPath,[paletteWorker,'preflight',home],{encoding:'utf8',timeout:15000,windowsHide:true}));
+    palette={status:plan.status??'awaiting-native-keys',configured:plan.status==='already-current'&&!plan.changed};
+    if(plan.deferred)advisories.push('Custom palette awaits host initialization or native keys at desktop startup.');
+    else if(!palette.configured)issues.push('Custom palette binding/intent needs guarded repair.');
+  }catch{issues.push('Custom palette binding policy conflict; inspect the visible repair warning.');}
+  return {ok:issues.length===0,version,reviewedVersion:state.supportedHerdr?.includes(version)??false,issues,advisories,patches,palette,ownedFiles:Object.keys(state.files).length};
 }
 export function nativeCheck(home=defaultHome()) {
   const state=json(contained(home,'.customizations/manifest.json'));if(!state)throw Error('No Custom deployment.');
@@ -153,10 +173,14 @@ export function remove(home=defaultHome()) {
     if(changed.some(j=>j.rel!=='layouts/Custom.json'))throw Error('Modified owned files; removal refused. Run doctor.');
     const runtime=path.join(home,'.customizations/runtime');
     const registry=json(path.join(runtime,'frame-patches/registry.json'));
-    if(fs.existsSync(path.join(home,'.customizations/terminal-input.json')))cp.execFileSync(process.execPath,[path.join(runtime,'scripts/terminal-input.mjs'),'restore',home],{encoding:'utf8',timeout:30000});
+    const paletteWorker=path.join(runtime,'scripts/palette-policy.mjs');
+    if(fs.existsSync(paletteWorker))cp.execFileSync(process.execPath,[paletteWorker,'remove-plan',home],{encoding:'utf8',timeout:15000,windowsHide:true});
+    if(fs.existsSync(path.join(home,'.customizations/terminal-input.json'))) cp.execFileSync(process.execPath,[path.join(runtime,'scripts/terminal-input.mjs'),'restore',home],{encoding:'utf8',timeout:30000});
     for(const patch of registry?.patches??[])if(fs.existsSync(path.join(home,`.customizations/frame-${patch.id}.json`)))cp.execFileSync(process.execPath,[path.join(runtime,'scripts/frame-patch.mjs'),'restore',patch.id,home],{encoding:'utf8',timeout:30000});
+    if(fs.existsSync(paletteWorker))cp.execFileSync(process.execPath,[paletteWorker,'remove',home],{encoding:'utf8',timeout:15000,windowsHide:true});
     for(const j of files)if(fs.existsSync(j.file)&&digest(fs.readFileSync(j.file))===j.hash)fs.unlinkSync(j.file);
     fs.unlinkSync(path.join(home,'.customizations/manifest.json'));
+    reconcilePalette(home);
     return {removed:files.length-changed.length,preserved:changed.map(j=>j.rel)};
   });
 }

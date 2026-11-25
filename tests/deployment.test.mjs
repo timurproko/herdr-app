@@ -31,7 +31,7 @@ try {
  assert.throws(()=>projectLayout(layout,{terminal_padding:[Infinity,7]}),/padding/);
  // Runtime workers function with no source checkout; a reset is repaired only for prior opt-ins.
  const runtime=path.join(home,'.customizations/runtime');const {framePatch}=await import(new URL('../dist/scripts/frame-patch.mjs',import.meta.url));
- const patch=json(path.join(runtime,'frame-patches/registry.json')).patches[0];const stock=fs.readFileSync(path.join(runtime,patch.originals[0]),'utf8');const main=path.join(home,patch.target,'main.js');put(main,stock);
+ const patch=json(path.join(runtime,'frame-patches/registry.json')).patches.find(p=>p.id==='feedback');const stock=fs.readFileSync(path.join(runtime,patch.originals[0]),'utf8');const main=path.join(home,patch.target,'main.js');put(main,stock);
  framePatch('apply',home,runtime,patch.id);put(main,stock);assert.ok(!doctor(home).ok);assert.equal(deploy(output,home).patches.ok,true);assert.ok(doctor(home).ok);
  put(main,'unknown newer upstream');const unsupported=deploy(output,home);assert.equal(unsupported.patches.ok,true);assert.equal(unsupported.patches.frames[patch.id].status,'skipped');assert.equal(doctor(home).ok,true);assert.match(doctor(home).advisories[0],/skipped/);assert.equal(fs.readFileSync(main,'utf8'),'unknown newer upstream');
  framePatch('restore',home,runtime,patch.id);assert.equal(fs.readFileSync(main,'utf8'),'unknown newer upstream','Restore must not downgrade new stock');

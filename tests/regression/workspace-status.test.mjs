@@ -14,12 +14,13 @@ const spaces=[{id:'s',active:true,machine:null,branch:'wrong-space',tabs:[{id:'h
 const pending=[],tasks=[];let notifications=0;
 let agentList=[{address:'t1',status:'idle'},{address:'pc2/t2',status:'idle'}];
 function element(){const o={kids:[],style:{}};let p;p=new Proxy(o,{get:(o,k)=>k in o?o[k]:k==='when'?(yes,fn)=>yes?fn(p):p:k==='child'?v=>{o.kids.push(v);return p;}:k==='children'?v=>{o.kids.push(...v);return p;}:k==='hover'?()=>p:(...v)=>{o.style[k]=v;return p;}});return p;}
-const native={focused:()=>focus,panes:()=>ps,terminals:()=>ts,spaces:()=>spaces,home:()=> 'C:/Users/me',agents:()=>agentList,theme:()=>({}),run:()=>{},keys:()=>[],nextCommand:()=>new Promise(()=>{}),setShared:()=>{},appHome:()=> 'C:/app',notify:()=>{},props:()=>({}),openOverlay:()=>{},closeOverlay:()=>{},exec:(...args)=>new Promise((resolve,reject)=>pending.push({args,resolve,reject}))};
+let paletteStatus=null,paletteKeys=[];const paletteCalls=[];
+const native={shared:key=>key==='custom.palette.status'?paletteStatus:undefined,focused:()=>focus,panes:()=>ps,terminals:()=>ts,spaces:()=>spaces,home:()=> 'C:/Users/me',agents:()=>agentList,theme:()=>({}),run:(...args)=>paletteCalls.push(args),keys:()=>paletteKeys,nextCommand:()=>new Promise(()=>{}),setShared:()=>{},appHome:()=> 'C:/app',notify:()=>{},props:()=>({}),openOverlay:()=>{},closeOverlay:()=>{},exec:(...args)=>new Promise((resolve,reject)=>pending.push({args,resolve,reject}))};
 const context=vm.createContext({}),cache=new Map();
 function synthetic(exports){return new vm.SyntheticModule(Object.keys(exports),function(){for(const[k,v]of Object.entries(exports))this.setExport(k,v);},{context});}
 function load(file){if(cache.has(file))return cache.get(file);const m=new vm.SourceTextModule(fs.readFileSync(file,'utf8'),{context,identifier:file});cache.set(file,m);return m;}
 const main=load(path.join(root,'mods/custom-workspace-status/main.js'));
-await main.link((s,r)=>s==='herdr'?synthetic(native):s==='gpui-kit'?synthetic({View:class{},div:element,svg:element}):s==='gpui-base'?synthetic({h_flex:element}):s==='./ui.js'?synthetic({menuRow:uiReal(element).menuRow,U:{},slot:v=>v,hotkey:()=>'',menuSurface:()=>element(),dropdown:()=>element(),PILL:{inset:6,menuShift:8},pillTrigger:()=>element(),pillMenu:m=>m}):load(path.resolve(path.dirname(r.identifier),s)));await main.evaluate();
+await main.link((s,r)=>s==='herdr'?synthetic(native):s==='gpui-kit'?synthetic({View:class{},div:element,svg:element}):s==='gpui-base'?synthetic({h_flex:element}):s==='./ui.js'?synthetic({menuRow:uiReal(element).menuRow,U:{},slot:v=>v,hotkey:key=>key??'',menuSurface:()=>element(),dropdown:()=>element(),PILL:{inset:6,menuShift:8},pillTrigger:()=>element(),pillMenu:m=>m}):load(path.resolve(path.dirname(r.identifier),s)));await main.evaluate();
 const loc=cache.get(path.join(root,'mods/custom-workspace-status/location.js')).namespace.statusLocation;
 const view=new main.namespace.default(),cx={spawn:fn=>tasks.push(fn(cx)),notify:()=>notifications++,timer:{after:()=>({cancel(){}})}};
 const strings=n=>typeof n==='string'?[n]:(n?.kids??[]).flatMap(strings);
@@ -60,4 +61,8 @@ ts[1].foreground.cwd='D:/not-a-repo';draw();await settle(128);ts[1].foreground.c
 ts[1].foreground.cwd='D:/not-a-repo';assert.ok(!loadingBar(),'A known non-repo shows no bar');assert.ok(!draw().includes('fresh'));await settle(128);
 focus=null;spaces[0].tabs[0].active=false;spaces[0].tabs[1].active=true;assert.equal(loc().terminal,'pc2/t2','Without native focus, use the active tab, not the first tab');
 await Promise.all(tasks);assert.ok(notifications>0);
+const paletteButton=()=>nodes(view.render(cx)).find(n=>n.style?.id?.[0]==='palette');
+paletteKeys=[{section:'layout:Custom',keys:'ctrl-shift-p',action:'mod.open:custom-palette'}];paletteButton().style.on_click[0]({}, {stop_propagation(){}});assert.equal(paletteCalls.at(-1)[0],'mod.open');assert.equal(view.hint(), 'ctrl-shift-p  commands');
+paletteStatus={ok:true,installed:false};paletteKeys=[{section:'layout:Custom',keys:'ctrl-shift-p',action:'app.palette'}];paletteButton().style.on_click[0]({}, {stop_propagation(){}});assert.equal(paletteCalls.at(-1)[0],'app.palette');assert.equal(view.hint(),'ctrl-shift-p  commands');
+paletteKeys=[{section:'global',keys:'ctrl-shift-p',action:'app.palette'},{section:'layout:Custom',keys:'ctrl-shift-p',action:'personal.command'}];assert.equal(view.hint(),'commands','Do not advertise a globally shadowed key after personal rebind');
 console.log('PASS: selected terminal/machine/folder branch, hidden agent totals and blocked-agent counts, machine-before-branch order, remote Git Bash and worktrees, detached/offline/no-repo guards, stale replies, bounded reads and file/peek focus');

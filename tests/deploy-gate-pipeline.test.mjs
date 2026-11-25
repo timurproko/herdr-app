@@ -22,8 +22,10 @@ try {
  const target=git(f.author,'rev-parse','HEAD');assert.notEqual(git(managed,'rev-parse','HEAD'),target);
  const commands=new Set();
  const walk=dir=>{for(const e of fs.readdirSync(dir,{withFileTypes:true})){const p=path.join(dir,e.name);if(e.isDirectory())walk(p);else if(p.endsWith('.js'))for(const m of fs.readFileSync(p,'utf8').matchAll(/["']((?:space|tab|pane|terminal|agent|layout|app|window|mod|overlay)\.[a-zA-Z0-9_.-]+)["']/g))commands.add(m[1]);}};walk(path.join(project,'src'));
- const catalog=path.join(f.base,'commands.json');put(catalog,JSON.stringify([...commands].map(name=>({name}))));
+ const catalog=path.join(f.base,'commands.json');put(catalog,JSON.stringify([...commands].map(name=>({name,args:name==='mod.open'?[{name:'name',required:true}]:[]}))));
  put(path.join(home,'herdr.d.ts'),HOST_CONTRACT.api.map(n=>`export function ${n}(): void;`).join('\n'));
+ put(path.join(home,'gpui-kit.d.ts'),'InputState Input VirtualListScrollHandle Scrollbar v_virtual_list focus_handle on_key_down');
+ put(path.join(home,'keys.json'),JSON.stringify({global:{'ctrl-shift-p':'app.palette','f9':'app.help'}}));
  const {output}=build();const registry=JSON.parse(fs.readFileSync(path.join(output,'frame-patches/registry.json')));
  for(const p of registry.patches){put(path.join(home,p.target,'main.js'),fs.readFileSync(path.join(output,p.originals[0])));framePatch('apply',home,output,p.id);put(path.join(home,p.target,'main.js'),`new 0.1.17 stock ${p.id}`);}
  const frameBefore=Object.fromEntries(registry.patches.map(p=>[p.id,fs.readFileSync(path.join(home,`.customizations/frame-${p.id}.json`),'utf8')]));
@@ -41,13 +43,23 @@ try {
  });
  assert.equal(job.state,'complete',fs.readFileSync(p.log,'utf8'));assert.equal(git(managed,'rev-parse','HEAD'),target);
  const shown=updates.inspect(home);assert.equal(shown.revision,target);assert.equal(shown.job.state,'complete');assert.equal(updateProjection(shown).partial,false);
- assert.match(fs.readFileSync(p.log,'utf8'),/newer than last reviewed/);assert.match(fs.readFileSync(p.log,'utf8'),/source-unavailable/);assert.match(fs.readFileSync(p.log,'utf8'),/Optional palette patch skipped/);assert.match(fs.readFileSync(p.log,'utf8'),/Optional feedback patch skipped/);
- for(const item of registry.patches){assert.equal(fs.readFileSync(path.join(home,item.target,'main.js'),'utf8'),`new 0.1.17 stock ${item.id}`);assert.equal(fs.readFileSync(path.join(home,`.customizations/frame-${item.id}.json`),'utf8'),frameBefore[item.id]);}
+ assert.match(fs.readFileSync(p.log,'utf8'),/newer than last reviewed/);assert.match(fs.readFileSync(p.log,'utf8'),/source-unavailable/);assert.match(fs.readFileSync(p.log,'utf8'),/retired-with-preserved-target/);assert.match(fs.readFileSync(p.log,'utf8'),/Optional feedback patch skipped/);
+ for(const item of registry.patches){
+  assert.equal(fs.readFileSync(path.join(home,item.target,'main.js'),'utf8'),`new 0.1.17 stock ${item.id}`);
+  if(item.id==='palette'){
+   assert.equal(fs.existsSync(path.join(home,'.customizations/frame-palette.json')),false,'Owned routing retires native management, not the unknown stock bytes');
+   const retired=JSON.parse(fs.readFileSync(path.join(home,'.customizations/palette-retired.json')));
+   assert.equal(retired.preservedNativeFiles,true);
+   assert.equal(fs.readFileSync(path.join(home,retired.archive),'utf8'),frameBefore.palette,'The complete prior recovery record remains archived');
+  }else assert.equal(fs.readFileSync(path.join(home,`.customizations/frame-${item.id}.json`),'utf8'),frameBefore[item.id]);
+ }
+ assert.equal(JSON.parse(fs.readFileSync(path.join(home,'keys.json')))['layout:Custom']['ctrl-shift-p'],'mod.open:custom-palette');
+ assert.equal(JSON.parse(fs.readFileSync(path.join(home,'keys.json'))).global.f9,'app.help');
  assert.match(customizationRowState(updateProjection(shown)).description,/Updated/);
- const doctor=cp.spawnSync(process.execPath,['tools/deploy.mjs','doctor'],{cwd:managed,env,encoding:'utf8',timeout:30000});assert.equal(doctor.status,0,doctor.stderr);assert.equal(JSON.parse(doctor.stdout).advisories.length,2);
+ const doctor=cp.spawnSync(process.execPath,['tools/deploy.mjs','doctor'],{cwd:managed,env,encoding:'utf8',timeout:30000});assert.equal(doctor.status,0,doctor.stderr);assert.equal(JSON.parse(doctor.stdout).advisories.length,1);assert.equal(JSON.parse(doctor.stdout).palette.configured,true);
  // The ordinary shell path requires no App evidence or optional patch worker.
  const peerHome=path.join(f.base,'peer'),peerRoot=path.join(peerHome,'.local/share/herdr-app');fs.mkdirSync(path.dirname(peerRoot),{recursive:true});git(f.base,'clone',f.origin,peerRoot);git(peerRoot,'remote','set-url','origin',updates.REPOSITORY);git(peerRoot,'config',`url.${f.origin}.insteadOf`,updates.REPOSITORY);
  const shell=worker.runRemote({},{home:peerHome,env:{...env,NO_HOST:'1'},log(){}});assert.equal(shell.action,'deployed',JSON.stringify(shell));
  const owned=JSON.parse(fs.readFileSync(path.join(peerHome,'.config/herdr-app/.customizations/manifest.json')));assert.deepEqual(Object.keys(owned.files).sort(),[...worker.SHELL_PATHS].sort());
- console.log('PASS actual host gate + npm deploy/build/install + managed Settings Update/deploy:all + peer deploy:shell on capable 0.1.17, skipped native patches, unchanged recovery records, doctor advisories (synthetic hosts only)');
+ console.log('PASS actual host gate + npm deploy/build/install + managed Settings Update/deploy:all + peer deploy:shell on capable 0.1.17, owned palette routing, unknown-stock preservation, archived palette recovery, unchanged feedback opt-in and doctor diagnostics (synthetic hosts only)');
 }finally{clean();}

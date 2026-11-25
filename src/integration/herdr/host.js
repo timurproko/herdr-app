@@ -21,6 +21,8 @@ function method(name) {
   throw Error(`Custom requires Herdr API ${name}; update integration/herdr/compatibility.js for host ${hostVersion() ?? 'unknown'}.`);
 }
 const call = (name, args) => method(name)(...args);
+// Resolve capability aliases without invoking commands or side effects.
+export function requireHostCapabilities(names) { for (const name of names) method(name); }
 
 export const exec = (...args) => call('exec', args);
 export const hc = (...args) => call('hc', args);

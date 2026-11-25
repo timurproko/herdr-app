@@ -80,6 +80,7 @@ export function framePatch(action, home, root = bundle, frame, options = {}) {
   const supportedStock = originals.includes(current['main.js']);
   const recognized = n => state && [state.installed[n], state.previousInstalled?.[n], hash(state.original[n] ?? null)].includes(hash(current[n]));
   if (action === 'apply') {
+    if(frame==='palette'&&fs.existsSync(path.join(home,'.customizations/palette-binding.json')))throw Error('Native palette patch is retired by the owned Custom palette; use its guarded binding repair.');
     if (!supportedStock && !recognized('main.js')) throw Error(`${frame} frame differs from the supported original/owned patch; nothing changed.`);
     const payload = Object.fromEntries(names.map(n => [n, read(path.join(root, sources[n]))]));
     if (Object.values(payload).some(t => t === null)) throw Error('Missing patch dependency; nothing changed.');
