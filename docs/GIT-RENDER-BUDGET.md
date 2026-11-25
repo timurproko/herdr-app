@@ -16,22 +16,24 @@ Consumed native scrollbar input can delay reveal until the next received event.
 
 The rich fixture includes two repositories, a notice, 74px Closed rows, robots,
 tasks, checks, two labels and review decisions. Uncapped native measurements show
-27.0ms cold / 23.4ms warm at 100 mounted rows. **The below-20ms target at 100
-mounted rows was not met.** Cold 200 rows completed once at 52ms and interrupted
-four times; warm 200 rows averaged 46.2ms. Complete current samples (milliseconds):
+28.2ms cold / 23.8ms warm at 100 mounted rows. **The below-20ms target at 100
+mounted rows was not met.** Cold 200 rows interrupted in all five attempts;
+warm 200 rows averaged 43.0ms. Complete current samples (milliseconds):
 
 | Mounted PRs | Cold samples | Warm pure-cache samples |
 | --- | --- | --- |
-| 30 | 8, 11, 8, 8, 9 (mean 8.8) | 6, 7, 7, 6, 7 (mean 6.6) |
-| 60 | 15, 16, 15, 15, 14 (mean 15.0) | 13, 14, 12, 14, 15 (mean 13.6) |
-| 100 | 25, 26, 27, 30, 27 (mean 27.0) | 26, 22, 24, 22, 23 (mean 23.4) |
-| 200 | 52, interrupted ×4 | 50, 49, 43, 43, 46 (mean 46.2) |
+| 30 | 7, 7, 7, 8, 8 (mean 7.4) | 7, 6, 7, 8, 7 (mean 7.0) |
+| 60 | 15, 15, 15, 16, 18 (mean 15.8) | 15, 13, 15, 13, 14 (mean 14.0) |
+| 100 | 26, 32, 27, 27, 29 (mean 28.2) | 22, 22, 26, 24, 25 (mean 23.8) |
+| 200 | interrupted ×5 (no complete sample) | 44, 43, 44, 42, 42 (mean 43.0) |
 
  Pretending that a window solves the host notification gap is not acceptable.
 
 The measured safe fallback is **60 mounted PR rows**, with an additional
 **100-presentation-item** ceiling for header/notice-heavy inventories. Native
-60-row builds are 12–16ms (15.0ms cold / 13.6ms warm means). At the cap, the only paging control is a
+60-row builds are 13–18ms (15.8ms cold / 14.0ms warm means). The actual capped
+200-inventory/60-mounted workload completes in 16, 15, 15, 15, 15ms (mean 15.2),
+including its Show more row. At the cap, the only paging control is a
 quiet **Show more** row at the list end. It replaces the mounted batch with the
 next batch, initially revealing ten items there. The last batch's same control
 cycles back to the first batch, so earlier rows remain reachable without a page
@@ -45,7 +47,8 @@ of evicting already revealed PRs. Deleted tails retain the last surviving anchor
 measure complete 30/60/100/200-row renders. `GIT_NATIVE_WARM=1` first builds an
 untimed snapshot to warm pure fact/style/layout caches; native width probes remain
 pending unless the native host has acknowledged them. Both modes create fresh
-native trees/callbacks. A 200-row native interruption is recorded as such, never
+native trees/callbacks. `GIT_NATIVE_CAPPED=1` separately measures 200 known PRs
+with the real runtime cap and end control. A 200-row native interruption is recorded as such, never
 reported as a successful full build. Raw series are under
 `.artifacts/git-render-native/mounted-{cold,warm}-results.json` with individual logs.
 Timings use native Date.now at 1ms resolution and include the complete JS/native
@@ -66,7 +69,7 @@ builder render, not later layout/paint or live input latency. No watchdog is cha
   enforces the measured row/item cap, bounded per-row elements and a batch-sized
   operation/element ceiling. The obsolete 1,200-element viewport-window ceiling
   does not describe a mounted 60-row tree. The current 100-inventory-row traversal
-  peaks at 13,765/20,000 builder operations and 1,696/8,000 elements; each PR stays
+  peaks at 13,767/20,000 builder operations and 1,696/8,000 elements; each PR stays
   below 125 elements.
 
 ## Native geometry and derived fades

@@ -5,11 +5,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import cp from 'node:child_process';
 import {build} from './build.mjs';
+import {MAX_MOUNTED_ROWS} from '../src/plugins/git/mod/task-reveal.js';
 const {output}=build(),root=path.resolve('.artifacts/git-render-native');
 fs.mkdirSync(root,{recursive:true});
 const executable=process.env.HERDR_APP_BIN||path.join(process.env.LOCALAPPDATA,'Programs/herdr-app/herdr-app.exe');
 const requested=process.argv.slice(2),variants=requested.length?requested:['current'];
-const warm=process.env.GIT_NATIVE_WARM==='1';
+const warm=process.env.GIT_NATIVE_WARM==='1',capped=process.env.GIT_NATIVE_CAPPED==='1';
+if(capped&&variants.some(v=>v!=='current'))throw Error('Capped workload measures current only');
 const revisions={pre42:'70fd212^',post42:'70fd212',unbounded:'025e191'};
 // Remove only tooltip method calls for a differential native cost sample. This
 // balanced scanner handles their nested argument expressions and string literals.
@@ -29,7 +31,7 @@ function withoutTooltips(source){
  return source;
 }
 const results=[];
-for(const variant of variants)for(const count of [30,60,100,200])for(let sample=0;sample<5;sample++) {
+for(const variant of variants)for(const count of (capped?[200]:[30,60,100,200]))for(let sample=0;sample<5;sample++) {
  const home=fs.mkdtempSync(path.join(root,`${variant}-${count}-`)),dir=path.join(home,'mods/custom-changes');
  try{
  fs.cpSync(path.join(output,'mods/custom-changes'),dir,{recursive:true});
@@ -49,7 +51,7 @@ export default class Fixture extends Changes {
  // Input/reveal correctness is tested separately without fabricated mouse pairs.
  if(this.taskSections){
    const sections=this.aggregate.repositories().map(repo=>({repo,rows:rows.filter(pr=>pr.repo===repo),error:this.aggregate.readNotice(repo)}));
-   const w=this.taskSections(sections,'fixture').window;w.maxRows=Infinity;
+   const w=this.taskSections(sections,'fixture').window;if(!${capped})w.maxRows=Infinity;
    this.taskMeasure(w,'fixture','viewport',{width:390,height:400},cx);
    while(w.revealMore()){}
    w.observe(1e9,400);w.metrics.setMetrics({offset:w.offset,viewport:400,content:w.contentHeight});
@@ -61,19 +63,19 @@ export default class Fixture extends Changes {
  if(${warm}){this.renderAggregate(cx,theme());this.profile={pills:0,rows:[]};}
  }
  shown(){return true;}
- render(cx){const start=Date.now();const tree=this.renderAggregate(cx,theme());console.error('PROFILE '+JSON.stringify({variant:'${variant}',count:${count},sample:${sample},warm:${warm},total:Date.now()-start,loaded:this.fixtureLoaded??${count},offset:this.fixtureOffset??0,...this.profile}));return tree;}
+ render(cx){const start=Date.now();const tree=this.renderAggregate(cx,theme());console.error('PROFILE '+JSON.stringify({variant:'${variant}',count:${count},sample:${sample},warm:${warm},capped:${capped},total:Date.now()-start,loaded:this.fixtureLoaded??${count},offset:this.fixtureOffset??0,...this.profile}));return tree;}
 }
 `);
  const result=cp.spawnSync(executable,['check',dir],{encoding:'utf8',timeout:30000,windowsHide:true,env:{...process.env,HERDR_APP_HOME:home}});
  const log=[result.stdout,result.stderr].filter(Boolean).join('\n');
- fs.writeFileSync(path.join(root,`${variant}-${warm?'warm':'cold'}-${count}-${sample}.log`),log);
+ fs.writeFileSync(path.join(root,`${variant}-${capped?'capped-':''}${warm?'warm':'cold'}-${count}-${sample}.log`),log);
  const match=log.match(/PROFILE (\{[^\n]+\})/);
  if(result.status!==0||!match){
-   if(count!==200||!/interrupted/i.test(log))throw Error(`Native check failed: ${log}`);
+   if(count!==200||capped||!/interrupted/i.test(log))throw Error(`Native check failed: ${log}`);
    const failure={variant,count,sample,warm,total:null,error:/interrupted/i.test(log)?'native interruption':'native check failed'};
    results.push(failure);console.log(JSON.stringify(failure));continue;
  }
- const record=JSON.parse(match[1]);if(record.loaded!==count||record.rows.length!==count)throw Error(`Expected ${count} mounted rows, got ${record.loaded}/${record.rows.length}`);results.push(record);console.log(JSON.stringify(record));
+ const record=JSON.parse(match[1]);const expected=capped?Math.min(count,MAX_MOUNTED_ROWS):count;if(record.loaded!==expected||record.rows.length!==expected)throw Error(`Expected ${expected} mounted rows, got ${record.loaded}/${record.rows.length}`);results.push(record);console.log(JSON.stringify(record));
  }finally{fs.rmSync(home,{recursive:true,force:true});}
 }
-fs.writeFileSync(path.join(root,`mounted-${warm?'warm':'cold'}-results.json`),JSON.stringify(results,null,2)+'\n');
+fs.writeFileSync(path.join(root,`mounted-${capped?'capped-':''}${warm?'warm':'cold'}-results.json`),JSON.stringify(results,null,2)+'\n');
