@@ -36,7 +36,7 @@ async function measure(before) {
  panel.refresh(cx);await drain();measured.refresh=calls.length;calls.length=0;
  panel.invalidate('example/a');panel.pump(cx);await drain();measured.oneRepository=calls.length;calls.length=0;
  panel.rows('open');panel.rows('closed');measured.tabs=calls.length;
- const consumer=new m.GitWebhooks(),consume=()=>consumer.sync(cx,{enabled:active,scope:'home',repositories:['example/a','example/b'],catchup:false,onChange:event=>{panel.invalidate(event?.repository??null);panel.pump(cx);}});
+ const consumer=new m.GitWebhooks(),consume=()=>consumer.sync(cx,{enabled:active,scope:'home',repositories:['example/a','example/b'],onChange:event=>{panel.invalidate(event?.repository??null);panel.pump(cx);}});
  const flush=async()=>{await drain();while(timers.length){timers.shift().fn(cx);await drain();}};
  consume();await flush();measured.initialCatchup=calls.length;calls.length=0;
  relay.repositories['example/a'].revision++;consume();await flush();measured.relayA=calls.length;calls.length=0;
@@ -49,7 +49,7 @@ async function measure(before) {
 }
 const before=await measure(true),after=await measure(false);
 assert.deepEqual(before,{cold:35,refresh:35,oneRepository:18,tabs:0,initialCatchup:35,relayA:35,burstA:105,hidden:0,return:35,changed:35});
-assert.deepEqual(after,{cold:4,refresh:2,oneRepository:1,tabs:0,initialCatchup:0,relayA:1,burstA:1,hidden:0,return:2,changed:4});
+assert.deepEqual(after,{cold:4,refresh:2,oneRepository:1,tabs:0,initialCatchup:2,relayA:1,burstA:3,hidden:0,return:2,changed:4});
 fs.writeFileSync('.artifacts/git-budget/measured.json',JSON.stringify({before,after},null,2)+'\n');
 console.log(JSON.stringify({before,after}));
 console.log('PASS measured real-controller before/after 2 repositories, 5 Open / 30 Closed request budgets; final rows cached and tabs/hidden reads stay zero');

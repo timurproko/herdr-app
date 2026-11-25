@@ -19,17 +19,15 @@ and changed-only details. Healthy siblings survive missing/access aliases;
 rate, HTTP, process and transport failures still refuse the complete batch.
 `tests/pr-agent-links.test.mjs` includes a `remote.*.gh-resolved`-only default
 change with unchanged remote URLs, plus warm routing-cache reuse. `tests/git-read-scheduling.test.mjs`
-uses fake timers for two-second repository windows and inactive/return gating.
-`tests/git-invalidation-transitions.test.mjs` states and tests the retained-demand
-invariant with 513 real-controller cases: every tab, visibility, membership,
-cooldown, repeated-event and failed-read transition and ordered pair, in debounce
-and both backoff phases, across coordinator and warm/cold ordinary tabs. It checks
-one eventual successful refresh, exact injected failures, first-deadline bounds,
-latest metadata and absence of hidden or duplicate late reads.
+checks main's immediate per-repository event delivery and window-independent reads,
+plus fake-clock cooldown recovery of the current selected tab with retained depth.
+The retired debounce/pending-demand transition matrix is removed with that machinery.
 `tests/git-request-budget.test.mjs` measures the actual frozen before controller
 and the changed controller against synthetic transport; its baseline blobs live
 in `tests/fixtures/git-before/` so shallow/offline CI needs no history fetch.
-`tests/git-membership-budget.test.mjs` measures named-account REST batching.
+`tests/git-membership-budget.test.mjs` confirms unchanged main enrollment reads:
+four REST operations for two repositories with a named account. Notice fixtures
+also verify that rate refusals schedule no deferred enrollment worker.
 `tests/git-worker-rate-headers.test.mjs` runs the actual worker transport with a
 fake child to check numeric/date Retry-After, paginated header stripping and strict
 permission/process/timeout exclusions without reading real credentials.

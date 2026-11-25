@@ -64,12 +64,12 @@ async function harness(){let relay='',account='',snapshot=null;const pending=[],
  const h=await harness();h.setRelay('https://relay.example');h.sync();await h.reply({setup:'ready'});
  h.sync('owner/a');await h.reply({rateLimited:true,retryAfter:900000});
  h.sync('owner/b');for(let i=0;i<20;i++)await Promise.resolve();
- assert.equal(h.pending.length,0,'A second membership waits quietly during the shared cooldown');
- assert.equal(h.timers.length,1,'Multiple deferred memberships share one wakeup');
- assert.equal(h.n.members.get('owner/a'),'pending');assert.equal(h.n.members.get('owner/b'),'pending');
+ assert.equal(h.pending.length,0,'A second membership is quiet during the shared cooldown');
+ assert.equal(h.timers.length,0,'Enrollment uses main lifecycle checks, never a deferred retry timer');
+ assert.equal(h.n.members.get('owner/a'),'unknown');assert.equal(h.n.members.get('owner/b'),'unknown');
  for(const state of h.reads.routes.values())state.until=0;
- h.timers.shift().fn(h.cx);await h.reply({status:'ready'});await h.reply({status:'missing'});
- assert.equal(h.sync('owner/a'),null);assert.equal(h.sync('owner/b'),'repository','Every deferred repository is retried, not just the first one');
- h.n.readWake={due:Infinity};h.n.retryNow();h.sync('owner/a');assert.equal(h.n.readWake,null,'A new configuration cannot inherit an obsolete retry callback');await h.reply({setup:'ready'});
+ h.sync('owner/a');assert.equal(h.pending.length,0,'Renders do not schedule enrollment retries');
+ h.n.retryNow();h.sync('owner/a');await h.reply({setup:'ready'});h.sync('owner/a');await h.reply({status:'ready'});
+ assert.equal(h.sync('owner/a'),null);assert.equal(h.timers.length,0);
 }
-console.log('PASS: stable global setup, immediate repo-switch dismissal, quiet pending enrollment, cached repo results, deferred membership retries, Settings updates and stale/disabled guards');
+console.log('PASS: stable global setup, immediate repo-switch dismissal, quiet pending enrollment, cached repo results, quiet rate refusals without deferred retries, Settings updates and stale/disabled guards');

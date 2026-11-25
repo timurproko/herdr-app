@@ -128,7 +128,7 @@ The coordinator Git overview SHALL render at most one actionable PR-read failure
 - **AND** repeated missing confirmations still emit only the first sanitized customization-log line for that exact repository and number in the session; finishing the task restores session-long historical suppression
 
 ### Requirement: Pending checks fallback without live coverage
-Shown Open/Draft PRs, including pending or unknown checks, SHALL refresh state and checks through coalesced repository jobs every 45 seconds unenrolled or 120 seconds enrolled, independent of relay connectivity. Known Closed/Merged rows SHALL remain session-cached even with pending checks. Failures SHALL retain values and back off exponentially, with at least 15 minutes for rate limits. Hidden, disabled, offline, inactive or superseded contexts SHALL stop reads.
+Shown Open/Draft PRs SHALL retain 45-second unenrolled and 120-second enrolled state/check safety reads, independent of relay connectivity. Known Closed/Merged rows SHALL stay session-cached even with pending checks. Failures SHALL retain values with bounded backoff and at least 15 minutes for rate limits. Hidden, disabled, offline and superseded contexts SHALL stop safety reads; window activity alone SHALL NOT gate reads.
 
 #### Scenario: Pending checks settle
 - **WHEN** an unenrolled shown Open/Draft PR has pending checks and its fallback read returns settled checks
@@ -136,9 +136,9 @@ Shown Open/Draft PRs, including pending or unknown checks, SHALL refresh state a
 - **AND** a confirmed empty rollup is settled rather than unknown but does not stop an open row's state refresh
 
 #### Scenario: Failure and visibility
-- **WHEN** a fallback read fails or the panel is hidden, disabled, inactive or its machine goes offline
+- **WHEN** a fallback read fails or the panel is hidden, disabled or its machine goes offline
 - **THEN** its last displayed value remains and failures back off before another eligible read
-- **AND** hidden, disabled, inactive or offline contexts start no fallback reads and late replies cannot overwrite a new context
+- **AND** hidden, disabled or offline contexts start no fallback reads and late replies cannot overwrite a new context
 
 #### Scenario: Thin unchanged-row cycle
 - **WHEN** shown PR heads and overall check summaries remain unchanged during a safety cycle
@@ -154,6 +154,17 @@ Shown Open/Draft PRs, including pending or unknown checks, SHALL refresh state a
 - **WHEN** a shown unenrolled PR with settled checks is merged, closed or converted to draft after its last successful refresh
 - **THEN** the next successful fallback cycle reads its current state alongside checks and reconciles its row and totals
 - **AND** settlement alone cannot leave it indefinitely in Open after closure
+
+#### Scenario: Coordinator viewport selection
+- **WHEN** a coordinator safety cycle selects eligible PRs
+- **THEN** every revealed PR in an unfolded section of the selected tab is eligible, including rows below or above the visible viewport
+- **AND** unrevealed rows, folded sections and the other tab remain excluded
+- **AND** scroll input itself starts no inventory read or immediate extra probe, while ordinary safety selection stays unchanged
+
+#### Scenario: Window changes during a safety request
+- **WHEN** reveal, fold, tab, context or relevant inventory changes supersede a held safety selection, including changing away and back
+- **THEN** its reply is rejected by the captured selection generation
+- **AND** moving only the native viewport within an unchanged revealed selection does not invalidate that selection or change its normal cadence
 
 #### Scenario: Final history retains pending checks without rereads
 - **WHEN** a shown known Closed or Merged PR has pending or unknown checks
@@ -204,29 +215,33 @@ Ordinary and coordinator views SHALL reuse session-cached Closed/Merged PR facts
 
 #### Scenario: No relay redeployment dependency
 - **WHEN** the panel uses the currently deployed relay with repository-only invalidations
-- **THEN** all batching, caching, quiet-refusal and activity benefits remain available without a relay change
+- **THEN** batching, caching and quiet-refusal benefits remain available without a relay change
 - **AND** cached final coordinator history is session-bound rather than polled for external reopen or metadata changes; precise hints remain a separately scoped optional follow-up
 
-### Requirement: Demand-driven Git reads
-Git SHALL debounce event bursts for two seconds per routed repository and refresh only demanded mutable rows. Hidden, disabled, offline, superseded or explicitly inactive-window contexts SHALL start no reads or follow-ups. Return SHALL catch up once. Thin state/summary probes SHALL retain the 45-second unenrolled and 120-second enrolled shown-open cadences; check contexts SHALL be requested only for new or changed heads/summaries.
+### Requirement: Selected-tab batched Git refresh
+Ordinary Git refresh SHALL read only the selected tab's pages and use bounded details only for new or changed heads/summaries. Cooldown retries SHALL re-evaluate current selected demand. Event and enrollment scheduling SHALL retain main's lifecycle without a two-second debounce, pending-demand transfer, inactive-window pause or deferred enrollment retry queue. Thin shown-open safety probes SHALL retain their 45/120-second cadences.
 
 #### Scenario: Open shown after Closed was visited
 - **WHEN** Open is shown and refresh, webhook or reconnect occurs after Closed rows have loaded
 - **THEN** Closed row pages are not reread and last-good Closed totals remain until an authoritative totals/state update arrives
 - **AND** a later Closed selection can lazily reconcile its demanded membership without clearing cached final facts first
 
-#### Scenario: Burst with in-flight work
-- **WHEN** several events for a repository arrive inside two seconds, including events while its read is in flight
-- **THEN** they become one pending repository refresh per short window, with at most one dirty follow-up rather than one read per event
-- **AND** an event arriving too late to be represented by the in-flight snapshot is not lost
+#### Scenario: Current demand after cooldown
+- **WHEN** a Closed page or append is rate-refused and Open is selected before the retry fires
+- **THEN** recovery reads Open rather than the hidden Closed tab
+- **AND** an already-loaded selected destination retains its expanded depth
 
 #### Scenario: Unchanged checks on any refresh trigger
 - **WHEN** an existing row is refreshed and its head and rollup summary are unchanged
 - **THEN** its known check contexts are reused on event, manual, list and targeted paths as well as safety probes
 - **AND** new rows or changed heads/summaries fetch bounded details under the same read lease without overwriting unrelated row fields
 
-#### Scenario: Background and return
-- **WHEN** the host exposes an explicit inactive window or Git is hidden during pending work
-- **THEN** no subsequent API command starts until it is shown and active again, while completed data remains available
-- **AND** return coalesces accumulated invalidations into one catch-up per repository subject to cooldown and current authority
-- **AND** absent host activity information does not guess inactivity, and any unavailable independent minimized-state signal is documented
+#### Scenario: Main event and window lifecycle
+- **WHEN** three repository events are separately dispatched inside two seconds to a shown panel, including an inactive window
+- **THEN** main's immediate event path invokes three repository-batched refreshes rather than one debounced refresh
+- **AND** enrollment remains main's per-repository configuration or explicit Refresh check, without a deferred retry timer
+
+#### Scenario: Effective repository default changes
+- **WHEN** remote gh-resolved routing changes while remote URLs remain unchanged
+- **THEN** the canonical agent repository cache is invalidated and rechecked
+- **AND** unchanged effective routing still reuses verified identity without a GitHub lookup each footer tick

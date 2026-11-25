@@ -14,8 +14,8 @@ try {
  }}};
  for(const repo of ['owner/a','owner/b'])await setup.run('notice-repository',file,'https://relay.example',repo,io,'fixture-user');
  const before=calls.length;calls.length=0;
- const result=await setup.run('notice-repositories',file,'https://relay.example','["owner/a","owner/b"]',io,'fixture-user');
- assert.equal(before,4);assert.equal(calls.length,3);assert.deepEqual(result.members,{'owner/a':{status:'missing'},'owner/b':{status:'missing'}});
- assert.equal(calls.filter(args=>args[1]==='user').length,1);assert.ok(!calls.some(args=>args.includes('switch')));
- console.log('PASS measured named-account enrollment REST operations: 4 before, 3 after; one scoped identity verification, no account switch');
+ const results=[];for(const repo of ['owner/a','owner/b'])results.push(await setup.run('notice-repository',file,'https://relay.example',repo,io,'fixture-user'));
+ assert.equal(before,4);assert.equal(calls.length,4);assert.deepEqual(results,[{status:'missing'},{status:'missing'}]);
+ assert.equal(calls.filter(args=>args[1]==='user').length,2);assert.ok(!calls.some(args=>args.includes('switch')));
+ console.log('PASS measured named-account enrollment REST operations: 4 before, 4 after; unchanged main per-repository checks, no account switch');
 } finally {await fs.rm(dir,{recursive:true,force:true});}

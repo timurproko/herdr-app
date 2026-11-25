@@ -169,8 +169,10 @@ revision, rather than retrying on every render.
 `check_run`, `check_suite`, `status`, `workflow_run`, `pull_request` and `push` events
 invalidate mutable facts in the affected repositories and the selected ordinary
 tab, including an explicitly linked beyond-page PR. Hidden Closed pages are not
-reread. Pinned/unpinned PRs and drafts are covered alike. Two-second bounded burst
-windows coalesce work per repository; expanded depth is retained and cursors renewed. Stale replies
+reread. Pinned/unpinned PRs and drafts are covered alike. Main's immediate event
+delivery and same-turn/in-flight coalescing remain; there is no two-second window.
+Each separately dispatched event uses the affected repository's batch. Expanded
+depth is retained and cursors renewed. Stale replies
 cannot overwrite another machine/repository. Failed reads keep the last good data.
 Assigned PR label names and colours travel with those same list/targeted PR reads,
 not additional requests per row. All `pull_request` actions invalidate facts,
@@ -183,36 +185,11 @@ Known final rows retain session-cached labels and checks. See the measured
 [request budget and final-cache freshness limits](GIT-REQUEST-BUDGET.md). No relay
 redeployment is required; optional precise numbered hints are deferred.
 
-### Invalidation delivery invariant
-
-An accepted mutable-fact invalidation for a retained repository is always owned
-by either the pending broker entry or the current consumer's dirty queue until
-successful authoritative reconciliation (including confirmed absence). A failed
-attempt is not acknowledgement. Coalesced notices produce one eventual successful
-refresh, plus any failed attempts; a notice after an in-flight snapshot began can
-require a follow-up snapshot. The first two-second deadline is not restarted by
-unrelated changes. Dispatch resumes when shown/current and the active cooldown or
-failure backoff permits it; native scheduling, queue and GitHub read time still
-apply. Final-cache freshness limits above remain intentional.
-
-| Transition before acknowledgement | Retained demand |
-|---|---|
-| Open/Closed switch | Read current selected demand, not a captured hidden tab |
-| Hide/show | Pause without deleting the entry or restarting its deadline |
-| Repository membership change | Keep pending entries for the intersection; remove only departed repositories |
-| Rate cooldown starts | Transfer/retain dirty demand without another API dispatch |
-| Rate cooldown ends | Recheck shared admission; an older consumer wake cannot prolong an ended episode |
-| Another event | Coalesce into pending or already-dirty work without resetting its first deadline |
-| Failed read | Keep the notice and demand; retry with 90/180/360/720-second bounded backoff |
-
-`tests/git-invalidation-transitions.test.mjs` checks this directly through the
-real broker and controllers: **513 cases** covering each transition and every
-ordered pair (including repeats), during debounce, rate backoff and failed-read
-backoff, for coordinator and warm/cold ordinary tabs. It asserts one eventual
-successful retained-repository read, every injected failed attempt, no hidden
-reads, fresh title/labels/body tasks and no duplicate late-wakeup read. Its
-maximum-delay oracle derives backoff from observed failed transport attempts,
-not from the scheduler's own deadlines.
+Event, window and enrollment scheduling deliberately match main. The removed
+pending-demand transfer/acknowledgement state, inactive pause/catch-up and deferred
+enrollment retries are not part of this change. Enrollment remains one worker
+per repository on configuration or explicit Refresh, including normal account
+verification; rate refusals stay quiet but do not schedule a later worker.
 
 ### Pending checks without enrollment
 
@@ -241,9 +218,8 @@ Reads share the existing ordinary/aggregate queue; contention rechecks eligibili
 after one second rather than starting a parallel request. Prior rows/counts stay
 on screen during reads. Hidden/disabled panels, changed contexts, unverified
 coordinators and disconnected remote machines stop reads and reject late replies.
-An explicit `window().active === false` also pauses starts/follow-ups; return catches
-up once under the same cooldown. Unknown activity is allowed for compatibility;
-no independent minimized-window API is assumed.
+Window activity does not gate Git reads, matching main. There is no inactive
+pause, inactive-return catch-up or independent minimized-window mechanism.
 Known Closed/Merged rows are session-cached, not periodically reread on generic events,
 manual refresh or hide/show. Ordinary Open inventory can rediscover reopened rows;
 coordinator final-history external changes wait for contradictory facts or a new
@@ -267,7 +243,7 @@ plus queue time and the GitHub reads** (each command has a
 rows add one detail command per 20 rows. This is the scheduling bound after the preceding read; it is
 not an unconditional wall-clock maximum across errors, stale/offline contexts or
 GitHub eventual consistency. Event-covered rows start after native relay dispatch
-and a two-second bounded debounce: latency includes GitHub delivery and data
+without an added debounce window: latency includes GitHub delivery and data
 propagation, any existing request, and authoritative reads. Ordinary events publish
 after selected-tab pages, narrow transition/older-PR reads when needed and counts;
 coordinator reads queue at most three repository jobs with sequential twenty-row chunks. There is no fixed end-to-end short SLA.

@@ -59,21 +59,6 @@ async function run(mode, file, relay, repository, io = {}, githubAccount = '') {
     return result;
   }
   if(mode==='set-repositories')return require('./cloudflare.cjs').withLock(file,()=>setRepositories(execute,base,keys,repository,EVENTS));
-  if(mode==='notice-repositories') {
-    const names=JSON.parse(repository);
-    if(!Array.isArray(names)||!names.length||names.length>128||names.some(name=>!validRepository(name)))throw Error('Invalid repository membership batch');
-    const members={};
-    for(const name of [...new Set(names)]) {
-      try {
-        const ours=await matchingHooks(execute,base,name);
-        members[name]={status:ours.length>1?'error':ours[0]?.active?'ready':'missing'};
-      }catch(error) {
-        if(error.rateLimited)throw error;
-        members[name]={status:'error'};
-      }
-    }
-    return {members};
-  }
   if (!validRepository(repository)) return {status:'missing',detail:'Choose a repository to check its webhook.',fix:null};
   if (mode === 'connect'||mode==='disconnect') {
     await require('./cloudflare.cjs').withLock(file,()=>changeWebhook(execute,base,keys,repository,mode==='connect',EVENTS));

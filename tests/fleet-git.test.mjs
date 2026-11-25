@@ -197,7 +197,7 @@ const renderSync=()=>{rendering=true;try{panel.syncTaskWebhooks(renderCx);}final
 assert.ok(panel.aggregate.rows('open')[0].checks.pending>0);panel.ciSweep=null;
 before=calls.length;renderSync();
 assert.equal(calls.length,before,'fleet render must not start GitHub reads');assert.equal(panel.ciSweep,null,'fleet render must not arm a sweep synchronously');
-await drain();assert.equal(calls.length,before,'Consumer initialization must not duplicate already-loaded inventory');assert.equal(panel.ciSweep,null);
+await drain();assert.equal(calls.length,before+2,'Main consumer initialization retains its repository catch-up');assert.ok(panel.ciSweep);
 // A new revision and repeated renders coalesce into one deferred refresh.
 panel.ciSweep=null;relayState.repositories['example/a'].revision++;
 before=calls.length;renderSync();renderSync();renderSync();assert.equal(calls.length,before);

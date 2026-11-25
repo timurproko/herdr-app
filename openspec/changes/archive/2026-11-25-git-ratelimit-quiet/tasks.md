@@ -1,40 +1,25 @@
 # Tasks
 
-## 1. Rate-limit refusals stay quiet across all Git reads while preserving retry and actionable-error behavior
+## 1. Rate-limit refusals stay quiet while preserving current-demand retry and actionable failures
 
-- [x] 1.1 Add typed primary/secondary/429 refusal and Retry-After handling at the Git read boundary, including GraphQL errors in successful HTTP replies and sanitized panel-called worker results; verify classifier fixtures keep bare 403, authentication, network, timeout, abnormal-exit and malformed-response failures actionable.
-- [x] 1.2 Route list, count, older/pinned, aggregate/history, safety, detail, repository discovery, diagnosis and membership reads through shared cooldown admission; verify fake-clock fixtures enforce 90/180/360/720-second ordinary backoff, at least fifteen minutes or longer Retry-After for rate refusal, and no next-repository fan-out after refusal.
-- [x] 1.3 Preserve last-good rows/counts/pins/paging and cold standard Loading on typed refusal without a new error or Stale alarm; verify both-view controller/render fixtures cover every read path, a refused second chunk and an unrelated pre-existing actionable notice.
-- [x] 1.4 Admit one explicit manual Refresh API attempt during cooldown and log only once per refusal episode until successful recovery; verify repeated manual refusals remain quiet, hidden/controller recreation does not duplicate logs, and logging failures never block retry.
-- [x] 1.5 Document the quiet path and strict exceptions in docs/GIT-WEBHOOKS.md; verify the documented cold-load, manual-bypass, episode and cooldown behavior against targeted Git/fleet regressions.
+- [x] 1.1 Preserve typed primary/secondary/429 and Retry-After classification across PR, count, safety, detail, identity and panel-called worker boundaries; keep authentication, permission, network, process, timeout and malformed replies actionable.
+- [x] 1.2 Retain loaded rows, totals, pins and pages or cold standard Loading on rate refusal; share cooldown, admit one explicit manual attempt and log once per episode without refusal fan-out.
+- [x] 1.3 Retain the round-two fix: after cooldown, retry current selected demand rather than the refused hidden tab, preserving expanded destination depth.
+- [x] 1.4 Restore main enrollment checks without deferred scheduling or membership batching; keep sanitized rate serialization and quiet shared admission without creating an enrollment notice or retry timer.
+- [x] 1.5 Keep focused refusal, worker, error-notice, current-demand, routing and safety regression coverage.
 
-## 2. Repository-batched shared reads and session-final caches eliminate redundant history and check-detail requests
+## 2. Batched shared reads and final-history caches reduce requests without a replacement scheduler
 
-- [x] 2.1 Add module-session route-qualified facts and compatible in-flight subscriptions shared by ordinary and coordinator readers; verify overlapping reads issue one compatible request, different machines/credentials/repositories never mix, and stale subscribers cannot publish or authorize actions.
-- [x] 2.2 Replace per-PR aggregate reads with metadata/summary aliases in batches of at most twenty and preserve bounded concurrency and publication ordering; verify the two-repository 5-Open/30-Closed cold fixture uses two metadata batches, truthful full task totals and no unrelated repository inventory.
-- [x] 2.3 Cache known final facts across tab/context/controller recreation and hydrate demanded Closed pages from them; verify warm generic events/manual refresh/hide-show produce zero unchanged final targeted/detail reads, while twenty-four-hour expiry and verified task membership still update presentation locally.
-- [x] 2.4 Split list/targeted/event metadata from check contexts and reuse details for unchanged heads/summaries; verify cold and changed details stay in twenty-row chunks, thin safety probes retain forty-row bounds, latest-run/rerun semantics remain and a failed detail chunk retains the complete prior selection.
-- [x] 2.5 Keep deployed relay behavior unchanged and document precise numbered invalidation as an optional, default-off follow-up; verify all panel benefits with the existing repository-only notices and no relay redeployment.
-- [x] 2.6 Preserve PR 55 missing-history/live-miss caching, per-alias absence classification and scoped actionable failures under batching; verify existing missing-PR, routing, ordering, history and fleet-read regression cases plus mixed partial GraphQL results.
-- [x] 2.7 Document final-cache lifetime, the deferred optional relay-hint follow-up and session-final freshness limits, and add the cold/warm budget rows to docs/GIT-REQUEST-BUDGET.md; verify documented bounds using deterministic fixture call counts rather than claiming live measured savings.
+- [x] 2.1 Keep repository metadata batches, compatible in-flight sharing, per-alias partial GraphQL handling with real CLI exit 1, publication guards and PR-55 absence semantics.
+- [x] 2.2 Keep session-final merged/closed facts, local history aging, changed-head/summary-only check details and 45/120-second shown-open safety probes.
+- [x] 2.3 Keep selected ordinary-tab refresh and effective Git routing fingerprints including gh-resolved, with fresh action-time confirmation.
+- [x] 2.4 Restore main's immediate event consumer and window behavior; remove the two-second debounce, pending-invalidation Map/ownership transfer, blocked/waiting protocol, activity pause/catch-up and event-failure retry scheduler.
+- [x] 2.5 Retain affected repository identity in main-style callbacks so each separately dispatched event uses its affected repository batch, without a two-second window.
+- [x] 2.6 Remove the retired transition-invariant regression and update retained tests, documentation, request inventory and measured budgets for the approved reduced scope.
+- [x] 2.7 Preserve current origin/main, including merged PRs 62, 65, 66, 68 and 69; no peer PR or branch is edited. Run targeted checks and report hosted exact-head required-check status without looping the full local suite.
 
-## 3. Selected-tab, two-second event and activity-aware scheduling reduces reads without weakening shown-open safety freshness
+## Scope and validation notes
 
-- [x] 3.1 Preserve affected repository identity and debounce event bursts in a bounded two-second window with one dirty follow-up; verify events during in-flight reads are not lost and the two-repository unchanged-burst fixture starts at most one logical refresh per affected repository/window.
-- [x] 3.2 Refresh only selected ordinary-tab rows and reconcile hidden-tab membership lazily while retaining totals/cursors; verify visiting Closed then showing Open causes no Closed-page rereads and pin, expanded-depth, state-transition and scroll behavior remains intact.
-- [x] 3.3 Gate all starts and async follow-ups, including auxiliary reads, on shown/enabled/online/current context and explicit window activity, then coalesce one catch-up on return; verify hidden/inactive fixtures issue zero new HTTP commands and unknown activity remains allowed, and document the supported host activity/minimize signals without inventing native APIs.
-- [x] 3.4 Reuse canonical agent machine/folder repository identity until local invalidation while preserving fresh action-time confirmation, and batch notice membership reads with one named-account verification per refresh; verify unchanged footer TTL cycles add no GitHub request and the named-account two-repo enrollment fixture drops from four to three REST calls without switching login.
-- [x] 3.5 Retain the 45-second unenrolled and 120-second enrolled shown-open safety deadlines, independent of mere event receipt; verify fake-clock success/failure, settled-check merge/close and return-during-cooldown fixtures, including selected-page/fold coverage.
-- [x] 3.6 Finish the full HTTP request inventory and before/after GraphQL-cost tables in docs/GIT-REQUEST-BUDGET.md and update README/docs links; verify every trigger listed in the brief is represented, CLI-internal/paginated operations are counted, REST endpoint choices are justified and estimates are distinguished from actual transport measurements.
-- [x] 3.7 Incorporate current main and all landed peer changes without editing peer PRs or branches; verify existing paging/fade/inset/tab/header-hover regressions alongside this change's focused tests. The coordinator's follow-up authorizes delivery without waiting for still-open PR 56.
-- [x] 3.8 After checking no other suite is running, run CI=true npm run test:ci once on the final implementation and record results and exact-head required-check status; verify the handoff distinguishes passed, pending and draft-blocked checks without marking ready or merging.
+The coordinator explicitly approved this two-outcome reduction after four review rounds. It supersedes all earlier promises of debounce, pending-demand retention, inactive-window suppression, enrollment batching and deferred enrollment retry. Those paths are removed rather than patched. Still-open PR 56 is not a delivery hold, as previously authorized. No relay deployment, new service, native operation or merge is authorized.
 
-## Workflow follow-up
-
-- Implementation approved; precise numbered relay hints deferred as requested, with no relay redeployment dependency.
-- Keep the three PR Implementation outcomes in this task-group order and tick each only after its code/tests land; do not batch ticks at handoff.
-- The coordinator's follow-up supersedes the initial draft hold: tick completed outcomes so the delivery bot can promote/finalize and run hosted Windows/Ubuntu suites. Do not manually mark ready, arm auto-merge or merge.
-- Current main is incorporated through `1ab72f5` (including PRs 51, 55, 57, 58, 60, 63 and 62). Still-open PR 56 is a future integration, not a reason to hold completed runtime work; no peer PR or branch was edited.
-- Takeover checks additionally cover retired shared subscribers, multiple deferred membership retries, final rows with pending checks, HTTP 429 stderr, explicit 401 precedence, selected-tab scrolling and detail-refusal snapshot retention.
-- An isolated pre-63 full run passed all 188 supported suites. A later run hit a deployment assertion/timeout followed by Windows 3221225794 (0xC0000142) child initialization failures. The requested standalone deployment rerun passed in 18.0 seconds; 28 changed Git/fleet entries passed with no other suite running, including after the 62 merge. Do not loop the full local suite; hosted Windows/Ubuntu checks are the decisive full-suite evidence.
-- Review repairs preserve healthy aliases when gh exits 1 for partial GraphQL errors, retain whole-batch rate/transport refusals, and invalidate canonical identity on gh-resolved-only routing changes. The semantic adapter also uses the real partial-error CLI exit status. Both repairs have regressions.
+The standalone deployment test previously passed in 18.0 seconds after the environmental local-suite failure. Hosted Windows/Ubuntu are the decisive full-suite gate. Delivery owns refinalization of these revised archived artifacts and canonical specs; the existing finalization history is preserved.
