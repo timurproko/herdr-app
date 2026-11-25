@@ -129,11 +129,17 @@ belongs to, then Add), the description, and one row per item with **Remove** on 
 - **items** picker: `candidates` runs only when the popup opens (listing can be slow). The
   popup has a search field (`search` is its placeholder), Loading bottom left, and Add.
 - One change runs at a time; refusals become the section's detail. Folder-change failures
-  distinguish the attempted operation/target from the plugin's own explanation, for example
-  **Could not add folder “D:\Git\site.dev”. Crew reported: Read-only: this home is owned by terminal …**
-  The plugin name comes from its declaration, not a renderer-specific message. This also
-  applies to unticking folders and row Remove actions; batch changes retain successes and
-  refresh the authoritative list after reporting failures. Lists start collapsed.
+  distinguish the attempted operation/target from the plugin's own explanation. An error
+  may provide `folderMessage(path)` to compose a concise target-aware summary instead of
+  the default operation sentence and plugin attribution. Crew uses this for Add, unticking
+  folders and row Remove: **Could not add D:\Git\site.dev: another session owns the Crew home; change its projects from that session.**
+  Crew usage refusals instead say **Could not add D:\Git\site.dev. Crew did not accept the project name site.dev; update the Crew tool and try again.**
+  A known-outdated install names the machine to update; other known refusals give concise
+  guidance, and unknown errors show only their first line's first sentence, never a usage
+  block or multiline tool output. Full raw output stays in existing diagnostics only, if
+  available; project changes add no new log. Other plugins keep the default wording with
+  their declared name. Batch changes retain successes and refresh the authoritative list
+  after reporting failures. Lists start collapsed.
 - A deep link `{ section, search }` (Settings props `pluginSection`, `pluginSearch`) opens
   an items picker filtered to that search.
 
