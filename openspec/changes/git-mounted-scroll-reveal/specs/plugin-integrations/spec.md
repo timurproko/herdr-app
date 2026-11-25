@@ -15,6 +15,12 @@ Coordinator Open and Closed SHALL reveal ten presentation items initially and ap
 - **THEN** another ten known presentation items are revealed until content overflows, the inventory ends or the measured safe cap is reached
 - **AND** dragging to the bottom without an observable event reveals the next batch on the next received event, not through a claimed scrollbar observer
 
+#### Scenario: Atomic section reveal
+- **WHEN** a reveal or safe-cap boundary would end with an unfolded repository header
+- **THEN** the header is held for the next batch with at least its first row or visible notice, never rendered alone
+- **AND** after every reveal and state transition each rendered unfolded header has a row or visible notice beneath it
+- **AND** sections with no eligible row or notice in the selected tab disappear after rows move tabs, expire or are authoritatively absent, while intentionally folded eligible sections keep their headers
+
 #### Scenario: Long Closed inventory
 - **WHEN** complete coordinator render builds are measured for 30, 60, 100 and 200 mounted PRs
 - **THEN** measurements report actual built counts, cold/warm scope and any chosen cap, targeting below 20ms at 100 rows
