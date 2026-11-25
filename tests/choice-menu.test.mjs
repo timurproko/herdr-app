@@ -50,7 +50,7 @@ for(let i=0;i<2;i++){
 assert.equal(find(enrollmentMenu,'git-enrollment-choice-0').attrs.bg[0],t.hover);
 find(enrollmentMenu,'git-enrollment-choice-1').attrs.on_hover[0](true,cx);assert.equal(find(render(()=>picker.render(t,snapshot)),'git-enrollment-choice-1').attrs.bg[0],t.hover);
 // Compare against the actual ordinary-panel card, not a reconstructed reference.
-const {Main}=await loadMod({host:{...host,props(){},settings:()=>({zoom:1}),theme:()=>t,closeOverlay(){},openOverlay(){},nextCommand(){}},modules:{...choiceModules,
+const {Main}=await loadMod({mod:'custom-changes',host:{...host,props(){},settings:()=>({zoom:1}),theme:()=>t,closeOverlay(){},openOverlay(){},nextCommand(){}},modules:{...choiceModules,
  'gpui-kit':{View:class{},div:element,svg,PathBuilder:{}},'gpui-base':{Popover,Input:{},h_flex:()=>element().flex(),v_flex:()=>element().flex().flex_col()},
  'main.js':'src/plugins/git/mod/main.js','enrollment-picker.js':'src/plugins/git/mod/enrollment-picker.js','pulls.js':'src/plugins/git/mod/pulls.js','label-colors.js':'src/plugins/git/mod/label-colors.js',
  'location.js':{location:()=>({})},'plugins.js':{sidebarPanelEnabled:()=>true},'agent-links.js':{AgentLinks:class{}},'aggregate.js':{AggregatePulls:class{}},'webhooks.js':{GitWebhooks:class{}},'notices.js':{GitNotices:class{}},

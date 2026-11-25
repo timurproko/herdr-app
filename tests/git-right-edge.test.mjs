@@ -138,7 +138,7 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
       near(inset(changed,row,find(row,'pr-agent-slot-owner/repo#17')),expectedInset,'Inset alone cannot detect a shifted highlight');
       assert.throws(()=>gitHighlight(changed,row,width,zoom),/Git highlight matches/);
       delete find(tree,'task-pulls-scroll').attrs.border_1;
-      const viewport=find(tree,'task-pulls-page-home-open-0');
+      const viewport=nodes(tree).find(node=>String(node.attrs.id?.[0]).startsWith('task-pulls-content-'));
       for(const side of ['pl','pr']) {
         viewport[side](6);
         assert.throws(()=>gitHighlight(rowGeometry(tree,width,zoom,600),row,width,zoom),/Git highlight matches/,'Either asymmetric gutter must fail');
@@ -150,26 +150,31 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
     }
   }
 }
-// Exercise main's real replacement-page renderer, including continuation
-// headers and warm distinct-string measurements, rather than a two-row mock.
+// Exercise main's mounted-prefix renderer and warm distinct-string widths.
+const {measureTask,scrollTask,taskWindow,taskContent,ordinaryContent}=await import('./support/git-scroll.mjs');
+const {MAX_MOUNTED_ROWS}=await import('../src/plugins/git/mod/task-reveal.js');
 let pagedComparisons=0;
 for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,2])for(const view of ['open','closed']) {
-  h.setZoom(zoom);h.setAgent(true);panel.view=view;panel.pinMotion=null;panel.taskPages?.clear();panel.foldedRepositories.clear();
+  h.setZoom(zoom);h.setAgent(true);panel.view=view;panel.pinMotion=null;panel.taskWindows?.clear();panel.foldedRepositories.clear();
   const rows=Array.from({length:25},(_,i)=>Object.assign(facts.pullRow({...raw,number:i+1,state:view==='open'?'OPEN':'MERGED'},'owner',now),
     {key:`owner/repo#${i+1}`,repo:'owner/repo'}));
   Object.assign(panel.aggregate,{rows:()=>rows,counts:()=>({open:25,closed:25}),entries:new Map(rows.map(pr=>[pr.key,{pr,link:{repo:pr.repo}}]))});
   panel.syncAggregate=()=>true;
   const expectedInset=spacesInset(width,zoom);
-  const seen=new Set();let page=0;
+  const seen=new Set();let offset=0;
   while(true) {
     const {tree,geometry}=h.settle(()=>panel.render(h.cx),width,zoom,600);
-    const viewport=find(tree,`task-pulls-page-home-${view}-${page}`),scroll=find(tree,'task-pulls-scroll');
-    assert.ok(viewport,'Replacement pages retain their own native scroll identity');assert.equal(viewport.attrs.py[0],4);assert.equal(viewport.attrs.px[0],7);
-    const controls=find(tree,'task-pulls-pages');assert.ok(controls);assert.ok(!nodes(scroll).includes(controls),'Page controls remain outside scrolling content');
-    const header=find(tree,'task-repo-header-owner/repo');gitHighlight(geometry,header,width,zoom);
-    near(inset(geometry,header,header.kids.at(-1)),expectedInset,'Continuation-header slot shares the Spaces highlight-relative inset');
+    const viewport=find(tree,`task-pulls-list-home-${view}`);
+    assert.ok(viewport,'Continuous scrolling retains one native scroll identity');assert.equal(taskContent(tree).attrs.py[0],4);assert.equal(taskContent(tree).attrs.px[0],7);
+    assert.equal(find(tree,'task-pulls-pages'),undefined);
+    const header=find(tree,'task-repo-header-owner/repo');
+    if(header) {
+      gitHighlight(geometry,header,width,zoom);
+      near(inset(geometry,header,header.kids.at(-1)),expectedInset,'Mounted header slot shares the Spaces highlight-relative inset');
+    }
     const visible=nodes(viewport).filter(node=>/^pr-owner\/repo#\d+$/.test(node.attrs.id?.[0]??''));
-    assert.ok(visible.length<=10,'Alignment must preserve main\'s bounded page size');
+    assert.ok(visible.length<=MAX_MOUNTED_ROWS,'Alignment must preserve the measured mounted cap');
+    assert.equal(visible.length,taskWindow(panel).range().revealedRows.length,'All revealed rows remain mounted independent of native viewport');
     for(const row of visible) {
       const id=row.attrs.id[0].slice(3);seen.add(id);
       gitHighlight(geometry,row,width,zoom);
@@ -178,14 +183,11 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
       near(inset(geometry,row,find(row,`pr-labels-${id}`).kids.at(-1)),expectedInset,'Paged actual pill shares the Spaces highlight-relative inset');
       near(geometry.get(row).height,74*zoom,'Paged rows preserve their vertical geometry');pagedComparisons++;
     }
-    const more=find(tree,'task-pulls-more');if(!more) {
-      find(tree,'task-pulls-previous').attrs.on_click[0]({},h.cx);
-      assert.ok(find(h.render(()=>panel.render(h.cx)),`task-pulls-page-home-${view}-${page-1}`),'Previous also replaces the page');
-      break;
-    }
-    more.attrs.on_click[0]({},h.cx);page++;
+    measureTask(panel,tree,h.cx,400,width,zoom);
+    const w=taskWindow(panel);if(w.limit>=w.items.length && w.offset>=w.max)break;
+    offset+=250;scrollTask(panel,tree,h.cx,offset,400,zoom);
   }
-  assert.equal(page,2);assert.deepEqual([...seen].sort(),rows.map(pr=>pr.key).sort(),'Every PR remains reachable with unchanged alignment');
+  assert.deepEqual([...seen].sort(),rows.map(pr=>pr.key).sort(),'Every PR remains reachable with unchanged alignment');
 }
 // Exercise real panelMessage and both real enrollment-card renderers, not the
 // inert stubs used by most controller tests. Outer column and inner padding are
@@ -193,14 +195,15 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
 let feedbackComparisons=0;
 for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,2])for(const view of ['open','closed']) {
   h.setZoom(zoom);h.setAgent(false);panel.view=view;panel.pinMotion=null;panel.agentPull=null;
-  panel.foldedRepositories.clear();panel.taskPages?.clear();panel.error=null;panel.pullError=null;panel.pageError=null;
+  panel.foldedRepositories.clear();panel.taskWindows?.clear();panel.error=null;panel.pullError=null;panel.pageError=null;
   panel.pages[view]={hasMore:false};panel.enrollmentPresentation=()=>null;panel.notices.sync=()=>null;
   spacesInset(width,zoom);
   const check=(tree,geometry,id,{leading=false,radius=false}={})=>{
     const node=find(tree,id);assert.ok(node,id);gitColumn(geometry,node,width,zoom);
     if(radius)near(node.attrs.rounded[0],spacesMeasurements.get(`${width}/${zoom}`).radius,'Card radius matches Spaces');
-    if(leading)near(geometry.get(node.kids[0]).x-geometry.get(node).x,
-      spacesMeasurements.get(`${width}/${zoom}`).leading,'Feedback content shares the Spaces badge inset');
+    const first=node.kids[0],content=String(first?.attrs?.id?.[0]).startsWith('task-notice-measure-')?first.kids[0]:first;
+    if(leading)near(geometry.get(content).x-geometry.get(node).x,
+      spacesMeasurements.get(`${width}/${zoom}`).leading,'Feedback painted content shares the Spaces badge inset');
     feedbackComparisons++;
   };
   const render=()=>h.settle(()=>panel.render(h.cx),width,zoom,600);
@@ -210,13 +213,13 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
     panel.pulls[view]=loading?null:[];
     const {tree,geometry}=render();check(tree,geometry,'git-empty',{leading:true});
     const viewport=find(tree,`pulls-list-${view}`);
-    assert.ok(viewport.attrs.overflow_y_scrollbar);assert.equal(viewport.attrs.px[0],7);
+    assert.ok(viewport.attrs.overflow_y_scrollbar);assert.equal(ordinaryContent(tree).attrs.px[0],7);
     assert.ok(find(tree,'pulls-scroll-frame').attrs.overflow_hidden,'Native scroll clipping stays bounded');
   }
   panel.pulls[view]=[pr];panel.pullError='Read failed';panel.pageError={state:view,message:'Page failed'};
   {
     const {tree,geometry}=render();check(tree,geometry,'git-read-error',{leading:true});
-    const pageNotice=find(tree,'pulls-content').kids.find(node=>node.kids?.includes('Page failed'));
+    const pageNotice=ordinaryContent(tree).kids.find(node=>node.kids?.includes('Page failed'));
     gitColumn(geometry,pageNotice,width,zoom);feedbackComparisons++;
   }
   panel.pullError=null;panel.pageError=null;
@@ -231,8 +234,8 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
   for(const loading of [false,true]) {
     aggregate.busy=loading;
     const {tree,geometry}=render();check(tree,geometry,'git-task-empty',{leading:true});
-    const viewport=find(tree,`task-pulls-page-home-${view}-0`);
-    assert.ok(viewport.attrs.overflow_y_scrollbar);assert.equal(viewport.attrs.px[0],7);
+    const viewport=find(tree,`task-pulls-list-home-${view}`);
+    assert.ok(viewport.attrs.overflow_y_scrollbar);assert.equal(taskContent(tree).attrs.px[0],7);
     assert.ok(find(tree,'task-pulls-scroll').attrs.overflow_hidden,'Coordinator scroll clipping stays bounded');
   }
   aggregate.busy=false;aggregate.context.stale=true;
@@ -255,5 +258,5 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
   }
 }
 console.log(`PASS ${feedbackComparisons} complete-panel notice/loading/empty/footer gutter comparisons against actual Spaces`);
-console.log(`PASS ${pagedComparisons} replacement-page right-edge comparisons, real Previous/Show more and continuation headers across widths/zoom/Open/Closed`);
+console.log(`PASS ${pagedComparisons} mounted-scroll right-edge comparisons and stable native scroll identity across widths/zoom/Open/Closed`);
 console.log(`PASS ${comparisons} full-panel left/right gutter, radius and inner-inset comparisons against actual Spaces Crew geometry, 280–480px / 75–200% including 130%, ordinary/pinned/scrolling/ghost/coordinator, Open/Closed/merged and mutation guards (synthetic, not native pixels)`);

@@ -7,7 +7,11 @@ const inside = (point,bounds) => point && bounds && point.x >= bounds.x && point
   && point.y >= bounds.y && point.y <= bounds.y + bounds.height;
 export class PinSwap {
   constructor() { this.sizes = new Map(); this.serial = 0; }
-  measureBody(size,zoom = 1) { this.bodySize = logicalSize(size,zoom > 0 ? zoom : 1); }
+  measureBody(size,zoom = 1) { this.bodyPixels = {...size}; this.bodyZoom = null; this.rebaseZoom(zoom); }
+  rebaseZoom(zoom = 1) {
+    zoom = zoom > 0 ? zoom : 1;
+    if(this.bodyPixels && this.bodyZoom !== zoom) { this.bodyZoom = zoom; this.bodySize = logicalSize(this.bodyPixels,zoom); }
+  }
   measureRow(number,size,zoom = 1) { this.sizes.set(number,logicalSize(size,zoom > 0 ? zoom : 1)); }
   rowPointer(number,event) { this.pointer = {number,bounds:event.bounds,position:event.position}; }
   bodyPointer(event) { this.bodyBounds = event.bounds; }

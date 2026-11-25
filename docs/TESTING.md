@@ -380,11 +380,11 @@ No deployment or live label mutation is performed.
 `node --experimental-vm-modules tests/git-panel-errors.test.mjs` exercises the
 packaged controller, aggregate reader, real notices and UI with 100 Closed rows
 across two repositories, a history read notice, merged/closed-unmerged states and
-live/historical agent variants. A fixed 10,000-builder-operation / 1,200-element
-budget bounds each replacement page; every row is reachable, even a 100-label PR
-builds fewer than 125 elements, and paging adds no reads. Distinct-string probes,
+live/historical agent variants. A 20,000-builder-operation / 8,000-element mounted
+batch ceiling accompanies the measured 60-PR/100-item cap; every row is reachable,
+even a 100-label PR builds fewer than 125 elements, and reveal/batch changes add no inventory reads. Distinct-string probes,
 cache reuse across pages, zoom invalidation and stale measurement refusal have
-regressions. The disposable native 30/60-row measurements and their exact scope
+regressions. The disposable native 30/60/100/200-row measurements and their exact scope
 are recorded in [GIT-RENDER-BUDGET.md](GIT-RENDER-BUDGET.md). It uses inline spawn and render-side-effect guards.
 A synchronous notice transport failure previously reached fallback `notify` during
 render; yielding before request work fixes that proven path (present since import
@@ -455,7 +455,8 @@ regardless of how many PRs fail. These counts exclude existing setup/enrollment
 workers and the gh wrapper's own unchanged internal processes. The safety reader uses the same repository-scoped transport: one carrier per
 thin state/summary batch (up to 40 PRs), with full-context batches (up to 20)
 only for changed heads/summaries, never a carrier per row. Coordinator safety
-selection follows its current presentation page rather than all loaded history.
+selection follows the revealed unfolded mounted batch, including offscreen rows,
+while unrevealed history stays in inventory without widening its safety reads.
 
 Ordinary list and webhook-page reads now include both totals in the same GraphQL
 snapshot, avoiding the count-only carrier/gh call. Three real paired crew
@@ -478,7 +479,8 @@ backoff, the 15-minute rate-limit floor, 120-second enrolled safety reads, exist
 contention, authoritative empty rollups and late hidden/replaced-context replies.
 The 120-row ordinary expanded-list case uses three thin state/summary chunks and,
 only on changed heads/summaries, six 20-PR detail chunks. The same-sized coordinator
-inventory instead reads only the current bounded page and keeps off-page facts. They actually launch a
+inventory reads its full 60-row revealed batch in two thin and three detail chunks,
+including offscreen rows, and preserves unrevealed facts. They actually launch a
 harmless Node child with generated arguments, retain all rows on a failed second
 chunk, then retry successfully and continue while Open. Five- and thirty-row
 steady cycles require exactly one thin request with no per-context list; changed
@@ -504,11 +506,11 @@ cursor repair survive removal, the unopened destination stays lazy, and its olde
 merged pin appears once when loaded. These are packaged synthetic fixtures, not
 live delivery or native pixel evidence.
 
-`tests/git-safety-paging.test.mjs` composes the real coordinator page renderer,
+`tests/git-safety-paging.test.mjs` composes the real coordinator mounted renderer,
 aggregate, safety scheduler and repository-scoped carrier. A 25-Open/5-Closed,
-two-repository inventory exercises current-page-only selection, merge/close tab
-totals, Previous/Show more, stale in-flight page replies, folds and both 45/120s
-cadences. Existing fallback/state tests also assert GH_REPO on every probe/detail
+two-repository inventory exercises offscreen revealed selection, merge/close tab
+totals, unrevealed/fold exclusion, stable viewport-only scrolling, stale in-flight
+replies after reveal/fold/tab/home changes and both 45/120s cadences. Scroll events themselves start no reads. Existing fallback/state tests also assert GH_REPO on every probe/detail
 API invocation. Pagination distinguishes its selected-state filter from the new
 combined totals fields, applies both totals on append and retains cursor-depth
 repair. The 100-row render operation budget remains separately enforced.
@@ -627,11 +629,51 @@ an unaccounted border fail; the latter is checked against the highlight-to-panel
 inset because a row-relative-only oracle cannot detect a shifted highlight.
 Title truncation boundaries stay identical with and without an agent.
 Existing row/fold/menu fixtures retain callbacks and tooltip coverage. Another
-1,500 comparisons exercise the actual replacement-page renderer with 25 PRs,
-Previous/Show more, continuation headers and warm distinct-string measurements
-in both tabs across the same width/zoom matrix. Paging and render-budget bounds
-remain owned by the unchanged 100-row panel regression. These are synthetic
+9,740 comparisons exercise the actual mounted-scroll renderer with 25 PRs,
+stable native list IDs and warm distinct-string measurements in both tabs across
+the same width/zoom matrix. The extended 100-row panel regression scrolls to reveal
+every row across measured capped batches while enforcing per-row/mounted-batch ceilings. These are synthetic
 resolved-box checks, not live GPUI pixel or deployment evidence.
+
+## Mounted Git scroll fixtures
+
+`tests/git-measurement-lifecycle.test.mjs` models native size-change-only events
+with a retained element-ID/dimension cache, not unconditional layout callbacks.
+It covers equal-height wrapped-notice replacement, ordinary tab/context changes,
+live ordinary/coordinator zoom with an unchanged physical viewport, coordinator
+home-away-home, recreated header caches and pin body/reveal lifetimes. Its `anchor`
+cases cover equal-height 30-row refreshes in the middle and at the end through a
+yielded anchor correction, with both native size callbacks suppressed and exactly
+one repaint requested even when both fades remain unchanged. `tests/scroll-metrics.test.mjs` separately checks the pure
+geometry projection, getter-only fields and atomic notifications across 240 cases.
+See the
+[measurement audit](GIT-RENDER-BUDGET.md#measurement-lifetime-audit) for the full
+cache ownership inventory and unchanged paths checked.
+
+`tests/git-section-reveal.test.mjs` checks the actual rendered-section invariant
+after every reveal and state transition, including the tenth-item header boundary,
+notice-only sections, tab moves, history expiry, missing rows, notice resolution,
+folds, refreshes and 200-row capped batch cycles. The same invariant wraps every
+real renderer frame in `fleet-read-notices`, including authoritative 404s and
+mixed failure/recovery transitions. Intentionally folded eligible headers are
+exempt; every unfolded header must have a row or visible notice beneath it.
+
+`tests/git-scroll-window.test.mjs` now checks the mounted prefix, ten-item reveal,
+60-PR/100-item cap, 200-row reachability, cycling Show more, insertion anchors,
+folds and notice-height updates. `tests/git-row-presentation.test.mjs` checks pure
+memoisation/invalidation and fresh native callbacks. `tests/git-native-scroll.test.mjs`
+changes only the actual native-handle model for thumb/track/keyboard movements,
+without fake content/frame events. It checks truthful render-time fades, next-event
+reveal, finite post-layout underflow fill and accepted middle/end anchor repaints.
+`tests/git-scroll-anchor.test.mjs` exercises yielded native scroll-handle requests,
+retired-handle release and obsolete-scope refusal without render effects.
+`tests/git-scroll-fades.test.mjs` checks both views at 75/100/130/200% zoom using
+actual shared `SidebarScrollState` and passive `topFade`/`bottomFade`: start, middle,
+end, fitting content, scrollbar motion, resize and folds, plus byte-identical shared
+packaging. `tools/measure-git-render.mjs` records five disposable native render-build
+samples for complete 30/60/100/200 mounted trees, deliberately bypassing the runtime
+cap; warm mode warms only pure caches, never native callbacks. It records native
+interruptions honestly. These are not live desktop paint/input timings or deployment evidence.
 
 ## Connected fleet fixtures
 
