@@ -34,9 +34,9 @@ export class AgentLinks {
   invalidate() {this.repositories.clear();for(const entry of this.entries.values())entry.at=0;}
   async repository(target) {
     const key=JSON.stringify([target.on,target.cwd]);
-    // Local configuration is not a GitHub read. Changing origins/upstream must
-    // invalidate canonical identity without polling GitHub every footer TTL.
-    const config=await exec('git',['config','--local','--get-regexp','^(remote\\..*\\.(url|pushurl)|branch\\..*\\.(remote|merge))$'],{cwd:target.cwd,on:target.on,timeout:15000}).catch(()=>null);
+    // Effective Git routing is local IO, not a GitHub read. Include gh's
+    // default-remote marker (also from inherited config), not just remote URLs.
+    const config=await exec('git',['config','--get-regexp','^(remote\\..*\\.(url|pushurl|gh-resolved)|branch\\..*\\.(remote|merge))$'],{cwd:target.cwd,on:target.on,timeout:15000}).catch(()=>null);
     if(!this.enabled())return null;
     const fingerprint=config && [0,1].includes(config.code) && !config.signal && !config.timed_out ? config.stdout : null;
     const cached=this.repositories.get(key);

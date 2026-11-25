@@ -22,7 +22,9 @@ export function legacyTargetResponses(execute) {
         try{values[`pr${n}`]=JSON.parse(r.stdout);}catch{errors.push({message:'invalid GitHub response',path:['repository',`pr${n}`]});}
       }
     }
-    return {code:0,stdout:JSON.stringify({data:{repository:values},...(errors.length?{errors}:{})})};
+    // Like gh api graphql, a partial GraphQL response exits 1. Keep the
+    // per-alias legacy suppliers semantic, but never mask that CLI status.
+    return {code:errors.length?1:0,stdout:JSON.stringify({data:{repository:values},...(errors.length?{errors}:{})})};
   };
 }
 export function githubInvocation(command,args,options) {

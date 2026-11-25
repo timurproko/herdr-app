@@ -344,7 +344,21 @@ export async function readTargetPulls(exec,numbers,repository,options={}) {
   for(let at=0;at<fresh.length;at+=20) {
     const batch=fresh.slice(at,at+20),consumers=[options.current??(()=>true)],shared={...options,generation:++session.generation,current:()=>consumers.some(current=>current())};
     const job=(async()=>{
-      const response=JSON.parse(pullPayload(successful(await repositoryRead(exec,targetPullArgs(batch,repository),repository,shared))));
+      const result=await repositoryRead(exec,targetPullArgs(batch,repository),repository,shared);
+      let response;try{response=JSON.parse(pullPayload(result.stdout));}catch {}
+      // gh exits 1 for GraphQL errors even with HTTP 200 and useful sibling
+      // aliases. Admit only scoped GraphQL failures here, never a transport,
+      // process or HTTP refusal disguised by a partial-looking body. Rate
+      // refusals have already been handled for the whole read at admission.
+      const aliases=new Set(batch.map(number=>`pr${number}`)),failure=pullFailure(result);
+      const partial=result.code===1 && !result.signal && !result.timed_out && !result.timedOut
+        && !['cli','auth','unreachable'].includes(failure.kind)
+        && !/timeout|timed out|cannot start|failed to (?:start|spawn|execute)|process init|\bEAGAIN\b|\bENOMEM\b/i.test(result.stderr??'')
+        && !/^HTTP[^\n]*\b[345]\d\d\b/im.test(result.stdout??'') && !/\bHTTP(?:\/[\d.]+)?\s+[345]\d\d\b/i.test(result.stderr??'')
+        && response?.data?.repository && typeof response.data.repository==='object' && !Array.isArray(response.data.repository)
+        && Array.isArray(response.errors) && response.errors.length>0
+        && response.errors.every(error=>typeof error.message==='string' && error.path?.[0]==='repository' && aliases.has(error.path?.[1]));
+      if(!partial)response=JSON.parse(pullPayload(successful(result)));
       const repo=response.data?.repository,values=[],errors=new Map();
       for(const number of batch) {
         const alias=`pr${number}`,failures=(response.errors??[]).filter(e=>!e.path || e.path.length<2 || e.path[1]===alias);

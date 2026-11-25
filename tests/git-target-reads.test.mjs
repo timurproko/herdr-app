@@ -6,8 +6,9 @@ const exec=async(command,args,options)=>{
  const call=githubInvocation(command,args,options);args=call.args;const q=args.find(a=>a.startsWith('query=')),detail=q.includes('contexts('),numbers=[...q.matchAll(/pr(\d+):pullRequest/g)].map(m=>+m[1]);calls.push({numbers,detail,on:options.on});
  if(held){held=false;await new Promise(r=>release=r);}
  const repository={};for(const n of numbers)if(n>2)repository[`pr${n}`]={number:n,url:`https://github.com/owner/repo/pull/${n}`,title:'Retained',state:'MERGED',isDraft:false,headRefOid:'head',commits:{nodes:[{commit:{statusCheckRollup:{state:'SUCCESS',...(detail?{contexts:{nodes:[{name:'CI',status:'COMPLETED',conclusion:'SUCCESS'}],pageInfo:{hasNextPage:false}}}:{})}}}]}};
- const errors=numbers.filter(n=>n<=2).map(n=>({path:['repository',`pr${n}`],message:n===1?'Could not resolve to a PullRequest with the number of 1.':'Resource not accessible by integration'}));
- return {code:0,stdout:JSON.stringify({data:{repository},...(errors.length?{errors}:{})})};
+ const errors=numbers.filter(n=>n<=2).map(n=>({type:n===1?'NOT_FOUND':'FORBIDDEN',path:['repository',`pr${n}`],message:n===1?'Could not resolve to a PullRequest with the number of 1.':'Resource not accessible by integration'}));
+ // gh api graphql exits 1 for scoped errors, even with valid sibling data.
+ return {code:errors.length?1:0,stderr:errors.map(error=>`gh: ${error.message}`).join('\n'),stdout:JSON.stringify({data:{repository},...(errors.length?{errors}:{})})};
 };
 const f=await loadMod({host:{},modules:{'pulls.js':'src/plugins/git/mod/pulls.js'},entry:'export * from "./pulls.js";'});
 const old=f.readTargetPulls(exec,[1,2,3],'owner/repo',{current:()=>oldCurrent}),next=f.readTargetPulls(exec,[3],'owner/repo',{current:()=>newCurrent});
@@ -34,4 +35,23 @@ const page=f.readPullPage(selectionExec,'open','owner/repo'),older=f.readTargetP
 assert.equal((await older).get(908).row.headRefOid,'new');assert.equal(selectionCalls.length,2,'An in-flight first page cannot satisfy an older Open PR it did not contain');
 const date=Date.UTC(2026,0,1),final=f.pullRow({number:9,state:'MERGED',mergedAt:new Date(date).toISOString(),labels:[{name:'kept',color:'abcdef'}],statusCheckRollup:[]},'owner',date+1000);
 const aged=f.retimePull(final,date+3600000);assert.equal(aged.when,'merged 1 hour ago');assert.equal(aged.checks,final.checks);assert.equal(aged.labels,final.labels);assert.equal(f.retimePull(aged,date+3600000),aged,'Local aging does not reread facts or churn an unchanged row');
-console.log('PASS overlapping ordinary/coordinator target facts, stale-subscriber isolation, per-alias access/absence, changed-only details, final cache and machine isolation');
+const partial={data:{repository:{pr1:null,pr2:metadata(2)}},errors:[{type:'NOT_FOUND',path:['repository','pr1'],message:'Could not resolve to a PullRequest with the number of 1.'}]};
+const cliResult={code:1,stdout:`HTTP/2.0 200 OK\r\n\r\n${JSON.stringify(partial)}`,stderr:'gh: Could not resolve to a PullRequest with the number of 1.'};
+const realStatus=await f.readTargetPulls(async()=>cliResult,[1,2],'owner/repo');
+assert.equal(realStatus.get(1).error.code,1);assert.equal(f.pullFailure(realStatus.get(1).error).kind,'notfound');
+assert.equal(realStatus.get(2).row.number,2,'A missing alias with real CLI exit 1 cannot erase a healthy sibling');
+for(const result of [
+ {...cliResult,code:-1073741502},
+ {...cliResult,signal:'SIGTERM'},
+ {...cliResult,timed_out:true},
+ {...cliResult,timedOut:true},
+ {...cliResult,stderr:'Could not resolve host: api.github.com'},
+ {...cliResult,stderr:'connection refused'},
+ {...cliResult,stderr:'command timed out'},
+ {...cliResult,stdout:`HTTP/2.0 403 Forbidden\r\n\r\n${JSON.stringify(partial)}`},
+ {...cliResult,stdout:'malformed JSON'},
+ {...cliResult,stdout:JSON.stringify({...partial,errors:[{message:'Repository unavailable',path:['repository']}]})},
+])await assert.rejects(f.readTargetPulls(async()=>result,[1,2],'owner/repo'),undefined,'Transport, process, malformed and unscoped failures remain whole-batch failures');
+const limited={...partial,errors:[{type:'RATE_LIMITED',path:['repository','pr1'],message:'API rate limit exceeded'}]};
+await assert.rejects(f.readTargetPulls(async()=>({code:1,stdout:JSON.stringify(limited)}),[1,2],'owner/repo'),error=>error.quiet&&error.kind==='rate','A rate refusal still defers the complete batch');
+console.log('PASS overlapping ordinary/coordinator target facts, stale-subscriber isolation, real CLI exit-1 per-alias access/absence, whole-batch rate/transport handling, changed-only details, final cache and machine isolation');
