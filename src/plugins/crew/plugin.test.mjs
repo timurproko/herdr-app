@@ -333,10 +333,10 @@ crew.legacy = false;
   same([section.section, section.list.scope, section.list.picker, typeof section.fix],
     [true, { label: 'Machine', setting: 'machine' }, { kind: 'folders', label: 'Add project' }, 'undefined'], 'A list on the machine the plugin is set to, added through the folder browser, with no Install button');
   s = await statuses();
-  same([s.projects.status, s.projects.statusLabel, s.projects.usable, s.projects.rows], ['ready', '1 project', true, [{ id: 'fork', label: 'D:\\Git\\crew', path: 'D:\\Git\\crew' }]]);
+  same([s.projects.status, s.projects.statusLabel, s.projects.usable, s.projects.rows], ['ready', '1 added', true, [{ id: 'fork', label: 'D:\\Git\\crew', path: 'D:\\Git\\crew' }]]);
   ran2.length = 0; await section.list.add(cx(), 'D:\\Git\\My App');
   same(ran2, ['project add my-app D:\\Git\\My App'], 'Add registers the chosen folder under its own name');
-  s = await statuses(); same([s.projects.statusLabel, s.projects.rows.map(row => row.id)], ['2 projects', ['fork', 'my-app']]);
+  s = await statuses(); same([s.projects.statusLabel, s.projects.rows.map(row => row.id)], ['2 added', ['fork', 'my-app']]);
   ran2.length = 0; await assert.rejects(section.list.add(cx(), 'D:\\Git\\___'), e => {
     assert.match(e.message, /cannot be used as a project name/);
     assert.match(e.message, /1–40 lowercase ASCII letters, digits, dashes and dots/);
@@ -354,7 +354,7 @@ crew.legacy = false;
   ran2.length = 0; await section.list.add(cx(), 'D:/Git/agentnumberone.dev');
   same(ran2, ['project add agentnumberone.dev D:/Git/agentnumberone.dev']);
   s = await statuses();
-  same([s.projects.statusLabel, s.projects.rows.at(-1)], ['3 projects', { id: 'agentnumberone.dev', label: 'D:\\Git\\agentnumberone.dev', path: 'D:\\Git\\agentnumberone.dev' }], 'A dotted registration from the tool stays visible');
+  same([s.projects.statusLabel, s.projects.rows.at(-1)], ['3 added', { id: 'agentnumberone.dev', label: 'D:\\Git\\agentnumberone.dev', path: 'D:\\Git\\agentnumberone.dev' }], 'A dotted registration from the tool stays visible');
   ran2.length = 0; await section.list.remove(cx(), 'agentnumberone.dev');
   same(ran2, ['project remove agentnumberone.dev'], 'Removal uses the exact registered dotted ID');
   s = await statuses(); same(s.projects.rows.map(row => row.id), ['fork', 'my-app']);
@@ -367,7 +367,7 @@ crew.legacy = false;
   owned = false; await section.list.remove(cx(), 'fork');
   await assert.rejects(section.list.remove(cx(), 'fork'), /^Error: Unknown project: fork/);
   s = await statuses(); same(s.projects.rows.map(row => row.id), ['my-app']);
-  projects.clear(); s = await statuses(); same([s.projects.status, s.projects.statusLabel, s.projects.rows, s.projects.usable], ['ready', '0 projects', [], true], 'An empty list is ready to be added to');
+  projects.clear(); s = await statuses(); same([s.projects.status, s.projects.statusLabel, s.projects.rows, s.projects.usable], ['ready', '0 added', [], true], 'An empty list is ready to be added to');
   // Without the tool or its home there is no list to show or change.
   const had = { tool: crew.tool, home: crew.home }; ran2.length = 0;
   crew.home = false; s = await statuses(); same([s.projects.status, s.projects.detail, s.projects.usable, s.projects.rows], ['missing', 'Create the crew home first (Requirements).', undefined, []]);
