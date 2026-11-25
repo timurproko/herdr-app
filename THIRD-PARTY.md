@@ -22,6 +22,16 @@ Five files under `src/integration/native-patches/` are copied/adapted or derived
 
 These are prominent modification records for the retained files. Stock snapshots are not claimed raw-byte-identical: they already have facade-import adaptations. Their original project bytes are preserved for compatibility recognition; no new headers are inserted. The manifest records each relationship and source URL. No native binaries, Rust libraries or fonts are redistributed here.
 
+Subsequent byte-faithful frame reviews supersede the historical import-adaptation
+statement above for canonical originals: `palette/provenance.json` and
+`feedback/provenance.json` record the exact native-import stock snapshots and
+newline formats. Palette `main-0.1.17.js` and `main-0.1.18.js` are additional
+Apache-2.0-derived replacements with Custom UI/routing modifications. The latter
+retains native 0.1.18 manifest catalog and dispatch behavior. Its LF original is
+pinned to `9a9ae13d998e6ed74c76e8eb13bdeb2e1420f50c`; its Windows CRLF original was
+independently verified against installed embedded bytes. See
+`docs/HERDR-0.1.18-PALETTE-REVIEW.md`. No stock headers were inserted or stripped.
+
 The manifest also records 37 LF-normalized exact SVG matches to Herdr v0.1.16, four settings derivatives with changed presentation attributes, and a mirrored sidebar derivative. Preserve applicable Herdr Apache and Lucide/Feather layers; presence in Herdr does not license the 41 unknown-source assets.
 
 ## Lucide / Feather

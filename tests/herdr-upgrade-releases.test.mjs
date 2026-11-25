@@ -14,8 +14,11 @@ assert.equal(inventory.patches.length,2);
 const palette=inventory.patches.find(p=>p.id==='palette'),feedback=inventory.patches.find(p=>p.id==='feedback');
 assert.equal(palette.originals.find(o=>o.file.endsWith('/original-0.1.17.js')).main,'src/integration/native-patches/palette/main-0.1.17.js');
 assert.ok(palette.originals.some(o=>o.file.endsWith('/original-0.1.17-windows.js')));
+assert.equal(palette.originals.find(o=>o.file.endsWith('/original-0.1.18.js')).main,'src/integration/native-patches/palette/main-0.1.18.js');
+assert.ok(palette.originals.some(o=>o.file.endsWith('/original-0.1.18-windows.js')));
+assert.equal(palette.provenance.data.previousInstalledVerifications[0].release,'v0.1.17');
 for(const patch of [palette,feedback]) {
-  assert.equal(patch.provenance.data.installedVerification.release,'v0.1.17');
+  assert.equal(patch.provenance.data.installedVerification.release,patch.id==='palette'?'v0.1.18':'v0.1.17');
   assert.ok(patch.provenance.data.releases.some(r=>r.tag==='v0.1.17'));
   assert.equal(patch.provenance.sha256,sha256(fs.readFileSync(patch.provenance.file)));
 }
