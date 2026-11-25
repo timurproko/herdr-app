@@ -942,7 +942,10 @@ sessions are untouched; the upper Spaces list and tab strip are unchanged.
 Groups retain their first-seen position; keyboard navigation follows the combined
 list. Remote rows still show their machine, pinned agents stay separate, and
 Priority sorting is unchanged. The sort icon has no hover tooltip; its accessible
-label and sort menu remain available.
+label and sort menu remain available. Group counts are right-aligned in a fixed
+three-digit slot, even when expanded. Collapsed group status dots share one column
+across Working and Done states; agent-row dots keep their separate rightmost rail
+(shared with the group chevrons), without moving the time text.
 
 ## A1 session names
 
