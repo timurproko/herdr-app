@@ -19,7 +19,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-25-git-row-bounded-measurements/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-25-git-row-bounded-measurements/acceptance.md",
   "finalizedDate": "2026-11-25",
-  "specBaseSha": "f3fe341a3d1bf9fdeffea66c13adca91f7549e9a",
+  "specBaseSha": "c1dfeeda50d8f8a86e7014d424c1e643f8a2795a",
   "acceptanceScenarios": [
     "Complete visible lower-line values and combined strips have no repeat-only tooltip; clipped or compact values, omitted labels, exact timestamps and check details remain recoverable.",
     "Titles retain their native truncation, inherited interface font and unconditional full-title tooltip with no title measurement, prefix search or custom suffix.",
