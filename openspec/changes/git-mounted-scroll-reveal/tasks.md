@@ -15,7 +15,7 @@
 ## 3. Coordinator safety reads cover revealed unfolded rows with stale-selection protection
 
 - [x] 3.1 Replace viewport selection with revealed unfolded rows; update safety tests for offscreen revealed rows, hidden/folded exclusions, stale reveal/fold/tab/context replies, 45/120-second cadence and per-call routing.
-- [ ] 3.2 Update README/architecture/webhook scope guidance, run targeted suites and one full isolated CI run, and verify required checks on the final head with mounted-row timings in the handoff.
+- [x] 3.2 Update README/architecture/webhook scope guidance, run targeted suites and one full isolated CI run, and verify required checks on the final head with mounted-row timings in the handoff.
 
 ## 4. Repository headers reveal with content and empty sections disappear through state changes
 

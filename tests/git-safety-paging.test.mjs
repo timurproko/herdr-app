@@ -51,6 +51,10 @@ const scroll=offset=>{const before=requests.length;scrollTask(panel,tree,cx,offs
 scroll(50);const target='owner/a#10',value=factsByKey.get(target);value.state='CLOSED';value.closedAt=new Date(Date.now()-1000).toISOString();
 const hold=held={};await advance(45000);assert.equal(typeof hold.release,'function');
 const scope=panel.fallbackSnapshot().scope;scroll(100);scroll(50);assert.equal(panel.fallbackSnapshot().scope,scope,'Scrolling within a revealed set keeps its generation');
+const projection=taskWindow(panel),geometryGeneration=projection.generation;
+// Rebuild presentation geometry without changing the authorized PR identities.
+projection.project([{repo:'owner/a',rows:panel.aggregate.rows('open').filter(pr=>pr.repo==='owner/a')},{repo:'owner/b',rows:panel.aggregate.rows('open').filter(pr=>pr.repo==='owner/b')}],panel.foldedRepositories,30,2,'1:480');
+assert.ok(projection.generation>geometryGeneration);assert.equal(panel.fallbackSnapshot().scope,scope,'Geometry-only projection rebuilds must not invalidate a held safety read');
 hold.release();await drain();tree=render();assert.equal(panel.aggregate.entries.get(target).pr.state,'closed','A stable revealed selection accepts the held reply');assert.deepEqual({...panel.aggregate.counts()},{open:23,closed:7});
 // A genuine reveal changes the selection and rejects the old response.
 const stale='owner/a#1',staleValue=factsByKey.get(stale);staleValue.state='CLOSED';staleValue.closedAt=new Date(Date.now()-1000).toISOString();
@@ -59,6 +63,13 @@ const revealScope=panel.fallbackSnapshot().scope;scroll(300);assert.notEqual(pan
 const foldHold=held={};await advance(45000);assert.equal(typeof foldHold.release,'function');
 panel.foldedRepositories.add('owner/a');tree=render();foldHold.release();await drain();assert.equal(panel.aggregate.entries.get(stale).pr.state,'open','Folded reply is obsolete');
 assert.ok(selected().every(key=>key.startsWith('owner/b#')));assert.deepEqual({...panel.aggregate.counts()},{open:23,closed:7});
+// Two genuine fold clicks can be coalesced before rendering. Even when the
+// final keys match, neither click may let a reply from the earlier epoch apply.
+const foldCycleValue=factsByKey.get('owner/b#13');foldCycleValue.state='CLOSED';foldCycleValue.closedAt=new Date(Date.now()-1000).toISOString();
+const foldCycleHold=held={};await advance(45000);assert.equal(typeof foldCycleHold.release,'function');
+const foldCycleScope=panel.fallbackSnapshot().scope,header=find(tree,'task-repo-header-owner/b'),click=header.attrs.on_click[0];
+click({},cx);click({},cx);tree=render();assert.notEqual(panel.fallbackSnapshot().scope,foldCycleScope);
+foldCycleHold.release();await drain();assert.equal(panel.aggregate.entries.get('owner/b#13').pr.state,'open');foldCycleValue.state='OPEN';
 // Tab-away-and-back and home-away-and-back reject held replies even when the
 // final revealed keys match the earlier snapshot.
 const other='owner/b#13',otherValue=factsByKey.get(other);otherValue.state='CLOSED';otherValue.closedAt=new Date(Date.now()-1000).toISOString();

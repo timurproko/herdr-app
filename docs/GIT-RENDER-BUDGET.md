@@ -8,7 +8,9 @@ Git no longer virtualizes: every revealed row in an unfolded section stays mount
 Wheel, thumb drag, track click and keyboard scroll always traverse real content.
 
 The list reveals ten presentation items initially, then ten more on a received
-near-bottom wheel, pointer-over-list or size event. A guarded one-shot post-batch
+near-bottom wheel, pointer-over-list or size event. An unfolded boundary header
+waits for its first row or visible notice on the next reveal; empty sections never
+consume a presentation slot. Intentional folds keep their eligible headers. A guarded one-shot post-batch
 layout check fills a viewport that still does not overflow; it is not polling.
 Consumed native scrollbar input can delay reveal until the next received event.
 
@@ -16,30 +18,33 @@ Consumed native scrollbar input can delay reveal until the next received event.
 
 The rich fixture includes two repositories, a notice, 74px Closed rows, robots,
 tasks, checks, two labels and review decisions. Uncapped native measurements show
-28.2ms cold / 23.8ms warm at 100 mounted rows. **The below-20ms target at 100
+27.8ms cold / 24.4ms warm at 100 mounted rows. **The below-20ms target at 100
 mounted rows was not met.** Cold 200 rows interrupted in all five attempts;
-warm 200 rows averaged 43.0ms. Complete current samples (milliseconds):
+warm 200 rows averaged 45.8ms. Complete current samples (milliseconds):
 
 | Mounted PRs | Cold samples | Warm pure-cache samples |
 | --- | --- | --- |
-| 30 | 7, 7, 7, 8, 8 (mean 7.4) | 7, 6, 7, 8, 7 (mean 7.0) |
-| 60 | 15, 15, 15, 16, 18 (mean 15.8) | 15, 13, 15, 13, 14 (mean 14.0) |
-| 100 | 26, 32, 27, 27, 29 (mean 28.2) | 22, 22, 26, 24, 25 (mean 23.8) |
-| 200 | interrupted ×5 (no complete sample) | 44, 43, 44, 42, 42 (mean 43.0) |
+| 30 | 7, 9, 8, 8, 9 (mean 8.2) | 7, 8, 8, 7, 5 (mean 7.0) |
+| 60 | 15, 16, 15, 14, 14 (mean 14.8) | 15, 14, 16, 15, 13 (mean 14.6) |
+| 100 | 27, 31, 28, 27, 26 (mean 27.8) | 27, 24, 24, 24, 23 (mean 24.4) |
+| 200 | interrupted ×5 (no complete sample) | 47, 46, 48, 43, 45 (mean 45.8) |
 
- Pretending that a window solves the host notification gap is not acceptable.
+Pretending that a window solves the host notification gap is not acceptable.
 
 The measured safe fallback is **60 mounted PR rows**, with an additional
 **100-presentation-item** ceiling for header/notice-heavy inventories. Native
-60-row builds are 13–18ms (15.8ms cold / 14.0ms warm means). The actual capped
-200-inventory/60-mounted workload completes in 16, 15, 15, 15, 15ms (mean 15.2),
+60-row builds are 13–16ms (14.8ms cold / 14.6ms warm means). The actual capped
+200-inventory/60-mounted workload completes in 16, 15, 16, 16, 17ms (mean 16.0),
 including its Show more row. At the cap, the only paging control is a
 quiet **Show more** row at the list end. It replaces the mounted batch with the
 next batch, initially revealing ten items there. The last batch's same control
 cycles back to the first batch, so earlier rows remain reachable without a page
 counter, Previous button or separate footer. This intentional batch change starts
 at the top; refreshes and appends within a batch keep native scroll/row anchors.
-Whole-inventory counts and enrollment are independent of the batch. At a full row
+Whole-inventory counts and enrollment are independent of the batch. Safety
+selection has a separate identity generation: geometry-only projection rebuilds
+retain held reads, while reveal, fold clicks (even away-and-back before render),
+tab/home changes and changed revealed identities reject obsolete replies. At a full row
 cap, excess new arrivals wait for a freed slot or an explicit batch cycle instead
 of evicting already revealed PRs. Deleted tails retain the last surviving anchor.
 
