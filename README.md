@@ -591,25 +591,36 @@ part of automated test/deploy runs.
 
 ## Ask the PR’s agent to fix failed CI
 
-**Settings → Plugins → Git → Settings** contains **Auto-fix failed CI**
-(off by default), **Send when agent is** (a checkbox multi-select dropdown), and an
-editable **Message**. Idle/Done are selected by default; Error and Working are
-opt-in, and selecting none stops delivery. Blocked is excluded. Working input may
-queue; sends are never forced. `{url}` expands to the
-PR URL; `{runUrl}` expands to the failed Actions run URL. Default:
-“Analyze failed CI run {runUrl} for {url}. Fix the cause; Push.”
+**Settings → Plugins → Git → Settings** contains **Auto-fix pull requests**
+(off by default), **Send when agent is** (a checkbox multi-select dropdown), and
+separate switchable, editable CI-failure, merge-conflict and merged-cleanup messages.
+Idle/Done are selected by default; Error and Working are opt-in, and selecting none
+stops delivery. Saved selections remain unchanged. Blocked is excluded. Working input
+may queue; sends are never forced. The entire message comes from its template.
+CI's default names the PR/head, asks to read failed logs, fix and push without
+force-push, and lists failed run links/attempts. CI waits for a completed failed or
+timed-out workflow, not an individual failed job in a running workflow.
 
-**Turn on Auto-fix failed CI.** It automatically provisions Core-side monitoring
-on this computer and connected SSH machines, reusing Git's existing repository
-selections. No separate background setup, status/Check section or machine/scope
+**Turn on Auto-fix pull requests.** It automatically provisions Core-side monitoring
+on this computer and connected SSH machines, reusing Git's durable confirmed added
+repositories for the current relay and GitHub account. Disposable notice-cache
+invalidation cannot empty that selection; last removal or a missing/mismatched scope
+stays empty without legacy fallback. No separate background setup, status/Check section or machine/scope
 controls are needed. Each worker polls its local Core roughly once a minute and uses
 that host's own gh login. Closing Herdr leaves the worker active; pc2 does not depend
 on the main PC staying on or connected over SSH. This is a limited-user Windows
 task: the host must remain awake/online and its user signed in. No native Core patch,
 elevation, password service, agent restart, pre-logon or other-OS support is implied.
 
-Explicit CI preference changes sync to reachable managed workers; offline machines
-keep their last config. The desktop no longer sends auto-fix prompts itself. Fresh
+After a customization update, startup/code reload updates reachable owned companions
+and scope without re-saving settings or restarting the desktop/agents when the
+GitHub account binding is already saved. Confirmed Add now saves its displayed
+effective account, including the default; an older added list with a blank saved
+account stays suppressed until that account is explicitly chosen or an Add succeeds.
+Run an already-closed updated desktop once; offline hosts must reconnect. Explicit CI/relay/account changes
+sync to reachable managed workers; offline machines keep their last config.
+Local status distinguishes empty/all-skipped monitoring from healthy-ready, and a
+bounded sent/suppressed diagnostic journal explains why; no new panel UI or toast. The desktop no longer sends auto-fix prompts itself. Fresh
 PR/head/run/attempt/agent checks and bounded durable receipts precede non-forced
 Core sends; unknown outcomes are never replayed. Multiple machines do not have a
 global shared journal. Build/tests never install real tasks or send messages;
