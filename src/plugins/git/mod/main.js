@@ -261,7 +261,13 @@ export default class Changes extends View {
         this.counts = page.counts ?? (counts?.code===0?parseCounts(counts.stdout):null) ?? this.counts;
       } catch (e) {
         if (current() && this.shown()) {
-          if(retryRead(this,cx,e,view=>{if(this.shown() && this.context===context)this.loadPulls(state,view,true,true,append);}))return;
+          if(retryRead(this,cx,e,view=>{
+            if(!this.shown() || this.context!==context)return;
+            // Cooldown demand follows selection, not the refused tab. Retain
+            // an already-loaded destination's depth through its normal refresh.
+            if(this.view!==state && this.pulls[this.view]!==null) {this.webhookDirty=true;this.flushWebhook(view);}
+            else this.loadPulls(this.view,view,true,true,append && this.view===state);
+          }))return;
           const failure=await repositoryFailure(exec,e,repository,{cwd:root,on,current:()=>current()&&this.shown()});
           if(!current())return;
           if (append) this.pageError = {state,message:failure.message};
