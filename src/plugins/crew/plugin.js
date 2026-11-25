@@ -491,11 +491,18 @@ export const crewInitScript = () => [
 ].join('\n');
 const lastLine = text => String(text ?? '').split(/\r?\n/).map(l => l.trim()).filter(Boolean).at(-1) ?? '';
 
+// Observed revisions are wording evidence only, never requirement or action authority.
+const projectToolFacts = new Map();
 const crewProbe = (cx, remote) => once(cx, `crew:${remote ? 'remote' : 'local'}`, async () => {
   if (!(await platform(cx)).windows) return { unsupported: true };
   const r = await ps(cx, crewProbeScript({ remote }), remote ? 30 : CHECK_TIMEOUT);
   if (r.code !== 0) return { error: tail(r.stderr) || `Exited with ${r.code}.` };
-  return parseCrewProbe(r.stdout);
+  const probe = parseCrewProbe(r.stdout), key = machineOf(cx);
+  const previous = projectToolFacts.get(key);
+  projectToolFacts.set(key, { revision: probe.revision,
+    outdated: Boolean(probe.revision && (remote ? probe.latest && probe.latest !== probe.revision
+      : previous?.revision === probe.revision && previous.outdated)) });
+  return probe;
 });
 const UNSUPPORTED = 'Automatic setup supports Windows machines for now.';
 // One script installs and updates (clone, or fast-forward); only the button's name differs.
@@ -645,11 +652,48 @@ export function projectName(folder) {
 }
 // The tool's own words for a refusal ("crew: Project x already points at …").
 const crewSaid = r => (tail(r.stderr || r.stdout) || `Exited with ${r.code}.`).replace(/^crew:\s*/, '');
-async function crewProject(cx, args, what) {
-  const r = await ps(cx, crewProjectScript(args), 30);
-  if (r.missing) throw new Error(`${what}: PowerShell is not available on that machine.`);
-  if (r.code !== 0) throw new Error(crewSaid(r));
-  return r;
+// A summarized folder error carries its own target-aware wording so Settings can use
+// the real folder for Remove (the command itself only receives the registered name).
+export function projectFailure(output, { operation, name, folder = name, machine = null, outdated = false }) {
+  const line = String(output ?? '').replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '').split(/[\r\n\u2028\u2029]/)
+    .map(line => line.trim()).find(Boolean)?.replace(/^crew:\s*/i, '') ?? '';
+  const summary = target => {
+    const start = `Could not ${operation} ${target}`;
+    if (/^(?:Usage:|Invalid project name:)/i.test(line)) return outdated
+      ? `${start}. Update the Crew tool on ${machine ?? 'this computer'} and try again.`
+      : `${start}. Crew did not accept the project name ${name}; update the Crew tool and try again.`;
+    if (/^Read-only: this home is owned by (?:live )?terminal\b/i.test(line))
+      return `${start}: another session owns the Crew home; change its projects from that session.`;
+    if (/^(?:Project|Folder)\b.*\balready registered\b/i.test(line))
+      return `${start}: it is already registered with Crew; use the existing project.`;
+    if (/^Project .* already points at /i.test(line) || /^(?:Project(?: name)?|Name) .* (?:is )?(?:already )?(?:taken|in use|exists)\.?$/i.test(line))
+      return `${start}: Crew already uses the project name ${name}; choose a folder with a different name.`;
+    if (/is not a git repository\.?$/i.test(line))
+      return `${start}: it is not a git repository; choose a git repository folder.`;
+    if (/(?:folder .*(?:does not exist|not found)|cannot find (?:the )?path|no such file or directory|ENOENT)/i.test(line))
+      return `${start}: the folder does not exist; choose an existing git repository folder.`;
+    if (/^Unknown project:/i.test(line)) return `${start}: Crew no longer has this project; refresh the list.`;
+    if (/^Project .+ is used by unfinished tasks:/i.test(line)) return `${start}: finish its Crew tasks first.`;
+    if (/^Project .+ still has working copies of finished tasks to return:/i.test(line))
+      return `${start}: close the terminals holding its finished Crew task copies and try again.`;
+    // Only a first sentence, never a later usage block, task inventory or stderr tail.
+    const first = line.split(/\bUsage:/i)[0].replace(/[\x00-\x1f\x7f]/g, ' ').trim()
+      .match(/^.*?(?:[.!?](?=\s|$)|$)/)?.[0].replace(/[.!?]+$/, '').trim().slice(0, 240).trim();
+    return `${start}.${first ? ` ${first}.` : ''}`;
+  };
+  const error = new Error(summary(folder));
+  error.folderMessage = summary;
+  return error;
+}
+async function crewProject(cx, args) {
+  const [operation, name, folder = name] = args, machine = machineOf(cx);
+  let output;
+  try {
+    const r = await ps(cx, crewProjectScript(args), 30);
+    if (!r.missing && r.code === 0) return r;
+    output = r.missing ? 'PowerShell is not available on that machine.' : r.stderr.trim() || r.stdout;
+  } catch (error) { output = error?.message ?? error; }
+  throw projectFailure(output, { operation, name, folder, machine, outdated: projectToolFacts.get(machine)?.outdated });
 }
 const PROJECTS = Object.freeze({
   id: 'projects', section: true, label: 'Projects',
@@ -661,10 +705,10 @@ const PROJECTS = Object.freeze({
     picker: Object.freeze({ kind: 'folders', label: 'Add project' }),
     async add(cx, folder) {
       const name = projectName(folder);
-      if (!name) throw new Error('That folder’s name cannot be used as a project name (1–40 lowercase ASCII letters, digits, dashes and dots; start with a letter or digit; no consecutive or trailing dots).');
-      await crewProject(cx, ['add', name, folder], 'Adding the project');
+      if (!name) throw projectFailure('That folder’s name cannot be used as a project name (1–40 lowercase ASCII letters, digits, dashes and dots; start with a letter or digit; no consecutive or trailing dots).', { operation: 'add', name, folder });
+      await crewProject(cx, ['add', name, folder]);
     },
-    async remove(cx, id) { await crewProject(cx, ['remove', id], 'Removing the project'); },
+    async remove(cx, id) { await crewProject(cx, ['remove', id]); },
   }),
   check: async cx => {
     if (!(await connected(cx)).ready) return { ...DISCONNECTED, statusLabel: null, rows: [] };

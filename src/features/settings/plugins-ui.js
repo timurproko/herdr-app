@@ -445,8 +445,9 @@ function runListAction(view, cx, plugin, item, action, everything = false) {
 }
 const scopeSetting = (plugin, item) => (plugin.settings ?? []).find(d => d.key === item.list.scope?.setting && d.type === 'machine');
 // The folder is the attempted target, not necessarily the resource the plugin refused.
-const folderRefusal = (plugin, operation, path, error) =>
-  `Could not ${operation} folder “${path}”. ${plugin.name} reported: ${String(error?.message ?? error)}`;
+const folderRefusal = (plugin, operation, path, error) => typeof error?.folderMessage === 'function'
+  ? error.folderMessage(path)
+  : `Could not ${operation} folder “${path}”. ${plugin.name} reported: ${String(error?.message ?? error)}`;
 
 // The folders picker: the folder browser on the scope's machine. Folders already added
 // start ticked and unticking one removes it; each change is tried and the refused ones

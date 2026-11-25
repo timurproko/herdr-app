@@ -11,7 +11,7 @@ const clipH=(tree,id)=>find(tree,id+'-clip')?.attrs?.h?.[0];
 const words=n=>typeof n==='string'?[n]:(n?.kids??[]).flatMap(words);
 const state={},jobs=[],opened=[];
 const cx={notify(){},focus_handle:()=>({focus(){}}),spawn:fn=>jobs.push(fn)};
-const {ui,registry}=await loadMod({host:{shared:k=>state[k],setShared:(k,v)=>state[k]=v,spaces:()=>[],panes:()=>[],terminals:()=>[],focused:()=>null,settings:()=>({zoom:1})},modules:{
+const {ui,registry,crewErrors}=await loadMod({host:{shared:k=>state[k],setShared:(k,v)=>state[k]=v,spaces:()=>[],panes:()=>[],terminals:()=>[],focused:()=>null,settings:()=>({zoom:1})},modules:{
  'plugins-ui.js':'src/features/settings/plugins-ui.js','reorder.js':'src/ui/reorder.js','settings-kit.js':'src/ui/settings-kit.js','modal-layout.js':'src/ui/modal-layout.js','space-color-state.js':{currentSpaceColor(){}},'directory.js':{spaceDirectory:()=>({cwd:null})},
  'machine-picker.js':{machinePicker:(_t,o)=>element().id(o.id).selected(o.selected).disabled(o.disabled).on_select(o.onSelect)},
  'folder-browser.js':{folderBrowser:(_view,_t,o)=>element().id(`${o.id}-popup`).on_pick(o.onPick).on_open_change(o.onOpen).multi(o.multi).machine_switch(o.machineSwitch).child(o.trigger),
@@ -19,7 +19,7 @@ const {ui,registry}=await loadMod({host:{shared:k=>state[k],setShared:(k,v)=>sta
  'gpui-kit':{div:element,svg:element,image:element},'gpui-base':{Popup:{new:(id,trigger)=>element().id(id).child(trigger)},h_flex:element,v_flex:element,Textarea:{new:element},TextareaState:{new:o=>{let value=o?.value??'';return {on(){},value:()=>value,set_value:v=>{value=v;}};}},Checkbox:{new:id=>element().id(id)},Scrollbar:{vertical:id=>element().target(id)},Input:{new:element},InputState:{new:o=>{let value=o.value;return {on(){},value:()=>value,set_value:v=>{value=v;}};}}},
  'ui.js':{chevronSlot:realUi(element).chevronSlot,iconButton:(_t,o)=>element().id(o.id).available(o.available??true).on_click(o.onClick),menuRow:realUi(element).menuRow,collapsible:realUi(element).collapsible,settingsRow:realUi(element).settingsRow,SETTINGS_ROW:32,searchField:(_t,_s,{id})=>element().id(id),menuSurface:(_t,e)=>e,dropdown:(id,trigger)=>element().id(id).child(trigger),U:{control:28,field:32,font:13,meta:12,radius:6,gutter:12,statusSize:7},slot:x=>x,emptyState:(_t,{id,title='No results',icon='search'})=>element().id(id).emptyComponent(true).asset(icon).child(title),description:(_t,text)=>element().child(text),control:(_t,x=element())=>x,itemHover(){},spinner:()=>element(),chevron:element,dialogScrollbar:x=>x,
   button:(_t,id,label,click,options={})=>element().id(id).child(label).on_click(click).primary(options.primary??false).disabled(options.enabled===false)},
-},entry:"export * as ui from './plugins-ui.js';export * as registry from './plugins.js';"});
+},entry:"export * as ui from './plugins-ui.js';export * as registry from './plugins.js';export * as crewErrors from './plugins/crew/plugin.js';"});
 const toggle=(_t,id,on,click)=>element().id(id).pressed(on).on_click(click);
 const palette={},crew=registry.pluginById('crew'),section=crew.prerequisites.find(p=>p.id==='projects');
 assert.ok(section?.section&&section.list?.picker?.kind==='folders','The Crew plugin has a Projects list section that adds folders');
@@ -27,8 +27,8 @@ registry.setPluginEnabled(crew,true);registry.setPluginSetting(crew,'machine','p
 
 const calls=[];let fail=null;
 const list={...section.list,
-  async add(c,folder){calls.push(['add',c.setting('machine'),folder]);if(fail)throw Error(fail);},
-  async remove(c,id){calls.push(['remove',c.setting('machine'),id]);if(fail)throw Error(fail);}};
+  async add(c,folder){calls.push(['add',c.setting('machine'),folder]);if(fail)throw crewErrors.projectFailure(fail,{operation:'add',name:crewErrors.projectName(folder),folder,machine:c.setting('machine')});},
+  async remove(c,id){calls.push(['remove',c.setting('machine'),id]);if(fail)throw crewErrors.projectFailure(fail,{operation:'remove',name:id,machine:c.setting('machine')});}};
 const two=[{id:'fork',label:'D:\\Git\\crew · treehouse',path:'D:\\Git\\crew'},{id:'app',label:'C:\\Users\\u\\app',path:'C:\\Users\\u\\app'}];
 const view={heading:element,toggle};ui.initPlugins(view,cx,'crew');
 const seed=(extra={status:'ready',statusLabel:'2 projects',usable:true,rows:two})=>{
@@ -113,26 +113,29 @@ registry.setPluginSetting(crew,'machine','pc2');
 seed();const several=popup();
 assert.deepEqual([[1,0],[3,0],[2,1]].map(([a,r])=>several.attrs.multi[0].label(a,r)),['Add','Add','Apply'],'The browser’s button is one word; its count is beside it');
 several.attrs.on_open_change[0](true,cx);opened.length=0;
-const addOne=list.add;list.add=async(c,folder)=>{calls.push(['add',c.setting('machine'),folder]);if(folder.endsWith('bad'))throw Error('D:/Git/bad is not a git repository.');};
+const addOne=list.add;list.add=async(c,folder)=>{calls.push(['add',c.setting('machine'),folder]);if(folder.endsWith('bad'))throw crewErrors.projectFailure('D:/Git/bad is not a git repository.',{operation:'add',name:'bad',folder});};
 view.pluginOpen['crew-projects']=false;
 several.attrs.on_pick[0]({add:['D:\\Git\\one','D:\\Git\\bad','D:\\Git\\two'],remove:['C:\\Users\\u\\app']},cx);
 assert.equal(view.pluginOpen['crew-projects'],true,'Adding opens the section so the new projects are in view');
 await runJob();list.add=addOne;
 assert.deepEqual(calls.splice(0).map(c=>[c[0],c[2]]),[['remove','app'],['add','D:\\Git\\one'],['add','D:\\Git\\bad'],['add','D:\\Git\\two']],'An unticked project is removed by its name; every newly ticked folder is tried');
-assert.equal(view.pluginFixError['crew:projects'],'Could not add folder “D:\\Git\\bad”. Crew reported: D:/Git/bad is not a git repository.');
+assert.equal(view.pluginFixError['crew:projects'],'Could not add D:\\Git\\bad: it is not a git repository; choose a git repository folder.');
 assert.equal(jobs.length,1,'The list is read again afterwards');
 delete view.pluginFixError['crew:projects'];
 
-// Both older-name and home-ownership refusals are attributed to Crew, not the folder.
-for (const reason of ['Invalid project name: agentnumberone.dev. Use lowercase letters, digits and dashes.',
-  'Read-only: this home is owned by terminal t9. Only that session may change its projects.']) {
+// Summaries replace the raw wrapper, including a multiline usage dump.
+const rejected='Could not add D:\\Git\\agentnumberone.dev. Crew did not accept the project name agentnumberone.dev; update the Crew tool and try again.';
+for (const [reason,expected] of [
+  ['Invalid project name: agentnumberone.dev. Use lowercase letters, digits and dashes.',rejected],
+  ['crew: Usage: crew project add <name> <git folder> | crew project remove <name>\nraw second line',rejected],
+  ['Read-only: this home is owned by terminal t9. Only that session may change its projects.','Could not add D:\\Git\\agentnumberone.dev: another session owns the Crew home; change its projects from that session.']]) {
   seed();fail=reason;popup().attrs.on_open_change[0](true,cx);opened.length=0;
   popup().attrs.on_pick[0]({add:['D:\\Git\\agentnumberone.dev'],remove:[]},cx);await runJob();fail=null;
   assert.deepEqual(calls.splice(0),[['add','pc2','D:\\Git\\agentnumberone.dev']],'No retry or alternative folder after refusal');
-  const expected=`Could not add folder “D:\\Git\\agentnumberone.dev”. Crew reported: ${reason}`;
   assert.equal(view.pluginFixError['crew:projects'],expected);
+  assert.doesNotMatch(expected,/reported:|Usage:|\n|<name>/);
   assert.equal(jobs.length,1,'The authoritative list is re-read even after refusal');
-  seed();assert.ok(words(find(render(),'st-plugin-crew-projects-body')).includes(expected),'The full attributed refusal is visible in the section');
+  seed();assert.ok(words(find(render(),'st-plugin-crew-projects-body')).includes(expected),'Only the concise summary is visible in the section');
 }
 // Unticking preserves both the dotted ID and removal-specific refusal context.
 const dotted={id:'agentnumberone.dev',label:'D:\\Git\\agentnumberone.dev',path:'D:\\Git\\agentnumberone.dev'};
@@ -141,18 +144,42 @@ assert.deepEqual(popup().attrs.multi[0].existing,[dotted.path],'Existing dotted 
 fail='Read-only: this home is owned by terminal t9. Only that session may change its projects.';
 popup().attrs.on_pick[0]({add:['D:\\Git\\other'],remove:[dotted.path]},cx);await runJob();fail=null;
 assert.deepEqual(calls.splice(0),[['remove','pc2',dotted.id],['add','pc2','D:\\Git\\other']]);
-assert.equal(view.pluginFixError['crew:projects'],`Could not remove folder “${dotted.path}”. Crew reported: Read-only: this home is owned by terminal t9. Only that session may change its projects. · Could not add folder “D:\\Git\\other”. Crew reported: Read-only: this home is owned by terminal t9. Only that session may change its projects.`);
+assert.equal(view.pluginFixError['crew:projects'],`Could not remove ${dotted.path}: another session owns the Crew home; change its projects from that session. · Could not add D:\\Git\\other: another session owns the Crew home; change its projects from that session.`);
 assert.equal(jobs.length,1,'Batch refusals still refresh the list');
 seed({status:'ready',usable:true,rows:[dotted]});hover(0);find(render(),`${P}-remove-0`).attrs.on_click[0]({},cx);await runJob();
 assert.deepEqual(calls.splice(0),[['remove','pc2',dotted.id]],'The row button removes a dotted registration by exact ID too');
 
-// A direct Remove uses the same attribution and preserves the tool's refusal.
+// A direct Remove uses the same summary and actual folder rather than the ID.
 seed();fail='Read-only: this home is owned by terminal t9. Only that session may change its projects.';
 hover(0);find(render(),`${P}-remove-0`).attrs.on_click[0]({},cx);await runJob();fail=null;calls.length=0;
-assert.equal(view.pluginFixError['crew:projects'],'Could not remove folder “D:\\Git\\crew”. Crew reported: Read-only: this home is owned by terminal t9. Only that session may change its projects.');
+assert.equal(view.pluginFixError['crew:projects'],'Could not remove D:\\Git\\crew: another session owns the Crew home; change its projects from that session.');
 seed();assert.ok(words(find(render(),'st-plugin-crew-projects-body')).includes(view.pluginFixError['crew:projects']));
 find(render(),'st-plugin-refresh-crew-projects').attrs.on_click[0]({},cx);
 assert.equal(view.pluginFixError['crew:projects'],undefined,'Check clears it');
+
+// Usage is suppressed for both removal entrypoints; their target is the folder.
+for(const picker of [true,false]) {
+  seed({status:'ready',usable:true,rows:[dotted]});fail='crew: Usage: crew project remove <name>\nprivate output';
+  if(picker){popup().attrs.on_open_change[0](true,cx);opened.length=0;popup().attrs.on_pick[0]({add:[],remove:[dotted.path]},cx);}
+  else {hover(0);find(render(),`${P}-remove-0`).attrs.on_click[0]({},cx);}
+  await runJob();fail=null;
+  assert.equal(view.pluginFixError['crew:projects'],`Could not remove ${dotted.path}. Crew did not accept the project name ${dotted.id}; update the Crew tool and try again.`);
+  assert.deepEqual(calls.splice(0),[['remove','pc2',dotted.id]]);
+}
+// Other plugins keep the default operation context and plugin attribution.
+{
+  const other=registry.pluginById('files'),saved=other.prerequisites,savedCheck=view.pluginChecks.files;
+  const item={...section,list:{...section.list,async add(){throw Error('Permission denied.');}}};
+  other.prerequisites=[item];view.pluginTarget='files';registry.setPluginEnabled(other,true);
+  jobs.length=0;view.pluginFixing=null;view.pluginSettling={};
+  view.pluginChecks.files={loading:false,groups:{projects:{loading:false,checked:true}},items:[{...item,status:'ready',usable:true,rows:[]}]};
+  find(render(),'st-plugin-list-files-projects-add-popup').attrs.on_pick[0]({add:['D:\\Git\\other'],remove:[]},cx);
+  await runJob();
+  assert.equal(view.pluginFixError['files:projects'],'Could not add folder “D:\\Git\\other”. Files reported: Permission denied.');
+  other.prerequisites=saved;
+  if(savedCheck)view.pluginChecks.files=savedCheck;else delete view.pluginChecks.files;
+  view.pluginTarget='crew';delete view.pluginFixError['crew:projects'];
+}
 
 // Empty list: says so, and Add stays available. No tool or home: nothing to add to.
 seed({status:'ready',statusLabel:'0 projects',usable:true,rows:[]});tree=render();

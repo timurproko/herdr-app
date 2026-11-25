@@ -380,10 +380,22 @@ crew.latest = '';
   // Older Crew remains authoritative: neither a hidden refusal nor a dash-only retry.
   for (refusalOutput of ['stderr', 'stdout']) {
     ran2.length = 0;
-    await assert.rejects(section.list.add(cx(), 'D:/Git/agentnumberone.dev'), e => e.message === olderRefusal);
+    await assert.rejects(section.list.add(cx(), 'D:/Git/agentnumberone.dev'), e => e.message === 'Could not add D:/Git/agentnumberone.dev. Crew did not accept the project name agentnumberone.dev; update the Crew tool and try again.');
     same(ran2, ['project add agentnumberone.dev D:/Git/agentnumberone.dev'], 'One exact dotted request, with no alternate-name retry');
     s = await statuses(); same(s.projects.rows.map(row => row.id), ['fork', 'my-app'], 'A refusal never registers or projects a successful add');
   }
+  // An observed update affects wording only on that machine, and a changed
+  // installed revision invalidates the observation without changing check status.
+  crew.latest = 'bbbbbbbbbbbb'; await statuses();
+  await assert.rejects(section.list.add(cx(), 'D:/Git/agentnumberone.dev'), e => e.message === 'Could not add D:/Git/agentnumberone.dev. Update the Crew tool on pc2 and try again.');
+  r.setPluginSetting(plugin, 'machine', null);
+  await assert.rejects(section.list.add(cx(), 'D:/Git/agentnumberone.dev'), e => e.message.includes('Crew did not accept the project name'));
+  crew.revision = 'cccccccccccc'; crew.latest = 'aaaaaaaaaaaa'; await statuses();
+  await assert.rejects(section.list.add(cx(), 'D:/Git/agentnumberone.dev'), e => e.message === 'Could not add D:/Git/agentnumberone.dev. Update the Crew tool on this computer and try again.');
+  crew.revision = 'aaaaaaaaaaaa'; await section.check(cx());
+  await assert.rejects(section.list.add(cx(), 'D:/Git/agentnumberone.dev'), e => e.message.includes('Crew did not accept the project name'));
+  r.setPluginSetting(plugin, 'machine', 'pc2'); await statuses();
+  await assert.rejects(section.list.add(cx(), 'D:/Git/agentnumberone.dev'), e => e.message.includes('Crew did not accept the project name'));
   refusalOutput = null;
   crew.latest = 'bbbbbbbbbbbb';
   assert.equal((await statuses()).crew.statusLabel, 'Outdated');
@@ -396,12 +408,12 @@ crew.latest = '';
   s = await statuses(); same(s.projects.rows.map(row => row.id), ['fork', 'my-app']);
   owned = true;
   ran2.length = 0;
-  await assert.rejects(section.list.add(cx(), 'D:/Git/agentnumberone.dev'), e => e.message.startsWith('Read-only: this home is owned by terminal t9'), 'Home ownership also refuses an add, not the selected folder');
+  await assert.rejects(section.list.add(cx(), 'D:/Git/agentnumberone.dev'), e => e.message === 'Could not add D:/Git/agentnumberone.dev: another session owns the Crew home; change its projects from that session.', 'Home ownership also refuses an add, not the selected folder');
   same(ran2, ['project add agentnumberone.dev D:/Git/agentnumberone.dev']);
   assert.equal(projects.has('agentnumberone.dev'), false);
-  await assert.rejects(section.list.remove(cx(), 'fork'), e => e.message.startsWith('Read-only: this home is owned by terminal t9'), 'A live coordinator’s list is refused in the tool’s own words');
+  await assert.rejects(section.list.remove(cx(), 'fork'), e => e.folderMessage('D:/Git/crew') === 'Could not remove D:/Git/crew: another session owns the Crew home; change its projects from that session.', 'A home-owner refusal gets concise guidance with the real removal folder');
   owned = false; await section.list.remove(cx(), 'fork');
-  await assert.rejects(section.list.remove(cx(), 'fork'), /^Error: Unknown project: fork/);
+  await assert.rejects(section.list.remove(cx(), 'fork'), /^Error: Could not remove fork: Crew no longer has this project; refresh the list\./);
   s = await statuses(); same(s.projects.rows.map(row => row.id), ['my-app']);
   projects.clear(); s = await statuses(); same([s.projects.status, s.projects.statusLabel, s.projects.rows, s.projects.usable], ['ready', '0 added', [], true], 'An empty list is ready to be added to');
   // Without the tool or its home there is no list to show or change.
