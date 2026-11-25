@@ -85,18 +85,17 @@ function assertNaturalRun(geometry,line,zoom) {
     assert.ok(left.every((n,i)=>n.attrs.id || (i>0 && i<left.length-1)),'No separator before labels or at a left-run boundary');
     assert.equal(right.kids.length,1,'No separator or placeholder inside the right slot');
   }
-  // Full natural probes are independent of the allocated visible boxes.
-  const probePrefix=`${line.attrs.id[0]}-probe-`;
-  const probes=[...geometry.keys()].filter(n=>n?.attrs?.id?.[0]?.startsWith(probePrefix)&&n.attrs.id[0].endsWith('-full'));
-  const hasLabels=probes.some(n=>n.attrs.id[0].endsWith('-labels-full'));
+  // Independent oracle groups are not scheduled native measurement nodes.
+  const probes=[...geometry.intrinsic.values()].filter(p=>p.line===line.attrs.id[0]&&!p.short);
+  const hasLabels=probes.some(p=>p.kind==='labels');
   const leftCount=probes.length-Number(hasLabels);
-  const needed=probes.reduce((sum,n)=>sum+geometry.get(n).width,0)+(Math.max(0,leftCount-1)*15+(leftCount&&hasLabels?6:0))*zoom;
+  const needed=probes.reduce((sum,p)=>sum+p.width,0)+(Math.max(0,leftCount-1)*15+(leftCount&&hasLabels?6:0))*zoom;
   if(needed<=box.width+1e-6) {
     const groups=[...left.filter(n=>n.attrs.id),...(labelGroup?[labelGroup]:[])];
     assert.equal(groups.length,probes.length,'All fitting facts remain visible');
     for(const [index,node] of groups.entries()) {
-      near(geometry.get(node).width,geometry.get(probes[index]).width,'Fitting values use full natural widths');
-      assert.equal(words(node).join(''),words(probes[index]).join(''),'No semantic shortening while the whole line fits');
+      near(geometry.get(node).width,probes[index].width,'Fitting values use full natural widths');
+      assert.equal(words(node).join(''),words(probes[index].node).join(''),'No semantic shortening while the whole line fits');
       for(const text of geometry.visibleTextLines.filter(l=>l.ancestors.includes(node))) {
         assert.ok(text.x+text.naturalWidth<=geometry.get(node).x+geometry.get(node).width+1e-6,'Fitting text is not clipped');
       }
@@ -214,8 +213,8 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
     const box=geometry.get(strip.kids[0]),robot=geometry.get(find(tree,'pr-agent-slot-17'));
     edge??=box.x+box.width;near(box.x+box.width,edge,'Pill edges are equal across changing facts and label names');
     near(edge,robot.x+robot.width,'Shared edge matches the title robot control');
-    const probe=find(tree,'pr-meta-17-probe-labels-full');
-    near(geometry.get(strip).width,geometry.get(probe).width,'Review/Rework/Approved retain whole words throughout the supported matrix');
+    const probe=geometry.intrinsic.get('pr-meta-17-probe-labels-full');
+    near(geometry.get(strip).width,probe.width,'Review/Rework/Approved retain whole words throughout the supported matrix');
     assert.equal(strip.attrs.tooltip,undefined,'A complete visible label has no repeat-only group tooltip');
   }
 }
@@ -224,16 +223,16 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
 h.setZoom(1);
 for(const [kind,shortKind,textKind] of [['meta','tasks','tasks'],['byline','time','time']]) {
   const wide=h.settle(()=>panel.pullRow(t,screenshot),480),line=find(wide.tree,`pr-${kind}-41`);
-  const probes=nodes(wide.tree).filter(n=>n.attrs.id?.[0]?.startsWith(`pr-${kind}-41-probe-`)&&n.attrs.id[0].endsWith('-full'));
+  const probes=[...wide.geometry.intrinsic.values()].filter(p=>p.line===`pr-${kind}-41`&&!p.short);
   const leftCount=probes.length-(kind==='meta'?1:0);
-  const needed=probes.reduce((sum,n)=>sum+wide.geometry.get(n).width,0)+Math.max(0,leftCount-1)*15+(kind==='meta'?6:0);
+  const needed=probes.reduce((sum,p)=>sum+p.width,0)+Math.max(0,leftCount-1)*15+(kind==='meta'?6:0);
   const rowInset=480-wide.geometry.get(line).width;
   const fits=h.settle(()=>panel.pullRow(t,screenshot),needed+rowInset+1);
   const narrow=h.settle(()=>panel.pullRow(t,screenshot),needed+rowInset-1);
   assert.equal(words(find(fits.tree,`pr-${textKind}-41`)).join(''),kind==='meta'?'2 tasks done':'opened 4 hours ago');
   assert.equal(words(find(narrow.tree,`pr-${textKind}-41`)).join(''),kind==='meta'?'2/2':'4h ago');
-  const fullProbe=find(narrow.tree,`pr-${kind}-41-probe-${shortKind}-full`);
-  assert.ok(narrow.geometry.get(fullProbe).width>narrow.geometry.get(find(narrow.tree,`pr-${textKind}-41`)).width);
+  const fullProbe=narrow.geometry.intrinsic.get(`pr-${kind}-41-probe-${shortKind}-full`);
+  assert.ok(fullProbe.width>narrow.geometry.get(find(narrow.tree,`pr-${textKind}-41`)).width);
   const retainedKind=kind==='meta'?'labels':'author';
   near(narrow.geometry.get(find(narrow.tree,`pr-${retainedKind}-41`)).width,wide.geometry.get(find(wide.tree,`pr-${retainedKind}-41`)).width,'Shorten before clipping neighboring content');
 }
@@ -241,8 +240,8 @@ for(const [kind,shortKind,textKind] of [['meta','tasks','tasks'],['byline','time
 // compaction. Only further overflow clips labels, without sacrificing checks.
 {
   const pr=facts.pullRow({...source,body:'- [x] one\n- [x] two',labels:[{name:'🤖 Approved',color:'1a7f37'}],reviewDecision:'CHANGES_REQUESTED',statusCheckRollup:[{name:'CI',status:'COMPLETED',conclusion:'SUCCESS'}]},'owner',now);
-  const wide=h.settle(()=>panel.pullRow(t,pr),480),measure=kind=>wide.geometry.get(find(wide.tree,`pr-meta-17-probe-${kind}-full`)).width;
-  const compact=wide.geometry.get(find(wide.tree,'pr-meta-17-probe-tasks-compact')).width;
+  const wide=h.settle(()=>panel.pullRow(t,pr),480),measure=kind=>wide.geometry.intrinsic.get(`pr-meta-17-probe-${kind}-full`).width;
+  const compact=wide.geometry.intrinsic.get('pr-meta-17-probe-tasks-compact').width;
   const inset=480-wide.geometry.get(find(wide.tree,'pr-meta-17')).width;
   const compactNeeded=compact+measure('checks')+measure('review')+measure('labels')+36;
   const reduced=h.settle(()=>panel.pullRow(t,pr),inset+compactNeeded-1);
@@ -300,17 +299,18 @@ for(const coordinator of [false,true])for(const ghost of [false,true])for(const 
 // adding artificial fixed budgets or clipping the full checks count must fail.
 h.setZoom(1);h.setAgent(false);
 const sample=h.settle(()=>panel.pullRow(t,screenshot),390),row=sample.tree;
+const mutatedGeometry=()=>{const geometry=rowGeometry(row,390);geometry.intrinsic=sample.geometry.intrinsic;return geometry;};
 const title=find(row,'pr-title-41'),before=sample.geometry.get(title);find(row,'pr-title-line-41').kids.pop();
 assert.notEqual(rowGeometry(row,390).get(title).width,before.width);
 const meta=find(row,'pr-meta-41'),tasks=find(row,'pr-tasks-41');tasks.flex_grow(1);
-assert.throws(()=>assertNaturalRun(rowGeometry(row,390),meta,1),/stretched|natural widths|undefined/);
+assert.throws(()=>assertNaturalRun(mutatedGeometry(),meta,1),/stretched|natural widths|undefined/);
 delete tasks.attrs.flex_grow;tasks.w(60);
-assert.throws(()=>assertNaturalRun(rowGeometry(row,390),meta,1),/natural widths/);
+assert.throws(()=>assertNaturalRun(mutatedGeometry(),meta,1),/natural widths/);
 delete tasks.attrs.w;
 const right=find(row,'pr-meta-41-right');delete right.attrs.justify_end;
-assert.throws(()=>assertNaturalRun(rowGeometry(row,390),meta,1),/align right|right edge/);right.justify_end();
+assert.throws(()=>assertNaturalRun(mutatedGeometry(),meta,1),/align right|right edge/);right.justify_end();
 meta.kids.splice(meta.kids.indexOf(right),0,element().size(3));
-assert.throws(()=>assertNaturalRun(rowGeometry(row,390),meta,1),/separator before labels/);meta.kids.splice(meta.kids.indexOf(right)-1,1);
+assert.throws(()=>assertNaturalRun(mutatedGeometry(),meta,1),/separator before labels/);meta.kids.splice(meta.kids.indexOf(right)-1,1);
 find(row,'pr-checks-41').w(18).overflow_hidden();
 assert.throws(()=>assertChecksFit(rowGeometry(row,390),row),/Full count .* must fit/);
 console.log(`PASS ${comparisons} row comparisons: ordinary/pin/list/coordinator/ghost, Open/Closed/merged, 280/320/360/390/480px, 75–200% zoom including 130%, natural left runs/right-anchored pills without joining dots, priority shortening, complete checks, fixed title/vertical geometry and line-height/clipping mutations (synthetic, not GPUI pixels)`);

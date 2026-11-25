@@ -1,12 +1,12 @@
-# Coordinator Git render budget
+# Git mounted-row render budget
 
-The host has a 50 ms render/layout watchdog. Building every recorded Closed row
-was unbounded in inventory size. PR #42 added natural-width measurement probes;
-it materially increased that cost, but the reported live `interrupted` banner
-has **not** been reproduced by the disposable native checker. PR #39's fixed
-row geometry alone is not established as the introducing cause of that banner.
+The host has a 50 ms render/layout watchdog. Ordinary lists already mount every
+loaded row, so a coordinator page limit is not a shared-row safety argument.
+The #61 title/pill measurement regression was reproduced as native `interrupted`
+checks at 100 cold rows; its repair is measured below. Earlier #42 measurements
+remain historical evidence, not proof of that older live banner's exact cause.
 
-## Measurements
+## Historical inventory/page measurements
 
 `node tools/measure-git-render.mjs` builds the real packaged coordinator renderer
 inside the installed native QuickJS/GPUI checker with a disposable app home under
@@ -52,6 +52,45 @@ A differential native check with all tooltip registrations removed measured
 measurement probes, not tooltips or the history notice, dominate the observed
 increase. The tool accepts `post42-no-tooltips current-no-tooltips` to repeat it.
 
+## Current shared-row repair: fully mounted cold rows
+
+`tools/measure-git-row-budget.mjs --run --scrolled` compares fc0dfde with the
+current source using three fresh native checks per cell on Windows / App 0.1.18.
+It calls **real ordinary renderPulls** with every loaded row, or explicitly builds
+all coordinator rows without paging. Each row has a distinct long title, tasks,
+checks, two repeated label strings and review text. Times include JS/native
+builder construction only, not GPU paint, layout settlement or live input latency.
+
+The first measured-prefix #61 version cost 20–23 / 40–43 ms at 30/60 rows and
+interrupted in all 100-row samples. The repair removes title/pill/prefix subtrees,
+uses native Segoe UI truncation and the approved always-full-title tooltip, caches
+settings per render entry, and schedules four shared intrinsic probes total.
+
+| Mounted rows | fc0dfde coordinator, ms | Repaired coordinator, ms | fc0dfde ordinary, ms | Repaired ordinary, ms | Repaired ordinary scrolled-bottom, ms |
+|---|---|---|---|---|---|
+| 30 | 6, 6, 7 | 6, 5, 4 | 10, 10, 10 | 6, 6, 6 | 6, 6, 7 |
+| 60 | 14, 14, 14 | 11, 10, 10 | 21, 19, 20 | 13, 12, 11 | 12, 12, 12 |
+| 100 | 24, 26, 22 | 18, 21, 18 | 33, 31, 30 | 23, 20, 18 | 21, 21, 21 |
+| 200 | 48, 45, 49 | 33, 33, 35 | interrupted ×3 | 40, 37, 38 | 42, 40, 42 |
+
+Every repaired sample completed with all requested rows and **four probes**.
+The native tool enforces the requested baseline +2ms and 10/17/26ms ceilings at
+30/60/100 and requires every current 200-row sample to complete. It records failed
+samples rather than fabricating completed timings. Results/logs are under ignored
+`.artifacts/git-row-render-budget/`; the benchmark needs the fc0dfde Git object.
+These samples do not guarantee wall-clock behavior under all loads or certify
+100/200 real-data frames with arbitrary labels/agents/GPU work.
+
+`tests/git-row-render-budget.test.mjs` adds the hosted deterministic guard:
+actual mounted 30/60/100/200 ordinary/coordinator Open/Closed trees, zoom/font cold
+starts, visible-slice priority, at most four probes, and constant settings reads.
+Operations and elements must each stay at or below frozen fc0dfde counts in
+`tests/fixtures/git-row-budget-baseline.json`. At 100 rows the repair uses
+30,298 operations / 3,212 elements ordinary (baseline 51,942 / 6,104) and
+29,960 / 3,209 coordinator (baseline 31,606 / 3,428). Mutation controls reject
+per-row hidden subtrees, excess probes and repeated bridge reads. This is separate
+from the historical bounded-page test below, not a substituted ten-row sample.
+
 ## Bounds and cache ownership
 
 - Coordinator Open and Closed use replacement pages of **10 presentation items**:
@@ -65,8 +104,12 @@ increase. The tool accepts `post42-no-tooltips current-no-tooltips` to repeat it
 - Native probe widths are cached by zoom, group style/kind and exact string.
   Intrinsic text widths are independent of available line width; each visible
   line still measures its current available width to select full/compact values.
-  Duplicate strings get one probe per snapshot; acknowledged strings need none.
-  Pending probes retry next snapshot, stale-context/zoom callbacks are refused,
+  Duplicate strings get one pending probe per key and at most four intrinsic
+  probes across a complete render; acknowledged strings need none. Known visible
+  ordinary rows/pins take priority, then background keys advance through native
+  callbacks without delaying rows or installing a frame timer. Settings cross the
+  bridge once per render entry, not once per row/string. Pending probes retry next
+  snapshot; stale-context/font/zoom callbacks are refused,
   and the text cache evicts beyond 512 entries. Fresh measurement IDs also force
   callbacks for changed strings with coincidentally unchanged widths, and after
   eviction; reused native IDs cannot silently suppress a needed measurement.
@@ -74,7 +117,12 @@ increase. The tool accepts `post42-no-tooltips current-no-tooltips` to repeat it
 - Immutable PR-fact identity caches the label presentation and full tooltip;
   replaced label facts invalidate it. Coordinator rows build at most three
   visible pills (and three in their one measurement strip); full names, including
-  omitted labels, remain in strip/metadata tooltips. Ordinary rows are unchanged.
+  omitted labels, remain in informative strip/metadata tooltips. Ordinary rows
+  share the same bounded cache; no individual pill measurement subtree is built.
+  Titles have no JS width/prefix measurement and always keep the full-title
+  tooltip fallback. Native title/header text uses Segoe UI at original size/weight.
+  Allocated physical widths remain keyed by element ID across text/style changes,
+  including when native size callbacks do not fire again.
 - Native interactive row objects are deliberately **not** cached across renders:
   their callbacks are registered against the current native snapshot. Reusing
   those objects would retain obsolete callback registrations. Cache pure facts

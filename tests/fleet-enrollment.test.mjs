@@ -74,7 +74,7 @@ raw='';render();assert.ok(find(tree,'git-live-ci-footer'));assert.equal(find(tre
 const longRepo='owner/a-very-long-canonical-repository-name';repositories=[longRepo];entries.set(`${longRepo}#1`,{link:{repo:longRepo},pr:null,error:'Scoped repository read failed'});render();
 const label=()=>find(tree,`task-repo-name-${context.scope}-${longRepo}`);
 const probe=()=>walk(tree).find(n=>n.attrs.id?.[0]?.startsWith(`task-repo-name-${context.scope}-${longRepo}-intrinsic-measure-`));
-assert.equal(find(tree,`task-repo-header-${longRepo}`).kids.length,2);assert.ok(label().attrs.flex_1);assert.equal(label().attrs.min_w[0],0);assert.equal(label().kids[0],longRepo);assert.ok(label().attrs.overflow_hidden);
+assert.equal(find(tree,`task-repo-header-${longRepo}`).kids.length,2);assert.ok(label().attrs.flex_1);assert.equal(label().attrs.min_w[0],0);assert.ok(label().kids[0].attrs.truncate);assert.equal(label().kids[0].kids[0],longRepo);assert.ok(label().attrs.overflow_hidden);
 assert.ok(label().kids[1].attrs.absolute);assert.ok(label().kids[1].attrs.invisible);assert.ok(probe().attrs.flex_none);assert.ok(probe().attrs.whitespace_nowrap);
 for(const scale of [0.75,1,1.25,1.3,1.5,2]){
  zoom=scale;render();const measured=probe().attrs.on_size_change[0];

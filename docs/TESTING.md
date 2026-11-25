@@ -341,28 +341,32 @@ No deployment or live label mutation is performed.
 
 `tests/git-row-tooltips.test.mjs` settles actual shared row trees at supported
 zooms, including 100% and 130%, in ordinary/coordinator live/ghost variants.
-Complete title/number/author/tasks/checks/labels/review text has no repeat-only
-item or ancestor tooltip. Compact/clipped values retain full wording; completely
+Complete number/author/tasks/checks/labels/review text has no repeat-only item or
+ancestor tooltip. Titles use the explicitly approved always-full-title fallback,
+with no title measurement or dependency on a size callback. Compact/clipped values retain full wording; completely
 hidden review/labels have a surviving hover target. Exact UTC timestamps,
 newest-workflow failing/pending check names, unstated state/conflict and known
 related-agent names remain informative. Hover adds no requests; names do not
 become action identity. Existing agent/fallback/facts fixtures protect those guards.
-Distinct title/pill strings reuse the shared 512-entry intrinsic-width cache,
-keyed by size/weight, interface font and zoom, with one pending probe per snapshot.
-Warm strings build no probe; context/zoom-stale callbacks and cache/request bounds
-are asserted. Existing palette and geometry suites no longer require unconditional
+Lower-line groups and repository headers share the 512-entry style/font/zoom
+cache, with **four intrinsic probes total per snapshot**, not per row. Known
+visible ordinary rows get priority, then native callbacks advance background
+batches without withholding rows or installing a frame timer. Titles, individual
+pills and prefix candidates add no probes. Warm strings build none. Tests cover
+100 immediately mounted ordinary rows, complete background convergence, stale
+context/font/zoom callbacks, real cache/request bounds and no recurring probes. Existing palette and geometry suites no longer require unconditional
 label/byline tooltips, while complete-panel builder/element bounds remain unchanged.
 These are synthetic native-element/layout assertions, not live hover pixels.
 
 | Item | Informative tooltip |
 | --- | --- |
-| Title | Full title only on measured overflow |
+| Title | Always the complete title: approved performance fallback, including fitting text |
 | Number | Full number only if hidden/abbreviated; normally none |
 | Author | Full login only when clipped |
 | Time | Full compact/clipped wording and known exact UTC timestamp |
 | Tasks | Full progress phrase only when compact/clipped |
 | Checks | Complete count plus known failing/pending job names; no count-only repeat |
-| Label pill | Full name when its text is clipped |
+| Label pill | Inherits the informative clipped/omitted group hover; no individual width probe |
 | Label group/metadata | Full assigned list when clipped or omitted |
 | Review | Full hidden decision, including a completely clipped value |
 | State icon | Unstated state or Merge conflicts, not an already visible state word |
@@ -377,20 +381,20 @@ metadata, byline, label-group and whole-row ancestor targets at 390px and
 
 `tests/git-row-ellipsis.test.mjs` settles 540 shared-row cases across ordinary,
 pinned, scrolling, coordinator and both ghost paths in Open/Closed/merged states,
-280–480px and 75–200% including 130%. Rendered overflow ends in literal U+2026;
-the suffix uses normal-weight Segoe UI while title content stays semibold.
-The complete suffix box stays inside the existing line, measured prefix text
-fits beside it, and wrong-glyph/vertical-clipping mutations fail. Fitting titles
-remain unchanged without a tooltip. Folded/expanded repository sections and
-ordinary repository headers share the helper and preserve their 18px text line;
-PR title lines stay 20px and blocks 74px. Unicode surrogate pairs, common combining
-marks, variation selectors, skin modifiers and ZWJ runs keep their boundaries.
-Prefix candidates use the same bounded cache, not guessed character budgets.
+280–480px and 75–200% including 130%. Native truncation supplies U+2026 in Segoe UI,
+retaining the original size/weight and 20px title/74px block geometry. There is no
+manual prefix search, candidate probe, per-character estimate or altered text
+content. Fitting titles keep the full-title fallback tooltip. Font/containment
+mutations fail. Folded/expanded repository names retain their 18px text line.
+The regression also uses changed-size-only callbacks: short-to-long edits on the
+same native ID and 200px box, font changes, and explicit zoom invalidation with
+no allocated-size callback. Native title truncation/full hover update immediately;
+lower-line/header physical widths survive by ID and re-normalize for current zoom.
 
 The opt-in Windows `tests/features/git-row-ellipsis-native.mjs --run --diagnose`
 compares native/literal U+2026 in explicit Geist, both weights, 18/20/32px lines,
 and Segoe UI at 100%/130%. Without `--diagnose`, it captures the actual packaged
-helper before/after and checks native prefix convergence. It creates only its
+native fallback before/after and asserts zero title/pill/prefix probes. It creates only its
 own disposable app home under `.artifacts/`, selects an unavailable Core binary,
 starts no terminals and never changes the live app or preferences. It kills only
 its own app process; this fixture is not a hosted test or a live deployment.
@@ -399,10 +403,31 @@ On Windows App 0.1.18 the Geist glyph forms a flat stroke in native truncation
 **and literal unclipped text**, at normal and semibold weights; a taller line
 does not fix it. This rules out a custom underscore suffix, title-only bolding
 and the fixed 20px clipping as the cause. Segoe UI renders distinct dots, so the
-fix uses that face only for the suffix after native-width prefix fitting.
-Four native diagnosis/fix captures at both requested zooms had no host errors;
+final performance repair uses that face for the title/header text at its original
+size/weight, letting native shaping truncate without JS width measurement. The
+earlier suffix-only measured-prefix implementation was rejected after its cold
+100-row native render interrupted. Native diagnosis/fix captures at both requested zooms had no host errors;
 this proves the reproduced typography mechanism, not real repository data,
 native pointer-hover behavior or other operating systems' font availability.
+
+## Cold mounted Git row budget
+
+`tests/git-row-render-budget.test.mjs` exercises actual ordinary `renderPulls`
+and a fully mounted coordinator row tree at 30/60/100/200 rows in both tabs,
+including cold zoom/interface-font changes and a scrolled-bottom viewport. It
+asserts all rows are present, at most four intrinsic probes, at most two settings
+bridge reads, and operation/element ratios no greater than the frozen fc0dfde
+baseline in `tests/fixtures/git-row-budget-baseline.json`. Mutation controls
+restore per-row subtrees/excess probes/bridge reads and must fail. The existing
+bounded coordinator-page test is separate, not substituted for the 100-row case.
+
+`tools/measure-git-row-budget.mjs --run --scrolled` is the opt-in Windows native
+gate using the same workload, three cold samples at every size, real ordinary
+loaded-list rendering and deliberately unpaged coordinator rows. It records
+baseline/current failures instead of fabricating timings, enforces baseline +2ms
+and the requested 10/17/26ms ceilings at 30/60/100, and requires every current
+200-row sample to complete. See GIT-RENDER-BUDGET.md for samples and build-only
+measurement limits. Its disposable native checker does not touch the live app.
 
 ## Coordinator render error diagnostics
 
@@ -568,10 +593,13 @@ claim that reads finished. These checks resolve synthetic boxes, not native pixe
 `node --experimental-vm-modules tests/git-row-geometry.test.mjs` resolves the actual
 shared row trees using a deterministic flex/absolute layout model with real `U`
 metrics and content-dependent text widths. It dispatches the actual native-size
-callbacks after layout (including clipped invisible natural-width probes), rerenders
-until changed-only measurements converge, and excludes invisible probe text from
-paint assertions. At 280/320/360/390/480 logical-pixel widths and 75/100/125/130/150/200%
-zoom, 56,700 comparisons protect title right edges, state/robot and whole-line
+callbacks after layout for the bounded scheduled probes, rerenders until changed-only
+measurements converge, and excludes invisible probe text from paint assertions.
+Independent full/compact natural group descriptions live only in the fixture's
+geometry oracle, not as extra production tree nodes; cold/warm actual probe counts
+are asserted separately. Tooltip/title-edit cases also support native callbacks
+that fire only when dimensions change, rather than every settlement pass. At 280/320/360/390/480 logical-pixel widths and 75/100/125/130/150/200%
+zoom, 62,100 comparisons protect title right edges, state/robot and whole-line
 boxes, line heights, 74px row heights and following-row positions across ordinary,
 pinned, scrolling, coordinator and ghost paths in Open/Closed/merged states.
 Optional agent transitions, untouched/partial/done and multi-digit tasks/checks,
@@ -586,7 +614,7 @@ including 130% zoom. Both group and trailing-pill edges remain anchored when a
 multi-label strip clips. Mutation tests reject left-aligned pills and a restored
 joining dot. Separate review-decision text yields before label words after task
 compaction; checks and compact fractions remain complete.
-Full probe widths independently determine when the complete line fits: every fitting
+Independent natural-width oracles determine when the complete line fits: every fitting
 value must remain full and unshortened. Screenshot-shaped 390px cases retain both
 2 tasks done and opened 4 hours ago at every zoom. Exact fit thresholds assert
 whole task fractions or compact times appear only on overflow and before label or

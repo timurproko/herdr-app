@@ -391,10 +391,11 @@ progress keeps its ring; completed lists keep their purple check and done label.
 All PR rows, including coordinator/fleet rows and both Open/Closed tabs, omit the
 Owner badge. Truncated PR titles, repository section names and the Git repository header end
 in one Unicode ellipsis (`…`). Geist's small-size ellipsis can paint as a flat
-stroke even when unclipped; only the suffix uses normal-weight Segoe UI, keeping
-the original title face/weight. Native-width prefix fitting shares the bounded
-cache, including distinct prefixes; there are no guessed character budgets or
-recurring per-row probes. Fitting text is unchanged. Every PR block uses the
+stroke even when unclipped. Title/header text therefore uses Segoe UI with the
+original size/weight and native truncation, avoiding title, pill and prefix
+measurement subtrees. Text content and fixed boxes stay unchanged. Titles always
+retain their full-title tooltip as an explicit performance fallback, including
+fitting titles; a title edit never waits for a resize or fit callback. Every PR block uses the
 same three fixed lines: a 20px title, an
 18px number/author/time line and an 18px metadata line, for a 74px block including
 spacing. A blank 24px robot slot keeps titles' truncation boundaries identical
@@ -420,14 +421,20 @@ as **27m ago**. If metadata still overflows, separate review-decision text yield
 first, then the bounded label group clips; checks and compact task fractions stay
 complete, without overlap or lone ellipses. Byline overflow clips secondary author
 text only after compacting time. Checks always keep their complete natural icon/count
-width, including realistic three-digit totals. Tooltips appear only when they add information: a clipped title/author/label,
-compact task/time value or hidden review/label value exposes its full original;
-fully visible text has no repeat-only tooltip. Time may add its exact UTC timestamp,
+width, including realistic three-digit totals. Lower-line tooltips appear only
+when they add information: a clipped author/label, compact task/time value or
+hidden review/label value exposes its full original. Fully visible lower-line
+text has no repeat-only tooltip; titles keep the full-title fallback above. Time may add its exact UTC timestamp,
 checks may name failing/pending jobs, the state icon explains an unstated state or
 conflict, and a related robot can identify its known agent. Parent lines do not
 repeat complete visible items. Missing facts are never invented and hover starts
-no reads. Intrinsic title/pill widths share the bounded distinct-string/style/font/
-zoom cache rather than building a hidden probe per row on every render.
+no reads. Lower-line groups and repository headers share a 512-entry
+string/style/font/zoom cache and at most **four intrinsic probes per complete
+render**, not per row. Native callbacks advance the next batches, prioritizing
+known visible ordinary rows; rows are never withheld. Title and individual pill
+measurement are absent; clipped/omitted label names are recovered by their group.
+Settings are captured once per render entry rather than crossing the host bridge
+for every string. See the mounted-row guards in [testing guidance](docs/TESTING.md).
 Late facts may move left-run neighbors, but never the pill group's right anchor,
 three line positions, 74px block height or title/robot reservation. Native post-layout measurements of
 clipped invisible probes choose shortening; there is no guessed character budget,

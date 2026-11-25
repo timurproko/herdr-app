@@ -30,6 +30,7 @@ const CI_SWEEP_WIDTH = 96;
 // than append: no amount of Show more clicks can recreate an unbounded render.
 const TASK_PAGE_SIZE = 10;
 const TEXT_CACHE_LIMIT = 512;
+const PULL_PROBE_LIMIT = 4;
 const ciPending = pr => ['open','draft'].includes(pr?.state) && pr.checks?.pending > 0;
 function find(node, id) { return node?.id === id ? node : (node?.children ?? []).map(c => find(c, id)).find(Boolean); }
 // Repository data survives agent/tab changes in the same machine and folder.
@@ -582,7 +583,7 @@ export default class Changes extends View {
 
   contentMotion(event, kind, state) {
     if (!event.bounds || !event.position) return;
-    this.scrollMotion = {kind,state,context:this.context,x:event.position.x,y:event.position.y,
+    this.scrollMotion = {kind,state,context:this.context,x:event.position.x,y:event.position.y,top:event.bounds.y,
       bottom:event.bounds.y + event.bounds.height,delta:event.delta?.y ?? 0};
   }
 
@@ -592,6 +593,8 @@ export default class Changes extends View {
     if (!motion || !event.bounds || !event.position || motion.kind !== kind || motion.state !== state
       || motion.context !== this.context || motion.x !== event.position.x || motion.y !== event.position.y) return;
     this.scrollMotion = null;
+    const step=(74+U.rowGap)*(this.pullTypography?.zoom??1),top=motion.top+(kind==='wheel'?motion.delta:0);
+    if(Number.isFinite(top)&&Number.isFinite(event.bounds.y)&&event.bounds.height>0)this.pullViewport={context:this.context,state,first:Math.max(0,Math.floor((event.bounds.y-top)/step)),count:Math.ceil(event.bounds.height/step)+1};
     if (kind === 'wheel' && motion.delta >= 0) return;
     const remaining = motion.bottom + (kind === 'wheel' ? motion.delta : 0) - event.bounds.y - event.bounds.height;
     if (remaining <= 120 && this.pageError?.state !== state) this.morePulls(state, cx);
@@ -749,92 +752,57 @@ export default class Changes extends View {
     return div().size(3).flex_none().relative().top(1.5).rounded_full().bg(t.muted);
   }
 
-  // Share intrinsic widths across rows, keyed by actual text style and zoom.
-  // Only the first occurrence of a missing string builds a probe in a snapshot.
-  textWidthKey(value, style) {
-    return `${settings().zoom > 0 ? settings().zoom : 1}\0${settings().ui_font_family??''}\0text:${style}\0${value}`;
+  // One settings bridge read and four intrinsic probes for the entire snapshot,
+  // not four per row. Native callbacks advance the next batch after layout;
+  // rows never wait for a measurement, and there is no frame timer/JS loop.
+  beginPullRender() {
+    const current=settings();
+    this.pullTypography={zoom:current.zoom>0?current.zoom:1,font:current.ui_font_family??''};
+    this.pullTextPending=new Set();this.pullProbePriority=null;this.pullForegroundPending=false;this.pullProbeOwner=null;
+    if(this.pullTextScope!==this.context) {this.pullTextRequests=new Map();this.pullTextScope=this.context;}
   }
 
-  textWidthProbe(id, value, style, build, current = () => true) {
-    this.pullTextWidths ??= new Map();this.pullTextPending ??= new Set();this.pullTextRequests ??= new Map();
-    const key=this.textWidthKey(value,style),context=this.context,zoom=settings().zoom>0?settings().zoom:1;
-    if(this.pullTextWidths.has(key)||this.pullTextPending.has(key))return null;
+  prioritizePullMeasurements(rows,pinned) {
+    const viewport=this.pullViewport;
+    if(!viewport||viewport.context!==this.context||viewport.state!==this.view)return;
+    const visible=[...(pinned?[pinned]:[]),...rows.filter(pr=>pr!==pinned).slice(viewport.first,viewport.first+viewport.count)];
+    this.pullProbePriority=new Set(visible.map(pr=>pr.key??pr.number));
+    const {zoom,font}=this.pullTypography,prefix=`${zoom}\0${font}\0`;
+    this.pullForegroundPending=visible.some(pr=>{
+      const pairs=[['number',`#${pr.number}`],...(pr.login?[['author',pr.login]]:[]),...(pr.when?[['time',pr.when],['time',pr.compactWhen]]:[]),
+        ...(pr.tasks?[['tasks',pr.tasks.label],['tasks',`${pr.tasks.done}/${pr.tasks.total}`]]:[]),...(pr.checks?[['checks',pr.checks.label]]:[]),...(pr.review?[['review',pr.review]]:[]),
+        ...(pr.labels?.length?[['labels',pr.labels.slice(0,this.context?.startsWith('tasks:')?3:Infinity).map(label=>label.name).join('\0')]]:[])];
+      return pairs.some(([kind,value])=>!this.pullTextWidths?.has(`${prefix}${kind}\0${value}`));
+    });
+  }
+
+  claimPullProbe(key) {
+    if(this.pullForegroundPending&&this.pullProbePriority&&!this.pullProbePriority.has(this.pullProbeOwner))return null;
+    this.pullTextWidths ??= new Map();this.pullTextRequests ??= new Map();this.pullTextPending ??= new Set();
+    if(this.pullTextWidths.has(key)||this.pullTextPending.has(key)||this.pullTextPending.size>=PULL_PROBE_LIMIT)return null;
     this.pullTextPending.add(key);
     let request=this.pullTextRequests.get(key);
     if(request==null) {
       request=this.pullTextSequence=(this.pullTextSequence??0)+1;this.pullTextRequests.set(key,request);
       if(this.pullTextRequests.size>TEXT_CACHE_LIMIT)this.pullTextRequests.delete(this.pullTextRequests.keys().next().value);
     }
-    return div().absolute().left(0).top(0).w(0).h(0).overflow_hidden().invisible().flex()
-      .child(build(value).id(`${id}-intrinsic-measure-${request}`).flex_none().whitespace_nowrap()
-        .on_size_change((size,cx)=>{
-          if(this.context!==context||!this.shown()||!current()||this.textWidthKey(value,style)!==key||!Number.isFinite(size.width)||this.pullTextRequests.get(key)!==request)return;
-          this.pullTextRequests.delete(key);this.pullTextWidths.set(key,size.width/zoom);
-          if(this.pullTextWidths.size>TEXT_CACHE_LIMIT)this.pullTextWidths.delete(this.pullTextWidths.keys().next().value);
-          cx.notify();
-        }));
+    return request;
   }
 
-  measuredText(id,value,{font=11,height=18,weight='normal',truncate=false,current=()=>true}={}) {
-    this.pullTextBoxes ??= new Map();
-    const style=`${font}:${weight}`,key=this.textWidthKey(value,style),context=this.context,zoom=settings().zoom>0?settings().zoom:1;
-    let sizes=this.pullTextBoxes.get(id);
-    if(sizes?.key!==key) {
-      sizes={key};this.pullTextBoxes.set(id,sizes);
-      if(this.pullTextBoxes.size>TEXT_CACHE_LIMIT)this.pullTextBoxes.delete(this.pullTextBoxes.keys().next().value);
-    }
-    const build=text=>div().text_size(font).line_height(`${height}px`).when(weight==='semibold',el=>el.font_semibold()).when(weight!=='semibold',el=>el.font_normal()).child(text);
-    const probe=this.textWidthProbe(id,value,style,build,current),natural=this.pullTextWidths.get(key);
-    const clipped=Number.isFinite(natural)&&Number.isFinite(sizes.available)&&natural>sizes.available+0.01;
-    const probes=[probe];let content=value;
-    if(truncate&&clipped) {
-      // Geist's U+2026 rasterizes as a flat stroke even without truncation or
-      // clipping. Keep the title face/weight; give only the suffix a clear face.
-      const suffixStyle=`${font}:normal:Segoe UI`,suffixKey=this.textWidthKey('…',suffixStyle);
-      const suffix=text=>div().text_size(font).line_height(`${height}px`).font_family('Segoe UI').font_normal().child(text);
-      probes.push(this.textWidthProbe(`${id}-ellipsis`,'…',suffixStyle,suffix,current));
-      const suffixWidth=this.pullTextWidths.get(suffixKey);
-      let prefix=value;
-      if(Number.isFinite(suffixWidth)) {
-        const fitKey=`${key}\0${sizes.available}\0${suffixWidth}`;
-        if(sizes.fit?.key!==fitKey) {
-          const parts=[];
-          for(const point of Array.from(value)) {
-            const code=point.codePointAt(0),last=parts.at(-1);
-            if(last&&(/[\u0300-\u036f\u1ab0-\u1aff\u1dc0-\u1dff\u20d0-\u20ff\ufe00-\ufe0f\ufe20-\ufe2f\u200d]/u.test(point)||last.endsWith('\u200d')||(code>=0x1f3fb&&code<=0x1f3ff)))parts[parts.length-1]+=point;
-            else parts.push(point);
-          }
-          sizes.fit={key:fitKey,parts,low:0,high:parts.length};
-        }
-        const fit=sizes.fit,available=Math.max(0,sizes.available-suffixWidth);
-        while(fit.high-fit.low>1) {
-          const mid=Math.floor((fit.low+fit.high)/2),candidate=fit.parts.slice(0,mid).join(''),width=this.pullTextWidths.get(this.textWidthKey(candidate,style));
-          if(!Number.isFinite(width)) {probes.push(this.textWidthProbe(`${id}-prefix`,candidate,style,build,current));break;}
-          if(width<=available+0.01)fit.low=mid;else fit.high=mid;
-        }
-        if(fit.high-fit.low<=1)prefix=fit.parts.slice(0,fit.low).join('').trimEnd();
-      }
-      content=h_flex().w_full().min_w(0).h(height).items_center()
-        .child(div().flex_1().min_w(0).h(height).whitespace_nowrap().overflow_hidden().child(prefix))
-        .child(suffix('…').id(`${id}-ellipsis`).h(height).flex_none());
-    }
-    return div().id(id).min_w(0).h(height).relative().overflow_hidden().text_size(font).line_height(`${height}px`)
-      .when(weight==='semibold',el=>el.font_semibold()).when(weight!=='semibold',el=>el.font_normal())
-      .on_size_change((size,cx)=>{
-        if(this.context!==context||!this.shown()||!current()||this.textWidthKey(value,style)!==key||this.pullTextBoxes.get(id)!==sizes||!Number.isFinite(size.width))return;
-        const width=size.width/zoom;if(Math.abs((sizes.available??-1)-width)<0.01)return;
-        sizes.available=width;cx.notify();
-      })
-      .when(clipped,el=>el.tooltip(value))
-      .whitespace_nowrap().child(content).children(probes.filter(Boolean));
+  // Native Segoe UI truncation has a readable U+2026 without measuring full
+  // titles or candidate prefixes. The approved full-title tooltip fallback is
+  // intentional, including fitting titles; only title/header face changes.
+  pullTitle(id,value,font=U.font,height=20) {
+    return div().id(id).min_w(0).h(height).truncate().line_height(`${height}px`)
+      .font_family('Segoe UI').text_size(font).tooltip(value).child(value);
   }
 
-  labelPill(t, label, id, probe = false) {
+  labelPill(t, label, id) {
     const {background,foreground,border} = labelColors(t,label.color);
     // Border-box: 4px padding + 1px border preserves the original 5px inset.
     return h_flex().id(id).flex_none().min_w(0).max_w_full().h(18).px(4).border_1().border_color(border).rounded_full()
       .items_center().overflow_hidden().bg(background).text_color(foreground)
-      .child((probe?div().min_w(0).h(18).child(label.name):this.measuredText(`${id}-text`,label.name)).whitespace_nowrap());
+      .child(div().min_w(0).overflow_hidden().whitespace_nowrap().child(label.name));
   }
 
   // Natural-width runs, with an optional right-anchored final group. Native
@@ -847,17 +815,21 @@ export default class Changes extends View {
     this.pullTextWidths ??= new Map();
     this.pullTextPending ??= new Set();
     this.pullTextRequests ??= new Map();
-    const zoom = settings().zoom > 0 ? settings().zoom : 1;
+    if(!this.pullTypography)this.beginPullRender();
+    const {zoom,font}=this.pullTypography;
+    if(Number.isFinite(sizes.availablePhysical))sizes.available=sizes.availablePhysical/zoom;
     const context = this.context;
-    const textKey = (item, short) => `${zoom}\0${settings().ui_font_family??''}\0${item.kind}\0${short ? item.compactKey : item.measureKey}`;
-    const keyed = this.context?.startsWith('tasks:') && items.every(item => item.measureKey != null);
+    const textKey = (item, short) => `${zoom}\0${font}\0${item.kind}\0${short ? item.compactKey : item.measureKey}`;
+    const keyed = items.every(item => item.measureKey != null);
     for (const item of items) for (const short of [false, ...(item.compact ? [true] : [])]) {
       const name = `${item.kind}-${short ? 'compact' : 'full'}`;
       if (keyed) sizes[name] = this.pullTextWidths.get(textKey(item, short));
     }
     const measure = (name, size, cx) => {
-      if (this.context !== context || !this.shown() || !Number.isFinite(size.width) || (settings().zoom > 0 ? settings().zoom : 1) !== zoom) return;
+      const live=settings();
+      if (this.context !== context || !this.shown() || !Number.isFinite(size.width) || (live.zoom > 0 ? live.zoom : 1) !== zoom || (live.ui_font_family??'')!==font) return;
       const width = size.width / zoom;
+      if(name==='available')sizes.availablePhysical=size.width;
       if (Math.abs((sizes[name] ?? -1) - width) < 0.01) return;
       sizes[name] = width; this.pullLineSizes.set(id, sizes); cx.notify();
     };
@@ -905,23 +877,15 @@ export default class Changes extends View {
     if(hidden.length)line.tooltip(hidden.join('\n'));
     const probes = div().id(`${id}-probes`).absolute().left(0).top(0).w(0).h(0).overflow_hidden().invisible()
       .text_size(11).line_height('18px')
-      .children(items.flatMap(item => [false, ...(item.compact ? [true] : [])].flatMap(short => {
-        const key = keyed ? textKey(item, short) : null;
-        if (key && (this.pullTextWidths.has(key) || this.pullTextPending.has(key))) return [];
-        let measurement;
-        if (key) {
-          this.pullTextPending.add(key);
-          measurement=this.pullTextRequests.get(key);
-          if (measurement == null) {
-            measurement=this.pullTextSequence=(this.pullTextSequence??0)+1;
-            this.pullTextRequests.set(key,measurement);
-            if (this.pullTextRequests.size>TEXT_CACHE_LIMIT) this.pullTextRequests.delete(this.pullTextRequests.keys().next().value);
-          }
-        }
+      .children(this.pullTextPending.size>=PULL_PROBE_LIMIT?[]:items.flatMap(item => [false, ...(item.compact ? [true] : [])].flatMap(short => {
+        const key = keyed ? textKey(item, short) : `${zoom}\0${font}\0${id}\0${item.kind}\0${short}`;
+        const measurement=this.claimPullProbe(key);
+        if(measurement==null)return [];
         return [h_flex().absolute().left(0).top(0).child(item.render(short, true).flex_none()
           .id(`${id}-probe-${item.kind}-${short ? 'compact' : 'full'}${key ? `-measure-${measurement}` : ''}`)
           .on_size_change((size, cx) => {
-            if (this.context !== context || !this.shown() || !Number.isFinite(size.width) || (settings().zoom > 0 ? settings().zoom : 1) !== zoom) return;
+            const live=settings();
+            if (this.context !== context || !this.shown() || !Number.isFinite(size.width) || (live.zoom > 0 ? live.zoom : 1) !== zoom || (live.ui_font_family??'')!==font) return;
             if (key) {
               if (this.pullTextRequests.get(key)!==measurement) return;
               this.pullTextRequests.delete(key);
@@ -948,7 +912,9 @@ export default class Changes extends View {
   }
 
   pullRow(t, pr, ghost = false) {
-    return this.renderPart(`pull-row:${pr.key??pr.number}`,()=>this.renderPullRow(t,pr,ghost));
+    const previous=this.pullProbeOwner;this.pullProbeOwner=pr.key??pr.number;
+    try{return this.renderPart(`pull-row:${pr.key??pr.number}`,()=>this.renderPullRow(t,pr,ghost));}
+    finally{this.pullProbeOwner=previous;}
   }
 
   renderPullRow(t, pr, ghost = false) {
@@ -992,7 +958,7 @@ export default class Changes extends View {
       }}] : []),
       ...(pr.review ? [{kind:'review', measureKey:pr.review, tooltip:pr.review === 'approved' ? 'Approved' : 'Changes requested', render:(_short, probe) => text('review', pr.review === 'approved' ? 'Approved' : 'Changes requested', probe).text_color(pr.review === 'approved' ? t.ansi2 : t.ansi1)}] : []),
       ...(labels.length ? [{kind:'labels', trailing:true, tooltip:labelNames, omitted:(pr.labels?.length??0)>labels.length, measureKey:labels.map(label=>label.name).join('\0'), render:(_short, probe) => h_flex().id(groupId('labels', probe)).min_w(0).h(18).gap(4).items_center().justify_end().overflow_hidden()
-        .children(labels.map((label, index) => this.labelPill(t, label, `${groupId('label', probe)}-${index}`,probe)))}] : []),
+        .children(labels.map((label, index) => this.labelPill(t, label, `${groupId('label', probe)}-${index}`)))}] : []),
     ], ['review', 'labels']);
     // Spaces' row padding (8) minus its trailing pill margin (5) leaves 3px inside the highlight.
     return h_flex().id(`${prefix}pr-${rowId}`).relative().w_full().h(74).min_h(74).max_h(74).flex_none().pl(8).pr(3).py(6).gap(U.gap).items_start().rounded(U.radius)
@@ -1004,7 +970,7 @@ export default class Changes extends View {
       .child(div().id(`${prefix}pr-state-slot-${rowId}`).w(U.icon).h(20).flex_none().flex().items_center().child(this.pullIcon(t, pr)))
       .child(v_flex().flex_1().min_w(0).gap(3)
         .child(h_flex().id(`${prefix}pr-title-line-${rowId}`).w_full().min_w(0).h(20).min_h(20).max_h(20).flex_none().gap(4).items_center().line_height('20px')
-          .child(this.measuredText(`${prefix}pr-title-${rowId}`,pr.title,{font:U.font,height:20,weight:'semibold',truncate:true}).flex_1().text_color(t.foreground))
+          .child(this.pullTitle(`${prefix}pr-title-${rowId}`,pr.title).flex_1().font_semibold().text_color(t.foreground))
           .child(div().id(`${prefix}pr-agent-slot-${rowId}`).w(U.insetControl).h(20).flex_none().relative()
             .when(Boolean(agentButton), el => el.child(agentButton))))
         .child(byline.line).child(meta.line))
@@ -1033,11 +999,13 @@ export default class Changes extends View {
   }
 
   renderPulls(t) {
+    this.beginPullRender();
     const state = this.view, list = this.pulls[state], {liveRows,active} = this.pullSelection();
     this.pinMotion?.active(this.context,state);
     this.pinMotion?.resolve(location().terminal,active?.number,this.agentResolved === agentKey(location()));
     const retained = this.pinMotion?.current;
     const rows = retained?.snapshot.rows ?? liveRows, pinned = retained ? retained.snapshot.pinned : active;
+    this.prioritizePullMeasurements(rows,pinned);
     this.pullPresentation = {context:this.context,state,rows,pinned};
     const swap = retained && retained.phase !== 'waiting' ? retained : null;
     const settled = this.pinMotion?.settled(this.context,state,pinned?.number);
@@ -1102,8 +1070,30 @@ export default class Changes extends View {
   }
 
   repositoryNameLabel(repo,scope) {
-    return this.measuredText(`task-repo-name-${scope}-${repo}`,repo,{font:U.meta,height:18,truncate:true,
-      current:()=>(this.aggregate?.currentContext?.({presentation:true})??this.aggregate?.context)?.scope===scope&&(!this.aggregate?.repositories||this.aggregate.repositories().includes(repo))}).flex_1();
+    if(!this.pullTypography)this.beginPullRender();
+    this.repositoryNameSizes ??= new Map();
+    const id=`task-repo-name-${scope}-${repo}`,{zoom}=this.pullTypography,key=`${zoom}\0header:${U.meta}:Segoe UI\0${repo}`,context=this.context;
+    let sizes=this.repositoryNameSizes.get(id);
+    if(!sizes) {sizes={};this.repositoryNameSizes.set(id,sizes);if(this.repositoryNameSizes.size>TEXT_CACHE_LIMIT)this.repositoryNameSizes.delete(this.repositoryNameSizes.keys().next().value);}
+    sizes.key=key; // Text/style invalidation never discards the ID's allocated physical width.
+    const current=()=>this.context===context&&this.shown()&&(this.aggregate?.currentContext?.({presentation:true})??this.aggregate?.context)?.scope===scope&&(!this.aggregate?.repositories||this.aggregate.repositories().includes(repo));
+    const request=this.claimPullProbe(key),natural=this.pullTextWidths.get(key);
+    return div().id(id).flex_1().min_w(0).h(18).relative().overflow_hidden().font_family('Segoe UI').text_size(U.meta).line_height('18px')
+      .on_size_change((size,cx)=>{
+        const live=settings();if(!current()||(live.zoom>0?live.zoom:1)!==zoom||!Number.isFinite(size.width))return;
+        if(Math.abs((sizes.available??-1)-size.width)<0.01)return;
+        sizes.available=size.width;cx.notify();
+      })
+      .when(Number.isFinite(natural)&&Number.isFinite(sizes.available)&&natural>sizes.available/zoom+0.01,el=>el.tooltip(repo))
+      .child(div().truncate().child(repo))
+      .when(request!=null,el=>el.child(div().absolute().left(0).top(0).w(0).h(0).overflow_hidden().invisible().flex()
+        .child(div().id(`${id}-intrinsic-measure-${request}`).flex_none().whitespace_nowrap().child(repo)
+          .on_size_change((size,cx)=>{
+            const live=settings();if(!current()||(live.zoom>0?live.zoom:1)!==zoom||!Number.isFinite(size.width)||this.pullTextRequests.get(key)!==request)return;
+            this.pullTextRequests.delete(key);this.pullTextWidths.set(key,size.width/zoom);
+            if(this.pullTextWidths.size>TEXT_CACHE_LIMIT)this.pullTextWidths.delete(this.pullTextWidths.keys().next().value);
+            cx.notify();
+          }))));
   }
 
   repositorySection(t, {repo, rows, error}, scope) {
@@ -1164,9 +1154,7 @@ export default class Changes extends View {
   }
 
   renderAggregate(cx,t) {
-    // Dedupe only within this snapshot; unacknowledged probes retry next frame.
-    this.pullTextPending = new Set();
-    if (this.pullTextScope!==this.context) {this.pullTextRequests=new Map();this.pullTextScope=this.context;}
+    this.beginPullRender();
     const aggregate=this.aggregate,counts=aggregate.counts(),scope=aggregate.context.scope;
     const hasInventory=[...aggregate.entries.values()].some(e=>e.pr),verifying=aggregate.context.stale && !hasInventory;
     const verificationHint='Fleet status is unverified; actions are paused until fresh verification' + (aggregate.context.verification
@@ -1232,7 +1220,7 @@ export default class Changes extends View {
   }
 
   render(cx) {
-    this.pullTextPending = new Set();
+    this.beginPullRender();
     // QuickJS's deadline interrupt is deliberately uncatchable. A surviving
     // marker on the next attempt is evidence of an aborted frame, not its cause.
     if(this.renderAttempt) console.error('[custom-changes] previous render did not complete',JSON.stringify({component:this.renderComponent??'panel',view:this.view,error:'Native interruption or aborted render; consult the host error banner/log for the exact error'}));
@@ -1278,7 +1266,7 @@ export default class Changes extends View {
         })
         .child(sidebarTitle(t, 'changes', 'git-title'))
         .child(h_flex().id('git-repo-slot').flex_1().min_w(0).pr(U.insetControl * toolCount + 4 * (toolCount - 1) + 16 - U.gutter).items_center()
-          .when(Boolean(this.root && this.repo?.url && this.repo?.name), el=>el.child(this.measuredText('git-repo-name',this.repo.name.split('/').at(-1),{font:U.meta,height:18,truncate:true}).max_w_full().flex_shrink(1)
+          .when(Boolean(this.root && this.repo?.url && this.repo?.name), el=>el.child(this.pullTitle('git-repo-name',this.repo.name.split('/').at(-1),U.meta,18).max_w_full().flex_shrink(1)
             .text_color(t.dim).tooltip(this.repo.url))))
         .child(reveal(headerTools(h_flex()).id('git-actions').bg(t.surface), this.headerHovered)
           .when(Boolean(this.root), el => el.child(refreshButton(t, { id: 'git-refresh', icon: 'mods/custom-changes/refresh.svg', label: 'Refresh', busy, spinning: Boolean(this.root), owner: this, scope: this.context,

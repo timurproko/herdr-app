@@ -20,24 +20,41 @@ export async function rowHarness({host={},modules={}}={}) {
       'enrollment-picker.js':{EnrollmentPicker:class{}},'panel-pin.js':{panelPin:element},'sidebar-title.js':{sidebarTitle:element},
       'panel-state.js':{changePanel(){}},'settings-dialog.js':{openSettings(){}},'panel-kit.js':{headerTool:element,contextMenu:element,panelMessage:element},...modules},
     entry:'export {default as Main} from "./main.js"; export * as facts from "./pulls.js"; export {U} from "./ui.js"; export {AggregatePulls} from "./aggregate.js";'});
-  const panel=new Main();panel.resetRepository();panel.root='/repo';panel.repo={name:'owner/repo'};panel.context=JSON.stringify(['/repo',null]);panel.view='open';panel.foldedRepositories=new Set();
+  const panel=new Main();let lineInputs=new Map();const pullLine=panel.pullLine;
+  panel.pullLine=function(t,id,items,order){lineInputs.set(id,items);return pullLine.call(this,t,id,items,order);};
+  panel.resetRepository();panel.root='/repo';panel.repo={name:'owner/repo'};panel.context=JSON.stringify(['/repo',null]);panel.view='open';panel.foldedRepositories=new Set();
   panel.agentLinks={related:()=>agent?{key:'agent',address:'t2'}:null};
   panel.aggregate={context:{scope:'home'},target:()=>agent?{terminal:'t2'}:null,focus:(...args)=>focus.push(args)};
   const cx={focus_handle(){if(rendering)throw Error('focus handle during render');return {};},notify(){if(rendering)throw Error('notify during render');},stop_propagation(){},spawn:fn=>fn(cx)};
-  const render=fn=>{panel.pullTextPending=new Set();rendering=true;try{return fn();}finally{rendering=false;}};
-  const settle=(build,width,zoom=1,height)=>{
+  const render=fn=>{lineInputs=new Map();panel.beginPullRender?.();panel.pullTextPending??=new Set();rendering=true;try{return fn();}finally{rendering=false;}};
+  const nativeSizes=new Map();
+  const settle=(build,width,zoom=1,height,changedOnly=false)=>{
     // Native post-layout callbacks, not render-time heuristics. Include hidden
     // intrinsic probes; visible text assertions below exclude their paint.
     for(let pass=0;pass<20;pass++) {
       const tree=render(build),geometry=rowGeometry(tree,width,zoom,height);let changed=false;
       for(const node of nodes(tree))if(/pr-(?:byline|meta|title|label)-|^task-repo-name-|^git-repo-name/.test(node.attrs?.id?.[0]??'')) {
-        const callback=node.attrs.on_size_change?.[0];if(callback)callback(geometry.get(node),{...cx,notify(){changed=true;}});
+        const callback=node.attrs.on_size_change?.[0];if(callback) {
+          const size=geometry.get(node),id=node.attrs.id[0],before=nativeSizes.get(id);
+          nativeSizes.set(id,{width:size.width,height:size.height});
+          if(!changedOnly||!before||Math.abs(before.width-size.width)>0.01||Math.abs(before.height-size.height)>0.01)callback(size,{...cx,notify(){changed=true;}});
+        }
       }
-      if(!changed)return {tree,geometry};
+      if(!changed) {
+        // Independent natural-width oracle, not extra nodes/probes in the
+        // production tree. Scheduled native probes are globally capped at four.
+        geometry.intrinsic=new Map();
+        for(const [id,items]of lineInputs)for(const item of items)for(const short of [false,...(item.compact?[true]:[])]) {
+          const key=`${id}-probe-${item.kind}-${short?'compact':'full'}`,node=item.render(short,true).flex_none().id(key);
+          const oracle=element().flex().text_size(11).line_height('18px').child(node),box=rowGeometry(oracle,10000,zoom).get(node);
+          geometry.intrinsic.set(key,{node,width:box.width,kind:item.kind,short,line:id});
+        }
+        return {tree,geometry};
+      }
     }
     throw Error('Natural row layout must converge without a measurement/render loop');
   };
-  return {panel,facts,U,AggregatePulls,cx,render,settle,focus,place,setAgent:value=>{agent=value;},setZoom:value=>{zoom=value;},setFont:value=>{font=value;}};
+  return {panel,facts,U,AggregatePulls,cx,render,settle,settleChanged:(build,width,zoom=1,height)=>settle(build,width,zoom,height,true),focus,place,setAgent:value=>{agent=value;},setZoom:value=>{zoom=value;},setFont:value=>{font=value;}};
 }
 
 // Deterministic flex/absolute box model for these real render trees, not GPUI
