@@ -306,6 +306,20 @@ remain separately authorized live/disposable-native validation. No suite install
 into the person's app, activates migration variables, restarts a process or runs
 live SSH/Core operations. See [ownership and limits](PALETTE.md).
 
+### Merged 0.1.18 stop-gap reference
+
+The 0.1.18 stop-gap extends the same real-stock suite to pinned LF and independently
+verified Windows CRLF originals, release-specific selection, 0.1.17-to-0.1.18
+masked/reset upgrades and current-original restoration. Real native and Custom
+manifest readers/catalogs are compared on sorted/hidden/unreadable/malformed
+metadata, missing targets, canonical duplicates, argument validation, Mod grouping,
+object/index hotkeys, explicit/default clones and targeted dispatch. Usage is
+checked enabled/disabled/default in the new variant. All three replacement
+payloads run the shared UI VM fixture, including fixed 408px/57px geometry,
+command-only paging, native wheel ownership, scrollbar ranges and complete
+search/clear resets. Read-only installed Windows byte evidence and absent live
+interaction proof are in HERDR-0.1.18-PALETTE-REVIEW.md.
+
 ## Git PR label facts
 
 Pull facts, pagination, fleet and webhook fixtures cover assigned label names/colours
