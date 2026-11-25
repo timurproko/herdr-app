@@ -32,6 +32,28 @@ Until owned-palette migration, reviewed opted-in stock SHALL retain Custom styli
 - **THEN** Custom presentation and safe routing return while native manifest contributions, argument validation, deduplication, shortcut matching and explicit clone arguments remain available
 - **AND** 0.1.17 continues selecting its own reviewed replacement
 
+#### Scenario: Native 0.1.18 manifest contributions
+- **WHEN** reviewed 0.1.18 stock is replaced and installed mods provide palette metadata
+- **THEN** the palette retains native asynchronous manifest discovery, the Mod group, required-argument and target validation, canonical deduplication and object or index-shorthand hotkey matching
+- **AND** malformed or unreadable contributions, missing mod entrypoints and invalid foreign mod commands are skipped with native semantics
+- **AND** dynamic themes, entry IDs, history and explicit clone arguments retain their native behavior
+
+#### Scenario: Custom 0.1.18 presentation and Usage policy
+- **WHEN** the 0.1.18 palette opens in Custom
+- **THEN** it retains the live theme and selection tint, shared search/clear/empty presentation, fixed 408px skin and 57px search header, pinned group or result count, overflow fade and keyboard/scroll navigation
+- **AND** searching and clearing reset selection, scroll and heading/fade state
+- **AND** the Usage entry is available only while its plugin is enabled, without deleting stored preferences when disabled
+
+#### Scenario: Explicit 0.1.18 command arguments
+- **WHEN** a manifest palette entry supplies explicit tab or space rename, pane/tab/space close, or clone arguments
+- **THEN** activation preserves those arguments instead of replacing them with untargeted Custom handlers or default clone sources
+- **AND** untargeted built-in entries retain Custom inline rename and last-tab-aware close routing, and Settings, picker, machine and worktree destinations retain Custom routing
+
+#### Scenario: Existing 0.1.17 support after the rebase
+- **WHEN** the installed native palette matches either reviewed 0.1.17 newline format
+- **THEN** it still selects the unchanged 0.1.17 replacement rather than the new 0.1.18 variant
+- **AND** capable newer hosts are not refused solely for lacking review-list membership, while unknown native palette bytes still fail closed
+
 ## ADDED Requirements
 
 ### Requirement: Custom-owned command palette
