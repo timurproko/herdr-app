@@ -706,17 +706,21 @@ export default class Changes extends View {
       .child(svg('mods/custom-changes/merge-conflict.svg').size(U.icon).text_color(t.ansi1));
     const asset = pr.state === 'merged' ? 'git-merge' : pr.state === 'closed' ? 'git-pull-request-closed' : 'git-pull-request';
     const color = pr.state === 'merged' ? t.ansi5 : pr.state === 'closed' ? t.ansi1 : pr.state === 'draft' ? t.dim : t.ansi2;
-    return svg(`mods/custom-changes/${asset}.svg`).size(U.icon).flex_none().text_color(color);
+    const stated=pr.when?.startsWith(`${pr.state} `);
+    return svg(`mods/custom-changes/${asset}.svg`).size(U.icon).flex_none().text_color(color)
+      .when(!stated,el=>el.tooltip(pr.state==='draft'?'Draft pull request':pr.state==='open'?'Open pull request':pr.state==='merged'?'Merged pull request':'Closed pull request'));
   }
 
   agentButton(t, pr, interactive = true) {
     if(pr.key) {
       const target=this.aggregate?.target(pr),scope=this.aggregate?.context?.scope;
+      const name=target?this.agentLinks?.displayName?.(target.terminal):null;
       return target ? div().id(`${interactive ? '' : 'swap-'}pr-agent-${pr.key}`).absolute().left(0).top((20-U.insetControl)/2)
         .size(U.insetControl).flex_none().flex().items_center().justify_center().rounded(U.insetRadius).text_color(t.foreground)
         .when(interactive, el=>el.cursor_pointer().role('button').accessibility_label(`Open related agent for ${pr.repo} #${pr.number}`)
           .hover(s=>s.bg(subtleActionFill(t))).on_mouse_down('left',(_e,cx)=>cx.stop_propagation())
           .on_click((_e,cx)=>{cx.stop_propagation();this.aggregate.focus(pr,target,scope);}))
+        .when(Boolean(name),el=>el.tooltip(`Open agent: ${name}`))
         .child(svg('icons/agent.svg').size(U.icon)) : null;
     }
     const agent = this.agentLinks?.related(pr, this.repo?.name, location().terminal);
@@ -746,6 +750,7 @@ export default class Changes extends View {
                 {source:location().terminal,target:current.address,folder:folderKey(current),repo},cx)) cx.notify();
             run('agent.focus', {terminal:current.address});
           }))
+        .when(Boolean(agent.displayName),el=>el.tooltip(`Open agent: ${agent.displayName}`))
         .child(svg('icons/agent.svg').size(U.icon).flex_none().text_color(t.foreground)));
   }
 
@@ -783,7 +788,7 @@ export default class Changes extends View {
     const {background,foreground,border} = this.rowPresentations.labelStyle(t,label.color,labelColors);
     // Border-box: 4px padding + 1px border preserves the original 5px inset.
     return h_flex().id(id).flex_none().min_w(0).max_w_full().h(18).px(4).border_1().border_color(border).rounded_full()
-      .items_center().overflow_hidden().bg(background).text_color(foreground).tooltip(label.name)
+      .items_center().overflow_hidden().bg(background).text_color(foreground)
       .child(div().min_w(0).overflow_hidden().whitespace_nowrap().child(label.name));
   }
 
@@ -818,8 +823,11 @@ export default class Changes extends View {
       .on_size_change((size, cx) => measure('available', size, cx))
       .children(visible.flatMap((index, at) => {
         const item=items[index];
+        const hidden=compact.has(item.kind)||(ready&&widths[index]+0.01<sizes[`${item.kind}-full`])||item.omitted;
+        const tooltip=item.info||(hidden?item.tooltip:null);
         const node = item.render(compact.has(item.kind), false).flex_none()
-          .when(ready && clipOrder.includes(item.kind), el => el.w(widths[index]));
+          .when(ready && clipOrder.includes(item.kind), el => el.w(widths[index]))
+          .when(Boolean(tooltip),el=>el.tooltip(tooltip));
         // The flexible slot owns only the free space, never the task/check
         // cells. There is one normal gap, but no dot, before assigned labels.
         if (item.trailing) return [h_flex().id(`${id}-right`).flex_1().min_w(0).h(18).justify_end().overflow_hidden().child(node)];
@@ -827,6 +835,8 @@ export default class Changes extends View {
       }));
     // These absolute invisible children are outside the visible run, so their
     // text never adds a line, gap, hover target or horizontal reservation.
+    const hidden=items.filter((item,index)=>item.omitted||(ready&&widths[index]===0)).map(item=>item.tooltip).filter(Boolean);
+    if(hidden.length)line.tooltip(hidden.join('\n'));
     const pending = items.flatMap(item => [false, ...(item.compact ? [true] : [])].flatMap(short => {
         const key = keyed ? textKey(item, short) : null;
         if (key && (this.pullTextWidths.has(key) || this.pullTextPending.has(key))) return [];
@@ -883,33 +893,30 @@ export default class Changes extends View {
     this.rowPresentations ??= new RowPresentations();
     const {facts:presentation,id:groupId}=this.rowPresentations.get(pr,this.context?.startsWith('tasks:')?3:Infinity,ghost);
     const {labels,labelNames}=presentation;
-    const text = (kind, value, tooltip, probe) => div().id(groupId(kind, probe)).min_w(0).h(18)
-      .overflow_hidden().whitespace_nowrap().tooltip(tooltip).child(value);
+    const text = (kind, value, probe) => div().id(groupId(kind, probe)).min_w(0).h(18)
+      .overflow_hidden().whitespace_nowrap().child(value);
     const byline = this.pullLine(t, `${prefix}pr-byline-${rowId}`, [
-      {kind:'number', measureKey:presentation.number, render:(_short, probe) => text('number', presentation.number, pr.meta ?? '', probe)},
-      ...(pr.login ? [{kind:'author', measureKey:pr.login, render:(_short, probe) => text('author', pr.login, pr.meta ?? '', probe)}] : []),
-      ...(pr.when ? [{kind:'time', measureKey:pr.when, compactKey:pr.compactWhen, compact:true, render:(short, probe) => text('time', short ? pr.compactWhen : pr.when, pr.meta ?? '', probe)}] : []),
+      {kind:'number', measureKey:presentation.number, tooltip:presentation.number, render:(_short, probe) => text('number', presentation.number, probe)},
+      ...(pr.login ? [{kind:'author', measureKey:pr.login, tooltip:pr.login, render:(_short, probe) => text('author', pr.login, probe)}] : []),
+      ...(pr.when ? [{kind:'time', measureKey:pr.when, compactKey:pr.compactWhen, compact:true, tooltip:pr.when, info:presentation.timeInfo, render:(short, probe) => text('time', short ? pr.compactWhen : pr.when, probe)}] : []),
     ], ['author']);
-    byline.line.tooltip(pr.meta ?? '');
     const meta = this.pullLine(t, `${prefix}pr-meta-${rowId}`, [
-      ...(pr.tasks ? [{kind:'tasks', measureKey:pr.tasks.label, compactKey:presentation.taskFraction, compact:true, render:(short, probe) => h_flex().id(groupId('tasks', probe)).min_w(0).h(18).gap(4).items_center()
-        .tooltip(pr.tasks.label).child((probe ? div().size(U.tinyIcon) : this.taskIcon(t, pr.tasks)).id(groupId('task-icon', probe)).flex_none().relative().top(1))
+      ...(pr.tasks ? [{kind:'tasks', measureKey:pr.tasks.label, compactKey:presentation.taskFraction, compact:true, tooltip:pr.tasks.label, render:(short, probe) => h_flex().id(groupId('tasks', probe)).min_w(0).h(18).gap(4).items_center()
+        .child((probe ? div().size(U.tinyIcon) : this.taskIcon(t, pr.tasks)).id(groupId('task-icon', probe)).flex_none().relative().top(1))
         .child(div().flex_none().whitespace_nowrap().child(short ? presentation.taskFraction : pr.tasks.label))}] : []),
-      ...(pr.checks ? [{kind:'checks', measureKey:pr.checks.label, render:(_short, probe) => {
+      ...(pr.checks ? [{kind:'checks', measureKey:pr.checks.label, tooltip:pr.checks.label, info:presentation.checkInfo, render:(_short, probe) => {
         const color = pr.checks.state === 'success' ? t.ansi2 : pr.checks.state === 'failure' ? t.ansi1 : t.ansi3;
         const icon = pr.checks.state === 'success' ? svg('mods/custom-workspace-chrome/check.svg').size(U.tinyIcon).text_color(color)
           : pr.checks.state === 'failure' ? svg('mods/custom-workspace-chrome/x.svg').size(U.tinyIcon).text_color(color)
           : div().size(8).rounded_full().bg(color);
-        return h_flex().id(groupId('checks', probe)).h(18).gap(4).items_center().tooltip(pr.checks.label)
+        return h_flex().id(groupId('checks', probe)).h(18).gap(4).items_center()
           .child(div().id(groupId('check-icon', probe)).size(U.tinyIcon).flex_none().relative().top(1).flex().items_center().justify_center().child(icon.flex_none()))
           .child(div().flex_none().whitespace_nowrap().underline().child(pr.checks.label));
       }}] : []),
-      ...(pr.review ? [{kind:'review', measureKey:pr.review, render:(_short, probe) => text('review', presentation.review, presentation.review, probe).text_color(pr.review === 'approved' ? t.ansi2 : t.ansi1)}] : []),
-      ...(labels.length ? [{kind:'labels', trailing:true, measureKey:presentation.labelKey, render:(_short, probe) => h_flex().id(groupId('labels', probe)).min_w(0).h(18).gap(4).items_center().justify_end().overflow_hidden()
-        .tooltip(labelNames)
+      ...(pr.review ? [{kind:'review', measureKey:pr.review, tooltip:presentation.review, render:(_short, probe) => text('review', presentation.review, probe).text_color(pr.review === 'approved' ? t.ansi2 : t.ansi1)}] : []),
+      ...(labels.length ? [{kind:'labels', trailing:true, tooltip:labelNames, omitted:presentation.omittedLabels, measureKey:presentation.labelKey, render:(_short, probe) => h_flex().id(groupId('labels', probe)).min_w(0).h(18).gap(4).items_center().justify_end().overflow_hidden()
         .children(labels.map((label, index) => this.labelPill(t, label, `${groupId('label', probe)}-${index}`)))}] : []),
     ], ['review', 'labels']);
-    meta.line.tooltip(presentation.tooltip);
     // Spaces' row padding (8) minus its trailing pill margin (5) leaves 3px inside the highlight.
     return h_flex().id(`${prefix}pr-${rowId}`).relative().w_full().h(74).flex_none().pl(8).pr(3).py(6).gap(U.gap).items_start().rounded(U.radius)
       .when(!ghost, el => el.cursor_pointer().role('button').accessibility_label(presentation.accessibility)

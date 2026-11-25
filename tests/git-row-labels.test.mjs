@@ -92,12 +92,12 @@ for(t.background of ['#191d28','#ffffff','#191d28'])for(zoom of [0.75,1,1.25,1.3
   assert.ok(right.attrs.flex_1 && right.attrs.justify_end);assert.equal(right.kids.length,1,'No dot before labels');
   assert.equal(meta.attrs.h[0],18);assert.equal(meta.attrs.min_w[0],0);assert.equal(meta.attrs.flex_wrap,undefined);assert.ok(meta.attrs.overflow_hidden);
   const strip=find(row,`${prefix}pr-labels-${id}`);assert.equal(strip.attrs.min_w[0],0);assert.equal(strip.attrs.h[0],18);assert.ok(strip.attrs.flex_none);assert.equal(strip.attrs.flex_grow,undefined);assert.ok(strip.attrs.overflow_hidden);
-  assert.equal(strip.attrs.tooltip[0],labels.map(l=>l.name).join('\n'));
-  assert.ok(meta.attrs.tooltip[0].includes(strip.attrs.tooltip[0]),'Completely clipped strips retain full labels in the metadata hover target');
+  assert.equal(strip.attrs.tooltip,undefined,'Unmeasured complete labels have no repeat-only group hover');
+  assert.equal(meta.attrs.tooltip,undefined,'The metadata parent cannot repeat complete visible facts');
   for(const [index,label] of labels.entries()) {
     const pill=find(row,`${prefix}pr-label-${id}-${index}`);
     const [color,darkText,lightText,lightBorder]=colorCases.find(([color])=>color===`#${label.color}`),dark=t.background!=='#ffffff';
-    assert.equal(text(pill),label.name);assert.equal(pill.attrs.tooltip[0],label.name);assert.equal(pill.attrs.bg[0],dark?`${color}2e`:color);
+    assert.equal(text(pill),label.name);assert.equal(pill.attrs.tooltip,undefined);assert.equal(pill.attrs.bg[0],dark?`${color}2e`:color);
     assertColor(pill.attrs.text_color[0],dark?darkText:lightText);assertColor(pill.attrs.border_color[0],dark?`${darkText}4d`:lightBorder);
     assert.equal(pill.attrs.h[0],18);assert.ok(pill.attrs.border_1);assert.ok(pill.attrs.rounded_full);
     assert.equal(pill.attrs.px[0]+1,5,'Border plus padding retains the original content inset/width');
@@ -122,7 +122,7 @@ for(t.background of ['#191d28','#ffffff','#191d28'])for(zoom of [0.75,1,1.25,1.3
   panel.metaSeparator=()=>{const dot=separator.call(panel,t);delete dot.attrs.relative;delete dot.attrs.top;return dot;};
   const before=panel.pullRow(t,pr,ghost);
   panel.metaSeparator=separator;
-  const geometry=node=>JSON.stringify(node,(key,value)=>typeof value==='function'?'callback':value);
+  const geometry=node=>JSON.stringify(node,(key,value)=>typeof value==='function'?'callback':key==='kids'?value.filter(child=>!child?.attrs?.invisible):value);
   const normalized=JSON.parse(geometry(row));
   for(const dot of [...find(normalized,`${prefix}pr-byline-${id}`).kids.filter(n=>!n.attrs.id),...find(normalized,`${prefix}pr-meta-${id}`).kids.filter(n=>!n.attrs.id)]) {
     delete dot.attrs.relative;delete dot.attrs.top;

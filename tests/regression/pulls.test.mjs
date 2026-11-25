@@ -71,7 +71,7 @@ const action=(name,id,conclusion='SUCCESS',workflowName='Validation',status='COM
 const oldRun=[action('readiness',100),action('matrix.label',100,'SKIPPED'),action('old required gate',100,'SKIPPED')];
 const currentRun=Array.from({length:14},(_,i)=>action(i===0?'readiness':`job ${i}`,101,i<9?'SUCCESS':'', 'Validation',i<9?'COMPLETED':'IN_PROGRESS'));
 const otherWorkflows=[action('archive',90,'SKIPPED','Archive'),action('policy',99,'SUCCESS','Policy'),action('finalize',98,'SUCCESS','Finalization')];
-const currentChecks={ok:12,bad:0,pending:5,total:17,label:'12/17',state:'pending'};
+const currentChecks={ok:12,bad:0,pending:5,total:17,label:'12/17',state:'pending',details:Array.from({length:5},(_,i)=>`Pending: Validation / job ${i+9}`).sort()};
 assert.deepEqual(m.checks([...oldRun,...currentRun,...otherWorkflows]),currentChecks,'Superseded workflow-only jobs must not inflate the GitHub count');
 assert.deepEqual(m.checks([...otherWorkflows,...currentRun,...oldRun].reverse()),currentChecks,'Input order does not choose the current workflow run');
 assert.equal(m.checks([action('obsolete failure',100,'FAILURE'),action('replacement',101)]).state,'success','A removed old job cannot keep the current workflow red');

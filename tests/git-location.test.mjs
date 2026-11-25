@@ -336,7 +336,7 @@ for (const url of ['https://github.com/example/xrbuild','https://github.com/exam
     assert.equal(findId(tree,'git-actions').attrs.opacity[0],hovered?1:0,'Header controls still reveal together');
     assert.equal(findId(tree,'git-repo'),undefined,'The old PR-link icon has been removed');
     const repoLabel=findId(tree,'git-repo-name');assert.deepEqual(repoLabel.kids,['xrbuild']);assert.equal(repoLabel.attrs.tooltip[0],url,'The repository label tooltip is its full GitHub URL');
-    assert.ok(repoLabel.attrs.truncate);assert.ok(repoLabel.attrs.max_w_full);assert.equal(findId(tree,'git-repo-slot').attrs.tooltip,undefined,'Only the intrinsic label owns the tooltip, not the tools rail');
+    assert.ok(repoLabel.attrs.truncate);assert.equal(repoLabel.attrs.font_family,undefined,'Repository header inherits the interface font unchanged');assert.ok(repoLabel.attrs.max_w_full);assert.equal(findId(tree,'git-repo-slot').attrs.tooltip,undefined,'Only the intrinsic label owns the tooltip, not the tools rail');
     assert.ok(findId(tree,'git-pin'),'Pin replaces the old tool');
     assert.equal(header.attrs.on_mouse_down[0],'right');
     oldHeaderClick=header.attrs.on_mouse_down[1];

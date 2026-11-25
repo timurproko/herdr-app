@@ -77,6 +77,43 @@ builder render, not later layout/paint or live input latency. No watchdog is cha
   peaks at 13,767/20,000 builder operations and 1,696/8,000 elements; each PR stays
   below 125 elements.
 
+## Informative-tooltip delta against merged main
+
+After merging #56/#59/#70, #61 takes main's renderer for all non-tooltip behavior.
+Its earlier measurement scheduler/cache work is removed. Tooltip eligibility reads
+main's existing full/compact/clipped decisions and adds **zero intrinsic probes or
+native elements**. Main's dot +1px, icon +1px, reveal/caps, fades and quiet/batched
+read paths are unchanged. Titles retain native truncation and full-title hover.
+
+`tools/measure-git-row-budget.mjs --run` compares main `f3fe341a3d1bf9fdeffea66c13adca91f7549e9a`
+with the merged tooltip code on Windows App 0.1.18. Five fresh cold samples per
+cell alternate main/current order. The coordinator uses real `taskSections`,
+`revealMore` and `renderAggregate`, not a manually constructed row subtree: all
+30/60 requested rows are revealed and actually mounted, within the unchanged
+production cap. Ordinary uses real `renderPulls`. Every sample completed.
+
+| Fully mounted mode/rows | Main samples, ms | Tooltip samples, ms | Median delta |
+| --- | --- | --- | ---: |
+| Ordinary 30 | 10, 11, 10, 11, 10 | 11, 12, 9, 11, 11 | +1 ms |
+| Ordinary 60 | 21, 21, 21, 24, 21 | 21, 20, 22, 21, 21 | 0 ms |
+| Coordinator 30 | 7, 8, 7, 7, 7 | 8, 8, 9, 8, 7 | +1 ms |
+| Coordinator 60 | 17, 14, 17, 15, 15 | 16, 16, 18, 15, 16 | +1 ms |
+
+Every paired current sample and every median is at most main +2ms. This times
+cold JS/native-element tree construction at 1ms resolution, not subsequent
+layout/paint or live input latency. Results and logs are under
+`.artifacts/git-row-render-budget/main-mounted-results.json`. No watchdog,
+production row cap or reveal behavior is changed to satisfy the comparison.
+
+`tests/git-row-render-budget.test.mjs` covers both tabs and 100%/130% zoom using
+actual ordinary/coordinator rendering. Frozen main counts in
+`tests/fixtures/git-row-budget-baseline.json` require equal elements/probes and
+at most two additional decoration operations per row. 100/200 coordinator
+inventories must still mount only main's 60-row safe batch. The fixture does not
+claim a capped batch is a fully mounted 100/200-row measurement. Mutation controls
+reject a new subtree or measurement probe. The existing mounted/reveal regression
+above remains the authority for scrolling and cap correctness.
+
 ## Native geometry and derived fades
 
 `SidebarScrollState.setMetrics` atomically replaces a private frozen snapshot
