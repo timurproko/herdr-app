@@ -44,6 +44,38 @@ test('workflow ignores label-only changes and preserves other PR triggers and su
   assert.match(workflow, /cancel-in-progress: true/);
 });
 
+test('review label additions call only the separate advisory workflow', () => {
+  const workflow = readFileSync(new URL('../.github/workflows/review-labels.yml', import.meta.url), 'utf8');
+  assert.equal(workflow.trim(), `# Copy to .github/workflows/review-labels.yml; keep delivery/test callers free of label events.
+name: Review labels
+
+on:
+  pull_request_target:
+    types: [labeled]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  review-labels:
+    uses: timurproko/MyWorkflows/.github/workflows/review-labels.yml@main
+    secrets:
+      app_id: \${{ vars.DELIVERY_BOT_APP_ID }}
+      app_private_key: \${{ secrets.DELIVERY_BOT_PRIVATE_KEY }}`);
+  const delivery = readFileSync(new URL('../.github/workflows/delivery.yml', import.meta.url), 'utf8');
+  const types = delivery.match(/types: \[([^\]]+)\]/)?.[1].split(',').map(type => type.trim());
+  assert.deepEqual(types, ['opened', 'synchronize', 'ready_for_review', 'converted_to_draft', 'reopened', 'edited', 'closed']);
+});
+
+test('protection adds the advisory caller without changing required checks or existing policy', () => {
+  const declarations = JSON.parse(readFileSync(new URL('../.github/protection.json', import.meta.url), 'utf8'));
+  assert.deepEqual(declarations, [
+    { kind: 'default-branch', checks: ['CI required'], mergeMethods: ['squash'], linearHistory: true },
+    { kind: 'workflow-events', workflows: ['.github/workflows/delivery.yml', '.github/workflows/review-labels.yml'], events: ['pull_request_target', 'workflow_dispatch'] },
+  ]);
+});
+
 test('workflow keeps draft suites and aggregate disabled and checks both platforms', () => {
   const workflow = readFileSync(new URL('../.github/workflows/tests.yml', import.meta.url), 'utf8');
   assert.match(workflow, /if: needs\.readiness\.outputs\.ready == 'true'/);
