@@ -735,6 +735,17 @@ Shown Open/Draft PRs and uncovered pending/unknown checks SHALL refresh state an
 - **THEN** the next successful fallback cycle reads its current state alongside checks and reconciles its row and totals
 - **AND** settlement alone cannot leave it indefinitely in Open after closure
 
+#### Scenario: Coordinator viewport selection
+- **WHEN** a coordinator safety cycle selects eligible PRs
+- **THEN** every revealed PR in an unfolded section of the selected tab is eligible, including rows below or above the visible viewport
+- **AND** unrevealed rows, folded sections and the other tab remain excluded
+- **AND** scroll input itself starts no inventory read or immediate extra probe, while ordinary safety selection stays unchanged
+
+#### Scenario: Window changes during a safety request
+- **WHEN** reveal, fold, tab, context or relevant inventory changes supersede a held safety selection, including changing away and back
+- **THEN** its reply is rejected by the captured selection generation
+- **AND** moving only the native viewport within an unchanged revealed selection does not invalidate that selection or change its normal cadence
+
 ### Requirement: Completion-driven Git checks freshness
 A shown, enabled Git panel with an enrolled repository and healthy relay SHALL refresh loaded PR state and checks from authoritative GitHub reads after relevant events, including events during an in-flight refresh. Reconnect and reopening SHALL catch up. The app SHALL retain latest-workflow/rerun semantics with a 120-second shown-open safety net and document latency dependencies and conditions that retain stale facts.
 
@@ -901,13 +912,34 @@ Caught Git render failures SHALL log the actual error text and innermost failing
 - **AND** healthy repository rows and section notices retain their ordinary presentation
 
 ### Requirement: Bounded coordinator render work
-Coordinator Open and Closed presentation SHALL use replacement pages of at most ten inventory presentation items including headers, notices and PRs. Continuation headers MAY repeat. Paging SHALL preserve full linked-PR counts, folds, inventory and action authority without starting reads or appending an unbounded native tree.
+Coordinator Open and Closed SHALL reveal ten presentation items initially and append ten near the bottom while keeping every revealed unfolded row of the selected mounted batch present. There SHALL be no viewport spacers or replacement-page footer. Pure row/measurement caches SHALL keep native render work within measured budgets; if 200 mounted rows exceed about 35ms, a measured safe cap SHALL use only one quiet end Show more row. Revealing SHALL start no GitHub inventory read.
+
+#### Scenario: Native scrolling without a JavaScript event
+- **WHEN** a native scrollbar drag, track click or keyboard action moves through the revealed content without a JavaScript callback
+- **THEN** the viewport shows real mounted rows, never an empty virtual spacer
+- **AND** totals still cover the complete inventory and enrollment stays outside the scroller
+
+#### Scenario: Incremental reveal and fitting content
+- **WHEN** the list nears its bottom on a received wheel, pointer-over-list or size event, or a post-batch layout check finds that it does not yet overflow
+- **THEN** another ten known presentation items are revealed until content overflows, the inventory ends or the measured safe cap is reached
+- **AND** dragging to the bottom without an observable event reveals the next batch on the next received event, not through a claimed scrollbar observer
+
+#### Scenario: Atomic section reveal
+- **WHEN** a reveal or safe-cap boundary would end with an unfolded repository header
+- **THEN** the header is held for the next batch with at least its first row or visible notice, never rendered alone
+- **AND** after every reveal and state transition each rendered unfolded header has a row or visible notice beneath it
+- **AND** sections with no eligible row or notice in the selected tab disappear after rows move tabs, expire or are authoritatively absent, while intentionally folded eligible sections keep their headers
 
 #### Scenario: Long Closed inventory
-- **WHEN** a coordinator has one hundred eligible Closed PRs across repositories
-- **THEN** each render builds only its bounded page and Previous or Show more makes every PR reachable
-- **AND** page controls and enrollment remain outside the page-specific scrolling viewport
-- **AND** a deterministic regression enforces a fixed builder-operation ceiling and bounded native elements per PR
+- **WHEN** complete coordinator render builds are measured for 30, 60, 100 and 200 mounted PRs
+- **THEN** measurements report actual built counts, cold/warm scope and any chosen cap, targeting below 20ms at 100 rows
+- **AND** deterministic regressions bound per-row and mounted-tree operations/elements instead of asserting the obsolete viewport-window ceiling
+
+#### Scenario: Measured safe mounted batch
+- **WHEN** 200 mounted PR rows exceed the measured safe native build budget
+- **THEN** each mounted batch is capped at 60 PRs and 100 presentation items, with one quiet end Show more control and no page counter or Previous control
+- **AND** the control advances the batch, cycling the final batch back to the first so earlier rows remain reachable
+- **AND** excess arrivals at a full row cap wait for a free slot or explicit batch cycle instead of evicting already revealed PRs
 
 #### Scenario: Repeated row text and labels
 - **WHEN** coordinator rows share natural-width metadata strings
@@ -918,8 +950,19 @@ Coordinator Open and Closed presentation SHALL use replacement pages of at most 
 
 #### Scenario: Snapshot-safe row caching
 - **WHEN** unchanged PR facts are rendered again
-- **THEN** pure presentation and text measurements may be reused while interactive native elements register callbacks in the current snapshot
-- **AND** native measurements are reported with their scope rather than claimed as live desktop paint or click latency
+- **THEN** pure facts, strings, styles and text measurements may be reused while native elements and callbacks register in the current snapshot
+- **AND** native build timings are not claimed as live desktop paint or input latency
+
+#### Scenario: Refresh or appended facts while scrolled
+- **WHEN** known rows arrive or same-context facts refresh
+- **THEN** the surviving row anchor, folded sections, full counts and fixed row geometry are retained
+- **AND** accepted native anchor requests unconditionally request a subsequent layout, even when both fade flags are unchanged
+- **AND** a genuine context change cannot inherit incompatible facts or scroll requests
+
+#### Scenario: Ordinary pins and older rows
+- **WHEN** ordinary Git loads another cursor page, refreshes an expanded list or resolves an older active PR
+- **THEN** its existing pagination, pinned row, no-jump row geometry and pin-motion behavior remain intact
+- **AND** the shared scroll hints do not replace its existing explicit load or retry control
 
 ### Requirement: Coherent pull request state transitions
 Every successful row refresh SHALL read authoritative Open/Draft/Merged/Closed state with checks. Ordinary and coordinator views SHALL reconcile tab membership, state presentation and totals without duplicate identities or a clear-to-empty intermediate frame. Failed reads SHALL preserve last-good facts. Coordinator counts SHALL remain task-scoped; ordinary counts SHALL remain repository-wide.
@@ -967,3 +1010,21 @@ Ordinary and coordinator Git panels SHALL align repository section headers, noti
 - **WHEN** either Git view shows repository sections, read notices, Loading or empty feedback, scroll fades or an enrollment banner
 - **THEN** each uses the same left and right outer content-column edges as the row highlights, including both ordinary and coordinator enrollment banners
 - **AND** existing feedback semantics, enrollment actions, pagination, scrolling and vertical geometry remain unchanged
+
+### Requirement: Shared Git scroll edge hints
+Ordinary and coordinator Git lists SHALL reuse Spaces/Agents passive fade rendering and a pure scroll-metrics projection. At render, fades SHALL use the native scroll handle's actual offset, viewport and content. Fades SHALL disappear at their respective ends and never intercept input. Host-consumed scrollbar movement MAY delay their repaint until another event/render; this limitation SHALL be stated, not hidden by a guessed scroll observer.
+
+#### Scenario: Start, middle and end
+- **WHEN** a render samples either native list at its start, middle or final end
+- **THEN** only the bottom fade appears at an overflowing start, both appear in the middle and only the top fade appears at the end
+- **AND** fitting content shows neither fade and gradients retain the shared 40px height, scrollbar clearance and list background
+
+#### Scenario: Layout and input changes
+- **WHEN** scrollbar dragging or a track click changes the retained handle without invalidating JavaScript
+- **THEN** mounted content stays visible and the next render/event samples its real position
+- **AND** documented fade/reveal latency explicitly acknowledges the missing notification path without introducing polling
+
+#### Scenario: Accepted anchor correction
+- **WHEN** a same-height refresh queues a native anchor correction while the viewport remains in the middle or reaches an end
+- **THEN** it requests a repaint unconditionally after queuing the correction and rejects obsolete requests
+- **AND** geometry and fade flags remain coherent through the shared atomic projection without render-time notifications or focus allocation

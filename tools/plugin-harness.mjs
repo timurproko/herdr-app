@@ -11,9 +11,12 @@ import { pluginLayout, indexSource, whereSource } from './plugins.mjs';
 // | 'src/path.js' }. entry: module source placed at the mod's root.
 export async function loadMod({ host, modules = {}, entry, mod = 'custom-settings', globals = {}, root = project }) {
   const config = JSON.parse(fs.readFileSync(path.join(root, 'customization.json'), 'utf8'));
-  const { ids, files } = pluginLayout(root, config);
+  const { ids, files, modFiles } = pluginLayout(root, config);
   const context = vm.createContext({ console, ...globals });
-  const sources = new Map(files.map(f => [f.rel, fs.readFileSync(path.join(root, f.source), 'utf8')]));
+  const prefix = `mods/${mod}/`;
+  const sources = new Map([...files.map(f => [f.rel, f.source]),
+    ...modFiles.filter(f=>f.dest.startsWith(prefix)).map(f=>[f.dest.slice(prefix.length),f.source])]
+    .map(([rel,source])=>[rel,fs.readFileSync(path.join(root,source),'utf8')]));
   sources.set('plugins/index.js', indexSource(ids));
   sources.set('plugins/where.js', whereSource(mod));
   const synthetic = values => new vm.SyntheticModule(Object.keys(values), function () {
@@ -24,9 +27,18 @@ export async function loadMod({ host, modules = {}, entry, mod = 'custom-setting
   const HOST = ['exec', 'hc', 'window', 'spaces', 'panes', 'terminals', 'machines', 'shared', 'setShared', 'appHome', 'readTextFile', 'writeTextFile', 'notify', 'layout', 'run', 'checking'];
   const cache = new Map([['host.js', synthetic({ ...Object.fromEntries(HOST.map(n => [n, stub(n)])), checking:()=>true, ...host })]]);
   cache.set('websocket', synthetic({ WebSocket:{ connect:stub('WebSocket.connect') } }));
-  for (const [name, value] of Object.entries(modules)) {
+  for (let [name, value] of Object.entries(modules)) {
     if (typeof value === 'string') sources.set(name, fs.readFileSync(path.join(root, value), 'utf8'));
-    else cache.set(name, synthetic(value));
+    else {
+      // Shared passive scroll decorations use these value builders. Individual
+      // fixtures can override them when asserting native gradient/path details.
+      if(name==='gpui-kit') {
+        let pathBuilder;pathBuilder=new Proxy({},{get:(_o,key)=>key==='build'?()=>({}):()=>pathBuilder});
+        value={Background:{linear_gradient:()=>({color_space(){return this;}})},...value,
+          PathBuilder:{fill:()=>pathBuilder,...value.PathBuilder}};
+      }
+      cache.set(name, synthetic(value));
+    }
   }
   const load = rel => {
     if (!cache.has(rel)) {

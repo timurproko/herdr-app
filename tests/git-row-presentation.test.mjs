@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {RowPresentations} from '../src/plugins/git/mod/row-presentation.js';
+import {rowHarness,find,t} from './support/git-row.mjs';
+const cache=new RowPresentations(),pr={key:'owner/repo#1',number:1,title:'First',meta:'Full byline',login:'author',when:'opened now',compactWhen:'now',review:'approved',labels:[{name:'UI',color:'0075ca'}],tasks:{done:1,total:2,label:'1 of 2 tasks'},checks:{state:'success',label:'11/11'}};
+const first=cache.get(pr,3),again=cache.get(pr,3);assert.equal(first.facts,again.facts);assert.equal(first.id('title'),again.id('title'));assert.match(cache.get(pr,3,true).id('title'),/^swap-/);
+pr.tasks.done=2;pr.tasks.label='2 tasks done';assert.notEqual(cache.get(pr,3).facts,first.facts);assert.equal(cache.get(pr,3).facts.taskFraction,'2/2');
+const previous=cache.get(pr,3).facts;pr.when='opened later';assert.notEqual(cache.get(pr,3).facts,previous);
+let calls=0;const build=()=>{calls++;return {background:'fixture'};};assert.equal(cache.labelStyle(t,'0075ca',build),cache.labelStyle(t,'0075ca',build));assert.equal(calls,1);cache.labelStyle({...t,background:'#fff'},'0075ca',build);assert.equal(calls,2);
+const items=[{kind:'time',measureKey:'long',compactKey:'short',compact:true}],sizes={available:40,'time-full':70,'time-compact':20};
+const layout=cache.layout('line',sizes,items,[]);assert.ok(layout.compact.has('time'));assert.equal(cache.layout('line',sizes,items,[]),layout);sizes.available=100;assert.notEqual(cache.layout('line',sizes,items,[]),layout);
+const h=await rowHarness(),row=h.facts.pullRow({number:1,title:'Snapshot',state:'OPEN',author:{login:'author'}},'owner');
+const a=h.render(()=>h.panel.pullRow(t,row)),b=h.render(()=>h.panel.pullRow(t,row));
+assert.notEqual(find(a,'pr-1'),find(b,'pr-1'));assert.notEqual(find(a,'pr-1').attrs.on_click[0],find(b,'pr-1').attrs.on_click[0],'Native callbacks register anew despite fact memoisation');
+console.log('PASS pure row fact/ID/style/layout memoisation, invalidation and fresh native snapshot callbacks');

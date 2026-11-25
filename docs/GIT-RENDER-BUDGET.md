@@ -1,91 +1,117 @@
-# Coordinator Git render budget
+# Coordinator Git mounted-render budget
 
-The host has a 50 ms render/layout watchdog. Building every recorded Closed row
-was unbounded in inventory size. PR #42 added natural-width measurement probes;
-it materially increased that cost, but the reported live `interrupted` banner
-has **not** been reproduced by the disposable native checker. PR #39's fixed
-row geometry alone is not established as the introducing cause of that banner.
+## Correctness before virtualization
 
-## Measurements
+Herdr's native scrollbar can drag or track-click without delivering a JavaScript
+scroll notification. A spacer window can therefore expose blank space. Coordinator
+Git no longer virtualizes: every revealed row in an unfolded section stays mounted.
+Wheel, thumb drag, track click and keyboard scroll always traverse real content.
 
-`node tools/measure-git-render.mjs` builds the real packaged coordinator renderer
-inside the installed native QuickJS/GPUI checker with a disposable app home under
-`.artifacts/`. No live app, Core, GitHub, account, deployment or restart is involved.
-Fixtures contain two repositories, a historical read notice, merged/unmerged
-Closed rows, robots on every third row, tasks, checks, two pills and reviews.
-Each cell below is five separate cold native checks on Windows / Herdr 0.1.18.
-Times use native `Date.now()` (1 ms resolution); do not interpret sub-ms averages
-as that much stopwatch precision. Raw per-row durations are saved in
-`.artifacts/git-render-native/results.json` and the individual check logs.
+The list reveals ten presentation items initially, then ten more on a received
+near-bottom wheel, pointer-over-list or size event. An unfolded boundary header
+waits for its first row or visible notice on the next reveal; empty sections never
+consume a presentation slot. Intentional folds keep their eligible headers. A guarded one-shot post-batch
+layout check fills a viewport that still does not overflow; it is not polling.
+Consumed native scrollbar input can delay reveal until the next received event.
 
-| Source | 30 inventory rows: ms samples | Mean | 60 inventory rows: ms samples | Mean |
-|---|---|---:|---|---:|
-| Before #42 (`70fd212^`) | 4, 4, 4, 4, 4 | 4.0 | 7, 9, 8, 7, 7 | 7.6 |
-| After #42 (`70fd212`) | 6, 7, 7, 9, 8 | 7.4 | 14, 15, 15, 14, 15 | 14.6 |
-| Prior repair head, unbounded (`025e191`) | 8, 7, 9, 7, 7 | 7.6 | 15, 15, 16, 16, 15 | 15.4 |
-| Bounded page + distinct-string probes | 2, 3, 2, 2, 2 | 2.2 | 3, 2, 2, 3, 3 | 2.6 |
+## Measured safe cap
 
-The new fixture builds seven PR rows, two headers and one notice on its first
-page, regardless of whether inventory has 30, 60 or 100 rows. Across these checks
-its entire render callback is 2–3 ms, well below the requested 20 ms build target.
-**Scope:** this times the complete JS render callback including native element
-builder calls, not subsequent snapshot conversion, GPUI layout/paint, real data
-arrival, live tab-click latency or a loaded desktop's scheduling. All native
-checks passed; they do not establish the live application's exact frame time or
-reproduce its interruption. No native watchdog was changed or bypassed.
+The rich fixture includes two repositories, a notice, 74px Closed rows, robots,
+tasks, checks, two labels and review decisions. Uncapped native measurements show
+27.8ms cold / 24.4ms warm at 100 mounted rows. **The below-20ms target at 100
+mounted rows was not met.** Cold 200 rows interrupted in all five attempts;
+warm 200 rows averaged 45.8ms. Complete current samples (milliseconds):
 
-### Breakdown (mean ms, inclusive where indicated)
+| Mounted PRs | Cold samples | Warm pure-cache samples |
+| --- | --- | --- |
+| 30 | 7, 9, 8, 8, 9 (mean 8.2) | 7, 8, 8, 7, 5 (mean 7.0) |
+| 60 | 15, 16, 15, 14, 14 (mean 14.8) | 15, 14, 16, 15, 13 (mean 14.6) |
+| 100 | 27, 31, 28, 27, 26 (mean 27.8) | 27, 24, 24, 24, 23 (mean 24.4) |
+| 200 | interrupted ×5 (no complete sample) | 47, 46, 48, 43, 45 (mean 45.8) |
 
-| Component | #42: 30 / 60 rows | Bounded: 30 / 60 inventory |
-|---|---:|---:|
-| All row trees, inclusive | 6.8 / 14.2 | 1.4 / 2.0 |
-| Mean per actually built row | 0.227 / 0.237 | 0.200 / 0.286 |
-| Visible natural-width runs | 2.4 / 5.4 | 0.6 / 0.4 |
-| Invisible probes | 3.4 / 6.0 | 0.2 / 0.4 |
-| Remaining row shell/title/state/robot | 1.0 / 2.8 | 0.6 / 1.2 |
-| Pills (included in runs/probes, not additive) | 1.2 / 1.0 | below timer resolution |
-| Headers/history notice/chrome, outside rows | 0.6 / 0.4 | 0.8 / 0.6 |
+Pretending that a window solves the host notification gap is not acceptable.
 
-A differential native check with all tooltip registrations removed measured
-#42's total at 6.8 / 14.4 ms (versus 7.4 / 14.6), and the bounded version at
-2.0 / 2.4 ms (versus 2.2 / 2.6). Tooltip deltas are at the timer/noise floor;
-measurement probes, not tooltips or the history notice, dominate the observed
-increase. The tool accepts `post42-no-tooltips current-no-tooltips` to repeat it.
+The measured safe fallback is **60 mounted PR rows**, with an additional
+**100-presentation-item** ceiling for header/notice-heavy inventories. Native
+60-row builds are 13–16ms (14.8ms cold / 14.6ms warm means). The actual capped
+200-inventory/60-mounted workload completes in 16, 15, 16, 16, 17ms (mean 16.0),
+including its Show more row. At the cap, the only paging control is a
+quiet **Show more** row at the list end. It replaces the mounted batch with the
+next batch, initially revealing ten items there. The last batch's same control
+cycles back to the first batch, so earlier rows remain reachable without a page
+counter, Previous button or separate footer. This intentional batch change starts
+at the top; refreshes and appends within a batch keep native scroll/row anchors.
+Whole-inventory counts and enrollment are independent of the batch. Safety
+selection has a separate identity generation: geometry-only projection rebuilds
+retain held reads, while reveal, fold clicks (even away-and-back before render),
+tab/home changes and changed revealed identities reject obsolete replies. At a full row
+cap, excess new arrivals wait for a freed slot or an explicit batch cycle instead
+of evicting already revealed PRs. Deleted tails retain the last surviving anchor.
 
-## Bounds and cache ownership
+`tools/measure-git-render.mjs current` deliberately bypasses the runtime cap to
+measure complete 30/60/100/200-row renders. `GIT_NATIVE_WARM=1` first builds an
+untimed snapshot to warm pure fact/style/layout caches; native width probes remain
+pending unless the native host has acknowledged them. Both modes create fresh
+native trees/callbacks. `GIT_NATIVE_CAPPED=1` separately measures 200 known PRs
+with the real runtime cap and end control. A 200-row native interruption is recorded as such, never
+reported as a successful full build. Raw series are under
+`.artifacts/git-render-native/mounted-{cold,warm}-results.json` with individual logs.
+Timings use native Date.now at 1ms resolution and include the complete JS/native
+builder render, not later layout/paint or live input latency. No watchdog is changed.
 
-- Coordinator Open and Closed use replacement pages of **10 presentation items**:
-  headers, notices and PRs all count. A continued repository repeats its header.
-  Previous / Show more change only the visible slice, never fetch or append.
-  Page-specific native scroll IDs start each replacement at the top. The page
-  controls and enrollment footer remain outside scrolling content.
-- Counts, inventory, notices, webhook updates, folds and worker authority keep
-  their existing meaning. Open/Closed pages are independent and home-scoped.
-  Folds apply before paging; collapsed repositories cost one header each.
-- Native probe widths are cached by zoom, group style/kind and exact string.
-  Intrinsic text widths are independent of available line width; each visible
-  line still measures its current available width to select full/compact values.
-  Duplicate strings get one probe per snapshot; acknowledged strings need none.
-  Pending probes retry next snapshot, stale-context/zoom callbacks are refused,
-  and the text cache evicts beyond 512 entries. Fresh measurement IDs also force
-  callbacks for changed strings with coincidentally unchanged widths, and after
-  eviction; reused native IDs cannot silently suppress a needed measurement.
-  No guessed text-width budgets.
-- Immutable PR-fact identity caches the label presentation and full tooltip;
-  replaced label facts invalidate it. Coordinator rows build at most three
-  visible pills (and three in their one measurement strip); full names, including
-  omitted labels, remain in strip/metadata tooltips. Ordinary rows are unchanged.
-- Native interactive row objects are deliberately **not** cached across renders:
-  their callbacks are registered against the current native snapshot. Reusing
-  those objects would retain obsolete callback registrations. Cache pure facts
-  and measurements, and bound fresh row builds instead. No IO, JSON serialization
-  of PR inventories, focus allocation or notification is added to render.
+## Cache ownership and deterministic regression
 
-`tests/git-panel-errors.test.mjs` exercises 100 Closed PRs, including a 100-label
-PR, with a fixed **10,000 builder-operation / 1,200 element** ceiling, at most ten
-PRs per page and fewer than 125 elements per PR. Observed peak was **2,750**
-operations including the page-specific scroll-frame wrapper.
-It visits every page, proves every PR remains reachable, checks independent tabs,
-unchanged IO/counts, cached/distinct-string probes, zoom invalidation and stale
-callbacks. Existing 47,250 geometry comparisons and label-colour tests remain.
-This deterministic regression is the CI budget gate, not a flaky wall-clock test.
+- `RowPresentations` weakly memoizes pure row facts, formatted text, accessibility
+  strings, label names/keys and semantic IDs, with mutable-fixture invalidation.
+  Palette-dependent label styles and measured metadata layout decisions have
+  bounded caches. Native interactive elements and event handlers are never cached.
+- #45's bounded distinct-string native widths and immutable label presentation
+  stay intact. At most three coordinator pills render; full names remain in
+  tooltips. Empty probe containers are omitted. Fixed h/flex-none boxes retain
+  geometry without redundant min/max refinements.
+- The mounted regression traverses 100 inventory rows across capped batches,
+  proves every revealed row remains present independent of scroll offset, and
+  enforces the measured row/item cap, bounded per-row elements and a batch-sized
+  operation/element ceiling. The obsolete 1,200-element viewport-window ceiling
+  does not describe a mounted 60-row tree. The current 100-inventory-row traversal
+  peaks at 13,767/20,000 builder operations and 1,696/8,000 elements; each PR stays
+  below 125 elements.
+
+## Native geometry and derived fades
+
+`SidebarScrollState.setMetrics` atomically replaces a private frozen snapshot
+computed by the pure `scrollMetrics` function. Geometry/extent/fade fields are
+getter-only. Rendering reads the actual native handle's logical offset, viewport
+and content sizes and projects them into the shared passive 40px fades. No
+render-time notify/focus allocation or new observer is introduced.
+
+A consumed scrollbar event can move native content without invalidating the JS
+snapshot. Fades may therefore lag until the next render or received wheel/pointer/
+size event. Real rows remain visible throughout. Hosts without the position-query
+methods retain the existing event-bounds hint fallback; no observer is invented. Native scrollbar-to-bottom reveal
+happens on that next received event; it is not claimed to occur while the host is
+silently consuming the drag.
+
+An accepted anchor correction queues `scroll_to_item` and requests a repaint
+unconditionally, not only when an edge changes. Equal-height refreshes in the
+middle and at the bottom have size-change-only regressions; stale scopes reject
+queued requests. A one-pixel marker preserves anchors and never replaces content.
+
+## Measurement lifetime audit
+
+- Notice measurement IDs include text/width/zoom and owner identity; equal-height
+  text replacements remeasure, while returning measured keys retain correct heights.
+- Ordinary physical viewport measurements outlive tab/context state. Content
+  measurement IDs renew on activation/zoom. Old-activation/zoom replies are rejected.
+- Coordinator owners renew measurement IDs on home-away-home; unchanged physical
+  frame sizes stay valid through zoom. Render-time actual-handle reads correct
+  cached position without relying on another native size event.
+- Repository-name available/natural probes renew when a pruned cache reappears;
+  stale-owner/zoom callbacks cannot overwrite replacement facts.
+- Pin body raw dimensions normalize at the current zoom; unchanged data retains
+  geometry identity. A returning pin gets a fresh reveal ID.
+- PR line/probe caches retain per-native-ID geometry and keyed zoom/style/text
+  widths; requests renew after reset/eviction and reject stale callbacks.
+- CI sweep and pin-swap arming already use monotonic IDs/current-object guards.
+  Enrollment/choice menus/count badges and label/ring/fade paths do not discard
+  native dimension caches requiring an unobservable callback.

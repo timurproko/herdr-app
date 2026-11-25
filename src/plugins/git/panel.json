@@ -9,6 +9,8 @@
     "sidebar-title.js": "src/ui/sidebar-title.js",
     "refresh.svg": "src/shared/refresh.svg",
     "ui.js": "src/ui/ui.js",
+    "sidebar-scroll.js": "src/ui/sidebar-scroll.js",
+    "scroll-fade.js": "src/ui/scroll-fade.js",
     "choice-menu.js": "src/ui/choice-menu.js",
     "settings-dialog.js": "src/ui/settings-dialog.js",
     "space-color-state.js": "src/shared/space-color-state.js",

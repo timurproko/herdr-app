@@ -85,7 +85,7 @@ console.log('PASS: matching top/bottom passive gradients, boundary-only repaint,
 {
   // Dragging into the top edge band scrolls up on a timer until the start, then stops.
   const timers=[];const tcx={notify(){},timer:{after:(_ms,fn)=>timers.push(fn)}};
-  const s=new SidebarScrollState(12);s.measure('viewport',{height:200},tcx);s.measure('content',{height:600},tcx);s.offset=30;
+  const s=new SidebarScrollState(12);s.measure('viewport',{height:200},tcx);s.measure('content',{height:600},tcx);s.setMetrics({offset:30});
   const asks=[];const handle={scroll_to_item:i=>asks.push(i)};let held=true;
   s.dragMotion({position:{x:20,y:52},bounds:{y:50,height:200}},()=>held,handle,tcx);
   assert.equal(s.edge,-1);assert.ok(s.offset<30,'Drag at the top edge scrolls up immediately');assert.equal(s.target,s.offset,'Marker lands on the new top');assert.deepEqual(asks,[1]);
@@ -102,7 +102,7 @@ console.log('PASS: matching top/bottom passive gradients, boundary-only repaint,
   // Auto-scroll stops once the droppable rows are in view; the rest of the list is unreachable.
   const timers=[];const tcx={notify(){},timer:{after:(_ms,fn)=>timers.push(fn)}};
   const s=new SidebarScrollState();s.count=20;s.measure('viewport',{height:150},tcx);s.measure('content',{height:20*30-2},tcx);
-  s.range=()=>[5,9];s.offset=270;const handle={scroll_to_item(){}};
+  s.range=()=>[5,9];s.setMetrics({offset:270});const handle={scroll_to_item(){}};
   s.dragMotion({position:{x:20,y:52},bounds:{y:50,height:150}},()=>true,handle,tcx);
   for(let n=0;timers.length&&n<1000;n++)timers.shift()(tcx);
   assert.equal(s.offset,120,'Up stops with the row above the first droppable row at the top');

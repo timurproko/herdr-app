@@ -8,21 +8,41 @@ const EDGE = 32;
 const MAX_STEP = 14;
 const TICK_MS = 16;
 
+// One pure geometry projection, shared by every mutation path. Derived edges
+// cannot drift from their inputs or rely on another native size callback.
+export function scrollMetrics({offset = 0, viewport = 0, content = 0, bottomPadding = 0} = {}) {
+  const nonnegative = value => Number.isFinite(value) ? Math.max(0, value) : 0;
+  viewport = nonnegative(viewport); content = nonnegative(content); bottomPadding = nonnegative(bottomPadding);
+  const max = Math.max(0, content + bottomPadding - viewport);
+  offset = Math.min(max, nonnegative(offset));
+  return Object.freeze({offset, viewport, content, bottomPadding, max,
+    moreAbove: viewport > 0 && offset > 1,
+    moreBelow: viewport > 0 && max - offset > 1});
+}
+
 // Presentation-only, event driven. Never poll or take over GPUI's retained scrolling.
 export class SidebarScrollState {
+  #metrics;
+  #notifiedAbove = false;
+  #notifiedBelow = false;
   constructor(bottomPadding = 0) {
-    this.bottomPadding = bottomPadding;
-    this.viewport = 0;
-    this.content = 0;
-    this.offset = 0;
-    this.moreAbove = false;
-    this.moreBelow = false;
+    this.setMetrics({bottomPadding});
     this.edge = 0;
     this.step = 0;
     this.target = null;
     this.ticking = false;
   }
-  get max() { return Math.max(0, this.content + this.bottomPadding - this.viewport); }
+  get offset() { return this.#metrics.offset; }
+  get viewport() { return this.#metrics.viewport; }
+  get content() { return this.#metrics.content; }
+  get bottomPadding() { return this.#metrics.bottomPadding; }
+  get max() { return this.#metrics.max; }
+  get moreAbove() { return this.#metrics.moreAbove; }
+  get moreBelow() { return this.#metrics.moreBelow; }
+  setMetrics(values, cx) {
+    this.#metrics = scrollMetrics({...this.#metrics, ...values});
+    if (cx) this.update(cx);
+  }
   // Offsets auto-scroll may reach: `range()` names the first and last rows a
   // drag can drop on, and scrolling stops once they (plus the row above the
   // first, e.g. its group header) are in view. Rows are equal height (U.row).
@@ -37,21 +57,17 @@ export class SidebarScrollState {
     const hi = Math.max(lo, Math.min(max, span[1] * pitch + row - this.viewport + (pitch - row)));
     return [lo, hi];
   }
-  update(cx) {
-    const max = this.max;
-    this.offset = Math.max(0, Math.min(max, this.offset));
-    const above = this.viewport > 0 && this.offset > 1;
-    const below = this.viewport > 0 && max - this.offset > 1;
-    if (above !== this.moreAbove || below !== this.moreBelow) {
-      this.moreAbove = above;
-      this.moreBelow = below;
+  update(cx, force = false) {
+    if (force || this.moreAbove !== this.#notifiedAbove || this.moreBelow !== this.#notifiedBelow) {
+      this.#notifiedAbove = this.moreAbove;
+      this.#notifiedBelow = this.moreBelow;
       cx.notify();
     }
   }
   measure(which, size, cx) {
     if (!Number.isFinite(size?.height)) return;
-    this[which] = Math.max(0, size.height);
-    this.update(cx);
+    if (which !== 'viewport' && which !== 'content') throw Error(`Unknown scroll measurement: ${which}`);
+    this.setMetrics({[which]: size.height}, cx);
   }
   contentMotion(event, kind) {
     if (!event.bounds || !event.position) return;
@@ -63,9 +79,8 @@ export class SidebarScrollState {
     this.usedMotion = motion;
     // Both event bounds use window pixels, as does the normalized wheel delta.
     // Rebase on actual geometry, rather than accumulating guessed wheel offsets.
-    this.viewport = event.bounds.height;
-    this.offset = event.bounds.y - motion.top - (kind === 'wheel' ? motion.delta : 0);
-    this.update(cx);
+    this.setMetrics({viewport: event.bounds.height,
+      offset: event.bounds.y - motion.top - (kind === 'wheel' ? motion.delta : 0)}, cx);
   }
   // While a row is held, the pointer's depth into the top/bottom edge band sets
   // the auto-scroll direction and speed. Leaving the frame keeps the last edge,
@@ -95,7 +110,7 @@ export class SidebarScrollState {
         if (this.target !== null) { this.target = null; cx.notify(); }
         return;
       }
-      this.offset = next;
+      this.setMetrics({offset: next});
       // The marker (the list's second child) sits where the new view begins or
       // ends; revealing it with the smallest scroll lands exactly on `next`.
       this.target = this.edge < 0 ? next : next + this.viewport - 1;

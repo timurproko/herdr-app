@@ -346,11 +346,21 @@ or an applicable `readNotice`, before applying folds. Empty sections have no hea
 but disappearing sections retain saved fold keys. A settled tab with no qualifying
 sections uses ordinary Git's **No open pull requests** / **No closed pull requests**;
 notice-only and folded eligible sections are not empty. Pending/unverified feedback
-is unchanged. The selected presentation is sliced into replacement pages of ten
-items including headers, notices and rows, with repeated continuation headers.
-Paging applies after folding, preserves full counts/inventory and starts no IO;
-its per-page scroll identity resets position and Previous/Show more remain outside
-the viewport. Page state is per coordinator home and tab. Distinct-string native
+is unchanged. The selected presentation reveals ten items initially, including headers,
+notices and rows, then appends ten near the scroll bottom without inventory IO.
+An unfolded header at a reveal boundary waits for its first row or visible notice;
+no transition may leave an unfolded header alone. Sections without selected-tab
+content are omitted even if their saved fold key remains. Every revealed unfolded row stays mounted: PRs retain 74px blocks, shared headers
+retain their control height and notices retain keyed native heights. A measured
+60-PR/100-item cap bounds the mounted batch; one quiet end Show more advances it
+and cycles from the last batch to the first. Full row batches defer excess arrivals
+until a slot frees or a batch cycle; already revealed PRs are not evicted for them.
+There are no viewport spacers.
+Native handles supply render-time fade geometry and event-time bottom detection;
+consumed scrollbar input may defer fades/reveal until the next render/event. A
+finite post-batch layout check fills underflow, not polling. Revealed depth and
+stable scroll identity are per home/tab/batch. Same-context insertions preserve
+surviving row anchors rather than resetting scroll; enrollment stays outside it. Distinct-string native
 probe widths use a bounded zoom/style-keyed cache; PR label presentation caches
 immutable facts, never native callback-bearing elements. Coordinator rows build
 at most three pills but retain all names in metadata/strip tooltips. See
@@ -408,6 +418,11 @@ failures. Setup is global and enrollment links capture each repository. Hidden/d
 superseded contexts cannot start follow-ups or publish stale results. Neither
 presentation nor setup notices enroll repositories or grant auto-fix authority.
 Ordinary folder Git retains its pin motion, pagination and existing agent matching.
+Both Git lists compose `SidebarScrollState` from `ui/sidebar-scroll.js` with
+`topFade` / `bottomFade` from `ui/scroll-fade.js`. These are the actual Spaces/Agents
+metrics and passive 40px gradients, not copied approximations. Git retains its own
+padding and background; paired native content/frame geometry and changed-only
+size/input callbacks update edge hints without polling or render-time notifications.
 
 ## Right-sidebar tab pins
 
@@ -793,9 +808,12 @@ and no context lists. Primary/secondary refusals keep values for at least 15
 minutes or a longer Retry-After; hourly remaining quota cannot override that.
 Labels/tasks/review and all displayed values remain during reads. Ordinary totals are repository-wide;
 aggregate totals and 24-hour history eligibility derive from current task PR state.
-Coordinator safety selection uses the same bounded presentation page, with page
-identity in the request scope so Previous/Show more rejects obsolete replies.
-Full tab totals and the event inventory remain independent of paging. Thin/detail
+Coordinator safety selection uses every revealed PR in unfolded sections of the
+selected batch, including offscreen rows, but excludes unrevealed rows and the
+other tab. Reveal/fold/tab/home/relevant projection changes advance the captured
+selection generation and reject obsolete replies, including away-and-back changes.
+Viewport-only scrolling within an unchanged set preserves its generation and starts
+no extra probes or inventory reads; normal cadence consumes the selection. Full tab totals and the event inventory remain independent of it. Thin/detail
 API reads use repositoryRead's per-child GH_REPO transport and guarded refusal
 diagnostics; complete ordinary pages apply their combined totals even on append.
 Full metadata/pagination refreshes still use event/manual reads.
