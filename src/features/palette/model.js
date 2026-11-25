@@ -55,7 +55,7 @@ export function entries({commands,layouts,themes,dark,layout,platform,usage=fals
     list.push({name:c.name,args:{},group:noun.charAt(0).toUpperCase()+noun.slice(1),title:`${verb.replace(/_/g,' ')} ${noun}`.replace(/^./,c=>c.toUpperCase()),words:c.about});
   }
   const all=list.map(e=>({...e,id:`${e.name}:${JSON.stringify(e.args)}`})),have=new Set(all.map(e=>entryId(e.name,e.args)));
-  for(const p of mods){const e=modEntry(p,known),id=e&&entryId(e.name,e.args);if(!e||have.has(id))continue;have.add(id);all.push({...e,id});}
+  for(const p of mods){if(!usage&&p?.command==='mod.open'&&p.args?.name==='custom-usage')continue;const e=modEntry(p,known),id=e&&entryId(e.name,e.args);if(!e||have.has(id))continue;have.add(id);all.push({...e,id});}
   return all;
 }
 export function keyOf(e,bound){
@@ -79,6 +79,7 @@ export function paletteCommand(entry){
   return {name:entry.name,args:entry.args};
 }
 export function activation(entry,layout){
+  if(entry.name==='app.settings'&&Object.keys(entry.args??{}).length)return {settings:{...entry.args}};
   if(entry.name==='mod.clone'&&!entry.args.name)return {prompt:true};
   const target=paletteCommand(entry);
   return {...target,args:entry.name==='layout.clone'&&!entry.args.name?{name:layout??'main'}:target.args};

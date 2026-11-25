@@ -5,6 +5,7 @@ import {commands,layouts,keys,run,themes,settings,props,closeOverlay,openOverlay
 import {searchHeader,hotkey,menuHeading,dialogSurface,emptyState,dialogScrollFrame,dialogScrollbar,dialogScrollRow} from './ui.js';
 import {liveTheme,ensureNativeSelection} from './look.js';
 import {bottomFade} from './scroll-fade.js';
+import {openSettings} from './settings-dialog.js';
 import {pluginIsEnabled} from './plugins.js';
 import {entries,rows as catalogRows,keyOf,activation,HISTORY_KEY,recentIds,remember} from './model.js';
 const SHOWN=10,ROW_H=32,HEAD_H=26;
@@ -53,7 +54,8 @@ export default class Palette extends View{
   go(e){
     if(!e)return;this.recent=remember(shared(HISTORY_KEY)??this.recent,e.id);setShared(HISTORY_KEY,this.recent);this.close();
     const target=activation(e,shared('layout'));
-    if(target.prompt)openOverlay({mod:'prompt',kind:'dialog',width:380,props:{title:'Duplicate mod',hint:'Mod to copy; creates <name>-copy',command:{name:'mod.clone',args:{}}}});
+    if(target.settings)openSettings(target.settings);
+    else if(target.prompt)openOverlay({mod:'prompt',kind:'dialog',width:380,props:{title:'Duplicate mod',hint:'Mod to copy; creates <name>-copy',command:{name:'mod.clone',args:{}}}});
     else run(target.name,target.args);
   }
   rows(){return catalogRows(entries({commands:commands(),layouts:layouts(),themes:themes(),dark:Boolean(settings().dark),layout:shared('layout'),platform:win()?.platform,usage:pluginIsEnabled('usage')},this.mods),this.query,this.recent);}

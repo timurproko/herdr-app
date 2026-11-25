@@ -14,7 +14,7 @@ const spaces=[{id:'s',active:true,machine:null,branch:'wrong-space',tabs:[{id:'h
 const pending=[],tasks=[];let notifications=0;
 let agentList=[{address:'t1',status:'idle'},{address:'pc2/t2',status:'idle'}];
 function element(){const o={kids:[],style:{}};let p;p=new Proxy(o,{get:(o,k)=>k in o?o[k]:k==='when'?(yes,fn)=>yes?fn(p):p:k==='child'?v=>{o.kids.push(v);return p;}:k==='children'?v=>{o.kids.push(...v);return p;}:k==='hover'?()=>p:(...v)=>{o.style[k]=v;return p;}});return p;}
-const native={focused:()=>focus,panes:()=>ps,terminals:()=>ts,spaces:()=>spaces,home:()=> 'C:/Users/me',agents:()=>agentList,theme:()=>({}),run:()=>{},keys:()=>[],nextCommand:()=>new Promise(()=>{}),setShared:()=>{},appHome:()=> 'C:/app',notify:()=>{},props:()=>({}),openOverlay:()=>{},closeOverlay:()=>{},exec:(...args)=>new Promise((resolve,reject)=>pending.push({args,resolve,reject}))};
+const native={shared:()=>undefined,focused:()=>focus,panes:()=>ps,terminals:()=>ts,spaces:()=>spaces,home:()=> 'C:/Users/me',agents:()=>agentList,theme:()=>({}),run:()=>{},keys:()=>[],nextCommand:()=>new Promise(()=>{}),setShared:()=>{},appHome:()=> 'C:/app',notify:()=>{},props:()=>({}),openOverlay:()=>{},closeOverlay:()=>{},exec:(...args)=>new Promise((resolve,reject)=>pending.push({args,resolve,reject}))};
 const context=vm.createContext({}),cache=new Map();
 function synthetic(exports){return new vm.SyntheticModule(Object.keys(exports),function(){for(const[k,v]of Object.entries(exports))this.setExport(k,v);},{context});}
 function load(file){if(cache.has(file))return cache.get(file);const m=new vm.SourceTextModule(fs.readFileSync(file,'utf8'),{context,identifier:file});cache.set(file,m);return m;}

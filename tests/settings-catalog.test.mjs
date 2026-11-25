@@ -51,6 +51,7 @@ const mocks = {
   './directory.js': { displaySpace: s => s },
   './tab-moves.js': { inspectTabMove: async () => ({ok:false}), tabMoveDestinations: () => [], requestTabMove: () => false },
   './modal-layout.js': { sectionRow: (_t, el) => el, divider: element, dividerHeight: () => 17 },
+  './palette-startup.js': { initPalettePolicy() {} },
   './look.js': { enterCustom() {} }, './startup.js': { restoreFrames() {} }, './sidebar-usage.js': { syncSidebarUsage() {} },
   './customization-updates.js': { initCustomizationUpdates() {}, customizationUpdateAvailable: () => false, observeCustomizationUpdates() {}, invalidateCustomizationUpdates() {} },
   './space-colors.js': { spaceColorPicker() {}, setSpaceColor() {}, selectedColorIndex() {}, colorAt() {}, COLOR_COUNT: 0 },

@@ -97,6 +97,7 @@
     "mods/custom-palette/model.js": "src/features/palette/model.js",
     "mods/custom-palette/space-color-state.js": "src/shared/space-color-state.js",
     "mods/custom-palette/ui.js": "src/ui/ui.js",
+    "mods/custom-palette/settings-dialog.js": "src/ui/settings-dialog.js",
     "mods/custom-palette/look.js": "src/ui/look.js",
     "mods/custom-palette/scroll-fade.js": "src/ui/scroll-fade.js",
     "lib/palette-model.js": "src/features/palette/model.js",

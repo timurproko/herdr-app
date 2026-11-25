@@ -36,7 +36,7 @@ const base={h_flex:()=>element('hflex'),v_flex:()=>element('vflex'),InputState:{
   },
 };
 const t={foreground:'#fafafa',muted:'#aaa',dim:'#888',border:'#333',raised:'#252525',popover:'#202020',hover:'#303030',selected:'#444',accent:'#55aaff',input:'#555'};
-const api={commands:()=>[],layouts:()=>['main'],themes:()=>[],settings:()=>({dark:true}),keys:()=>[],theme:()=>t,shared:k=>k==='layout'?(skin?'Custom':'main'):null,setShared(){},checking:()=>true,exec(){throw Error('No exec in checks');},appHome:()=>'/fixture',readTextFile:async()=>null,window:()=>({platform:'windows'}),props:()=>({overlay:'owned-test'}),run:(...args)=>calls.push(args),closeOverlay:id=>closed.push(id),openOverlay(){}};
+const api={commands:()=>[],layouts:()=>['main'],themes:()=>[],settings:()=>({dark:true}),keys:()=>[],theme:()=>t,shared:k=>k==='layout'?(skin?'Custom':'main'):null,setShared(){},checking:()=>true,exec(){throw Error('No exec in checks');},appHome:()=>'/fixture',readTextFile:async()=>null,window:()=>({platform:'windows'}),props:()=>({overlay:'owned-test'}),run:(...args)=>calls.push(args),closeOverlay:id=>closed.push(id),openOverlay:spec=>calls.push(['overlay',spec])};
 const context=vm.createContext({console,localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v)}}),cache=new Map();
 const synthetic=(name,values)=>new vm.SyntheticModule(Object.keys(values),function(){for(const[k,v]of Object.entries(values))this.setExport(k,v);},{context,identifier:name});
 async function load(file){if(cache.has(file))return cache.get(file);const mod=new vm.SourceTextModule(fs.readFileSync(file,'utf8'),{context,identifier:file});cache.set(file,mod);await mod.link((name,ref)=>{
@@ -45,6 +45,7 @@ async function load(file){if(cache.has(file))return cache.get(file);const mod=ne
   if(name==='./ui.js')return load(path.join(root,'lib/ui.js'));
   if(name==='./model.js')return load(path.join(root,'mods/custom-palette/model.js'));
   if(name==='./plugins.js')return synthetic(name,{pluginIsEnabled:()=>true});
+  if(name==='./settings-dialog.js')return load(path.join(root,'mods/custom-palette/settings-dialog.js'));
   if(name==='./scroll-fade.js')return synthetic(name,{bottomFade:(_state,id,color,options)=>element('fade').id(`${id}-more-below`).color(color).insets(options)});
   throw Error(`Unexpected import ${name} in ${ref.identifier}`);
 });return mod;}
@@ -99,5 +100,7 @@ view=palette.render();view.events.on_key_down({key:'pagedown'},cx);assert.equal(
 view.events.on_key_down({key:'pageup'},cx);assert.equal(palette.at,0);
 view.events.on_key_down({key:'escape'},cx);assert.equal(closed.at(-1),'owned-test');
 const unchanged=notices;palette.pendingHead='Closed';timers[0].fn(cx);assert.equal(notices,unchanged);palette.close();assert.equal(timers[0].cancelled,true,'Header synchronization is cancelled on close');assert.equal(closed.at(-1),'owned-test');
+palette.go({name:'app.settings',args:{section:'updates'},id:'settings-updates'});
+assert.equal(calls.at(-1)[0],'overlay');assert.equal(calls.at(-1)[1].mod,'custom-settings');assert.equal(calls.at(-1)[1].props.section,'updates');
 console.log(`PASS ${entrypoint}: pinned command-group/count headings, scrollbar above sticky headers, native list retention, layout-safe sync, plural counts, clear/stale/empty-key guards and stock scope (synthetic UI)`);
 }

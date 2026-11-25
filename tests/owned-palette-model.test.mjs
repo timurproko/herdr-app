@@ -33,6 +33,8 @@ for(const kind of ['tab','pane','space']){
 for(const kind of ['tab','space']){assert.equal(activation({name:`${kind}.rename`,args:{}},layout).name,`custom-tabs.rename-${kind}`);assert.equal(activation({name:`${kind}.rename`,args:{id:'captured',name:'literal'}},layout).name,`${kind}.rename`);}
 for(const name of ['picker','settings','worktree','machine-add'])assert.equal(activation({name:'mod.open',args:{name}},layout).args.name,`custom-${name}`);
 assert.equal(activation({name:'app.settings',args:{}},layout).args.name,'custom-settings');
+assert.deepEqual(activation({name:'app.settings',args:{section:'updates'}},layout),{settings:{section:'updates'}});
+assert.ok(!entries({...facts,usage:false},[{mod:'extra',command:'mod.open',args:{name:'custom-usage'},title:'Usage via manifest'}]).some(e=>e.args?.name==='custom-usage'));
 assert.deepEqual(activation({name:'mod.clone',args:{name:'explicit'}},layout),{name:'mod.clone',args:{name:'explicit'}});
 assert.deepEqual(activation({name:'mod.clone',args:{}},layout),{prompt:true});
 assert.deepEqual(activation({name:'layout.clone',args:{}},'Custom').args,{name:'Custom'});
