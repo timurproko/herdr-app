@@ -71,6 +71,9 @@ try{
  assert.throws(()=>rollback(personal.home,installed.backup,{fixture:true}),/palette edit/);assert.equal(raw(main),'// personal or newer unknown stock');assert.equal(raw(path.join(personal.home,'keys.json')),before.keys);assert.equal(raw(path.join(personal.home,'.customizations/manifest.json')),before.manifest);
  put(main,personal.native);const marker=path.join(personal.home,'.customizations/palette-retired.json'),markerBefore=raw(marker);put(marker,'personal marker');
  assert.throws(()=>rollback(personal.home,installed.backup,{fixture:true}),/ownership changed/);assert.equal(raw(marker),'personal marker');put(marker,markerBefore);
+ const danglingRecord=path.join(personal.home,'.customizations/frame-palette.json');let linked=false;
+ try{fs.symlinkSync(path.join(personal.home,'missing-personal-opt-in.json'),danglingRecord,'file');linked=true;}catch(error){if(process.platform!=='win32'||!['EPERM','EACCES'].includes(error.code))throw error;console.log('NOTE: Windows runner denied creating a test symlink');}
+ if(linked){assert.throws(()=>rollback(personal.home,installed.backup,{fixture:true}),/[Ll]ink.*refused/);assert.equal(fs.lstatSync(danglingRecord).isSymbolicLink(),true);assert.equal(raw(path.join(personal.home,'keys.json')),before.keys);fs.unlinkSync(danglingRecord);}
  assert.equal(rollback(personal.home,installed.backup,{fixture:true}).paletteRecovery.refreshed,true);assertPrevious(personal);
  // A refresh that becomes uncertifiable is not reported as successful rollback.
  const skipped=oldInstall('guarded-skip'),masked=Object.fromEntries(fs.readdirSync(path.join(skipped.home,'frame/palette')).map(name=>[name,fs.readFileSync(path.join(skipped.home,'frame/palette',name))]));

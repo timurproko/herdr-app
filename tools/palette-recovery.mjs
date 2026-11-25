@@ -1,10 +1,17 @@
 // Palette retirement recovery owns metadata, never an old native main.js image.
 import fs from 'node:fs';
+import path from 'node:path';
 import {contained,digest,put} from './files.mjs';
 const RECORD='.customizations/frame-palette.json',MARKER='.customizations/palette-retired.json';
 const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
-const read=(home,rel)=>{const file=contained(home,rel);return fs.existsSync(file)?fs.readFileSync(file,'utf8'):null;};
-const hash=(home,rel)=>{const file=contained(home,rel);return digest(fs.existsSync(file)?fs.readFileSync(file):null);};
+function location(home,rel){
+ const file=contained(home,rel);let current=path.resolve(home);
+ // existsSync misses dangling links; ownership absence must not adopt them.
+ for(const part of ['',...rel.split('/')]){if(part)current=path.join(current,part);let stat;try{stat=fs.lstatSync(current);}catch(error){if(error.code!=='ENOENT')throw error;}if(stat?.isSymbolicLink())throw Error('Linked palette recovery path refused');}
+ return file;
+}
+const read=(home,rel)=>{const file=location(home,rel);return fs.existsSync(file)?fs.readFileSync(file,'utf8'):null;};
+const hash=(home,rel)=>{const file=location(home,rel);return digest(fs.existsSync(file)?fs.readFileSync(file):null);};
 const validHash=v=>v===null||typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
 // The retained exception's historical surface only, not a general file journal.
 const FRAME_NAMES=new Set(['main.js','custom-ui.js','custom-look.js','custom-routing.js','custom-scroll-fade.js','identity.js','compatibility.js','host.js']);
@@ -35,7 +42,7 @@ export function recordPaletteRetirement(home,capture,manifestHash,after,marker){
  const receipt={version:1,recordHash:digest(capture.record),manifestHash,before:capture.frames,after,markerBefore:digest(capture.marker),markerAfter:digest(marker)};
  const text=JSON.stringify(receipt,null,2)+'\n',previous=read(home,rel);
  if(previous!==null&&previous!==text)throw Error('Palette retirement recovery receipt conflict');
- if(previous===null)put(contained(home,rel),text,null);
+ if(previous===null)put(location(home,rel),text,null);
  return rel;
 }
 // Preflight before any rollback writes. Allow only captured or precisely planned
@@ -56,7 +63,7 @@ export function paletteRollbackJobs(home,capture,manifestHash){
  const result=[];
  for(const [rel,before,allowed]of [[RECORD,capture.record,receipt?[digest(capture.record),null]:[digest(capture.record)]],[MARKER,capture.marker,receipt?[digest(capture.marker),receipt.markerAfter]:[digest(capture.marker)]]]){
   const actual=read(home,rel);if(!allowed.includes(digest(actual)))throw Error('Palette ownership changed after deployment; rollback refused');
-  result.push({file:contained(home,rel),before:before===null?null:Buffer.from(before),actual:actual===null?null:Buffer.from(actual),paletteRecovery:true});
+  result.push({file:location(home,rel),before:before===null?null:Buffer.from(before),actual:actual===null?null:Buffer.from(actual),paletteRecovery:true});
  }
  return result;
 }
