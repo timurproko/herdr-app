@@ -25,5 +25,5 @@ const capProject=()=>capped.project(sixty,new Set(),28,2,'1:390');capProject();w
 const retainedRows=capped.range().revealedRows.map(pr=>pr.key);sixty[0].rows.unshift(row(0));capProject();
 assert.deepEqual(capped.range().revealedRows.map(pr=>pr.key),retainedRows);assert.equal(capped.offset,1000);assert.equal(capped.pendingNew,1);assert.ok(capped.canTurn);
 capped.nextChunk();capProject();assert.equal(capped.range().items.length,10);assert.ok(capped.range().revealedRows.some(pr=>pr.number===0));
-const headers=new TaskReveal();headers.project(Array.from({length:500},(_,i)=>({repo:`owner/repo-${i}`,rows:[]})),new Set(),28,2,'1:390');while(headers.revealMore()){};assert.ok(headers.range().items.length<=MAX_MOUNTED_ITEMS,'Header-only inventories also have a finite native tree');
+const headers=new TaskReveal();headers.project(Array.from({length:500},(_,i)=>({repo:`owner/repo-${i}`,rows:[],error:'Scoped notice'})),new Set(),28,2,'1:390');while(headers.revealMore()){};assert.ok(headers.range().items.length<=MAX_MOUNTED_ITEMS,'Notice-only inventories also have a finite native tree');
 console.log('PASS mounted revealed prefix, 60-PR/100-item safety cap, forward/cycling Show more, 200-row reachability, retained anchors, notice heights and folds');

@@ -338,7 +338,9 @@ sections uses ordinary Git's **No open pull requests** / **No closed pull reques
 notice-only and folded eligible sections are not empty. Pending/unverified feedback
 is unchanged. The selected presentation reveals ten items initially, including headers,
 notices and rows, then appends ten near the scroll bottom without inventory IO.
-Every revealed unfolded row stays mounted: PRs retain 74px blocks, shared headers
+An unfolded header at a reveal boundary waits for its first row or visible notice;
+no transition may leave an unfolded header alone. Sections without selected-tab
+content are omitted even if their saved fold key remains. Every revealed unfolded row stays mounted: PRs retain 74px blocks, shared headers
 retain their control height and notices retain keyed native heights. A measured
 60-PR/100-item cap bounds the mounted batch; one quiet end Show more advances it
 and cycles from the last batch to the first. Full row batches defer excess arrivals

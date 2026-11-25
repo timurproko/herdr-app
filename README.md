@@ -801,12 +801,18 @@ header to fold just that repository; sections start expanded and remember their
 state locally, including panel reopen/reload. Expanded and folded headers show
 only the canonical repository name and chevron, without per-repository counts.
 Long coordinator lists reveal **10 presentation items** (headers, notices and PRs)
-initially and append ten more automatically near the scroll bottom. Revealed rows
+initially and append ten more automatically near the scroll bottom. An unfolded
+repository header is revealed only with its first row or visible notice; a header
+at the batch boundary waits for the next reveal. Empty sections disappear when
+rows leave the tab, expire or are confirmed absent. Revealed rows
 stay mounted, so native scrollbar/keyboard movement never exposes spacers. A measured
 60-PR/100-item mounted-batch cap uses one quiet **Show more** row to advance; its
 last batch cycles to the first. A full row batch defers excess arrivals until a
 slot frees or the batch cycles, rather than evicting revealed rows. Native fades sample actual handle geometry at render;
-a consumed scrollbar move may delay fades/reveal until the next received event. Counts still cover the
+a consumed scrollbar move may delay fades/reveal until the next received event.
+After dragging to the bottom, moving the pointer over the list, wheeling there or
+a size callback checks for the next ten; a finite post-layout check fills a viewport
+that does not yet overflow. Silent thumb/track movement alone cannot trigger it. Counts still cover the
 complete linked inventory; scrolling starts no inventory reads. Each tab retains
 its revealed depth and scroll anchor for that coordinator home. Repeated text uses
 cached native widths rather than duplicate probes; coordinator rows draw at most

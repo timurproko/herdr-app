@@ -19,5 +19,5 @@
 
 ## 4. Repository headers reveal with content and empty sections disappear through state changes
 
-- [ ] 4.1 Keep an unfolded repository header with its first row or visible notice at every reveal and cap boundary; omit sections without eligible rows or notices, including after tab moves, expiry and authoritative absence.
-- [ ] 4.2 Add a general rendered-section invariant checked after every reveal and state transition, preserving intentional folds, whole-inventory counts and existing read boundaries.
+- [x] 4.1 Keep an unfolded repository header with its first row or visible notice at every reveal and cap boundary; omit sections without eligible rows or notices, including after tab moves, expiry and authoritative absence.
+- [x] 4.2 Add a general rendered-section invariant checked after every reveal and state transition, preserving intentional folds, whole-inventory counts and existing read boundaries.
