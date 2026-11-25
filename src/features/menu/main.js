@@ -127,7 +127,7 @@ export default class Menu extends View {
     this.colorTarget = this.colorPair?.parent ?? this.colorSource?.id;
     // Each mod must witness verification itself; sidebar proof is display-only here.
     // The generic lifecycle yields before reading or joining a shared in-flight read.
-    if (this.colorPair) pluginEvent('workspace.context.refresh', { owner: this, cx });
+    if (this.colorPair) pluginEvent('workspace.context.refresh', { owner: this, cx, space: this.colorSource.id });
     this.pluginItems = p?.tab === 'agent' ? pluginMenuItems('agents.context', { terminal: p.target?.terminal })
       .map(action => [action.label, 'custom.plugin-action', {}, action.icon, null, false, action.run]) : [];
     // Do not focus the popup: right-click is a paste gesture, not a menu.

@@ -47,7 +47,7 @@ try {
   const event=x.diagnostic().lastFailure;
   assert.equal(event.reason,reason);assert.equal(event.at,100000);assert.equal(event.generation,7);assert.equal(event.currentGeneration,7);
   assert.deepEqual(event.subject,{parent:'coordinator',owner:'owner'});
-  if(reason==='status-timeout')assert.equal(event.timeout,25);
+  if(reason==='status-timeout')assert.equal(event.timeout,15);
   if(reason==='status-exit')assert.equal(event.code,19);
   if(['no-owner','no-fleet','identity-mismatch'].includes(reason))assert.equal(x.diagnostic().retry??null,null,'Authoritative absence/conflict does not start recovery');
   else assert.equal(x.diagnostic().retry.nextAt,102000);
@@ -70,7 +70,12 @@ try {
   const at=x.state[x.f.FLEET_KEY].entries.local.at;x.advance(31000);x.setAnswer(()=>{throw Error(secret);});x.event();await x.drain();
   assert.equal(x.state[x.f.FLEET_KEY].entries.local.at,at,'Failure never renews success');
   const stale=x.r.pluginPullContext('coordinator',{presentation:true});assert.equal(stale.stale,true);assert.equal(stale.verification.reason,'transport-error');
-  x.list[0].address='replacement';assert.equal(x.r.pluginPullContext('coordinator',{presentation:true}),null,'Changed owner cannot inherit the prior inventory or its exact-owner failure feedback');
+  x.list[0].address='replacement';
+  const waiting=x.r.pluginPullContext('coordinator',{presentation:true});
+  assert.notEqual(waiting.scope,stale.scope,'Changed owner gets an empty Loading scope, never the prior inventory');
+  assert.equal(waiting.stale,true);assert.equal(waiting.links.length,0);
+  assert.equal(waiting.verification,null,'Changed/missing owner cannot inherit the former owner failure feedback');
+  assert.equal(x.r.pluginPullContext('coordinator'),null,'Remembered Loading grants no operational authority');
  }
  for(const [change,reason]of [
   [x=>x.state['custom.fleet.generation']++,'obsolete-generation'],

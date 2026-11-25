@@ -678,9 +678,12 @@ selected terminal's folder.
 
 **Settings → Spaces → Connect fleet space to coordinator** is off by default
 (`connectFleetToCoordinator`). Changes apply while Settings stays open: enabling
-starts fleet verification immediately for applicable machines and attaches as soon
-as it succeeds; disabling immediately restores independent rows and badge colours.
-Until the first successful verification, no attachment is guessed. The two last-tab
+restores the last verified host-local pair in the same render, before any read
+completes, and verifies in the background. Disabling immediately restores independent
+rows and badge colours without forgetting that pair. Restart, reload and update also
+restore remembered pairs when both exact native spaces still exist. Failed, slow or
+expired reads keep the picture; authoritative absence clears memory. First-ever
+pairing alone waits for successful verification; names never invent a link. The two last-tab
 switches on this page also save immediately; close actions and empty-space
 reconciliation read their current values without waiting for Settings to close.
 Fleet verification failures and discarded replies retain sanitized reason/time/generation
@@ -693,12 +696,17 @@ deduplicating an unchanged reason episode without raw command output or secrets.
 Neither diagnostics nor the log is a portable preference. Log-write errors cannot
 block verification. The reader prefers Crew's explicitly advertised `--view fleet`
 and otherwise projects the legacy `--all` reply to the fields it needs before
-native decoding. Finished Open/Draft task PRs are never removed by task age.
-Discovery allows 25 seconds, recorded-only fallback 15 seconds, and exact
-capability refusals share a 40-second command budget inside the 45-second transport
-lease. Large replies decode in bounded native task turns. Raw receipt starts a
-separate two-second processing deadline: the existing Spaces lifecycle can replace
-an interrupted continuation without its finally block or a 45-second wait.
+native decoding. Verification never includes `--discover-prs`: recorded links
+can populate first inventory immediately, with separate lower-priority discovery
+only when Git needs inventory. Help capability evidence is cached by CLI path and
+modification time across reads and mod copies. Finished Open/Draft task PRs are
+never removed by task age. Discovery allows 25 seconds, recorded verification
+15 seconds, and exact capability refusals share a 40-second command budget.
+Reads belong to the recurring Spaces lifecycle, not a transient Settings/Git view.
+Its actual native task renews a shared two-second owner lease while transport is
+healthy, within the 45-second maximum command envelope. A dead/replaced owner loses
+that lease after two seconds; raw receipt starts a separate two-second processing
+deadline. Recovery never depends on the initiating copy's finally block.
 A timeout is not proof of absent ownership. See [the transport contract,
 reproduced watchdog failure and regression evidence](docs/FLEET-STATUS.md). Spaces already checks its lifecycle every 250 ms;
 healthy status reads use a ten-second TTL. Failed verification now backs off for
@@ -709,7 +717,7 @@ services each deadline (normally within its next 250 ms tick); there is no secon
 scheduler and no click or dialog close is needed. Success, disablement, missing
 candidates or authoritative absence ends recovery; normal healthy/history refresh
 can continue. Reload keeps the current failure deadline and can replace an abandoned
-reader after its finite lease expires. The same guards apply under load; a paused
+reader within two seconds plus the next lifecycle tick, not after 45 seconds. The same guards apply under load; a paused
 or sleeping app cannot promise wall-clock retry timing.
 When on with Crew enabled, a verified same-machine
 fleet attaches below its coordinator with its own ordinary numbered badge (for
@@ -742,7 +750,11 @@ freshly verified displayed pair identity, including retained fleets after all wo
 finish or when no tasks remain, locally or remotely. After restart, the menu must
 first witness successful verification; restored visuals alone do not permit a write.
 Other menu actions still target the clicked space. A changed or unverifiable pair refuses a stale colour
-choice; reopen after detachment to edit the fleet's own colour again. Disabling
+choice; reopen after detachment to edit the fleet's own colour again.
+Space-only block dragging follows the displayed remembered pair even before fresh
+verification; it revalidates the captured pair and native ordering acknowledgements.
+This permission does not move tabs or terminals or authorize Git inventory reads,
+worker navigation, coordinator colour writes or messages. Disabling
 attachment or confirmed unlinking restores that independent fleet colour.
 Unrelated plugin tags remain; the compact rail stays badge-only. Refreshing Git or
 Crew, relay events, focus changes and unrelated pane changes do not temporarily remove
