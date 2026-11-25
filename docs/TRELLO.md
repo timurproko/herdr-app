@@ -24,6 +24,10 @@ but no credentials, boards or write permission are provisioned.
 User-bin launchers have exact-name, home-bound ownership under
 `.customizations/trello-launchers.json`. Modified/unknown launchers and a launcher
 belonging to another Herdr home refuse before unrelated installation writes.
+Full deployment acquires the user-bin lock before journals or application payload
+writes and holds it through ownership publication, even if launcher bytes are
+unchanged. An existing bin lock refuses without installing or replacing payload;
+inspect the active installer before considering manual lock recovery.
 Normal backup rollback/removal checks their hashes and preserves later edits.
 Credentials and local policy are never deployment payloads or cleanup targets.
 `doctor` checks launcher ownership too. To relocate a bin, remove the original
@@ -152,7 +156,10 @@ checklist describe its check-item collection independently.
 Each command has a 256 KiB input limit, 2 MiB response limit, 20-second per-request
 and 60-second overall deadline, at most 20 network requests, and no automatic
 read retries. Reads are sequential. HTTP 429 persists only a non-secret cooldown
-deadline; another invocation cannot bypass it. Respect `retryAt` (Unix milliseconds),
+deadline; concurrent refusals atomically merge the longest deadline, re-reading
+after local compare-and-swap conflicts rather than discarding a longer refusal.
+Local merge retries never replay an HTTP request. Another invocation cannot
+bypass the saved cooldown. Respect `retryAt` (Unix milliseconds),
 then explicitly retry. Longer Retry-After or token/key intervals take precedence.
 
 ## Explicit writes

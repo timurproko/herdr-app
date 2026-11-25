@@ -5,7 +5,7 @@ import os from 'node:os';
 import cp from 'node:child_process';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {digest,read,put,json,contained,safeRelative} from './files.mjs';
-import {planLaunchers,applyLaunchers,removalLaunchers,defaultTrelloBin} from './trello-launchers.mjs';
+import {planLaunchers,applyLaunchers,withLauncherLock,removalLaunchers,defaultTrelloBin} from './trello-launchers.mjs';
 // Resolve the current implementation, not the older worker a rollback restores.
 export function reconcilePalette(home){
   const directory=path.dirname(fileURLToPath(import.meta.url)),development=path.join(directory,'runtime/palette-policy.mjs');
@@ -105,6 +105,7 @@ export function deploy(root,home=defaultHome(),{adopt={},repair=true,sources=nul
     }
     const nextManifest=JSON.stringify(shellOnly?{...(old??{version:2,id:'custom',supportedHerdr:bundle.supportedHerdr}),files}:{version:2,id:'custom',supportedHerdr:bundle.supportedHerdr,files,layoutBase:base},null,2)+'\n';
     const nextPrefs=retained?prefsRaw:JSON.stringify({version:1,overrides},null,2)+'\n';
+    const commit=applyTrello=>{
     let backup=null;
     if(changed.length||stale.length||launchers?.changed) {
       const transaction=path.join(owner,'backups',`${Date.now()}-${process.pid}`);
@@ -123,7 +124,7 @@ export function deploy(root,home=defaultHome(),{adopt={},repair=true,sources=nul
     const order=[...jobs].sort((a,b)=>rank(a)-rank(b));
     for(const j of order){if(j.before!==digest(j.bytes))put(j.file,j.bytes,j.before);else if(j.rel.endsWith('/main.js')&&touchedMods.has(path.posix.dirname(j.rel))) {if(digest(fs.readFileSync(j.file))!==j.before)throw Error(`Concurrent edit: ${j.rel}`);fs.writeFileSync(j.file,j.bytes);}}
     for(const j of stale){if(fs.existsSync(j.file)){if(digest(fs.readFileSync(j.file))!==j.hash)throw Error(`Concurrent obsolete edit: ${j.rel}`);fs.unlinkSync(j.file);}}
-    if(launchers?.changed)applyLaunchers(home,launchers);
+    if(launchers?.changed)applyTrello();
     if(!retained)put(prefsFile,nextPrefs,digest(prefsRaw));
     put(stateFile,nextManifest);
     const palette=shellOnly?null:reconcilePalette(home);
@@ -131,6 +132,10 @@ export function deploy(root,home=defaultHome(),{adopt={},repair=true,sources=nul
     let patches=null;
     if(!shellOnly&&(repair||palette?.nativeRefreshRequired)){const worker=path.join(owner,'runtime/scripts/startup-frames.mjs');if(fs.existsSync(worker)){const output=cp.execFileSync(process.execPath,[worker,home],{encoding:'utf8',timeout:30000,windowsHide:true});patches=JSON.parse(output);}}
     return {changed:changed.length,removed:stale.length,patches,palette,backup,...(launchers?{trelloCLI:{installed:true,bin:launchers.bin}}:{}),...(retained?{...(shellOnly?{scope:'shell'}:{sources}),preserved:Object.keys(old?.files??{}).filter(rel=>!selected.some(([target])=>target===rel)).length}:{})};
+    };
+    // Acquire even when launcher bytes are unchanged: runtime/mod upgrades and
+    // ownership publication still belong to the same user-bin transaction.
+    return launchers?withLauncherLock(home,launchers,false,commit):commit();
   });
 }
 export function doctor(home=defaultHome()) {

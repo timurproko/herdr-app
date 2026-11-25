@@ -79,10 +79,15 @@ fake files, including a deliberately widened Windows ACL and a refused junction.
 `tests/trello-deployment.test.mjs` installs only into disposable homes/bins and
 checks real Bash/CMD/PowerShell launchers, Unicode/space/metacharacter argument
 forwarding, runtime closure, conflicts, rollback, removal and private-store
-preservation. It starts no Herdr app, Core, server or Trello request.
+preservation. Existing user-bin locks refuse both first installs and upgrades
+without changing payload/ownership; commit probes verify the lock remains held
+through runtime, mod and manifest writes and is released after failure. It starts no Herdr app, Core, server or Trello request.
 `src/plugins/trello/pagination.test.mjs` models unsorted position-ordered card
 collections with 101 distinct creation timestamps, traverses board/list pages at
 limits 1/50/100, and checks multi-page read/write membership with explicit `sort=-id`.
+`src/plugins/trello/cooldown.test.mjs` interleaves long/short 429 refusals and
+repeated local CAS conflicts, checking that the longest deadline persists and a
+new invocation cannot dispatch early. It makes no real HTTP request.
 `tests/trello-contract.test.mjs` checks documentation/catalog and payload boundaries.
 
 Set `TRELLO_TEST_ROOT` to an existing outside-checkout scratch directory to choose

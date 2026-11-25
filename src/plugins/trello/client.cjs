@@ -37,6 +37,16 @@ function retryTime(headers, now) {
   until = Math.max(now + 10000, ...intervals.map(n => now + n), Number.isFinite(until) ? until : now + 60000);
   return Math.min(Number.MAX_SAFE_INTEGER, Math.ceil(until));
 }
+function mergeCooldown(store, deadline) {
+  // The store's expected-value write is atomic under config.lock. Every lost
+  // CAS must re-read; never acknowledge a deadline which was not persisted.
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const old = store.read('cooldown', true), retryAt = Math.max(old?.retryAt || 0, deadline);
+    try { store.write('cooldown', {version: 1, retryAt}, old); return retryAt; }
+    catch (e) { if (e.code !== 'CONFLICT') throw e; }
+  }
+  fail('STORE'); // Bounded local contention refusal, never an HTTP replay.
+}
 class Client {
   constructor(store, gate, {transport = globalThis.fetch, now = nowMs, timeout = 20000} = {}) {
     this.store = store; this.gate = gate; this.transport = transport; this.now = now; this.timeout = timeout;
@@ -62,10 +72,9 @@ class Client {
       dispatched = true;
       const response = await this.transport(url, {method, redirect: 'manual', signal: controller.signal, headers: {Accept: 'application/json'}});
       if (response.status === 429) {
-        const old = this.store.read('cooldown', true);
-        const retryAt = Math.max(old?.retryAt || 0, retryTime(response.headers, this.now()));
+        const deadline = retryTime(response.headers, this.now());
         if (response.body) await response.body.cancel().catch(() => {});
-        try { this.store.write('cooldown', {version: 1, retryAt}, old); } catch (e) { if (e.code !== 'CONFLICT') throw e; }
+        const retryAt = mergeCooldown(this.store, deadline);
         throw new TrelloError('RATE_LIMIT', {retryAt});
       }
       if (response.status < 200 || response.status >= 300) {

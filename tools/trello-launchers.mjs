@@ -62,19 +62,29 @@ export function checkLaunchers(home,plan,restore=false) {
     if(restore?![j.after,j.before].includes(current):current!==j.before)throw Error('Trello launcher changed after deployment.');
   }
 }
-export function applyLaunchers(home,plan,restore=false) {
-  checkLaunchers(home,plan,restore);
+// Hold the user-bin lock around the caller's whole synchronous transaction, not
+// just launcher writes. Full deployment must acquire it before any payload IO.
+export function withLauncherLock(home,plan,restore,fn) {
+  validPlan(home,plan);
   fs.mkdirSync(safe(plan.bin),{recursive:true});
-  const lock=path.join(plan.bin,'.herdr-trello.lock');let fd;
+  const lock=path.join(plan.bin,'.herdr-trello.lock');let fd,active=false;
   try {
-    fd=fs.openSync(safe(lock),'wx');
-    for(const j of plan.jobs) {
-      safe(j.file);const actual=bytesAt(j.file),value=restore?j.before:j.after;
-      const expected=restore?[j.after,j.before]:[j.before];
-      if(!expected.includes(actual?.toString('base64')??null))throw Error('Concurrent Trello launcher edit.');
-      if(value===null){if(actual!==null)fs.unlinkSync(j.file);}else {put(j.file,Buffer.from(value,'base64'),digest(actual));if(j.name==='herdr-trello')fs.chmodSync(j.file,0o755);}
-    }
-  }finally{if(fd!==undefined){fs.closeSync(fd);fs.unlinkSync(lock);}}
+    fd=fs.openSync(safe(lock),'wx');active=true;
+    checkLaunchers(home,plan,restore);
+    return fn(()=>{
+      if(!active)throw Error('Trello launcher lock is no longer held.');
+      checkLaunchers(home,plan,restore);
+      for(const j of plan.jobs) {
+        safe(j.file);const actual=bytesAt(j.file),value=restore?j.before:j.after;
+        const expected=restore?[j.after,j.before]:[j.before];
+        if(!expected.includes(actual?.toString('base64')??null))throw Error('Concurrent Trello launcher edit.');
+        if(value===null){if(actual!==null)fs.unlinkSync(j.file);}else {put(j.file,Buffer.from(value,'base64'),digest(actual));if(j.name==='herdr-trello')fs.chmodSync(j.file,0o755);}
+      }
+    });
+  }finally{active=false;if(fd!==undefined){fs.closeSync(fd);fs.unlinkSync(lock);}}
+}
+export function applyLaunchers(home,plan,restore=false) {
+  return withLauncherLock(home,plan,restore,apply=>apply());
 }
 export function removalLaunchers(home) {
   const r=record(home);if(!r)return null;
