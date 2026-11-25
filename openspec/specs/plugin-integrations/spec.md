@@ -1191,30 +1191,6 @@ Pending-row numeric freshness SHALL reflect successful numeric reads, not state-
 - **WHEN** a pending PR has more than 100 contexts and the bounded response reports another page
 - **THEN** the read retains today's incomplete-context refusal and last-good facts instead of publishing a partial total
 
-### Requirement: Machine-scoped Crew update attention
-A confirmed available Crew tool update SHALL be a non-optional unmet requirement for the selected machine. The row SHALL show `Outdated` using existing unmet-requirement styling, retain Update and the installed revision, and contribute to `N to fix` and any existing unmet-requirement indicators. Revision age alone SHALL NOT block coordinator launch or project actions.
-
-#### Scenario: Outdated local or remote Crew
-- **WHEN** the selected local or remote machine has an installed Crew revision confirmed behind the available revision
-- **THEN** its Crew tool row shows Outdated and Update, with the existing non-optional unmet colour
-- **AND** Requirements counts it as one to fix rather than one optional, independently of other machines
-- **AND** existing plugin-card or navigation unmet-requirement indicators, if present, include it like other unmet requirements
-
-#### Scenario: Current or unverified revision
-- **WHEN** Crew is current or its update check fails or has unknown revision evidence
-- **THEN** a current installation remains Ready and unknown or failed update evidence does not claim Outdated
-- **AND** existing inspection errors and missing-installation states retain their existing meaning
-
-#### Scenario: Optional tools remain optional
-- **WHEN** another Crew prerequisite is genuinely optional
-- **THEN** its Optional label, neutral styling and optional-only summary behaviour remain unchanged
-- **AND** an outdated Crew tool still contributes to the non-optional count when both are present
-
-#### Scenario: Actions with an old installed tool
-- **WHEN** a coordinator launch or project action otherwise satisfies its existing guards but Crew is outdated
-- **THEN** revision age alone does not refuse or disable that action
-- **AND** existing installation, connection, ownership and capability refusals remain authoritative without a new update gate
-
 ### Requirement: Durable scoped agent monitor repositories
 The agent monitor SHALL derive its repository allowlist from the durable confirmed added repositories for the current relay and GitHub account, independently of disposable webhook-notice membership. Empty, missing or mismatched selections SHALL remain empty without legacy fallback. Existing configuration lifecycle paths SHALL propagate the current selection to reachable managed companions without requiring a preference re-save.
 
@@ -1282,3 +1258,27 @@ Enabled monitoring SHALL NOT report healthy-ready when its scope is empty or eve
 - **THEN** journal retention stays bounded and repeated unchanged episodes are coalesced
 - **AND** diagnostics remain separate from delivery receipts, contain no raw output, message text, transcript or credentials, and never relax a delivery gate
 - **AND** diagnostic-write failure does not prevent ordinary verification or delivery, and read-only probes do not persist diagnostic history
+
+### Requirement: Machine-scoped Crew update attention
+A confirmed available Crew tool update SHALL be a non-optional unmet requirement for the selected machine. The row SHALL show `Outdated` using existing unmet-requirement styling, retain Update and the installed revision, and contribute to `N to fix` and any existing unmet-requirement indicators. Revision age alone SHALL NOT block coordinator launch or project actions.
+
+#### Scenario: Outdated local or remote Crew
+- **WHEN** the selected local or remote machine has an installed Crew revision confirmed behind the available revision
+- **THEN** its Crew tool row shows Outdated and Update, with the existing non-optional unmet colour
+- **AND** Requirements counts it as one to fix rather than one optional, independently of other machines
+- **AND** existing plugin-card or navigation unmet-requirement indicators, if present, include it like other unmet requirements
+
+#### Scenario: Current or unverified revision
+- **WHEN** Crew is current or its update check fails or has unknown revision evidence
+- **THEN** a current installation remains Ready and unknown or failed update evidence does not claim Outdated
+- **AND** existing inspection errors and missing-installation states retain their existing meaning
+
+#### Scenario: Optional tools remain optional
+- **WHEN** another Crew prerequisite is genuinely optional
+- **THEN** its Optional label, neutral styling and optional-only summary behaviour remain unchanged
+- **AND** an outdated Crew tool still contributes to the non-optional count when both are present
+
+#### Scenario: Actions with an old installed tool
+- **WHEN** a coordinator launch or project action otherwise satisfies its existing guards but Crew is outdated
+- **THEN** revision age alone does not refuse or disable that action
+- **AND** existing installation, connection, ownership and capability refusals remain authoritative without a new update gate
