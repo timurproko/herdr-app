@@ -24,7 +24,7 @@ try {
   save(path.join(home,'shared.json'),shared);write(path.join(home,'themes/custom-palette.json'),theme);
   save(path.join(home,'.customizations/palette.json'),{customization:palette,theme});
   const before=tree(home);
-  for(const file of ['package.json','tools/preferences.mjs','tools/preferences-export.mjs','tools/layout-preferences.mjs','tools/runtime/preferences.mjs','tools/runtime/settings-sections.js','tools/build.mjs','tools/deploy.mjs','tools/palette-recovery.mjs','tools/files.mjs','tools/plugins.mjs','src/ui/settings-sections.js','src/integration/herdr/compatibility.js','src/appearance/layouts/Custom.json'])write(path.join(checkout,file),fs.readFileSync(path.join(project,file)));
+  for(const file of ['package.json','tools/preferences.mjs','tools/preferences-export.mjs','tools/layout-preferences.mjs','tools/runtime/preferences.mjs','tools/runtime/settings-sections.js','tools/build.mjs','tools/deploy.mjs','tools/files.mjs','tools/plugins.mjs','src/ui/settings-sections.js','src/integration/herdr/compatibility.js','src/appearance/layouts/Custom.json'])write(path.join(checkout,file),fs.readFileSync(path.join(project,file)));
   const preload=path.join(temp,'isolate.mjs');
   write(preload,`import os from 'node:os'; import cp from 'node:child_process'; import {syncBuiltinESMExports} from 'node:module'; os.hostname=()=>'Fixture-HOST'; cp.execFileSync=()=>{throw Error('No external process allowed');}; syncBuiltinESMExports();`);
   const installed=path.join(home,'.customizations/runtime/scripts/export-preferences.mjs');

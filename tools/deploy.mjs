@@ -5,7 +5,12 @@ import os from 'node:os';
 import cp from 'node:child_process';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {digest,read,put,json,contained,safeRelative} from './files.mjs';
-import {capturePaletteRetirement} from './palette-recovery.mjs';
+// Resolve the current implementation, not the older worker a rollback restores.
+export function reconcilePalette(home){
+  const directory=path.dirname(fileURLToPath(import.meta.url)),development=path.join(directory,'runtime/palette-policy.mjs');
+  const worker=fs.existsSync(development)?development:path.join(directory,'palette-policy.mjs');
+  return JSON.parse(cp.execFileSync(process.execPath,[worker,'reconcile',home],{encoding:'utf8',timeout:15000,windowsHide:true}));
+}
 export const defaultHome=()=>process.env.HERDR_APP_HOME||path.join(os.homedir(),'.config/herdr-app');
 export const shellPaths=['bash-cwd-loader.sh','bash-cwd.sh','powershell-cwd.ps1','revision'].map(name=>`.customizations/runtime/shell/${name}`);
 export const shellRevisionPath=shellPaths.at(-1);
@@ -76,14 +81,11 @@ export function deploy(root,home=defaultHome(),{adopt={},repair=true,sources=nul
       if(current!==null&&actual!==next&&!owned&&!(rel===layoutFile&&old?.layoutBase))throw Error(`Personal file conflict: ${rel}; nothing deployed.`);
       files[rel]=next;jobs.push({rel,file,current,bytes,before:actual});
     }
-    // Preflight the one owned key before writing any payload. Shell/partial modes
-    // never change desktop binding policy; mounted startup handles later resets.
+    // Preflight conflicts before payload writes; final reconciliation derives
+    // policy from the resulting installed payload, never a key rollback snapshot.
     const paletteWorker=path.join(root,'scripts/palette-policy.mjs');
-    const palettePlan=repair&&!retained&&files['mods/custom-palette/main.js']&&fs.existsSync(paletteWorker)
-      ?JSON.parse(cp.execFileSync(process.execPath,[paletteWorker,'preflight',home],{encoding:'utf8',timeout:15000,windowsHide:true})):null;
-    // Capture existing native opt-in intent before any new payload can retire it.
-    // Its native bytes are never a blind rollback payload: refresh must recheck stock.
-    const paletteRetirement=!shellOnly&&files['mods/custom-palette/main.js']?capturePaletteRetirement(home):null;
+    if(!shellOnly&&files['mods/custom-palette/main.js']&&fs.existsSync(paletteWorker))
+      cp.execFileSync(process.execPath,[paletteWorker,'preflight',home],{encoding:'utf8',timeout:15000,windowsHide:true});
     const stale=Object.entries(old?.files??{}).filter(([rel])=>!Object.hasOwn(files,rel)).map(([rel,hash])=>({rel,file:contained(home,rel),hash}));
     for(const item of stale)if(fs.existsSync(item.file)&&digest(fs.readFileSync(item.file))!==item.hash)throw Error(`Modified obsolete file: ${item.rel}; nothing deployed.`);
     const changed=jobs.filter(j=>j.before!==digest(j.bytes));
@@ -101,17 +103,12 @@ export function deploy(root,home=defaultHome(),{adopt={},repair=true,sources=nul
     const nextManifest=JSON.stringify(shellOnly?{...(old??{version:2,id:'custom',supportedHerdr:bundle.supportedHerdr}),files}:{version:2,id:'custom',supportedHerdr:bundle.supportedHerdr,files,layoutBase:base},null,2)+'\n';
     const nextPrefs=retained?prefsRaw:JSON.stringify({version:1,overrides},null,2)+'\n';
     let backup=null;
-    if(changed.length||stale.length||palettePlan?.changed||paletteRetirement) {
+    if(changed.length||stale.length) {
       const transaction=path.join(owner,'backups',`${Date.now()}-${process.pid}`);
       fs.mkdirSync(transaction,{recursive:true});
       // Journal original bytes outside synced source. No shared/session documents are included.
       backup=path.basename(transaction);
       const rollback={version:1,files:{},after:{},manifest:read(stateFile),preferences:prefsRaw,afterManifest:digest(nextManifest),afterPreferences:digest(nextPrefs),...(shellOnly?{scope:'shell',afterState:nextManifest}:{})};
-      if(paletteRetirement)rollback.paletteRetirement=paletteRetirement;
-      if(palettePlan?.changed||paletteRetirement){
-        const keys=palettePlan?palettePlan.keyRaw:read(path.join(home,'keys.json')),record=palettePlan?palettePlan.recordRaw:read(path.join(owner,'palette-binding.json'));
-        rollback.paletteBinding={keys,record,afterKeys:digest(palettePlan?palettePlan.keys:keys),afterRecord:digest(palettePlan?palettePlan.record:record)};
-      }
       for(const j of [...changed,...stale.map(j=>({...j,current:fs.existsSync(j.file)?fs.readFileSync(j.file):null}))]){
         rollback.files[j.rel]=j.current===null?null:j.current.toString('base64');
         rollback.after[j.rel]=files[j.rel]??null;
@@ -125,11 +122,10 @@ export function deploy(root,home=defaultHome(),{adopt={},repair=true,sources=nul
     for(const j of stale){if(fs.existsSync(j.file)){if(digest(fs.readFileSync(j.file))!==j.hash)throw Error(`Concurrent obsolete edit: ${j.rel}`);fs.unlinkSync(j.file);}}
     if(!retained)put(prefsFile,nextPrefs,digest(prefsRaw));
     put(stateFile,nextManifest);
-    let palette=null;
-    if(palettePlan)palette=JSON.parse(cp.execFileSync(process.execPath,[paletteWorker,'install',home],{encoding:'utf8',timeout:15000,windowsHide:true}));
+    const palette=shellOnly?null:reconcilePalette(home);
     // Native compatibility patches are not regular payload. Refresh only existing opt-ins.
     let patches=null;
-    if(repair&&!shellOnly){const worker=path.join(owner,'runtime/scripts/startup-frames.mjs');if(fs.existsSync(worker)){const output=cp.execFileSync(process.execPath,[worker,home],{encoding:'utf8',timeout:30000,windowsHide:true});patches=JSON.parse(output);}}
+    if(!shellOnly&&(repair||palette?.nativeRefreshRequired)){const worker=path.join(owner,'runtime/scripts/startup-frames.mjs');if(fs.existsSync(worker)){const output=cp.execFileSync(process.execPath,[worker,home],{encoding:'utf8',timeout:30000,windowsHide:true});patches=JSON.parse(output);}}
     return {changed:changed.length,removed:stale.length,patches,palette,backup,...(retained?{...(shellOnly?{scope:'shell'}:{sources}),preserved:Object.keys(old?.files??{}).filter(rel=>!selected.some(([target])=>target===rel)).length}:{})};
   });
 }
@@ -184,6 +180,7 @@ export function remove(home=defaultHome()) {
     if(fs.existsSync(paletteWorker))cp.execFileSync(process.execPath,[paletteWorker,'remove',home],{encoding:'utf8',timeout:15000,windowsHide:true});
     for(const j of files)if(fs.existsSync(j.file)&&digest(fs.readFileSync(j.file))===j.hash)fs.unlinkSync(j.file);
     fs.unlinkSync(path.join(home,'.customizations/manifest.json'));
+    reconcilePalette(home);
     return {removed:files.length-changed.length,preserved:changed.map(j=>j.rel)};
   });
 }

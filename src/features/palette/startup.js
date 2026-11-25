@@ -27,12 +27,8 @@ export function initPalettePolicy(owner,cx){
     const live=()=>active(owner)&&shared(LEASE)?.token===token;
     cx.spawn(async cx=>{
       await cx.sleep(0);if(!live())return;
-      const home=appHome();let status,logSafe=false;
+      const home=appHome();let status,logSafe=false,restoredNative=false,installed=true;
       try{
-        const versionStatus=hostVersionStatus(hostVersion());
-        if(!versionStatus.supported)throw Error('Owned palette host version is unavailable or below the minimum supported host');
-        requireHostCapabilities(PALETTE_API);
-        if(!commands().some(c=>c.name==='mod.open'&&c.args?.some(a=>a.name==='name')))throw Error('Owned palette requires mod.open argument name');
         const io={
           guard:async()=>{
             if(!live())throw Error('Repair superseded');
@@ -41,10 +37,23 @@ export function initPalettePolicy(owner,cx){
             if(result.code!==0){let detail='';try{detail=JSON.parse(result.stderr).error;}catch{}throw Error(detail?.startsWith('Palette repair waits')||detail?.startsWith('Owned palette capabilities unavailable:')?detail:'Owned palette validation failed; check customization ownership');}
             const validation=JSON.parse(result.stdout);
             if(validation.ok!==true||validation.deferred)throw Error('Owned palette capabilities await host initialization');
-            logSafe=validation.logUnavailable!==true;
+            installed=validation.installed!==false;
+            if(installed){
+              const versionStatus=hostVersionStatus(hostVersion());
+              if(!versionStatus.supported)throw Error('Owned palette host version is unavailable or below the minimum supported host');
+              requireHostCapabilities(PALETTE_API);
+              if(!commands().some(c=>c.name==='mod.open'&&c.args?.some(a=>a.name==='name')))throw Error('Owned palette requires mod.open argument name');
+            }
+            logSafe=validation.logUnavailable!==true;return validation;
           },
           read:rel=>readTextFile(`${home}/${rel}`),
           write:async(rel,text,expected)=>{if(!live())throw Error('Repair superseded');await writeTextFile(`${home}/${rel}`,text,expected);},
+          remove:async()=>{
+            if(!live())throw Error('Repair superseded');
+            const result=await exec('node',[`${home}/.customizations/runtime/scripts/palette-policy.mjs`,'startup',home],{on:null,timeout:15000});
+            if(result.code!==0)throw Error('Owned palette orphan cleanup failed; check customization ownership');
+            restoredNative=JSON.parse(result.stdout).nativeRefreshRequired===true;
+          },
           defaults:()=>defaultsFromBindings(keys()),
           platform:()=>win()?.platform??'windows',
         };
@@ -54,17 +63,18 @@ export function initPalettePolicy(owner,cx){
         // and report configuration reconciliation, never fictional dispatch proof.
         await cx.sleep(1100);if(!live())return;
         const bound=keys().some(b=>b.section===PALETTE_SCOPE&&b.keys===PALETTE_KEY&&b.action===PALETTE_ACTION);
-        if(!bound||await readTextFile(`${home}/keys.error`))throw Error('Host key reload reports an error or missing palette binding');
+        if((status.installed&&!bound)||await readTextFile(`${home}/keys.error`))throw Error('Host key reload reports an error or missing palette binding');
         const result=await exec('node',[`${home}/.customizations/runtime/scripts/startup-frames.mjs`,home],{on:null,timeout:15000});
         if(!live())return;
         if(result.code===75)throw Error('Palette repair waits for compatibility retirement');
         if(result.code!==0)throw Error('Owned palette native-patch retirement could not run');
         const retirement=JSON.parse(result.stdout).frames?.palette;
-        if(retirement?.ok!==true||retirement.deferred)throw Error('Owned palette native-patch retirement conflict; old files were preserved');
-        status={...status,configured:true,retirement:retirement.status};
+        if(status.installed&&(retirement?.ok!==true||retirement.deferred))throw Error('Owned palette native-patch retirement conflict; old files were preserved');
+        if(!status.installed&&(retirement?.ok===false||restoredNative&&retirement?.status==='skipped'))throw Error('Owned palette prior native opt-in needs reviewed refresh');
+        status={...status,configured:true,retirement:retirement?.status??'native'};
       }catch(error){
         if(String(error?.message??'').startsWith('Palette repair waits')){signature=null;if(live())setShared(LEASE,null);return;}
-        status={ok:false,status:'repair-failed',error:safeFailure(error)};
+        status={ok:false,installed,status:'repair-failed',error:safeFailure(error)};
       }
       if(!live())return;
       if(!logSafe)status={...status,logUnavailable:true};

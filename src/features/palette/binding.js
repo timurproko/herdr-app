@@ -1,7 +1,6 @@
 // Field-aware policy shared by the installer and public-API startup repair.
 export const PALETTE_SCOPE='layout:Custom',PALETTE_KEY='ctrl-shift-p',PALETTE_ACTION='mod.open:custom-palette';
 const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
-const equal=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 const native=v=>v==='app.palette'||(object(v)&&v.command==='app.palette'&&(!v.args||!Object.keys(v.args).length));
 const owned=v=>v===PALETTE_ACTION||(object(v)&&v.command==='mod.open'&&object(v.args)&&Object.keys(v.args).length===1&&v.args.name==='custom-palette');
 // GPUI Keystroke::parse: modifier order/case is immaterial, uppercase ASCII
@@ -49,17 +48,17 @@ export function planBinding(keysRaw,recordRaw,{install=false,defaults=null,platf
   const next={...section};for(const [key]of matches)delete next[key];next[PALETTE_KEY]=PALETTE_ACTION;keys[PALETTE_SCOPE]=next;
   return {status:recordRaw===null?'installed':'repaired',keys:JSON.stringify(keys,null,2)+'\n',record:nextRecord,changed:true};
 }
-export function restoreBinding(keysRaw,recordRaw){
-  const r=bindingRecord(recordRaw);if(!r)return keysRaw;
-  if(keysRaw===null)throw Error('Keys missing; palette binding restore refused');
-  let keys;try{keys=JSON.parse(keysRaw);}catch{throw Error('Keys changed; palette binding restore refused');}if(!object(keys)||!object(keys[PALETTE_SCOPE]))throw Error('Keys changed; palette binding restore refused');
-  const original=r.originalBindings??(r.hadBinding?{[PALETTE_KEY]:r.original}:{}),section=keys[PALETTE_SCOPE],matches=matching(section,r.platform??'windows');
-  if(matches.some(([key,value])=>!owned(value)&&!native(value)&&!equal(value,original[key])))throw Error('Personal palette shortcut edit; restore refused');
-  if(!matches.some(([,value])=>owned(value)))return keysRaw;
-  for(const [key,value]of matches)if(owned(value))delete section[key];
-  for(const [key,value]of Object.entries(original))section[key]=value;
-  if(!Object.keys(keys[PALETTE_SCOPE]).length)delete keys[PALETTE_SCOPE];
-  return JSON.stringify(keys,null,2)+'\n';
+// One installed-state rule. Absence cleans only our reserved action, even when
+// startup created it after a deferred deployment (or its sidecar went missing).
+export function planInstalledBinding(keysRaw,recordRaw,{installed=true,...options}={}){
+  if(installed)return planBinding(keysRaw,recordRaw,{...options,install:true});
+  bindingRecord(recordRaw); // Do not delete an unrecognized personal sidecar.
+  let keys;try{keys=keysRaw===null?null:JSON.parse(keysRaw);}catch{throw Error('Palette keys unavailable or malformed');}
+  if(keys!==null&&!object(keys))throw Error('Malformed key binding section');
+  const section=keys?.[PALETTE_SCOPE];if(section!==undefined&&!object(section))throw Error('Malformed Custom key binding section');
+  const matches=matching(section,options.platform??'windows'),personal=matches.some(([,value])=>!owned(value)&&!native(value));let changed=false;
+  for(const [key,value]of matches)if(owned(value)){if(personal)delete section[key];else section[key]='app.palette';changed=true;}
+  return {status:personal?'personal-preserved':'native',installed:false,keys:changed?JSON.stringify(keys,null,2)+'\n':keysRaw,record:null,changed:changed||recordRaw!==null};
 }
 export function defaultsFromBindings(bindings){
   const keys={};for(const b of bindings){
@@ -69,17 +68,19 @@ export function defaultsFromBindings(bindings){
   }return keys;
 }
 // write is expected-value CAS; only one retry after a fresh snapshot, never force.
-export async function reconcileBinding(io,{install=false}={}){
+export async function reconcileBinding(io,{installed=true}={}){
   for(let attempt=0;attempt<2;attempt++){
-    await io.guard();
+    const validation=await io.guard();
+    const present=validation?.installed??installed;
     const keyRaw=await io.read('keys.json'),recordRaw=await io.read('.customizations/palette-binding.json');
-    const plan=planBinding(keyRaw,recordRaw,{install,defaults:keyRaw===null?await io.defaults():null,platform:io.platform?.()??'windows'});
+    const plan=planInstalledBinding(keyRaw,recordRaw,{installed:present,defaults:keyRaw===null&&present?await io.defaults():null,platform:io.platform?.()??'windows'});
     if(plan.status==='not-installed')return {ok:false,status:plan.status,error:'Palette binding has not been installed'};
     try{
       // Durable intent precedes key update: interrupted installation is repairable.
-      if(plan.record!==recordRaw)await io.write('.customizations/palette-binding.json',plan.record,recordRaw);
+      if(present&&plan.record!==recordRaw)await io.write('.customizations/palette-binding.json',plan.record,recordRaw);
       if(plan.keys!==keyRaw)await io.write('keys.json',plan.keys,keyRaw);
-      return {ok:true,status:plan.status,changed:plan.changed};
+      if(!present)await io.remove('.customizations/palette-binding.json',recordRaw);
+      return {ok:true,status:plan.status,installed:present,changed:plan.changed};
     }catch(error){if(attempt)throw error;}
   }
 }

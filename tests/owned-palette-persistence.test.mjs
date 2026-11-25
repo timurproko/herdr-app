@@ -7,8 +7,8 @@ import {seedPaletteSdk,mockPaletteExecutable} from './support/palette-host.mjs';
 import {deploy} from '../tools/deploy.mjs';
 import {rollback} from '../tools/rollback.mjs';
 import {restoreStartupFrames} from '../tools/runtime/startup-frames.mjs';
-import {guardPaletteHome,installPalettePolicy,removePalettePolicy} from '../tools/runtime/palette-policy.mjs';
-import {planBinding,reconcileBinding,restoreBinding,boundedLog,PALETTE_ACTION,PALETTE_SCOPE} from '../src/features/palette/binding.js';
+import {guardPaletteHome,inspectPaletteState,installPalettePolicy,removePalettePolicy} from '../tools/runtime/palette-policy.mjs';
+import {planBinding,reconcileBinding,planInstalledBinding,boundedLog,PALETTE_ACTION,PALETTE_SCOPE} from '../src/features/palette/binding.js';
 import {checkPaletteFacts,missingPaletteUi} from '../src/integration/herdr/palette-capabilities.js';
 const {output}=build(),temp=fs.mkdtempSync(path.resolve('.artifacts/palette-persistence-'));
 const restoreHost=mockPaletteExecutable(temp);
@@ -21,14 +21,14 @@ assert.equal(JSON.parse(parsed.keys)[PALETTE_SCOPE]['ctrl-shift-p'],PALETTE_ACTI
 assert.equal(JSON.parse(parsed.keys).global.f9,'app.help');
 assert.equal(planBinding(parsed.keys,parsed.record).status,'already-current');
 assert.equal(planBinding(stock,parsed.record).status,'repaired');
-assert.equal(JSON.parse(restoreBinding(parsed.keys,parsed.record))[PALETTE_SCOPE]['ctrl-shift-p'],undefined);
+assert.equal(JSON.parse(planInstalledBinding(parsed.keys,parsed.record,{installed:false}).keys)[PALETTE_SCOPE]['ctrl-shift-p'],'app.palette');
 assert.throws(()=>planBinding('{broken',parsed.record),error=>!error.message.includes('{broken')&&/malformed/.test(error.message));
 assert.throws(()=>planBinding('{"layout:Custom":{"ctrl-shift-p":"personal.action"}}',parsed.record),/Personal/);
 assert.throws(()=>planBinding('{"global":{"ctrl-shift-p":"personal.action"}}',null,{install:true}),/Personal/);
 assert.equal(planBinding(parsed.keys.replace('"ctrl-shift-p": "app.palette"','"ctrl-shift-p": "personal.other-layout"'),parsed.record).status,'already-current','Established Custom binding does not own other layouts global keys');
 assert.throws(()=>planBinding('{"terminal":{"ctrl-shift-p":"terminal"}}',parsed.record),/Higher-priority/);
 assert.throws(()=>planBinding(stock,'{"version":99}'),/Unrecognized/);
-assert.throws(()=>restoreBinding('{"layout:Custom":{"ctrl-shift-p":"personal.action"}}',parsed.record),/Personal/);
+assert.equal(planInstalledBinding('{"layout:Custom":{"ctrl-shift-p":"personal.action"}}',parsed.record,{installed:false}).keys,'{"layout:Custom":{"ctrl-shift-p":"personal.action"}}');
 assert.equal(planBinding(stock,null).status,'not-installed');
 let log='';for(let i=0;i<150;i++)log=boundedLog(log,{ok:false,status:`failure-${i}`,error:'reason'});assert.equal(log.trim().split('\n').length,128);
 let unicodeLog='';for(let i=0;i<150;i++)unicodeLog=boundedLog(unicodeLog,{ok:false,status:'unicode',error:'😀'.repeat(240)});assert.ok(Buffer.byteLength(unicodeLog)<=65536);
@@ -67,11 +67,11 @@ try{
   assert.throws(()=>deploy(output,home),/Personal palette/);assert.equal(raw(manifestFile),beforeManifest);
   put(path.join(home,'keys.json'),parsed.keys);
   const before=raw(path.join(home,'mods/custom-palette/main.js'));put(path.join(home,'mods/custom-palette/main.js'),'personal');assert.throws(()=>guardPaletteHome(home),/changed/);put(path.join(home,'mods/custom-palette/main.js'),before);
-  assert.equal(removePalettePolicy(home).removed,true);assert.equal(JSON.parse(raw(path.join(home,'keys.json')))['layout:Custom']['ctrl-shift-p'],undefined);
+  assert.equal(removePalettePolicy(home).removed,true);assert.equal(JSON.parse(raw(path.join(home,'keys.json')))['layout:Custom']['ctrl-shift-p'],'app.palette');
  }
- // First-install rollback restores exact pre-install keys/intent without touching history.
+ // First-install rollback derives stock routing while preserving unrelated keys/history.
  const home=path.join(temp,'rollback');seedPaletteSdk(home);put(path.join(home,'keys.json'),stock);put(path.join(home,'.migration-fixture'),'1');
- const first=deploy(output,home);rollback(home,first.backup,{fixture:true});assert.equal(raw(path.join(home,'keys.json')),stock);assert.equal(raw(path.join(home,'.customizations/palette-binding.json')),null);
+ const first=deploy(output,home);rollback(home,first.backup,{fixture:true});assert.deepEqual(JSON.parse(raw(path.join(home,'keys.json'))),{...JSON.parse(stock),'layout:Custom':{'ctrl-shift-w':'custom-tabs.close-tab','ctrl-shift-p':'app.palette'}});assert.equal(raw(path.join(home,'.customizations/palette-binding.json')),null);
  const core=path.join(temp,'core-only');deploy(output,core,{shellOnly:true});assert.equal(raw(path.join(core,'keys.json')),null);assert.equal(raw(path.join(core,'.customizations/palette-binding.json')),null);
  // CAS contention retries once with fresh bytes; persistent permission failure never forces.
  const memory=new Map([['keys.json',stock],['.customizations/palette-binding.json',parsed.record]]);let attempts=0;
@@ -82,7 +82,7 @@ try{
  const mounted=path.join(temp,'mounted');seedPaletteSdk(mounted);put(path.join(mounted,'keys.json'),stock);deploy(output,mounted);put(path.join(mounted,'keys.json'),stock);
  const shared=new Map([['layout','Custom']]),timers=[],tasks=[],notifications=[];let checks=false,fail=false,guards=0;
  const catalog=()=>{const value=JSON.parse(raw(path.join(mounted,'keys.json'))??stock);return Object.entries(value).flatMap(([section,items])=>Object.entries(items).map(([keys,action])=>({section,keys,action})));};
- const api={appHome:()=>mounted,checking:()=>checks,hostVersion:()=> '0.1.18',requireHostCapabilities(){},commands:()=>[{name:'mod.open',args:[{name:'name'}]}],keys:catalog,notify:n=>notifications.push(n),window:()=>({active:true}),shared:k=>shared.get(k),setShared:(k,v)=>shared.set(k,v),readTextFile:async p=>raw(p),writeTextFile:async(p,v,old)=>{if(fail)throw Error('denied');assert.equal(raw(p),old);put(p,v);},exec:async(_command,args)=>{if(args[0].endsWith('startup-frames.mjs'))return {code:0,stdout:JSON.stringify(restoreStartupFrames(mounted,path.join(mounted,'.customizations/runtime')))};guards++;try{guardPaletteHome(mounted,{startup:true});return {code:0,stdout:'{"ok":true}'};}catch{return {code:1,stderr:'{}'};}}};
+ const api={appHome:()=>mounted,checking:()=>checks,hostVersion:()=> '0.1.18',requireHostCapabilities(){},commands:()=>[{name:'mod.open',args:[{name:'name'}]}],keys:catalog,notify:n=>notifications.push(n),window:()=>({active:true}),shared:k=>shared.get(k),setShared:(k,v)=>shared.set(k,v),readTextFile:async p=>raw(p),writeTextFile:async(p,v,old)=>{if(fail)throw Error('denied');assert.equal(raw(p),old);put(p,v);},exec:async(_command,args)=>{if(args[0].endsWith('startup-frames.mjs'))return {code:0,stdout:JSON.stringify(restoreStartupFrames(mounted,path.join(mounted,'.customizations/runtime')))};if(args[1]==='startup')return {code:0,stdout:JSON.stringify(await installPalettePolicy(mounted,{startup:true}))};guards++;try{return {code:0,stdout:JSON.stringify(inspectPaletteState(mounted,{startup:true}))};}catch{return {code:1,stderr:'{}'};}}};
  const context=vm.createContext({console,Date,Math}),cache=new Map();
  const synthetic=values=>new vm.SyntheticModule(Object.keys(values),function(){for(const[k,v]of Object.entries(values))this.setExport(k,v);},{context});
  const moduleFor=file=>{if(!cache.has(file))cache.set(file,new vm.SourceTextModule(fs.readFileSync(file,'utf8'),{context,identifier:file}));return cache.get(file);};
@@ -98,6 +98,16 @@ try{
  const collision=JSON.stringify({global:{'ctrl-shift-p':'app.palette'},terminal:{'shift-ctrl-p':'terminal'}});
  put(path.join(mounted,'keys.json'),collision);shared.set('custom.palette.retry',4);timers[0](cx);await Promise.all(tasks.splice(0));
  assert.equal(shared.get('custom.palette.status').ok,false,'Equivalent higher-priority spelling cannot report startup success');assert.match(shared.get('custom.palette.status').error,/Higher-priority/);assert.equal(raw(path.join(mounted,'keys.json')),collision);
+ // A mounted/reloaded Custom with an orphaned action corrects it even without
+ // SDK files or a sidecar; personal rebinding is retained and stale intent removed.
+ fs.unlinkSync(path.join(mounted,'mods/custom-palette/main.js'));fs.unlinkSync(path.join(mounted,'herdr.d.ts'));fs.unlinkSync(path.join(mounted,'gpui-kit.d.ts'));
+ put(path.join(mounted,'keys.json'),parsed.keys);shared.set('custom.palette.retry',5);timers[0](cx);await Promise.all(tasks.splice(0));
+ assert.equal(shared.get('custom.palette.status').ok,true);assert.equal(shared.get('custom.palette.status').installed,false);
+ assert.equal(JSON.parse(raw(path.join(mounted,'keys.json')))['layout:Custom']['ctrl-shift-p'],'app.palette');assert.equal(raw(path.join(mounted,'.customizations/palette-binding.json')),null);
+ put(path.join(mounted,'keys.json'),parsed.keys);shared.set('custom.palette.retry',6);timers[0](cx);await Promise.all(tasks.splice(0));
+ assert.equal(JSON.parse(raw(path.join(mounted,'keys.json')))['layout:Custom']['ctrl-shift-p'],'app.palette');assert.equal(raw(path.join(mounted,'.customizations/palette-binding.json')),null);
+ const personal='{"layout:Custom":{"ctrl-shift-p":"personal.command"},"global":{"f9":"app.help"}}';put(path.join(mounted,'keys.json'),personal);put(path.join(mounted,'.customizations/palette-binding.json'),parsed.record);
+ shared.set('custom.palette.retry',7);timers[0](cx);await Promise.all(tasks.splice(0));assert.equal(raw(path.join(mounted,'keys.json')),personal);assert.equal(raw(path.join(mounted,'.customizations/palette-binding.json')),null);
  checks=true;const n=timers.length;mod.namespace.initPalettePolicy({},cx);assert.equal(timers.length,n,'native checks never arm repair');
  owner.sidebarClosed=true;const before=guards;timers[0](cx);await Promise.all(tasks.splice(0));assert.equal(guards,before);
  console.log('PASS owned palette persistence: capabilities, local/pc2 install, resets, missing defaults, update/reload, CAS/conflicts, rollback, Core-only exclusion, coalesced public-API startup and failure notifications');

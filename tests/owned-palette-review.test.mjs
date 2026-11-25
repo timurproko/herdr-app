@@ -7,7 +7,7 @@ import {deploy} from '../tools/deploy.mjs';
 import {framePatch} from '../tools/runtime/frame-patch.mjs';
 import {retirePalette} from '../tools/runtime/retire-palette.mjs';
 import {guardPaletteHome,installPalettePolicy,paletteInstallPlan} from '../tools/runtime/palette-policy.mjs';
-import {planBinding,restoreBinding,reconcileBinding,normalizeKeystroke,PALETTE_ACTION} from '../src/features/palette/binding.js';
+import {planBinding,planInstalledBinding,reconcileBinding,normalizeKeystroke,PALETTE_ACTION} from '../src/features/palette/binding.js';
 import {seedPaletteSdk,mockPaletteExecutable,paletteHostFacts,paletteGpui} from './support/palette-host.mjs';
 const {output}=build(),temp=fs.mkdtempSync(path.resolve('.artifacts/palette-review-')),restoreHost=mockPaletteExecutable(temp);
 const stock='{"global":{"ctrl-shift-p":"app.palette","f9":"app.help"}}';
@@ -16,9 +16,9 @@ const put=(file,value)=>{fs.mkdirSync(path.dirname(file),{recursive:true});fs.wr
 const read=file=>fs.existsSync(file)?fs.readFileSync(file,'utf8'):null;
 const snapshot=home=>Object.fromEntries(fs.readdirSync(home,{recursive:true,withFileTypes:true}).filter(e=>e.isFile()).map(e=>{const file=path.join(e.parentPath,e.name);return [path.relative(home,file),fs.readFileSync(file).toString('base64')];}));
 function staged(name,{sdk=true}={}){
- const home=path.join(temp,name);put(path.join(home,'keys.json'),stock);if(sdk)seedPaletteSdk(home);
+ const home=path.join(temp,name);put(path.join(home,'keys.json'),stock);
  put(path.join(home,'frame/palette/main.js'),native);framePatch('apply',home,output,'palette',{binary:native});
- deploy(output,home,{repair:false});return home;
+ deploy(output,home,{repair:false});if(sdk)seedPaletteSdk(home);return home;
 }
 try{
  fs.writeFileSync(process.env.HERDR_APP_BIN,native);
@@ -57,7 +57,7 @@ try{
   }
   const original=JSON.stringify({'layout:Custom':{[spelling]:'app.palette','f8':'app.help'}}),plan=planBinding(original,null,{install:true});
   const custom=JSON.parse(plan.keys)['layout:Custom'];assert.equal(custom['ctrl-shift-p'],PALETTE_ACTION);assert.equal(Object.keys(custom).filter(k=>normalizeKeystroke(k)==='ctrl-shift-p').length,1);
-  assert.deepEqual(JSON.parse(restoreBinding(plan.keys,plan.record)),JSON.parse(original),'Alias baseline is restored, not discarded');
+  const native=JSON.parse(planInstalledBinding(plan.keys,plan.record,{installed:false}).keys)['layout:Custom'];assert.equal(native['ctrl-shift-p'],'app.palette');assert.equal(native.f8,'app.help','Stock canonical routing preserves unrelated personal keys');
   const duplicate=JSON.stringify({'layout:Custom':{'ctrl-shift-p':PALETTE_ACTION,[spelling]:'personal.action'}});
   if(spelling!=='ctrl-shift-p')assert.throws(()=>planBinding(duplicate,plan.record),/Personal/);
  }

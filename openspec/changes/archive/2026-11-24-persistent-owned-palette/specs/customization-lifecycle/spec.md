@@ -112,6 +112,24 @@ Full customization installation SHALL establish the Custom-scoped owned palette 
 - **THEN** each owns and repairs its local app-home binding independently of selected remote terminals
 - **AND** Core-only shell deployment neither installs a palette nor silently becomes full remote desktop deployment
 
+### Requirement: Palette policy follows installed payload
+Every Desktop deploy, rollback and Custom startup/reload SHALL apply the same installed-state binding rule. A present capable palette SHALL own its scoped action subject to collision checks. An absent palette SHALL restore only its reserved owned action to stock and remove stale ownership, preserving personal rebindings. Binding policy SHALL NOT depend on palette-specific deployment journal entries.
+
+#### Scenario: Deferred installation followed by rollback
+- **WHEN** installation defers for missing SDK files, later startup establishes owned routing, and the user rolls back to a payload without the owned palette
+- **THEN** reconciliation restores stock routing and removes the sidecar although deployment never observed startup ownership
+- **AND** reinstall applies the same rule and restores owned routing when capabilities pass
+
+#### Scenario: Personal rebind during rollback
+- **WHEN** the person changes the shortcut to another command before rollback removes the owned mod
+- **THEN** reconciliation preserves that command and unrelated keys byte-for-byte while removing stale ownership
+- **AND** a conflicting reinstall reports the collision rather than overwriting it
+
+#### Scenario: Orphaned owned routing on startup
+- **WHEN** Custom starts or reloads with the owned action but its target mod is absent
+- **THEN** reconciliation returns the action to stock and removes stale ownership, even without a sidecar or generated SDK files
+- **AND** the status-bar opener follows the installed native mode rather than opening a missing mod
+
 ### Requirement: Visible palette compatibility and persistence failures
 The owned palette SHALL depend on minimum supported host and required capabilities rather than reviewed-version membership. Missing capabilities, unreadable configuration, unsafe writes or conflicting bindings SHALL be reported visibly and in bounded local diagnostics, never described as successful persistence or silently substituted with vanilla. A keyboard repair failure SHALL retain the Custom status-bar opener when its overlay capabilities remain available.
 
@@ -140,7 +158,7 @@ Owned-palette migration SHALL stage the new entrypoint and binding before retiri
 
 #### Scenario: Rollback of migration from the reviewed stop-gap
 - **WHEN** the user rolls back the reported owned-palette deployment backup after migrating an installed reviewed native palette patch
-- **THEN** recovery restores the previous payload, binding and native opt-in and refreshes that opt-in through the reviewed-byte and ownership gates
+- **THEN** recovery restores the previous payload, derives binding policy from installed files, and restores native opt-in from independent retirement evidence before guarded refresh
 - **AND** a successful rollback restores the previous Custom palette, including startup repair after a native frame reset, rather than silently returning to vanilla
-- **AND** later personal/native edits refuse before recovery writes, while a skipped or failed guarded refresh is reported as a rollback failure with the opt-in retained
+- **AND** later native edits refuse before recovery writes, personal shortcut rebindings remain untouched, and a skipped or failed guarded refresh reports failure with the opt-in retained
 - **AND** reinstalling through normal Update safely returns to the owned palette without changing feedback or running terminals

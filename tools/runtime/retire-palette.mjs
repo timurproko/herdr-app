@@ -8,7 +8,7 @@ import {guardPaletteHome,safePalettePath} from './palette-policy.mjs';
 import {planBinding} from './palette-binding.js';
 import {loadFrameRegistry} from './frame-registry.mjs';
 import {inspectFramePatch} from './frame-patch.mjs';
-import {capturePaletteRetirement,recordPaletteRetirement} from './palette-recovery.mjs';
+import {capturePaletteRetirement,recordPaletteRetirement,paletteReceiptPath} from './palette-recovery.mjs';
 const bundle=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const hash=v=>v===null?null:crypto.createHash('sha256').update(v).digest('hex');
 const read=file=>fs.existsSync(file)?fs.readFileSync(file,'utf8'):null;
@@ -57,14 +57,17 @@ export function retirePalette(home,root=bundle,options={}){
   const recovery=capturePaletteRetirement(home);
   if(recovery?.record!==recordRaw||Object.entries(current).some(([n,value])=>(recovery.frames[`${patch.target}/${n}`]??null)!==hash(value)))throw Error('Concurrent palette retirement ownership edit');
   const archiveRel=`.customizations/recovery/palette-retirement/${hash(recordRaw)}.json`,prior=read(safePalettePath(home,archiveRel));
-  const markerText=JSON.stringify({version:1,retired:true,status:unknown?'preserved-unknown-target':'restored-current-stock',archive:archiveRel,preservedNativeFiles:unknown})+'\n';
+  const manifestHash=hash(read(safePalettePath(home,'.customizations/manifest.json'))),receipt=paletteReceiptPath(recovery,manifestHash);
+  const markerText=JSON.stringify({version:1,retired:true,status:unknown?'preserved-unknown-target':'restored-current-stock',archive:archiveRel,receipt,preservedNativeFiles:unknown})+'\n';
   const after={...recovery.frames};
   if(!unknown)for(const n of Object.keys(patch.files))after[`${patch.target}/${n}`]=hash(n==='main.js'?native:state.original[n]??null);
   // Prepared before native mutation, bound to this deployment and exact frame
   // hashes. Rollback can recognize partial retirement without trusting old main bytes.
-  recordPaletteRetirement(home,recovery,hash(read(safePalettePath(home,'.customizations/manifest.json'))),after,markerText);
+  recordPaletteRetirement(home,recovery,manifestHash,after,markerText);
   if(prior!==null&&prior!==recordRaw)throw Error('Palette recovery archive conflict');
   if(prior===null)write(home,archiveRel,recordRaw,null);
+  // Recovery intent must survive interruption before any native mutation.
+  write(home,markerRel,markerText,recovery.marker);
   if(!unknown){
     // Native main first, then helpers. Never put an old record's main over new stock.
     if(current['main.js']!==native)write(home,`${patch.target}/main.js`,native,current['main.js']);
@@ -75,7 +78,6 @@ export function retirePalette(home,root=bundle,options={}){
   // Unknown entrypoint may be newer stock OR a personal edit. Preserve the entire
   // frame tree, explicitly report it, and archive management rather than guess.
   write(home,recordRel,null,recordRaw);
-  write(home,markerRel,markerText,recovery.marker);
   return {ok:true,status:unknown?'retired-with-preserved-target':'retired',preservedNativeFiles:unknown};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href){

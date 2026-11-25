@@ -30,16 +30,23 @@ The status-bar opener uses the same mod and advertises the Custom-scoped binding
 
 ## Persistence and diagnostics
 
-Full install merges just `keys.json["layout:Custom"]["ctrl-shift-p"]` to
-`mod.open:custom-palette`, with intent/baseline in
-`.customizations/palette-binding.json` and deployment rollback journals. It does
-not edit Herdr defaults or globally register/override `app.palette`. Other global,
+One installed-state rule runs after every Desktop deploy/rollback/remove and on
+Custom startup/reload. If the owned mod is actually present and its capability
+gate passes, it merges just `keys.json["layout:Custom"]["ctrl-shift-p"]` to
+`mod.open:custom-palette`, with ownership in `.customizations/palette-binding.json`.
+If the mod is absent, only that reserved owned action is changed to stock
+`app.palette` and its sidecar is removed, even if startup created them after a
+deferred installation, or the sidecar itself is missing. A personal rebind to
+another command is left byte-for-byte untouched while stale ownership is removed.
+Binding policy is derived from installed files, never a deployment key snapshot.
+It does not edit Herdr defaults or globally register/override `app.palette`. Other global,
 terminal and layout bindings are preserved. Unknown personal collisions (including
 higher-priority terminal/mod mappings) fail instead of being clobbered. Collision
 checks normalize GPUI modifier order/case, `secondary` by platform and uppercase
 ASCII letters' implicit Shift. Equivalent Custom native mappings are consolidated
-into one owned spelling, with their original spellings retained for restore. Removal
-and rollback refuse later edits. Before any routing or native retirement, installer preflight and startup use the
+into one owned spelling; removal returns the owned spelling to stock rather than
+replaying old keys. Personal rebindings are preserved, not a rollback error. Before
+owned routing or native retirement, installer preflight and startup use the
 same real capability gate: the selected home's SDK/GPUI declarations plus the
 current executable's version and command argument catalog. An initialized home
 missing a required API, UI symbol or command refuses before key/intent writes.
@@ -53,7 +60,10 @@ comparing the local key catalog and retry generation; unchanged healthy state ge
 an integrity check at most once a minute. One expiring lease coalesces windows.
 Repair yields, checks owned palette payload hashes/overlay metadata and generated
 GPUI capabilities, and writes through `readTextFile` / `writeTextFile` expected-value
-CAS, with one bounded retry. It pauses for deployment and does nothing under native
+CAS, with one bounded retry. Removing an absent mod's sidecar uses the same narrow
+installed-state Node policy (the public write API cannot unlink files), not an
+arbitrary path/content writer. Missing-payload cleanup does not require the absent
+overlay's capabilities. It pauses for deployment and does nothing under native
 `checking()`, after close or outside Custom. Native key reload errors and catalog
 readback are reconciled after 1.1 seconds. `keys()` reads disk, **not the installed
 GPUI key table**: reconciliation is not claimed as actual event-dispatch proof.
@@ -103,32 +113,40 @@ files/opt-in are unchanged. None of this opts in a patch, deploys or restarts He
 
 History seeds, binding intent, repair logs, leases and retirement/recovery records
 are local runtime data, outside portable preference exports. Ordinary uninstall
-restores only the owned key baseline; later personal edits block removal. Full
-rollback journals capture the previous native opt-in and retirement marker before
-migration, alongside the key/policy baseline. Retirement writes a prepared receipt
-bound to the deployment manifest and exact before/after native-file hashes. Rollback
-preflights those hashes and ownership records before changing payload or routing;
-later personal edits, missing recovery evidence or newer stock refuse safely.
+uses the same installed-state rule: owned actions become stock, personal rebindings
+stay untouched, and stale sidecars disappear. There are **no palette-specific entries
+in deployment rollback journals**. Rollback restores payload and invokes the current
+reconciler, even if the restored older bundle has no policy worker of its own.
 
-Rollback restores the previous opt-in and marker, then uses the restored runtime's
-ordinary reviewed-byte/ownership-checked startup refresh to rebuild the previous
-native customization. It never copies an old native entrypoint blindly. A skipped
-or failed guarded refresh is an explicit rollback error with the opt-in preserved,
-not a successful rollback to vanilla. Prepared receipts also cover interruption
-between native restoration, opt-in removal and marker publication. Recovery evidence
-is retained for diagnosis; source and native provenance safeguards remain intact.
+The only extra recovery evidence is irreducible native intent/provenance. Retirement
+archives the previous opt-in, writes an exact before/after receipt, then publishes
+its recovery marker **before native mutation**. Once the owned mod is absent and
+a legacy runtime is installed, the same reconciliation re-establishes that verified
+opt-in and the restored runtime's ordinary reviewed-byte/ownership-checked startup
+refresh rebuilds the previous native customization. Interrupted retirement uses
+the same rule, not a deployment-journal special case. It never copies an old native
+entrypoint blindly. Later personal/native edits or missing evidence refuse safely;
+a skipped/failed guarded refresh is an explicit error with intent retained, never
+claimed as a successful rollback to vanilla. Recovery evidence stays for diagnosis.
 
 ### What install, rollback and reinstall look like
 
 - **Install from the reviewed 0.1.18 stop-gap:** Custom's shortcut/button open the
-  owned palette. Native patch management is retired, with recovery in the reported
-  deployment backup; the native frame itself returns to current stock.
+  owned palette. Native patch management is retired, with local native recovery
+  evidence; the native frame itself returns to current stock.
 - **Rollback that backup:** use the existing Herdr/main-layout guard first (no
   terminal restart). After returning to Custom, the shortcut/button again use
   `app.palette`, and the previous native patch gives its Custom palette styling
   and routing. Its opt-in is live again, so the old startup worker can reapply it
   after Herdr rewrites the frame. This deliberately returns to the stop-gap's
   release-specific compatibility limits, not the owned implementation.
+- **Deferred install → first startup → rollback:** before SDK generation, routing
+  waits. Startup establishes ownership once capable. Rollback removes the mod and
+  the common rule restores stock routing/removes the sidecar, regardless of when
+  startup created them. No shortcut is left pointing at a removed mod.
+- **Personal rebind before rollback:** that command and unrelated keys remain as
+  written; only stale ownership goes away. A later reinstall reports the collision
+  instead of taking the person's shortcut back.
 - **Reinstall through normal Update:** Custom switches back to the owned palette,
   safely retires the restored native opt-in again and keeps its owned repair policy.
   User preferences and running terminals remain untouched. Owned Recent history is

@@ -340,8 +340,11 @@ executable/catalog and compact GPUI declaration are explicitly synthetic.
 `owned-palette-rollback.test.mjs` installs a prior managed fixture carrying the real
 #65 native palette and pinned legacy openers/startup worker, migrates it, rolls
 back the reported backup, simulates a frame reset/startup and reinstalls. It covers
-0.1.17/0.1.18 LF/Windows originals, feedback preservation, later-edit refusal and
-interrupted retirement. Other shared fixture files come from the current build;
+0.1.17/0.1.18 LF/Windows originals, feedback preservation, later-native-edit refusal,
+personal shortcut preservation, deferred install → startup ownership → rollback,
+reinstall and interrupted retirement. Assertions require no palette-specific deploy
+journal fields. Mounted persistence tests cover missing-mod cleanup with/without a
+sidecar and without SDK files; the same installed-state planner handles all paths. Other shared fixture files come from the current build;
 it is not claimed as a byte-faithful historical distribution. Rollback restores
 intent through guarded refresh, never by replaying an old native main.js.
 
