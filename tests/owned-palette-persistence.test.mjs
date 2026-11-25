@@ -20,13 +20,14 @@ assert.equal(JSON.parse(parsed.keys).global.f9,'app.help');
 assert.equal(planBinding(parsed.keys,parsed.record).status,'already-current');
 assert.equal(planBinding(stock,parsed.record).status,'repaired');
 assert.equal(JSON.parse(restoreBinding(parsed.keys,parsed.record))[PALETTE_SCOPE]['ctrl-shift-p'],undefined);
-assert.throws(()=>planBinding('{broken',parsed.record));
+assert.throws(()=>planBinding('{broken',parsed.record),error=>!error.message.includes('{broken')&&/malformed/.test(error.message));
 assert.throws(()=>planBinding('{"layout:Custom":{"ctrl-shift-p":"personal.action"}}',parsed.record),/Personal/);
 assert.throws(()=>planBinding('{"terminal":{"ctrl-shift-p":"terminal"}}',parsed.record),/Higher-priority/);
 assert.throws(()=>planBinding(stock,'{"version":99}'),/Unrecognized/);
 assert.throws(()=>restoreBinding('{"layout:Custom":{"ctrl-shift-p":"personal.action"}}',parsed.record),/Personal/);
 assert.equal(planBinding(stock,null).status,'not-installed');
 let log='';for(let i=0;i<150;i++)log=boundedLog(log,{ok:false,status:`failure-${i}`,error:'reason'});assert.equal(log.trim().split('\n').length,128);
+let unicodeLog='';for(let i=0;i<150;i++)unicodeLog=boundedLog(unicodeLog,{ok:false,status:'unicode',error:'😀'.repeat(240)});assert.ok(Buffer.byteLength(unicodeLog)<=65536);
 for(const version of ['0.1.17','0.1.18','0.9.99']){
  const declarations=fs.readFileSync(`tests/fixtures/palette/herdr-${version==='0.9.99'?'0.1.18':version}.d.ts`,'utf8');
  const facts={version,declarations,gpui,commands:[{name:'mod.open',args:[{name:'name',required:true}]},{name:'overlay.close',args:[]}]};

@@ -5,14 +5,14 @@ const equal=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 const native=v=>v==='app.palette'||(object(v)&&v.command==='app.palette'&&(!v.args||!Object.keys(v.args).length));
 export function bindingRecord(raw){
   if(raw===null)return null;
-  const r=JSON.parse(raw);
+  let r;try{r=JSON.parse(raw);}catch{throw Error('Unrecognized palette binding ownership record');}
   if(!object(r)||r.version!==1||r.enabled!==true||r.scope!==PALETTE_SCOPE||r.key!==PALETTE_KEY||r.action!==PALETTE_ACTION||typeof r.hadBinding!=='boolean'||(r.hadBinding&&typeof r.original!=='string'&&!object(r.original)))throw Error('Unrecognized palette binding ownership record');
   return r;
 }
 export function planBinding(keysRaw,recordRaw,{install=false,defaults=null}={}){
   let record=bindingRecord(recordRaw);
   if(!record&&!install)return {status:'not-installed',keys:keysRaw,record:recordRaw,changed:false};
-  const keys=keysRaw===null?defaults:JSON.parse(keysRaw);
+  let keys;try{keys=keysRaw===null?defaults:JSON.parse(keysRaw);}catch{throw Error('Palette keys unavailable or malformed; native defaults must be readable');}
   if(!object(keys))throw Error('Palette keys unavailable or malformed; native defaults must be readable');
   for(const [scope,values]of Object.entries(keys)){
     if(!object(values))throw Error('Malformed key binding section');
@@ -30,7 +30,7 @@ export function planBinding(keysRaw,recordRaw,{install=false,defaults=null}={}){
 export function restoreBinding(keysRaw,recordRaw){
   const r=bindingRecord(recordRaw);if(!r)return keysRaw;
   if(keysRaw===null)throw Error('Keys missing; palette binding restore refused');
-  const keys=JSON.parse(keysRaw);if(!object(keys)||!object(keys[PALETTE_SCOPE]))throw Error('Keys changed; palette binding restore refused');
+  let keys;try{keys=JSON.parse(keysRaw);}catch{throw Error('Keys changed; palette binding restore refused');}if(!object(keys)||!object(keys[PALETTE_SCOPE]))throw Error('Keys changed; palette binding restore refused');
   const actual=keys[PALETTE_SCOPE][PALETTE_KEY];
   if(actual!==PALETTE_ACTION){if(native(actual))return keysRaw;if((!r.hadBinding&&actual===undefined)||(r.hadBinding&&equal(actual,r.original)))return keysRaw;throw Error('Personal palette shortcut edit; restore refused');}
   if(r.hadBinding)keys[PALETTE_SCOPE][PALETTE_KEY]=r.original;else delete keys[PALETTE_SCOPE][PALETTE_KEY];
@@ -59,8 +59,9 @@ export async function reconcileBinding(io,{install=false}={}){
     }catch(error){if(attempt)throw error;}
   }
 }
+function utf8Size(text){let size=0;for(const ch of text){const c=ch.codePointAt(0);size+=c<128?1:c<2048?2:c<65536?3:4;}return size;}
 export function boundedLog(raw,status,now=Date.now()){
   const line=JSON.stringify({at:new Date(now).toISOString(),ok:status.ok===true,status:String(status.status??'error').slice(0,80),reason:status.ok?'':String(status.error??'Palette repair failed').replace(/[\r\n]/g,' ').slice(0,240)});
   const lines=(raw??'').split('\n').filter(Boolean);if(lines.at(-1)===line)return raw;
-  lines.push(line);while(lines.length>128||lines.join('\n').length>65000)lines.shift();return lines.join('\n')+'\n';
+  lines.push(line);while(lines.length>128||utf8Size(lines.join('\n'))>65000)lines.shift();return lines.join('\n')+'\n';
 }
