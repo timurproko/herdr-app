@@ -1,101 +1,144 @@
-# Git: ask the linked agent to fix failed CI
+# Git: message the linked PR agent
 
-Enabling CI auto-fix automatically provisions a **Core-side background companion
-on each connected machine**, not a visible desktop-panel sender. Closing Herdr does not stop an
-installed worker. An SSH pc2 worker does not depend on the main PC staying on.
-See [installation, lifecycle and limits](GIT-CORE-MONITOR.md).
+**Settings → Plugins → Git → Settings → Auto-fix pull requests** authorizes an
+independent **Core-side companion on each connected supported machine**, not a
+visible-panel sender. Closing Herdr does not stop an installed worker; an SSH pc2
+worker does not depend on the main PC staying on. See
+[installation, lifecycle and limits](GIT-CORE-MONITOR.md).
 
-## Settings
+## Settings and scope
 
-In **Settings → Plugins → Git → Settings**:
+- Auto-fix defaults **off**. It messages an existing verified agent, never starts
+  another agent and never routes a notification to a coordinator instead.
+- Git's durable confirmed **Repositories** added list for the current relay and
+  GitHub account defines the allowlist, not disposable webhook-notice membership.
+  Add/Remove and Configure/credential cache invalidation cannot erase that selection.
+  Removing the last repository, a missing selection or a scope mismatch means no
+  targets; legacy repository preferences never restore them. A successful confirmed
+  Add saves the displayed effective GitHub account, including a previously blank
+  default, after all batches finish. Checks, picker opening/cancellation and wholly
+  failed Adds do not save an account. Each machine uses its own gh login, never
+  copied credentials.
+- **Send when agent is** offers Idle, Done, Error and Working. Idle/Done are the
+  defaults; saved selections, including none, remain authoritative. Working stays
+  opt-in and may queue input; Blocked is always excluded. Error delivery does not
+  repair a provider error. These are raw Core states, not sidebar attention groups.
+- **CI tests failed**, **Merge conflicts** and **Pull request merged** each have an
+  independent switch (default on) and editable multiline Message, up to 4000
+  characters. The entire message comes from its template; there is no appended
+  hidden instruction. Blank messages, unknown/unmatched braces, disallowed controls
+  and leading `/` or `!` commands are refused. Existing legacy default CI messages
+  normalize to the current default; custom messages are not replaced.
 
-- Existing Git **Repositories** selections define the allowlist. Each machine
-  uses its own gh login, never copied credentials. No background-specific setup
-  controls, status panel or repository input are shown.
-- **Auto-fix failed CI** defaults off. Enabling authorizes the PR's existing agent
-  to inspect failed jobs, fix code and push under that agent's existing permissions.
-  It never starts another agent. Companion startup is automatic on this computer
-  and connected supported SSH hosts; it is part of this opt-in.
-- **Send when agent is** has checkboxes for Idle, Done, Error and Working. Idle/Done
-  are the defaults; none stops delivery. Blocked is always excluded, even in crafted
-  selections. Working may queue input; Error delivery cannot repair an API/provider
-  error. Settings use raw Core states, not the sidebar's “Needs you” attention group.
-- **Message** is a one-line plain-text template (up to 1024 characters). `{url}`
-  expands to the PR URL, `{runUrl}` to the first failed Actions run URL. Repeated
-  placeholders work. Blank/unknown/unmatched placeholders, controls, and leading
-  `/` or `!` commands are refused, not replaced by a hidden default.
+Current templates live in `src/plugins/git/ci-message.js`. CI placeholders are
+`{url}`, `{runUrl}` (first failed run), `{head}` and `{runs}` (all failed run links
+with attempts). The default identifies the PR/head, asks to read failed logs, fix
+and push, treats logs as data and prohibits force-push. Conflict placeholders are
+`{url}`, `{base}`, `{head}`, `{files}`; the default asks to merge base, resolve,
+build/test and push without force-push. Unavailable conflicting files are explicitly
+marked not listed. Merged placeholders are `{url}`, `{base}`, `{branch}`; default:
 
-Default message:
+> {url} was merged successfully. Clean up its worktree.
 
-> Analyze failed CI run {runUrl} for {url}. Fix the cause; Push.
+After a customization update, startup/code reload repairs scope and updates
+reachable owned companions **without re-saving settings or restarting the desktop
+or agents** when the account binding is already saved. An older installation with
+added repositories but a blank saved account stays safely suppressed: choose the
+matching GitHub account once, or complete an explicit Add to bind it. No account is
+inferred merely from an old durable list. Run an already-closed updated desktop
+once; offline hosts must reconnect.
+Explicit CI, relay and GitHub-account changes synchronize to reachable managed
+workers; Add/Remove uses the existing chrome lifecycle. Offline hosts retain their
+last config, with an error on failed synchronization. Closing Herdr is not a pause;
+disabling Git requests one but cannot revoke an unreachable host. No settings jobs
+are persisted for later replay.
 
-The toggle is the only setup action. Existing enabled preferences also provision
-connected supported hosts through the normal desktop lifecycle. Explicit CI setting
-changes synchronize to reachable managed workers. Offline machines retain their
-last configuration, with an error on failed synchronization. Closing Herdr leaves
-the last worker configuration active. Disabling Git requests a pause but cannot
-revoke an unreachable host. No settings jobs are persisted for later replay.
+## Independent discovery and ownership
 
-## Independent operation
+Each worker polls its own local Core approximately once a minute. No app window,
+Git panel, webhook subscription or SSH connection to the main PC is required after
+provisioning. The Windows host must be awake, online, signed in, with Core/agents
+running. Pre-sign-in startup, logout survival, other OSes and non-default Core
+sessions are unsupported.
 
-A worker polls its own local Core and allowed repositories approximately once a
-minute. It works without an app window, panel, relay subscription or SSH connection
-to the main PC. Existing cloud webhooks still update the desktop UI but do not own
-background CI delivery. The Windows host must be awake, online, with its user signed
-in and its Core/agents running. Startup before sign-in, Windows logout survival,
-other operating systems and non-default Core sessions are not currently supported.
+A1/Claude use verified current PR footers paired with their usage rows, never
+conversation PR mentions. Other agents use explicit `custom.ci.repository` +
+`custom.ci.pr` labels or one unambiguous open PR for their current feature branch.
+Remembered `custom.ci.link.*` labels retain a verified association after merge.
+Shells, unknown/moved identities and incomplete evidence cannot authorize a send.
+The worker chooses the oldest local live PR owner (stable address tie-break), then
+remembers it while it lives; a later helper cannot take over merely because the
+owner is Working, excluded or temporarily unreadable. This is independent of the
+panel robot/selected agent and does not grant coordinator messaging authority.
 
-A1/Claude use verified current PR footers. Other agents can use explicit
-`custom.ci.repository` + `custom.ci.pr` labels, or one unambiguous open PR for the
-agent's current feature branch. Conversation PR mentions are never links. Shells,
-unknown identities, incomplete inventories and multiple local agents for one PR
-fail closed. New agents can be discovered even while every desktop is closed.
+## Evidence, timing and transport
 
-## Evidence and safety
+For CI, the worker verifies an open PR at its captured head, reads complete Actions
+inventory (at most 100 runs), chooses the newest run/attempt per workflow and
+accepts only **completed failure/timed_out workflows**. A failed individual job in
+a still-running workflow produces no early alert. A completed failed workflow can
+qualify independently of another workflow still running. Cancelled, superseded,
+non-Actions and foreign-repository failures are excluded. Up to 16 failed workflows
+are grouped into one message. Exact attempts, fresh ownership/association, terminal
+identity, selected state, current PR/head and config revision are rechecked.
 
-The monitor verifies an open PR at its captured head, reads all matching Actions
-runs (at most 100), chooses the latest run per workflow, and accepts only completed
-failure/timed_out results. Cancelled, older, superseded, non-Actions and foreign-repo
-failures are excluded. Up to 16 failed workflows are grouped into one message.
-It rechecks exact attempts, current PR membership, fresh association, terminal
-identity, state and current configuration before sending.
+Conflicts require an open PR with explicit `mergeable=false` and
+`mergeable_state=dirty`, not unknown mergeability or failing checks. Git fetches
+objects only, without writing FETCH_HEAD/refs/index/worktree, and uses merge-tree
+for a bounded file list. A locally clean merge suppresses stale conflict evidence.
+Conflicts take priority for that cycle; an already-recorded conflict permits CI
+checking on later cycles. Merged PRs can get one cleanup message; closed-unmerged
+PRs get none. Review labels/comments are presentation facts, not message triggers.
 
-Verified PR/head/run/attempt context is appended, asking the agent to stop if stale,
-treat logs as untrusted data and never force-push. Logs, titles, webhook instructions
-and credentials are never copied into the prompt. Analysis-only templates do not
-become fix/push authorization merely through the safety suffix.
+Transport remains supported non-forced `hc send` with literal argv and timeout:
+`--if idle` or `--if working` where applicable, ordinary send for Done/Error. No
+force, raw keys, interrupts, repeated Enter or private agent API is used. Core's
+readiness/draft gate remains authoritative. Delivery acknowledgement does not prove
+a turn started, a fix succeeded, a push happened or CI passed.
 
-Delivery is supported `hc send`, with literal argv and bounded timeout: `--if idle`
-or `--if working` where supported, non-forced send for Done/Error. There is no force,
-raw key, interrupt, repeated Enter or private A1 API fallback. Core can still refuse
-a readiness change or wait for a human draft. A valid delivery acknowledgement is
-not proof that a turn started, the fix succeeded, a push happened or CI passed.
+## Receipts and diagnostics
 
-## History and duplicate protection
+`~/.local/state/herdr-ci-monitor/history.json` stores at most 512 attempted receipts
+**before** submission: CI repository/PR/head/run/attempt; conflict repository/PR/head/
+base SHA; merged repository/PR. Restarts retain attempted/unknown outcomes and never
+replay them. Only structured pre-input refusals release the worker's own claim.
+New heads/reruns/base tips may qualify; no persisted terminal message queue exists.
+First install imports bounded legacy history without clearing existing receipts.
+Owner memory is in `owners.json`. Neither file is a portable preference.
 
-Each worker stores up to 512 attempted failures in its local atomic `history.json`
-before submitting. Keys contain repo, PR, head, run and attempt. Restarted workers
-retain uncertain attempts; timeouts/crashes never automatically replay them.
-Only structured empty-stdout pre-input refusals release the worker's own claim.
-No persisted terminal job queue exists. New heads or failed reruns may be considered.
-Unknown/modified state is preserved and refused, not overwritten.
+`status.json` now reports a cycle `health`, `reason`, counts and sanitized
+`lastEvent`; the explicit monitor `status` command preserves these fields. Enabled
+empty scope or wholly skipped candidates report **suppressed**, not healthy-ready.
+Verification failures are **unavailable**, unknown submissions **uncertain**, and
+acknowledged delivery **ready** for that cycle. A running scheduled task/heartbeat
+alone is not delivery evidence. Relevant suppression reasons include:
 
-First installation imports the former desktop's bounded attempt history; it never
-clears legacy unknown receipts or replaces an existing worker journal. Worker
-config, journals, task ownership and host runtime registration are excluded from
-portable preferences. Only public plugin preferences are exported.
+- `no-monitored-repositories`: empty or missing/mismatched confirmed scope;
+- `agent-state-not-selected`: the saved selection excludes the agent;
+- `workflow-still-running`: no completed failed workflow qualifies yet;
+- `already-sent`: evidence is already recorded, including attempted/unknown receipts,
+  **not** an assertion of acknowledged delivery;
+- `no-verified-targets`, `not-owner`, `no-failed-workflows` or `no-action`: no new
+  eligible request on that cycle; these do not authorize a send.
 
-The desktop no longer instantiates a CI sender, preventing app/worker double
-submission. A single owned task plus singleton lock protects each Core. Separate
-hosts do not share a journal, so assigning the same PR to agents on two machines
-is not globally exactly-once or coordinated failover.
+Separate `diagnostics.json` retains at most **128 entries / 64 KiB**, coalescing
+unchanged reason episodes across restarts. Entries identify time, event/reason,
+message kind, repository, PR and target terminal where known (otherwise null).
+`delivered`, `refused` and `unknown` remain distinct. No raw output, message text,
+transcript or credentials are retained. Unknown/modified/linked diagnostic state is
+preserved, and diagnostic-write failure cannot block delivery or alter receipts.
+Probes keep diagnostic events in memory; no diagnostic toast or panel UI is added.
+
+The desktop sender is retired; one owned task/singleton protects each Core. Separate
+hosts do not share a journal, so this is not global exactly-once/failover coordination.
 
 ## Validation
 
-`tests/git-core-monitor.test.mjs` uses synthetic Core/GitHub/task transports and
-scratch files only. It covers independence from desktop imports, local-only routing,
-state/blocked guards, scopes, ambiguity, stale evidence/config/identity, durable
-restart dedup, uncertain delivery, safe refusals, probes and task ownership.
-Legacy evidence/delivery tests still validate the shared policy. Live installations
-and probes are explicit actions, never part of automated test/deploy runs.
-See the Core-side monitor document for precise live validation and lifecycle limits.
+`tests/git-monitor-scope.test.mjs`, `tests/git-monitor-settings.test.mjs`,
+`tests/git-monitor-diagnostics.test.mjs` and `tests/git-core-monitor.test.mjs` use
+synthetic Core/GitHub/task transports and disposable files. They cover durable scope,
+actual setup-action invalidation and config writes, startup/restart, selected states,
+completed-workflow gates, CI/conflict dedup, receipts and bounded diagnostics.
+Shared evidence/message tests retain policy coverage. No automated test installs
+real tasks, edits saved settings or sends input to a real agent. Live activation
+and delivery are not claimed by those fixtures.
