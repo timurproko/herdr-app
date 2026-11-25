@@ -610,10 +610,10 @@ Verification SHALL use recorded-only status, preferring an explicitly advertised
 - **AND** later enrichment cannot renew verification age, change pair identity or discard unchanged discovered links during the next recorded refresh
 
 ### Requirement: Selected-tab coordinator repository visibility
-The coordinator Git panel SHALL render a repository section only when the selected tab has an eligible PR row or a genuine repository-scoped read notice. Eligibility SHALL be evaluated before folding and on each tab change, retaining existing history limits, top-level totals and saved fold state. Enrollment SHALL use the full eligible repository inventory independently of selected-tab section visibility.
+The coordinator Git panel SHALL render a repository section when the selected tab has an eligible PR row, a genuine scoped read notice, or admitted task PRs awaiting their first authoritative facts. Unresolved sections SHALL use standard Loading feedback, not invented rows. Eligibility SHALL precede folding and preserve history limits and saved fold state. Enrollment SHALL use full eligible inventory independently of selected-tab visibility.
 
 #### Scenario: Open and Closed contain different repositories
-- **WHEN** one repository has only Open or Draft task PRs and another has only eligible Merged or Closed task PRs
+- **WHEN** one repository has only Open or Draft task PRs and another has only eligible Merged or Closed task PRs, with no unresolved task PRs
 - **THEN** Open shows only the first repository section and Closed shows only the second
 - **AND** omitted sections leave no header or chevron, and switching tabs preserves both totals
 
@@ -625,7 +625,7 @@ The coordinator Git panel SHALL render a repository section only when the select
 #### Scenario: History ages out
 - **WHEN** a historical-only Merged or Closed PR is outside the existing 24-hour history limit or lacks a valid completion date
 - **THEN** that PR and its expired row-specific failure do not keep a repository section visible
-- **AND** other eligible rows or genuine applicable notices can still keep that section visible
+- **AND** other eligible rows, unresolved admitted PRs or genuine applicable notices can still keep that section visible
 
 #### Scenario: Folded repository disappears and returns
 - **WHEN** a repository is folded, becomes ineligible in the selected tab and later reappears through a tab switch or updated PR facts
@@ -633,7 +633,7 @@ The coordinator Git panel SHALL render a repository section only when the select
 - **AND** folding an eligible section alone does not produce an empty state or change counts
 
 #### Scenario: Empty settled tab
-- **WHEN** no repository has an eligible row or applicable read notice in a settled verified tab
+- **WHEN** no repository has an eligible row, unresolved admitted PR or applicable read notice in a settled verified tab
 - **THEN** the panel uses ordinary Git's same empty-state presentation and wording, namely `No open pull requests` or `No closed pull requests`
 - **AND** no empty repository header remains, while pending loading and unverified waiting states retain their existing feedback
 
@@ -641,6 +641,18 @@ The coordinator Git panel SHALL render a repository section only when the select
 - **WHEN** a confirmed unenrolled repository has eligible PRs only in the other tab
 - **THEN** the single pinned enrollment footer still includes that repository in canonical inventory order
 - **AND** hiding its section does not enroll it, remove its fold state, or initiate or cancel GitHub reads
+
+#### Scenario: Mixed successful repositories and a quietly deferred cold repository
+- **WHEN** verified admitted task links include two PRs in one repository whose first read is queued, in flight or quietly deferred while other repositories load successfully
+- **THEN** its canonical repository header remains available in either tab with the existing working bulb and Loading in its unfolded body
+- **AND** no error, rate-limit wording, new style or placeholder PR is introduced and healthy repositories' real rows remain visible
+- **AND** folding hides Loading with the body but retains the eligible header without new reads
+
+#### Scenario: Retry fills the existing section
+- **WHEN** the existing cooldown expires while the panel remains shown, enabled and freshly verified, and its automatic retry succeeds
+- **THEN** the unresolved section fills with its two authoritative eligible PR rows without requiring a new event or manual refresh
+- **AND** surviving repository/header identities, fold state, revealed content and scroll anchor remain stable without a clear-to-empty frame
+- **AND** final known-state filtering removes sections with no qualifying content in that tab, including confirmed missing or expired history
 
 ### Requirement: Stable pull request block geometry
 Every PR block SHALL retain fixed state-icon, title and related-agent slots, three fixed line boxes and a 74px height at a given width and zoom. Optional facts SHALL NOT move title boundaries or vertical anchors. Left-run lower-line items MAY move horizontally in fixed order as facts arrive; assigned labels SHALL retain their right content anchor. Absent groups SHALL reserve no width. The metadata line SHALL retain its height even when empty, without placeholders.
@@ -704,7 +716,7 @@ A same-context PR refresh SHALL retain previously displayed rows, pin geometry a
 - **AND** legitimate pin navigation, task-history expiry and requested folds or tab changes remain allowed layout changes
 
 ### Requirement: Always-visible Git tab counts
-Ordinary and coordinator Git views SHALL always display Open and Closed count badges. Unknown totals SHALL show 0 with loading feedback; refreshes SHALL retain known totals. One-, two- and three-digit counts SHALL retain stable tab positions and symmetric label-left/badge-right padding. Only loading or abbreviated counts SHALL have count tooltips; accessible labels SHALL retain exact totals.
+Ordinary and coordinator Git views SHALL always display Open and Closed count badges. Unknown or incomplete totals SHALL retain loading feedback, showing 0 before a complete total exists and retaining compatible last-good totals afterward. Successfully loaded subsets SHALL NOT appear as complete totals. Badge geometry SHALL remain stable; only loading or abbreviated counts SHALL have count tooltips and accessible labels SHALL retain exact known totals.
 
 #### Scenario: Unknown and loaded totals
 - **WHEN** an ordinary or coordinator Git panel first loads, then receives authoritative totals
@@ -726,6 +738,13 @@ Ordinary and coordinator Git views SHALL always display Open and Closed count ba
 - **WHEN** a count exceeds 999
 - **THEN** its bounded badge displays 999+ and exposes the full exact total through its tooltip and accessible label
 - **AND** its tab geometry remains unchanged
+
+#### Scenario: One admitted repository remains unresolved
+- **WHEN** some admitted coordinator PR identities have no authoritative state while other repositories have supplied rows
+- **THEN** both totals remain marked loading rather than presenting the successfully loaded subset as complete
+- **AND** before any complete total exists both badges show 0 using the existing count-loading tooltip and accessible state
+- **AND** if new unread membership arrives after a complete same-scope snapshot, compatible last-good totals remain visibly marked loading until resolution
+- **AND** completion counts only deduplicated eligible coordinator task PRs, never guessed states or whole-repository totals
 
 ### Requirement: Pending checks fallback without live coverage
 Shown Open/Draft PRs SHALL use 45-second safety reads while checks are pending or unknown, even when enrolled; settled rows SHALL retain 45-second unenrolled and 120-second enrolled state/check reads. Known Closed/Merged rows SHALL stay session-cached. Failures SHALL retain values with bounded backoff and at least 15 minutes for rate refusals. Hidden, disabled, offline and superseded contexts SHALL stop safety reads; window activity alone SHALL NOT gate reads.
@@ -957,9 +976,9 @@ Coordinator Open and Closed SHALL reveal ten presentation items initially and ap
 
 #### Scenario: Atomic section reveal
 - **WHEN** a reveal or safe-cap boundary would end with an unfolded repository header
-- **THEN** the header is held for the next batch with at least its first row or visible notice, never rendered alone
-- **AND** after every reveal and state transition each rendered unfolded header has a row or visible notice beneath it
-- **AND** sections with no eligible row or notice in the selected tab disappear after rows move tabs, expire or are authoritatively absent, while intentionally folded eligible sections keep their headers
+- **THEN** the header is held for the next batch with at least its first row, visible notice or standard Loading body, never rendered alone
+- **AND** after every reveal and state transition each rendered unfolded header has a row, visible notice or standard Loading beneath it
+- **AND** settled sections with no eligible row or notice disappear after rows move tabs, expire or are authoritatively absent, while intentionally folded eligible sections keep their headers
 
 #### Scenario: Long Closed inventory
 - **WHEN** complete coordinator render builds are measured for 30, 60, 100 and 200 mounted PRs
@@ -994,6 +1013,11 @@ Coordinator Open and Closed SHALL reveal ten presentation items initially and ap
 - **WHEN** ordinary Git loads another cursor page, refreshes an expanded list or resolves an older active PR
 - **THEN** its existing pagination, pinned row, no-jump row geometry and pin-motion behavior remain intact
 - **AND** the shared scroll hints do not replace its existing explicit load or retry control
+
+#### Scenario: Unresolved section within the existing watchdog budget
+- **WHEN** unresolved repositories render or recover alongside loaded rows
+- **THEN** Loading is bounded by the existing presentation-item cap, preserves atomic header/body reveal and introduces no render-time measurement, notification or diagnostic IO
+- **AND** the 50 ms render watchdog and existing PR-row cap remain unchanged
 
 ### Requirement: Coherent pull request state transitions
 Every successful row refresh SHALL read authoritative Open/Draft/Merged/Closed state with checks. Ordinary and coordinator views SHALL reconcile tab membership, state presentation and totals without duplicate identities or a clear-to-empty intermediate frame. Failed reads SHALL preserve last-good facts. Coordinator counts SHALL remain task-scoped; ordinary counts SHALL remain repository-wide.
@@ -1066,7 +1090,7 @@ Any Git panel GitHub read refused for primary or secondary rate limits SHALL ret
 #### Scenario: Every read path is quiet
 - **WHEN** list, count, targeted, older/pinned, history, safety, check-detail, repository-resolution, account-diagnosis or panel auxiliary reads encounter a genuine rate refusal
 - **THEN** refusal alone introduces no error UI or new stale alarm, and already known rows and totals remain
-- **AND** first-load unknown data stays Loading with unknown-count semantics rather than settling as an empty list
+- **AND** first-load unknown data stays Loading with unknown-count semantics rather than settling as an empty list or disappearing behind healthy repositories
 - **AND** an unrelated existing actionable error or fleet-verification Stale state is not falsely cleared or reclassified
 
 #### Scenario: Bounded retry and manual bypass
@@ -1080,6 +1104,11 @@ Any Git panel GitHub read refused for primary or secondary rate limits SHALL ret
 - **THEN** the first episode logs only once and the later episode can log once after successful recovery
 - **AND** authentication, permission, network, local process, timeout and malformed-response failures are not silenced merely because they mention rate-related text or return HTTP 403 without rate-limit evidence
 - **AND** logs contain no tokens, raw replies or task inventories and logging failure never blocks retry or presentation
+
+#### Scenario: Warm refusal in either panel mode
+- **WHEN** a same-context coordinator or ordinary repository with loaded facts is refused during refresh
+- **THEN** its last-good rows and counts remain without replacement Loading content, paging reset or new error UI
+- **AND** existing cooldown recovery remains subject to current visibility, enablement, machine and context guards
 
 ### Requirement: Session-final Git facts and shared reads
 Ordinary and coordinator views SHALL reuse session-cached Closed/Merged PR facts across refreshes and context recreation instead of rereading unchanged final rows. Compatible in-flight reads of the same routed repository SHALL be shared across both views. Cache keys SHALL isolate machine, repository and credential-routing scope; caches SHALL grant no coordinator or worker authority and SHALL NOT persist PR inventory as portable or restart state.
@@ -1277,3 +1306,16 @@ Enabled monitoring SHALL NOT report healthy-ready when its scope is empty or eve
 - **THEN** journal retention stays bounded and repeated unchanged episodes are coalesced
 - **AND** diagnostics remain separate from delivery receipts, contain no raw output, message text, transcript or credentials, and never relax a delivery gate
 - **AND** diagnostic-write failure does not prevent ordinary verification or delivery, and read-only probes do not persist diagnostic history
+
+### Requirement: Bounded repository read diagnostics
+Git SHALL retain a bounded local runtime diagnostic per routed repository with read phase, occurrence time, quiet-refusal category and retry deadline. Evidence SHALL distinguish a fresh refusal from a cooldown-skipped read and remain inspectable without UI. It SHALL contain no raw replies, credentials, task inventory or paths, grant no authority and never block reads or rendering.
+
+#### Scenario: Refusal followed by cooldown and success
+- **WHEN** a repository's first targeted or ordinary read is rate-refused, skipped during cooldown, and later succeeds
+- **THEN** diagnostic facts distinguish those phases and retain the sanitized last refusal time and absolute retry deadline after recovery
+- **AND** bounded eviction limits repository retention and repeated skips do not create unbounded history or repeated episode logs
+
+#### Scenario: Isolation, privacy and rendering
+- **WHEN** local and remote repositories share names or a stale read finishes after a newer attempt
+- **THEN** diagnostics remain machine/repository scoped and cannot overwrite newer phase facts or change read admission, counts or UI
+- **AND** no diagnostic UI, portable export, render-time persistence or render-time notification is added
