@@ -22,7 +22,7 @@ Core sessions currently refuse installation rather than claiming support.
 
 ## One-switch setup
 
-In **Settings → Plugins → Git → Settings**, turn on **Auto-fix failed CI**. This
+In **Settings → Plugins → Git → Settings**, turn on **Auto-fix pull requests**. This
 opt-in automatically provisions/updates a companion on this computer and connected
 SSH machines; new connected hosts are picked up while the desktop is available.
 There is no separate Background monitor section, status/Check row, machine picker
@@ -80,13 +80,16 @@ it), so the same agent is still reached after a merge, when its footer or branch
 longer names an open PR. Explicit `custom.ci.*` labels are never overwritten.
 Once a linked PR is merged, the agent gets the "Pull request merged" message once
 (default: clean up its worktree); a closed, unmerged PR gets nothing. Unreadable or
-ambiguous inventories fail closed. Several local agents linked to the same PR are skipped.
+ambiguous inventories fail closed. Several local agents linked to the same PR resolve
+to its oldest live owner (stable address tie-break), remembered while it lives. A
+later helper cannot take over because the owner is unselected or briefly unreadable.
 No previously captured terminal IDs or PR assignments become a persistent queue.
 
 The worker rechecks PR openness/head, complete latest-per-workflow Actions evidence,
 run attempt, live terminal identity, fresh PR association, selected state and
-configuration revision before sending. It uses the same safety template/evidence
-policy as the former panel. Idle/Working use Core's exact `--if` predicate; Done
+configuration revision before sending. Each message comes entirely from its configured template. CI requires completed
+failed/timed-out workflows; a failed job in a running workflow is not an early alert.
+Conflicts and merged cleanup have their own switches, evidence and templates. Idle/Working use Core's exact `--if` predicate; Done
 and Error use ordinary non-forced send. Core's input gate/draft protection remains
 in control. Blocked, shell, unknown, removed and moved identities are never targets.
 No raw logs, PR titles, credentials, force flags, interrupts or raw keys are sent.
@@ -98,6 +101,24 @@ conservative unknowns. Installer history seeding never clears an existing journa
 No desktop auto-fix sender remains, so desktop + worker cannot double-send.
 Different Core hosts still have separate journals: two agents on different hosts
 assigned the same PR do **not** have global exactly-once/failover coordination.
+
+## Local diagnostics
+
+`status.json` and the management status command expose health, reason, target/attempt
+and outcome counts plus sanitized lastEvent. Enabled empty scope and wholly skipped
+candidates are **suppressed**, never healthy-ready. Infrastructure verification failure
+is **unavailable**, unknown submission **uncertain**, and acknowledged delivery
+**ready** for that cycle; task Running alone is not delivery evidence.
+
+Separate `diagnostics.json` keeps at most 128 entries / 64 KiB and coalesces unchanged
+reason episodes across restart. It records time, event/reason, kind, repository, PR
+and target terminal where known, otherwise null. Reasons include no monitored
+repositories, agent state not selected, workflow still running and already sent
+(already recorded, including attempted/unknown receipts, not proof of acknowledgement).
+Delivered/refused/unknown stay distinct. No raw output, templates, transcripts or
+credentials are retained. Unknown/linked diagnostic files are preserved; best-effort
+write failures cannot alter delivery/receipts. Probes do not persist diagnostics.
+There is no new toast, panel marker or status polling UI.
 
 ## Commands
 
