@@ -38,11 +38,14 @@ export function initPalettePolicy(owner,cx){
             if(!live())throw Error('Repair superseded');
             const result=await exec('node',[`${home}/.customizations/runtime/scripts/palette-policy.mjs`,'inspect',home],{on:null,timeout:10000});
             if(!live())throw Error('Repair superseded');
-            if(result.code!==0){let detail='';try{detail=JSON.parse(result.stderr).error;}catch{}throw Error(detail?.startsWith('Palette repair waits')?detail:'Owned palette validation failed; check customization ownership');}
+            if(result.code!==0){let detail='';try{detail=JSON.parse(result.stderr).error;}catch{}throw Error(detail?.startsWith('Palette repair waits')||detail?.startsWith('Owned palette capabilities unavailable:')?detail:'Owned palette validation failed; check customization ownership');}
+            const validation=JSON.parse(result.stdout);
+            if(validation.ok!==true||validation.deferred)throw Error('Owned palette capabilities await host initialization');
           },
           read:rel=>readTextFile(`${home}/${rel}`),
           write:async(rel,text,expected)=>{if(!live())throw Error('Repair superseded');await writeTextFile(`${home}/${rel}`,text,expected);},
           defaults:()=>defaultsFromBindings(keys()),
+          platform:()=>win()?.platform??'windows',
         };
         status=await reconcileBinding(io,{install:true});
         if(!live())return;

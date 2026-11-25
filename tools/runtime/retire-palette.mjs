@@ -20,10 +20,11 @@ function write(home,rel,text,expected){
 export function paletteIntent(home){return fs.existsSync(path.join(home,'.customizations/palette-binding.json'));}
 export function retirePalette(home,root=bundle,options={}){
   if(!paletteIntent(home))return {ok:true,status:'not-migrated'};
-  guardPaletteHome(home);
+  const capabilities=guardPaletteHome(home,options);
+  if(capabilities.deferred)return {ok:true,status:capabilities.status,deferred:true};
   const keys=read(safePalettePath(home,'keys.json')),policy=read(safePalettePath(home,'.customizations/palette-binding.json'));
   if(keys===null)return {ok:true,status:'awaiting-native-keys',deferred:true};
-  const plan=planBinding(keys,policy);
+  const plan=planBinding(keys,policy,{platform:process.platform==='darwin'?'macos':process.platform==='win32'?'windows':'linux'});
   if(plan.changed||plan.status!=='already-current')return {ok:false,status:'retirement-deferred',error:'Owned palette binding must be reconciled before patch retirement'};
   const recordRel='.customizations/frame-palette.json',recordRaw=read(safePalettePath(home,recordRel)),markerRel='.customizations/palette-retired.json';
   if(recordRaw===null){

@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import {build} from '../tools/build.mjs';
+import {seedPaletteSdk,mockPaletteExecutable} from './support/palette-host.mjs';
 import {deploy} from '../tools/deploy.mjs';
 import {rollback} from '../tools/rollback.mjs';
 import {restoreStartupFrames} from '../tools/runtime/startup-frames.mjs';
@@ -10,6 +11,7 @@ import {guardPaletteHome,installPalettePolicy,removePalettePolicy} from '../tool
 import {planBinding,reconcileBinding,restoreBinding,boundedLog,PALETTE_ACTION,PALETTE_SCOPE} from '../src/features/palette/binding.js';
 import {checkPaletteFacts,missingPaletteUi} from '../src/integration/herdr/palette-capabilities.js';
 const {output}=build(),temp=fs.mkdtempSync(path.resolve('.artifacts/palette-persistence-'));
+const restoreHost=mockPaletteExecutable(temp);
 const put=(file,value)=>{fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,value);};
 const raw=file=>fs.existsSync(file)?fs.readFileSync(file,'utf8'):null;
 const gpui='InputState Input VirtualListScrollHandle Scrollbar v_virtual_list focus_handle on_key_down';
@@ -41,7 +43,7 @@ for(const version of ['0.1.17','0.1.18','0.9.99']){
 assert.ok(missingPaletteUi('').length);
 try{
  for(const machine of ['local','pc2']){
-  const home=path.join(temp,machine);put(path.join(home,'keys.json'),stock);put(path.join(home,'gpui-kit.d.ts'),gpui);
+  const home=path.join(temp,machine);seedPaletteSdk(home);put(path.join(home,'keys.json'),stock);
   put(path.join(home,'data/frame-palette/store-1234567890abcdef.json'),JSON.stringify({recent:JSON.stringify(['app.help:{}']),unrelated:'kept'}));
   const first=deploy(output,home);assert.ok(first.backup);assert.equal(first.palette.ok,true);assert.equal(first.palette.history,'seeded');
   assert.equal(JSON.parse(raw(path.join(home,'.customizations/palette-recent.json'))).recent[0],'app.help:{}');
@@ -68,7 +70,7 @@ try{
   assert.equal(removePalettePolicy(home).removed,true);assert.equal(JSON.parse(raw(path.join(home,'keys.json')))['layout:Custom']['ctrl-shift-p'],undefined);
  }
  // First-install rollback restores exact pre-install keys/intent without touching history.
- const home=path.join(temp,'rollback');put(path.join(home,'keys.json'),stock);put(path.join(home,'.migration-fixture'),'1');
+ const home=path.join(temp,'rollback');seedPaletteSdk(home);put(path.join(home,'keys.json'),stock);put(path.join(home,'.migration-fixture'),'1');
  const first=deploy(output,home);rollback(home,first.backup,{fixture:true});assert.equal(raw(path.join(home,'keys.json')),stock);assert.equal(raw(path.join(home,'.customizations/palette-binding.json')),null);
  const core=path.join(temp,'core-only');deploy(output,core,{shellOnly:true});assert.equal(raw(path.join(core,'keys.json')),null);assert.equal(raw(path.join(core,'.customizations/palette-binding.json')),null);
  // CAS contention retries once with fresh bytes; persistent permission failure never forces.
@@ -77,7 +79,7 @@ try{
  assert.equal((await reconcileBinding(io)).ok,true);assert.equal(JSON.parse(memory.get('keys.json')).global.f11,'app.help');
  memory.set('keys.json',stock);await assert.rejects(reconcileBinding({...io,write:async()=>{throw Error('permission');}}),/permission/);
  // Mounted startup/hot reload uses only the facade to mutate keys.
- const mounted=path.join(temp,'mounted');put(path.join(mounted,'keys.json'),stock);put(path.join(mounted,'gpui-kit.d.ts'),gpui);deploy(output,mounted);put(path.join(mounted,'keys.json'),stock);
+ const mounted=path.join(temp,'mounted');seedPaletteSdk(mounted);put(path.join(mounted,'keys.json'),stock);deploy(output,mounted);put(path.join(mounted,'keys.json'),stock);
  const shared=new Map([['layout','Custom']]),timers=[],tasks=[],notifications=[];let checks=false,fail=false,guards=0;
  const catalog=()=>{const value=JSON.parse(raw(path.join(mounted,'keys.json'))??stock);return Object.entries(value).flatMap(([section,items])=>Object.entries(items).map(([keys,action])=>({section,keys,action})));};
  const api={appHome:()=>mounted,checking:()=>checks,hostVersion:()=> '0.1.18',requireHostCapabilities(){},commands:()=>[{name:'mod.open',args:[{name:'name'}]}],keys:catalog,notify:n=>notifications.push(n),window:()=>({active:true}),shared:k=>shared.get(k),setShared:(k,v)=>shared.set(k,v),readTextFile:async p=>raw(p),writeTextFile:async(p,v,old)=>{if(fail)throw Error('denied');assert.equal(raw(p),old);put(p,v);},exec:async(_command,args)=>{if(args[0].endsWith('startup-frames.mjs'))return {code:0,stdout:JSON.stringify(restoreStartupFrames(mounted,path.join(mounted,'.customizations/runtime')))};guards++;try{guardPaletteHome(mounted,{startup:true});return {code:0,stdout:'{"ok":true}'};}catch{return {code:1,stderr:'{}'};}}};
@@ -93,7 +95,10 @@ try{
  put(path.join(mounted,'keys.json'),stock);fail=true;shared.set('custom.palette.retry',1);timers[0](cx);await Promise.all(tasks.splice(0));assert.equal(shared.get('custom.palette.status').ok,false);assert.equal(notifications.length,1);
  shared.set('custom.palette.retry',2);timers[0](cx);await Promise.all(tasks.splice(0));assert.equal(notifications.length,1,'same failure notification deduplicated');
  fail=false;shared.set('custom.palette.retry',3);timers[0](cx);await Promise.all(tasks.splice(0));assert.equal(shared.get('custom.palette.status').ok,true);
+ const collision=JSON.stringify({global:{'ctrl-shift-p':'app.palette'},terminal:{'shift-ctrl-p':'terminal'}});
+ put(path.join(mounted,'keys.json'),collision);shared.set('custom.palette.retry',4);timers[0](cx);await Promise.all(tasks.splice(0));
+ assert.equal(shared.get('custom.palette.status').ok,false,'Equivalent higher-priority spelling cannot report startup success');assert.match(shared.get('custom.palette.status').error,/Higher-priority/);assert.equal(raw(path.join(mounted,'keys.json')),collision);
  checks=true;const n=timers.length;mod.namespace.initPalettePolicy({},cx);assert.equal(timers.length,n,'native checks never arm repair');
  owner.sidebarClosed=true;const before=guards;timers[0](cx);await Promise.all(tasks.splice(0));assert.equal(guards,before);
  console.log('PASS owned palette persistence: capabilities, local/pc2 install, resets, missing defaults, update/reload, CAS/conflicts, rollback, Core-only exclusion, coalesced public-API startup and failure notifications');
-}finally{fs.rmSync(temp,{recursive:true,force:true});}
+}finally{restoreHost();fs.rmSync(temp,{recursive:true,force:true});}

@@ -296,10 +296,15 @@ retained 0.1.17 original. They compare native catalogs/themes/manifest validatio
 IDs, hotkeys and clone dispatch; exercise the packaged search/virtual list and
 heading/fade/scrollbar events; and run isolated install/reset/reload/CAS/rollback
 and local/pc2/Core-only fixtures. Retirement covers masked/reset 0.1.17/0.1.18,
-both landing orders with a synthetic stop-gap replacement, late record replay,
-unknown-target preservation and feedback isolation. The synthetic replacement is
-not shipped native patch support. Key reset tests explicitly start with stock
+both landing orders with the actual merged 0.1.18 stop-gap (LF and verified
+Windows CRLF originals), late record replay, unknown-target preservation and
+feedback isolation. Key reset tests explicitly start with stock
 Ctrl+Shift+P -> app.palette, repair it and simulate the host mod.open toggle.
+`owned-palette-review.test.mjs` additionally exercises the real installer and
+retirement gates with missing SDK/UI/API/command/version facts, uninitialized-home
+deferral, GPUI-equivalent key spellings/alias restoration and a non-replaceable log
+during full Update. SDK declarations are preserved release fixtures; the fake
+executable/catalog and compact GPUI declaration are explicitly synthetic.
 
 These tests do not prove actual native event dispatch, focus or pixels; those
 remain separately authorized live/disposable-native validation. No suite installs

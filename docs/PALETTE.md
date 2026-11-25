@@ -35,10 +35,18 @@ Full install merges just `keys.json["layout:Custom"]["ctrl-shift-p"]` to
 `.customizations/palette-binding.json` and deployment rollback journals. It does
 not edit Herdr defaults or globally register/override `app.palette`. Other global,
 terminal and layout bindings are preserved. Unknown personal collisions (including
-higher-priority terminal/mod mappings) fail instead of being clobbered. Removal
-and rollback refuse later edits. A never-started home with no native keys defers
-until startup can merge the native fallback `keys()` listing, rather than inventing
-release defaults.
+higher-priority terminal/mod mappings) fail instead of being clobbered. Collision
+checks normalize GPUI modifier order/case, `secondary` by platform and uppercase
+ASCII letters' implicit Shift. Equivalent Custom native mappings are consolidated
+into one owned spelling, with their original spellings retained for restore. Removal
+and rollback refuse later edits. Before any routing or native retirement, installer preflight and startup use the
+same real capability gate: the selected home's SDK/GPUI declarations plus the
+current executable's version and command argument catalog. An initialized home
+missing a required API, UI symbol or command refuses before key/intent writes.
+Only a home with both generated SDK files absent defers as uninitialized, without
+changing routing or retiring the native patch. A capable home with no native keys
+waits until startup can merge the native fallback `keys()` listing rather than
+inventing release defaults.
 
 Mounted non-footer Custom chrome checks on startup/reload and every five seconds,
 comparing the local key catalog and retry generation; unchanged healthy state gets
@@ -54,7 +62,9 @@ Failures retain **Palette needs attention · Retry** in the status bar, with the
 sanitized reason on hover, plus one notification per changed failure. The normal
 commands button stays available. `.customizations/palette.log` keeps at most
 128 lines/64 KiB without key-file dumps or transcripts; log failure is diagnostic
-and cannot change successful key repair. A native reset can briefly show stock
+and cannot change successful key repair. Installer logging is also best-effort:
+a non-replaceable/unreadable log returns `logUnavailable` without aborting a
+successful Update or skipping native retirement. A native reset can briefly show stock
 until the next repair/reload; there is no atomic pre-start interception API.
 
 Each desktop installs/repairs its own app home independently: this computer and a

@@ -148,7 +148,7 @@ export function doctor(home=defaultHome()) {
   if(state.files['mods/custom-palette/main.js']&&fs.existsSync(paletteWorker))try{
     const plan=JSON.parse(cp.execFileSync(process.execPath,[paletteWorker,'preflight',home],{encoding:'utf8',timeout:15000,windowsHide:true}));
     palette={status:plan.status??'awaiting-native-keys',configured:plan.status==='already-current'&&!plan.changed};
-    if(plan.deferred)advisories.push('Custom palette awaits native keys at desktop startup.');
+    if(plan.deferred)advisories.push('Custom palette awaits host initialization or native keys at desktop startup.');
     else if(!palette.configured)issues.push('Custom palette binding/intent needs guarded repair.');
   }catch{issues.push('Custom palette binding policy conflict; inspect the visible repair warning.');}
   return {ok:issues.length===0,version,reviewedVersion:state.supportedHerdr?.includes(version)??false,issues,advisories,patches,palette,ownedFiles:Object.keys(state.files).length};

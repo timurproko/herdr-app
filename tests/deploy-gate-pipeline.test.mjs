@@ -22,8 +22,9 @@ try {
  const target=git(f.author,'rev-parse','HEAD');assert.notEqual(git(managed,'rev-parse','HEAD'),target);
  const commands=new Set();
  const walk=dir=>{for(const e of fs.readdirSync(dir,{withFileTypes:true})){const p=path.join(dir,e.name);if(e.isDirectory())walk(p);else if(p.endsWith('.js'))for(const m of fs.readFileSync(p,'utf8').matchAll(/["']((?:space|tab|pane|terminal|agent|layout|app|window|mod|overlay)\.[a-zA-Z0-9_.-]+)["']/g))commands.add(m[1]);}};walk(path.join(project,'src'));
- const catalog=path.join(f.base,'commands.json');put(catalog,JSON.stringify([...commands].map(name=>({name}))));
+ const catalog=path.join(f.base,'commands.json');put(catalog,JSON.stringify([...commands].map(name=>({name,args:name==='mod.open'?[{name:'name',required:true}]:[]}))));
  put(path.join(home,'herdr.d.ts'),HOST_CONTRACT.api.map(n=>`export function ${n}(): void;`).join('\n'));
+ put(path.join(home,'gpui-kit.d.ts'),'InputState Input VirtualListScrollHandle Scrollbar v_virtual_list focus_handle on_key_down');
  put(path.join(home,'keys.json'),JSON.stringify({global:{'ctrl-shift-p':'app.palette','f9':'app.help'}}));
  const {output}=build();const registry=JSON.parse(fs.readFileSync(path.join(output,'frame-patches/registry.json')));
  for(const p of registry.patches){put(path.join(home,p.target,'main.js'),fs.readFileSync(path.join(output,p.originals[0])));framePatch('apply',home,output,p.id);put(path.join(home,p.target,'main.js'),`new 0.1.17 stock ${p.id}`);}
