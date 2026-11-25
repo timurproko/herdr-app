@@ -96,6 +96,42 @@ directory: production setup intentionally refuses any store inside a checkout,
 including an ignored `.artifacts/` under one. Fixtures never discover/read real
 Trello credentials. These tests are not live API or native Settings UI proof.
 
+### Trello Settings setup
+
+`tests/plugin-transient-forms.test.mjs` exercises the actual shared renderer with a
+synthetic plugin: native masking, explicit submit, native-input/undo retirement,
+duplicate presses, sanitized exceptions and close/disable/machine-generation
+invalidation without shared writes. `tests/private-actions.test.mjs` exercises the
+real loopback server with wrong/replayed sessions, browser Origin, payload bounds,
+timeout/cancel and installed fake-worker stdin/echo guards.
+
+`src/plugins/trello/owner.test.mjs` injects every provider response and covers
+verification before save, failed/explicit replacement, removal, protected CAS,
+interrupted policy reset, account/board projection, incomplete discovery and
+cooldown. Existing credential tests retain real OS permissions/ACL/link coverage.
+`tests/trello-settings.test.mjs` composes the real declaration, renderer, actions
+and owner worker with injected socket/provider IO. It covers named choices,
+Cancel, empty/error/stale inventory, saved-account feedback, both write gates,
+public-setting failure rollback, imported-authority refusal and remote zero-IO
+checks. `tests/trello-installed-setup.test.mjs` uses actual installed owner/bridge
+subprocesses, real fake-store permissions, injected fetch with no live fallback,
+Unicode board names, agent allowlisted listing, actual preference export/import
+and credential removal. No fixture reads a real token or account.
+
+The opt-in Windows `tests/features/trello-settings-native.mjs --run --output
+<outside-checkout-directory>` uses an explicitly supplied `HERDR_APP_BIN`, a
+random outside-checkout home and isolated Core session. It mounts the packaged
+Settings view as a terminal-free root, injects only fixed Trello responses and
+unrelated host inventory, and runs the production native input, card, action,
+WebSocket bridge, owner worker and protected file writer. Test-only exports invoke
+the same handlers as the controls; it is not a mouse-hit-test or live Trello proof.
+The recorded App 0.1.18 run captured Missing, masked input, Saved/account, named
+board picker, one allowed board, selected Read-write and SSH refusal. Its final
+native status had no errors. The outside-checkout receipt records desktop stopped,
+Core stop acknowledged and zero remaining home-qualified Node workers. Every
+started disposable instance is stopped before handoff; production sessions and
+credentials remain untouched. Hosted tests never launch this opt-in fixture.
+
 ## Supported hosted subset
 
 The existing Windows/Ubuntu matrix invokes `npm run test:ci` on **Node 24**.

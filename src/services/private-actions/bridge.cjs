@@ -13,14 +13,14 @@ const TARGETS = Object.freeze({trello: path.join(__dirname, '../trello/owner.cjs
 function worker(home, target, payload, register) {
   return new Promise(resolve => {
     const child = spawn(process.execPath, [TARGETS[target], home], {stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true});
-    register(child); let output = '', size = 0, bad = false;
+    register(child); const chunks = []; let size = 0, bad = false;
     child.on('error', () => resolve(FAILURE)); child.stdin.on('error', () => {});
     child.stderr.resume(); // Never echo provider/child diagnostics.
-    child.stdout.on('data', chunk => { size += chunk.length; if (size > 2097152) { bad = true; child.kill(); } else output += chunk.toString('utf8'); });
+    child.stdout.on('data', chunk => { size += chunk.length; if (size > 2097152) { bad = true; child.kill(); } else chunks.push(chunk); });
     child.on('close', () => {
       try {
         if (bad) throw Error();
-        const result = JSON.parse(output);
+        const output = Buffer.concat(chunks).toString('utf8'), result = JSON.parse(output);
         if (result.version !== 1 || typeof result.ok !== 'boolean') throw Error();
         // Defense in depth against accidental worker echoes. Public projection is
         // owned by the fixed worker, never an arbitrary command provided by UI.

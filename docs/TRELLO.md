@@ -322,7 +322,10 @@ public repository.
 
 ## API contract and verification
 
-The typed routes follow Atlassian's [Cards](https://developer.atlassian.com/cloud/trello/rest/api-group-cards/),
+Owner verification and board discovery follow Atlassian's
+[Members](https://developer.atlassian.com/cloud/trello/rest/api-group-members/)
+reference (`/members/me` and `/members/me/boards`), separately from agent routes.
+The typed agent routes follow Atlassian's [Cards](https://developer.atlassian.com/cloud/trello/rest/api-group-cards/),
 [Boards](https://developer.atlassian.com/cloud/trello/rest/api-group-boards/),
 [Lists](https://developer.atlassian.com/cloud/trello/rest/api-group-lists/) and
 [Checklists](https://developer.atlassian.com/cloud/trello/rest/api-group-checklists/)
@@ -337,6 +340,8 @@ describes shared key/token budgets; other applications can consume them too.
 
 Regression tests use fake credentials, disposable homes/bins and injected
 transport only, including CLI subprocesses. No real-board or real-token
-acceptance is claimed; API conformance is documentation-checked. There is no
-live/native Settings screenshot proof in those fixtures. Any real Trello check
+acceptance is claimed; API conformance is documentation-checked. The offline fixtures do not prove live Trello access. A separate opt-in disposable
+native fixture captures the running Settings card with fake credentials and
+injected provider responses; see [testing guidance](TESTING.md#trello-settings-setup).
+Any real Trello check
 requires separate owner authorization and is not part of build/test/deploy.
