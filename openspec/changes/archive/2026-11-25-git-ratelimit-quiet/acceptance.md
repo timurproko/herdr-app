@@ -19,7 +19,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-25-git-ratelimit-quiet/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-25-git-ratelimit-quiet/acceptance.md",
   "finalizedDate": "2026-11-25",
-  "specBaseSha": "87a91b0e1863f1f1aa83c61112b514750cc53899",
+  "specBaseSha": "5079c446a51ede68a35988fb55597f4d59a5520e",
   "acceptanceScenarios": [
     "Primary and secondary GitHub rate refusals retain loaded rows, totals, pins and pages without adding error UI.",
     "Cold refused reads keep standard Loading, share the cooldown and allow one explicit manual retry without refusal spam.",
