@@ -20,6 +20,8 @@ export function planBinding(keysRaw,recordRaw,{install=false,defaults=null}={}){
   }
   if(keys[PALETTE_SCOPE]!==undefined&&!object(keys[PALETTE_SCOPE]))throw Error('Malformed Custom key section');
   const section=keys[PALETTE_SCOPE]??{},had=Object.hasOwn(section,PALETTE_KEY),current=section[PALETTE_KEY];
+  const global=keys.global?.[PALETTE_KEY];
+  if(current!==PALETTE_ACTION&&global!==undefined&&global!==PALETTE_ACTION&&!native(global))throw Error('Personal palette shortcut conflict in global keys; refusing override');
   if(had&&current!==PALETTE_ACTION&&!native(current))throw Error('Personal palette shortcut conflict; refusing overwrite');
   if(!record)record={version:1,enabled:true,scope:PALETTE_SCOPE,key:PALETTE_KEY,action:PALETTE_ACTION,hadBinding:had&&current!==PALETTE_ACTION,original:had&&current!==PALETTE_ACTION?current:null};
   const nextRecord=recordRaw??JSON.stringify(record,null,2)+'\n';

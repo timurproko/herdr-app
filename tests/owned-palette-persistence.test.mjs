@@ -22,6 +22,8 @@ assert.equal(planBinding(stock,parsed.record).status,'repaired');
 assert.equal(JSON.parse(restoreBinding(parsed.keys,parsed.record))[PALETTE_SCOPE]['ctrl-shift-p'],undefined);
 assert.throws(()=>planBinding('{broken',parsed.record),error=>!error.message.includes('{broken')&&/malformed/.test(error.message));
 assert.throws(()=>planBinding('{"layout:Custom":{"ctrl-shift-p":"personal.action"}}',parsed.record),/Personal/);
+assert.throws(()=>planBinding('{"global":{"ctrl-shift-p":"personal.action"}}',null,{install:true}),/Personal/);
+assert.equal(planBinding(parsed.keys.replace('"ctrl-shift-p": "app.palette"','"ctrl-shift-p": "personal.other-layout"'),parsed.record).status,'already-current','Established Custom binding does not own other layouts global keys');
 assert.throws(()=>planBinding('{"terminal":{"ctrl-shift-p":"terminal"}}',parsed.record),/Higher-priority/);
 assert.throws(()=>planBinding(stock,'{"version":99}'),/Unrecognized/);
 assert.throws(()=>restoreBinding('{"layout:Custom":{"ctrl-shift-p":"personal.action"}}',parsed.record),/Personal/);
