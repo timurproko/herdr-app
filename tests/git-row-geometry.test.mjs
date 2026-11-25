@@ -146,9 +146,10 @@ for(const zoom of [0.75,1,1.25,1.3,1.5,2]) {
   assert.equal(words(find(tree,'pr-tasks-41')).join(''),'2 tasks done');assert.equal(words(find(tree,'pr-time-41')).join(''),'opened 4 hours ago');
   for(const kind of ['meta','byline'])assertNaturalRun(geometry,find(tree,`pr-${kind}-41`),zoom);
 }
-// Both lower lines use the same centred dot. Icon paint moves exactly one
-// logical pixel for every task/check variant, without moving any layout box,
-// text, pill, tooltip or probe. These are logical boxes, not native ink bounds.
+// Each lower line's dot moves down one logical pixel to its independently
+// measured native x-height centre. Icon paint retains its existing one-pixel
+// offset for every task/check variant. No layout box, text, pill, tooltip or
+// probe moves. These are logical boxes, not native ink bounds.
 for(const coordinator of [false,true])for(const ghost of [false,true])for(const zoom of [0.75,1,1.25,1.3,1.5,2])
 for(const done of [0,1,2])for(const state of ['success','failure','pending','unknown']) {
   h.setZoom(zoom);
@@ -160,7 +161,10 @@ for(const done of [0,1,2])for(const state of ['success','failure','pending','unk
   const byline=find(tree,`${prefix}pr-byline-${id}`),meta=find(tree,`${prefix}pr-meta-${id}`);
   const dotOffsets=[byline,meta].map(line=>{
     const dots=line.kids.filter(n=>!n.attrs.id);assert.ok(dots.length);
-    for(const dot of dots)near(centre(dot)-centre(line),0,'No separator optical drop');
+    for(const dot of dots) {
+      assert.deepEqual(dot.attrs.relative,[]);assert.deepEqual(dot.attrs.top,[1]);
+      near(centre(dot)-centre(line),zoom,'Separator uses the native-measured one-pixel x-height offset');
+    }
     return centre(dots[0])-centre(line);
   });
   near(dotOffsets[0],dotOffsets[1],'Byline and status separator offsets are identical');
@@ -177,10 +181,13 @@ for(const done of [0,1,2])for(const state of ['success','failure','pending','unk
     const expected=icons.includes(node)?{...box,y:box.y-zoom}:box;
     assert.deepEqual(plain(unshifted.get(node)),plain(expected),'Icon offsets do not move neighbours or change horizontal geometry');
   }
-  // Reintroducing either defect must fail the same geometric assertions.
-  meta.kids.find(n=>!n.attrs.id).relative().top(1.5);
-  const dropped=rowGeometry(tree,390,zoom),dot=meta.kids.find(n=>!n.attrs.id);
-  assert.notEqual(dropped.get(dot).y,geometry.get(dot).y,'The old optical drop is detected');
+  // Neither the too-high line-box centre nor the former too-low 1.5px drop
+  // may silently replace the measured x-height offset on either line.
+  for(const line of [byline,meta])for(const offset of [0,1.5]) {
+    const dot=line.kids.find(n=>!n.attrs.id);dot.top(offset);
+    assert.notEqual(rowGeometry(tree,390,zoom).get(dot).y,geometry.get(dot).y,'Incorrect separator offsets are detected');
+    dot.top(1);
+  }
   assert.notEqual(unshifted.get(icons[0]).y,geometry.get(icons[0]).y,'A missing icon offset is detected');
 }
 // Cross-row screenshot regression: different words and task/check widths,

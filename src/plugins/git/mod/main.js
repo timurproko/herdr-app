@@ -768,9 +768,10 @@ export default class Changes extends View {
     return this.taskRing(t, task.done, task.total);
   }
 
-  // Both lower lines share the same centred dot, without an optical drop.
+  // Native ink measurements put both lower lines' x-height centre 1px below
+  // their line-box centre. Move only dot paint, not text, icons or layout.
   metaSeparator(t) {
-    return div().size(3).flex_none().rounded_full().bg(t.muted);
+    return div().size(3).flex_none().rounded_full().bg(t.muted).relative().top(1);
   }
 
   labelPill(t, label, id) {
