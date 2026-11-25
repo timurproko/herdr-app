@@ -25,11 +25,11 @@
 
 ## 4. Declarative plugin and owned installed shell command
 
-- [ ] 4.1 Add off-by-default Trello plugin declaration, read-only public access default and sanitized local prerequisites/actions through the plugin API; verify packaged plugin harness tests and declaration/UI architecture checks without network or secret fields.
-- [ ] 4.2 Register self-contained CLI/runtime dependencies in `customization.json` and build output; verify disposable packaging/import-closure tests and help/status execution with the source checkout unavailable.
-- [ ] 4.3 Add exact-name user-bin Bash/Windows launchers to full deploy with PATH preflight, home-bound ownership/journals, conflict-before-write checks and rollback/removal safeguards; verify disposable-bin tests for spaces/Unicode, argument integrity, idempotence, other-home conflicts and later edits.
-- [ ] 4.4 Preserve shell-only deployment and private stores across install/update/recovery; verify disposable full/shell-only fixtures and fake credential/policy bytes are never copied, exported, read by build/deploy or removed by launcher cleanup.
-- [ ] 4.5 Extend `docs/TRELLO.md` with installed-command discovery, PATH prerequisites, explicit per-host setup and recovery; verify documented installation behavior using fixture homes/bins only, with no profile edits or live process changes.
+- [x] 4.1 Add off-by-default Trello plugin declaration, read-only public access default and sanitized local prerequisites/actions through the plugin API; verify packaged plugin harness tests and declaration/UI architecture checks without network or secret fields.
+- [x] 4.2 Register self-contained CLI/runtime dependencies in `customization.json` and build output; verify disposable packaging/import-closure tests and help/status execution with the source checkout unavailable.
+- [x] 4.3 Add exact-name user-bin Bash/Windows launchers to full deploy with PATH preflight, home-bound ownership/journals, conflict-before-write checks and rollback/removal safeguards; verify disposable-bin tests for spaces/Unicode, argument integrity, idempotence, other-home conflicts and later edits.
+- [x] 4.4 Preserve shell-only deployment and private stores across install/update/recovery; verify disposable full/shell-only fixtures and fake credential/policy bytes are never copied, exported, read by build/deploy or removed by launcher cleanup.
+- [x] 4.5 Extend `docs/TRELLO.md` with installed-command discovery, PATH prerequisites, explicit per-host setup and recovery; verify documented installation behavior using fixture homes/bins only, with no profile edits or live process changes.
 
 ## 5. Complete owner guidance and offline integration contracts
 

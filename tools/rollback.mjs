@@ -7,10 +7,11 @@ import {isDeepStrictEqual} from 'node:util';
 import {defaultHome,allowedPath,app,shellPaths,shellRevisionPath,reconcilePalette} from './deploy.mjs';
 import {json,read,digest,put,contained} from './files.mjs';
 import {nativePaletteRecoveryPlan} from './palette-recovery.mjs';
+import {checkLaunchers,applyLaunchers} from './trello-launchers.mjs';
 // A flag alone cannot turn a full journal into a Desktop-free rollback.
 function validateShellJournal(record) {
  const fail=()=>{throw Error('Not a verified shell-only rollback journal.');};
- if(record.paletteRetirement||record.paletteBinding||record.scope!=='shell'||typeof record.afterState!=='string'||digest(record.afterState)!==record.afterManifest)fail();
+ if(record.trelloLaunchers||record.paletteRetirement||record.paletteBinding||record.scope!=='shell'||typeof record.afterState!=='string'||digest(record.afterState)!==record.afterManifest)fail();
  const before=record.manifest===null?null:JSON.parse(record.manifest),after=JSON.parse(record.afterState);
  const valid=state=>state?.version===2&&state.id==='custom'&&state.files&&typeof state.files==='object'&&!Array.isArray(state.files);
  if(!valid(after)||(before&&!valid(before)))fail();
@@ -31,6 +32,7 @@ export function rollback(home,id,{fixture=false,shellOnly=false}={}) {
  try {
   const record=json(contained(home,`.customizations/backups/${id}/rollback.json`));if(record?.version!==1||!record.after)throw Error('Unsupported rollback record.');
   if(shellOnly)validateShellJournal(record);
+  if(record.trelloLaunchers)checkLaunchers(home,record.trelloLaunchers,true);
   const jobs=[];
   for(const [rel,base64]of Object.entries(record.files)){
    allowedPath(rel);const file=contained(home,rel),before=base64===null?null:Buffer.from(base64,'base64'),actual=fs.existsSync(file)?fs.readFileSync(file):null;
@@ -57,6 +59,7 @@ export function rollback(home,id,{fixture=false,shellOnly=false}={}) {
   // First-install rollback keeps runtime support until the common reconciliation
   // and guarded native refresh finish; no palette-specific journal is needed.
   const deferred=job=>!shellOnly&&record.manifest===null&&job.rel?.startsWith('.customizations/runtime/');
+  if(record.trelloLaunchers)applyLaunchers(home,record.trelloLaunchers,true);
   for(const job of jobs)if(!deferred(job))applyJob(job);
   const palette=shellOnly?null:reconcilePalette(home);
   const worker=path.join(owner,'runtime/scripts/startup-frames.mjs');let patches=null;

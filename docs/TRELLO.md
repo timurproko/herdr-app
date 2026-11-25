@@ -3,6 +3,38 @@
 Trello is an optional, headless plugin. It starts **off** and **read-only**. The
 agent interface is `herdr-trello`, a JSON command-line tool, not MCP or a board UI.
 
+## Installation and shell discovery
+
+Normal `npm run build` packages the complete runtime. Normal **full**
+`npm run deploy` installs it under the resolved Herdr home and installs owned
+`herdr-trello`, `herdr-trello.cmd` and `herdr-trello.ps1` launchers in
+`~/.local/bin` (or the explicitly selected `HERDR_TRELLO_BIN` directory).
+The chosen bin must already be on the deploying shell's PATH; otherwise deploy
+fails early with guidance. Add it explicitly to your environment and rerun normal
+deploy. No profiles or PATH configuration are edited for you, and no global npm
+package or source-checkout path is needed at runtime. Node 20+ must be on PATH.
+
+Bash/POSIX uses the shell launcher; PowerShell can use the `.ps1` launcher when
+local script policy permits, and CMD uses `.cmd`. Quote file paths as required by
+your shell. No execution-policy setting is changed. Existing agents with an old
+inherited PATH need an explicit environment refresh/new shell; deployment never
+restarts them or injects input. The command is installed while the plugin is off,
+but no credentials, boards or write permission are provisioned.
+
+User-bin launchers have exact-name, home-bound ownership under
+`.customizations/trello-launchers.json`. Modified/unknown launchers and a launcher
+belonging to another Herdr home refuse before unrelated installation writes.
+Normal backup rollback/removal checks their hashes and preserves later edits.
+Credentials and local policy are never deployment payloads or cleanup targets.
+`doctor` checks launcher ownership too. To relocate a bin, remove the original
+owned installation through normal removal before deploying to a different bin.
+
+`deploy:shell` still installs only its four shell-reporting files; it does not
+install Trello. Consequently deploy:all's shell-only peers do not get this CLI or
+credentials. Every execution host needs its own explicit full deployment, plugin
+enablement, private credential setup and board/write policy. Merely mounting a
+remote agent on this desktop does not authorize its host.
+
 ## Local setup
 
 Each execution host needs its own API key and **user token**. An application/OAuth

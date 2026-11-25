@@ -57,7 +57,9 @@ class Client {
     const controller = new AbortController(); let timer, dispatched = false;
     const work = async () => {
       // Last authority check immediately precedes the only dispatch.
-      this.gate.check(); dispatched = true;
+      this.gate.check();
+      if (this.now() - this.started >= 60000) fail('LIMIT');
+      dispatched = true;
       const response = await this.transport(url, {method, redirect: 'manual', signal: controller.signal, headers: {Accept: 'application/json'}});
       if (response.status === 429) {
         const retryAt = retryTime(response.headers, this.now());

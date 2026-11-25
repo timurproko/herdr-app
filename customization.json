@@ -92,6 +92,14 @@
     "nodeWorkers": ["a1-colors/session-color.cjs"]
   },
   "files": {
+    "lib/trello/cli.cjs": "src/plugins/trello/cli.cjs",
+    "lib/trello/client.cjs": "src/plugins/trello/client.cjs",
+    "lib/trello/credentials.cjs": "src/plugins/trello/credentials.cjs",
+    "lib/trello/errors.cjs": "src/plugins/trello/errors.cjs",
+    "lib/trello/operations.cjs": "src/plugins/trello/operations.cjs",
+    "lib/trello/policy.cjs": "src/plugins/trello/policy.cjs",
+    "lib/trello/setup.cjs": "src/plugins/trello/setup.cjs",
+    "scripts/trello-launchers.mjs": "tools/trello-launchers.mjs",
     "mods/custom-palette/main.js": "src/features/palette/main.js",
     "mods/custom-palette/mod.json": "src/features/palette/mod.json",
     "mods/custom-palette/model.js": "src/features/palette/model.js",

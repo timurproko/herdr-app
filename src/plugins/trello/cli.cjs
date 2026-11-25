@@ -13,7 +13,7 @@ function parse(argv) {
     if (!token.startsWith('--')) { words.push(token); continue; }
     const key = token.slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
     if (Object.hasOwn(flags, key) || !/^[a-zA-Z]+$/.test(key)) fail('INPUT');
-    if (['rotate', 'json'].includes(key)) flags[key] = true;
+    if (['rotate', 'json', 'help'].includes(key)) flags[key] = true;
     else { if (!argv[i + 1] || argv[i + 1].startsWith('--')) fail('INPUT'); flags[key] = argv[++i]; }
   }
   return {words, flags};
@@ -28,6 +28,7 @@ async function execute(argv, options = {}) {
   try {
     if (argv.length === 1 && argv[0] === '--help') return {help, exit: 0};
     const {words, flags} = parse(argv);
+    if (flags.help && !words.length && Object.keys(flags).every(k => ['home', 'json', 'help'].includes(k))) return {help, exit: 0};
     const home = flags.home; delete flags.home; delete flags.json;
     const store = options.store || new Store(home);
     const file = flags.input; delete flags.input;
