@@ -210,26 +210,44 @@ export function pullRetryAfter(result,now=Date.now()) {
   const seconds=Number(header);
   return Number.isFinite(seconds)?Math.max(0,seconds*1000):Math.max(0,Date.parse(header)-now)||0;
 }
-export function pullStateArgs(numbers,nameWithOwner,includeCounts=false) {
+// Keep context shape/counting identical on probes and full-detail refreshes.
+const CHECK_CONTEXT_FIELDS='contexts(first:100){pageInfo{hasNextPage} nodes{... on CheckRun{name status conclusion startedAt completedAt detailsUrl checkSuite{workflowRun{workflow{name}}}} ... on StatusContext{context state createdAt}}}';
+function contextChecks(rollup) {
+  if(rollup?.contexts?.pageInfo?.hasNextPage)throw Error('Incomplete checks contexts');
+  if(rollup && !Array.isArray(rollup.contexts?.nodes))throw Error('Incomplete checks contexts');
+  return checks((rollup?.contexts?.nodes??[]).map(c=>({...c,workflowName:c.checkSuite?.workflowRun?.workflow?.name??null})));
+}
+export function stateBatches(rows) {
+  const batches=[];let batch=[],detailed=0;
+  for(const row of rows) {
+    const detail=needsChecks(row) || row.checkSummary==='pending';
+    if(batch.length===STATE_BATCH_SIZE || (detail && detailed===CHECKS_BATCH_SIZE)) {batches.push(batch);batch=[];detailed=0;}
+    batch.push(row);if(detail)detailed++;
+  }
+  if(batch.length)batches.push(batch);
+  return batches;
+}
+export function pullStateArgs(numbers,nameWithOwner,includeCounts=false,detailed=[]) {
   const [owner,name]=nameWithOwner.split('/');
   if(!numbers.length || numbers.length>STATE_BATCH_SIZE || numbers.some(n=>!Number.isSafeInteger(n)||n<1))throw Error('Invalid or oversized state batch');
-  const fields=numbers.map(n=>`pr${n}:pullRequest(number:${n}){number state isDraft mergedAt closedAt headRefOid commits(last:1){nodes{commit{statusCheckRollup{state}}}}}`).join(' ');
+  if(detailed.length>CHECKS_BATCH_SIZE || detailed.some(n=>!numbers.includes(n)))throw Error('Invalid or oversized detailed state batch');
+  const fields=numbers.map(n=>`pr${n}:pullRequest(number:${n}){number state isDraft mergedAt closedAt headRefOid commits(last:1){nodes{commit{statusCheckRollup{state${detailed.includes(n)?` ${CHECK_CONTEXT_FIELDS}`:''}}}}}}`).join(' ');
   return ['api','graphql','--include','-f',`query=query($owner:String!,$name:String!){repository(owner:$owner,name:$name){${fields}${includeCounts?' open:pullRequests(states:OPEN){totalCount} closed:pullRequests(states:[CLOSED,MERGED]){totalCount}':''}}}`,'-F',`owner=${owner}`,'-F',`name=${name}`];
 }
-export function parsePullStates(stdout,numbers) {
+export function parsePullStates(stdout,numbers,detailed=[]) {
   const data=JSON.parse(pullPayload(stdout));
   if(data.errors?.length)throw Error(data.errors.map(e=>[e.type,e.message].filter(Boolean).join(': ')).join('; '));
   return new Map(numbers.map(number=>{
     const pr=data.data?.repository?.[`pr${number}`],rollup=pr?.commits?.nodes?.[0]?.commit?.statusCheckRollup;
     const checkSummary=summaryState(rollup?.state);
     if(pr?.number!==number || !Array.isArray(pr.commits?.nodes) || !['OPEN','CLOSED','MERGED'].includes(pr.state) || typeof pr.isDraft!=='boolean' || checkSummary===undefined || (rollup && !rollup.state))throw Error('Incomplete PR state/summary response');
-    return [number,{...pr,checkSummary}];
+    return [number,{...pr,checkSummary,...(detailed.includes(number)?{checks:contextChecks(rollup)}:{})}];
   }));
 }
 export function pendingChecksArgs(numbers, nameWithOwner, includeCounts = false) {
   const [owner,name]=nameWithOwner.split('/');
   if(!numbers.length || numbers.length>CHECKS_BATCH_SIZE || numbers.some(n=>!Number.isSafeInteger(n)||n<1))throw Error('Invalid or oversized checks batch');
-  const fields=numbers.map(n=>`pr${n}:pullRequest(number:${n}){number state isDraft headRefOid commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){pageInfo{hasNextPage} nodes{... on CheckRun{name status conclusion startedAt completedAt detailsUrl checkSuite{workflowRun{workflow{name}}}} ... on StatusContext{context state createdAt}}}}}}}}`).join(' ');
+  const fields=numbers.map(n=>`pr${n}:pullRequest(number:${n}){number state isDraft headRefOid commits(last:1){nodes{commit{statusCheckRollup{${CHECK_CONTEXT_FIELDS}}}}}}`).join(' ');
   return ['api','graphql','--include','-f',`query=query($owner:String!,$name:String!){repository(owner:$owner,name:$name){${fields}${includeCounts?' open:pullRequests(states:OPEN){totalCount} closed:pullRequests(states:[CLOSED,MERGED]){totalCount}':''}}}`,'-F',`owner=${owner}`,'-F',`name=${name}`];
 }
 export function parsePendingChecks(stdout,numbers) {
@@ -239,9 +257,7 @@ export function parsePendingChecks(stdout,numbers) {
     const pr=data.data?.repository?.[`pr${number}`];
     if(pr?.number!==number || !Array.isArray(pr.commits?.nodes) || !['OPEN','CLOSED','MERGED'].includes(pr.state) || typeof pr.isDraft!=='boolean')throw Error('Incomplete checks/state response');
     const rollup=pr.commits.nodes[0]?.commit?.statusCheckRollup;
-    if(rollup?.contexts?.pageInfo?.hasNextPage)throw Error('Incomplete checks contexts');
-    const contexts=rollup?.contexts?.nodes??[];
-    return [number,{...pr,checks:checks(contexts.map(c=>({...c,workflowName:c.checkSuite?.workflowRun?.workflow?.name??null})))}];
+    return [number,{...pr,checks:contextChecks(rollup)}];
   }));
 }
 
@@ -291,7 +307,7 @@ export async function completePulls(exec,values,repository,options={}) {
   for(let i=0;i<rows.length;i++) {
     const row=rows[i],old=cachedPull(exec,repository,row.number,options);
     if(Array.isArray(values[i].statusCheckRollup))continue;
-    if(old?.checksKnown && old.headRefOid===row.headRefOid && old.checkSummary===row.checkSummary) {
+    if(old?.checksKnown && !needsChecks(old) && old.checkSummary!=='pending' && row.checkSummary!=='pending' && old.headRefOid===row.headRefOid && old.checkSummary===row.checkSummary) {
       row.checks=old.checks;row.checksKnown=true;
     } else if(row.checkSummary!=null)changed.push(row.number);
     else {row.checks=null;row.checksKnown=true;}
