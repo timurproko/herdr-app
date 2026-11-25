@@ -37,7 +37,7 @@ export class AggregatePulls {
     return !presentation && context?.stale ? null : context;
   }
   sync(cx) {
-    if(this.shown()) pluginEvent('workspace.context.refresh',{cx});
+    if(this.shown()) pluginEvent('workspace.context.refresh',{cx,space:location().space});
     const context=this.currentContext({presentation:true}), previous=this.context;
     if(context?.scope!==previous?.scope) {this.serial++;this.factOrder.reset();this.entries.clear();this.pending.clear();this.diagnostics.clear();}
     this.context=context;
@@ -96,7 +96,7 @@ export class AggregatePulls {
   }
   counts() {return {open:this.rows('open').length,closed:this.rows('closed').length};}
   invalidate(repository=null) {this.diagnostics.clear();for(const e of this.entries.values())if(!repository || e.link.repo===repository.toLowerCase())e.dirty=true;}
-  refresh(cx) {pluginEvent('workspace.context.refresh',{cx,force:true});this.invalidate();this.pump(cx);}
+  refresh(cx) {pluginEvent('workspace.context.refresh',{cx,space:location().space,force:true});this.invalidate();this.pump(cx);}
   pump(cx) {
     if(this.fallbackBusy)return;
     if(!this.context || this.context.stale || !this.shown() || this.currentContext()?.scope!==this.context.scope)return;
