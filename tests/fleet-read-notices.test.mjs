@@ -47,7 +47,14 @@ failures.delete(key(5));await refresh();tree=render('closed');assert.equal(error
 failures.clear();await refresh();assert.equal(errors(render('closed')).length,0);
 // Unknown historical state is a Closed history-load notice, not an Open error.
 gitReads(host.exec).facts.clear();panel.aggregate.stop();for(const n of [5,6,7])failures.set(key(n),{code:3221225794,stderr:''});tree=panel.render(cx);await drain();
-assert.equal(errors(render('open')).length,0);tree=render('closed');assert.equal(errors(tree).length,1);assert.match(text(errors(tree)[0]),/Task PR history/);assert.equal(panel.aggregate.counts().closed,0);assert.equal(panel.aggregate.counts().open,1);
+assert.equal(errors(render('open')).length,0);tree=render('closed');assert.equal(errors(tree).length,1);assert.match(text(errors(tree)[0]),/Task PR history/);// A cold read failure leaves totals unknown, not an exact loaded subset.
+assert.deepEqual({...panel.aggregate.counts()},{open:null,closed:null});assert.equal(panel.aggregate.countsLoading,true);
+assert.equal(panel.aggregate.rows('open').length,1);assert.equal(panel.aggregate.rows('closed').length,0);
+for(const tab of ['open','closed']) {
+ assert.equal(text(find(tree,`git-view-${tab}-count`)),'0');
+ assert.equal(find(tree,`git-view-${tab}-count`).attrs.tooltip[0],'Count loading; showing 0');
+ assert.match(find(tree,`git-view-${tab}`).attrs.accessibility_label[0],/0 \(loading\)/);
+}
 assert.ok(find(tree,`task-repo-${repo}`),'A genuine notice alone keeps its section');assert.equal(find(tree,'git-task-empty'),undefined,'Notice-only is not empty');
 // Cold historical failures belong only to Closed, without phantom Open headers.
 const live=context.links.shift();gitReads(host.exec).facts.clear();panel.aggregate.stop();tree=render('open');await drain();tree=render('open');
