@@ -32,7 +32,7 @@ export function fakeTransport(replace = () => undefined) {
 }
 // The fake ACL adapter allows portable transport tests; credentials.test also exercises real OS protection.
 export function fixture({realSecurity = false} = {}) {
-  const root = fs.mkdtempSync(path.join(process.env.TRELLO_TEST_ROOT || os.tmpdir(), 'trello-'));
+  const root = fs.mkdtempSync(path.join(process.env.TRELLO_TEST_ROOT || process.env.RUNNER_TEMP || os.tmpdir(), 'trello-'));
   const home = path.join(root, 'home');
   const store = new Store(home, realSecurity ? {} : {security: () => {}});
   setup(store, credentials); configure(store, 'allow', A);

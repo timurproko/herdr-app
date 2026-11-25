@@ -7,7 +7,7 @@ import {build,project} from '../tools/build.mjs';
 import {deploy,shellPaths} from '../tools/deploy.mjs';
 import {rollback} from '../tools/rollback.mjs';
 import {planLaunchers,applyLaunchers,removalLaunchers} from '../tools/trello-launchers.mjs';
-const root=fs.mkdtempSync(path.join(process.env.TRELLO_TEST_ROOT||os.tmpdir(),'trello-deploy-'));
+const root=fs.mkdtempSync(path.join(process.env.TRELLO_TEST_ROOT||process.env.RUNNER_TEMP||os.tmpdir(),'trello-deploy-'));
 const home=path.join(root,'home with spaces-é'),bin=path.join(root,'user bin-é');
 const saved={PATH:process.env.PATH,HERDR_APP_BIN:process.env.HERDR_APP_BIN};
 try {

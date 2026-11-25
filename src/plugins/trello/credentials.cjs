@@ -7,7 +7,7 @@ const crypto = require('node:crypto');
 const {fail, TrelloError} = require('./errors.cjs');
 const homePath = explicit => path.resolve(explicit || process.env.HERDR_APP_HOME || path.join(os.homedir(), '.config/herdr-app'));
 const object = v => v !== null && typeof v === 'object' && !Array.isArray(v);
-const exact = (v, keys) => object(v) && Object.keys(v).every(k => keys.includes(k));
+const exact = (v, keys) => object(v) && [Object.prototype, null].includes(Object.getPrototypeOf(v)) && Object.keys(v).every(k => keys.includes(k));
 const id = v => typeof v === 'string' && /^[a-f0-9]{24}$/.test(v);
 function validate(name, v) {
   let ok = false;
@@ -60,6 +60,8 @@ class Store {
   }
   read(name, optional = false) {
     this.directory(); const file = this.file(name); safePath(file);
+    const lock = path.join(this.dir, 'config.lock'); safePath(lock);
+    if (!this.lockHeld && fs.existsSync(lock)) fail('STORE');
     if (!fs.existsSync(file)) { if (optional) return null; fail('STORE'); }
     this.security(file);
     const fd = fs.openSync(file, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0));
@@ -73,7 +75,7 @@ class Store {
     const file = this.file(name), lock = path.join(this.dir, 'config.lock'); safePath(lock);
     let fd, temp;
     try {
-      fd = fs.openSync(lock, 'wx', 0o600); this.security(lock, true);
+      fd = fs.openSync(lock, 'wx', 0o600); this.lockHeld = true; this.security(lock, true);
       const current = this.read(name, true);
       if (JSON.stringify(current) !== JSON.stringify(expected)) fail('CONFLICT');
       temp = path.join(this.dir, `.write-${crypto.randomBytes(12).toString('hex')}`);
@@ -82,7 +84,7 @@ class Store {
       safePath(file);
       fs.renameSync(temp, file); temp = null; this.security(file);
     } catch (e) { if (e instanceof TrelloError) throw e; fail('STORE'); }
-    finally { if (temp) fs.unlinkSync(temp); if (fd !== undefined) { fs.closeSync(fd); fs.unlinkSync(lock); } }
+    finally { if (temp) fs.unlinkSync(temp); if (fd !== undefined) { this.lockHeld = false; fs.closeSync(fd); fs.unlinkSync(lock); } }
   }
 }
 function protectedInput(file) {

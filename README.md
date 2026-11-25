@@ -144,6 +144,20 @@ core privileges are **not** part of `npm test` and require separate approval.
 - Keep service operations out of appearance code. Settings may compose feature UIs without owning their worker implementations.
 - No hot-reload watcher, daemon, desktop restart or terminal-input injection is installed.
 
+## Optional Trello agent plugin
+
+**Settings → Plugins → Trello** enables the installed `herdr-trello` JSON CLI for
+shell-capable agents. It is off and read-only by default. Reads and writes require
+an explicit machine-local board allowlist; writes additionally require local
+opt-in and public Read-write mode. API-key/user-token credentials are entered only
+through protected local setup, never plugin settings or portable preferences.
+Normal full build/deploy installs the standalone runtime and owned user-bin
+launchers (the selected bin must be on PATH); shell-only peers get no credentials
+or Trello installation. See [Trello setup, commands and security limits](docs/TRELLO.md).
+There is no MCP adapter, board panel, permanent deletion or automatic write replay.
+An agent running as the same OS user can read the private credential file; this
+client's allowlist/read-only policy is not a security sandbox.
+
 ## Optional sidebar plugins
 
 Plugins declare their Settings UI (requirements, settings, list sections, pages) and one

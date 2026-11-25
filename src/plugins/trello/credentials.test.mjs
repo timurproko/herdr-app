@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import cp from 'node:child_process';
 import {createRequire} from 'node:module';
 import {fixture, Store, setup, configure, credentials, A, B} from './testing.test.mjs';
 const require = createRequire(import.meta.url);
@@ -48,6 +49,12 @@ try {
     fs.unlinkSync(real.store.file('credentials'));
     fs.symlinkSync(path.join(real.root, 'missing'), real.store.file('credentials'));
     assert.throws(() => real.store.read('credentials'), {code: 'STORE'});
+  } else {
+    cp.execFileSync('icacls.exe', [real.store.file('credentials'), '/grant', '*S-1-1-0:R'], {stdio: 'ignore', windowsHide: true});
+    assert.throws(() => real.store.read('credentials'), {code: 'STORE'});
+    const linkedHome = path.join(real.root, 'linked-home');fs.mkdirSync(path.join(linkedHome, '.customizations'), {recursive: true});
+    fs.symlinkSync(real.store.dir, path.join(linkedHome, '.customizations/trello'), 'junction');
+    assert.throws(() => new Store(linkedHome).read('credentials'), {code: 'STORE'});
   }
 } finally { real.cleanup(); }
 console.log('PASS: Trello private stores, real OS protection, rotation, local policy and stale authority');

@@ -5,9 +5,9 @@ const {Store, protectedInput, object} = require('./credentials.cjs');
 const {setup, configure, status} = require('./setup.cjs');
 const {run, definitions, writes} = require('./operations.cjs');
 const {fail, publicError} = require('./errors.cjs');
-const help = `herdr-trello: scoped Trello JSON CLI (Node 20+)\n\nLocal: status; setup [--rotate] [--input PRIVATE_FILE]; policy allow/remove BOARD; policy writes on/off\nReads: boards list; lists list; cards list/get; labels list; checklists list; checkitems list\nWrites: cards create/update/move/archive; comments add; cards label add/remove; checklists add/update; checkitems add/update\nEvery child operation needs --board BOARD and its explicit --card/--list/--checklist IDs.\nPaging: --limit 1..100 --before CARD_OR_ACTION_ID; lists/cards: --filter open|closed|all\nJSON input: --input FILE or stdin (setup/mutations only). Never pass credentials in argv.\nGlobal: --home HERDR_HOME; --json (results are JSON by default). No arbitrary HTTP operations.\nSee docs/TRELLO.md for setup, write authorization, scope, errors and revocation.\n`;
+const help = `herdr-trello: scoped Trello JSON CLI (Node 20+)\n\nLocal: status; setup [--rotate] [--input PRIVATE_FILE]; policy allow/remove BOARD; policy writes on/off\nReads: boards list; lists list; cards list/get; labels list; checklists list; checkitems list\nWrites: cards create/update/move/archive; comments add; cards label add/remove; checklists add/update; checkitems add/update\nEvery child operation needs --board BOARD and its explicit --card/--list/--checklist IDs.\nPaging: --limit 1..100 --before RETURNED_BOARD_CARD_OR_ACTION_ID; lists/cards: --filter open|closed|all\nJSON input: --input FILE or stdin (setup/mutations only). Never pass credentials in argv.\nGlobal: --home HERDR_HOME (direct Node entry; installed launchers already bind their home); --json (results are JSON by default). No arbitrary HTTP operations.\nSee docs/TRELLO.md for setup, write authorization, scope, errors and revocation.\n`;
 function parse(argv) {
-  const words = [], flags = {};
+  const words = [], flags = Object.create(null);
   for (let i = 0; i < argv.length; i++) {
     const token = argv[i];
     if (!token.startsWith('--')) { words.push(token); continue; }

@@ -6,7 +6,7 @@ const {fail} = require('./errors.cjs');
 const fields = 'name,desc,idBoard,idList,closed,due,start,dueComplete,pos,labels,url';
 const cardFields = ['name', 'desc', 'due', 'start', 'dueComplete', 'pos'];
 const definitions = {
-  'boards.list': [], 'lists.list': ['board', 'filter'], 'cards.list': ['board', 'list', 'filter', 'limit', 'before'],
+  'boards.list': ['before'], 'lists.list': ['board', 'filter'], 'cards.list': ['board', 'list', 'filter', 'limit', 'before'],
   'cards.get': ['board', 'card', 'limit', 'before'], 'labels.list': ['board', 'card'],
   'checklists.list': ['board', 'card'], 'checkitems.list': ['board', 'card', 'checklist'],
   'cards.create': ['board', 'list', ...cardFields], 'cards.update': ['board', 'card', ...cardFields],
@@ -98,12 +98,15 @@ class Scope {
 async function readOperation(client, scope, op, a, gate) {
   const limit = a.limit ?? 50, paging = {limit, ...(a.before ? {before: a.before} : {})};
   if (op === 'boards.list') {
-    const items = [];
-    for (const board of gate.policy.boards.slice(0, 20)) {
+    const items = [], start = a.before ? gate.policy.boards.indexOf(a.before) + 1 : 0;
+    if (a.before && !start) fail('SCOPE');
+    const selected = gate.policy.boards.slice(start, start + 20);
+    for (const board of selected) {
       const row = record(await client.get(`/boards/${board}`, {fields: 'name,url,closed', actions: 'none', lists: 'none', cards: 'none', members: 'none', checklists: 'none'}));
       if (row.id !== board) fail('SCOPE'); items.push(pick(row, ['name', 'url', 'closed']));
     }
-    return {items, complete: gate.policy.boards.length <= 20, truncated: gate.policy.boards.length > 20};
+    const complete = start + selected.length >= gate.policy.boards.length;
+    return {items, complete, truncated: !complete, ...(!complete ? {nextBefore: selected.at(-1)} : {})};
   }
   if (op === 'lists.list') return page((await scope.lists(a.board)).filter(r => (a.filter ?? 'open') === 'all' || r.closed === ((a.filter ?? 'open') === 'closed')).map(r => pick(r, ['name', 'idBoard', 'closed', 'pos'])), 100, false);
   if (op === 'cards.list') {
@@ -123,7 +126,7 @@ async function readOperation(client, scope, op, a, gate) {
     const row = card(await client.get(`/cards/${a.card}`, {fields, attachments: false, members: false, checklists: 'none', actions: 'none', pluginData: false, stickers: false}), a.board);
     if (row.id !== a.card) fail('SCOPE');
     const comments = array(await client.get(`/cards/${a.card}/actions`, {filter: 'commentCard', ...paging})).map(r => {
-      if (r.type !== 'commentCard' || r.data?.card?.id !== a.card || r.data?.board?.id !== a.board || typeof r.data.text !== 'string') fail('SCOPE');
+      if (r.type !== 'commentCard' || r.data?.card?.id !== a.card || !id(r.data?.board?.id) || typeof r.data.text !== 'string') fail('SCOPE');
       return {...pick(r, ['date']), text: r.data.text};
     });
     const checklists = await scope.checklists(a.board, a.card);

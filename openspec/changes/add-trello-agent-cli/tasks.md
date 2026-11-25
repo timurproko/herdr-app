@@ -33,6 +33,6 @@
 
 ## 5. Complete owner guidance and offline integration contracts
 
-- [ ] 5.1 Complete `docs/TRELLO.md` with official API-key/user-token generation steps, scopes/expiry, errors/revocation/rotation and the same-OS-user credential-file limitation; link README and verify all required topics and official documentation references are present.
-- [ ] 5.2 Add fake-only end-to-end CLI/module integration fixtures spanning setup, enablement, scoped reads, write opt-in, policy revocation, cooldown and unknown write outcomes; verify subprocess/module transport seams cannot escape to live network or the real home.
-- [ ] 5.3 Add cross-layer regression assertions for preference/deployment secret exclusion, installed dependency closure and stable JSON error/exit contracts; verify quick targeted checks and strict OpenSpec validation and document remaining live-validation limits without real Trello calls.
+- [x] 5.1 Complete `docs/TRELLO.md` with official API-key/user-token generation steps, scopes/expiry, errors/revocation/rotation and the same-OS-user credential-file limitation; link README and verify all required topics and official documentation references are present.
+- [x] 5.2 Add fake-only end-to-end CLI/module integration fixtures spanning setup, enablement, scoped reads, write opt-in, policy revocation, cooldown and unknown write outcomes; verify subprocess/module transport seams cannot escape to live network or the real home.
+- [x] 5.3 Add cross-layer regression assertions for preference/deployment secret exclusion, installed dependency closure and stable JSON error/exit contracts; verify quick targeted checks and strict OpenSpec validation and document remaining live-validation limits without real Trello calls.

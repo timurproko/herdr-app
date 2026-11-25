@@ -32,7 +32,7 @@ async function jsonResponse(response) {
 }
 function retryTime(headers, now) {
   const retry = headers.get('retry-after');
-  let until = /^\d+(?:\.\d+)?$/.test(retry || '') ? now + Math.ceil(Number(retry) * 1000) : Date.parse(retry || '');
+  let until = /^\d+(?:\.\d+)?$/.test(retry || '') ? Math.min(Number.MAX_SAFE_INTEGER, now + Math.ceil(Number(retry) * 1000)) : Date.parse(retry || '');
   const intervals = ['x-rate-limit-api-key-interval-ms', 'x-rate-limit-api-token-interval-ms'].map(k => Number(headers.get(k))).filter(n => Number.isFinite(n) && n > 0);
   until = Math.max(now + 10000, ...intervals.map(n => now + n), Number.isFinite(until) ? until : now + 60000);
   return Math.min(Number.MAX_SAFE_INTEGER, Math.ceil(until));
@@ -62,9 +62,10 @@ class Client {
       dispatched = true;
       const response = await this.transport(url, {method, redirect: 'manual', signal: controller.signal, headers: {Accept: 'application/json'}});
       if (response.status === 429) {
-        const retryAt = retryTime(response.headers, this.now());
         const old = this.store.read('cooldown', true);
-        try { this.store.write('cooldown', {version: 1, retryAt: Math.max(old?.retryAt || 0, retryAt)}, old); } catch (e) { if (e.code !== 'CONFLICT') throw e; }
+        const retryAt = Math.max(old?.retryAt || 0, retryTime(response.headers, this.now()));
+        if (response.body) await response.body.cancel().catch(() => {});
+        try { this.store.write('cooldown', {version: 1, retryAt}, old); } catch (e) { if (e.code !== 'CONFLICT') throw e; }
         throw new TrelloError('RATE_LIMIT', {retryAt});
       }
       if (response.status < 200 || response.status >= 300) {
