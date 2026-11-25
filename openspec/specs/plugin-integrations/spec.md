@@ -171,22 +171,41 @@ Crew Projects settings SHALL derive registration names from folder basenames whi
 - **AND** safe dots within the 40-character result are not replaced with dashes
 
 ### Requirement: Crew project refusals retain authority and origin
-Settings SHALL present Crew's project-change refusals as messages from Crew, separately from the selected folder's operation context. Home-ownership refusals SHALL remain about Crew's home. An older Crew refusing a dotted name SHALL expose its refusal without a silent alternative-name retry or false success. Batch changes SHALL retain successful operations and identify failed operations.
+Settings SHALL summarize failed Crew project changes with concise, actionable, sentence-case text and full stops, never usage dumps or multiline raw output. Home-ownership refusals SHALL remain about Crew's home. Rejected names SHALL NOT trigger alternative-name retries or false success. Batch changes SHALL retain successes and identify failures. Full raw output SHALL appear only in existing diagnostics or logs, if available.
 
 #### Scenario: Older Crew rejects dotted registration
-- **WHEN** Crew refuses a requested dotted project name
-- **THEN** Settings shows Crew's refusal as a message from Crew
+- **WHEN** Crew refuses a requested dotted project name, including a response starting with `Usage:` after an optional `crew:` prefix
+- **THEN** Settings shows `Could not add {folder}. Crew did not accept the project name {name}; update the Crew tool and try again.` when the installed tool is not known to be outdated
+- **AND** when that machine's Crew tool is known to be outdated, it shows `Could not add {folder}. Update the Crew tool on {machine} and try again.` instead
 - **AND** the app does not retry with a dash-only name or show the project as registered
 
 #### Scenario: Crew home owned by another terminal
-- **WHEN** an add fails because Crew reports that its home is read-only and owned by another terminal
-- **THEN** Settings identifies Crew as the source and preserves the home-ownership explanation
+- **WHEN** an add or remove fails because Crew reports that its home is read-only and owned by another terminal
+- **THEN** Settings summarizes the home-ownership refusal in one sentence and directs the user to the owning session
 - **AND** the selected folder is shown only as the attempted operation's target, not as the owner-locked resource
 
 #### Scenario: Partial batch failure
 - **WHEN** one folder change fails while other selected changes succeed
-- **THEN** Settings retains the successes, identifies the failed operation and shows its attributed refusal
-- **AND** the project list is refreshed using Crew's authoritative result
+- **THEN** Settings retains the successes, identifies each failed operation with concise guidance and refreshes Crew's authoritative list
+- **AND** no failure includes a usage block or multiline command output
+
+#### Scenario: Missing or non-repository folder
+- **WHEN** Crew reports that the attempted folder is not a git repository or is missing
+- **THEN** Settings names that cause in one sentence with guidance to choose an existing git repository
+
+#### Scenario: Registration conflict
+- **WHEN** Crew reports that the name already points at another folder, is taken, or the project is already registered
+- **THEN** Settings summarizes the registration conflict in one sentence with guidance to use another name or the existing registration as appropriate
+
+#### Scenario: Failed removal
+- **WHEN** Crew refuses a Remove action from a row or an unticked folder
+- **THEN** Settings applies the same concise presentation rules using the removal target, without an additional raw-output wrapper
+- **AND** unfinished-task and pending-working-copy refusals retain their relevant recovery guidance
+
+#### Scenario: Unrecognized command failure
+- **WHEN** a project change fails with another command or transport error
+- **THEN** Settings shows `Could not add {folder}.` or the corresponding removal text, followed only by the first output line trimmed to one sentence when present
+- **AND** blank output keeps only the operation failure, and usage text is never included even when it appears later in the output
 
 ### Requirement: Shared authenticated relay lifecycle
 The enabled Git integration SHALL own one authenticated relay connection per desktop relay scope, mounted with non-footer workspace chrome. Git's shown panel and Custom availability SHALL consume independent subscriptions without duplicate socket owners. Hiding Git SHALL stop its PR reads but SHALL NOT stop update hints. Disabling Git SHALL stop all relay subscriptions while independent Custom polling remains available.
@@ -1190,3 +1209,71 @@ Pending-row numeric freshness SHALL reflect successful numeric reads, not state-
 #### Scenario: Incomplete contexts remain uncertain
 - **WHEN** a pending PR has more than 100 contexts and the bounded response reports another page
 - **THEN** the read retains today's incomplete-context refusal and last-good facts instead of publishing a partial total
+
+### Requirement: Durable scoped agent monitor repositories
+The agent monitor SHALL derive its repository allowlist from the durable confirmed added repositories for the current relay and GitHub account, independently of disposable webhook-notice membership. Empty, missing or mismatched selections SHALL remain empty without legacy fallback. Existing configuration lifecycle paths SHALL propagate the current selection to reachable managed companions without requiring a preference re-save.
+
+#### Scenario: Add or remove invalidates notice membership
+- **WHEN** an approved Add or Remove updates confirmed added repositories and clears the webhook-notice cache
+- **THEN** the monitor configuration contains the remaining confirmed repositories for the current relay and account
+- **AND** the existing lifecycle synchronizes that selection into each reachable managed worker's configuration
+
+#### Scenario: Final repository removed
+- **WHEN** the last confirmed repository is removed from the current scope
+- **THEN** reachable managed workers receive an empty allowlist and authorize no further messages for the removed repository
+- **AND** legacy repository preferences or old notice membership cannot repopulate that allowlist
+
+#### Scenario: Configure or credential refresh invalidates notices
+- **WHEN** Configure or credential refresh clears notice membership without changing the relay and GitHub account selection
+- **THEN** the monitor retains the durable confirmed selection rather than emptying its allowlist
+- **AND** a changed relay or GitHub account admits only a durable selection matching the new scope
+
+#### Scenario: Startup and restart
+- **WHEN** the desktop starts or its customization code reloads with auto-fix already enabled and durable confirmed repositories present
+- **THEN** the existing lifecycle synchronizes the matching selection without a preference re-save
+- **AND** a restarted companion retains its written allowlist and existing duplicate receipts
+
+#### Scenario: Explicit management configuration
+- **WHEN** an explicit management operation builds a worker configuration from public desktop settings
+- **THEN** it uses the same current relay and GitHub account selection as the desktop lifecycle
+- **AND** missing or mismatched durable selection never falls back to notice membership or legacy repository preferences
+
+#### Scenario: Idle agent after scope repair
+- **WHEN** a verified idle agent in a confirmed repository has a completed failed latest workflow and idle is selected for delivery
+- **THEN** the existing non-forced delivery policy sends exactly one CI message for unchanged failure evidence across cycles and companion restart
+- **AND** an enabled persistent conflict independently produces exactly one conflict message for unchanged conflict evidence
+- **AND** templates, receipts, ownership and routing to the verified PR agent remain unchanged without coordinator notification
+
+### Requirement: Truthful bounded agent monitor diagnostics
+Enabled monitoring SHALL NOT report healthy-ready when its scope is empty or every candidate is skipped. Local diagnostics SHALL retain at most 128 sanitized sent/suppressed entries identifying reason, time, repository, PR and target terminal where known. Diagnostics SHALL distinguish delivery acknowledgement from unknown submission, grant no message authority and add no toast or panel UI.
+
+#### Scenario: No monitored repositories
+- **WHEN** auto-fix is enabled with an empty allowlist
+- **THEN** status identifies no monitored repositories instead of healthy-ready
+- **AND** a bounded suppression entry records that reason with unknown repository, PR and terminal left explicitly empty rather than invented
+
+#### Scenario: Agent state not selected
+- **WHEN** every verified candidate agent is in a state excluded by the saved selection
+- **THEN** status identifies suppressed monitoring and diagnostics record agent state not selected with each known repository, PR and terminal
+- **AND** no message is sent, Working remains opt-in and Blocked remains excluded
+
+#### Scenario: Workflow still running
+- **WHEN** a candidate's latest workflow is still running, even with an individual failed job
+- **THEN** diagnostics identify workflow still running and no early job alert is sent
+- **AND** a cycle in which every candidate is skipped does not report healthy-ready
+
+#### Scenario: Already sent evidence
+- **WHEN** an existing receipt suppresses unchanged CI or conflict evidence
+- **THEN** diagnostics identify already sent for that repository, PR and terminal without another message
+- **AND** attempted or unknown receipts are not falsely described as confirmed successful delivery
+
+#### Scenario: Sent and uncertain outcomes
+- **WHEN** the existing transport acknowledges delivery or returns an uncertain submission outcome
+- **THEN** diagnostics retain that outcome with its repository, PR and target terminal without changing receipt claims or retry rules
+- **AND** a send acknowledgement does not assert that the agent started or completed a fix
+
+#### Scenario: Bounded non-authoritative history
+- **WHEN** suppression repeats, the worker restarts, or diagnostic persistence fails
+- **THEN** journal retention stays bounded and repeated unchanged episodes are coalesced
+- **AND** diagnostics remain separate from delivery receipts, contain no raw output, message text, transcript or credentials, and never relax a delivery gate
+- **AND** diagnostic-write failure does not prevent ordinary verification or delivery, and read-only probes do not persist diagnostic history

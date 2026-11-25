@@ -13,7 +13,7 @@ export default {
   advancedSettings:true,
   lifecycle:{'sidebar.sync':context=>{ensureMonitors(context);syncRelay(context);},'updates.watch':watchUpdates,'sidebar.close':closeRelay},
   onEnabledChange(next,cx){if(!next)stopRelay();return syncMonitors(cx);},
-  onSettingChange(key,cx){if(['autoFixCI','ciFixStates','ciFixMessage','ciFixEnabled','conflictFixMessage','conflictFixEnabled','mergedMessage','mergedEnabled','ciMonitorRepositories'].includes(key))return syncMonitors(cx);},
+  onSettingChange(key,cx){if(['autoFixCI','ciFixStates','ciFixMessage','ciFixEnabled','conflictFixMessage','conflictFixEnabled','mergedMessage','mergedEnabled','ciMonitorRepositories','relay','githubAccount'].includes(key))return syncMonitors(cx);},
   settings:[
     {key:'ciMonitorMachine',type:'machine',label:'Legacy monitor machine',default:null,hidden:true},
     {key:'ciMonitorRepositories',type:'text',label:'Legacy monitored repositories',default:'',hidden:true},
