@@ -23,7 +23,7 @@ import { headerTool, contextMenu, panelMessage } from './panel-kit.js';
 import { changePanel } from './panel-state.js';
 import { sidebarPanelEnabled } from './plugins.js';
 import { sidebarTitle } from './sidebar-title.js';
-import { REPO_ARGS, countArgs, parseCounts, agentPullNumber, pullError, PR_PAGE_SIZE, repositoryRead, repositoryFailure, quietRead, retryRead, readPullPage, readTargetPulls, rememberPull, retimePull, pendingChecksArgs, parsePendingChecks, refreshPullFacts, pullStateArgs, parsePullStates, pullPayload, pullRetryAfter, ChecksFallback, PullFactsOrder, CHECKS_BATCH_SIZE, stateBatches, needsChecks } from './pulls.js';
+import { REPO_ARGS, countArgs, parseCounts, agentPullNumber, pullError, PR_PAGE_SIZE, gitReads, repositoryRead, repositoryFailure, quietRead, retryRead, readPullPage, readTargetPulls, rememberPull, retimePull, pendingChecksArgs, parsePendingChecks, refreshPullFacts, pullStateArgs, parsePullStates, pullPayload, pullRetryAfter, ChecksFallback, PullFactsOrder, CHECKS_BATCH_SIZE, stateBatches, needsChecks } from './pulls.js';
 
 const VIEWS = ['open', 'closed'];
 const VIEW_KEY = 'custom.git.view';
@@ -50,6 +50,7 @@ export default class Changes extends View {
       this.menuHandle.focus();
       return;
     }
+    this.enableReadDiagnostics();
     // Focus outlives render; the host forbids allocating handles in renderAggregate.
     this.enrollmentFocus = cx.focus_handle();
     this.headerHovered = false;
@@ -69,6 +70,19 @@ export default class Changes extends View {
     cx.timer.every(LOCAL_CONTEXT_TTL, cx => {
       if (this.shown()) this.refresh(cx);
     });
+  }
+
+  enableReadDiagnostics() {
+    // GitReads invokes this best-effort sink only after yielding. Evidence is
+    // local runtime state, never a preference or read/action authorization.
+    gitReads(exec).onDiagnostic=record=>{
+      const key='custom.git.read-diagnostics',state=host.shared(key);
+      const entries={...(state?.version===1?state.entries:{})},prior=entries[record.key];
+      if(prior && (prior.startedAt>record.startedAt || prior.startedAt===record.startedAt && prior.attempt>record.attempt))return;
+      entries[record.key]=record;
+      const bounded=Object.entries(entries).sort((a,b)=>b[1].at-a[1].at).slice(0,128);
+      host.setShared(key,{version:1,entries:Object.fromEntries(bounded)});
+    };
   }
 
   close() {

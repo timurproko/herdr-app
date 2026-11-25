@@ -25,6 +25,23 @@ retry guards. It is not evidence of the original unrecorded refusal or native pi
 episodes, Retry-After, manual bypass and the older-success/cooldown race. Ordinary
 compatibility count refusals retain a cooldown retry and known totals; unknown
 page totals never fall back to a loaded subset's length.
+`tests/git-read-diagnostics.test.mjs` covers bounded read-phase/refusal/deadline
+records, genuine refusal versus cooldown skip, recovery evidence, machine isolation,
+late-attempt rejection and the actual main sink's yielded shared publication. It
+checks 128-record eviction, safe fields, sink failure tolerance and actual portable
+preference export exclusion without using the person's home.
+
+Opt-in Windows `tests/features/git-deferred-native.mjs --run --output` takes an
+outside-checkout evidence directory. It builds/deploys only into its own ignored
+scratch app home, uses synthetic admitted links/GitHub transport, and holds the
+production cooldown callback until its test clock advances. It captures Loading
+and recovered screenshots at 130%, records native errors/build times and stopped
+instance evidence, and stops only its generated app/Core session in cleanup. The
+recorded four-row proof built in 0–2 ms with no native errors; this is small-fixture
+JS/native-element construction, not full-inventory timing, paint or live rate-limit
+proof. The native picture shows the same herdr-app header before and after retry,
+with standard Loading becoming #74/#76 and tab totals moving from 0/0 to 4/5.
+
 `tests/git-target-reads.test.mjs` covers shared target subscriptions, per-alias
 failures with gh's real exit status 1 on partial GraphQL errors, final caching
 and changed-only details. Healthy siblings survive missing/access aliases;
