@@ -161,8 +161,8 @@ Custom chrome. A short runtime lease selects one owner across duplicate mounts o
 windows; configuration changes and owner teardown invalidate stale callbacks.
 Hiding Git or switching repositories leaves transport active but starts no hidden
 PR/CI/agent-link reads. Disabling Git revokes ownership and closes the socket.
-Reconnection has bounded jittered transport backoff. Events accelerate enrolled repositories, while a 120-second safety read repairs
-shown Open/Draft rows independently of relay delivery or connectivity. Opening or
+Reconnection has bounded jittered transport backoff. Events accelerate enrolled repositories, while 45-second pending and 120-second
+settled safety reads repair enrolled shown Open/Draft rows independently of relay delivery or connectivity. Opening or
 reconnecting also catches up using authoritative GitHub reads. Missing/invalid credentials block retries until an explicit retry or setup
 revision, rather than retrying on every render.
 
@@ -193,16 +193,20 @@ verification; rate refusals stay quiet but do not schedule a later worker.
 
 ### Pending checks without enrollment
 
-While Git is shown, Open/Draft PRs use a **45-second fallback** without confirmed
-enrollment (including unknown membership or missing setup), and a **120-second
-safety net** when enrolled, even during relay outages. Unenrolled pending/unknown
-Open/Draft checks also remain eligible. Known Closed/Merged rows are never safety-probed,
+While Git is shown, pending/unknown Open/Draft checks use a **45-second fallback**
+even when enrolled. Settled rows retain **45 seconds without confirmed enrollment**
+(including unknown membership or missing setup), and **120 seconds when enrolled**,
+even during relay outages. A repository with any shown pending row uses the shorter cadence. Known Closed/Merged rows are never safety-probed,
 even when their last-known checks are pending or unknown. Settled or known-empty checks do not stop an open
 row's state reads: a later merge must leave Open without relying on another event.
-One coalesced repository job probes only number, state, draft/completion dates,
-head SHA and the last commit's rollup **STATE**, in chunks of at most **40 PRs**.
-It does not enumerate check contexts for unchanged rows. Only a changed head or
-summary fetches full contexts, batched at **20 changed PRs** under the same lease.
+One coalesced repository job probes number, state, draft/completion dates,
+head SHA and rollup **STATE**, including the existing first-100 context selection
+for pending/unknown rows in that same request. Settled aliases remain thin.
+Chunks contain at most **40 PRs and 20 detailed pending PRs**. Newly changed
+settled heads/summaries can still fetch bounded follow-up details under the same lease.
+Counts retain newest-workflow/newest-attempt filtering and SUCCESS/SKIPPED/NEUTRAL
+as passed; raw aggregates are unsuitable because they include superseded runs.
+More than 100 contexts retains the existing incomplete-context refusal and last-good facts.
 A null rollup is authoritative empty checks and needs no detail read. Unrelated
 labels/tasks/reviews remain intact. Ordinary totals come from the same repository batch, not the
 loaded subset; aggregate totals derive from eligible task rows, including the
@@ -236,13 +240,20 @@ immediate retry and no overlapping probe/detail cycle. The in-memory repository
 cooldown survives hiding, reopening or switching tabs so those actions cannot
 bypass Retry-After. A rate refusal also pauses this panel's other repositories;
 it does not immediately fan out probes against the same machine's account. A successful read restores
-the repository's 45/120-second cadence only if a shown row still needs it. No hooks are enrolled,
+the repository's 45/120-second cadence only if a shown row still needs it. A probe
+encountering an existing cooldown retries at its absolute expiry, without another
+event or restarting the fifteen-minute floor. No hooks are enrolled,
 accounts switched or relay credentials changed by this fallback.
 
-Healthy safety latency is up to **45 seconds unenrolled or 120 seconds enrolled,
-plus queue time and the GitHub reads** (each command has a
-30-second timeout). Unchanged selections need only one probe per 40 rows; changed
-rows add one detail command per 20 rows. This is the scheduling bound after the preceding read; it is
+Healthy safety latency is up to **45 seconds while pending or unenrolled, or
+120 seconds when enrolled and settled, plus queue/read time** (each command has a
+30-second timeout). Pending rows refresh numbers every cycle, not only when head
+or summary changes. Numeric confirmation timestamps advance only on successful
+numeric reads, not cached or thin state reads. After more than **90 seconds** without
+confirmation, the next eligible pending cycle demands a fresh read rather than
+joining an already-started response. Busy queues retain their one-second retry;
+active reads, cooldowns and failures still take precedence. Each bounded chunk
+uses one combined request; newly changed settled rows can add a detail follow-up. This is the scheduling bound after the preceding read; it is
 not an unconditional wall-clock maximum across errors, stale/offline contexts or
 GitHub eventual consistency. Event-covered rows start after native relay dispatch
 without an added debounce window: latency includes GitHub delivery and data
@@ -260,21 +271,20 @@ Failed/discarded standalone older-PR reads also release that key and use a bound
 10-second retry delay, rather than retrying on every render. Repository replacement
 invalidates old epochs; coordinator targeted reads and fallback use the same guard.
 
-For **5 or 30 unchanged shown rows**, estimated cost is one primary GraphQL point
-(the minimum per request) and one secondary read-query point per repository cycle.
-There are no per-context connections in that steady-state probe. If all 5 change,
-one follow-up detail batch adds roughly one point; if all 30 change, two batches
-add roughly two. These are query-shape estimates, not measurements or guarantees
-of GitHub's internal CPU limits. At 120/45 seconds this is about 0.5/1.33 steady
-requests per minute per repository; other agents/events add separate account load.
-GraphQL cannot condition field selection on a returned head/summary in that same
-response, so changed rows require a follow-up; unchanged rows do not.
+For **5 or 30 unchanged settled rows**, estimated cost remains one primary
+GraphQL point per repository cycle. Five pending rows also fit one combined request;
+thirty fully pending rows need two existing twenty-detail-row chunks. Live one-row
+measurements show one point with either selection, but nodeCount rises from 1 for
+aggregate-only to 101 for the existing contexts. Ten fully detailed rows estimate
+about 1,010 nodes; twenty about 2,020. See [the request budget](GIT-REQUEST-BUDGET.md).
+At 120/45 seconds a one-chunk repository uses about 0.5/1.33 requests per minute
+(30/80 per hour); events and other agents add separate account load. These are
+query-shape estimates, not guarantees of GitHub's internal CPU/secondary limits.
 
 A shown settled Open/Draft PR that starts a rerun or merges without an event is
 rediscovered by the next successful safety cycle. Partial job-count changes with
-the same head and overall PENDING summary do not trigger detailed safety reads;
-those counts catch up when the head/summary changes; event/manual paths now reuse
-unchanged contexts too. Closed settled rows, folded
+the same head and overall PENDING summary now refresh in every pending probe;
+event/manual paths also reread pending numbers immediately. Closed settled rows, folded
 coordinator sections and hidden tabs are not periodically rediscovered. GitHub
 eventual consistency, failed reads and offline/stale contexts can retain old values
 until an applicable safety cycle or catch-up. A displayed **Add this repo in

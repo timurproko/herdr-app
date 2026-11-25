@@ -56,7 +56,7 @@ not, which explains the separate 18-versus-35 before rows.
 
 Cold reads use one metadata/summary batch and one check-detail batch per
 repository. Metadata and details are bounded to twenty PRs per command; safety
-probes retain forty. A single new PR can therefore need two reads rather than
+probes retain forty state aliases but at most twenty detailed pending aliases. A single new PR can therefore need two reads rather than
 one monolithic read: the aggregate win is batching, not a claim that every
 isolated trigger is cheaper. New/changed checks require details. Unchanged settled heads/summaries reuse known
 contexts; pending rows reread numeric details on events and other refresh paths.
@@ -146,13 +146,20 @@ A bounded steady-state probe remains one GraphQL operation per repository/chunk,
 estimated about one hourly point before and after. Live one-PR measurements were
 cost 1 / nodeCount 1 for aggregate-only and cost 1 / nodeCount 101 for the existing
 full context selection. Pending probes deliberately choose the latter for correctness.
-Ten pending PRs with 100 contexts estimate about 1,010 connection nodes; the existing
-20-detail-row cap bounds a fully detailed chunk at about 2,020 nodes. Settled aliases
+Live read-only queries repeating PR 64 under ten and twenty aliases measured cost
+1 / nodeCount 1,010 and cost 1 / nodeCount 2,020 respectively. The existing
+20-detail-row cap therefore bounds a fully detailed chunk at about 2,020 nodes;
+a mixed chunk can add up to twenty thin aliases (about 2,040 nodes total). Settled aliases
 remain thin, with at most 40 total aliases per chunk. Selected fields are unchanged;
 these are connection-node estimates, not a count of every returned object/scalar.
 Additional chunks add operations; a newly changed settled row can still require the
 existing detail follow-up. Pending event/list/target refreshes also reread details
-rather than reuse an unchanged PENDING summary.
+rather than reuse an unchanged PENDING summary. Pending shown rows use 45 seconds
+even when enrolled (about 80 one-chunk cycles/points per hour, formerly 30 at 120
+seconds); settled enrolled rows keep 120 seconds. After more than 90 seconds
+without numeric confirmation, the next eligible pending cycle requests fresh
+facts past coalescing shortcuts. Active reads and rate cooldowns are not bypassed;
+existing cooldown refusals retry at their absolute expiry, without another event.
 
 The existing first-100 limit remains: hasNextPage causes incomplete-context refusal
 and retention of last-good facts, not publication of a partial total. This change

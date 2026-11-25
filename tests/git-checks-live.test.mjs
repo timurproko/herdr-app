@@ -11,6 +11,8 @@ const mixed=[
   job('CI',2,'build','COMPLETED','SUCCESS','2026-11-25T10:02:00Z'),
   job('CI',2,'skip','COMPLETED','SKIPPED','2026-11-25T10:01:00Z'),
   job('CI',2,'neutral','COMPLETED','NEUTRAL','2026-11-25T10:01:00Z'),
+  job('CI',2,'rerun','COMPLETED','SUCCESS','2026-11-25T10:00:00Z'),
+  {...job('CI',2,'rerun','IN_PROGRESS',null,'2026-11-25T10:03:00Z'),completedAt:'0001-01-01T00:00:00Z'},
   job('Delivery',3,'build','COMPLETED','FAILURE','2026-11-25T10:01:00Z'),
   {context:'external',state:'FAILURE',createdAt:'2026-11-25T10:01:00Z'},
   {context:'external',state:'SUCCESS',createdAt:'2026-11-25T10:02:00Z'},
@@ -44,7 +46,7 @@ for(const coordinator of [false,true]) {
   rows()[0].checks=f.checks(runs(2,10));
   assert.equal((await panel.readPendingChecks({name:'owner/repo',rows:rows()},cx,current)).failed,false);
   const full=f.checks(mixed.map(c=>({...c,workflowName:c.checkSuite?.workflowRun?.workflow?.name??null})));
-  assert.deepEqual({...rows()[0].checks},{...full});assert.equal(full.label,'4/6');assert.equal(full.pending,1);
+  assert.deepEqual({...rows()[0].checks},{...full});assert.equal(full.label,'4/7');assert.equal(full.pending,2);
   incomplete=true;const before=rows()[0];
   assert.equal((await panel.readPendingChecks({name:'owner/repo',rows:rows()},cx,current)).failed,true);
   assert.equal(rows()[0],before,'More than 100 contexts retains last-good facts');incomplete=false;
@@ -60,6 +62,8 @@ for(const coordinator of [false,true]) {
   for(const batch of batches){const numbers=batch.map(p=>p.number);const query=f.pullStateArgs(numbers,'owner/repo',false,numbers).join(' ');assert.ok(query.length<16000);}
   assert.throws(()=>f.pullStateArgs(pending.map(p=>p.number).slice(0,21),'owner/repo',false,pending.map(p=>p.number).slice(0,21)),/oversized/);
   const settled={...row,number:2,checks:f.checks(runs(10,10)),checkSummary:'success',checksKnown:true};
+  const mixedBatch=f.stateBatches([...pending.slice(0,20),...Array.from({length:20},(_,i)=>({...settled,number:i+21}))]);
+  assert.equal(mixedBatch.length,1);assert.equal(mixedBatch[0].length,40,'Forty state aliases can share a chunk with twenty detailed aliases');
   const query=f.pullStateArgs([1,2],'owner/repo',false,[1]).join(' ');
   assert.match(query,/pr1:.*contexts\(first:100\)/);assert.ok(!query.split('pr2:')[1].includes('contexts('),'Settled sibling stays thin');
   count=calls.length;contexts=runs(10,10);summary='SUCCESS';

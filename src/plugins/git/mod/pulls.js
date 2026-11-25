@@ -37,7 +37,7 @@ export class GitReads {
   }
   async read(key,repository,options,run) {
     if(options.current && !options.current())throw Object.assign(new Error('Obsolete GitHub read'),{quiet:true,retryAt:this.now()+10000});
-    const state=this.state(options),id=JSON.stringify([this.route(options),repository?.toLowerCase()??[options.cwd??'',++this.generation],key]);
+    const state=this.state(options),id=JSON.stringify([this.route(options),repository?.toLowerCase()??[options.cwd??'',++this.generation],key,...(options.fresh?[++this.generation]:[])]);
     const bypass=options.manual?.remaining>0 && (options.manual.expires==null || options.manual.expires>=this.now());
     if(bypass)options.manual.remaining--; // An earlier healthy click is not a future bypass credit.
     if(this.pending.has(id)) {
@@ -77,7 +77,7 @@ export function rateRefusal(result) {
 }
 export function repositoryRead(exec, args, repository, options = {}) {
   if(args[0]==='api' && (typeof repository!=='string' || repository.trim()!==repository || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) || repository.split('/').some(p=>p==='.'||p==='..')))throw Error('Invalid GitHub repository');
-  const {current,manual,credentialScope,skipList,generation,...native}=options;
+  const {current,manual,credentialScope,skipList,generation,fresh,...native}=options;
   return gitReads(exec).read(args,repository,options,()=>{
     if(args[0]!=='api')return exec('gh',args,native);
     return exec('node',['-e',GH_REPOSITORY_ENV,repository,JSON.stringify(args),String(Math.max(1,Math.min(native.timeout??30000,30000)-1000))],native);
@@ -130,14 +130,19 @@ export class PullFactsOrder {
 // via events, but cannot guarantee delivery: shown open rows still get a repair.
 export const CHECKS_INTERVAL = 45000;
 export const STATE_SAFETY_INTERVAL = 120000;
-export const needsChecks = pr => Boolean(pr && (pr.checks?.pending > 0 || (!pr.checks && pr.checksKnown !== true)));
+export const CHECKS_CONFIRMATION_LIMIT = 90000;
+export const needsChecks = pr => Boolean(pr && (pr.checkSummary==='pending' || pr.checks?.pending > 0 || (!pr.checks && pr.checksKnown !== true)));
+export const overdueChecks = (pr,now=Date.now()) => needsChecks(pr) && (!Number.isFinite(pr.checksReadAt) || now-pr.checksReadAt>CHECKS_CONFIRMATION_LIMIT);
 export class ChecksFallback {
   constructor({snapshot,read,now=()=>Date.now()}) {this.snapshot=snapshot;this.read=read;this.now=now;this.jobs=new Map();this.cooldowns=new Map();}
   stop() {this.jobs.clear();this.wakeup=null;}
   eligible() {
     const state=this.snapshot();
-    return state?.enabled ? {...state,repositories:state.repositories.map(repo=>({...repo,interval:repo.uncovered?CHECKS_INTERVAL:STATE_SAFETY_INTERVAL,
-      rows:repo.rows.filter(pr=>['open','draft'].includes(pr?.state))})).filter(repo=>repo.rows.length)} : null;
+    return state?.enabled ? {...state,repositories:state.repositories.map(repo=>{
+      const rows=repo.rows.filter(pr=>['open','draft'].includes(pr?.state));
+      return {...repo,rows,interval:repo.uncovered || rows.some(needsChecks)?CHECKS_INTERVAL:STATE_SAFETY_INTERVAL,
+        fresh:rows.some(pr=>overdueChecks(pr,this.now()))};
+    }).filter(repo=>repo.rows.length)} : null;
   }
   sync(cx) {
     const state=this.eligible();
@@ -179,7 +184,10 @@ export class ChecksFallback {
       if(result?.busy)job.due=this.now()+1000;
       else if(result?.failed) {
         job.failures++;
-        job.due=this.now()+Math.max(result.rateLimited?900000:0,result.retryAfter??0,Math.min(720000,CHECKS_INTERVAL*2**Math.min(job.failures,4)));
+        // A shared cooldown's last few seconds are not a new rate refusal.
+        // The read gate owns its absolute expiry and fifteen-minute floor.
+        job.due=result.rateLimited && Number.isFinite(result.retryAt) ? Math.max(this.now()+1,result.retryAt)
+          : this.now()+Math.max(result.rateLimited?900000:0,result.retryAfter??0,Math.min(720000,CHECKS_INTERVAL*2**Math.min(job.failures,4)));
         if(result.rateLimited || result.retryAfter)this.cooldowns.set(repo.name,job.due);
         // Repositories in this panel share the machine's account. A secondary
         // refusal must not immediately fan out into the next repository.
@@ -220,7 +228,7 @@ function contextChecks(rollup) {
 export function stateBatches(rows) {
   const batches=[];let batch=[],detailed=0;
   for(const row of rows) {
-    const detail=needsChecks(row) || row.checkSummary==='pending';
+    const detail=needsChecks(row);
     if(batch.length===STATE_BATCH_SIZE || (detail && detailed===CHECKS_BATCH_SIZE)) {batches.push(batch);batch=[];detailed=0;}
     batch.push(row);if(detail)detailed++;
   }
@@ -241,7 +249,7 @@ export function parsePullStates(stdout,numbers,detailed=[]) {
     const pr=data.data?.repository?.[`pr${number}`],rollup=pr?.commits?.nodes?.[0]?.commit?.statusCheckRollup;
     const checkSummary=summaryState(rollup?.state);
     if(pr?.number!==number || !Array.isArray(pr.commits?.nodes) || !['OPEN','CLOSED','MERGED'].includes(pr.state) || typeof pr.isDraft!=='boolean' || checkSummary===undefined || (rollup && !rollup.state))throw Error('Incomplete PR state/summary response');
-    return [number,{...pr,checkSummary,...(detailed.includes(number)?{checks:contextChecks(rollup)}:{})}];
+    return [number,{...pr,checkSummary,...(detailed.includes(number)?{checks:contextChecks(rollup),checksReadAt:Date.now()}:rollup==null?{checks:null,checksReadAt:Date.now()}:{})}];
   }));
 }
 export function pendingChecksArgs(numbers, nameWithOwner, includeCounts = false) {
@@ -257,7 +265,7 @@ export function parsePendingChecks(stdout,numbers) {
     const pr=data.data?.repository?.[`pr${number}`];
     if(pr?.number!==number || !Array.isArray(pr.commits?.nodes) || !['OPEN','CLOSED','MERGED'].includes(pr.state) || typeof pr.isDraft!=='boolean')throw Error('Incomplete checks/state response');
     const rollup=pr.commits.nodes[0]?.commit?.statusCheckRollup;
-    return [number,{...pr,checks:contextChecks(rollup)}];
+    return [number,{...pr,checks:contextChecks(rollup),checksReadAt:Date.now()}];
   }));
 }
 
@@ -307,10 +315,10 @@ export async function completePulls(exec,values,repository,options={}) {
   for(let i=0;i<rows.length;i++) {
     const row=rows[i],old=cachedPull(exec,repository,row.number,options);
     if(Array.isArray(values[i].statusCheckRollup))continue;
-    if(old?.checksKnown && !needsChecks(old) && old.checkSummary!=='pending' && row.checkSummary!=='pending' && old.headRefOid===row.headRefOid && old.checkSummary===row.checkSummary) {
-      row.checks=old.checks;row.checksKnown=true;
+    if(old?.checksKnown && !needsChecks(old) && row.checkSummary!=='pending' && old.headRefOid===row.headRefOid && old.checkSummary===row.checkSummary) {
+      row.checks=old.checks;row.checksKnown=true;row.checksReadAt=old.checksReadAt??null;
     } else if(row.checkSummary!=null)changed.push(row.number);
-    else {row.checks=null;row.checksKnown=true;}
+    else {row.checks=null;row.checksKnown=true;row.checksReadAt=Date.now();}
   }
   for(let at=0;at<changed.length;at+=CHECKS_BATCH_SIZE) {
     const batch=changed.slice(at,at+CHECKS_BATCH_SIZE);
@@ -318,7 +326,7 @@ export async function completePulls(exec,values,repository,options={}) {
     for(const number of batch) {
       const row=rows.find(row=>row.number===number),value=details.get(number);
       if((value.headRefOid??null)!==row.headRefOid || value.state.toLowerCase()!==(row.state==='draft'?'open':row.state) || value.isDraft!==(values.find(pr=>pr.number===number)?.isDraft===true))throw Error('Pull request changed during detail read');
-      row.checks=value.checks;row.checksKnown=true;
+      row.checks=value.checks;row.checksKnown=true;row.checksReadAt=value.checksReadAt;
     }
   }
   if(options.current && !options.current())throw Object.assign(new Error('Obsolete facts'),{quiet:true,retryAt:Date.now()+10000});
@@ -501,6 +509,7 @@ export function pullRow(pr, owner, now = Date.now()) {
     byline: `${login ? `${login} ` : ''}${when}`, when,
     compactWhen: when.replace(/^(?:opened|closed|merged) /, '').replace(/ (second|minute|hour|day|month|year)s? ago$/, (_m, unit) => `${({second:'s',minute:'m',hour:'h',day:'d',month:'mo',year:'y'})[unit]} ago`),
     checksKnown: Array.isArray(pr.statusCheckRollup),
+    checksReadAt:Array.isArray(pr.statusCheckRollup)?now:null,
     owner: Boolean(owner && login && login.toLowerCase() === String(owner).toLowerCase()),
     tasks: tasks(pr.body), checks: checkFacts, checkSummary:pr.checkSummary??checkFacts?.state??null, labels: pullLabels(pr.labels),
     review: pr.reviewDecision === 'APPROVED' ? 'approved' : pr.reviewDecision === 'CHANGES_REQUESTED' ? 'changes' : null,
@@ -519,7 +528,7 @@ export function retimePull(pr,now=Date.now()) {
 // Apply the deliberately narrow safety read without erasing labels/tasks/review.
 export function refreshPullFacts(pr, value) {
   const {state,meta,byline,when,compactWhen,mergeConflict,headRefName,headRefOid,createdAt,mergedAt,closedAt}=pullRow({...value,createdAt:pr.createdAt,headRefName:pr.headRefName,mergeable:pr.mergeConflict?'CONFLICTING':null,author:{login:pr.login}});
-  return {...pr,state,meta,byline,when,compactWhen,mergeConflict,headRefName,headRefOid,createdAt,mergedAt,closedAt,checks:value.checks,checkSummary:value.checkSummary,checksKnown:true};
+  return {...pr,state,meta,byline,when,compactWhen,mergeConflict,headRefName,headRefOid,createdAt,mergedAt,closedAt,checks:value.checks,checkSummary:value.checkSummary,checksKnown:true,checksReadAt:value.checksReadAt??pr.checksReadAt??null};
 }
 
 // Session-owned PR badges can differ from the parent shell's branch.

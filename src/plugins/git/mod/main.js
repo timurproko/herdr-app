@@ -416,7 +416,7 @@ export default class Changes extends View {
       const updates=new Map(),previous=new Map(repo.rows.map(pr=>[pr.number,pr]));let counts=null;
       const gh=async args=>{
         if(!current())throw Error('Obsolete safety read');
-        const result=await repositoryRead(exec,args,repo.name,{...(root?{cwd:root}:{}),on,timeout:30000,current});
+        const result=await repositoryRead(exec,args,repo.name,{...(root?{cwd:root}:{}),on,timeout:30000,current,fresh:repo.fresh});
         if(!current())throw Error('Obsolete safety read');
         retryAfter=Math.max(retryAfter,pullRetryAfter(result));
         if(result.code!==0 || result.timed_out || result.timedOut || result.signal) {
@@ -427,7 +427,7 @@ export default class Changes extends View {
       let first=true;
       for(const rows of stateBatches([...previous.values()])) {
         if(!current())return;
-        const batch=rows.map(pr=>pr.number),detailed=rows.filter(pr=>needsChecks(pr) || pr.checkSummary==='pending').map(pr=>pr.number);
+        const batch=rows.map(pr=>pr.number),detailed=rows.filter(needsChecks).map(pr=>pr.number);
         const stdout=await gh(pullStateArgs(batch,repo.name,!aggregate && first,detailed));
         for(const [number,value] of parsePullStates(stdout,batch,detailed))updates.set(number,value);
         if(!aggregate && first) {
@@ -449,7 +449,7 @@ export default class Changes extends View {
         for(const [number,value]of details) {
           const probe=updates.get(number);
           if((probe.headRefOid??null)!==(value.headRefOid??null) || probe.state!==value.state || probe.isDraft!==value.isDraft)throw Error('Pull request changed during safety read');
-          probe.checks=value.checks;
+          probe.checks=value.checks;probe.checksReadAt=value.checksReadAt;
         }
       }
       if(!current())return;
@@ -476,7 +476,7 @@ export default class Changes extends View {
       this.ciRevision=(this.ciRevision??0)+1;
       return {failed:false};
     } catch(error) {
-      return {failed:true,rateLimited:rateLimited || error.kind==='rate',retryAfter:Math.max(retryAfter,(error.retryAt??0)-Date.now())};
+      return {failed:true,rateLimited:rateLimited || error.kind==='rate',retryAt:error.retryAt,retryAfter:Math.max(retryAfter,(error.retryAt??0)-Date.now())};
     } finally {
       if(this.fallbackRequest===request)this.fallbackRequest=null;
       if(aggregate) {aggregate.fallbackBusy=false;aggregate.pump(cx);cx.notify();}

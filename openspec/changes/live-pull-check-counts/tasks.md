@@ -8,6 +8,10 @@
 
 ## 2. Pending cadence and numeric-confirmation recovery
 
-- [ ] 2.1 Track successful numeric confirmation separately from cached/state reads; add 45-second enrolled pending cadence and overdue fresh-read demand, proven by no-event progression and busy/coalescing regressions.
-- [ ] 2.2 Retry existing cooldowns at their absolute expiry without extending them or waiting for an event; cover quiet retention and existing cooldown/backoff guards.
-- [ ] 2.3 Update README and webhook timing guidance with 45/120-second policy, numeric recovery bound, latency and incomplete-context limits; run targeted suites and record hosted final-head required-check results in the report.
+- [x] 2.1 Track successful numeric confirmation separately from cached/state reads; add 45-second enrolled pending cadence and overdue fresh-read demand, proven by no-event progression and busy/coalescing regressions.
+- [x] 2.2 Retry existing cooldowns at their absolute expiry without extending them or waiting for an event; cover quiet retention and existing cooldown/backoff guards.
+- [x] 2.3 Update README and webhook timing guidance with 45/120-second policy, numeric recovery bound, latency and incomplete-context limits; verify with targeted suites and documentation review.
+
+## Workflow follow-up
+
+- Read hosted required-check results on the finalized head and record them in the task report; no foreground CI watch, manual ready action or merge.

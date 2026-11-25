@@ -491,13 +491,21 @@ Main's in-flight coalescing and reconnect/open catch-up remain; stale replies
 cannot update another machine/repository. Hiding Git or
 selecting another repository stops hidden panel reads, not update notifications.
 Disabling Git or closing its chrome owner closes transport; another mounted owner
-can take over. Failed reads retain the last good status. Events accelerate enrolled repository updates, with a **120-second safety net**
-for shown Open/Draft PRs even when checks have settled or the relay misses an event.
-Without confirmed enrollment, shown Open/Draft PRs and pending/unknown checks use
-a **45-second fallback**. One coalesced repository job probes state, head SHA and
-rollup summary in bounded 40-PR chunks; only changed heads/summaries fetch full
-checks in 20-PR chunks. Unchanged 5- or 30-row selections use one thin request,
-without enumerating check contexts. Values stay displayed until the complete
+can take over. Failed reads retain the last good status. Events accelerate enrolled repository updates.
+Shown pending/unknown Open/Draft rows refresh numbers every **45 seconds**, even
+when enrolled and head/overall PENDING state remain unchanged. Settled enrolled
+rows retain the **120-second safety net**; unenrolled rows retain 45 seconds.
+One coalesced repository probe includes the existing first-100 check contexts for
+pending rows, using newest-workflow/rerun counting rather than raw aggregates
+that include superseded runs. Settled rows stay thin. Each chunk holds at most
+40 state rows and 20 detailed pending rows; changed settled heads/summaries can
+still need bounded detail follow-ups. More than 100 contexts keeps the existing
+incomplete-read refusal and last-good value. Unchanged settled 5- or 30-row
+selections still use one thin request. Numeric confirmation is tracked separately
+from state/cache success: after more than **90 seconds** without it, the next
+eligible pending cycle demands a fresh read. Busy queues retain their one-second
+retry, cooldown-skipped reads retry at cooldown expiry without another event,
+and active reads/rate limits still take precedence. Values stay displayed until the complete
 selection succeeds. Coordinator probes cover the revealed unfolded batch, including
 its offscreen rows, but not unrevealed rows or the other tab. Scrolling within that
 same set keeps its safety generation and starts no extra probes or inventory reads.
