@@ -72,6 +72,12 @@ try{
  put(main,personal.native);const marker=path.join(personal.home,'.customizations/palette-retired.json'),markerBefore=raw(marker);put(marker,'personal marker');
  assert.throws(()=>rollback(personal.home,installed.backup,{fixture:true}),/ownership changed/);assert.equal(raw(marker),'personal marker');put(marker,markerBefore);
  assert.equal(rollback(personal.home,installed.backup,{fixture:true}).paletteRecovery.refreshed,true);assertPrevious(personal);
+ // A refresh that becomes uncertifiable is not reported as successful rollback.
+ const skipped=oldInstall('guarded-skip'),masked=Object.fromEntries(fs.readdirSync(path.join(skipped.home,'frame/palette')).map(name=>[name,fs.readFileSync(path.join(skipped.home,'frame/palette',name))]));
+ const skipInstall=deploy(output,skipped.home);for(const [name,bytes]of Object.entries(masked))put(path.join(skipped.home,'frame/palette',name),bytes);
+ fs.writeFileSync(process.env.HERDR_APP_BIN,'unreviewed executable palette bytes');
+ assert.throws(()=>rollback(skipped.home,skipInstall.backup,{fixture:true}),/guarded refresh could not restore/);
+ assert.ok(raw(path.join(skipped.home,'.customizations/frame-palette.json')));assert.deepEqual(fs.readFileSync(path.join(skipped.home,'frame/palette/main.js')),masked['main.js']);
  // A partially completed retirement (opt-in removed, marker write fails) remains
  // recoverable from its prepared receipt without replaying an old native image.
  const partial=oldInstall('interrupted'),fault=path.join(temp,'marker-fault.cjs'),options=process.env.NODE_OPTIONS;
@@ -80,5 +86,5 @@ try{
  try{partialInstall=deploy(output,partial.home);}finally{process.env.NODE_OPTIONS=options;}
  assert.equal(partialInstall.patches.frames.palette.ok,false);assert.equal(raw(path.join(partial.home,'.customizations/frame-palette.json')),null);
  assert.equal(rollback(partial.home,partialInstall.backup,{fixture:true}).paletteRecovery.refreshed,true);assertPrevious(partial);
- console.log('PASS migration rollback: actual #65 palette/legacy openers, 0.1.17/18 LF/Windows, guarded opt-in recovery, restart continuity, reinstall, personal-edit refusal and interrupted retirement');
+ console.log('PASS migration rollback: actual #65 palette/legacy openers, 0.1.17/18 LF/Windows, guarded opt-in recovery, restart continuity, reinstall, personal-edit refusal, explicit skipped-refresh failure and interrupted retirement');
 }finally{restoreHost();fs.rmSync(temp,{recursive:true,force:true});}
