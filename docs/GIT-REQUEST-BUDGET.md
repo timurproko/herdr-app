@@ -56,10 +56,11 @@ not, which explains the separate 18-versus-35 before rows.
 
 Cold reads use one metadata/summary batch and one check-detail batch per
 repository. Metadata and details are bounded to twenty PRs per command; safety
-probes retain forty. A single new PR can therefore need two reads rather than
+probes retain forty state aliases but at most twenty detailed pending aliases. A single new PR can therefore need two reads rather than
 one monolithic read: the aggregate win is batching, not a claim that every
-isolated trigger is cheaper. New/changed checks require details; unchanged
-heads/summaries reuse their known contexts on every path.
+isolated trigger is cheaper. New/changed checks require details. Unchanged settled heads/summaries reuse known
+contexts; pending rows reread numeric details on events and other refresh paths.
+Pending safety probes include those details inline rather than adding a request.
 
 ## Additional trigger bounds
 
@@ -110,7 +111,7 @@ an assertion that every isolated first page uses fewer operations.
 | Ordinary events after both tabs visited | Every loaded Open and Closed page, plus older pin | Selected-tab pages only, no hidden Closed rereads |
 | Older/targeted/pinned PR | Independent full PR query | Shared targeted facts, final cache, pending page result when compatible |
 | Counts | Embedded in pages; one compatibility query if missing | Same; no extra count query after a complete page, shared admission/cooldown |
-| 45 s unenrolled / 120 s enrolled safety | Thin state/head/summary, changed details | Same bounded shapes and healthy cadence; no context lists for unchanged heads/summaries |
+| Shown-open safety | Thin state/head/summary, changed details | Pending contexts inline, at most 20 detailed rows / 40 state rows per chunk; settled rows stay thin |
 | Pending checks | Same safety controller | No independent polling reader added |
 | Webhook burst | Delivery/in-flight-only coalescing, coordinator loses repo identity | Same immediate main delivery; retain affected repository identity; three dispatched events mean three batches |
 | Hidden/disabled/obsolete reads | Existing guards, some list follow-ups unguarded | Retain shown/enabled/current-context checks and last-good facts; safety keeps its online check |
@@ -133,5 +134,33 @@ discovery budget. Neither this panel nor its cooldown throttles other agents.
 The host exposes `window().active`, but this reduced scope does not use it to
 pause Git reads. Inactive/minimized windows retain main's read scheduling. No
 activity deferral or native patch is added. Safety delay is cadence plus queue/read/propagation
-latency, not a fixed end-to-end SLA. A stable overall rollup summary can conceal
-changed individual jobs; this retains the head/summary trade-off from PR 49.
+latency, not a fixed end-to-end SLA. A stable overall summary no longer conceals pending numeric changes: pending probes
+include the existing context selection in the same repository request. This preserves
+newest-workflow/rerun counting; raw rollup aggregates include superseded runs and
+are not used for displayed counts. PR 64's live aggregate was 16/17 under the
+pass-state rule, while full-detail filtering and GitHub's list both showed 11/11.
+
+## Pending numeric-read budget
+
+A bounded steady-state probe remains one GraphQL operation per repository/chunk,
+estimated about one hourly point before and after. Live one-PR measurements were
+cost 1 / nodeCount 1 for aggregate-only and cost 1 / nodeCount 101 for the existing
+full context selection. Pending probes deliberately choose the latter for correctness.
+Live read-only queries repeating PR 64 under ten and twenty aliases measured cost
+1 / nodeCount 1,010 and cost 1 / nodeCount 2,020 respectively. The existing
+20-detail-row cap therefore bounds a fully detailed chunk at about 2,020 nodes;
+a mixed chunk can add up to twenty thin aliases (about 2,040 nodes total). Settled aliases
+remain thin, with at most 40 total aliases per chunk. Selected fields are unchanged;
+these are connection-node estimates, not a count of every returned object/scalar.
+Additional chunks add operations; a newly changed settled row can still require the
+existing detail follow-up. Pending event/list/target refreshes also reread details
+rather than reuse an unchanged PENDING summary. Pending shown rows use 45 seconds
+even when enrolled (about 80 one-chunk cycles/points per hour, formerly 30 at 120
+seconds); settled enrolled rows keep 120 seconds. After more than 90 seconds
+without numeric confirmation, the next eligible pending cycle requests fresh
+facts past coalescing shortcuts. Active reads and rate cooldowns are not bypassed;
+existing cooldown refusals retry at their absolute expiry, without another event.
+
+The existing first-100 limit remains: hasNextPage causes incomplete-context refusal
+and retention of last-good facts, not publication of a partial total. This change
+does not add context pagination or claim correct fresh counts above that limit.

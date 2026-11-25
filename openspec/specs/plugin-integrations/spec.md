@@ -709,11 +709,11 @@ Ordinary and coordinator Git views SHALL always display Open and Closed count ba
 - **AND** its tab geometry remains unchanged
 
 ### Requirement: Pending checks fallback without live coverage
-Shown Open/Draft PRs SHALL retain 45-second unenrolled and 120-second enrolled state/check safety reads, independent of relay connectivity. Known Closed/Merged rows SHALL stay session-cached even with pending checks. Failures SHALL retain values with bounded backoff and at least 15 minutes for rate limits. Hidden, disabled, offline and superseded contexts SHALL stop safety reads; window activity alone SHALL NOT gate reads.
+Shown Open/Draft PRs SHALL use 45-second safety reads while checks are pending or unknown, even when enrolled; settled rows SHALL retain 45-second unenrolled and 120-second enrolled state/check reads. Known Closed/Merged rows SHALL stay session-cached. Failures SHALL retain values with bounded backoff and at least 15 minutes for rate refusals. Hidden, disabled, offline and superseded contexts SHALL stop safety reads; window activity alone SHALL NOT gate reads.
 
 #### Scenario: Pending checks settle
-- **WHEN** an unenrolled shown Open/Draft PR has pending checks and its fallback read returns settled checks
-- **THEN** the count updates in place and the fallback continues reading that shown open PR's state and checks at its normal cadence
+- **WHEN** a shown Open/Draft PR has pending checks and its fallback read returns settled checks
+- **THEN** the count updates in place and the fallback continues reading that shown open PR's state and checks at its settled cadence
 - **AND** a confirmed empty rollup is settled rather than unknown but does not stop an open row's state refresh
 
 #### Scenario: Failure and visibility
@@ -723,8 +723,14 @@ Shown Open/Draft PRs SHALL retain 45-second unenrolled and 120-second enrolled s
 
 #### Scenario: Thin unchanged-row cycle
 - **WHEN** shown PR heads and overall check summaries remain unchanged during a safety cycle
-- **THEN** one bounded repository probe reads state, draft/completion/head facts and the rollup summary without requesting individual check contexts
-- **AND** full check contexts are fetched only for changed heads or summaries, under the same single-flight lease
+- **THEN** one bounded repository probe reads state, draft/completion/head facts and rollup summary, including up to 100 contexts for each pending or unknown row in that same request
+- **AND** settled rows remain thin; changed heads or summaries can use the existing bounded detail follow-up under the same single-flight lease
+- **AND** detailed pending counts use the full-detail newest-workflow and newest-attempt derivation, combining check runs and status contexts with SUCCESS, SKIPPED and NEUTRAL passed
+
+#### Scenario: No events while pending counts advance
+- **WHEN** GitHub advances a shown row from 2/10 to 5/10 to 10/10 without changing its head and with overall PENDING retained during the numeric progression, and no event arrives
+- **THEN** successive successful 45-second probes publish the new numbers using one repository request per bounded chunk per cycle
+- **AND** no raw aggregate replaces the newest-workflow derivation and no extra detail request is added for that already-pending row
 
 #### Scenario: Secondary rate limit
 - **WHEN** GitHub refuses a safety read with a secondary limit despite positive hourly quota
@@ -753,7 +759,7 @@ Shown Open/Draft PRs SHALL retain 45-second unenrolled and 120-second enrolled s
 - **AND** Open/Draft rows still retain their normal state-and-check safety cadence
 
 ### Requirement: Completion-driven Git checks freshness
-A shown, enabled Git panel with an enrolled repository and healthy relay SHALL refresh loaded PR state and checks from authoritative GitHub reads after relevant events, including events during an in-flight refresh. Reconnect and reopening SHALL catch up. The app SHALL retain latest-workflow/rerun semantics with a 120-second shown-open safety net and document latency dependencies and conditions that retain stale facts.
+A shown, enabled Git panel with an enrolled repository and healthy relay SHALL refresh loaded PR state and numeric checks after relevant events, including during an in-flight refresh and without head/summary changes. Reconnect and reopening SHALL catch up. The app SHALL retain latest-workflow/rerun semantics, 45-second pending safety and 120-second enrolled settled safety, documenting latency and stale-data conditions.
 
 #### Scenario: Completion and rerun update loaded rows
 - **WHEN** authenticated check, status or workflow invalidation arrives for a loaded ordinary or coordinator repository after checks change
@@ -768,7 +774,7 @@ A shown, enabled Git panel with an enrolled repository and healthy relay SHALL r
 #### Scenario: Refresh timing and unavailable live updates
 - **WHEN** refresh behavior is documented or reported
 - **THEN** it distinguishes event receipt, request queue/read latency and GitHub data propagation from measured end-to-end latency
-- **AND** it states that absent enrollment uses a 45-second shown-open state-and-check fallback, and enrolled shown Open/Draft rows use a 120-second safety net; hidden or disabled panels, unverified coordinator context and failed reads can retain stale facts until the applicable fallback, catch-up or manual refresh
+- **AND** it states that shown pending/unknown rows use 45-second safety regardless of enrollment, while settled enrolled rows use 120 seconds; hidden or disabled panels, unverified coordinator context and failed reads can retain stale facts until eligible fallback, catch-up or manual refresh
 - **AND** it does not promise a bounded live-update delay when those prerequisites or successful reads are absent
 
 ### Requirement: Sanitized fleet verification diagnostics
@@ -1081,7 +1087,7 @@ Ordinary and coordinator views SHALL reuse session-cached Closed/Merged PR facts
 - **AND** cached final coordinator history is session-bound rather than polled for external reopen or metadata changes; precise hints remain a separately scoped optional follow-up
 
 ### Requirement: Selected-tab batched Git refresh
-Ordinary Git refresh SHALL read only the selected tab's pages and use bounded details only for new or changed heads/summaries. Cooldown retries SHALL re-evaluate current selected demand. Event and enrollment scheduling SHALL retain main's lifecycle without a two-second debounce, pending-demand transfer, inactive-window pause or deferred enrollment retry queue. Thin shown-open safety probes SHALL retain their 45/120-second cadences.
+Ordinary Git refresh SHALL read only the selected tab's pages, refreshing pending numeric checks even with unchanged head/summary and reusing unchanged settled details. Cooldown retries SHALL re-evaluate current demand. Events and enrollment SHALL retain main's immediate lifecycle without debounce, inactive-window pause or deferred enrollment retries. Shown-open safety SHALL use 45 seconds while pending, otherwise existing 45/120-second cadences.
 
 #### Scenario: Open shown after Closed was visited
 - **WHEN** Open is shown and refresh, webhook or reconnect occurs after Closed rows have loaded
@@ -1095,7 +1101,7 @@ Ordinary Git refresh SHALL read only the selected tab's pages and use bounded de
 
 #### Scenario: Unchanged checks on any refresh trigger
 - **WHEN** an existing row is refreshed and its head and rollup summary are unchanged
-- **THEN** its known check contexts are reused on event, manual, list and targeted paths as well as safety probes
+- **THEN** known settled check contexts are reused, but pending numeric checks are reread on event, manual, list, targeted and safety paths
 - **AND** new rows or changed heads/summaries fetch bounded details under the same read lease without overwriting unrelated row fields
 
 #### Scenario: Main event and window lifecycle
@@ -1167,3 +1173,20 @@ Cold fully mounted 30/60-row native render construction with informative tooltip
 - **WHEN** the deterministic render-budget regression runs in both tabs
 - **THEN** returned native elements and intrinsic probes equal the reference main counts
 - **AND** larger coordinator inventories respect main's 60-row and 100-presentation-item safety caps
+
+### Requirement: Bounded pending numeric confirmation recovery
+Pending-row numeric freshness SHALL reflect successful numeric reads, not state-only or cached reads. After more than 90 seconds without numeric confirmation, the next eligible cycle SHALL demand fresh numbers past unchanged/coalescing shortcuts. Active reads SHALL retain single-flight guards. Cooldown-skipped reads SHALL retry at cooldown expiry without another event, retaining loaded data and quiet refusal handling.
+
+#### Scenario: Overdue numbers behind an existing read
+- **WHEN** a shown pending row's last successful numeric confirmation is older than 90 seconds or unknown
+- **THEN** its next eligible probe requests fresh numeric facts rather than satisfying demand from an already-started read
+- **AND** busy queues retry without overlapping active panel reads; state-only or cached success does not reset numeric age
+
+#### Scenario: Cooldown expires without a new event
+- **WHEN** a pending probe is skipped because a shared rate cooldown is nearly expired
+- **THEN** it retries on the existing scheduler at that cooldown's expiry rather than extending the cooldown or waiting for another event
+- **AND** rate refusal alone produces no error UI and preserves loaded rows
+
+#### Scenario: Incomplete contexts remain uncertain
+- **WHEN** a pending PR has more than 100 contexts and the bounded response reports another page
+- **THEN** the read retains today's incomplete-context refusal and last-good facts instead of publishing a partial total
