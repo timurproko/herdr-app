@@ -115,6 +115,8 @@ export default class Changes extends View {
         // The clicked link already verified this destination's repository.
         // Retain rows across its worktree/folder refresh, but invalidate every
         // old-folder request before accepting any new terminal or Git result.
+        // This is the same retained native list, not a new scroll owner.
+        if(this.ordinaryScrollScope===swap.context)this.ordinaryScrollScope=context;
         this.pinMotion.rebase(context); this.root = null;this.factOrder.reset();
         this.selection = null; this.agentRequest = null; this.agentResolved = null;
         this.pullRequest = null; this.pullLoading = false;

@@ -7,9 +7,9 @@ class NativeHandle {
   move(y){this.y=Math.max(0,Math.min(Math.max(0,this.content-this.viewport),y));}
   scroll_to_item(index){this.requests.push(index);this.pending=index;}release(){this.released=true;}
 }
-async function fixture(count=100){
+async function fixture(count=100,host={}){
  let rendering=false,notifications=0;const jobs=[],timers=[],history=new Map(),handles=[];
- const h=await rowHarness({modules:{'gpui-base':{h_flex:()=>element().flex(),v_flex:()=>element().flex().flex_col(),Popover:{},Input:{},ScrollHandle:{new(){assert.equal(rendering,false);const handle=new NativeHandle();handles.push(handle);return handle;}}}}});
+ const h=await rowHarness({host,modules:{'gpui-base':{h_flex:()=>element().flex(),v_flex:()=>element().flex().flex_col(),Popover:{},Input:{},ScrollHandle:{new(){assert.equal(rendering,false);const handle=new NativeHandle();handles.push(handle);return handle;}}}}});
  const {panel}=h;panel.context='tasks:home';panel.shown=()=>true;
  const rows=Array.from({length:count},(_,i)=>Object.assign(h.facts.pullRow({number:i+1,title:`PR ${i+1}`,state:'OPEN',author:{login:'fixture'}},'owner'),{key:`owner/repo#${i+1}`,repo:'owner/repo'}));
  panel.aggregate={context:{scope:'home'},entries:new Map(rows.map(pr=>[pr.key,{pr,link:{repo:pr.repo}}])),currentContext:()=>({scope:'home'}),repositories:()=>['owner/repo'],rows:state=>state==='open'?rows:[],readNotice:()=>null,counts:()=>({open:count,closed:0}),target:()=>null};
@@ -77,4 +77,54 @@ for(const target of [1000,1840]){
  const metrics=panel.ordinaryScroll.get('open');assert.equal(metrics.offset,2000);panel.view='closed';tree=f.render(true);assert.equal(panel.ordinaryScroll.get('closed').handle,undefined,'Render never allocates a handle');
  panel.view='open';tree=f.render(true);assert.equal(find(tree,'pulls-list-open').attrs.track_scroll[0],handle);
 }
-console.log('PASS real-handle-only thumb/track/keyboard geometry, mounted rows, next-event reveal, wheel look-ahead, finite post-layout fill and ordinary native fades');
+// A robot's already-verified same-repository destination can live in another
+// worktree. Exercise the real click -> retained refresh -> root reply path,
+// rather than assigning a new context or manufacturing a pin-swap snapshot.
+{
+ let releaseRoot;const rootReply=new Promise(resolve=>{releaseRoot=resolve;});
+ const f=await fixture(30,{exec:async(command,args,options)=>{
+  assert.equal(command,'git');
+  if(args[0]==='rev-parse')return options.cwd==='/worktree'?rootReply:{code:0,stdout:options.cwd};
+  assert.equal(args[0],'symbolic-ref');return {code:0,stdout:'feature'};
+ }}),{panel,h}=f;
+ panel.syncAggregate=()=>false;panel.syncAgent=()=>{};
+ const source=JSON.stringify([h.place.cwd,h.place.on]);panel.context=source;panel.on=h.place.on;panel.root=h.place.cwd;
+ panel.pulls.open=f.rows.map(({key,repo,...row})=>row);panel.agentPull=1;
+ // This is AgentLinks' confirmed canonical repository mapping; cwd alone is
+ // never used to infer that two worktrees belong to the same repository.
+ const target={key:'verified-worker',address:'t2',cwd:'/worktree',on:null};
+ panel.agentLinks={related:(pr,repo)=>pr.number===12&&repo==='owner/repo'?target:null};
+ const animationTimers=[],cx={...f.cx,stop_propagation(){},timer:{after(ms,fn){const timer={ms,fn,cancel(){this.cancelled=true;}};animationTimers.push(timer);return timer;}}};
+ let tree=f.render(true);const height=29*76+6;
+ f.size(find(tree,'pulls-scroll-frame'),400);f.size(ordinaryContent(tree),height);tree=f.render(true);
+ const metrics=panel.ordinaryScroll.get('open'),handle=metrics.handle;
+ handle.viewport=400;handle.content=height;handle.move(700);tree=f.render(true);
+ const contentId=ordinaryContent(tree).attrs.id[0],measurement=metrics.measurement,rows=panel.pulls.open;
+ const body=find(tree,'pulls-body'),bounds={x:0,y:100,width:390,height:400};
+ body.attrs.on_size_change[0]({width:390,height:400},cx);body.attrs.on_mouse_move[0]({bounds});
+ for(const pr of rows)panel.pinMotion.measureRow(pr.number,{width:374,height:74},1);
+ const robot=find(tree,'pr-agent-12'),from=74+13+10*76-700,position={x:370,y:100+from+10};
+ robot.mouse.left({position,bounds:{x:358,y:100+from+4,width:24,height:24}},cx);robot.attrs.on_click[0]({},cx);
+ const swap=panel.pinMotion.current;assert.ok(swap);assert.equal(swap.phase,'waiting');assert.equal(swap.cards[0].from,from);
+ assert.equal(h.focus.at(-1)[1].terminal,'t2','Robot navigation is immediate');
+ Object.assign(h.place,{cwd:'/worktree',terminal:'t2'});panel.refresh(cx,false);
+ const destination=JSON.stringify([h.place.cwd,h.place.on]);assert.equal(swap.context,destination);assert.equal(panel.pulls.open,rows);
+ const assertRetained=()=>{
+  tree=f.render(true);
+  assert.equal(panel.ordinaryScroll.get('open'),metrics,'Retained worktree keeps the exact scroll metrics');
+  assert.equal(find(tree,'pulls-list-open').attrs.track_scroll[0],handle,'The native list keeps its scroll handle');
+  assert.equal(ordinaryContent(tree).attrs.id[0],contentId);assert.equal(metrics.measurement,measurement);
+  assert.equal(f.size(find(tree,'pulls-scroll-frame'),400),false);assert.equal(f.size(ordinaryContent(tree),height),false,'Unchanged native sizes do not fire again');
+  assert.equal(handle.released,undefined);assert.equal(handle.y,700);assert.equal(metrics.offset,700);assert.equal(f.handles.length,1);
+ };
+ assertRetained();releaseRoot({code:0,stdout:'/worktree'});await f.onlyJobs();assert.equal(panel.root,'/worktree');assertRetained();
+ panel.agentPull=12;panel.agentResolved=JSON.stringify(h.place);assertRetained();
+ assert.equal(swap.phase,'start');assert.equal(swap.cards[0].from,from,'Animation uses the same scrolled geometry');
+ // Without the verified retained-robot identity, a context change still resets
+ // its list and releases the old handle through the normal layout callback.
+ Object.assign(h.place,{cwd:'/unrelated',terminal:'other'});panel.refresh(cx,false);tree=f.render(true);
+ f.size(find(tree,'pulls-scroll-frame'),400);f.size(ordinaryContent(tree),400);await f.onlyJobs();
+ const replacement=panel.ordinaryScroll.get('open');assert.notEqual(replacement,metrics);assert.notEqual(replacement.handle,handle);
+ assert.equal(handle.released,true);assert.equal(replacement.offset,0);assert.equal(replacement.handle.y,0);
+}
+console.log('PASS real-handle-only scrolling, mounted reveal/fades/anchors and retained cross-worktree robot navigation at offset 700 with unchanged native sizes');
