@@ -14,7 +14,11 @@ to reproduce hosted CI.
 `tests/git-rate-quiet.test.mjs` exercises strict primary/secondary refusal handling,
 episodes, Retry-After, manual bypass and the older-success/cooldown race.
 `tests/git-target-reads.test.mjs` covers shared target subscriptions, per-alias
-failures, final caching and changed-only details. `tests/git-read-scheduling.test.mjs`
+failures with gh's real exit status 1 on partial GraphQL errors, final caching
+and changed-only details. Healthy siblings survive missing/access aliases;
+rate, HTTP, process and transport failures still refuse the complete batch.
+`tests/pr-agent-links.test.mjs` includes a `remote.*.gh-resolved`-only default
+change with unchanged remote URLs, plus warm routing-cache reuse. `tests/git-read-scheduling.test.mjs`
 uses fake timers for two-second repository windows and inactive/return gating.
 `tests/git-request-budget.test.mjs` measures the actual frozen before controller
 and the changed controller against synthetic transport; its baseline blobs live

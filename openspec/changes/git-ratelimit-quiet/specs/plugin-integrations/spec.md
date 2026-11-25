@@ -62,7 +62,7 @@ Closed tasks from the verified coordinator's crew home SHALL contribute their va
 
 #### Scenario: Existing bounded reader and refresh
 - **WHEN** historical candidates are read or updated by the shown enabled aggregate panel
-- **THEN** status includes closed tasks through `--all --json`, requests discovery when supported, and retains response-size, task-count and finite transport bounds
+- **THEN** recorded-only status includes closed tasks through the advertised fleet view when available or legacy `--all --json`, with separate lower-priority discovery when supported, and retains response-size, task-count and finite transport bounds
 - **AND** targeted GitHub reads retain their concurrency and batch bounds
 - **AND** webhook/manual refresh and the eligible state-and-check fallback handle mutable PR transitions without repository-wide inventory, while unchanged final facts are reused and historical expiry needs no GitHub request
 
