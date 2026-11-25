@@ -26,10 +26,10 @@ The maintainer integration decision accepts these scenarios:
     "Every unfolded header has a revealed row or visible notice after reveals and state changes; empty sections disappear while intentional folds remain usable.",
     "The 100-mounted-row timing target was not met; the capped 200-known/60-mounted render averages 16.0ms, and host-consumed input can delay hints/reveal until the next event."
   ],
-  "archiveDigest": "3af206153d7be053beb485c593b37e9f032febe39fc8285bf960d54cdb5671a2",
+  "archiveDigest": "27ce525df4c7bcccdda0deac2e570c816936d9b50feec9fbe88050b80cedb057",
   "specDigest": "d552d355a06e6b91c310b751e641e7a4e5e2f659fe0f017d3631b91dac69e257",
   "tasksDigest": "7237ebcc460b550d675bd881ab67f8bc7ee2e702e42f5b1ef85149d812bfaabf",
-  "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "evidenceDigest": "bb14ac98232611a2f049bfa5e1d2c63f278a27c2b1c8579ace806dbfcbdbb9ea",
   "knownGaps": []
 }
 ```
