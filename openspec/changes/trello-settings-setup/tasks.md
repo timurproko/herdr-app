@@ -11,11 +11,11 @@ Task groups map one-to-one, in order, to the draft PR Implementation outcomes. N
 
 ## 2. Verified Trello owner worker and protected local policy
 
-- [ ] 2.1 Add the owner-only setup worker with bounded stdin input and explicit verify/save/verify-saved operations; injected-transport tests must cover valid identity, invalid/revoked credentials, provider errors, redirects, cooldown and secret-free JSON output without live-fetch fallback.
-- [ ] 2.2 Add explicit replace/remove with protected-path/ACL checks, captured credential comparison and fail-closed policy reset; cover invalid-existing stores, widened permissions, links, concurrent changes, failed verification and interrupted transitions using disposable fake stores.
-- [ ] 2.3 Add bounded owner-visible board discovery and explicit allow/remove/write policy actions; tests must cover canonical IDs, 100-board policy limits, incomplete inventory, unseen grants, stale credential identity and empty deny-all scope.
-- [ ] 2.4 Keep agent routes and CLI dispatch separate from owner enumeration and preserve headless setup/rotate/policy semantics; run the existing Trello CLI/read/write suites plus tests proving agent boards list still queries only allowed boards and preference import cannot grant private authority.
-- [ ] 2.5 Document the worker/private-store and headless compatibility boundaries in docs/TRELLO.md alongside these changes, checking examples and sanitization assertions with the Trello contract fixture.
+- [x] 2.1 Add the owner-only setup worker with bounded stdin input and explicit verify/save/verify-saved operations; injected-transport tests must cover valid identity, invalid/revoked credentials, provider errors, redirects, cooldown and secret-free JSON output without live-fetch fallback.
+- [x] 2.2 Add explicit replace/remove with protected-path/ACL checks, captured credential comparison and fail-closed policy reset; cover invalid-existing stores, widened permissions, links, concurrent changes, failed verification and interrupted transitions using disposable fake stores.
+- [x] 2.3 Add bounded owner-visible board discovery and explicit allow/remove/write policy actions; tests must cover canonical IDs, 100-board policy limits, incomplete inventory, unseen grants, stale credential identity and empty deny-all scope.
+- [x] 2.4 Keep agent routes and CLI dispatch separate from owner enumeration and preserve headless setup/rotate/policy semantics; run the existing Trello CLI/read/write suites plus tests proving agent boards list still queries only allowed boards and preference import cannot grant private authority.
+- [x] 2.5 Document the worker/private-store and headless compatibility boundaries in docs/TRELLO.md alongside these changes, checking examples and sanitization assertions with the Trello contract fixture.
 
 ## 3. Complete local Trello Settings card
 

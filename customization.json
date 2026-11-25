@@ -116,6 +116,7 @@
     "lib/trello/credentials.cjs": "src/plugins/trello/credentials.cjs",
     "lib/trello/errors.cjs": "src/plugins/trello/errors.cjs",
     "lib/trello/operations.cjs": "src/plugins/trello/operations.cjs",
+    "lib/trello/owner.cjs": "src/plugins/trello/owner.cjs",
     "lib/trello/policy.cjs": "src/plugins/trello/policy.cjs",
     "lib/trello/setup.cjs": "src/plugins/trello/setup.cjs",
     "scripts/trello-launchers.mjs": "tools/trello-launchers.mjs",

@@ -114,6 +114,30 @@ its **Access: Read-write** setting, `herdr-trello policy writes on` on this host
 and a token with Trello write permission. Importing preferences alone cannot
 authorize boards or writes. Policy changes are reread before every follow-up.
 
+## Private owner setup boundary
+
+The installed Settings owner worker is separate from `herdr-trello`'s agent
+command catalog. It can explicitly verify a key/token against `/members/me`,
+return a non-secret account hint, discover visible board names for the owner and
+commit protected local policy. It exposes no account-inventory command through
+the agent CLI. Normal status checks remain local and perform no network request.
+
+Only the Node worker writes `.customizations/trello/credentials.json`. Settings
+submission reaches it over stdin through a short-lived local in-memory handoff;
+there is no secret-bearing argv, environment, temporary input file or shared
+plugin setting. Supplied credentials are verified before saving; failed
+verification preserves the prior store. Explicit Settings replacement/removal
+clears board grants and local writes before changing the credential copy, under
+the protected local lock. An interrupted transition can lose authority but cannot
+give another account the old grants. Removal is **not** Trello token revocation.
+
+Board discovery alone never authorizes a board. Its bounded results may be
+incomplete; they have no invented cursor and never remove unseen existing grants.
+Every committed policy change compares the captured private configuration, and
+stale selection fails rather than applying to a replacement account. Legacy
+headless setup/rotate/policy commands and valid version-1 files stay supported.
+Neither preference import nor deployment calls the owner worker or grants scope.
+
 ## Read commands and JSON
 
 ```sh
