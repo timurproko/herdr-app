@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {scrollModule,Background} from './support/git-scroll-modules.mjs';
 import {withKitUi} from './support/panel-kit.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -57,7 +58,7 @@ const modules={
   './webhooks.js':{GitWebhooks:class {sync(){} stop(){}}},
   './plugins.js':{pluginPullContext:()=>null,pluginEvent(){},sidebarPanelEnabled:()=>true},'./sidebar-title.js':{sidebarTitle:element},
   './panel-pin.js':{panelPin:(_t,{id})=>element().id(id)},'./panel-state.js':{changePanel(){}},
-  './host.js':host,'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{}},
+  './host.js':host,'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{},Background},
   'gpui-base':{h_flex:element,v_flex:element},
   './ui.js':{U:{icon:16,insetControl:24,insetRadius:4},panelTitle:element,headerTools:x=>x,reveal:x=>x,subtleActionFill:()=> 'usual-inset-hover',refreshButton:element,emptyState:element,menuSurface:(_t,el)=>el,menuHeading:(_t,text)=>element().child(text),slot:el=>el},
 };
@@ -68,6 +69,7 @@ function moduleFor(file) {
 withKitUi(modules['./ui.js'],element);
 const main=moduleFor(path.join(folder,'main.js'));
 await main.link((specifier,ref)=>{
+  const dependency=scrollModule(context,specifier);if(dependency)return dependency;
   if (specifier === './panel-kit.js') return moduleFor(path.join(root,'src/ui/panel-kit.js'));
   if (specifier === './settings-dialog.js') return moduleFor(path.join(root,'src/ui/settings-dialog.js'));
   if (modules[specifier]) return new vm.SyntheticModule(Object.keys(modules[specifier]),function(){

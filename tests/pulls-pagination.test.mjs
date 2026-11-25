@@ -1,3 +1,5 @@
+import {ordinaryContent,activeContent} from './support/git-scroll.mjs';
+import {scrollModule,Background} from './support/git-scroll-modules.mjs';
 import {githubInvocation} from './support/github-read.mjs';
 import assert from 'node:assert/strict';
 import {kitModule,withKitUi} from './support/panel-kit.mjs';
@@ -45,7 +47,7 @@ async function harness(state) {
     './ci-fix.js':{CIFix:class {sync(){}stop(){}}},
     './notices.js':{GitNotices:class {sync(){return null;}stop(){}retryNow(){}}},
     './webhooks.js':{GitWebhooks:class {sync(){} stop(){}}},
-    'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{}},
+    'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{},Background},
     'gpui-base':{h_flex:element,v_flex:element},
     './host.js':host,'./location.js':{location:()=>place},
     './agent-links.js':{AgentLinks:class { related(){return null;} refresh(){} }},
@@ -58,6 +60,7 @@ async function harness(state) {
   const main = new vm.SourceTextModule(fs.readFileSync(path.join(root,'src/plugins/git/mod/main.js'),'utf8'),{context});
   const panelKit=kitModule(context);withKitUi(modules['./ui.js'],element);
   await main.link(specifier=> {
+    const dependency=scrollModule(context,specifier);if(dependency)return dependency;
     if(specifier==='./panel-kit.js')return panelKit;
     if(specifier==='./settings-dialog.js')return new vm.SourceTextModule(fs.readFileSync(path.join(root,'src/ui/settings-dialog.js'),'utf8'),{context});
     if (modules[specifier]) return new vm.SyntheticModule(Object.keys(modules[specifier]),function(){
@@ -88,7 +91,7 @@ async function harness(state) {
   }
   const render = ()=>guarded(()=>view.renderPulls({hover:'hover',border:'border'}));
   const scroll = (bottom,delta=-40,kind='wheel')=>{
-    const tree=render(),content=find(tree,'pulls-content'),frame=find(tree,'pulls-scroll-frame');
+    const tree=render(),content=ordinaryContent(tree),frame=find(tree,'pulls-scroll-frame');
     const event={position:{x:10,y:500},delta:{y:delta},bounds:{y:bottom-1000,height:1000}};
     const method=kind==='wheel'?'on_scroll_wheel':'on_mouse_move';
     content.attrs[method][0](event,cx);
@@ -161,13 +164,13 @@ for(const state of ['open','closed']) {
   assert.ok(find(find(h.render(),'active-pull'),'pr-5'),'The active PR remains outside the scrolling content');
   assert.ok(find(find(h.render(),'active-pull'),'pr-labels-5'),'Pinned rows render assigned labels');
   assert.ok(find(find(h.render(),`pulls-list-${state}`),'pr-labels-1'),'Scrolling rows use the same labels');
-  const pin=find(h.render(),'active-pull-content-5');
+  const pin=activeContent(h.render(),5);
   assert.equal(pin.attrs.opacity[0],0.75,'Only a changed pin gets a subtle fade');
   assert.equal(pin.attrs.transition[0],'opacity');assert.equal(pin.attrs.transition[1].duration,120);
   pin.attrs.on_size_change[0]({},h.cx);
-  assert.equal(find(h.render(),'active-pull-content-5').attrs.opacity[0],1);
+  assert.equal(activeContent(h.render(),5).attrs.opacity[0],1);
   v.agentPull=5;h.render();
-  assert.equal(find(h.render(),'active-pull-content-5').attrs.opacity[0],1,'An unchanged pin never animates again');
+  assert.equal(activeContent(h.render(),5).attrs.opacity[0],1,'An unchanged pin never animates again');
   h.scroll(650);
   assert.equal(h.pending.length,1,'Scrolling near the bottom fetches exactly one page');
   assert.ok(h.pending[0].args.includes('after=page-1'));
