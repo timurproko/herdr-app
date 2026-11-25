@@ -3,7 +3,7 @@
 import { exec, run } from './host.js';
 import { pluginPullContext, pluginEvent, sidebarPanelEnabled } from './plugins.js';
 import { location } from './location.js';
-import { pullFailure, repositoryFailure, readTargetPulls, finalPull, retimePull, quietRead, retryRead, PullFactsOrder } from './pulls.js';
+import { pullFailure, repositoryFailure, readTargetPulls, finalPull, retimePull, quietRead, retryRead, readDeferred, PullFactsOrder } from './pulls.js';
 export function taskPullLink(url) {
   const match=/^https:\/\/github\.com\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\/pull\/([1-9]\d*)\/?$/.exec(url??'');
   const number=Number(match?.[2]);
@@ -24,14 +24,14 @@ function missingTaskPull(result, number) {
 function liveLink(link) {return link.targets.some(t=>!t.historical && typeof t.terminal==='string' && t.terminal);}
 function rememberMissing(entry) {
   missingPulls.set(entry.link.key,Date.now());
-  entry.pr=null;entry.error=null;entry.missing=true;entry.completedAt=NaN;entry.dirty=false;
+  entry.pr=null;entry.error=null;entry.missing=true;entry.completedAt=NaN;entry.dirty=false;entry.invalidated=false;
   if(!loggedMissingPulls.has(entry.link.key)) {
     loggedMissingPulls.add(entry.link.key);
     try {console.log(`[custom-changes] task PR not found: ${entry.link.repo} #${entry.link.number}`);}catch {}
   }
 }
 export class AggregatePulls {
-  constructor({shown,onUpdate}) {this.shown=shown;this.onUpdate=onUpdate;this.entries=new Map();this.pending=new Map();this.diagnostics=new Map();this.serial=0;this.factOrder=new PullFactsOrder();}
+  constructor({shown,onUpdate,blocked=()=>false}) {this.shown=shown;this.onUpdate=onUpdate;this.blocked=blocked;this.entries=new Map();this.pending=new Map();this.diagnostics=new Map();this.serial=0;this.factOrder=new PullFactsOrder();}
   currentContext({presentation = false} = {}) {
     const context=sidebarPanelEnabled('changes') ? pluginPullContext(location().space,{presentation}) : null;
     return !presentation && context?.stale ? null : context;
@@ -97,14 +97,21 @@ export class AggregatePulls {
     return [...new Set([...this.entries.values()].filter(e=>!e.missing && (!e.pr || this.eligible(e,now))).map(e=>e.link.repo))].sort();
   }
   counts() {return {open:this.rows('open').length,closed:this.rows('closed').length};}
-  invalidate(repository=null) {this.diagnostics.clear();for(const e of this.entries.values())if((!repository || e.link.repo===repository.toLowerCase()) && !finalPull(e.pr))e.dirty=true;}
-  refresh(cx) {pluginEvent('workspace.context.refresh',{cx,space:location().space,force:true});this.manualRead={remaining:1,expires:Date.now()+30000};this.readWake=null;this.invalidate();this.pump(cx);}
+  invalidate(repository=null) {this.diagnostics.clear();for(const e of this.entries.values())if((!repository || e.link.repo===repository.toLowerCase()) && !finalPull(e.pr)) {e.dirty=true;e.invalidated=true;}}
+  refresh(cx) {pluginEvent('workspace.context.refresh',{cx,space:location().space,force:true});this.manualRead={remaining:1,expires:Date.now()+30000};this.readWake=null;for(const entry of this.entries.values())entry.retryAt=0;this.invalidate();this.pump(cx);}
+  armFailures(cx) {
+    const due=Math.min(Infinity,...[...this.entries.values()].filter(entry=>entry.dirty && entry.retryAt>Date.now()).map(entry=>entry.retryAt));
+    if(Number.isFinite(due))retryRead(this.failureRetry??={},cx,{quiet:true,retryAt:due},next=>{
+      for(const entry of this.entries.values())if(entry.retryAt && entry.retryAt<=Date.now())entry.retryReady=true;
+      this.pump(next);this.armFailures(next);
+    });
+  }
   pump(cx) {
-    if(this.fallbackBusy || this.readWake?.due>Date.now())return;
+    if(this.fallbackBusy || readDeferred(this,exec,{on:this.context?.machine}))return;
     if(!this.context || this.context.stale || !this.shown() || this.currentContext()?.scope!==this.context.scope) {this.manualRead=null;return;}
     const context=this.context,scope=context.scope,serial=this.serial,groups=new Map();
     for(const [key,entry]of this.entries) {
-      if(!entry.dirty || this.pending.has(key))continue;
+      if(!entry.dirty || (entry.retryAt && !entry.retryReady) || this.pending.has(key) || this.blocked(entry.link.repo))continue;
       const missingAt=missingPulls.get(key);
       if(missingAt!==undefined && (!liveLink(entry.link) || Date.now()-missingAt<MISSING_LIVE_MS)) {
         entry.pr=null;entry.error=null;entry.missing=true;entry.dirty=false;continue;
@@ -129,11 +136,20 @@ export class AggregatePulls {
             if(published.accepted)rememberMissing(entry);else entry.dirty=true;
           } else {
             const failure=await repositoryFailure(exec,error,repository,{on:context.machine,current:()=>member(entry)},this.diagnostics);
-            if(member(entry)) {missingPulls.delete(entry.link.key);entry.missing=false;entry.error=failure;}
+            if(member(entry)) {
+              missingPulls.delete(entry.link.key);entry.missing=false;entry.error=failure;
+              // An attempted read is not acknowledgement of an invalidation.
+              // Keep the actionable notice while bounded retries retain demand.
+              if(entry.invalidated) {
+                entry.dirty=true;entry.failures=(entry.failures??0)+1;
+                entry.retryAt=Date.now()+Math.min(720000,45000*2**Math.min(entry.failures,4));entry.retryReady=false;this.armFailures(view);
+              }
+            }
           }
         };
         try {
           await Promise.resolve();if(!current())return;
+          if(this.blocked(repository)) {for(const entry of batch)if(member(entry))entry.dirty=true;return;}
           const results=await readTargetPulls(exec,batch.map(e=>e.link.number),repository,{on:context.machine,timeout:30000,current,manual:this.manualRead});
           for(const entry of batch) {
             if(!member(entry))continue;
@@ -143,7 +159,7 @@ export class AggregatePulls {
             if(!published.accepted) {entry.dirty=true;continue;}
             missingPulls.delete(key);entry.missing=false;entry.pr=published.value;
             const completedAt=Date.parse(value.mergedAt??value.closedAt??'');
-            entry.completedAt=completedAt<=Date.now()?completedAt:NaN;entry.error=null;updated=true;
+            entry.completedAt=completedAt<=Date.now()?completedAt:NaN;entry.error=null;entry.invalidated=entry.dirty;entry.failures=0;entry.retryAt=0;updated=true;
           }
         }catch(error){for(const entry of batch)await failed(entry,error);}
         finally {

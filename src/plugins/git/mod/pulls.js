@@ -19,7 +19,7 @@ export function retryRead(owner, cx, error, run) {
   if(!quietRead(error))return false;
   const due=error.retryAt??Date.now()+900000;
   if(owner.readWake && owner.readWake.due<=due)return true;
-  const wake=owner.readWake={due};
+  const wake=owner.readWake={due,kind:error.kind};
   cx.timer?.after(Math.max(1,due-Date.now()),view=>{
     if(owner.readWake!==wake)return;
     owner.readWake=null;run(view);view.notify();
@@ -61,6 +61,12 @@ export class GitReads {
   }
 }
 export function gitReads(exec) {if(!readers.has(exec))readers.set(exec,new GitReads());return readers.get(exec);}
+export function readDeferred(owner,exec,options={}) {
+  // Successful admitted recovery can end the shared rate episode before an
+  // older consumer's wakeup. Its retained demand must resume on that lifecycle.
+  if(owner.readWake?.kind==='rate' && gitReads(exec).state(options).until<=Date.now())owner.readWake=null;
+  return owner.readWake?.due>Date.now();
+}
 export function rateRefusal(result) {
   if(result?.name==='SyntaxError')return false;
   const code=Number(result?.code);

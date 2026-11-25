@@ -183,6 +183,37 @@ Known final rows retain session-cached labels and checks. See the measured
 [request budget and final-cache freshness limits](GIT-REQUEST-BUDGET.md). No relay
 redeployment is required; optional precise numbered hints are deferred.
 
+### Invalidation delivery invariant
+
+An accepted mutable-fact invalidation for a retained repository is always owned
+by either the pending broker entry or the current consumer's dirty queue until
+successful authoritative reconciliation (including confirmed absence). A failed
+attempt is not acknowledgement. Coalesced notices produce one eventual successful
+refresh, plus any failed attempts; a notice after an in-flight snapshot began can
+require a follow-up snapshot. The first two-second deadline is not restarted by
+unrelated changes. Dispatch resumes when shown/current and the active cooldown or
+failure backoff permits it; native scheduling, queue and GitHub read time still
+apply. Final-cache freshness limits above remain intentional.
+
+| Transition before acknowledgement | Retained demand |
+|---|---|
+| Open/Closed switch | Read current selected demand, not a captured hidden tab |
+| Hide/show | Pause without deleting the entry or restarting its deadline |
+| Repository membership change | Keep pending entries for the intersection; remove only departed repositories |
+| Rate cooldown starts | Transfer/retain dirty demand without another API dispatch |
+| Rate cooldown ends | Recheck shared admission; an older consumer wake cannot prolong an ended episode |
+| Another event | Coalesce into pending or already-dirty work without resetting its first deadline |
+| Failed read | Keep the notice and demand; retry with 90/180/360/720-second bounded backoff |
+
+`tests/git-invalidation-transitions.test.mjs` checks this directly through the
+real broker and controllers: **513 cases** covering each transition and every
+ordered pair (including repeats), during debounce, rate backoff and failed-read
+backoff, for coordinator and warm/cold ordinary tabs. It asserts one eventual
+successful retained-repository read, every injected failed attempt, no hidden
+reads, fresh title/labels/body tasks and no duplicate late-wakeup read. Its
+maximum-delay oracle derives backoff from observed failed transport attempts,
+not from the scheduler's own deadlines.
+
 ### Pending checks without enrollment
 
 While Git is shown, Open/Draft PRs use a **45-second fallback** without confirmed

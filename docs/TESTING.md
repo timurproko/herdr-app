@@ -20,6 +20,12 @@ rate, HTTP, process and transport failures still refuse the complete batch.
 `tests/pr-agent-links.test.mjs` includes a `remote.*.gh-resolved`-only default
 change with unchanged remote URLs, plus warm routing-cache reuse. `tests/git-read-scheduling.test.mjs`
 uses fake timers for two-second repository windows and inactive/return gating.
+`tests/git-invalidation-transitions.test.mjs` states and tests the retained-demand
+invariant with 513 real-controller cases: every tab, visibility, membership,
+cooldown, repeated-event and failed-read transition and ordered pair, in debounce
+and both backoff phases, across coordinator and warm/cold ordinary tabs. It checks
+one eventual successful refresh, exact injected failures, first-deadline bounds,
+latest metadata and absence of hidden or duplicate late reads.
 `tests/git-request-budget.test.mjs` measures the actual frozen before controller
 and the changed controller against synthetic transport; its baseline blobs live
 in `tests/fixtures/git-before/` so shallow/offline CI needs no history fetch.
