@@ -16,6 +16,7 @@ const messages = {
   TRANSPORT: 'The Trello read did not complete. Retry explicitly when ready.',
   RESPONSE: 'The Trello response was invalid or exceeded a safety bound.',
   LIMIT: 'This command reached its request or time bound; narrow the request.',
+  WRITE_CHANGED: 'Trello acknowledged the write, but local authority changed. No result content or follow-up is available; inspect the board before another action.',
   UNKNOWN_WRITE: 'Write outcome unknown. Read the card and its comments/checklists before any explicit retry; this command will not replay it.',
 };
 class TrelloError extends Error {
@@ -24,7 +25,7 @@ class TrelloError extends Error {
 const fail = code => { throw new TrelloError(code); };
 function publicError(error) {
   const safe = error instanceof TrelloError ? error : new TrelloError('STORE');
-  return {code: safe.code, message: messages[safe.code], outcome: safe.code === 'UNKNOWN_WRITE' ? 'unknown' : 'refused',
+  return {code: safe.code, message: messages[safe.code], outcome: safe.code === 'UNKNOWN_WRITE' ? 'unknown' : safe.code === 'WRITE_CHANGED' ? 'applied' : 'refused',
     ...(Number.isSafeInteger(safe.retryAt) ? {retryAt: safe.retryAt} : {})};
 }
 module.exports = {TrelloError, fail, publicError};

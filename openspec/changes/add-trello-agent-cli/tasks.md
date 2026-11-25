@@ -17,11 +17,11 @@
 
 ## 3. Narrow writes without automatic replay
 
-- [ ] 3.1 Add card create/update/move/archive with explicit board/list context and source/destination preflight; verify exact official-route fixtures, both-board allowlisting, read-only/disabled refusal, policy changes before dispatch and a single mutation per command.
-- [ ] 3.2 Add comment creation and existing-label assignment/removal; verify card/label board identity, required inputs, no board-label administration and redacted unknown outcomes after lost responses.
-- [ ] 3.3 Add checklist creation/name/position edits and check-item creation/name/position/state edits; verify card/checklist/item ownership, complete/incomplete mappings and absence of checklist/item deletion or source-copy escape hatches.
-- [ ] 3.4 Enforce no automatic mutation retries for timeout, disconnect, malformed success or oversized response; verify exactly one dispatched write and truthful local-refusal/HTTP-rejection/unknown-outcome errors with safe reconciliation guidance.
-- [ ] 3.5 Extend `docs/TRELLO.md` with JSON write examples, all excluded operations, concurrent-move limits and read-before-explicit-retry guidance; verify examples against fake operation fixtures.
+- [x] 3.1 Add card create/update/move/archive with explicit board/list context and source/destination preflight; verify exact official-route fixtures, both-board allowlisting, read-only/disabled refusal, policy changes before dispatch and a single mutation per command.
+- [x] 3.2 Add comment creation and existing-label assignment/removal; verify card/label board identity, required inputs, no board-label administration and redacted unknown outcomes after lost responses.
+- [x] 3.3 Add checklist creation/name/position edits and check-item creation/name/position/state edits; verify card/checklist/item ownership, complete/incomplete mappings and absence of checklist/item deletion or source-copy escape hatches.
+- [x] 3.4 Enforce no automatic mutation retries for timeout, disconnect, malformed success or oversized response; verify exactly one dispatched write and truthful local-refusal/HTTP-rejection/unknown-outcome errors with safe reconciliation guidance.
+- [x] 3.5 Extend `docs/TRELLO.md` with JSON write examples, all excluded operations, concurrent-move limits and read-before-explicit-retry guidance; verify examples against fake operation fixtures.
 
 ## 4. Declarative plugin and owned installed shell command
 

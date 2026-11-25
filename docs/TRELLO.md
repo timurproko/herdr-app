@@ -85,3 +85,54 @@ and 60-second overall deadline, at most 20 network requests, and no automatic
 read retries. Reads are sequential. HTTP 429 persists only a non-secret cooldown
 deadline; another invocation cannot bypass it. Respect `retryAt` (Unix milliseconds),
 then explicitly retry. Longer Retry-After or token/key intervals take precedence.
+
+## Explicit writes
+
+Prepare one JSON object in an input file (or send it on stdin). IDs below are fake.
+For example, `create.json` contains `{"name":"Investigate issue","desc":"Details"}`:
+
+```sh
+herdr-trello cards create --board aaaaaaaaaaaaaaaaaaaaaaaa --list dddddddddddddddddddddddd --input create.json
+herdr-trello cards update cccccccccccccccccccccccc --board aaaaaaaaaaaaaaaaaaaaaaaa --input update.json
+herdr-trello cards move cccccccccccccccccccccccc --board aaaaaaaaaaaaaaaaaaaaaaaa --input move.json
+herdr-trello cards archive cccccccccccccccccccccccc --board aaaaaaaaaaaaaaaaaaaaaaaa
+herdr-trello comments add --board aaaaaaaaaaaaaaaaaaaaaaaa --card cccccccccccccccccccccccc --input comment.json
+herdr-trello cards label add --board aaaaaaaaaaaaaaaaaaaaaaaa --card cccccccccccccccccccccccc --label eeeeeeeeeeeeeeeeeeeeeeee
+herdr-trello cards label remove --board aaaaaaaaaaaaaaaaaaaaaaaa --card cccccccccccccccccccccccc --label eeeeeeeeeeeeeeeeeeeeeeee
+herdr-trello checklists add --board aaaaaaaaaaaaaaaaaaaaaaaa --card cccccccccccccccccccccccc --input checklist.json
+herdr-trello checklists update --board aaaaaaaaaaaaaaaaaaaaaaaa --card cccccccccccccccccccccccc --checklist ffffffffffffffffffffffff --input checklist.json
+herdr-trello checkitems add --board aaaaaaaaaaaaaaaaaaaaaaaa --card cccccccccccccccccccccccc --checklist ffffffffffffffffffffffff --input item.json
+herdr-trello checkitems update --board aaaaaaaaaaaaaaaaaaaaaaaa --card cccccccccccccccccccccccc --checklist ffffffffffffffffffffffff --item 111111111111111111111111 --input item-update.json
+```
+
+Payload-taking commands require `--input` or piped JSON, not an interactive prompt.
+Archive and label add/remove need no payload file; their IDs are sufficient.
+
+| Input file | Example contents / permitted fields |
+|---|---|
+| update.json | `{"name":"New title","desc":"New details","due":null,"dueComplete":false,"pos":"top"}`; name/desc/due/start/dueComplete/pos only |
+| move.json | `{"list":"dddddddddddddddddddddddd","destinationBoard":"bbbbbbbbbbbbbbbbbbbbbbbb"}`; optional pos; both boards must be locally allowed |
+| comment.json | `{"text":"Investigation complete"}` |
+| checklist.json | `{"name":"Acceptance","pos":"bottom"}` |
+| item.json | `{"name":"Check result","checked":false}`; optional pos |
+| item-update.json | `{"state":"complete"}`; or incomplete, name and/or pos |
+
+Dates are ISO timestamps (`null` clears due/start); positions are top, bottom or
+positive numbers. Names must be nonempty and at most 16384 characters; desc/text
+cap at 131072. Check-item updates require the checklist and item to belong to the
+verified card. Archive sets closed=true; no unarchive or permanent deletion command
+is provided. Unknown fields/commands are rejected, including generic URLs/methods,
+attachments, source-card/checklist copies, board administration, board-label
+creation/editing, bulk operations, webhooks and checklist/item deletion.
+
+Each mutation command issues **at most one write**. A timeout, disconnection,
+malformed reply or server failure after dispatch returns `UNKNOWN_WRITE` and exit
+4. **Never assume failure means no change.** Read the card, comments or checklists
+and reconcile before another explicit attempt; there is no automatic retry,
+durable queue or replay. A confirmed write followed by local access revocation
+returns `WRITE_CHANGED` with outcome applied but no provider content or follow-up.
+
+Parent membership and local policy are rechecked before dispatch, and mismatching
+responses stop publication. Trello offers no atomic cross-request scope lock:
+another editor can move a card between checks. This client cannot eliminate that
+race or prevent another same-user process from using the token directly.

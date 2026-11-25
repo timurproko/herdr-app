@@ -11,6 +11,15 @@ const routes = [
   ['GET', new RegExp(`^/cards/${ID}$`), ['fields', 'attachments', 'members', 'checklists', 'actions', 'pluginData', 'stickers']],
   ['GET', new RegExp(`^/cards/${ID}/actions$`), ['filter', 'limit', 'before']],
   ['GET', new RegExp(`^/cards/${ID}/checklists$`), ['checkItems', 'filter', 'fields', 'checkItem_fields']],
+  ['POST', /^\/cards$/, ['idList', 'name', 'desc', 'due', 'start', 'dueComplete', 'pos']],
+  ['PUT', new RegExp(`^/cards/${ID}$`), ['name', 'desc', 'due', 'start', 'dueComplete', 'pos', 'idList', 'idBoard', 'closed']],
+  ['POST', new RegExp(`^/cards/${ID}/actions/comments$`), ['text']],
+  ['POST', new RegExp(`^/cards/${ID}/idLabels$`), ['value']],
+  ['DELETE', new RegExp(`^/cards/${ID}/idLabels/${ID}$`), []],
+  ['POST', new RegExp(`^/cards/${ID}/checklists$`), ['name', 'pos']],
+  ['PUT', new RegExp(`^/checklists/${ID}$`), ['name', 'pos']],
+  ['POST', new RegExp(`^/checklists/${ID}/checkItems$`), ['name', 'pos', 'checked']],
+  ['PUT', new RegExp(`^/cards/${ID}/checkItem/${ID}$`), ['name', 'pos', 'state']],
 ];
 const nowMs = () => Date.now();
 async function jsonResponse(response) {
@@ -43,8 +52,12 @@ class Client {
     const url = new URL('https://api.trello.com/1' + route);
     for (const [k, v] of Object.entries(query)) url.searchParams.set(k, String(v));
     url.searchParams.set('key', this.gate.credentials.apiKey); url.searchParams.set('token', this.gate.credentials.token);
-    const controller = new AbortController(); let timer;
+    const write = method !== 'GET';
+    if (write && ++this.writes !== 1) fail('INPUT');
+    const controller = new AbortController(); let timer, dispatched = false;
     const work = async () => {
+      // Last authority check immediately precedes the only dispatch.
+      this.gate.check(); dispatched = true;
       const response = await this.transport(url, {method, redirect: 'manual', signal: controller.signal, headers: {Accept: 'application/json'}});
       if (response.status === 429) {
         const retryAt = retryTime(response.headers, this.now());
@@ -54,15 +67,21 @@ class Client {
       }
       if (response.status < 200 || response.status >= 300) {
         if (response.body) await response.body.cancel().catch(() => {});
+        if (write && (response.status >= 500 || response.status < 400)) fail('UNKNOWN_WRITE');
         throw new TrelloError(({401: 'AUTH', 403: 'FORBIDDEN', 404: 'NOT_FOUND'})[response.status] || 'REMOTE');
       }
-      const value = await jsonResponse(response); this.gate.check(); return value;
+      const value = await jsonResponse(response);
+      try { this.gate.check(); } catch (e) { if (write) fail('WRITE_CHANGED'); throw e; }
+      return value;
     };
     try {
       return await Promise.race([work(), new Promise((_, reject) => {
         timer = setTimeout(() => { controller.abort(); reject(new TrelloError('TRANSPORT')); }, Math.min(this.timeout, 60000 - (this.now() - this.started)));
       })]);
-    } catch (e) { if (e instanceof TrelloError) throw e; fail('TRANSPORT'); }
+    } catch (e) {
+      if (write && dispatched && (!(e instanceof TrelloError) || ['TRANSPORT', 'RESPONSE', 'STORE'].includes(e.code))) fail('UNKNOWN_WRITE');
+      if (e instanceof TrelloError) throw e; fail('TRANSPORT');
+    }
     finally { clearTimeout(timer); controller.abort(); }
   }
   get(route, query) { return this.request('GET', route, query); }

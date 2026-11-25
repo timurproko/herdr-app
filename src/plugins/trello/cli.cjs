@@ -3,9 +3,9 @@
 const fs = require('node:fs');
 const {Store, protectedInput, object} = require('./credentials.cjs');
 const {setup, configure, status} = require('./setup.cjs');
-const {run, definitions} = require('./operations.cjs');
+const {run, definitions, writes} = require('./operations.cjs');
 const {fail, publicError} = require('./errors.cjs');
-const help = `herdr-trello: scoped Trello JSON CLI (Node 20+)\n\nLocal: status; setup [--rotate] [--input PRIVATE_FILE]; policy allow/remove BOARD; policy writes on/off\nReads: boards list; lists list; cards list/get; labels list; checklists list; checkitems list\nEvery child operation needs --board BOARD and its explicit --card/--list/--checklist IDs.\nPaging: --limit 1..100 --before CARD_OR_ACTION_ID; lists/cards: --filter open|closed|all\nJSON input: --input FILE or stdin (setup/mutations only). Never pass credentials in argv.\nGlobal: --home HERDR_HOME; --json (results are JSON by default). No arbitrary HTTP operations.\nSee docs/TRELLO.md for setup, write authorization, scope, errors and revocation.\n`;
+const help = `herdr-trello: scoped Trello JSON CLI (Node 20+)\n\nLocal: status; setup [--rotate] [--input PRIVATE_FILE]; policy allow/remove BOARD; policy writes on/off\nReads: boards list; lists list; cards list/get; labels list; checklists list; checkitems list\nWrites: cards create/update/move/archive; comments add; cards label add/remove; checklists add/update; checkitems add/update\nEvery child operation needs --board BOARD and its explicit --card/--list/--checklist IDs.\nPaging: --limit 1..100 --before CARD_OR_ACTION_ID; lists/cards: --filter open|closed|all\nJSON input: --input FILE or stdin (setup/mutations only). Never pass credentials in argv.\nGlobal: --home HERDR_HOME; --json (results are JSON by default). No arbitrary HTTP operations.\nSee docs/TRELLO.md for setup, write authorization, scope, errors and revocation.\n`;
 function parse(argv) {
   const words = [], flags = {};
   for (let i = 0; i < argv.length; i++) {
@@ -33,8 +33,10 @@ async function execute(argv, options = {}) {
     const file = flags.input; delete flags.input;
     const readInput = async privateInput => {
       let text;
+      if (!file && options.input === undefined && process.stdin.isTTY) fail('INPUT');
       try { text = options.input !== undefined ? options.input : privateInput && file ? protectedInput(file) : await inputText(file); } catch { fail('INPUT'); }
       if (typeof text !== 'string' || Buffer.byteLength(text) > 262144) fail('INPUT');
+      if (!privateInput && !text.trim()) return {};
       try { const v = JSON.parse(text); if (!object(v)) fail('INPUT'); return v; } catch { fail('INPUT'); }
     };
     let data;
@@ -55,7 +57,12 @@ async function execute(argv, options = {}) {
         flags.card = rest[0];
       }
       if ('limit' in flags) { if (!/^\d+$/.test(flags.limit)) fail('INPUT'); flags.limit = Number(flags.limit); }
-      if (file) fail('INPUT');
+      if (writes.has(op)) {
+        const noPayload = ['cards.archive', 'cards.label.add', 'cards.label.remove'].includes(op);
+        const body = noPayload && !file && options.input === undefined ? {} : await readInput(false);
+        if (Object.keys(body).some(k => Object.hasOwn(flags, k))) fail('INPUT');
+        Object.assign(flags, body);
+      } else if (file) fail('INPUT');
       data = await run(store, op, flags, options);
     }
     return {result: {version: 1, ok: true, data}, exit: 0};
