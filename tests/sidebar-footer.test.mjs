@@ -34,6 +34,7 @@ const exports = {
   './host.js': host,
   'gpui-kit': { View: class {}, div: element, svg: element, image: element },
   'gpui-base': { h_flex: element, v_flex: element, Popover: {}, Input: {}, Popup: { new: (id, trigger) => element().id(id).child(trigger) }, ScrollHandle:{new:()=>({scroll_to_item(){}})} },
+  './palette-startup.js': { initPalettePolicy() {} },
   './look.js': { enterCustom: () => boot++ }, './startup.js': { restoreFrames: () => boot++ },
   './sidebar-usage.js': { syncSidebarUsage: () => boot++ },
   './customization-updates.js': { initCustomizationUpdates() {}, customizationUpdateAvailable: () => customReady, observeCustomizationUpdates() {}, invalidateCustomizationUpdates() {} },

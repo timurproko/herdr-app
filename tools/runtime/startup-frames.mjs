@@ -4,12 +4,14 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { framePatch, inspectFramePatch } from './frame-patch.mjs';
 import { loadFrameRegistry } from './frame-registry.mjs';
+import { paletteIntent, retirePalette } from './retire-palette.mjs';
 const bundle = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 export function restoreStartupFrames(home, root = bundle, options = {}) {
   const owner = path.join(home, '.customizations');
-  const frames = loadFrameRegistry(root).map(patch => patch.id).filter(frame => fs.existsSync(path.join(owner, `frame-${frame}.json`)));
-  if (!frames.length) return { ok: true, frames: {} }; // Never opt a user in.
+  const ownedPalette=paletteIntent(home);
+  const frames = loadFrameRegistry(root).map(patch => patch.id).filter(frame => !(ownedPalette&&frame==='palette')&&fs.existsSync(path.join(owner, `frame-${frame}.json`)));
+  if (!frames.length&&!ownedPalette) return { ok: true, frames: {} }; // Never opt a user in.
   const lock = path.join(owner, 'startup-frames.lock');
   let fd;
   try { fd = fs.openSync(lock, 'wx'); }
@@ -28,6 +30,7 @@ export function restoreStartupFrames(home, root = bundle, options = {}) {
   try {
     fs.writeFileSync(fd, String(process.pid));
     const results = Object.create(null);
+    if(ownedPalette)try{results.palette=retirePalette(home,root,options);}catch(error){results.palette={ok:false,status:'retirement-conflict',error:error.message};}
     for (const frame of frames) {
       try {
         const inspection = inspectFramePatch(home, root, frame, options);
