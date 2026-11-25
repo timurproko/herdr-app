@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {spawn,spawnSync,execFileSync} from 'node:child_process';
 import {build} from '../../tools/build.mjs';
+import {temporaryMod} from '../../tools/temporary-mod.mjs';
 if(!process.argv.includes('--run')||process.platform!=='win32')throw Error('Explicit Windows opt-in required: --run [--baseline revision]');
 const baseline=process.argv.includes('--baseline')?process.argv[process.argv.indexOf('--baseline')+1]:null;
 const label=baseline?'before':'after',exe=process.env.HERDR_APP_BIN??path.join(process.env.LOCALAPPDATA,'Programs/herdr-app/herdr-app.exe');
@@ -15,6 +16,10 @@ const env={...process.env,HERDR_APP_HOME:home,USERPROFILE:home,LOCALAPPDATA:path
 for(const key of ['HC_TERMINAL_ID','HC_PARENT','HC_ADDRESS'])delete env[key];
 fs.mkdirSync(env.LOCALAPPDATA,{recursive:true});
 const put=(name,value)=>{const file=path.join(home,name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,typeof value==='string'?value:JSON.stringify(value));};
+const disposeChanges=temporaryMod(home,'custom-changes');let disposeChrome=()=>{};
+const dispose=()=>{try{disposeChrome();}finally{disposeChanges();}};
+try{
+disposeChrome=temporaryMod(home,'custom-workspace-chrome');
 fs.cpSync(path.join(output,'mods/custom-changes'),dir,{recursive:true});
 fs.cpSync(path.join(output,'mods/custom-workspace-chrome'),path.join(home,'mods/custom-workspace-chrome'),{recursive:true});
 fs.renameSync(path.join(dir,'main.js'),path.join(dir,'changes-view.js'));
@@ -75,3 +80,4 @@ for(const zoom of [1,1.3]){
 }
 fs.writeFileSync(path.join(root,'results.json'),JSON.stringify(results,null,2)+'\n');
 console.log(JSON.stringify({root,...results},null,2));
+}finally{dispose();}
