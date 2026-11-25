@@ -9,11 +9,11 @@
 
 ## 2. Scoped reads and bounded JSON transport
 
-- [ ] 2.1 Implement fixed-origin key/token query transport with redirect refusal, deadlines, response/input/request bounds and sanitized errors; verify fake transport for exact auth placement, malicious errors, 401/403/404/429, Retry-After, cross-invocation cooldown and blocked routing/auth overrides.
-- [ ] 2.2 Implement allowed-board, list/card and board/card label reads using the official route contract in design.md; verify exact method/path/field fixtures and no account-wide inventory or lookup of forged out-of-scope IDs.
-- [ ] 2.3 Implement verified card detail with comments/checklists/items and supported explicit pagination/incompleteness; verify bounded multi-component results, oversized/malformed replies, parent-ID mismatches and interrupted/superseded reads without claiming complete history.
-- [ ] 2.4 Add versioned JSON read/status command parsing, stable exit codes and input validation; verify CLI fixtures reject unknown fields/commands and treat hostile card/comment strings as inert data.
-- [ ] 2.5 Extend `docs/TRELLO.md` with board-ID provisioning, read commands, untrusted-data wording and pagination limits; verify documented shapes and examples match the CLI fixtures.
+- [x] 2.1 Implement fixed-origin key/token query transport with redirect refusal, deadlines, response/input/request bounds and sanitized errors; verify fake transport for exact auth placement, malicious errors, 401/403/404/429, Retry-After, cross-invocation cooldown and blocked routing/auth overrides.
+- [x] 2.2 Implement allowed-board, list/card and board/card label reads using the official route contract in design.md; verify exact method/path/field fixtures and no account-wide inventory or lookup of forged out-of-scope IDs.
+- [x] 2.3 Implement verified card detail with comments/checklists/items and supported explicit pagination/incompleteness; verify bounded multi-component results, oversized/malformed replies, parent-ID mismatches and interrupted/superseded reads without claiming complete history.
+- [x] 2.4 Add versioned JSON read/status command parsing, stable exit codes and input validation; verify CLI fixtures reject unknown fields/commands and treat hostile card/comment strings as inert data.
+- [x] 2.5 Extend `docs/TRELLO.md` with board-ID provisioning, read commands, untrusted-data wording and pagination limits; verify documented shapes and examples match the CLI fixtures.
 
 ## 3. Narrow writes without automatic replay
 

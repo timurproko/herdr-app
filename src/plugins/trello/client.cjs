@@ -1,0 +1,70 @@
+'use strict';
+const {TrelloError, fail} = require('./errors.cjs');
+const ID = '[a-f0-9]{24}';
+// Transport is private to typed operations. No request/URL command is exposed.
+const routes = [
+  ['GET', new RegExp(`^/boards/${ID}$`), ['fields', 'actions', 'lists', 'cards', 'members', 'checklists']],
+  ['GET', new RegExp(`^/boards/${ID}/lists$`), ['fields', 'filter']],
+  ['GET', new RegExp(`^/boards/${ID}/cards$`), ['fields', 'filter', 'limit', 'before']],
+  ['GET', new RegExp(`^/boards/${ID}/labels$`), ['fields', 'limit']],
+  ['GET', new RegExp(`^/lists/${ID}/cards$`), ['fields', 'filter', 'limit', 'before']],
+  ['GET', new RegExp(`^/cards/${ID}$`), ['fields', 'attachments', 'members', 'checklists', 'actions', 'pluginData', 'stickers']],
+  ['GET', new RegExp(`^/cards/${ID}/actions$`), ['filter', 'limit', 'before']],
+  ['GET', new RegExp(`^/cards/${ID}/checklists$`), ['checkItems', 'filter', 'fields', 'checkItem_fields']],
+];
+const nowMs = () => Date.now();
+async function jsonResponse(response) {
+  const chunks = []; let size = 0;
+  if (!response.body || typeof response.body[Symbol.asyncIterator] !== 'function') fail('RESPONSE');
+  for await (const chunk of response.body) {
+    size += chunk.byteLength; if (size > 2097152) fail('RESPONSE'); chunks.push(Buffer.from(chunk));
+  }
+  try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { fail('RESPONSE'); }
+}
+function retryTime(headers, now) {
+  const retry = headers.get('retry-after');
+  let until = /^\d+(?:\.\d+)?$/.test(retry || '') ? now + Math.ceil(Number(retry) * 1000) : Date.parse(retry || '');
+  const intervals = ['x-rate-limit-api-key-interval-ms', 'x-rate-limit-api-token-interval-ms'].map(k => Number(headers.get(k))).filter(n => Number.isFinite(n) && n > 0);
+  until = Math.max(now + 10000, ...intervals.map(n => now + n), Number.isFinite(until) ? until : now + 60000);
+  return Math.min(Number.MAX_SAFE_INTEGER, Math.ceil(until));
+}
+class Client {
+  constructor(store, gate, {transport = globalThis.fetch, now = nowMs, timeout = 20000} = {}) {
+    this.store = store; this.gate = gate; this.transport = transport; this.now = now; this.timeout = timeout;
+    this.started = now(); this.count = 0; this.writes = 0;
+  }
+  async request(method, route, query = {}) {
+    const rule = routes.find(([m, re]) => method === m && re.test(route));
+    if (!rule || Object.keys(query).some(k => !rule[2].includes(k))) fail('INPUT');
+    this.gate.check();
+    const cooldown = this.store.read('cooldown', true);
+    if (cooldown?.retryAt > this.now()) throw new TrelloError('RATE_LIMIT', {retryAt: cooldown.retryAt});
+    if (++this.count > 20 || this.now() - this.started >= 60000) fail('LIMIT');
+    const url = new URL('https://api.trello.com/1' + route);
+    for (const [k, v] of Object.entries(query)) url.searchParams.set(k, String(v));
+    url.searchParams.set('key', this.gate.credentials.apiKey); url.searchParams.set('token', this.gate.credentials.token);
+    const controller = new AbortController(); let timer;
+    const work = async () => {
+      const response = await this.transport(url, {method, redirect: 'manual', signal: controller.signal, headers: {Accept: 'application/json'}});
+      if (response.status === 429) {
+        const retryAt = retryTime(response.headers, this.now());
+        const old = this.store.read('cooldown', true);
+        try { this.store.write('cooldown', {version: 1, retryAt: Math.max(old?.retryAt || 0, retryAt)}, old); } catch (e) { if (e.code !== 'CONFLICT') throw e; }
+        throw new TrelloError('RATE_LIMIT', {retryAt});
+      }
+      if (response.status < 200 || response.status >= 300) {
+        if (response.body) await response.body.cancel().catch(() => {});
+        throw new TrelloError(({401: 'AUTH', 403: 'FORBIDDEN', 404: 'NOT_FOUND'})[response.status] || 'REMOTE');
+      }
+      const value = await jsonResponse(response); this.gate.check(); return value;
+    };
+    try {
+      return await Promise.race([work(), new Promise((_, reject) => {
+        timer = setTimeout(() => { controller.abort(); reject(new TrelloError('TRANSPORT')); }, Math.min(this.timeout, 60000 - (this.now() - this.started)));
+      })]);
+    } catch (e) { if (e instanceof TrelloError) throw e; fail('TRANSPORT'); }
+    finally { clearTimeout(timer); controller.abort(); }
+  }
+  get(route, query) { return this.request('GET', route, query); }
+}
+module.exports = {Client, routes, retryTime};
