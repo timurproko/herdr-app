@@ -1,0 +1,13 @@
+[
+  {
+    "kind": "default-branch",
+    "checks": ["CI required"],
+    "mergeMethods": ["squash"],
+    "linearHistory": true
+  },
+  {
+    "kind": "workflow-events",
+    "workflows": [".github/workflows/delivery.yml", ".github/workflows/review-labels.yml"],
+    "events": ["pull_request_target", "workflow_dispatch"]
+  }
+]
