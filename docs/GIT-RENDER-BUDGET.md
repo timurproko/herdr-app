@@ -2,8 +2,8 @@
 
 The host has a 50 ms render/layout watchdog. Ordinary lists already mount every
 loaded row, so a coordinator page limit is not a shared-row safety argument.
-The #61 title/pill measurement regression was reproduced as native `interrupted`
-checks at 100 cold rows; its repair is measured below. Earlier #42 measurements
+An earlier #61 implementation was reproduced as native `interrupted` checks
+at 100 cold rows; the lower-line-only repair is measured below. Earlier #42 measurements
 remain historical evidence, not proof of that older live banner's exact cause.
 
 ## Historical inventory/page measurements
@@ -61,10 +61,10 @@ all coordinator rows without paging. Each row has a distinct long title, tasks,
 checks, two repeated label strings and review text. Times include JS/native
 builder construction only, not GPU paint, layout settlement or live input latency.
 
-The first measured-prefix #61 version cost 20–23 / 40–43 ms at 30/60 rows and
-interrupted in all 100-row samples. The repair removes title/pill/prefix subtrees,
-uses native Segoe UI truncation and the approved always-full-title tooltip, caches
-settings per render entry, and schedules four shared intrinsic probes total.
+The earlier #61 implementation cost 20–23 / 40–43 ms at 30/60 rows and interrupted
+in all 100-row samples. The lower-line-only repair retains main's native title
+and header rendering, inherited interface font and full-title hover. It caches
+settings per render entry and schedules four shared lower-line probes total.
 
 | Mounted rows | fc0dfde coordinator, ms | Repaired coordinator, ms | fc0dfde ordinary, ms | Repaired ordinary, ms | Repaired ordinary scrolled-bottom, ms |
 |---|---|---|---|---|---|
@@ -107,7 +107,7 @@ from the historical bounded-page test below, not a substituted ten-row sample.
   Intrinsic text widths are independent of available line width; each visible
   line still measures its current available width to select full/compact values.
   Duplicate strings get one pending probe per key and at most four intrinsic
-  probes across a complete render; acknowledged strings need none. Known visible
+  lower-line probes across a complete render; acknowledged strings need none. Known visible
   ordinary rows/pins take priority, then background keys advance through native
   callbacks without delaying rows or installing a frame timer. Settings cross the
   bridge once per render entry, not once per row/string. Pending probes retry next
@@ -121,10 +121,11 @@ from the historical bounded-page test below, not a substituted ten-row sample.
   visible pills (and three in their one measurement strip); full names, including
   omitted labels, remain in informative strip/metadata tooltips. Ordinary rows
   share the same bounded cache; no individual pill measurement subtree is built.
-  Titles have no JS width/prefix measurement and always keep the full-title
-  tooltip fallback. Native title/header text uses Segoe UI at original size/weight.
-  Allocated physical widths remain keyed by element ID across text/style changes,
-  including when native size callbacks do not fire again.
+  Titles retain native truncation, inherited interface font and complete hover,
+  with no title-width measurement. Repository-header rendering and its existing
+  overflow measurement remain unchanged, outside the new lower-line queue.
+  Allocated lower-line physical widths remain keyed by element ID across text/style
+  changes, including when native size callbacks do not fire again.
 - Native interactive row objects are deliberately **not** cached across renders:
   their callbacks are registered against the current native snapshot. Reusing
   those objects would retain obsolete callback registrations. Cache pure facts

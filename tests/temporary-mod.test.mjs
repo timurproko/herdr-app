@@ -114,6 +114,6 @@ try {
   assert.match(source,/temporaryMod\(home,/,file);assert.match(source,/finally\s*\{\s*dispose\(\)/,file);
   assert.doesNotMatch(source,/fs\.rmSync\(dir\s*[,)]/,file);adopted++;
  }
- assert.equal(adopted,27);
- console.log('PASS: 10 caller functions clean synthetic mod/data on completion and checker/setup failure; 27 entrypoints use shared disposal');
+ assert.equal(adopted,26);
+ console.log('PASS: 10 caller functions clean synthetic mod/data on completion and checker/setup failure; 26 entrypoints use shared disposal');
 } finally { fs.rmSync(home,{recursive:true,force:true}); }

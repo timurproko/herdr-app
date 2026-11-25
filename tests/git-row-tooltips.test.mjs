@@ -67,6 +67,29 @@ for(let i=0;i<530;i++) {
   assert.ok(panel.pullTextWidths.size<=512&&panel.pullTextRequests.size<=512,'Real callbacks enforce the cache/request bounds');
 }
 assert.ok(panel.pullTextWidths.size<=512&&panel.pullTextRequests.size<=512);
+// Native titles stay unchanged even when the same element gets a new string
+// without another size callback. Lower-line geometry outlives changed facts.
+for(const coordinator of [false,true])for(const ghost of [false,true])for(const zoom of [1,1.3]) {
+  panel.context=coordinator?'tasks:edit':'ordinary';h.setZoom(zoom);
+  let pr={...facts.pullRow({...source,title:'Short'},'owner',now),...(coordinator?{key:'owner/repo#17',repo:'owner/repo'}:{})};
+  const prefix=ghost?'swap-':'',id=pr.key??17,build=()=>panel.pullRow(t,pr,ghost);
+  const before=h.settleChanged(build,200,zoom),box=before.geometry.get(find(before.tree,`${prefix}pr-title-${id}`));
+  const allocated=panel.pullLineSizes.get(`${prefix}pr-meta-${id}`).availablePhysical;
+  pr={...pr,title:'Changed long title '.repeat(120),tasks:{done:99,total:99,label:'99 tasks done'}};
+  const after=h.settleChanged(build,200,zoom),title=find(after.tree,`${prefix}pr-title-${id}`);
+  assert.deepEqual(after.geometry.get(title),box);
+  assert.ok(title.attrs.truncate&&title.attrs.font_semibold);
+  assert.equal(title.attrs.font_family,undefined,'Title inherits the interface font unchanged');
+  assert.equal(title.attrs.on_size_change,undefined,'Native titles have no width-measurement gate');
+  assert.equal(title.kids[0],pr.title);assert.equal(tip(title),pr.title);
+  assert.equal(panel.pullLineSizes.get(`${prefix}pr-meta-${id}`).availablePhysical,allocated);
+  assert.equal(tip(find(after.tree,`${prefix}pr-tasks-${id}`)),'99 tasks done');
+  assert.ok(!nodes(after.tree).some(n=>/pr-title.*(?:probe|measure|prefix|ellipsis)/.test(n.attrs.id?.[0]??'')));
+  h.setFont('Another interface face');h.setZoom(1);
+  h.render(build);
+  assert.equal(panel.pullLineSizes.get(`${prefix}pr-meta-${id}`).available,allocated,'Typography invalidation reuses physical geometry without a callback');
+  h.setFont('Geist');
+}
 for(const state of ['OPEN','CLOSED','MERGED']) {
   const f=fixture({state,closedAt:source.createdAt,mergedAt:source.createdAt});assert.equal(Boolean(tip(f.get('state-slot').kids[0])),state==='OPEN');
 }
@@ -76,4 +99,4 @@ for(const coordinator of [false,true])for(const ghost of [false,true]) {
   panel.aggregate.target=()=>({terminal:'t2'});const f=fixture({},480,1.3,coordinator,ghost),button=f.get('agent');
   assert.equal(tip(button),'Open agent: Build worker');assert.equal(Boolean(button.attrs.on_click),!ghost);
 }
-console.log(`PASS ${comparisons} informative lower-line matrices, approved native-title fallback, combined-summary suppression, four-probe background batches, stale context/font/zoom callbacks, 100 immediately mounted rows and unchanged state/agent authority`);
+console.log(`PASS ${comparisons} informative lower-line matrices, unchanged native titles and same-ID edits, combined-summary suppression, four-probe background batches, stale context/font/zoom callbacks, 100 immediately mounted rows and unchanged state/agent authority`);

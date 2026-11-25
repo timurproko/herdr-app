@@ -48,7 +48,7 @@ function assertStatusIcons(geometry,row,zoom) {
   }
   for(const separator of find(row,`${prefix}pr-meta-${id}`).kids.filter(node=>!node.attrs.id)) {
     const box=geometry.get(separator);
-    near(box.y+box.height/2,line.y+line.height/2+1.5*zoom,'Separators retain their existing optical offset');
+    near(box.y+box.height/2,line.y+line.height/2,'Separators retain main\'s shared centred alignment');
   }
 }
 function assertTextFits(geometry,row) {
@@ -227,9 +227,9 @@ for(const done of [0,1,2])for(const state of ['success','failure','pending','unk
     near(geometry.get(icon).height,12*zoom,'Icon height is unchanged');
     delete icon.attrs.top;
   }
-  const unshifted=rowGeometry(tree,390,zoom);
+  const unshifted=rowGeometry(tree,390,zoom),painted=new Set(icons.flatMap(icon=>nodes(icon)));
   for(const [node,box] of geometry)if(typeof node==='object') {
-    const expected=icons.includes(node)?{...box,y:box.y-zoom}:box;
+    const expected=painted.has(node)?{...box,y:box.y-zoom}:box;
     assert.deepEqual(plain(unshifted.get(node)),plain(expected),'Icon offsets do not move neighbours or change horizontal geometry');
   }
   // Reintroducing either defect must fail the same geometric assertions.

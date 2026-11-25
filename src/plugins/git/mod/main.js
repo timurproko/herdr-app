@@ -789,14 +789,6 @@ export default class Changes extends View {
     return request;
   }
 
-  // Native Segoe UI truncation has a readable U+2026 without measuring full
-  // titles or candidate prefixes. The approved full-title tooltip fallback is
-  // intentional, including fitting titles; only title/header face changes.
-  pullTitle(id,value,font=U.font,height=20) {
-    return div().id(id).min_w(0).h(height).truncate().line_height(`${height}px`)
-      .font_family('Segoe UI').text_size(font).tooltip(value).child(value);
-  }
-
   labelPill(t, label, id) {
     const {background,foreground,border} = labelColors(t,label.color);
     // Border-box: 4px padding + 1px border preserves the original 5px inset.
@@ -941,8 +933,6 @@ export default class Changes extends View {
       ...(pr.login ? [{kind:'author', measureKey:pr.login, tooltip:pr.login, render:(_short, probe) => text('author', pr.login, probe)}] : []),
       ...(pr.when ? [{kind:'time', measureKey:pr.when, compactKey:pr.compactWhen, compact:true, tooltip:pr.when, info:exact?`${pr.when}\n${exact}`:null, render:(short, probe) => text('time', short ? pr.compactWhen : pr.when, probe)}] : []),
     ], ['author']);
-    // Lower both status-icon slots optically without moving text, separators
-    // or layout reservations. Relative offsets scale with native app zoom.
     const meta = this.pullLine(t, `${prefix}pr-meta-${rowId}`, [
       ...(pr.tasks ? [{kind:'tasks', measureKey:pr.tasks.label, compactKey:`${pr.tasks.done}/${pr.tasks.total}`, compact:true, tooltip:pr.tasks.label, render:(short, probe) => h_flex().id(groupId('tasks', probe)).min_w(0).h(18).gap(4).items_center()
         .child((probe ? div().size(U.tinyIcon) : this.taskIcon(t, pr.tasks)).id(groupId('task-icon', probe)).flex_none().relative().top(1))
@@ -970,7 +960,7 @@ export default class Changes extends View {
       .child(div().id(`${prefix}pr-state-slot-${rowId}`).w(U.icon).h(20).flex_none().flex().items_center().child(this.pullIcon(t, pr)))
       .child(v_flex().flex_1().min_w(0).gap(3)
         .child(h_flex().id(`${prefix}pr-title-line-${rowId}`).w_full().min_w(0).h(20).min_h(20).max_h(20).flex_none().gap(4).items_center().line_height('20px')
-          .child(this.pullTitle(`${prefix}pr-title-${rowId}`,pr.title).flex_1().font_semibold().text_color(t.foreground))
+          .child(div().id(`${prefix}pr-title-${rowId}`).flex_1().min_w(0).h(20).truncate().text_size(U.font).font_semibold().text_color(t.foreground).tooltip(pr.title).child(pr.title))
           .child(div().id(`${prefix}pr-agent-slot-${rowId}`).w(U.insetControl).h(20).flex_none().relative()
             .when(Boolean(agentButton), el => el.child(agentButton))))
         .child(byline.line).child(meta.line))
@@ -1070,30 +1060,24 @@ export default class Changes extends View {
   }
 
   repositoryNameLabel(repo,scope) {
-    if(!this.pullTypography)this.beginPullRender();
     this.repositoryNameSizes ??= new Map();
-    const id=`task-repo-name-${scope}-${repo}`,{zoom}=this.pullTypography,key=`${zoom}\0header:${U.meta}:Segoe UI\0${repo}`,context=this.context;
-    let sizes=this.repositoryNameSizes.get(id);
-    if(!sizes) {sizes={};this.repositoryNameSizes.set(id,sizes);if(this.repositoryNameSizes.size>TEXT_CACHE_LIMIT)this.repositoryNameSizes.delete(this.repositoryNameSizes.keys().next().value);}
-    sizes.key=key; // Text/style invalidation never discards the ID's allocated physical width.
-    const current=()=>this.context===context&&this.shown()&&(this.aggregate?.currentContext?.({presentation:true})??this.aggregate?.context)?.scope===scope&&(!this.aggregate?.repositories||this.aggregate.repositories().includes(repo));
-    const request=this.claimPullProbe(key),natural=this.pullTextWidths.get(key);
-    return div().id(id).flex_1().min_w(0).h(18).relative().overflow_hidden().font_family('Segoe UI').text_size(U.meta).line_height('18px')
-      .on_size_change((size,cx)=>{
-        const live=settings();if(!current()||(live.zoom>0?live.zoom:1)!==zoom||!Number.isFinite(size.width))return;
-        if(Math.abs((sizes.available??-1)-size.width)<0.01)return;
-        sizes.available=size.width;cx.notify();
-      })
-      .when(Number.isFinite(natural)&&Number.isFinite(sizes.available)&&natural>sizes.available/zoom+0.01,el=>el.tooltip(repo))
+    const id=`task-repo-name-${scope}-${repo}`;
+    const sizes=this.repositoryNameSizes.get(id)??{};
+    const overflowing=()=>Number.isFinite(sizes.available)&&Number.isFinite(sizes.intrinsic)&&sizes.intrinsic>sizes.available+0.5;
+    const measure=(kind,size,cx)=>{
+      if(!this.shown() || this.aggregate?.currentContext({presentation:true})?.scope!==scope || !this.aggregate.repositories().includes(repo) || !Number.isFinite(size.width))return;
+      const before=overflowing();sizes[kind]=size.width;this.repositoryNameSizes.set(id,sizes);
+      if(before!==overflowing())cx.notify();
+    };
+    // A non-shrinking invisible flex child measures the same text's natural width.
+    // Its absolute clipped parent cannot reserve width or add a line to the header.
+    return div().id(id).flex_1().min_w(0).relative().overflow_hidden()
+      .on_size_change((size,cx)=>measure('available',size,cx))
+      .when(overflowing(),el=>el.tooltip(repo))
       .child(div().truncate().child(repo))
-      .when(request!=null,el=>el.child(div().absolute().left(0).top(0).w(0).h(0).overflow_hidden().invisible().flex()
-        .child(div().id(`${id}-intrinsic-measure-${request}`).flex_none().whitespace_nowrap().child(repo)
-          .on_size_change((size,cx)=>{
-            const live=settings();if(!current()||(live.zoom>0?live.zoom:1)!==zoom||!Number.isFinite(size.width)||this.pullTextRequests.get(key)!==request)return;
-            this.pullTextRequests.delete(key);this.pullTextWidths.set(key,size.width/zoom);
-            if(this.pullTextWidths.size>TEXT_CACHE_LIMIT)this.pullTextWidths.delete(this.pullTextWidths.keys().next().value);
-            cx.notify();
-          }))));
+      .child(div().absolute().left(0).top(0).flex().invisible()
+        .child(div().id(`${id}-probe`).flex_none().whitespace_nowrap().child(repo)
+          .on_size_change((size,cx)=>measure('intrinsic',size,cx))));
   }
 
   repositorySection(t, {repo, rows, error}, scope) {
@@ -1163,6 +1147,10 @@ export default class Changes extends View {
     const repositories=aggregate.repositories(), rows=aggregate.rows(this.view);
     const sections=repositories.map(repo=>({repo,rows:rows.filter(pr=>pr.repo===repo),error:aggregate.readNotice(repo,this.view)}))
       .filter(section=>section.rows.length || section.error);
+    if(this.repositoryNameSizes){
+      const ids=new Set(repositories.map(repo=>`task-repo-name-${scope}-${repo}`));
+      for(const id of this.repositoryNameSizes.keys())if(!ids.has(id))this.repositoryNameSizes.delete(id);
+    }
     const paging=this.taskSections(sections,scope);
     this.notices ??= new GitNotices();
     const notices=new Map(repositories.map(repo=>[repo,this.notices.sync(cx,{enabled:this.shown() && !aggregate.context.stale,repository:repo})]));
@@ -1266,8 +1254,8 @@ export default class Changes extends View {
         })
         .child(sidebarTitle(t, 'changes', 'git-title'))
         .child(h_flex().id('git-repo-slot').flex_1().min_w(0).pr(U.insetControl * toolCount + 4 * (toolCount - 1) + 16 - U.gutter).items_center()
-          .when(Boolean(this.root && this.repo?.url && this.repo?.name), el=>el.child(this.pullTitle('git-repo-name',this.repo.name.split('/').at(-1),U.meta,18).max_w_full().flex_shrink(1)
-            .text_color(t.dim).tooltip(this.repo.url))))
+          .when(Boolean(this.root && this.repo?.url && this.repo?.name), el=>el.child(div().id('git-repo-name').min_w(0).max_w_full().flex_shrink(1).truncate()
+            .text_size(U.meta).text_color(t.dim).tooltip(this.repo.url).child(this.repo.name.split('/').at(-1)))))
         .child(reveal(headerTools(h_flex()).id('git-actions').bg(t.surface), this.headerHovered)
           .when(Boolean(this.root), el => el.child(refreshButton(t, { id: 'git-refresh', icon: 'mods/custom-changes/refresh.svg', label: 'Refresh', busy, spinning: Boolean(this.root), owner: this, scope: this.context,
             enabled: this.headerHovered && Boolean(this.root), size: U.insetControl, iconSize: U.tinyIcon, radius: U.insetRadius, color: t.dim, hover: subtleActionFill(t),

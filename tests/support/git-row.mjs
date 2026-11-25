@@ -24,7 +24,7 @@ export async function rowHarness({host={},modules={}}={}) {
   panel.pullLine=function(t,id,items,order){lineInputs.set(id,items);return pullLine.call(this,t,id,items,order);};
   panel.resetRepository();panel.root='/repo';panel.repo={name:'owner/repo'};panel.context=JSON.stringify(['/repo',null]);panel.view='open';panel.foldedRepositories=new Set();
   panel.agentLinks={related:()=>agent?{key:'agent',address:'t2'}:null};
-  panel.aggregate={context:{scope:'home'},target:()=>agent?{terminal:'t2'}:null,focus:(...args)=>focus.push(args)};
+  panel.aggregate={context:{scope:'home'},currentContext:()=>panel.aggregate.context,repositories:()=>['owner/repo'],target:()=>agent?{terminal:'t2'}:null,focus:(...args)=>focus.push(args)};
   const cx={focus_handle(){if(rendering)throw Error('focus handle during render');return {};},notify(){if(rendering)throw Error('notify during render');},stop_propagation(){},spawn:fn=>fn(cx)};
   const render=fn=>{lineInputs=new Map();panel.beginPullRender?.();panel.pullTextPending??=new Set();rendering=true;try{return fn();}finally{rendering=false;}};
   const nativeSizes=new Map();

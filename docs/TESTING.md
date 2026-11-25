@@ -355,14 +355,15 @@ No deployment or live label mutation is performed.
 `tests/git-row-tooltips.test.mjs` settles actual shared row trees at supported
 zooms, including 100% and 130%, in ordinary/coordinator live/ghost variants.
 Complete number/author/tasks/checks/labels/review text has no repeat-only item or
-ancestor tooltip. Titles use the explicitly approved always-full-title fallback,
-with no title measurement or dependency on a size callback. Compact/clipped values retain full wording; completely
+ancestor tooltip. Titles retain their existing native truncation, inherited
+interface font and full-title hover, without title measurement or a size callback. Compact/clipped values retain full wording; completely
 hidden review/labels have a surviving hover target. Exact UTC timestamps,
 newest-workflow failing/pending check names, unstated state/conflict and known
 related-agent names remain informative. Hover adds no requests; names do not
 become action identity. Existing agent/fallback/facts fixtures protect those guards.
-Lower-line groups and repository headers share the 512-entry style/font/zoom
-cache, with **four intrinsic probes total per snapshot**, not per row. Known
+Lower-line groups share the 512-entry style/font/zoom cache, with **four lower-line
+intrinsic probes total per snapshot**, not per row. Repository-header rendering
+and its existing overflow measurement are unchanged. Known
 visible ordinary rows get priority, then native callbacks advance background
 batches without withholding rows or installing a frame timer. Titles, individual
 pills and prefix candidates add no probes. Warm strings build none. Tests cover
@@ -373,7 +374,7 @@ These are synthetic native-element/layout assertions, not live hover pixels.
 
 | Item | Informative tooltip |
 | --- | --- |
-| Title | Always the complete title: approved performance fallback, including fitting text |
+| Title | Unchanged full-title hover, including fitting text; native truncation and inherited font |
 | Number | Full number only if hidden/abbreviated; normally none |
 | Author | Full login only when clipped |
 | Time | Full compact/clipped wording and known exact UTC timestamp |
@@ -390,38 +391,10 @@ The screenshot-shaped `3 tasks done / 11/11 / Rework` case explicitly checks
 metadata, byline, label-group and whole-row ancestor targets at 390px and
 100%/130% in both views; complete visible values cannot resurrect a summary.
 
-## Readable Git ellipses
-
-`tests/git-row-ellipsis.test.mjs` settles 540 shared-row cases across ordinary,
-pinned, scrolling, coordinator and both ghost paths in Open/Closed/merged states,
-280–480px and 75–200% including 130%. Native truncation supplies U+2026 in Segoe UI,
-retaining the original size/weight and 20px title/74px block geometry. There is no
-manual prefix search, candidate probe, per-character estimate or altered text
-content. Fitting titles keep the full-title fallback tooltip. Font/containment
-mutations fail. Folded/expanded repository names retain their 18px text line.
-The regression also uses changed-size-only callbacks: short-to-long edits on the
-same native ID and 200px box, font changes, and explicit zoom invalidation with
-no allocated-size callback. Native title truncation/full hover update immediately;
-lower-line/header physical widths survive by ID and re-normalize for current zoom.
-
-The opt-in Windows `tests/features/git-row-ellipsis-native.mjs --run --diagnose`
-compares native/literal U+2026 in explicit Geist, both weights, 18/20/32px lines,
-and Segoe UI at 100%/130%. Without `--diagnose`, it captures the actual packaged
-native fallback before/after and asserts zero title/pill/prefix probes. It creates only its
-own disposable app home under `.artifacts/`, selects an unavailable Core binary,
-starts no terminals and never changes the live app or preferences. It kills only
-its own app process; this fixture is not a hosted test or a live deployment.
-
-On Windows App 0.1.18 the Geist glyph forms a flat stroke in native truncation
-**and literal unclipped text**, at normal and semibold weights; a taller line
-does not fix it. This rules out a custom underscore suffix, title-only bolding
-and the fixed 20px clipping as the cause. Segoe UI renders distinct dots, so the
-final performance repair uses that face for the title/header text at its original
-size/weight, letting native shaping truncate without JS width measurement. The
-earlier suffix-only measured-prefix implementation was rejected after its cold
-100-row native render interrupted. Native diagnosis/fix captures at both requested zooms had no host errors;
-this proves the reproduced typography mechanism, not real repository data,
-native pointer-hover behavior or other operating systems' font availability.
+The tooltip regression also dispatches callbacks only for changed dimensions:
+same-ID short-to-long title edits at 200px, lower-line text changes and typography
+invalidation must preserve allocated geometry. Titles stay native, inherit the
+interface font and keep complete hover without a title-width callback or probe.
 
 ## Cold mounted Git row budget
 

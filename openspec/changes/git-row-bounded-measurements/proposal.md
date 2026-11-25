@@ -2,16 +2,15 @@
 
 ## Why
 
-PR #61's first tooltip/ellipsis implementation exceeded the native watchdog at 100 cold mounted rows, including the already supported ordinary list. Review also reproduced a same-ID title edit losing its available width until a resize. The person explicitly requested this rework and approved the native/full-title-tooltip fallback instead of title measurement.
+Lower-line PR hover currently repeats complete visible wording, including through parent strips. The earlier implementation also exceeded the native render watchdog at 100 cold mounted rows. The person reduced this PR to informative lower-line tooltips only; title/header presentation and the visual alignment delivered by main are not part of this change.
 
 ## What Changes
 
-- Preserve the delivered icon offsets and informative lower-line tooltips.
-- Remove title, per-pill and candidate-prefix measurement subtrees entirely. Native Segoe UI truncation supplies readable U+2026 at the original size/weight; PR titles always retain full-title hover as the approved fallback.
-- Limit shared intrinsic probes to four per complete render, share the budget between repository headers and lower-line groups, reuse the 512-entry style/font/zoom cache, and let native callbacks advance later batches without delaying rows.
-- Prioritize the known ordinary visible slice using existing scroll bounds; fall back to display order when no viewport facts exist. Cache settings once per render entry, not per row/string.
-- Preserve allocated physical geometry by element ID across string/style invalidation and re-normalize it for current zoom.
-- Add fully mounted ordinary/coordinator 30/60/100/200-row baseline-relative tree budgets, zoom/font cold-start and same-ID changed-size-only regressions, and an opt-in native timing gate against fc0dfde.
+- Show lower-line tooltips only for clipped/compact/omitted values or additional known facts, without repeat-only parent summaries.
+- Reuse a 512-entry font/style/zoom cache with at most four lower-line intrinsic probes per render and visible ordinary rows first; native callbacks advance later batches without delaying rows.
+- Preserve lower-line allocated physical widths by native element ID across text and typography changes.
+- Retain native PR titles and repository headers exactly as on main, including inherited interface font, native truncation and full-title hover. No title measurement or custom truncation is introduced.
+- Protect cold fully mounted ordinary/coordinator 30/60/100/200-row cost with deterministic baseline-relative tree budgets and an opt-in native gate.
 
 ## Capabilities
 
@@ -21,10 +20,10 @@ None.
 
 ### Modified Capabilities
 
-- `plugin-integrations`: Approve the full-title tooltip exception, preserve native readable ellipses without title probes, and bound mounted-row measurement/build work and geometry lifetime.
+- `plugin-integrations`: Informative lower-line hover, bounded measurement work and geometry lifetime without title or header presentation changes.
 
 ## Impact
 
-Shared Git row/header rendering and scroll-bound observation, existing tooltip/geometry/native fixtures, new baseline tree-size fixture and native benchmark, README and testing/render-budget documentation. No dependencies, request cadence, paging semantics, native host patch, deployment or changes to PR #56/#59.
+Git lower-line rows and tooltip facts, targeted layout/hover tests, mounted-row budget fixtures, README and testing/render-budget guidance. Main's icon/separator geometry is retained. No font override, title-width probe, prefix fitting, custom suffix, header rendering change, new hover IO, dependency, deployment or native patch.
 
-The previous `git-row-informative-tooltips` archive is preserved. This change records the explicitly requested performance repair in the same open PR rather than undoing its finalized commit.
+The previous finalized archive is historical only. This active follow-up and the canonical specs supersede its abandoned title/header work without rewriting finalization history. The current scope was explicitly approved in the person's correction; no further plan approval is pending.

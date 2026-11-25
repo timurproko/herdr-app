@@ -2,52 +2,49 @@
 
 ## Context
 
-The previous archived implementation added title and per-pill measurement containers and a prefix search. Its cold native row builder rose from roughly 8/15/24 ms at 30/60/100 rows to 20/42/interrupted. The ordinary list already mounts every loaded row, so coordinator paging did not contain the regression. Its keyed title-size record also discarded available geometry on title edits despite an unchanged native ID/box.
-
-This repair is explicitly requested and approved, including dropping title measurement and retaining full-title tooltips. It preserves the earlier archive and repairs the same open PR.
+The ordinary list already mounts every loaded row. The earlier implementation regressed cold 30/60/100-row construction from roughly 8/15/24 ms to 20/42/interrupted. Coordinator paging could not protect it. The person has explicitly reduced this PR to informative lower-line tooltips and rejected any title/header typography or truncation change.
 
 ## Goals / Non-Goals
 
-**Goals:** Baseline +2 ms at 30/60/100 cold fully mounted rows, successful 200-row checks, a fixed four-probe snapshot budget, informative lower lines, immediate titles, and geometry that outlives text-metric keys.
+**Goals:** Informative lower-line hover without parent repetition; baseline +2 ms at 30/60/100 cold mounted rows; successful 200-row builds; four lower-line probes per snapshot; retained allocated geometry.
 
-**Non-Goals:** No paging/windowing change, hidden/delayed rows, JavaScript frame timer, new hover reads, native host patch, dependency or deployment.
+**Non-Goals:** No title/header font or truncation change, title measurement, prefix fitting, custom suffix, icon/separator change, paging/windowing change, hidden/delayed row, JavaScript frame timer, hover IO, dependency, native patch or deployment.
 
 ## Decisions
 
-### Prefer the approved no-title-measurement fallback
+### Keep native titles and headers unchanged
 
-Delete the title/pill/prefix width helpers. PR titles use native truncation and always expose their complete title, including when it fits. Give title/header text Segoe UI while retaining the original size, weight, line and outer geometry. Native diagnosis already proved that literal/native U+2026 in Geist forms a stroke at these sizes, independently of boldness or clipping; Segoe UI's native suffix paints distinct dots. This changes the title/header face, not just the suffix face, and is stated explicitly.
+Use main's PR-title and ordinary-header expressions and coordinator repository-name helper unchanged. Titles inherit the interface font, keep native truncation and always expose the complete title. Title edits immediately replace native text/tooltip without any size callback. The existing coordinator header overflow measurement remains main's implementation; it is not part of the new lower-line probe queue.
 
-There is no prefix search and therefore no candidate probe, estimated character budget or title measurement queue. The approved always-title-tooltip exception is preferable to silently blocking title updates on an unavailable fit measurement. Same-ID edits now immediately replace native text/tooltip without needing any size callback.
+Keep main's merged icon/separator implementation and its geometry regressions. No text or icon motion compensates for hover policy.
 
-Pill content returns to the original lightweight clipped text node. Its existing measured group allocation decides whether the group/metadata hover supplies complete names; there are no individual pill width probes or repeat-only pill tooltips. Omitted coordinator labels remain informative.
+### Informative lower-line targets
 
-### Four probes across the complete snapshot
+Lower-line items expose complete originals only when compacted, clipped or omitted, or when known timestamps/check details add information. Parent strips recover completely hidden values without repeating visible items. Label pills inherit an informative group hover; no individual pill-width probes. Known agent/state descriptions remain informative and do not grant action authority or start hover reads.
 
-`beginPullRender` captures zoom/interface font once and resets one shared pending set; `claimPullProbe` refuses cache hits, duplicates and requests after four reservations. Both ordinary and coordinator metadata use the same 512-entry shared native width cache. Header intrinsic probes consume the same budget. Cached strings produce no recurring probe.
+### Four lower-line probes per snapshot
 
-Actual native size callbacks populate the cache and notify after layout, allowing the next four missing keys in a subsequent render. This is amortization, not a JavaScript frame loop or a separate timer. Available-width callbacks remain on existing elements and are not additional intrinsic probes. Rows always render immediately with existing full/compact fallback behavior.
+Capture zoom/interface font once per render entry. One shared reservation set refuses cache hits, duplicates and work after four probes. Ordinary/coordinator lower lines share the 512-entry width cache. Native size callbacks populate it and notify after layout, advancing missing keys in subsequent renders without a timer or withholding rows. Existing allocated-width callbacks are not intrinsic probes.
 
-For ordinary lists, existing content/frame motion bounds identify the known visible slice. Missing keys for that slice and the pinned row take priority; after they are known, background keys advance in display order. Without trustworthy viewport facts, use current presentation order. Measurement priority cannot reorder rows, grant action authority or retarget a click.
+Existing content/frame motion bounds identify a known visible ordinary slice. Missing keys there and on the pinned row take priority; background keys follow in display order. Without reliable viewport facts use presentation order. This changes measurement priority only, not row order or navigation.
 
-### Native ID owns allocated geometry
+### Geometry outlives facts
 
-Lower-line and repository-header records retain allocated physical widths by native element ID. Text/style keys invalidate intrinsic widths, not the element's available box. Normalize preserved physical width with current zoom when selecting compact forms. Context/font/zoom/request guards still reject obsolete callbacks. Tests dispatch callbacks only when actual dimensions change, including same-ID short-to-long title edits and font changes.
+Retain lower-line allocated physical widths by native element ID, not text/style key. Normalize retained width with current zoom when intrinsic facts are invalidated. Context/font/zoom/request guards refuse obsolete callbacks. Changed-size-only tests cover same-ID title edits (with unchanged native title behavior), lower-line text changes and typography changes without an allocated-size callback.
 
-### Deterministic budget guard plus native timing gate
+### Cost regression
 
-Freeze fc0dfde cold operations/elements for a shared, versioned synthetic workload at 30/60/100/200 rows. The ordinary fixture calls real `renderPulls` and asserts every row is returned; coordinator timing deliberately builds all rows instead of reporting a ten-item page as a large list. Current operations/elements must not exceed those baselines; settings reads remain constant and intrinsic probes at most four. Mutation controls restore per-row hidden subtrees, excess probes or bridge reads and must fail.
+Freeze fc0dfde operations/elements for a shared workload at 30/60/100/200 rows. Ordinary fixtures call real renderPulls and assert every loaded row is returned; coordinator timing deliberately bypasses paging. Counts must not exceed baseline, settings reads remain constant and lower-line probes stay at four. Mutation controls restore excess subtrees, probes or bridge reads and must fail.
 
-The opt-in native tool compares fresh baseline/current checks on the same machine, records all samples and native failures, enforces the requested baseline +2 ms and approximate 10/17/26 ms ceilings at 30/60/100, and requires every current 200-row sample to complete. It additionally tests the ordinary scrolled-bottom priority path. This measures JS/native-element construction, not GPU paint or real scrolling latency.
+The opt-in native tool compares fresh baseline/current checks, records failures, enforces baseline +2 ms and additional 10/17/26 ms ceilings at 30/60/100, and requires every current 200-row sample to complete. It also measures a scrolled-bottom ordinary case. These are JS/native-element construction timings, not GPU paint or real input latency.
 
 ## Risks / Trade-offs
 
-- Full-title hover is occasionally redundant → Explicitly approved fallback; lower-line/combined summaries remain informative-only.
-- Title/header face changes from Geist to Segoe UI → Preserve size/weight/geometry; verify native ellipses at 100%/130%, disclose Windows-only font evidence.
-- Cold lower-line compaction learns progressively → Four native probes per snapshot, immediate rows, visible-slice priority; no loading placeholders or measurement gates.
-- Native wall-clock measurements vary with system load → Record samples/provenance and use deterministic baseline-relative operations/elements in hosted CI, with native opt-in checks as separate evidence.
-- Ordinary large lists can exceed budgets even if coordinator pages are safe → Exercise actual fully mounted ordinary Open/Closed 100/200 rows, zoom/font cold starts and a scrolled viewport, not only coordinator page tests.
+- Cold lower-line shortening learns progressively: four probes, immediate rows and visible-first priority avoid a cold burst.
+- Native wall-clock measurements vary: record samples/provenance and keep deterministic hosted tree guards.
+- Titles retain occasionally redundant full-title hover intentionally, exactly as before; the lower-line policy does not apply to them.
+- Existing repository-header measurement remains unchanged and separate from the lower-line budget.
 
 ## Migration Plan
 
-No persisted-data migration. Commit this repair on top of the existing finalized archive. Keep icon offsets and lower-line tooltip behavior, update this PR's approved outcome/acceptance wording for the explicit title fallback, and let delivery automation finalize this follow-up change. No readiness/merge command or deployment is part of the implementation.
+No persisted-data migration. Keep the historical finalized archive, restore canonical specs to main before automation applies this reduced-scope delta, and let delivery finalize it. No manual readiness, merge or deployment.
