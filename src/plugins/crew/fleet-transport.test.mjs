@@ -14,11 +14,12 @@ async function fixture(machine=null) {
  const all=[{tab:q('c'),pane:'cp',terminal:q('owner')},{tab:q('w'),pane:'wp',terminal:q('worker')}];
  const list=[{address:q('owner'),state:'live',labels:{'custom.crew.home':'1'}},{address:q('worker'),state:'live',labels:{'crew.task':'ship','crew.home':'home','herdr.space':'fm-crew-home'}}];
  const state={'custom.plugins':{crew:{enabled:true},git:{enabled:true}},'custom.spaces.preferences':{connectFleetToCoordinator:true}},calls=[],jobs=[],handles=[];
- const host={shared:k=>state[k],setShared:(k,v)=>state[k]=v,spaces:()=>groups,panes:()=>all,terminals:()=>list,machines:()=>[{name:machine,layout:'ready'}],checking:()=>false,hc:async args=>{calls.push(args);return answer(args);}};
+ const hosts=[{name:machine,layout:'ready'}];
+ const host={shared:k=>state[k],setShared:(k,v)=>state[k]=v,spaces:()=>groups,panes:()=>all,terminals:()=>list,machines:()=>hosts,checking:()=>false,hc:async args=>{calls.push(args);return answer(args);}};
  const load=()=>loadMod({host,mod:'custom-changes',globals:{Date:class extends Date{static now(){return now;}}},modules:{'space-color-state.js':'src/shared/space-color-state.js'},entry:'export * as f from "./plugins/crew/fleet.js";export * as p from "./plugins/crew/plugin.js";export * as r from "./plugins.js";'});
  const {f,p,r}=await load(),cx={spawn(fn){const handle={done:false,is_done(){return this.done;},cancel(){this.done=true;}};handles.push(handle);jobs.push(Promise.resolve().then(()=>fn(cx)).finally(()=>handle.done=true));return handle;},notify(){},timer:{after(_ms,fn){Promise.resolve().then(()=>fn(cx));}}};
  const drain=async()=>{while(jobs.length)await Promise.all(jobs.splice(0));};
- return {f,p,r,load,cx,drain,calls,state,groups,all,list,handles,get now(){return now;},advance:ms=>now+=ms,setAnswer:fn=>answer=fn,
+ return {f,p,r,load,cx,drain,calls,state,groups,all,list,hosts,handles,get now(){return now;},advance:ms=>now+=ms,setAnswer:fn=>answer=fn,
   event:(force=false)=>r.pluginEvent('spaces.refresh',{cx,force}),context:()=>r.pluginPullContext(q('coordinator'))};
 }
 const command=call=>call.at(-1),timeout=call=>call[call.indexOf('--timeout')+1];
@@ -97,6 +98,35 @@ for(const sameOwner of [false,true]){
  for(let i=0;i<3;i++){x.advance(500);x.r.pluginEvent('workspace.context.refresh',{cx:x.cx});await x.drain();assert.equal(x.calls.length,1,'Shown cold Git respects the failure retry deadline');}
  x.advance(500);x.event();await x.drain();assert.equal(x.calls.length,2);
 }
+// A cold local consumer cannot make another machine's cached token force local
+// reads, defeat local backoff, or starve lower-priority discovery.
+for(const failure of [false,true])for(const remoteLayout of ['unavailable','ready'])for(const space of remoteLayout==='ready'?['coordinator']:[undefined,'coordinator']){
+ const x=await fixture();
+ x.groups.push(...x.groups.map(s=>({...copy(s),id:`pc2/${s.id}`,machine:'pc2',tabs:s.tabs.map(t=>({id:`pc2/${t.id}`}))})));
+ x.all.push(...x.all.map(p=>({...p,tab:`pc2/${p.tab}`,terminal:`pc2/${p.terminal}`})));
+ x.list.push(...x.list.map(t=>({...copy(t),address:`pc2/${t.address}`})));
+ x.hosts.push({name:'pc2',layout:'ready'});x.event();await x.drain();assert.equal(x.calls.length,2);
+ x.hosts[1].layout=remoteLayout;
+ const peer=await x.load(),localCalls=()=>x.calls.filter(call=>!call.includes('--on')),before=localCalls().length;let release;
+ x.setAnswer(args=>args.includes('--on')?Promise.resolve(reply(JSON.stringify(legacy))):new Promise(resolve=>release=resolve));
+ x.groups.push({id:'ordinary',tabs:[]});assert.equal(peer.f.fleetWitnessMachines('ordinary').length,0,'An unrelated selected space requests no proof');
+ const request=async()=>{peer.r.pluginEvent('workspace.context.refresh',{cx:x.cx,space});await tick();x.event();await tick();};
+ const settle=async()=>{
+  peer.r.pluginPullContext('coordinator',{presentation:true}); // Witness before completion.
+  release(failure?reply('',1,'offline'):reply(JSON.stringify(legacy)));await x.drain();
+ };
+ await request();assert.equal(localCalls().length,before+1);checkCommand(localCalls().at(-1),null,false);await settle();
+ for(let second=1;second<=3;second++){
+  x.advance(1000);await request();
+  if(second===1 && !failure){assert.equal(localCalls().length,before+2);checkCommand(localCalls().at(-1),null,true);await settle();}
+  if(second===2 && failure){assert.equal(localCalls().length,before+2);checkCommand(localCalls().at(-1),null,false);await settle();}
+  assert.equal(localCalls().length,before+(!failure || second>=2?2:1),'Other-machine proof cannot bypass the local TTL or failure deadline');
+ }
+ if(failure){x.advance(3999);await request();assert.equal(localCalls().length,before+2);x.advance(1);await request();assert.equal(localCalls().length,before+3);await settle();}
+ const remoteReads=x.calls.filter(call=>call.includes('--on'));
+ assert.equal(remoteReads.length,remoteLayout==='ready'?2:1,'Unavailable machine is skipped; a ready unrelated machine only gets optional discovery');
+ if(remoteLayout==='ready')checkCommand(remoteReads.at(-1),'pc2',true);
+}
 // A distinct sandbox can witness an active lifecycle read, but cannot borrow a
 // completed persisted token. This is required for real Git/menu copies.
 {
@@ -110,6 +140,7 @@ for(const sameOwner of [false,true]){
  const x=await fixture();x.event();await x.drain();let release;x.setAnswer(()=>new Promise(resolve=>release=resolve));
  x.r.pluginEvent('workspace.context.refresh',{cx:x.cx});await tick();assert.equal(x.state['custom.fleet.reads'].local.kind,'discovery');
  x.r.pluginEvent('workspace.context.refresh',{cx:x.cx,force:true});await tick();assert.equal(x.calls.length,2);
+ x.advance(1001);x.r.pluginEvent('workspace.context.refresh',{cx:x.cx});await tick();assert.equal(x.calls.length,2,'Renewed nonurgent demand keeps only discovery-blocked urgency');
  release(reply(JSON.stringify(discovered)));await x.drain();x.setAnswer(async()=>reply(JSON.stringify(legacy)));x.event();await x.drain();
  assert.equal(x.calls.length,3);checkCommand(x.calls.at(-1),null,false);
 }

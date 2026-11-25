@@ -7,7 +7,7 @@
 // identity labels) or refuses with the reason; the only thing it ever writes is the crew
 // home itself, the first time.
 import { hc, shared, setShared, panes, terminals, pluginMod } from '../api.js';
-import { refreshFleets, fleetContexts, fleetNeedsWitness, fleetPullContext, fleetColorAllowed, invalidateFleet } from './fleet.js';
+import { refreshFleets, fleetContexts, fleetWitnessMachines, fleetPullContext, fleetColorAllowed, invalidateFleet } from './fleet.js';
 import { fleetError } from './fleet-diagnostics.js';
 import { fleetStatusScript } from './fleet-command.js';
 
@@ -584,7 +584,7 @@ export const readFleetStatus = async (machine, {current = () => true, progress =
   return result.stdout;
 };
 const FLEET_REQUEST = 'custom.fleet.request';
-let fleetLifecycle = null, lastFleetRequest = null;
+let fleetLifecycle = null, lastFleetRequest = null, lastFleetGeneration = null, deferredFleetUrgency = [];
 const discoverFleetStatus = (machine,options) => readFleetStatus(machine,{...options,discover:true});
 const refreshFleetContext = ({cx,force}) => {
   if(!cx)return;
@@ -593,26 +593,29 @@ const refreshFleetContext = ({cx,force}) => {
   fleetLifecycle=cx;
   return cx.spawn(async view => {
     await Promise.resolve();
-    const request=shared(FLEET_REQUEST), valid=request?.generation===(shared('custom.fleet.generation')??0);
-    const urgent=force===true || valid && request.id!==lastFleetRequest && request.force===true;
+    const generation=shared('custom.fleet.generation')??0, request=shared(FLEET_REQUEST), valid=request?.generation===generation;
+    const waiting=lastFleetGeneration===generation?deferredFleetUrgency:[];
+    const urgent=force===true || valid && request.id!==lastFleetRequest && request.force===true ? true
+      : [...new Set([...waiting,...(valid && request.id!==lastFleetRequest?request.proof??[]:[])])];
     const inventory=valid && request.inventory===true && Date.now()-request.at<1000;
-    refreshFleets(view,readFleetStatus,urgent,inventory?discoverFleetStatus:null);
-    // Leave an urgent request pending behind lower-priority discovery. Do not
-    // clear shared intent on consumption: that would cause a render/request loop.
-    if(!Object.values(shared('custom.fleet.reads')??{}).some(read=>read.kind==='discovery'))lastFleetRequest=request?.id;
+    // Only machines blocked by discovery retain urgency; never force another
+    // machine repeatedly while waiting for that lower-priority read.
+    deferredFleetUrgency=refreshFleets(view,readFleetStatus,urgent,inventory?discoverFleetStatus:null)??[];
+    lastFleetRequest=request?.id;lastFleetGeneration=generation;
   });
 };
-const requestFleetContext = ({cx,force}) => {
+const requestFleetContext = ({cx,force,space}) => {
   // A cold consumer must witness current verification, not a persisted success.
   fleetContexts(); // Witness a shared in-flight read before asking for proof.
-  const needsProof=fleetNeedsWitness(); // Expired/failed witnessed status obeys retry backoff.
+  const proof=fleetWitnessMachines(space); // Failed witnessed status obeys its machine's backoff.
   return cx?.spawn(async ()=> {
     await Promise.resolve(); // This transient task only publishes intent, never IO.
     const generation=shared('custom.fleet.generation')??0, at=Date.now(), prior=shared(FLEET_REQUEST);
     const recent=prior?.generation===generation && at-prior.at<1000;
     const inventory=pluginMod==='custom-changes' || recent && prior.inventory===true;
-    if(force===true || !recent || needsProof&&!prior.force || inventory&&!prior.inventory)
-      setShared(FLEET_REQUEST,{id:`${at}-${Math.random()}`,generation,at,force:force===true||needsProof,inventory});
+    if(force===true || !recent || proof.some(key=>!prior.proof?.includes(key)) || inventory&&!prior.inventory)
+      setShared(FLEET_REQUEST,{id:`${at}-${Math.random()}`,generation,at,force:force===true || recent && prior.force===true,
+        proof:[...new Set([...proof,...(recent?prior.proof??[]:[])])],inventory});
     if(fleetLifecycle)try {refreshFleetContext({cx:fleetLifecycle});}catch {fleetLifecycle=null;}
   });
 };
@@ -899,7 +902,8 @@ export default {
     PROJECTS,
   ],
   hooks: {},
-  events: { 'spaces.refresh': refreshFleetContext, 'workspace.context.refresh': requestFleetContext },
+  lifecycle: { 'spaces.refresh': refreshFleetContext },
+  events: { 'workspace.context.refresh': requestFleetContext },
   workspaceLinks: ({presentation = false} = {}) => fleetContexts({presentation}).filter(c=>c.child),
   guards: { 'spaces.color': ({pair}) => fleetColorAllowed(pair) },
   pullContext: ({space,presentation = false}) => fleetPullContext(space,{presentation}),

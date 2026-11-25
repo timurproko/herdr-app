@@ -256,6 +256,27 @@ for(const restart of ['cold','hot','layout']){
  assert.equal(both.find(row=>row.w.id==='pc2/fm-crew-remote').linked,true,'Remote first frame restores its own qualified pair');assert.equal(boot.r.pluginWorkspaceLinks().length,1,'Persisted remote identity grants no cross-machine authority');
  visible=false;boot.r.pluginEvent('spaces.refresh',{cx,force:true});await drain();assert.equal(Object.keys(store[f.DISPLAY_KEY].entries).length,1,'Ready native absence prunes just that machine');
 }
+// Ready-layout absence prunes memory even with attachment and/or Crew off.
+// An uncertain layout preserves it; a later deterministic ID reuse is not proof.
+for(const crewEnabled of [true,false])for(const missing of ['parent','child']){
+ const store=clone(savedState),record=store[f.DISPLAY_KEY].entries.null;
+ let ready=false,visible=true,recreated=false;
+ const present=()=>visible?groups.map(s=>recreated && s.id===record[missing]?{...s,tabs:[]}:s):groups.filter(s=>s.id!==record[missing]);
+ const boot=await load({...host,shared:k=>store[k],setShared:(k,v)=>store[k]=v,spaces:present,machines:()=>[{name:null,layout:ready?'ready':'loading'}]});
+ boot.p.updateSpacePreferences({connectFleetToCoordinator:false});
+ boot.r.setPluginEnabled(boot.r.pluginById('crew'),crewEnabled);
+ const before=requests;
+ boot.r.pluginEvent('spaces.refresh',{cx});await drain();assert.ok(store[f.DISPLAY_KEY].entries.null,'Off preserves extant spaces');
+ visible=false;boot.r.pluginEvent('spaces.refresh',{cx});await drain();assert.ok(store[f.DISPLAY_KEY].entries.null,'Uncertain absence preserves memory');
+ ready=true;boot.r.pluginEvent('spaces.refresh',{cx});await drain();assert.equal(store[f.DISPLAY_KEY].entries.null,undefined,'Off-state ready absence must prune identity');
+ assert.equal(requests,before,'Disabled cleanup performs no status IO');
+ visible=true;recreated=true;boot.r.setPluginEnabled(boot.r.pluginById('crew'),true);
+ boot.p.updateSpacePreferences({connectFleetToCoordinator:true});
+ assert.equal(links(boot.r).length,0,'Recreated deterministic space cannot inherit an obsolete pair before verification');
+ mode='defer';boot.r.pluginEvent('spaces.refresh',{cx});await tick();assert.equal(links(boot.r).length,0);
+ release();await drain();assert.equal(links(boot.r).length,0,'Empty recreated space cannot reattach from an incomplete reply');
+ recreated=false;mode='success';boot.r.pluginEvent('spaces.refresh',{cx,force:true});await drain();frame(true,boot.r);
+}
 // Corrupt/unknown records never manufacture a pair from names or role hints.
 for(const invalid of [{version:999,entries:savedState[f.DISPLAY_KEY].entries},{version:1,entries:{bad:{...Object.values(savedState[f.DISPLAY_KEY].entries)[0],adoption:'wrong'}}},{version:1,entries:[]}]){
  const store={'custom.plugins':{crew:{enabled:true}},'custom.spaces.preferences':{connectFleetToCoordinator:true},[f.DISPLAY_KEY]:invalid};

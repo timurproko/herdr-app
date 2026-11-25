@@ -185,10 +185,15 @@ function locallyVerified(key, entry) {
   if(entry?.token && pendingTokens.get(key)===entry.token)verifiedTokens.set(key,entry.token);
   return Boolean(entry?.token && verifiedTokens.get(key)===entry.token);
 }
-export function fleetNeedsWitness() {
-  return Object.entries(shared(FLEET_KEY)?.entries??{}).some(([key,entry])=> {
-    const token=entry?.attemptToken??entry?.token;
-    return token && !witnessed(key,token);
+export function fleetWitnessMachines(space) {
+  if(!enabled())return [];
+  const snapshot=model(),hosts=machines(),displays=savedDisplays(),group=space===undefined?null:snapshot.groups.find(s=>s.id===space);
+  return Object.entries(shared(FLEET_KEY)?.entries??{}).flatMap(([key,entry])=> {
+    const token=entry?.attemptToken??entry?.token,machine=entry?.machine??null;
+    const candidate=coordinatorCandidate(machine,snapshot),display=displays.find(d=>d.machine===machine);
+    const applicable=space===undefined ? candidate || display
+      : group && (group.machine??null)===machine && (candidate?.parent===space || [display?.parent,display?.child].includes(space));
+    return applicable && readyLayout(machine,hosts) && token && !witnessed(key,token)?[key]:[];
   });
 }
 export function fleetContexts({presentation = false} = {}) {
@@ -227,15 +232,19 @@ export function fleetColorAllowed(pair) {
 // The injected bounded status reader owns capability fallback, never consumers.
 export function refreshFleets(cx, readStatus, force = false, readDiscovery = null) {
   if(checking())return;
+  // Ready native absence is conclusive even while attachment/Crew is off.
+  // This cleanup is layout-only: it must precede every verification/IO gate.
+  const snapshot=model(), hosts=machines();pruneDisplays(snapshot,hosts);
   if(!enabled()) {clearFleetRetries();return;}
   if(shared(FLEET_KEY) && shared(FLEET_KEY).version!==1)return;
-  const snapshot=model(), hosts=machines();pruneDisplays(snapshot,hosts);
+  const deferred=[];
   const displays=savedDisplays();
   const relevant=new Set([...snapshot.list.filter(t=>t.state==='live' && (t.labels?.['custom.crew.home']==='1' || t.labels?.['crew.task'])).map(t=>machineOf(t.address)),...displays.map(d=>d.machine)]);
   clearFleetRetries(new Set([...relevant].map(machine=>machine??'local')));
   for(const machine of relevant) {
     if(machine && !hosts.some(m=>m.name===machine && m.layout==='ready')) continue;
     const key=machine??'local', state=shared(FLEET_KEY), entry=state?.entries?.[key];
+    const forced=force===true || Array.isArray(force) && force.includes(key);
     const reference=displays.find(d=>d.machine===machine)??entry?.identity, sig=signature(machine,snapshot,reference), now=Date.now();
     locallyVerified(key,entry);
     let pending=shared(READS)?.[key];
@@ -253,14 +262,17 @@ export function refreshFleets(cx, readStatus, force = false, readDiscovery = nul
     if(pending && !pending.owner)pending={...pending,until:Math.min(pending.until,(pending.transportUntil??pending.until)-READ_LEASE+PROCESSING_LEASE)};
     if(pending?.until>now) {
       if(pending.token!==entry?.attemptToken)pendingTokens.set(key,pending.token);
-      if(pending.token!==entry?.attemptToken || witnessed(key,pending.token))continue;
+      if(pending.token!==entry?.attemptToken || witnessed(key,pending.token)) {
+        if(forced && pending.kind==='discovery')deferred.push(key);
+        continue;
+      }
     }
     // Abandoned ownership/processing bypasses attempt and backoff gates.
     // Healthy native tasks renew liveness; cancelled predecessors cannot publish.
     const abandoned=Boolean(pending && pending.until<=now);
     const sameAttempt=(entry?.attemptSignature??entry?.signature)===sig, retry=sameAttempt?fleetRetry(machine):null;
-    if(!force && !abandoned && retry && now<retry.nextAt)continue;
-    const cached=!force && !abandoned && !retry && witnessed(key,entry?.attemptToken) && sameAttempt && now-(entry.attemptAt??entry.at)<TTL;
+    if(!forced && !abandoned && retry && now<retry.nextAt)continue;
+    const cached=!forced && !abandoned && !retry && witnessed(key,entry?.attemptToken) && sameAttempt && now-(entry.attemptAt??entry.at)<TTL;
     const discovery=Boolean(cached && readDiscovery && shared('custom.plugins')?.git?.enabled!==false && entry?.binding && now-entry.at<EXPIRY && now-(entry.discoveryAttemptAt??-Infinity)>=TTL);
     if(cached && !discovery)continue;
     if(pending && pending.until<=now)recordFleetFailure(machine,'expired-read',pending.generation??fleetGeneration(),{discard:true,subject:pending.subject??coordinatorCandidate(machine,snapshot)});
@@ -309,7 +321,7 @@ export function refreshFleets(cx, readStatus, force = false, readDiscovery = nul
         const bound=bindFleet(status,machine,snapshot), identity=identityOf(bound), at=Date.now();
         const display=nextDisplay(machine,bound,snapshot), verifiedSignature=signature(machine,snapshot,identity);
         setShared(FLEET_KEY,{version:1,entries:{...(latest?.version===1?latest.entries:{}),[key]:{
-          machine,at,attemptAt:at,token,attemptToken:token,signature:verifiedSignature,attemptSignature:signature(machine,snapshot,display??identity),status,verificationStatus,discoveryAttemptAt:force?undefined:previous?.discoveryAttemptAt,binding:bound?.binding??null,identity,members:taskMembership(bound),
+          machine,at,attemptAt:at,token,attemptToken:token,signature:verifiedSignature,attemptSignature:signature(machine,snapshot,display??identity),status,verificationStatus,discoveryAttemptAt:forced?undefined:previous?.discoveryAttemptAt,binding:bound?.binding??null,identity,members:taskMembership(bound),
           displayIdentity:identityOf(display),displaySignature:signature(machine,snapshot,display)}}});
         verifiedTokens.set(key,token);publishDisplay(machine,display,evidence);
         if(bound && (bound.child || display))resolveFleetFailure(machine);
@@ -340,6 +352,7 @@ export function refreshFleets(cx, readStatus, force = false, readDiscovery = nul
       }
     });
   }
+  return deferred;
 }
 export function invalidateFleet() {
   clearFleetRetries();
