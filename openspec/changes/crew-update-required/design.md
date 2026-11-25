@@ -12,7 +12,7 @@ See proposal.md for motivation. `src/plugins/crew/plugin.js` currently returns `
 
 ## Decisions
 
-- Use the existing `missing` attention classification with `statusLabel: 'Update needed'`. Unlike the default `Missing`, this wording truthfully describes an installed tool. Honour the label through the generic row renderer, not a Crew-specific renderer branch; keep ordinary rows' existing defaults and ensure the label fits at 130% without widening the shared status rail.
+- Use the existing `missing` attention classification with `statusLabel: 'Outdated'`. Unlike the default `Missing`, this wording truthfully describes an installed tool. The coordinator approved this shorter label after native 130% evidence showed the originally proposed `Update needed` overflowed the fixed 72px badge. Honour the label through the generic row renderer, not a Crew-specific renderer branch; keep ordinary rows' defaults, font and shared rail geometry unchanged.
 - Retain the existing Update action and installed version/revision detail. Reuse the existing update-evidence predicate; absent latest or installed revision is not evidence of outdatedness.
 - Let existing non-optional summary/indicator consumers use the changed classification. Check card and navigation consumers, and change only existing unmet-requirement surfaces; do not invent an indicator where none exists.
 - Choose a clear requirement notice, not an action block. Coordinator launch does not currently gate on update revision, and project actions rely on Crew's own refusals. Preserve both policies and existing guard messages, rather than treating every `missing` checklist result as a new launch refusal.
@@ -26,4 +26,4 @@ See proposal.md for motivation. `src/plugins/crew/plugin.js` currently returns `
 
 ## Validation and delivery
 
-After approval, implement one outcome and run quick targeted checks. Capture one 130% screenshot from a disposable instance with simulated outdated Crew to `C:/Users/tprokopiev/.crew/tasks/crew-update-required/`, then stop that instance before reporting. Read hosted required-check results on the final implementation head; never mark the PR ready or merge it. No screenshot or implementation check is claimed at this planning handoff.
+After approval, implement one outcome and run quick targeted checks. Capture one 130% screenshot from a disposable instance with simulated outdated Crew to `C:/Users/tprokopiev/.crew/tasks/crew-update-required/`, then stop that instance before reporting. Read hosted required-check results on the final implementation head; let the Delivery bot handle promotion as explicitly approved, without marking ready ourselves or merging. No screenshot or implementation check is claimed at this planning handoff.

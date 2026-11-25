@@ -7,7 +7,7 @@ Crew updates currently appear Optional, hiding compatibility problems on machine
 ## What Changes
 
 - Classify a confirmed Crew update as non-optional on the selected local or remote machine, retaining the Update action and installed revision.
-- Show `Update needed` with the existing unmet-requirement colour and count it in `N to fix`, not `N optional`; propagate that classification through existing unmet-requirement surfaces only.
+- Show `Outdated` with the existing unmet-requirement colour and count it in `N to fix`, not `N optional`; propagate that classification through existing unmet-requirement surfaces only.
 - Keep coordinator launch and project actions non-blocking for revision age alone; preserve existing installation, connection, ownership and capability refusals.
 - Preserve Ready for current installations, avoid claiming outdated when update evidence is unavailable, and leave genuinely optional tools unchanged.
 

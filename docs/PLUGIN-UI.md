@@ -94,7 +94,12 @@ re-checks the plugin, so the switch shows what is really set; a refusal is said 
 ## Requirements
 
 `prerequisites: [{ id, label, about, check(cx), fix? }]`. `check` returns
-`{ status: 'ready' | 'missing' | 'recommended' | 'error', detail?, configuredValue?, fix?, selection? }`.
+`{ status: 'ready' | 'missing' | 'recommended' | 'error', statusLabel?, detail?, configuredValue?, fix?, selection? }`.
+A requirement's `statusLabel` overrides its row wording, not its status colour or summary
+count. Crew uses the non-optional unmet state with **Outdated** when its selected
+machine has a confirmed available update, retaining Update and the installed revision.
+This is an attention notice, not a new coordinator-launch or project-action block;
+unknown update evidence does not claim outdated, and optional tools remain Optional.
 
 - `fix: { label, busyLabel?, statusLabel?, primary?, manual?, requiresEnabled?, confirm?, run(cx) }`:
   the row's button. `manual` fixes are left out of Install all; `confirm: { title, detail, label }`

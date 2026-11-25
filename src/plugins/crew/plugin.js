@@ -885,9 +885,9 @@ export default {
         if (p.error) return { status: 'error', detail: p.error };
         if (!p.tool) return { status: 'missing', detail: 'Not installed.' };
         const installed = `${p.version || 'unknown version'}${p.revision ? ` · ${p.revision}` : ''}`;
-        // A newer revision in the source: the row keeps showing what is installed, and its
-        // button becomes Update.
-        if (p.latest && p.revision && p.latest !== p.revision) return { status: 'recommended', detail: installed, fix: UPDATE_CREW };
+        // A confirmed update needs attention, not an optional-tool recommendation.
+        // Keep the installed revision and explicit Update action; unknown checks stay quiet.
+        if (p.latest && p.revision && p.latest !== p.revision) return { status: 'missing', statusLabel: 'Outdated', detail: installed, fix: UPDATE_CREW };
         return { status: 'ready', detail: installed };
       }),
       fix: INSTALL_CREW },

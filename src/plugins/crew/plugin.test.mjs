@@ -17,6 +17,7 @@ let table = {}, psRules = [];
 async function fakeHc(args) {
   hcCalls.push(args);
   if (args[0] === 'machine') return { code: 0, stdout: JSON.stringify({ machines }), stderr: '' };
+  if (args[0] === 'ls') return { code: 0, stdout: '{"terminals":[]}', stderr: '' };
   const argv = program(args);
   if (argv[0] === 'powershell') {
     const script = argv.at(-1);
@@ -283,7 +284,32 @@ s = await statuses();
 same([s.crew.status, s.crew.detail], ['ready', '0.1.0 · aaaaaaaaaaaa']);
 same([s.home.status, s.home.detail], ['missing', 'Not created yet. It is also created at the first coordinator launch.']);
 crew.latest = 'bbbbbbbbbbbb'; s = await statuses();
-same([s.crew.status, s.crew.detail, s.crew.fix?.label, s.crew.fix?.statusLabel], ['recommended', '0.1.0 · aaaaaaaaaaaa', 'Update', 'Updating'], 'An available update changes the button, not the description');
+same([s.crew.status, s.crew.statusLabel, s.crew.detail, s.crew.fix?.label, s.crew.fix?.statusLabel], ['missing', 'Outdated', '0.1.0 · aaaaaaaaaaaa', 'Update', 'Updating'], 'An available update needs attention and keeps the installed description');
+// Revision evidence and routing are independent for this computer and each remote.
+machines.push({ name: 'peer', target: 'peer', state: 'connected' });
+for (const machine of [null, 'pc2', 'peer']) {
+  r.setPluginSetting(plugin, 'machine', machine);
+  hcCalls.length = 0;
+  const outdated = await statuses();
+  same([outdated.crew.status, outdated.crew.statusLabel, outdated.crew.fix.label], ['missing', 'Outdated', 'Update']);
+  assert.equal(outdated.gh.status, 'recommended', 'Genuinely optional tools stay optional beside an update');
+  const probes = hcCalls.filter(a => a[0] === 'exec' && a.at(-1).includes("'root=' + $root"));
+  assert.ok(probes.length);
+  assert.ok(probes.every(a => machine ? a[1] === '--on' && a[2] === machine : !a.includes('--on')), 'Update evidence is read on the selected machine');
+  const revision = crew.revision;
+  crew.latest = revision;
+  same([(await statuses()).crew.status, (await statuses()).crew.statusLabel], ['ready', undefined], 'Current has no stale update label');
+  crew.latest = '';
+  same([(await statuses()).crew.status, (await statuses()).crew.statusLabel], ['ready', undefined], 'An unknown or failed latest lookup cannot claim outdated');
+  crew.latest = 'bbbbbbbbbbbb'; crew.revision = '';
+  assert.equal((await statuses()).crew.status, 'ready', 'Unknown installed revision is not update evidence');
+  crew.revision = revision;
+}
+r.setPluginSetting(plugin, 'machine', 'pc2');
+const failedProbe = [/'root=' \+ \$root/, () => ran('', 1, 'Inspection failed')];
+psRules.unshift(failedProbe);
+same([(await statuses()).crew.status, (await statuses()).crew.statusLabel], ['error', undefined], 'Probe failure is an inspection error, not an update claim');
+psRules.shift();
 ran2.length = 0; await s.crew.fix.run(r.pluginContext(plugin)); same(ran2, ['install'], 'Update runs the same clone-or-fast-forward script');
 crew.latest = 'bbbbbbbbbbbb';
 crew.latest = ''; assert.equal((await statuses()).crew.status, 'ready', 'An unreadable remote is not an update');
@@ -292,6 +318,14 @@ same([s.home.status, s.home.detail], ['ready', 'C:\\Users\\u\\.crew']);
 crew.legacy = true; s = await statuses();
 same([s.home.status, s.home.detail], ['ready', 'C:\\Users\\u\\.crew\\crew (unpacked into C:\\Users\\u\\.crew at the next launch)'], 'A home at the old place is fine and says what will happen');
 crew.legacy = false;
+// The prominent requirement notice does not introduce a revision-age action gate.
+crew.latest = 'bbbbbbbbbbbb';
+assert.equal((await statuses()).crew.statusLabel, 'Outdated');
+for (const machine of [null, 'pc2']) {
+  const launch = await f.prepareCoordinatorLaunch({ machine, argv: ['a1'], setting: () => '' });
+  assert.equal(launch.labels['custom.crew.home'], '1', 'An otherwise valid old installation can still launch');
+}
+crew.latest = '';
 
 // --- Projects: the tool's own list on that machine, read and changed through `crew project` ---
 {
@@ -351,6 +385,8 @@ crew.legacy = false;
     s = await statuses(); same(s.projects.rows.map(row => row.id), ['fork', 'my-app'], 'A refusal never registers or projects a successful add');
   }
   refusalOutput = null;
+  crew.latest = 'bbbbbbbbbbbb';
+  assert.equal((await statuses()).crew.statusLabel, 'Outdated');
   ran2.length = 0; await section.list.add(cx(), 'D:/Git/agentnumberone.dev');
   same(ran2, ['project add agentnumberone.dev D:/Git/agentnumberone.dev']);
   s = await statuses();
@@ -373,7 +409,7 @@ crew.legacy = false;
   crew.home = false; s = await statuses(); same([s.projects.status, s.projects.detail, s.projects.usable, s.projects.rows], ['missing', 'Create the crew home first (Requirements).', undefined, []]);
   crew.tool = ''; s = await statuses(); same([s.projects.status, s.projects.detail], ['missing', 'Install the crew tool first (Requirements).']);
   assert.ok(!ran2.some(call => call.startsWith('project')), 'Nothing is asked of a tool that is not there');
-  Object.assign(crew, had); psRules.splice(psRules.indexOf(rule), 1);
+  Object.assign(crew, had); crew.latest = ''; psRules.splice(psRules.indexOf(rule), 1);
 }
 // Unreachable machine: every row says so; nothing is run there.
 machines = [{ name: 'pc2', target: 'pc2', state: 'unreachable' }]; ran2.length = 0;
