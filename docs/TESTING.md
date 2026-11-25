@@ -305,6 +305,13 @@ retirement gates with missing SDK/UI/API/command/version facts, uninitialized-ho
 deferral, GPUI-equivalent key spellings/alias restoration and a non-replaceable log
 during full Update. SDK declarations are preserved release fixtures; the fake
 executable/catalog and compact GPUI declaration are explicitly synthetic.
+`owned-palette-rollback.test.mjs` installs a prior managed fixture carrying the real
+#65 native palette and pinned legacy openers/startup worker, migrates it, rolls
+back the reported backup, simulates a frame reset/startup and reinstalls. It covers
+0.1.17/0.1.18 LF/Windows originals, feedback preservation, later-edit refusal and
+interrupted retirement. Other shared fixture files come from the current build;
+it is not claimed as a byte-faithful historical distribution. Rollback restores
+intent through guarded refresh, never by replaying an old native main.js.
 
 These tests do not prove actual native event dispatch, focus or pixels; those
 remain separately authorized live/disposable-native validation. No suite installs

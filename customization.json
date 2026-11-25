@@ -103,6 +103,7 @@
     "lib/palette-model.js": "src/features/palette/model.js",
     "scripts/palette-manifests.mjs": "src/services/palette-manifests.mjs",
     "scripts/palette-policy.mjs": "tools/runtime/palette-policy.mjs",
+    "scripts/palette-recovery.mjs": "tools/palette-recovery.mjs",
     "scripts/retire-palette.mjs": "tools/runtime/retire-palette.mjs",
     "scripts/palette-binding.js": "src/features/palette/binding.js",
     "scripts/palette-capabilities.js": "src/integration/herdr/palette-capabilities.js",

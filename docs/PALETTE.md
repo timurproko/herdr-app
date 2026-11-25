@@ -104,5 +104,32 @@ files/opt-in are unchanged. None of this opts in a patch, deploys or restarts He
 History seeds, binding intent, repair logs, leases and retirement/recovery records
 are local runtime data, outside portable preference exports. Ordinary uninstall
 restores only the owned key baseline; later personal edits block removal. Full
-rollback journals also check key/intent hashes before restoring them. The broader
-source and native provenance safeguards remain intact.
+rollback journals capture the previous native opt-in and retirement marker before
+migration, alongside the key/policy baseline. Retirement writes a prepared receipt
+bound to the deployment manifest and exact before/after native-file hashes. Rollback
+preflights those hashes and ownership records before changing payload or routing;
+later personal edits, missing recovery evidence or newer stock refuse safely.
+
+Rollback restores the previous opt-in and marker, then uses the restored runtime's
+ordinary reviewed-byte/ownership-checked startup refresh to rebuild the previous
+native customization. It never copies an old native entrypoint blindly. A skipped
+or failed guarded refresh is an explicit rollback error with the opt-in preserved,
+not a successful rollback to vanilla. Prepared receipts also cover interruption
+between native restoration, opt-in removal and marker publication. Recovery evidence
+is retained for diagnosis; source and native provenance safeguards remain intact.
+
+### What install, rollback and reinstall look like
+
+- **Install from the reviewed 0.1.18 stop-gap:** Custom's shortcut/button open the
+  owned palette. Native patch management is retired, with recovery in the reported
+  deployment backup; the native frame itself returns to current stock.
+- **Rollback that backup:** use the existing Herdr/main-layout guard first (no
+  terminal restart). After returning to Custom, the shortcut/button again use
+  `app.palette`, and the previous native patch gives its Custom palette styling
+  and routing. Its opt-in is live again, so the old startup worker can reapply it
+  after Herdr rewrites the frame. This deliberately returns to the stop-gap's
+  release-specific compatibility limits, not the owned implementation.
+- **Reinstall through normal Update:** Custom switches back to the owned palette,
+  safely retires the restored native opt-in again and keeps its owned repair policy.
+  User preferences and running terminals remain untouched. Owned Recent history is
+  retained for reinstall; rollback's native palette keeps its separate native history.

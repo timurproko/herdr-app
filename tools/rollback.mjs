@@ -6,10 +6,11 @@ import {pathToFileURL} from 'node:url';
 import {isDeepStrictEqual} from 'node:util';
 import {defaultHome,allowedPath,app,shellPaths,shellRevisionPath} from './deploy.mjs';
 import {json,read,digest,put,contained} from './files.mjs';
+import {paletteRollbackJobs} from './palette-recovery.mjs';
 // A flag alone cannot turn a full journal into a Desktop-free rollback.
 function validateShellJournal(record) {
  const fail=()=>{throw Error('Not a verified shell-only rollback journal.');};
- if(record.paletteBinding||record.scope!=='shell'||typeof record.afterState!=='string'||digest(record.afterState)!==record.afterManifest)fail();
+ if(record.paletteRetirement||record.paletteBinding||record.scope!=='shell'||typeof record.afterState!=='string'||digest(record.afterState)!==record.afterManifest)fail();
  const before=record.manifest===null?null:JSON.parse(record.manifest),after=JSON.parse(record.afterState);
  const valid=state=>state?.version===2&&state.id==='custom'&&state.files&&typeof state.files==='object'&&!Array.isArray(state.files);
  if(!valid(after)||(before&&!valid(before)))fail();
@@ -48,17 +49,37 @@ export function rollback(home,id,{fixture=false,shellOnly=false}={}) {
     if(before!==null&&typeof before!=='string')throw Error('Invalid palette binding rollback record');
     const file=contained(home,rel),actual=read(file);
     if(![digest(before),after].includes(digest(actual)))throw Error('Personal palette binding edit after deployment');
-    jobs.push({file,before:before===null?null:Buffer.from(before),actual:actual===null?null:Buffer.from(actual)});
+    jobs.push({file,before:before===null?null:Buffer.from(before),actual:actual===null?null:Buffer.from(actual),paletteBinding:true});
    }
   }
+  if(!shellOnly&&record.paletteRetirement){
+   if(!record.paletteBinding)throw Error('Missing palette binding recovery baseline');
+   jobs.push(...paletteRollbackJobs(home,record.paletteRetirement,record.afterManifest));
+  }
+  const restoreNativePalette=!shellOnly&&record.paletteRetirement&&record.paletteBinding.record===null;
+  const applyJob=job=>{
+   if(job.paletteRecovery||job.paletteBinding){const actual=fs.existsSync(job.file)?fs.readFileSync(job.file):null;if(![digest(job.actual),digest(job.before)].includes(digest(actual)))throw Error('Concurrent palette rollback edit');}
+   if(job.before===null){if(fs.existsSync(job.file))fs.unlinkSync(job.file);}else put(job.file,job.before,digest(job.actual));
+  };
+  const assertPaletteRefresh=result=>{const palette=result?.frames?.palette;if(palette?.ok!==true||palette.status==='skipped'||palette.deferred||palette.status?.startsWith('retir'))throw Error('Palette rollback restored the prior opt-in but guarded refresh could not restore it; inspect current native provenance.');};
+  let priorPaletteRefresh=null;
+  if(restoreNativePalette&&record.manifest===null){
+   // An unmanaged prior opt-in still needs the currently installed worker before
+   // first-install rollback removes that worker. Never replay native main bytes.
+   const worker=path.join(owner,'runtime/scripts/startup-frames.mjs');
+   if(!fs.existsSync(worker))throw Error('Palette rollback needs its guarded refresh worker');
+   for(const job of jobs.filter(job=>job.paletteRecovery||job.paletteBinding))applyJob(job);
+   priorPaletteRefresh=JSON.parse(cp.execFileSync(process.execPath,[worker,home],{encoding:'utf8',timeout:30000}));assertPaletteRefresh(priorPaletteRefresh);
+  }
   // Restore native exceptions before removing their runtime support on first-install rollback.
-  if(!shellOnly&&record.manifest===null){const runtime=path.join(owner,'runtime');for(const patch of json(path.join(runtime,'frame-patches/registry.json'))?.patches??[])if(fs.existsSync(path.join(owner,`frame-${patch.id}.json`)))cp.execFileSync(process.execPath,[path.join(runtime,'scripts/frame-patch.mjs'),'restore',patch.id,home],{encoding:'utf8',timeout:30000});}
+  if(!shellOnly&&record.manifest===null){const runtime=path.join(owner,'runtime');for(const patch of json(path.join(runtime,'frame-patches/registry.json'))?.patches??[])if(!(restoreNativePalette&&patch.id==='palette')&&fs.existsSync(path.join(owner,`frame-${patch.id}.json`)))cp.execFileSync(process.execPath,[path.join(runtime,'scripts/frame-patch.mjs'),'restore',patch.id,home],{encoding:'utf8',timeout:30000});}
   // Restore scripts before their revision; bookkeeping follows all payload files.
   jobs.sort((a,b)=>(a.rel===shellRevisionPath?1:a.rel?0:2)-(b.rel===shellRevisionPath?1:b.rel?0:2));
-  for(const job of jobs){if(job.before===null){if(fs.existsSync(job.file))fs.unlinkSync(job.file);}else put(job.file,job.before,digest(job.actual));}
-  const worker=path.join(owner,'runtime/scripts/startup-frames.mjs');let patches=null;
+  for(const job of jobs)if(!(priorPaletteRefresh&&(job.paletteRecovery||job.paletteBinding)))applyJob(job);
+  const worker=path.join(owner,'runtime/scripts/startup-frames.mjs');let patches=priorPaletteRefresh;
   if(!shellOnly&&fs.existsSync(worker))patches=JSON.parse(cp.execFileSync(process.execPath,[worker,home],{encoding:'utf8',timeout:30000}));
-  return {restored:jobs.length,patches};
+  if(restoreNativePalette)assertPaletteRefresh(patches);
+  return {restored:jobs.length,patches,...(record.paletteRetirement?{paletteRecovery:{restoredOptIn:true,refreshed:Boolean(restoreNativePalette)}}:{})};
  }finally{fs.closeSync(fd);fs.unlinkSync(lock);}
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href){

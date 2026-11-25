@@ -137,3 +137,10 @@ Owned-palette migration SHALL stage the new entrypoint and binding before retiri
 - **WHEN** migration sees newer unknown native stock or an unrecognized personal patch dependency edit
 - **THEN** unknown stock is left unchanged and personal conflicts are reported without destructive cleanup
 - **AND** the owned palette does not require native-source review, while incomplete retirement is never reported as complete
+
+#### Scenario: Rollback of migration from the reviewed stop-gap
+- **WHEN** the user rolls back the reported owned-palette deployment backup after migrating an installed reviewed native palette patch
+- **THEN** recovery restores the previous payload, binding and native opt-in and refreshes that opt-in through the reviewed-byte and ownership gates
+- **AND** a successful rollback restores the previous Custom palette, including startup repair after a native frame reset, rather than silently returning to vanilla
+- **AND** later personal/native edits refuse before recovery writes, while a skipped or failed guarded refresh is reported as a rollback failure with the opt-in retained
+- **AND** reinstalling through normal Update safely returns to the owned palette without changing feedback or running terminals
