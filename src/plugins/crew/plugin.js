@@ -676,7 +676,7 @@ const PROJECTS = Object.freeze({
     const r = await ps(cx, crewProjectScript(['list']), CHECK_TIMEOUT);
     if (r.code !== 0) return { status: 'error', statusLabel: null, detail: crewSaid(r), rows: [] };
     const rows = parseProjects(r.stdout);
-    return { status: 'ready', statusLabel: rows.length === 1 ? '1 project' : `${rows.length} projects`, rows, usable: true };
+    return { status: 'ready', statusLabel: `${rows.length} added`, rows, usable: true };
   },
 });
 
