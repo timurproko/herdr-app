@@ -1,17 +1,56 @@
 {
-  "revision": "fc0dfde",
-  "workload": "tests/support/git-row-budget.mjs mountedRows; cold native-element builder; ordinary renderPulls and fully mounted coordinator row tree",
-  "meter": "rowBudgetHarness operations and actual returned-tree elements; no native-size callbacks",
+  "revision": "f3fe341",
+  "workload": "mountedRows; actual renderPulls and renderAggregate after full reveal up to main MAX_MOUNTED_ROWS",
   "ordinary": {
-    "30": {"operations": 15612, "elements": 1834},
-    "60": {"operations": 31182, "elements": 3664},
-    "100": {"operations": 51942, "elements": 6104},
-    "200": {"operations": 103842, "elements": 12204}
+    "30": {
+      "operations": 15439,
+      "elements": 1834,
+      "probes": 270,
+      "mounted": 30
+    },
+    "60": {
+      "operations": 30829,
+      "elements": 3664,
+      "probes": 540,
+      "mounted": 60
+    },
+    "100": {
+      "operations": 51349,
+      "elements": 6104,
+      "probes": 900,
+      "mounted": 100
+    },
+    "200": {
+      "operations": 102649,
+      "elements": 12204,
+      "probes": 1800,
+      "mounted": 200
+    }
   },
   "coordinator": {
-    "30": {"operations": 9626, "elements": 1048},
-    "60": {"operations": 19046, "elements": 2068},
-    "100": {"operations": 31606, "elements": 3428},
-    "200": {"operations": 63006, "elements": 6828}
+    "30": {
+      "operations": 9578,
+      "elements": 1091,
+      "probes": 40,
+      "mounted": 30
+    },
+    "60": {
+      "operations": 18578,
+      "elements": 2111,
+      "probes": 70,
+      "mounted": 60
+    },
+    "100": {
+      "operations": 18591,
+      "elements": 2112,
+      "probes": 70,
+      "mounted": 60
+    },
+    "200": {
+      "operations": 18591,
+      "elements": 2112,
+      "probes": 70,
+      "mounted": 60
+    }
   }
 }

@@ -36,42 +36,28 @@ Git lower-line PR items SHALL show a tooltip only for a hidden, abbreviated or o
 - **THEN** its native truncation, inherited interface font and complete title tooltip remain available immediately
 - **AND** title/header rendering uses no new width probe, prefix fitting, custom suffix or font override
 
-### Requirement: Bounded lower-line intrinsic measurement
-A complete Git render SHALL create at most four new lower-line intrinsic-width probes, with a 512-entry font/style/zoom-keyed cache and one pending probe per key. Known visible ordinary rows and the pinned row SHALL take priority. Native callbacks SHALL advance remaining batches without a new timer or withholding rows. Existing main repository-header rendering and measurement SHALL remain unchanged.
+### Requirement: Existing lower-line fit facts determine tooltips
+Informative lower-line tooltips SHALL reuse the renderer's existing full/compact/clipped choices. Tooltip policy SHALL NOT add intrinsic probes, width caches, measurement scheduling, geometry changes or a separate layout calculation. Main's native title/header rendering, icon/dot offsets, mounted-row reveal/caps and stale-measurement guards SHALL remain intact.
 
-#### Scenario: Cold mounted rows
-- **WHEN** ordinary or coordinator rows cold-start after opening, zoom or interface-font changes
-- **THEN** every row renders immediately and at most four lower-line intrinsic probes are created across the snapshot
-- **AND** callbacks advance remaining missing keys; cached strings add no recurring probe
-- **AND** known visible ordinary rows precede offscreen rows, otherwise presentation order is used
+#### Scenario: Snapshot construction
+- **WHEN** a cold or warm ordinary/coordinator tree renders
+- **THEN** tooltip decoration adds no native elements or intrinsic probes relative to the reference main renderer
+- **AND** existing layout decisions determine hidden-value hover without withholding rows or starting reads
 
-#### Scenario: Settings and obsolete callbacks
-- **WHEN** many rows render or an old context/font/zoom measurement completes
-- **THEN** settings are captured once per render entry rather than per string and cache/request storage stays bounded
-- **AND** obsolete callbacks do not publish measurements into the new context
+#### Scenario: Changed title without resize
+- **WHEN** a title changes on the same element ID with no size callback
+- **THEN** native truncation and complete-title hover update immediately without a measurement gate
+- **AND** lower-line allocated geometry is not discarded by tooltip policy
 
 ### Requirement: Mounted pull request render cost
-Cold fully mounted 30/60/100-row native render construction SHALL cost no more than fc0dfde baseline plus 2 ms for the reference workload, and 200 rows SHALL complete without interruption. Ordinary lists SHALL use their actual loaded-row renderer. Deterministic operation/element ratios SHALL not exceed frozen baseline tree sizes; paging SHALL NOT substitute a smaller tree.
+Cold fully mounted 30/60-row native render construction with informative tooltips SHALL cost no more than the reference current main plus 2 ms for the same workload. Benchmarks SHALL use real ordinary rendering and coordinator rendering with the existing mounted reveal model. Coordinator caps SHALL NOT be disabled or replaced by viewport virtualization in production.
 
-#### Scenario: Ordinary Open and Closed cold starts
-- **WHEN** 30, 60, 100 or 200 loaded ordinary PRs render after zoom/interface-font invalidation
-- **THEN** every loaded row is mounted and operation/element counts remain within baseline budgets with at most four lower-line probes
-- **AND** ordinary 100-row and scrolled-bottom cases are not protected only by coordinator paging
+#### Scenario: Actual mounted rows
+- **WHEN** 30 or 60 ordinary/coordinator rows are benchmarked cold
+- **THEN** every requested row is actually mounted, not only an initial ten-item reveal
+- **AND** samples identify the main revision, failures and build-only scope; median cost remains within main plus 2 ms
 
-#### Scenario: Native benchmark provenance
-- **WHEN** cold-render costs are reported
-- **THEN** the report identifies workload, actually built rows, baseline revision, samples, failures and build-only scope
-- **AND** every current 200-row sample completes; interrupted samples receive no fabricated timing
-
-### Requirement: Pull row geometry outlives text facts
-Lower-line allocated physical widths SHALL remain keyed to native element IDs when strings, typography keys or immutable PR facts change. Text-metric invalidation SHALL NOT discard unchanged allocated geometry. Existing stale-context guards and fixed row/line geometry SHALL remain intact.
-
-#### Scenario: Changed string without resize
-- **WHEN** lower-line content changes on the same native ID without an allocated-size callback
-- **THEN** available geometry survives while current intrinsic facts determine compact/clipped hover eligibility
-- **AND** no resize is required
-
-#### Scenario: Typography without physical resize
-- **WHEN** typography changes but allocated physical width is unchanged
-- **THEN** retained width is normalized with current zoom while intrinsic widths refresh in bounded batches
-- **AND** obsolete measurements cannot erase or replace current geometry
+#### Scenario: Main-relative regression
+- **WHEN** the deterministic render-budget regression runs in both tabs
+- **THEN** returned native elements and intrinsic probes equal the reference main counts
+- **AND** larger coordinator inventories respect main's 60-row and 100-presentation-item safety caps

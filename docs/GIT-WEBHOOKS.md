@@ -4,6 +4,18 @@ Open the Git panel's **Settings** link. Setup is a set of prerequisite actions,
 not a wizard. There is no terminal command, secret copying or URL pasting in the
 normal path.
 
+## Quiet GitHub rate refusals
+
+Primary and secondary rate-limit refusals keep last-good rows, counts, pins and
+paging without a red notice, banner or new Stale alarm. A cold refused load stays
+**Loading…**. Automatic retries wait at least fifteen minutes or a longer
+Retry-After, even when the hourly quota is positive. Explicit Refresh may try one
+read during cooldown; another refusal stays quiet and stops that refresh's fan-out.
+One sanitized customization-log line records each refusal episode, not each retry.
+Authentication/permission, connectivity, process, timeout and malformed-response
+failures retain their existing actionable feedback. An account-identity diagnosis
+that is itself refused does not hide the original permission error.
+
 ## Normal setup
 
 1. **Cloudflare tools → Install.** Installs pinned Wrangler **4.162.0** privately
@@ -155,9 +167,12 @@ reconnecting also catches up using authoritative GitHub reads. Missing/invalid c
 revision, rather than retrying on every render.
 
 `check_run`, `check_suite`, `status`, `workflow_run`, `pull_request` and `push` events
-invalidate every loaded Open/Closed page and an explicitly linked beyond-page PR.
-Pinned/unpinned PRs and drafts with running checks are updated alike. Bursts
-coalesce, expanded list depth is retained, cursors are renewed, and stale replies
+invalidate mutable facts in the affected repositories and the selected ordinary
+tab, including an explicitly linked beyond-page PR. Hidden Closed pages are not
+reread. Pinned/unpinned PRs and drafts are covered alike. Main's immediate event
+delivery and same-turn/in-flight coalescing remain; there is no two-second window.
+Each separately dispatched event uses the affected repository's batch. Expanded
+depth is retained and cursors renewed. Stale replies
 cannot overwrite another machine/repository. Failed reads keep the last good data.
 Assigned PR label names and colours travel with those same list/targeted PR reads,
 not additional requests per row. All `pull_request` actions invalidate facts,
@@ -165,14 +180,24 @@ including `labeled` and `unlabeled`; no label bodies or action-specific transpor
 are needed. The chrome-owned broker advances repository revisions for both label
 actions, and the panel consumes them through the same deferred, render-guarded
 refresh path. They do not count as main-merge hints for Custom update checks.
-Reconnect and manual Refresh also replace label facts, with no label polling.
+Reconnect and manual Refresh also replace mutable label facts, with no label polling.
+Known final rows retain session-cached labels and checks. See the measured
+[request budget and final-cache freshness limits](GIT-REQUEST-BUDGET.md). No relay
+redeployment is required; optional precise numbered hints are deferred.
+
+Event, window and enrollment scheduling deliberately match main. The removed
+pending-demand transfer/acknowledgement state, inactive pause/catch-up and deferred
+enrollment retries are not part of this change. Enrollment remains one worker
+per repository on configuration or explicit Refresh, including normal account
+verification; rate refusals stay quiet but do not schedule a later worker.
 
 ### Pending checks without enrollment
 
 While Git is shown, Open/Draft PRs use a **45-second fallback** without confirmed
 enrollment (including unknown membership or missing setup), and a **120-second
 safety net** when enrolled, even during relay outages. Unenrolled pending/unknown
-checks also remain eligible. Settled or known-empty checks do not stop an open
+Open/Draft checks also remain eligible. Known Closed/Merged rows are never safety-probed,
+even when their last-known checks are pending or unknown. Settled or known-empty checks do not stop an open
 row's state reads: a later merge must leave Open without relying on another event.
 One coalesced repository job probes only number, state, draft/completion dates,
 head SHA and the last commit's rollup **STATE**, in chunks of at most **40 PRs**.
@@ -184,17 +209,23 @@ loaded subset; aggregate totals derive from eligible task rows, including the
 unchanged 24-hour historical completion bound. Commands stay below Windows'
 process-argument limit, including a 120-PR expanded list. The queue lease covers
 every chunk; values publish only after the complete selection succeeds.
-Coordinator folded sections, off-page rows and the other Open/Closed tab are not
-eligible. Probes follow the same ten-item presentation paging as the renderer;
-Previous/Show more invalidates held replies for the prior page without reading
-immediately or shrinking full task totals. Both thin and changed-row detail reads
+Coordinator probes cover the revealed unfolded batch, including offscreen rows.
+Unrevealed rows, folded sections and the other Open/Closed tab are not eligible.
+Reveal/fold/tab/home/relevant projection changes advance the captured selection
+generation and reject held replies, including away-and-back changes. Native viewport
+motion within an unchanged revealed set keeps its generation and starts no extra
+probes or inventory reads, and never shrinks full task totals. Both thin and changed-row detail reads
 use the per-call GH_REPO Node carrier, not a bare gh api from the coordinator home.
 Reads share the existing ordinary/aggregate queue; contention rechecks eligibility
 after one second rather than starting a parallel request. Prior rows/counts stay
 on screen during reads. Hidden/disabled panels, changed contexts, unverified
 coordinators and disconnected remote machines stop reads and reject late replies.
-Settled Closed rows need no periodic read; reopen is discovered by event/manual/
-show/reconnect refresh rather than polling all closed history.
+Window activity does not gate Git reads, matching main. There is no inactive
+pause, inactive-return catch-up or independent minimized-window mechanism.
+Known Closed/Merged rows are session-cached, not periodically reread on generic events,
+manual refresh or hide/show. Ordinary Open inventory can rediscover reopened rows;
+coordinator final-history external changes wait for contradictory facts or a new
+runtime session. This is the deliberate cost/freshness trade-off of final caching.
 
 Failures retain last-good values and retry after **90s, 180s, 360s, then 720s** (the
 cap); primary and secondary rate-limit refusals wait **at least 15 minutes**, or
@@ -214,10 +245,10 @@ plus queue time and the GitHub reads** (each command has a
 rows add one detail command per 20 rows. This is the scheduling bound after the preceding read; it is
 not an unconditional wall-clock maximum across errors, stale/offline contexts or
 GitHub eventual consistency. Event-covered rows start after native relay dispatch
-and a microtask, without a configured debounce: latency includes GitHub delivery and
-data propagation, any existing request, and the authoritative reads. Ordinary events
-publish after all loaded pages, an older linked PR when needed and counts; coordinator
-reads queue at most three targeted requests. There is no fixed end-to-end short SLA.
+without an added debounce window: latency includes GitHub delivery and data
+propagation, any existing request, and authoritative reads. Ordinary events publish
+after selected-tab pages, narrow transition/older-PR reads when needed and counts;
+coordinator reads queue at most three repository jobs with sequential twenty-row chunks. There is no fixed end-to-end short SLA.
 These are source-derived timings, not measured live delivery evidence.
 
 All PR read paths carry an epoch/generation and share the per-PR publication rule:
@@ -242,7 +273,8 @@ response, so changed rows require a follow-up; unchanged rows do not.
 A shown settled Open/Draft PR that starts a rerun or merges without an event is
 rediscovered by the next successful safety cycle. Partial job-count changes with
 the same head and overall PENDING summary do not trigger detailed safety reads;
-those counts catch up on events/full refresh or when the head/summary changes. Closed settled rows, folded
+those counts catch up when the head/summary changes; event/manual paths now reuse
+unchanged contexts too. Closed settled rows, folded
 coordinator sections and hidden tabs are not periodically rediscovered. GitHub
 eventual consistency, failed reads and offline/stale contexts can retain old values
 until an applicable safety cycle or catch-up. A displayed **Add this repo in

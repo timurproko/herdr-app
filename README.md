@@ -428,13 +428,11 @@ text has no repeat-only tooltip; titles keep their existing full-title hover. Ti
 checks may name failing/pending jobs, the state icon explains an unstated state or
 conflict, and a related robot can identify its known agent. Parent lines do not
 repeat complete visible items. Missing facts are never invented and hover starts
-no reads. Lower-line groups share a 512-entry string/style/font/zoom cache and
-at most **four lower-line intrinsic probes per complete render**, not per row.
-Repository-header rendering and its existing overflow measurement are unchanged. Native callbacks advance the next batches, prioritizing
-known visible ordinary rows; rows are never withheld. Title and individual pill
-measurement are absent; clipped/omitted label names are recovered by their group.
-Settings are captured once per render entry rather than crossing the host bridge
-for every string. See the mounted-row guards in [testing guidance](docs/TESTING.md).
+no reads. Tooltip policy reads the existing renderer's full/compact/clipped
+choices; it adds **no intrinsic probes, native elements, width cache or measurement
+scheduler**. Main's renderer, mounted reveal/caps, fades and geometry stay intact.
+Clipped/omitted label names are recovered by their group without individual pill
+measurement. See the main-relative mounted-row guards in [testing guidance](docs/TESTING.md).
 Late facts may move left-run neighbors, but never the pill group's right anchor,
 three line positions, 74px block height or title/robot reservation. Native post-layout measurements of
 clipped invisible probes choose shortening; there is no guessed character budget,
@@ -495,9 +493,16 @@ preference exports; customization deployment itself provisions no account/servic
 
 Enabled Git shares one authenticated native WebSocket from mounted non-footer
 chrome, with a short owner lease across duplicate mounts/windows. Relevant events
-refresh all loaded Open/Closed pages and an explicitly linked older PR; expanded
-lists retain their depth and renewed cursors. Bursts coalesce, reconnect/open catches
-up, and stale replies cannot update another machine/repository. Hiding Git or
+refresh mutable facts in affected repositories and the selected ordinary tab,
+including an explicitly linked older PR; expanded lists retain their depth and
+renewed cursors. Hidden Closed pages are not reread; known final rows use a session
+cache. Repository batching and shared in-flight facts reduce each event's reads.
+Event, window and enrollment scheduling retain main behavior: no two-second
+window, inactive pause/catch-up or deferred enrollment retry. Rate refusals stay
+quiet with retained rows/counts or cold Loading, shared cooldown and manual retry.
+See the [measured request budget and final-cache limits](docs/GIT-REQUEST-BUDGET.md).
+Main's in-flight coalescing and reconnect/open catch-up remain; stale replies
+cannot update another machine/repository. Hiding Git or
 selecting another repository stops hidden panel reads, not update notifications.
 Disabling Git or closing its chrome owner closes transport; another mounted owner
 can take over. Failed reads retain the last good status. Events accelerate enrolled repository updates, with a **120-second safety net**
@@ -507,9 +512,11 @@ a **45-second fallback**. One coalesced repository job probes state, head SHA an
 rollup summary in bounded 40-PR chunks; only changed heads/summaries fetch full
 checks in 20-PR chunks. Unchanged 5- or 30-row selections use one thin request,
 without enumerating check contexts. Values stay displayed until the complete
-selection succeeds. Coordinator probes cover only the current presentation page,
-not folded or off-page rows; Previous/Show more keeps full counts and rejects
-old-page replies. All probe/detail API calls retain per-call repository routing.
+selection succeeds. Coordinator probes cover the revealed unfolded batch, including
+its offscreen rows, but not unrevealed rows or the other tab. Scrolling within that
+same set keeps its safety generation and starts no extra probes or inventory reads.
+Reveal, fold, tab/home changes and relevant projection replacements reject obsolete
+held replies, including changes away and back. All probe/detail API calls retain per-call repository routing.
 Merge/close transitions move rows to Closed and update
 both totals; finished-task history still uses GitHub's 24-hour completion bound.
 Reads stop on hide/disable, stale context or remote-machine disconnect; failures
@@ -643,8 +650,14 @@ preserves the draft, cursor and selection; it does not select everything again.
 ## Sidebar scroll hints
 
 Spaces and Agents show matching fades at the top and bottom when more items are
-hidden in that direction. The top fade disappears at the start; the bottom fade
-disappears at the end. These decorations do not intercept scrolling or row clicks.
+hidden in that direction. Both ordinary and coordinator Git lists reuse the same
+`SidebarScrollState` metrics and `topFade` / `bottomFade` components from
+`src/ui/sidebar-scroll.js` and `src/ui/scroll-fade.js`: passive 40px gradients,
+actual native geometry and the same edge thresholds. The top fade disappears at
+the start; the bottom fade disappears at the end. These decorations do not
+intercept scrolling or row clicks. Git keeps its enrollment card outside the scroller.
+Anchored refreshes update the fades even when the list's total height stays unchanged;
+no extra pointer movement is needed.
 
 ## Shared empty states
 
@@ -820,10 +833,21 @@ using the same fold chevron and row style as Spaces machine headers. Click a
 header to fold just that repository; sections start expanded and remember their
 state locally, including panel reopen/reload. Expanded and folded headers show
 only the canonical repository name and chevron, without per-repository counts.
-Long coordinator lists use **Previous / Show more** replacement pages, bounded to
-10 presentation items (headers, notices and PRs). Counts still cover the complete
-linked inventory; paging starts no reads and cannot accumulate an oversized
-render. Each tab remembers its page for that coordinator home. Repeated text uses
+Long coordinator lists reveal **10 presentation items** (headers, notices and PRs)
+initially and append ten more automatically near the scroll bottom. An unfolded
+repository header is revealed only with its first row or visible notice; a header
+at the batch boundary waits for the next reveal. Empty sections disappear when
+rows leave the tab, expire or are confirmed absent. Revealed rows
+stay mounted, so native scrollbar/keyboard movement never exposes spacers. A measured
+60-PR/100-item mounted-batch cap uses one quiet **Show more** row to advance; its
+last batch cycles to the first. A full row batch defers excess arrivals until a
+slot frees or the batch cycles, rather than evicting revealed rows. Native fades sample actual handle geometry at render;
+a consumed scrollbar move may delay fades/reveal until the next received event.
+After dragging to the bottom, moving the pointer over the list, wheeling there or
+a size callback checks for the next ten; a finite post-layout check fills a viewport
+that does not yet overflow. Silent thumb/track movement alone cannot trigger it. Counts still cover the
+complete linked inventory; scrolling starts no inventory reads. Each tab retains
+its revealed depth and scroll anchor for that coordinator home. Repeated text uses
 cached native widths rather than duplicate probes; coordinator rows draw at most
 three label pills, with every complete label name retained in tooltips. See
 [the native build measurements and budget](docs/GIT-RENDER-BUDGET.md).

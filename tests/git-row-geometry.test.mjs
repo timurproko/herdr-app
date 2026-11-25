@@ -9,14 +9,6 @@ for(const zoom of [0.75,1,1.25,1.5,2])for(const [line,font,expected] of [[20,13,
   assert.equal(geometry.get(tree.kids[0]).width,24*zoom);
 }
 const near=(actual,expected,message)=>assert.ok(Math.abs(actual-expected)<1e-6,`${message}: ${actual} != ${expected}`);
-// Relative movement carries ordinary and absolute descendants without changing
-// the parent's layout reservation, including the two painted task-ring paths.
-for(const zoom of [1,1.3]) {
-  const relative=element().size(12).relative().top(1).children([element().size(12),element().absolute().inset_0().size_full()]);
-  const tree=element().flex().items_center().h(18).child(relative),geometry=rowGeometry(tree,100,zoom);
-  for(const node of nodes(relative))near(geometry.get(node).y,4*zoom,'Relative positioning translates the complete icon subtree');
-  near(geometry.get(tree).height,18*zoom,'Relative positioning does not resize the line');
-}
 function assertChecksFit(geometry,row) {
   const check=nodes(row).find(n=>/^(?:swap-)?pr-checks-/.test(n.attrs?.id?.[0]??'')&&!n.attrs.id[0].endsWith('-probe'));
   if(!check)return;
@@ -28,29 +20,6 @@ function assertChecksFit(geometry,row) {
     assert.ok(line.x>=box.x-1e-6 && line.x+line.naturalWidth<=box.x+box.width+1e-6,`Full count ${line.text} must fit ${ancestor.attrs?.id?.[0]??'ancestor'}`);
   }
 }
-function assertStatusIcons(geometry,row,zoom) {
-  const prefix=row.attrs.id[0].startsWith('swap-')?'swap-':'',id=row.attrs.id[0].slice(`${prefix}pr-`.length);
-  const line=geometry.get(find(row,`${prefix}pr-meta-${id}`));
-  for(const kind of ['task','check']) {
-    const group=find(row,`${prefix}pr-${kind==='task'?'tasks':'checks'}-${id}`);
-    if(!group)continue;
-    const slot=find(group,`${prefix}pr-${kind}-icon-${id}`);assert.ok(slot,`${kind} has one shared icon slot`);
-    const box=geometry.get(slot);
-    near(box.width,12*zoom,`${kind} slot width`);near(box.height,12*zoom,`${kind} slot height`);
-    near(box.y+box.height/2,line.y+line.height/2+zoom,`${kind} icon centre is lowered one logical pixel`);
-    for(const glyph of nodes(slot).filter(node=>node!==slot)) {
-      const ink=geometry.get(glyph);
-      near(ink.y+ink.height/2,box.y+box.height/2,`${kind} glyph/path follows its slot`);
-    }
-    const text=group.kids.at(-1),textBox=geometry.get(text);
-    near(textBox.y,line.y,'Status text stays at its original vertical anchor');
-    near(textBox.height,line.height,'Status text keeps its 18px line box');
-  }
-  for(const separator of find(row,`${prefix}pr-meta-${id}`).kids.filter(node=>!node.attrs.id)) {
-    const box=geometry.get(separator);
-    near(box.y+box.height/2,line.y+line.height/2,'Separators retain main\'s shared centred alignment');
-  }
-}
 function assertTextFits(geometry,row) {
   const lines=geometry.visibleTextLines.filter(line=>line.ancestors.includes(row));
   assert.ok(lines.length);
@@ -58,7 +27,7 @@ function assertTextFits(geometry,row) {
     const cell=[...line.ancestors].reverse().find(node=>/^(?:swap-)?pr-(?:title-line|byline|meta)-/.test(node.attrs?.id?.[0]??''));
     assert.ok(cell,`Missing containing line for ${line.text}`);
     assert.ok(line.lineHeight<=geometry.get(cell).height+1e-6,`${cell.attrs.id[0]} text line height ${line.lineHeight} exceeds cell ${geometry.get(cell).height}: ${line.text}`);
-    if(line.text.trim()==='…')assert.ok(line.ancestors.some(node=>node.attrs.id?.[0]?.endsWith('-ellipsis')),'Only an explicitly styled title suffix may be a standalone ellipsis; metadata must not collapse to one');
+    assert.notEqual(line.text.trim(),'…');
   }
 }
 function assertNaturalRun(geometry,line,zoom) {
@@ -85,17 +54,18 @@ function assertNaturalRun(geometry,line,zoom) {
     assert.ok(left.every((n,i)=>n.attrs.id || (i>0 && i<left.length-1)),'No separator before labels or at a left-run boundary');
     assert.equal(right.kids.length,1,'No separator or placeholder inside the right slot');
   }
-  // Independent oracle groups are not scheduled native measurement nodes.
-  const probes=[...geometry.intrinsic.values()].filter(p=>p.line===line.attrs.id[0]&&!p.short);
-  const hasLabels=probes.some(p=>p.kind==='labels');
+  // Full natural probes are independent of the allocated visible boxes.
+  const probePrefix=`${line.attrs.id[0]}-probe-`;
+  const probes=[...geometry.keys()].filter(n=>n?.attrs?.id?.[0]?.startsWith(probePrefix)&&n.attrs.id[0].endsWith('-full'));
+  const hasLabels=probes.some(n=>n.attrs.id[0].endsWith('-labels-full'));
   const leftCount=probes.length-Number(hasLabels);
-  const needed=probes.reduce((sum,p)=>sum+p.width,0)+(Math.max(0,leftCount-1)*15+(leftCount&&hasLabels?6:0))*zoom;
+  const needed=probes.reduce((sum,n)=>sum+geometry.get(n).width,0)+(Math.max(0,leftCount-1)*15+(leftCount&&hasLabels?6:0))*zoom;
   if(needed<=box.width+1e-6) {
     const groups=[...left.filter(n=>n.attrs.id),...(labelGroup?[labelGroup]:[])];
     assert.equal(groups.length,probes.length,'All fitting facts remain visible');
     for(const [index,node] of groups.entries()) {
-      near(geometry.get(node).width,probes[index].width,'Fitting values use full natural widths');
-      assert.equal(words(node).join(''),words(probes[index].node).join(''),'No semantic shortening while the whole line fits');
+      near(geometry.get(node).width,geometry.get(probes[index]).width,'Fitting values use full natural widths');
+      assert.equal(words(node).join(''),words(probes[index]).join(''),'No semantic shortening while the whole line fits');
       for(const text of geometry.visibleTextLines.filter(l=>l.ancestors.includes(node))) {
         assert.ok(text.x+text.naturalWidth<=geometry.get(node).x+geometry.get(node).width+1e-6,'Fitting text is not clipped');
       }
@@ -112,7 +82,6 @@ const cases=[
   ['empty',{}],['tasks untouched',{body:'- [ ] one\n- [ ] two'}],['tasks partial',{body:'- [x] one\n- [ ] two'}],['tasks done',{body:'- [x] one\n- [x] two'}],
   ['large tasks',{body:Array.from({length:100},(_,i)=>`- [${i<99?'x':' '}] task`).join('\n')}],
   ...[1,10,11,99,101].flatMap(total=>['SUCCESS','FAILURE','PENDING'].map(state=>[`count ${state} ${total}`,{statusCheckRollup:Array.from({length:total},(_,i)=>({name:`check ${i}`,status:state==='PENDING'&&i>=3?'IN_PROGRESS':'COMPLETED',conclusion:state==='FAILURE'&&i===0?'FAILURE':'SUCCESS'}))}])),
-  ...['NEUTRAL','SKIPPED','IN_PROGRESS','FAILURE'].map(state=>[`icon ${state}`,{body:'- [x] one\n- [ ] two',statusCheckRollup:[{name:'CI',status:state==='IN_PROGRESS'?state:'COMPLETED',conclusion:state==='IN_PROGRESS'?null:state}]}]),
   ['one label',{labels:labels.slice(0,1)}],['long labels',{labels}],['approved',{reviewDecision:'APPROVED'}],['changes requested',{reviewDecision:'CHANGES_REQUESTED'}],
   ['missing author',{author:null}],['conflict',{mergeable:'CONFLICTING'}],
   ...Array.from({length:16},(_,mask)=>[`optional mask ${mask}`,{body:mask&1?'- [x] done':'',statusCheckRollup:mask&2?[{name:'CI',status:'COMPLETED',conclusion:'SUCCESS'}]:[],labels:mask&4?labels:[],reviewDecision:mask&8?'APPROVED':''}]),
@@ -131,11 +100,14 @@ for(const mode of ['ordinary','pinned','scrolling','coordinator','ghost'])for(co
       if(mode==='pinned'||mode==='scrolling'){
         panel.pulls[panel.view]=[pr,next];panel.agentPull=mode==='pinned'?17:null;return panel.renderPulls(t);
       }
-      if(mode==='coordinator')return panel.repositorySection(t,{repo:'owner/repo',rows:[pr,next]},'home');
+      if(mode==='coordinator') {
+        const slice=panel.taskSections([{repo:'owner/repo',rows:[pr,next]}],'home');
+        return panel.repositorySection(t,slice.sections[0],'home',slice.window);
+      }
       return element().flex().flex_col().gap(U.rowGap).children([panel.pullRow(t,pr,mode==='ghost'),panel.pullRow(t,next,mode==='ghost')]);
     },width,zoom,mode==='pinned'||mode==='scrolling'?600:undefined);
     const row=find(tree,`${prefix}pr-${id}`),box=geometry.get(row);
-    assertTextFits(geometry,row);assertChecksFit(geometry,row);assertStatusIcons(geometry,row,zoom);
+    assertTextFits(geometry,row);assertChecksFit(geometry,row);
     for(const kind of ['byline','meta'])assertNaturalRun(geometry,find(row,`${prefix}pr-${kind}-${id}`),zoom);
     const task=find(row,`${prefix}pr-tasks-${id}`);
     if(task)assert.ok([pr.tasks.label,`${pr.tasks.done}/${pr.tasks.total}`].includes(words(task).join('')),'Tasks remain full or shorten as a whole fraction');
@@ -165,33 +137,6 @@ for(const mode of ['ordinary','pinned','scrolling','coordinator','ghost'])for(co
     assert.deepEqual(build(overrides,agent),baseline,`${mode}/${state} width=${width} zoom=${zoom} ${name} agent=${agent}`);comparisons++;
   }
 }
-// Every task variant paired with every checks-slot occupant, including the
-// unknown-state fallback. Neutral/skipped normalize to the success checkmark.
-// Cover coordinator ghosts too, independently of the broad row matrix above.
-for(const coordinator of [false,true])for(const ghost of [false,true])for(const zoom of [0.75,1,1.25,1.3,1.5,2])for(const done of [0,1,2])for(const state of ['SUCCESS','FAILURE','IN_PROGRESS','NEUTRAL','SKIPPED','unknown']) {
-  h.setZoom(zoom);
-  const pr=facts.pullRow({...source,body:`- [${done>0?'x':' '}] one\n- [${done>1?'x':' '}] two`,statusCheckRollup:[{name:'CI',status:state==='IN_PROGRESS'?state:'COMPLETED',conclusion:state}]},'owner',now);
-  if(state==='unknown')pr.checks.state='unknown';
-  if(coordinator)pr.key='owner/repo#17';
-  const {tree,geometry}=h.settle(()=>panel.pullRow(t,pr,ghost),390,zoom);
-  assertStatusIcons(geometry,tree,zoom);
-  const prefix=ghost?'swap-':'',id=pr.key??17,slot=find(tree,`${prefix}pr-check-icon-${id}`),glyph=slot.kids[0];
-  if(['IN_PROGRESS','unknown'].includes(state))assert.equal(glyph.attrs.asset,undefined,'Pending/unknown uses the shared dot fallback');
-  else assert.equal(glyph.attrs.asset[0],`mods/custom-workspace-chrome/${state==='FAILURE'?'x':'check'}.svg`);
-  // Removing either offset must fail, and restoring the old position must not
-  // change any horizontal box, text anchor, separator or outer row/line box.
-  for(const kind of ['task','check']) {
-    const icon=find(tree,`${prefix}pr-${kind}-icon-${id}`),moving=new Set(nodes(icon));
-    icon.top(0);const old=rowGeometry(tree,390,zoom);
-    assert.throws(()=>assertStatusIcons(old,tree,zoom),/icon centre is lowered one logical pixel/);
-    for(const node of nodes(tree)) {
-      const before=old.get(node),after=geometry.get(node);
-      for(const key of ['x','width','height'])near(after[key],before[key],`Nudge preserves ${key}`);
-      near(after.y-before.y,moving.has(node)?zoom:0,'Only the requested icon subtree moves');
-    }
-    icon.top(1);
-  }
-}
 // Screenshot-shaped content: at ~390 logical px, no forced compact forms,
 // fixed checks/task budgets or stretched byline; free status space precedes labels.
 const screenshot=facts.pullRow({...source,number:41,author:{login:'timurproko'},body:'- [x] one\n- [x] two',labels:[{name:'🤖 Approved',color:'1a7f37'}],statusCheckRollup:Array.from({length:11},(_,i)=>({name:`CI ${i}`,status:'COMPLETED',conclusion:'SUCCESS'}))},'owner',now);
@@ -201,9 +146,10 @@ for(const zoom of [0.75,1,1.25,1.3,1.5,2]) {
   assert.equal(words(find(tree,'pr-tasks-41')).join(''),'2 tasks done');assert.equal(words(find(tree,'pr-time-41')).join(''),'opened 4 hours ago');
   for(const kind of ['meta','byline'])assertNaturalRun(geometry,find(tree,`pr-${kind}-41`),zoom);
 }
-// Both lower lines use the same centred dot. Icon paint moves exactly one
-// logical pixel for every task/check variant, without moving any layout box,
-// text, pill, tooltip or probe. These are logical boxes, not native ink bounds.
+// Each lower line's dot moves down one logical pixel to its independently
+// measured native x-height centre. Icon paint retains its existing one-pixel
+// offset for every task/check variant. No layout box, text, pill, tooltip or
+// probe moves. These are logical boxes, not native ink bounds.
 for(const coordinator of [false,true])for(const ghost of [false,true])for(const zoom of [0.75,1,1.25,1.3,1.5,2])
 for(const done of [0,1,2])for(const state of ['success','failure','pending','unknown']) {
   h.setZoom(zoom);
@@ -215,7 +161,10 @@ for(const done of [0,1,2])for(const state of ['success','failure','pending','unk
   const byline=find(tree,`${prefix}pr-byline-${id}`),meta=find(tree,`${prefix}pr-meta-${id}`);
   const dotOffsets=[byline,meta].map(line=>{
     const dots=line.kids.filter(n=>!n.attrs.id);assert.ok(dots.length);
-    for(const dot of dots)near(centre(dot)-centre(line),0,'No separator optical drop');
+    for(const dot of dots) {
+      assert.deepEqual(dot.attrs.relative,[]);assert.deepEqual(dot.attrs.top,[1]);
+      near(centre(dot)-centre(line),zoom,'Separator uses the native-measured one-pixel x-height offset');
+    }
     return centre(dots[0])-centre(line);
   });
   near(dotOffsets[0],dotOffsets[1],'Byline and status separator offsets are identical');
@@ -227,15 +176,18 @@ for(const done of [0,1,2])for(const state of ['success','failure','pending','unk
     near(geometry.get(icon).height,12*zoom,'Icon height is unchanged');
     delete icon.attrs.top;
   }
-  const unshifted=rowGeometry(tree,390,zoom),painted=new Set(icons.flatMap(icon=>nodes(icon)));
+  const unshifted=rowGeometry(tree,390,zoom);
   for(const [node,box] of geometry)if(typeof node==='object') {
-    const expected=painted.has(node)?{...box,y:box.y-zoom}:box;
+    const expected=icons.includes(node)?{...box,y:box.y-zoom}:box;
     assert.deepEqual(plain(unshifted.get(node)),plain(expected),'Icon offsets do not move neighbours or change horizontal geometry');
   }
-  // Reintroducing either defect must fail the same geometric assertions.
-  meta.kids.find(n=>!n.attrs.id).relative().top(1.5);
-  const dropped=rowGeometry(tree,390,zoom),dot=meta.kids.find(n=>!n.attrs.id);
-  assert.notEqual(dropped.get(dot).y,geometry.get(dot).y,'The old optical drop is detected');
+  // Neither the too-high line-box centre nor the former too-low 1.5px drop
+  // may silently replace the measured x-height offset on either line.
+  for(const line of [byline,meta])for(const offset of [0,1.5]) {
+    const dot=line.kids.find(n=>!n.attrs.id);dot.top(offset);
+    assert.notEqual(rowGeometry(tree,390,zoom).get(dot).y,geometry.get(dot).y,'Incorrect separator offsets are detected');
+    dot.top(1);
+  }
   assert.notEqual(unshifted.get(icons[0]).y,geometry.get(icons[0]).y,'A missing icon offset is detected');
 }
 // Cross-row screenshot regression: different words and task/check widths,
@@ -250,9 +202,9 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
     const box=geometry.get(strip.kids[0]),robot=geometry.get(find(tree,'pr-agent-slot-17'));
     edge??=box.x+box.width;near(box.x+box.width,edge,'Pill edges are equal across changing facts and label names');
     near(edge,robot.x+robot.width,'Shared edge matches the title robot control');
-    const probe=geometry.intrinsic.get('pr-meta-17-probe-labels-full');
-    near(geometry.get(strip).width,probe.width,'Review/Rework/Approved retain whole words throughout the supported matrix');
-    assert.equal(strip.attrs.tooltip,undefined,'A complete visible label has no repeat-only group tooltip');
+    const probe=find(tree,'pr-meta-17-probe-labels-full');
+    near(geometry.get(strip).width,geometry.get(probe).width,'Review/Rework/Approved retain whole words throughout the supported matrix');
+    assert.equal(strip.attrs.tooltip,undefined,'A complete visible label has no repeat-only tooltip');
   }
 }
 // Exact whole-line fit thresholds from independent natural probes: one pixel
@@ -260,16 +212,16 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
 h.setZoom(1);
 for(const [kind,shortKind,textKind] of [['meta','tasks','tasks'],['byline','time','time']]) {
   const wide=h.settle(()=>panel.pullRow(t,screenshot),480),line=find(wide.tree,`pr-${kind}-41`);
-  const probes=[...wide.geometry.intrinsic.values()].filter(p=>p.line===`pr-${kind}-41`&&!p.short);
+  const probes=nodes(wide.tree).filter(n=>n.attrs.id?.[0]?.startsWith(`pr-${kind}-41-probe-`)&&n.attrs.id[0].endsWith('-full'));
   const leftCount=probes.length-(kind==='meta'?1:0);
-  const needed=probes.reduce((sum,p)=>sum+p.width,0)+Math.max(0,leftCount-1)*15+(kind==='meta'?6:0);
+  const needed=probes.reduce((sum,n)=>sum+wide.geometry.get(n).width,0)+Math.max(0,leftCount-1)*15+(kind==='meta'?6:0);
   const rowInset=480-wide.geometry.get(line).width;
   const fits=h.settle(()=>panel.pullRow(t,screenshot),needed+rowInset+1);
   const narrow=h.settle(()=>panel.pullRow(t,screenshot),needed+rowInset-1);
   assert.equal(words(find(fits.tree,`pr-${textKind}-41`)).join(''),kind==='meta'?'2 tasks done':'opened 4 hours ago');
   assert.equal(words(find(narrow.tree,`pr-${textKind}-41`)).join(''),kind==='meta'?'2/2':'4h ago');
-  const fullProbe=narrow.geometry.intrinsic.get(`pr-${kind}-41-probe-${shortKind}-full`);
-  assert.ok(fullProbe.width>narrow.geometry.get(find(narrow.tree,`pr-${textKind}-41`)).width);
+  const fullProbe=find(narrow.tree,`pr-${kind}-41-probe-${shortKind}-full`);
+  assert.ok(narrow.geometry.get(fullProbe).width>narrow.geometry.get(find(narrow.tree,`pr-${textKind}-41`)).width);
   const retainedKind=kind==='meta'?'labels':'author';
   near(narrow.geometry.get(find(narrow.tree,`pr-${retainedKind}-41`)).width,wide.geometry.get(find(wide.tree,`pr-${retainedKind}-41`)).width,'Shorten before clipping neighboring content');
 }
@@ -277,8 +229,8 @@ for(const [kind,shortKind,textKind] of [['meta','tasks','tasks'],['byline','time
 // compaction. Only further overflow clips labels, without sacrificing checks.
 {
   const pr=facts.pullRow({...source,body:'- [x] one\n- [x] two',labels:[{name:'🤖 Approved',color:'1a7f37'}],reviewDecision:'CHANGES_REQUESTED',statusCheckRollup:[{name:'CI',status:'COMPLETED',conclusion:'SUCCESS'}]},'owner',now);
-  const wide=h.settle(()=>panel.pullRow(t,pr),480),measure=kind=>wide.geometry.intrinsic.get(`pr-meta-17-probe-${kind}-full`).width;
-  const compact=wide.geometry.intrinsic.get('pr-meta-17-probe-tasks-compact').width;
+  const wide=h.settle(()=>panel.pullRow(t,pr),480),measure=kind=>wide.geometry.get(find(wide.tree,`pr-meta-17-probe-${kind}-full`)).width;
+  const compact=wide.geometry.get(find(wide.tree,'pr-meta-17-probe-tasks-compact')).width;
   const inset=480-wide.geometry.get(find(wide.tree,'pr-meta-17')).width;
   const compactNeeded=compact+measure('checks')+measure('review')+measure('labels')+36;
   const reduced=h.settle(()=>panel.pullRow(t,pr),inset+compactNeeded-1);
@@ -329,25 +281,23 @@ for(const coordinator of [false,true])for(const ghost of [false,true])for(const 
   const pr={...screenshot,number:17};if(coordinator)pr.key='owner/repo#17';
   const row=panel.pullRow(t,pr,ghost),cell=find(row,`${ghost?'swap-':''}pr-${kind}-${pr.key??17}`);
   assertTextFits(rowGeometry(row,480,zoom),row);cell.line_height(value);
-  for(const node of nodes(cell))if(node.attrs.line_height)node.line_height(value);
   assert.throws(()=>assertTextFits(rowGeometry(row,480,zoom),row),/text line height .* exceeds cell/);
 }
 // Mutations: removing the title reservation, stretching a fitting group,
 // adding artificial fixed budgets or clipping the full checks count must fail.
 h.setZoom(1);h.setAgent(false);
 const sample=h.settle(()=>panel.pullRow(t,screenshot),390),row=sample.tree;
-const mutatedGeometry=()=>{const geometry=rowGeometry(row,390);geometry.intrinsic=sample.geometry.intrinsic;return geometry;};
 const title=find(row,'pr-title-41'),before=sample.geometry.get(title);find(row,'pr-title-line-41').kids.pop();
 assert.notEqual(rowGeometry(row,390).get(title).width,before.width);
 const meta=find(row,'pr-meta-41'),tasks=find(row,'pr-tasks-41');tasks.flex_grow(1);
-assert.throws(()=>assertNaturalRun(mutatedGeometry(),meta,1),/stretched|natural widths|undefined/);
+assert.throws(()=>assertNaturalRun(rowGeometry(row,390),meta,1),/stretched|natural widths|undefined/);
 delete tasks.attrs.flex_grow;tasks.w(60);
-assert.throws(()=>assertNaturalRun(mutatedGeometry(),meta,1),/natural widths/);
+assert.throws(()=>assertNaturalRun(rowGeometry(row,390),meta,1),/natural widths/);
 delete tasks.attrs.w;
 const right=find(row,'pr-meta-41-right');delete right.attrs.justify_end;
-assert.throws(()=>assertNaturalRun(mutatedGeometry(),meta,1),/align right|right edge/);right.justify_end();
+assert.throws(()=>assertNaturalRun(rowGeometry(row,390),meta,1),/align right|right edge/);right.justify_end();
 meta.kids.splice(meta.kids.indexOf(right),0,element().size(3));
-assert.throws(()=>assertNaturalRun(mutatedGeometry(),meta,1),/separator before labels/);meta.kids.splice(meta.kids.indexOf(right)-1,1);
+assert.throws(()=>assertNaturalRun(rowGeometry(row,390),meta,1),/separator before labels/);meta.kids.splice(meta.kids.indexOf(right)-1,1);
 find(row,'pr-checks-41').w(18).overflow_hidden();
 assert.throws(()=>assertChecksFit(rowGeometry(row,390),row),/Full count .* must fit/);
 console.log(`PASS ${comparisons} row comparisons: ordinary/pin/list/coordinator/ghost, Open/Closed/merged, 280/320/360/390/480px, 75–200% zoom including 130%, natural left runs/right-anchored pills without joining dots, priority shortening, complete checks, fixed title/vertical geometry and line-height/clipping mutations (synthetic, not GPUI pixels)`);

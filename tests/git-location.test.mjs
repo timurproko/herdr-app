@@ -1,5 +1,6 @@
 import {githubInvocation} from './support/github-read.mjs';
 import assert from 'node:assert/strict';
+import {Background} from './support/git-scroll-modules.mjs';
 import {withKitUi} from './support/panel-kit.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -64,7 +65,7 @@ await main.link((specifier,referencing) => {
   if (specifier === './webhooks.js') return synthetic({GitWebhooks:class {sync(){} stop(){}}});
   if (specifier === './host.js') return synthetic(native);
   if (specifier === './plugins.js') return synthetic({pluginPullContext:()=>null,pluginEvent(){},sidebarPanelEnabled:()=>true,sidebarPanels:()=>[{id:'files',name:'Files',icon:'files.svg'},{id:'changes',name:'Git',icon:'git.svg'}]});
-  if (specifier === 'gpui-kit') return synthetic({View:class{},div:element,svg:element,PathBuilder:{}});
+  if (specifier === 'gpui-kit') return synthetic({View:class{},div:element,svg:element,PathBuilder:{},Background});
   if (specifier === 'gpui-base') return synthetic({h_flex:element,v_flex:element,Toggle:{new:id=>element('toggle').id(id)}});
   if (specifier === './ui.js') return synthetic(withKitUi({U:{control:28,radius:6,icon:16,insetControl:24,insetRadius:4,smallIcon:14},panelTitle:element,headerTools:x=>x,reveal:(x,visible)=>x.opacity(visible?1:0),subtleActionFill:()=>'',itemHover:()=>'',refreshButton:element,emptyState:element,menuSurface:(_t,el)=>el,menuHeading:(_t,text)=>element().child(text),slot:el=>el},element));
   return moduleFor(path.resolve(path.dirname(referencing.identifier),specifier));
@@ -204,6 +205,9 @@ await reply(firstA,'D:/stale'); assert.equal(view.root,null); assert.equal(view.
 await reply(secondA,repo); await reply(b,'',128); assert.equal(view.root,repo);
 
 // Late repo discovery must not restore the old header or overwrite new busy state.
+// These explicit GitHub scenarios have a shown panel; hidden panels now refuse
+// even forced starts. Restore the hidden local-context fixture afterward.
+const hiddenShown=view.shown;view.shown=()=>true;
 view.loadPulls('open',cx,true); const oldRepo = await take('gh','repo');
 select(home); await reply(take('git'),'',128);
 select(repo); await reply(take('git'),repo);
@@ -250,7 +254,7 @@ view.loadPulls('open',cx,true); const failure = await take('gh','api');
 select(home); const homeGit = await take('git');
 failure.reject(new Error('old machine offline')); await tick();
 assert.equal(view.pullError,null); assert.equal(view.loading,true);
-await reply(homeGit,'',128);
+await reply(homeGit,'',128);view.shown=hiddenShown;
 // A delayed branch reply cannot restore another terminal's highlight.
 select(repo);
 let releaseBranch;

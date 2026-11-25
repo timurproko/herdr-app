@@ -3,58 +3,47 @@ import {githubInvocation} from './github-read.mjs';
 import {element,svg,nodes,find,words} from './choice-menu.mjs';
 export {element,svg,nodes,find,words};
 export const t={background:'#191d28',foreground:'#eeeeee',muted:'#999999',dim:'#666666',raised:'#222222',hover:'#333333',border:'#444444',ansi1:'red',ansi2:'green',ansi3:'yellow',ansi5:'purple'};
-export async function rowHarness({host={},modules={}}={}) {
-  let zoom=1,font='Geist',agent=false,rendering=false;
+export async function rowHarness({host={},modules={},globals={}}={}) {
+  let zoom=1,agent=false,rendering=false;
   const place={cwd:'/repo',on:null,terminal:'t1'},focus=[];
   const chain=new Proxy({},{get:(_n,key)=>key==='build'?()=>({}):()=>chain});
-  const {Main,facts,U,AggregatePulls}=await loadMod({mod:'custom-changes',globals:{window:{paint_path:element}},
-    host:{props:()=>null,settings:()=>({zoom,ui_font_family:font}),theme:()=>t,closeOverlay(){},openOverlay(){},nextCommand(){},run:(...args)=>focus.push(args),
+  const transport=host.exec?((command,args,options)=>{const call=githubInvocation(command,args,options);return host.exec(call.command,call.args,call.options);}):undefined;
+  const {Main,facts,U,AggregatePulls}=await loadMod({mod:'custom-changes',globals:{window:{paint_path:element},...globals},
+    host:{props:()=>null,settings:()=>({zoom}),theme:()=>t,closeOverlay(){},openOverlay(){},nextCommand(){},run:(...args)=>focus.push(args),
       layout:()=>({id:'panel',children:[{id:'panel-body',active:'changes'}]}),...host,
-      ...(host.exec?{exec:(command,args,options)=>{const call=githubInvocation(command,args,options);return host.exec(call.command,call.args,call.options);}}:{})},
+      ...(transport?{exec:transport}:{})},
     modules:{'main.js':'src/plugins/git/mod/main.js','pulls.js':'src/plugins/git/mod/pulls.js','label-colors.js':'src/plugins/git/mod/label-colors.js',
       'ui.js':'src/ui/ui.js','gpui-kit':{View:class{},div:element,svg,PathBuilder:{stroke:()=>chain}},
       'gpui-base':{h_flex:()=>element().flex(),v_flex:()=>element().flex().flex_col(),Popover:{},Input:{}},
       'pin-swap.js':'src/plugins/git/mod/pin-swap.js',
       'location.js':{location:()=>place},'plugins.js':{sidebarPanelEnabled:()=>true},'agent-links.js':{AgentLinks:class{}},
-      'aggregate.js':{AggregatePulls:class{}},'webhooks.js':{GitWebhooks:class{}},'notices.js':{GitNotices:class{}},
+      'aggregate.js':{AggregatePulls:class{}},'webhooks.js':{GitWebhooks:class{sync(){}stop(){}}},'notices.js':{GitNotices:class{}},
       'enrollment-picker.js':{EnrollmentPicker:class{}},'panel-pin.js':{panelPin:element},'sidebar-title.js':{sidebarTitle:element},
       'panel-state.js':{changePanel(){}},'settings-dialog.js':{openSettings(){}},'panel-kit.js':{headerTool:element,contextMenu:element,panelMessage:element},...modules},
     entry:'export {default as Main} from "./main.js"; export * as facts from "./pulls.js"; export {U} from "./ui.js"; export {AggregatePulls} from "./aggregate.js";'});
-  const panel=new Main();let lineInputs=new Map();const pullLine=panel.pullLine;
-  panel.pullLine=function(t,id,items,order){lineInputs.set(id,items);return pullLine.call(this,t,id,items,order);};
-  panel.resetRepository();panel.root='/repo';panel.repo={name:'owner/repo'};panel.context=JSON.stringify(['/repo',null]);panel.view='open';panel.foldedRepositories=new Set();
+  const panel=new Main();panel.resetRepository();panel.root='/repo';panel.repo={name:'owner/repo'};panel.context=JSON.stringify(['/repo',null]);panel.view='open';panel.foldedRepositories=new Set();
   panel.agentLinks={related:()=>agent?{key:'agent',address:'t2'}:null};
-  panel.aggregate={context:{scope:'home'},currentContext:()=>panel.aggregate.context,repositories:()=>['owner/repo'],target:()=>agent?{terminal:'t2'}:null,focus:(...args)=>focus.push(args)};
+  panel.aggregate={context:{scope:'home'},target:()=>agent?{terminal:'t2'}:null,focus:(...args)=>focus.push(args)};
   const cx={focus_handle(){if(rendering)throw Error('focus handle during render');return {};},notify(){if(rendering)throw Error('notify during render');},stop_propagation(){},spawn:fn=>fn(cx)};
-  const render=fn=>{lineInputs=new Map();panel.beginPullRender?.();panel.pullTextPending??=new Set();rendering=true;try{return fn();}finally{rendering=false;}};
+  const render=fn=>{panel.pullTextPending=new Set();rendering=true;try{return fn();}finally{rendering=false;}};
   const nativeSizes=new Map();
   const settle=(build,width,zoom=1,height,changedOnly=false)=>{
     // Native post-layout callbacks, not render-time heuristics. Include hidden
     // intrinsic probes; visible text assertions below exclude their paint.
-    for(let pass=0;pass<20;pass++) {
+    for(let pass=0;pass<8;pass++) {
       const tree=render(build),geometry=rowGeometry(tree,width,zoom,height);let changed=false;
-      for(const node of nodes(tree))if(/pr-(?:byline|meta|title|label)-|^task-repo-name-|^git-repo-name/.test(node.attrs?.id?.[0]??'')) {
-        const callback=node.attrs.on_size_change?.[0];if(callback) {
+      for(const node of nodes(tree))if(/pr-(?:byline|meta)-/.test(node.attrs?.id?.[0]??'')) {
+        const callback=node.attrs.on_size_change?.[0];if(callback){
           const size=geometry.get(node),id=node.attrs.id[0],before=nativeSizes.get(id);
           nativeSizes.set(id,{width:size.width,height:size.height});
           if(!changedOnly||!before||Math.abs(before.width-size.width)>0.01||Math.abs(before.height-size.height)>0.01)callback(size,{...cx,notify(){changed=true;}});
         }
       }
-      if(!changed) {
-        // Independent natural-width oracle, not extra nodes/probes in the
-        // production tree. Scheduled native probes are globally capped at four.
-        geometry.intrinsic=new Map();
-        for(const [id,items]of lineInputs)for(const item of items)for(const short of [false,...(item.compact?[true]:[])]) {
-          const key=`${id}-probe-${item.kind}-${short?'compact':'full'}`,node=item.render(short,true).flex_none().id(key);
-          const oracle=element().flex().text_size(11).line_height('18px').child(node),box=rowGeometry(oracle,10000,zoom).get(node);
-          geometry.intrinsic.set(key,{node,width:box.width,kind:item.kind,short,line:id});
-        }
-        return {tree,geometry};
-      }
+      if(!changed)return {tree,geometry};
     }
     throw Error('Natural row layout must converge without a measurement/render loop');
   };
-  return {panel,facts,U,AggregatePulls,cx,render,settle,settleChanged:(build,width,zoom=1,height)=>settle(build,width,zoom,height,true),focus,place,setAgent:value=>{agent=value;},setZoom:value=>{zoom=value;},setFont:value=>{font=value;}};
+  return {panel,facts,U,AggregatePulls,cx,transport,render,settle,settleChanged:(build,width,zoom=1,height)=>settle(build,width,zoom,height,true),focus,place,setAgent:value=>{agent=value;},setZoom:value=>{zoom=value;}};
 }
 
 // Deterministic flex/absolute box model for these real render trees, not GPUI
@@ -115,12 +104,12 @@ export function rowGeometry(root,width,zoom=1,height) {
       const size=Math.max(r.min,r.base+(free>0&&grow?free*r.grow/grow:free<0&&shrink?free*r.shrink*r.base/shrink:0));
       const cross=row?v(r.a,'h',v(r.a,'size',a.items_start||a.items_center?r.n.h:innerH)):v(r.a,'w',v(r.a,'size',innerW));
       const crossOffset=a.items_center?((row?innerH:innerW)-cross)/2:0;
-      place(r.child,x+p.l+(row?offset:crossOffset),paintY+p.t+(row?crossOffset:offset),row?size:cross,row?cross:size,s,[...ancestors,n]);
+      place(r.child,x+p.l+(row?offset:crossOffset),y+p.t+(row?crossOffset:offset),row?size:cross,row?cross:size,s,[...ancestors,n]);
       offset+=size+r.trailing+gap;
     }
     for(const child of children(n).filter(absolute)){
       const ca=attrs(child),cn=intrinsic(child,s),cw=v(ca,'w',v(ca,'size',ca.size_full||ca.inset_0?innerW:ca.right?innerW-v(ca,'left')-v(ca,'right'):cn.w)),ch=v(ca,'h',v(ca,'size',ca.size_full||ca.inset_0?innerH:ca.bottom?innerH-v(ca,'top')-v(ca,'bottom'):cn.h));
-      place(child,x+v(ca,'left'),paintY+v(ca,'top'),cw,ch,s,[...ancestors,n]);
+      place(child,x+v(ca,'left'),y+v(ca,'top'),cw,ch,s,[...ancestors,n]);
     }
   };
   place(root,0,0,width,height);

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {scrollModule,Background} from './support/git-scroll-modules.mjs';
 import {withKitUi} from './support/panel-kit.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -29,7 +30,7 @@ function pathTo(node,target) {
   return null;
 }
 let allAgents=[], allPanes=[], allSpaces=[], allTerminals=[], shown=true;
-const calls=[], actions=[], tasks=[], remotes=new Map(), screens=new Map();
+const calls=[], actions=[], tasks=[], remotes=new Map(), screens=new Map(),configs=new Map();
 const place={cwd:'/repo',on:null,terminal:'shell',tab:'shell-tab'};
 let heldRemote=null;
 const host={
@@ -41,6 +42,12 @@ const host={
   run:(...args)=>actions.push(args),
   exec:async(cmd,args,options)=>{
     calls.push({cmd,args,options});
+    if(cmd==='git') {
+      const key=JSON.stringify([options.on,options.cwd]),config=configs.get(key);
+      // Apply the real --get-regexp filter so omitting gh-resolved really does
+      // hide a marker-only change, rather than letting the mock mask the bug.
+      return {code:0,stdout:config==null?remotes.get(key)??'':config.split('\n').filter(line=>new RegExp(args.at(-1)).test(line.split(' ')[0])).join('\n')};
+    }
     assert.equal(cmd,'gh'); assert.deepEqual(Array.from(args),['repo','view','--json','nameWithOwner,owner,url']);
     if (heldRemote) {const result=heldRemote;heldRemote=null;return result;}
     return {code:0,stdout:remotes.get(JSON.stringify([options.on,options.cwd]))??''};
@@ -57,7 +64,7 @@ const modules={
   './webhooks.js':{GitWebhooks:class {sync(){} stop(){}}},
   './plugins.js':{pluginPullContext:()=>null,pluginEvent(){},sidebarPanelEnabled:()=>true},'./sidebar-title.js':{sidebarTitle:element},
   './panel-pin.js':{panelPin:(_t,{id})=>element().id(id)},'./panel-state.js':{changePanel(){}},
-  './host.js':host,'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{}},
+  './host.js':host,'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{},Background},
   'gpui-base':{h_flex:element,v_flex:element},
   './ui.js':{U:{icon:16,insetControl:24,insetRadius:4},panelTitle:element,headerTools:x=>x,reveal:x=>x,subtleActionFill:()=> 'usual-inset-hover',refreshButton:element,emptyState:element,menuSurface:(_t,el)=>el,menuHeading:(_t,text)=>element().child(text),slot:el=>el},
 };
@@ -68,6 +75,7 @@ function moduleFor(file) {
 withKitUi(modules['./ui.js'],element);
 const main=moduleFor(path.join(folder,'main.js'));
 await main.link((specifier,ref)=>{
+  const dependency=scrollModule(context,specifier);if(dependency)return dependency;
   if (specifier === './panel-kit.js') return moduleFor(path.join(root,'src/ui/panel-kit.js'));
   if (specifier === './settings-dialog.js') return moduleFor(path.join(root,'src/ui/settings-dialog.js'));
   if (modules[specifier]) return new vm.SyntheticModule(Object.keys(modules[specifier]),function(){
@@ -125,7 +133,9 @@ assert.equal(links.related(pr,'owner/repo','pc2/t6').address,'pc2/t6','Selected 
 assert.equal(links.related(pr,'owner/repo').address,'pc2/t1','Otherwise stable model order');
 // Recheck after TTL without a parallel retry burst.
 for(const entry of links.entries.values())entry.at=0;
+const beforeTTL=calls.filter(c=>c.cmd==='gh').length;
 screens.set('pc2/t1',footer(930));links.refresh(cx);links.refresh(cx);await tick();
+assert.equal(calls.filter(c=>c.cmd==='gh').length,beforeTTL,'Unchanged folder fingerprints need no GitHub reread at the footer TTL');
 assert.equal(links.related({...pr,number:930},'owner/repo').address,'pc2/t1');
 
 // Message actions revalidate the same robot mapping instead of trusting its TTL cache.
@@ -250,6 +260,21 @@ assert.equal(calls.filter(c=>c.cmd==='hc').length,beforeUnsupported,'Unsupported
 const codexTarget=links.related(pr,'owner/repo','codex');assert.equal(codexTarget.address,'codex');
 assert.equal(await links.confirm(codexTarget,pr,'owner/repo'),true,'Other agents use their verified repo and tab/branch mapping');
 assert.equal(calls.filter(c=>c.cmd==='hc').length,beforeUnsupported,'Generic confirmation never guesses an unsupported footer format');
+add('default-route',{app:'codex',cwd:'/default-route'});
+const routingKey=JSON.stringify([null,'/default-route']);
+const remoteURLs='remote.origin.url git@github-alias:fork/repo.git\nremote.upstream.url git@github-alias:owner/repo.git\n';
+configs.set(routingKey,remoteURLs+'remote.upstream.gh-resolved base');
+links.refresh(cx);await tick();assert.equal(links.entries.get('default-route').repo,'owner/repo');
+const routedReads=()=>calls.filter(call=>call.cmd==='gh' && call.options.cwd==='/default-route').length;
+const beforeRouting=routedReads();
+configs.set(routingKey,remoteURLs+'remote.origin.gh-resolved base');
+remotes.set(routingKey,JSON.stringify({nameWithOwner:'fork/repo'}));
+links.entries.get('default-route').at=0;links.refresh(cx);await tick();
+assert.equal(routedReads(),beforeRouting+1,'Changing only gh-resolved rechecks the effective canonical repository at the footer TTL');
+assert.equal(links.entries.get('default-route').repo,'fork/repo');
+assert.equal(links.related(pr,'owner/repo','default-route')?.address==='default-route',false,'The old default repository immediately loses this robot');
+assert.equal(links.related(pr,'fork/repo','default-route').address,'default-route');
+links.entries.get('default-route').at=0;links.refresh(cx);await tick();assert.equal(routedReads(),beforeRouting+1,'Unchanged effective routing still avoids repeated GitHub lookups');
 const named=allAgents.find(agent=>agent.address==='codex'),nameCalls=calls.length;named.title='Build worker';
 assert.equal(links.related(pr,'owner/repo','codex').displayName,'Build worker');
 assert.equal(links.related(pr,'owner/repo','codex').key,codexTarget.key,'Display name is not action identity');
@@ -257,4 +282,4 @@ assert.equal(links.displayName('codex'),'Build worker');assert.equal(calls.lengt
 shown=false;const hiddenCalls=calls.length;view.render(cx);await tick();
 assert.equal(calls.length,hiddenCalls,'Hidden Git panels start no agent scans');
 await Promise.all(tasks);
-console.log('PASS: Separate white PR robot links, preserved PR state colors, standard hover/no repeat-only tooltip, named display identity, click isolation, remote/background agents, repository scoping, precedence, TTL and stale targets');
+console.log('PASS: Separate white PR robot links, preserved PR state colors, standard hover/no tooltip, click isolation, remote/background agents, repository scoping, precedence, TTL and stale targets');

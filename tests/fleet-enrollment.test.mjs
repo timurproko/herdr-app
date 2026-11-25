@@ -13,14 +13,14 @@ const cx={focus_handle(){assert.equal(rendering,false,'Never create a focus hand
 const drain=async()=>{while(jobs.length)await Promise.all(jobs.splice(0));};
 const host={checking:()=>false,props:()=>null,closeOverlay(){},openOverlay(){},nextCommand(){},notify(){},settings:()=>({zoom:1}),theme:()=>t,run(){},layout:()=>({id:'panel',hidden:!visible,children:[{id:'panel-body',active:'changes'}]}),
  appHome:()=>'/fixture',shared:()=>snapshot,setShared(){throw Error('No shared writes from presentation');},
- exec:async(command,args)=>{assert.equal(rendering,false);reads.push([command,args]);assert.equal(command,'node','No GitHub read or enrollment');assert.ok(['notice','notice-repository'].includes(args[1]),'Only existing readiness reads, never enrollment');return {code:0,stdout:JSON.stringify(args[1]==='notice'?{setup:'ready'}:{status:snapshot.members[args[4]]===false?'missing':snapshot.members[args[4]]===true?'ready':'error'})};}};
+ exec:async(command,args)=>{assert.equal(rendering,false);reads.push([command,args]);assert.equal(command,'node','No GitHub read or enrollment');assert.ok(['notice','notice-repository','notice-repositories'].includes(args[1]),'Only existing readiness reads, never enrollment');return {code:0,stdout:JSON.stringify(args[1]==='notice'?{setup:'ready'}:args[1]==='notice-repositories'?{members:Object.fromEntries(JSON.parse(args[4]).map(name=>[name,{status:snapshot.members[name]===false?'missing':snapshot.members[name]===true?'ready':'error'}]))}:{status:snapshot.members[args[4]]===false?'missing':snapshot.members[args[4]]===true?'ready':'error'})};}};
 const modules={...choiceModules,'label-colors.js':'src/plugins/git/mod/label-colors.js','gpui-kit':{View:class{},div:element,svg,PathBuilder:{}},'gpui-base':{Popover,Input:{},h_flex:element,v_flex:element},
  'main.js':'src/plugins/git/mod/main.js','enrollment-picker.js':'src/plugins/git/mod/enrollment-picker.js','notices.js':'src/plugins/git/mod/notices.js','pulls.js':'src/plugins/git/mod/pulls.js',
  'location.js':{location:()=>selected},'plugins.js':{sidebarPanelEnabled:()=>enabled,pluginById:()=>({}),pluginSetting:(_p,key)=>key==='relay'?raw:account},
  'aggregate.js':{AggregatePulls:class{}},'agent-links.js':{AgentLinks:class{}},'webhooks.js':{GitWebhooks:class{}},'pin-swap.js':{PinSwap:class{cancel(){}},PIN_SWAP_MS:320},
  'panel-pin.js':{panelPin:element},'sidebar-title.js':{sidebarTitle:element},'panel-state.js':{changePanel(){}},'space-color-state.js':{currentSpaceColor:()=>null},
  'panel-kit.js':{headerTool:(_t,o)=>element().id(o.id).on_click(o.onClick),contextMenu:element,panelMessage:(_t,id,o)=>element().id(id).child(o.text)},'settings-dialog.js':{openSettings:value=>settings.push(value)}};
-const {Main,GitNotices}=await loadMod({host,modules,globals:{URL},entry:'export {default as Main} from "./main.js";export * from "./notices.js";'});
+const {Main,GitNotices}=await loadMod({mod:'custom-changes',host,modules,globals:{URL},entry:'export {default as Main} from "./main.js";export * from "./notices.js";'});
 const panel=new Main();panel.refresh=()=>{};panel.init({}, {...cx,timer:{every(){}}});delete panel.refresh;
 assert.equal(handles.length,1,'Initialization owns exactly one enrollment focus handle');
 panel.view='open';panel.foldedRepositories=new Set();panel.context='tasks:fixture';panel.notices=new GitNotices();
@@ -42,8 +42,8 @@ find(tree,'git-enrollment-choice-0').attrs.on_click[0]({},cx);assert.equal(panel
 assert.deepEqual(JSON.parse(JSON.stringify(settings.at(-1))),{section:'plugins',plugin:'git',pluginSection:'repository',pluginSearch:'owner/b'});assert.equal(reads.length,before,'Choosing does not enroll or read');
 change({'owner/a':false,'owner/b':false,'owner/c':false});await drain();open();
 assert.deepEqual([...panel.enrollmentPicker.opening.choices],['owner/c','owner/a','owner/b'],'Deduplicated exact rendered section order');
-const footer=find(tree,'git-enrollment-footer'),scroll=find(tree,'task-pulls-scroll');assert.ok(footer.attrs.flex_none);assert.ok(scroll.attrs.flex_1);assert.ok(scroll.attrs.min_h);assert.ok(scroll.attrs.overflow_hidden);assert.ok(scroll.kids[0].attrs.overflow_y_scrollbar);
-assert.ok(tree.kids.indexOf(footer)>tree.kids.indexOf(scroll));assert.ok(new Set(walk(scroll).filter(e=>/^pr-owner\//.test(e.attrs.id?.[0]??'')).map(e=>e.attrs.id[0])).size<=10,'Long PR inventory builds only the bounded page in the scroll sibling');assert.equal(text(find(tree,'git-view-open')),'Open 80','Paging does not change the task total');assert.ok(find(tree,'task-pulls-more'));
+const footer=find(tree,'git-enrollment-footer'),scroll=find(tree,'task-pulls-scroll');assert.ok(footer.attrs.flex_none);assert.ok(scroll.attrs.flex_1);assert.ok(scroll.attrs.min_h);assert.ok(scroll.attrs.overflow_hidden);assert.ok(walk(scroll).some(node=>node.attrs.overflow_y_scrollbar));
+assert.ok(tree.kids.indexOf(footer)>tree.kids.indexOf(scroll));assert.ok(new Set(walk(scroll).filter(e=>/^pr-owner\//.test(e.attrs.id?.[0]??'')).map(e=>e.attrs.id[0])).size<=10,'Long PR inventory builds only the bounded window in the scroll sibling');assert.equal(text(find(tree,'git-view-open')),'Open 80','Windowing does not change the task total');assert.equal(find(tree,'task-pulls-more'),undefined);
 assert.equal(find(scroll,'git-enrollment-footer'),undefined);assert.ok(find(tree,'task-error-owner/c'));
 for(const repo of repositories)panel.foldedRepositories.add(repo);render();assert.ok(find(tree,'git-enrollment-footer'));assert.equal(find(tree,'task-error-owner/c'),undefined);assert.equal(find(tree,'task-repo-body-owner/a'),undefined);assert.equal(find(tree,'git-task-empty'),undefined);
 key('up');assert.equal(panel.enrollmentPicker.index,2);key('down');assert.equal(panel.enrollmentPicker.index,0);key('down');assert.equal(find(tree,'git-enrollment-choice-1').attrs.bg[0],t.hover);key('enter');assert.equal(settings.at(-1).pluginSearch,'owner/a');
@@ -73,17 +73,17 @@ raw='';render();assert.ok(find(tree,'git-live-ci-footer'));assert.equal(find(tre
 // Header name uses the count-strip width; tooltips require measured real overflow.
 const longRepo='owner/a-very-long-canonical-repository-name';repositories=[longRepo];entries.set(`${longRepo}#1`,{link:{repo:longRepo},pr:null,error:'Scoped repository read failed'});render();
 const label=()=>find(tree,`task-repo-name-${context.scope}-${longRepo}`);
-const probe=()=>find(tree,`task-repo-name-${context.scope}-${longRepo}-probe`);
+const probe=()=>label().kids[1].kids[0];
 assert.equal(find(tree,`task-repo-header-${longRepo}`).kids.length,2);assert.ok(label().attrs.flex_1);assert.equal(label().attrs.min_w[0],0);assert.ok(label().kids[0].attrs.truncate);assert.ok(label().attrs.overflow_hidden);
 assert.ok(label().kids[1].attrs.absolute);assert.ok(label().kids[1].attrs.invisible);assert.ok(probe().attrs.flex_none);assert.ok(probe().attrs.whitespace_nowrap);
 for(const zoom of [0.75,1,1.25,1.5,2]){
- label().attrs.on_size_change[0]({width:320*zoom},cx);probe().attrs.on_size_change[0]({width:250*zoom},cx);render();assert.equal(label().attrs.tooltip,undefined,'Fitting text has no tooltip');
- label().attrs.on_size_change[0]({width:120*zoom},cx);render();assert.equal(label().attrs.tooltip[0],longRepo);
- const notified=notifications;label().attrs.on_size_change[0]({width:120*zoom},cx);probe().attrs.on_size_change[0]({width:250*zoom},cx);assert.equal(notifications,notified,'Repeated layout measurements never loop notifications');
+ label().kids[0].attrs.on_size_change[0]({width:320*zoom},cx);probe().attrs.on_size_change[0]({width:250*zoom},cx);render();assert.equal(label().attrs.tooltip,undefined,'Fitting text has no tooltip');
+ label().kids[0].attrs.on_size_change[0]({width:120*zoom},cx);render();assert.equal(label().attrs.tooltip[0],longRepo);
+ const notified=notifications;label().kids[0].attrs.on_size_change[0]({width:120*zoom},cx);probe().attrs.on_size_change[0]({width:250*zoom},cx);assert.equal(notifications,notified,'Repeated layout measurements never loop notifications');
  panel.foldedRepositories.add(longRepo);render();assert.equal(label().attrs.tooltip[0],longRepo);assert.equal(find(tree,`task-repo-body-${longRepo}`),undefined);
- label().attrs.on_size_change[0]({width:320*zoom},cx);render();assert.equal(label().attrs.tooltip,undefined,'Widening removes unnecessary tooltip even when folded');panel.foldedRepositories.delete(longRepo);
+ label().kids[0].attrs.on_size_change[0]({width:320*zoom},cx);render();assert.equal(label().attrs.tooltip,undefined,'Widening removes unnecessary tooltip even when folded');panel.foldedRepositories.delete(longRepo);
 }
-const staleMeasure=label().attrs.on_size_change[0],notified=notifications;context={...context,scope:'replacement'};panel.aggregate.context=context;render();staleMeasure({width:1},cx);assert.equal(notifications,notified,'Old-scope geometry cannot affect another coordinator');assert.equal(label().attrs.tooltip,undefined);
+const staleMeasure=label().kids[0].attrs.on_size_change[0],notified=notifications;context={...context,scope:'replacement'};panel.aggregate.context=context;render();staleMeasure({width:1},cx);assert.equal(notifications,notified,'Old-scope geometry cannot affect another coordinator');assert.equal(label().attrs.tooltip,undefined);
 assert.equal(text(find(tree,'git-view-open')),'Open 80');assert.equal(text(find(tree,'git-view-closed')),'Closed 0');
 assert.equal(handles.length,1,'Repeated render, open/close and context changes never allocate another handle');
 console.log('PASS real coordinator footer, zero/one/many choices, ordered dedup, fold/scroll, keyboard/dismissal, cached reads and stale Settings guards');

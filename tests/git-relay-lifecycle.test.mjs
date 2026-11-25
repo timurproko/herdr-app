@@ -76,19 +76,19 @@ const modules = { './host.js':host, './plugins.js':{ pluginById:()=>({}), plugin
   './plugins/git/relay-config.js':config, './plugins/git/relay-state.js':runtime };
 const panel = new vm.SourceTextModule(await fs.readFile(new URL('../src/plugins/git/mod/webhooks.js',import.meta.url),'utf8'),{context});
 await panel.link(name=>new vm.SyntheticModule(Object.keys(modules[name]),function(){for(const[k,v]of Object.entries(modules[name]))this.setExport(k,v);},{context})); await panel.evaluate();
-const consumer = new panel.namespace.GitWebhooks();
+const consumer = new panel.namespace.GitWebhooks({debounce:0});
 const consume = (enabled=true, repository=repo) => consumer.sync(cx,{ enabled, repository, scope:repository, onChange:()=>{cx.notify();changes.push(repository);} });
 duringRender(()=>{consume();consume();});assert.equal(changes.length,0,'panel notifications yield even with immediate cx.spawn');await tick();assert.equal(changes.length,1);
 consume(true,'someone/else'); consume(false); await tick();assert.equal(changes.length,1,'hiding cancels queued panel delivery'); assert.equal(sockets.at(-1).closed,undefined,'hiding a panel leaves update transport active');
 await send({ ...push, delivery:'hidden-main' }); assert.equal(invalidations,4);
 consume();await tick();assert.equal(changes.length,2,'showing catches up independent of selected repo');
-const grouped=new panel.namespace.GitWebhooks();let groupChanges=0;
+const grouped=new panel.namespace.GitWebhooks({debounce:0});let groupChanges=0;
 const groupSync=()=>grouped.sync(cx,{enabled:true,scope:'tasks',repositories:[repo,'someone/else'],onChange(){groupChanges++;}});
 groupSync();await tick();await send({...push,event:'check_run',repository:'someone/else',delivery:'group-notice'});groupSync();await tick();
-assert.equal(groupChanges,2,'merged task/fleet multi-repository panel consumes notices for every linked repo');
-await send({...push,event:'check_run',repository:'unrelated/repo',delivery:'group-unrelated'});groupSync();assert.equal(groupChanges,2);
+assert.equal(groupChanges,3,'merged task/fleet multi-repository panel consumes notices for every linked repo');
+await send({...push,event:'check_run',repository:'unrelated/repo',delivery:'group-unrelated'});groupSync();assert.equal(groupChanges,3);
 // Ordinary panel delivery also coalesces and rejects stale asynchronous work.
-const racing=new panel.namespace.GitWebhooks(),delivered=[];
+const racing=new panel.namespace.GitWebhooks({debounce:0}),delivered=[];
 const queue=scope=>racing.sync(cx,{enabled:true,scope,repository:repo,onChange(){cx.notify();delivered.push(scope);}});
 duringRender(()=>{queue('old');queue('new');queue('new');});assert.deepEqual(delivered,[]);await tick();assert.deepEqual(delivered,['new']);
 queue('stopped');racing.stop();await tick();assert.deepEqual(delivered,['new']);
@@ -104,7 +104,7 @@ for(const change of ['disabled','relay','checking','transport']){
 }
 // Label actions remain PR-fact invalidations on the shared broker, never main
 // update hints. The panel still yields out of render and opens no own socket.
-const labelConsumer=new panel.namespace.GitWebhooks();let labelChanges=0;
+const labelConsumer=new panel.namespace.GitWebhooks({debounce:0});let labelChanges=0;
 const labelSync=()=>labelConsumer.sync(cx,{enabled:true,scope:'labels',repository:repo,onChange(){cx.notify();labelChanges++;}});
 labelSync();await tick();assert.equal(labelChanges,1);
 const labelsBeforeSockets=sockets.length,labelsBeforeUpdates=invalidations;

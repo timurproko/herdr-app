@@ -10,7 +10,9 @@ const context={scope:'home',machine:null,links:[{url:raw(1).url,terminal:'t1'}]}
 const h=await rowHarness({host:{exec:(_cmd,args)=>new Promise(resolve=>pending.push({args,resolve}))},modules:{'aggregate.js':'src/plugins/git/mod/aggregate.js','plugins.js':{sidebarPanelEnabled:()=>true,pluginPullContext:()=>context,pluginEvent(){}}}});
 const {panel,facts,cx}=h;panel.aggregate=null;cx.timer={after(){}};
 const tick=async()=>{for(let i=0;i<50;i++)await Promise.resolve();};
-const reply=async(stdout,code=0)=>{assert.ok(pending.length,'Expected one queued read');pending.shift().resolve({code,stdout,stderr:code?'failed':''});await tick();};
+const reply=async(stdout,code=0)=>{assert.ok(pending.length,'Expected one queued read');const request=pending.shift();
+ const value=JSON.parse(stdout);if(value.number && request.args[1]==='graphql')stdout=JSON.stringify({data:{repository:{[`pr${value.number}`]:value}}});
+ request.resolve({code,stdout,stderr:code?'failed':''});await tick();};
 const newer=(number,order=panel.factOrder)=>{
   const read=order.begin(),value=facts.pullRow(raw(number,11,11),'owner');
   return order.publish(read,`owner/repo#${number}`,()=>value).value;

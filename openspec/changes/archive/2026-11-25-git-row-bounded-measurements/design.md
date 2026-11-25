@@ -1,50 +1,33 @@
 # Design
 
-## Context
+## Context and scope
 
-The ordinary list already mounts every loaded row. The earlier implementation regressed cold 30/60/100-row construction from roughly 8/15/24 ms to 20/42/interrupted. Coordinator paging could not protect it. The person has explicitly reduced this PR to informative lower-line tooltips and rejected any title/header typography or truncation change.
+This PR owns informative tooltip policy, not the Git row renderer. The person required main's merged #56 mounted reveal/caps/fades, #59 quiet/batched reads, #66 icon offsets and #70 dot alignment. Titles keep the inherited interface font, native truncation and unconditional full-title hover.
 
-## Goals / Non-Goals
-
-**Goals:** Informative lower-line hover without parent repetition; baseline +2 ms at 30/60/100 cold mounted rows; successful 200-row builds; four lower-line probes per snapshot; retained allocated geometry.
-
-**Non-Goals:** No title/header font or truncation change, title measurement, prefix fitting, custom suffix, icon/separator change, paging/windowing change, hidden/delayed row, JavaScript frame timer, hover IO, dependency, native patch or deployment.
+The earlier private four-probe scheduler and width-cache changes are removed entirely. They are unnecessary once tooltip eligibility reads the full/compact/clipped choices that main already computes.
 
 ## Decisions
 
-### Keep native titles and headers unchanged
+### Reuse main's renderer and layout facts
 
-Use main's PR-title and ordinary-header expressions and coordinator repository-name helper unchanged. Titles inherit the interface font, keep native truncation and always expose the complete title. Title edits immediately replace native text/tooltip without any size callback. The existing coordinator header overflow measurement remains main's implementation; it is not part of the new lower-line probe queue.
+Restore main's row renderer, `RowPresentations` facts/ID/style/layout caches, intrinsic measurement code, scope/zoom guards, reveal model, caps, scrolling and fades. Only tooltip fields/decoration differ. A complete visible lower-line value has no repeat-only tooltip. Compact or clipped values expose full originals, extra known facts stay informative, and surviving parent targets recover wholly omitted values without repeating visible neighbors.
 
-Keep main's merged icon/separator implementation and its geometry regressions. No text or icon motion compensates for hover policy.
+No title/pill probe, native element, separate layout calculation, measurement queue, width cache, timer or host read is added. Main's existing measurements remain unchanged; their number is not falsely described as zero. Probe/element counts must match main exactly for a shared workload.
 
-### Informative lower-line targets
+### Pure cached tooltip facts
 
-Lower-line items expose complete originals only when compacted, clipped or omitted, or when known timestamps/check details add information. Parent strips recover completely hidden values without repeating visible items. Label pills inherit an informative group hover; no individual pill-width probes. Known agent/state descriptions remain informative and do not grant action authority or start hover reads.
+The existing weak presentation cache stores exact-time and check-detail strings. Its signature includes source timestamps/state and check-detail identity so mutable fixtures and replacement facts invalidate them. Native nodes/callbacks remain snapshot-local. Agent names describe existing targets but do not become action identity or trigger reads. Unknown facts are not invented.
 
-### Four lower-line probes per snapshot
+### Main-relative cold mounted cost
 
-Capture zoom/interface font once per render entry. One shared reservation set refuses cache hits, duplicates and work after four probes. Ordinary/coordinator lower lines share the 512-entry width cache. Native size callbacks populate it and notify after layout, advancing missing keys in subsequent renders without a timer or withholding rows. Existing allocated-width callbacks are not intrinsic probes.
+The reference is main `f3fe341`, including the merged mounted renderer. Ordinary benchmarks call real `renderPulls`; coordinator benchmarks use `taskSections`, reveal every requested 30/60 row, then call real `renderAggregate` without disabling production caps. Five fresh cold samples alternate reference/current order. Every current sample and median must cost no more than its main comparison plus 2ms, and every requested row must actually mount.
 
-Existing content/frame motion bounds identify a known visible ordinary slice. Missing keys there and on the pinned row take priority; background keys follow in display order. Without reliable viewport facts use presentation order. This changes measurement priority only, not row order or navigation.
+The deterministic regression freezes main operations/elements/probes for actual ordinary/coordinator Open/Closed trees at 30/60/100/200 inventory sizes and 100%/130%. Coordinator 100/200 cases retain the 60-row/100-item cap and are not represented as fully mounted larger trees. Equal elements/probes and at most two decoration operations per mounted row bound tooltip overhead. Negative controls add a subtree/probe and fail.
 
-### Geometry outlives facts
+## Limits
 
-Retain lower-line allocated physical widths by native element ID, not text/style key. Normalize retained width with current zoom when intrinsic facts are invalidated. Context/font/zoom/request guards refuse obsolete callbacks. Changed-size-only tests cover same-ID title edits (with unchanged native title behavior), lower-line text changes and typography changes without an allocated-size callback.
+Native timings use Date.now at 1ms resolution and measure JS/native-element construction, not layout/paint or live input latency. Main's existing native-input notification limits and row caps stay documented. No claim is made that an uncapped 200-row coordinator is safe. Real pointer-hover acceptance remains separate from synthetic tooltip eligibility tests.
 
-### Cost regression
+## Delivery
 
-Freeze fc0dfde operations/elements for a shared workload at 30/60/100/200 rows. Ordinary fixtures call real renderPulls and assert every loaded row is returned; coordinator timing deliberately bypasses paging. Counts must not exceed baseline, settings reads remain constant and lower-line probes stay at four. Mutation controls restore excess subtrees, probes or bridge reads and must fail.
-
-The opt-in native tool compares fresh baseline/current checks, records failures, enforces baseline +2 ms and additional 10/17/26 ms ceilings at 30/60/100, and requires every current 200-row sample to complete. It also measures a scrolled-bottom ordinary case. These are JS/native-element construction timings, not GPU paint or real input latency.
-
-## Risks / Trade-offs
-
-- Cold lower-line shortening learns progressively: four probes, immediate rows and visible-first priority avoid a cold burst.
-- Native wall-clock measurements vary: record samples/provenance and keep deterministic hosted tree guards.
-- Titles retain occasionally redundant full-title hover intentionally, exactly as before; the lower-line policy does not apply to them.
-- Existing repository-header measurement remains unchanged and separate from the lower-line budget.
-
-## Migration Plan
-
-No persisted-data migration. Keep the historical finalized archive, restore canonical specs to main before automation applies this reduced-scope delta, and let delivery finalize it. No manual readiness, merge or deployment.
+Merge main, resolve renderer conflicts in favor of main for everything but tooltip policy, update the existing finalized scope/specs coherently and let automation refinalize. No manual readiness, merge, deployment or unrelated PR edits.

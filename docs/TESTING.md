@@ -9,6 +9,38 @@ selection: it includes installed Core/private-profile assumptions and Windows
 recycle operations. Do not run the broad command on a working installation just
 to reproduce hosted CI.
 
+## Git read-budget and refusal fixtures
+
+`tests/git-rate-quiet.test.mjs` exercises strict primary/secondary refusal handling,
+episodes, Retry-After, manual bypass and the older-success/cooldown race.
+`tests/git-target-reads.test.mjs` covers shared target subscriptions, per-alias
+failures with gh's real exit status 1 on partial GraphQL errors, final caching
+and changed-only details. Healthy siblings survive missing/access aliases;
+rate, HTTP, process and transport failures still refuse the complete batch.
+`tests/pr-agent-links.test.mjs` includes a `remote.*.gh-resolved`-only default
+change with unchanged remote URLs, plus warm routing-cache reuse. `tests/git-read-scheduling.test.mjs`
+checks main's immediate per-repository event delivery and window-independent reads,
+plus fake-clock cooldown recovery of the current selected tab with retained depth.
+The retired debounce/pending-demand transition matrix is removed with that machinery.
+`tests/git-request-budget.test.mjs` measures the actual frozen before controller
+and the changed controller against synthetic transport; its baseline blobs live
+in `tests/fixtures/git-before/` so shallow/offline CI needs no history fetch.
+`tests/git-membership-budget.test.mjs` confirms unchanged main enrollment reads:
+four REST operations for two repositories with a named account. Notice fixtures
+also verify that rate refusals schedule no deferred enrollment worker.
+`tests/git-worker-rate-headers.test.mjs` runs the actual worker transport with a
+fake child to check numeric/date Retry-After, paginated header stripping and strict
+permission/process/timeout exclusions without reading real credentials.
+These are deterministic API-operation counts, not live wire, latency or billing
+measurements. See [the complete budget](GIT-REQUEST-BUDGET.md).
+
+Old semantic fleet fixtures adapt their per-PR data suppliers into GraphQL alias
+responses, and inject explicit contradictory evidence where final facts change.
+They do not measure request counts. Ordinary pagination now exercises real
+membership/metadata/detail query shapes for both tabs, rather than assuming
+`gh pr view` for each row. No fixture accesses live credentials, changes relay
+setup or launches an agent.
+
 ## Supported hosted subset
 
 The existing Windows/Ubuntu matrix invokes `npm run test:ci` on **Node 24**.
@@ -335,12 +367,15 @@ Effective panel backgrounds below weighted RGB lightness 0.5 use dark rules, oth
 use light; unavailable/invalid backgrounds default dark. This classification and
 invalid label colours are covered separately from the upstream formula.
 
-The same fixture checks 3px muted round separators, centred without an optical
-drop and with equal 6px gaps in bylines and between left-status groups, never before
-the right-anchored label group. Zoom cases from 75% to 200%, including 130%, retain
-the same placement; comparison with the old separator tree protects neighbouring
-text, icons, pills and row geometry. The geometry suite also checks equal separator
-offsets on both lower lines and a one-logical-pixel downward paint offset for every
+The same fixture checks 3px muted round separators with a one-logical-pixel downward
+paint offset to centre on adjacent lowercase x-height, and equal 6px gaps in bylines
+and between left-status groups, never before the right-anchored label group. Zoom
+cases from 75% to 200%, including 130%, retain that offset; comparison with the
+line-box-centred separator tree protects neighbouring text, icons, pills and row
+geometry. Independently measured native ink on both lower lines selected the same
+1px offset: zero screenshot-pixel error at 130% and 0.5px at 100% on the measured
+1.5x display scale. The geometry suite rejects both zero and the former 1.5px dot
+offsets on each line and retains the one-logical-pixel downward paint offset for every
 task-progress and checks-state icon, including ordinary/coordinator and ghost rows. Missing-group combinations have no leading/trailing
 or orphan painted dots; only present groups and separators occupy horizontal space.
 The status line itself remains mounted at 18px even when empty.
@@ -352,79 +387,59 @@ No deployment or live label mutation is performed.
 
 ## Informative Git row tooltips
 
-`tests/git-row-tooltips.test.mjs` settles actual shared row trees at supported
-zooms, including 100% and 130%, in ordinary/coordinator live/ghost variants.
-Complete number/author/tasks/checks/labels/review text has no repeat-only item or
-ancestor tooltip. Titles retain their existing native truncation, inherited
-interface font and full-title hover, without title measurement or a size callback. Compact/clipped values retain full wording; completely
-hidden review/labels have a surviving hover target. Exact UTC timestamps,
-newest-workflow failing/pending check names, unstated state/conflict and known
-related-agent names remain informative. Hover adds no requests; names do not
-become action identity. Existing agent/fallback/facts fixtures protect those guards.
-Lower-line groups share the 512-entry style/font/zoom cache, with **four lower-line
-intrinsic probes total per snapshot**, not per row. Repository-header rendering
-and its existing overflow measurement are unchanged. Known
-visible ordinary rows get priority, then native callbacks advance background
-batches without withholding rows or installing a frame timer. Titles, individual
-pills and prefix candidates add no probes. Warm strings build none. Tests cover
-100 immediately mounted ordinary rows, complete background convergence, stale
-context/font/zoom callbacks, real cache/request bounds and no recurring probes. Existing palette and geometry suites no longer require unconditional
-label/byline tooltips, while complete-panel builder/element bounds remain unchanged.
-These are synthetic native-element/layout assertions, not live hover pixels.
+`tests/git-row-tooltips.test.mjs` settles ordinary/coordinator live/ghost rows at
+75–200% zoom, including 100%/130%. Complete visible number, author, task, check,
+review and label wording has no repeat-only item or parent tooltip. Compact,
+clipped and omitted values remain recoverable. Exact UTC timestamps, failing or
+pending check names and known agent identities add facts without hover reads.
+Titles keep native truncation, inherited font and full-title hover unchanged;
+same-ID edits at 200px also run with changed-size-only callbacks.
 
-| Item | Informative tooltip |
+The tooltip layer reuses `RowPresentations.layout` and main's existing intrinsic
+measurements. It adds no measurement, width cache, scheduler or native element.
+Cached time/check tooltip facts invalidate with timestamps and check details.
+Main's dot/icon geometry, mounted reveal/caps, native scrolling, fades, anchors,
+quiet rate refusals and batched reads stay intact.
+
+| Item | Tooltip policy |
 | --- | --- |
-| Title | Unchanged full-title hover, including fitting text; native truncation and inherited font |
-| Number | Full number only if hidden/abbreviated; normally none |
-| Author | Full login only when clipped |
-| Time | Full compact/clipped wording and known exact UTC timestamp |
-| Tasks | Full progress phrase only when compact/clipped |
-| Checks | Complete count plus known failing/pending job names; no count-only repeat |
-| Label pill | Inherits the informative clipped/omitted group hover; no individual width probe |
-| Label group/metadata | Full assigned list when clipped or omitted |
-| Review | Full hidden decision, including a completely clipped value |
-| State icon | Unstated state or Merge conflicts, not an already visible state word |
-| Robot | Known current agent name; no invented name or changed action authority |
-| Combined metadata/byline/label strip or whole row | No repeat-only summary of complete visible parts; surviving strip targets expose only hidden/omitted values |
+| Title | Unchanged complete-title hover, whether fitting or truncated |
+| Number | Full original only if hidden; normally none |
+| Author | Full login when clipped |
+| Time | Full compact/clipped wording, or known exact UTC timestamp |
+| Tasks | Full progress phrase when compact/clipped |
+| Checks | Known failing/pending job names; no count-only repeat |
+| Label pills/group | Complete assigned names when clipped or omitted; no per-pill probe |
+| Review | Full clipped/hidden decision, including surviving metadata recovery |
+| State/robot | Unstated state/conflict or known agent name, without changed action authority |
+| Combined strips/row | Only hidden/omitted values; no summary repeating visible items |
 
-The screenshot-shaped `3 tasks done / 11/11 / Rework` case explicitly checks
-metadata, byline, label-group and whole-row ancestor targets at 390px and
-100%/130% in both views; complete visible values cannot resurrect a summary.
+`tests/git-row-render-budget.test.mjs` compares the actual ordinary renderer and
+coordinator renderer after full reveal with frozen main `f3fe341` counts. At
+30/60 rows every requested row mounts; 100/200 coordinator inventories retain
+main's 60-row/100-item cap. Both tabs and 100%/130% are covered. Element and probe
+counts must equal main, with at most two additional decoration operations per row;
+negative controls add a subtree/probe and must fail. This complements, rather than
+replaces, the existing reveal/cap/scroll budget fixtures.
 
-The tooltip regression also dispatches callbacks only for changed dimensions:
-same-ID short-to-long title edits at 200px, lower-line text changes and typography
-invalidation must preserve allocated geometry. Titles stay native, inherit the
-interface font and keep complete hover without a title-width callback or probe.
-
-## Cold mounted Git row budget
-
-`tests/git-row-render-budget.test.mjs` exercises actual ordinary `renderPulls`
-and a fully mounted coordinator row tree at 30/60/100/200 rows in both tabs,
-including cold zoom/interface-font changes and a scrolled-bottom viewport. It
-asserts all rows are present, at most four intrinsic probes, at most two settings
-bridge reads, and operation/element ratios no greater than the frozen fc0dfde
-baseline in `tests/fixtures/git-row-budget-baseline.json`. Mutation controls
-restore per-row subtrees/excess probes/bridge reads and must fail. The existing
-bounded coordinator-page test is separate, not substituted for the 100-row case.
-
-`tools/measure-git-row-budget.mjs --run --scrolled` is the opt-in Windows native
-gate using the same workload, three cold samples at every size, real ordinary
-loaded-list rendering and deliberately unpaged coordinator rows. It records
-baseline/current failures instead of fabricating timings, enforces baseline +2ms
-and the requested 10/17/26ms ceilings at 30/60/100, and requires every current
-200-row sample to complete. See GIT-RENDER-BUDGET.md for samples and build-only
-measurement limits. Its disposable native checker does not touch the live app.
+`tools/measure-git-row-budget.mjs --run` compares fresh native main/current checks
+at 30/60 fully mounted ordinary/coordinator rows, five paired cold samples each,
+using the same #56 reveal model and unchanged production caps. Main's renderer
+and pure presentation helper are substituted together. Every sample completes and
+each paired sample and median must stay within main +2ms. These are build-only
+JS/native-element timings, not GPU paint or real input latency. The disposable
+checker never contacts the live app/Core; see GIT-RENDER-BUDGET.md for results.
 
 ## Coordinator render error diagnostics
 
 `node --experimental-vm-modules tests/git-panel-errors.test.mjs` exercises the
 packaged controller, aggregate reader, real notices and UI with 100 Closed rows
 across two repositories, a history read notice, merged/closed-unmerged states and
-live/historical agent variants. A fixed 10,000-builder-operation / 1,200-element
-budget bounds each replacement page; every row is reachable, even a 100-label PR
-builds fewer than 125 elements, and paging adds no reads. Distinct-string probes,
+live/historical agent variants. A 20,000-builder-operation / 8,000-element mounted
+batch ceiling accompanies the measured 60-PR/100-item cap; every row is reachable,
+even a 100-label PR builds fewer than 125 elements, and reveal/batch changes add no inventory reads. Distinct-string probes,
 cache reuse across pages, zoom invalidation and stale measurement refusal have
-regressions. The disposable native 30/60-row measurements and their exact scope
+regressions. The disposable native 30/60/100/200-row measurements and their exact scope
 are recorded in [GIT-RENDER-BUDGET.md](GIT-RENDER-BUDGET.md). It uses inline spawn and render-side-effect guards.
 A synchronous notice transport failure previously reached fallback `notify` during
 render; yielding before request work fixes that proven path (present since import
@@ -495,7 +510,8 @@ regardless of how many PRs fail. These counts exclude existing setup/enrollment
 workers and the gh wrapper's own unchanged internal processes. The safety reader uses the same repository-scoped transport: one carrier per
 thin state/summary batch (up to 40 PRs), with full-context batches (up to 20)
 only for changed heads/summaries, never a carrier per row. Coordinator safety
-selection follows its current presentation page rather than all loaded history.
+selection follows the revealed unfolded mounted batch, including offscreen rows,
+while unrevealed history stays in inventory without widening its safety reads.
 
 Ordinary list and webhook-page reads now include both totals in the same GraphQL
 snapshot, avoiding the count-only carrier/gh call. Three real paired crew
@@ -518,7 +534,8 @@ backoff, the 15-minute rate-limit floor, 120-second enrolled safety reads, exist
 contention, authoritative empty rollups and late hidden/replaced-context replies.
 The 120-row ordinary expanded-list case uses three thin state/summary chunks and,
 only on changed heads/summaries, six 20-PR detail chunks. The same-sized coordinator
-inventory instead reads only the current bounded page and keeps off-page facts. They actually launch a
+inventory reads its full 60-row revealed batch in two thin and three detail chunks,
+including offscreen rows, and preserves unrevealed facts. They actually launch a
 harmless Node child with generated arguments, retain all rows on a failed second
 chunk, then retry successfully and continue while Open. Five- and thirty-row
 steady cycles require exactly one thin request with no per-context list; changed
@@ -544,11 +561,11 @@ cursor repair survive removal, the unopened destination stays lazy, and its olde
 merged pin appears once when loaded. These are packaged synthetic fixtures, not
 live delivery or native pixel evidence.
 
-`tests/git-safety-paging.test.mjs` composes the real coordinator page renderer,
+`tests/git-safety-paging.test.mjs` composes the real coordinator mounted renderer,
 aggregate, safety scheduler and repository-scoped carrier. A 25-Open/5-Closed,
-two-repository inventory exercises current-page-only selection, merge/close tab
-totals, Previous/Show more, stale in-flight page replies, folds and both 45/120s
-cadences. Existing fallback/state tests also assert GH_REPO on every probe/detail
+two-repository inventory exercises offscreen revealed selection, merge/close tab
+totals, unrevealed/fold exclusion, stable viewport-only scrolling, stale in-flight
+replies after reveal/fold/tab/home changes and both 45/120s cadences. Scroll events themselves start no reads. Existing fallback/state tests also assert GH_REPO on every probe/detail
 API invocation. Pagination distinguishes its selected-state filter from the new
 combined totals fields, applies both totals on append and retains cursor-depth
 repair. The 100-row render operation budget remains separately enforced.
@@ -579,13 +596,10 @@ claim that reads finished. These checks resolve synthetic boxes, not native pixe
 `node --experimental-vm-modules tests/git-row-geometry.test.mjs` resolves the actual
 shared row trees using a deterministic flex/absolute layout model with real `U`
 metrics and content-dependent text widths. It dispatches the actual native-size
-callbacks after layout for the bounded scheduled probes, rerenders until changed-only
-measurements converge, and excludes invisible probe text from paint assertions.
-Independent full/compact natural group descriptions live only in the fixture's
-geometry oracle, not as extra production tree nodes; cold/warm actual probe counts
-are asserted separately. Tooltip/title-edit cases also support native callbacks
-that fire only when dimensions change, rather than every settlement pass. At 280/320/360/390/480 logical-pixel widths and 75/100/125/130/150/200%
-zoom, 62,100 comparisons protect title right edges, state/robot and whole-line
+callbacks after layout (including clipped invisible natural-width probes), rerenders
+until changed-only measurements converge, and excludes invisible probe text from
+paint assertions. At 280/320/360/390/480 logical-pixel widths and 75/100/125/130/150/200%
+zoom, 56,700 comparisons protect title right edges, state/robot and whole-line
 boxes, line heights, 74px row heights and following-row positions across ordinary,
 pinned, scrolling, coordinator and ghost paths in Open/Closed/merged states.
 Optional agent transitions, untouched/partial/done and multi-digit tasks/checks,
@@ -600,7 +614,7 @@ including 130% zoom. Both group and trailing-pill edges remain anchored when a
 multi-label strip clips. Mutation tests reject left-aligned pills and a restored
 joining dot. Separate review-decision text yields before label words after task
 compaction; checks and compact fractions remain complete.
-Independent natural-width oracles determine when the complete line fits: every fitting
+Full probe widths independently determine when the complete line fits: every fitting
 value must remain full and unshortened. Screenshot-shaped 390px cases retain both
 2 tasks done and opened 4 hours ago at every zoom. Exact fit thresholds assert
 whole task fractions or compact times appear only on overflow and before label or
@@ -670,11 +684,51 @@ an unaccounted border fail; the latter is checked against the highlight-to-panel
 inset because a row-relative-only oracle cannot detect a shifted highlight.
 Title truncation boundaries stay identical with and without an agent.
 Existing row/fold/menu fixtures retain callbacks and tooltip coverage. Another
-1,500 comparisons exercise the actual replacement-page renderer with 25 PRs,
-Previous/Show more, continuation headers and warm distinct-string measurements
-in both tabs across the same width/zoom matrix. Paging and render-budget bounds
-remain owned by the unchanged 100-row panel regression. These are synthetic
+9,740 comparisons exercise the actual mounted-scroll renderer with 25 PRs,
+stable native list IDs and warm distinct-string measurements in both tabs across
+the same width/zoom matrix. The extended 100-row panel regression scrolls to reveal
+every row across measured capped batches while enforcing per-row/mounted-batch ceilings. These are synthetic
 resolved-box checks, not live GPUI pixel or deployment evidence.
+
+## Mounted Git scroll fixtures
+
+`tests/git-measurement-lifecycle.test.mjs` models native size-change-only events
+with a retained element-ID/dimension cache, not unconditional layout callbacks.
+It covers equal-height wrapped-notice replacement, ordinary tab/context changes,
+live ordinary/coordinator zoom with an unchanged physical viewport, coordinator
+home-away-home, recreated header caches and pin body/reveal lifetimes. Its `anchor`
+cases cover equal-height 30-row refreshes in the middle and at the end through a
+yielded anchor correction, with both native size callbacks suppressed and exactly
+one repaint requested even when both fades remain unchanged. `tests/scroll-metrics.test.mjs` separately checks the pure
+geometry projection, getter-only fields and atomic notifications across 240 cases.
+See the
+[measurement audit](GIT-RENDER-BUDGET.md#measurement-lifetime-audit) for the full
+cache ownership inventory and unchanged paths checked.
+
+`tests/git-section-reveal.test.mjs` checks the actual rendered-section invariant
+after every reveal and state transition, including the tenth-item header boundary,
+notice-only sections, tab moves, history expiry, missing rows, notice resolution,
+folds, refreshes and 200-row capped batch cycles. The same invariant wraps every
+real renderer frame in `fleet-read-notices`, including authoritative 404s and
+mixed failure/recovery transitions. Intentionally folded eligible headers are
+exempt; every unfolded header must have a row or visible notice beneath it.
+
+`tests/git-scroll-window.test.mjs` now checks the mounted prefix, ten-item reveal,
+60-PR/100-item cap, 200-row reachability, cycling Show more, insertion anchors,
+folds and notice-height updates. `tests/git-row-presentation.test.mjs` checks pure
+memoisation/invalidation and fresh native callbacks. `tests/git-native-scroll.test.mjs`
+changes only the actual native-handle model for thumb/track/keyboard movements,
+without fake content/frame events. It checks truthful render-time fades, next-event
+reveal, finite post-layout underflow fill and accepted middle/end anchor repaints.
+`tests/git-scroll-anchor.test.mjs` exercises yielded native scroll-handle requests,
+retired-handle release and obsolete-scope refusal without render effects.
+`tests/git-scroll-fades.test.mjs` checks both views at 75/100/130/200% zoom using
+actual shared `SidebarScrollState` and passive `topFade`/`bottomFade`: start, middle,
+end, fitting content, scrollbar motion, resize and folds, plus byte-identical shared
+packaging. `tools/measure-git-render.mjs` records five disposable native render-build
+samples for complete 30/60/100/200 mounted trees, deliberately bypassing the runtime
+cap; warm mode warms only pure caches, never native callbacks. It records native
+interruptions honestly. These are not live desktop paint/input timings or deployment evidence.
 
 ## Connected fleet fixtures
 

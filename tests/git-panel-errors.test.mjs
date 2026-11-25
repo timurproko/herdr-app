@@ -1,8 +1,12 @@
 // Complete packaged coordinator rendering; fake host IO only, never the live app.
 import assert from 'node:assert/strict';
+import {legacyTargetResponses} from './support/github-read.mjs';
 import {loadMod} from '../tools/plugin-harness.mjs';
+import {MAX_MOUNTED_ROWS} from '../src/plugins/git/mod/task-reveal.js';
+const OP_BUDGET=MAX_MOUNTED_ROWS*300+2000;
+import {measureTask,scrollTask,taskWindow} from './support/git-scroll.mjs';
 import {element,svg,Popover,find,words,nodes,theme} from './support/choice-menu.mjs';
-let rendering=false,reads=0,syncFailure=false,operations=0,peakOperations=0,zoom=1;
+let rendering=false,reads=0,syncFailure=false,operations=0,peakOperations=0,peakElements=0,zoom=1;
 function budgetElement(){
  const node={kids:[],attrs:{},mouse:{}};let proxy;
  proxy=new Proxy(node,{get(n,key){
@@ -38,36 +42,44 @@ const host={props:()=>null,theme:()=>theme,settings:()=>({zoom}),window:()=>({pl
    ?{code:1,stderr:'GraphQL: Could not resolve to a PullRequest with the number of 36.'}
    :{code:1,stderr:'execution timed out after 30000ms'});
  }};
-const {Main}=await loadMod({mod:'custom-changes',host,globals:{console:{...console,error:(...args)=>errors.push(args.join(' '))},localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>{assert.equal(rendering,false);storage.set(k,v);}}},modules:{
+host.exec=legacyTargetResponses(host.exec);
+const {Main}=await loadMod({mod:'custom-changes',host,globals:{window:{paint_path:budgetElement},console:{...console,error:(...args)=>errors.push(args.join(' '))},localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>{assert.equal(rendering,false);storage.set(k,v);}}},modules:{
  'main.js':process.env.GIT_PANEL_MAIN??'src/plugins/git/mod/main.js','aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js','notices.js':process.env.GIT_PANEL_NOTICES??'src/plugins/git/mod/notices.js','label-colors.js':'src/plugins/git/mod/label-colors.js','enrollment-picker.js':'src/plugins/git/mod/enrollment-picker.js','choice-menu.js':'src/ui/choice-menu.js','ui.js':'src/ui/ui.js',
  'gpui-kit':{View:class{},div:budgetElement,svg:asset=>budgetElement().asset(asset),PathBuilder:{}},'gpui-base':{h_flex:budgetElement,v_flex:budgetElement,Popover,Input:{}},
  'plugins.js':{sidebarPanelEnabled:()=>true,pluginPullContext:()=>context,pluginEvent(){},pluginById:()=>({}),pluginSetting:(_p,k)=>k==='relay'?'https://relay.example':''},
  'location.js':{location:()=>({space:'coordinator',cwd:'/home',on:null,terminal:'owner'})},'agent-links.js':{AgentLinks:class{}},'pin-swap.js':{PinSwap:class{cancel(){}},PIN_SWAP_MS:320},'webhooks.js':{GitWebhooks:class{sync(){}stop(){}}},'panel-pin.js':{panelPin:element},'sidebar-title.js':{sidebarTitle:element},'settings-dialog.js':{openSettings(){}},'panel-state.js':{changePanel(){}},'space-color-state.js':{currentSpaceColor:()=>null},'panel-kit.js':{headerTool:element,contextMenu:element,panelMessage:(_t,id,o)=>element().id(id).child(o.text)},
  },entry:'export {default as Main} from "./main.js";'});
 const panel=new Main();panel.init({},cx);await drain();
-const render=()=>{operations=0;rendering=true;try{return panel.render(cx);}finally{rendering=false;peakOperations=Math.max(peakOperations,operations);assert.ok(operations<10000,`Fixed render operation budget: ${operations}`);}};
+const render=()=>{operations=0;rendering=true;try{return panel.render(cx);}finally{rendering=false;peakOperations=Math.max(peakOperations,operations);assert.ok(operations<OP_BUDGET,`Mounted render operation budget: ${operations}`);}};
 let tree=render();await drain();tree=render();await drain();
-// Cold 100-row inventory must build only one bounded page. Page controls
-// replace it, never append an ever-growing list, and every row stays reachable.
+// Every revealed row remains mounted. The measured safe batch cap, not
+// viewport spacers, bounds fresh native trees and callback registration.
 const rowNodes=tree=>nodes(tree).filter(n=>/^pr-timurproko\/(?:crew|herdr-app)#\d+$/.test(n.attrs.id?.[0]??''));
 const budget=tree=>{
- const rows=rowNodes(tree);assert.ok(rows.length<=10);
- assert.ok(nodes(tree).length<1200,'Fixed cold render element budget for 100 Closed PRs');
+ const rows=rowNodes(tree);assert.ok(rows.length<=MAX_MOUNTED_ROWS);
+ const elements=nodes(tree).length;peakElements=Math.max(peakElements,elements);
+ assert.ok(elements<MAX_MOUNTED_ROWS*125+500,'Mounted batch element budget');
  for(const row of rows)assert.ok(nodes(row).length<125,'Bounded visible + probe elements per PR');
 };
 budget(tree);
-const firstTree=tree,seen=new Set();
-while(true){
+const firstTree=tree,seen=new Set(),beforeScroll=reads;
+measureTask(panel,tree,cx);tree=render();
+let offset=0;
+for(let step=0;step<200;step++){
+ scrollTask(panel,tree,cx,offset);tree=render();measureTask(panel,tree,cx);
  budget(tree);for(const row of rowNodes(tree))seen.add(row.attrs.id[0].slice(3));
- const more=find(tree,'task-pulls-more');if(!more)break;
- more.attrs.on_click[0]({},cx);tree=render();
+ assert.equal(find(tree,'task-pulls-pages'),undefined);assert.equal(find(tree,'task-pulls-spacer-top'),undefined);assert.equal(find(tree,'task-pulls-spacer-bottom'),undefined);
+ const list=taskWindow(panel);if(seen.size===100)break;
+ if(list.atCap){find(tree,'task-pulls-more').attrs.on_click[0]({},cx);tree=render();measureTask(panel,tree,cx);offset=0;}else offset+=250;
 }
 assert.deepEqual([...seen].sort(),[...prs.keys()].sort());
-// Each tab remembers its own presentation page without changing counts or IO.
-const beforePages=reads;panel.view='open';render();panel.view='closed';tree=render();
-assert.equal(find(tree,'task-pulls-more'),undefined);assert.equal(reads,beforePages);
-// Return to the first page for notice/error attribution checks below.
-panel.taskPages.clear();tree=render();
+assert.equal(reads,beforeScroll,'Revealing the known inventory starts no reads');
+assert.ok(rowNodes(tree).length>10,'Previously revealed rows stay mounted outside the viewport');
+const retainedOffset=taskWindow(panel).offset;
+panel.view='open';render();panel.view='closed';tree=render();
+assert.equal(taskWindow(panel).offset,retainedOffset);assert.equal(reads,beforeScroll);
+if(taskWindow(panel).start>0){while(taskWindow(panel).more)taskWindow(panel).revealMore();panel.nextTaskChunk(taskWindow(panel),context.scope,cx);}
+scrollTask(panel,tree,cx,0);tree=render();
 assert.ok(find(tree,'pr-timurproko/crew#1'));
 assert.equal(nodes(find(tree,'pr-labels-timurproko/crew#1')).filter(n=>/^pr-label-timurproko\/crew#1-\d+$/.test(n.attrs.id?.[0]??'')).length,3);
 assert.ok(find(tree,'pr-meta-timurproko/crew#1').attrs.tooltip[0].includes('label-99'));
@@ -83,13 +95,14 @@ const cacheSize=panel.pullTextWidths.size;probe.attrs.on_size_change[0]({width:9
 assert.equal(panel.pullTextWidths.size,cacheSize,'Late prior-zoom probe cannot poison current geometry');
 zoom=1;cached=render();assert.equal(find(cached,probe.attrs.id[0]),undefined,'Returning to a measured zoom reuses its widths');
 const changedPr=panel.aggregate.entries.get('timurproko/crew#1').pr;
-const originalWhen=changedPr.when;changedPr.when='merged 1 hour earlier';cached=render();
-const changedTime=nodes(cached).find(n=>String(n.attrs.id?.[0]).includes('-probe-time-full')&&words(n).join('')===changedPr.when);
-assert.ok(changedTime);assert.notEqual(changedTime.attrs.id[0],timeProbes[0].attrs.id[0],'New strings need new native IDs even if their width is unchanged');changedPr.when=originalWhen;
+const originalPr={...changedPr};changedPr.mergedAt=new Date(now-7200000).toISOString();cached=render();
+const changedWhen=panel.aggregate.entries.get('timurproko/crew#1').pr.when;
+const changedTime=nodes(cached).find(n=>String(n.attrs.id?.[0]).includes('-probe-time-full')&&words(n).join('')===changedWhen);
+assert.ok(changedTime);assert.notEqual(changedTime.attrs.id[0],timeProbes[0].attrs.id[0],'New strings need new native IDs even if their width is unchanged');panel.aggregate.entries.get('timurproko/crew#1').pr=originalPr;
 const time=timeProbes[0];time.attrs.on_size_change[0]({width:120,height:18},cx);
-find(render(),'task-pulls-more').attrs.on_click[0]({},cx);cached=render();
+scrollTask(panel,render(),cx,800);cached=render();
 assert.ok(!nodes(cached).some(n=>String(n.attrs.id?.[0]).includes('-probe-time-full')&&words(n).join('')===words(time).join('')),'Later pages reuse distinct-string measurements');
-panel.taskPages.clear();tree=render();
+scrollTask(panel,cached,cx,0);tree=render();
 
 assert.ok(find(tree,'task-error-timurproko/crew'));assert.match(words(tree).join(' '),/Task PR history/);
 assert.equal(words(find(tree,'task-error-timurproko/crew')).join(' '),'Task PR history: Could not read pull requests; refresh to retry');
@@ -121,4 +134,4 @@ assert.ok(errors.some(line=>line.includes('previous render did not complete')&&l
 // Section notices have their own attribution boundary too.
 assert.throws(()=>panel.renderPart('repository-notice:timurproko/crew',()=>{throw Error('notice fixture exception');}),/notice fixture exception/);
 assert.ok(errors.some(line=>line.includes('repository-notice:timurproko/crew')&&line.includes('notice fixture exception')));
-assert.ok(reads>=102);console.log(`Peak fixed render operations: ${peakOperations} / 10000`);console.log('PASS bounded 100-row Closed coordinator pagination, probe cache, real aggregate/notices, inline-spawn guards and component/error diagnostics');
+assert.ok(reads>=102);console.log(`Peak mounted render operations: ${peakOperations} / ${OP_BUDGET}; elements: ${peakElements} / ${MAX_MOUNTED_ROWS*125+500}`);console.log('PASS mounted 100-row Closed coordinator scrolling, probe cache, real aggregate/notices, inline-spawn guards and component/error diagnostics');

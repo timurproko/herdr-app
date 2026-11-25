@@ -8,7 +8,9 @@ const now=Date.parse('2026-11-10T17:10:10Z');
 
 assert.equal(m.PR_PAGE_SIZE,10);
 assert.ok(m.PR_FIELDS.split(',').includes('labels'),'Targeted older active/coordinator PR reads include labels');
-for (const state of ['open','closed']) assert.ok(m.pullListArgs(state,'owner/repo').some(a=>a.includes('labels(first:100){nodes{name color}}')));
+assert.ok(m.pullListArgs('open','owner/repo').some(a=>a.includes('labels(first:100){nodes{name color}}')));
+assert.ok(m.targetPullArgs([1],'owner/repo').some(a=>a.includes('labels(first:100){nodes{name color}}')));
+assert.ok(m.pullListArgs('closed','owner/repo').some(a=>a.includes('nodes{number}')&&!a.includes('labels(')),'Closed pages hydrate final facts rather than rereading their metadata');
 const labels=[{name:'🤖 Under review',color:'840479'},{name:'ready · 🚀',color:'ABCDEF'}];
 const expectedLabels=[{name:'🤖 Under review',color:'#840479'},{name:'ready · 🚀',color:'#ABCDEF'}];
 assert.deepEqual(m.pullLabels(labels),expectedLabels);
