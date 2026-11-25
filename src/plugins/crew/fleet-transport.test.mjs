@@ -127,6 +127,20 @@ for(const failure of [false,true])for(const remoteLayout of ['unavailable','read
  assert.equal(remoteReads.length,remoteLayout==='ready'?2:1,'Unavailable machine is skipped; a ready unrelated machine only gets optional discovery');
  if(remoteLayout==='ready')checkCommand(remoteReads.at(-1),'pc2',true);
 }
+// Coalescing another machine's proof into a recent request must not replay an
+// already consumed local proof under the new request ID.
+{
+ const x=await fixture();x.state['custom.plugins'].git.enabled=false;
+ x.groups.push(...x.groups.map(s=>({...copy(s),id:`pc2/${s.id}`,machine:'pc2',tabs:s.tabs.map(t=>({id:`pc2/${t.id}`}))})));
+ x.all.push(...x.all.map(p=>({...p,tab:`pc2/${p.tab}`,terminal:`pc2/${p.terminal}`})));
+ x.list.push(...x.list.map(t=>({...copy(t),address:`pc2/${t.address}`})));
+ x.hosts.push({name:'pc2',layout:'ready'});x.event();await x.drain();
+ for(const space of ['coordinator','pc2/coordinator']){
+  const peer=await x.load();peer.r.pluginEvent('workspace.context.refresh',{cx:x.cx,space});await tick();x.event();await x.drain();
+ }
+ assert.equal(x.calls.filter(call=>!call.includes('--on')).length,2,'Remote urgency cannot replay consumed local proof');
+ assert.equal(x.calls.filter(call=>call.includes('--on')).length,2,'Each consumer receives proof only on its own machine');
+}
 // A distinct sandbox can witness an active lifecycle read, but cannot borrow a
 // completed persisted token. This is required for real Git/menu copies.
 {

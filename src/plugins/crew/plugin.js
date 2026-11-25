@@ -584,7 +584,7 @@ export const readFleetStatus = async (machine, {current = () => true, progress =
   return result.stdout;
 };
 const FLEET_REQUEST = 'custom.fleet.request';
-let fleetLifecycle = null, lastFleetRequest = null, lastFleetGeneration = null, deferredFleetUrgency = [];
+let fleetLifecycle = null, lastFleetRequest = null, lastFleetGeneration = null, deferredFleetUrgency = [], consumedFleetProof = {};
 const discoverFleetStatus = (machine,options) => readFleetStatus(machine,{...options,discover:true});
 const refreshFleetContext = ({cx,force}) => {
   if(!cx)return;
@@ -595,12 +595,15 @@ const refreshFleetContext = ({cx,force}) => {
     await Promise.resolve();
     const generation=shared('custom.fleet.generation')??0, request=shared(FLEET_REQUEST), valid=request?.generation===generation;
     const waiting=lastFleetGeneration===generation?deferredFleetUrgency:[];
+    if(lastFleetGeneration!==generation)consumedFleetProof={};
+    const proof=valid?Object.entries(request.proof??{}).filter(([key,id])=>consumedFleetProof[key]!==id).map(([key])=>key):[];
     const urgent=force===true || valid && request.id!==lastFleetRequest && request.force===true ? true
-      : [...new Set([...waiting,...(valid && request.id!==lastFleetRequest?request.proof??[]:[])])];
+      : [...new Set([...waiting,...proof])];
     const inventory=valid && request.inventory===true && Date.now()-request.at<1000;
     // Only machines blocked by discovery retain urgency; never force another
     // machine repeatedly while waiting for that lower-priority read.
     deferredFleetUrgency=refreshFleets(view,readFleetStatus,urgent,inventory?discoverFleetStatus:null)??[];
+    if(valid)consumedFleetProof={...consumedFleetProof,...request.proof};
     lastFleetRequest=request?.id;lastFleetGeneration=generation;
   });
 };
@@ -613,9 +616,11 @@ const requestFleetContext = ({cx,force,space}) => {
     const generation=shared('custom.fleet.generation')??0, at=Date.now(), prior=shared(FLEET_REQUEST);
     const recent=prior?.generation===generation && at-prior.at<1000;
     const inventory=pluginMod==='custom-changes' || recent && prior.inventory===true;
-    if(force===true || !recent || proof.some(key=>!prior.proof?.includes(key)) || inventory&&!prior.inventory)
-      setShared(FLEET_REQUEST,{id:`${at}-${Math.random()}`,generation,at,force:force===true || recent && prior.force===true,
-        proof:[...new Set([...proof,...(recent?prior.proof??[]:[])])],inventory});
+    if(force===true || !recent || proof.some(key=>!prior.proof?.[key]) || inventory&&!prior.inventory) {
+      const id=`${at}-${Math.random()}`,requests=recent?{...prior.proof}:{};
+      for(const key of proof)requests[key]??=id;
+      setShared(FLEET_REQUEST,{id,generation,at,force:force===true || recent && prior.force===true,proof:requests,inventory});
+    }
     if(fleetLifecycle)try {refreshFleetContext({cx:fleetLifecycle});}catch {fleetLifecycle=null;}
   });
 };
