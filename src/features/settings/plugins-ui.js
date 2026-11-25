@@ -272,7 +272,7 @@ export function pluginTextActions(view, t) {
 // Secret inputs are native, view-local entities: never a registry setting. No submit/blur
 // subscription, no localStorage, and no exception text (which could echo input).
 function newActionForm(form) {
-  const state = { fields: {}, epoch: 0, busy: false, result: null, cancel: null, confirm: null };
+  const state = { fields: {}, epoch: 0, busy: false, result: null, cancel: null, confirm: null, confirmItem: null };
   try {
     for (const def of form.fields ?? []) {
       if (!['text', 'secret'].includes(def.type)) throw Error('Unsupported transient field');
@@ -290,7 +290,7 @@ function newActionForm(form) {
 export function clearPluginForms(view, only = null) {
   for (const [key, state] of Object.entries(view.pluginForms ?? {})) {
     if (only && !key.startsWith(`${only}:`)) continue;
-    state.epoch++; state.busy = false; state.confirm = null; state.result = null;
+    state.epoch++; state.busy = false; state.confirm = null; state.confirmItem = null; state.result = null;
     try { state.cancel?.()?.catch?.(() => {}); } catch {} state.cancel = null;
     for (const field of Object.values(state.fields)) { try { field.set_value(''); } catch {} }
   }
@@ -301,8 +301,8 @@ function submitActionForm(view, cx, plugin, item, action, confirmed = false) {
   const current = () => !view.pluginClosed && pluginEnabled(plugin) && view.pluginForms?.[key] === state && state.epoch === epoch && (view.settingsMachine ?? null) === machine;
   const context = viewContext(view, plugin, current, machine);
   if (!state || state.unavailable || state.busy || view.pluginFixing || !current() || item.form.enabled?.(context, item) === false || action.when?.(item) === false) return;
-  if (action.confirm && !confirmed) { state.confirm = action; cx.notify(); return; }
-  state.confirm = null; state.busy = true;
+  if (action.confirm && !confirmed) { state.confirm = action; state.confirmItem = Object.freeze({...item}); cx.notify(); return; }
+  state.confirm = null; state.confirmItem = null; state.busy = true;
   const values = {};
   if (action.input) for (const def of item.form.fields ?? []) {
     const value = state.fields[def.key]?.value() ?? '';
@@ -353,7 +353,7 @@ function actionForm(view, t, plugin, item) {
       .child(description(t, state.confirm.confirm))
       .child(h_flex().gap(8)
         .child(actionButton(t, `${id}-cancel`, 'Cancel', (_e, cx) => { clearPluginForms(view, plugin.id); cx.notify(); }))
-        .child(actionButton(t, `${id}-confirm`, 'Confirm', (_e, cx) => { const action = state.confirm; if (action && current()) submitActionForm(view, cx, plugin, item, action, true); }, { enabled })))))
+        .child(actionButton(t, `${id}-confirm`, 'Confirm', (_e, cx) => { const action = state.confirm, captured = state.confirmItem; if (action && captured && current()) submitActionForm(view, cx, plugin, captured, action, true); }, { enabled })))))
     .when(Boolean(form.help), el => el.child(button(t, `${id}-help`, form.help.label, (_e, cx) => {
       if (/^https:\/\//.test(form.help.url)) cx.open_url(form.help.url);
     })));
