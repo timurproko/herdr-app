@@ -18,7 +18,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-25-palette-0118-stopgap/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-25-palette-0118-stopgap/acceptance.md",
   "finalizedDate": "2026-11-25",
-  "specBaseSha": "3143b12a4d524d5a872219ab050e6029a1343582",
+  "specBaseSha": "1ab72f5bce765e3c314f59155a48656ed0692652",
   "acceptanceScenarios": [
     "Exact LF and independently verified Windows CRLF 0.1.18 stock select the new release-specific replacement without changing the 0.1.17 payload.",
     "Native manifest discovery, validation, canonical deduplication, Mod grouping, hotkey matching and explicit clone arguments remain available.",
