@@ -21,7 +21,7 @@ export function allowedPath(rel) {
     if(!shellPaths.includes(rel))throw Error(`Unowned deployment path: ${rel}`);
     return rel;
   }
-  if(!/^(?:mods\/custom-[a-z-]+\/(?:[a-zA-Z0-9_.-]+\/)*[a-zA-Z0-9_.-]+\.(?:js|cjs|json|svg|txt)|layouts\/(?:Custom\.json|custom\.svg)|themes\/Custom\.json|\.customizations\/runtime\/(?:[a-zA-Z0-9_.-]+\/)*[a-zA-Z0-9_.-]+\.(?:js|mjs|cjs|json|svg))$/.test(rel))throw Error(`Unowned deployment path: ${rel}`);
+  if(!/^(?:mods\/custom-[a-z-]+\/(?:[a-zA-Z0-9_.-]+\/)*[a-zA-Z0-9_.-]+\.(?:js|cjs|json|svg|txt)|layouts\/(?:Custom\.json|custom\.svg)|themes\/Custom\.json|\.customizations\/runtime\/(?:[a-zA-Z0-9_.-]+\/)*[a-zA-Z0-9_.-]+\.(?:js|mjs|cjs|json|svg|txt))$/.test(rel))throw Error(`Unowned deployment path: ${rel}`);
   return rel;
 }
 import {layoutOverrides,projectLayout} from './layout-preferences.mjs';

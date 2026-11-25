@@ -4,10 +4,10 @@ Task groups map one-to-one, in order, to the draft PR Implementation outcomes. N
 
 ## 1. Declarative transient actions and private stdin handoff
 
-- [ ] 1.1 Add generic declared transient text/secret action forms to the shared Settings renderer/kit and action context; cover masking, explicit submission, no blur/Enter save, duplicate presses, clearing and generation guards in renderer fixtures and the plugin UI contract suite.
-- [ ] 1.2 Package a pinned reviewed WebSocket server dependency and implement the loopback-only, single-session, 60-second handoff to an allowlisted worker's stdin; fake-worker tests must cover wrong/replayed sessions, browser origins, oversize input, timeout, cancellation, output sanitization and process cleanup.
-- [ ] 1.3 Extend machine/current-view context without persisting transient data and document the declaration and stdin transport in docs/PLUGIN-UI.md; fake-secret probes must find no values in shared writes, preferences, argv, environment, logs or files outside the designated fake credential store.
-- [ ] 1.4 Exercise the installed handoff without source-checkout imports; update build mappings and any affected export fixture dependency copy lists, with targeted installed-export and preferences-home fixtures passing before this outcome is complete.
+- [x] 1.1 Add generic declared transient text/secret action forms to the shared Settings renderer/kit and action context; cover masking, explicit submission, no blur/Enter save, duplicate presses, clearing and generation guards in renderer fixtures and the plugin UI contract suite.
+- [x] 1.2 Package a pinned reviewed WebSocket server dependency and implement the loopback-only, single-session, 60-second handoff to an allowlisted worker's stdin; fake-worker tests must cover wrong/replayed sessions, browser origins, oversize input, timeout, cancellation, output sanitization and process cleanup.
+- [x] 1.3 Extend machine/current-view context without persisting transient data and document the declaration and stdin transport in docs/PLUGIN-UI.md; fake-secret probes must find no values in shared writes, preferences, argv, environment, logs or files outside the designated fake credential store.
+- [x] 1.4 Exercise the installed handoff without source-checkout imports; update build mappings and any affected export fixture dependency copy lists, with targeted installed-export and preferences-home fixtures passing before this outcome is complete.
 
 ## 2. Verified Trello owner worker and protected local policy
 

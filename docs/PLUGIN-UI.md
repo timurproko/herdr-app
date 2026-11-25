@@ -107,6 +107,42 @@ unknown update evidence does not claim outdated, and optional tools remain Optio
 - `selection: { key, label?, options: [[value, label]], value }`: a dropdown in the row,
   saved into setting `key` (e.g. which Cloudflare account). Changing it re-checks the plugin.
 
+## Transient action forms
+
+A prerequisite may declare `form: { fields, actions, enabled?, help? }`. This is an
+explicit operational action, **not** a setting type. `fields` contain
+`{ key, type: 'text' | 'secret', label, placeholder?, maxLength? }`; secret fields
+use native `InputState.set_masked(true)` and start empty. `actions` contain
+`{ id, label, input?, primary?, when?(result), confirm?, run(cx, values, result) }`.
+Only an explicit action with `input: true` receives the transient field values.
+`confirm` is explanatory text; confirmation snapshots never contain input values.
+`help: { label, url }` opens a fixed HTTPS help page. `enabled(cx, result)` can
+refuse unsafe or unsupported contexts.
+
+The shared renderer owns the controls, busy/duplicate guards and clearing. Blur,
+Enter, automatic checks and Install all never submit. Values are native view-local
+input state, never registry/shared state, localStorage or preferences. Completed
+submissions replace the input entities, including undo history. Cancel, close,
+disable and machine changes clear inputs and invalidate pending callbacks. Action
+results may contain public `detail` only, never input echoes. The renderer does
+not display thrown exception text from secret actions.
+
+Action/check context includes captured `machine` (`null` for this computer) and
+`isCurrent()`. `machineScoped: true` on a plugin rechecks it on header-machine
+changes without a portable machine setting. A form action additionally receives
+`onCancel(fn)`, which registers teardown for a bounded in-flight transport.
+
+Plugin API `privateAction(target, payload, cx)` starts the installed allowlisted
+Node bridge and uses native WebSocket frames to hand the value to the worker's
+stdin. The reviewed host `exec` API has no stdin option: never invent one, encode
+secrets in argv, or substitute temporary input files. The bridge uses only
+127.0.0.1, a random single-use session, a 60-second hard lifetime and 256 KiB input;
+it rejects browser Origin requests and replays. Its vendored ws dependency and
+license are installed with the runtime. Only fixed owner workers are allowed;
+there is no arbitrary command facility. Private actions refuse remote-selected
+machines and native checking. Closing/cancelling cannot promise an already
+accepted private-store write was undone; reconcile local status explicitly.
+
 ## List sections
 
 A list of things added to the plugin (project folders, repositories): a scope row (what it
