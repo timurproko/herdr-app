@@ -80,6 +80,9 @@ fake files, including a deliberately widened Windows ACL and a refused junction.
 checks real Bash/CMD/PowerShell launchers, Unicode/space/metacharacter argument
 forwarding, runtime closure, conflicts, rollback, removal and private-store
 preservation. It starts no Herdr app, Core, server or Trello request.
+`src/plugins/trello/pagination.test.mjs` models unsorted position-ordered card
+collections with 101 distinct creation timestamps, traverses board/list pages at
+limits 1/50/100, and checks multi-page read/write membership with explicit `sort=-id`.
 `tests/trello-contract.test.mjs` checks documentation/catalog and payload boundaries.
 
 Set `TRELLO_TEST_ROOT` to an existing outside-checkout scratch directory to choose

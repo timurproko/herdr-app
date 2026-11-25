@@ -135,8 +135,10 @@ Results are one `{version:1,ok:true,data:...}` JSON object. Errors use
 Exit codes: 0 success, 2 invalid command/input, 3 refusal/read failure, 4 unknown
 write outcome. No raw provider errors or authenticated URLs are printed.
 
-Card/comment pages default to 50, maximum 100. Use the returned `nextBefore` ID
-as `--before ID` on the next cards list/get call. In card detail, before/limit
+Card/comment pages default to 50, maximum 100. Board/list card reads and membership
+scans explicitly request `sort=-id` (newest creation first), not board/list position
+order, so their creation-time `before` cursors cannot skip position-reordered cards.
+Use the returned `nextBefore` ID as `--before ID` on the next cards list/get call. In card detail, before/limit
 apply to comments; card facts and checklists are reread. `complete:false` and
 `truncated:true` mean **not a complete inventory/history**, not an empty result.
 Lists, labels, checklists and check items cap at 100 without an invented cursor;
@@ -260,7 +262,9 @@ The typed routes follow Atlassian's [Cards](https://developer.atlassian.com/clou
 references and their [linked OpenAPI](https://dac-static.atlassian.com/cloud/trello/swagger.v3.json?_v=1.1274.0).
 [Introduction/paging](https://developer.atlassian.com/cloud/trello/guides/rest-api/api-introduction/)
 documents before/since ID paging for cards/actions; the individual collection
-schemas omit some of those parameters. No offset cursor is invented.
+schemas omit some of those parameters. The [nested card resource contract](https://developer.atlassian.com/cloud/trello/guides/rest-api/nested-resources/#cards-nested-resource)
+documents `sort=none` by default and the explicit `-id` ordering this client uses.
+No offset cursor is invented.
 [Rate guidance](https://developer.atlassian.com/cloud/trello/guides/rest-api/rate-limits/)
 describes shared key/token budgets; other applications can consume them too.
 

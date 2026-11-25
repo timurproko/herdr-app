@@ -77,7 +77,7 @@ class Scope {
   async card(board, target) {
     let before; const seen = new Set();
     for (let i = 0; i < 18; i++) {
-      const rows = array(await this.client.get(`/boards/${board}/cards`, {filter: 'all', fields: 'idBoard,idList', limit: 100, ...(before ? {before} : {})}));
+      const rows = array(await this.client.get(`/boards/${board}/cards`, {filter: 'all', fields: 'idBoard,idList', sort: '-id', limit: 100, ...(before ? {before} : {})}));
       if (rows.some(r => r.idBoard !== board || !id(r.idList))) fail('SCOPE');
       const row = rows.find(r => r.id === target); if (row) return row;
       if (rows.length < 100) break;
@@ -111,7 +111,7 @@ async function readOperation(client, scope, op, a, gate) {
   if (op === 'lists.list') return page((await scope.lists(a.board)).filter(r => (a.filter ?? 'open') === 'all' || r.closed === ((a.filter ?? 'open') === 'closed')).map(r => pick(r, ['name', 'idBoard', 'closed', 'pos'])), 100, false);
   if (op === 'cards.list') {
     if (a.list) await scope.list(a.board, a.list);
-    const rows = array(await client.get(a.list ? `/lists/${a.list}/cards` : `/boards/${a.board}/cards`, {fields, filter: a.filter ?? 'open', ...paging}));
+    const rows = array(await client.get(a.list ? `/lists/${a.list}/cards` : `/boards/${a.board}/cards`, {fields, filter: a.filter ?? 'open', sort: '-id', ...paging}));
     if (a.list && rows.some(r => r.idList !== a.list)) fail('SCOPE');
     return page(rows.map(r => card(r, a.board)), limit);
   }

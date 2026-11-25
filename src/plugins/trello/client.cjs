@@ -5,9 +5,9 @@ const ID = '[a-f0-9]{24}';
 const routes = [
   ['GET', new RegExp(`^/boards/${ID}$`), ['fields', 'actions', 'lists', 'cards', 'members', 'checklists']],
   ['GET', new RegExp(`^/boards/${ID}/lists$`), ['fields', 'filter']],
-  ['GET', new RegExp(`^/boards/${ID}/cards$`), ['fields', 'filter', 'limit', 'before']],
+  ['GET', new RegExp(`^/boards/${ID}/cards$`), ['fields', 'filter', 'sort', 'limit', 'before']],
   ['GET', new RegExp(`^/boards/${ID}/labels$`), ['fields', 'limit']],
-  ['GET', new RegExp(`^/lists/${ID}/cards$`), ['fields', 'filter', 'limit', 'before']],
+  ['GET', new RegExp(`^/lists/${ID}/cards$`), ['fields', 'filter', 'sort', 'limit', 'before']],
   ['GET', new RegExp(`^/cards/${ID}$`), ['fields', 'attachments', 'members', 'checklists', 'actions', 'pluginData', 'stickers']],
   ['GET', new RegExp(`^/cards/${ID}/actions$`), ['filter', 'limit', 'before']],
   ['GET', new RegExp(`^/cards/${ID}/checklists$`), ['checkItems', 'filter', 'fields', 'checkItem_fields']],
