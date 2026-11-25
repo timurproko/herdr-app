@@ -1,5 +1,6 @@
 // Actual Crew reader/provider + Git controller/aggregate; synthetic home/Core/GitHub only.
 import assert from 'node:assert/strict';
+import {legacyTargetResponses} from './support/github-read.mjs';
 import {loadMod} from '../tools/plugin-harness.mjs';
 const element=()=>{const o={kids:[],attrs:{}};let p;return p=new Proxy(o,{get(t,k){if(k in t)return t[k];if(k==='then')return undefined;if(k==='when')return(yes,fn)=>yes?fn(p):p;if(k==='child')return c=>{o.kids.push(c);return p;};if(k==='children')return cs=>{o.kids.push(...cs);return p;};return(...args)=>{o.attrs[k]=args;return p;};}});};
 const find=(n,id)=>n?.attrs?.id?.[0]===id?n:n?.kids?.map(c=>find(c,id)).find(Boolean);
@@ -23,11 +24,15 @@ const host={shared:key=>state[key],setShared:(key,value)=>state[key]=value,space
 const modules={'label-colors.js':'src/plugins/git/mod/label-colors.js','enrollment-picker.js':{EnrollmentPicker:class{stop(){}render(){return null;}}},'main.js':'src/plugins/git/mod/main.js','aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js','ui.js':'src/ui/ui.js','space-color-state.js':{currentSpaceColor:()=>null},
  'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{}},'gpui-base':{v_flex:element,h_flex:element,Popover:{},Input:{}},'location.js':{location:()=>({space:'coordinator',cwd:'/not-git',on:null,terminal:'t1'})},'agent-links.js':{AgentLinks:class{}},'pin-swap.js':{PinSwap:class{cancel(){}},PIN_SWAP_MS:320},'panel-pin.js':{panelPin:element},'sidebar-title.js':{sidebarTitle:element},'settings-dialog.js':{openSettings(){}},'panel-state.js':{changePanel(){}},'panel-kit.js':{headerTool:element,contextMenu:element,tag:element,panelMessage:(_t,id)=>element().id(id)},
  'relay-consumer.js':'src/plugins/git/mod/webhooks.js','webhooks.js':{GitWebhooks:class{sync(_cx,options){socket=options;}stop(){}retryNow(){}}},'notices.js':{GitNotices:class{sync(){return null;}presentation(){return null;}stop(){}retryNow(){}}}};
-const {Main,r,GitWebhooks}=await loadMod({host,modules,globals:{URL,Date:class extends Date{static now(){return now;}},localStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value)}},mod:'custom-changes',entry:'export {default as Main} from "./main.js";export * as r from "./plugins.js";export {GitWebhooks} from "./relay-consumer.js";'});
+host.exec=legacyTargetResponses(host.exec);
+const {Main,r,GitWebhooks,gitReads}=await loadMod({host,modules,globals:{URL,Date:class extends Date{static now(){return now;}},localStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value)}},mod:'custom-changes',entry:'export {default as Main} from "./main.js";export * as r from "./plugins.js";export {GitWebhooks} from "./relay-consumer.js";export {gitReads} from "./pulls.js";'});
 const refreshStatus=async()=>{r.pluginEvent('spaces.refresh',{cx,force:true});await drain();};
 await refreshStatus();assert.equal(statusReads,1);
 const panel=new Main();panel.init({},cx);await drain();panel.render(cx);await drain();let tree=panel.render(cx);
-assert.equal(calls.length,10,'One targeted read per full PR identity, not per task');assert.ok(peak<=3,'History preserves the three-request concurrency bound');
+// Later row-change cases explicitly invalidate cached facts; generic events
+// alone must not reread final rows (see the raw request-budget fixture).
+panel.aggregate.invalidate=(repository=null)=>{for(const key of gitReads(host.exec).facts.keys())if(!repository||JSON.parse(key)[1]===repository)gitReads(host.exec).facts.delete(key);for(const e of panel.aggregate.entries.values())if(!repository||e.link.repo===repository)e.dirty=true;};
+assert.equal(calls.length,10,'One data supplier call per full PR identity, not per task');assert.ok(peak<=3,'History preserves the three-request concurrency bound');
 assert.equal(panel.aggregate.counts().open,3);assert.equal(panel.aggregate.counts().closed,2,'Only recent closed/merged history contributes');
 for(const number of [1,2,3])assert.ok(find(tree,`pr-example/repo#${number}`));
 assert.ok(find(tree,'pr-agent-example/repo#1'),'Live source wins over historical duplicates');
@@ -68,7 +73,7 @@ staleFrame();readMode='failure';releaseStatus();await drain();staleFrame();await
 now+=60000;await refreshStatus();staleFrame();await drain();
 terminals[0].state='finished';assert.equal(r.pluginPullContext('coordinator',{presentation:true}),null,'An ended owner cannot retain the child-independent scope');terminals[0].state='live';
 readMode='success';await refreshStatus();tree=panel.render(cx);assert.equal(panel.aggregate.context.scope,scope);assert.equal(panel.aggregate.entries.get('example/repo#1'),retainedEntry);assert.ok(find(tree,'pr-example/repo#1'));assert.equal(find(tree,'git-task-stale'),undefined);assert.equal(r.pluginPullContext('coordinator').child,null);await drain();
-assert.equal(calls.length-beforeFinish,panel.aggregate.entries.size,'Fresh verification catches up once per retained PR, not while stale');
+assert.equal(calls.length-beforeFinish,panel.aggregate.rows('open').length,'Fresh verification catches up mutable PRs only, reusing session-final facts');
 assert.equal(find(tree,'pr-agent-example/repo#1'),undefined);assert.equal(panel.aggregate.counts().open,3);
 // GitHub closure/reopen transitions and age changes use normal webhook/context refresh.
 fact(2,'CLOSED',iso(now));socket.onChange({repository:'example/repo'},cx);await drain();tree=panel.render(cx);assert.equal(panel.aggregate.counts().open,2);panel.setView('closed',cx);tree=panel.render(cx);assert.ok(find(tree,'pr-example/repo#2'));assert.equal(find(tree,'pr-agent-example/repo#2'),undefined);
@@ -78,7 +83,7 @@ fact(6,'OPEN',undefined,'example/old');socket.onChange({repository:'example/old'
 // actual Crew provider and aggregate. No missing event is invented as a diagnosis.
 state['custom.plugins'].git.settings={relay:'https://relay.test'};
 const relay=state['custom.git.relay-runtime']={scope:'history-events',status:'connected',ready:1,repositories:{'example/repo':{revision:1}}};
-panel.webhooks=new GitWebhooks();
+panel.webhooks=new GitWebhooks({debounce:0});panel.syncTaskWebhooks(cx);await drain();
 const event=()=>{relay.repositories['example/repo'].revision++;panel.syncTaskWebhooks(cx);};
 fact(2,'OPEN');event();await drain();
 assert.ok(panel.aggregate.rows('open').some(pr=>pr.number===2));

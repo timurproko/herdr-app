@@ -1,5 +1,6 @@
 // Actual panel/aggregate renderer with synthetic verified context and gh results.
 import assert from 'node:assert/strict';
+import {legacyTargetResponses} from './support/github-read.mjs';
 import {loadMod} from '../tools/plugin-harness.mjs';
 import {assertTaskSections} from './support/git-section-invariant.mjs';
 const element=()=>{const o={kids:[],attrs:{}};let p;return p=new Proxy(o,{get(t,k){if(k in t)return t[k];if(k==='then')return undefined;if(k==='when')return(yes,fn)=>yes?fn(p):p;if(k==='child')return c=>{o.kids.push(c);return p;};if(k==='children')return cs=>{o.kids.push(...cs);return p;};return(...args)=>{o.attrs[k]=args;return p;};}});};
@@ -15,10 +16,11 @@ const jobs=[],calls=[],failures=new Map(),storage=new Map();
 const cx={focus_handle:()=>({}),notify(){},stop_propagation(){},timer:{every(){},after(){}},spawn:fn=>jobs.push(Promise.resolve().then(()=>fn(cx)))};
 const drain=async()=>{while(jobs.length)await Promise.all(jobs.splice(0));};
 const host={props:()=>null,theme:()=>({}),settings:()=>({zoom:1}),window:()=>({platform:'windows'}),layout:()=>({id:'panel',hidden:!shown,children:[{id:'panel-body',active:'changes'}]}),notify(){},run(){throw Error('No worker navigation authorized');},closeOverlay(){},openOverlay(){},nextCommand:()=>new Promise(()=>{}),exec:async(cmd,args)=>{assert.equal(cmd,'gh');const k=key(Number(args[2]),args[args.indexOf('--repo')+1]);calls.push(k);await Promise.resolve();const f=failures.get(k);if(f instanceof Error)throw f;if(f)return f;return {code:0,stdout:JSON.stringify(facts.get(k))};}};
-const {Main}=await loadMod({mod:'custom-changes',host,modules:{'enrollment-picker.js':'src/plugins/git/mod/enrollment-picker.js','choice-menu.js':'src/ui/choice-menu.js','label-colors.js':'src/plugins/git/mod/label-colors.js','main.js':'src/plugins/git/mod/main.js','aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js','ui.js':'src/ui/ui.js','space-color-state.js':{currentSpaceColor:()=>null},
+host.exec=legacyTargetResponses(host.exec);
+const {Main,gitReads}=await loadMod({host,modules:{'enrollment-picker.js':'src/plugins/git/mod/enrollment-picker.js','choice-menu.js':'src/ui/choice-menu.js','label-colors.js':'src/plugins/git/mod/label-colors.js','main.js':'src/plugins/git/mod/main.js','aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js','ui.js':'src/ui/ui.js','space-color-state.js':{currentSpaceColor:()=>null},
  'plugins.js':{sidebarPanelEnabled:()=>enabled,pluginPullContext:(_space,options)=>!enabled?null:context.stale&&!options?.presentation?null:context,pluginEvent(){}},'location.js':{location:()=>({space:'coordinator',cwd:'/not-git',on:null,terminal:'coordinator'})},
  'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{}},'gpui-base':{v_flex:element,h_flex:element,Popover:{new:id=>element().id(id)},Input:{}},'agent-links.js':{AgentLinks:class{}},'pin-swap.js':{PinSwap:class{cancel(){}},PIN_SWAP_MS:320},'panel-pin.js':{panelPin:element},'sidebar-title.js':{sidebarTitle:element},'settings-dialog.js':{openSettings(){}},'panel-state.js':{changePanel(){}},'panel-kit.js':{headerTool:element,contextMenu:element,panelMessage:(_t,id,o)=>element().id(id).child(o.text)},
- 'webhooks.js':{GitWebhooks:class{sync(_cx,o){socket=o;}stop(){}retryNow(){}}},'notices.js':{GitNotices:class{sync(_cx,{repository}){return repository?'repository':null;}presentation(repositories){return {choices:repositories,key:JSON.stringify(repositories)};}stop(){}retryNow(){}}}},globals:{Date:class extends Date{static now(){return now;}},localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v)}},mod:'custom-changes',entry:'export {default as Main} from "./main.js";'});
+ 'webhooks.js':{GitWebhooks:class{sync(_cx,o){socket=o;}stop(){}retryNow(){}}},'notices.js':{GitNotices:class{sync(_cx,{repository}){return repository?'repository':null;}presentation(repositories){return {choices:repositories,key:JSON.stringify(repositories)};}stop(){}retryNow(){}}}},globals:{Date:class extends Date{static now(){return now;}},localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v)}},mod:'custom-changes',entry:'export {default as Main} from "./main.js";export {gitReads} from "./pulls.js";'});
 const panel=new Main(),build=panel.render.bind(panel);panel.render=(...args)=>{const tree=build(...args);assertTaskSections(tree,panel);return tree;};panel.init({},cx);await drain();let tree=panel.render(cx);await drain();tree=panel.render(cx);
 const render=tab=>{panel.setView(tab,cx);return panel.render(cx);};
 const checkRows=(tree,ns,r=repo)=>{for(const n of ns)assert.ok(find(tree,`pr-${key(n,r)}`));};
@@ -26,7 +28,11 @@ const checkCounts=()=>{assert.equal(panel.aggregate.counts().open,1);assert.equa
 checkCounts();checkRows(tree,[8]);for(const n of [5,6,7])assert.equal(find(tree,`pr-${key(n)}`),undefined);assert.ok(find(tree,`pr-agent-${key(8)}`));assert.equal(errors(tree).length,0);
 tree=render('closed');checkRows(tree,[5,6,7]);for(const n of [5,6,7])assert.equal(find(tree,`pr-agent-${key(n)}`),undefined);assert.equal(errors(tree).length,0);
 assert.ok(find(tree,'git-enrollment-footer'),'Unenrolled repository still reads PR history normally, with one fixed footer');
-const refresh=async()=>{panel.aggregate.refresh(cx);await drain();};
+const refresh=async()=>{
+ // These tests inject an explicit change/failed replacement, not a generic hint.
+ gitReads(host.exec).facts.clear();for(const e of panel.aggregate.entries.values())e.pr && (e.dirty=true);
+ panel.aggregate.refresh(cx);await drain();
+};
 for(const failure of [new Error('failed to spawn gh: EAGAIN'),{code:3221225794,stderr:''},{code:-1073741502,stderr:''},{code:1,stderr:''},{code:0,timed_out:true,stderr:''},{code:1,stderr:'GraphQL: Could not resolve to a Repository with the name example/crew'},{code:1,stderr:'Could not resolve host: api.github.com'}]){
  for(const n of [5,6,7])failures.set(key(n),failure);await refresh();checkCounts();
  tree=render('open');checkRows(tree,[8]);assert.equal(errors(tree).length,0,'No finished Closed read errors in Open');
@@ -40,11 +46,11 @@ tree=render('closed');assert.equal(errors(tree).length,1);for(const part of ['lo
 failures.delete(key(5));await refresh();tree=render('closed');assert.equal(errors(tree).length,1);assert.doesNotMatch(text(errors(tree)[0]),/local command/);
 failures.clear();await refresh();assert.equal(errors(render('closed')).length,0);
 // Unknown historical state is a Closed history-load notice, not an Open error.
-panel.aggregate.stop();for(const n of [5,6,7])failures.set(key(n),{code:3221225794,stderr:''});tree=panel.render(cx);await drain();
+gitReads(host.exec).facts.clear();panel.aggregate.stop();for(const n of [5,6,7])failures.set(key(n),{code:3221225794,stderr:''});tree=panel.render(cx);await drain();
 assert.equal(errors(render('open')).length,0);tree=render('closed');assert.equal(errors(tree).length,1);assert.match(text(errors(tree)[0]),/Task PR history/);assert.equal(panel.aggregate.counts().closed,0);assert.equal(panel.aggregate.counts().open,1);
 assert.ok(find(tree,`task-repo-${repo}`),'A genuine notice alone keeps its section');assert.equal(find(tree,'git-task-empty'),undefined,'Notice-only is not empty');
 // Cold historical failures belong only to Closed, without phantom Open headers.
-const live=context.links.shift();panel.aggregate.stop();tree=render('open');await drain();tree=render('open');
+const live=context.links.shift();gitReads(host.exec).facts.clear();panel.aggregate.stop();tree=render('open');await drain();tree=render('open');
 assert.equal(find(tree,`task-repo-${repo}`),undefined);assert.equal(find(tree,'git-task-empty').kids[0],'No open pull requests');
 tree=render('closed');assert.ok(find(tree,`task-error-${repo}`));assert.equal(find(tree,'git-task-empty'),undefined);
 context.links.unshift(live);failures.clear();await refresh();panel.render(cx);await drain();checkCounts();

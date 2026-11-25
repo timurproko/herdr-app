@@ -3,7 +3,7 @@
 import { exec, run } from './host.js';
 import { pluginPullContext, pluginEvent, sidebarPanelEnabled } from './plugins.js';
 import { location } from './location.js';
-import { PR_FIELDS, pullRow, pullFailure, repositoryFailure, PullFactsOrder } from './pulls.js';
+import { pullFailure, repositoryFailure, readTargetPulls, finalPull, retimePull, quietRead, retryRead, PullFactsOrder } from './pulls.js';
 export function taskPullLink(url) {
   const match=/^https:\/\/github\.com\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\/pull\/([1-9]\d*)\/?$/.exec(url??'');
   const number=Number(match?.[2]);
@@ -39,7 +39,7 @@ export class AggregatePulls {
   sync(cx) {
     if(this.shown()) pluginEvent('workspace.context.refresh',{cx,space:location().space});
     const context=this.currentContext({presentation:true}), previous=this.context;
-    if(context?.scope!==previous?.scope) {this.serial++;this.factOrder.reset();this.entries.clear();this.pending.clear();this.diagnostics.clear();}
+    if(context?.scope!==previous?.scope) {this.readWake=null;this.manualRead=null;this.serial++;this.factOrder.reset();this.entries.clear();this.pending.clear();this.diagnostics.clear();}
     this.context=context;
     if(!context) return false;
     if(context.stale) {
@@ -54,6 +54,7 @@ export class AggregatePulls {
     for(const [key,link]of links) {
       const old=this.entries.get(key);if(old)old.link=link;else this.entries.set(key,{link,dirty:true,pr:null,error:null});
       const entry=this.entries.get(key),missingAt=missingPulls.get(key);
+      if(entry.pr)entry.pr=retimePull(entry.pr);
       if(missingAt!==undefined) {
         entry.pr=null;entry.error=null;entry.missing=true;
         // Use the existing shown-panel lifecycle, never a new retry timer.
@@ -66,6 +67,7 @@ export class AggregatePulls {
   }
   stop() {this.serial++;this.factOrder.reset();this.context=null;this.entries.clear();this.pending.clear();this.diagnostics.clear();}
   get busy() {return this.pending.size>0 || Boolean(this.fallbackBusy);}
+  get waiting() {return [...this.entries.values()].some(e=>!e.pr && e.dirty && !e.error);}
   eligible(entry, now = Date.now()) {
     if(!entry.pr)return false;
     if(['open','draft'].includes(entry.pr.state) || entry.link.targets.some(t=>!t.historical && typeof t.terminal==='string' && t.terminal))return true;
@@ -95,63 +97,65 @@ export class AggregatePulls {
     return [...new Set([...this.entries.values()].filter(e=>!e.missing && (!e.pr || this.eligible(e,now))).map(e=>e.link.repo))].sort();
   }
   counts() {return {open:this.rows('open').length,closed:this.rows('closed').length};}
-  invalidate(repository=null) {this.diagnostics.clear();for(const e of this.entries.values())if(!repository || e.link.repo===repository.toLowerCase())e.dirty=true;}
-  refresh(cx) {pluginEvent('workspace.context.refresh',{cx,space:location().space,force:true});this.invalidate();this.pump(cx);}
+  invalidate(repository=null) {this.diagnostics.clear();for(const e of this.entries.values())if((!repository || e.link.repo===repository.toLowerCase()) && !finalPull(e.pr))e.dirty=true;}
+  refresh(cx) {pluginEvent('workspace.context.refresh',{cx,space:location().space,force:true});this.manualRead={remaining:1,expires:Date.now()+30000};this.readWake=null;this.invalidate();this.pump(cx);}
   pump(cx) {
-    if(this.fallbackBusy)return;
-    if(!this.context || this.context.stale || !this.shown() || this.currentContext()?.scope!==this.context.scope)return;
-    const context=this.context,scope=context.scope,serial=this.serial;
+    if(this.fallbackBusy || this.readWake?.due>Date.now())return;
+    if(!this.context || this.context.stale || !this.shown() || this.currentContext()?.scope!==this.context.scope) {this.manualRead=null;return;}
+    const context=this.context,scope=context.scope,serial=this.serial,groups=new Map();
     for(const [key,entry]of this.entries) {
-      if(this.pending.size>=3)break;
       if(!entry.dirty || this.pending.has(key))continue;
       const missingAt=missingPulls.get(key);
       if(missingAt!==undefined && (!liveLink(entry.link) || Date.now()-missingAt<MISSING_LIVE_MS)) {
         entry.pr=null;entry.error=null;entry.missing=true;entry.dirty=false;continue;
       }
-      entry.dirty=false;const token={},read=this.factOrder.begin();this.pending.set(key,token);
-      const current=()=>this.serial===serial && this.shown() && this.currentContext()?.scope===scope && this.pending.get(key)===token && this.entries.get(key)===entry
-        && this.currentContext()?.links.some(l=>taskPullLink(l.url)?.key===key);
+      const group=groups.get(entry.link.repo)??[];group.push(entry);groups.set(entry.link.repo,group);
+    }
+    for(const [repository,entries]of groups)for(let at=0;at<entries.length;at+=20) {
+      if([...this.pending.keys()].some(key=>this.entries.get(key)?.link.repo===repository))break;
+      if(new Set(this.pending.values()).size>=3)return;
+      const batch=entries.slice(at,at+20),token={},read=this.factOrder.begin();
+      for(const entry of batch) {entry.dirty=false;this.pending.set(entry.link.key,token);}
+      const current=()=>this.serial===serial && this.shown() && this.currentContext()?.scope===scope;
+      const member=entry=>current() && this.pending.get(entry.link.key)===token && this.entries.get(entry.link.key)===entry
+        && this.currentContext()?.links.some(l=>taskPullLink(l.url)?.key===entry.link.key);
       cx.spawn(async view=>{
         let updated=false;
+        const failed=async(entry,error)=>{
+          if(!member(entry))return;
+          if(quietRead(error)) {entry.dirty=true;retryRead(this,view,error,next=>this.pump(next));return;}
+          if(missingTaskPull(error,entry.link.number)) {
+            const published=this.factOrder.publish(read,entry.link.key,()=>null);
+            if(published.accepted)rememberMissing(entry);else entry.dirty=true;
+          } else {
+            const failure=await repositoryFailure(exec,error,repository,{on:context.machine,current:()=>member(entry)},this.diagnostics);
+            if(member(entry)) {missingPulls.delete(entry.link.key);entry.missing=false;entry.error=failure;}
+          }
+        };
         try {
           await Promise.resolve();if(!current())return;
-          const result=await exec('gh',['pr','view',String(entry.link.number),'--repo',entry.link.repo,'--json',PR_FIELDS],{on:context.machine,timeout:30000});
-          if(!current())return;
-          if(result.code!==0 || result.timed_out || result.timedOut || result.signal) {
-            if(missingTaskPull(result,entry.link.number)) {
-              const published=this.factOrder.publish(read,key,()=>null);
-              if(published.accepted)rememberMissing(entry);else entry.dirty=true;
-              return;
-            }
-            const failure=await repositoryFailure(exec,result,entry.link.repo,{on:context.machine},this.diagnostics);
-            if(current()) {missingPulls.delete(key);entry.missing=false;entry.error=failure;}
-            return;
+          const results=await readTargetPulls(exec,batch.map(e=>e.link.number),repository,{on:context.machine,timeout:30000,current,manual:this.manualRead});
+          for(const entry of batch) {
+            if(!member(entry))continue;
+            const result=results.get(entry.link.number);if(result.error) {await failed(entry,result.error);continue;}
+            const value=result.row,key=entry.link.key;
+            const published=this.factOrder.publish(read,key,()=>({...value,key,repo:repository}));
+            if(!published.accepted) {entry.dirty=true;continue;}
+            missingPulls.delete(key);entry.missing=false;entry.pr=published.value;
+            const completedAt=Date.parse(value.mergedAt??value.closedAt??'');
+            entry.completedAt=completedAt<=Date.now()?completedAt:NaN;entry.error=null;updated=true;
           }
-          const value=JSON.parse(result.stdout);
-          if(value.number!==entry.link.number || taskPullLink(value.url)?.key!==key)throw Error('Pull request identity mismatch');
-          const published=this.factOrder.publish(read,key,()=>({...pullRow(value,entry.link.repo.split('/')[0]),key,repo:entry.link.repo}));
-          if(!published.accepted) {entry.dirty=true;return;}
-          missingPulls.delete(key);entry.missing=false;entry.pr=published.value;
-          const completedAt=Date.parse(value.mergedAt??value.closedAt??'');
-          entry.completedAt=completedAt<=Date.now()?completedAt:NaN;entry.error=null;updated=true;
-        }catch(e){
-          if(current()) {
-            const failure=await repositoryFailure(exec,e,entry.link.repo,{on:context.machine},this.diagnostics);
-            if(current()) {missingPulls.delete(key);entry.missing=false;entry.error=failure;}
-          }
-        }
+        }catch(error){for(const entry of batch)await failed(entry,error);}
         finally {
-          if(this.pending.get(key)===token)this.pending.delete(key);
+          for(const entry of batch)if(this.pending.get(entry.link.key)===token)this.pending.delete(entry.link.key);
           if(this.serial===serial && this.shown())this.pump(view);
-          // Share one identity read per repository only within this refresh.
-          // Never reuse a prior refresh's login after an account change.
-          if(!this.pending.size && ![...this.entries.values()].some(e=>e.dirty))this.diagnostics.clear();
+          if(!this.pending.size && ![...this.entries.values()].some(e=>e.dirty)) {this.diagnostics.clear();this.manualRead=null;}
           view.notify();
         }
-        // Presentation callback failures are not failed GitHub reads.
-        if(updated && this.serial===serial && this.shown() && this.currentContext()?.scope===scope)this.onUpdate?.(view);
+        if(updated && current())this.onUpdate?.(view);
       });
     }
+    if(!this.pending.size && ![...this.entries.values()].some(e=>e.dirty))this.manualRead=null;
   }
   target(pr) {
     const context=this.currentContext();if(context?.scope!==this.context?.scope)return null;

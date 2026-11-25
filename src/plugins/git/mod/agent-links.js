@@ -1,7 +1,7 @@
 // Live, read-only PR -> agent links. No transcripts, terminal input or saved IDs.
 import { agents, panes, spaces, terminals, exec, hc } from './host.js';
 import { paneDirectory } from './directory.js';
-import { agentPullNumber, REPO_ARGS } from './pulls.js';
+import { agentPullNumber, REPO_ARGS, repositoryRead } from './pulls.js';
 import { namedPullNumber } from './location.js';
 
 const TTL = 10000;
@@ -29,7 +29,23 @@ export function agentTargets() {
 }
 
 export class AgentLinks {
-  constructor(enabled = () => true) { this.enabled = enabled; this.entries = new Map(); this.pending = new Map(); }
+  constructor(enabled = () => true) { this.enabled = enabled; this.entries = new Map(); this.pending = new Map(); this.repositories=new Map(); }
+
+  invalidate() {this.repositories.clear();for(const entry of this.entries.values())entry.at=0;}
+  async repository(target) {
+    const key=JSON.stringify([target.on,target.cwd]);
+    // Effective Git routing is local IO, not a GitHub read. Include gh's
+    // default-remote marker (also from inherited config), not just remote URLs.
+    const config=await exec('git',['config','--get-regexp','^(remote\\..*\\.(url|pushurl|gh-resolved)|branch\\..*\\.(remote|merge))$'],{cwd:target.cwd,on:target.on,timeout:15000}).catch(()=>null);
+    if(!this.enabled())return null;
+    const fingerprint=config && [0,1].includes(config.code) && !config.signal && !config.timed_out ? config.stdout : null;
+    const cached=this.repositories.get(key);
+    if(fingerprint!=null && cached?.fingerprint===fingerprint)return cached.repo;
+    const result=await repositoryRead(exec,REPO_ARGS,null,{cwd:target.cwd,on:target.on,timeout:15000,current:()=>this.enabled()});
+    const repo=result.code===0?repositoryName(result.stdout):null;
+    if(repo && fingerprint!=null)this.repositories.set(key,{fingerprint,repo});
+    return repo;
+  }
 
   refresh(cx) {
     if (!this.enabled()) return;
@@ -50,8 +66,7 @@ export class AgentLinks {
         try {
           const folder = JSON.stringify([target.on,target.cwd]);
           if (!folders.has(folder)) folders.set(folder,
-            exec('gh',REPO_ARGS,{cwd:target.cwd,on:target.on,timeout:15000})
-              .then(r => r.code === 0 ? repositoryName(r.stdout) : null).catch(() => null));
+            this.repository(target).catch(() => null));
           const repo = await folders.get(folder);
           if (!this.enabled()) return;
           let number = target.number;
@@ -74,8 +89,8 @@ export class AgentLinks {
   async confirm(target, pr, repo, current = () => true) {
     const live=()=>this.enabled()&&current()&&agentTargets().some(t=>t.key===target.key);
     if(!live())return false;
-    const result=await exec('gh',REPO_ARGS,{cwd:target.cwd,on:target.on,timeout:15000});
-    if(!live()||result.code!==0||repositoryName(result.stdout)!==repoKey(repo))return false;
+    const result=await repositoryRead(exec,REPO_ARGS,null,{cwd:target.cwd,on:target.on,timeout:15000,current:live}).catch(()=>null);
+    if(!live()||!result||result.code!==0||repositoryName(result.stdout)!==repoKey(repo))return false;
     let number=target.number;
     if(['a1','claude-code'].includes(target.app)) {
       const screen=await hc(['read',target.address,'--json','--lines','0']);

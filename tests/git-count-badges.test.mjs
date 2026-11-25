@@ -49,12 +49,15 @@ panel.context=JSON.stringify([h.place.cwd,h.place.on]);badges(ordinary(),[0,0]);
 const aggregate=panel.aggregate=new h.AggregatePulls({shown:()=>true});
 const coordinator=()=>h.render(()=>panel.renderAggregate(cx,t));
 aggregate.sync(cx);await tick();panel.context='tasks:home';
-badges(coordinator(),[0,0]);assert.equal(pending.length,2);
-await reply({number:1,url:context.links[0].url,title:'Open task',state:'OPEN'});badges(coordinator(),[1,0]);
-await reply({number:2,url:context.links[1].url,title:'Closed task',state:'CLOSED',closedAt:new Date().toISOString()});badges(coordinator(),[1,1]);
-aggregate.refresh(cx);await tick();assert.equal(pending.length,2);badges(coordinator(),[1,1]);
+badges(coordinator(),[0,0]);assert.equal(pending.length,1,'One repository metadata batch replaces per-PR commands');
+const one={number:1,url:context.links[0].url,title:'Open task',state:'OPEN',statusCheckRollup:[]};
+const two={number:2,url:context.links[1].url,title:'Closed task',state:'CLOSED',closedAt:new Date().toISOString(),statusCheckRollup:[]};
+await reply({data:{repository:{pr1:one,pr2:two}}});badges(coordinator(),[1,1]);
+aggregate.refresh(cx);await tick();assert.equal(pending.length,1);badges(coordinator(),[1,1]);
 await reply('',1);badges(coordinator(),[1,1]);
-await reply({number:2,url:context.links[1].url,title:'Reopened',state:'OPEN'});badges(coordinator(),[2,0]);
+// Explicit contradictory evidence, not a generic event polling final history.
+h.facts.gitReads(h.transport).facts.clear();aggregate.entries.get('owner/repo#2').dirty=true;
+aggregate.refresh(cx);await tick();await reply({data:{repository:{pr1:one,pr2:{...two,title:'Reopened',state:'OPEN'}}}});badges(coordinator(),[2,0]);
 context.scope='new-home';context.links=[];aggregate.sync(cx);panel.context='tasks:new-home';badges(coordinator(),[0,0]);
 await Promise.all(tasks);assert.equal(pending.length,0);
 // Complete ordinary/coordinator chrome: compare the painted badge (not merely
