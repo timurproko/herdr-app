@@ -120,8 +120,9 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
     }
   }
 }
-// Exercise main's windowed scroll renderer and warm distinct-string widths.
+// Exercise main's mounted-prefix renderer and warm distinct-string widths.
 const {measureTask,scrollTask,taskWindow,taskContent}=await import('./support/git-scroll.mjs');
+const {MAX_MOUNTED_ROWS}=await import('../src/plugins/git/mod/task-reveal.js');
 let pagedComparisons=0;
 for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,2])for(const view of ['open','closed']) {
   h.setZoom(zoom);h.setAgent(true);panel.view=view;panel.pinMotion=null;panel.taskWindows?.clear();panel.foldedRepositories.clear();
@@ -139,10 +140,11 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
     const header=find(tree,'task-repo-header-owner/repo');
     if(header) {
       gitHighlight(geometry,header,width,zoom);
-      near(inset(geometry,header,header.kids.at(-1)),expectedInset,'Windowed header slot shares the Spaces highlight-relative inset');
+      near(inset(geometry,header,header.kids.at(-1)),expectedInset,'Mounted header slot shares the Spaces highlight-relative inset');
     }
     const visible=nodes(viewport).filter(node=>/^pr-owner\/repo#\d+$/.test(node.attrs.id?.[0]??''));
-    assert.ok(visible.length<=10,'Alignment must preserve main\'s bounded page size');
+    assert.ok(visible.length<=MAX_MOUNTED_ROWS,'Alignment must preserve the measured mounted cap');
+    assert.equal(visible.length,taskWindow(panel).range().revealedRows.length,'All revealed rows remain mounted independent of native viewport');
     for(const row of visible) {
       const id=row.attrs.id[0].slice(3);seen.add(id);
       gitHighlight(geometry,row,width,zoom);
@@ -157,5 +159,5 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
   }
   assert.deepEqual([...seen].sort(),rows.map(pr=>pr.key).sort(),'Every PR remains reachable with unchanged alignment');
 }
-console.log(`PASS ${pagedComparisons} windowed-scroll right-edge comparisons and stable native scroll identity across widths/zoom/Open/Closed`);
+console.log(`PASS ${pagedComparisons} mounted-scroll right-edge comparisons and stable native scroll identity across widths/zoom/Open/Closed`);
 console.log(`PASS ${comparisons} full-panel highlight-relative inset comparisons against actual Spaces Crew geometry, 280–480px / 75–200% including 130%, ordinary/pinned/scrolling/ghost/coordinator, Open/Closed/merged and mutation guards (synthetic, not native pixels)`);

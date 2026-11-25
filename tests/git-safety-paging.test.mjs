@@ -37,31 +37,38 @@ const render=()=>h.render(()=>panel.renderAggregate(cx,t));
 const advance=async ms=>{const end=now+ms;while(true){timers.sort((a,b)=>a.at-b.at);if(!timers.length||timers[0].at>end)break;const timer=timers.shift();now=timer.at;timer.fn(cx);await tick();}now=end;await tick();};
 const mounted=tree=>nodes(tree).filter(node=>/^pr-owner\/[ab]#\d+$/.test(node.attrs.id?.[0]??'')).map(node=>node.attrs.id[0].slice(3));
 const selected=()=>Array.from(panel.fallbackSnapshot().repositories).flatMap(repo=>Array.from(repo.rows,pr=>pr.key));
-let tree=render();assert.equal(selected().length,0,'Unmeasured cold rows cannot authorize probes');
+let tree=render();assert.equal(selected().length,9,'Revealed unfolded rows authorize probes without an unreliable viewport observation');
 measureTask(panel,tree,cx);tree=render();
-const initial=selected();assert.equal(initial.length,5);assert.ok(mounted(tree).length>initial.length,'Overscan renders without widening safety reads');
+const initial=selected();assert.equal(initial.length,9);assert.deepEqual(mounted(tree),initial,'Offscreen revealed rows are included, unrevealed/other-tab rows are not');
 assert.deepEqual({...panel.aggregate.counts()},{open:25,closed:5});
-const merged=factsByKey.get('owner/a#1');merged.state='MERGED';merged.mergedAt=merged.closedAt=new Date(Date.now()-1000).toISOString();
+const merged=factsByKey.get('owner/a#9');merged.state='MERGED';merged.mergedAt=merged.closedAt=new Date(Date.now()-1000).toISOString();
 await advance(45000);await drain();
 assert.deepEqual(requests,[{repo:'owner/a',numbers:initial.map(key=>Number(key.split('#')[1]))}]);
 assert.deepEqual({...panel.aggregate.counts()},{open:24,closed:6});
-assert.equal(panel.aggregate.rows('closed').find(pr=>pr.key==='owner/a#1')?.state,'merged');
+assert.equal(panel.aggregate.rows('closed').find(pr=>pr.key==='owner/a#9')?.state,'merged');
 tree=render();
 const scroll=offset=>{const before=requests.length;scrollTask(panel,tree,cx,offset);tree=render();measureTask(panel,tree,cx);tree=render();assert.equal(requests.length,before,'Scroll starts no extra safety or inventory reads');};
-scroll(400);const offset=taskWindow(panel).offset,current=selected(),target=current[0],value=factsByKey.get(target);value.state='CLOSED';value.closedAt=new Date(Date.now()-1000).toISOString();
+scroll(50);const target='owner/a#10',value=factsByKey.get(target);value.state='CLOSED';value.closedAt=new Date(Date.now()-1000).toISOString();
 const hold=held={};await advance(45000);assert.equal(typeof hold.release,'function');
-const scope=panel.fallbackSnapshot().scope;scroll(0);scroll(offset);assert.notEqual(panel.fallbackSnapshot().scope,scope,'Returning to the same row interval has a new generation');
-hold.release();await drain();assert.equal(panel.aggregate.entries.get(target).pr.state,'open','Away-and-back rejects the held reply');
-await advance(45000);await drain();tree=render();assert.equal(panel.aggregate.entries.get(target).pr.state,'closed');assert.deepEqual({...panel.aggregate.counts()},{open:23,closed:7});
-// A held selection must also be rejected across tab-away-and-back.
-scroll(400);const tabHold=held={};await advance(45000);assert.equal(typeof tabHold.release,'function');
-const tabScope=panel.fallbackSnapshot().scope;panel.view='closed';tree=render();panel.view='open';tree=render();assert.notEqual(panel.fallbackSnapshot().scope,tabScope);tabHold.release();await drain();
-// Folded rows and already-revealed off-window rows stay out of the probe set.
-panel.foldedRepositories.add('owner/a');tree=render();scroll(0);
+const scope=panel.fallbackSnapshot().scope;scroll(100);scroll(50);assert.equal(panel.fallbackSnapshot().scope,scope,'Scrolling within a revealed set keeps its generation');
+hold.release();await drain();tree=render();assert.equal(panel.aggregate.entries.get(target).pr.state,'closed','A stable revealed selection accepts the held reply');assert.deepEqual({...panel.aggregate.counts()},{open:23,closed:7});
+// A genuine reveal changes the selection and rejects the old response.
+const stale='owner/a#1',staleValue=factsByKey.get(stale);staleValue.state='CLOSED';staleValue.closedAt=new Date(Date.now()-1000).toISOString();
+const revealHold=held={};await advance(45000);assert.equal(typeof revealHold.release,'function');
+const revealScope=panel.fallbackSnapshot().scope;scroll(300);assert.notEqual(panel.fallbackSnapshot().scope,revealScope);revealHold.release();await drain();assert.equal(panel.aggregate.entries.get(stale).pr.state,'open');
+const foldHold=held={};await advance(45000);assert.equal(typeof foldHold.release,'function');
+panel.foldedRepositories.add('owner/a');tree=render();foldHold.release();await drain();assert.equal(panel.aggregate.entries.get(stale).pr.state,'open','Folded reply is obsolete');
 assert.ok(selected().every(key=>key.startsWith('owner/b#')));assert.deepEqual({...panel.aggregate.counts()},{open:23,closed:7});
+// Tab-away-and-back and home-away-and-back reject held replies even when the
+// final revealed keys match the earlier snapshot.
+const other='owner/b#13',otherValue=factsByKey.get(other);otherValue.state='CLOSED';otherValue.closedAt=new Date(Date.now()-1000).toISOString();
+const tabHold=held={};await advance(45000);assert.equal(typeof tabHold.release,'function');
+const tabScope=panel.fallbackSnapshot().scope;panel.setView('closed',cx);panel.setView('open',cx);tree=render();assert.notEqual(panel.fallbackSnapshot().scope,tabScope);tabHold.release();await drain();assert.equal(panel.aggregate.entries.get(other).pr.state,'open');
+const contextHold=held={};await advance(45000);assert.equal(typeof contextHold.release,'function');
+context.scope='other-home';panel.context='tasks:other-home';tree=render();context.scope='window-home';panel.context='tasks:window-home';tree=render();contextHold.release();await drain();assert.equal(panel.aggregate.entries.get(other).pr.state,'open');otherValue.state='OPEN';
 panel.notices.members.set('owner/a',true);panel.notices.members.set('owner/b',true);tree=render();
 const beforeEnrolled=requests.length;await advance(119999);assert.equal(requests.length,beforeEnrolled);
-await advance(1);await drain();assert.equal(requests.length,beforeEnrolled+1,'Enrolled viewport retains its 120-second safety net');
+await advance(1);await drain();assert.equal(requests.length,beforeEnrolled+1,'Enrolled revealed batch retains its 120-second safety net');
 assert.equal(requests.at(-1).repo,'owner/b');assert.deepEqual(requests.at(-1).numbers,selected().map(key=>Number(key.split('#')[1])));
 assert.equal(find(tree,'task-pulls-more'),undefined);
-console.log('PASS coordinator window safety: visible-only selection, overscan/fold exclusion, merge totals, scroll/tab away-and-back stale guards, 45/120s cadence and per-call GH_REPO');
+console.log('PASS coordinator revealed safety: offscreen inclusion, unrevealed/fold exclusion, merge totals, stable scrolling, reveal/fold/tab/context stale guards, 45/120s cadence and per-call GH_REPO');

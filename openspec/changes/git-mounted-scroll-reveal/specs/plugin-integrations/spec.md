@@ -3,7 +3,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Bounded coordinator render work
-Coordinator Open and Closed SHALL reveal ten presentation items initially and append ten near the bottom while keeping every revealed unfolded row mounted. There SHALL be no viewport spacers or replacement-page footer. Pure row/measurement caches SHALL keep native render work within measured budgets; if 200 mounted rows exceed about 35ms, a measured safe cap SHALL use only one quiet end Show more row. Revealing SHALL start no GitHub inventory read.
+Coordinator Open and Closed SHALL reveal ten presentation items initially and append ten near the bottom while keeping every revealed unfolded row of the selected mounted batch present. There SHALL be no viewport spacers or replacement-page footer. Pure row/measurement caches SHALL keep native render work within measured budgets; if 200 mounted rows exceed about 35ms, a measured safe cap SHALL use only one quiet end Show more row. Revealing SHALL start no GitHub inventory read.
 
 #### Scenario: Native scrolling without a JavaScript event
 - **WHEN** a native scrollbar drag, track click or keyboard action moves through the revealed content without a JavaScript callback
@@ -12,13 +12,19 @@ Coordinator Open and Closed SHALL reveal ten presentation items initially and ap
 
 #### Scenario: Incremental reveal and fitting content
 - **WHEN** the list nears its bottom on a received wheel, pointer-over-list or size event, or a post-batch layout check finds that it does not yet overflow
-- **THEN** another ten known presentation items are revealed until content overflows or the inventory ends
+- **THEN** another ten known presentation items are revealed until content overflows, the inventory ends or the measured safe cap is reached
 - **AND** dragging to the bottom without an observable event reveals the next batch on the next received event, not through a claimed scrollbar observer
 
 #### Scenario: Long Closed inventory
 - **WHEN** complete coordinator render builds are measured for 30, 60, 100 and 200 mounted PRs
 - **THEN** measurements report actual built counts, cold/warm scope and any chosen cap, targeting below 20ms at 100 rows
 - **AND** deterministic regressions bound per-row and mounted-tree operations/elements instead of asserting the obsolete viewport-window ceiling
+
+#### Scenario: Measured safe mounted batch
+- **WHEN** 200 mounted PR rows exceed the measured safe native build budget
+- **THEN** each mounted batch is capped at 60 PRs and 100 presentation items, with one quiet end Show more control and no page counter or Previous control
+- **AND** the control advances the batch, cycling the final batch back to the first so earlier rows remain reachable
+- **AND** excess arrivals at a full row cap wait for a free slot or explicit batch cycle instead of evicting already revealed PRs
 
 #### Scenario: Repeated row text and labels
 - **WHEN** coordinator rows share natural-width metadata strings

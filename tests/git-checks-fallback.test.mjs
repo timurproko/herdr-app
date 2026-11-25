@@ -35,9 +35,10 @@ for(const coordinator of [false,true]) {
         panel.aggregate.entries.set(pr.key,{pr,dirty:false,link:{repo:'owner/repo',number:pr.number,key:pr.key,targets:[{terminal:'pc2/t1'}]}});
       }
       context.links=values.map(pr=>({url:pr.url,terminal:'pc2/t1'}));
-      // Post-layout coordinator selection: only actual viewport rows, not all
-      // revealed or overscan rows, authorize the existing safety job.
-      panel.taskSections([{repo:'owner/repo',rows:values}],context.scope).window.move(0,400);
+      // Authorization is the revealed unfolded batch, including offscreen
+      // rows; expand to the measured mounted cap for the chunking fixture.
+      const list=panel.taskSections([{repo:'owner/repo',rows:values}],context.scope).window;
+      while(list.revealMore()){};list.observe(0,400);
     } else {panel.pulls.open=values;panel.agentPull=null;panel.relatedPull=null;}
   };
   install([facts.pullRow(raw(1),'owner'),facts.pullRow(raw(2),'owner'),facts.pullRow({...raw(3),statusCheckRollup:rollup(11,11)},'owner')]);
@@ -119,14 +120,14 @@ for(const coordinator of [false,true]) {
   before=requests.length;failAt=before+2;status={ok:11,total:11};sync();await advance(45000);
   assert.equal(requests.length,before+2,'Stop at a failed second chunk');
   assert.ok(rows().every(pr=>pr.checks.label==='3/10'),'Partial failure retains every old row');
-  if(!coordinator) {
-    failAt=requests.length+5;await advance(90000);
-    assert.equal(requests.length,before+7,'Stop on a failed second detail chunk after the three thin probes');
+  {
+    failAt=requests.length+(coordinator?4:5);await advance(90000);
+    assert.equal(requests.length,before+(coordinator?6:7),'Stop on a failed second detail chunk after all thin probes');
     assert.ok(rows().every(pr=>pr.checks.label==='3/10'),'Partial detail success cannot publish a mixed selection');
   }
-  const retryStart=requests.length;failAt=null;await advance(coordinator?90000:180000);
+  const retryStart=requests.length;failAt=null;await advance(180000);
   const selected=coordinator?Array.from(panel.fallbackSnapshot().repositories[0].rows):large;
-  const chunks=requests.slice(retryStart);assert.equal(chunks.length,coordinator?2:9,'Coordinator probes only viewport rows; ordinary expanded lists retain chunking');
+  const chunks=requests.slice(retryStart);assert.equal(chunks.length,coordinator?5:9,'Coordinator probes all 60 revealed rows in bounded chunks; ordinary expanded lists retain chunking');
   assert.deepEqual(chunks.filter(c=>c.args.every(arg=>!arg.includes('contexts('))).flatMap(c=>c.numbers),selected.map(pr=>pr.number));
   for(const call of requests.slice(before)) {
     assert.ok(call.numbers.length<=(call.args.some(arg=>arg.includes('contexts('))?facts.CHECKS_BATCH_SIZE:facts.STATE_BATCH_SIZE));assert.ok(call.args.join(' ').length<12000,'Bound argv below Windows process limits');
@@ -135,8 +136,8 @@ for(const coordinator of [false,true]) {
   assert.equal(child.error,undefined);assert.equal(child.status,0);
   assert.throws(()=>facts.pendingChecksArgs(large.map(pr=>pr.number),'owner/repo'),/oversized checks batch/);
   assert.ok(rows().slice(0,selected.length).every(pr=>pr.checks.label==='11/11'));
-  if(coordinator)assert.ok(rows().slice(selected.length).every(pr=>pr.checks.label==='3/10'),'Off-window inventory stays loaded but is not polled');
-  before=requests.length;await advance(45000);assert.equal(requests.length,before+(coordinator?1:3),'Settled visible rows use only thin state batches');
+  if(coordinator)assert.ok(rows().slice(selected.length).every(pr=>pr.checks.label==='3/10'),'Unrevealed inventory stays loaded but is not polled');
+  before=requests.length;await advance(45000);assert.equal(requests.length,before+(coordinator?2:3),'Settled revealed rows use only thin state batches');
   shown=false;sync();before=requests.length;await advance(90000);assert.equal(requests.length,before);
   shown=true;
   for(const size of [5,30]) {

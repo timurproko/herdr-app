@@ -12,8 +12,8 @@ async function fixture(count=100){
  const h=await rowHarness({modules:{'gpui-base':{h_flex:()=>element().flex(),v_flex:()=>element().flex().flex_col(),Popover:{},Input:{},ScrollHandle:{new(){assert.equal(rendering,false);const handle=new NativeHandle();handles.push(handle);return handle;}}}}});
  const {panel}=h;panel.context='tasks:home';panel.shown=()=>true;
  const rows=Array.from({length:count},(_,i)=>Object.assign(h.facts.pullRow({number:i+1,title:`PR ${i+1}`,state:'OPEN',author:{login:'fixture'}},'owner'),{key:`owner/repo#${i+1}`,repo:'owner/repo'}));
- panel.aggregate={context:{scope:'home'},entries:new Map(rows.map(pr=>[pr.key,{pr,link:{repo:pr.repo}}])),currentContext:()=>({scope:'home'}),repositories:()=>['owner/repo'],rows:()=>rows,readNotice:()=>null,counts:()=>({open:count,closed:0}),target:()=>null};
- panel.notices={sync(){},presentation(){}};panel.enrollmentPicker={render(){}};panel.syncChecksFallback=()=>{};
+ panel.aggregate={context:{scope:'home'},entries:new Map(rows.map(pr=>[pr.key,{pr,link:{repo:pr.repo}}])),currentContext:()=>({scope:'home'}),repositories:()=>['owner/repo'],rows:state=>state==='open'?rows:[],readNotice:()=>null,counts:()=>({open:count,closed:0}),target:()=>null};
+ panel.notices={sync(){},presentation(){}};panel.enrollmentPicker={render(){},stop(){}};panel.syncChecksFallback=()=>{};
  const cx={notify(){assert.equal(rendering,false);notifications++;},spawn(fn){jobs.push(fn(cx));},timer:{after(ms,fn){assert.equal(ms,16);timers.push(fn);}}};
  const snapshots=new WeakMap();
  const render=(ordinary=false)=>{rendering=true;try{const tree=ordinary?panel.renderPulls(t):panel.renderAggregate(cx,t);if(!ordinary)snapshots.set(tree,taskWindow(panel).contentHeight);return tree;}finally{rendering=false;}};
@@ -46,6 +46,10 @@ for(const target of [1000,1840]){
  assert.equal(handle.y,target);await f.onlyJobs();assert.deepEqual(handle.requests,[1]);assert.equal(f.notifications,before+1,'Accepted native anchor always invalidates the snapshot');
  f.layout(tree);assert.equal(handle.y,target+76);assert.equal(handle.content,height);assert.equal(f.size(f.frame(tree),400),false);assert.equal(f.size(taskContent(tree),height),false);
  await f.flush();tree=f.render();assert.equal(list.metrics.offset,target+76);assert.equal(Boolean(find(tree,'task-pulls-list-more-below')),target!==1840);
+ if(target===1000){
+  f.rows.unshift({...f.rows[0],number:-1,key:'owner/repo#-1'});f.rows.pop();tree=f.render();assert.ok(list.correction);
+  f.panel.setView('closed',f.cx);f.panel.setView('open',f.cx);f.render();await f.onlyJobs();assert.deepEqual(handle.requests,[1],'Tab-away-and-back rejects an obsolete anchor request');
+ }
 }
 // A finite one-shot after a batch reads actual post-layout geometry even if
 // no JS size notification arrives. Repeated checks stop as soon as it overflows.
@@ -55,6 +59,13 @@ for(const target of [1000,1840]){
  tree=f.render();f.layout(tree,2000,false);await f.flush();assert.equal(list.limit,30);
  tree=f.render();f.layout(tree,2000,false);await f.flush();assert.equal(list.limit,30);assert.equal(f.timers.length,0,'No recurring polling');
  f.panel.shown=()=>false;const before=list.limit;await f.flush();assert.equal(list.limit,before);
+}
+// Even a coalesced tab-away-and-back, before another render, invalidates
+// the old one-shot layout callback; a new activation can fill normally.
+{
+ const f=await fixture();let tree=f.render();f.size(f.frame(tree),2000);tree=f.render();f.layout(tree,2000,false);await f.onlyJobs();assert.ok(f.timers.length);
+ const list=taskWindow(f.panel);f.panel.setView('closed',f.cx);f.panel.setView('open',f.cx);await f.flush();assert.equal(list.limit,10);
+ tree=f.render();f.layout(tree,2000,false);await f.flush();assert.equal(list.limit,20);
 }
 // Ordinary rows keep normal pagination, but fades also sample the actual native
 // handle on render rather than trusting a fabricated pointer notification.

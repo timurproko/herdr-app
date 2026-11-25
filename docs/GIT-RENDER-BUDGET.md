@@ -16,19 +16,30 @@ Consumed native scrollbar input can delay reveal until the next received event.
 
 The rich fixture includes two repositories, a notice, 74px Closed rows, robots,
 tasks, checks, two labels and review decisions. Uncapped native measurements show
-roughly 24–28ms at 100 mounted rows and 43–50ms at 200, with a cold 200-row native
-interruption in one series. **The below-20ms target at 100 mounted rows was not
-met.** Pretending that a window solves the host notification gap is not acceptable.
+27.0ms cold / 23.4ms warm at 100 mounted rows. **The below-20ms target at 100
+mounted rows was not met.** Cold 200 rows completed once at 52ms and interrupted
+four times; warm 200 rows averaged 46.2ms. Complete current samples (milliseconds):
+
+| Mounted PRs | Cold samples | Warm pure-cache samples |
+| --- | --- | --- |
+| 30 | 8, 11, 8, 8, 9 (mean 8.8) | 6, 7, 7, 6, 7 (mean 6.6) |
+| 60 | 15, 16, 15, 15, 14 (mean 15.0) | 13, 14, 12, 14, 15 (mean 13.6) |
+| 100 | 25, 26, 27, 30, 27 (mean 27.0) | 26, 22, 24, 22, 23 (mean 23.4) |
+| 200 | 52, interrupted ×4 | 50, 49, 43, 43, 46 (mean 46.2) |
+
+ Pretending that a window solves the host notification gap is not acceptable.
 
 The measured safe fallback is **60 mounted PR rows**, with an additional
 **100-presentation-item** ceiling for header/notice-heavy inventories. Native
-60-row builds are approximately 13–16ms. At the cap, the only paging control is a
+60-row builds are 12–16ms (15.0ms cold / 13.6ms warm means). At the cap, the only paging control is a
 quiet **Show more** row at the list end. It replaces the mounted batch with the
 next batch, initially revealing ten items there. The last batch's same control
 cycles back to the first batch, so earlier rows remain reachable without a page
 counter, Previous button or separate footer. This intentional batch change starts
 at the top; refreshes and appends within a batch keep native scroll/row anchors.
-Whole-inventory counts and enrollment are independent of the batch.
+Whole-inventory counts and enrollment are independent of the batch. At a full row
+cap, excess new arrivals wait for a freed slot or an explicit batch cycle instead
+of evicting already revealed PRs. Deleted tails retain the last surviving anchor.
 
 `tools/measure-git-render.mjs current` deliberately bypasses the runtime cap to
 measure complete 30/60/100/200-row renders. `GIT_NATIVE_WARM=1` first builds an
@@ -54,7 +65,9 @@ builder render, not later layout/paint or live input latency. No watchdog is cha
   proves every revealed row remains present independent of scroll offset, and
   enforces the measured row/item cap, bounded per-row elements and a batch-sized
   operation/element ceiling. The obsolete 1,200-element viewport-window ceiling
-  does not describe a mounted 60-row tree.
+  does not describe a mounted 60-row tree. The current 100-inventory-row traversal
+  peaks at 13,765/20,000 builder operations and 1,696/8,000 elements; each PR stays
+  below 125 elements.
 
 ## Native geometry and derived fades
 
@@ -66,7 +79,8 @@ render-time notify/focus allocation or new observer is introduced.
 
 A consumed scrollbar event can move native content without invalidating the JS
 snapshot. Fades may therefore lag until the next render or received wheel/pointer/
-size event. Real rows remain visible throughout. Native scrollbar-to-bottom reveal
+size event. Real rows remain visible throughout. Hosts without the position-query
+methods retain the existing event-bounds hint fallback; no observer is invented. Native scrollbar-to-bottom reveal
 happens on that next received event; it is not claimed to occur while the host is
 silently consuming the drag.
 

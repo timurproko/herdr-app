@@ -194,6 +194,10 @@ export default class Changes extends View {
   setView(view, cx) {
     if (!VIEWS.includes(view) || view === this.view) return;
     this.pinMotion?.cancel();this.enrollmentPicker?.stop();
+    if(this.context?.startsWith('tasks:')){
+      this.taskSelectionEpoch=(this.taskSelectionEpoch??0)+1;
+      const selected=this.selectedTaskWindow;if(selected){selected.correction=null;selected.anchorMarker=null;selected.scheduledCorrection=null;}
+    }
     this.view = view;
     try { localStorage.setItem(VIEW_KEY, view); } catch {}
     cx.notify();
@@ -375,7 +379,9 @@ export default class Changes extends View {
       const repositories=aggregate?.repositories()??[],rows=aggregate?.rows(this.view)??[];
       const sections=repositories.map(repo=>({repo,rows:rows.filter(pr=>pr.repo===repo),error:aggregate.readNotice(repo,this.view)})).filter(section=>section.rows.length || section.error);
       const paging=this.taskSections(sections,aggregate.context.scope);
-      const shownRows=paging.visible;
+      // The native host cannot reliably notify viewport motion. Safety covers
+      // the entire revealed unfolded batch, never guessed pixel intersections.
+      const shownRows=paging.revealedRows;
       return {enabled,scope:JSON.stringify([this.context,on,this.view,this.taskSelectionEpoch,paging.window.generation]),repositories:repositories.map(name=>({name,uncovered:uncovered(name),rows:shownRows.filter(pr=>pr.repo===name)}))};
     }
     const selection=this.pullSelection();
@@ -1116,6 +1122,7 @@ export default class Changes extends View {
     }
     if(this.selectedTaskWindow!==window) {
       this.selectedTaskWindow=window;this.taskSelectionEpoch=(this.taskSelectionEpoch??0)+1;
+      window.correction=null;window.anchorMarker=null;window.scheduledCorrection=null;
     }
     const zoom=settings().zoom||1;
     if(window.zoom && window.zoom!==zoom) {
@@ -1168,13 +1175,13 @@ export default class Changes extends View {
   }
 
   scheduleTaskLayout(window,scope,cx) {
-    const key=[window.measurement,window.generation,window.limit,window.metrics.viewport,this.taskSelectionEpoch].join(':');
+    const epoch=this.taskSelectionEpoch,key=[window.measurement,window.generation,window.limit,window.metrics.viewport,epoch].join(':');
     if(window.layoutCheck===key)return;window.layoutCheck=key;
     cx.spawn(async cx=>{
       await Promise.resolve();
-      if(!this.taskWindowCurrent(window,scope)||window.layoutCheck!==key)return;
+      if(!this.taskWindowCurrent(window,scope)||this.taskSelectionEpoch!==epoch||window.layoutCheck!==key)return;
       cx.timer?.after(16,view=>{
-        if(!this.taskWindowCurrent(window,scope)||window.layoutCheck!==key)return;
+        if(!this.taskWindowCurrent(window,scope)||this.taskSelectionEpoch!==epoch||window.layoutCheck!==key)return;
         this.sampleNativeScroll(window.metrics,window.handle,window.zoom);
         window.observe(window.metrics.offset/window.zoom,window.metrics.viewport/window.zoom,true);
         window.metrics.update(view);this.tryTaskReveal(window,view,0,true);
@@ -1207,10 +1214,10 @@ export default class Changes extends View {
     }
     const correction=window.correction;
     if(!correction || !window.handle || window.scheduledCorrection===correction)return;
-    window.scheduledCorrection=correction;
+    window.scheduledCorrection=correction;const epoch=this.taskSelectionEpoch;
     cx.spawn(async cx=>{
       await Promise.resolve();
-      if(!this.taskWindowCurrent(window,scope) || window.correction!==correction)return;
+      if(!this.taskWindowCurrent(window,scope) || this.taskSelectionEpoch!==epoch || window.correction!==correction)return;
       window.handle.scroll_to_item(1);
       window.anchorMarker=correction;window.correction=null;
       window.metrics.setMetrics({offset:correction.to*window.zoom,content:window.contentHeight*window.zoom});

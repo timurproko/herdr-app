@@ -341,7 +341,9 @@ notices and rows, then appends ten near the scroll bottom without inventory IO.
 Every revealed unfolded row stays mounted: PRs retain 74px blocks, shared headers
 retain their control height and notices retain keyed native heights. A measured
 60-PR/100-item cap bounds the mounted batch; one quiet end Show more advances it
-and cycles from the last batch to the first. There are no viewport spacers.
+and cycles from the last batch to the first. Full row batches defer excess arrivals
+until a slot frees or a batch cycle; already revealed PRs are not evicted for them.
+There are no viewport spacers.
 Native handles supply render-time fade geometry and event-time bottom detection;
 consumed scrollbar input may defer fades/reveal until the next render/event. A
 finite post-batch layout check fills underflow, not polling. Revealed depth and
@@ -794,11 +796,12 @@ and no context lists. Primary/secondary refusals keep values for at least 15
 minutes or a longer Retry-After; hourly remaining quota cannot override that.
 Labels/tasks/review and all displayed values remain during reads. Ordinary totals are repository-wide;
 aggregate totals and 24-hour history eligibility derive from current task PR state.
-Coordinator safety selection uses only measured viewport-intersecting PRs,
-not overscan-only, folded or off-window revealed rows. A monotonic window/tab
-selection generation rejects obsolete replies even after scroll-away-and-back.
-Scrolling starts no extra probes or inventory reads; normal cadence consumes the
-new selection. Full tab totals and the event inventory remain independent of it. Thin/detail
+Coordinator safety selection uses every revealed PR in unfolded sections of the
+selected batch, including offscreen rows, but excludes unrevealed rows and the
+other tab. Reveal/fold/tab/home/relevant projection changes advance the captured
+selection generation and reject obsolete replies, including away-and-back changes.
+Viewport-only scrolling within an unchanged set preserves its generation and starts
+no extra probes or inventory reads; normal cadence consumes the selection. Full tab totals and the event inventory remain independent of it. Thin/detail
 API reads use repositoryRead's per-child GH_REPO transport and guarded refusal
 diagnostics; complete ordinary pages apply their combined totals even on append.
 Full metadata/pagination refreshes still use event/manual reads.

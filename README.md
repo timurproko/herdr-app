@@ -487,10 +487,11 @@ a **45-second fallback**. One coalesced repository job probes state, head SHA an
 rollup summary in bounded 40-PR chunks; only changed heads/summaries fetch full
 checks in 20-PR chunks. Unchanged 5- or 30-row selections use one thin request,
 without enumerating check contexts. Values stay displayed until the complete
-selection succeeds. Coordinator probes cover only rows intersecting the measured viewport window,
-not folded, overscan-only or off-window revealed rows. Scrolling keeps full counts,
-starts no extra probes or inventory reads, and invalidates held replies from an
-older window even after scrolling away and back. All probe/detail API calls retain per-call repository routing.
+selection succeeds. Coordinator probes cover the revealed unfolded batch, including
+its offscreen rows, but not unrevealed rows or the other tab. Scrolling within that
+same set keeps its safety generation and starts no extra probes or inventory reads.
+Reveal, fold, tab/home changes and relevant projection replacements reject obsolete
+held replies, including changes away and back. All probe/detail API calls retain per-call repository routing.
 Merge/close transitions move rows to Closed and update
 both totals; finished-task history still uses GitHub's 24-hour completion bound.
 Reads stop on hide/disable, stale context or remote-machine disconnect; failures
@@ -799,7 +800,8 @@ Long coordinator lists reveal **10 presentation items** (headers, notices and PR
 initially and append ten more automatically near the scroll bottom. Revealed rows
 stay mounted, so native scrollbar/keyboard movement never exposes spacers. A measured
 60-PR/100-item mounted-batch cap uses one quiet **Show more** row to advance; its
-last batch cycles to the first. Native fades sample actual handle geometry at render;
+last batch cycles to the first. A full row batch defers excess arrivals until a
+slot frees or the batch cycles, rather than evicting revealed rows. Native fades sample actual handle geometry at render;
 a consumed scrollbar move may delay fades/reveal until the next received event. Counts still cover the
 complete linked inventory; scrolling starts no inventory reads. Each tab retains
 its revealed depth and scroll anchor for that coordinator home. Repeated text uses

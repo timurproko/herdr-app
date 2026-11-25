@@ -53,12 +53,12 @@ export default class Fixture extends Changes {
    this.taskMeasure(w,'fixture','viewport',{width:390,height:400},cx);
    while(w.revealMore()){}
    w.observe(1e9,400);w.metrics.setMetrics({offset:w.offset,viewport:400,content:w.contentHeight});
-   this.fixtureLoaded=w.range().visible.length;this.fixtureOffset=w.offset;
+   this.fixtureLoaded=w.range().revealedRows.length;this.fixtureOffset=w.offset;
  }
- this.profile={visible:0,probes:0,pills:0,rows:[]};
+ this.profile={pills:0,rows:[]};
  const label=this.labelPill;this.labelPill=(...args)=>{const start=Date.now();const r=label.apply(this,args);this.profile.pills+=Date.now()-start;return r;};
  const row=this.pullRow;this.pullRow=(...args)=>{const start=Date.now();const r=row.apply(this,args);this.profile.rows.push(Date.now()-start);return r;};
- if(${warm}){this.renderAggregate(cx,theme());this.profile={visible:0,probes:0,pills:0,rows:[]};}
+ if(${warm}){this.renderAggregate(cx,theme());this.profile={pills:0,rows:[]};}
  }
  shown(){return true;}
  render(cx){const start=Date.now();const tree=this.renderAggregate(cx,theme());console.error('PROFILE '+JSON.stringify({variant:'${variant}',count:${count},sample:${sample},warm:${warm},total:Date.now()-start,loaded:this.fixtureLoaded??${count},offset:this.fixtureOffset??0,...this.profile}));return tree;}

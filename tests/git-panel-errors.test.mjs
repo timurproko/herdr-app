@@ -5,7 +5,7 @@ import {MAX_MOUNTED_ROWS} from '../src/plugins/git/mod/task-reveal.js';
 const OP_BUDGET=MAX_MOUNTED_ROWS*300+2000;
 import {measureTask,scrollTask,taskWindow} from './support/git-scroll.mjs';
 import {element,svg,Popover,find,words,nodes,theme} from './support/choice-menu.mjs';
-let rendering=false,reads=0,syncFailure=false,operations=0,peakOperations=0,zoom=1;
+let rendering=false,reads=0,syncFailure=false,operations=0,peakOperations=0,peakElements=0,zoom=1;
 function budgetElement(){
  const node={kids:[],attrs:{},mouse:{}};let proxy;
  proxy=new Proxy(node,{get(n,key){
@@ -55,7 +55,8 @@ let tree=render();await drain();tree=render();await drain();
 const rowNodes=tree=>nodes(tree).filter(n=>/^pr-timurproko\/(?:crew|herdr-app)#\d+$/.test(n.attrs.id?.[0]??''));
 const budget=tree=>{
  const rows=rowNodes(tree);assert.ok(rows.length<=MAX_MOUNTED_ROWS);
- assert.ok(nodes(tree).length<MAX_MOUNTED_ROWS*125+500,'Mounted batch element budget');
+ const elements=nodes(tree).length;peakElements=Math.max(peakElements,elements);
+ assert.ok(elements<MAX_MOUNTED_ROWS*125+500,'Mounted batch element budget');
  for(const row of rows)assert.ok(nodes(row).length<125,'Bounded visible + probe elements per PR');
 };
 budget(tree);
@@ -130,4 +131,4 @@ assert.ok(errors.some(line=>line.includes('previous render did not complete')&&l
 // Section notices have their own attribution boundary too.
 assert.throws(()=>panel.renderPart('repository-notice:timurproko/crew',()=>{throw Error('notice fixture exception');}),/notice fixture exception/);
 assert.ok(errors.some(line=>line.includes('repository-notice:timurproko/crew')&&line.includes('notice fixture exception')));
-assert.ok(reads>=102);console.log(`Peak mounted render operations: ${peakOperations} / ${OP_BUDGET}`);console.log('PASS mounted 100-row Closed coordinator scrolling, probe cache, real aggregate/notices, inline-spawn guards and component/error diagnostics');
+assert.ok(reads>=102);console.log(`Peak mounted render operations: ${peakOperations} / ${OP_BUDGET}; elements: ${peakElements} / ${MAX_MOUNTED_ROWS*125+500}`);console.log('PASS mounted 100-row Closed coordinator scrolling, probe cache, real aggregate/notices, inline-spawn guards and component/error diagnostics');

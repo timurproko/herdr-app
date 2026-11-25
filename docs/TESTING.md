@@ -417,8 +417,8 @@ regardless of how many PRs fail. These counts exclude existing setup/enrollment
 workers and the gh wrapper's own unchanged internal processes. The safety reader uses the same repository-scoped transport: one carrier per
 thin state/summary batch (up to 40 PRs), with full-context batches (up to 20)
 only for changed heads/summaries, never a carrier per row. Coordinator safety
-selection follows its measured viewport window rather than all revealed history
-or overscan-only rows.
+selection follows the revealed unfolded mounted batch, including offscreen rows,
+while unrevealed history stays in inventory without widening its safety reads.
 
 Ordinary list and webhook-page reads now include both totals in the same GraphQL
 snapshot, avoiding the count-only carrier/gh call. Three real paired crew
@@ -441,7 +441,8 @@ backoff, the 15-minute rate-limit floor, 120-second enrolled safety reads, exist
 contention, authoritative empty rollups and late hidden/replaced-context replies.
 The 120-row ordinary expanded-list case uses three thin state/summary chunks and,
 only on changed heads/summaries, six 20-PR detail chunks. The same-sized coordinator
-inventory instead reads only viewport-intersecting rows and keeps off-window facts. They actually launch a
+inventory reads its full 60-row revealed batch in two thin and three detail chunks,
+including offscreen rows, and preserves unrevealed facts. They actually launch a
 harmless Node child with generated arguments, retain all rows on a failed second
 chunk, then retry successfully and continue while Open. Five- and thirty-row
 steady cycles require exactly one thin request with no per-context list; changed
@@ -467,11 +468,11 @@ cursor repair survive removal, the unopened destination stays lazy, and its olde
 merged pin appears once when loaded. These are packaged synthetic fixtures, not
 live delivery or native pixel evidence.
 
-`tests/git-safety-paging.test.mjs` composes the real coordinator window renderer,
+`tests/git-safety-paging.test.mjs` composes the real coordinator mounted renderer,
 aggregate, safety scheduler and repository-scoped carrier. A 25-Open/5-Closed,
-two-repository inventory exercises viewport-only selection, merge/close tab
-totals, overscan exclusion, stale in-flight replies after scroll/tab-away-and-back,
-folds and both 45/120s cadences. Scroll events themselves start no reads. Existing fallback/state tests also assert GH_REPO on every probe/detail
+two-repository inventory exercises offscreen revealed selection, merge/close tab
+totals, unrevealed/fold exclusion, stable viewport-only scrolling, stale in-flight
+replies after reveal/fold/tab/home changes and both 45/120s cadences. Scroll events themselves start no reads. Existing fallback/state tests also assert GH_REPO on every probe/detail
 API invocation. Pagination distinguishes its selected-state filter from the new
 combined totals fields, applies both totals on append and retains cursor-depth
 repair. The 100-row render operation budget remains separately enforced.
@@ -590,7 +591,7 @@ an unaccounted border fail; the latter is checked against the highlight-to-panel
 inset because a row-relative-only oracle cannot detect a shifted highlight.
 Title truncation boundaries stay identical with and without an agent.
 Existing row/fold/menu fixtures retain callbacks and tooltip coverage. Another
-3,840 comparisons exercise the actual mounted-scroll renderer with 25 PRs,
+9,740 comparisons exercise the actual mounted-scroll renderer with 25 PRs,
 stable native list IDs and warm distinct-string measurements in both tabs across
 the same width/zoom matrix. The extended 100-row panel regression scrolls to reveal
 every row across measured capped batches while enforcing per-row/mounted-batch ceilings. These are synthetic
