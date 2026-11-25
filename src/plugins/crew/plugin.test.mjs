@@ -333,15 +333,15 @@ crew.latest = '';
     ['my-app', 'crew', 'unity-project.2', 'd', '', 'a'.repeat(40)], 'A project is named after its folder, in the form the tool accepts');
   const derived = [
     ['D:/Git/agentnumberone.dev', 'agentnumberone.dev'], ['C:\\Git\\AgentNumberOne.DEV\\', 'agentnumberone.dev'],
-    ['/git/.hidden', 'hidden'], ['/git/--..My App...v2..-', 'my-app.v2'], ['/git/a . b', 'a-.-b'],
+    ['/git/.hidden', '.hidden'], ['/git/.xrbuild', '.xrbuild'], ['D:\\Git\\xrbuild\\.xrbuild', '.xrbuild'], ['/git/..x', '.x'], ['/git/.-x', '.x'], ['/git/.', ''], ['/git/.-', ''], ['/git/--..My App...v2..-', 'my-app.v2'], ['/git/a . b', 'a-.-b'],
     ['/git/a', 'a'], ['/git/9', '9'], ['/git/...', ''], ['/git/é___', ''],
     [`/git/${'a'.repeat(40)}`, 'a'.repeat(40)], [`/git/${'a'.repeat(41)}`, 'a'.repeat(40)],
     [`/git/${'a'.repeat(38)}.b-more`, `${'a'.repeat(38)}.b`],
-    [`/git/${'a'.repeat(39)}.dev`, 'a'.repeat(39)], [`/git/${'a'.repeat(38)}.-dev`, 'a'.repeat(38)],
+    [`/git/${'a'.repeat(39)}.dev`, 'a'.repeat(39)], [`/git/.${'a'.repeat(45)}`, `.${'a'.repeat(39)}`], [`/git/.${'a'.repeat(38)}.b`, `.${'a'.repeat(38)}`], [`/git/${'a'.repeat(38)}.-dev`, 'a'.repeat(38)],
   ];
   for (const [folder, expected] of derived) assert.equal(f.projectName(folder), expected, folder);
-  const validNames = ['a', '0', 'a-', 'agentnumberone.dev', 'a.-.b', 'a'.repeat(40), `${'a'.repeat(38)}.b`];
-  const invalidNames = ['', '-a', '.a', 'a..b', 'a.', 'A.dev', 'a_b', 'é.dev', 'a'.repeat(41), `${'a'.repeat(39)}.`, 'a/b'];
+  const validNames = ['a', '0', 'a-', '.a', '.xrbuild', '.0-x.y', `.${'a'.repeat(39)}`, 'agentnumberone.dev', 'a.-.b', 'a'.repeat(40), `${'a'.repeat(38)}.b`];
+  const invalidNames = ['', '-a', '.', '..a', '.-a', '.A', `.${'a'.repeat(40)}`, 'a..b', 'a.', 'A.dev', 'a_b', 'é.dev', 'a'.repeat(41), `${'a'.repeat(39)}.`, 'a/b'];
   for (const name of [...validNames, ...invalidNames]) {
     same(f.parseProjects(`${name}\tD:/Git/project\r\n`).map(row => row.id), validNames.includes(name) ? [name] : [], `Listed name policy: ${name}`);
   }
@@ -374,7 +374,7 @@ crew.latest = '';
   ran2.length = 0; await assert.rejects(section.list.add(cx(), 'D:\\Git\\___'), e => {
     assert.match(e.message, /cannot be used as a project name/);
     assert.match(e.message, /1–40 lowercase ASCII letters, digits, dashes and dots/);
-    assert.match(e.message, /start with a letter or digit; no consecutive or trailing dots/);
+    assert.match(e.message, /start with a letter, digit or one dot followed by one; no consecutive or trailing dots/);
     return true;
   }); same(ran2, [], 'An unusable name never reaches the machine');
   // Older Crew remains authoritative: neither a hidden refusal nor a dash-only retry.
@@ -405,6 +405,33 @@ crew.latest = '';
   same([s.projects.statusLabel, s.projects.rows.at(-1)], ['3 added', { id: 'agentnumberone.dev', label: 'D:\\Git\\agentnumberone.dev', path: 'D:\\Git\\agentnumberone.dev' }], 'A dotted registration from the tool stays visible');
   ran2.length = 0; await section.list.remove(cx(), 'agentnumberone.dev');
   same(ran2, ['project remove agentnumberone.dev'], 'Removal uses the exact registered dotted ID');
+  s = await statuses(); same(s.projects.rows.map(row => row.id), ['fork', 'my-app']);
+  // A dot folder inside a listed project keeps its dot, so its name is its own.
+  projects.set('xrbuild', 'D:/Git/xrbuild'); await statuses();
+  ran2.length = 0; await section.list.add(cx(), 'D:/Git/xrbuild/.xrbuild');
+  same(ran2, ['project add .xrbuild D:/Git/xrbuild/.xrbuild'], 'A dot folder is registered under its dotted name, not as xrbuild');
+  s = await statuses();
+  same(s.projects.rows.at(-1), { id: '.xrbuild', label: 'D:\\Git\\xrbuild\\.xrbuild', path: 'D:\\Git\\xrbuild\\.xrbuild' }, 'A leading-dot registration from the tool is listed');
+  // A folder already listed, under any name and spelling, is never registered again.
+  for (const folder of ['D:/Git/xrbuild/.xrbuild', 'd:\\git\\XRBUILD\\.xrbuild\\']) {
+    ran2.length = 0;
+    await assert.rejects(section.list.add(cx(), folder), e => e.message === `Could not add ${folder}: it is already added as .xrbuild.`);
+    same(ran2, [], 'An already added folder sends nothing');
+  }
+  projects.set('xrbuild-private', 'D:/Git/other/.hidden'); await statuses(); ran2.length = 0;
+  await assert.rejects(section.list.add(cx(), 'D:\\Git\\other\\.hidden'), e => e.message.endsWith('it is already added as xrbuild-private.'));
+  same(ran2, [], 'A folder registered under another name is not registered twice');
+  projects.delete('xrbuild-private');
+  ran2.length = 0; await section.list.remove(cx(), '.xrbuild');
+  same(ran2, ['project remove .xrbuild'], 'Removal uses the exact dotted name');
+  s = await statuses(); same(s.projects.rows.map(row => row.id), ['fork', 'my-app', 'xrbuild']);
+  // An older Crew refuses the dotted name: one request, the update message, no retry without the dot.
+  refusalOutput = 'stderr'; ran2.length = 0;
+  await assert.rejects(section.list.add(cx(), 'D:/Git/xrbuild/.xrbuild'), e => [
+    'Could not add D:/Git/xrbuild/.xrbuild. Crew did not accept the project name .xrbuild; update the Crew tool and try again.',
+    'Could not add D:/Git/xrbuild/.xrbuild. Update the Crew tool on pc2 and try again.'].includes(e.message));
+  same(ran2, ['project add .xrbuild D:/Git/xrbuild/.xrbuild'], 'One request, with no retry as xrbuild');
+  refusalOutput = null; projects.delete('xrbuild');
   s = await statuses(); same(s.projects.rows.map(row => row.id), ['fork', 'my-app']);
   owned = true;
   ran2.length = 0;
