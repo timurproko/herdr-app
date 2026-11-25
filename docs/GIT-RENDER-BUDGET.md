@@ -52,6 +52,38 @@ A differential native check with all tooltip registrations removed measured
 measurement probes, not tooltips or the history notice, dominate the observed
 increase. The tool accepts `post42-no-tooltips current-no-tooltips` to repeat it.
 
+## Title ellipsis: font, not measurement
+
+Herdr 0.1.18's `vendor/gpui-pre/src/styled.rs` defines the native truncation
+suffix as U+2026 (`…`). A disposable native window reproduced the low, cramped
+mark with both literal and truncated Geist text at 100% and 130% zoom. Removing
+the title's vertical overflow clipping or explicitly restating its 20px line
+height did not change it. Changing only the font to `.SystemUIFont` produced
+three distinct dots in that same box. PR titles (including coordinator/ghost
+rows) and repository section names now use that native font. This changes the
+whole label's typeface and intrinsic text width, not just the suffix; native
+truncation still chooses the prefix. No new probe, callback, fitting loop or
+measurement is involved. The existing repository tooltip probe inherits the
+same font as its visible label. The 20px title line, 74px row and robot reservation
+remain unchanged.
+
+`node tests/features/title-ellipsis-native.mjs --run [--baseline revision]`
+reproduces both zoom screenshots and cold timings in its own `.artifacts/` app
+home, without Core, terminals, network reads or touching the running desktop.
+The fixture mounts **100 actual rows**, separately for ordinary and coordinator
+styles (not a paginated 100-row inventory). Seven cold native checks per cell:
+
+| 100 mounted rows | Before (ms) | After (ms) |
+|---|---|---|
+| Ordinary | 25, 23, 22, 23, 22, 21, 23 | 24, 21, 24, 24, 23, 22, 25 |
+| Coordinator | 18, 16, 18, 19, 17, 18, 18 | 16, 19, 18, 19, 19, 19, 18 |
+
+Both means differ by only 0.57 ms, below the timer's 1 ms resolution and within
+observed run-to-run noise; no material added render cost or watchdog interruption
+was observed. As above, these are full JS/native builder callback times, not
+layout/paint latency. Windows pixel proof covers both zooms; other platforms'
+system-font rasterization was not inspected.
+
 ## Bounds and cache ownership
 
 - Coordinator Open and Closed use replacement pages of **10 presentation items**:

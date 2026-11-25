@@ -75,8 +75,11 @@ const longRepo='owner/a-very-long-canonical-repository-name';repositories=[longR
 const label=()=>find(tree,`task-repo-name-${context.scope}-${longRepo}`);
 const probe=()=>find(tree,`task-repo-name-${context.scope}-${longRepo}-probe`);
 assert.equal(find(tree,`task-repo-header-${longRepo}`).kids.length,2);assert.ok(label().attrs.flex_1);assert.equal(label().attrs.min_w[0],0);assert.ok(label().kids[0].attrs.truncate);assert.ok(label().attrs.overflow_hidden);
+assert.equal(label().attrs.font_family[0],'.SystemUIFont','Repository label and its existing tooltip probe inherit the same readable ellipsis font');
+assert.equal(label().kids.length,2,'No new hidden probe or ellipsis overlay');
+assert.deepEqual(label().kids[0].kids,[longRepo],'Native truncation receives the full repository name');
 assert.ok(label().kids[1].attrs.absolute);assert.ok(label().kids[1].attrs.invisible);assert.ok(probe().attrs.flex_none);assert.ok(probe().attrs.whitespace_nowrap);
-for(const zoom of [0.75,1,1.25,1.5,2]){
+for(const zoom of [0.75,1,1.25,1.3,1.5,2]){
  label().attrs.on_size_change[0]({width:320*zoom},cx);probe().attrs.on_size_change[0]({width:250*zoom},cx);render();assert.equal(label().attrs.tooltip,undefined,'Fitting text has no tooltip');
  label().attrs.on_size_change[0]({width:120*zoom},cx);render();assert.equal(label().attrs.tooltip[0],longRepo);
  const notified=notifications;label().attrs.on_size_change[0]({width:120*zoom},cx);probe().attrs.on_size_change[0]({width:250*zoom},cx);assert.equal(notifications,notified,'Repeated layout measurements never loop notifications');

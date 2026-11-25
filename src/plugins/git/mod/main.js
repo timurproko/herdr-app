@@ -917,7 +917,9 @@ export default class Changes extends View {
       .child(div().id(`${prefix}pr-state-slot-${rowId}`).w(U.icon).h(20).flex_none().flex().items_center().child(this.pullIcon(t, pr)))
       .child(v_flex().flex_1().min_w(0).gap(3)
         .child(h_flex().id(`${prefix}pr-title-line-${rowId}`).w_full().min_w(0).h(20).min_h(20).max_h(20).flex_none().gap(4).items_center().line_height('20px')
-          .child(div().id(`${prefix}pr-title-${rowId}`).flex_1().min_w(0).h(20).truncate().text_size(U.font).font_semibold().text_color(t.foreground).tooltip(pr.title).child(pr.title))
+          // Geist's ellipsis rasterizes as a low bar at these sizes. The native
+          // system font keeps three distinct dots without measuring/fitting text.
+          .child(div().id(`${prefix}pr-title-${rowId}`).flex_1().min_w(0).h(20).truncate().font_family('.SystemUIFont').text_size(U.font).font_semibold().text_color(t.foreground).tooltip(pr.title).child(pr.title))
           .child(div().id(`${prefix}pr-agent-slot-${rowId}`).w(U.insetControl).h(20).flex_none().relative()
             .when(Boolean(agentButton), el => el.child(agentButton))))
         .child(byline.line).child(meta.line))
@@ -1026,7 +1028,9 @@ export default class Changes extends View {
     };
     // A non-shrinking invisible flex child measures the same text's natural width.
     // Its absolute clipped parent cannot reserve width or add a line to the header.
-    return div().id(id).flex_1().min_w(0).relative().overflow_hidden()
+    // Share the readable truncation font with PR titles, including the existing
+    // tooltip-width probe so its metrics still match the visible label.
+    return div().id(id).flex_1().min_w(0).relative().overflow_hidden().font_family('.SystemUIFont')
       .on_size_change((size,cx)=>measure('available',size,cx))
       .when(overflowing(),el=>el.tooltip(repo))
       .child(div().truncate().child(repo))

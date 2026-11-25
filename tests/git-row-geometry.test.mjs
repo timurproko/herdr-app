@@ -104,6 +104,11 @@ for(const mode of ['ordinary','pinned','scrolling','coordinator','ghost'])for(co
       return element().flex().flex_col().gap(U.rowGap).children([panel.pullRow(t,pr,mode==='ghost'),panel.pullRow(t,next,mode==='ghost')]);
     },width,zoom,mode==='pinned'||mode==='scrolling'?600:undefined);
     const row=find(tree,`${prefix}pr-${id}`),box=geometry.get(row);
+    const title=find(row,`${prefix}pr-title-${id}`);
+    assert.equal(title.attrs.font_family[0],'.SystemUIFont','Native system font keeps the ellipsis legible in every row variant');
+    assert.ok(title.attrs.truncate,'The host still performs truncation');
+    assert.deepEqual(title.kids,[pr.title],'No manual prefix fitting or ellipsis overlay');
+    assert.equal(title.attrs.on_size_change,undefined,'Titles add no text measurement callbacks');
     assertTextFits(geometry,row);assertChecksFit(geometry,row);
     for(const kind of ['byline','meta'])assertNaturalRun(geometry,find(row,`${prefix}pr-${kind}-${id}`),zoom);
     const task=find(row,`${prefix}pr-tasks-${id}`);
