@@ -39,7 +39,7 @@ export class AggregatePulls {
   sync(cx) {
     if(this.shown()) pluginEvent('workspace.context.refresh',{cx,space:location().space});
     const context=this.currentContext({presentation:true}), previous=this.context;
-    if(context?.scope!==previous?.scope) {this.readWake=null;this.manualRead=null;this.serial++;this.factOrder.reset();this.entries.clear();this.pending.clear();this.diagnostics.clear();}
+    if(context?.scope!==previous?.scope) {this.readWake=null;this.manualRead=null;this.serial++;this.factOrder.reset();this.entries.clear();this.pending.clear();this.diagnostics.clear();this.lastCounts=null;}
     this.context=context;
     if(!context) return false;
     if(context.stale) {
@@ -61,13 +61,17 @@ export class AggregatePulls {
         if(liveLink(link) && Date.now()-missingAt>=MISSING_LIVE_MS && !this.pending.has(key))entry.dirty=true;
       }
     }
+    this.rememberCounts();
     if(!this.shown()) {this.serial++;this.factOrder.reset();this.pending.clear();this.diagnostics.clear();for(const e of this.entries.values())e.dirty=true;}
     else this.pump(cx);
     return true;
   }
-  stop() {this.serial++;this.factOrder.reset();this.context=null;this.entries.clear();this.pending.clear();this.diagnostics.clear();}
+  stop() {this.lastCounts=null;this.serial++;this.factOrder.reset();this.context=null;this.entries.clear();this.pending.clear();this.diagnostics.clear();}
   get busy() {return this.pending.size>0 || Boolean(this.fallbackBusy);}
-  get waiting() {return [...this.entries.values()].some(e=>!e.pr && e.dirty && !e.error);}
+  unresolved(entry) {return !entry.pr && !entry.missing;}
+  get countsLoading() {return [...this.entries.values()].some(e=>this.unresolved(e)) || Boolean(this.context?.stale && !this.entries.size);}
+  loading(repository) {return [...this.entries.values()].some(e=>e.link.repo===repository && this.unresolved(e) && !e.error);}
+  get waiting() {return [...this.entries.values()].some(e=>this.unresolved(e) && !e.error);}
   eligible(entry, now = Date.now()) {
     if(!entry.pr)return false;
     if(['open','draft'].includes(entry.pr.state) || entry.link.targets.some(t=>!t.historical && typeof t.terminal==='string' && t.terminal))return true;
@@ -96,7 +100,19 @@ export class AggregatePulls {
     const now=Date.now();
     return [...new Set([...this.entries.values()].filter(e=>!e.missing && (!e.pr || this.eligible(e,now))).map(e=>e.link.repo))].sort();
   }
-  counts() {return {open:this.rows('open').length,closed:this.rows('closed').length};}
+  rememberCounts() {
+    if(!this.countsLoading)this.lastCounts=new Map([...this.entries].map(([key,e])=>[key,{...e}]));
+  }
+  counts() {
+    if(!this.countsLoading)return {open:this.rows('open').length,closed:this.rows('closed').length};
+    if(!this.lastCounts)return {open:null,closed:null};
+    const now=Date.now(),counts={open:0,closed:0};
+    for(const [key,prior]of this.lastCounts) {
+      const current=this.entries.get(key);
+      if(current && !current.missing && this.eligible({...prior,link:current.link},now))counts[['open','draft'].includes(prior.pr.state)?'open':'closed']++;
+    }
+    return counts;
+  }
   invalidate(repository=null) {this.diagnostics.clear();for(const e of this.entries.values())if((!repository || e.link.repo===repository.toLowerCase()) && !finalPull(e.pr))e.dirty=true;}
   refresh(cx) {pluginEvent('workspace.context.refresh',{cx,space:location().space,force:true});this.manualRead={remaining:1,expires:Date.now()+30000};this.readWake=null;this.invalidate();this.pump(cx);}
   pump(cx) {
@@ -150,7 +166,7 @@ export class AggregatePulls {
           for(const entry of batch)if(this.pending.get(entry.link.key)===token)this.pending.delete(entry.link.key);
           if(this.serial===serial && this.shown())this.pump(view);
           if(!this.pending.size && ![...this.entries.values()].some(e=>e.dirty)) {this.diagnostics.clear();this.manualRead=null;}
-          view.notify();
+          this.rememberCounts();view.notify();
         }
         if(updated && current())this.onUpdate?.(view);
       });

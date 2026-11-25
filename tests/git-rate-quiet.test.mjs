@@ -77,4 +77,28 @@ for(const initial of [true,false]) {
  if(initial)assert.match(text,/Loading/);else assert.deepEqual(panel.counts,{open:5,closed:30});
  assert.ok(panel.readWake,'Cold refusal retains retry demand without known rows');
 }
-console.log('PASS quiet primary/secondary/GraphQL/worker refusals, strict actionable exceptions, shared admission, Retry-After, manual bypass, episode logs and retained/cold panel presentation');
+// Compatibility count read can itself be refused after a successful list.
+// It must keep a retry, and a missing total must not use loaded page length.
+for(const warm of [false,true]) {
+ let clock=2000000,reads=0;const wakeups=[];
+ const h=await rowHarness({globals:{Date:class extends Date{static now(){return clock;}}},host:{exec:async()=>{
+   reads++;
+   if(reads===2)return {code:1,stderr:'secondary rate limit'};
+   const repository={pullRequests:{nodes:[],pageInfo:{hasNextPage:false,endCursor:null}},...(reads>2?{open:{totalCount:12},closed:{totalCount:7}}:{})};
+   return {code:0,stdout:JSON.stringify({data:{repository}})};
+ }}});
+ const {panel}=h;panel.aggregate=null;panel.loadRelatedPull=()=>{};panel.syncAggregate=()=>false;panel.syncAgent=()=>{};panel.syncWebhooks=()=>{};panel.syncChecksFallback=()=>{};panel.notices={sync(){}};panel.agentLinks.refresh=()=>{};
+ if(warm)panel.counts={open:12,closed:7};
+ const cx={...h.cx,spawn:fn=>fn(cx),timer:{after(ms,fn){wakeups.push({at:clock+ms,fn});}}};
+ panel.loadPulls('open',cx,true);await tick();assert.equal(reads,2);assert.ok(panel.readWake,'Quiet fallback count failure must retain cooldown recovery');
+ assert.equal(panel.pullError,null);
+ let tree=h.render(()=>panel.render(cx));
+ for(const tab of ['open','closed']) {
+   const badge=(await import('./support/git-row.mjs')).find(tree,`git-view-${tab}-count`);
+   assert.equal(words(badge).join(''),warm?(tab==='open'?'12':'7'):'0');
+   if(!warm)assert.match(badge.attrs.tooltip[0],/Count loading/);
+ }
+ const wake=wakeups.find(w=>w.at===panel.readWake.due);clock=wake.at;wake.fn(cx);await tick();
+ assert.deepEqual({...panel.counts},{open:12,closed:7});assert.equal(panel.pullError,null);
+}
+console.log('PASS quiet primary/secondary/GraphQL/worker refusals, strict actionable exceptions, shared admission, Retry-After, manual bypass, episode logs, ordinary fallback-count recovery and retained/cold panel presentation');

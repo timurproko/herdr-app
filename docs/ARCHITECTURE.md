@@ -341,16 +341,27 @@ Explicit toggles are UI-only: no preference export or Crew/host-document writes,
 and no new fetch or cancellation. Fold state survives tab/context changes and
 panel recreation. Scoped rows/errors and repository-specific diagnostics fold with
 the body; global setup stays visible. Counts and webhook-driven facts continue
-updating while folded. Rendering derives selected-tab sections from eligible rows
-or an applicable `readNotice`, before applying folds. Empty sections have no header,
+updating while folded. Rendering derives selected-tab sections from eligible rows,
+an applicable `readNotice`, or unresolved admitted first-read work, before applying
+folds. Unknown-state queued/in-flight/quiet-deferred repositories retain a standard
+bulb/Loading body in either tab, without inventing PR membership. Warm-only refreshes
+add no Loading. An applicable actionable failure retains its notice; confirmed
+missing and known ineligible history do not leave Loading behind. Empty settled sections have no header,
 but disappearing sections retain saved fold keys. A settled tab with no qualifying
 sections uses ordinary Git's **No open pull requests** / **No closed pull requests**;
 notice-only and folded eligible sections are not empty. Pending/unverified feedback
 is unchanged. The selected presentation reveals ten items initially, including headers,
 notices and rows, then appends ten near the scroll bottom without inventory IO.
-An unfolded header at a reveal boundary waits for its first row or visible notice;
+An unfolded header at a reveal boundary waits for its first row, visible notice or Loading body;
 no transition may leave an unfolded header alone. Sections without selected-tab
-content are omitted even if their saved fold key remains. Every revealed unfolded row stays mounted: PRs retain 74px blocks, shared headers
+content or unresolved first-read work are omitted even if their saved fold key remains.
+Loading is one keyed 32px presentation item, not a PR row or safety target, and folds
+with the body. It obeys the 100-item cap and stable section/scroll identities.
+Global counts remain unknown (visible 0 with existing loading metadata) while any
+admitted identity lacks authoritative facts or confirmed absence. Compatible last-good
+same-scope totals survive new unread membership with loading metadata; removals and
+history expiry still reconcile. Complete-count snapshots update in the controller
+lifecycle, never from render, and coordinator totals never use repository inventory. Every revealed unfolded row stays mounted: PRs retain 74px blocks, shared headers
 retain their control height and notices retain keyed native heights. A measured
 60-PR/100-item cap bounds the mounted batch; one quiet end Show more advances it
 and cycles from the last batch to the first. Full row batches defer excess arrivals

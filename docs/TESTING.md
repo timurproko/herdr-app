@@ -11,8 +11,20 @@ to reproduce hosted CI.
 
 ## Git read-budget and refusal fixtures
 
+`tests/git-deferred-repositories.test.mjs` runs a sanitized equivalent of the
+reported mixed-fleet case through real Crew verification, aggregate/read modules
+and panel rendering. With herdr-app #74/#76 refused and siblings supplying Open 2 /
+Closed 5, it requires the herdr-app header and standard Loading with both badges
+0/loading, then both rows and complete task totals after an exact fake-clock
+cooldown retry without another event. It also covers queued/in-flight uncertainty,
+actionable/missing exclusions, folds, atomic boundaries, 100-item cap, surviving
+anchors, new membership with retained/loading counts, warm retention and obsolete
+retry guards. It is not evidence of the original unrecorded refusal or native pixels.
+
 `tests/git-rate-quiet.test.mjs` exercises strict primary/secondary refusal handling,
-episodes, Retry-After, manual bypass and the older-success/cooldown race.
+episodes, Retry-After, manual bypass and the older-success/cooldown race. Ordinary
+compatibility count refusals retain a cooldown retry and known totals; unknown
+page totals never fall back to a loaded subset's length.
 `tests/git-target-reads.test.mjs` covers shared target subscriptions, per-alias
 failures with gh's real exit status 1 on partial GraphQL errors, final caching
 and changed-only details. Healthy siblings survive missing/access aliases;
