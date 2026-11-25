@@ -35,7 +35,7 @@ for(const coordinator of [false,true])for(const zoom of [0.75,1,1.3,2]) {
  const fades=(above,below)=>{
   for(const [edge,wanted]of [['above',above],['below',below]]) {
    const fade=find(tree,`${id}-more-${edge}`);assert.equal(Boolean(fade),wanted,`${coordinator?'coordinator':'ordinary'} ${zoom} ${edge}`);
-   if(fade){assert.equal(fade.attrs.h[0],40);assert.equal(fade.attrs.left[0],8);assert.equal(fade.attrs.right[0],8);assert.ok(nodes(fade).every(n=>!Object.keys(n.attrs).some(k=>k.startsWith('on_'))),'Passive decorations cannot intercept input');}
+   if(fade){assert.equal(fade.attrs.h[0],40);assert.equal(fade.attrs.left[0],7);assert.equal(fade.attrs.right[0],7,'Panel border plus fade inset matches the Spaces outer gutter');assert.ok(nodes(fade).every(n=>!Object.keys(n.attrs).some(k=>k.startsWith('on_'))),'Passive decorations cannot intercept input');}
   }
  };
  measure();tree=render();fades(false,true);

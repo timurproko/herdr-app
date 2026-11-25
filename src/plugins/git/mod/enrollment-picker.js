@@ -17,7 +17,8 @@ export class EnrollmentPicker {
     if(this.opening && !this.valid(this.opening))this.stop();
     if(!presentation?.choices.length)return null;
     const opening=this.opening,rows=opening?.choices??presentation.choices;
-    return div().id('git-enrollment-footer').flex_none().p(4).border_t(1).border_color(t.border)
+    // Match the list: 7px padding inside the panel's 1px border gives an 8px gutter.
+    return div().id('git-enrollment-footer').flex_none().py(4).px(7).border_t(1).border_color(t.border)
       .child(div().id('git-enrollment-info').flex().w_full().px(8).py(6).gap(U.gap).items_center().rounded(U.radius).bg(t.raised)
         .accessibility_label('Add this repo in Settings')
         .child(div().h(20).flex_none().flex().items_center()

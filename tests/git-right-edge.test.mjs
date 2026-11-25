@@ -1,24 +1,38 @@
 import assert from 'node:assert/strict';
 import {rowHarness,rowGeometry,element,find,nodes,t} from './support/git-row.mjs';
 import {spacesGeometryHarness} from './support/spaces-geometry.mjs';
+import {Popover} from './support/choice-menu.mjs';
 const near=(a,b,message)=>assert.ok(Math.abs(a-b)<1e-6,`${message}: ${a} != ${b}`);
 const right=b=>b.x+b.width,centre=b=>b.x+b.width/2;
 const inset=(geometry,row,control)=>right(geometry.get(row))-right(geometry.get(control));
+const spacesMeasurements=new Map();
 function spacesInset(width,zoom) {
   const tree=spaces.render(),geometry=rowGeometry(tree,width,zoom,600);
-  const insets=['coordinator','fleet'].map(id=>{
+  const measurements=['coordinator','fleet'].map(id=>{
     const row=find(tree,`space-${id}`),pill=find(tree,`space-tag-${id}-crew-0`);
-    near(width*zoom-right(geometry.get(row)),8*zoom,'Spaces highlight retains its 8px sidebar inset');
+    const badge=find(tree,`space-content-${id}`).kids[0],box=geometry.get(row);
+    const metrics={left:box.x,right:width*zoom-right(box),leading:geometry.get(badge).x-box.x,
+      trailing:inset(geometry,row,pill),radius:row.attrs.rounded[0]};
+    near(metrics.left,8*zoom,'Spaces left highlight gutter');near(metrics.right,8*zoom,'Spaces right highlight gutter');
+    near(metrics.leading,8*zoom,'Spaces badge starts 8px inside its highlight');
+    near(metrics.trailing,3*zoom,'Actual Spaces padding minus negative pill margin leaves 3px inside the highlight');
+    near(metrics.radius,6,'Spaces radius remains 6 logical pixels');
     near(width*zoom-right(geometry.get(pill)),11*zoom,'Spaces pill retains its 11px sidebar inset');
-    return inset(geometry,row,pill);
+    return metrics;
   });
-  near(insets[0],insets[1],'Actual coordinator and fleet Crew highlight-relative insets align');
-  near(insets[0],(8-5)*zoom,'Actual Spaces row padding minus negative pill margin leaves 3px inside the highlight');
-  return insets[0];
+  assert.deepEqual(measurements[0],measurements[1],'Actual coordinator and fleet Spaces geometry aligns');
+  spacesMeasurements.set(`${width}/${zoom}`,measurements[0]);
+  return measurements[0].trailing;
+}
+function gitColumn(geometry,node,width,zoom) {
+  const expected=spacesMeasurements.get(`${width}/${zoom}`),box=geometry.get(node);
+  assert.ok(box,`Missing geometry for ${node?.attrs.id}`);
+  near(box.x,expected.left,'Git highlight matches actual Spaces left gutter');
+  near(width*zoom-right(box),expected.right,'Git highlight matches actual Spaces right gutter');
 }
 function gitHighlight(geometry,row,width,zoom) {
-  near(width*zoom-right(geometry.get(row)),5*zoom,'Git highlight retains its 5px panel inset');
-  near(geometry.get(row).x,5*zoom,'Git highlight retains its left anchor');
+  gitColumn(geometry,row,width,zoom);
+  near(row.attrs.rounded[0],spacesMeasurements.get(`${width}/${zoom}`).radius,'Git highlight matches actual Spaces radius');
 }
 // Independent negative-margin oracle: a trailing pill extends beyond its row's
 // padding, but never beyond the list's inset. The full Spaces tree below uses it.
@@ -26,11 +40,15 @@ function gitHighlight(geometry,row,width,zoom) {
   const root=element().flex().px(8).child(element().flex_1()).child(element().w(30).h(18).flex_none().mr(-5));
   near(right(rowGeometry(root,100).get(root.kids[1])),97,'Negative trailing margin extends the painted box by 5px');
 }
-const spaces=await spacesGeometryHarness(),h=await rowHarness(),{panel,facts}=h;
+const spaces=await spacesGeometryHarness(),h=await rowHarness({modules:{
+  'panel-kit.js':'src/ui/panel-kit.js','enrollment-picker.js':'src/plugins/git/mod/enrollment-picker.js',
+  'choice-menu.js':'src/ui/choice-menu.js',
+  'gpui-base':{h_flex:()=>element().flex(),v_flex:()=>element().flex().flex_col(),Popover,Input:{}},
+}}),{panel,facts}=h;
 const no=()=>{};
 for(const method of ['syncAgent','loadRelatedPull','syncWebhooks','syncChecksFallback'])panel[method]=no;
 panel.pullsDue=()=>false;panel.agentLinks.refresh=no;
-panel.notices={sync:()=>null};panel.enrollmentPicker={stop:no,render:()=>null};panel.enrollmentPresentation=()=>null;
+panel.notices={sync:()=>null};panel.enrollmentPresentation=()=>null;
 panel.foldedRepositories=new Set();
 const raw={number:17,title:'Long title '.repeat(20),url:'https://github.com/owner/repo/pull/17',author:{login:'owner'},createdAt:'2026-11-20T10:00:00Z',labels:[{name:'🤖 Review',color:'840479'}]};
 const now=Date.parse('2026-11-20T14:00:00Z');
@@ -58,7 +76,9 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
       gitHighlight(geometry,block,width,zoom);
       near(inset(geometry,block,slot),expectedInset,'Robot slot inset from its highlight equals actual Spaces Crew inset');
       near(right(geometry.get(block))-right(pill),expectedInset,'Actual label pill inset from its highlight equals actual Spaces Crew inset');
-      near(width*zoom-right(robot),8*zoom,'Git control now ends 8px from the panel, not Spaces\' 11px');
+      near(width*zoom-right(robot),11*zoom,'Git control ends 11px from the panel, matching Spaces');
+      near(geometry.get(find(block,`${prefix}pr-state-slot-${id}`)).x-geometry.get(block).x,
+        spacesMeasurements.get(`${width}/${zoom}`).leading,'Git state slot matches actual Spaces highlight-to-badge inset');
       const title=geometry.get(find(block,`${prefix}pr-title-${id}`)),titleKey=`${state}-${mode}-${id}`;
       near(right(title),robot.x-4*zoom,'Title truncation ends before the reserved robot slot');
       if(agent)near(right(title),titles.get(titleKey),'Agent presence never changes the title truncation boundary');
@@ -116,12 +136,22 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
       find(tree,'task-pulls-scroll').border_1();
       const changed=rowGeometry(tree,width,zoom,600);
       near(inset(changed,row,find(row,'pr-agent-slot-owner/repo#17')),expectedInset,'Inset alone cannot detect a shifted highlight');
-      assert.throws(()=>gitHighlight(changed,row,width,zoom),/Git highlight retains/);
+      assert.throws(()=>gitHighlight(changed,row,width,zoom),/Git highlight matches/);
+      delete find(tree,'task-pulls-scroll').attrs.border_1;
+      const viewport=nodes(tree).find(node=>String(node.attrs.id?.[0]).startsWith('task-pulls-content-'));
+      for(const side of ['pl','pr']) {
+        viewport[side](6);
+        assert.throws(()=>gitHighlight(rowGeometry(tree,width,zoom,600),row,width,zoom),/Git highlight matches/,'Either asymmetric gutter must fail');
+        delete viewport.attrs[side];
+      }
+      row.rounded(4);
+      assert.throws(()=>gitHighlight(rowGeometry(tree,width,zoom,600),row,width,zoom),/Spaces radius/);
+      row.rounded(6);
     }
   }
 }
 // Exercise main's mounted-prefix renderer and warm distinct-string widths.
-const {measureTask,scrollTask,taskWindow,taskContent}=await import('./support/git-scroll.mjs');
+const {measureTask,scrollTask,taskWindow,taskContent,ordinaryContent}=await import('./support/git-scroll.mjs');
 const {MAX_MOUNTED_ROWS}=await import('../src/plugins/git/mod/task-reveal.js');
 let pagedComparisons=0;
 for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,2])for(const view of ['open','closed']) {
@@ -135,7 +165,7 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
   while(true) {
     const {tree,geometry}=h.settle(()=>panel.render(h.cx),width,zoom,600);
     const viewport=find(tree,`task-pulls-list-home-${view}`);
-    assert.ok(viewport,'Continuous scrolling retains one native scroll identity');assert.equal(taskContent(tree).attrs.p[0],4);
+    assert.ok(viewport,'Continuous scrolling retains one native scroll identity');assert.equal(taskContent(tree).attrs.py[0],4);assert.equal(taskContent(tree).attrs.px[0],7);
     assert.equal(find(tree,'task-pulls-pages'),undefined);
     const header=find(tree,'task-repo-header-owner/repo');
     if(header) {
@@ -159,5 +189,74 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
   }
   assert.deepEqual([...seen].sort(),rows.map(pr=>pr.key).sort(),'Every PR remains reachable with unchanged alignment');
 }
+// Exercise real panelMessage and both real enrollment-card renderers, not the
+// inert stubs used by most controller tests. Outer column and inner padding are
+// separate: text/icons begin another 8px inside the shared 8px outer gutter.
+let feedbackComparisons=0;
+for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,2])for(const view of ['open','closed']) {
+  h.setZoom(zoom);h.setAgent(false);panel.view=view;panel.pinMotion=null;panel.agentPull=null;
+  panel.foldedRepositories.clear();panel.taskWindows?.clear();panel.error=null;panel.pullError=null;panel.pageError=null;
+  panel.pages[view]={hasMore:false};panel.enrollmentPresentation=()=>null;panel.notices.sync=()=>null;
+  spacesInset(width,zoom);
+  const check=(tree,geometry,id,{leading=false,radius=false}={})=>{
+    const node=find(tree,id);assert.ok(node,id);gitColumn(geometry,node,width,zoom);
+    if(radius)near(node.attrs.rounded[0],spacesMeasurements.get(`${width}/${zoom}`).radius,'Card radius matches Spaces');
+    const first=node.kids[0],content=String(first?.attrs?.id?.[0]).startsWith('task-notice-measure-')?first.kids[0]:first;
+    if(leading)near(geometry.get(content).x-geometry.get(node).x,
+      spacesMeasurements.get(`${width}/${zoom}`).leading,'Feedback painted content shares the Spaces badge inset');
+    feedbackComparisons++;
+  };
+  const render=()=>h.settle(()=>panel.render(h.cx),width,zoom,600);
+  const pr=facts.pullRow({...raw,state:view==='open'?'OPEN':'MERGED'},'owner',now);
+  panel.syncAggregate=()=>false;
+  for(const loading of [false,true]) {
+    panel.pulls[view]=loading?null:[];
+    const {tree,geometry}=render();check(tree,geometry,'git-empty',{leading:true});
+    const viewport=find(tree,`pulls-list-${view}`);
+    assert.ok(viewport.attrs.overflow_y_scrollbar);assert.equal(ordinaryContent(tree).attrs.px[0],7);
+    assert.ok(find(tree,'pulls-scroll-frame').attrs.overflow_hidden,'Native scroll clipping stays bounded');
+  }
+  panel.pulls[view]=[pr];panel.pullError='Read failed';panel.pageError={state:view,message:'Page failed'};
+  {
+    const {tree,geometry}=render();check(tree,geometry,'git-read-error',{leading:true});
+    const pageNotice=ordinaryContent(tree).kids.find(node=>node.kids?.includes('Page failed'));
+    gitColumn(geometry,pageNotice,width,zoom);feedbackComparisons++;
+  }
+  panel.pullError=null;panel.pageError=null;
+  for(const notice of ['setup','repository']) {
+    panel.notices.sync=()=>notice;
+    const {tree,geometry}=render();check(tree,geometry,'git-live-ci-info',{leading:true,radius:true});
+  }
+  panel.notices.sync=()=>null;panel.syncAggregate=()=>true;
+  const aggregate=panel.aggregate;
+  aggregate.context={scope:'home'};aggregate.currentContext=()=>aggregate.context;
+  aggregate.repositories=()=>[];aggregate.rows=()=>[];aggregate.entries=new Map();aggregate.readNotice=()=>null;
+  for(const loading of [false,true]) {
+    aggregate.busy=loading;
+    const {tree,geometry}=render();check(tree,geometry,'git-task-empty',{leading:true});
+    const viewport=find(tree,`task-pulls-list-home-${view}`);
+    assert.ok(viewport.attrs.overflow_y_scrollbar);assert.equal(taskContent(tree).attrs.px[0],7);
+    assert.ok(find(tree,'task-pulls-scroll').attrs.overflow_hidden,'Coordinator scroll clipping stays bounded');
+  }
+  aggregate.busy=false;aggregate.context.stale=true;
+  {
+    const {tree,geometry}=render();check(tree,geometry,'git-task-empty',{leading:true});
+  }
+  aggregate.context.stale=false;aggregate.repositories=()=>['owner/repo'];aggregate.readNotice=()=> 'Repository read failed';
+  {
+    const {tree,geometry}=render();check(tree,geometry,'task-error-owner/repo',{leading:true});
+    check(tree,geometry,'task-repo-header-owner/repo',{radius:true});
+  }
+  aggregate.readNotice=()=>null;panel.enrollmentPresentation=()=>({choices:['owner/repo'],key:'fixture'});
+  {
+    const {tree,geometry}=render();check(tree,geometry,'git-enrollment-info',{leading:true,radius:true});
+    assert.ok(!nodes(find(tree,'task-pulls-scroll')).includes(find(tree,'git-enrollment-footer')),'Enrollment remains outside scrolling');
+  }
+  panel.enrollmentPresentation=()=>null;panel.notices.sync=()=> 'setup';
+  {
+    const {tree,geometry}=render();check(tree,geometry,'git-live-ci-info',{leading:true,radius:true});
+  }
+}
+console.log(`PASS ${feedbackComparisons} complete-panel notice/loading/empty/footer gutter comparisons against actual Spaces`);
 console.log(`PASS ${pagedComparisons} mounted-scroll right-edge comparisons and stable native scroll identity across widths/zoom/Open/Closed`);
-console.log(`PASS ${comparisons} full-panel highlight-relative inset comparisons against actual Spaces Crew geometry, 280–480px / 75–200% including 130%, ordinary/pinned/scrolling/ghost/coordinator, Open/Closed/merged and mutation guards (synthetic, not native pixels)`);
+console.log(`PASS ${comparisons} full-panel left/right gutter, radius and inner-inset comparisons against actual Spaces Crew geometry, 280–480px / 75–200% including 130%, ordinary/pinned/scrolling/ghost/coordinator, Open/Closed/merged and mutation guards (synthetic, not native pixels)`);

@@ -31,6 +31,8 @@ const FOLDED_REPOS_KEY = 'custom.git.task-repositories.folded';
 const LOCAL_CONTEXT_TTL = 10000; // shell branch/footer only, never a GitHub poll
 const CI_SWEEP_MS = 2400;
 const CI_SWEEP_WIDTH = 96;
+// The panel's 1px border plus this padding matches Spaces' 8px outer gutter.
+const LIST_INSET = 7;
 const TEXT_CACHE_LIMIT = 512;
 const ciPending = pr => ['open','draft'].includes(pr?.state) && pr.checks?.pending > 0;
 function find(node, id) { return node?.id === id ? node : (node?.children ?? []).map(c => find(c, id)).find(Boolean); }
@@ -911,7 +913,7 @@ export default class Changes extends View {
       .on_mouse_down('left', (_e,cx) => cx.stop_propagation()).on_click((_e,cx) => cx.stop_propagation())
       .on_scroll_wheel((_e,cx) => { this.pinMotion.cancel(); cx.notify(); cx.stop_propagation(); })
       .on_size_change((_size,cx) => this.pinMotion.arm(swap,cx))
-      .children([...swap.cards].reverse().map(card => div().id(`pin-swap-${swap.id}-${card.pr.number}`).absolute().left(4).right(4)
+      .children([...swap.cards].reverse().map(card => div().id(`pin-swap-${swap.id}-${card.pr.number}`).absolute().left(LIST_INSET).right(LIST_INSET)
         .top(swap.phase === 'moving' ? card.to : card.from)
         .transition('top',{duration:PIN_SWAP_MS,easing:'ease-in-out'})
         .bg(t.background).rounded(U.radius).shadow_sm().child(this.pullRow(t,card.pr,true))));
@@ -1004,7 +1006,7 @@ export default class Changes extends View {
       })
       .on_mouse_move(event => this.pinMotion?.bodyPointer(event))
       .when(Boolean(pinned), el => el
-        .child(v_flex().id('active-pull').relative().flex_none().p(4)
+        .child(v_flex().id('active-pull').relative().flex_none().py(4).px(LIST_INSET)
           .child(div().id('active-pull-rail').absolute().left(0).top(0).bottom(0).w(2).bg(t.accent))
           .child(v_flex().id(`active-pull-content-${pinned.number}-${this.pinRevealSequence}`).w_full()
             .opacity(this.pinRevealed ? 1 : 0.75).transition('opacity', {duration:120,easing:'ease-out'})
@@ -1019,7 +1021,7 @@ export default class Changes extends View {
         .on_mouse_move((event, cx) => {this.scrollMotionAt(event, 'move', state, cx);metrics.viewportMotion(event,'move',cx);this.ordinaryMotion(metrics,cx);})
         .child(v_flex().id(`pulls-list-${state}`).flex_1().min_h(0).overflow_y_scrollbar()
           .when(Boolean(metrics.handle),el=>el.track_scroll(metrics.handle))
-          .child(v_flex().id(`pulls-content-${metrics.measurement}-${zoom}`).w_full().flex_none().gap(U.rowGap).p(4)
+          .child(v_flex().id(`pulls-content-${metrics.measurement}-${zoom}`).w_full().flex_none().gap(U.rowGap).py(4).px(LIST_INSET)
             .on_size_change((size,cx)=>{
               if(this.ordinaryScroll?.get(this.view)!==metrics || metrics.measurement!==measurement || (settings().zoom>0?settings().zoom:1)!==zoom)return;
               metrics.awaitZoom=false;this.ordinaryHandle(metrics,cx);metrics.measure('content',size,cx);
@@ -1036,8 +1038,8 @@ export default class Changes extends View {
               .when(!this.pullLoading, el => el.cursor_pointer().hover(s => s.bg(t.hover)))
               .on_click((_event, cx) => { if (!this.pullLoading) this.morePulls(state, cx); })
               .child(this.pullLoading && this.loadingState === state ? 'Loading…' : this.pageError?.state === state ? 'Retry loading more' : 'Load 10 more')))))
-        .when(metrics.moreAbove,el=>el.child(topFade(metrics,'pulls-list',t.background)))
-        .when(metrics.moreBelow,el=>el.child(bottomFade(metrics,'pulls-list',t.background))))
+        .when(metrics.moreAbove,el=>el.child(topFade(metrics,'pulls-list',t.background,{left:LIST_INSET,right:LIST_INSET})))
+        .when(metrics.moreBelow,el=>el.child(bottomFade(metrics,'pulls-list',t.background,{left:LIST_INSET,right:LIST_INSET}))))
       .when(Boolean(swap), el => el.child(this.swapOverlay(t,swap)));
   }
 
@@ -1276,7 +1278,7 @@ export default class Changes extends View {
           .on_mouse_move((event,cx)=>this.taskViewportMotion(taskWindow,scope,event,'move',cx))
           .child(v_flex().id(`task-pulls-list-${scope}-${this.view}${taskWindow.chunk?`-${taskWindow.chunk}`:''}`).flex_1().min_h(0).overflow_y_scrollbar()
             .when(Boolean(taskWindow.handle),el=>el.track_scroll(taskWindow.handle))
-            .child(v_flex().id(`task-pulls-content-${taskWindow.measurement}-${taskWindow.zoom}`).w_full().flex_none().p(4)
+            .child(v_flex().id(`task-pulls-content-${taskWindow.measurement}-${taskWindow.zoom}`).w_full().flex_none().py(4).px(LIST_INSET)
               .on_size_change((size,cx)=>this.taskMeasure(taskWindow,scope,'content',size,cx,taskZoom))
               .on_scroll_wheel(event=>taskWindow.metrics.contentMotion(event,'wheel'))
               .on_mouse_move(event=>taskWindow.metrics.contentMotion(event,'move'))
@@ -1289,8 +1291,8 @@ export default class Changes extends View {
                 .when(verifying,message=>message.tooltip(verificationHint)))))
             .when(Boolean(anchor),el=>el.child(div().id('task-pulls-anchor').absolute().left(0).w(1).h(1)
               .top(anchor.to+(anchor.to>anchor.from?taskWindow.viewport-1:0)))))
-          .when(taskWindow.metrics.moreAbove,el=>el.child(topFade(taskWindow.metrics,'task-pulls-list',t.background)))
-          .when(taskWindow.metrics.moreBelow,el=>el.child(bottomFade(taskWindow.metrics,'task-pulls-list',t.background)))))
+          .when(taskWindow.metrics.moreAbove,el=>el.child(topFade(taskWindow.metrics,'task-pulls-list',t.background,{left:LIST_INSET,right:LIST_INSET})))
+          .when(taskWindow.metrics.moreBelow,el=>el.child(bottomFade(taskWindow.metrics,'task-pulls-list',t.background,{left:LIST_INSET,right:LIST_INSET})))))
       .when(setup,el=>el.child(this.liveCIInfo(t)))
       .when(Boolean(enrollment),el=>el.child(enrollment))
       .when(Boolean(sweep),el=>el.child(this.sweepLayer(t,sweep).top(U.section)));
@@ -1300,7 +1302,7 @@ export default class Changes extends View {
     const text=kind==='repository'?'Add this repo in':'Set up Git in';
     const repository=kind==='repository' ? capturedRepository ?? this.repo?.name ?? null : null;
     const id=capturedRepository ? `git-live-ci-${capturedRepository}` : 'git-live-ci';
-    return div().id(`${id}-footer`).flex_none().p(4).border_t(1).border_color(t.border)
+    return div().id(`${id}-footer`).flex_none().py(4).px(LIST_INSET).border_t(1).border_color(t.border)
       .child(h_flex().id(`${id}-info`).w_full().px(8).py(6).gap(U.gap).items_start().rounded(U.radius).bg(t.raised)
         .accessibility_label(`${text} Settings`)
         .child(div().h(20).flex_none().flex().items_center()
