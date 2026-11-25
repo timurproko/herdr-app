@@ -18,7 +18,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-25-git-mounted-scroll-reveal/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-25-git-mounted-scroll-reveal/acceptance.md",
   "finalizedDate": "2026-11-25",
-  "specBaseSha": "a7c2a4410510d88abef4dcd6ae9d1471942014ab",
+  "specBaseSha": "b69c8c875e278f89ac3df77ee36bd923354d0ac8",
   "acceptanceScenarios": [
     "Revealed coordinator rows stay mounted without spacers; ten-item reveal reaches a measured 60-PR/100-item cap with one cycling Show more row.",
     "Shared fades sample actual native geometry; accepted middle/end anchors always repaint and a finite post-layout check fills underflow.",
