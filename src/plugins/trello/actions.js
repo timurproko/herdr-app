@@ -12,6 +12,7 @@ function current(cx) {
   if (checking() || cx.isCurrent?.() === false || cx.enabled?.() === false) throw Error('Enable Trello on this computer and check setup before continuing.');
 }
 const safeErrors = {
+  INPUT: 'Enter a valid Trello API key and user token, then try again.',
   AUTH: 'Trello rejected the API key or user token. Check its expiry and generate a new token if needed.',
   FORBIDDEN: 'Trello refused this account’s access.',
   RATE_LIMIT: 'Trello rate limit. Wait for the cooldown before an explicit retry.',
@@ -64,6 +65,7 @@ export async function localStatus(cx = {}) {
 export async function credentialAction(cx, values, item, action) {
   try {
     const d = await invoke(cx, action, item.revision, values);
+    if (action !== 'remove' && !d.account) throw Error('Trello did not return an account identity. Verify saved credentials again.');
     return {detail: action === 'remove' ? 'Saved credentials removed; board scope and local writes cleared. This does not revoke the token at Trello.'
       : `Saved · ${d.account?.name ?? 'Verified account'}${d.account ? ` (@${d.account.username})` : ''}${action === 'replace' ? ' · Board scope and local writes cleared' : ''}.`};
   } catch (e) { return {detail: e.message}; } // Only our own sanitized errors, never provider/worker text.

@@ -291,7 +291,7 @@ export function clearPluginForms(view, only = null) {
   for (const [key, state] of Object.entries(view.pluginForms ?? {})) {
     if (only && !key.startsWith(`${only}:`)) continue;
     state.epoch++; state.busy = false; state.confirm = null; state.result = null;
-    try { state.cancel?.(); } catch {} state.cancel = null;
+    try { state.cancel?.()?.catch?.(() => {}); } catch {} state.cancel = null;
     for (const field of Object.values(state.fields)) { try { field.set_value(''); } catch {} }
   }
 }

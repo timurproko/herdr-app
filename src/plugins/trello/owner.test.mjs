@@ -10,6 +10,7 @@ const run=async(action,extra={},io={})=>{const result=await execute({action,...(
 try {
  const first=await run('status');assert.equal(first.data.configured,false);assert.equal(fs.existsSync(store.dir),false,'Status creates no private files');
  const original=revision;
+ assert.equal((await run('save',{apiKey:'short',token:'short'})).error.code,'INPUT');assert.equal(calls.length,0);
  for(const status of [401,403,404,500,302]){const bad=await run('save',credentials,{transport:async()=>new Response('hostile '+credentials.token,{status})});assert.equal(bad.ok,false);assert.equal(fs.existsSync(store.file('credentials')),false);assert.equal(revision,original);}
  const saved=await run('save',credentials);assert.equal(saved.data.account.username,'fake-owner');assert.equal(saved.data.configured,true);assert.equal(saved.data.allowedBoards,0);assert.deepEqual(store.read('credentials'),{version:1,...credentials});
  assert.equal((await run('verify')).data.account.name,'Fake Owner');

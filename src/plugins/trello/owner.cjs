@@ -62,7 +62,9 @@ async function operate(input, {store, ...io}) {
   const s = expected(store, input.expected);
   if (['save', 'replace'].includes(input.action)) {
     if ((s.credentials !== null) !== (input.action === 'replace')) fail('CONFLICT');
-    const credentials = validate('credentials', {version: 1, apiKey: input.apiKey, token: input.token});
+    let credentials;
+    try { credentials = validate('credentials', {version: 1, apiKey: input.apiKey, token: input.token}); }
+    catch { fail('INPUT'); }
     const account = await identity(client(store, s, credentials, io));
     // All network work is done. Reset grants first, under one local lock; an
     // interrupted transition can only lose authority, not inherit another account's.
