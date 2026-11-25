@@ -52,5 +52,11 @@ assert.equal(seen.size,208);
 revealAll();const retained=taskWindow(panel).range().revealedRows.map(row=>row.key);assert.equal(retained.length,60);
 add('aaa/new-repo',999);tree=render();assert.equal(find(tree,'task-repo-aaa/new-repo'),undefined);
 assert.deepEqual(taskWindow(panel).range().revealedRows.map(row=>row.key),retained);assert.ok(taskWindow(panel).canTurn);
+// The independent 100-item cap must retain rows too, even below 60 PRs.
+panel.aggregate.entries.clear();context.scope='header-heavy-home';panel.context='tasks:header-heavy-home';
+for(let n=0;n<50;n++)add(`owner/single-${String(n).padStart(2,'0')}`,n);
+tree=render();revealAll();const itemCapped=taskWindow(panel).range().revealedRows.map(row=>row.key);assert.equal(itemCapped.length,50);assert.equal(taskWindow(panel).range().items.length,100);
+add('aaa/header-heavy-arrival',1000);tree=render();assert.equal(find(tree,'task-repo-aaa/header-heavy-arrival'),undefined);
+assert.deepEqual(taskWindow(panel).range().revealedRows.map(row=>row.key),itemCapped);assert.ok(taskWindow(panel).canTurn);
 await Promise.all(jobs);
 console.log('PASS unfolded-section invariant after every reveal, refresh, tab move, expiry, absence, notice resolution, fold and capped batch cycle');

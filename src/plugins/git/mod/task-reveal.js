@@ -40,9 +40,12 @@ export class TaskReveal {
     if(this.projectionChunk===this.chunk&&this.foldKey===foldKey&&tail){
       const from=startKey?rawKeys.get(startKey):0,to=rawKeys.get(tail),span=items.slice(from,to+1);
       let overflow=Math.max(0,span.filter(item=>item.row).length-this.maxRows);
-      if(overflow){
-        const known=new Set(this.items.map(item=>item.key)),deferred=new Set();
-        for(const item of span)if(overflow&&item.row&&!known.has(item.key)){deferred.add(item.key);overflow--;}
+      let excessItems=this.maxRows===Infinity?0:Math.max(0,span.length+(span[0]&&!span[0].header?1:0)-MAX_MOUNTED_ITEMS);
+      if(overflow||excessItems){
+        const known=new Set(prior.map(item=>item.key)),deferred=new Set();
+        for(const item of span)if(!known.has(item.key)&&((item.row&&(overflow>0||excessItems>0))||((item.error||item.folded)&&excessItems>0))){
+          deferred.add(item.key);if(item.row)overflow--;excessItems--;
+        }
         this.pendingNew=deferred.size;items=items.filter(item=>!deferred.has(item.key));
         // Deferring a new repository's only row must also defer its header.
         items=items.filter((item,i)=>!item.header||item.folded||(!items[i+1]?.header&&items[i+1]?.repo===item.repo));
