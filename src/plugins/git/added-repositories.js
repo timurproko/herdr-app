@@ -4,13 +4,10 @@
 // numeric ids — kept in runtime shared state, outside exported preferences.
 import {shared,setShared} from '../api.js';
 export const GIT_ADDED_REPOSITORIES='custom.git.added-repositories';
-const valid=r=>r&&typeof r.name==='string'&&r.name.length<=200&&Number.isSafeInteger(r.repositoryId)&&r.repositoryId>0;
-const row=r=>({name:r.name,repositoryId:r.repositoryId,...(typeof r.warning==='string'?{warning:r.warning.slice(0,300)}:{})});
+import {validAddedRepository as valid,addedRepositoryRow as row,confirmedAddedRepositories} from './added-repositories-model.js';
 /** The saved rows for `scope` (relay|account), or null when nothing was confirmed there yet. */
 export function addedRepositories(scope){
-  const record=shared(GIT_ADDED_REPOSITORIES);
-  if(record?.version!==1||record.scope!==scope||!Array.isArray(record.repositories))return null;
-  return record.repositories.filter(valid).map(row);
+  return confirmedAddedRepositories(shared(GIT_ADDED_REPOSITORIES),scope);
 }
 export function saveAddedRepositories(scope,repositories){
   const unique=new Map(repositories.filter(valid).map(r=>[r.name.toLowerCase(),row(r)]));

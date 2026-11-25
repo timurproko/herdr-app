@@ -15,7 +15,7 @@ export function currentPull(stdout, pr, repo) {
   return value?.number === pr.number && value.state === 'open' && sameRepo(value.base?.repo?.full_name, repo)
     && value.head?.sha?.toLowerCase() === pr.headRefOid.toLowerCase();
 }
-export function failedRuns(stdout, pr, repo) {
+function latestRuns(stdout, pr, repo) {
   const value = JSON.parse(stdout);
   if (!validRepository(repo) || !validHead(pr.headRefOid) || !Array.isArray(value?.workflow_runs)
       || !Number.isSafeInteger(value.total_count) || value.total_count < 0 || value.total_count > 100
@@ -26,7 +26,12 @@ export function failedRuns(stdout, pr, repo) {
     const previous = latest.get(run.workflow_id);
     if (!previous || run.id > previous.id || (run.id === previous.id && run.run_attempt > previous.run_attempt)) latest.set(run.workflow_id,run);
   }
-  const runs = [...latest.values()].filter(failed).map(run => ({id:run.id,attempt:run.run_attempt,workflow:run.workflow_id,
+  return [...latest.values()];
+}
+// Diagnostics reuse exactly the same verified newest-workflow evidence, with no extra read.
+export const workflowStillRunning=(stdout,pr,repo)=>latestRuns(stdout,pr,repo).some(run=>['queued','in_progress','waiting','pending','requested'].includes(run.status));
+export function failedRuns(stdout, pr, repo) {
+  const runs = latestRuns(stdout,pr,repo).filter(failed).map(run => ({id:run.id,attempt:run.run_attempt,workflow:run.workflow_id,
     head:pr.headRefOid.toLowerCase(),url:`https://github.com/${repo}/actions/runs/${run.id}`}));
   if (runs.length > 16) throw Error('Too many failed workflows for one bounded CI request.');
   return runs;

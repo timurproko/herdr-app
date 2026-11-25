@@ -1,6 +1,6 @@
 // Core-side logic: no desktop, sockets, credentials, timers or durable jobs here.
 import {agentPullNumber} from './ci-footer.js';
-import {validRepository,validHead,currentPull,failedRuns,currentRun,failureKey,fixPrompt,conflictingPull,conflictKey,conflictFiles,conflictPrompt,mergedPull,mergedKey,mergedPrompt} from './ci-evidence.js';
+import {validRepository,validHead,currentPull,failedRuns,workflowStillRunning,currentRun,failureKey,fixPrompt,conflictingPull,conflictKey,conflictFiles,conflictPrompt,mergedPull,mergedKey,mergedPrompt} from './ci-evidence.js';
 import {rawCIState} from './ci-states.js';
 import {sendArgs,deliveryResult} from './ci-delivery.js';
 import {validateConfig,localIdentity,targetReady,targetKey,ciMessagesOn,conflictMessagesOn,mergedMessagesOn} from './monitor-policy.js';
@@ -42,7 +42,13 @@ export function validOwners(value){
 }
 export function memoryOwners(){let value={};return {read:()=>value,write:v=>{value=v;}};}
 export class CoreCIMonitor {
-  constructor({run,config,journal,owners=memoryOwners(),report=()=>{},now=Date.now}){Object.assign(this,{run,config,journal,owners,report,now});}
+  constructor({run,config,journal,owners=memoryOwners(),report=()=>{},now=Date.now}){Object.assign(this,{run,config,journal,owners,report,now});this.verificationFailures=0;}
+  emit(event){try{this.report(event);}catch{/* Diagnostic sinks cannot change delivery. */}}
+  decision(target,reason,kind='ci',event='suppressed'){
+    this.lastDecision={event,reason};
+    this.emit({event,reason,kind,address:target?.address??null,repository:target?.repo??null,pr:target?.number??null});
+    return false;
+  }
   async alive(c,kept){
     try{
       const t=JSON.parse(await this.core(c,['get',kept.address,'--json']));
@@ -106,7 +112,7 @@ export class CoreCIMonitor {
   // Remember on the agent's own terminal which PR it works on (gone with the terminal).
   async link(c,address,repo,number){
     try{await this.core(c,['label',address,`${LINK_REPOSITORY}=${repo}`,`${LINK_PR}=${number}`]);}
-    catch{this.report({event:'link-failed',address});}
+    catch{this.emit({event:'link-failed',address});}
   }
   async inventory(c) {
     const listed=JSON.parse(await this.core(c,['ls','--json']));
@@ -114,7 +120,7 @@ export class CoreCIMonitor {
     const locals=listed.terminals.filter(t=>/^t[a-z0-9]+$/i.test(t.address??'')&&t.state==='live'&&t.status);
     if(locals.length>64)throw Error('Core inventory limit exceeded');
     const targets=[];
-    for(const t of locals){try{const found=await this.lookup(c,t.address);if(found)targets.push(found);}catch{this.report({event:'agent-unverified',address:t.address});}}
+    for(const t of locals){try{const found=await this.lookup(c,t.address);if(found)targets.push(found);}catch{this.verificationFailures++;this.emit({event:'agent-unverified',reason:'verification-failed',address:t.address});}}
     // Unrelated/unreadable agents cannot authorize a send, but must not prevent
     // a separately verified target from receiving its own PR's deduplicated request.
     return targets;
@@ -123,14 +129,34 @@ export class CoreCIMonitor {
     const c=validateConfig(await this.config());
     const status=JSON.parse(await this.core(c,['server','status','--json']));
     if(status.core?.id!==c.coreId)throw Error('Core identity changed');
-    if(!c.enabled||!c.repositories.length)return {enabled:c.enabled,targets:0,attempts:0};
+    this.verificationFailures=0;
+    if(!c.enabled)return {enabled:false,targets:0,attempts:0,health:'paused',reason:'disabled'};
+    if(!c.repositories.length){this.decision(null,'no-monitored-repositories');return {enabled:true,targets:0,attempts:0,health:'suppressed',reason:'no-monitored-repositories'};}
     const targets=await this.inventory(c),owners=await this.resolveOwners(c,targets);
-    let attempts=0;
+    let attempts=0,delivered=0,unknown=0,suppressed=0;const reasons={};
     for(const target of targets){
-      if(owners.get(targetKey(target))!==target||!targetReady(target.terminal,c))continue;
-      try{if(await this.request(c,target,send))attempts++;}catch{this.report({event:'verification-failed',address:target.address});}
+      this.lastDecision=null;
+      if(owners.get(targetKey(target))!==target)this.decision(target,'not-owner');
+      else if(!targetReady(target.terminal,c))this.decision(target,'agent-state-not-selected');
+      else try{
+        if(await this.request(c,target,send))attempts++;
+        if(!this.lastDecision)this.decision(target,'no-action');
+      }catch{this.verificationFailures++;this.decision(target,'verification-failed','ci','verification-failed');}
+      const d=this.lastDecision;
+      if(d.event==='delivered')delivered++;else if(d.event==='unknown')unknown++;else suppressed++;
+      reasons[d.reason]=(reasons[d.reason]??0)+1;
     }
-    return {enabled:true,targets:targets.length,attempts};
+    if(!targets.length){this.decision(null,'no-verified-targets');reasons['no-verified-targets']=1;}
+    const health=this.verificationFailures?'unavailable':unknown?'uncertain':delivered?'ready':'suppressed';
+    const reason=this.verificationFailures?'verification-failed':unknown?'unknown':delivered?'delivered':Object.keys(reasons).length===1?Object.keys(reasons)[0]:'all-candidates-skipped';
+    return {enabled:true,targets:targets.length,attempts,delivered,unknown,suppressed,health,reason,reasons};
+  }
+  async stillOwner(c,target,live,kind='ci'){
+    const owner=(await this.resolveOwners(c,await this.inventory(c))).get(targetKey(target));
+    if(!owner||owner.address!==target.address||owner.binding!==target.binding)return this.decision(target,'target-changed',kind);
+    if(!targetReady(owner.terminal,c))return this.decision(target,'agent-state-not-selected',kind);
+    if(!await live())return this.decision(target,'target-changed',kind);
+    return true;
   }
   async request(c,target,send) {
     const deadline=this.now()+90000;
@@ -147,15 +173,14 @@ export class CoreCIMonitor {
     const pr={number:target.number,state:raw.draft?'draft':'open',headRefOid:raw.head.sha,checks:{bad:1}};
     if(!currentPull(JSON.stringify(raw),pr,target.repo))return false;
     const endpoint=`actions/runs?head_sha=${pr.headRefOid}&per_page=100`;
-    const runs=failedRuns(await api(endpoint),pr,target.repo);
-    if(!runs.length)return false;
+    const evidence=await api(endpoint),runs=failedRuns(evidence,pr,target.repo);
+    if(!runs.length)return this.decision(target,workflowStillRunning(evidence,pr,target.repo)?'workflow-still-running':'no-failed-workflows');
     for(const run of runs)if(!currentRun(await api(`actions/runs/${run.id}`),run,target.repo))return false;
-    const owner=(await this.resolveOwners(c,await this.inventory(c))).get(targetKey(target));
-    if(!owner||owner.address!==target.address||owner.binding!==target.binding||!targetReady(owner.terminal,c)||!await live())return false;
+    if(!await this.stillOwner(c,target,live))return false;
     if(!currentPull(await api(`pulls/${pr.number}`),pr,target.repo))return false;
     const latest=failedRuns(await api(endpoint),pr,target.repo);
     if(JSON.stringify(latest)!==JSON.stringify(runs)||!await live())return false;
-    if(!send){this.report({event:'would-request',address:target.address,repository:target.repo,pr:pr.number});return false;}
+    if(!send)return this.decision(target,'dry-run','ci','would-request');
     return this.deliver(c,target,live,runs.map(run=>failureKey(target.repo,pr,run)),
       keys=>fixPrompt(target.repo,pr,runs.filter(run=>keys.includes(failureKey(target.repo,pr,run))),c.template));
   }
@@ -166,7 +191,7 @@ export class CoreCIMonitor {
     const base=JSON.parse(await api(`git/ref/heads/${branch}`))?.object?.sha;
     if(!validHead(base))return false;
     const key=conflictKey(target.repo,target.number,head,base);
-    if(this.journal.has&&await this.journal.has(key))return null; // already asked: skip the git work
+    if(this.journal.has&&await this.journal.has(key)){this.decision(target,'already-sent','conflict');return null;} // Recorded, not necessarily acknowledged: skip the git work
     let files=null;
     const fetched=await this.run(c.commands.git,['fetch','--quiet','--no-tags','--no-write-fetch-head','origin',base,head],{cwd:target.cwd,timeout:45000});
     if(fetched.code===0){
@@ -174,35 +199,34 @@ export class CoreCIMonitor {
       if(merged.code===0)return false; // merges cleanly here: GitHub's answer is stale
       if(merged.code===1)files=conflictFiles(merged.stdout);
     }
-    const owner=(await this.resolveOwners(c,await this.inventory(c))).get(targetKey(target));
-    if(!owner||owner.address!==target.address||owner.binding!==target.binding||!targetReady(owner.terminal,c)||!await live())return false;
+    if(!await this.stillOwner(c,target,live,'conflict'))return false;
     const again=JSON.parse(await api(`pulls/${target.number}`));
     if(!conflictingPull(again,target.repo)||again.head.sha.toLowerCase()!==head||again.base.ref!==branch||!await live())return false;
-    if(!send){this.report({event:'would-request',kind:'conflict',address:target.address,repository:target.repo,pr:target.number});return false;}
+    if(!send)return this.decision(target,'dry-run','conflict','would-request');
     return this.deliver(c,target,live,[key],()=>conflictPrompt(target.repo,target.number,{head,base:branch,files},c.conflictTemplate),'conflict');
   }
   // The agent's PR was merged: tell it once, so it cleans up its worktree.
   async merged(c,target,send,raw,live,api) {
     const key=mergedKey(target.repo,target.number);
-    if(this.journal.has&&await this.journal.has(key))return null;
-    const owner=(await this.resolveOwners(c,await this.inventory(c))).get(targetKey(target));
-    if(!owner||owner.address!==target.address||owner.binding!==target.binding||!targetReady(owner.terminal,c)||!await live())return false;
-    if(!send){this.report({event:'would-request',kind:'merged',address:target.address,repository:target.repo,pr:target.number});return false;}
+    if(this.journal.has&&await this.journal.has(key)){this.decision(target,'already-sent','merged');return null;}
+    if(!await this.stillOwner(c,target,live,'merged'))return false;
+    if(!send)return this.decision(target,'dry-run','merged','would-request');
     return this.deliver(c,target,live,[key],()=>mergedPrompt(target.repo,target.number,{base:raw.base.ref,branch:raw.head?.ref},c.mergedTemplate),'merged');
   }
   // Claim the keys, re-read the agent right before typing, send without force, record the outcome.
   async deliver(c,target,live,keys,message,kind='ci') {
     const claim=await this.journal.claim(keys);
-    if(!claim.keys.length)return null; // every key was already asked about
+    if(!claim.keys.length){this.decision(target,'already-sent',kind);return null;} // Recorded receipts also include attempted/unknown submissions
     let submitted=false;
     try{
       const final=JSON.parse(await this.core(c,['get',target.address,'--json']));
-      if(localIdentity(final)!==target.identity||!targetReady(final,c)||!await live())return false;
+      if(localIdentity(final)!==target.identity||!await live())return this.decision(target,'target-changed',kind);
+      if(!targetReady(final,c))return this.decision(target,'agent-state-not-selected',kind);
       const args=sendArgs(target.address,message(claim.keys),rawCIState(final),c.states);
       submitted=true;let result;
       try{result=deliveryResult(await this.run(c.commands.hc,args,{timeout:15000}));}catch{result=deliveryResult(null);}
       await this.journal.finish(claim,result.outcome);
-      this.report({event:result.outcome,kind,address:target.address,repository:target.repo,pr:target.number});return true;
+      this.decision(target,result.outcome,kind,result.outcome);return true;
     }finally{if(!submitted)await this.journal.finish(claim,'refused');}
   }
 }

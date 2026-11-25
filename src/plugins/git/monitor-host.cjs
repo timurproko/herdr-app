@@ -37,7 +37,8 @@ async function main(input,{root=path.join(os.homedir(),'.local','state','herdr-c
   if(input.action==='status'){
     const state=installed&&fs.existsSync(path.join(root,'status.json'))?json(path.join(root,'status.json')):null;
     const config=installed&&fs.existsSync(path.join(root,'config.json'))?json(path.join(root,'config.json')):null;
-    return {installed:Boolean(installed),packageHash:installed?path.basename(path.dirname(installed.entry)):null,task:t?.state??null,running:Boolean(t?.state==='Running'&&state&&Date.now()-state.heartbeat<180000),enabled:config?.enabled??false,states:config?.states??[],repositories:config?.repositories??[],heartbeat:state?.heartbeat??null,health:state?.health??null,lastEvent:state?.lastEvent??null,root};
+    const emptyScope=config?.enabled===true&&Array.isArray(config.repositories)&&config.repositories.length===0;
+    return {installed:Boolean(installed),packageHash:installed?path.basename(path.dirname(installed.entry)):null,task:t?.state??null,running:Boolean(t?.state==='Running'&&state&&Date.now()-state.heartbeat<180000),enabled:config?.enabled??false,states:config?.states??[],repositories:config?.repositories??[],heartbeat:state?.heartbeat??null,health:emptyScope?'suppressed':state?.health??null,reason:emptyScope?'no-monitored-repositories':state?.reason??null,targets:emptyScope?0:state?.targets??0,attempts:emptyScope?0:state?.attempts??0,delivered:emptyScope?0:state?.delivered??0,unknown:emptyScope?0:state?.unknown??0,suppressed:emptyScope?0:state?.suppressed??0,reasons:emptyScope?{'no-monitored-repositories':1}:state?.reasons??{},lastEvent:state?.lastEvent??null,root};
   }
   if(!installed&&input.action!=='install')throw Error('Install the monitor on this machine first');
   if(installed&&(!installed.hashes||fs.readFileSync(path.join(path.dirname(installed.entry),'package.json'),'utf8')!=='{"type":"module"}'||FILES.some(file=>{
