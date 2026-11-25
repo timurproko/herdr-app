@@ -15,7 +15,12 @@ for(const mode of ['ordinary','coordinator'])for(const state of ['open','closed'
   h.setEnvironment(zoom,font);budget(h.renderMounted(count,mode,state),mode,count);comparisons++;
 }
 // A known bottom viewport takes priority without reordering/dropping any rows.
-h.setEnvironment(1.3,'Geist');h.panel.pullViewport={context:'ordinary',state:'open',first:92,count:8};
+h.setEnvironment(1.3,'Geist');h.panel.context='ordinary';h.panel.view='open';h.renderMounted(100,'ordinary');
+const step=(74+h.U.rowGap)*1.3,position={x:100,y:110};
+h.panel.contentMotion({position,delta:{y:0},bounds:{y:100-92*step,height:100*step}},'wheel','open');
+h.panel.scrollMotionAt({position,bounds:{y:100,height:7*step}},'wheel','open',h.cx);
+assert.equal(h.panel.pullViewport.first,92,'Real bubbling content/frame bounds identify the bottom viewport');
+assert.equal(h.panel.pullViewport.count,8);
 const scrolled=h.renderMounted(100,'ordinary');budget(scrolled,'ordinary',100);
 const probes=nodes(scrolled.tree).filter(n=>n.attrs.id?.[0]?.includes('-measure-'));
 assert.equal(probes.length,4);assert.ok(probes.every(n=>n.attrs.id[0].startsWith('pr-byline-93-')),'Visible bottom rows precede offscreen top rows');

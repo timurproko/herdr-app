@@ -16,8 +16,8 @@
 ## 3. Readable native truncation without title or pill subtrees
 
 - [x] 3.1 Remove title/per-pill/prefix measurement and choose native Segoe UI truncation at the original size/weight with always-full-title hover; the 540-case style/geometry and same-ID title-edit regressions pass without title size callbacks.
-- [ ] 3.2 Update the disposable native fixture to exercise the production fallback and assert zero title probes; captures at 100%/130% show distinct native U+2026 dots with no host errors.
-- [ ] 3.3 Document the face change, approved tooltip exception, original Geist diagnosis, native evidence and remaining platform/paint limits; targeted glyph/geometry/temporary-mod fixtures pass.
+- [x] 3.2 Update the disposable native fixture to exercise the production fallback and assert zero title probes; captures at 100%/130% show distinct native U+2026 dots with no host errors.
+- [x] 3.3 Document the face change, approved tooltip exception, original Geist diagnosis, native evidence and remaining platform/paint limits; targeted glyph/geometry/temporary-mod fixtures pass.
 
 ## Workflow follow-up
 

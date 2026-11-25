@@ -26,21 +26,21 @@ for(const zoom of [1,1.3]) {
   put('mods/custom-ellipsis-fixture/mod.json',{place:'none'});
   put('mods/custom-ellipsis-fixture/main.js',`import Changes from './changes.js';import {div} from 'gpui-kit';import {h_flex,v_flex} from 'gpui-base';import {writeTextFile} from './host.js';
 export default class Fixture extends Changes {
- init(p,cx){this.context='fixture';cx.timer.after(2000,cx=>cx.spawn(async()=>{await writeTextFile(${JSON.stringify(path.join(home,'metrics.json'))},JSON.stringify({boxes:[...(this.pullTextBoxes??[])],widths:[...(this.pullTextWidths??[])]}),null);}));}
+ init(p,cx){this.context='fixture';cx.timer.after(2000,cx=>cx.spawn(async()=>{await writeTextFile(${JSON.stringify(path.join(home,'metrics.json'))},JSON.stringify({probes:this.pullTextPending?.size??0,titleMeasurements:false}),null);}));}
  shown(){return true;}
- render(){this.pullTextPending=new Set();const text='feature(status): add bounded fleet overview with a very long title';
+ render(){this.beginPullRender();const text='feature(status): add bounded fleet overview with a very long title';
  const row=(label,body)=>h_flex().h(48).gap(20).items_center().child(div().w(230).text_size(12).font_normal().child(label)).child(body);
  const native=(font,semi,literal=false,height=20,family='Geist')=>div().w(240).h(height).line_height(height+'px').text_size(font).font_family(family).when(semi,el=>el.font_semibold()).when(!semi,el=>el.font_normal()).when(!literal,el=>el.truncate()).when(literal,el=>el.whitespace_nowrap().overflow_hidden()).child(literal?'feature(status): add fleet …':text);
- const fixed=(id,font,weight)=>this.measuredText(id,text,{font,height:font===13?20:18,weight,truncate:true}).w(240);
+ const fixed=(id,font,weight)=>this.pullTitle(id,text,font,font===13?20:18).when(weight==='semibold',el=>el.font_semibold()).w(240);
  const rows=${diagnose ? `[
  row('Geist 13 semibold native',native(13,true)),row('Geist 13 semibold literal',native(13,true,true)),
  row('Geist 13 normal native',native(13,false)),row('Geist 13 normal literal',native(13,false,true)),
  row('Geist metadata 11 native',native(11,false,false,18)),row('Geist metadata 11 literal',native(11,false,true,18)),
  row('Geist semibold taller line',native(13,true,false,32)),row('Segoe UI native',native(13,true,false,20,'Segoe UI'))]` : `[
- row('Before: PR title',native(13,true)),row('After: measured PR title',fixed('pr-title-native',13,'semibold')),
+ row('Before: PR title',native(13,true)),row('After: native fallback title',fixed('pr-title-native',13,'semibold')),
  row('Before: repository header',native(12,false,false,18)),row('After: repository header',fixed('task-repo-name-native',12,'normal')),
  row('Before: panel repository',native(12,false,false,18)),row('After: panel repository',fixed('git-repo-name',12,'normal')),
- row('Unchanged fitting title',this.measuredText('pr-title-short','A fitting PR title',{font:13,height:20,weight:'semibold',truncate:true}).w(240))]`};
+ row('Unchanged fitting title',this.pullTitle('pr-title-short','A fitting PR title').font_semibold().w(240))]`};
  return v_flex().size_full().p(24).gap(8).font_family('Geist').bg('#191d28').text_color('#eeeeee')
  .child(div().h(32).text_size(16).child('Disposable Git ellipsis ${diagnose?'diagnosis':'fix'} — zoom ${zoom}')).children(rows);
  }}
@@ -58,9 +58,8 @@ export default class Fixture extends Changes {
     execFileSync(app,['shot',path.join(home,'comparison.png')],{env,timeout:15000,windowsHide:true});
     if(!diagnose) {
       const metrics=JSON.parse(fs.readFileSync(path.join(home,'metrics.json'),'utf8'));
-      for(const id of ['pr-title-native','task-repo-name-native','git-repo-name']) {
-        const record=metrics.boxes.find(([key])=>key===id)?.[1];assert.ok(record?.fit&&record.fit.high-record.fit.low<=1,'Measured prefix converges');
-      }
+      assert.equal(metrics.probes,0,'Titles/header native truncation add no intrinsic probes');
+      assert.equal(metrics.titleMeasurements,false);
     }
     console.log(`Native ${diagnose?'diagnosis':'fix'} ${zoom*100}%: ${home}`);
   } finally {child.kill();await sleep(400);fs.closeSync(descriptor);}

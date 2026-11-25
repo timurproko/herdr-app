@@ -68,11 +68,13 @@ settings per render entry, and schedules four shared intrinsic probes total.
 
 | Mounted rows | fc0dfde coordinator, ms | Repaired coordinator, ms | fc0dfde ordinary, ms | Repaired ordinary, ms | Repaired ordinary scrolled-bottom, ms |
 |---|---|---|---|---|---|
-| 30 | 6, 6, 7 | 6, 5, 4 | 10, 10, 10 | 6, 6, 6 | 6, 6, 7 |
-| 60 | 14, 14, 14 | 11, 10, 10 | 21, 19, 20 | 13, 12, 11 | 12, 12, 12 |
-| 100 | 24, 26, 22 | 18, 21, 18 | 33, 31, 30 | 23, 20, 18 | 21, 21, 21 |
-| 200 | 48, 45, 49 | 33, 33, 35 | interrupted ×3 | 40, 37, 38 | 42, 40, 42 |
+| 30 | 6, 7, 6 | 5, 5, 5 | 11, 10, 9 | 7, 6, 6 | 5, 5, 6 |
+| 60 | 14, 15, 14 | 12, 10, 9 | 21, 21, 19 | 11, 11, 10 | 12, 13, 11 |
+| 100 | 22, 28, 22 | 16, 16, 16 | 31, 32, 34 | 20, 18, 19 | 21, 20, 21 |
+| 200 | 51, 44, 50 | 34, 33, 33 | interrupted ×3 | 37, 37, 43 | 42, 41, 39 |
 
+These samples were rerun after merging main through #63. Scrolled baseline samples
+were 9/11/10, 20/21/20 and 31/30/30 ms at 30/60/100, and interrupted at 200.
 Every repaired sample completed with all requested rows and **four probes**.
 The native tool enforces the requested baseline +2ms and 10/17/26ms ceilings at
 30/60/100 and requires every current 200-row sample to complete. It records failed
