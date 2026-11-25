@@ -46,5 +46,11 @@ for(let batch=0;batch<10;batch++) {
  if(!window.more){panel.nextTaskChunk(window,context.scope,cx);tree=render();assert.equal(window.start,0);break;}
  assert.ok(window.canTurn);panel.nextTaskChunk(window,context.scope,cx);tree=render();
 }
-assert.equal(seen.size,208);await Promise.all(jobs);
+assert.equal(seen.size,208);
+// A new repository arriving before a full batch cannot leave its deferred
+// first row's header behind, nor evict the batch's already revealed PRs.
+revealAll();const retained=taskWindow(panel).range().revealedRows.map(row=>row.key);assert.equal(retained.length,60);
+add('aaa/new-repo',999);tree=render();assert.equal(find(tree,'task-repo-aaa/new-repo'),undefined);
+assert.deepEqual(taskWindow(panel).range().revealedRows.map(row=>row.key),retained);assert.ok(taskWindow(panel).canTurn);
+await Promise.all(jobs);
 console.log('PASS unfolded-section invariant after every reveal, refresh, tab move, expiry, absence, notice resolution, fold and capped batch cycle');

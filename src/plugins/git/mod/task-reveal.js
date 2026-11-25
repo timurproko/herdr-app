@@ -44,6 +44,9 @@ export class TaskReveal {
         const known=new Set(this.items.map(item=>item.key)),deferred=new Set();
         for(const item of span)if(overflow&&item.row&&!known.has(item.key)){deferred.add(item.key);overflow--;}
         this.pendingNew=deferred.size;items=items.filter(item=>!deferred.has(item.key));
+        // Deferring a new repository's only row must also defer its header.
+        items=items.filter((item,i)=>!item.header||item.folded||(!items[i+1]?.header&&items[i+1]?.repo===item.repo));
+        items.forEach((item,i)=>{item.gap=items[i+1]?.repo===item.repo?gap:0;});
       }
     }
     // A full batch never evicts an already revealed PR to insert a new one.
