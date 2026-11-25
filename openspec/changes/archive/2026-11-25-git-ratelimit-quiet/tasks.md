@@ -16,10 +16,10 @@
 - [x] 2.4 Restore main's immediate event consumer and window behavior; remove the two-second debounce, pending-invalidation Map/ownership transfer, blocked/waiting protocol, activity pause/catch-up and event-failure retry scheduler.
 - [x] 2.5 Retain affected repository identity in main-style callbacks so each separately dispatched event uses its affected repository batch, without a two-second window.
 - [x] 2.6 Remove the retired transition-invariant regression and update retained tests, documentation, request inventory and measured budgets for the approved reduced scope.
-- [x] 2.7 Preserve current origin/main, including merged PRs 62, 65, 66, 68 and 69; no peer PR or branch is edited. Run targeted checks and report hosted exact-head required-check status without looping the full local suite.
+- [x] 2.7 Preserve current origin/main, including merged PRs 56, 62, 65, 66, 68 and 69; no peer PR or branch is edited. Run targeted checks and report hosted exact-head required-check status without looping the full local suite.
 
 ## Scope and validation notes
 
-The coordinator explicitly approved this two-outcome reduction after four review rounds. It supersedes all earlier promises of debounce, pending-demand retention, inactive-window suppression, enrollment batching and deferred enrollment retry. Those paths are removed rather than patched. Still-open PR 56 is not a delivery hold, as previously authorized. No relay deployment, new service, native operation or merge is authorized.
+The coordinator explicitly approved this two-outcome reduction after four review rounds. It supersedes all earlier promises of debounce, pending-demand retention, inactive-window suppression, enrollment batching and deferred enrollment retry. Those paths are removed rather than patched. PR 56 has now landed and is integrated from main, including mounted-row reveal, viewport safety selection and its regression assertions. No relay deployment, new service, native operation or merge is authorized.
 
 The standalone deployment test previously passed in 18.0 seconds after the environmental local-suite failure. Hosted Windows/Ubuntu are the decisive full-suite gate. Delivery owns refinalization of these revised archived artifacts and canonical specs; the existing finalization history is preserved.

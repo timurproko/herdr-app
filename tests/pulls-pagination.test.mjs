@@ -3,6 +3,7 @@
 // replies and scoped totals. Native scrolling/motion have separate fixtures.
 import assert from 'node:assert/strict';
 import {rowHarness,find,t} from './support/git-row.mjs';
+import {ordinaryContent} from './support/git-scroll.mjs';
 const raw=(n,state='OPEN')=>({number:n,url:`https://github.com/owner/repo/pull/${n}`,title:`PR ${n}`,state,isDraft:false,headRefOid:`sha-${n}`,createdAt:new Date(1700000000000+n*1000).toISOString(),mergedAt:state==='MERGED'?new Date().toISOString():null,closedAt:state==='OPEN'?null:new Date().toISOString(),labels:{nodes:[{name:'label',color:'840479'}]},author:{login:'fixture'},body:'- [x] done'});
 async function harness() {
  const data=new Map([...Array.from({length:50},(_,i)=>raw(i+1)),...Array.from({length:30},(_,i)=>raw(i+51,'MERGED')),raw(908)].map(pr=>[pr.number,pr]));
@@ -62,7 +63,7 @@ for(const state of ['open','closed']) {
 for(const state of ['open','closed']) {
  const h=await harness(),v=h.panel;v.view=state;v.loadPulls(state,h.cx,true);await h.drain();
  const scroll=(bottom,delta=-40)=>{
-  const tree=h.render(()=>v.renderPulls(t)),content=find(tree,'pulls-content'),frame=find(tree,'pulls-scroll-frame');
+  const tree=h.render(()=>v.renderPulls(t)),content=ordinaryContent(tree),frame=find(tree,'pulls-scroll-frame');
   const event={position:{x:10,y:500},delta:{y:delta},bounds:{y:bottom-1000,height:1000}};
   content.attrs.on_scroll_wheel[0](event,h.cx);frame.attrs.on_scroll_wheel[0]({...event,bounds:{y:0,height:600}},h.cx);
  };
