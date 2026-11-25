@@ -210,11 +210,11 @@ export default class Usage extends View {
     return collapsible(t,{id:`usage-claude-resets-${entry.id}`,title:'Resets',open,onToggle:toggle,chevron:'end',trailing:count,
       label:`Resets: ${label}. ${open?'Hide':'Show'} them`,on:t.surface,bodyInset:0,bodyHeight:height},
       ()=>v_flex().id(`usage-claude-resets-rows-${entry.id}`).gap(2)
-        .children(resets.groups.map(g=>this.resetLine(t,entry,g,date,open)))
+        .children(resets.groups.map(g=>this.resetLine(t,entry,g,date,open,label)))
         .when(Boolean(outcome),e=>e.child(div().id(`usage-claude-reset-outcome-${entry.id}`).h(RESET_OUTCOME).flex_none().px(8).flex().items_center()
           .text_size(U.meta).text_color(t.muted).child(outcome))));
   }
-  resetLine(t,entry,g,date,open=true) {
+  resetLine(t,entry,g,date,open=true,label='') {
     const key=`${entry.id}:${g.grantId}`,busy=Boolean(this.claiming),mine=this.claiming===key,confirming=this.resetConfirm===key;
     const why=g.usable?null:g.reason==='plan'?'Not included in this plan':g.needsLimit?'Available once you hit a limit':g.cooldownUntil?`Available after ${date(g.cooldownUntil)}`:'Not available right now';
     const enabled=g.usable&&!busy;
@@ -231,8 +231,8 @@ export default class Usage extends View {
       .on_mouse_down('left',(_e,cx)=>cx.stop_propagation());
     // One line that highlights on hover (like Settings' repository rows); the button shows
     // only then, or while it asks to confirm or is resetting. Its slot keeps its width.
-    // The slot ends where the header's count does: one chevron box (U.control) and its 8px gap
-    // in from the edge, the same place a window row's value ends before its pin.
+    // Keep the same trailing column as the header; an invisible copy of its natural-width
+    // label centres the unchanged button under the text, excluding the chevron.
     const rid=`usage-claude-reset-line-${key}`,shown=open&&(this.resetHover===rid||confirming||mine);
     return h_flex().id(rid).h(U.control).flex_none().px(8).gap(8).items_center().rounded(U.radius)
       .when(shown,e=>e.bg(resetsHover(t,true)))
@@ -240,7 +240,11 @@ export default class Usage extends View {
       .child(div().w(RESET_NAME).flex_none().truncate().child(g.left>1?`${g.name} · ${g.left}`:g.name))
       .child(div().flex_1().min_w(0).truncate().text_size(U.meta).text_color(t.muted)
         .child(g.endsAt?`${g.left>1?'All expire':'Expires'} ${date(g.endsAt)}`:''))
-      .child(div().id(`${rid}-slot`).w(RESET_BUTTON).mr(U.control+8).h(U.control).flex_none().flex().items_center().justify_end().when(shown,e=>e.child(button)));
+      .child(div().id(`${rid}-slot`).w(RESET_BUTTON).h(U.control).flex_none().flex().items_center().justify_end()
+        .child(div().relative().flex_none()
+          .child(div().invisible().child(label))
+          .when(shown,e=>e.child(div().absolute().inset_0().flex().items_center().justify_center().child(button)))))
+      .child(div().size(U.control).flex_none());
   }
   // Claims, then keeps every reset button off until the card has collected again, so the
   // same reset can't be clicked twice; the bars then slide to their refilled values.

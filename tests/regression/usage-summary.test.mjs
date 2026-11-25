@@ -388,6 +388,29 @@ assert.equal(byId(view,'usage-summary-open').style.tooltip,undefined,'The hover 
   assert.equal(columns.length,6);
   assert.deepEqual(cells(0),['Codex','Claude','Claude']);assert.deepEqual(cells(3),['·','·','·']);assert.deepEqual(cells(5),['','(one)','(two)']);
 }
+// Reset buttons use the header label's natural-width box, not its wider column
+// or the chevron. Both providers/count widths retain the same slot and hover gate.
+for(const sourceLabel of ['Claude','Codex'])for(const available of [2,12]) {
+  const field=sourceLabel==='Claude'?'claudeResets':'codexResets';
+  const group={name:'Full reset',left:1,grantId:'centre',usable:true};
+  const entry={...cardEntry,sourceId:sourceLabel.toLowerCase(),sourceLabel,
+    report:{status:'available',windows:[],[field]:{available,groups:[group]}}};
+  setup({reports:[entry]});summaryMode=false;viewInstance.machine=null;viewInstance.resetsOpen=new Set([entry.id]);
+  const render=()=>card(entry),rid=`usage-claude-reset-line-${entry.id}:centre`,bid=`usage-claude-reset-${entry.id}:centre`;
+  assert.equal(byId(render(),bid),undefined,'Button remains hidden off hover');
+  byId(render(),rid).events.on_hover(true,cx);
+  const tree=render(),slot=byId(tree,`${rid}-slot`),anchor=slot.kids[0],copy=anchor.kids[0],overlay=anchor.kids[1],button=byId(tree,bid);
+  assert.equal(text(byId(tree,`usage-claude-resets-count-${entry.id}`)),`${available} available`);
+  assert.equal(copy.kids[0],`${available} available`);assert.ok(copy.style.invisible);
+  assert.ok(anchor.style.relative);assert.ok(anchor.style.flex_none);assert.equal(anchor.style.w,undefined);
+  assert.ok(overlay.style.absolute);assert.ok(overlay.style.inset_0);assert.ok(overlay.style.justify_center);
+  assert.equal(slot.style.w[0],80);assert.equal(slot.style.h[0],28);
+  assert.equal(byId(tree,rid).kids.at(-1).style.size[0],28,'Same trailing chevron box and gap as the header');
+  for(const property of ['w','min_w','max_w'])assert.equal(button.style[property][0],80);
+  for(const property of ['h','min_h','max_h'])assert.equal(button.style[property][0],24);
+  assert.equal(nodes(anchor).some(n=>n.events.on_size_change),false,'Alignment has no measurement callbacks');
+  byId(tree,rid).events.on_hover(false,cx);assert.equal(byId(render(),bid),undefined);
+}
 // Reset success is silent for every kind/provider. Exercise the actual card,
 // claim controller, store refresh and shared collapsible; only transport is fake.
 const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
