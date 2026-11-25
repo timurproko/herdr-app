@@ -92,7 +92,8 @@ try {
   const selected=reviewed17.checks.palette.originals.find(o=>o.match);assert.equal(selected.file,palette17.file);assert.equal(selected.main,'src/integration/native-patches/palette/main-0.1.17.js');
   assert.match(reviewed17.evidence[selected.customDiff],/main-0.1.17.js/);
   assert.equal(reviewed17.checks.palette.originals.find(o=>o.file.endsWith('/original-0.1.17-windows.js')).match,false);
-  assert.equal(JSON.parse(reviewed17.evidence['palette-provenance.json']).data.installedVerification.release,'v0.1.17');
+  assert.equal(JSON.parse(reviewed17.evidence['palette-provenance.json']).data.installedVerification.release,'v0.1.18');
+  assert.equal(JSON.parse(reviewed17.evidence['palette-provenance.json']).data.previousInstalledVerifications[0].release,'v0.1.17');
   assert.equal(reviewed17.checks.feedback.provenance.data.installedVerification.release,'v0.1.17');
   assert.equal(reviewed17.checks.baselines.reviewed,false,'Native review does not manufacture a release-wide stock baseline');
   assert.match(reviewed17.checks.palette.binaryApplicability,/current installed binary not inspected/);
