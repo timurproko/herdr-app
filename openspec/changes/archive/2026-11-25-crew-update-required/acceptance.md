@@ -18,7 +18,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-25-crew-update-required/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-25-crew-update-required/acceptance.md",
   "finalizedDate": "2026-11-25",
-  "specBaseSha": "5c4c8d436868651c176faf5a12c7a153791e8297",
+  "specBaseSha": "d5199bda3fcc95c33ff344060def7ad9f36715e3",
   "acceptanceScenarios": [
     "Confirmed Crew updates show Outdated with the existing unmet colour and to-fix count on the selected machine, retaining Update and installed revision.",
     "Current installations remain Ready, unknown update evidence never claims outdated, and genuinely optional tools retain their optional status.",
@@ -27,7 +27,7 @@ The maintainer integration decision accepts these scenarios:
     "The final Outdated label fits the unchanged status rail at 130 percent in a simulated disposable native instance that has been stopped."
   ],
   "archiveDigest": "274cd7e5c5dca8ba3d43dbdd425af0cc368b60e0483a9e0f00cbfb4772fdaa7b",
-  "specDigest": "12b3433f4c4f28b487ef93e84c244266d9d037df9dae99e0cc5d1b3b1caa81f5",
+  "specDigest": "6480601848aa210452a53250ed63763ac5c5f481e6c523cf3d6dddfe6213a8eb",
   "tasksDigest": "03385b1dcb5f39519aa6db6b37f729a6cf16b2b554235b1154bff7cdf215d1fb",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []
