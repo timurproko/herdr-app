@@ -407,7 +407,9 @@ export default class Agents extends View {
         })
         .child(div().flex_1().min_w(0).truncate().text_color(t.muted).child(g.label))
         .child(h_flex().id(`agent-group-meta-${g.id}`).flex_none().gap(6).items_center()
-          .when(!open && !byPriority && top && top !== "idle", el => el.child(this.status(t, { status: top }, true)))
+          // Status styles have different margins (Done versus Working). Centre
+          // them in one fixed rail before the three-digit count slot.
+          .when(!open && !byPriority && top && top !== "idle", el => el.child(this.statusSlot(t, { status: top }, true).id(`agent-group-status-${g.id}`)))
           .child(this.numericSlot(t, `agent-count-${g.id}`, String(g.members.length)))
           .child(slot(chevron(t, open))));
     };

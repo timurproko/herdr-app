@@ -360,12 +360,13 @@ Effective panel backgrounds below weighted RGB lightness 0.5 use dark rules, oth
 use light; unavailable/invalid backgrounds default dark. This classification and
 invalid label colours are covered separately from the upstream formula.
 
-The same fixture checks 3px muted round separators,
-optically lowered 1.5 logical pixels from the parent line-box centre with equal 6px gaps,
-in bylines and between left-status groups, never before the right-anchored label group.
-Zoom cases from 75% to 200%, including 130%, retain
-the same logical offset; comparison with the old separator tree protects neighbouring
-text, icons, pills and row geometry. Missing-group combinations have no leading/trailing
+The same fixture checks 3px muted round separators, centred without an optical
+drop and with equal 6px gaps in bylines and between left-status groups, never before
+the right-anchored label group. Zoom cases from 75% to 200%, including 130%, retain
+the same placement; comparison with the old separator tree protects neighbouring
+text, icons, pills and row geometry. The geometry suite also checks equal separator
+offsets on both lower lines and a one-logical-pixel downward paint offset for every
+task-progress and checks-state icon, including ordinary/coordinator and ghost rows. Missing-group combinations have no leading/trailing
 or orphan painted dots; only present groups and separators occupy horizontal space.
 The status line itself remains mounted at 18px even when empty.
 Pagination/fleet fixtures also assert labels
@@ -873,6 +874,26 @@ another owner/home or machine. No fixture reads real task reports or GitHub.
 Recorded links deliberately do not guarantee pre-report PR discovery. Native pixels,
 actual drag motion and real remote execution remain unverified without separate
 authorization; fixture success is not deployment evidence.
+
+## Agents group dot columns
+
+`node --experimental-vm-modules tests/agents-dot-column.test.mjs` resolves the real
+Agents renderer and shared status helpers at 220–390px widths and 75–200% zoom,
+including 130%. Mixed Working/Done states and 1/10/100 counts share a dot column;
+9/10 and 99/100 transitions retain it. Expanded counts keep the same right-aligned
+32px slot; time and chevron rails stay unchanged. Resolving Done's horizontal
+margins is essential: the regression fails on the original mixed-state renderer.
+These are synthetic box assertions, not native pixels.
+
+The explicitly opt-in Windows command
+`node tests/features/agents-dot-native.mjs --run` builds into a disposable app home
+under this checkout's `.artifacts/`, with synthetic agents and no terminals or
+Core reads. It captures 130% native rendering with collapsed and expanded 1/10/100
+counts, measures painted dot centres and count glyph bounds, and asserts aligned
+group dots and count right edges (within one pixel of glyph raster rounding).
+Its screenshot, status and measurements remain in the printed artifact directory.
+Only its own app and isolated Core session are shut down; the running personal app,
+installed customizations and preferences are untouched.
 
 ## Tab-move compatibility and menu regressions
 

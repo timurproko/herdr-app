@@ -109,26 +109,25 @@ for(t.background of ['#191d28','#ffffff','#191d28'])for(zoom of [0.75,1,1.25,1.3
   for(const dot of separators) {
     assert.equal(dot.attrs.size[0],3);assert.equal(dot.attrs.bg[0],t.muted);assert.ok(dot.attrs.flex_none);assert.ok(dot.attrs.rounded_full);
     assert.equal(dot.kids.length,0,'A shape has no font-baseline-dependent glyph');
-    assert.deepEqual(dot.attrs.relative,[],'Optical offset must not change the flex layout slot');
-    assert.deepEqual(dot.attrs.top,[1.5],'Drop 1.5 logical pixels toward the lowercase x-height centre at every zoom');
-    assert.deepEqual(Object.keys(dot.attrs).sort(),['size','flex_none','relative','top','rounded_full','bg'].sort(),'No margins, padding or size changes');
+    assert.equal(dot.attrs.relative,undefined,'Dots use the same native centring as their line');
+    assert.equal(dot.attrs.top,undefined,'Neither lower line adds an optical drop');
+    assert.deepEqual(Object.keys(dot.attrs).sort(),['size','flex_none','rounded_full','bg'].sort(),'No offsets, margins, padding or size changes');
   }
   for(const line of [byline,meta]) {
     assert.ok(line.attrs.items_center);assert.equal(line.attrs.gap[0],6,'Equal left/right separator spacing');
     assert.equal(line.attrs.flex_wrap,undefined,'Separators cannot orphan onto wrapped lines');
   }
-  // Compare against the old separator: no neighbouring text, icon, pill or row
-  // geometry may change. Function bodies are irrelevant to this tree comparison.
+  // Removing the former optical drop changes only separator paint position.
   const separator=panel.metaSeparator;
-  panel.metaSeparator=()=>element().size(3).flex_none().rounded_full().bg(t.muted);
+  panel.metaSeparator=()=>separator.call(panel,t).relative().top(1.5);
   const before=panel.pullRow(t,pr,ghost);
   panel.metaSeparator=separator;
   const geometry=node=>JSON.stringify(node,(key,value)=>typeof value==='function'?'callback':value);
-  const normalized=JSON.parse(geometry(row));
+  const normalized=JSON.parse(geometry(before));
   for(const dot of [...find(normalized,`${prefix}pr-byline-${id}`).kids.filter(n=>!n.attrs.id),...find(normalized,`${prefix}pr-meta-${id}`).kids.filter(n=>!n.attrs.id)]) {
     delete dot.attrs.relative;delete dot.attrs.top;
   }
-  assert.equal(geometry(normalized),geometry(before),'Only separator paint position changes; row height and neighbours stay identical');
+  assert.equal(geometry(normalized),geometry(row),'Only separator paint position changes; row height and neighbours stay identical');
   assert.equal(Boolean(row.attrs.on_mouse_down),!ghost);assert.equal(Boolean(row.attrs.on_click),!ghost);
   assert.equal(Boolean(row.attrs.on_size_change),!ghost&&!coordinator,'Ordinary measured row callbacks survive');
 }
