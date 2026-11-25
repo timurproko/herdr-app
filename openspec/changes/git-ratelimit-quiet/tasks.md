@@ -27,7 +27,7 @@
 - [x] 3.5 Retain the 45-second unenrolled and 120-second enrolled shown-open safety deadlines, independent of mere event receipt; verify fake-clock success/failure, settled-check merge/close and return-during-cooldown fixtures, including selected-page/fold coverage.
 - [x] 3.6 Finish the full HTTP request inventory and before/after GraphQL-cost tables in docs/GIT-REQUEST-BUDGET.md and update README/docs links; verify every trigger listed in the brief is represented, CLI-internal/paginated operations are counted, REST endpoint choices are justified and estimates are distinguished from actual transport measurements.
 - [ ] 3.7 Incorporate current main after PRs 56 and 57 land without editing either PR or branch; verify their paging/fade/inset/tab/header-hover regressions remain intact alongside this change's focused tests.
-- [ ] 3.8 After checking no other suite is running, run CI=true npm run test:ci once on the final implementation and record results and exact-head required-check status; verify the handoff distinguishes passed, pending and draft-blocked checks without marking ready or merging.
+- [x] 3.8 After checking no other suite is running, run CI=true npm run test:ci once on the final implementation and record results and exact-head required-check status; verify the handoff distinguishes passed, pending and draft-blocked checks without marking ready or merging.
 
 ## Workflow follow-up
 
@@ -36,3 +36,5 @@
 - Leave the PR draft and unmerged as requested. Do not turn it ready or arm auto-merge. Report any draft-only CI limitation instead of bypassing it.
 - Current main is incorporated through `3143b12` (including PRs 51, 55, 57, 58, 60 and the now-merged 63). PR 56 remains open: task 3.7's post-56 integration condition is not claimed complete, and no open peer PR or branch was edited.
 - Takeover checks additionally cover retired shared subscribers, multiple deferred membership retries, final rows with pending checks, HTTP 429 stderr, explicit 401 precedence, selected-tab scrolling and detail-refusal snapshot retention.
+- An isolated pre-63 full run passed all 188 supported suites. Focused post-63 right-edge, sidebar-refresh and scheduling checks passed. The final full run started with no other suite running, but deployment.test.mjs asserted at line 36 and timed out; subsequent child starts failed with Windows 3221225794 (0xC0000142). No tests or gates were weakened; final full-suite success remains blocked, with evidence in .artifacts/test-ci-final.log.
+- Exact implementation head f172b25 completed its latest GitHub Readiness and OpenSpec checks successfully. Required platform suites, CI required and Delivery check were skipped by draft gating; no required-check success is claimed. The last PR outcome remains unticked with task 3.7 pending, preserving the explicitly requested draft.
