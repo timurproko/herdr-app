@@ -124,16 +124,16 @@ for (const phase of [
   for (const value of [undefined, null, '', 'not-a-commit', '4c4bff1', {}, 'b'.repeat(41), target, 'C'.repeat(64)]) {
     const snapshot = { revision: 'a'.repeat(40), check: { target: value }, ...phase.snapshot };
     const row = api.customizationRowState(snapshot, { now: clock, ...phase.options });
-    assert.equal(row.description, [target, 'C'.repeat(64)].includes(value) ? `Updating to ${value.slice(0, 7).toLowerCase()}.` : 'Updating.');
+    assert.equal(row.description, [target, 'C'.repeat(64)].includes(value) ? `Updating this machine to ${value.slice(0, 7).toLowerCase()}.` : 'Updating.');
     assert.equal(row.label, 'Updating…'); assert.equal(row.enabled, false);
     assert.equal(row.title, 'herdr-app-custom aaaaaaa');
   }
 }
 const targetJob = { state: 'running', token: 'target-run', deadline: clock + 30000 };
-assert.equal(api.customizationRowState({ job: { ...targetJob, target }, check: { target: 'c'.repeat(40) } }, { now: clock }).description, 'Updating to 4c4bff1.', 'active receipt wins over the check');
-assert.equal(api.customizationRowState({ job: { ...targetJob, target: 'malformed' }, check: { target } }, { now: clock }).description, 'Updating to 4c4bff1.', 'malformed receipt falls back to the published check');
+assert.equal(api.customizationRowState({ job: { ...targetJob, target }, check: { target: 'c'.repeat(40) } }, { now: clock }).description, 'Updating this machine to 4c4bff1.', 'active receipt wins over the check');
+assert.equal(api.customizationRowState({ job: { ...targetJob, target: 'malformed' }, check: { target } }, { now: clock }).description, 'Updating this machine to 4c4bff1.', 'malformed receipt falls back to the published check');
 assert.equal(api.customizationRowState({ job: { state: 'complete', target }, launch: { deadline: clock + 30000 } }, { now: clock }).description, 'Updating.', 'an old completed job cannot supply a target');
-assert.equal(api.customizationRowState({ job: targetJob, progress: { token: 'target-run', target } }, { now: clock }).description, 'Updating to 4c4bff1.', 'same-run context survives missing check facts');
+assert.equal(api.customizationRowState({ job: targetJob, progress: { token: 'target-run', target } }, { now: clock }).description, 'Updating this machine to 4c4bff1.', 'same-run context survives missing check facts');
 assert.equal(api.customizationRowState({ job: targetJob, progress: { token: 'different-run', target } }, { now: clock }).description, 'Updating.', 'foreign context is ignored');
 // Preserve initial peer-only scope; verified desktop completion can also narrow
 // an ordinary update to peer work, without borrowing scope from another target.
@@ -153,7 +153,7 @@ for (const extra of [{ revision: null }, { check: { ...peerSnapshot.check, error
   const snapshot = { ...peerSnapshot, ...extra };
   assert.equal(api.updateLaunchProgress(snapshot).peerRevision, null, 'only verified current deferred work captures peer-only scope');
 }
-assert.equal(api.customizationRowState({ job: { ...targetJob, target: 'c'.repeat(40) }, progress: { ...peerProgress, token: targetJob.token } }, { now: clock }).description, 'Updating to ccccccc.', 'new target invalidates the peer-only claim');
+assert.equal(api.customizationRowState({ job: { ...targetJob, target: 'c'.repeat(40) }, progress: { ...peerProgress, token: targetJob.token } }, { now: clock }).description, 'Updating this machine to ccccccc.', 'new target invalidates the peer-only claim');
 for (const phase of [
   { options: { busy: 'launch' } },
   { snapshot: { launch: { deadline: clock + 30000, progress: { target } } } },
@@ -165,7 +165,7 @@ for (const phase of [
   assert.equal(row.description, 'Updating other machines to 4c4bff1.', 'verified installed target narrows scope even without launch progress or deferred peers');
   assert.equal(row.label, 'Updating…'); assert.equal(row.enabled, false);
 }
-assert.equal(api.customizationRowState({ ...peerSnapshot, revision: null, job: { ...targetJob, target } }, { now: clock }).description, 'Updating to 4c4bff1.', 'target equality without verified installed provenance cannot claim desktop success');
+assert.equal(api.customizationRowState({ ...peerSnapshot, revision: null, job: { ...targetJob, target } }, { now: clock }).description, 'Updating this machine to 4c4bff1.', 'target equality without verified installed provenance cannot claim desktop success');
 for (const extra of [
   { locked: true }, { peerUnknown: true }, { check: { checked: clock, attempted: clock, available: false, error: 'offline' } },
   { check: null }, { job: { state: 'unknown' } }, { job: { state: 'running', deadline: clock + 1000 } },
@@ -331,14 +331,14 @@ const receipt = deferred(), old = fixture();
 respond = request => request.action === 'launch' ? receipt.promise : reply(available);
 render(api, old).button.callback(null, old.cx);
 assert.equal(render(api, old).button.label, 'Updating…');
-assert.equal(render(api, old).description, 'Updating to bbbbbbb.');
+assert.equal(render(api, old).description, 'Updating this machine to bbbbbbb.');
 retire(old);
 const freshApi = await modules(), fresh = fixture();
 freshApi.initCustomizationUpdates(fresh.view, fresh.cx, 'custom-settings');
 assert.equal(render(freshApi, fresh).button.label, 'Updating…', 'shared intent survives replacement before launch acknowledgement');
 await fresh.settle();
 assert.equal(render(freshApi, fresh).button.label, 'Updating…', 'old cached status cannot erase a pending launch');
-assert.equal(render(freshApi, fresh).description, 'Updating to bbbbbbb.', 'pending target survives replacement and an unacknowledged status');
+assert.equal(render(freshApi, fresh).description, 'Updating this machine to bbbbbbb.', 'pending target survives replacement and an unacknowledged status');
 const launches = calls.filter(call => call.action === 'launch').length;
 render(freshApi, fresh).button.callback(null, fresh.cx); await fresh.settle();
 assert.equal(calls.filter(call => call.action === 'launch').length, launches, 'replacement cannot repeat the update');
@@ -351,7 +351,7 @@ assert.equal(render(freshApi, fresh).button.options.enabled, false);
 retire(fresh);
 const duringApi = await modules(), during = fixture();
 duringApi.initCustomizationUpdates(during.view, during.cx, 'custom-settings'); await during.settle();
-assert.equal(render(duringApi, during).description, 'Updating to bbbbbbb.');
+assert.equal(render(duringApi, during).description, 'Updating this machine to bbbbbbb.');
 clock += 100;
 const complete = { ...available, revision: 'b'.repeat(40), locked: false, job: { ...running.job, state: 'complete', finished: clock } };
 const current = { ...complete, check: { attempted: clock + 1, checked: clock + 1, available: false } };
@@ -408,7 +408,7 @@ peerAgainCode.initCustomizationUpdates(peerAgain.view, peerAgain.cx, 'custom-set
 assert.equal(render(peerAgainCode, peerAgain).description, peerRow.description);
 respond = () => reply({ ...peerRunning, job: { ...peerRunning.job, target: 'c'.repeat(40) } });
 tick(peerAgain); await peerAgain.settle();
-assert.equal(render(peerAgainCode, peerAgain).description, 'Updating to ccccccc.', 'new authoritative target ends the old peer-only claim');
+assert.equal(render(peerAgainCode, peerAgain).description, 'Updating this machine to ccccccc.', 'new authoritative target ends the old peer-only claim');
 respond = () => reply({ ...peerRunning, job: { ...peerRunning.job, token: 'other-job', started: clock + 1 } });
 tick(peerAgain); await peerAgain.settle();
 assert.equal(render(peerAgainCode, peerAgain).description, 'Updating.', 'another job cannot inherit target or peer scope');
@@ -419,7 +419,7 @@ const laterTarget = deferred(), waiting = fixture(); respond = () => laterTarget
 render(api, waiting).button.callback(null, waiting.cx);
 assert.equal(render(api, waiting).description, 'Updating.');
 laterTarget.resolve(reply({ ...running, job: { ...running.job, token: 'target-arrives', target } })); await waiting.settle();
-assert.equal(render(api, waiting).description, 'Updating to 4c4bff1.');
+assert.equal(render(api, waiting).description, 'Updating this machine to 4c4bff1.');
 retire(waiting);
 for (const [jobState, description] of [['failed', /Update failed.*documented rollback/], ['partial', /some machines skipped or failed/], ['unknown', /outcome unknown/]]) {
   state.set(api.CUSTOMIZATION_UPDATE_KEY, running);
