@@ -146,6 +146,43 @@ for(const zoom of [0.75,1,1.25,1.3,1.5,2]) {
   assert.equal(words(find(tree,'pr-tasks-41')).join(''),'2 tasks done');assert.equal(words(find(tree,'pr-time-41')).join(''),'opened 4 hours ago');
   for(const kind of ['meta','byline'])assertNaturalRun(geometry,find(tree,`pr-${kind}-41`),zoom);
 }
+// Both lower lines use the same centred dot. Icon paint moves exactly one
+// logical pixel for every task/check variant, without moving any layout box,
+// text, pill, tooltip or probe. These are logical boxes, not native ink bounds.
+for(const coordinator of [false,true])for(const ghost of [false,true])for(const zoom of [0.75,1,1.25,1.3,1.5,2])
+for(const done of [0,1,2])for(const state of ['success','failure','pending','unknown']) {
+  h.setZoom(zoom);
+  const pr={...screenshot,number:17,tasks:{done,total:2,label:done===2?'2 tasks done':done===1?'1 of 2 tasks':'2 tasks'},checks:{state,label:'11/11'}};
+  if(coordinator)pr.key='owner/repo#17';
+  const prefix=ghost?'swap-':'',id=pr.key??pr.number;
+  const {tree,geometry}=h.settle(()=>panel.pullRow(t,pr,ghost),390,zoom);
+  const centre=node=>{const box=geometry.get(node);return box.y+box.height/2;};
+  const byline=find(tree,`${prefix}pr-byline-${id}`),meta=find(tree,`${prefix}pr-meta-${id}`);
+  const dotOffsets=[byline,meta].map(line=>{
+    const dots=line.kids.filter(n=>!n.attrs.id);assert.ok(dots.length);
+    for(const dot of dots)near(centre(dot)-centre(line),0,'No separator optical drop');
+    return centre(dots[0])-centre(line);
+  });
+  near(dotOffsets[0],dotOffsets[1],'Byline and status separator offsets are identical');
+  const icons=['task','check'].map(kind=>find(tree,`${prefix}pr-${kind}-icon-${id}`));
+  for(const icon of icons) {
+    assert.deepEqual(icon.attrs.relative,[]);assert.deepEqual(icon.attrs.top,[1]);
+    near(centre(icon)-centre(meta),zoom,'Every icon variant moves down exactly one logical pixel');
+    near(geometry.get(icon).width,12*zoom,'Icon width is unchanged');
+    near(geometry.get(icon).height,12*zoom,'Icon height is unchanged');
+    delete icon.attrs.top;
+  }
+  const unshifted=rowGeometry(tree,390,zoom);
+  for(const [node,box] of geometry)if(typeof node==='object') {
+    const expected=icons.includes(node)?{...box,y:box.y-zoom}:box;
+    assert.deepEqual(plain(unshifted.get(node)),plain(expected),'Icon offsets do not move neighbours or change horizontal geometry');
+  }
+  // Reintroducing either defect must fail the same geometric assertions.
+  meta.kids.find(n=>!n.attrs.id).relative().top(1.5);
+  const dropped=rowGeometry(tree,390,zoom),dot=meta.kids.find(n=>!n.attrs.id);
+  assert.notEqual(dropped.get(dot).y,geometry.get(dot).y,'The old optical drop is detected');
+  assert.notEqual(unshifted.get(icons[0]).y,geometry.get(icons[0]).y,'A missing icon offset is detected');
+}
 // Cross-row screenshot regression: different words and task/check widths,
 // including missing checks, must share the actual pill edge (not just a slot).
 for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,2]) {
