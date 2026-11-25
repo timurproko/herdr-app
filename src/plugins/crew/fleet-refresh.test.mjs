@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {loadMod} from '../../../tools/plugin-harness.mjs';
 import {projectLinkedRows, captureSpaceBlock, planBlockDrop, SpaceBlockCommit} from '../../shared/workspace-links.js';
 let now=100000, mode='success', release, requests=0,localLayout='ready';
-const state={'custom.plugins':{crew:{enabled:true}},'custom.spaces.preferences':{connectFleetToCoordinator:true}};
+const state={'custom.plugins':{crew:{enabled:true},git:{enabled:false}},'custom.spaces.preferences':{connectFleetToCoordinator:true}};
 const groups=[{id:'coordinator',tabs:[{id:'c'}]},{id:'fm-crew-home',tabs:[{id:'w'}]},{id:'other',tabs:[]}];
 let all=[{tab:'c',pane:'cp',terminal:'t1'},{tab:'w',pane:'wp',terminal:'t2'}];
 const list=[{address:'t1',state:'live',labels:{'custom.crew.home':'1'}},{address:'t2',state:'live',labels:{'crew.task':'task','crew.home':'home','herdr.space':'fm-crew-home'}}];
@@ -61,9 +61,9 @@ assert.ok(frames.every(Boolean),'No unrelated-change frame becomes detached');
 // Manual Git/periodic refresh coalesce without clearing either tag/badge projection.
 mode='defer';event('workspace.context.refresh',true);await tick();const pendingEntry=JSON.stringify(state[f.FLEET_KEY]),pendingRequests=requests;
 frame();event();event('workspace.context.refresh');await tick();assert.equal(requests,pendingRequests);assert.equal(JSON.stringify(state[f.FLEET_KEY]),pendingEntry);
-now+=11000;frame();release();await drain();frame();
+now+=11000;event();await tick();frame();release();await drain();frame();
 // Crossing action expiry retains display, not permission for Git or pair moves.
-now+=29000;mode='defer';event('workspace.context.refresh',true);await tick();frame();now+=2000;frame();
+now+=29000;mode='defer';event('workspace.context.refresh',true);await tick();frame();now+=2000;event();await tick();frame();
 assert.equal(r.pluginWorkspaceLinks().length,0);assert.equal(r.pluginPullContext('coordinator'),null);
 assert.equal(r.pluginPullContext('coordinator',{presentation:true}).stale,true);
 const captured=captureSpaceBlock(groups,links(),'fm-crew-home');assert.equal(captured.sources.length,2);
@@ -156,7 +156,7 @@ const savedState=clone(state);
  assert.equal(boot.d.updateFleetDisplay(null,candidate,{ready:true,verified:true}),true);assert.equal(store[f.DISPLAY_KEY].entries.null.ownerPane,candidate.ownerPane);assert.ok(store[f.DISPLAY_KEY].entries.opaque);
  for(const evidence of [{ready:true,missing:true},{ready:true,verified:true}]){store[f.DISPLAY_KEY].entries.null=clone(record);assert.equal(boot.d.updateFleetDisplay(null,null,evidence),true);assert.equal(store[f.DISPLAY_KEY].entries.null,undefined);assert.ok(store[f.DISPLAY_KEY].entries.opaque);}
  for(const invalid of [{version:999,entries:{}},{version:1,entries:[]}]){store[f.DISPLAY_KEY]=invalid;assert.equal(boot.d.updateFleetDisplay(null,candidate,{ready:true,verified:true}),false);assert.equal(store[f.DISPLAY_KEY],invalid);}
- assert.equal(boot.d.updateFleetDisplay(null,null,{disabled:true}),true);assert.equal(store[f.DISPLAY_KEY],null,'Explicit off may clear even unknown data without a ready layout');
+ const prior=store[f.DISPLAY_KEY];assert.equal(boot.d.updateFleetDisplay(null,null,{disabled:true}),false);assert.equal(store[f.DISPLAY_KEY],prior,'Off never erases even unknown memory');
 }
 // Finished-fleet cold/hot/layout startup: successful positive and negative reads
 // during loading/unavailable/unknown layouts cannot erase unreconstructable history.
@@ -211,10 +211,10 @@ for(const absent of ['coordinator','fm-crew-home'])for(const uncertain of ['load
 {
  const store=clone(savedState),boot=await load({...host,shared:k=>store[k],setShared:(k,v)=>store[k]=v,machines:()=>[{name:null,layout:'loading'}]});const display=clone(store[f.DISPLAY_KEY]);
  boot.f.invalidateFleet();assert.deepEqual(store[f.DISPLAY_KEY],display,'Enabled invalidation retains display');
- boot.p.updateSpacePreferences({connectFleetToCoordinator:false});assert.equal(store[f.DISPLAY_KEY],null);
- store[f.DISPLAY_KEY]=clone(display);boot.p.updateSpacePreferences({connectFleetToCoordinator:false});assert.equal(store[f.DISPLAY_KEY],null,'Already-off updates also honor explicit disablement');
+ boot.p.updateSpacePreferences({connectFleetToCoordinator:false});assert.deepEqual(store[f.DISPLAY_KEY],display);frame(false,boot.r);
+ boot.p.updateSpacePreferences({connectFleetToCoordinator:false});assert.deepEqual(store[f.DISPLAY_KEY],display,'Already-off updates preserve memory too');
  store[f.DISPLAY_KEY]=clone(display);boot.p.updateSpacePreferences({connectFleetToCoordinator:true});assert.deepEqual(store[f.DISPLAY_KEY],display,'Enabling retains existing history');
- boot.r.setPluginEnabled(boot.r.pluginById('crew'),false);assert.equal(store[f.DISPLAY_KEY],null);
+ boot.r.setPluginEnabled(boot.r.pluginById('crew'),false);assert.deepEqual(store[f.DISPLAY_KEY],display);frame(false,boot.r);
  store[f.DISPLAY_KEY]=clone(display);boot.r.setPluginEnabled(boot.r.pluginById('crew'),true);assert.deepEqual(store[f.DISPLAY_KEY],display,'Plugin re-enable retains history');
 }
 // Obsolete generations and expired leases cannot publish even a READY negative.
@@ -234,8 +234,8 @@ for(const restart of ['cold','hot','layout']){
  mode='defer';const before=requests;boot.r.pluginEvent('spaces.refresh',{cx});await tick();assert.equal(requests,before+1,'Cold start verifies in the background, including completed crash leases');frame(true,boot.r);
  release();await drain();assert.equal(boot.r.pluginWorkspaceLinks().length,1);frame(true,boot.r);
  now+=86400000;mode='error';boot.r.pluginEvent('spaces.refresh',{cx});await drain();frame(true,boot.r);assert.equal(boot.r.pluginPullContext('coordinator'),null);
- boot.p.updateSpacePreferences({connectFleetToCoordinator:false});frame(false,boot.r);assert.equal(store[f.DISPLAY_KEY],null,'Explicit preference disable clears persistence');
- boot.p.updateSpacePreferences({connectFleetToCoordinator:true});frame(false,boot.r);
+ const memory=clone(store[f.DISPLAY_KEY]);boot.p.updateSpacePreferences({connectFleetToCoordinator:false});frame(false,boot.r);assert.deepEqual(store[f.DISPLAY_KEY],memory,'Off hides but preserves identity');
+ boot.p.updateSpacePreferences({connectFleetToCoordinator:true});frame(true,boot.r);assert.equal(boot.r.pluginPullContext('coordinator'),null,'Immediate restore grants no inventory authority');
 }
 // Partial startup documents must not prune identity before the pair's first frame.
 {
@@ -256,6 +256,27 @@ for(const restart of ['cold','hot','layout']){
  assert.equal(both.find(row=>row.w.id==='pc2/fm-crew-remote').linked,true,'Remote first frame restores its own qualified pair');assert.equal(boot.r.pluginWorkspaceLinks().length,1,'Persisted remote identity grants no cross-machine authority');
  visible=false;boot.r.pluginEvent('spaces.refresh',{cx,force:true});await drain();assert.equal(Object.keys(store[f.DISPLAY_KEY].entries).length,1,'Ready native absence prunes just that machine');
 }
+// Ready-layout absence prunes memory even with attachment and/or Crew off.
+// An uncertain layout preserves it; a later deterministic ID reuse is not proof.
+for(const crewEnabled of [true,false])for(const missing of ['parent','child']){
+ const store=clone(savedState),record=store[f.DISPLAY_KEY].entries.null;
+ let ready=false,visible=true,recreated=false;
+ const present=()=>visible?groups.map(s=>recreated && s.id===record[missing]?{...s,tabs:[]}:s):groups.filter(s=>s.id!==record[missing]);
+ const boot=await load({...host,shared:k=>store[k],setShared:(k,v)=>store[k]=v,spaces:present,machines:()=>[{name:null,layout:ready?'ready':'loading'}]});
+ boot.p.updateSpacePreferences({connectFleetToCoordinator:false});
+ boot.r.setPluginEnabled(boot.r.pluginById('crew'),crewEnabled);
+ const before=requests;
+ boot.r.pluginEvent('spaces.refresh',{cx});await drain();assert.ok(store[f.DISPLAY_KEY].entries.null,'Off preserves extant spaces');
+ visible=false;boot.r.pluginEvent('spaces.refresh',{cx});await drain();assert.ok(store[f.DISPLAY_KEY].entries.null,'Uncertain absence preserves memory');
+ ready=true;boot.r.pluginEvent('spaces.refresh',{cx});await drain();assert.equal(store[f.DISPLAY_KEY].entries.null,undefined,'Off-state ready absence must prune identity');
+ assert.equal(requests,before,'Disabled cleanup performs no status IO');
+ visible=true;recreated=true;boot.r.setPluginEnabled(boot.r.pluginById('crew'),true);
+ boot.p.updateSpacePreferences({connectFleetToCoordinator:true});
+ assert.equal(links(boot.r).length,0,'Recreated deterministic space cannot inherit an obsolete pair before verification');
+ mode='defer';boot.r.pluginEvent('spaces.refresh',{cx});await tick();assert.equal(links(boot.r).length,0);
+ release();await drain();assert.equal(links(boot.r).length,0,'Empty recreated space cannot reattach from an incomplete reply');
+ recreated=false;mode='success';boot.r.pluginEvent('spaces.refresh',{cx,force:true});await drain();frame(true,boot.r);
+}
 // Corrupt/unknown records never manufacture a pair from names or role hints.
 for(const invalid of [{version:999,entries:savedState[f.DISPLAY_KEY].entries},{version:1,entries:{bad:{...Object.values(savedState[f.DISPLAY_KEY].entries)[0],adoption:'wrong'}}},{version:1,entries:[]}]){
  const store={'custom.plugins':{crew:{enabled:true}},'custom.spaces.preferences':{connectFleetToCoordinator:true},[f.DISPLAY_KEY]:invalid};
@@ -263,7 +284,7 @@ for(const invalid of [{version:999,entries:savedState[f.DISPLAY_KEY].entries},{v
 }
 // Disable/obsolete generations and expired leases cannot revive a previous verified pair.
 await prime();mode='defer';event('workspace.context.refresh',true);await tick();p.updateSpacePreferences({connectFleetToCoordinator:false});frame(false);release();await drain();frame(false);
-p.updateSpacePreferences({connectFleetToCoordinator:true});await prime();r.setPluginEnabled(r.pluginById('crew'),false);frame(false);assert.equal(state[f.DISPLAY_KEY],null);r.setPluginEnabled(r.pluginById('crew'),true);frame(false);
-mode='error';event('workspace.context.refresh',true);await drain();frame(false);const failedFirst=requests;event();await drain();assert.equal(requests,failedFirst);
-mode='defer';event('workspace.context.refresh',true);await tick();frame(false);state['custom.fleet.reads'].local.until=now;release();await drain();frame(false);
+p.updateSpacePreferences({connectFleetToCoordinator:true});frame(true);await prime();const memory=clone(state[f.DISPLAY_KEY]);r.setPluginEnabled(r.pluginById('crew'),false);frame(false);assert.deepEqual(clone(state[f.DISPLAY_KEY]),memory);r.setPluginEnabled(r.pluginById('crew'),true);frame(true);
+mode='error';event('workspace.context.refresh',true);await drain();frame(true);const failedFirst=requests;event();await drain();assert.equal(requests,failedFirst);
+mode='defer';event('workspace.context.refresh',true);await tick();frame(true);state['custom.fleet.reads'].local.until=now;release();await drain();frame(true);
 console.log('PASS single guarded display writer, ready-only absence/replacement, completion-time layout checks, finished-fleet cold/hot/layout restoration, every deletion path, strict runtime authority, long outages and retry backoff');

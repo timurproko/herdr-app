@@ -153,9 +153,9 @@ been retired; third-party license notices retain their original attribution.
 ## Fleet context contributions
 
 Crew owns `plugins/crew/fleet.js`: installed status supplies owner/task terminals
-and task PRs. The reader prefers explicitly advertised `crew status --json --view
-fleet --discover-prs`; legacy Crew uses projected `crew status --all --json
---discover-prs`. See [the exact transport and Crew capability contract](FLEET-STATUS.md). `custom.crew.home=1` is only a role hint;
+and task PRs. Verification prefers explicitly advertised `crew status --json --view
+fleet`; legacy Crew uses projected `crew status --all --json`. Discovery runs later
+as a separate lower-priority read with `--discover-prs` when shown Git needs inventory. See [the exact transport and Crew capability contract](FLEET-STATUS.md). `custom.crew.home=1` is only a role hint;
 `crew.home` is a worker home tag. The resolver joins exact live machine-qualified
 terminals to actual panes/spaces and verifies the fleet adoption identity. Missing,
 ambiguous, moved or cross-machine identities fail closed. Unrouted custom homes
@@ -178,26 +178,33 @@ Spaces lifecycle, a 10-second TTL and expiring sanitized runtime facts under
 The installed-tool reader uses the existing read-only machine transport with a
 25-second discovery timeout and 15-second recorded-only allowance. Exact unsupported
 view/discovery refusals permit capability fallback; all attempts share 40 seconds
-inside the 45-second transport lease. Authentication, transport and timeout failures
+inside a 45-second maximum transport envelope. Authentication, transport and timeout failures
 never trigger it or mean none. Missing/unknown discovery versions reuse the first
 payload, with no extra call. An explicit help advertisement is required because
-old Crew silently ignores unknown status flags. The existing PowerShell request
+old Crew silently ignores unknown status flags. Host-local capability evidence in
+`custom.fleet.capabilities` is keyed by the CLI path and modification time, rechecked
+cheaply on every read and reused across copies/reloads; unchanged installations do
+not run help per request. This benign capability cache grants no action authority.
+The existing PowerShell request
 projects unused fields before native encoding without changing historical Open/Draft
 eligibility. Bounded Base64/UTF-8 pieces yield real native task turns via zero-delay
-one-shot callbacks; no new periodic recovery scheduler is introduced. The 45-second
-shared read lease covers commands without overlapping mod readers and does not
-extend action freshness. Before response parsing or decoding, raw receipt switches
-to a two-second processing deadline. If a native interruption bypasses finally,
-the existing lifecycle records expired-read and replaces that finished command's
-continuation on expiry, bypassing the prior attempt TTL/backoff only for abandoned
-processing. Generation, token and exact identity checks remain unchanged. There is no
+one-shot callbacks; no new periodic recovery scheduler is introduced. Only the
+recurring Spaces lifecycle owns native reads; transient Settings/Git entrypoints
+request or join its service. Shared two-second owner liveness is renewed by that
+lifecycle only while its actual Task is not done, bounded by the 45-second maximum
+transport envelope. It does not extend action freshness. Raw receipt switches to a
+separate two-second processing deadline before parsing or decoding. A dead task,
+retired owner or abandoned processing leaves an expired-read marker; the existing
+lifecycle replaces it independently of finally and prior attempt TTL/backoff. Generation, token and exact identity checks remain unchanged. There is no
 new healthy polling loop; the existing 10-second TTL/refresh cadence is unchanged.
 Spaces invokes the provider at init and from its existing 250 ms lifecycle, including
 after cold start or mod replacement. A cold failed first read remains independent
-until verification succeeds; retained display survives uncertainty. An abandoned
-in-flight transport lease can defer another copy for at most its remaining 45
-seconds; received-reply processing is separately bounded to two seconds. Older
-unphased leases keep their original finite transport bound.
+until verification succeeds; remembered display survives uncertainty. Abandoned
+transport ownership expires within two seconds plus one lifecycle tick, including
+across module replacement. Older leases without liveness evidence receive the same
+short recovery bound rather than a remaining 45-second wait. Recorded verification
+publishes before discovery; enrichment cannot renew verification age or replace pair
+identity and preserves unchanged previously discovered links during recorded refresh.
 Failure-only recovery stores one generation-scoped retry deadline in those runtime
 facts: 2 seconds, 5 seconds, then repeated 10-second delays measured from failed
 completion. Every retryable reason has this cap, including timeouts and transport
@@ -244,8 +251,9 @@ with one pair per machine; no task/PR inventory, reports, transcripts or credent
 Public shared values are persisted by the SDK. Pure Spaces projection and Crew tag
 reads restore that record in the first available native-space frame after a cold
 start, mod replacement or layout switch, without render-time writes or IO. It is
-excluded from portable preferences. Explicit preference/plugin disablement clears
-it, and completed negative results or ready native-space absence prune it; another
+excluded from portable preferences. Preference/plugin disablement hides the pair
+and revokes fresh authority but preserves that memory for same-render enablement.
+Completed negative results or ready native-space absence prune it; another
 machine's loading layout cannot erase its record.
 
 Presentation has no wall-clock expiry. Its bound is the lifetime of the exact pair
@@ -260,8 +268,10 @@ Move and Git/worker action queries still require a current-runtime witnessed sta
 result, 30-second freshness, matching dependency fingerprints and exact live membership.
 Persisted timestamps/tokens cannot authorize a cold module. Consumers can witness a
 shared in-flight read, preserving coalescing across mod copies, but completed crash
-leases are not fresh verification. Drops on/from a retained unverified block refuse
-to move, never fall back to a single-space reorder. Git requests presentation context
+leases are not fresh verification. Space-only block ordering uses the displayed
+remembered link, revalidating exact captured pair identity and native acknowledgements
+at commit. This exception reorders spaces only; it never permits terminal/tab moves,
+worker navigation, messages or coordinator colour writes from remembered identity. Git requests presentation context
 only to retain already-loaded same-home rows/counts/folds with a Stale badge, or a
 standard Loading bulb with no extra header label or restored inventory on cold start.
 There is no cross-toggle identity/inventory cache. Off or a scope change clears

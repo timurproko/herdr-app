@@ -412,16 +412,13 @@ export default class Spaces extends View {
     const all = spaces(), source = all.find(s => s.id === result.id);
     if (!source) return;
     if (this.blockCommit?.pending) return;
-    const links = pluginWorkspaceLinks();
-    // A retained visual pair must never fall through to a one-space move while
-    // live verification is unavailable. Click selection still works normally.
-    if (result.kind === 'drop' && displayLinks().some(link =>
-      [link.parent,link.child].some(id=>id===result.id || id===result.target) &&
-      !links.some(l=>l.parent===link.parent && l.child===link.child && l.binding===link.binding))) return;
+    // Space-only ordering follows the displayed pair, including remembered
+    // identity. Operational actions still use the registry's fresh context.
+    const links = displayLinks();
     if (result.kind === 'drop' && (result.meta?.sources?.length > 1 || links.length)) {
       const captured = result.meta;
       const wanted = planBlockDrop(all, links, result.id, result.target, captured);
-      this.blockCommit ??= new SpaceBlockCommit({read: spaces, links: pluginWorkspaceLinks,
+      this.blockCommit ??= new SpaceBlockCommit({read: spaces, links: displayLinks,
         move: (id,index) => run('space.move',{id,index}),
         fail: body => notify({title:'Spaces could not finish reordering',body,level:'warning'})});
       this.blockCommit.start(result.id,captured,wanted);

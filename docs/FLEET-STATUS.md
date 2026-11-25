@@ -1,189 +1,240 @@
-# Fleet status transport and recovery
+# Fleet status transport, remembered presentation and recovery
 
-## Reader contract for Crew
+## Presentation is not operational authority
 
-The preferred command is:
+`custom.fleet.display` version 1 is bounded host-local last-verified identity: machine,
+coordinator/fleet space IDs, owner/home, owner tab/pane and adoption identity. It holds
+no task/PR inventory, reports, credentials or transcripts and is excluded from portable
+preferences. Preference/plugin off immediately hides attachment and invalidates live
+status, generations and retries, but does **not** erase that memory.
+
+On enable, restart, mod replacement or update, both exact remembered native spaces
+restore adjacency, chains, Crew pills and the coordinator's badge colour in the first
+render, before any read completes. Native shortcut numbers remain truthful; the fleet's
+saved colour remains untouched. Names and role hints never invent a first pair. Failed,
+slow, interrupted or expired verification retains the picture. Successful contradictory
+evidence atomically clears/replaces memory. Missing-space memory is ignored immediately
+and pruned outside render only once that machine's layout is authoritative; a loading
+remote snapshot cannot erase it.
+
+Dragging either displayed member can reorder the native spaces as one same-machine
+block before fresh verification. Capture, target edges and every native acknowledgement
+revalidate the displayed pair. This exception is **space ordering only**, not moving tabs
+or terminals. Coordinator colour writes, new consolidated Git inventory reads, worker
+navigation and operational actions still require current witnessed verification. Off/on
+never restores old inventory; remembered-only coordinator Git uses the standard Loading
+bulb until verified. An already-loaded same-context outage retains its ordinary Stale
+semantics. No new Git UI, setting or companion is introduced.
+
+## Recorded-first reader contract
+
+Verification uses:
 
 ```text
-crew status --json --view fleet --discover-prs
+crew status --json --view fleet
 ```
 
-`crew --help` must explicitly advertise **--view fleet** before the reader uses
-it. Older Crew silently ignores unknown status flags; blindly passing the flag
-without `--all` would lose finished-task PRs. The probe runs in the existing
-read-only PowerShell request, not a separate remote round trip or daemon.
-The fleet view itself includes eligible history; the app does not add `--all`.
+Only an explicit `crew --help` advertisement permits `--view fleet`: old Crew silently
+ignores unknown flags. Capability evidence is cached by the resolved CLI path and file
+modification time in bounded host-local `custom.fleet.capabilities`, shared across mod
+copies/reloads. Each PowerShell request rechecks that cheap file identity; an unchanged
+installation does not run help again. Valid unchanged evidence can safely survive an app
+session. A changed path/mtime triggers a new probe. Capability metadata is not action
+proof and is never a portable preference.
 
-Expected output:
+Legacy verification uses projected `crew status --all --json`. `--all` is necessary to
+retain finished Open/Draft PR candidates, regardless of task age. Crew owns its fleet
+view/history policy; this app still checks GitHub eligibility. Only historical
+Merged/Closed PRs expire, 24 hours after GitHub's actual completion timestamp.
+
+After recorded verification publishes, shown Git's request can schedule a separate,
+lower-priority read with `--discover-prs`. The first recorded inventory and attachment
+never wait for GitHub discovery. Discovery can enrich only the same verified home,
+owner and task membership; it never updates pair memory or renews verification age.
+Changed membership requests higher-priority verification instead. An unchanged recorded
+refresh preserves previous discovered links rather than briefly removing them.
+Disabled Git makes no discovery request. The existing lifecycle services short-lived
+shown-consumer intent; there is no extra discovery timer or hidden inventory worker.
+
+The projected status shape remains:
 
 ```json
 {
   "home": "canonical Crew home",
   "owner": {"terminal": "t1", "live": true},
-  "tasks": [{
-    "id": "task-id",
-    "state": "working",
-    "terminal": "t2",
-    "pr": null,
-    "prDiscovery": {"status": "none", "url": null, "source": null, "reason": null}
-  }],
-  "prDiscovery": {"version": 1}
+  "tasks": [{"id": "task-id", "state": "working", "terminal": "t2", "pr": null}]
 }
 ```
 
-- `owner` can explicitly be `null`. Task state is preparing, working, reported,
-  stopped, failed or closed. Only non-working/non-reported tasks may have a null
-  terminal. The existing exact native owner/worker membership checks remain.
-- Discovery version 1 is complete for every task: known means a canonical HTTPS
-  GitHub PR URL, source recorded/github and null reason; none means null URL,
-  source and reason; unavailable means null URL/source and a sanitized reason.
-  Unknown/missing versions remain recorded-only, not confirmed absence.
-- Include all live tasks and finished-task PR candidates. A finished task's
-  Open/Draft PR remains eligible regardless of task age. Only Merged/Closed PRs
-  expire, 24 hours after GitHub's actual closed/merged time. Unknown state or time
-  must not be silently treated as old closed history. Crew owns any source-side
-  recorded state/closedAt and bounded historical-candidate/cursor policy; this app
-  still checks GitHub eligibility. A closed-task-age cutoff is incompatible.
-- No launch, standby, fallback, Core report, recovery, elapsed, copy-return or
-  report-path fields are consumed. No task reports or transcripts are needed.
+- Explicit `owner:null` is valid release evidence. Task states are preparing, working,
+  reported, stopped, failed and closed. Only inactive tasks can have `terminal:null`.
+- Discovery version 1 requires complete valid per-task status/url/source/reason fields:
+  known uses a canonical HTTPS GitHub PR URL, recorded/github source and null reason;
+  none uses null URL/source/reason; unavailable uses null URL/source and a bounded
+  sanitized reason. Unknown/missing versions remain recorded-only, never confirmed none.
+- Malformed required fields remain read uncertainty, never invented empty ownership.
+  Exact live machine-qualified membership and adoption checks remain unchanged.
+- No launch, recovery, standby, report/transcript or copy-return fields are consumed.
 
-The minimal view is a separate Crew capability, **not implemented in this
-repository**. An exact standalone unsupported `--view`/fleet-view refusal allows
-projected legacy `crew status --all --json --discover-prs`. An exact unsupported
-`--discover-prs` refusal permits recorded-only status. Both use the same view
-selection/projection rules. Errors containing auth failures, extra diagnostics,
-timeouts or unrelated unsupported options never trigger capability retries.
-The primary command allows 25 seconds; recorded-only allows 15 seconds. All
-capability attempts together have a 40-second budget inside the existing
-45-second transport lease; later attempts receive only the remaining allowance.
+Recorded requests allow 15 seconds and discovery 25 seconds. Exact standalone unsupported
+view/discovery refusals alone permit capability fallback; all attempts share a 40-second
+command budget within a 45-second maximum envelope. Auth, timeout and transport errors
+never trigger that fallback or mean none. Missing/unknown discovery versions reuse the
+payload without another read. Only an actually requested discovery flag can fall back
+for its refusal.
 
-## Legacy projection
+## Source projection and decoding
 
-On older Crew, `--all` is necessary to retain finished Open/Draft PRs. The
-PowerShell transport projects the fields above **before hc encodes stdout**.
-It preserves malformed required shapes and missing fields for strict rejection,
-not invented `owner:null`, `tasks:[]` or terminal/discovery nulls. Native exit
-codes and raw unsupported-flag stderr survive PowerShell 5's ErrorRecord layer.
-No extra filter process, remote companion, file write or source-checkout import
-is introduced. The help probe adds one small Node invocation inside that request.
-Stdout and stderr use amortized-constant-time list appends and a single join;
-array `+=` recopies preceding lines and made a valid 830476-byte / 49161-line
-legacy reply exceed the command allowance. Task projection is likewise a single
-collecting pass, not repeated growing-array/string concatenation. The Windows
-regression scales both input lines and projected task counts at 5k/400, 20k/1600
-and 50k/4096, enforcing near-linear whole-wrapper wall-time ratios.
+The existing `hc exec --json -- powershell -NoProfile -NonInteractive -Command ...`
+transport projects unused legacy fields before Core Base64 encoding. No shell profile,
+new filter process, remote companion or source-checkout import participates. PowerShell
+5 ErrorRecords preserve exact unsupported-flag stderr and native exit codes. Stdout,
+stderr and task projection use amortized constant-time collection and one join, not
+quadratic growing-array concatenation. Size/task bounds remain one MiB / 4096 tasks;
+projection never silently drops old Open/Draft PRs.
 
-A read-only sample on this machine had 237 tasks: legacy output was 398866 bytes,
-projected output 42647 bytes (about 89% less). One timing sample measured 3054 ms
-for the old PowerShell status and 3188 ms projected; bare Node status itself took
-3244 ms. These are noisy sequential observations, not a guaranteed latency or a
-claim that the command currently completes under two seconds.
+Base64/UTF-8 processing uses at most 65536 encoded characters / 48 KiB per piece,
+4096-unit string buffers and UTF-8 carry. Between pieces, zero-delay one-shots yield
+real native task turns; microtasks alone share the host's 500 ms watchdog budget.
+Generation/token/identity checks run between pieces. Raw receipt publishes processing
+phase before synchronous JSON/decoding, with its own two-second deadline.
 
-Projection bounds *fields*, not the number of legacy historical records. Legacy
-Crew still enumerates every finished task; replacing that growth requires the
-separate minimal fleet view and its source-side history policy. The app retains
-its one-MiB/4096-task validation limits and does not silently truncate old Open PRs
-or read Crew's private task files to invent its own index.
+## Why the old reader waited about 45 seconds
 
-## Watchdog-safe response processing
+Native tasks belong to their initiating view. Cancelling/closing/reloading that view
+can strand its native async promise permanently, without running catch or finally.
+The SDK explicitly documents that cancelling a Task leaves its promise pending. In #51,
+Settings could start the read while Spaces owned the recurring lifecycle. If Settings'
+continuation disappeared before `hc` returned to JavaScript, **receipt never ran**, so
+the new two-second processing deadline was never published. Spaces saw only the old
+45-second **transport** lease and waited for it to expire. Decoder improvements could
+not fix a continuation that never reached the decoder.
 
-A native App 0.1.17 reproduction started verified, selected the fleet and focused
-one of seven worker tabs, then switched off/on with Settings open. A valid
-approximately 925 KiB reply interrupted the old synchronous Base64 decoder under
-the host's **500 ms task watchdog**. That interruption is uncatchable: catch and
-finally did not release the read. After 45 seconds the existing diagnostics
-recorded `expired-read`, with attempted and current generation both 2. The
-preference was on, but display/links remained absent. This proves that mechanism;
-the original person's exact payload and CPU scheduling were not recovered.
+This was reproduced on App 0.1.18/Core 0.1.22 using the **real read-only Crew command/home**
+in a disposable native instance. Closing only the fixture Settings view 300 ms after
+its read started left the transport lease behind. The actual command wrote completion
+at 3555 ms, but no native receipt callback ran. Spaces replaced the lease at 45119 ms;
+verified publication/attachment occurred at approximately 48813 ms. A control with
+Settings left mounted completed normally. No decoder error or watchdog interruption
+occurred for that real payload.
 
-The decoder now processes at most 65536 encoded characters / 48 KiB of bytes per
-piece, converts strings in at most 4096 UTF-16 units, and carries split UTF-8
-characters. Fleet reads yield a real native task turn between pieces using
-zero-delay one-shot callbacks. Microtasks alone share the watchdog budget and
-are insufficient. These callbacks are bounded work for a response, not a second
-recovery/polling scheduler. Obsolete generation/identity checks run between pieces.
+The old live diagnostics do not identify which event destroyed/interrupted that
+particular continuation, so they cannot prove whether it was a view closure, reload or
+another native interruption. The reproduction establishes the stranded-owner mechanism
+and the recovery defect, not a reconstructed history of the person's UI interactions.
 
-Raw receipt is published **before** JSON parsing or decoding. The runtime reader
-then has a two-second processing deadline. If its continuation disappears, the
-existing 250 ms Spaces lifecycle replaces that reader on expiry, without waiting
-for finally, the ten-second attempt TTL or the transport lease. The finished
-command cannot overlap another command. If a late decoder resumes after that
-deadline but before the lifecycle tick, its expired processing lease is retained
-as a recovery marker rather than deleted by finally; otherwise a warm reader's
-previous ten-second attempt TTL could suppress recovery. Successful completions
-and ordinary failures still retire their leases. Capability fallback returns to
-transport phase within the original finite transport deadline. Older unphased leases remain
-finite at their original deadline; they cannot be assumed to have received data.
-No generation, token, exact identity, freshness or action-authority guard is relaxed.
+Reads now belong to the recurring **Spaces** service. Settings/Git/menu instances request
+or join it rather than owning IO. Other consumers can witness a current shared read,
+never a completed persisted token. The actual owner's lifecycle renews a shared
+two-second transport liveness lease only while its native Task is not done, bounded by
+the original command envelope. A replaced owner, cancelled task or lost processing
+continuation becomes replaceable after two seconds plus the next 250 ms lifecycle tick,
+without finally or a previous attempt TTL. An expired continuation resuming before the
+tick leaves its marker intact. Older leases without owner liveness receive the same
+short recovery bound. Healthy 4–5-second commands stay single-flight while their owner
+lives. Late predecessor replies cannot retire successors or renew freshness.
 
-## Git verification presentation
+Ordinary failed verification retains the 2 s, 5 s, then repeated 10 s completion-based
+backoff. Healthy verification retains its ten-second TTL; action freshness stays 30
+seconds. Recovery ends on disablement, success, missing candidates or authoritative
+absence. Sleep or a blocked UI delays callbacks; this is not a wall-clock guarantee.
 
-While attachment is enabled, a uniquely routed coordinator candidate uses the
-ordinary panelMessage **Loading** working bulb, including before any failure.
-There is no special **Verifying** header and no plain waiting sentence; sanitized
-reason/time/generation remain in the loading tooltip. A previously loaded list
-retains its existing **Stale** treatment, folds and counts without reads or worker
-actions during an existing same-context outage. Off clears inventory and shows
-ordinary Git. On never resurrects an old list: a current coordinator candidate
-shows Loading until fresh facts arrive, including failed reads awaiting retry.
-There is no retained-previous-inventory feature or cache. Only a witnessed negative
-whose dependency signature matches the current native identity suppresses Loading;
-previous owner/identity evidence, including negative diagnostics, cannot do so.
-Historical PR scope for a still-verified owner/home remains independent of whether
-a live worker is present, as before.
+## Real-path measurements
 
-## Whole-path Windows measurement
+These are observed loaded-machine samples, not SLAs or additive component costs. Crew
+was updated during investigation; do not compare changing history counts as a decoder
+loss. Private replies remain only in ignored local artifacts, never in committed tests.
 
-App 0.1.17, Custom theme, seven live inert workers, actual fleet selected and worker
-focused, Settings kept mounted across off/on. The test runs the production status
-reader through **real Core exec → Windows PowerShell → fake legacy Crew CLI →
-projection → hc Base64 → native decoder/provider → display publication**. It does
-not bypass the wrapper. Fixtures are pretty-printed JSON; 400 KiB models today's
-237-task byte volume with unused data, not a copy of private task records.
+Before Crew's minimal view became available, the real Core path measured:
 
-| Input bytes | Lines / tasks | Command wall ms | Native stdout bytes | Longest decoder turn ms | On → attached ms |
-|---:|---:|---:|---:|---:|---:|
-| 10240 | 490 / 40 | 450 | 2524 | 1 | 454 |
-| 409600 | 2854 / 237 | 473 | 14875 | 6 | 483 |
-| 1048576 | 49162 / 4096 | 1046 | 261088 | 21 | 1206 |
+| Read | Wall ms | Stdout bytes |
+| --- | ---: | ---: |
+| Recorded legacy status | 2239 | 411513 |
+| Legacy status with discovery | 6402 | 434515 |
+| Production legacy discovery wrapper | 7499 | 46105 |
+| Production recorded-only wrapper | 2137 | 23103 |
 
-Command wall time includes hc/Core, PowerShell startup, help/status Node calls,
-stdout collection and field projection, ending at native raw receipt. Decoder
-turns include initial cleanup/buffers and the final join but exclude actual task
-waits (one-ms clock resolution). On-to-attached starts at the actual Settings
-handler and ends at display publication, including processing and validation.
-These are measured synthetic-data transport costs, not guarantees for real Crew
-collection, GitHub or SSH. A separate three-second read was inspected natively:
-Git shows the blue working bulb + Loading, with no extra header or non-repo text.
-The opt-in runner records JSON, native status/errors and screenshot in its ignored
-`.artifacts/fs-*/` directory and cleans up only its own app/Core session.
+After the installed Crew advertised the fleet view, a later real-home sample contained
+36 fleet-view tasks:
 
-## Regression evidence
+| Core/PowerShell path | Wall ms | Stdout bytes |
+| --- | ---: | ---: |
+| Trivial Node startup | 257 | 2 |
+| Crew help | 275 | 4954 |
+| Direct fleet recorded status | 319 | 8748 |
+| Direct fleet discovery | 1043 | 8748 |
+| Recorded wrapper, first probe | 512 | 8713 |
+| Recorded wrapper, cached capability | 449 | 8713 |
+| Discovery wrapper, cached capability | 1028 | 8713 |
 
-`tests/fleet-toggle-live.test.mjs` covers selected coordinator/fleet, one/seven
-workers, local/ready-remote groups, repeated 0/1/15-second off intervals, delayed
-old success/failure replies in both orders, one-MiB replies, and a deliberately
-lost decoder turn. Both cold and warm abandoned processing recover at two seconds,
-including within a previous successful attempt's ten-second TTL. Both continuation
-orders are covered: resumption after replacement cannot overwrite recovered facts;
-resumption at 2100 ms before any lifecycle callback still starts fresh local/remote
-verification at the first tick at 2250 ms, without renewing old freshness.
+The full disposable native path uses real Core/PowerShell/Crew collection and the actual
+native decoder/provider/Settings/Spaces, translating only source terminal identities to
+its own inert topology. A separate consumer mod exercises Git's fresh-context request.
 
-`src/plugins/crew/base64.test.mjs` covers bulk-call bounds, UTF-8 across byte/string
-piece boundaries, cancellation between pieces, one MiB and 4096-task validation.
-`fleet-command.test.mjs` executes the actual projection under Windows PowerShell,
-with a disposable CLI, large unused fields, UTF-8, old Open history, malformed
-shapes and exact stderr/exit preservation. Transport fixtures cover explicit view
-and discovery refusals and the joint command deadline.
+| Native case | On → verified ms | On → attached render ms |
+| --- | ---: | ---: |
+| First pair, final three-copy run | 590 | 594 |
+| Remembered off/on, same final run | 683 | 5 |
+| Closing fixture Settings mid-read | about 630–679 | about 621–642 |
+| Captured real 434515-byte legacy reply, first pair | 634 | 643 |
+| Same captured reply, remembered on | 639 | 13 |
 
-The opt-in `tests/features/fleet-toggle-native.mjs` starts only its own disposable
-app/Core session and eight inert Node terminals. It uses actual native topology,
-fleet selection, focused worker, Settings/Spaces/provider instances and scheduler;
-Crew output alone is synthetic. It never starts real A1, reads real credentials
-or alters the person's installation. With App 0.1.17, nine repeated cycles using
-one-MiB responses (including 4096 tasks) passed. Ordinary attachment took
-1322–1486 ms with a 750 ms simulated command. Decoder pieces peaked at 24 ms;
-JSON parsing plus task validation/mapping peaked at 16 ms. A deliberately
-uncatchable interrupted continuation was replaced 2084 ms after raw receipt,
-then recovered, rather than waiting 45 seconds. This is native scheduler and
-rendered-UI evidence, not live Crew/network/SSH or real A1 behavior.
+In the final three-copy run, verification commands took 580/519 ms and subsequent
+separate discovery took 2641/2577 ms; discovery finished at 3444/3276 ms after on,
+after first inventory eligibility. Exactly **one help probe** served both toggles and
+all four reads. Decoder turns peaked at 5 ms, and first receipt-to-publication was
+6 ms. An earlier real-path run observed faster discovery (1242/1226 ms), illustrating
+network/load variability without delaying attachment or recorded inventory.
+Native status reported no errors; attached-row screenshots were inspected. Another
+native captured-real-reply run injected a failed read followed by a successful explicit
+no-owner reply: memory stayed attached after failure and cleared on authoritative gone,
+with no native errors.
+
+With an intentional four-second transport delay and a reload of **only the disposable
+Spaces owner**, the replacement started 2025 ms after the last heartbeat (2291 ms after
+the old command started), not after 45 seconds. Its healthy replacement command took
+4493 ms; first pairing verified at 6933 ms including injected delay and recovery. A
+subsequent healthy delayed read verified at 4614 ms, with remembered picture at 14 ms.
+The lost predecessor's private fixture command completion was also recorded; no person's
+processes were stopped, restarted or altered.
+
+A takeover rerun after the final reader/cache repairs used the current real home with
+separate Spaces, Settings and inventory-consumer copies. First pairing verified in
+797 ms and painted attached in 812 ms; remembered off/on painted attached in **6 ms**
+and verified in **706 ms**. Recorded commands took 744/508 ms; separate discovery took
+1251/1571 ms and completed 2101/2300 ms after on. One help probe served all four reads,
+decoder turns peaked at 4 ms, and native status had no errors. The attached screenshot
+showed adjacent rows, both chains/Crew pills and shared green numbered badges.
+A fresh owner-reload run with the same intentional four-second delay replaced the
+abandoned owner 2270 ms after its command started, rather than 45 seconds later.
+First verification including recovery took 7038 ms; subsequent remembered attachment
+took 17 ms while its healthy delayed verification took 4654 ms. Native status again
+had no errors. Abandoned commands can finish without returning their capability fact;
+that fault-injected case can therefore require another probe by the replacement.
+
+## Regression and opt-in runner
+
+- `fleet-toggle-live.test.mjs`: mounted local/remote Settings/Spaces, repeated toggles,
+  same-render memory, zero completed reads, slow healthy commands, failures, large
+  replies, lost processing turns, owner replacement and actual Spaces.drop calls.
+- `fleet-refresh.test.mjs`, colour/menu and Git integration suites: memory preservation,
+  missing-space pruning, cold restoration, exact identity, remembered-only action refusals,
+  independent consumer witnessing, Loading versus Stale and no cross-toggle inventory.
+- `fleet-transport.test.mjs`: recorded-first reads, shared capability evidence, isolated
+  discovery, Task cancellation with permanently pending promise, cross-copy two-second
+  recovery, healthy long reads, enrichment age and obsolete-reply guards.
+- `fleet-command.test.mjs`: real Windows PowerShell projection, path/mtime capability
+  invalidation, unsupported refusals, UTF-8, malformed shapes and 5k/20k/50k-line scaling.
+- `base64.test.mjs`: bounded pieces, split UTF-8, cancellation, one MiB and 4096 tasks.
+
+`tests/features/fleet-real-native.mjs --run --real-home <explicit-home>` is Windows-only
+and opt-in. `--discovery` adds a separate inventory consumer; `--replay <captured-json>`
+replays a private real reply through production PowerShell projection; `--lose-settings`
+closes only its own Settings; `--fail-and-gone` injects failure and then authoritative
+no-owner into disposable transport/projection; `--reload-owner --delay 4000` replaces only its own sidebar
+and delays its own child. `--baseline` loads #51's provider/reader for comparison. It
+creates and stops only its disposable app/Core session and inert terminals. Evidence
+(JSON timings/phases, native status and screenshots) stays under `.artifacts/fr-*/`.
+The user's installed app, preferences and Crew home are never written. The older
+synthetic native runners remain useful for bounded decoder fixtures but are not proof
+of real Crew collection latency.
