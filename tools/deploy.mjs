@@ -5,6 +5,7 @@ import os from 'node:os';
 import cp from 'node:child_process';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {digest,read,put,json,contained,safeRelative} from './files.mjs';
+import {planLaunchers,applyLaunchers,withLauncherLock,removalLaunchers,defaultTrelloBin} from './trello-launchers.mjs';
 // Resolve the current implementation, not the older worker a rollback restores.
 export function reconcilePalette(home){
   const directory=path.dirname(fileURLToPath(import.meta.url)),development=path.join(directory,'runtime/palette-policy.mjs');
@@ -38,12 +39,14 @@ function withLock(home,fn) {
   try{fd=fs.openSync(file,'wx');fs.writeFileSync(fd,String(process.pid));}catch(e){throw Error(`Deployment lock exists or cannot be created (${file}); verify no deployment is running before clearing it.`);}
   try{return fn();}finally{fs.closeSync(fd);fs.unlinkSync(file);}
 }
-export function deploy(root,home=defaultHome(),{adopt={},repair=true,sources=null,shellOnly=false}={}) {
+export function deploy(root,home=defaultHome(),{adopt={},repair=true,sources=null,shellOnly=false,trelloBin=null}={}) {
   return withLock(home,()=>{
     const bundle=bundleAt(root),owner=contained(home,'.customizations'),stateFile=path.join(owner,'manifest.json');
     const old=json(stateFile);if(old&&(old.version!==2||old.id!=='custom'))throw Error('Unrecognized deployment ownership record.');
     for(const rel of Object.keys(old?.files??{}))allowedPath(rel);
     const partial=sources!==null,retained=partial||shellOnly;
+    // The CLI opts into user-bin installation; library fixtures inject a disposable bin.
+    const launchers=!partial&&!shellOnly&&trelloBin!==null&&bundle.files['.customizations/runtime/lib/trello/cli.cjs']?planLaunchers(home,trelloBin):null;
     if(shellOnly&&partial)throw Error('Shell-only deployment does not accept source selectors.');
     if(partial && (!old || !Array.isArray(sources) || !sources.length))throw Error('Source-scoped deployment needs an existing owned installation and nonempty source selectors.');
     for(const source of sources??[]) {
@@ -102,13 +105,14 @@ export function deploy(root,home=defaultHome(),{adopt={},repair=true,sources=nul
     }
     const nextManifest=JSON.stringify(shellOnly?{...(old??{version:2,id:'custom',supportedHerdr:bundle.supportedHerdr}),files}:{version:2,id:'custom',supportedHerdr:bundle.supportedHerdr,files,layoutBase:base},null,2)+'\n';
     const nextPrefs=retained?prefsRaw:JSON.stringify({version:1,overrides},null,2)+'\n';
+    const commit=applyTrello=>{
     let backup=null;
-    if(changed.length||stale.length) {
+    if(changed.length||stale.length||launchers?.changed) {
       const transaction=path.join(owner,'backups',`${Date.now()}-${process.pid}`);
       fs.mkdirSync(transaction,{recursive:true});
       // Journal original bytes outside synced source. No shared/session documents are included.
       backup=path.basename(transaction);
-      const rollback={version:1,files:{},after:{},manifest:read(stateFile),preferences:prefsRaw,afterManifest:digest(nextManifest),afterPreferences:digest(nextPrefs),...(shellOnly?{scope:'shell',afterState:nextManifest}:{})};
+      const rollback={version:1,files:{},after:{},manifest:read(stateFile),preferences:prefsRaw,afterManifest:digest(nextManifest),afterPreferences:digest(nextPrefs),...(shellOnly?{scope:'shell',afterState:nextManifest}:{}),...(launchers?.changed?{trelloLaunchers:launchers}:{})};
       for(const j of [...changed,...stale.map(j=>({...j,current:fs.existsSync(j.file)?fs.readFileSync(j.file):null}))]){
         rollback.files[j.rel]=j.current===null?null:j.current.toString('base64');
         rollback.after[j.rel]=files[j.rel]??null;
@@ -120,18 +124,24 @@ export function deploy(root,home=defaultHome(),{adopt={},repair=true,sources=nul
     const order=[...jobs].sort((a,b)=>rank(a)-rank(b));
     for(const j of order){if(j.before!==digest(j.bytes))put(j.file,j.bytes,j.before);else if(j.rel.endsWith('/main.js')&&touchedMods.has(path.posix.dirname(j.rel))) {if(digest(fs.readFileSync(j.file))!==j.before)throw Error(`Concurrent edit: ${j.rel}`);fs.writeFileSync(j.file,j.bytes);}}
     for(const j of stale){if(fs.existsSync(j.file)){if(digest(fs.readFileSync(j.file))!==j.hash)throw Error(`Concurrent obsolete edit: ${j.rel}`);fs.unlinkSync(j.file);}}
+    if(launchers?.changed)applyTrello();
     if(!retained)put(prefsFile,nextPrefs,digest(prefsRaw));
     put(stateFile,nextManifest);
     const palette=shellOnly?null:reconcilePalette(home);
     // Native compatibility patches are not regular payload. Refresh only existing opt-ins.
     let patches=null;
     if(!shellOnly&&(repair||palette?.nativeRefreshRequired)){const worker=path.join(owner,'runtime/scripts/startup-frames.mjs');if(fs.existsSync(worker)){const output=cp.execFileSync(process.execPath,[worker,home],{encoding:'utf8',timeout:30000,windowsHide:true});patches=JSON.parse(output);}}
-    return {changed:changed.length,removed:stale.length,patches,palette,backup,...(retained?{...(shellOnly?{scope:'shell'}:{sources}),preserved:Object.keys(old?.files??{}).filter(rel=>!selected.some(([target])=>target===rel)).length}:{})};
+    return {changed:changed.length,removed:stale.length,patches,palette,backup,...(launchers?{trelloCLI:{installed:true,bin:launchers.bin}}:{}),...(retained?{...(shellOnly?{scope:'shell'}:{sources}),preserved:Object.keys(old?.files??{}).filter(rel=>!selected.some(([target])=>target===rel)).length}:{})};
+    };
+    // Acquire even when launcher bytes are unchanged: runtime/mod upgrades and
+    // ownership publication still belong to the same user-bin transaction.
+    return launchers?withLauncherLock(home,launchers,false,commit):commit();
   });
 }
 export function doctor(home=defaultHome()) {
   const state=json(contained(home,'.customizations/manifest.json'));if(state?.version!==2)throw Error('No Custom deployment found.');
   const issues=[];
+  try{removalLaunchers(home);}catch{issues.push('Trello launcher ownership or bytes changed; inspect before updating or removing.');}
   for(const [rel,hash]of Object.entries(state.files)){allowedPath(rel);const file=contained(home,rel);if(!fs.existsSync(file))issues.push(`Missing: ${rel}`);else if(digest(fs.readFileSync(file))!==hash){if(rel==='layouts/Custom.json'){try{layoutOverrides(state.layoutBase,JSON.parse(read(file)));}catch(e){issues.push(e.message);}}else issues.push(`Modified: ${rel}`);}}
   const prefs=json(contained(home,'.customizations/layout-preferences.json'));if(prefs)try{projectLayout(state.layoutBase,prefs.overrides);}catch(e){issues.push(e.message);}
   let version=null;try{version=app(['--version'],home).replace(/^herdr-app\s+/,'');}catch{}
@@ -171,6 +181,7 @@ export function remove(home=defaultHome()) {
     // Keep all personal modifications, including projected layout preferences.
     const changed=files.filter(j=>fs.existsSync(j.file)&&digest(fs.readFileSync(j.file))!==j.hash);
     if(changed.some(j=>j.rel!=='layouts/Custom.json'))throw Error('Modified owned files; removal refused. Run doctor.');
+    const trello=removalLaunchers(home);
     const runtime=path.join(home,'.customizations/runtime');
     const registry=json(path.join(runtime,'frame-patches/registry.json'));
     const paletteWorker=path.join(runtime,'scripts/palette-policy.mjs');
@@ -178,6 +189,7 @@ export function remove(home=defaultHome()) {
     if(fs.existsSync(path.join(home,'.customizations/terminal-input.json'))) cp.execFileSync(process.execPath,[path.join(runtime,'scripts/terminal-input.mjs'),'restore',home],{encoding:'utf8',timeout:30000});
     for(const patch of registry?.patches??[])if(fs.existsSync(path.join(home,`.customizations/frame-${patch.id}.json`)))cp.execFileSync(process.execPath,[path.join(runtime,'scripts/frame-patch.mjs'),'restore',patch.id,home],{encoding:'utf8',timeout:30000});
     if(fs.existsSync(paletteWorker))cp.execFileSync(process.execPath,[paletteWorker,'remove',home],{encoding:'utf8',timeout:15000,windowsHide:true});
+    if(trello)applyLaunchers(home,trello,true);
     for(const j of files)if(fs.existsSync(j.file)&&digest(fs.readFileSync(j.file))===j.hash)fs.unlinkSync(j.file);
     fs.unlinkSync(path.join(home,'.customizations/manifest.json'));
     reconcilePalette(home);
@@ -194,7 +206,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1]
     else throw Error('Use deploy [home] [--source <canonical-source-or-directory/> ...].');
   }
   let result;
-  if(action==='deploy')result=deploy(root,home,{sources:sources.length?sources:null});
+  if(action==='deploy')result=deploy(root,home,{sources:sources.length?sources:null,trelloBin:defaultTrelloBin()});
   else if(action==='deploy-shell')result=deploy(root,home,{shellOnly:true});
   else if(action==='doctor')result=doctor(home);
   else if(action==='check')result=nativeCheck(home);

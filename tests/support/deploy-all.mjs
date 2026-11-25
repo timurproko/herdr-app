@@ -33,6 +33,7 @@ export function fixture() {
     fs.appendFileSync(path.join(author, 'source.txt'), 'next\n');
     git(author, 'commit', '-am', 'advance'); git(author, 'push'); return git(author, 'rev-parse', 'HEAD');
   };
+  const trelloBin=path.join(base,'user bin');fs.mkdirSync(trelloBin);
   const calls = [];
   const run = (command, args, opts) => {
     calls.push({ command, args, ...opts });
@@ -42,7 +43,7 @@ export function fixture() {
     throw Error(`Unexpected process: ${command} ${args}`);
   };
   return { base, root, origin, author, advance, calls, run,
-    env: { ...env, HERDR_APP_HOME: path.join(base, 'desktop home') },
+    env: { ...env, HERDR_APP_HOME: path.join(base, 'desktop home'), HERDR_TRELLO_BIN: trelloBin, PATH: trelloBin+path.delimiter+process.env.PATH },
     originMatches: value => value === origin, log() {},
   };
 }
