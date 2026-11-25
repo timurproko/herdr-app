@@ -935,6 +935,12 @@ deploy, enroll hooks, authorize accounts or send to real agents.
 The scaffold package contract and scripts/ci-required.test.mjs also run in each lane.
 `CI required` retains its exact name and fails on a failed/cancelled/missing required
 dependency. Drafts skip app suites; the finalized ready head is the integration gate.
+The same fixture checks `.github/workflows/review-labels.yml` against the shared
+label-only caller, keeps delivery/test triggers label-free, and preserves the
+required-check set in `.github/protection.json`. The separate workflow publishes
+only `review-labels / Reconcile managed review labels (advisory)`, never a required
+gate. Its declared Actions-policy path still needs live authorization after merge;
+a declaration or local fixture pass does not prove the advisory job ran.
 
 ## Observed hosted failures
 
