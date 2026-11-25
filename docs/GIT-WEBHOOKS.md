@@ -42,7 +42,10 @@ that is itself refused does not hide the original permission error.
    the account's paginated active admin repositories, never local clones. Account
    selection does not switch the global CLI login. Partial successes stay saved;
    failures need explicit retry. Requirements and Repositories checks remain
-   independent. Picker drafts are per-view and never exported or replayed.
+   independent. A successful confirmed Add saves its displayed effective GitHub
+   account, including the unsaved default, after all mutation batches finish; checks,
+   picker opening/cancellation and wholly failed Adds do not pin an account. Picker
+   drafts are per-view and never exported or replayed.
 
 GitHub account discovery exposes only public login names. A named account's token
 is captured privately in the Node worker and supplied only through a child environment
@@ -319,7 +322,10 @@ The Git header shows the short repository name with its full GitHub URL on hover
 ## Optional CI fix messages
 
 After a customization update, existing enabled preferences and confirmed repositories
-are picked up by startup/code reload, with no re-save or desktop/agent restart. Run
+with a saved GitHub-account binding are picked up by startup/code reload, with no
+re-save or desktop/agent restart. Old added lists with a blank saved account remain
+suppressed until you choose the matching account once or confirm an explicit Add;
+the monitor does not infer authority from that old list alone. Run
 an already-closed updated desktop once and reconnect offline managed hosts so its
 normal lifecycle can update their owned companion packages and configurations.
 

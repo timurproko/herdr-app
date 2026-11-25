@@ -14,8 +14,11 @@ worker does not depend on the main PC staying on. See
   GitHub account defines the allowlist, not disposable webhook-notice membership.
   Add/Remove and Configure/credential cache invalidation cannot erase that selection.
   Removing the last repository, a missing selection or a scope mismatch means no
-  targets; legacy repository preferences never restore them. Each machine uses its
-  own gh login, never copied credentials.
+  targets; legacy repository preferences never restore them. A successful confirmed
+  Add saves the displayed effective GitHub account, including a previously blank
+  default, after all batches finish. Checks, picker opening/cancellation and wholly
+  failed Adds do not save an account. Each machine uses its own gh login, never
+  copied credentials.
 - **Send when agent is** offers Idle, Done, Error and Working. Idle/Done are the
   defaults; saved selections, including none, remain authoritative. Working stays
   opt-in and may queue input; Blocked is always excluded. Error delivery does not
@@ -39,7 +42,11 @@ marked not listed. Merged placeholders are `{url}`, `{base}`, `{branch}`; defaul
 
 After a customization update, startup/code reload repairs scope and updates
 reachable owned companions **without re-saving settings or restarting the desktop
-or agents**. Run an already-closed updated desktop once; offline hosts must reconnect.
+or agents** when the account binding is already saved. An older installation with
+added repositories but a blank saved account stays safely suppressed: choose the
+matching GitHub account once, or complete an explicit Add to bind it. No account is
+inferred merely from an old durable list. Run an already-closed updated desktop
+once; offline hosts must reconnect.
 Explicit CI, relay and GitHub-account changes synchronize to reachable managed
 workers; Add/Remove uses the existing chrome lifecycle. Offline hosts retain their
 last config, with an error on failed synchronization. Closing Herdr is not a pause;

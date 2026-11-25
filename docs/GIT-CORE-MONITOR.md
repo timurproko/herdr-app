@@ -28,7 +28,10 @@ SSH machines; new connected hosts are picked up while the desktop is available.
 There is no separate Background monitor section, status/Check row, machine picker
 or repository input. Existing Git repository selections own the worker allowlist.
 The durable confirmed added list is scoped to the current relay and GitHub account,
-not the disposable webhook-notice cache. Removing every repository gives an empty
+not the disposable webhook-notice cache. Confirmed Add saves its displayed effective
+GitHub account, including the unsaved default, after all mutation batches finish.
+Old added lists with a blank saved account stay suppressed until the matching account
+is explicitly chosen or a successful Add binds it. Removing every repository gives an empty
 scope, never a fallback to old targets; missing/mismatched selection is also empty.
 Normal operation is silent; actual provisioning/sync failures produce a warning.
 

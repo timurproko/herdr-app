@@ -93,7 +93,7 @@ try {
   const picker=await actions.repositoryCandidates(context());assert.deepEqual(JSON.parse(JSON.stringify(picker.items.map(r=>r.id))),['owner/repo']);
   assert.ok(!calls.some(c=>c.args[1]==='set-repositories'),'Listing candidates never changes webhooks');
   const beforeStale=JSON.stringify(runtime),savedRows=rows;rows=[{...rows[0],checked:true}];await actions.repositoryCandidates({...context(),isCurrent:()=>false});rows=savedRows;assert.equal(JSON.stringify(runtime),beforeStale,'Superseded/closed scans cannot publish runtime enrollment facts');
-  await picker.add(context(),['owner/repo']);const mutation=calls.find(c=>c.args[1]==='set-repositories');assert.deepEqual(JSON.parse(mutation.args[4]),{names:['owner/repo'],enabled:true,account:'fixture-user',ids:{'owner/repo':1}});
+  await picker.add(context(),['owner/repo']);assert.equal(settings.githubAccount,'fixture-user','Confirmed Add saves the displayed default GitHub account');const mutation=calls.find(c=>c.args[1]==='set-repositories');assert.deepEqual(JSON.parse(mutation.args[4]),{names:['owner/repo'],enabled:true,account:'fixture-user',ids:{'owner/repo':1}});
   {const before=calls.length,added=await actions.repositoryCheck(context());
     assert.ok(!calls.slice(before).some(c=>c.args[1]==='repositories'),'The added list needs no repository scan');
     assert.deepEqual(JSON.parse(JSON.stringify(added.rows.map(r=>r.id))),['owner/repo'],'An added repository appears in the list');assert.equal(added.statusLabel,'1 added');
@@ -109,7 +109,7 @@ try {
   settings.relay='https://different.example';await assert.rejects(picker.add(context(),['owner/repo']),/Settings changed/);
   settings.relay='https://managed.example';rows=Array.from({length:121},(_,i)=>({name:`owner/repo-${i}`,repositoryId:i+1,checked:false}));const bulk=await actions.repositoryCandidates(context());
   const before=calls.length;await bulk.add(context(),rows.map(r=>r.name));assert.deepEqual(calls.slice(before).filter(c=>c.args[1]==='set-repositories').map(c=>JSON.parse(c.args[4]).names.length),[50,50,21],'All uses bounded exact snapshots, not oversized Windows argv');
-  assert.equal((await actions.repositoryCheck(context())).rows.length,121);
+  assert.equal((await actions.repositoryCheck(context())).rows.length,121);assert.equal(settings.githubAccount,'fixture-user','Default-account binding is saved after all three Add chunks, not mid-batch');
   rows=rows.map(r=>({...r,checked:false}));const again=await actions.repositoryCandidates(context());failMutations=true;const partial=await again.add(context(),rows.map(r=>r.name));assert.ok(partial.errors['owner/repo-0']);assert.match(partial.errors['owner/repo-120'],/Not updated/);
 }
 console.log('PASS: Install/Login/Configure prerequisites, private pinned tooling, account binding, safe resource ownership, secret stdin, automatic URL saves and checkbox snapshots without background mutations');

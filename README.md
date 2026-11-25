@@ -613,8 +613,11 @@ task: the host must remain awake/online and its user signed in. No native Core p
 elevation, password service, agent restart, pre-logon or other-OS support is implied.
 
 After a customization update, startup/code reload updates reachable owned companions
-and scope without re-saving settings or restarting the desktop/agents. Run an already-closed
-updated desktop once; offline hosts must reconnect. Explicit CI/relay/account changes
+and scope without re-saving settings or restarting the desktop/agents when the
+GitHub account binding is already saved. Confirmed Add now saves its displayed
+effective account, including the default; an older added list with a blank saved
+account stays suppressed until that account is explicitly chosen or an Add succeeds.
+Run an already-closed updated desktop once; offline hosts must reconnect. Explicit CI/relay/account changes
 sync to reachable managed workers; offline machines keep their last config.
 Local status distinguishes empty/all-skipped monitoring from healthy-ready, and a
 bounded sent/suppressed diagnostic journal explains why; no new panel UI or toast. The desktop no longer sends auto-fix prompts itself. Fresh

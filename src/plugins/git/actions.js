@@ -96,14 +96,21 @@ export async function removeRepository(cx,id){
 async function changeRepositories(current,s,account,items,names,enabled){
   const allowed=new Map(items.filter(r=>!r.disabled).map(r=>[r.id,r.repositoryId]));
   if(!Array.isArray(names)||!names.length||!names.every(name=>allowed.has(name)))throw Error('Invalid repository selection.');
-  const errors={};
+  const errors={};let confirmed=0;
   try{for(let offset=0;offset<names.length;offset+=50){
     if(!unchanged(current,s))throw Error('Settings changed. Open Add repository again.');
     const chunk=names.slice(offset,offset+50),ids=Object.fromEntries(chunk.map(name=>[name,allowed.get(name)]));
     const r=await requireReady(await setup('set-repositories',current,JSON.stringify({names:chunk,enabled,account,ids}),account));
     Object.assign(errors,r.errors??{});
-    changeAddedRepositories(s.scope,chunk.filter(name=>!errors[name]).map(name=>({name,repositoryId:allowed.get(name),checked:enabled})));
+    const changes=chunk.filter(name=>!errors[name]).map(name=>({name,repositoryId:allowed.get(name),checked:enabled}));
+    changeAddedRepositories(s.scope,changes);confirmed+=changes.length;
     if(Object.keys(errors).length){for(const name of names.slice(offset+50))errors[name]='Not updated because earlier repositories failed. Try again.';break;}
-  }}finally{updateNoticeState(current.setting('relay')??'');}
+  }}finally{
+    updateNoticeState(current.setting('relay')??'');
+    // Add confirms the displayed effective login, including the unsaved default.
+    // Save after all chunks so our own setting change cannot invalidate the batch.
+    if(enabled&&confirmed>0&&unchanged(current,s)&&s.oldGithub.toLowerCase()!==account.toLowerCase()
+      &&!current.setSetting('githubAccount',account,s.oldGithub))throw Error('Repositories added, but the account selection could not be saved. Choose the GitHub account in Repositories.');
+  }
   return {errors};
 }
