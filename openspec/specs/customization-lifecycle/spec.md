@@ -273,10 +273,10 @@ Custom Settings Updates SHALL retain its native rows and add one herdr-app-custo
 - **AND** unknown-update-outcome and failure diagnostics retain their meaning
 
 #### Scenario: Concise running description
-- **WHEN** Custom is launching an update, waiting for its launch receipt or running the update with a known published target
-- **THEN** the row description says Updating to followed by that target's first seven characters and a full stop, such as `Updating to 4c4bff1.`
+- **WHEN** Custom is launching an update, waiting for its launch receipt or running the local update with a known published target, including when no other machines exist
+- **THEN** the row description says Updating this machine to followed by that target's first seven characters and a full stop, such as `Updating this machine to 4c4bff1.`
 - **AND** the target comes from the update check or the active run's target receipt, never from an invented value or unverified installed revision
-- **AND** its disabled Updating… button and row layout remain unchanged, and other states change only where needed for consistent sentence punctuation
+- **AND** its disabled Updating… button and row layout remain unchanged, and every other phase text, timing and update logic remain unchanged
 
 #### Scenario: Target becomes known after launch
 - **WHEN** Custom is launching, waiting for a launch receipt or running without a trustworthy target yet
