@@ -27,13 +27,36 @@ export function retryRead(owner, cx, error, run) {
   return true;
 }
 export class GitReads {
-  constructor({now=()=>Date.now(),log=line=>console.log(line)}={}) {this.now=now;this.log=log;this.routes=new Map();this.pending=new Map();this.tails=new Map();this.facts=new Map();this.targets=new Map();this.lists=new Map();this.generation=0;this.versions=new Map();}
+  constructor({now=()=>Date.now(),log=line=>console.log(line),onDiagnostic=()=>{}}={}) {this.now=now;this.log=log;this.onDiagnostic=onDiagnostic;this.diagnostics=new Map();this.diagnosticSequence=0;this.routes=new Map();this.pending=new Map();this.tails=new Map();this.facts=new Map();this.targets=new Map();this.lists=new Map();this.generation=0;this.versions=new Map();}
+  beginDiagnostic(args,repository,options) {
+    if(typeof repository!=='string' || repository.length>256 || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) || repository.split('/').some(p=>p==='.'||p==='..'))return null;
+    const machine=options.on??null;if(machine!==null && (typeof machine!=='string'||!/^[A-Za-z0-9_.-]{1,128}$/.test(machine)))return null;
+    const query=Array.isArray(args)?args.find(a=>typeof a==='string'&&a.startsWith('query='))??'':'';
+    const phase=query.includes('pageInfo')?'list':query.includes(':pullRequest(')?(query.includes(' title ')?'target':query.includes('contexts(')?'detail':'state'):query.includes('totalCount')?'count':args?.[0]==='pr'?'detail':args?.[1]==='user'?'account':'repository';
+    const key=JSON.stringify([machine,repository.toLowerCase()]),previous=this.diagnostics.get(key);
+    const record={key,machine,repository:repository.toLowerCase(),phase,outcome:'queued',at:this.now(),startedAt:this.now(),attempt:++this.diagnosticSequence,
+      ...(previous?.lastRefusalAt!=null?{lastRefusalAt:previous.lastRefusalAt,retryAt:previous.retryAt}:{})};
+    this.diagnostics.delete(key);this.diagnostics.set(key,record);
+    while(this.diagnostics.size>128)this.diagnostics.delete(this.diagnostics.keys().next().value);
+    this.recordDiagnostic(record,'queued');return record;
+  }
+  recordDiagnostic(record,outcome,error=null) {
+    if(!record)return;
+    const latest=this.diagnostics.get(record.key);if(!latest)return;
+    const refusal=outcome==='quiet-refusal';
+    if(latest.attempt!==record.attempt && !refusal)return;
+    const value={...latest,...(latest.attempt===record.attempt?{outcome,at:this.now()}:{}),
+      ...(refusal?{lastRefusalAt:this.now(),retryAt:error.retryAt}:outcome==='cooldown-skip'?{retryAt:error.retryAt}:{})};
+    this.diagnostics.delete(record.key);this.diagnostics.set(record.key,value);
+    // The sink is best-effort, and always runs outside the requesting turn.
+    Promise.resolve().then(()=>{try{this.onDiagnostic({...value});}catch{}});
+  }
   route(options={}) {return JSON.stringify([options.on??null,options.credentialScope??null]);}
   state(options) {const key=options?.on??'';if(!this.routes.has(key))this.routes.set(key,{until:0,episode:false});return this.routes.get(key);}
   refusal(result,repository,options={}) {
     const state=this.state(options);state.version=(state.version??0)+1;state.until=Math.max(state.until??0,this.now()+Math.max(900000,pullRetryAfter(result,this.now())));
     if(!state.episode) {state.episode=true;try{this.log(`[custom-changes] GitHub rate refusal; reads paused (${repository??'repository lookup'})`);}catch {}}
-    return Object.assign(new Error('GitHub read deferred'),{kind:'rate',quiet:true,retryAt:state.until});
+    return Object.assign(new Error('GitHub read deferred'),{kind:'rate',quiet:true,quietCause:'refusal',retryAt:state.until});
   }
   async read(key,repository,options,run) {
     if(options.current && !options.current())throw Object.assign(new Error('Obsolete GitHub read'),{quiet:true,retryAt:this.now()+10000});
@@ -44,12 +67,17 @@ export class GitReads {
       const job=this.pending.get(id);job.consumers.push(options.current??(()=>true));return job;
     }
     const consumers=[options.current??(()=>true)],current=()=>consumers.some(consumer=>consumer());
-    if(state.until>this.now() && !bypass)throw Object.assign(new Error('GitHub read deferred'),{kind:'rate',quiet:true,retryAt:state.until});
+    const diagnostic=this.beginDiagnostic(key,repository,options);
+    if(state.until>this.now() && !bypass) {
+      const error=Object.assign(new Error('GitHub read deferred'),{kind:'rate',quiet:true,quietCause:'cooldown',retryAt:state.until});
+      this.recordDiagnostic(diagnostic,'cooldown-skip',error);throw error;
+    }
     const scope=repository?JSON.stringify([this.route(options),repository.toLowerCase()]):null,previous=scope?this.tails.get(scope):null;
     const job=(async()=>{
       if(previous)await previous.catch(()=>{});
-      if(state.until>this.now() && !bypass)throw Object.assign(new Error('GitHub read deferred'),{kind:'rate',quiet:true,retryAt:state.until});
+      if(state.until>this.now() && !bypass)throw Object.assign(new Error('GitHub read deferred'),{kind:'rate',quiet:true,quietCause:'cooldown',retryAt:state.until});
       if(!current())throw Object.assign(new Error('Obsolete GitHub read'),{quiet:true,retryAt:this.now()+10000});
+      this.recordDiagnostic(diagnostic,'reading');
       const admitted=state.version??0;let result;
       try{result=await run();}catch(error){if(rateRefusal(error))throw this.refusal(error,repository,options);throw error;}
       if(rateRefusal(result))throw this.refusal(result,repository,options);
@@ -57,7 +85,9 @@ export class GitReads {
       return result;
     })();
     job.consumers=consumers;this.pending.set(id,job);if(scope)this.tails.set(scope,job);
-    try{return await job;}finally{if(this.pending.get(id)===job)this.pending.delete(id);if(scope && this.tails.get(scope)===job)this.tails.delete(scope);}
+    try{const result=await job;this.recordDiagnostic(diagnostic,result?.code===0?'success':'failure');return result;}
+    catch(error){this.recordDiagnostic(diagnostic,error?.quietCause==='refusal'?'quiet-refusal':error?.quietCause==='cooldown'?'cooldown-skip':quietRead(error)?'obsolete':'failure',error);throw error;}
+    finally{if(this.pending.get(id)===job)this.pending.delete(id);if(scope && this.tails.get(scope)===job)this.tails.delete(scope);}
   }
 }
 export function gitReads(exec) {if(!readers.has(exec))readers.set(exec,new GitReads());return readers.get(exec);}

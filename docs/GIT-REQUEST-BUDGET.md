@@ -1,5 +1,25 @@
 # Git panel request budget
 
+## Repository read evidence
+
+The shown Git panel retains bounded local evidence in shared runtime key
+`custom.git.read-diagnostics` (version 1, at most 128 machine/repository records).
+Each entry has a sanitized read `phase` (list/target/state/count/detail/account/
+repository), `outcome` (queued/reading/success/failure/quiet-refusal/cooldown-skip/
+obsolete), occurrence `at`, `startedAt` and attempt order. `lastRefusalAt` and the
+absolute `retryAt` survive successful recovery, distinguishing an actual refusal
+from a skipped cooldown read. A repository merely skipped because another route
+was refused has no invented own refusal timestamp. Attempt guards prevent late
+completions replacing newer phases; a late genuine refusal can still add evidence.
+
+This is diagnostic evidence only, not a freshness/admission/authorization source.
+It adds no UI, account probe or GitHub request. It contains no command/query/output,
+credentials, task inventory or folder paths and is excluded from portable exports.
+Publication yields out of the requesting turn, uses best-effort supported shared
+state and never notifies from render. Eviction bounds retention; it is not a full
+request trace or proof of an earlier unrecorded episode. Episode console logging
+and existing cooldown policy remain unchanged.
+
 The panel needs no relay redeployment for quiet refusals, batching, final-history
 caching, shared in-flight facts or selected-tab reads. Event delivery, window
 activity and enrollment scheduling deliberately retain main behavior: no two-second

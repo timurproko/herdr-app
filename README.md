@@ -254,7 +254,14 @@ Each tab has equal 8px padding before its label and after the painted badge,
 selected or not. Fully visible totals have no count-only tooltip; unknown totals
 keep **Count loading; showing 0**, while totals above 999 display **999+** with
 the exact number in their tooltip. Accessible labels always keep the full total
-and loading state. Same-repository refreshes keep the last-known counts. Cold loading
+and loading state. Same-repository refreshes keep the last-known counts. Coordinator totals stay loading
+until all admitted PR identities have authoritative facts or confirmed absence; a
+successful subset never becomes an exact total. New unread same-home membership
+keeps compatible last-good totals with loading hover/accessibility feedback. A
+verified admitted repository awaiting its first read, including a quiet deferral,
+keeps its header and the standard bulb/**Loading** inside the unfolded section,
+even when other repositories have loaded. Cooldown expiry retries it in place;
+warm refusals keep their rows and counts without adding Loading. Cold loading
 and coordinator verification remain panel feedback, never
 placeholder PR rows.
 Git's event-driven CI line sits immediately below its header and applies to

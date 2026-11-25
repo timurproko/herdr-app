@@ -23,7 +23,7 @@ import { headerTool, contextMenu, panelMessage } from './panel-kit.js';
 import { changePanel } from './panel-state.js';
 import { sidebarPanelEnabled } from './plugins.js';
 import { sidebarTitle } from './sidebar-title.js';
-import { REPO_ARGS, countArgs, parseCounts, agentPullNumber, pullError, PR_PAGE_SIZE, repositoryRead, repositoryFailure, quietRead, retryRead, readPullPage, readTargetPulls, rememberPull, retimePull, pendingChecksArgs, parsePendingChecks, refreshPullFacts, pullStateArgs, parsePullStates, pullPayload, pullRetryAfter, ChecksFallback, PullFactsOrder, CHECKS_BATCH_SIZE, stateBatches, needsChecks } from './pulls.js';
+import { REPO_ARGS, countArgs, parseCounts, agentPullNumber, pullError, PR_PAGE_SIZE, gitReads, repositoryRead, repositoryFailure, quietRead, retryRead, readPullPage, readTargetPulls, rememberPull, retimePull, pendingChecksArgs, parsePendingChecks, refreshPullFacts, pullStateArgs, parsePullStates, pullPayload, pullRetryAfter, ChecksFallback, PullFactsOrder, CHECKS_BATCH_SIZE, stateBatches, needsChecks } from './pulls.js';
 
 const VIEWS = ['open', 'closed'];
 const VIEW_KEY = 'custom.git.view';
@@ -50,6 +50,7 @@ export default class Changes extends View {
       this.menuHandle.focus();
       return;
     }
+    this.enableReadDiagnostics();
     // Focus outlives render; the host forbids allocating handles in renderAggregate.
     this.enrollmentFocus = cx.focus_handle();
     this.headerHovered = false;
@@ -69,6 +70,19 @@ export default class Changes extends View {
     cx.timer.every(LOCAL_CONTEXT_TTL, cx => {
       if (this.shown()) this.refresh(cx);
     });
+  }
+
+  enableReadDiagnostics() {
+    // GitReads invokes this best-effort sink only after yielding. Evidence is
+    // local runtime state, never a preference or read/action authorization.
+    gitReads(exec).onDiagnostic=record=>{
+      const key='custom.git.read-diagnostics',state=host.shared(key);
+      const entries={...(state?.version===1?state.entries:{})},prior=entries[record.key];
+      if(prior && (prior.startedAt>record.startedAt || prior.startedAt===record.startedAt && prior.attempt>record.attempt))return;
+      entries[record.key]=record;
+      const bounded=Object.entries(entries).sort((a,b)=>b[1].at-a[1].at).slice(0,128);
+      host.setShared(key,{version:1,entries:Object.fromEntries(bounded)});
+    };
   }
 
   close() {
@@ -253,14 +267,14 @@ export default class Changes extends View {
         this.reconcilePulls(rows);
         this.ciRevision=(this.ciRevision??0)+1;
         this.pages[state] = {cursor:page.cursor,hasMore:page.hasMore && page.cursor !== after,expanded:append};
-        this.counts = page.counts ?? {...this.counts,[state]:page.total};
+        this.counts = page.counts ?? {...this.counts,[state]:page.total ?? this.counts?.[state] ?? null};
         this.pullsAt[state] = Date.now(); this.pullError = null;
         // All list and webhook reads share pullRequest/pullLoading: one writer.
         if (append) return;
         this.relatedKey = null;this.relatedRetry=null;
         // Real pages include both totals in the same GraphQL request, avoiding
         // another Node/gh launch. Retain compatibility with partial responses.
-        const counts = page.counts ? null : await gh(countArgs(repository)).catch(() => null);
+        const counts = page.counts ? null : await gh(countArgs(repository)).catch(error => {if(quietRead(error))throw error;return null;});
         if (!current()) return;
         this.counts = page.counts ?? (counts?.code===0?parseCounts(counts.stdout):null) ?? this.counts;
       } catch (e) {
@@ -387,7 +401,7 @@ export default class Changes extends View {
     const uncovered=name=>Boolean(this.notices?.active && this.notices.members?.get(name.toLowerCase())!==true);
     if(task) {
       const repositories=aggregate?.repositories()??[],rows=aggregate?.rows(this.view)??[];
-      const sections=repositories.map(repo=>({repo,rows:rows.filter(pr=>pr.repo===repo),error:aggregate.readNotice(repo,this.view)})).filter(section=>section.rows.length || section.error);
+      const sections=repositories.map(repo=>({repo,rows:rows.filter(pr=>pr.repo===repo),error:aggregate.readNotice(repo,this.view),loading:aggregate.loading?.(repo)})).filter(section=>section.rows.length || section.error || section.loading);
       const paging=this.taskSections(sections,aggregate.context.scope);
       // The native host cannot reliably notify viewport motion. Safety covers
       // the entire revealed unfolded batch, never guessed pixel intersections.
@@ -685,11 +699,12 @@ export default class Changes extends View {
       onChoose: choose, onClose: () => closeOverlay(overlay) });
   }
 
-  segment(t, id, label, count, on, onClick) {
+  segment(t, id, label, count, on, onClick, loading = false) {
+    loading ||= count == null;
     const value = count ?? 0, text = value > 999 ? '999+' : String(value);
-    const tooltip = count == null ? 'Count loading; showing 0' : value > 999 ? String(value) : null;
+    const tooltip = loading ? `Count loading; showing ${value}` : value > 999 ? String(value) : null;
     return h_flex().id(id).h(U.control).px(8).gap(6).flex_none().items_center().rounded(U.radius).cursor_pointer()
-      .role('button').accessibility_label(`${label}: ${count ?? 0}${count == null ? ' (loading)' : ''}`)
+      .role('button').accessibility_label(`${label}: ${count ?? 0}${loading ? ' (loading)' : ''}`)
       .text_size(U.meta).text_color(on ? t.foreground : t.muted).when(on, el => el.font_semibold())
       .hover(s => s.bg(t.hover)).on_click((_e, cx) => onClick(cx))
       .child(div().id(`${id}-label`).flex_none().child(label))
@@ -1131,7 +1146,7 @@ export default class Changes extends View {
         }))))
       .when(!folded && body.length>0, el => el.child(v_flex().id(`task-repo-body-${repo}`).flex_none()
         .children(body.map(item=>div().id(`task-item-${item.key}`).flex_none().h(item.height+item.gap)
-          .child(item.row ? this.pullRow(t,item.row) : this.renderPart(`repository-notice:${repo}`,()=>div().id(`task-error-${repo}`).flex_none().w_full()
+          .child(item.row ? this.pullRow(t,item.row) : item.loading ? panelMessage(t,`task-loading-${repo}`,{text:'Loading',loading:true,rowInset:2}) : this.renderPart(`repository-notice:${repo}`,()=>div().id(`task-error-${repo}`).flex_none().w_full()
             .child(div().id(`task-notice-measure-${window.measurement}-${encodeURIComponent(item.measureKey)}`).flex_none().w_full().px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(item.error)
             .on_size_change((size,cx)=>{
               if(!this.taskWindowCurrent(window,scope) || !window.items.some(current=>current.measureKey===item.measureKey) || !Number.isFinite(size.height))return;
@@ -1269,8 +1284,8 @@ export default class Changes extends View {
       ? `\n${aggregate.context.verification.reason} at ${new Date(aggregate.context.verification.at).toISOString()} (generation ${aggregate.context.verification.generation})` : '');
     // Membership is cross-tab: enrollment and updates must retain hidden sections.
     const repositories=aggregate.repositories(), rows=aggregate.rows(this.view);
-    const sections=repositories.map(repo=>({repo,rows:rows.filter(pr=>pr.repo===repo),error:aggregate.readNotice(repo,this.view)}))
-      .filter(section=>section.rows.length || section.error);
+    const sections=repositories.map(repo=>({repo,rows:rows.filter(pr=>pr.repo===repo),error:aggregate.readNotice(repo,this.view),loading:aggregate.loading?.(repo)}))
+      .filter(section=>section.rows.length || section.error || section.loading);
     if(this.repositoryNameSizes){
       const ids=new Set(repositories.map(repo=>`task-repo-name-${scope}-${repo}`));
       for(const id of this.repositoryNameSizes.keys())if(!ids.has(id))this.repositoryNameSizes.delete(id);
@@ -1301,8 +1316,8 @@ export default class Changes extends View {
           .child(panelPin(t,{id:'git-pin',enabled:this.headerHovered}))
           .child(headerTool(t,{id:'git-close',icon:'mods/custom-pane/close.svg',label:'Close Git panel',enabled:this.headerHovered,onClick:()=>changePanel({open:false})}))))
       .child(h_flex().id('git-views').h(40).flex_none().px(4).gap(2).items_center().border_b(1).border_color(t.border)
-        .child(this.segment(t,'git-view-open','Open',counts.open,this.view==='open',view=>this.setView('open',view)))
-        .child(this.segment(t,'git-view-closed','Closed',counts.closed,this.view==='closed',view=>this.setView('closed',view))))
+        .child(this.segment(t,'git-view-open','Open',counts.open,this.view==='open',view=>this.setView('open',view),aggregate.countsLoading))
+        .child(this.segment(t,'git-view-closed','Closed',counts.closed,this.view==='closed',view=>this.setView('closed',view),aggregate.countsLoading)))
       .child(v_flex().id('task-pulls-scroll').relative().flex_1().min_h(0).overflow_hidden()
         .child(v_flex().id(`task-pulls-frame-${scope}-${this.view}-${taskWindow.measurement}`).relative().flex_1().min_h(0).overflow_hidden()
           .on_size_change((size,cx)=>this.taskMeasure(taskWindow,scope,'viewport',size,cx))
@@ -1418,7 +1433,7 @@ export default class Changes extends View {
           .child(headerTool(t, { id: 'git-close', icon: 'mods/custom-pane/close.svg', label: 'Close Git panel', enabled: this.headerHovered, onClick: () => changePanel({open:false}) }))))
       .child(v_flex().id('git-panel-body').relative().flex_1().min_h(0)
       .child(h_flex().id('git-views').h(40).flex_none().px(4).gap(2).items_center().border_b(1).border_color(t.border)
-        .child(this.segment(t, 'git-view-open', 'Open', this.counts?.open ?? this.pulls.open?.length ?? null, this.view === 'open', cx => this.setView('open', cx)))
+        .child(this.segment(t, 'git-view-open', 'Open', this.counts?.open ?? null, this.view === 'open', cx => this.setView('open', cx)))
         .child(this.segment(t, 'git-view-closed', 'Closed', this.counts?.closed ?? null, this.view === 'closed', cx => this.setView('closed', cx))))
       .child(this.renderPulls(t))
       .when(Boolean(notice), el => el.child(this.liveCIInfo(t,notice)))

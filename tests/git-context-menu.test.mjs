@@ -23,7 +23,7 @@ function find(node,id) {
 }
 const opened=[],closed=[],notices=[],clipboard=[],browser=[];
 let properties=null,focused=0,background=0,stopped=0,receive;
-let commandReads=0;
+let commandReads=0,diagnosticReads=0;
 const host={props:()=>properties,openOverlay:spec=>opened.push(spec),closeOverlay:id=>closed.push(id),notify:n=>notices.push(n),
   exec:(...args)=>{browser.push(args);return Promise.resolve();},window:()=>({platform:'windows'}),theme:()=>({hover:'hover'}),
   hc(){},run(command){assert.ok(['custom-changes.open-external','custom-changes.open-code','custom-changes.open-actions'].includes(command));receive(command.slice('custom-changes.'.length));},
@@ -42,7 +42,7 @@ const modules={
   './plugins.js':{sidebarPanelEnabled:()=>true},'./sidebar-title.js':{sidebarTitle:element},
   './agent-links.js':{AgentLinks:class{}},'./pin-swap.js':{PinSwap:class{},PIN_SWAP_MS:320},
   './panel-pin.js':{panelPin:(_t,{id})=>element().id(id)},'./panel-state.js':{changePanel(){}},
-  './pulls.js':Object.fromEntries(['pullListArgs','REPO_ARGS','countArgs','parseCounts','parsePullPage','agentPullNumber','pullRow','pullError','PR_FIELDS','PR_PAGE_SIZE','repositoryRead','repositoryFailure','quietRead','retryRead','readPullPage','readTargetPulls','rememberPull','retimePull','pendingChecksArgs','parsePendingChecks','refreshPullFacts','pullStateArgs','parsePullStates','pullPayload','pullRetryAfter','STATE_BATCH_SIZE','ChecksFallback','PullFactsOrder','CHECKS_BATCH_SIZE','stateBatches','needsChecks'].map(key=>[key,()=>{}])),
+  './pulls.js':{...Object.fromEntries(['pullListArgs','REPO_ARGS','countArgs','parseCounts','parsePullPage','agentPullNumber','pullRow','pullError','PR_FIELDS','PR_PAGE_SIZE','repositoryRead','repositoryFailure','quietRead','retryRead','readPullPage','readTargetPulls','rememberPull','retimePull','pendingChecksArgs','parsePendingChecks','refreshPullFacts','pullStateArgs','parsePullStates','pullPayload','pullRetryAfter','STATE_BATCH_SIZE','ChecksFallback','PullFactsOrder','CHECKS_BATCH_SIZE','stateBatches','needsChecks'].map(key=>[key,()=>{}])),gitReads(){diagnosticReads++;return {};}},
 };
 const context=vm.createContext({});
 const main=new vm.SourceTextModule(fs.readFileSync(new URL('../src/plugins/git/mod/main.js',import.meta.url),'utf8'),{context});
@@ -131,4 +131,5 @@ for(let i=0;i<8;i++)await Promise.resolve();
 assert.equal(browser.length,6);assert.deepEqual(Array.from(browser.at(-1)[1]),['/c','start','','https://github.com/owner/repo/actions']);
 assert.equal(browser.at(-1)[2].on,undefined,'All repository links open in this computer’s browser');
 assert.equal(closed.at(-1),'header-menu');assert.equal(clipboard.length,1,'Header actions do not copy or retarget a row');
+assert.equal(diagnosticReads,0,'Context menus never initialize repository read diagnostics');
 console.log('PASS: Git header repo title, Code/Pull requests/Actions links, captured repo/local browser, keyboard navigation and unchanged PR-row clipboard/Open menus');

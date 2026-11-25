@@ -24,10 +24,11 @@ export class TaskReveal {
   project(sections,folded,headerHeight,gap,geometryKey){
     let items=[];this.headerHeight=headerHeight;this.gap=gap;
     for(const section of sections){
-      if(!section.rows.length&&!section.error)continue;
+      if(!section.rows.length&&!section.error&&!section.loading)continue;
       const group=[{key:`header:${section.repo}`,repo:section.repo,header:true,folded:folded.has(section.repo),height:headerHeight}];
       if(!folded.has(section.repo)){
         for(const row of section.rows)group.push({key:row.key,repo:section.repo,row,height:74});
+        if(section.loading)group.push({key:`loading:${section.repo}`,repo:section.repo,loading:true,height:32});
         if(section.error){const measureKey=`${geometryKey}\0${section.repo}\0${section.error}`;group.push({key:`notice:${section.repo}`,repo:section.repo,error:section.error,measureKey,height:this.noticeHeights.get(measureKey)??24.5});}
       }
       group.forEach((item,i)=>{item.gap=i<group.length-1?gap:0;items.push(item);});
@@ -43,7 +44,7 @@ export class TaskReveal {
       let excessItems=this.maxRows===Infinity?0:Math.max(0,span.length+(span[0]&&!span[0].header?1:0)-MAX_MOUNTED_ITEMS);
       if(overflow||excessItems){
         const known=new Set(prior.map(item=>item.key)),deferred=new Set();
-        for(const item of span)if(!known.has(item.key)&&((item.row&&(overflow>0||excessItems>0))||((item.error||item.folded)&&excessItems>0))){
+        for(const item of span)if(!known.has(item.key)&&((item.row&&(overflow>0||excessItems>0))||((item.error||item.loading||item.folded)&&excessItems>0))){
           deferred.add(item.key);if(item.row)overflow--;excessItems--;
         }
         this.pendingNew=deferred.size;items=items.filter(item=>!deferred.has(item.key));
