@@ -18,7 +18,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-24-persistent-owned-palette/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-24-persistent-owned-palette/acceptance.md",
   "finalizedDate": "2026-11-24",
-  "specBaseSha": "a7c2a4410510d88abef4dcd6ae9d1471942014ab",
+  "specBaseSha": "b42e95518f3330070165e19e06322e7e80e7a1c5",
   "acceptanceScenarios": [
     "Custom opens its owned palette from Ctrl+Shift+P and the status-bar button, preserving the native catalog and Custom search, scroll, rename and close behavior.",
     "Full installation and mounted startup checks repair stock-reset user bindings with ownership, bounded retries and visible failure diagnostics on each desktop.",
