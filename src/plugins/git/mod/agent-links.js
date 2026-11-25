@@ -6,6 +6,7 @@ import { namedPullNumber } from './location.js';
 
 const TTL = 10000;
 const repoKey = value => String(value ?? '').toLowerCase();
+const displayName=agent=>typeof agent?.title==='string'&&agent.title.trim()?agent.title.trim():agent?.program?.name??null;
 export function repositoryName(stdout) {
   try {
     const repo = JSON.parse(stdout);
@@ -24,7 +25,7 @@ export function agentTargets() {
     const on = agent.address.includes('/') ? agent.address.split('/')[0] : null;
     const target = {address:agent.address, pane:pane.pane, space:agent.space, tab:agent.tab,
       app:agent.app, cwd, on, branch:pane.branch ?? null, number:namedPullNumber(tab)};
-    return [{...target, key:JSON.stringify(target)}];
+    return [{...target, key:JSON.stringify(target), displayName:displayName(agent)}];
   });
 }
 
@@ -46,6 +47,8 @@ export class AgentLinks {
     if(repo && fingerprint!=null)this.repositories.set(key,{fingerprint,repo});
     return repo;
   }
+
+  displayName(address) {return displayName(agents().find(agent=>agent.address===address));}
 
   refresh(cx) {
     if (!this.enabled()) return;

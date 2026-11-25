@@ -451,15 +451,18 @@ export function checks(rollup) {
     if (!prev || at >= prev.at) latest.set(key, { ...c, at });
   }
   let ok = 0, bad = 0, pending = 0;
+  const details=[];
   for (const c of latest.values()) {
+    const name=c.name??c.context;
+    const detail=state=>{if(typeof name==='string'&&name.trim())details.push(`${state}: ${c.workflowName?`${c.workflowName} / `:''}${name}`);};
     const conclusion = String(c.conclusion ?? c.state ?? '').toUpperCase();
-    if (c.status && c.status !== 'COMPLETED') pending++;
+    if (c.status && c.status !== 'COMPLETED') {pending++;detail('Pending');}
     else if (['SUCCESS', 'SKIPPED', 'NEUTRAL'].includes(conclusion)) ok++;
-    else if (['', 'PENDING', 'EXPECTED', 'QUEUED', 'IN_PROGRESS', 'WAITING'].includes(conclusion)) pending++;
-    else bad++;
+    else if (['', 'PENDING', 'EXPECTED', 'QUEUED', 'IN_PROGRESS', 'WAITING'].includes(conclusion)) {pending++;detail('Pending');}
+    else {bad++;detail('Failed');}
   }
   const total = ok + bad + pending;
-  return { ok, bad, pending, total, label: `${ok}/${total}`, state: bad ? 'failure' : pending ? 'pending' : 'success' };
+  return { ok, bad, pending, total, label: `${ok}/${total}`, state: bad ? 'failure' : pending ? 'pending' : 'success', ...(details.length?{details:details.sort()}:{}) };
 }
 
 // GraphQL connections and gh pr view's arrays share one safe label shape.

@@ -257,7 +257,8 @@ for (const [body,label,asset,color] of [
   const pr = {number:1,title:'Example',meta:'#1',state:'draft',tasks:checklistTasks(body)};
   const row = taskPanel.view.pullRow(colors,pr), nodes = descendants(row);
   assert.ok(descendants(find(row,'pr-tasks-1')).includes(label),'Visible task wording stays full before overflow is measured; hidden compact probes are not display evidence');
-  assert.equal(find(row,'pr-tasks-1').attrs.tooltip[0],label,'Full GitHub wording remains on hover');
+  assert.equal(find(row,'pr-tasks-1').attrs.tooltip,undefined,'Complete task wording has no repeat-only hover; compact recovery is covered by measured tooltip fixtures');
+  assert.equal(find(row,'pr-meta-1').attrs.tooltip,undefined,'The metadata strip cannot resurrect the same visible task wording');
   const icon = nodes.find(node => typeof node === 'object' && node?.asset?.endsWith(asset));
   assert.ok(icon,`${label} uses ${asset}`);
   if (color) assert.equal(icon.attrs.text_color[0],color);

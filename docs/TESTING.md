@@ -420,6 +420,51 @@ fixtures protect captured URLs, callbacks and measured motion. These prove rende
 constraints, not GPUI pixel layout, tooltip hit-testing or native animation appearance.
 No deployment or live label mutation is performed.
 
+## Informative Git row tooltips
+
+`tests/git-row-tooltips.test.mjs` settles ordinary/coordinator live/ghost rows at
+75–200% zoom, including 100%/130%. Complete visible number, author, task, check,
+review and label wording has no repeat-only item or parent tooltip. Compact,
+clipped and omitted values remain recoverable. Exact UTC timestamps, failing or
+pending check names and known agent identities add facts without hover reads.
+Titles keep native truncation, inherited font and full-title hover unchanged;
+same-ID edits at 200px also run with changed-size-only callbacks.
+
+The tooltip layer reuses `RowPresentations.layout` and main's existing intrinsic
+measurements. It adds no measurement, width cache, scheduler or native element.
+Cached time/check tooltip facts invalidate with timestamps and check details.
+Main's dot/icon geometry, mounted reveal/caps, native scrolling, fades, anchors,
+quiet rate refusals and batched reads stay intact.
+
+| Item | Tooltip policy |
+| --- | --- |
+| Title | Unchanged complete-title hover, whether fitting or truncated |
+| Number | Full original only if hidden; normally none |
+| Author | Full login when clipped |
+| Time | Full compact/clipped wording, or known exact UTC timestamp |
+| Tasks | Full progress phrase when compact/clipped |
+| Checks | Known failing/pending job names; no count-only repeat |
+| Label pills/group | Complete assigned names when clipped or omitted; no per-pill probe |
+| Review | Full clipped/hidden decision, including surviving metadata recovery |
+| State/robot | Unstated state/conflict or known agent name, without changed action authority |
+| Combined strips/row | Only hidden/omitted values; no summary repeating visible items |
+
+`tests/git-row-render-budget.test.mjs` compares the actual ordinary renderer and
+coordinator renderer after full reveal with frozen main `f3fe341` counts. At
+30/60 rows every requested row mounts; 100/200 coordinator inventories retain
+main's 60-row/100-item cap. Both tabs and 100%/130% are covered. Element and probe
+counts must equal main, with at most two additional decoration operations per row;
+negative controls add a subtree/probe and must fail. This complements, rather than
+replaces, the existing reveal/cap/scroll budget fixtures.
+
+`tools/measure-git-row-budget.mjs --run` compares fresh native main/current checks
+at 30/60 fully mounted ordinary/coordinator rows, five paired cold samples each,
+using the same #56 reveal model and unchanged production caps. Main's renderer
+and pure presentation helper are substituted together. Every sample completes and
+each paired sample and median must stay within main +2ms. These are build-only
+JS/native-element timings, not GPU paint or real input latency. The disposable
+checker never contacts the live app/Core; see GIT-RENDER-BUDGET.md for results.
+
 ## Coordinator render error diagnostics
 
 `node --experimental-vm-modules tests/git-panel-errors.test.mjs` exercises the

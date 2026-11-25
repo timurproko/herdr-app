@@ -2,7 +2,7 @@
 export class RowPresentations {
   constructor(){this.rows=new WeakMap();this.styles=new Map();this.layouts=new Map();}
   get(pr,limit,ghost=false){
-    const signature=[pr.key,pr.number,pr.title,pr.meta,pr.login,pr.when,pr.compactWhen,pr.review,pr.labels,pr.tasks?.done,pr.tasks?.total,pr.tasks?.label,pr.checks?.state,pr.checks?.label,limit];
+    const signature=[pr.key,pr.number,pr.title,pr.meta,pr.login,pr.when,pr.compactWhen,pr.review,pr.labels,pr.tasks?.done,pr.tasks?.total,pr.tasks?.label,pr.checks?.state,pr.checks?.label,pr.checks?.details,pr.state,pr.createdAt,pr.closedAt,pr.mergedAt,limit];
     let entry=this.rows.get(pr);
     if(!entry||signature.some((value,i)=>value!==entry.signature[i])){
       const all=pr.labels??[],labels=all.slice(0,limit),labelNames=all.map(label=>label.name).join('\n');
@@ -10,6 +10,11 @@ export class RowPresentations {
         taskFraction:pr.tasks?`${pr.tasks.done}/${pr.tasks.total}`:'',review:pr.review?(pr.review==='approved'?'Approved':'Changes requested'):'',
         accessibility:`Open pull request #${pr.number} on GitHub`,ids:new Map()};
       entry.tooltip=[pr.tasks?.label,pr.checks?.label,labelNames,entry.review].filter(Boolean).join('\n');
+      const timestamp=pr.state==='merged'?(pr.mergedAt??pr.closedAt):pr.state==='closed'?pr.closedAt:pr.createdAt;
+      const exact=Number.isFinite(Date.parse(timestamp??''))?new Date(timestamp).toISOString():null;
+      entry.timeInfo=exact&&pr.when?`${pr.when}\n${exact}`:null;
+      entry.checkInfo=pr.checks?.details?.length?`${pr.checks.label}\n${pr.checks.details.join('\n')}`:null;
+      entry.omittedLabels=all.length>labels.length;
       this.rows.set(pr,entry);
     }
     const prefix=ghost?'swap-':'',key=prefix+(pr.key??pr.number);

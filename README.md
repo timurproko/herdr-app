@@ -389,7 +389,10 @@ showing an earlier attempt's result. Untouched body checklists show a muted
 checklist icon and **2 tasks** (or **1 task**), not **0 of 2 tasks**. Partial
 progress keeps its ring; completed lists keep their purple check and done label.
 All PR rows, including coordinator/fleet rows and both Open/Closed tabs, omit the
-Owner badge. Every PR block uses the same three fixed lines: a 20px title, an
+Owner badge. Titles and headers keep native truncation and inherit the interface
+font unchanged. Titles always retain their full-title tooltip, including fitting
+titles, without width measurement or a resize gate. Every PR block uses the
+same three fixed lines: a 20px title, an
 18px number/author/time line and an 18px metadata line, for a 74px block including
 spacing. A blank 24px robot slot keeps titles' truncation boundaries identical
 with or without a related agent. Robot slots, label pills and the repository headers'
@@ -418,7 +421,18 @@ as **27m ago**. If metadata still overflows, separate review-decision text yield
 first, then the bounded label group clips; checks and compact task fractions stay
 complete, without overlap or lone ellipses. Byline overflow clips secondary author
 text only after compacting time. Checks always keep their complete natural icon/count
-width, including realistic three-digit totals. All full values remain in tooltips.
+width, including realistic three-digit totals. Lower-line tooltips appear only
+when they add information: a clipped author/label, compact task/time value or
+hidden review/label value exposes its full original. Fully visible lower-line
+text has no repeat-only tooltip; titles keep their existing full-title hover. Time may add its exact UTC timestamp,
+checks may name failing/pending jobs, the state icon explains an unstated state or
+conflict, and a related robot can identify its known agent. Parent lines do not
+repeat complete visible items. Missing facts are never invented and hover starts
+no reads. Tooltip policy reads the existing renderer's full/compact/clipped
+choices; it adds **no intrinsic probes, native elements, width cache or measurement
+scheduler**. Main's renderer, mounted reveal/caps, fades and geometry stay intact.
+Clipped/omitted label names are recovered by their group without individual pill
+measurement. See the main-relative mounted-row guards in [testing guidance](docs/TESTING.md).
 Late facts may move left-run neighbors, but never the pill group's right anchor,
 three line positions, 74px block height or title/robot reservation. Native post-layout measurements of
 clipped invisible probes choose shortening; there is no guessed character budget,
@@ -431,8 +445,8 @@ Colours follow the live panel background (weighted RGB lightness below 0.5 is da
 otherwise light), including custom palettes, not the system appearance preference.
 The formula comes from [Primer's IssueLabelToken](https://github.com/primer/react/blob/2128032dca65a1bd565fe382c2e91c638c6473a4/packages/react/src/Token/IssueLabelToken.module.css).
 Multiple/long labels stay in a bounded single-height strip:
-pill text truncates, and hovering the pills or metadata exposes complete names,
-including clipped labels. No labels means no placeholder, extra separator or horizontal
+pill text clips, and hovering a clipped pill/group or metadata exposes complete
+names when labels are clipped or omitted, without repeating fully visible labels. No labels means no placeholder, extra separator or horizontal
 reservation; label refreshes never add extra row lines or horizontal overflow. Metadata separators,
 including the number/author dot, share a clearly visible muted 3px round shape,
 vertically centred beside text/icons with equal 6px spacing on both sides.
@@ -540,7 +554,7 @@ PRs keep their usual icons. Push events also refresh facts after base-branch cha
 PRs with a related live agent show a separate white/foreground robot beside
 the title, matching the Agents sidebar. The original colored PR icon stays.
 The robot uses the usual rounded inset-icon hover tint, distinct from the
-row's hover, and no tooltip; clicking opens
+row's hover, with a tooltip only for a known agent name; clicking opens
 the agent's existing tab without opening GitHub.
 The rest of the row still opens GitHub. Right-click any PR (pinned or scrolling,
 Open or Closed) for the same menu as Files: **Open...**, a divider, then **Copy path**.

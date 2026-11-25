@@ -204,7 +204,7 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
     near(edge,robot.x+robot.width,'Shared edge matches the title robot control');
     const probe=find(tree,'pr-meta-17-probe-labels-full');
     near(geometry.get(strip).width,geometry.get(probe).width,'Review/Rework/Approved retain whole words throughout the supported matrix');
-    assert.equal(strip.attrs.tooltip[0],name);
+    assert.equal(strip.attrs.tooltip,undefined,'A complete visible label has no repeat-only tooltip');
   }
 }
 // Exact whole-line fit thresholds from independent natural probes: one pixel

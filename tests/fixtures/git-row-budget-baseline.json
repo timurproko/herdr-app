@@ -1,0 +1,56 @@
+{
+  "revision": "f3fe341",
+  "workload": "mountedRows; actual renderPulls and renderAggregate after full reveal up to main MAX_MOUNTED_ROWS",
+  "ordinary": {
+    "30": {
+      "operations": 15439,
+      "elements": 1834,
+      "probes": 270,
+      "mounted": 30
+    },
+    "60": {
+      "operations": 30829,
+      "elements": 3664,
+      "probes": 540,
+      "mounted": 60
+    },
+    "100": {
+      "operations": 51349,
+      "elements": 6104,
+      "probes": 900,
+      "mounted": 100
+    },
+    "200": {
+      "operations": 102649,
+      "elements": 12204,
+      "probes": 1800,
+      "mounted": 200
+    }
+  },
+  "coordinator": {
+    "30": {
+      "operations": 9578,
+      "elements": 1091,
+      "probes": 40,
+      "mounted": 30
+    },
+    "60": {
+      "operations": 18578,
+      "elements": 2111,
+      "probes": 70,
+      "mounted": 60
+    },
+    "100": {
+      "operations": 18591,
+      "elements": 2112,
+      "probes": 70,
+      "mounted": 60
+    },
+    "200": {
+      "operations": 18591,
+      "elements": 2112,
+      "probes": 70,
+      "mounted": 60
+    }
+  }
+}
