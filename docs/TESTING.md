@@ -320,6 +320,41 @@ is unchanged. Installed 0.1.17 stock was separately compared read-only; provenan
 and limitations are in HERDR-0.1.17-NATIVE-PATCHES.md. No deployment or live UI
 interaction is implied by fixture success.
 
+## Owned palette and persistent key policy
+
+The owned model/UI/persistence/retirement suites (`tests/owned-palette-*.test.mjs`)
+use the real pinned 0.1.18 palette and both public SDK declarations alongside the
+retained 0.1.17 original. They compare native catalogs/themes/manifest validation,
+IDs, hotkeys and clone dispatch; exercise the packaged search/virtual list and
+heading/fade/scrollbar events; and run isolated install/reset/reload/CAS/rollback
+and local/pc2/Core-only fixtures. Retirement covers masked/reset 0.1.17/0.1.18,
+both landing orders with the actual merged 0.1.18 stop-gap (LF and verified
+Windows CRLF originals), late record replay, unknown-target preservation and
+feedback isolation. Key reset tests explicitly start with stock
+Ctrl+Shift+P -> app.palette, repair it and simulate the host mod.open toggle.
+`owned-palette-review.test.mjs` additionally exercises the real installer and
+retirement gates with missing SDK/UI/API/command/version facts, uninitialized-home
+deferral, GPUI-equivalent key spellings/alias restoration and a non-replaceable log
+during full Update. SDK declarations are preserved release fixtures; the fake
+executable/catalog and compact GPUI declaration are explicitly synthetic.
+`owned-palette-rollback.test.mjs` installs a prior managed fixture carrying the real
+#65 native palette and pinned legacy openers/startup worker, migrates it, rolls
+back the reported backup, simulates a frame reset/startup and reinstalls. It covers
+0.1.17/0.1.18 LF/Windows originals, feedback preservation, later-native-edit refusal,
+personal shortcut preservation, deferred install → startup ownership → rollback,
+reinstall and interrupted retirement. Assertions require no palette-specific deploy
+journal fields. Mounted persistence tests cover missing-mod cleanup with/without a
+sidecar and without SDK files; the same installed-state planner handles all paths. Other shared fixture files come from the current build;
+it is not claimed as a byte-faithful historical distribution. Rollback restores
+intent through guarded refresh, never by replaying an old native main.js.
+
+These tests do not prove actual native event dispatch, focus or pixels; those
+remain separately authorized live/disposable-native validation. No suite installs
+into the person's app, activates migration variables, restarts a process or runs
+live SSH/Core operations. See [ownership and limits](PALETTE.md).
+
+### Merged 0.1.18 stop-gap reference
+
 The 0.1.18 stop-gap extends the same real-stock suite to pinned LF and independently
 verified Windows CRLF originals, release-specific selection, 0.1.17-to-0.1.18
 masked/reset upgrades and current-original restoration. Real native and Custom

@@ -8,6 +8,8 @@ logs/
 .work/
 *.error
 *.d.ts
+!tests/fixtures/palette/herdr-0.1.17.d.ts
+!tests/fixtures/palette/herdr-0.1.18.d.ts
 **/jsconfig.json
 # Private snapshots belong in <Herdr home>/preferences; protect legacy checkout copies.
 /preferences/

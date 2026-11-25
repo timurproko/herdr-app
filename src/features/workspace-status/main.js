@@ -226,7 +226,8 @@ export default class WorkspaceStatus extends View {
   // The palette key as actually bound, not a hardcoded one; without a
   // binding the hint stays useful ("commands") instead of lying.
   hint(t) {
-    const b = keys().find((k) => k.section === "global" && k.action === "app.palette");
+    const native = shared('custom.palette.status')?.installed === false;
+    const b = keys().find((k) => k.section === 'layout:Custom' && k.action === (native ? 'app.palette' : 'mod.open:custom-palette'));
     const key = hotkey(b?.keys);
     return key ? `${key}  commands` : "commands";
   }
@@ -273,11 +274,18 @@ export default class WorkspaceStatus extends View {
       .on_mouse_down("right", (_event, cx) => { cx.stop_propagation(); this.showPreviewMenu(target, link); })
       .children(reveal.items(items))
       .child(div().flex_1())
+      .when(shared('custom.palette.status')?.ok === false, el => el.child(div().id('palette-repair-warning')
+        .h(U.control).px(8).flex().items_center().rounded(U.radius).cursor_pointer()
+        .text_color(t.blocked).hover(el => el.bg(t.hover))
+        .accessibility_label('Custom palette needs attention; retry repair')
+        .tooltip(shared('custom.palette.status')?.error ?? 'Check Custom palette diagnostics')
+        .on_click((_e, cx) => { cx.stop_propagation(); setShared('custom.palette.retry', Date.now()); })
+        .child('Palette needs attention · Retry')))
       .child(div().id("palette").h(U.control).px(8).flex().items_center().rounded(U.radius)
         .role("button").accessibility_label("Open command palette").cursor_pointer().text_color(t.dim)
         .hover(el => el.bg(t.hover))
         .on_mouse_down("left", (_e, cx) => cx.stop_propagation())
-        .on_click((_e, cx) => { cx.stop_propagation(); run("app.palette"); }).child(this.hint(t)));
+        .on_click((_e, cx) => { cx.stop_propagation(); if (shared('custom.palette.status')?.installed === false) run('app.palette'); else run('mod.open', { name: 'custom-palette' }); }).child(this.hint(t)));
     reveal.settle(cx);
     return bar;
   }

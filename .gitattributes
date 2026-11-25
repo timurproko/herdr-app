@@ -1,3 +1,4 @@
 * text=auto eol=lf
 # Reviewed stock is raw provenance, including explicitly captured CRLF variants.
 src/integration/native-patches/**/original*.js -text whitespace=cr-at-eol
+tests/fixtures/palette/stock-*.js -text whitespace=cr-at-eol
