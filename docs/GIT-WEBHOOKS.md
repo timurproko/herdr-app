@@ -42,7 +42,10 @@ that is itself refused does not hide the original permission error.
    the account's paginated active admin repositories, never local clones. Account
    selection does not switch the global CLI login. Partial successes stay saved;
    failures need explicit retry. Requirements and Repositories checks remain
-   independent. Picker drafts are per-view and never exported or replayed.
+   independent. A successful confirmed Add saves its displayed effective GitHub
+   account, including the unsaved default, after all mutation batches finish; checks,
+   picker opening/cancellation and wholly failed Adds do not pin an account. Picker
+   drafts are per-view and never exported or replayed.
 
 GitHub account discovery exposes only public login names. A named account's token
 is captured privately in the Node worker and supplied only through a child environment
@@ -80,7 +83,11 @@ validated compare-before-write updates; closed views cannot overwrite them.
   other configured prerequisite values; it is not an editable Settings field.
   The old single-repo preference remains hidden for compatibility. Add repo reads
   actual GitHub hook state; the main list retains last-confirmed enrollment scoped
-  to relay/account as runtime state, not saved desired-state jobs.
+  to relay/account as runtime state, not saved desired-state jobs. This durable
+  confirmed added list also owns the opt-in Core monitor's allowlist; invalidating
+  `custom.git.webhook-state` does not clear it. Final removal or a missing/mismatched
+  scope stays empty without legacy fallback. Existing lifecycle sync writes changes
+  to reachable workers; offline hosts keep their last configuration.
 - Wrangler owns login storage. Its supported `auth token --json` command is used
   only inside the Node worker for account-scoped Cloudflare API operations. Tokens
   are never returned to the UI, put in argv or copied to custom preference files.
@@ -314,15 +321,36 @@ The Git header shows the short repository name with its full GitHub URL on hover
 
 ## Optional CI fix messages
 
-In Git's **Settings** disclosure, **Auto-fix failed CI** enables
-Core messaging to the agent already associated with the PR; it defaults off.
-**Message** supports `{url}` for the PR and `{runUrl}` for the failed run.
-This can authorize that existing agent to fix code and push; it is separate from
-webhook enrollment and never starts a new agent. It consumes verified, loaded PR
-facts while Git is shown, not a new background monitor. See
-[the CI fix contract](GIT-CI-FIX.md) for current-head/run checks, duplicate receipts,
-idle/done readiness checks, owned-refusal retries and unknown outcomes. No live message tests run during
-deployment, and no A1 API change is needed.
+After a customization update, existing enabled preferences and confirmed repositories
+with a saved GitHub-account binding are picked up by startup/code reload, with no
+re-save or desktop/agent restart. Old added lists with a blank saved account remain
+suppressed until you choose the matching account once or confirm an explicit Add;
+the monitor does not infer authority from that old list alone. Run
+an already-closed updated desktop once and reconnect offline managed hosts so its
+normal lifecycle can update their owned companion packages and configurations.
+
+In Git's **Settings** disclosure, **Auto-fix pull requests** enables an independent
+Core-side companion; it defaults off. It messages the verified existing PR agent,
+not a coordinator, with separate editable/switchable CI, conflict and merged-cleanup
+messages. Saved Idle/Done/Error/Working selection remains authoritative; Working
+is opt-in and Blocked excluded. Templates supply the whole message, with no hidden
+suffix. This can authorize the existing agent to fix and push, but never starts
+another agent. The companion reads its own local Core/GitHub facts without a shown
+panel, relay event or state transition; webhook enrollment alone does not enable it.
+CI waits for a completed failed/timed-out workflow, never an early individual failed
+job. Persistent conflicts and CI evidence retain their existing durable duplicate
+receipts and non-forced `hc send` transport.
+
+Diagnostics are local only: `~/.local/state/herdr-ci-monitor/status.json` distinguishes
+empty/all-skipped scope (**suppressed**) from acknowledgement (**ready**), verification
+failure (**unavailable**) and uncertain submission (**uncertain**). Separate
+`diagnostics.json` keeps at most 128 entries / 64 KiB with reason, time, repository,
+PR and target terminal where known; unchanged suppression episodes coalesce.
+Reasons include no monitored repositories, agent state not selected, workflow still
+running and already sent (already recorded, possibly unknown, not proof of delivery).
+No new toast or panel UI is added. See [the CI fix contract](GIT-CI-FIX.md) for current
+messages, remembered oldest-live-owner selection, evidence, receipt and diagnostic
+rules. No live message tests run during deployment, and no A1 API change is needed.
 
 ## Verify
 

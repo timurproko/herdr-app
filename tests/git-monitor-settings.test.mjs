@@ -1,7 +1,9 @@
 // Auto-fix opt-in provisions background support; all transports remain synthetic.
 import assert from 'node:assert/strict';
 import {loadMod} from '../tools/plugin-harness.mjs';
-const state={'custom.plugins':{git:{enabled:true,settings:{autoFixCI:false}}},'custom.git.webhook-state':{version:1,relay:'',members:{'owner/repo':true,'owner/other':false}}};
+const state={'custom.plugins':{git:{enabled:true,settings:{autoFixCI:false,relay:'https://relay.example',githubAccount:'owner'}}},
+ 'custom.git.added-repositories':{version:1,scope:'https://relay.example|owner',repositories:[{name:'owner/repo',repositoryId:1}]},
+ 'custom.git.webhook-state':{version:1,relay:'https://relay.example',members:{}}};
 const calls=[],installed=new Set();let checking=false,peers=[{name:'pc2',layout:'ready'}];
 const {r,m}=await loadMod({host:{shared:k=>state[k],setShared:(k,v)=>state[k]=v,checking:()=>checking,machines:()=>peers,appHome:()=>'/fixture',readTextFile:async()=>null,
  notify(){assert.fail('Synthetic setup should not fail');},
@@ -21,9 +23,9 @@ checking=true;const before=calls.length;r.setPluginSetting(git,'autoFixCI',true)
 const jobs=[],event={setting:r.pluginContext(git).setting,enabled:true,cx:{spawn:fn=>jobs.push(fn)}};
 m.ensureMonitors(event);m.ensureMonitors(event);assert.equal(jobs.length,1,'Repeated renders coalesce setup');await jobs.shift()();const after=calls.length;m.ensureMonitors(event);assert.equal(jobs.length,0);assert.equal(calls.length,after);
 peers.push({name:'pc3',layout:'ready'});m.ensureMonitors(event);assert.equal(jobs.length,1);await jobs.shift()();assert.equal(calls.filter(c=>c.action==='install'&&c.on==='pc3').length,1,'New SSH connections provision automatically');
-state['custom.git.webhook-state'].members['owner/repo']=false;state['custom.git.webhook-state'].members['owner/other']=true;
+state['custom.git.added-repositories'].repositories=[{name:'owner/other',repositoryId:2}];
 m.ensureMonitors(event);assert.equal(jobs.length,1);await jobs.shift()();assert.ok(calls.filter(c=>c.action==='update').slice(-3).every(c=>JSON.stringify(c.config.repositories)==='["owner/other"]'),'Existing repository selection owns worker scope');
-state['custom.git.webhook-state'].members['owner/other']=false;assert.deepEqual(Array.from(m.monitorConfig(context()).repositories),[],'Unchecking all repositories cannot fall back to old scopes');
+state['custom.git.added-repositories'].repositories=[];assert.deepEqual(Array.from(m.monitorConfig(context()).repositories),[],'Unchecking all repositories cannot fall back to old scopes');
 peers.push({name:'pc4',layout:'ready'});m.ensureMonitors(event);assert.equal(jobs.length,1);
 state['custom.plugins'].git.enabled=false;await jobs.shift()();assert.equal(calls.filter(c=>c.action==='install'&&c.on==='pc4').length,0,'Disabling Git cancels deferred setup even with an old event snapshot');
 console.log('PASS: one-switch local/SSH provisioning, no background UI, automatic new-host setup, repository selection reuse, pause/config sync, eager-check guards and render coalescing (zero real processes)');
