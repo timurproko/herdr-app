@@ -418,7 +418,7 @@ function requirements(view, t, plugin) {
         // its width when a row has none, so buttons and badges each line up.
         // While a row's own action runs, its spinner carries the action's word ("Updating")
         // when the plugin names one; a re-check keeps the bare spinner.
-        .child(statusRail(fixing||(checking.loading&&checking.target===item.id)?workingStatus(t,fixing&&typeof item.fix?.statusLabel==='string'?item.fix.statusLabel:null):item.status ? badge(t, item.status).w_full().justify_center() : null,
+        .child(statusRail(fixing||(checking.loading&&checking.target===item.id)?workingStatus(t,fixing&&typeof item.fix?.statusLabel==='string'?item.fix.statusLabel:null):item.status ? badge(t, item.status, item.statusLabel ?? undefined).w_full().justify_center() : null,
           div().flex_none().w(KIT.action).flex().justify_end().when(Boolean(fix), el => el.child(fix)),`st-plugin-${plugin.id}-${item.id}-status-rail`));
     })));
 }

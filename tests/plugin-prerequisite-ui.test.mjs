@@ -17,6 +17,25 @@ const {ui,registry}=await loadMod({host:{shared:k=>state[k],setShared:(k,v)=>sta
  'ui.js':{chevronSlot:realUi(element).chevronSlot,iconButton:(_t,o)=>element().id(o.id).available(o.available??true).on_click(o.onClick),menuRow:realUi(element).menuRow,collapsible:realUi(element).collapsible,settingsRow:realUi(element).settingsRow,SETTINGS_ROW:32,searchField:(_t,state,{id})=>element().id(id).searchComponent(true).state(state),menuSurface:(_t,e)=>e,dropdown:(id,trigger,content,{open,onOpen})=>element().id(id).on_open_change(onOpen).child(trigger).when(open,e=>e.child(content)),U:{control:28,field:32,font:13,meta:12,radius:6,gutter:12,statusSize:7},slot:x=>x,emptyState:(_t,{id,title='No results',icon='search'})=>element().id(id).emptyComponent(true).asset(icon).child(title),description:(_t,text)=>element().child(text),control:(_t,x=element())=>x,itemHover(){},spinner:color=>element().bulb(true).text_color(color),chevron:element,dialogScrollbar:x=>x,
   button:(_t,id,label,click,options={})=>element().id(id).child(label).on_click(click).primary(options.primary??false).disabled(options.enabled===false)},
 },entry:"export * as ui from './plugins-ui.js';export * as registry from './plugins.js';"});
+// Requirement status labels and counts use the same generic renderer in a card and detail page.
+for(const target of [null,'crew']) {
+  const notice={heading:element,toggle:(_t,id,on)=>element().id(id).pressed(on)};
+  ui.initPlugins(notice,cx,target);notice.pluginOpen['crew-requirements']=true;
+  const update={id:'crew',label:'Crew tool',status:'missing',statusLabel:'Outdated',detail:'0.12.1 · 372f8b608853',fix:{label:'Update',run:async()=>{}}};
+  const optional={id:'jq',label:'jq',status:'recommended'};
+  const draw=items=>{notice.pluginChecks.crew={loading:false,items};return ui.pluginsPage(notice,palette);};
+  for(const items of [[update],[update,optional]]) {
+    const tree=draw(items),row=find(tree,'st-plugin-crew-crew-status-rail'),header=find(tree,'st-plugin-crew-requirements-status-rail');
+    assert.deepEqual(words(row),['Update','Outdated']);
+    assert.equal(row.kids[1].kids[0].attrs.text_color[0],palette.blocked,'Same non-optional unmet colour');
+    assert.equal(row.kids[1].kids[0].attrs.w_full.length,0,'Same badge geometry');
+    assert.deepEqual(words(header),['Check','1 to fix'],'Optional tools do not dilute the attention count');
+    assert.equal(header.kids[1].kids[0].attrs.text_color[0],palette.blocked);
+  }
+  assert.deepEqual(words(find(draw([optional]),'st-plugin-crew-jq-status-rail')),['Optional'],'Ordinary row labels retain their defaults');
+  assert.deepEqual(words(find(draw([optional]),'st-plugin-crew-requirements-status-rail')),['Check','1 optional']);
+  assert.deepEqual(words(find(draw([{...update,status:'ready',statusLabel:undefined,fix:null}]),'st-plugin-crew-crew-status-rail')),['Ready']);
+}
 const toggle=(_t,id,on,click)=>element().id(id).pressed(on).on_click(click);
 const button=(_t,id,label,click,options={})=>element().id(id).child(label).on_click(click).disabled(options.enabled===false);
 const git=registry.pluginById('git'),view={heading:element,toggle,button,handle:{focus(){}}};ui.initPlugins(view,cx,'git');view.pluginOpen['git-requirements']=true;
@@ -90,7 +109,7 @@ seed();const staleConfigure=find(render(),'st-plugin-fix-git-relay');registry.se
 {
   view.pluginSettling={};jobs.length=0;
   const real=git.prerequisites.find(pre=>!pre.section),id=real.id,key=`git:${id}`;
-  const update={...real,status:'recommended',fix:{label:'Update',statusLabel:'Updating',run:async()=>actions.push('update')}};
+  const update={...real,status:'missing',statusLabel:'Outdated',fix:{label:'Update',statusLabel:'Updating',run:async()=>actions.push('update')}};
   view.pluginChecks.git={loading:false,items:[update]};
   const text=node=>JSON.stringify(node),rail=()=>text(find(render(),`st-plugin-git-${id}-status-rail`)??{});
   click(`st-plugin-fix-git-${id}`);assert.ok(rail().includes('Updating'),'Running: Updating');
