@@ -17,7 +17,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-25-concise-crew-project-errors/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-25-concise-crew-project-errors/acceptance.md",
   "finalizedDate": "2026-11-25",
-  "specBaseSha": "e20290bbe5d0f19fd54af7d543de71194a487cf5",
+  "specBaseSha": "5c4c8d436868651c176faf5a12c7a153791e8297",
   "acceptanceScenarios": [
     "Crew usage refusals offer update guidance, naming the machine only when its installed tool is known to be outdated.",
     "Repository, missing-folder, registration and home-owner refusals give concise guidance without raw multiline output.",
