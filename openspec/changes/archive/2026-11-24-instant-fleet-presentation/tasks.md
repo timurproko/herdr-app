@@ -1,0 +1,18 @@
+# Tasks
+
+## 1. Remembered fleet pairs restore instantly without granting fresh authority
+
+- [x] 1.1 Separate durable pair memory from enabled visibility in the shared display/preference boundary and Crew invalidation; verify off hides immediately while preserving memory and on projects adjacency, chains and shared badge colour with zero reads completed.
+- [x] 1.2 Restore exact remembered identities on startup, reload and update, and ignore/prune missing identities only with authoritative machine-layout evidence; verify cold fresh-module, ready-remote, unready-remote, missing-space and same-name replacement regressions.
+- [x] 1.3 Revalidate native space-only block dragging from the displayed pair through capture, drop and acknowledgement; verify both origins reorder together before verification and cancel on disablement, disappearing members or authoritative re-pair without moving terminals or tabs.
+- [x] 1.4 Preserve fresh gates for consolidated Git inventory, coordinator colour writes, worker navigation and operational actions; verify remembered-only context shows standard Loading, cannot write or navigate, and cannot resurrect inventory across off/on.
+- [x] 1.5 Cover failed, timed-out, expired and interrupted background reads retaining memory, successful same-pair reads avoiding detached frames, and authoritative gone/different results clearing or replacing memory; extend mounted-toggle/provider tests and update README and architecture documentation with the presentation-versus-authority contract.
+
+## 2. Real-path fleet reads recover across mod instances without a long blocking lease
+
+- [x] 2.1 Extend the opt-in disposable native transport harness with a real read-only Crew/home input mode, captured-real-output replay, isolated inert topology and phase/owner timing traces; verify it never writes the live Crew home or changes the person's settings, app or processes.
+- [x] 2.2 Reproduce the installed-path expired read on App 0.1.18/Core 0.1.22 with Settings open and distinct Settings/Spaces/Git copies; correlate Core command completion, native receipt, lease ownership, lifecycle ticks, decoding and publication to document the measured root cause rather than a synthetic-only assumption.
+- [x] 2.3 Repair the measured reader failure and make owner/continuation abandonment recoverable through shared liveness and the existing lifecycle; verify recovery within the active 2/5/10-second interval plus one tick, including loss of the initiating copy, bypassed finally, warm attempt TTL and late predecessor cleanup.
+- [x] 2.4 Preserve single-flight healthy four-to-five-second reads, capability-advertised fleet view, projected legacy fallback, bounded decoding and finished Open/Draft eligibility; cache capability evidence by CLI path/mtime and use recorded-only verification with separate lower-priority discovery after first inventory, verified by transport/cache regressions and real-path measurements.
+- [x] 2.5 Exercise remembered instant attachment, first-ever attachment, failure retention, authoritative detachment and cross-instance recovery in the disposable native app using the real command/home or captured real output; record command, decoder-turn, processing and on-to-attachment timings and inspect the disposable UI, then update docs/FLEET-STATUS.md with measured facts and remaining limits.
+- [x] 2.6 Run targeted regressions for the delivered reader changes, then run CI=true npm run test:ci once no other suite is running; inspect required checks on the final head and include actual results and any draft-policy deferrals in the handoff without marking ready or merging.

@@ -1,6 +1,5 @@
 // User preferences only; no space IDs, terminals or lifecycle state are persisted here.
 import { shared, setShared } from './host.js';
-import { updateFleetDisplay } from './fleet-display.js';
 export const SPACE_PREFERENCES = 'custom.spaces.preferences';
 export function spacePreferences() {
   const value = shared(SPACE_PREFERENCES);
@@ -14,6 +13,6 @@ export function updateSpacePreferences(change) {
     setShared('custom.fleet.links', null);
     setShared('custom.fleet.reads', {});
   }
-  updateFleetDisplay(null,null,{disabled:!next.connectFleetToCoordinator});
+  // Keep last-verified identity for instant on; off only revokes visibility/authority.
   setShared(SPACE_PREFERENCES, next);
 }
