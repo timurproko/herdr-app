@@ -55,6 +55,11 @@ const fixture=[row('tab-a'),row('tab-b'),row('pane-a','Pane'),row('pane-b','Pane
 const items=paletteItems(fixture,false);
 assert.equal(items.length,8);assert.equal(items[0].head,'Tab');assert.equal(items[3].head,'Pane');assert.equal(items[3].gap,8);
 assert.equal(paletteHeading(items,2),'Tab');assert.equal(paletteHeading(items,3),'Pane');assert.equal(paletteHeading(items,5),'Pane');assert.equal(paletteHeading(items,999),'Space');assert.equal(paletteHeading([],0),null);
+if(entrypoint==='main-0.1.18.js'){
+ const repeated=paletteItems([row('tools-a','Tools'),row('other','Other'),row('tools-b','Tools')],false);
+ assert.equal(new Set(repeated.map(i=>i.id)).size,repeated.length,'Interleaved manifest group headings have distinct native list keys');
+ assert.equal(paletteHeading(repeated,4),'Tools');
+}
 const palette=new Palette();palette.init({},cx);
 await Promise.all(spawnJobs);
 if(entrypoint==='main-0.1.18.js'){assert.equal(manifestReads,1);assert.equal(palette.mods[0].command,'demo.action','Opening asynchronously loads native manifest contributions');}

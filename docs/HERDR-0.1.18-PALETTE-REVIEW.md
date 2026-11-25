@@ -40,7 +40,9 @@ permission to patch unknown palette bytes.
 renderer. Native additions retained: asynchronous sorted non-hidden mod-manifest
 palette discovery, Mod grouping, native argument/target validation, canonical
 argument IDs and deduplication, object and index/first-argument hotkey matching,
-and explicit `mod.clone`/`layout.clone` source preservation. Native dynamic theme
+and explicit `mod.clone`/`layout.clone` source preservation. Repeated manifest
+group labels receive distinct heading keys in the Custom native virtual list.
+Native dynamic theme
 discovery and light/dark/active-layout filtering are retained.
 
 Custom retains live theme and selection tint, shared dialog/search/clear/empty

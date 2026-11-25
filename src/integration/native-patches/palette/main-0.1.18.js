@@ -246,7 +246,9 @@ export function paletteItems(rows, searching) {
   const items = [];
   if (searching && rows.length) items.push({ id: 'head:results', head: `${rows.length} item${rows.length === 1 ? '' : 's'}`, gap: 0 });
   rows.forEach((r, i) => {
-    if (!searching && (i === 0 || r.head !== rows[i - 1].head)) items.push({ id: `head:${r.head}`, head: r.head, gap: items.length ? 8 : 0 });
+    // Manifest groups can recur non-contiguously; each native list item needs
+    // its own key even when the visible heading text is the same.
+    if (!searching && (i === 0 || r.head !== rows[i - 1].head)) items.push({ id: `head:${i}:${r.head}`, head: r.head, gap: items.length ? 8 : 0 });
     items.push({ id: r.e.id, e: r.e, hits: r.hits, index: i });
   });
   return items;
