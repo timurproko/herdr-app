@@ -29,7 +29,7 @@ const seed=home=>{
 try {
   // Copy only the import graph, not the maintainer's snapshots or generated output.
   for(const file of ['package.json','tools/preferences.mjs','tools/runtime/preferences.mjs','tools/runtime/settings-sections.js',
-    'tools/build.mjs','tools/deploy.mjs','tools/files.mjs','tools/plugins.mjs','tools/layout-preferences.mjs','tools/preferences-export.mjs','src/ui/settings-sections.js',
+    'tools/build.mjs','tools/deploy.mjs','tools/palette-recovery.mjs','tools/files.mjs','tools/plugins.mjs','tools/layout-preferences.mjs','tools/preferences-export.mjs','src/ui/settings-sections.js',
     'src/integration/herdr/compatibility.js','src/appearance/layouts/Custom.json']) {
     write(path.join(checkout,file),fs.readFileSync(path.join(project,file)));
   }
