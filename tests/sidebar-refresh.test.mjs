@@ -1,5 +1,7 @@
 import {githubInvocation} from './support/github-read.mjs';
 import assert from 'node:assert/strict';
+import {ordinaryContent} from './support/git-scroll.mjs';
+import {scrollModule,Background} from './support/git-scroll-modules.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
@@ -61,7 +63,7 @@ async function harness(feature, pluginOn = true) {
   };
   const exports = {
     './label-colors.js':labelColors,
-    'gpui-kit': {View: class {}, div: () => element(), svg: asset => element(asset), image: asset => element(asset), PathBuilder: {}},
+    'gpui-kit': {View: class {}, div: () => element(), svg: asset => element(asset), image: asset => element(asset), PathBuilder: {}, Background},
     'gpui-base': {v_flex: () => element(), h_flex: () => element(), Editor: {}, EditorState: {},
       InputState: {new: () => ({on() {}, set_value() {}})}, Input: {new: () => element()},
       Scrollbar: {vertical: () => element()}, v_virtual_list: () => element(), Popover: {}},
@@ -85,6 +87,7 @@ async function harness(feature, pluginOn = true) {
   const mainPath = path.join(root, `src/plugins/${feature === 'files' ? 'files' : 'git'}/mod/main.js`);
   const main = new vm.SourceTextModule(fs.readFileSync(mainPath, 'utf8'), {context});
   await main.link(specifier => {
+    const dependency=scrollModule(context,specifier);if(dependency)return dependency;
     if (specifier === './ui.js') return new vm.SourceTextModule(fs.readFileSync(path.join(root, 'src/ui/ui.js'), 'utf8'), {context});
     if (specifier === './panel-kit.js') return new vm.SourceTextModule(fs.readFileSync(path.join(root, 'src/ui/panel-kit.js'), 'utf8'), {context});
     if (specifier === './settings-dialog.js') return new vm.SourceTextModule(fs.readFileSync(path.join(root, 'src/ui/settings-dialog.js'), 'utf8'), {context});
@@ -326,9 +329,9 @@ for (const state of ['open','closed']) for (const count of [0,1,2,50]) {
       const rail = find(pinned,'active-pull-rail');
       assert.ok(pinned.attrs.relative,'The block anchors its decorative rail');
       assert.equal(pinned.attrs.border_l,undefined,'The rail consumes no layout width');
-      assert.equal(pinned.attrs.px[0],scroll.attrs.px[0],'Pinned and regular rows have identical horizontal gutters');
+      assert.equal(pinned.attrs.px[0],ordinaryContent(scroll).attrs.px[0],'Pinned and regular rows have identical horizontal gutters');
       assert.equal(pinned.attrs.px[0],7,'The panel border plus horizontal padding gives the Spaces 8px gutter');
-      assert.equal(pinned.attrs.py[0],scroll.attrs.py[0],'Pinned and regular rows have identical vertical padding');
+      assert.equal(pinned.attrs.py[0],ordinaryContent(scroll).attrs.py[0],'Pinned and regular rows have identical vertical padding');
       assert.equal(pinned.attrs.py[0],4,'Vertical padding is unchanged');
       assert.ok(rail.attrs.absolute,'The rail is outside normal layout');
       assert.equal(rail.attrs.left[0],0);

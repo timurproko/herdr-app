@@ -1,6 +1,11 @@
 // Custom: GitHub pull requests for the repository under the focused folder.
 import { View, div, svg, PathBuilder } from 'gpui-kit';
 import { v_flex, h_flex } from 'gpui-base';
+import * as base from 'gpui-base';
+import { TaskReveal } from './task-reveal.js';
+import { RowPresentations } from './row-presentation.js';
+import { SidebarScrollState } from './sidebar-scroll.js';
+import { topFade, bottomFade } from './scroll-fade.js';
 import { U, headerTools, reveal, subtleActionFill, refreshButton, sidebarSectionHeader } from './ui.js';
 import { exec, hc, theme, run, layout, openOverlay, closeOverlay, props, notify, nextCommand, window, settings } from './host.js';
 import { location } from './location.js';
@@ -26,9 +31,6 @@ const FOLDED_REPOS_KEY = 'custom.git.task-repositories.folded';
 const LOCAL_CONTEXT_TTL = 10000; // shell branch/footer only, never a GitHub poll
 const CI_SWEEP_MS = 2400;
 const CI_SWEEP_WIDTH = 96;
-// Include headers/notices in the budget, not only PRs. Pages replace rather
-// than append: no amount of Show more clicks can recreate an unbounded render.
-const TASK_PAGE_SIZE = 10;
 // The panel's 1px border plus this padding matches Spaces' 8px outer gutter.
 const LIST_INSET = 7;
 const TEXT_CACHE_LIMIT = 512;
@@ -73,6 +75,10 @@ export default class Changes extends View {
     this.checksFallback?.stop();this.factOrder?.reset();
     this.enrollmentPicker?.stop();this.aggregate?.stop();this.webhooks?.stop();this.notices?.stop();
     this.rootRequest=null;this.pullRequest=null;this.relatedRequest=null;
+    for(const metrics of this.ordinaryScroll?.values()??[])metrics.handle?.release();
+    for(const handle of this.retiredOrdinaryHandles??[])handle.release();
+    for(const window of this.taskWindows?.values()??[])window.handle?.release();
+    for(const handle of this.retiredTaskHandles??[])handle.release();
   }
 
   resetRepository() {
@@ -109,6 +115,8 @@ export default class Changes extends View {
         // The clicked link already verified this destination's repository.
         // Retain rows across its worktree/folder refresh, but invalidate every
         // old-folder request before accepting any new terminal or Git result.
+        // This is the same retained native list, not a new scroll owner.
+        if(this.ordinaryScrollScope===swap.context)this.ordinaryScrollScope=context;
         this.pinMotion.rebase(context); this.root = null;this.factOrder.reset();
         this.selection = null; this.agentRequest = null; this.agentResolved = null;
         this.pullRequest = null; this.pullLoading = false;
@@ -190,6 +198,10 @@ export default class Changes extends View {
   setView(view, cx) {
     if (!VIEWS.includes(view) || view === this.view) return;
     this.pinMotion?.cancel();this.enrollmentPicker?.stop();
+    if(this.context?.startsWith('tasks:')){
+      this.taskSelectionEpoch=(this.taskSelectionEpoch??0)+1;
+      const selected=this.selectedTaskWindow;if(selected){selected.correction=null;selected.anchorMarker=null;selected.scheduledCorrection=null;}
+    }
     this.view = view;
     if(this.repo && this.pulls[view]!==null)this.webhookDirty=true;
     try { localStorage.setItem(VIEW_KEY, view); } catch {}
@@ -377,8 +389,10 @@ export default class Changes extends View {
       const repositories=aggregate?.repositories()??[],rows=aggregate?.rows(this.view)??[];
       const sections=repositories.map(repo=>({repo,rows:rows.filter(pr=>pr.repo===repo),error:aggregate.readNotice(repo,this.view)})).filter(section=>section.rows.length || section.error);
       const paging=this.taskSections(sections,aggregate.context.scope);
-      const shownRows=paging.sections.filter(section=>!this.foldedRepositories?.has(section.repo)).flatMap(section=>section.rows);
-      return {enabled,scope:JSON.stringify([this.context,on,this.view,paging.page]),repositories:repositories.map(name=>({name,uncovered:uncovered(name),rows:shownRows.filter(pr=>pr.repo===name)}))};
+      // The native host cannot reliably notify viewport motion. Safety covers
+      // the entire revealed unfolded batch, never guessed pixel intersections.
+      const shownRows=paging.revealedRows;
+      return {enabled,scope:JSON.stringify([this.context,on,this.view,this.taskSelectionEpoch,paging.window.selectionGeneration]),repositories:repositories.map(name=>({name,uncovered:uncovered(name),rows:shownRows.filter(pr=>pr.repo===name)}))};
     }
     const selection=this.pullSelection();
     return {enabled,scope:JSON.stringify([this.context,on,this.view,this.repo?.name]),repositories:this.repo?[{name:this.repo.name,uncovered:uncovered(this.repo.name),rows:[...selection.liveRows,...(selection.active?[selection.active]:[])]}]:[]};
@@ -760,7 +774,8 @@ export default class Changes extends View {
   }
 
   labelPill(t, label, id) {
-    const {background,foreground,border} = labelColors(t,label.color);
+    this.rowPresentations ??= new RowPresentations();
+    const {background,foreground,border} = this.rowPresentations.labelStyle(t,label.color,labelColors);
     // Border-box: 4px padding + 1px border preserves the original 5px inset.
     return h_flex().id(id).flex_none().min_w(0).max_w_full().h(18).px(4).border_1().border_color(border).rounded_full()
       .items_center().overflow_hidden().bg(background).text_color(foreground).tooltip(label.name)
@@ -791,34 +806,13 @@ export default class Changes extends View {
       if (Math.abs((sizes[name] ?? -1) - width) < 0.01) return;
       sizes[name] = width; this.pullLineSizes.set(id, sizes); cx.notify();
     };
-    const widths = items.map(item => sizes[`${item.kind}-full`]);
-    const ready = Number.isFinite(sizes.available) && widths.every(Number.isFinite);
-    const compact = new Set();
-    const total = () => {
-      const left = items.filter((item, index) => !item.trailing && widths[index] > 0).length;
-      const right = items.some((item, index) => item.trailing && widths[index] > 0);
-      return widths.reduce((sum, width) => sum + width, 0) + Math.max(0, left - 1) * 15 + (left && right ? 6 : 0);
-    };
-    if (ready) {
-      for (const [index, item] of items.entries()) {
-        if (total() <= sizes.available + 0.01) break;
-        if (item.compact && Number.isFinite(sizes[`${item.kind}-compact`])) {
-          compact.add(item.kind); widths[index] = sizes[`${item.kind}-compact`];
-        }
-      }
-      // Never shrink tasks/checks/time into unreadable fragments. Secondary
-      // text loses width only after semantic shortening has been exhausted.
-      for (const kind of clipOrder) {
-        const index = items.findIndex(item => item.kind === kind);
-        if (index < 0 || total() <= sizes.available + 0.01) continue;
-        widths[index] = Math.max(0, widths[index] - (total() - sizes.available));
-      }
-    }
-    const visible = items.map((item, index) => ({item, index})).filter(({index}) => !ready || widths[index] > 0);
-    const line = h_flex().id(id).w_full().min_w(0).h(18).min_h(18).max_h(18).flex_none().gap(6).items_center()
+    this.rowPresentations ??= new RowPresentations();
+    const {widths,ready,compact,visible}=this.rowPresentations.layout(id,sizes,items,clipOrder);
+    const line = h_flex().id(id).w_full().min_w(0).h(18).flex_none().gap(6).items_center()
       .overflow_hidden().line_height('18px').text_size(11).text_color(t.muted)
       .on_size_change((size, cx) => measure('available', size, cx))
-      .children(visible.flatMap(({item, index}, at) => {
+      .children(visible.flatMap((index, at) => {
+        const item=items[index];
         const node = item.render(compact.has(item.kind), false).flex_none()
           .when(ready && clipOrder.includes(item.kind), el => el.w(widths[index]));
         // The flexible slot owns only the free space, never the task/check
@@ -828,9 +822,7 @@ export default class Changes extends View {
       }));
     // These absolute invisible children are outside the visible run, so their
     // text never adds a line, gap, hover target or horizontal reservation.
-    const probes = div().id(`${id}-probes`).absolute().left(0).top(0).w(0).h(0).overflow_hidden().invisible()
-      .text_size(11).line_height('18px')
-      .children(items.flatMap(item => [false, ...(item.compact ? [true] : [])].flatMap(short => {
+    const pending = items.flatMap(item => [false, ...(item.compact ? [true] : [])].flatMap(short => {
         const key = keyed ? textKey(item, short) : null;
         if (key && (this.pullTextWidths.has(key) || this.pullTextPending.has(key))) return [];
         let measurement;
@@ -855,7 +847,9 @@ export default class Changes extends View {
             }
             measure(`${item.kind}-${short ? 'compact' : 'full'}`, size, cx);
           }))];
-      })));
+      }));
+    const probes = pending.length ? div().id(`${id}-probes`).absolute().left(0).top(0).w(0).h(0).overflow_hidden().invisible()
+      .text_size(11).line_height('18px').children(pending) : null;
     return {line, probes};
   }
 
@@ -881,28 +875,21 @@ export default class Changes extends View {
     const agentButton = this.agentButton(t, pr, !ghost);
     // Cache presentation by immutable fact identity; never retain native rows:
     // their event callbacks belong to the current native snapshot build.
-    this.pullPresentations ??= new WeakMap();
-    let presentation = this.pullPresentations.get(pr);
-    const labelLimit=this.context?.startsWith('tasks:') ? 3 : Infinity;
-    if (!presentation || presentation.source!==pr.labels || presentation.limit!==labelLimit) {
-      const allLabels = pr.labels ?? [];
-      presentation = {source:pr.labels,limit:labelLimit,labels:allLabels.slice(0,labelLimit),labelNames:allLabels.map(label=>label.name).join('\n')};
-      this.pullPresentations.set(pr,presentation);
-    }
-    const {labels,labelNames} = presentation;
-    const groupId = (kind, probe) => `${prefix}pr-${kind}-${rowId}${probe ? '-probe' : ''}`;
+    this.rowPresentations ??= new RowPresentations();
+    const {facts:presentation,id:groupId}=this.rowPresentations.get(pr,this.context?.startsWith('tasks:')?3:Infinity,ghost);
+    const {labels,labelNames}=presentation;
     const text = (kind, value, tooltip, probe) => div().id(groupId(kind, probe)).min_w(0).h(18)
       .overflow_hidden().whitespace_nowrap().tooltip(tooltip).child(value);
     const byline = this.pullLine(t, `${prefix}pr-byline-${rowId}`, [
-      {kind:'number', measureKey:`#${pr.number}`, render:(_short, probe) => text('number', `#${pr.number}`, pr.meta ?? '', probe)},
+      {kind:'number', measureKey:presentation.number, render:(_short, probe) => text('number', presentation.number, pr.meta ?? '', probe)},
       ...(pr.login ? [{kind:'author', measureKey:pr.login, render:(_short, probe) => text('author', pr.login, pr.meta ?? '', probe)}] : []),
       ...(pr.when ? [{kind:'time', measureKey:pr.when, compactKey:pr.compactWhen, compact:true, render:(short, probe) => text('time', short ? pr.compactWhen : pr.when, pr.meta ?? '', probe)}] : []),
     ], ['author']);
     byline.line.tooltip(pr.meta ?? '');
     const meta = this.pullLine(t, `${prefix}pr-meta-${rowId}`, [
-      ...(pr.tasks ? [{kind:'tasks', measureKey:pr.tasks.label, compactKey:`${pr.tasks.done}/${pr.tasks.total}`, compact:true, render:(short, probe) => h_flex().id(groupId('tasks', probe)).min_w(0).h(18).gap(4).items_center()
+      ...(pr.tasks ? [{kind:'tasks', measureKey:pr.tasks.label, compactKey:presentation.taskFraction, compact:true, render:(short, probe) => h_flex().id(groupId('tasks', probe)).min_w(0).h(18).gap(4).items_center()
         .tooltip(pr.tasks.label).child((probe ? div().size(U.tinyIcon) : this.taskIcon(t, pr.tasks)).id(groupId('task-icon', probe)).flex_none().relative().top(1))
-        .child(div().flex_none().whitespace_nowrap().child(short ? `${pr.tasks.done}/${pr.tasks.total}` : pr.tasks.label))}] : []),
+        .child(div().flex_none().whitespace_nowrap().child(short ? presentation.taskFraction : pr.tasks.label))}] : []),
       ...(pr.checks ? [{kind:'checks', measureKey:pr.checks.label, render:(_short, probe) => {
         const color = pr.checks.state === 'success' ? t.ansi2 : pr.checks.state === 'failure' ? t.ansi1 : t.ansi3;
         const icon = pr.checks.state === 'success' ? svg('mods/custom-workspace-chrome/check.svg').size(U.tinyIcon).text_color(color)
@@ -912,29 +899,28 @@ export default class Changes extends View {
           .child(div().id(groupId('check-icon', probe)).size(U.tinyIcon).flex_none().relative().top(1).flex().items_center().justify_center().child(icon.flex_none()))
           .child(div().flex_none().whitespace_nowrap().underline().child(pr.checks.label));
       }}] : []),
-      ...(pr.review ? [{kind:'review', measureKey:pr.review, render:(_short, probe) => text('review', pr.review === 'approved' ? 'Approved' : 'Changes requested',
-        pr.review === 'approved' ? 'Approved' : 'Changes requested', probe).text_color(pr.review === 'approved' ? t.ansi2 : t.ansi1)}] : []),
-      ...(labels.length ? [{kind:'labels', trailing:true, measureKey:labels.map(label=>label.name).join('\0'), render:(_short, probe) => h_flex().id(groupId('labels', probe)).min_w(0).h(18).gap(4).items_center().justify_end().overflow_hidden()
+      ...(pr.review ? [{kind:'review', measureKey:pr.review, render:(_short, probe) => text('review', presentation.review, presentation.review, probe).text_color(pr.review === 'approved' ? t.ansi2 : t.ansi1)}] : []),
+      ...(labels.length ? [{kind:'labels', trailing:true, measureKey:presentation.labelKey, render:(_short, probe) => h_flex().id(groupId('labels', probe)).min_w(0).h(18).gap(4).items_center().justify_end().overflow_hidden()
         .tooltip(labelNames)
         .children(labels.map((label, index) => this.labelPill(t, label, `${groupId('label', probe)}-${index}`)))}] : []),
     ], ['review', 'labels']);
-    meta.line.tooltip([pr.tasks?.label, pr.checks?.label, labelNames,
-      pr.review ? (pr.review === 'approved' ? 'Approved' : 'Changes requested') : null].filter(Boolean).join('\n'));
+    meta.line.tooltip(presentation.tooltip);
     // Spaces' row padding (8) minus its trailing pill margin (5) leaves 3px inside the highlight.
-    return h_flex().id(`${prefix}pr-${rowId}`).relative().w_full().h(74).min_h(74).max_h(74).flex_none().pl(8).pr(3).py(6).gap(U.gap).items_start().rounded(U.radius)
-      .when(!ghost, el => el.cursor_pointer().role('button').accessibility_label(`Open pull request #${pr.number} on GitHub`)
+    return h_flex().id(`${prefix}pr-${rowId}`).relative().w_full().h(74).flex_none().pl(8).pr(3).py(6).gap(U.gap).items_start().rounded(U.radius)
+      .when(!ghost, el => el.cursor_pointer().role('button').accessibility_label(presentation.accessibility)
         .hover(s => s.bg(t.hover)).on_click(() => this.openPull(pr))
         .on_mouse_down('right', (_event, cx) => { cx.stop_propagation(); this.showPullMenu(pr, cx); })
         .when(!pr.key, el=>el.on_size_change(size => this.pinMotion?.measureRow(pr.number,size,settings().zoom))
           .on_mouse_move(event => this.pinMotion?.rowPointer(pr.number,event))))
       .child(div().id(`${prefix}pr-state-slot-${rowId}`).w(U.icon).h(20).flex_none().flex().items_center().child(this.pullIcon(t, pr)))
       .child(v_flex().flex_1().min_w(0).gap(3)
-        .child(h_flex().id(`${prefix}pr-title-line-${rowId}`).w_full().min_w(0).h(20).min_h(20).max_h(20).flex_none().gap(4).items_center().line_height('20px')
+        .child(h_flex().id(`${prefix}pr-title-line-${rowId}`).w_full().min_w(0).h(20).flex_none().gap(4).items_center().line_height('20px')
           .child(div().id(`${prefix}pr-title-${rowId}`).flex_1().min_w(0).h(20).truncate().text_size(U.font).font_semibold().text_color(t.foreground).tooltip(pr.title).child(pr.title))
           .child(div().id(`${prefix}pr-agent-slot-${rowId}`).w(U.insetControl).h(20).flex_none().relative()
             .when(Boolean(agentButton), el => el.child(agentButton))))
         .child(byline.line).child(meta.line))
-      .child(byline.probes).child(meta.probes);
+      .when(Boolean(byline.probes),el=>el.child(byline.probes))
+      .when(Boolean(meta.probes),el=>el.child(meta.probes));
   }
 
   swapOverlay(t, swap) {
@@ -958,8 +944,63 @@ export default class Changes extends View {
     return {liveRows,active};
   }
 
+  ordinaryScrollState(state) {
+    if(!this.ordinaryScroll || this.ordinaryScrollScope!==this.context) {
+      this.retiredOrdinaryHandles??=[];for(const old of this.ordinaryScroll?.values()??[])if(old.handle)this.retiredOrdinaryHandles.push(old.handle);
+      this.ordinaryScrollScope=this.context;this.ordinaryScroll=new Map();
+    }
+    let metrics=this.ordinaryScroll.get(state);
+    if(!metrics) {
+      metrics=new SidebarScrollState();this.ordinaryScroll.set(state,metrics);
+    }
+    if(this.selectedOrdinaryMetrics!==metrics) {
+      this.selectedOrdinaryMetrics=metrics;
+      metrics.measurement=this.ordinaryMeasureSequence=(this.ordinaryMeasureSequence??0)+1;
+    }
+    const zoom=settings().zoom>0?settings().zoom:1;
+    const scale=metrics.zoom?zoom/metrics.zoom:1;
+    if(metrics.zoom&&metrics.zoom!==zoom){
+      metrics.awaitZoom=true;
+      metrics.measurement=this.ordinaryMeasureSequence=(this.ordinaryMeasureSequence??0)+1;
+    }
+    // This physical frame survives tab/context changes. Its unchanged native
+    // dimensions will not be emitted again for a newly created tab state.
+    metrics.setMetrics({offset:metrics.offset*scale,content:metrics.content*scale,
+      viewport:this.ordinaryViewportHeight??metrics.viewport});
+    metrics.zoom=zoom;
+    return metrics;
+  }
+
+  sampleNativeScroll(metrics,handle,zoom) {
+    if(metrics.awaitZoom||!handle?.offset||!handle?.viewport_size||!handle?.content_size)return false;
+    try{
+      const offset=handle.offset()?.y,viewport=handle.viewport_size()?.height,content=handle.content_size()?.height;
+      if(!Number.isFinite(offset)||!Number.isFinite(viewport)||!Number.isFinite(content)||viewport<=0)return false;
+      metrics.setMetrics({offset:offset*zoom,viewport:viewport*zoom,content:content*zoom});return true;
+    }catch{return false;}
+  }
+
+  ordinaryHandle(metrics,cx) {
+    for(const old of this.retiredOrdinaryHandles??[])old.release();this.retiredOrdinaryHandles=[];
+    if(!metrics.handle&&base.ScrollHandle){metrics.handle=base.ScrollHandle.new();cx.notify();}
+  }
+
+  ordinaryMotion(metrics,cx) {
+    if(!this.shown()||this.ordinaryScroll?.get(this.view)!==metrics)return;
+    if(this.sampleNativeScroll(metrics,metrics.handle,metrics.zoom))metrics.update(cx);
+  }
+
+  measureOrdinaryViewport(size,cx) {
+    if(!Number.isFinite(size.height))return;
+    this.ordinaryViewportHeight=Math.max(0,size.height);
+    const metrics=this.ordinaryScroll?.get(this.view);if(metrics){this.ordinaryHandle(metrics,cx);metrics.measure('viewport',size,cx);}
+  }
+
   renderPulls(t) {
     const state = this.view, list = this.pulls[state], {liveRows,active} = this.pullSelection();
+    const metrics=this.ordinaryScrollState(state), zoom=metrics.zoom, measurement=metrics.measurement;
+    this.sampleNativeScroll(metrics,metrics.handle,zoom);
+    this.pinMotion?.rebaseZoom?.(zoom);
     this.pinMotion?.active(this.context,state);
     this.pinMotion?.resolve(location().terminal,active?.number,this.agentResolved === agentKey(location()));
     const retained = this.pinMotion?.current;
@@ -970,7 +1011,7 @@ export default class Changes extends View {
     const pinKey = JSON.stringify([this.context,state,pinned?.number ?? null]);
     if (pinKey !== this.pinKey) {
       this.pinRevealed = this.pinKey == null || !pinned || Boolean(retained) || settled;
-      this.pinKey = pinKey;
+      this.pinKey = pinKey;this.pinRevealSequence=(this.pinRevealSequence??0)+1;
     }
     const remaining = rows.filter(pr => pr !== pinned);
     const empty = this.error || this.pullError || (!this.root ? (this.loading ? 'Loading…' : 'No folder')
@@ -985,20 +1026,26 @@ export default class Changes extends View {
       .when(Boolean(pinned), el => el
         .child(v_flex().id('active-pull').relative().flex_none().py(4).px(LIST_INSET)
           .child(div().id('active-pull-rail').absolute().left(0).top(0).bottom(0).w(2).bg(t.accent))
-          .child(v_flex().id(`active-pull-content-${pinned.number}`).w_full()
+          .child(v_flex().id(`active-pull-content-${pinned.number}-${this.pinRevealSequence}`).w_full()
             .opacity(this.pinRevealed ? 1 : 0.75).transition('opacity', {duration:120,easing:'ease-out'})
             .on_size_change((_size, cx) => {
               if (this.pinKey === pinKey && !this.pinRevealed) { this.pinRevealed = true; cx.notify(); }
             })
             .child(this.pullRow(t, pinned).when(Boolean(swap), el => el.invisible()))))
         .child(div().id('active-pull-divider').h(1).flex_none().bg(t.border)))
-      .child(v_flex().id('pulls-scroll-frame').flex_1().min_h(0).overflow_hidden()
-        .on_scroll_wheel((event, cx) => this.scrollMotionAt(event, 'wheel', state, cx))
-        .on_mouse_move((event, cx) => this.scrollMotionAt(event, 'move', state, cx))
-        .child(v_flex().id(`pulls-list-${state}`).flex_1().min_h(0).overflow_y_scrollbar().py(4).px(LIST_INSET)
-          .child(v_flex().id('pulls-content').w_full().flex_none().gap(U.rowGap)
-            .on_scroll_wheel(event => this.contentMotion(event, 'wheel', state))
-            .on_mouse_move(event => this.contentMotion(event, 'move', state))
+      .child(v_flex().id('pulls-scroll-frame').relative().flex_1().min_h(0).overflow_hidden()
+        .on_size_change((size,cx)=>this.measureOrdinaryViewport(size,cx))
+        .on_scroll_wheel((event, cx) => {this.scrollMotionAt(event, 'wheel', state, cx);metrics.viewportMotion(event,'wheel',cx);this.ordinaryMotion(metrics,cx);})
+        .on_mouse_move((event, cx) => {this.scrollMotionAt(event, 'move', state, cx);metrics.viewportMotion(event,'move',cx);this.ordinaryMotion(metrics,cx);})
+        .child(v_flex().id(`pulls-list-${state}`).flex_1().min_h(0).overflow_y_scrollbar()
+          .when(Boolean(metrics.handle),el=>el.track_scroll(metrics.handle))
+          .child(v_flex().id(`pulls-content-${metrics.measurement}-${zoom}`).w_full().flex_none().gap(U.rowGap).py(4).px(LIST_INSET)
+            .on_size_change((size,cx)=>{
+              if(this.ordinaryScroll?.get(this.view)!==metrics || metrics.measurement!==measurement || (settings().zoom>0?settings().zoom:1)!==zoom)return;
+              metrics.awaitZoom=false;this.ordinaryHandle(metrics,cx);metrics.measure('content',size,cx);
+            })
+            .on_scroll_wheel(event => {this.contentMotion(event, 'wheel', state);metrics.contentMotion(event,'wheel');})
+            .on_mouse_move(event => {this.contentMotion(event, 'move', state);metrics.contentMotion(event,'move');})
             .children(remaining.map(pr => this.pullRow(t, pr)
               .when(Boolean(swap?.cards.some(card => card.pr.number === pr.number)), el => el.invisible())))
             .when(!rows.length, el => el.child(panelMessage(t, 'git-empty', { text: empty, loading: empty === 'Loading…', rowInset: 2 })))
@@ -1008,7 +1055,9 @@ export default class Changes extends View {
               .role('button').accessibility_label('Load 10 more pull requests').disabled(this.pullLoading)
               .when(!this.pullLoading, el => el.cursor_pointer().hover(s => s.bg(t.hover)))
               .on_click((_event, cx) => { if (!this.pullLoading) this.morePulls(state, cx); })
-              .child(this.pullLoading && this.loadingState === state ? 'Loading…' : this.pageError?.state === state ? 'Retry loading more' : 'Load 10 more'))))))
+              .child(this.pullLoading && this.loadingState === state ? 'Loading…' : this.pageError?.state === state ? 'Retry loading more' : 'Load 10 more')))))
+        .when(metrics.moreAbove,el=>el.child(topFade(metrics,'pulls-list',t.background,{left:LIST_INSET,right:LIST_INSET})))
+        .when(metrics.moreBelow,el=>el.child(bottomFade(metrics,'pulls-list',t.background,{left:LIST_INSET,right:LIST_INSET}))))
       .when(Boolean(swap), el => el.child(this.swapOverlay(t,swap)));
   }
 
@@ -1030,79 +1079,172 @@ export default class Changes extends View {
   repositoryNameLabel(repo,scope) {
     this.repositoryNameSizes ??= new Map();
     const id=`task-repo-name-${scope}-${repo}`;
-    const sizes=this.repositoryNameSizes.get(id)??{};
+    let sizes=this.repositoryNameSizes.get(id);
+    if(!sizes) {
+      sizes={measurement:this.repositoryNameMeasureSequence=(this.repositoryNameMeasureSequence??0)+1};
+      this.repositoryNameSizes.set(id,sizes);
+    }
+    const zoom=settings().zoom>0?settings().zoom:1;
     const overflowing=()=>Number.isFinite(sizes.available)&&Number.isFinite(sizes.intrinsic)&&sizes.intrinsic>sizes.available+0.5;
     const measure=(kind,size,cx)=>{
-      if(!this.shown() || this.aggregate?.currentContext({presentation:true})?.scope!==scope || !this.aggregate.repositories().includes(repo) || !Number.isFinite(size.width))return;
+      if(!this.shown() || (settings().zoom>0?settings().zoom:1)!==zoom || this.repositoryNameSizes.get(id)!==sizes || this.aggregate?.currentContext({presentation:true})?.scope!==scope || !this.aggregate.repositories().includes(repo) || !Number.isFinite(size.width))return;
       const before=overflowing();sizes[kind]=size.width;this.repositoryNameSizes.set(id,sizes);
       if(before!==overflowing())cx.notify();
     };
     // A non-shrinking invisible flex child measures the same text's natural width.
     // Its absolute clipped parent cannot reserve width or add a line to the header.
     return div().id(id).flex_1().min_w(0).relative().overflow_hidden()
-      .on_size_change((size,cx)=>measure('available',size,cx))
       .when(overflowing(),el=>el.tooltip(repo))
-      .child(div().truncate().child(repo))
+      .child(div().id(`${id}-available-${sizes.measurement}`).w_full().truncate().child(repo)
+        .on_size_change((size,cx)=>measure('available',size,cx)))
       .child(div().absolute().left(0).top(0).flex().invisible()
-        .child(div().id(`${id}-probe`).flex_none().whitespace_nowrap().child(repo)
+        .child(div().id(`${id}-probe-${sizes.measurement}`).flex_none().whitespace_nowrap().child(repo)
           .on_size_change((size,cx)=>measure('intrinsic',size,cx))));
   }
 
-  repositorySection(t, {repo, rows, error}, scope) {
+  repositorySection(t, {repo, items}, scope, window) {
     const aggregate = this.aggregate, folded = this.foldedRepositories.has(repo);
-    return v_flex().id(`task-repo-${repo}`).w_full().flex_none().gap(U.rowGap)
-      .child(sidebarSectionHeader(t, {id:`task-repo-header-${repo}`, label:repo, open:!folded, trailingSize:U.insetControl, trailingInset:3, children:[
+    const header=items.find(item=>item.header), body=items.filter(item=>!item.header);
+    return v_flex().id(`task-repo-${repo}`).w_full().flex_none()
+      .when(Boolean(header),section=>section.child(div().flex_none().h(header.height+header.gap).child(sidebarSectionHeader(t, {id:`task-repo-header-${repo}`, label:repo, open:!folded, trailingSize:U.insetControl, trailingInset:3, children:[
         this.repositoryNameLabel(repo,scope),
       ]}).cursor_pointer().hover(s => s.bg(t.selected))
         .on_click((_e, cx) => {
           cx.stop_propagation();
           if (!this.shown() || aggregate.currentContext({presentation:true})?.scope !== scope || ![...aggregate.entries.values()].some(e => e.link.repo === repo)) return;
+          this.taskSelectionEpoch=(this.taskSelectionEpoch??0)+1;
           this.foldedRepositories.has(repo) ? this.foldedRepositories.delete(repo) : this.foldedRepositories.add(repo);
           try { localStorage.setItem(FOLDED_REPOS_KEY, JSON.stringify([...this.foldedRepositories])); } catch {}
           cx.notify();
-        }))
-      .when(!folded, el => el.child(v_flex().id(`task-repo-body-${repo}`).gap(U.rowGap)
-        .children(rows.map(pr => this.pullRow(t, pr)))
-        .when(Boolean(error), body => body.child(this.renderPart(`repository-notice:${repo}`,()=>div().id(`task-error-${repo}`).px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(error))))));
+        }))))
+      .when(!folded && body.length>0, el => el.child(v_flex().id(`task-repo-body-${repo}`).flex_none()
+        .children(body.map(item=>div().id(`task-item-${item.key}`).flex_none().h(item.height+item.gap)
+          .child(item.row ? this.pullRow(t,item.row) : this.renderPart(`repository-notice:${repo}`,()=>div().id(`task-error-${repo}`).flex_none().w_full()
+            .child(div().id(`task-notice-measure-${window.measurement}-${encodeURIComponent(item.measureKey)}`).flex_none().w_full().px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(item.error)
+            .on_size_change((size,cx)=>{
+              if(!this.taskWindowCurrent(window,scope) || !window.items.some(current=>current.measureKey===item.measureKey) || !Number.isFinite(size.height))return;
+              const height=size.height/window.zoom;
+              if(window.noticeHeights.get(item.measureKey)===height)return;
+              window.noticeHeights.set(item.measureKey,height);cx.notify();
+            }))))))));
   }
 
   taskSections(sections, scope) {
-    const key = `${scope}\0${this.view}`;
-    if (this.taskPageScope !== scope) { this.taskPages = new Map();this.taskPageScope=scope; }
-    this.taskPages ??= new Map();
-    const items = [];
-    for (const section of sections) {
-      items.push({section,header:true});
-      if (this.foldedRepositories.has(section.repo)) continue;
-      for (const row of section.rows) items.push({section,row});
-      if (section.error) items.push({section,error:section.error});
+    const key=`${scope}\0${this.view}`;
+    if(this.taskWindowScope!==scope) {
+      this.retiredTaskHandles=[...(this.retiredTaskHandles??[]),...[...(this.taskWindows?.values()??[])].flatMap(window=>window.handle?[window.handle]:[])];
+      this.taskWindows=new Map();this.taskWindowScope=scope;
     }
-    const last = Math.max(0,Math.ceil(items.length / TASK_PAGE_SIZE)-1);
-    const page = Math.min(this.taskPages.get(key) ?? 0,last);
-    const visible = [];
-    for (const item of items.slice(page*TASK_PAGE_SIZE,(page+1)*TASK_PAGE_SIZE)) {
-      let section = visible[visible.length-1];
-      if (section?.repo !== item.section.repo) {
-        section = {repo:item.section.repo,rows:[],error:null};visible.push(section);
-      }
-      if (item.row) section.rows.push(item.row);
-      if (item.error) section.error=item.error;
+    let window=this.taskWindows.get(key);
+    if(!window) {
+      window=new TaskReveal();window.key=key;window.metrics=new SidebarScrollState();
+      window.measurement=this.taskMeasureSequence=(this.taskMeasureSequence??0)+1;
+      this.taskWindows.set(key,window);
     }
-    return {sections:visible,page,last,key};
+    if(this.selectedTaskWindow!==window) {
+      this.selectedTaskWindow=window;this.taskSelectionEpoch=(this.taskSelectionEpoch??0)+1;
+      window.correction=null;window.anchorMarker=null;window.scheduledCorrection=null;
+    }
+    const zoom=settings().zoom||1;
+    if(window.zoom && window.zoom!==zoom) {
+      window.metrics.awaitZoom=true;
+      window.zoomSequence=(window.zoomSequence??0)+1;
+      // Retained native scrolling is logical-pixel based; paired event bounds
+      // are window pixels. Rebase cached metrics before new zoom callbacks.
+      window.metrics.setMetrics({offset:window.offset*zoom,content:window.contentHeight*zoom});
+      // The frame is measured in physical pixels and can stay exactly the
+      // same size during zoom. Do not rescale a measurement that will not fire.
+      window.viewport=window.metrics.viewport/zoom;
+    }
+    window.zoom=zoom;
+    if(this.sampleNativeScroll(window.metrics,window.handle,zoom))window.observe(window.metrics.offset/zoom,window.metrics.viewport/zoom,true);
+    window.project(sections,this.foldedRepositories,U.control,U.rowGap,`${zoom}:${window.width??0}`);
+    const range=window.range(),visible=[];
+    for(const item of range.items) {
+      let section=visible.at(-1);
+      if(section?.repo!==item.repo) {section={repo:item.repo,items:[],rows:[]};visible.push(section);}
+      section.items.push(item);if(item.row)section.rows.push(item.row);
+    }
+    return {...range,sections:visible,window,key};
   }
 
-  taskPageControl(t, paging, scope) {
-    if (!paging.last) return null;
-    const change = (page,cx) => {
-      if (!this.shown() || this.aggregate?.currentContext({presentation:true})?.scope !== scope || `${scope}\0${this.view}` !== paging.key) return;
-      this.taskPages.set(paging.key,page);cx.notify();
-    };
-    return h_flex().id('task-pulls-pages').flex_none().py(8).px(LIST_INSET).gap(12).text_size(U.meta).text_color(t.dim)
-      .when(paging.page>0,el=>el.child(div().id('task-pulls-previous').cursor_pointer().role('button').accessibility_label('Show previous task pull requests')
-        .on_click((_e,cx)=>change(paging.page-1,cx)).child('Previous')))
-      .child(div().child(`${paging.page+1} / ${paging.last+1}`))
-      .when(paging.page<paging.last,el=>el.child(div().id('task-pulls-more').cursor_pointer().role('button').accessibility_label('Show more task pull requests')
-        .on_click((_e,cx)=>change(paging.page+1,cx)).child('Show more')));
+  taskWindowCurrent(window,scope) {
+    return this.shown() && this.aggregate?.currentContext({presentation:true})?.scope===scope
+      && this.taskWindows?.get(`${scope}\0${this.view}`)===window;
+  }
+
+  taskMeasure(window,scope,which,size,cx,zoom=window.zoom) {
+    if(!this.taskWindowCurrent(window,scope) || (which==='content' && window.zoom!==zoom))return;
+    // Handles are created after layout, never in render; they retain the same
+    // native list's position across appends and same-home refreshes.
+    if(!window.handle && base.ScrollHandle) {window.handle=base.ScrollHandle.new();cx.notify();}
+    if(which==='viewport' && window.width!==size.width) {window.width=size.width;cx.notify();}
+    if(which==='content')window.metrics.awaitZoom=false;
+    window.metrics.measure(which,size,cx);
+    this.sampleNativeScroll(window.metrics,window.handle,window.zoom);
+    window.observe(window.metrics.offset/window.zoom,window.metrics.viewport/window.zoom,true);
+    this.tryTaskReveal(window,cx);
+  }
+
+  tryTaskReveal(window,cx,ahead=0,onlyFit=false) {
+    const metrics=window.metrics,serial=window.renderSerial??0,expected=window.contentHeight*window.zoom;
+    if(window.revealedSerial===serial || !window.more || window.atCap || metrics.viewport<=0 || metrics.content<=0)return false;
+    // Do not append repeatedly against the previous batch's native layout.
+    if(Math.abs(metrics.content-expected)>2 && !(metrics.content<=metrics.viewport+1&&expected<=metrics.viewport+1))return false;
+    if(onlyFit?metrics.content>metrics.viewport+1:metrics.max-metrics.offset>120+ahead)return false;
+    if(!window.revealMore())return false;
+    window.revealedSerial=serial;cx.notify();return true;
+  }
+
+  scheduleTaskLayout(window,scope,cx) {
+    const epoch=this.taskSelectionEpoch,key=[window.measurement,window.generation,window.limit,window.metrics.viewport,epoch].join(':');
+    if(window.layoutCheck===key)return;window.layoutCheck=key;
+    cx.spawn(async cx=>{
+      await Promise.resolve();
+      if(!this.taskWindowCurrent(window,scope)||this.taskSelectionEpoch!==epoch||window.layoutCheck!==key)return;
+      cx.timer?.after(16,view=>{
+        if(!this.taskWindowCurrent(window,scope)||this.taskSelectionEpoch!==epoch||window.layoutCheck!==key)return;
+        this.sampleNativeScroll(window.metrics,window.handle,window.zoom);
+        window.observe(window.metrics.offset/window.zoom,window.metrics.viewport/window.zoom,true);
+        window.metrics.update(view);this.tryTaskReveal(window,view,0,true);
+      });
+    });
+  }
+
+  taskViewportMotion(window,scope,event,kind,cx) {
+    if(!this.taskWindowCurrent(window,scope))return;
+    const native=this.sampleNativeScroll(window.metrics,window.handle,window.zoom);
+    if(!native)window.metrics.viewportMotion(event,kind,cx);else window.metrics.update(cx);
+    window.anchorMarker=null;
+    window.observe(window.metrics.offset/window.zoom,window.metrics.viewport/window.zoom);
+    const ahead=native&&kind==='wheel'?Math.max(0,-(event.delta?.y??0)):0;
+    this.tryTaskReveal(window,cx,ahead);
+  }
+
+  nextTaskChunk(window,scope,cx) {
+    if(!this.taskWindowCurrent(window,scope) || !window.canTurn)return;
+    window.handle?.release();window.handle=null;window.anchorMarker=null;window.nextChunk();
+    window.measurement=this.taskMeasureSequence=(this.taskMeasureSequence??0)+1;
+    window.metrics.setMetrics({offset:0,content:window.contentHeight*window.zoom});
+    cx.notify();
+  }
+
+  applyTaskAnchor(window,scope,cx) {
+    if(this.retiredTaskHandles?.length) {
+      const retired=this.retiredTaskHandles;this.retiredTaskHandles=[];
+      cx.spawn(async()=>{await Promise.resolve();for(const handle of retired)handle.release();});
+    }
+    const correction=window.correction;
+    if(!correction || !window.handle || window.scheduledCorrection===correction)return;
+    window.scheduledCorrection=correction;const epoch=this.taskSelectionEpoch;
+    cx.spawn(async cx=>{
+      await Promise.resolve();
+      if(!this.taskWindowCurrent(window,scope) || this.taskSelectionEpoch!==epoch || window.correction!==correction)return;
+      window.handle.scroll_to_item(1);
+      window.anchorMarker=correction;window.correction=null;
+      window.metrics.setMetrics({offset:correction.to*window.zoom,content:window.contentHeight*window.zoom});
+      window.metrics.update(cx,true); // scroll_to_item queues layout, never a repaint.
+    });
   }
 
   renderAggregate(cx,t) {
@@ -1121,7 +1263,11 @@ export default class Changes extends View {
       const ids=new Set(repositories.map(repo=>`task-repo-name-${scope}-${repo}`));
       for(const id of this.repositoryNameSizes.keys())if(!ids.has(id))this.repositoryNameSizes.delete(id);
     }
-    const paging=this.taskSections(sections,scope);
+    const paging=this.taskSections(sections,scope), taskWindow=paging.window, taskZoom=taskWindow.zoom, taskZoomSequence=taskWindow.zoomSequence??0;
+    taskWindow.renderSerial=(taskWindow.renderSerial??0)+1;
+    this.applyTaskAnchor(taskWindow,scope,cx);
+    this.scheduleTaskLayout(taskWindow,scope,cx);
+    const anchor=taskWindow.correction??taskWindow.anchorMarker;
     this.notices ??= new GitNotices();
     const notices=new Map(repositories.map(repo=>[repo,this.notices.sync(cx,{enabled:this.shown() && !aggregate.context.stale,repository:repo})]));
     const setup=repositories.length ? [...notices.values()].includes('setup') : this.notices.sync(cx,{enabled:this.shown() && !aggregate.context.stale,repository:null})==='setup';
@@ -1145,12 +1291,28 @@ export default class Changes extends View {
       .child(h_flex().id('git-views').h(40).flex_none().px(4).gap(2).items_center().border_b(1).border_color(t.border)
         .child(this.segment(t,'git-view-open','Open',counts.open,this.view==='open',view=>this.setView('open',view)))
         .child(this.segment(t,'git-view-closed','Closed',counts.closed,this.view==='closed',view=>this.setView('closed',view))))
-      .child(v_flex().id('task-pulls-scroll').flex_1().min_h(0).overflow_hidden()
-        .child(v_flex().id(`task-pulls-page-${scope}-${this.view}-${paging.page}`).flex_1().min_h(0).overflow_y_scrollbar().py(4).px(LIST_INSET)
-          .children(paging.sections.map(section => this.renderPart(`repository-section:${section.repo}`,()=>this.repositorySection(t, section, scope))))
-          .when(!sections.length,el=>el.child(panelMessage(t,'git-task-empty',{text:verifying || aggregate.busy || aggregate.waiting?'Loading':`No ${this.view} pull requests`,loading:verifying || aggregate.busy || aggregate.waiting,rowInset:2})
-            .when(verifying,message=>message.tooltip(verificationHint))))))
-      .when(Boolean(paging.last),el=>el.child(this.taskPageControl(t,paging,scope)))
+      .child(v_flex().id('task-pulls-scroll').relative().flex_1().min_h(0).overflow_hidden()
+        .child(v_flex().id(`task-pulls-frame-${scope}-${this.view}-${taskWindow.measurement}`).relative().flex_1().min_h(0).overflow_hidden()
+          .on_size_change((size,cx)=>this.taskMeasure(taskWindow,scope,'viewport',size,cx))
+          .on_scroll_wheel((event,cx)=>this.taskViewportMotion(taskWindow,scope,event,'wheel',cx))
+          .on_mouse_move((event,cx)=>this.taskViewportMotion(taskWindow,scope,event,'move',cx))
+          .child(v_flex().id(`task-pulls-list-${scope}-${this.view}${taskWindow.chunk?`-${taskWindow.chunk}`:''}`).flex_1().min_h(0).overflow_y_scrollbar()
+            .when(Boolean(taskWindow.handle),el=>el.track_scroll(taskWindow.handle))
+            .child(v_flex().id(`task-pulls-content-${taskWindow.measurement}-${taskWindow.zoom}-${taskZoomSequence}`).w_full().flex_none().py(4).px(LIST_INSET)
+              .on_size_change((size,cx)=>{if((taskWindow.zoomSequence??0)===taskZoomSequence)this.taskMeasure(taskWindow,scope,'content',size,cx,taskZoom);})
+              .on_scroll_wheel(event=>taskWindow.metrics.contentMotion(event,'wheel'))
+              .on_mouse_move(event=>taskWindow.metrics.contentMotion(event,'move'))
+              .children(paging.sections.map(section => this.renderPart(`repository-section:${section.repo}`,()=>this.repositorySection(t, section, scope,taskWindow))))
+              .when(taskWindow.canTurn,el=>el.child(div().id('task-pulls-more').h(28).flex_none().px(8).text_size(U.meta).text_color(t.dim).cursor_pointer().role('button')
+                .accessibility_label(taskWindow.more?'Show more task pull requests':'Show first task pull requests again')
+                .tooltip(taskWindow.more?'Show the next mounted batch':'Return to the first mounted batch')
+                .on_click((_event,cx)=>this.nextTaskChunk(taskWindow,scope,cx)).child('Show more')))
+              .when(!sections.length,el=>el.child(panelMessage(t,'git-task-empty',{text:verifying || aggregate.busy || aggregate.waiting?'Loading':`No ${this.view} pull requests`,loading:verifying || aggregate.busy || aggregate.waiting,rowInset:2})
+                .when(verifying,message=>message.tooltip(verificationHint)))))
+            .when(Boolean(anchor),el=>el.child(div().id('task-pulls-anchor').absolute().left(0).w(1).h(1)
+              .top(anchor.to+(anchor.to>anchor.from?taskWindow.viewport-1:0)))))
+          .when(taskWindow.metrics.moreAbove,el=>el.child(topFade(taskWindow.metrics,'task-pulls-list',t.background,{left:LIST_INSET,right:LIST_INSET})))
+          .when(taskWindow.metrics.moreBelow,el=>el.child(bottomFade(taskWindow.metrics,'task-pulls-list',t.background,{left:LIST_INSET,right:LIST_INSET})))))
       .when(setup,el=>el.child(this.liveCIInfo(t)))
       .when(Boolean(enrollment),el=>el.child(enrollment))
       .when(Boolean(sweep),el=>el.child(this.sweepLayer(t,sweep).top(U.section)));

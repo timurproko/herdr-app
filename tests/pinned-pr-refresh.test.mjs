@@ -1,6 +1,7 @@
 // Regression: webhook invalidations replaced pinned-only ten-second polling.
 import {githubInvocation} from './support/github-read.mjs';
 import assert from 'node:assert/strict';
+import {scrollModule,Background} from './support/git-scroll-modules.mjs';
 import fs from 'node:fs';
 import {kitModule,withKitUi} from './support/panel-kit.mjs';
 import vm from 'node:vm';
@@ -27,7 +28,7 @@ async function harness() {
     './enrollment-picker.js':{EnrollmentPicker:class{}},
     './label-colors.js':labelColors,
     './aggregate.js':{AggregatePulls:class {sync(){return false;}stop(){}}},
-    'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{}},'gpui-base':{h_flex:element,v_flex:element},
+    'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{},Background},'gpui-base':{h_flex:element,v_flex:element},
     './host.js':host,'./location.js':{location:()=>place},'./pulls.js':pulls,'./pin-swap.js':{PinSwap,PIN_SWAP_MS},
     './ci-fix.js':{CIFix:class {sync(){}stop(){}}},
     './notices.js':{GitNotices:class {sync(){return null;}stop(){}retryNow(){}}},
@@ -38,7 +39,7 @@ async function harness() {
   };
   const main=new vm.SourceTextModule(fs.readFileSync(new URL('../src/plugins/git/mod/main.js',import.meta.url),'utf8'),{context});
   const panelKit=kitModule(context);withKitUi(modules['./ui.js'],element);
-  await main.link(name=>name==='./settings-dialog.js'?new vm.SourceTextModule(fs.readFileSync(new URL('../src/ui/settings-dialog.js',import.meta.url),'utf8'),{context}):name==='./panel-kit.js'?panelKit:new vm.SyntheticModule(Object.keys(modules[name]),function(){for(const [k,v]of Object.entries(modules[name]))this.setExport(k,v);},{context}));
+  await main.link(name=>scrollModule(context,name)??(name==='./settings-dialog.js'?new vm.SourceTextModule(fs.readFileSync(new URL('../src/ui/settings-dialog.js',import.meta.url),'utf8'),{context}):name==='./panel-kit.js'?panelKit:new vm.SyntheticModule(Object.keys(modules[name]),function(){for(const [k,v]of Object.entries(modules[name]))this.setExport(k,v);},{context})));
   await main.evaluate();
   let rendering=false;
   const view=new main.namespace.default(),cx={focus_handle(){assert.equal(rendering,false,'No focus allocation from render');return {};},notify(){assert.equal(rendering,false,'No notify from render');},stop_propagation(){},spawn:fn=>tasks.push(fn(cx)),timer:{every:(ms,fn)=>timers.push({ms,fn}),after:(ms,fn)=>phases.push({ms,fn})}};

@@ -209,10 +209,12 @@ loaded subset; aggregate totals derive from eligible task rows, including the
 unchanged 24-hour historical completion bound. Commands stay below Windows'
 process-argument limit, including a 120-PR expanded list. The queue lease covers
 every chunk; values publish only after the complete selection succeeds.
-Coordinator folded sections, off-page rows and the other Open/Closed tab are not
-eligible. Probes follow the same ten-item presentation paging as the renderer;
-Previous/Show more invalidates held replies for the prior page without reading
-immediately or shrinking full task totals. Both thin and changed-row detail reads
+Coordinator probes cover the revealed unfolded batch, including offscreen rows.
+Unrevealed rows, folded sections and the other Open/Closed tab are not eligible.
+Reveal/fold/tab/home/relevant projection changes advance the captured selection
+generation and reject held replies, including away-and-back changes. Native viewport
+motion within an unchanged revealed set keeps its generation and starts no extra
+probes or inventory reads, and never shrinks full task totals. Both thin and changed-row detail reads
 use the per-call GH_REPO Node carrier, not a bare gh api from the coordinator home.
 Reads share the existing ordinary/aggregate queue; contention rechecks eligibility
 after one second rather than starting a parallel request. Prior rows/counts stay

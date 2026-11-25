@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {scrollModule,Background} from './support/git-scroll-modules.mjs';
 import {kitModule,withKitUi} from './support/panel-kit.mjs';
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -34,7 +35,7 @@ const modules={
   './ci-fix.js':{CIFix:class {sync(){}stop(){}}},
   './notices.js':{GitNotices:class {sync(){return null;}stop(){}retryNow(){}}},
   './webhooks.js':{GitWebhooks:class {sync(){} stop(){}}},
-  'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{}},
+  'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{},Background},
   'gpui-base':{v_flex:element,h_flex:element},
   './host.js':host,'./location.js':{location:()=>({cwd:'/other-repo',on:'pc2'})},
   './ui.js':{U,panelTitle:element,headerTools:el=>el,reveal:el=>el,subtleActionFill:()=>'',refreshButton:element,emptyState:element,menuSurface:(_t,el)=>el,menuHeading:(_t,text)=>element().child(text),slot:el=>el},
@@ -46,9 +47,9 @@ const modules={
 const context=vm.createContext({});
 const main=new vm.SourceTextModule(fs.readFileSync(new URL('../src/plugins/git/mod/main.js',import.meta.url),'utf8'),{context});
 const panelKit=kitModule(context);withKitUi(modules['./ui.js'],element);
-await main.link(specifier=>specifier==='./settings-dialog.js'?new vm.SourceTextModule(fs.readFileSync(new URL('../src/ui/settings-dialog.js',import.meta.url),'utf8'),{context}):specifier==='./panel-kit.js'?panelKit:new vm.SyntheticModule(Object.keys(modules[specifier]),function(){
+await main.link(specifier=>scrollModule(context,specifier)??(specifier==='./settings-dialog.js'?new vm.SourceTextModule(fs.readFileSync(new URL('../src/ui/settings-dialog.js',import.meta.url),'utf8'),{context}):specifier==='./panel-kit.js'?panelKit:new vm.SyntheticModule(Object.keys(modules[specifier]),function(){
   for (const [key,value] of Object.entries(modules[specifier])) this.setExport(key,value);
-},{context}));
+},{context})));
 await main.evaluate();
 const Changes=main.namespace.default;
 const cx={notify(){},stop_propagation(){stopped++;},write_to_clipboard:text=>clipboard.push(text),

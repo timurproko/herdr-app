@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import {rowHarness,element,find,t} from './support/git-row.mjs';
+import {measureTask,scrollTask,taskWindow} from './support/git-scroll.mjs';
+let rendering=false;const handles=[],jobs=[];
+const h=await rowHarness({modules:{'gpui-base':{h_flex:()=>element().flex(),v_flex:()=>element().flex().flex_col(),Popover:{},Input:{},ScrollHandle:{new(){assert.equal(rendering,false);const handle={requests:[],scroll_to_item(index){assert.equal(rendering,false);this.requests.push(index);},release(){assert.equal(rendering,false);this.released=true;}};handles.push(handle);return handle;}}}}});
+const {panel}=h;panel.context='tasks:home';panel.shown=()=>true;
+let scope='home';const rows=Array.from({length:30},(_,i)=>({key:`owner/repo#${i+1}`,repo:'owner/repo',number:i+1,title:'Fixture',state:'open'}));
+panel.aggregate={context:{scope},entries:new Map(rows.map(pr=>[pr.key,{pr,link:{repo:pr.repo}}])),currentContext:()=>({scope}),repositories:()=>['owner/repo'],rows:()=>rows,readNotice:()=>null,counts:()=>({open:rows.length,closed:0}),target:()=>null};
+panel.notices={sync(){},presentation(){}};panel.enrollmentPicker={render(){}};panel.syncChecksFallback=()=>{};
+const cx={notify(){assert.equal(rendering,false);},spawn(fn){jobs.push(fn(cx));}};
+const render=()=>{rendering=true;try{return panel.renderAggregate(cx,t);}finally{rendering=false;}};
+let tree=render();measureTask(panel,tree,cx);tree=render();assert.equal(handles.length,1);assert.equal(find(tree,'task-pulls-list-home-open').attrs.track_scroll[0],handles[0]);
+scrollTask(panel,tree,cx,250);tree=render();const w=taskWindow(panel),before=w.offset,anchor=w.items[w.index(Math.max(0,w.offset-4))].key;
+rows.unshift({...rows[0],key:'owner/repo#0',number:0});tree=render();assert.equal(w.offset,before+76);assert.equal(w.items[w.index(Math.max(0,w.offset-4))].key,anchor);
+assert.equal(handles[0].requests.length,0,'Render only queues a yielded native anchor request');
+assert.ok(find(tree,'task-pulls-anchor'));await Promise.all(jobs.splice(0));assert.deepEqual(handles[0].requests,[1]);
+// Subsequent same-size measurement must not cancel a pending row correction.
+measureTask(panel,tree,cx);assert.ok(w.anchorMarker);
+const zoomOffset=w.offset;h.setZoom(1.3);tree=render();measureTask(panel,tree,cx,400,390,1.3);assert.equal(w.offset,zoomOffset,'Zoom keeps logical scroll anchors while native metrics rescale');
+h.setZoom(1);tree=render();measureTask(panel,tree,cx);
+scrollTask(panel,tree,cx,200);tree=render();assert.equal(w.correction,null);
+rows.unshift({...rows[0],key:'owner/repo#-1',number:-1});render();scope='other';panel.context='tasks:other';panel.aggregate.context={scope};render();
+await Promise.all(jobs.splice(0));assert.deepEqual(handles[0].requests,[1],'An obsolete scope cannot apply its queued anchor');assert.ok(handles[0].released,'Retired native handles release only after yielding');
+console.log('PASS native scroll-handle lifetime, yielded insertion anchors, stable row/inset, preserved size callbacks and stale-scope rejection without render effects');
