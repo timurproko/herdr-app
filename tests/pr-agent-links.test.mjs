@@ -30,7 +30,7 @@ function pathTo(node,target) {
   return null;
 }
 let allAgents=[], allPanes=[], allSpaces=[], allTerminals=[], shown=true;
-const calls=[], actions=[], tasks=[], remotes=new Map(), screens=new Map();
+const calls=[], actions=[], tasks=[], remotes=new Map(), screens=new Map(),configs=new Map();
 const place={cwd:'/repo',on:null,terminal:'shell',tab:'shell-tab'};
 let heldRemote=null;
 const host={
@@ -42,6 +42,12 @@ const host={
   run:(...args)=>actions.push(args),
   exec:async(cmd,args,options)=>{
     calls.push({cmd,args,options});
+    if(cmd==='git') {
+      const key=JSON.stringify([options.on,options.cwd]),config=configs.get(key);
+      // Apply the real --get-regexp filter so omitting gh-resolved really does
+      // hide a marker-only change, rather than letting the mock mask the bug.
+      return {code:0,stdout:config==null?remotes.get(key)??'':config.split('\n').filter(line=>new RegExp(args.at(-1)).test(line.split(' ')[0])).join('\n')};
+    }
     assert.equal(cmd,'gh'); assert.deepEqual(Array.from(args),['repo','view','--json','nameWithOwner,owner,url']);
     if (heldRemote) {const result=heldRemote;heldRemote=null;return result;}
     return {code:0,stdout:remotes.get(JSON.stringify([options.on,options.cwd]))??''};
@@ -127,7 +133,9 @@ assert.equal(links.related(pr,'owner/repo','pc2/t6').address,'pc2/t6','Selected 
 assert.equal(links.related(pr,'owner/repo').address,'pc2/t1','Otherwise stable model order');
 // Recheck after TTL without a parallel retry burst.
 for(const entry of links.entries.values())entry.at=0;
+const beforeTTL=calls.filter(c=>c.cmd==='gh').length;
 screens.set('pc2/t1',footer(930));links.refresh(cx);links.refresh(cx);await tick();
+assert.equal(calls.filter(c=>c.cmd==='gh').length,beforeTTL,'Unchanged folder fingerprints need no GitHub reread at the footer TTL');
 assert.equal(links.related({...pr,number:930},'owner/repo').address,'pc2/t1');
 
 // Message actions revalidate the same robot mapping instead of trusting its TTL cache.
@@ -252,6 +260,21 @@ assert.equal(calls.filter(c=>c.cmd==='hc').length,beforeUnsupported,'Unsupported
 const codexTarget=links.related(pr,'owner/repo','codex');assert.equal(codexTarget.address,'codex');
 assert.equal(await links.confirm(codexTarget,pr,'owner/repo'),true,'Other agents use their verified repo and tab/branch mapping');
 assert.equal(calls.filter(c=>c.cmd==='hc').length,beforeUnsupported,'Generic confirmation never guesses an unsupported footer format');
+add('default-route',{app:'codex',cwd:'/default-route'});
+const routingKey=JSON.stringify([null,'/default-route']);
+const remoteURLs='remote.origin.url git@github-alias:fork/repo.git\nremote.upstream.url git@github-alias:owner/repo.git\n';
+configs.set(routingKey,remoteURLs+'remote.upstream.gh-resolved base');
+links.refresh(cx);await tick();assert.equal(links.entries.get('default-route').repo,'owner/repo');
+const routedReads=()=>calls.filter(call=>call.cmd==='gh' && call.options.cwd==='/default-route').length;
+const beforeRouting=routedReads();
+configs.set(routingKey,remoteURLs+'remote.origin.gh-resolved base');
+remotes.set(routingKey,JSON.stringify({nameWithOwner:'fork/repo'}));
+links.entries.get('default-route').at=0;links.refresh(cx);await tick();
+assert.equal(routedReads(),beforeRouting+1,'Changing only gh-resolved rechecks the effective canonical repository at the footer TTL');
+assert.equal(links.entries.get('default-route').repo,'fork/repo');
+assert.equal(links.related(pr,'owner/repo','default-route')?.address==='default-route',false,'The old default repository immediately loses this robot');
+assert.equal(links.related(pr,'fork/repo','default-route').address,'default-route');
+links.entries.get('default-route').at=0;links.refresh(cx);await tick();assert.equal(routedReads(),beforeRouting+1,'Unchanged effective routing still avoids repeated GitHub lookups');
 shown=false;const hiddenCalls=calls.length;view.render(cx);await tick();
 assert.equal(calls.length,hiddenCalls,'Hidden Git panels start no agent scans');
 await Promise.all(tasks);

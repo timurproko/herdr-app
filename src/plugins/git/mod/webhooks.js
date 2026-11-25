@@ -5,7 +5,7 @@ import { relayURL } from './plugins/git/relay-config.js';
 import { RELAY_STATE, RELAY_RETRY, relayRevision } from './plugins/git/relay-state.js';
 export class GitWebhooks {
   constructor() { this.state = 'idle'; this.status = ''; }
-  stop() { this.scope = null; this.revision = null; this.pending = null; this.delivery = null; }
+  stop() { this.scope = null; this.revision = null; this.pending = null; this.delivery = null; this.revisions=null; }
   sync(cx, { enabled, scope, repository, repositories, onChange, isCurrent = () => true }) {
     if (!enabled || checking()) { this.stop(); return; }
     const relay = relayURL(pluginSetting(pluginById('git'), 'relay'));
@@ -15,16 +15,19 @@ export class GitWebhooks {
     this.status = this.state === 'connected' ? '' : this.state === 'setup'
       ? 'Live CI: create credentials in Settings › Plugins › Git' : 'Live CI disconnected · reconnecting (manual Refresh remains available)';
     const names = repositories || [repository];
-    const revision = JSON.stringify(names.map(name => relayRevision(state, name)));
+    const revisions=new Map(names.map(name=>[name,relayRevision(state,name)]));
+    const revision = JSON.stringify([...revisions]);
     if (scope === this.scope && revision === this.revision) return;
     const changedScope = scope !== this.scope;
+    const changed=names.filter(name=>changedScope || this.revisions?.get(name)!==revisions.get(name));
     if (changedScope) this.stop();
-    this.scope = scope; this.revision = revision;
+    this.scope = scope; this.revision = revision;this.revisions=revisions;
     if (!changedScope && !state?.ready) return;
     // sync runs during native rendering. cx.spawn may begin immediately, so
     // explicitly yield before calling consumers that can notify or start reads.
     // One pending delivery coalesces revisions in the same view scope.
-    this.pending = { scope, revision, relay, transportScope:state?.scope, onChange, isCurrent };
+    this.pending = { scope, revision, relay, transportScope:state?.scope, onChange, isCurrent,
+      repositories:new Set([...(this.pending?.repositories??[]),...changed]) };
     if (this.delivery) return;
     const delivery = this.delivery = {};
     cx.spawn(async cx => {
@@ -35,7 +38,7 @@ export class GitWebhooks {
           || relayURL(pluginSetting(pluginById('git'), 'relay')) !== pending.relay || shared(RELAY_STATE)?.scope !== pending.transportScope) {
         this.stop(); return;
       }
-      pending.onChange(null, cx);
+      for(const repository of pending.repositories)pending.onChange({repository}, cx);
     });
   }
   retryNow() { this.stop(); setShared(RELAY_RETRY, (shared(RELAY_RETRY) || 0) + 1); }

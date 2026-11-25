@@ -9,6 +9,38 @@ selection: it includes installed Core/private-profile assumptions and Windows
 recycle operations. Do not run the broad command on a working installation just
 to reproduce hosted CI.
 
+## Git read-budget and refusal fixtures
+
+`tests/git-rate-quiet.test.mjs` exercises strict primary/secondary refusal handling,
+episodes, Retry-After, manual bypass and the older-success/cooldown race.
+`tests/git-target-reads.test.mjs` covers shared target subscriptions, per-alias
+failures with gh's real exit status 1 on partial GraphQL errors, final caching
+and changed-only details. Healthy siblings survive missing/access aliases;
+rate, HTTP, process and transport failures still refuse the complete batch.
+`tests/pr-agent-links.test.mjs` includes a `remote.*.gh-resolved`-only default
+change with unchanged remote URLs, plus warm routing-cache reuse. `tests/git-read-scheduling.test.mjs`
+checks main's immediate per-repository event delivery and window-independent reads,
+plus fake-clock cooldown recovery of the current selected tab with retained depth.
+The retired debounce/pending-demand transition matrix is removed with that machinery.
+`tests/git-request-budget.test.mjs` measures the actual frozen before controller
+and the changed controller against synthetic transport; its baseline blobs live
+in `tests/fixtures/git-before/` so shallow/offline CI needs no history fetch.
+`tests/git-membership-budget.test.mjs` confirms unchanged main enrollment reads:
+four REST operations for two repositories with a named account. Notice fixtures
+also verify that rate refusals schedule no deferred enrollment worker.
+`tests/git-worker-rate-headers.test.mjs` runs the actual worker transport with a
+fake child to check numeric/date Retry-After, paginated header stripping and strict
+permission/process/timeout exclusions without reading real credentials.
+These are deterministic API-operation counts, not live wire, latency or billing
+measurements. See [the complete budget](GIT-REQUEST-BUDGET.md).
+
+Old semantic fleet fixtures adapt their per-PR data suppliers into GraphQL alias
+responses, and inject explicit contradictory evidence where final facts change.
+They do not measure request counts. Ordinary pagination now exercises real
+membership/metadata/detail query shapes for both tabs, rather than assuming
+`gh pr view` for each row. No fixture accesses live credentials, changes relay
+setup or launches an agent.
+
 ## Supported hosted subset
 
 The existing Windows/Ubuntu matrix invokes `npm run test:ci` on **Node 24**.

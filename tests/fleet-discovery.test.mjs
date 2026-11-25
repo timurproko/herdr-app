@@ -1,6 +1,7 @@
 // Real machine reader -> strict Crew adapter -> registry -> rendered Git panel.
 // No Core, credentials, real Git/GitHub reads, reports or terminal transcripts.
 import assert from 'node:assert/strict';
+import {legacyTargetResponses} from './support/github-read.mjs';
 import {loadMod} from '../tools/plugin-harness.mjs';
 const element=()=>{const o={kids:[],attrs:{}};let p;return p=new Proxy(o,{get(t,k){if(k in t)return t[k];if(k==='then')return undefined;if(k==='when')return(yes,fn)=>yes?fn(p):p;if(k==='child')return c=>{o.kids.push(c);return p;};if(k==='children')return cs=>{o.kids.push(...cs);return p;};return(...args)=>{o.attrs[k]=args;return p;};}});};
 const find=(n,id)=>n?.attrs?.id?.[0]===id?n:n?.kids?.map(c=>find(c,id)).find(Boolean);
@@ -56,6 +57,7 @@ const host={shared:k=>state[k],setShared:(k,v)=>state[k]=v,spaces:()=>groups,pan
 const modules={'enrollment-picker.js':'src/plugins/git/mod/enrollment-picker.js','choice-menu.js':'src/ui/choice-menu.js','label-colors.js':'src/plugins/git/mod/label-colors.js','main.js':'src/plugins/git/mod/main.js','aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js','ui.js':'src/ui/ui.js','space-color-state.js':{currentSpaceColor:()=>null},
   'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{}},'gpui-base':{v_flex:element,h_flex:element,Popover:{},Input:{}},'location.js':{location:()=>({space:'coordinator',cwd:'/not-git',on:null,terminal:'owner'})},'agent-links.js':{AgentLinks:class{}},'pin-swap.js':{PinSwap:class{cancel(){}},PIN_SWAP_MS:320},'panel-pin.js':{panelPin:element},'sidebar-title.js':{sidebarTitle:element},'settings-dialog.js':{openSettings(){}},'panel-state.js':{changePanel(){}},'panel-kit.js':{headerTool:element,contextMenu:element,tag:element,panelMessage:(_t,id,o)=>element().id(id).child(o.text)},
   'webhooks.js':{GitWebhooks:class{sync(){}stop(){}retryNow(){}}},'notices.js':{GitNotices:class{sync(){return null;}presentation(){return null;}stop(){}retryNow(){}}}};
+host.exec=legacyTargetResponses(host.exec);
 const {Main,r,f}=await loadMod({host,modules,globals:{Date:class extends Date{static now(){return now;}},localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v)}},mod:'custom-changes',
   entry:'export {default as Main} from "./main.js";export * as r from "./plugins.js";export * as f from "./plugins/crew/fleet.js";'});
 const refresh=async()=>{r.pluginEvent('spaces.refresh',{cx,force:true});await drain();r.pluginEvent('workspace.context.refresh',{cx});await drain();};

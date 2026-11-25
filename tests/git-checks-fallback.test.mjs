@@ -11,7 +11,7 @@ for(const coordinator of [false,true]) {
   let now=0,shown=true,online=true,fail=false,rate=false,held=null,requests=[],tasks=[],timers=[],notifications=0,rendering=false;
   let status={ok:3,total:10},machineShape=null,failAt=null,retryAfter=null,httpFailure=null;
   const context={scope:'home',machine:'pc2',links:[]};
-  const h=await rowHarness({host:{machines:()=>machineShape??[{name:'pc2',layout:online?'ready':'loading'}],
+  const h=await rowHarness({globals:{Date:class extends Date{static now(){return now;}}},host:{machines:()=>machineShape??[{name:'pc2',layout:online?'ready':'loading'}],
     exec:async(_cmd,args,options)=>{
       assert.equal(options.env?.GH_REPO,'owner/repo','Both thin and detail probes must use the repository-scoped Node transport');
       if(args[1]==='user')return {code:0,stdout:'fixture-user'};
@@ -160,6 +160,9 @@ for(const coordinator of [false,true]) {
     before=requests.length;await panel.readPendingChecks({name:'owner/repo',rows:rows()},cx,()=>shown);
     assert.equal(requests.length,before+1);assert.ok(requests.at(-1).args.every(arg=>!arg.includes('contexts(')),'Unchanged pending summaries also remain thin');
   }
+  const finalTimers=[];
+  const terminal=new facts.ChecksFallback({snapshot:()=>({enabled:true,scope:'final-history',repositories:[{name:'owner/repo',uncovered:true,rows:[{state:'merged',checks:{pending:3},checksKnown:true},{state:'closed',checksKnown:false}]}]}),read:()=>assert.fail('Known final rows never get safety rereads, even for pending/unknown checks')});
+  terminal.sync({timer:{after:(...args)=>finalTimers.push(args)}});assert.equal(terminal.eligible().repositories.length,0);assert.equal(finalTimers.length,0);
   httpFailure='HTTP/2.0 401 Unauthorized\r\nX-RateLimit-Remaining: 2800\r\n\r\n{"message":"Bad credentials"}';
   assert.equal((await panel.readPendingChecks({name:'owner/repo',rows:rows()},cx,()=>true)).rateLimited,false,'Ordinary quota headers do not turn authentication failures into secondary limits');
   httpFailure='HTTP/2.0 403 Forbidden\r\nX-RateLimit-Remaining: 2800\r\n\r\n{"message":"You have exceeded a secondary rate limit"}';
