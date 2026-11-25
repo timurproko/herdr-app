@@ -10,13 +10,32 @@ function environment(source=process.env){
 }
 function gh(args,input,env=process.env){
   return new Promise((resolve,reject)=>{
-    const child=spawn('gh',args,{env,windowsHide:true,stdio:['pipe','pipe','pipe']});let out='',size=0,overflow=false,expired=false;
+    const child=spawn('gh',args[0]==='api'&&!args.includes('--include')?[...args,'--include']:args,{env,windowsHide:true,stdio:['pipe','pipe','pipe']});let out='',err='',size=0,overflow=false,expired=false;
     const timer=setTimeout(()=>{expired=true;child.kill();},15000);
     child.on('error',()=>{clearTimeout(timer);reject(safe('Install GitHub CLI and sign in on this computer.'));});
     child.stdout.on('data',bytes=>{size+=bytes.length;if(size>2**20){overflow=true;child.kill();}else out+=bytes;});
     // Auth/API failures can contain credentials or request bodies. Discard them.
-    child.stderr.resume();child.stdin.on('error',()=>{});
-    child.on('close',code=>{clearTimeout(timer);code===0&&!overflow&&!expired?resolve(out):reject(safe('GitHub request failed. Check the selected GitHub login, permissions and API rate limits.'));});
+    child.stderr.on('data',bytes=>{if(err.length<8192)err+=bytes;});child.stdin.on('error',()=>{});
+    child.on('close',(code,signal)=>{
+      clearTimeout(timer);
+      // --include works with paginated/slurped JSON too: remove each HTTP
+      // header block, never JSON string content (its newlines are escaped).
+      const header=/HTTP\/[\d.]+\s+(\d{3})[^\r\n]*\r?\n(?:[^\r\n]+\r?\n)*\r?\n/g;
+      const statuses=[...out.matchAll(header)].map(match=>match[1]);
+      const body=out.replace(header,'');
+      if(code===0&&!signal&&!overflow&&!expired)return resolve(body);
+      let message='';try{const data=JSON.parse(body);message=(Array.isArray(data)?data.flat():[data]).map(value=>value?.message??'').join('\n');}catch {}
+      const text=err+'\n'+message;
+      const error=safe('GitHub request failed. Check the selected GitHub login, permissions and API rate limits.');
+      if(!expired&&!overflow&&!signal&&Number.isInteger(code)&&code>=0&&code<0x80000000
+          && !statuses.includes('401') && !/HTTP 401|bad credentials|permission denied|resource not accessible|timeout|timed out/i.test(text)
+          && (/API rate limit|secondary rate limit|rate limit exceeded|abuse detection mechanism/i.test(text)||statuses.includes('429')||/\bHTTP(?:\/[\d.]+)?\s+429\b/i.test(err))) {
+        error.rateLimited=true;
+        const retries=[...(out+'\n'+err).matchAll(/^retry-after:\s*([^\r\n]+)/gim)].map(([,retry])=>Number.isFinite(Number(retry))?Math.max(0,Number(retry)*1000):Math.max(0,Date.parse(retry)-Date.now())||0);
+        error.retryAfter=Math.max(0,...retries);
+      }
+      reject(error);
+    });
     child.stdin.end(input===undefined?undefined:JSON.stringify(input));
   });
 }

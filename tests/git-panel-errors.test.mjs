@@ -1,5 +1,6 @@
 // Complete packaged coordinator rendering; fake host IO only, never the live app.
 import assert from 'node:assert/strict';
+import {legacyTargetResponses} from './support/github-read.mjs';
 import {loadMod} from '../tools/plugin-harness.mjs';
 import {MAX_MOUNTED_ROWS} from '../src/plugins/git/mod/task-reveal.js';
 const OP_BUDGET=MAX_MOUNTED_ROWS*300+2000;
@@ -41,6 +42,7 @@ const host={props:()=>null,theme:()=>theme,settings:()=>({zoom}),window:()=>({pl
    ?{code:1,stderr:'GraphQL: Could not resolve to a PullRequest with the number of 36.'}
    :{code:1,stderr:'execution timed out after 30000ms'});
  }};
+host.exec=legacyTargetResponses(host.exec);
 const {Main}=await loadMod({mod:'custom-changes',host,globals:{window:{paint_path:budgetElement},console:{...console,error:(...args)=>errors.push(args.join(' '))},localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>{assert.equal(rendering,false);storage.set(k,v);}}},modules:{
  'main.js':process.env.GIT_PANEL_MAIN??'src/plugins/git/mod/main.js','aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js','notices.js':process.env.GIT_PANEL_NOTICES??'src/plugins/git/mod/notices.js','label-colors.js':'src/plugins/git/mod/label-colors.js','enrollment-picker.js':'src/plugins/git/mod/enrollment-picker.js','choice-menu.js':'src/ui/choice-menu.js','ui.js':'src/ui/ui.js',
  'gpui-kit':{View:class{},div:budgetElement,svg:asset=>budgetElement().asset(asset),PathBuilder:{}},'gpui-base':{h_flex:budgetElement,v_flex:budgetElement,Popover,Input:{}},
@@ -93,9 +95,10 @@ const cacheSize=panel.pullTextWidths.size;probe.attrs.on_size_change[0]({width:9
 assert.equal(panel.pullTextWidths.size,cacheSize,'Late prior-zoom probe cannot poison current geometry');
 zoom=1;cached=render();assert.equal(find(cached,probe.attrs.id[0]),undefined,'Returning to a measured zoom reuses its widths');
 const changedPr=panel.aggregate.entries.get('timurproko/crew#1').pr;
-const originalWhen=changedPr.when;changedPr.when='merged 1 hour earlier';cached=render();
-const changedTime=nodes(cached).find(n=>String(n.attrs.id?.[0]).includes('-probe-time-full')&&words(n).join('')===changedPr.when);
-assert.ok(changedTime);assert.notEqual(changedTime.attrs.id[0],timeProbes[0].attrs.id[0],'New strings need new native IDs even if their width is unchanged');changedPr.when=originalWhen;
+const originalPr={...changedPr};changedPr.mergedAt=new Date(now-7200000).toISOString();cached=render();
+const changedWhen=panel.aggregate.entries.get('timurproko/crew#1').pr.when;
+const changedTime=nodes(cached).find(n=>String(n.attrs.id?.[0]).includes('-probe-time-full')&&words(n).join('')===changedWhen);
+assert.ok(changedTime);assert.notEqual(changedTime.attrs.id[0],timeProbes[0].attrs.id[0],'New strings need new native IDs even if their width is unchanged');panel.aggregate.entries.get('timurproko/crew#1').pr=originalPr;
 const time=timeProbes[0];time.attrs.on_size_change[0]({width:120,height:18},cx);
 scrollTask(panel,render(),cx,800);cached=render();
 assert.ok(!nodes(cached).some(n=>String(n.attrs.id?.[0]).includes('-probe-time-full')&&words(n).join('')===words(time).join('')),'Later pages reuse distinct-string measurements');

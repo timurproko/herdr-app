@@ -23,7 +23,7 @@ import { headerTool, contextMenu, panelMessage } from './panel-kit.js';
 import { changePanel } from './panel-state.js';
 import { sidebarPanelEnabled } from './plugins.js';
 import { sidebarTitle } from './sidebar-title.js';
-import { pullListArgs, REPO_ARGS, countArgs, parseCounts, parsePullPage, agentPullNumber, pullRow, pullError, PR_FIELDS, PR_PAGE_SIZE, repositoryRead, repositoryFailure, pendingChecksArgs, parsePendingChecks, refreshPullFacts, pullStateArgs, parsePullStates, pullPayload, pullRetryAfter, ChecksFallback, PullFactsOrder, CHECKS_BATCH_SIZE, STATE_BATCH_SIZE } from './pulls.js';
+import { REPO_ARGS, countArgs, parseCounts, agentPullNumber, pullError, PR_PAGE_SIZE, repositoryRead, repositoryFailure, quietRead, retryRead, readPullPage, readTargetPulls, rememberPull, retimePull, pendingChecksArgs, parsePendingChecks, refreshPullFacts, pullStateArgs, parsePullStates, pullPayload, pullRetryAfter, ChecksFallback, PullFactsOrder, CHECKS_BATCH_SIZE, STATE_BATCH_SIZE } from './pulls.js';
 
 const VIEWS = ['open', 'closed'];
 const VIEW_KEY = 'custom.git.view';
@@ -53,7 +53,7 @@ export default class Changes extends View {
     // Focus outlives render; the host forbids allocating handles in renderAggregate.
     this.enrollmentFocus = cx.focus_handle();
     this.headerHovered = false;
-    this.agentLinks = new AgentLinks(() => sidebarPanelEnabled('changes'));
+    this.agentLinks = new AgentLinks(() => this.shown());
     let view = null;
     try { view = localStorage.getItem(VIEW_KEY); } catch {}
     this.view = VIEWS.includes(view) ? view : 'open';
@@ -82,7 +82,7 @@ export default class Changes extends View {
   }
 
   resetRepository() {
-    this.checksFallback?.stop();this.fallbackRequest=null;
+    this.checksFallback?.stop();this.fallbackRequest=null;this.readWake=null;this.manualRead=null;
     this.factOrder ??= new PullFactsOrder();this.factOrder.reset();
     this.ciRevision=(this.ciRevision??0)+1;
     // Native size callbacks fire on size changes, not data resets. Keep the
@@ -203,6 +203,7 @@ export default class Changes extends View {
       const selected=this.selectedTaskWindow;if(selected){selected.correction=null;selected.anchorMarker=null;selected.scheduledCorrection=null;}
     }
     this.view = view;
+    if(this.repo && this.pulls[view]!==null)this.webhookDirty=true;
     try { localStorage.setItem(VIEW_KEY, view); } catch {}
     cx.notify();
   }
@@ -215,11 +216,11 @@ export default class Changes extends View {
   }
 
   pullsDue(state) {
-    return Boolean(this.root && !this.pullLoading && this.pulls[state] === null && !this.pullsAt[state]);
+    return Boolean(!(this.readWake?.due>Date.now()) && this.root && !this.pullLoading && this.pulls[state] === null && !this.pullsAt[state]);
   }
 
   loadPulls(state, cx, force = false, notify = true, append = false) {
-    if (!sidebarPanelEnabled('changes') || !VIEWS.includes(state) || !this.root || this.pullLoading || key() !== this.context || (!force && !this.pullsDue(state))) return;
+    if (!this.shown() || !VIEWS.includes(state) || !this.root || this.pullLoading || key() !== this.context || (!force && !this.pullsDue(state))) return;
     const after = append ? this.pages[state].cursor : null;
     if (append && (!this.pages[state].hasMore || !after || state !== this.view || !this.shown())) return;
     const root = this.root, on = this.on, context = this.context;
@@ -230,7 +231,7 @@ export default class Changes extends View {
     if (notify) cx.notify();
     cx.spawn(async cx => {
       try {
-        const gh = args => repositoryRead(exec, args, repository, { cwd: root, on, timeout: 30000 });
+        const gh = args => repositoryRead(exec, args, repository, { cwd: root, on, timeout: 30000, current:()=>current() && this.shown(), manual:this.manualRead });
         if (!repo) {
           const r = await gh(REPO_ARGS);
           if (!current()) return;
@@ -241,16 +242,9 @@ export default class Changes extends View {
           repo=this.repo={ name: value.nameWithOwner, owner: value.owner?.login ?? value.nameWithOwner.split('/')[0], url: value.url ?? `https://github.com/${value.nameWithOwner}` };
         }
         repository=repo.name;
-        const list = await gh(pullListArgs(state, repository, after));
-        // A refused obsolete read is not permission to start another request,
-        // especially an account probe on the previous machine/repository.
+        const page = await readPullPage(exec,state,repository,after,{cwd:root,on,timeout:30000,current:()=>current()&&this.shown(),manual:this.manualRead});
         if (!current()) return;
-        if (list.code !== 0 || list.timed_out || list.timedOut || list.signal) {
-          if(!this.shown())return;
-          throw Object.assign(new Error(),await repositoryFailure(exec,list,repository,{cwd:root,on}));
-        }
-        const page = parsePullPage(list.stdout);
-        const rows = page.pulls.map(pr => this.publishPull(pullRow(pr,this.repo.owner),read).value).filter(Boolean);
+        const rows = page.rows.map(pr => this.publishPull(pr,read).value).filter(Boolean);
         const incoming=new Map(rows.map(pr=>[pr.number,pr]));
         const existing = (append ? this.pulls[state] ?? [] : []).map(pr=>incoming.get(pr.number)??pr);
         const seen = new Set(existing.map(pr => pr.number));
@@ -270,13 +264,22 @@ export default class Changes extends View {
         if (!current()) return;
         this.counts = page.counts ?? (counts?.code===0?parseCounts(counts.stdout):null) ?? this.counts;
       } catch (e) {
-        if (current()) {
-          if (append) this.pageError = {state,message:pullError(e)};
-          else { this.pullError = pullError(e); this.pullsAt[state] = Date.now(); }
+        if (current() && this.shown()) {
+          if(retryRead(this,cx,e,view=>{
+            if(!this.shown() || this.context!==context)return;
+            // Cooldown demand follows selection, not the refused tab. Retain
+            // an already-loaded destination's depth through its normal refresh.
+            if(this.view!==state && this.pulls[this.view]!==null) {this.webhookDirty=true;this.flushWebhook(view);}
+            else this.loadPulls(this.view,view,true,true,append && this.view===state);
+          }))return;
+          const failure=await repositoryFailure(exec,e,repository,{cwd:root,on,current:()=>current()&&this.shown()});
+          if(!current())return;
+          if (append) this.pageError = {state,message:failure.message};
+          else { this.pullError = failure.message; this.pullsAt[state] = Date.now(); }
         }
       } finally {
         await Promise.resolve(); // even a synchronous transport throw must yield
-        if (this.pullRequest === request) { this.pullLoading = false; this.loadingState = null; this.appending = false; }
+        if (this.pullRequest === request) { this.pullLoading = false; this.loadingState = null; this.appending = false; this.manualRead=null; }
         this.flushWebhook(cx);
         cx.notify();
       }
@@ -289,9 +292,10 @@ export default class Changes extends View {
 
   // A narrow read can change tabs without clearing the loaded pages or pin.
   // Preserve unaffected order; insert moved rows by the list's created-at order.
-  reconcilePulls(values) {
+  reconcilePulls(values,previous=[]) {
     const updates=new Map(values.filter(Boolean).map(pr=>[pr.number,pr])),moved=new Map();
     const group=pr=>['open','draft'].includes(pr.state)?'open':'closed';
+    for(const old of previous.filter(Boolean)) {const pr=updates.get(old.number);if(pr && group(pr)!==group(old))moved.set(pr.number,pr);}
     for(const state of VIEWS)for(const old of this.pulls[state]??[]) {
       const pr=updates.get(old.number)??old;
       if(group(pr)!==state)moved.set(pr.number,pr);
@@ -338,27 +342,29 @@ export default class Changes extends View {
       let accepted=false;
       try {
         await Promise.resolve();if(!current())return;
-        const result = await exec('gh', ['pr','view',String(number),'--repo',repo.name,'--json',PR_FIELDS], {cwd:root,on,timeout:30000});
-        if (!current() || result.code !== 0 || result.timed_out || result.timedOut || result.signal) return;
-        const pr = JSON.parse(result.stdout);
+        const result = (await readTargetPulls(exec,[number],repo.name,{cwd:root,on,timeout:30000,current,manual:this.manualRead})).get(number);
+        if (!current() || result.error) return;
+        const pr = result.row;
         if (pr.number === number) {
-          const published=this.publishPull(pullRow(pr,repo.owner),read,repo.name);accepted=published.accepted;
+          const published=this.publishPull(pr,read,repo.name);accepted=published.accepted;
           if(published.value) {
             const previous=this.relatedPull;
             this.relatedPull=published.value;
-            const moved=this.reconcilePulls([published.value]);
+            const moved=this.reconcilePulls([published.value],[previous]);
             if(moved || (previous && ['open','draft'].includes(previous.state)!==['open','draft'].includes(published.value.state)))this.webhookDirty=true;
           }
           if(accepted)this.ciRevision=(this.ciRevision??0)+1;
         }
-      } catch {} finally {
+      } catch(error) {
+        if(quietRead(error)) {this.relatedRetry={scope,until:error.retryAt};retryRead(this,cx,error,view=>{if(this.shown())this.loadRelatedPull(view);});}
+      } finally {
         if(this.relatedRequest===request) {
           this.relatedRequest=null;
           if(!accepted && this.relatedKey===scope) {
             this.relatedKey=null;
             // A released cache key permits retry, not a render-driven hot loop.
-            const retry=this.relatedRetry={scope,until:Date.now()+LOCAL_CONTEXT_TTL};
-            cx.timer?.after(LOCAL_CONTEXT_TTL,view=>{
+            const retry=this.relatedRetry?.scope===scope && this.relatedRetry.until>Date.now() ? this.relatedRetry : (this.relatedRetry={scope,until:Date.now()+LOCAL_CONTEXT_TTL});
+            cx.timer?.after(Math.max(LOCAL_CONTEXT_TTL,retry.until-Date.now()),view=>{
               if(this.relatedRetry!==retry)return;
               this.relatedRetry=null;if(this.shown())view.notify();
             });
@@ -410,11 +416,10 @@ export default class Changes extends View {
       const updates=new Map(),previous=new Map(repo.rows.map(pr=>[pr.number,pr]));let counts=null;
       const gh=async args=>{
         if(!current())throw Error('Obsolete safety read');
-        const result=await repositoryRead(exec,args,repo.name,{...(root?{cwd:root}:{}),on,timeout:30000});
+        const result=await repositoryRead(exec,args,repo.name,{...(root?{cwd:root}:{}),on,timeout:30000,current});
         if(!current())throw Error('Obsolete safety read');
         retryAfter=Math.max(retryAfter,pullRetryAfter(result));
         if(result.code!==0 || result.timed_out || result.timedOut || result.signal) {
-          rateLimited=/rate.?limit|secondary.*limit|abuse|\b429\b/i.test(`${pullPayload(result.stdout)}\n${result.stderr??''}`) || /^HTTP[^\n]*\b429\b/im.test(result.stdout??'');
           throw Object.assign(new Error(),await repositoryFailure(exec,result,repo.name,{...(root?{cwd:root}:{}),on}));
         }
         return pullPayload(result.stdout);
@@ -449,7 +454,9 @@ export default class Changes extends View {
       const update=pr=>{
         if(!updates.has(pr?.number))return pr;
         const published=order.publish(read,`${repo.name.toLowerCase()}#${pr.number}`,previous=>refreshPullFacts(previous??pr,updates.get(pr.number)));
-        accepted=accepted && published.accepted;return published.value??pr;
+        accepted=accepted && published.accepted;
+        if(published.accepted)rememberPull(exec,repo.name,published.value,{on});
+        return published.value??pr;
       };
       if(aggregate) {
         for(const entry of aggregate.entries.values())if(entry.link.repo===repo.name && entry.pr) {
@@ -465,7 +472,7 @@ export default class Changes extends View {
       this.ciRevision=(this.ciRevision??0)+1;
       return {failed:false};
     } catch(error) {
-      return {failed:true,rateLimited:rateLimited || /rate.?limit|secondary.*limit|abuse|429/i.test(String(error)),retryAfter};
+      return {failed:true,rateLimited:rateLimited || error.kind==='rate',retryAfter:Math.max(retryAfter,(error.retryAt??0)-Date.now())};
     } finally {
       if(this.fallbackRequest===request)this.fallbackRequest=null;
       if(aggregate) {aggregate.fallbackBusy=false;aggregate.pump(cx);cx.notify();}
@@ -509,7 +516,7 @@ export default class Changes extends View {
   // selected PR, preserving expanded lists/cursors and handling newly opened PRs.
   // Reconnection/opening performs the same catch-up; no periodic GitHub requests.
   flushWebhook(cx) {
-    if (!this.webhookDirty || !this.repo || !this.root || this.pullLoading || !this.shown() || key() !== this.context) return;
+    if (this.readWake?.due>Date.now() || !this.webhookDirty || !this.repo || !this.root || this.pullLoading || !this.shown() || key() !== this.context) return;
     this.webhookDirty = false;
     // Related/older reads cannot overlap this snapshot's queue lease.
     const root=this.root,on=this.on,repo=this.repo,context=this.context;
@@ -522,30 +529,35 @@ export default class Changes extends View {
         this.startCISweep(cx);
         const gh=async args=>{
           if(!current())throw Error('Obsolete request');
-          const r=await repositoryRead(exec,args,repo.name,{cwd:root,on,timeout:30000});
+          const r=await repositoryRead(exec,args,repo.name,{cwd:root,on,timeout:30000,current,manual:this.manualRead});
           if(!current())throw Error('Obsolete request');
           if(r.code!==0 || r.timed_out || r.timedOut || r.signal)throw Object.assign(new Error(),await repositoryFailure(exec,r,repo.name,{cwd:root,on}));
           return r.stdout;
         };
-        const updates={};
-        for(const state of VIEWS) {
+        const updates={},previousRows=VIEWS.flatMap(state=>this.pulls[state]??[]);
+        for(const state of [this.view]) {
           if(this.pulls[state]===null)continue;
           const depth=Math.max(1,this.pullDepth[state]??0,Math.ceil(this.pulls[state].length/PR_PAGE_SIZE));
           let after=null,page,rows=[];
           for(let i=0;i<depth;i++) {
-            page=parsePullPage(await gh(pullListArgs(state,repo.name,after)));
-            rows.push(...page.pulls.map(pr=>pullRow(pr,repo.owner)));
+            page=await readPullPage(exec,state,repo.name,after,{cwd:root,on,timeout:30000,current,manual:this.manualRead});
+            rows.push(...page.rows);
             if(!page.hasMore || page.cursor===after)break;
             after=page.cursor;
           }
           const seen=new Set();rows=rows.filter(pr=>!seen.has(pr.number) && seen.add(pr.number));
           updates[state]={rows,page};
         }
+        const missing=previousRows.filter(pr=>['open','draft'].includes(pr.state) && updates.open && !updates.open.rows.some(row=>row.number===pr.number));
+        const transitions=missing.length?await readTargetPulls(exec,missing.map(pr=>pr.number),repo.name,{cwd:root,on,timeout:30000,current,manual:this.manualRead}):new Map();
+        for(const value of transitions.values())if(value.error)throw Object.assign(new Error(),value.error);
         const number=this.agentPull ?? location().pullNumber;
-        let related=number ? Object.values(updates).flatMap(u=>u.rows).find(pr=>pr.number===number) : null;
+        let related=number?transitions.get(number)?.row:null;
+        related??=number ? Object.values(updates).flatMap(u=>u.rows).find(pr=>pr.number===number) : null;
         if(number && !related) {
-          const data=JSON.parse(await gh(['pr','view',String(number),'--repo',repo.name,'--json',PR_FIELDS]));
-          if(data.number===number)related=pullRow(data,repo.owner);
+          const value=(await readTargetPulls(exec,[number],repo.name,{cwd:root,on,timeout:30000,current,manual:this.manualRead})).get(number);
+          if(value.error)throw Object.assign(new Error(),value.error);
+          related=value.row;
         }
         const counts=Object.values(updates).map(update=>update.page.counts).find(Boolean) ?? parseCounts(await gh(countArgs(repo.name)));
         if(!current())return;
@@ -558,10 +570,13 @@ export default class Changes extends View {
           this.relatedPull=published?.value??null;
           this.relatedKey=published?.accepted?JSON.stringify([context,repo.name,number]):null;
         }
-        this.reconcilePulls([...VIEWS.flatMap(state=>this.pulls[state]??[]),...(this.relatedPull?[this.relatedPull]:[])]);
+        this.reconcilePulls([...Object.keys(updates).flatMap(state=>this.pulls[state]??[]),...[...transitions.values()].map(value=>value.row),...(this.relatedPull?[this.relatedPull]:[])],previousRows);
         this.counts=counts ?? this.counts;this.pullError=null;this.ciRevision=(this.ciRevision??0)+1;
         this.startCISweep(cx);
-      } catch(e) { if(current()) {this.pullError=pullError(e);this.relatedKey=null;this.relatedRetry=null;} }
+      } catch(e) { if(current()) {
+        if(retryRead(this,cx,e,view=>this.flushWebhook(view)))this.webhookDirty=true;
+        else {this.pullError=pullError(e);this.relatedKey=null;this.relatedRetry=null;}
+      } }
       finally {
         if(this.pullRequest===request)this.pullLoading=false;
         this.flushWebhook(cx);cx.notify();
@@ -1293,7 +1308,7 @@ export default class Changes extends View {
                 .accessibility_label(taskWindow.more?'Show more task pull requests':'Show first task pull requests again')
                 .tooltip(taskWindow.more?'Show the next mounted batch':'Return to the first mounted batch')
                 .on_click((_event,cx)=>this.nextTaskChunk(taskWindow,scope,cx)).child('Show more')))
-              .when(!sections.length,el=>el.child(panelMessage(t,'git-task-empty',{text:verifying || aggregate.busy?'Loading':`No ${this.view} pull requests`,loading:verifying || aggregate.busy,rowInset:2})
+              .when(!sections.length,el=>el.child(panelMessage(t,'git-task-empty',{text:verifying || aggregate.busy || aggregate.waiting?'Loading':`No ${this.view} pull requests`,loading:verifying || aggregate.busy || aggregate.waiting,rowInset:2})
                 .when(verifying,message=>message.tooltip(verificationHint)))))
             .when(Boolean(anchor),el=>el.child(div().id('task-pulls-anchor').absolute().left(0).w(1).h(1)
               .top(anchor.to+(anchor.to>anchor.from?taskWindow.viewport-1:0)))))
@@ -1348,6 +1363,11 @@ export default class Changes extends View {
     if (this.renderPart('coordinator-context',()=>this.syncAggregate(cx))) return this.renderPart('coordinator',()=>this.renderAggregate(cx,theme()));
     this.enrollmentPicker?.stop();
     if (key() !== this.context) this.refresh(cx, false);
+    for(const state of VIEWS)if(this.pulls[state]) {
+      const old=this.pulls[state],rows=old.map(pr=>retimePull(pr));
+      if(rows.some((pr,index)=>pr!==old[index]))this.pulls[state]=rows;
+    }
+    if(this.relatedPull)this.relatedPull=retimePull(this.relatedPull);
     this.syncAgent(cx);
     if (this.shown() && this.pullsDue(this.view)) this.loadPulls(this.view, cx, false, false);
     this.loadRelatedPull(cx);
@@ -1380,6 +1400,7 @@ export default class Changes extends View {
             onClick: (_e, cx) => {
               if (!this.root || this.loading || this.pullLoading) return;
               this.webhooks?.retryNow();this.notices?.retryNow();
+              this.manualRead={remaining:1,expires:Date.now()+30000};this.readWake=null;this.agentLinks?.invalidate?.();
               this.refresh(cx); this.loadPulls(this.view, cx, true);
             } })))
           .child(panelPin(t,{id:'git-pin',enabled:this.headerHovered}))

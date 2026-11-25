@@ -1,5 +1,6 @@
 // Real targeted-reader modules; synthetic host/GitHub responses, no live account.
 import assert from 'node:assert/strict';
+import {legacyTargetResponses} from './support/github-read.mjs';
 import {loadMod} from '../tools/plugin-harness.mjs';
 const DAY=86400000;let now=Date.UTC(2026,10,23,18),shown=true,active=0,peak=0;
 const url=(n,repo='example/crew')=>`https://github.com/${repo}/pull/${n}`;
@@ -18,8 +19,12 @@ const host={run(){},exec:async(cmd,args,options)=>{
  const failure=failures.get(k);if(failure instanceof Error)throw failure;if(failure)return failure;
  return {code:0,stdout:JSON.stringify(facts.get(k))};
 }};
-const {AggregatePulls,pullFailure,pullError}=await loadMod({host,modules:{'aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js','plugins.js':{sidebarPanelEnabled:()=>true,pluginPullContext:()=>context,pluginEvent(){}},'location.js':{location:()=>({space:'coordinator'})}},globals:{Date:class extends Date{static now(){return now;}}},entry:'export {AggregatePulls} from "./aggregate.js";export {pullFailure,pullError} from "./pulls.js";'});
+host.exec=legacyTargetResponses(host.exec);
+const {AggregatePulls,pullFailure,pullError,gitReads}=await loadMod({host,modules:{'aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js','plugins.js':{sidebarPanelEnabled:()=>true,pluginPullContext:()=>context,pluginEvent(){}},'location.js':{location:()=>({space:'coordinator'})}},globals:{Date:class extends Date{static now(){return now;}}},entry:'export {AggregatePulls} from "./aggregate.js";export {pullFailure,pullError,gitReads} from "./pulls.js";'});
 const a=new AggregatePulls({shown:()=>shown});a.sync(cx);await drain();
+// These fixtures inject precise contradictory evidence; generic events do not
+// invalidate final history (raw request budgets cover that separately).
+a.invalidate=()=>{gitReads(host.exec).facts.clear();for(const e of a.entries.values())e.dirty=true;};
 assert.equal(calls.length,4);assert.ok(peak<=3);assert.equal(JSON.stringify(a.counts()),JSON.stringify({open:1,closed:3}));
 assert.deepEqual(Array.from(a.rows('open'),p=>p.number),[8]);assert.deepEqual(Array.from(a.rows('closed'),p=>p.number),[5,6,7]);
 for(const p of a.rows('closed'))assert.equal(a.target(p),null);assert.equal(a.target(a.rows('open')[0]).terminal,'live-worker');
@@ -57,6 +62,10 @@ for(const [failure,kind,message]of cases){
  if(kind==='notfound' && /PullRequest|HTTP 404/.test(failure.stderr??''))continue;
  for(const n of [5,6,7])failures.set(key(n),failure);
  a.invalidate();a.pump(cx);await drain();assert.equal(JSON.stringify(a.counts()),JSON.stringify({open:1,closed:3}));
+ if(kind==='rate') {
+  assert.ok([5,6,7].every(n=>a.entries.get(key(n)).error?.kind!=='rate'),'Rate refusal does not create a notice or erase a previous actionable error');
+  now+=900001;a.readWake=null;failures.clear();a.invalidate();a.pump(cx);await drain();continue;
+ }
  for(const n of [5,6,7]){const e=a.entries.get(key(n));assert.equal(e.error.kind,kind);assert.equal(e.error.message,kind==='notfound'?'example/crew not found':['access','auth'].includes(kind)?`example/crew not accessible with the GitHub account fixture-user${kind==='auth'?'; sign in with gh auth login':''}`:message);assert.equal(e.pr.state,'merged');}
  assert.equal(a.entries.get(key(8)).error,null,'Healthy live row survives failed historical reads');
 }

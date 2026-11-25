@@ -14,7 +14,7 @@ function element() {
   return p=new Proxy(n,{get:(n,k)=>k in n?n[k]:k==='when'?(yes,fn)=>yes?fn(p):p:k==='child'?c=>{n.kids.push(c);return p;}:k==='children'?c=>{n.kids.push(...c);return p;}:(...a)=>{n.attrs[k]=a;return p;}});
 }
 const find=(n,id)=>n?.attrs?.id?.[0]===id?n:n?.kids?.map(c=>find(c,id)).find(Boolean);
-const raw=(n,extra={})=>({number:n,title:`PR ${n}`,state:'OPEN',...extra});
+const raw=(n,extra={})=>({number:n,url:`https://github.com/owner/repo/pull/${n}`,title:`PR ${n}`,state:'OPEN',...extra});
 const running={statusCheckRollup:[{name:'test',status:'IN_PROGRESS'}]};
 const page=(nodes,cursor='cursor',hasMore=false)=>JSON.stringify({data:{repository:{pullRequests:{nodes,pageInfo:{endCursor:cursor,hasNextPage:hasMore},totalCount:nodes.length}}}});
 async function harness() {
@@ -48,7 +48,17 @@ async function harness() {
   view.pulls.open=[pulls.pullRow(raw(1)),pulls.pullRow(raw(2,running))];view.pulls.closed=null;
   const tick=async()=>{for(let i=0;i<30;i++)await Promise.resolve();};
   const event=async(repository='owner/repo')=>{view.queueWebhook({repository,event:'check_run'},cx);await tick();};
-  const reply=async(stdout,code=0)=>{const c=pending.shift();assert.ok(c,'Expected read');c.resolve({code,stdout,stderr:code?'network failed':''});await tick();return c;};
+  const reply=async(stdout,code=0)=>{const c=pending.shift();assert.ok(c,'Expected read');
+    if(stdout && c.args[1]==='graphql') {const value=JSON.parse(stdout);if(value.number)stdout=JSON.stringify({data:{repository:{[`pr${value.number}`]:value}}});}
+    c.resolve({code,stdout,stderr:code?'network failed':''});await tick();
+    // Rows removed from an authoritative Open snapshot now use a narrow
+    // transition batch instead of rereading the hidden Closed tab.
+    while(pending[0]?.args.some(a=>/pr\d+:pullRequest/.test(a)) && !pending[0].args.some(a=>a.includes('pr99:pullRequest'))) {
+      const next=pending.shift(),query=next.args.find(a=>a.startsWith('query='));
+      const repository=Object.fromEntries([...query.matchAll(/pr(\d+):pullRequest/g)].map(([,n])=>[`pr${n}`,raw(+n,{state:'CLOSED',statusCheckRollup:[]})]));
+      next.resolve({code:0,stdout:JSON.stringify({data:{repository}})});await tick();
+    }
+    return c;};
   // Rendering chrome should not start unrelated agent/repository reads in these tests.
   view.syncAgent=()=>{};view.loadRelatedPull=()=>{};
   return {view,cx,place,pending,tasks,timers,phases,opened,tick,event,reply,render:()=>{rendering=true;try{return view.render(cx);}finally{rendering=false;}},hide:()=>{shown=false;},disable:()=>{enabled=false;}};
@@ -103,7 +113,7 @@ for(const change of ['folder','machine','hidden','disabled','reset']) {
 {
   const h=await harness(),v=h.view;v.agentPull=99;v.relatedPull=pulls.pullRow(raw(99,running));
   await h.event();await h.reply(page([raw(1),raw(2)]));
-  assert.deepEqual(Array.from(h.pending[0].args.slice(0,3)),['pr','view','99']);
+  assert.ok(h.pending[0].args.some(arg=>arg.includes('pr99:pullRequest(number:99)')));
   await h.reply(JSON.stringify(raw(99,{state:'MERGED'})));await h.reply('{}');
   assert.equal(v.relatedPull.state,'merged');assert.equal(v.pulls.open.length,2,'Beyond-page pin lookup does not append pages');
 }

@@ -44,12 +44,12 @@ function state(node, busy, spinning = busy) {
 async function harness(feature, pluginOn = true) {
   const context = vm.createContext({localStorage: {getItem: () => 'changes', setItem() {}}});
   const tasks = [], calls = [], timers = [];
-  let notify = 0, gate, rendering = false;
+  let notify = 0, gate, rendering = false,gitShown=false;
   const place = {cwd: '/repo', on: null, space: 'space'};
   const host = {
     spaces: () => [{id: 'space', active: true, folder: place.cwd}], panes: () => [], terminals: () => [],
     focused: () => ({pane: null, cwd: place.cwd}), props: () => ({}), home: () => '/home',
-    theme: () => ({}), settings: () => ({}), window: () => ({platform: 'linux'}), layout: () => null,
+    theme: () => ({}), settings: () => ({}), window: () => ({platform: 'linux'}), layout: () => gitShown?({id:'panel',children:[{id:'panel-body',active:'changes'}]}):null,
     run() {}, openOverlay() {}, closeOverlay() {}, nextCommand: () => new Promise(() => {}), hc: async () => ({code:1,stdout:''}), readTextFile: async () => '', writeTextFile: async () => null, notify() {}, watchFolder: () => new Promise(() => {}),
     exec: (cmd, args) => {
       ({command:cmd,args}=githubInvocation(cmd,args,{}));
@@ -119,7 +119,7 @@ async function harness(feature, pluginOn = true) {
     get notify() { return notify; },
     changeFolder: cwd => { place.cwd = cwd; },
     linkPull: number => { place.pullNumber = number; },
-    showGit: () => { host.layout = () => ({id:'panel', children:[{id:'panel-body',active:'changes'}]}); },
+    showGit: () => { gitShown=true; },
     progress: () => find(render(), feature === 'files' ? 'files-header-progress' : 'git-header-progress'),
     button: () => find(render(), id), close: () => find(render(), feature === 'files' ? 'files-close' : 'git-close'),
     hold(program) {
@@ -171,6 +171,7 @@ for (const feature of ['files', 'changes']) {
 // Git refresh covers both independent jobs, including Open and Closed PR reads.
 for (const view of ['open', 'closed']) for (const fail of [false, true]) {
   const h = await harness('changes');
+  h.showGit();h.button();await Promise.all(h.tasks.splice(0));
   h.view.view = view;
   h.view.pullsAt[view] = Date.now(); // No unrelated automatic TTL fetch.
   const pending = h.hold('gh');

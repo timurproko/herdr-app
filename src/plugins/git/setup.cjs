@@ -72,6 +72,6 @@ async function run(mode, file, relay, repository, io = {}, githubAccount = '') {
 }
 module.exports = {run, verifyRelay, baseURL, readKeys};
 if (require.main === module) run(...process.argv.slice(2,6),{},process.argv[6]??'').then(value => console.log(JSON.stringify(value))).catch(error => {
-  console.log(JSON.stringify({status:'error',detail:error?.safe===true?error.message:'Setup check failed. Check the relay deployment, matching credentials, gh login and webhook administration permission.'}));
+  console.log(JSON.stringify({status:'error',...(error?.rateLimited?{rateLimited:true,retryAfter:error.retryAfter??0}:{}),detail:error?.safe===true?error.message:'Setup check failed. Check the relay deployment, matching credentials, gh login and webhook administration permission.'}));
   process.exitCode = 1;
 });

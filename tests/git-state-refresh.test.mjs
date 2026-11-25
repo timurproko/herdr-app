@@ -18,7 +18,7 @@ for(const coordinator of [false,true])for(const via of ['safety','event']) {
       assert.equal(options.env?.GH_REPO,'owner/repo','Thin and event GraphQL reads share repository-scoped routing');
       const query=args.find(a=>a.startsWith('query='));
       const repository={open:{totalCount:[...data.values()].filter(pr=>pr.state==='OPEN').length},closed:{totalCount:[...data.values()].filter(pr=>pr.state!=='OPEN').length}};
-      if(query.includes('pr5:pullRequest')) {
+      if(/pr\d+:pullRequest/.test(query)) {
         for(const [,number]of query.matchAll(/pr(\d+):pullRequest/g))repository[`pr${number}`]=graph(data.get(Number(number)));
       } else if(query.includes('pullRequests(first:')) {
         const state=query.includes('states:[OPEN]')?'OPEN':'CLOSED';
@@ -28,7 +28,7 @@ for(const coordinator of [false,true])for(const via of ['safety','event']) {
       result={data:{repository}};
     }
     const stdout=JSON.stringify(result);
-    if(held && (!coordinator || via==='safety' || Number(args[2])===5)){const hold=held;held=null;await new Promise(resolve=>hold.release=resolve);}
+    if(held && (!coordinator || via==='safety' || args.some(a=>a.includes('pr5:pullRequest')))){const hold=held;held=null;await new Promise(resolve=>hold.release=resolve);}
     return {code:fail?1:0,stdout,stderr:fail?'connection refused':''};
   }},modules:{'aggregate.js':'src/plugins/git/mod/aggregate.js','plugins.js':{sidebarPanelEnabled:()=>true,pluginPullContext:()=>context,pluginEvent(){}}}});
   const {panel,facts}=h;panel.agentPull=5;panel.aggregate=null;panel.repo.owner='owner';
@@ -66,7 +66,11 @@ for(const coordinator of [false,true])for(const via of ['safety','event']) {
   assert.match(row.when,/^merged /);assert.equal(row.labels[0].name,'keep');assert.equal(row.tasks.done,1);assert.equal(row.review,'approved');
   if(coordinator)assert.equal(panel.aggregate.target(row),null,'Historical rows do not acquire a robot');
 
-  panel.view='closed';data.set(5,raw(5));await refresh();
+  // Inject contradictory authoritative evidence for this final fact; generic
+  // events alone intentionally reuse final session history.
+  panel.view=via==='safety'?'closed':'open';data.set(5,raw(5));facts.gitReads(h.transport).facts.clear();
+  if(coordinator)panel.aggregate.entries.get('owner/repo#5').dirty=true;
+  await refresh();
   assert.deepEqual({...counts()},{open:4,closed:2});assert.deepEqual(Array.from(rows('open'),pr=>pr.number),[6,5,4,3]);
   panel.view='open';data.set(5,raw(5,'OPEN',true));await refresh();
   assert.equal(rows('open').find(pr=>pr.number===5)?.state,'draft');assert.deepEqual({...counts()},{open:4,closed:2});
