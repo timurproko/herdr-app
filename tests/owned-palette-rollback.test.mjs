@@ -19,9 +19,10 @@ try{
  // current unrelated/shared files are retained, not claimed a full historical build.
  const previous=path.join(temp,'previous');fs.cpSync(output,previous,{recursive:true});
  const manifest=JSON.parse(raw(path.join(previous,'bundle.json')));
+ const legacyHashes={'chrome.js':'3295bb7e41aae5d74fb183356d588cac3a83a90c2979d36ca983d01bef80f465','status.js':'fea79bee121f0ffffbb04653f2aaa66c12d6ff417d664cd14667dc46c2b21f06','startup-frames.mjs':'b89d27a9d83a807abcd996b26059020d01b53c9c0c41b0964dc93bb0055cfd8a'};
  for(const rel of Object.keys(manifest.files))if(rel.startsWith('mods/custom-palette/')||/^mods\/custom-workspace-chrome\/palette-/.test(rel))delete manifest.files[rel];
  for(const [rel,name]of [['mods/custom-workspace-chrome/main.js','chrome.js'],['mods/custom-workspace-status/main.js','status.js'],['.customizations/runtime/scripts/startup-frames.mjs','startup-frames.mjs']]){
-  const entry=manifest.files[rel],bytes=fs.readFileSync(`tests/fixtures/palette/legacy-0.1.18/${name}`);put(path.join(previous,entry.from??rel),bytes);entry.hash=digest(bytes);
+  const entry=manifest.files[rel],bytes=fs.readFileSync(`tests/fixtures/palette/legacy-0.1.18/${name}`);assert.equal(digest(bytes),legacyHashes[name]);put(path.join(previous,entry.from??rel),bytes);entry.hash=digest(bytes);
  }
  put(path.join(previous,'bundle.json'),JSON.stringify(manifest,null,2)+'\n');
  function oldInstall(label,version='0.1.18-windows'){
