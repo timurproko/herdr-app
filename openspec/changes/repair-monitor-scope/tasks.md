@@ -2,11 +2,11 @@
 
 ## 1. Durable scoped repositories reach managed worker configurations
 
-- [ ] 1.1 Replace notice-cache and legacy fallback scope inputs with the current relay/account durable added selection in runtime and explicit management configuration; cover canonical names, empty/missing selection, wrong relay/account and runtime/CLI parity with synthetic fixtures.
-- [ ] 1.2 Connect relay/account changes and durable Add/Remove updates to existing coalesced synchronization without adding a timer or replay job; extend settings/action fixtures to exercise actual Add, Remove, Configure and credential invalidation while preserving the correct scope.
-- [ ] 1.3 Exercise startup/code replacement and companion restart with retained public settings, confirmed selection and receipts; use the real installer with a disposable state root and fake transports to assert actual config.json repositories, including last-repository removal to an empty array.
-- [ ] 1.4 Add repaired-scope engine regressions for an idle agent receiving exactly one completed-failure CI message and one independently persistent-conflict message over repeated cycles and restart; retain unselected Working, running-workflow, non-forced transport and duplicate receipt assertions.
-- [ ] 1.5 Document durable relay/account selection and activation in GIT-CI-FIX.md, GIT-WEBHOOKS.md and relevant companion guidance; compare documented startup, empty-selection and offline-host behavior against the focused fixtures without touching the live installation.
+- [x] 1.1 Replace notice-cache and legacy fallback scope inputs with the current relay/account durable added selection in runtime and explicit management configuration; cover canonical names, empty/missing selection, wrong relay/account and runtime/CLI parity with synthetic fixtures.
+- [x] 1.2 Connect relay/account changes and durable Add/Remove updates to existing coalesced synchronization without adding a timer or replay job; extend settings/action fixtures to exercise actual Add, Remove, Configure and credential invalidation while preserving the correct scope.
+- [x] 1.3 Exercise startup/code replacement and companion restart with retained public settings, confirmed selection and receipts; use the real installer with a disposable state root and fake transports to assert actual config.json repositories, including last-repository removal to an empty array.
+- [x] 1.4 Add repaired-scope engine regressions for an idle agent receiving exactly one completed-failure CI message and one independently persistent-conflict message over repeated cycles and restart; retain unselected Working, running-workflow, non-forced transport and duplicate receipt assertions.
+- [x] 1.5 Document durable relay/account selection and activation in GIT-CI-FIX.md, GIT-WEBHOOKS.md and relevant companion guidance; compare documented startup, empty-selection and offline-host behavior against the focused fixtures without touching the live installation.
 
 ## 2. Bounded diagnostics explain sent and suppressed monitoring
 

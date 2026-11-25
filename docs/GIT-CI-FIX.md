@@ -9,7 +9,11 @@ See [installation, lifecycle and limits](GIT-CORE-MONITOR.md).
 
 In **Settings → Plugins → Git → Settings**:
 
-- Existing Git **Repositories** selections define the allowlist. Each machine
+- Git's durable confirmed **Repositories** added list for the current relay and
+  GitHub account defines the allowlist, not disposable webhook-notice membership.
+  Add/Remove and Configure/credential cache invalidation cannot erase that selection.
+  Removing the last repository, a missing selection or a scope mismatch means no
+  targets; legacy repository preferences never restore them. Each machine
   uses its own gh login, never copied credentials. No background-specific setup
   controls, status panel or repository input are shown.
 - **Auto-fix failed CI** defaults off. Enabling authorizes the PR's existing agent
@@ -30,8 +34,11 @@ Default message:
 > Analyze failed CI run {runUrl} for {url}. Fix the cause; Push.
 
 The toggle is the only setup action. Existing enabled preferences also provision
-connected supported hosts through the normal desktop lifecycle. Explicit CI setting
-changes synchronize to reachable managed workers. Offline machines retain their
+connected supported hosts through the normal desktop lifecycle. After a customization
+update, startup/code reload repairs the scope and updates reachable owned companions
+without re-saving settings or restarting the desktop or agents. An already-closed
+desktop must run the updated code once; offline hosts must reconnect. Explicit CI,
+relay and GitHub-account changes synchronize to reachable managed workers. Offline machines retain their
 last configuration, with an error on failed synchronization. Closing Herdr leaves
 the last worker configuration active. Disabling Git requests a pause but cannot
 revoke an unreachable host. No settings jobs are persisted for later replay.

@@ -27,7 +27,9 @@ opt-in automatically provisions/updates a companion on this computer and connect
 SSH machines; new connected hosts are picked up while the desktop is available.
 There is no separate Background monitor section, status/Check row, machine picker
 or repository input. Existing Git repository selections own the worker allowlist.
-Unchecking every repository gives an empty scope, never a fallback to old targets.
+The durable confirmed added list is scoped to the current relay and GitHub account,
+not the disposable webhook-notice cache. Removing every repository gives an empty
+scope, never a fallback to old targets; missing/mismatched selection is also empty.
 Normal operation is silent; actual provisioning/sync failures produce a warning.
 
 Each target still needs Node.js, Git, gh logged into the required repositories,
@@ -59,7 +61,10 @@ When auto-fix is enabled, the existing desktop lifecycle ensures connected hosts
 have the current owned companion package. Matching packages receive configuration
 updates without restart; a changed package is installed through the same guarded
 setup boundary. Disabled/eager-check contexts never provision. No pending setup
-request is restored or replayed from disk.
+request is restored or replayed from disk. Updating Custom needs no preference
+re-save or desktop/agent restart: startup/code reload synchronizes the durable scope
+and updates reachable owned packages. Run an already-closed updated desktop once;
+reconnect offline managed hosts to receive the change.
 
 ## Discovery and delivery
 

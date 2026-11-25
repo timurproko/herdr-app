@@ -80,7 +80,11 @@ validated compare-before-write updates; closed views cannot overwrite them.
   other configured prerequisite values; it is not an editable Settings field.
   The old single-repo preference remains hidden for compatibility. Add repo reads
   actual GitHub hook state; the main list retains last-confirmed enrollment scoped
-  to relay/account as runtime state, not saved desired-state jobs.
+  to relay/account as runtime state, not saved desired-state jobs. This durable
+  confirmed added list also owns the opt-in Core monitor's allowlist; invalidating
+  `custom.git.webhook-state` does not clear it. Final removal or a missing/mismatched
+  scope stays empty without legacy fallback. Existing lifecycle sync writes changes
+  to reachable workers; offline hosts keep their last configuration.
 - Wrangler owns login storage. Its supported `auth token --json` command is used
   only inside the Node worker for account-scoped Cloudflare API operations. Tokens
   are never returned to the UI, put in argv or copied to custom preference files.
@@ -313,6 +317,11 @@ applies changes or creates webhooks. Its header navigation uses the shared paren
 The Git header shows the short repository name with its full GitHub URL on hover.
 
 ## Optional CI fix messages
+
+After a customization update, existing enabled preferences and confirmed repositories
+are picked up by startup/code reload, with no re-save or desktop/agent restart. Run
+an already-closed updated desktop once and reconnect offline managed hosts so its
+normal lifecycle can update their owned companion packages and configurations.
 
 In Git's **Settings** disclosure, **Auto-fix failed CI** enables
 Core messaging to the agent already associated with the PR; it defaults off.

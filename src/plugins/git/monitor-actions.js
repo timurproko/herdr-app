@@ -2,16 +2,14 @@
 import {exec,pluginFile,shared,setShared,readTextFile,appHome,checking,machines,notify} from '../api.js';
 import {validRepository} from './ci-evidence.js';
 import {parseHistory} from './ci-history.js';
+import {addedRepositories} from './added-repositories.js';
+import {addedRepositoryScope,selectedMonitorRepositories} from './added-repositories-model.js';
 const HOSTS='custom.git.monitor-hosts',queues=new Map(),observed=new Set();
 export function managedMonitors(){const value=shared(HOSTS);return value?.version===1&&Array.isArray(value.hosts)?value.hosts.filter(on=>on===null||typeof on==='string'&&/^[A-Za-z0-9_-]{1,100}$/.test(on)):[];}
 const active=cx=>cx.enabled?.()!==false&&shared('custom.plugins')?.git?.enabled!==false&&cx.setting('autoFixCI')===true;
 export function monitorConfig(cx,enabled=active(cx)){
-  const known=shared('custom.git.webhook-state'),relay=cx.setting('relay')??'';
-  // Reuse the existing repository selection, never add a parallel background scope.
-  const repositories=known?.version===1&&known.relay===relay&&known.members&&typeof known.members==='object'
-    ?Object.entries(known.members).filter(([,v])=>v===true).map(([repo])=>repo.toLowerCase())
-    :(cx.setting('ciMonitorRepositories')||cx.setting('repository')||'').split(/[\s,]+/).filter(Boolean).map(s=>s.toLowerCase());
-  const unique=[...new Set(repositories)];
+  // Confirmed Add/Remove selection survives disposable notice-cache invalidation.
+  const unique=selectedMonitorRepositories(cx.setting('relay'),cx.setting('githubAccount'),addedRepositories);
   if(unique.length>32||!unique.every(validRepository))throw Error('Invalid selected CI repositories.');
   return {enabled,states:cx.setting('ciFixStates'),template:cx.setting('ciFixMessage'),repositories:unique,
     ciEnabled:cx.setting('ciFixEnabled')!==false,conflictEnabled:cx.setting('conflictFixEnabled')===true,conflictTemplate:cx.setting('conflictFixMessage'),
@@ -53,7 +51,7 @@ export async function syncMonitors(cx,{hosts=null}={}){
 // No timer, periodic status UI, stored job or render-time command is introduced.
 export function ensureMonitors(context){
   if(checking()||!context.enabled||context.setting('autoFixCI')!==true){observed.clear();return;}
-  const cx={setting:context.setting,enabled:()=>context.enabled},scope=JSON.stringify(monitorConfig(cx));
+  const cx={setting:context.setting,enabled:()=>context.enabled},scope=JSON.stringify([addedRepositoryScope(cx.setting('relay'),cx.setting('githubAccount')),monitorConfig(cx)]);
   const hosts=connectedMonitorHosts(),keys=hosts.map(on=>JSON.stringify([on,scope]));
   for(const key of observed)if(!keys.includes(key))observed.delete(key);
   const due=hosts.filter((_on,index)=>!observed.has(keys[index]));if(!due.length)return;
