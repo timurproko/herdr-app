@@ -19,11 +19,11 @@ Task groups map one-to-one, in order, to the draft PR Implementation outcomes. N
 
 ## 3. Complete local Trello Settings card
 
-- [ ] 3.1 Declare key/token entry, Save and verify, Verify saved, confirmed Replace/Remove, Saved/account feedback and official token help through the generic capability; fake UI/action fixtures must prove saved values never repopulate the controls.
-- [ ] 3.2 Compose named board checkbox selection and committed policy updates with the existing generic list kit; cover load/error/empty/incomplete states, removal of saved entries and selection refusal after credentials or view identity change.
-- [ ] 3.3 Wire Read-only / Read-write to private allowWrites plus public Access only on explicit acknowledgement; test imported read-write with local writes off, explicit enable/disable, partial failures and both agent write gates.
-- [ ] 3.4 Bind the captured Settings machine and explicitly refuse every remote Trello check/setup/discovery/policy path before local IO; fixture spies must show zero local worker/store calls and reject held replies after switching machines.
-- [ ] 3.5 Make readiness require saved credentials plus one allowed board and update the card description, README and docs/TRELLO.md for all-local-card onboarding and remote headless alternatives; cover missing/ready states and retain declaration-only renderer contract checks.
+- [x] 3.1 Declare key/token entry, Save and verify, Verify saved, confirmed Replace/Remove, Saved/account feedback and official token help through the generic capability; fake UI/action fixtures must prove saved values never repopulate the controls.
+- [x] 3.2 Compose named board checkbox selection and committed policy updates with the existing generic list kit; cover load/error/empty/incomplete states, removal of saved entries and selection refusal after credentials or view identity change.
+- [x] 3.3 Wire Read-only / Read-write to private allowWrites plus public Access only on explicit acknowledgement; test imported read-write with local writes off, explicit enable/disable, partial failures and both agent write gates.
+- [x] 3.4 Bind the captured Settings machine and explicitly refuse every remote Trello check/setup/discovery/policy path before local IO; fixture spies must show zero local worker/store calls and reject held replies after switching machines.
+- [x] 3.5 Make readiness require saved credentials plus one allowed board and update the card description, README and docs/TRELLO.md for all-local-card onboarding and remote headless alternatives; cover missing/ready states and retain declaration-only renderer contract checks.
 
 ## 4. Self-contained installed setup and documented isolated acceptance
 

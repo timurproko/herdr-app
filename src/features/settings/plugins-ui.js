@@ -34,6 +34,8 @@ export function followSettingsMachine(view) {
   const machine = view.settingsMachine ?? null, changed = [];
   if (view.pluginMachine !== machine) {
     clearPluginForms(view);
+    view.listPicker = null; view.pluginConfirm = null; view.pluginFixError = {};
+    view.pluginSessions = Object.fromEntries(PLUGINS.map(p => [p.id, {}]));
     view.pluginMachine = machine;
     for (const plugin of PLUGINS) if (plugin.machineScoped) {
       changed.push(plugin.id);
@@ -52,6 +54,7 @@ export function initPlugins(view, cx, requested = null, options = {}) {
   clearPluginForms(view);
   view.pluginMachine = view.settingsMachine ?? null;
   view.pluginForms = {};
+  view.pluginSessions = Object.fromEntries(PLUGINS.map(p => [p.id, {}]));
   view.pluginTarget = PLUGINS.some(p => p.id === requested) ? requested : null;
   const target = PLUGINS.find(p => p.id === view.pluginTarget);
   const section = target?.prerequisites?.find(p => p.section && p.id === options?.section);
@@ -296,7 +299,7 @@ function submitActionForm(view, cx, plugin, item, action, confirmed = false) {
   const key = sectionKey(plugin, item), state = view.pluginForms?.[key];
   const machine = view.settingsMachine ?? null, epoch = state?.epoch;
   const current = () => !view.pluginClosed && pluginEnabled(plugin) && view.pluginForms?.[key] === state && state.epoch === epoch && (view.settingsMachine ?? null) === machine;
-  const context = prerequisiteContext(plugin, current, machine);
+  const context = viewContext(view, plugin, current, machine);
   if (!state || state.unavailable || state.busy || view.pluginFixing || !current() || item.form.enabled?.(context, item) === false || action.when?.(item) === false) return;
   if (action.confirm && !confirmed) { state.confirm = action; cx.notify(); return; }
   state.confirm = null; state.busy = true;
@@ -334,7 +337,7 @@ function actionForm(view, t, plugin, item) {
   const key = sectionKey(plugin, item), state = view.pluginForms?.[key], form = item.form;
   const machine = view.settingsMachine ?? null, epoch = state?.epoch;
   const current = () => view.pluginForms?.[key] === state && state?.epoch === epoch && (view.settingsMachine ?? null) === machine;
-  const context = prerequisiteContext(plugin, () => !view.pluginClosed && current(), machine);
+  const context = viewContext(view, plugin, () => !view.pluginClosed && current(), machine);
   const enabled = Boolean(state) && !state.unavailable && !state.busy && !view.pluginFixing && form.enabled?.(context, item) !== false;
   const id = `st-plugin-form-${plugin.id}-${item.id}`;
   return v_flex().id(id).w_full().gap(8)
@@ -373,6 +376,11 @@ export function prerequisiteContext(plugin, alive = () => true, machine = null) 
   };
 }
 
+function viewContext(view, plugin, alive = () => !view.pluginClosed, machine = view.settingsMachine ?? null) {
+  return { ...prerequisiteContext(plugin, alive, machine), session: view.pluginSessions?.[plugin.id],
+    result: id => view.pluginChecks?.[plugin.id]?.items?.find(item => item.id === id) ?? null };
+}
+
 // Requirements are one check group; each section is its own, so a slow list never holds
 // the requirements back (and the other way round).
 const checkGroup=(plugin,id)=>plugin.prerequisites?.find(pre=>pre.id===id)?.section?id:'requirements';
@@ -404,12 +412,14 @@ export function reloadPlugins(view, cx, only = null, checkingTarget = null) {
       cx.spawn(async cx=>{
         const alive=()=>!view.pluginClosed&&(view.settingsMachine??null)===machine&&view.pluginChecks[plugin.id]?.groups?.[group]===round;
         if(!alive())return;
-        const context=prerequisiteContext(plugin,alive,machine);
+        const context=viewContext(view,plugin,alive,machine);
         // Keep the registry's checking/error boundary, but run only this group.
         // Context/memoized workers and completion tokens never span groups.
         const items=await checkPlugin({...plugin,prerequisites:selected.map(pre=>({...pre,check:()=>pre.check(context)}))});
         if(!alive())return;
         for(const pre of selected)delete view.pluginSettling?.[`${plugin.id}:${pre.id}`];
+        if (group === 'requirements') for (const key of Object.keys(view.pluginSettling ?? {}))
+          if (key.startsWith(`${plugin.id}:live-`)) delete view.pluginSettling[key];
         const current=view.pluginChecks[plugin.id],byId=new Map([...current.items,...items].map(item=>[item.id,item]));
         const groups={...current.groups,[group]:{...round,loading:false,checked:true}};
         view.pluginChecks[plugin.id]={...current,groups,loading:Object.values(groups).some(state=>state.loading),
@@ -422,7 +432,8 @@ export function reloadPlugins(view, cx, only = null, checkingTarget = null) {
 
 // Runs fixes one at a time (stopping at the first failure), then re-checks the plugin.
 function runFixes(view, cx, plugin, items, confirmed = false) {
-  if (view.pluginFixing || !items.length || items.some(item=>view.pluginSettling?.[`${plugin.id}:${item.id}`]) || (items.some(item=>item.fix.confirm||item.fix.requiresEnabled)&&!pluginEnabled(plugin))) return;
+  const machine = view.settingsMachine ?? null;
+  if (view.pluginClosed || view.pluginFixing || !items.length || items.some(item=>view.pluginSettling?.[`${plugin.id}:${item.id}`]) || (items.some(item=>item.fix.confirm||item.fix.requiresEnabled)&&!pluginEnabled(plugin))) return;
   if(!confirmed && items.length===1 && items[0].fix.confirm) {
     view.pluginConfirm={plugin:plugin.id,item:items[0]};cx.notify();return;
   }
@@ -435,8 +446,8 @@ function runFixes(view, cx, plugin, items, confirmed = false) {
       if((item.fix.confirm||item.fix.requiresEnabled)&&!pluginEnabled(plugin))break;
       (view.pluginSettling ??= {})[key] = true;
       try {
-        const machine=view.settingsMachine??null;
-        await item.fix.run(prerequisiteContext(plugin,()=>!view.pluginClosed&&(view.settingsMachine??null)===machine&&view.pluginFixing===key,machine));
+        if ((view.settingsMachine??null)!==machine) break;
+        await item.fix.run(viewContext(view,plugin,()=>!view.pluginClosed&&(view.settingsMachine??null)===machine&&view.pluginFixing===key,machine));
       } catch (e) { view.pluginFixError[key] = String(e?.message ?? e).slice(0, 300); break; }
     }
     view.pluginFixing = null;if(view.pluginClosed)return;
@@ -541,11 +552,11 @@ function runListAction(view, cx, plugin, item, action, everything = false) {
   if (view.pluginFixing || view.pluginSettling?.[key] || view.pluginClosed || !pluginEnabled(plugin)) return;
   view.pluginFixError[key] = null; view.pluginFixing = key;
   cx.spawn(async (cx) => {
-    try { await action(prerequisiteContext(plugin, () => !view.pluginClosed && (view.settingsMachine??null)===machine && view.pluginFixing === key, machine)); }
+    try { await action(viewContext(view, plugin, () => !view.pluginClosed && (view.settingsMachine??null)===machine && view.pluginFixing === key, machine)); }
     catch (e) { view.pluginFixError[key] = String(e?.message ?? e).slice(0, 600); }
     (view.pluginSettling ??= {})[key] = true;
     view.pluginFixing = null; if (view.pluginClosed) return;
-    reloadPlugins(view, cx, plugin.id, everything ? null : item.id); cx.notify();
+    reloadPlugins(view, cx, plugin.id, everything || item.list?.recheck === 'plugin' ? null : item.id); cx.notify();
   });
   cx.notify();
 }
@@ -583,17 +594,16 @@ function foldersAdd(view, t, plugin, item, canAdd, loading) {
 // (`list.candidates(cx) -> { items: [{ id, label, detail?, disabled? }], add(cx, ids) }`)
 // only when it opens, since listing every candidate can be slow.
 function openListPicker(view, cx, plugin, item, { keepSearch = false } = {}) {
-  const key = sectionKey(plugin, item);
+  const key = sectionKey(plugin, item), machine=view.settingsMachine??null;
   const picker = { key, loading: true, error: null, items: [], add: null, selected: [] };
   view.listPicker = picker;
   if (!keepSearch) view.pluginSearches[key]?.set_value('');
   cx.spawn(async (cx) => {
-    const machine=view.settingsMachine??null;
     const alive = () => view.listPicker === picker && !view.pluginClosed && (view.settingsMachine??null)===machine;
     try {
-      const found = await item.list.candidates(prerequisiteContext(plugin, alive, machine));
+      const found = await item.list.candidates(viewContext(view, plugin, alive, machine));
       if (!alive()) return;
-      Object.assign(picker, { loading: false, items: Array.isArray(found?.items) ? found.items : [], add: found?.add ?? item.list.add ?? null });
+      Object.assign(picker, { loading: false, notice: found?.detail ?? null, items: Array.isArray(found?.items) ? found.items : [], add: found?.add ?? item.list.add ?? null });
     } catch (e) {
       if (!alive()) return;
       Object.assign(picker, { loading: false, error: String(e?.message ?? e).slice(0, 300) });
@@ -631,6 +641,7 @@ function itemsAdd(view, t, plugin, item, canAdd) {
     return menuSurface(t, v_flex()).id(`${id}-panel`).w(KIT.picker.width).p(0).track_focus(focus)
       .on_scroll_wheel((_e, cx) => cx.stop_propagation())
       .when(Boolean(search), el => el.child(pickerHeader(t, `${id}-search-row`, searchField(t, search, { id: `${id}-search` }).flex_1())))
+      .when(Boolean(picker.notice), el => el.child(div().px(8).child(description(t, picker.notice))))
       .child(v_flex().id(`${id}-list`).w_full().h(pickerListHeight()).p(4).gap(U.rowGap).overflow_y_scrollbar()
         .when(Boolean(picker.error), el => el.child(div().id(`${id}-error`).p(8).text_size(U.meta).text_color(t.blocked).child(picker.error)))
         .when(ready, el => el.children(rows.map(line)))
@@ -781,20 +792,23 @@ function selectField(view, t, plugin, def, id, value) {
 // A `live` setting is not saved by the registry: its value lives somewhere else (a file on
 // the chosen machine, say). `live.state(cx)` says what the plugin's last check saw there,
 // `{ shown, value }` or null before the first check, and the row exists only while `shown`.
-const liveState = (plugin, def) => def.live.state(pluginContext(plugin)) ?? null;
+const liveState = (view, plugin, def) => def.live.state(viewContext(view, plugin)) ?? null;
 // A machine setting is never a field: the Settings header's machine picker sets it.
-const shownSettings = plugin => (plugin.settings ?? []).filter(d => !d.hidden && d.type !== 'machine' && d.place !== 'requirements' && (!d.live || liveState(plugin, d)?.shown === true));
+const shownSettings = (view, plugin) => (plugin.settings ?? []).filter(d => !d.hidden && d.type !== 'machine' && d.place !== 'requirements' && (!d.live || liveState(view, plugin, d)?.shown === true));
 
 function settingField(view, t, plugin, def) {
   const value = pluginSetting(plugin, def.key), id = `st-plugin-${plugin.id}-${def.key}`;
-  if (def.type === 'toggle' && def.live) {
-    // Flipping it runs `live.set(cx, value)` the way a requirement's fix runs, and the
-    // re-check that follows reads the real value back: the switch shows what is set, never
-    // what was asked for. A refusal is said on the row and the switch stays where it was.
-    const on = liveState(plugin, def)?.value === true, item = { id: `live-${def.key}`, fix: { run: cx => def.live.set(cx, !on) } };
-    const refused = view.pluginFixError[`${plugin.id}:${item.id}`];
+  if (def.live && ['toggle', 'choice'].includes(def.type)) {
+    const state = liveState(view, plugin, def), machine = view.settingsMachine ?? null;
+    const current = () => !view.pluginClosed && pluginEnabled(plugin) && (view.settingsMachine ?? null) === machine;
+    const apply = (next, cx) => {
+      if (!current()) return;
+      runFixes(view, cx, plugin, [{ id: `live-${def.key}`, fix: { requiresEnabled: true, run: context => def.live.set(context, next, state) } }]);
+    };
+    const refused = view.pluginFixError[`${plugin.id}:live-${def.key}`];
     return fieldRow(t, { label: def.label, about: refused ? `${def.about} Not changed: ${refused}` : def.about,
-      widget: view.toggle(t, id, on, (_e, cx) => runFixes(view, cx, plugin, [item])) });
+      widget: def.type === 'toggle' ? view.toggle(t, id, state?.value === true, (_e, cx) => apply(!state?.value, cx))
+        : choice(t, id, def.options, state?.value, apply, current() && !view.pluginFixing) });
   }
   if (def.type === 'profiles') {
     // A row that opens the role's profile list, like a longtext row.
@@ -843,7 +857,7 @@ function settingField(view, t, plugin, def) {
 }
 function settingsBlock(view, t, plugin) {
   return disclosure(view, t, `${plugin.id}-settings`, 'Settings', {}, () => v_flex().w_full().gap(10)
-    .children(shownSettings(plugin).map(def => settingField(view, t, plugin, def))));
+    .children(shownSettings(view, plugin).map(def => settingField(view, t, plugin, def))));
 }
 
 // --- Plugin pages ----------------------------------------------------------------------
@@ -902,7 +916,7 @@ function card(view, t, plugin) {
     .child(description(t, plugin.description))
     .when(Boolean(plugin.prerequisites?.some(item=>!item.section)), el => el.child(requirements(view, t, plugin)))
     .when(on,el=>el.children(prerequisiteSections(view,t,plugin)))
-    .when(on && shownSettings(plugin).length > 0, el => el.child(settingsBlock(view, t, plugin)));
+    .when(on && shownSettings(view, plugin).length > 0, el => el.child(settingsBlock(view, t, plugin)));
 }
 
 // Cards are reordered the way Usage's are (reorder.js `card`): press a card and drag it.

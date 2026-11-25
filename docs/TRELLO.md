@@ -1,7 +1,7 @@
 # Trello for shell agents
 
-Trello is an optional, headless plugin. It starts **off** and **read-only**. The
-agent interface is `herdr-trello`, a JSON command-line tool, not MCP or a board UI.
+Trello is an optional plugin with private owner setup in **Settings → Plugins →
+Trello**. It starts **off** and **read-only**. The agent interface is `herdr-trello`, a JSON command-line tool, not MCP or a board UI.
 
 ## Installation and shell discovery
 
@@ -68,11 +68,44 @@ follows redirects or prints that URL. No OAuth 2.0 flow or application secret is
 used. A genuinely read-only Trello token is a server-enforced write restriction;
 local read-only mode alone is not.
 
-## Local setup
+## Set up from the Settings card
+
+Select **This computer** in the Settings header and enable **Plugins → Trello**.
+Expand **Requirements**, enter your API key and user token in the protected input
+fields, then press **Save & verify**. The worker checks them with Trello before
+saving and shows the token’s account. The fields clear after submission; saved
+secrets are never loaded back into the card. **Verify saved** checks the existing
+copy. **Replace** verifies newly entered values after confirmation, then clears
+old board grants and local write authority. **Remove** confirms removal of this
+computer’s copy and permissions; it does not revoke the token at Trello.
+The card’s **How to generate a user token** opens official help without putting
+your key or token in its URL.
+
+Expand **Allowed boards → Add boards** to discover visible boards by name. Tick
+only the boards agents may use and press **Add**; discovery, search and Cancel
+never grant scope. The main list’s **Remove** revokes one saved grant. Incomplete
+discovery is labeled and never erases unseen grants. There is no all-boards option.
+The requirement becomes Ready only with saved credentials and at least one allowed
+board; local Ready does not claim an unverified token is still valid.
+
+Under **Settings → Access**, **Read-only / Read-write** explicitly changes this
+computer’s private write authorization as well as public Access. The displayed
+value reflects both gates, not imported public preferences alone. A read-only
+Trello token remains server-enforced read-only regardless of client settings.
+No board grant or local write permission is exported/imported with preferences.
+
+For an SSH-selected machine this card **refuses setup, discovery and policy
+changes**, explaining that no local store was accessed. It does not show this
+computer’s saved credentials or board inventory as the remote machine’s. Use the
+headless alternative on that execution host after its own explicit full deployment.
+No credential is copied remotely by Settings, deployment or shell-only deployment.
+
+## Headless local setup
 
 Each execution host needs its own API key and **user token**. An application/OAuth
 secret is not a user token and is not used. Do not put either credential in shell
-arguments, profiles, plugin settings, agent messages or portable preferences.
+arguments, profiles, persistent plugin settings, agent messages or portable
+preferences. The card’s transient inputs are not saved plugin settings.
 
 Prepare a private JSON input file in a protected location outside any checkout:
 
@@ -104,8 +137,10 @@ herdr-trello policy remove aaaaaaaaaaaaaaaaaaaaaaaa
 herdr-trello policy writes off
 ```
 
-There is no all-boards option, automatic board enumeration or default allowed
-board. Obtain IDs from boards you own in Trello; the board URL's short link is not
+The headless agent CLI has no all-boards option, automatic account-wide board
+enumeration or default allowed board. The owner’s Settings picker is the explicit
+exception for discovery, not agent access. For headless policy commands, obtain
+IDs from boards you own in Trello; the board URL's short link is not
 a canonical ID. For a board you own, its Trello **Print and export → Export JSON**
 view contains the full board `id`; copy that ID yourself rather than importing an
 account inventory. Setup/policy commands are local and work while the plugin is off.
@@ -261,7 +296,8 @@ causes an account switch, credential search, write retry or webhook setup.
 
 At `https://trello.com/u/YOUR_USERNAME/account`, open **Applications** and click
 **Revoke** beside this authorization. Trello then rejects that token (HTTP 401).
-To continue later, explicitly authorize a new token and run setup with `--rotate`.
+To continue later, explicitly authorize a new token and use Replace in the local
+Settings card or run headless setup with `--rotate`.
 To stop this client immediately, disable Trello, use `policy writes off`, and/or
 remove boards from local policy. Deleting the protected local credential file
 after use is stopped removes this copy only: it does **not** revoke the token at
@@ -278,7 +314,7 @@ boards than this allowlist. Use a minimally privileged/dedicated Trello account
 and a read-only token when possible. Stronger isolation requires a separate OS
 identity/broker and is outside this plugin.
 
-Credentials are never portable preferences, plugin settings, terminal labels,
+Credentials are never portable preferences, persistent plugin settings, terminal labels,
 command arguments, build assets or diagnostics. Board content is not cached on
 disk. Only the separate non-secret rate-limit deadline may persist. Do not share
 private stores, exports of unrelated personal preferences or input copies in this

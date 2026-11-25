@@ -85,8 +85,10 @@ order, launched with the role, while `pluginGateReady('profile.role.<role>')` ho
 
 `hidden: true` keeps a setting out of the block (a list's scope, a generated value).
 
-A `toggle` may be **live**: `live: { state(cx), set(cx, value) }`. Its value is not saved by the
-registry; it lives where the plugin says (a file on the chosen machine, say). `state(cx)` returns
+A `toggle` or `choice` may be **live**: `live: { state(cx), set(cx, value, snapshot) }`.
+Its operational value is not saved automatically by the renderer; it lives where
+the plugin says (a file on the chosen machine, say). The setter may synchronize an
+additional public preference explicitly after private acknowledgement. `state(cx)` returns
 what the plugin's last check saw, `{ shown, value }`, or null before the first check, and the row
 is drawn only while `shown`. Flipping the switch runs `set` like a requirement's fix and then
 re-checks the plugin, so the switch shows what is really set; a refusal is said on the row.
@@ -128,7 +130,9 @@ results may contain public `detail` only, never input echoes. The renderer does
 not display thrown exception text from secret actions.
 
 Action/check context includes captured `machine` (`null` for this computer) and
-`isCurrent()`. `machineScoped: true` on a plugin rechecks it on header-machine
+`isCurrent()`. `result(id)` reads that view’s latest prerequisite result and an
+opaque `session` object permits non-secret view/machine-local hint memoization.
+`machineScoped: true` on a plugin rechecks it on header-machine
 changes without a portable machine setting. A form action additionally receives
 `onCancel(fn)`, which registers teardown for a bounded in-flight transport.
 
@@ -169,6 +173,9 @@ belongs to, then Add), the description, and one row per item with **Remove** on 
   button says Add, Remove or Apply; the footer counts what this visit changes.
 - **items** picker: `candidates` runs only when the popup opens (listing can be slow). The
   popup has a search field (`search` is its placeholder), Loading bottom left, and Add.
+  Candidates may return public `detail` for an incomplete-inventory explanation above the list.
+- `list.recheck: 'plugin'` refreshes all that plugin's prerequisite groups after a
+  committed list action when the change also affects another requirement's readiness.
 - One change runs at a time; refusals become the section's detail. Folder-change failures
   distinguish the attempted operation/target from the plugin's own explanation. An error
   may provide `folderMessage(path)` to compose a concise target-aware summary instead of
