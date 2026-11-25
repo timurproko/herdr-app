@@ -46,7 +46,7 @@ assert.equal(panel.relatedKey,null,'Rejected embedded reads leave no retry-block
 
 panel.pulls.open[0]={...panel.pulls.open[0],checks:facts.checks(checks(3,10))};
 const fallback=panel.readPendingChecks({name:'owner/repo',rows:panel.pulls.open},cx,()=>true);
-newer(1);await reply(graph(raw(1)));await reply(graph(raw(1)));await fallback;
+newer(1);await reply(graph(raw(1)));await fallback;
 assert.equal(panel.pulls.open[0].checks.label,'11/11','Fallback checks merge also obeys publication order');
 
 const aggregate=new h.AggregatePulls({shown:()=>true});aggregate.context=context;

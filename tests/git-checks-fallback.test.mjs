@@ -69,10 +69,10 @@ for(const coordinator of [false,true]) {
   assert.equal(words(find(panel.pullRow(t,rows()[0]),`pr-checks-${rows()[0].key??1}`)).join(''),'3/10');
   status={ok:11,total:11};held.resolve();held=null;await flush();
   assert.ok(rows().every(pr=>pr.checks.label==='11/11'));
-  assert.equal(requests.length,2,'A changed summary gets one changed-row detail batch');
-  assert.ok(requests[1].args.some(arg=>arg.includes('contexts(first:100)')));
-  await advance(45000);assert.equal(requests.length,3,'State refresh continues after checks settle');
-  assert.ok(requests[2].args.every(arg=>!arg.includes('contexts(')),'Unchanged rows request no per-context lists');
+  assert.equal(requests.length,1,'Pending details arrive in the same state batch, even as the summary settles');
+  assert.ok(requests[0].args.some(arg=>arg.includes('contexts(first:100)')));
+  await advance(45000);assert.equal(requests.length,2,'State refresh continues after checks settle');
+  assert.ok(requests[1].args.every(arg=>!arg.includes('contexts(')),'Unchanged settled rows request no per-context lists');
   assert.ok(requests[0].args.some(arg=>arg.includes('state isDraft')),'Every safety query includes state and checks');
   if(!coordinator)assert.deepEqual({...panel.counts},{open:120,closed:27},'Repository totals are authoritative, not counts of the loaded subset');
 
@@ -121,14 +121,14 @@ for(const coordinator of [false,true]) {
   assert.equal(requests.length,before+2,'Stop at a failed second chunk');
   assert.ok(rows().every(pr=>pr.checks.label==='3/10'),'Partial failure retains every old row');
   {
-    failAt=requests.length+(coordinator?4:5);await advance(90000);
-    assert.equal(requests.length,before+(coordinator?6:7),'Stop on a failed second detail chunk after all thin probes');
-    assert.ok(rows().every(pr=>pr.checks.label==='3/10'),'Partial detail success cannot publish a mixed selection');
+    failAt=requests.length+2;await advance(90000);
+    assert.equal(requests.length,before+4,'Stop on a failed second combined state/detail chunk');
+    assert.ok(rows().every(pr=>pr.checks.label==='3/10'),'Partial combined success cannot publish a mixed selection');
   }
   const retryStart=requests.length;failAt=null;await advance(180000);
   const selected=coordinator?Array.from(panel.fallbackSnapshot().repositories[0].rows):large;
-  const chunks=requests.slice(retryStart);assert.equal(chunks.length,coordinator?5:9,'Coordinator probes all 60 revealed rows in bounded chunks; ordinary expanded lists retain chunking');
-  assert.deepEqual(chunks.filter(c=>c.args.every(arg=>!arg.includes('contexts('))).flatMap(c=>c.numbers),selected.map(pr=>pr.number));
+  const chunks=requests.slice(retryStart);assert.equal(chunks.length,coordinator?3:6,'Pending rows combine state and details in twenty-row chunks');
+  assert.deepEqual(chunks.flatMap(c=>c.numbers),selected.map(pr=>pr.number));
   for(const call of requests.slice(before)) {
     assert.ok(call.numbers.length<=(call.args.some(arg=>arg.includes('contexts('))?facts.CHECKS_BATCH_SIZE:facts.STATE_BATCH_SIZE));assert.ok(call.args.join(' ').length<12000,'Bound argv below Windows process limits');
   }
@@ -158,7 +158,7 @@ for(const coordinator of [false,true]) {
     assert.equal(requests.length,before+2);assert.deepEqual(requests.at(-1).numbers,[2002],'Only a changed summary requests full contexts');
     assert.equal(rows().find(pr=>pr.number===2002).checks.label,'0/1');
     before=requests.length;await panel.readPendingChecks({name:'owner/repo',rows:rows()},cx,()=>shown);
-    assert.equal(requests.length,before+1);assert.ok(requests.at(-1).args.every(arg=>!arg.includes('contexts(')),'Unchanged pending summaries also remain thin');
+    assert.equal(requests.length,before+1);assert.ok(requests.at(-1).args.some(arg=>arg.includes('contexts(')),'Unchanged pending summaries refresh numbers in the same probe');
   }
   const finalTimers=[];
   const terminal=new facts.ChecksFallback({snapshot:()=>({enabled:true,scope:'final-history',repositories:[{name:'owner/repo',uncovered:true,rows:[{state:'merged',checks:{pending:3},checksKnown:true},{state:'closed',checksKnown:false}]}]}),read:()=>assert.fail('Known final rows never get safety rereads, even for pending/unknown checks')});
