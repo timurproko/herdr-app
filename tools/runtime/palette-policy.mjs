@@ -37,7 +37,9 @@ export function guardPaletteHome(home,{startup=false,...options}={}){
   for(const [rel,digest]of files){const file=safePalettePath(home,rel);if(!fs.existsSync(file)||hash(fs.readFileSync(file))!==digest)throw Error('Owned palette payload was changed or removed');}
   const meta=JSON.parse(read(path.join(home,'mods/custom-palette/mod.json')));
   if(meta.place!=='none'||meta.overlay?.kind!=='popup'||meta.overlay?.at!=='top'||meta.overlay?.offset!==60)throw Error('Owned palette overlay capability metadata changed');
-  return paletteCapabilities(home,options);
+  const capabilities=paletteCapabilities(home,options);let logUnavailable=false;
+  try{const file=safePalettePath(home,'.customizations/palette.log');if(fs.existsSync(file)&&!fs.lstatSync(file).isFile())logUnavailable=true;}catch{logUnavailable=true;}
+  return {...capabilities,logUnavailable};
 }
 function cas(home,rel,text,expected){
   const file=safePalettePath(home,rel);if(read(file)!==expected)throw Error('Concurrent palette configuration edit');

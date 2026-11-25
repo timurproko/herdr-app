@@ -27,7 +27,7 @@ export function initPalettePolicy(owner,cx){
     const live=()=>active(owner)&&shared(LEASE)?.token===token;
     cx.spawn(async cx=>{
       await cx.sleep(0);if(!live())return;
-      const home=appHome();let status;
+      const home=appHome();let status,logSafe=false;
       try{
         const versionStatus=hostVersionStatus(hostVersion());
         if(!versionStatus.supported)throw Error('Owned palette host version is unavailable or below the minimum supported host');
@@ -41,6 +41,7 @@ export function initPalettePolicy(owner,cx){
             if(result.code!==0){let detail='';try{detail=JSON.parse(result.stderr).error;}catch{}throw Error(detail?.startsWith('Palette repair waits')||detail?.startsWith('Owned palette capabilities unavailable:')?detail:'Owned palette validation failed; check customization ownership');}
             const validation=JSON.parse(result.stdout);
             if(validation.ok!==true||validation.deferred)throw Error('Owned palette capabilities await host initialization');
+            logSafe=validation.logUnavailable!==true;
           },
           read:rel=>readTextFile(`${home}/${rel}`),
           write:async(rel,text,expected)=>{if(!live())throw Error('Repair superseded');await writeTextFile(`${home}/${rel}`,text,expected);},
@@ -66,10 +67,11 @@ export function initPalettePolicy(owner,cx){
         status={ok:false,status:'repair-failed',error:safeFailure(error)};
       }
       if(!live())return;
+      if(!logSafe)status={...status,logUnavailable:true};
       const previous=shared(STATUS);if(!same(previous,status))setShared(STATUS,status);
       if(!status.ok&&previous?.error!==status.error)notify({title:'Custom palette needs attention',body:status.error,level:'warning',timeout:8000});
       // Keep logging best-effort and independent of successful keyboard repair.
-      if(status.changed||previous?.ok!==status.ok||previous?.error!==status.error)try{
+      if(logSafe&&(status.changed||previous?.ok!==status.ok||previous?.error!==status.error))try{
         const file=`${home}/.customizations/palette.log`,before=await readTextFile(file);
         if(live())await writeTextFile(file,boundedLog(before,status),before);
       }catch{if(live())setShared(STATUS,{...status,logUnavailable:true});}

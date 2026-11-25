@@ -78,6 +78,6 @@ try{
  }finally{process.env.NODE_OPTIONS=nodeOptions;}
  // A directory/unreadable log must also bypass logging's guard/read failures.
  const directory=staged('log-directory');fs.mkdirSync(path.join(directory,'.customizations/palette.log'));
- const logged=await installPalettePolicy(directory);assert.equal(logged.ok,true);assert.equal(logged.logUnavailable,true);assert.equal(guardPaletteHome(directory).ok,true);
+ const logged=await installPalettePolicy(directory);assert.equal(logged.ok,true);assert.equal(logged.logUnavailable,true);assert.equal(guardPaletteHome(directory).ok,true);assert.equal(guardPaletteHome(directory).logUnavailable,true,'Unsafe/unusable logs do not become routing failures');
  console.log('PASS palette review: real install/retirement capability gates, uninitialized deferral, equivalent key spellings/alias rollback, nonfatal logs and actual merged stop-gap Update migration');
 }finally{restoreHost();fs.rmSync(temp,{recursive:true,force:true});}
