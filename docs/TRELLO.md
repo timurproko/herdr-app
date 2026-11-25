@@ -93,6 +93,8 @@ computer’s private write authorization as well as public Access. The displayed
 value reflects both gates, not imported public preferences alone. A read-only
 Trello token remains server-enforced read-only regardless of client settings.
 No board grant or local write permission is exported/imported with preferences.
+Credential-bearing snapshot fields, including `apiKey` and `token`, are refused
+rather than imported into shared plugin state.
 
 For an SSH-selected machine this card **refuses setup, discovery and policy
 changes**, explaining that no local store was accessed. It does not show this

@@ -33,6 +33,10 @@ try{
  syncPreferences('export',home,{hostname:'fixture',isDesktopOpen:()=>false});
  const exported=fs.readFileSync(path.join(home,'preferences/fixture.json'),'utf8');assert.ok(!exported.includes(token));assert.ok(!exported.includes(apiKey));assert.ok(!exported.includes(A));assert.ok(!exported.includes('runtime'));
  const privateBefore=fs.readFileSync(path.join(home,'.customizations/trello/policy.json'),'utf8');syncPreferences('import',home,{hostname:'fixture',isDesktopOpen:()=>false});assert.equal(fs.readFileSync(path.join(home,'.customizations/trello/policy.json'),'utf8'),privateBefore);assert.equal(status().data.localWrites,false);
+ // Forged credential-bearing snapshots must be refused, not copied to custom.plugins.
+ const snapshotFile=path.join(home,'preferences/fixture.json'),sharedBefore=fs.readFileSync(path.join(home,'shared.json'),'utf8');
+ for(const [field,value]of [['token',token],['apiKey',apiKey]]){fs.writeFileSync(snapshotFile,JSON.stringify({version:1,shared:{'custom.plugins':{trello:{enabled:true,settings:{access:'read-write',[field]:value}}}}}));assert.throws(()=>syncPreferences('import',home,{hostname:'fixture',isDesktopOpen:()=>false}),/credential/);assert.equal(fs.readFileSync(path.join(home,'shared.json'),'utf8'),sharedBefore);assert.equal(fs.readFileSync(path.join(home,'.customizations/trello/policy.json'),'utf8'),privateBefore);}
+ fs.writeFileSync(snapshotFile,exported);
  const listed=JSON.parse(node(path.join(runtime,'trello/cli.cjs'),['boards','list','--home',home]));assert.equal(listed.ok,true);assert.ok(JSON.stringify(listed).includes('Board A'));assert.ok(!JSON.stringify(listed).includes(B),'Agent listing cannot discover account boards');
  state=await action({action:'remove',expected:state.revision});assert.equal(state.configured,false);assert.equal(fs.existsSync(path.join(home,'.customizations/trello/credentials.json')),false);
  // No source checkout or global package participates in these installed workers.
