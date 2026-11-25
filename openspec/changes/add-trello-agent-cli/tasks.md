@@ -2,10 +2,10 @@
 
 ## 1. Private local setup and fail-closed authority
 
-- [ ] 1.1 Add Trello home resolution, credential/policy schemas and protected store IO under `src/plugins/trello`; verify fake-store tests for default/explicit homes, checkout refusal, links, permissions/ACLs, malformed stores and atomic guarded rotation.
-- [ ] 1.2 Add explicit local setup/rotation and board allowlist/write-cap management without secret argv; verify injected IO tests keep fake secrets out of output, shared state and unrelated files and reject wildcard scope.
-- [ ] 1.3 Add narrowly read-only persisted plugin-state/access checks intersected with local policy before every request; verify disabled, missing-state, read-only, imported-preference and mid-operation policy-change denials with zero unauthorized requests.
-- [ ] 1.4 Start `docs/TRELLO.md` with explicit protected-input setup, key/user-token terminology, private paths, empty default scope and separate local write opt-in; verify examples contain placeholders only and no secret-bearing arguments.
+- [x] 1.1 Add Trello home resolution, credential/policy schemas and protected store IO under `src/plugins/trello`; verify fake-store tests for default/explicit homes, checkout refusal, links, permissions/ACLs, malformed stores and atomic guarded rotation.
+- [x] 1.2 Add explicit local setup/rotation and board allowlist/write-cap management without secret argv; verify injected IO tests keep fake secrets out of output, shared state and unrelated files and reject wildcard scope.
+- [x] 1.3 Add narrowly read-only persisted plugin-state/access checks intersected with local policy before every request; verify disabled, missing-state, read-only, imported-preference and mid-operation policy-change denials with zero unauthorized requests.
+- [x] 1.4 Start `docs/TRELLO.md` with explicit protected-input setup, key/user-token terminology, private paths, empty default scope and separate local write opt-in; verify examples contain placeholders only and no secret-bearing arguments.
 
 ## 2. Scoped reads and bounded JSON transport
 

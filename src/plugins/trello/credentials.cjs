@@ -1,0 +1,93 @@
+'use strict';
+const fs = require('node:fs');
+const path = require('node:path');
+const os = require('node:os');
+const cp = require('node:child_process');
+const crypto = require('node:crypto');
+const {fail, TrelloError} = require('./errors.cjs');
+const homePath = explicit => path.resolve(explicit || process.env.HERDR_APP_HOME || path.join(os.homedir(), '.config/herdr-app'));
+const object = v => v !== null && typeof v === 'object' && !Array.isArray(v);
+const exact = (v, keys) => object(v) && Object.keys(v).every(k => keys.includes(k));
+const id = v => typeof v === 'string' && /^[a-f0-9]{24}$/.test(v);
+function validate(name, v) {
+  let ok = false;
+  if (name === 'credentials') ok = exact(v, ['version', 'apiKey', 'token']) && v.version === 1 &&
+    [v.apiKey, v.token].every(s => typeof s === 'string' && /^[A-Za-z0-9_-]{16,512}$/.test(s));
+  if (name === 'policy') ok = exact(v, ['version', 'boards', 'allowWrites']) && v.version === 1 && typeof v.allowWrites === 'boolean' &&
+    Array.isArray(v.boards) && v.boards.length <= 100 && v.boards.every(id) && new Set(v.boards).size === v.boards.length;
+  if (name === 'cooldown') ok = exact(v, ['version', 'retryAt']) && v.version === 1 && Number.isSafeInteger(v.retryAt) && v.retryAt >= 0;
+  if (!ok) fail('STORE');
+  return v;
+}
+function safePath(file) {
+  let current = path.resolve(file);
+  for (;;) {
+    if (fs.existsSync(current)) {
+      const stat = fs.lstatSync(current);
+      if (stat.isSymbolicLink() || fs.existsSync(path.join(current, '.git'))) fail('STORE');
+      if (fs.realpathSync.native(current).toLowerCase() !== current.toLowerCase() && process.platform === 'win32') fail('STORE');
+    } else { // existsSync hides dangling symlinks.
+      try { if (fs.lstatSync(current).isSymbolicLink()) fail('STORE'); } catch (e) { if (e.code !== 'ENOENT') throw e; }
+    }
+    const parent = path.dirname(current); if (parent === current) return; current = parent;
+  }
+}
+// Paths only enter argv. No credential contents are ever sent to PowerShell.
+function windowsSecurity(file, create, directory) {
+  const script = `$ErrorActionPreference='Stop'; $p=$env:TRELLO_PRIVATE_PATH; $sid=[System.Security.Principal.WindowsIdentity]::GetCurrent().User; ` +
+    (create ? `$a=New-Object System.Security.AccessControl.${directory ? 'DirectorySecurity' : 'FileSecurity'}; $a.SetOwner($sid); $a.SetAccessRuleProtection($true,$false); $r=New-Object System.Security.AccessControl.FileSystemAccessRule($sid,'FullControl',${directory ? "'ContainerInherit,ObjectInherit','None'," : ''}'Allow'); $a.AddAccessRule($r); Set-Acl -LiteralPath $p -AclObject $a; ` : '') +
+    `$a=Get-Acl -LiteralPath $p; $owner=$a.GetOwner([System.Security.Principal.SecurityIdentifier]).Value; if($owner -ne $sid.Value){throw 'owner'}; $ok=@($sid.Value,'S-1-5-18','S-1-5-32-544'); foreach($r in $a.Access){if($r.AccessControlType -eq 'Allow' -and $r.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]).Value -notin $ok){throw 'access'}}`;
+  try { cp.execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')],
+    {env: {...process.env, TRELLO_PRIVATE_PATH: file}, stdio: 'ignore', timeout: 10000, windowsHide: true}); } catch { fail('STORE'); }
+}
+function security(file, create = false, directory = false) {
+  if (process.platform === 'win32') return windowsSecurity(file, create, directory);
+  if (create) fs.chmodSync(file, directory ? 0o700 : 0o600);
+  const s = fs.lstatSync(file);
+  if (s.uid !== process.getuid() || (s.mode & 0o077) !== 0) fail('STORE');
+}
+class Store {
+  constructor(home, options = {}) { this.home = homePath(home); this.dir = path.join(this.home, '.customizations', 'trello'); this.security = options.security || security; }
+  file(name) { if (!['credentials', 'policy', 'cooldown'].includes(name)) fail('STORE'); return path.join(this.dir, name + '.json'); }
+  directory(create = false) {
+    safePath(this.dir);
+    if (!fs.existsSync(this.dir)) {
+      if (!create) fail('STORE');
+      fs.mkdirSync(this.dir, {recursive: true, mode: 0o700}); this.security(this.dir, true, true);
+    }
+    if (!fs.lstatSync(this.dir).isDirectory()) fail('STORE');
+    this.security(this.dir, false, true);
+  }
+  read(name, optional = false) {
+    this.directory(); const file = this.file(name); safePath(file);
+    if (!fs.existsSync(file)) { if (optional) return null; fail('STORE'); }
+    this.security(file);
+    const fd = fs.openSync(file, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0));
+    try {
+      const stat = fs.fstatSync(fd); if (!stat.isFile() || stat.nlink !== 1 || stat.size > 32768) fail('STORE');
+      return validate(name, JSON.parse(fs.readFileSync(fd, 'utf8')));
+    } catch { fail('STORE'); } finally { fs.closeSync(fd); }
+  }
+  write(name, value, expected = null) {
+    validate(name, value); this.directory(true);
+    const file = this.file(name), lock = path.join(this.dir, 'config.lock'); safePath(lock);
+    let fd, temp;
+    try {
+      fd = fs.openSync(lock, 'wx', 0o600); this.security(lock, true);
+      const current = this.read(name, true);
+      if (JSON.stringify(current) !== JSON.stringify(expected)) fail('CONFLICT');
+      temp = path.join(this.dir, `.write-${crypto.randomBytes(12).toString('hex')}`);
+      const out = fs.openSync(temp, 'wx', 0o600);
+      try { this.security(temp, true); fs.writeFileSync(out, JSON.stringify(value) + '\n'); fs.fsyncSync(out); } finally { fs.closeSync(out); }
+      safePath(file);
+      fs.renameSync(temp, file); temp = null; this.security(file);
+    } catch (e) { if (e instanceof TrelloError) throw e; fail('STORE'); }
+    finally { if (temp) fs.unlinkSync(temp); if (fd !== undefined) { fs.closeSync(fd); fs.unlinkSync(lock); } }
+  }
+}
+function protectedInput(file) {
+  safePath(file); security(file);
+  const s = fs.lstatSync(file); if (!s.isFile() || s.nlink !== 1 || s.size > 262144) fail('INPUT');
+  return fs.readFileSync(file, 'utf8');
+}
+module.exports = {Store, homePath, validate, id, object, exact, safePath, security, protectedInput};
