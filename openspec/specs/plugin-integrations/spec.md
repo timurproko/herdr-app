@@ -1307,19 +1307,6 @@ Enabled monitoring SHALL NOT report healthy-ready when its scope is empty or eve
 - **AND** diagnostics remain separate from delivery receipts, contain no raw output, message text, transcript or credentials, and never relax a delivery gate
 - **AND** diagnostic-write failure does not prevent ordinary verification or delivery, and read-only probes do not persist diagnostic history
 
-### Requirement: Bounded repository read diagnostics
-Git SHALL retain a bounded local runtime diagnostic per routed repository with read phase, occurrence time, quiet-refusal category and retry deadline. Evidence SHALL distinguish a fresh refusal from a cooldown-skipped read and remain inspectable without UI. It SHALL contain no raw replies, credentials, task inventory or paths, grant no authority and never block reads or rendering.
-
-#### Scenario: Refusal followed by cooldown and success
-- **WHEN** a repository's first targeted or ordinary read is rate-refused, skipped during cooldown, and later succeeds
-- **THEN** diagnostic facts distinguish those phases and retain the sanitized last refusal time and absolute retry deadline after recovery
-- **AND** bounded eviction limits repository retention and repeated skips do not create unbounded history or repeated episode logs
-
-#### Scenario: Isolation, privacy and rendering
-- **WHEN** local and remote repositories share names or a stale read finishes after a newer attempt
-- **THEN** diagnostics remain machine/repository scoped and cannot overwrite newer phase facts or change read admission, counts or UI
-- **AND** no diagnostic UI, portable export, render-time persistence or render-time notification is added
-
 ### Requirement: Machine-scoped Crew update attention
 A confirmed available Crew tool update SHALL be a non-optional unmet requirement for the selected machine. The row SHALL show `Outdated` using existing unmet-requirement styling, retain Update and the installed revision, and contribute to `N to fix` and any existing unmet-requirement indicators. Revision age alone SHALL NOT block coordinator launch or project actions.
 
@@ -1343,3 +1330,16 @@ A confirmed available Crew tool update SHALL be a non-optional unmet requirement
 - **WHEN** a coordinator launch or project action otherwise satisfies its existing guards but Crew is outdated
 - **THEN** revision age alone does not refuse or disable that action
 - **AND** existing installation, connection, ownership and capability refusals remain authoritative without a new update gate
+
+### Requirement: Bounded repository read diagnostics
+Git SHALL retain a bounded local runtime diagnostic per routed repository with read phase, occurrence time, quiet-refusal category and retry deadline. Evidence SHALL distinguish a fresh refusal from a cooldown-skipped read and remain inspectable without UI. It SHALL contain no raw replies, credentials, task inventory or paths, grant no authority and never block reads or rendering.
+
+#### Scenario: Refusal followed by cooldown and success
+- **WHEN** a repository's first targeted or ordinary read is rate-refused, skipped during cooldown, and later succeeds
+- **THEN** diagnostic facts distinguish those phases and retain the sanitized last refusal time and absolute retry deadline after recovery
+- **AND** bounded eviction limits repository retention and repeated skips do not create unbounded history or repeated episode logs
+
+#### Scenario: Isolation, privacy and rendering
+- **WHEN** local and remote repositories share names or a stale read finishes after a newer attempt
+- **THEN** diagnostics remain machine/repository scoped and cannot overwrite newer phase facts or change read admission, counts or UI
+- **AND** no diagnostic UI, portable export, render-time persistence or render-time notification is added
