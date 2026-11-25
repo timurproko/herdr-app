@@ -25,4 +25,6 @@ Outside-checkout proof files are `proof/missing.png`, `entered.png`, `saved.png`
 
 No real-token success, real board modification, provider permission guarantee, remote setup support, same-user sandbox or cryptographic memory erasure is claimed. Owner discovery is bounded at 1000 visible boards with explicit incompleteness; local policy remains limited to 100 boards.
 
-Hosted Windows/Ubuntu results must be recorded on the implementation head before the final implementation report. The PR is never marked ready or merged manually.
+Hosted CI passed on implementation head `cc69efe0e2712158da7963b8c7ee96a49bcd198c`: Windows and Ubuntu test jobs, OpenSpec and CI required all succeeded in [run 45696882197](https://github.com/timurproko/herdr-app/actions/runs/45696882197). The earlier two fixture failures were repaired without dropping checks: the kit no longer adds an Input dependency to unrelated consumers, and the native proof uses shared temporary-mod disposal. The final confirmation snapshot regression is included in this green run.
+
+Only acceptance/task metadata follows that implementation snapshot. The PR is never marked ready or merged manually.
