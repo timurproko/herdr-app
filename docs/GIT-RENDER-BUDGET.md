@@ -68,13 +68,14 @@ settings per render entry and schedules four shared lower-line probes total.
 
 | Mounted rows | fc0dfde coordinator, ms | Repaired coordinator, ms | fc0dfde ordinary, ms | Repaired ordinary, ms | Repaired ordinary scrolled-bottom, ms |
 |---|---|---|---|---|---|
-| 30 | 6, 7, 6 | 5, 5, 5 | 11, 10, 9 | 7, 6, 6 | 5, 5, 6 |
-| 60 | 14, 15, 14 | 12, 10, 9 | 21, 21, 19 | 11, 11, 10 | 12, 13, 11 |
-| 100 | 22, 28, 22 | 16, 16, 16 | 31, 32, 34 | 20, 18, 19 | 21, 20, 21 |
-| 200 | 51, 44, 50 | 34, 33, 33 | interrupted ×3 | 37, 37, 43 | 42, 41, 39 |
+| 30 | 7, 8, 8 | 5, 4, 5 | 10, 11, 11 | 6, 6, 6 | 7, 7, 7 |
+| 60 | 15, 15, 15 | 10, 12, 11 | 20, 19, 19 | 10, 13, 13 | 14, 14, 14 |
+| 100 | 23, 24, 28 | 16, 16, 17 | 42, 37, 36 | 20, 20, 20 | 21, 20, 21 |
+| 200 | 51, interrupted ×2 | 35, 38, 48 | interrupted ×3 | 40, 37, 37 | 42, 41, 45 |
 
-These samples were rerun after merging main through #63. Scrolled baseline samples
-were 9/11/10, 20/21/20 and 31/30/30 ms at 30/60/100, and interrupted at 200.
+These samples were rerun after merging main through #69, with unchanged native
+titles/headers and main's visual alignment. Scrolled baseline samples were
+12/10/10, 20/20/24 and 41/40/36 ms at 30/60/100, and interrupted at 200.
 Every repaired sample completed with all requested rows and **four probes**.
 The native tool enforces the requested baseline +2ms and 10/17/26ms ceilings at
 30/60/100 and requires every current 200-row sample to complete. It records failed
@@ -88,8 +89,8 @@ actual mounted 30/60/100/200 ordinary/coordinator Open/Closed trees, zoom/font c
 starts, visible-slice priority, at most four probes, and constant settings reads.
 Operations and elements must each stay at or below frozen fc0dfde counts in
 `tests/fixtures/git-row-budget-baseline.json`. At 100 rows the repair uses
-30,298 operations / 3,212 elements ordinary (baseline 51,942 / 6,104) and
-29,960 / 3,209 coordinator (baseline 31,606 / 3,428). Mutation controls reject
+29,299 operations / 3,212 elements ordinary (baseline 51,942 / 6,104) and
+28,960 / 3,209 coordinator (baseline 31,606 / 3,428). Mutation controls reject
 per-row hidden subtrees, excess probes and repeated bridge reads. This is separate
 from the historical bounded-page test below, not a substituted ten-row sample.
 

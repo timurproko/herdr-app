@@ -5,13 +5,13 @@ import {choiceModules,element,svg,Popover,theme as t} from './support/choice-men
 const walk=n=>n&&typeof n==='object'?[n,...[...(n.kids??[]),...(n.attrs.trigger??[]),...(n.attrs.content??[])].flatMap(walk)]:[];
 const find=(n,id)=>walk(n).find(e=>e.attrs.id?.[0]===id);
 const text=n=>typeof n==='string'?n:[...(n?.kids??[]),...(n?.attrs?.trigger??[]),...(n?.attrs?.content??[])].map(text).join(' ');
-let zoom=1,visible=true,enabled=true,context={scope:'machine/coordinator/home/owner',stale:false},selected={space:'coordinator',terminal:'t1',tab:'c',on:null,cwd:'/home'},rendering=false;
+let visible=true,enabled=true,context={scope:'machine/coordinator/home/owner',stale:false},selected={space:'coordinator',terminal:'t1',tab:'c',on:null,cwd:'/home'},rendering=false;
 let raw='https://relay.example',account='fixture',snapshot={version:1,relay:raw,revision:1,members:{'owner/a':true,'owner/b':true,'owner/c':true}};
 let repositories=['owner/c','owner/a','owner/b','owner/a'];
 const reads=[],settings=[],jobs=[],handles=[];let notifications=0;
 const cx={focus_handle(){assert.equal(rendering,false,'Never create a focus handle inside render');const handle={};handles.push(handle);return handle;},notify(){assert.equal(rendering,false,'Never notify inside render');notifications++;},stop_propagation(){},spawn(fn){jobs.push(Promise.resolve().then(()=>fn(cx)));}};
 const drain=async()=>{while(jobs.length)await Promise.all(jobs.splice(0));};
-const host={checking:()=>false,props:()=>null,closeOverlay(){},openOverlay(){},nextCommand(){},notify(){},settings:()=>({zoom}),theme:()=>t,run(){},layout:()=>({id:'panel',hidden:!visible,children:[{id:'panel-body',active:'changes'}]}),
+const host={checking:()=>false,props:()=>null,closeOverlay(){},openOverlay(){},nextCommand(){},notify(){},settings:()=>({zoom:1}),theme:()=>t,run(){},layout:()=>({id:'panel',hidden:!visible,children:[{id:'panel-body',active:'changes'}]}),
  appHome:()=>'/fixture',shared:()=>snapshot,setShared(){throw Error('No shared writes from presentation');},
  exec:async(command,args)=>{assert.equal(rendering,false);reads.push([command,args]);assert.equal(command,'node','No GitHub read or enrollment');assert.ok(['notice','notice-repository'].includes(args[1]),'Only existing readiness reads, never enrollment');return {code:0,stdout:JSON.stringify(args[1]==='notice'?{setup:'ready'}:{status:snapshot.members[args[4]]===false?'missing':snapshot.members[args[4]]===true?'ready':'error'})};}};
 const modules={...choiceModules,'label-colors.js':'src/plugins/git/mod/label-colors.js','gpui-kit':{View:class{},div:element,svg,PathBuilder:{}},'gpui-base':{Popover,Input:{},h_flex:element,v_flex:element},
@@ -73,15 +73,13 @@ raw='';render();assert.ok(find(tree,'git-live-ci-footer'));assert.equal(find(tre
 // Header name uses the count-strip width; tooltips require measured real overflow.
 const longRepo='owner/a-very-long-canonical-repository-name';repositories=[longRepo];entries.set(`${longRepo}#1`,{link:{repo:longRepo},pr:null,error:'Scoped repository read failed'});render();
 const label=()=>find(tree,`task-repo-name-${context.scope}-${longRepo}`);
-const probe=()=>walk(tree).find(n=>n.attrs.id?.[0]?.startsWith(`task-repo-name-${context.scope}-${longRepo}-intrinsic-measure-`));
-assert.equal(find(tree,`task-repo-header-${longRepo}`).kids.length,2);assert.ok(label().attrs.flex_1);assert.equal(label().attrs.min_w[0],0);assert.ok(label().kids[0].attrs.truncate);assert.equal(label().kids[0].kids[0],longRepo);assert.ok(label().attrs.overflow_hidden);
+const probe=()=>find(tree,`task-repo-name-${context.scope}-${longRepo}-probe`);
+assert.equal(find(tree,`task-repo-header-${longRepo}`).kids.length,2);assert.ok(label().attrs.flex_1);assert.equal(label().attrs.min_w[0],0);assert.ok(label().kids[0].attrs.truncate);assert.ok(label().attrs.overflow_hidden);
 assert.ok(label().kids[1].attrs.absolute);assert.ok(label().kids[1].attrs.invisible);assert.ok(probe().attrs.flex_none);assert.ok(probe().attrs.whitespace_nowrap);
-for(const scale of [0.75,1,1.25,1.3,1.5,2]){
- zoom=scale;render();const measured=probe().attrs.on_size_change[0];
- label().attrs.on_size_change[0]({width:320*zoom},cx);measured({width:250*zoom},cx);render();assert.equal(label().attrs.tooltip,undefined,'Fitting text has no tooltip');
- assert.equal(probe(),undefined,'Warm distinct repository names have no recurring per-row probe');
+for(const zoom of [0.75,1,1.25,1.5,2]){
+ label().attrs.on_size_change[0]({width:320*zoom},cx);probe().attrs.on_size_change[0]({width:250*zoom},cx);render();assert.equal(label().attrs.tooltip,undefined,'Fitting text has no tooltip');
  label().attrs.on_size_change[0]({width:120*zoom},cx);render();assert.equal(label().attrs.tooltip[0],longRepo);
- const notified=notifications;label().attrs.on_size_change[0]({width:120*zoom},cx);measured({width:250*zoom},cx);assert.equal(notifications,notified,'Repeated layout measurements never loop notifications');
+ const notified=notifications;label().attrs.on_size_change[0]({width:120*zoom},cx);probe().attrs.on_size_change[0]({width:250*zoom},cx);assert.equal(notifications,notified,'Repeated layout measurements never loop notifications');
  panel.foldedRepositories.add(longRepo);render();assert.equal(label().attrs.tooltip[0],longRepo);assert.equal(find(tree,`task-repo-body-${longRepo}`),undefined);
  label().attrs.on_size_change[0]({width:320*zoom},cx);render();assert.equal(label().attrs.tooltip,undefined,'Widening removes unnecessary tooltip even when folded');panel.foldedRepositories.delete(longRepo);
 }

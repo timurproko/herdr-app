@@ -12,7 +12,7 @@
 - [x] 2.1 Capture settings per render entry and share a four-probe lower-line snapshot budget with a 512-entry font/style/zoom cache; prioritize known visible ordinary rows without withholding rows.
 - [x] 2.2 Retain physical lower-line geometry by element ID across text/typography invalidation, with stale-context/font/zoom callback guards.
 - [x] 2.3 Protect real fully mounted ordinary/coordinator 30/60/100/200-row Open/Closed cold starts using frozen fc0dfde operation/element budgets, settings/probe guards and negative controls.
-- [ ] 2.4 Rerun the opt-in native 30/60/100/200-row benchmark with unchanged native titles, record samples/failures and update render-budget guidance; enforce baseline +2ms at 30/60/100 and completed 200-row checks.
+- [x] 2.4 Rerun the opt-in native 30/60/100/200-row benchmark with unchanged native titles, record samples/failures and update render-budget guidance; enforce baseline +2ms at 30/60/100 and completed 200-row checks.
 
 ## Scope record
 
