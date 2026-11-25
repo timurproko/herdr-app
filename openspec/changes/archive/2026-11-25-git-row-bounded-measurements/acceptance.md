@@ -6,9 +6,9 @@ The maintainer integration decision accepts these scenarios:
 - Complete visible lower-line values and combined strips have no repeat-only tooltip; clipped or compact values, omitted labels, exact timestamps and check details remain recoverable.
 - Titles retain their native truncation, inherited interface font and unconditional full-title tooltip with no title measurement, prefix search or custom suffix.
 - Repository header rendering and main's icon and separator alignment remain unchanged.
-- Lower-line measurements share a bounded cache and four-probe snapshot budget, prioritize known visible ordinary rows and advance through native callbacks without withholding rows.
-- Cold fully mounted 30, 60 and 100-row builds cost no more than the baseline plus two milliseconds, and 200-row builds complete without interruption.
-- Changed-string and typography invalidation preserve allocated lower-line geometry without requiring another native size callback.
+- Tooltip decoration adds no native elements, intrinsic probes, width cache or measurement scheduler and preserves main's existing fit facts and stale guards.
+- Cold fully mounted 30 and 60-row ordinary and coordinator builds cost no more than current main plus two milliseconds; larger coordinator inventories retain main's mounted row and item caps.
+- Main's mounted reveal, fades, quiet rate-limit handling and batched reads remain intact, with both lower-line dots and status icons retaining main's one-pixel offsets.
 
 ```openspec-delivery
 {
@@ -19,18 +19,18 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-25-git-row-bounded-measurements/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-25-git-row-bounded-measurements/acceptance.md",
   "finalizedDate": "2026-11-25",
-  "specBaseSha": "b69c8c875e278f89ac3df77ee36bd923354d0ac8",
+  "specBaseSha": "f3fe341a3d1bf9fdeffea66c13adca91f7549e9a",
   "acceptanceScenarios": [
     "Complete visible lower-line values and combined strips have no repeat-only tooltip; clipped or compact values, omitted labels, exact timestamps and check details remain recoverable.",
     "Titles retain their native truncation, inherited interface font and unconditional full-title tooltip with no title measurement, prefix search or custom suffix.",
     "Repository header rendering and main's icon and separator alignment remain unchanged.",
-    "Lower-line measurements share a bounded cache and four-probe snapshot budget, prioritize known visible ordinary rows and advance through native callbacks without withholding rows.",
-    "Cold fully mounted 30, 60 and 100-row builds cost no more than the baseline plus two milliseconds, and 200-row builds complete without interruption.",
-    "Changed-string and typography invalidation preserve allocated lower-line geometry without requiring another native size callback."
+    "Tooltip decoration adds no native elements, intrinsic probes, width cache or measurement scheduler and preserves main's existing fit facts and stale guards.",
+    "Cold fully mounted 30 and 60-row ordinary and coordinator builds cost no more than current main plus two milliseconds; larger coordinator inventories retain main's mounted row and item caps.",
+    "Main's mounted reveal, fades, quiet rate-limit handling and batched reads remain intact, with both lower-line dots and status icons retaining main's one-pixel offsets."
   ],
-  "archiveDigest": "6e94498f0fcc5f91f2721b1e0ff94928fa9bdce40f3777d165f9cded3f7861c4",
-  "specDigest": "7a0b34b51a396c31604b0a2f60271afc9bcc0525c46f6701c9d76811297edd32",
-  "tasksDigest": "befc0e4841cc63a0bb75aa0cd0c03db862617a43efa7e4a69bf4905128896329",
+  "archiveDigest": "88c0416ebfd8f9c4a5a16897f3d6044cf2cb49b1b11092222901ecce6e0e73ff",
+  "specDigest": "a59586eadd89678ca65e79c472498bb8d221357479288bb0c9dcb1c3963b03c0",
+  "tasksDigest": "d54d359884507a1927bdcd2e5951e73150b5cb37c8daf47e631b0b9784fae040",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []
 }
