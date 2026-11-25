@@ -785,6 +785,7 @@ export default class Settings extends View {
       onOpen:(open,cx)=>{this.settingsHostOpen=open;cx.notify();},
       onSelect:(machine,cx)=>{
         if(busy||this.profileEdit||this.terminalEdit||this.permissionApplying||(this.section==='plugins'&&this.pluginFixing)||!this.machineSection())return;
+        if(machine!==this.settingsMachine)this.pluginFixError={};
         cancelProfileDrag(this);cancelTerminalDrag(this);this.settingsMachine=machine;this.settingsHostOpen=false;
         this.profileSerial++;this.profileLoading=false;this.profileError=null;this.profileDelete=null;this.profileShells=[];this.profileShellOpen=false;
         this.profileItems=cachedProfiles(machine);if(!this.profileItems.length)this.profileItems=composeProfiles(machine,[]);
