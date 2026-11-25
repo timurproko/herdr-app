@@ -50,6 +50,22 @@ fades, keyboard navigation, Usage entry, Custom Settings/pickers, inline rename 
 last-tab-aware close, plus 0.1.17's dynamically discovered theme choices. Nothing
 opts in automatically. See [review evidence](../../../docs/HERDR-0.1.17-NATIVE-PATCHES.md).
 
+## Reviewed 0.1.18 palette stop-gap
+
+The separate `main-0.1.18.js` retains the existing Custom renderer and adds native
+0.1.18 manifest palette discovery, Mod grouping, validation/canonical deduplication,
+object/index hotkey matching and explicit clone-source preservation. Usage follows
+its existing plugin preference; explicit rename/close targets bypass untargeted
+Custom actions. Non-Custom layouts remain native. Both the raw LF source and
+independently verified embedded Windows CRLF original have exact registry selectors.
+The 0.1.17 payload is unchanged. See the [source and read-only installed-byte
+review](../../../docs/HERDR-0.1.18-PALETTE-REVIEW.md).
+
+This is temporary pending the owned palette. It adds no installer hooks, workers,
+keybindings or opt-ins, and must later be retired through guarded current-original
+restoration without touching feedback. The person receives it through ordinary
+customization Update; no deployment or restart is part of the source review.
+
 ### Feedback
 
 `feedback/provenance.json` records pinned v0.1.16/v0.1.17 commits and raw LF and

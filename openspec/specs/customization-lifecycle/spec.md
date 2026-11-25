@@ -487,7 +487,7 @@ Reviewed palette and feedback originals MUST retain actual stock bytes, includin
 - **AND** original backup bytes, ownership checks and safe restoration remain available
 
 ### Requirement: Reviewed per-original Custom palette behavior
-For reviewed 0.1.16 and 0.1.17 stock, the opted-in Custom palette SHALL retain its styling, fixed headings, scroll fades, keyboard navigation, enabled Usage entry, Custom Settings/picker routing, inline rename and last-tab-aware close actions. The 0.1.17 replacement SHALL also retain native dynamic theme discovery and light/dark/layout filtering. Other layouts SHALL keep native presentation and command routing.
+For reviewed 0.1.16, 0.1.17 and 0.1.18 stock, the opted-in Custom palette SHALL retain its styling, fixed headings, scroll fades, keyboard navigation, enabled Usage entry, Custom Settings/picker routing, inline rename and last-tab-aware close actions. The 0.1.17 and 0.1.18 replacements SHALL retain native dynamic theme discovery and light/dark/layout filtering. Other layouts SHALL keep native presentation and command routing.
 
 #### Scenario: Dynamic 0.1.17 theme choices
 - **WHEN** the reviewed 0.1.17 palette is used with available themes, a light/dark setting and an active layout
@@ -510,6 +510,28 @@ For reviewed 0.1.16 and 0.1.17 stock, the opted-in Custom palette SHALL retain i
 - **THEN** that patch is skipped with a clear advisory without blocking otherwise successful deployment, startup or update
 - **AND** its target, helpers, opt-in and original backup remain unchanged
 - **AND** missing opt-ins never enable a patch automatically, while personal conflicts, corrupt records and concurrent writes remain failures
+
+#### Scenario: Native 0.1.18 manifest contributions
+- **WHEN** reviewed 0.1.18 stock is replaced and installed mods provide palette metadata
+- **THEN** the palette retains native asynchronous manifest discovery, the Mod group, required-argument and target validation, canonical deduplication and object or index-shorthand hotkey matching
+- **AND** malformed or unreadable contributions, missing mod entrypoints and invalid foreign mod commands are skipped with native semantics
+- **AND** dynamic themes, entry IDs, history and explicit clone arguments retain their native behavior
+
+#### Scenario: Custom 0.1.18 presentation and Usage policy
+- **WHEN** the 0.1.18 palette opens in Custom
+- **THEN** it retains the live theme and selection tint, shared search/clear/empty presentation, fixed 408px skin and 57px search header, pinned group or result count, overflow fade and keyboard/scroll navigation
+- **AND** searching and clearing reset selection, scroll and heading/fade state
+- **AND** the Usage entry is available only while its plugin is enabled, without deleting stored preferences when disabled
+
+#### Scenario: Explicit 0.1.18 command arguments
+- **WHEN** a manifest palette entry supplies explicit tab or space rename, pane/tab/space close, or clone arguments
+- **THEN** activation preserves those arguments instead of replacing them with untargeted Custom handlers or default clone sources
+- **AND** untargeted built-in entries retain Custom inline rename and last-tab-aware close routing, and Settings, picker, machine and worktree destinations retain Custom routing
+
+#### Scenario: Existing 0.1.17 support after the rebase
+- **WHEN** the installed native palette matches either reviewed 0.1.17 newline format
+- **THEN** it still selects the unchanged 0.1.17 replacement rather than the new 0.1.18 variant
+- **AND** capable newer hosts are not refused solely for lacking review-list membership, while unknown native palette bytes still fail closed
 
 ### Requirement: Quiet deferred peer catch-up through explicit Update
 An offline skip SHALL retain a host-local deferred peer fact outside portable preferences. Deferred work SHALL NOT imply published-main availability, a warning or a badge. After a successful main check it SHALL permit the existing explicit Update action even when the desktop is current, subject to all existing failure, lock and unknown-outcome guards. Checks and reconnects SHALL NOT deploy or probe peers.

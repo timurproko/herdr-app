@@ -6,6 +6,7 @@ import { appHome } from '../host.js';
 import { currentSpaceColor } from '../space-color-state.js';
 import { MOD } from './where.js';
 import { WebSocket } from 'websocket';
+export const pluginMod = MOD;
 
 // Herdr, through the one facade every mod uses.
 export { exec, hc, window, spaces, panes, terminals, machines, shared, setShared, appHome, readTextFile, writeTextFile, notify, layout, run, checking } from '../host.js';

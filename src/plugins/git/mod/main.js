@@ -747,11 +747,9 @@ export default class Changes extends View {
     return this.taskRing(t, task.done, task.total);
   }
 
-  // Centre optically on the 11px lowercase text, not the line box/icons.
-  // Relative positioning keeps the 3px layout slot and 6px gaps unchanged;
-  // the 1.5 logical-pixel drop scales with native app zoom.
+  // Both lower lines share the same centred dot, without an optical drop.
   metaSeparator(t) {
-    return div().size(3).flex_none().relative().top(1.5).rounded_full().bg(t.muted);
+    return div().size(3).flex_none().rounded_full().bg(t.muted);
   }
 
   // One settings bridge read and four intrinsic probes for the entire snapshot,
