@@ -343,7 +343,7 @@ function actionForm(view, t, plugin, item) {
   return v_flex().id(id).w_full().gap(8)
     .when(state?.unavailable, el => el.child(description(t, 'This host does not support protected input. Update the app or use headless setup.')))
     .when(enabled || state?.busy, el => el.children((form.fields ?? []).map(def => actionInput(t, {
-      id: `${id}-${def.key}`, label: def.label, state: state.fields[def.key], enabled,
+      id: `${id}-${def.key}`, label: def.label, widget: Input.new(state.fields[def.key]), enabled,
     }))))
     .when(Boolean(state?.result?.detail), el => el.child(description(t, state.result.detail)))
     .child(h_flex().w_full().gap(8).items_center().children((form.actions ?? []).filter(action => action.when?.(item) !== false).map(action =>
@@ -377,8 +377,10 @@ export function prerequisiteContext(plugin, alive = () => true, machine = null) 
 }
 
 function viewContext(view, plugin, alive = () => !view.pluginClosed, machine = view.settingsMachine ?? null) {
-  return { ...prerequisiteContext(plugin, alive, machine), session: view.pluginSessions?.[plugin.id],
-    result: id => view.pluginChecks?.[plugin.id]?.items?.find(item => item.id === id) ?? null };
+  const session = view.pluginSessions?.[plugin.id];
+  const current = () => alive() && (view.settingsMachine ?? null) === machine && view.pluginSessions?.[plugin.id] === session;
+  return { ...prerequisiteContext(plugin, current, machine), session,
+    result: id => current() ? view.pluginChecks?.[plugin.id]?.items?.find(item => item.id === id) ?? null : null };
 }
 
 // Requirements are one check group; each section is its own, so a slow list never holds
@@ -432,7 +434,8 @@ export function reloadPlugins(view, cx, only = null, checkingTarget = null) {
 
 // Runs fixes one at a time (stopping at the first failure), then re-checks the plugin.
 function runFixes(view, cx, plugin, items, confirmed = false) {
-  const machine = view.settingsMachine ?? null;
+  const machine = view.settingsMachine ?? null, session = view.pluginSessions?.[plugin.id];
+  const current = () => !view.pluginClosed && (view.settingsMachine ?? null) === machine && view.pluginSessions?.[plugin.id] === session;
   if (view.pluginClosed || view.pluginFixing || !items.length || items.some(item=>view.pluginSettling?.[`${plugin.id}:${item.id}`]) || (items.some(item=>item.fix.confirm||item.fix.requiresEnabled)&&!pluginEnabled(plugin))) return;
   if(!confirmed && items.length===1 && items[0].fix.confirm) {
     view.pluginConfirm={plugin:plugin.id,item:items[0]};cx.notify();return;
@@ -446,11 +449,15 @@ function runFixes(view, cx, plugin, items, confirmed = false) {
       if((item.fix.confirm||item.fix.requiresEnabled)&&!pluginEnabled(plugin))break;
       (view.pluginSettling ??= {})[key] = true;
       try {
-        if ((view.settingsMachine??null)!==machine) break;
-        await item.fix.run(viewContext(view,plugin,()=>!view.pluginClosed&&(view.settingsMachine??null)===machine&&view.pluginFixing===key,machine));
-      } catch (e) { view.pluginFixError[key] = String(e?.message ?? e).slice(0, 300); break; }
+        if (!current()) break;
+        await item.fix.run(viewContext(view,plugin,()=>current()&&view.pluginFixing===key,machine));
+      } catch (e) { if (current()) view.pluginFixError[key] = String(e?.message ?? e).slice(0, 300); break; }
     }
-    view.pluginFixing = null;if(view.pluginClosed)return;
+    view.pluginFixing = null;
+    if (!current()) {
+      for (const item of items) delete view.pluginSettling?.[`${plugin.id}:${item.id}`];
+      if (!view.pluginClosed) cx.notify(); return;
+    }
     for(const def of plugin.settings??[])if(def.type==='text'){
       const input=view.pluginInputs[`${plugin.id}-${def.key}`];if(input&&!input.focused)input.state.set_value(pluginSetting(plugin,def.key));
     }
@@ -548,14 +555,16 @@ function requirements(view, t, plugin) {
 // `selection` to offer. One change at a time, like fixes; what the plugin refuses is shown
 // as the section's detail.
 function runListAction(view, cx, plugin, item, action, everything = false) {
-  const key = sectionKey(plugin, item), machine = view.settingsMachine ?? null;
+  const key = sectionKey(plugin, item), machine = view.settingsMachine ?? null, session = view.pluginSessions?.[plugin.id];
+  const current = () => !view.pluginClosed && pluginEnabled(plugin) && (view.settingsMachine ?? null) === machine && view.pluginSessions?.[plugin.id] === session;
   if (view.pluginFixing || view.pluginSettling?.[key] || view.pluginClosed || !pluginEnabled(plugin)) return;
   view.pluginFixError[key] = null; view.pluginFixing = key;
   cx.spawn(async (cx) => {
-    try { await action(viewContext(view, plugin, () => !view.pluginClosed && (view.settingsMachine??null)===machine && view.pluginFixing === key, machine)); }
-    catch (e) { view.pluginFixError[key] = String(e?.message ?? e).slice(0, 600); }
+    try { if (current()) await action(viewContext(view, plugin, () => current() && view.pluginFixing === key, machine)); }
+    catch (e) { if (current()) view.pluginFixError[key] = String(e?.message ?? e).slice(0, 600); }
+    view.pluginFixing = null;
+    if (!current()) { delete view.pluginSettling?.[key]; if (!view.pluginClosed) cx.notify(); return; }
     (view.pluginSettling ??= {})[key] = true;
-    view.pluginFixing = null; if (view.pluginClosed) return;
     reloadPlugins(view, cx, plugin.id, everything || item.list?.recheck === 'plugin' ? null : item.id); cx.notify();
   });
   cx.notify();
@@ -909,6 +918,7 @@ function card(view, t, plugin) {
       .child(view.toggle(t, `st-plugin-${plugin.id}-enabled`, on, (_e, cx) => {
         view.pluginConfirm=null;
         clearPluginForms(view, plugin.id);
+        if (view.pluginSessions) view.pluginSessions[plugin.id] = {};
         setPluginEnabled(plugin, !on);
         if (!on) reloadPlugins(view, cx, plugin.id);
         cx.notify();

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';
 import {spawn,execFileSync} from 'node:child_process';
 import {build,project} from '../../tools/build.mjs';import {deploy} from '../../tools/deploy.mjs';
+import {temporaryMod} from '../../tools/temporary-mod.mjs';
 if(process.platform!=='win32'||!process.argv.includes('--run'))throw Error('Explicit Windows opt-in required: --run --output <outside-checkout-directory>');
 const at=process.argv.indexOf('--output');assert.ok(at>=0);
 const output=path.resolve(process.argv[at+1]);assert.ok(path.relative(project,output).startsWith('..'));
@@ -23,6 +24,7 @@ const version=execFileSync(appBin,['--version'],{encoding:'utf8'}).match(/\d+\.\
 put('settings.json',{core:coreBin,telemetry:false,zoom:1});put('update-notes.json',{last_run:version,presented:[version]});
 put('shared.json',{layout:'TrelloFixture','frame.welcomed':'skipped'});
 put('layouts/TrelloFixture.json',{id:'root',type:'row',theme:'Custom',titlebar:'system',children:[{id:'body',type:'block',content:{mod:'custom-trello-proof'}}]});
+const dispose=temporaryMod(home,'custom-trello-proof');
 const dir=path.join(home,'mods/custom-trello-proof');fs.cpSync(path.join(home,'mods/custom-settings'),dir,{recursive:true});
 put('mods/custom-trello-proof/mod.json',{place:'none'});
 fs.renameSync(path.join(dir,'host.js'),path.join(dir,'native-host.js'));fs.renameSync(path.join(dir,'main.js'),path.join(dir,'settings-view.js'));
@@ -78,6 +80,7 @@ try {
  }
  result.status=JSON.parse(app(['status']));
 } finally {
+ try {
  try{app(['do','app.quit']);}catch{}await sleep(700);if(child.exitCode===null){child.kill();await sleep(500);}result.stopped=child.exitCode!==null||child.signalCode!==null;
  assert.ok(session.startsWith('test-trello-'));
  try{execFileSync(coreBin,['server','stop'],{env,timeout:10000,stdio:'pipe'});result.coreStop='acknowledged';}catch(error){result.coreStop='stop requested; '+(error.status??'unavailable');}
@@ -87,5 +90,6 @@ try {
  result.remainingOwnedWorkers=Number(execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',cleanup],{encoding:'utf8',timeout:15000} ).trim());
  assert.equal(result.remainingOwnedWorkers,0,'No owned bridge/worker may survive the proof');
  fs.closeSync(log);result.log=path.join(root,'app.log');fs.writeFileSync(path.join(output,'native-proof.json'),JSON.stringify(result,null,2));assert.equal(result.stopped,true);
+ } finally {dispose();}
 }
 console.log(JSON.stringify(result,null,2));
