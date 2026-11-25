@@ -764,11 +764,9 @@ export default class Changes extends View {
     return this.taskRing(t, task.done, task.total);
   }
 
-  // Centre optically on the 11px lowercase text, not the line box/icons.
-  // Relative positioning keeps the 3px layout slot and 6px gaps unchanged;
-  // the 1.5 logical-pixel drop scales with native app zoom.
+  // Both lower lines share the same centred dot, without an optical drop.
   metaSeparator(t) {
-    return div().size(3).flex_none().relative().top(1.5).rounded_full().bg(t.muted);
+    return div().size(3).flex_none().rounded_full().bg(t.muted);
   }
 
   labelPill(t, label, id) {
@@ -913,7 +911,7 @@ export default class Changes extends View {
     byline.line.tooltip(pr.meta ?? '');
     const meta = this.pullLine(t, `${prefix}pr-meta-${rowId}`, [
       ...(pr.tasks ? [{kind:'tasks', measureKey:pr.tasks.label, compactKey:`${pr.tasks.done}/${pr.tasks.total}`, compact:true, render:(short, probe) => h_flex().id(groupId('tasks', probe)).min_w(0).h(18).gap(4).items_center()
-        .tooltip(pr.tasks.label).child((probe ? div().size(U.tinyIcon) : this.taskIcon(t, pr.tasks)).flex_none())
+        .tooltip(pr.tasks.label).child((probe ? div().size(U.tinyIcon) : this.taskIcon(t, pr.tasks)).id(groupId('task-icon', probe)).flex_none().relative().top(1))
         .child(div().flex_none().whitespace_nowrap().child(short ? `${pr.tasks.done}/${pr.tasks.total}` : pr.tasks.label))}] : []),
       ...(pr.checks ? [{kind:'checks', measureKey:pr.checks.label, render:(_short, probe) => {
         const color = pr.checks.state === 'success' ? t.ansi2 : pr.checks.state === 'failure' ? t.ansi1 : t.ansi3;
@@ -921,7 +919,7 @@ export default class Changes extends View {
           : pr.checks.state === 'failure' ? svg('mods/custom-workspace-chrome/x.svg').size(U.tinyIcon).text_color(color)
           : div().size(8).rounded_full().bg(color);
         return h_flex().id(groupId('checks', probe)).h(18).gap(4).items_center().tooltip(pr.checks.label)
-          .child(div().id(groupId('check-icon', probe)).size(U.tinyIcon).flex_none().flex().items_center().justify_center().child(icon.flex_none()))
+          .child(div().id(groupId('check-icon', probe)).size(U.tinyIcon).flex_none().relative().top(1).flex().items_center().justify_center().child(icon.flex_none()))
           .child(div().flex_none().whitespace_nowrap().underline().child(pr.checks.label));
       }}] : []),
       ...(pr.review ? [{kind:'review', measureKey:pr.review, render:(_short, probe) => text('review', pr.review === 'approved' ? 'Approved' : 'Changes requested',

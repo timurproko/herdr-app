@@ -363,12 +363,13 @@ Effective panel backgrounds below weighted RGB lightness 0.5 use dark rules, oth
 use light; unavailable/invalid backgrounds default dark. This classification and
 invalid label colours are covered separately from the upstream formula.
 
-The same fixture checks 3px muted round separators,
-optically lowered 1.5 logical pixels from the parent line-box centre with equal 6px gaps,
-in bylines and between left-status groups, never before the right-anchored label group.
-Zoom cases from 75% to 200%, including 130%, retain
-the same logical offset; comparison with the old separator tree protects neighbouring
-text, icons, pills and row geometry. Missing-group combinations have no leading/trailing
+The same fixture checks 3px muted round separators, centred without an optical
+drop and with equal 6px gaps in bylines and between left-status groups, never before
+the right-anchored label group. Zoom cases from 75% to 200%, including 130%, retain
+the same placement; comparison with the old separator tree protects neighbouring
+text, icons, pills and row geometry. The geometry suite also checks equal separator
+offsets on both lower lines and a one-logical-pixel downward paint offset for every
+task-progress and checks-state icon, including ordinary/coordinator and ghost rows. Missing-group combinations have no leading/trailing
 or orphan painted dots; only present groups and separators occupy horizontal space.
 The status line itself remains mounted at 18px even when empty.
 Pagination/fleet fixtures also assert labels
