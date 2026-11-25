@@ -944,7 +944,10 @@ export default class Changes extends View {
     }
     const zoom=settings().zoom>0?settings().zoom:1;
     const scale=metrics.zoom?zoom/metrics.zoom:1;
-    if(metrics.zoom&&metrics.zoom!==zoom)metrics.awaitZoom=true;
+    if(metrics.zoom&&metrics.zoom!==zoom){
+      metrics.awaitZoom=true;
+      metrics.measurement=this.ordinaryMeasureSequence=(this.ordinaryMeasureSequence??0)+1;
+    }
     // This physical frame survives tab/context changes. Its unchanged native
     // dimensions will not be emitted again for a newly created tab state.
     metrics.setMetrics({offset:metrics.offset*scale,content:metrics.content*scale,
@@ -1130,6 +1133,7 @@ export default class Changes extends View {
     const zoom=settings().zoom||1;
     if(window.zoom && window.zoom!==zoom) {
       window.metrics.awaitZoom=true;
+      window.zoomSequence=(window.zoomSequence??0)+1;
       // Retained native scrolling is logical-pixel based; paired event bounds
       // are window pixels. Rebase cached metrics before new zoom callbacks.
       window.metrics.setMetrics({offset:window.offset*zoom,content:window.contentHeight*zoom});
@@ -1244,7 +1248,7 @@ export default class Changes extends View {
       const ids=new Set(repositories.map(repo=>`task-repo-name-${scope}-${repo}`));
       for(const id of this.repositoryNameSizes.keys())if(!ids.has(id))this.repositoryNameSizes.delete(id);
     }
-    const paging=this.taskSections(sections,scope), taskWindow=paging.window, taskZoom=taskWindow.zoom;
+    const paging=this.taskSections(sections,scope), taskWindow=paging.window, taskZoom=taskWindow.zoom, taskZoomSequence=taskWindow.zoomSequence??0;
     taskWindow.renderSerial=(taskWindow.renderSerial??0)+1;
     this.applyTaskAnchor(taskWindow,scope,cx);
     this.scheduleTaskLayout(taskWindow,scope,cx);
@@ -1279,8 +1283,8 @@ export default class Changes extends View {
           .on_mouse_move((event,cx)=>this.taskViewportMotion(taskWindow,scope,event,'move',cx))
           .child(v_flex().id(`task-pulls-list-${scope}-${this.view}${taskWindow.chunk?`-${taskWindow.chunk}`:''}`).flex_1().min_h(0).overflow_y_scrollbar()
             .when(Boolean(taskWindow.handle),el=>el.track_scroll(taskWindow.handle))
-            .child(v_flex().id(`task-pulls-content-${taskWindow.measurement}-${taskWindow.zoom}`).w_full().flex_none().py(4).px(LIST_INSET)
-              .on_size_change((size,cx)=>this.taskMeasure(taskWindow,scope,'content',size,cx,taskZoom))
+            .child(v_flex().id(`task-pulls-content-${taskWindow.measurement}-${taskWindow.zoom}-${taskZoomSequence}`).w_full().flex_none().py(4).px(LIST_INSET)
+              .on_size_change((size,cx)=>{if((taskWindow.zoomSequence??0)===taskZoomSequence)this.taskMeasure(taskWindow,scope,'content',size,cx,taskZoom);})
               .on_scroll_wheel(event=>taskWindow.metrics.contentMotion(event,'wheel'))
               .on_mouse_move(event=>taskWindow.metrics.contentMotion(event,'move'))
               .children(paging.sections.map(section => this.renderPart(`repository-section:${section.repo}`,()=>this.repositorySection(t, section, scope,taskWindow))))

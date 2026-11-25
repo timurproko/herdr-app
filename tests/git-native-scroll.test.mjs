@@ -77,6 +77,38 @@ for(const target of [1000,1840]){
  const metrics=panel.ordinaryScroll.get('open');assert.equal(metrics.offset,2000);panel.view='closed';tree=f.render(true);assert.equal(panel.ordinaryScroll.get('closed').handle,undefined,'Render never allocates a handle');
  panel.view='open';tree=f.render(true);assert.equal(find(tree,'pulls-list-open').attrs.track_scroll[0],handle);
 }
+// Returning to a historical zoom must renew content measurement identity:
+// native sizes are cached by ID, even after another zoom was laid out.
+for(const ordinary of [true,false]) {
+ const f=await fixture(30),{panel,cx}=f,kind=ordinary?'ordinary':'coordinator';
+ if(ordinary){panel.context='ordinary';panel.pulls.open=f.rows.map(({key,repo,...row})=>row);}
+ const content=ordinary?ordinaryContent:taskContent,frame=tree=>ordinary?find(tree,'pulls-scroll-frame'):f.frame(tree);
+ let tree=f.render(ordinary);const height=ordinary?2400:taskWindow(panel).contentHeight;
+ f.size(frame(tree),400);f.size(content(tree),height);tree=f.render(ordinary);
+ const original=content(tree),originalId=original.attrs.id[0],stale=original.attrs.on_size_change[0];
+ const metrics=ordinary?panel.ordinaryScroll.get('open'):taskWindow(panel).metrics;
+ const handle=nodes(tree).find(node=>node.attrs.track_scroll).attrs.track_scroll[0];handle.viewport=400;handle.content=height;
+ const ids=new Set([originalId]);
+ for(const zoom of [1.3,1]) {
+  f.h.setZoom(zoom);tree=f.render(ordinary);handle.viewport=400/zoom;handle.content=height;
+  assert.equal(f.size(frame(tree),400),false,`${kind}: unchanged physical frame emits no callback`);
+  const fresh=f.size(content(tree),height*zoom);tree=f.render(ordinary);
+  if(zoom===1) {
+   assert.equal(f.size(original,height),false,'The historical ID/dimensions really suppress a returning native callback');
+   const before=f.notifications;handle.move(1e6);tree=f.render(ordinary);
+   assert.equal(f.notifications,before,'Handle-only scrolling supplies no fabricated JS events');
+   assert.equal(metrics.offset,handle.y,`${kind}: native bottom is sampled after 100 -> 130 -> 100`);
+   const list=ordinary?'pulls-list':'task-pulls-list';
+   assert.ok(find(tree,`${list}-more-above`));assert.equal(find(tree,`${list}-more-below`),undefined);
+   assert.equal(f.size(content(tree),height),false,'Later renders need no repeat size notification');
+   stale({width:390,height:9999},cx);assert.equal(metrics.content,height,`${kind}: prior 100% callback cannot poison the new 100% owner`);
+   handle.move(0);tree=f.render(ordinary);assert.equal(metrics.offset,0);assert.equal(find(tree,`${list}-more-above`),undefined);assert.ok(find(tree,`${list}-more-below`));
+  }
+  assert.equal(fresh,true,`${kind}: every zoom change has a fresh native content identity`);
+  assert.equal(ids.has(content(tree).attrs.id[0]),false);ids.add(content(tree).attrs.id[0]);assert.equal(metrics.awaitZoom,false);
+ }
+ assert.equal(f.handles.length,1);assert.equal(handle.released,undefined,'Zoom retains the native scroll handle');
+}
 // A robot's already-verified same-repository destination can live in another
 // worktree. Exercise the real click -> retained refresh -> root reply path,
 // rather than assigning a new context or manufacturing a pin-swap snapshot.
