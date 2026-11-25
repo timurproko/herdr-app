@@ -402,10 +402,14 @@ spacing. A blank 24px robot slot keeps titles' truncation boundaries identical
 with or without a related agent. Robot slots, label pills and the repository headers'
 24px chevron slots end 3 logical pixels inside their own row's highlight edge,
 matching Spaces' Crew pill (8px row padding minus its 5px negative trailing margin).
-Git keeps its highlight 5px inside the panel, versus Spaces' 8px sidebar inset;
-its controls therefore end 8px from the panel, not Spaces' 11px. At 100% zoom,
-Git's highlight-to-control gap changes from 6px to 3px; at 130%, from 7.8px to
-3.9px, matching Spaces' unchanged 3px / 3.9px gaps. Robot and chevron glyphs
+Git and Spaces highlights both sit 8 logical pixels inside their panel/sidebar
+on the left and right, with the same 6px corner radius. Git's state icon starts
+8px inside its highlight, matching Spaces' highlight-to-badge inset; trailing
+controls end 3px inside the highlight, or 11px from the panel edge in both views.
+Git repository headers, notices, Loading/empty states and enrollment cards share
+that outer content column, including pinned, scrolling and ghost presentations.
+The outer gutter is 8px at 100% zoom and 10.4px at 130%; the inner trailing gap
+stays 3px / 3.9px respectively. Robot and chevron glyphs
 share a centre line without changing their sizes or hit targets. The state icon also stays fixed. The byline flows
 naturally from the left: **number · author · opened 4 hours ago**, with constant
 gaps and unused space at the end. The metadata line keeps **tasks · checks · review
