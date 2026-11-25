@@ -94,6 +94,8 @@ Shown Open/Draft PRs and uncovered pending/unknown checks SHALL refresh state an
 - **THEN** its reply is rejected by the captured selection generation
 - **AND** moving only the native viewport within an unchanged revealed selection does not invalidate that selection or change its normal cadence
 
+## ADDED Requirements
+
 ### Requirement: Shared Git scroll edge hints
 Ordinary and coordinator Git lists SHALL reuse Spaces/Agents passive fade rendering and a pure scroll-metrics projection. At render, fades SHALL use the native scroll handle's actual offset, viewport and content. Fades SHALL disappear at their respective ends and never intercept input. Host-consumed scrollbar movement MAY delay their repaint until another event/render; this limitation SHALL be stated, not hidden by a guessed scroll observer.
 
