@@ -1,0 +1,17 @@
+# Copy to .github/workflows/review-labels.yml; keep delivery/test callers free of label events.
+name: Review labels
+
+on:
+  pull_request_target:
+    types: [labeled]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  review-labels:
+    uses: timurproko/MyWorkflows/.github/workflows/review-labels.yml@main
+    secrets:
+      app_id: ${{ vars.DELIVERY_BOT_APP_ID }}
+      app_private_key: ${{ secrets.DELIVERY_BOT_PRIVATE_KEY }}
