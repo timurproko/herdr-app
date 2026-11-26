@@ -21,18 +21,23 @@ export class PinSwap {
   }
   start(snapshot,clicked,event,binding = {},cx = null) {
     this.cancel();
-    const {pinned,rows,context,state} = snapshot ?? {};
+    const {pinned,rows} = snapshot ?? {};
     const pointer = this.pointer, bounds = this.bodyBounds, size = this.bodySize;
-    if (!pinned || pinned.number === clicked.number || !rows?.some(pr=>pr.number === clicked.number)
+    if (pinned?.number === clicked.number || !rows?.some(pr=>pr.number === clicked.number)
       || !bounds || !(size?.width > 0) || !(bounds.width > 0)) return false;
-    const hoveredRow = pointer?.number === clicked.number && inside(event?.position,pointer.bounds);
+    const hoveredRow = !snapshot.arrival && pointer?.number === clicked.number && inside(event?.position,pointer.bounds);
     if (!event?.bounds && !hoveredRow) return false;
     const scale = bounds.width / size.width;
-    // Robot top = row top + 6px padding - 2px inset.
-    const from = event?.bounds ? (event.bounds.y - bounds.y) / scale - 4
-      : (pointer.bounds.y - bounds.y) / scale;
-    const oldHeight = this.sizes.get(pinned.number)?.height, newHeight = this.sizes.get(clicked.number)?.height;
-    const before = rows.filter(pr=>pr.number !== pinned.number), after = rows.filter(pr=>pr.number !== clicked.number);
+    // The robot hangs 2px above the title; chips sit on the title's 6px
+    // inset. Prefer measured row bounds; never apply robot geometry to a chip.
+    const from = hoveredRow ? (pointer.bounds.y - bounds.y) / scale
+      : (event.bounds.y - bounds.y) / scale - (binding.controlOffset??4);
+    if(!Number.isFinite(from))return false;
+    if(snapshot.arrival) {
+      return this.wait({...snapshot,rows:[...rows],pinned:null},clicked,binding,[{pr:clicked,from,to:4}],cx);
+    }
+    const oldHeight = pinned?this.sizes.get(pinned.number)?.height:0, newHeight = this.sizes.get(clicked.number)?.height;
+    const before = pinned?rows.filter(pr=>pr.number !== pinned.number):rows, after = rows.filter(pr=>pr.number !== clicked.number);
     const prefix = (list,number) => {
       let y = 0;
       for (const pr of list) {
@@ -43,20 +48,25 @@ export class PinSwap {
       }
       return NaN;
     };
-    const scroll = oldHeight + 13 + prefix(before,clicked.number) - from;
-    const returned = newHeight + 13 + prefix(after,pinned.number) - scroll;
-    if (!(oldHeight > 0) || !(newHeight > 0) || !Number.isFinite(returned) || !Number.isFinite(from)) return false;
-    const cards = [{pr:clicked,from,to:4},{pr:pinned,from:4,to:returned}];
+    const origin=pinned?oldHeight+13:4;
+    const scroll = origin + prefix(before,clicked.number) - from;
+    const returned = pinned?newHeight + 13 + prefix(after,pinned.number) - scroll:null;
+    if ((pinned && !(oldHeight > 0)) || !(newHeight > 0) || !Number.isFinite(scroll) || (pinned && !Number.isFinite(returned))) return false;
+    const cards = [{pr:clicked,from,to:4},...(pinned?[{pr:pinned,from:4,to:returned}]:[])];
     // Intermediate rows retain their identities too; deep-list clicks or
     // unequal card heights must not leave them jumping at the final commit.
     for (const pr of before) {
       if (pr.number === clicked.number) continue;
-      const y = oldHeight + 13 + prefix(before,pr.number) - scroll;
+      const y = origin + prefix(before,pr.number) - scroll;
       const to = newHeight + 13 + prefix(after,pr.number) - scroll;
       if (Number.isFinite(y) && Number.isFinite(to) && Math.abs(y-to) > 0.5) cards.push({pr,from:y,to});
     }
+    return this.wait({...snapshot,rows:[...rows]},clicked,binding,cards,cx);
+  }
+  wait(snapshot,clicked,binding,cards,cx) {
+    const {context,state}=snapshot;
     const swap = this.current = {id:++this.serial,context,state,number:clicked.number,phase:'waiting',
-      snapshot:{...snapshot,rows:[...rows]},...binding,cards};
+      snapshot,...binding,cards};
     if (cx) this.waitTimer = cx.timer.after(3000,cx=>{
       if (this.current !== swap) return;
       this.cancel(); cx.notify();

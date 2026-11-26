@@ -9,7 +9,9 @@ let selected={space:'coordinator',cwd:'/not-a-repository',on:null,terminal:'t1'}
 const waiting=[],settingsOpened=[],noticeModes={};
 let holdStatus=false,releaseStatus,failStatus=false,now=Date.now();
 let checkFacts=null;
-let assignedLabels=[{name:'🤖 Under review',color:'840479'}];
+// Keep this legacy-robot lifecycle fixture unmanaged; role-labelled stage
+// navigation is covered through the real AgentLinks/aggregate in pr-agent-links.
+let assignedLabels=[{name:'fixture label',color:'840479'}];
 const groups=[{id:'coordinator',tabs:[{id:'c'}]},{id:'fm-crew-home',tabs:[{id:'a'},{id:'b'},{id:'dup'}]}];
 const all=[{pane:'cp',tab:'c',terminal:'t1'},...['a','b','dup'].map((id,i)=>({pane:id+'p',tab:id,terminal:'t'+(i+2)}))];
 const list=[{address:'t1',state:'live',labels:{'custom.crew.home':'1'}},...['a','b','dup'].map((id,i)=>({address:'t'+(i+2),state:'live',labels:{'crew.task':id,'crew.home':'home','herdr.space':'fm-crew-home',...(i===1?{'crew.space.version':'1','crew.space.mode':'combined','crew.space.project':'b'}:{})}}))];
@@ -45,7 +47,7 @@ const panel=new Main();panel.init({},cx);await drain();let tree=panel.render(cx)
 // generic final-cache request budgets are measured without this adapter.
 panel.aggregate.invalidate=(repository=null)=>{gitReads(host.exec).facts.clear();for(const e of panel.aggregate.entries.values())if(!repository||e.link.repo===repository)e.dirty=true;};
 assert.equal(calls.length,2,'Duplicate task PR is fetched once');assert.equal(panel.aggregate.counts().open,1);assert.equal(panel.aggregate.counts().closed,1);
-assert.ok(calls.every(args=>args.at(-1).split(',').includes('labels')));assert.equal(panel.aggregate.rows('open')[0].labels[0].name,'🤖 Under review');
+assert.ok(calls.every(args=>args.at(-1).split(',').includes('labels')));assert.equal(panel.aggregate.rows('open')[0].labels[0].name,'fixture label');
 assert.ok(find(tree,'pr-labels-example/a#12'),'Coordinator rows use the shared labels row');
 // The mounted provider/panel must survive a real off/on invalidation while the
 // first on-read is slow or fails. Off uses ordinary Git; on never flashes the
@@ -217,7 +219,7 @@ noticeModes['example/b']='repository';tree=panel.render(cx);find(tree,'git-enrol
 // Label add/remove invalidates the same targeted reads in both tabs.
 defer=false;pendingCI=false;
 for(const action of ['unlabeled','labeled']) {
-  assignedLabels=action==='labeled'?[{name:'🤖 Under review',color:'840479'}]:[];
+  assignedLabels=action==='labeled'?[{name:'fixture label',color:'840479'}]:[];
   const beforeLabels=calls.length;
   for(const repository of ['example/a','example/b'])websocket.onChange({repository,event:'pull_request',action},cx);
   await drain();assert.equal(calls.length,beforeLabels+2);
