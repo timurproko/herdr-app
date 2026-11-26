@@ -13,6 +13,8 @@
 - [x] 2.3 Route coordinator role targets through existing verified same-home membership and aggregate target/focus checks; verify reviewer and builder choices, historical/stale refusals and unchanged PR admission/deduplication in fleet fixtures.
 - [x] 2.4 Document role matching, optional completed-round semantics and unavailable-target explanations in README and docs/TESTING.md; verify the documented cases have deterministic fixture assertions.
 
+- [x] 2.5 Retain same-home coordinator targets for disabled explanations independently of focus authority; verify the 80-case ended/disconnected/reconnected row/ghost matrix across roles, branch/PR links, machines and tabs, including wrong-home and unverified-reconnect refusals.
+
 ## 3. Git rows show themed stage chips with correct clicks, stable geometry and robot compatibility
 
 - [x] 3.1 Replace the managed-label agent button with Build, Review and Approved chips using ansi3, ansi5 and ansi2, with Build n+1/finding enrichment only for valid supplied metadata; verify every caption, tooltip and click target plus Approved under pending/failed/passed checks in actual row fixtures.
@@ -20,3 +22,4 @@
 - [x] 3.3 Use a bounded common title-line reservation sufficient for the text chips while preserving the trailing anchor, 74px height, lower metadata and 24px robot target; verify ordinary/pinned/scrolling/coordinator/Closed/ghost rows across narrow widths and supported zooms with geometry and render-budget guards, without new probes or relaxed mounted caps.
 - [x] 3.4 Finish the user/testing documentation for chip presentation and scope limits, including no approved-CI-running state; verify documentation and the OpenSpec delta agree with the production-renderer assertions.
 - [x] 3.5 Build and run the full local npm test suite once on the implementation handoff head in a disposable isolated environment, then record exact commands/results and any blockers; verify source isolation and stop every disposable app/server before handoff. Keep scratch and proof outside the checkout in the designated task folder.
+- [x] 3.6 Route chip and fallback-robot clicks through the existing pin-motion controller, including initially unpinned ordinary lists and coordinator-to-agent handoff; verify 96 actual-controller focus/refresh/overlay/settlement cases and cancellation/timing tests next to existing swap fixtures.

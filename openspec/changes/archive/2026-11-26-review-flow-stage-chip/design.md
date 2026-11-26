@@ -52,6 +52,14 @@ Live Build/Review clicks stop propagation and focus only the captured role targe
 
 For valid completed crew.round=n, Build displays n+1. Only a supplied finding adds back from review n: finding. Missing/invalid metadata retains plain Build; do not infer review count from PR labels, checks, approval SHA or task names. Sanitize and bound label text before using it in tooltips, never render findings as markup.
 
+### Review refinements: explanations and one pin-motion controller
+
+Coordinator action lookup remains strict. A separate bounded stage-presentation cache records only targets that were verified in the same exact coordinator scope. It rechecks that terminal's current ended/disconnected reason through AgentLinks without reads, and forces a live-but-unverified target to unavailable. This cache never enters focus authorization, survives a historical-only row's loss of a worker, and cannot cross coordinator homes or enable generations.
+
+Both stage chips and fallback robots call the same navigation-motion entry point after fresh focus authorization. PinSwap.start accepts an absent prior pin: it moves the clicked row to the ordinary pinned slot and animates affected list rows without inventing a former pin. Its existing waiting, native arm/move/end timers, timeout, cancellation and settled acknowledgement remain unchanged. The control's actual row origin is used, accounting for the chip's 6px versus the robot's 4px inset.
+
+Coordinator clicks use that controller's arrival form with one moving card and a bounded inert snapshot of the already-revealed source body. The ordinary destination independently resolves its root, inventory and totals; source subset facts never become repository totals or new action authority. The grouped coordinator itself gains no permanent active pin. The selected terminal's valid full crew.pr resolves its PR before footer inference so a reviewer on the base branch can settle the same animation. Missing measurements still use the ordinary safe reveal.
+
 ### 4. Verification stays grounded in existing fixtures
 
 Extend tests/pr-agent-links.test.mjs with role metadata and machine status fixtures. Include same-PR worker/reviewer, base-branch reviewer, full URL repository isolation, ship/fix branch fallback, wrong/changed roles, exact-match priority, ended/disconnected/no-target states, reconnect, optional metadata, captured stale clicks and no-label robot behavior. Check that Approved always opens the PR and never focuses an agent under pending, success and failed checks, and no forbidden CI chip exists.

@@ -598,6 +598,26 @@ Spaces-derived trailing anchor and fallback robot's 24px target. The no-label
 main-relative tree/probe budget remains unchanged. These are render-tree assertions,
 not native pointer dispatch, pixel layout or real-agent focus proof.
 
+The same `pr-agent-links` fixture now prints `REASON_MATRIX` for 80 combinations:
+ordinary/coordinator, Open/Closed, row/ghost, local/pc2, and ship/fix matched by
+PR or branch plus PR-linked reviewers. Ended and disconnected reasons survive
+live-cache pruning and historical/stale coordinator membership. Reconnection
+without verification stays disabled; a fresh binding restores the plain stage.
+It also checks Approved's agent-free action and legacy robot absence/restoration.
+
+`PIN_MATRIX` covers 96 real-controller navigation sequences: Build/Review,
+chip/robot, ordinary/coordinator, Open/Closed, local/remote destinations and
+100%/130% zoom, including ordinary lists with and without a prior pin. Each
+acknowledges a different space/worktree through the production refresh path,
+checks immediate focus, waits for destination PR selection, drives the native
+320ms overlay phases, and asserts final pin settlement without another focus.
+Coordinator lists hand off a bounded inert source snapshot, not a permanent pin.
+`tests/pin-swap.test.mjs` exercises both initial pin states, intermediate rows,
+scroll/zoom, one-shot timing and coordinator arrival, including context/tab,
+wrong selection/PR, scroll and three-second timeout cancellation. The entry
+point for initially unpinned lists remains `PinSwap.start()`; no second animator
+is introduced. These are fixture transitions, not live native paint proof.
+
 ## Git PR label facts
 
 Pull facts, pagination, fleet and webhook fixtures cover assigned label names/colours
