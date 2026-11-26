@@ -334,7 +334,7 @@ export default class Spaces extends View {
   }
   parentDisclosure(row,t) {
     const key=this.parentKey(row),open=!this.connectedFolds().has(key);
-    return this.drag.control(sidebarParentFold(t,{id:`space-fold-${row.w.id}`,open,count:row.block.length-1,onToggle:this.drag.guard(cx=>this.toggleConnected(row,cx))}))
+    return this.drag.control(sidebarParentFold(t,{id:`space-fold-${row.w.id}`,open,onToggle:this.drag.guard(cx=>this.toggleConnected(row,cx))}))
       .on_mouse_down('left',(_e,cx)=>cx.stop_propagation());
   }
   toggleConnected(row,cx) {
@@ -482,7 +482,7 @@ export default class Spaces extends View {
     return badge(String(i + 1), fill);
   }
 
-  row({ w, i, g, tree, linked = false, block, binding, position = i }, t) {
+  row({ w, i, g, tree, linked = false, firstChild = true, lastChild = true, block, binding, position = i }, t) {
     const on = w.active;
     const edit = this.rename?.id === w.id ? this.rename : null;
     const drag = this.drag, d = drag.view;
@@ -538,11 +538,14 @@ export default class Spaces extends View {
       .child(
         h_flex()
           .id(`space-content-${w.id}`)
-          .min_w(0).when(linked,el=>el.pl(32).h(U.subrow))
+          .relative().min_w(0).when(linked,el=>el.pl(24).h(U.subrow))
           .gap(U.gap)
           .items_center()
           .when(this.tabArrival?.spaceId === w.id && !edit, el => tabArrivalMotion(this, el))
-          .when(linked,el=>el.child(sidebarChildBranch(t,'└').id(`space-branch-${w.id}`).mr(-4)))
+          .when(linked,el=>el
+            .child(sidebarChildBranch(t,'└').id(`space-branch-${w.id}`).absolute().left(8).top(firstChild?-8:-16)
+              .mt(0).mr(0).w(16).h(firstChild?21:29).rounded_bl(lastChild?6:0))
+            .when(!lastChild,e=>e.child(div().id(`space-stem-${w.id}`).absolute().left(8).top(13).h(15).border_l(1.5).border_color(t.input))))
           .child(this.spaceBadge({ w, i, linked, block }, t))
           .when(Boolean(edit), el => el.child(this.renameField(w, t)))
           .when(!edit, el => el
@@ -552,11 +555,11 @@ export default class Spaces extends View {
           // With tags, metadata precedes the shared trailing tag edge instead.
           .when(worktree, el => el.child(slot(svg("mods/custom-workspace-chrome/branch.svg").size(U.smallIcon).text_color(t.muted))
             .id(`space-worktree-${w.id}`).when(!tags.length, e => e.mr(-4)).tooltip('Git worktree')))
-          .when(!edit && attached && !linked,el=>el.child(this.parentDisclosure({w,block,binding},t)))
           .when(!edit, el => el.children(trailing.map((tag, k, all) =>
             rolePill(t, tag.label, { status: true }).id(`space-tag-${w.id}-${tag.plugin}-${tag.index}`)
-              .when(k === all.length - 1, e => e.mr(-5))
-              .when(Boolean(tag.tooltip), e => e.tooltip(tag.tooltip))))),
+              .when(k === all.length - 1 && !(attached && !linked), e => e.mr(-5))
+              .when(Boolean(tag.tooltip), e => e.tooltip(tag.tooltip)))))
+          .when(!edit && attached && !linked,el=>el.child(this.parentDisclosure({w,block,binding},t))),
       );
   }
 

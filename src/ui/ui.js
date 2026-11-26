@@ -325,7 +325,7 @@ export function sidebarParentFold(t,{id,open,count,color=t.dim,onToggle}) {
     .text_size(11).text_color(color).cursor_pointer()
     .hover(s=>s.bg(t.hover).text_color(t.foreground))
     .on_click((_e,cx)=>{cx.stop_propagation();onToggle(cx);})
-    .child(chevron(t,open)).when(!open,el=>el.child(String(count)));
+    .child(chevron(t,open)).when(!open && count != null,el=>el.child(String(count)));
 }
 // Agents' number rail. Compensate differing surrounding gaps/chevron slots so
 // the painted number-to-chevron gap stays identical in repository headers.
