@@ -1,11 +1,13 @@
 # Tasks
 
+Plan approved. Follow-up authorization permits delivering the other three outcomes if the Closed interruption cannot be reproduced. Current exploration passes on unchanged source; the bug outcome remains unchecked and no repair is claimed. Native proof invokes the exact fold callback, not pointer hit testing.
+
 Implementation begins only after plan approval. Groups correspond one-for-one, in order, to the PR Implementation outcomes. Each group includes its own regressions, documentation and disposable-native proof; the last group additionally carries the combined final-head gate.
 
 ## 1. Closed repository folds remain responsive after the reproduced interruption is fixed
 
-- [ ] 1.1 Recheck fetched main and open Git/Trello/Crew changes without editing implementation; record the exact base and overlapping paths in the outside-checkout evidence notes.
-- [ ] 1.2 Mount the unchanged packaged coordinator in a disposable app with 41 realistic Closed items and exercise actual header collapse/reopen across reveal depths, scroll positions, notices, pending layout and held refresh; save the failing banner/status/log and minimal sequence before production edits, or report the reproduction blocker.
+- [x] 1.1 Recheck fetched main and open Git/Trello/Crew changes without editing implementation; record the exact base and overlapping paths in the outside-checkout evidence notes.
+- [x] 1.2 Mount the unchanged packaged coordinator in a disposable app with 41 realistic Closed items and exercise actual header collapse/reopen across reveal depths, scroll positions, notices, pending layout and held refresh; save the failing banner/status/log and minimal sequence before production edits, or report the reproduction blocker.
 - [ ] 1.3 Trace the demonstrated fold/projection/measurement/anchor failure and add a minimized cause-specific regression that fails on pre-fix source; retain the native failure sequence as separate evidence, not a claim based on Node timing.
 - [ ] 1.4 Fix the demonstrated owned-code cause and pass the new regression plus targeted git-panel-errors, mounted reveal, safety-paging and render-budget checks without changing the watchdog, row cap, error propagation or unrelated row geometry.
 - [ ] 1.5 Repeat actual 41-item collapse/reopen interactions in the disposable running app at 100%/130%, including all sections folded and 60/100/200-known controls under production caps; inspect pictures/status for responsive current state and no native errors, then record shutdown of every started instance/server.

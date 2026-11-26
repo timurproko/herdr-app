@@ -556,6 +556,24 @@ each paired sample and median must stay within main +2ms. These are build-only
 JS/native-element timings, not GPU paint or real input latency. The disposable
 checker never contacts the live app/Core; see GIT-RENDER-BUDGET.md for results.
 
+## Closed-section fold exploration
+
+`node --experimental-vm-modules tests/git-closed-folds.test.mjs` exercises the
+actual coordinator fold handlers, reveal and scroll projection for 41, 60, 100
+and 200 known Closed PRs at 100%/130%. Each case runs 60 fold/reveal/scroll
+transitions with scoped notices, unchanged totals and no reads. It passes on the
+pre-change source: **it does not reproduce or fix the reported native interruption**.
+
+Opt-in `tests/features/interface-native.mjs --run --output <outside-checkout-dir>`
+uses a supplied `HERDR_APP_BIN`, isolated app/Core session and synthetic facts.
+It drives the exact production fold callback outside render, captures native
+frames/status and stops its own session. It is not a mouse-hit-test or real-agent
+proof. The 41-item pre-change App 0.1.18 run at 130% completed 20 fold callbacks
+without native errors (0–13 ms JS/native tree construction); no cause for the
+reported `interrupted` banner was established. Native deadlines and error handling
+are unchanged. Downloaded proof executables must match the official release
+archive checksum; never install them or alter PATH.
+
 ## Coordinator render error diagnostics
 
 `node --experimental-vm-modules tests/git-panel-errors.test.mjs` exercises the
