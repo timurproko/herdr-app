@@ -52,16 +52,16 @@ export class AgentLinks {
   constructor(enabled = () => true) { this.enabled = enabled; this.entries = new Map(); this.pending = new Map(); this.repositories=new Map(); }
 
   invalidate() {this.repositories.clear();for(const entry of this.entries.values())entry.at=0;}
-  async repository(target) {
+  async repository(target, current=()=>true) {
     const key=JSON.stringify([target.on,target.cwd]);
     // Effective Git routing is local IO, not a GitHub read. Include gh's
     // default-remote marker (also from inherited config), not just remote URLs.
     const config=await exec('git',['config','--get-regexp','^(remote\\..*\\.(url|pushurl|gh-resolved)|branch\\..*\\.(remote|merge))$'],{cwd:target.cwd,on:target.on,timeout:15000}).catch(()=>null);
-    if(!this.enabled())return null;
+    if(!this.enabled() || !current())return null;
     const fingerprint=config && [0,1].includes(config.code) && !config.signal && !config.timed_out ? config.stdout : null;
     const cached=this.repositories.get(key);
     if(fingerprint!=null && cached?.fingerprint===fingerprint)return cached.repo;
-    const result=await repositoryRead(exec,REPO_ARGS,null,{cwd:target.cwd,on:target.on,timeout:15000,current:()=>this.enabled()});
+    const result=await repositoryRead(exec,REPO_ARGS,null,{cwd:target.cwd,on:target.on,timeout:15000,current:()=>this.enabled()&&current()});
     const repo=result.code===0?repositoryName(result.stdout):null;
     if(repo && fingerprint!=null)this.repositories.set(key,{fingerprint,repo});
     return repo;
@@ -94,9 +94,9 @@ export class AgentLinks {
           }
           const folder = JSON.stringify([target.on,target.cwd]);
           if (!folders.has(folder)) folders.set(folder,
-            this.repository(target).catch(() => null));
+            this.repository(target,()=>admit(target.address)&&agentTargets().some(t=>t.key===target.key)).catch(() => null));
           const repo = await folders.get(folder);
-          if (!this.enabled()) return;
+          if (!this.enabled() || !admit(target.address) || !agentTargets().some(t=>t.key===target.key)) return;
           let number = target.number;
           if (repo && ['a1','claude-code'].includes(target.app)) {
             const screen = await hc(['read',target.address,'--json','--lines','0']).catch(() => null);
@@ -134,19 +134,22 @@ export class AgentLinks {
   // branch/footer links. `admit` lets the verified aggregate constrain membership.
   roleMatches(pr, repo, preferred, role, admit=()=>true) {
     if(!this.enabled() || !['build','review'].includes(role))return [];
-    const all=panes(),groups=spaces(),liveAgents=agents(),generic=new Map(agentTargets().map(t=>[t.address,t]));
-    const matches=terminals().flatMap(terminal=>{
+    const all=panes(),groups=spaces(),liveAgents=agents(),list=terminals();let generic;
+    const matches=list.flatMap(terminal=>{
       if(!admit(terminal.address))return [];
       const crew=crewMetadata(terminal.labels);
       if(!(role==='review'?crew.kind==='review':['ship','fix'].includes(crew.kind)))return [];
       const agent=liveAgents.find(a=>a.address===terminal.address),pane=all.find(p=>p.terminal===terminal.address&&!p.mod&&(!agent||p.tab===agent.tab));
       const space=groups.find(s=>s.tabs?.some(t=>t.id===pane?.tab)),tab=space?.tabs?.find(t=>t.id===pane?.tab);
-      const explicit=crew.pr!==null,link=crewPull(crew.pr),entry=this.entries.get(terminal.address),current=generic.get(terminal.address);
+      const explicit=crew.pr!==null,link=crewPull(crew.pr),entry=this.entries.get(terminal.address);
+      // Explicit role links need no folder resolution or all-agent directory
+      // scan. Only an unlabelled build branch needs the legacy repository cache.
+      const current=!explicit&&role==='build'?(generic??=new Map(agentTargets().map(t=>[t.address,t]))).get(terminal.address):null;
       const exact=Boolean(link && link.repo===repoKey(repo) && link.number===pr.number);
       if(explicit?!exact:role==='review'||!current||entry?.key!==current.key||entry.repo!==repoKey(repo)||!pr.headRefName||entry.branch!==pr.headRefName)return [];
       const on=machineOf(terminal.address),availability=!connected(on)?'disconnected':terminal.state && terminal.state!=='live'?'ended':agent&&pane&&tab&&agent.space===space.id?'live':'unavailable';
       const target={address:terminal.address,on,pane:pane?.pane??null,tab:tab?.id??null,space:space?.id??null,
-        cwd:current?.cwd??null,branch:pane?.branch??null,crew};
+        cwd:current?.cwd??paneDirectory(pane,list,null).cwd,branch:pane?.branch??null,crew};
       return [{...target,key:JSON.stringify(target),exact,availability,displayName:displayName(agent)}];
     });
     matches.sort((a,b)=>Number(b.availability==='live')-Number(a.availability==='live') || Number(b.exact)-Number(a.exact) || Number(b.address===preferred)-Number(a.address===preferred));

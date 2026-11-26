@@ -361,6 +361,14 @@ aggregate.entries.get(stagePr.key).link.targets=[{terminal:'builder'}];
 taskContext={...taskContext,stale:true};const staleChip=find(view.pullRow(colors,{...stagePr,stage:'review'}),'pr-stage-owner/repo#1200');assert.equal(staleChip.attrs.opacity[0],0.45);
 const beforeStaleHome=actions.length;aggregateChip.attrs.on_click[0]({},cx);assert.equal(actions.length,beforeStaleHome);
 taskContext=null;
+// Scope retirement while the repository read is held must not start a footer read.
+add('scoped-read',{cwd:'/scoped-read'});let releaseScoped,admitted=true;
+heldRemote=new Promise(resolve=>{releaseScoped=resolve;});
+const scopedLinks=new AgentLinks();scopedLinks.refresh(cx,address=>admitted&&address==='scoped-read');await tick();
+const beforeObsoleteFooter=calls.filter(call=>call.cmd==='hc').length;admitted=false;
+releaseScoped({code:0,stdout:JSON.stringify({nameWithOwner:'owner/repo'})});await tick();
+assert.equal(calls.filter(call=>call.cmd==='hc').length,beforeObsoleteFooter,'Retired coordinator membership starts no footer follow-up');
+assert.equal(scopedLinks.entries.size,0);
 shown=false;const hiddenCalls=calls.length;view.render(cx);await tick();
 assert.equal(calls.length,hiddenCalls,'Hidden Git panels start no agent scans');
 await Promise.all(tasks);
