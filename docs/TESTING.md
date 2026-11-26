@@ -80,6 +80,17 @@ phases) and completion. It stops its own desktop and isolated Core in finally;
 inspect both screenshots and cleanup/error receipts. Controller-driven actions
 are not real pointer/keyboard or live-SSH proof. No installed app or PATH changes.
 
+## Instant Git repository entry
+
+`node --experimental-vm-modules tests/git-entry-cache.test.mjs` uses production
+controller/aggregate renderers and held transport to sample the first worker frame,
+coordinator return and cross-machine cold entry. It covers bounded pure publication,
+task-section seed provenance, shared section chrome/header activity and no entry-driven
+pin or reorder. It does not use live GitHub, credentials, Core or agents. The existing
+inventory-presentation and paging suites remain guards for coherent warm replacement,
+quiet retry and cursor retention. Chip/robot motion remains owned by the existing
+click controller; direct entry does not start it.
+
 ## Git read-budget and refusal fixtures
 
 `tests/git-deferred-repositories.test.mjs` runs a sanitized equivalent of the

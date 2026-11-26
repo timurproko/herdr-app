@@ -4,9 +4,9 @@ Implementation is not authorized until this draft plan is approved. Groups map o
 
 ## 1. Shared immediate cached repository entry
 
-- [ ] 1.1 Refresh the required PR #87 base and coordinate the PR #88 publication/header seams identified in design.md; verify the resulting source retains stage chips and the existing coordinator activity renderer without unrelated Spaces/Crew changes.
-- [ ] 1.2 Generalize the coordinator committed-presentation restore/refresh/publication owner for both adapters, with bounded typed snapshots and exact machine/folder/repository mappings; add tests for immediate coordinator-to-worker rows/counts, known-empty data and genuinely cold Loading before held reads resolve.
-- [ ] 1.3 Compose the worker's single section through the same repository header/count/chevron shell; test cached coordinator -> worker A -> worker B -> coordinator returns preserve destination order without entry-driven pins, reordering or move-to-top animation, and document immediate section restoration in README.md and docs/TESTING.md.
+- [x] 1.1 Refresh the required PR #87 base and coordinate the PR #88 publication/header seams identified in design.md; verify the resulting source retains stage chips and the existing coordinator activity renderer without unrelated Spaces/Crew changes.
+- [x] 1.2 Generalize the coordinator committed-presentation restore/refresh/publication owner for both adapters, with bounded typed snapshots and exact machine/folder/repository mappings; add tests for immediate coordinator-to-worker rows/counts, known-empty data and genuinely cold Loading before held reads resolve.
+- [x] 1.3 Compose the worker's single section through the same repository header/count/chevron shell; test cached coordinator -> worker A -> worker B -> coordinator returns preserve destination order without entry-driven pins, reordering or move-to-top animation, and document immediate section restoration in README.md and docs/TESTING.md.
 
 ## 2. Existing header refresh and coherent in-place replacement
 

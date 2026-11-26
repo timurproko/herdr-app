@@ -10,6 +10,8 @@ const seed=memory.repository(null,'FIXTURE/REPO');assert.equal(seed.seed,true);a
 assert.equal(memory.repository('pc2','fixture/repo'),null);assert.equal(memory.repository(null,'another/repo'),null);
 for(let i=0;i<6;i++)memory.set(`repo-${i}`,{repository:true,pulls:{open:[row(i)]}});assert.equal(memory.size,4);
 memory.set('oversize',{entries:Array(4097)});assert.equal(memory.size,0);
+memory.set(JSON.stringify(['repository',null,'fixture/empty']),{repository:true,repo:{name:'fixture/empty'},pulls:{open:[],closed:[]},counts:{open:0,closed:0}});
+assert.deepEqual(memory.repository(null,'fixture/empty').counts,{open:0,closed:0},'authoritative empty snapshot is warm, not absent');
 memory.rememberFolder('/repo',null,'fixture/repo');assert.equal(memory.name('/repo',null),'fixture/repo');assert.equal(memory.name('/repo','pc2'),null);memory.clear();assert.equal(memory.folders.size,0);
 
 let context={scope:'home',parent:'coordinator',machine:null,presentationGeneration:0,links:[1,2].map(n=>({url:row(n).url,terminal:`worker-${n}`}))};
@@ -40,6 +42,9 @@ for(let i=0;i<16;i++)await Promise.resolve();
 // Hold page one: warm rows survive and all requests stay on this machine/folder.
 assert.equal(calls.at(-1).options.on,null);assert.equal(p.pulls.open.length,2);
 tree=h.render(()=>p.renderPanel(cx));assert.ok(find(tree,'pr-2'));assert.equal(find(tree,'git-empty'),undefined);
+// A second worker gets the same scoped order, never a new active pin.
+Object.assign(place,{cwd:'/worktree-b',space:'worker-space-b',terminal:'worker-2',pullNumber:2});
+tree=h.render(()=>p.renderPanel(cx));assert.ok(find(tree,'pr-1'));assert.ok(find(tree,'pr-2'));assert.equal(find(tree,'active-pull'),undefined);assert.equal(p.pinMotion.current,null);assert.equal(find(tree,'git-empty'),undefined);
 // A direct return restores coordinator presentation with no fetch flash.
 Object.assign(place,{space:'coordinator',terminal:'owner',cwd:'/home'});context={scope:'home',parent:'coordinator',machine:null,presentationGeneration:0,stale:true,links:[]};
 tree=h.render(()=>p.renderPanel(cx));assert.ok(find(tree,'pr-fixture/repo#1'));assert.ok(find(tree,'task-repo-header-fixture/repo'));assert.equal(find(tree,'git-task-waiting'),undefined);assert.equal(find(tree,'active-pull'),undefined);
