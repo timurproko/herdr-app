@@ -9,7 +9,7 @@ existing recurring Spaces lifecycle emits `workspace.settings.refresh` for this
 policy; there is no second scheduler or Settings-owned subprocess job.
 
 The implementation follows Crew PR 23's documented v1 contract, reviewed at
-`4382c4b3ee44312b0ea9312f6c3fd23a01f982ce` before handoff, and its
+`ad063414a63acd3cdb515a176d94144d2ef54faa` during review repair (v1 unchanged), and its
 [contract handoff](https://github.com/timurproko/herdr-app/pull/88#issuecomment-7192748318).
 The installed tool on each machine must answer
 `crew config worker-space --capabilities --json` with exit 0 and
@@ -32,15 +32,26 @@ future independent admissions change; existing workers and inherited work stay p
 
 A host-local catalog retains up to 256 exact machine/canonical-home targets,
 including multiple homes per machine. Existing default-home status on every known
-reachable machine and validated fleet status supply roots, not folder guesses or
-filesystem scans. Newly observed custom roots are admitted separately. Outages and
-missing terminals do not erase them. Capacity is explicit incomplete coverage.
+reachable machine, stored validated fleet identities/status observations and
+successful existing-home inspections supply roots, not folder guesses or filesystem
+scans. Crew's `knownFleetHomes()` seam admits existing remembered roots independently
+of attachment, including before native display pruning; these are pending discovery
+hints, never current-mode or action proof. Every root still needs installed capability
+and fresh scoped mode reads before confirmation. Successful coordinator preparation
+also reads Crew status from its returned launch folder to obtain the actual home,
+without inferring a registry root from a cwd suffix. Failed optional observation
+cannot authorize work or change the launch decision. Newly observed custom roots
+are admitted separately. Outages and missing terminals do not erase them. Capacity
+is explicit incomplete coverage.
 The catalog, probe cache, observations, locks, failures and retries are excluded
 from portable preferences. Restart rechecks confirmation and installed support.
 
 One shared finite command lease serializes policy work across mounts; each command
 uses the existing Crew execution transport with a 15-second allowance. A retired
-or uncertain setter retains its 18-second deadline before replacement and readback.
+or uncertain setter retains its 18-second deadline before replacement and readback,
+including when intent changes or Crew is disabled/re-enabled before timeout receipt.
+Timeout evidence is recorded before obsolete-continuation rejection; no fresh getter,
+setter or confirmation may outrun that still-unsettled command allowance.
 Healthy reinspection uses the existing ten-second cadence; transient target failures
 retry after 2/5/10 seconds from completion, configuration refusals and unsupported
 Crew after bounded 60-second reinspection. Reconnection reconsiders targets immediately;

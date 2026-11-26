@@ -161,6 +161,20 @@ function savedDisplays() {
   for(const [key,item] of Object.entries(value.entries)) {const record=displayRecord(item);if(record && key===JSON.stringify(record.machine))unique.set(record.machine,record);}
   return [...unique.values()];
 }
+// Previously validated identity/status roots are discovery hints even while
+// attachment is off. They grant no current-mode, fleet-action or setter proof.
+export function knownFleetHomes() {
+  const homes=savedDisplays().map(({machine,home})=>({machine,home})),saved=shared(FLEET_KEY);
+  if(saved?.version!==1 || !saved.entries || typeof saved.entries!=='object' || Array.isArray(saved.entries) || Object.keys(saved.entries).length>256)return homes;
+  for(const [key,entry]of Object.entries(saved.entries)) {
+    const machine=entry?.machine,status=entry?.verificationStatus??entry?.status,owner=status?.owner;
+    if(!(machine===null || text(machine,128)) || key!==(machine??'local') || !text(status?.home,2048) ||
+      !owner || typeof owner.live!=='boolean' || !(text(owner.terminal) || owner.terminal===null&&!owner.live) ||
+      !Array.isArray(status.tasks) || status.tasks.length>4096)continue;
+    homes.push({machine,home:status.home});
+  }
+  return homes;
+}
 function nextDisplay(machine, bound, snapshot) {
   if(!bound)return null;
   const prior=savedDisplays().find(d=>d.machine===machine),children=new Map(fleetChildren(bound).map(c=>[c.child,c]));
@@ -277,6 +291,9 @@ export function refreshFleets(cx, readStatus, force = false, readDiscovery = nul
   if(checking())return;
   // Ready native absence is conclusive even while attachment/Crew is off.
   // This cleanup is layout-only: it must precede every verification/IO gate.
+  // Retain already-known roots before native absence prunes their display rows.
+  // This local admission is independent of the attachment gate below.
+  if(shared('custom.plugins')?.crew?.enabled===true)for(const {machine,home}of knownFleetHomes())observeWorkerHome(machine,home);
   const snapshot=model(), hosts=machines();pruneDisplays(snapshot,hosts);
   if(!enabled()) {clearFleetRetries();return;}
   if(shared(FLEET_KEY) && shared(FLEET_KEY).version!==1)return;

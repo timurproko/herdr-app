@@ -41,11 +41,12 @@ export function invalidateWorkerSpaces() {
 const parse=text=>{try{return JSON.parse(text);}catch{return null;}};
 // Only the mounted recurring owner calls this. A distinct generic moment on the
 // same Spaces lifecycle keeps configuration work independent of fleet attachment.
-export function refreshWorkerSpaces({cx,setting},ask) {
+export function refreshWorkerSpaces({cx,setting,knownHomes=()=>[]},ask) {
   if(!cx || checking() || !enabled())return;
   return cx.spawn(async view=>{
     await Promise.resolve(); // native spawn may start inline, never mutate during render/init
     if(!enabled())return;
+    for(const {machine,home}of knownHomes())observeWorkerHome(machine,home);
     if(!initialized) {
       initialized=true;
       save(b=>{b.intent=setting(WORKER_SPACE_SETTING)===true;
@@ -86,8 +87,11 @@ export function refreshWorkerSpaces({cx,setting},ask) {
       if(!current())throw Error('obsolete');
       save(b=>({...b,lock:{token,until:Date.now()+COMMAND}}));
       let result;try{result=await ask(machine,params);}catch{uncertain=true;throw Error('transport');}
-      if(!current())throw Error('obsolete');
+      // A timeout describes the retired command, not the current preference.
+      // Record it before rejecting superseded/disabled continuations so finally
+      // cannot release a setter that may still publish within its command bound.
       if(result.timedOut){uncertain=true;throw Error('timeout');}
+      if(!current())throw Error('obsolete');
       if(result.missing)throw Error('unsupported-platform');
       return result;
     };

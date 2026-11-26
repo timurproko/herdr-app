@@ -1161,6 +1161,16 @@ success/refusal parsing, superseded intent serialization, committed-but-lost rep
 readback, bounded catalog overflow and no disabled follow-ups. No installed Crew,
 real registry, coordinator or credential is used.
 
+`node --experimental-vm-modules tests/crew-worker-review.test.mjs` covers both
+blocking review findings through production plugin/lifecycle paths. Existing
+validated display roots and status observations must join a distinct default home
+with attachment off, remain pending until scoped reads, and survive display pruning.
+Real successful inspection/preparation paths must feed observations without direct
+test calls to the observer. Combined supersession/timeout cases hold an old setter,
+change intent, return timeout at 15 seconds, publish its old value at 17 seconds,
+and forbid new reads/writes/confirmation until its 18-second bound, including
+plugin disable/re-enable. All six cases fail on the pre-fix implementation.
+
 `node tests/crew-worker-command.test.mjs` checks fixed command grammar everywhere;
 on Windows it also runs the actual PowerShell wrappers against a disposable fake
 Node CLI, including cached capability and both modes. Targeted fleet-toggle and

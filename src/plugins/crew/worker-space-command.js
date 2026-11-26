@@ -7,9 +7,9 @@ export const homeIdentity = home => /^[A-Za-z]:/.test(home) ? home.replace(/\\/g
 export const supportedCapability = value => value?.capability === 'worker-space-local-set' && value.version === 1 &&
   value.explicitHome === true && Array.isArray(value.modes) && value.modes.includes('combined') && value.modes.includes('per-project');
 export function workerSpaceScript(prelude, request) {
-  const {kind, home, mode, cached} = request;
+  const {kind, home, mode, cached, cwd} = request;
   if (!['capability','discover','read','set'].includes(kind) || home != null && !absoluteHome(home) ||
-      kind === 'set' && (!absoluteHome(home) || !['combined','per-project'].includes(mode)) || kind === 'read' && !absoluteHome(home)) throw Error('Invalid worker-space request');
+      kind === 'set' && (!absoluteHome(home) || !['combined','per-project'].includes(mode)) || kind === 'read' && !absoluteHome(home) || cwd != null && (kind !== 'discover' || !absoluteHome(cwd))) throw Error('Invalid worker-space request');
   const lines = [...prelude];
   if (kind === 'capability') return [...lines,
     "$file = Get-Item -LiteralPath $main; $identity = $file.FullName + ':' + $file.LastWriteTimeUtc.Ticks + ':' + $file.Length",
@@ -20,7 +20,7 @@ export function workerSpaceScript(prelude, request) {
     'if (($answer -join "`n").Length -gt 8192) { exit 70 }',
     "[ordered]@{identity=$identity;code=$code;stdout=($answer -join \"`n\")} | ConvertTo-Json -Depth 8 -Compress", 'exit 0'].join('\n');
   if (home) lines.push(`$env:CREW_HOME = ${quote(home)}`);
-  else lines.push('Set-Location -LiteralPath $env:USERPROFILE'); // no incidental cwd ancestor discovery
+  else lines.push(cwd ? `Set-Location -LiteralPath ${quote(cwd)}` : 'Set-Location -LiteralPath $env:USERPROFILE'); // only an explicit launch folder may replace default discovery
   if (kind === 'discover') return [...lines,
     "$ErrorActionPreference = 'Continue'",
     "$answer = @(& node $main status --json --view fleet 2>$null); $code = $LASTEXITCODE",
