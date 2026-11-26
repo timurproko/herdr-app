@@ -240,6 +240,26 @@ try {
       final(p, token); assert.equal(inspect(h.home, { isAlive: () => false, now: () => Date.now() + worker.SETTLE + 1 }).job.state, 'complete'); assert.equal(fs.existsSync(p.lock), false);
     }
   }
+  // A receipt/status sharing failure after dispatch must not release the lock
+  // as a definite failure while that detached child can still be deploying.
+  {
+    const h = setup(), { p, token } = pending(h), write = fs.writeFileSync;
+    let refused = false;
+    fs.writeFileSync = (file, value, ...args) => {
+      if (!refused && String(file).startsWith(p.status) && String(value).includes('"childPid":')) {
+        refused = true; throw Object.assign(Error('fixture post-dispatch status failure'), { code: 'ENOSPC' });
+      }
+      return write(file, value, ...args);
+    };
+    let result;
+    try {
+      result = await runUpdate(h.home, token, { userHome: h.userHome, run: h.run, spawn() {
+        const child = new EventEmitter(); child.pid = 123456789; return child;
+      } });
+    } finally { fs.writeFileSync = write; }
+    assert.equal(refused, true); assert.equal(result.state, 'unknown');
+    assert.equal(read(p.status).childPid, 123456789); assert.equal(fs.existsSync(p.lock), true);
+  }
   // An ordinary clean main clone can predate the result protocol. Only Git is
   // allowed to bootstrap it; the legacy loaded CLI must never run the deploy.
   const old = setup();

@@ -394,6 +394,7 @@ async function runUpdate(home, token, { userHome, run = command, spawn = cp.spaw
   job = { ...job, pid: process.pid, phase: 'preparing', deadline: job.started + deadlineMs };
   atomic(p.status, job);
   const log = text => { if (text) retryIO(() => fs.appendFileSync(p.log, text.endsWith('\n') ? text : text + '\n')); };
+  let dispatched = false;
   const finish = (state, error, release = state !== 'unknown') => {
     let target;
     try { target = deploymentTarget(job, readResult(p, job)); } catch {}
@@ -425,6 +426,7 @@ async function runUpdate(home, token, { userHome, run = command, spawn = cp.spaw
       } catch (error) { done('failed', error); }
       finally { fs.closeSync(fd); }
       if (!child || settled) return;
+      dispatched = Number.isInteger(child.pid);
       job = { ...job, childPid: child.pid }; atomic(p.status, job);
       child.once('error', error => done('failed', error));
       child.once('exit', code => {
@@ -441,7 +443,7 @@ async function runUpdate(home, token, { userHome, run = command, spawn = cp.spaw
         kill(child.pid); done('unknown', 'Update deadline exceeded; inspect log', false);
       }, Math.max(1, job.deadline - now()));
     });
-  } catch (error) { log(shortError(error)); return finish('failed', error); }
+  } catch (error) { log(shortError(error)); return finish(dispatched ? 'unknown' : 'failed', error, !dispatched); }
 }
 async function launch(home, { spawn = cp.spawn, source = fs.readFileSync(__filename, 'utf8'), now = Date.now, sleep = ms => new Promise(resolve => setTimeout(resolve, ms)), retryClaim = null, inspectOptions = {} } = {}) {
   const p = files(home), current = inspect(home, { ...inspectOptions, now });
