@@ -1835,19 +1835,6 @@ The resolved currently selected agent PR SHALL own the pin independently of clic
 - **THEN** its header shows 3 and its tab total remains 4; collapse hides only the three remaining rows
 - **AND** unpinning restores header count 4, while a section consisting only of the pin has no empty header
 
-### Requirement: Stage hover suppression includes parent label groups
-Stage hover SHALL show no tooltip, including assigned aliases, round/finding details or agent-action text inherited from label-strip or metadata parents. Unrelated labels and metadata SHALL retain their existing informative tooltips, and PR titles SHALL retain full-title hover. This policy SHALL use existing fit facts without adding measurement work or reads.
-
-#### Scenario: Hover any stage
-- **WHEN** Build, Build 2, Build 3, Review, legacy Rework projected as Build or Approved is hovered in any row variant
-- **THEN** the control has no stage tooltip, whether enabled, unavailable, ghost or clipped
-- **AND** its existing click, keyboard and accessibility behavior remains available as appropriate
-
-#### Scenario: Mixed label strip
-- **WHEN** an unrelated label is clipped beside a managed stage
-- **THEN** the existing label-group tooltip can expose the unrelated label's complete name
-- **AND** stage aliases, agent names, findings and stage-only text are not reintroduced through that parent tooltip
-
 ### Requirement: Label-only Git tabs
 Ordinary and coordinator Git panels SHALL display only Open and Closed labels in their tab controls, without count bubbles, count reservations or count-only tooltips. Existing selected styling, accessible tab names and selection behavior SHALL remain. Repository section counts SHALL remain unchanged.
 
@@ -1879,3 +1866,16 @@ Ordinary and coordinator Git panels SHALL never show repository section headers 
 - **WHEN** a compatible previously published list or authoritative empty result refreshes
 - **THEN** that presentation remains without body Loading, and only the under-header line animates while work is active
 - **AND** visible failures, pins, folds, paging and scroll behavior retain their existing policy
+
+### Requirement: Stage hover suppression includes parent label groups
+Stage hover SHALL show no tooltip, including assigned aliases, round/finding details or agent-action text inherited from label-strip or metadata parents. Unrelated labels and metadata SHALL retain their existing informative tooltips, and PR titles SHALL retain full-title hover. This policy SHALL use existing fit facts without adding measurement work or reads.
+
+#### Scenario: Hover any stage
+- **WHEN** Build, Build 2, Build 3, Review, legacy Rework projected as Build or Approved is hovered in any row variant
+- **THEN** the control has no stage tooltip, whether enabled, unavailable, ghost or clipped
+- **AND** its existing click, keyboard and accessibility behavior remains available as appropriate
+
+#### Scenario: Mixed label strip
+- **WHEN** an unrelated label is clipped beside a managed stage
+- **THEN** the existing label-group tooltip can expose the unrelated label's complete name
+- **AND** stage aliases, agent names, findings and stage-only text are not reintroduced through that parent tooltip
