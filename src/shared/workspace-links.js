@@ -1,14 +1,23 @@
 // Pure domain adapter: shared reorder owns gestures; public host commands own order.
 export function linkedBlocks(all, links) {
-  const present=new Map(all.map(s=>[s.id,s])), parents=new Map(), children=new Set();
+  const present=new Map(all.map(s=>[s.id,s])), parents=new Map(), owners=new Map();
   for(const link of links) {
     const parent=present.get(link.parent),child=present.get(link.child);
-    if(!parent || !child || (parent.machine??null)!==(child.machine??null) || parent.id===child.id || parents.has(parent.id) || children.has(child.id)) continue;
-    parents.set(parent.id,link);children.add(child.id);
+    if(!parent || !child || (parent.machine??null)!==(child.machine??null) || parent.id===child.id)continue;
+    const claims=owners.get(child.id)??new Set();claims.add(parent.id);owners.set(child.id,claims);
+    const members=parents.get(parent.id)??new Map(),prior=members.get(child.id);
+    if(prior && prior.binding!==link.binding)claims.add(null);
+    members.set(child.id,link);parents.set(parent.id,members);
   }
-  return all.filter(s=>!children.has(s.id)).map(s=> {
-    const link=parents.get(s.id);return {ids:link?[s.id,link.child]:[s.id],binding:link?.binding??null,machine:s.machine??null};
-  });
+  const children=new Set(),blocks=new Map();
+  for(const [parent,members]of parents) {
+    // Flat coordinator children only; ambiguous owners/nested cycles fail closed.
+    const accepted=all.filter(s=>members.has(s.id) && owners.get(s.id)?.size===1 && !parents.has(s.id) && !owners.has(parent));
+    if(!accepted.length)continue;
+    const records=accepted.map(s=>members.get(s.id));accepted.forEach(s=>children.add(s.id));
+    blocks.set(parent,{ids:[parent,...accepted.map(s=>s.id)],binding:records.length===1?records[0].binding??null:JSON.stringify(records.map(l=>[l.child,l.binding??null])),names:Object.fromEntries(records.filter(l=>l.name).map(l=>[l.child,l.name]))});
+  }
+  return all.filter(s=>!children.has(s.id)).map(s=>({...blocks.get(s.id),ids:blocks.get(s.id)?.ids??[s.id],binding:blocks.get(s.id)?.binding??null,machine:s.machine??null}));
 }
 export function captureSpaceBlock(all,links,id) {
   const block=linkedBlocks(all,links).find(b=>b.ids.includes(id));
@@ -16,7 +25,10 @@ export function captureSpaceBlock(all,links,id) {
 }
 export function projectLinkedRows(rows,links) {
   const map=new Map(rows.map(r=>[r.w.id,r]));
-  return linkedBlocks(rows.map(r=>r.w),links).flatMap(block=>block.ids.map((id,i)=>({...map.get(id),linked:i>0,block:block.ids,binding:block.binding}))).map((r,position)=>({...r,position}));
+  return linkedBlocks(rows.map(r=>r.w),links).flatMap(block=>block.ids.map((id,i)=>{
+    const row=map.get(id),name=block.names?.[id];
+    return {...row,w:name && row.w.named===false?{...row.w,name}:row.w,linked:i>0,firstChild:i===1,lastChild:i===block.ids.length-1,block:block.ids,binding:block.binding};
+  })).map((r,position)=>({...r,position}));
 }
 export function blockTarget(all,links,source,target) {
   const blocks=linkedBlocks(all,links),from=blocks.findIndex(b=>b.ids.includes(source)),to=blocks.findIndex(b=>b.ids.includes(target));

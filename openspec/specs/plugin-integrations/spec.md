@@ -400,17 +400,17 @@ Refreshing fleet status SHALL distinguish pending or failed transport from a com
 - **AND** no extra healthy polling loop, companion or cross-machine inference is introduced; bounded unverified-fleet recovery uses the existing periodic lifecycle without a second scheduler
 
 ### Requirement: Stale coordinator presentation without action authority
-When strict fleet action context is unavailable, the selected persisted coordinator SHALL retain its already-loaded same-home Git rows with an explicit stale or waiting state. Retained context SHALL NOT start new GitHub reads or authorize worker navigation. Fresh verified status SHALL restore normal operation or replace invalid context. No PR/task inventory SHALL be persisted for restart merely to retain presentation.
+When strict fleet action context is unavailable, the coordinator SHALL retain its shown same-home list with header activity, no body Loading and no Stale label. Cold context SHALL show top-left Loading below Open/Closed. Retained context SHALL NOT authorize GitHub reads or worker navigation. Fresh verification SHALL restore operation or replace invalid context. PR/task inventory SHALL NOT persist for restart.
 
 #### Scenario: Status unavailable beyond action freshness
 - **WHEN** a status read fails or times out after strict action freshness expires while the verified pair's native spaces still exist
-- **THEN** the sidebar stays attached and the selected coordinator's previously loaded Git rows, counts and fold state remain presented as stale
+- **THEN** the sidebar stays attached and previously shown Git rows, counts and folds remain with header activity while reconciliation is pending, no body Loading and no Stale label
 - **AND** no new aggregate read or robot navigation uses the retained context as authorization
-- **AND** the removed task heading and generic incomplete-list notice do not reappear
+- **AND** Stale, the removed task heading and the generic incomplete-list notice do not appear in the header
 
 #### Scenario: Cold restart before verification
 - **WHEN** the selected coordinator is restored from durable pair identity but no task/PR facts have been verified in this runtime
-- **THEN** Git shows its coordinator waiting/unverified state rather than switching to folder-based non-repository mode
+- **THEN** Git shows only its standard top-left Loading inventory feedback rather than switching to folder-based non-repository mode or showing partial sections
 - **AND** only a fresh verified same-home status result can start task-linked GitHub reads
 
 #### Scenario: Different selected space or confirmed home change
@@ -621,7 +621,7 @@ Verification SHALL use recorded-only status, preferring an explicitly advertised
 - **AND** later enrichment cannot renew verification age, change pair identity or discard unchanged discovered links during the next recorded refresh
 
 ### Requirement: Selected-tab coordinator repository visibility
-Coordinator Git SHALL admit new repository sections only for known eligible selected-tab PRs or genuine applicable read notices, not unread links alone. Pending first reads SHALL share one standard panel Loading indication while compatible same-home runtime sections remain visible. Eligibility SHALL precede folding and preserve history bounds, truthful totals and saved folds. Enrollment SHALL use full eligible inventory independently of section visibility.
+Coordinator Git SHALL withhold cold partial successes until first reads settle, using one top-left Loading below Open/Closed. Warm return/refresh SHALL retain the shown list with header activity, no body Loading and in-place replacement on completion. Actionable notices SHALL appear immediately. Eligibility SHALL precede folding, preserving history, truthful totals and saved folds. Enrollment SHALL use full eligible inventory independently of section visibility.
 
 #### Scenario: Open and Closed contain different repositories
 - **WHEN** one repository has only Open or Draft task PRs and another has only eligible Merged or Closed task PRs, with no unresolved task PRs
@@ -630,14 +630,14 @@ Coordinator Git SHALL admit new repository sections only for known eligible sele
 
 #### Scenario: Genuine selected-tab notice without rows
 - **WHEN** a repository has no eligible selected-tab rows but has an applicable actionable PR-read notice
-- **THEN** its section appears with that notice under existing folding behavior, even without a known PR state
+- **THEN** its section appears immediately with that notice under existing folding behavior, even without a known PR state or while other repositories are still loading
 - **AND** a failure scoped only to the other tab does not keep an otherwise empty section visible
 - **AND** this explicit failure exception never becomes an empty Loading-only section
 
 #### Scenario: History ages out
 - **WHEN** a historical-only Merged or Closed PR is outside the existing 24-hour history limit or lacks a valid completion date
 - **THEN** that PR and its expired row-specific failure do not keep a section visible
-- **AND** other eligible rows or genuine applicable notices can still keep the section visible, while unresolved work remains represented by panel Loading
+- **AND** other eligible rows or genuine applicable notices can still keep a section visible once admitted, while unresolved work remains represented by panel Loading
 
 #### Scenario: Folded repository disappears and returns
 - **WHEN** a repository is folded, becomes ineligible in the selected tab and later reappears through a tab switch or updated PR facts
@@ -655,22 +655,35 @@ Coordinator Git SHALL admit new repository sections only for known eligible sele
 - **AND** hiding its section does not enroll it, remove its fold state, or initiate or cancel reads
 
 #### Scenario: Mixed successful repositories and a quietly deferred cold repository
-- **WHEN** verified admitted links include unread PRs in one repository while healthy siblings have supplied rows
-- **THEN** healthy rows remain visible and exactly one standard panel Loading bulb represents all unresolved first reads, including queued, in-flight and quietly deferred work
-- **AND** the unread repository does not gain a new header in either tab until an eligible selected-tab row or genuine applicable failure notice is known
+- **WHEN** no compatible sections have previously been shown and admitted links include unread PRs in one repository while healthy siblings have supplied rows
+- **THEN** only one standard top-left Loading bulb and text appear as inventory feedback, with successful sibling headers and rows withheld until all admitted first reads settle
+- **AND** queued, in-flight and quietly deferred work remain unresolved; genuine applicable failures may show their repository notice immediately below Loading
 - **AND** no error or rate-limit wording, placeholder PR, per-repository Loading flash or falsely complete global total is introduced
 
 #### Scenario: Retry fills the existing section
 - **WHEN** the existing cooldown expires while the panel remains shown, enabled and freshly verified, and its automatic retry succeeds
-- **THEN** the appropriate selected-tab section appears with its authoritative PR rows without requiring a new event or manual refresh
-- **AND** surviving section identities, folds, reveal depth and scroll anchors remain stable without clearing healthy siblings
-- **AND** confirmed missing PRs, other-tab-only rows and expired history leave no empty section, while panel Loading remains until unresolved work finishes
+- **THEN** the complete eligible selected-tab success sections appear together when no unresolved first reads remain, without requiring a new event or manual refresh
+- **AND** previously shown compatible section identities, folds, reveal depth and scroll anchors remain stable without clearing healthy last-good rows
+- **AND** confirmed missing PRs, other-tab-only rows and expired history leave no empty section, while top-left Loading remains until unresolved work finishes
 
 #### Scenario: Return to a previously visited coordinator
 - **WHEN** the user returns to the same coordinator machine, owner, home and enable generation during the same runtime
-- **THEN** the last compatible selected-tab sections, rows, counts and folds are shown immediately while current verification or membership reconciliation runs
-- **AND** unresolved work shares one panel Loading indication rather than a list of unknown-only repository sections
+- **THEN** the last compatible previously shown selected-tab sections, rows, counts and folds are shown immediately while current verification or membership reconciliation runs
+- **AND** pending reconciliation uses the existing header activity indicator, with no body Loading or Stale label, and completion stops activity and updates the list in place
+- **AND** newly loading partial success sections are withheld until first reads settle, while actionable notices appear immediately
 - **AND** authoritative removals, state transitions and expiry reconcile without restoring incompatible facts or granting stale worker actions
+
+#### Scenario: One cold repository fails while others load
+- **WHEN** one admitted repository has an actionable first-read failure and other repositories have pending or deferred first reads
+- **THEN** one top-left Loading indication remains and the failed repository's applicable header and notice appear beneath it under existing folding rules
+- **AND** successful partial sections remain withheld; when all remaining reads succeed, confirm absence or fail actionably, eligible successes appear and Loading disappears
+- **AND** actionable failures without authoritative PR state keep totals loading rather than inventing exact totals, even after the body Loading disappears
+
+#### Scenario: Background refresh of an already shown list
+- **WHEN** the coordinator list is on screen and known PR facts refresh without new unread membership or lost verification
+- **THEN** existing sections and rows remain mounted without body Loading or Stale text, and the existing working bulb animates in the header throughout the update
+- **AND** new unread membership or pending verification also uses header activity only; activity stops and the list updates in place when the update finishes
+- **AND** new partial success sections are withheld until first reads settle, while current authoritative removals, history expiry and state transitions remain effective
 
 ### Requirement: Stable pull request block geometry
 Every PR block SHALL retain fixed state-icon, title and related-agent slots, three fixed line boxes and a 74px height at a given width and zoom. Optional facts SHALL NOT move title boundaries or vertical anchors. Left-run lower-line items MAY move horizontally in fixed order as facts arrive; assigned labels SHALL retain their right content anchor. Absent groups SHALL reserve no width. The metadata line SHALL retain its height even when empty, without placeholders.
@@ -696,11 +709,11 @@ Every PR block SHALL retain fixed state-icon, title and related-agent slots, thr
 - **AND** full author, action and relative-time values remain in the byline tooltip while the number, author and time remain left-aligned with constant separator gaps
 
 ### Requirement: Non-destructive same-context PR refresh presentation
-A same-context PR refresh SHALL retain displayed rows, pin geometry and pagination until replacement data is ready. Pending reads, verification and transient failures SHALL NOT replace known rows with empty states. Coordinator returns SHALL reuse only bounded compatible runtime presentation. Different identities SHALL invalidate incompatible facts, and retained stale coordinator presentation SHALL NOT authorize reads or worker actions.
+A same-context refresh SHALL retain displayed rows, pin geometry and pagination until replacement is ready. Pending reads, verification and transient failures SHALL NOT replace known rows with empty states. Coordinator return/background updates SHALL use header activity, no body Loading and no Stale label. Returns SHALL reuse bounded compatible runtime presentation. Different identities SHALL invalidate incompatible facts; retained context SHALL NOT authorize reads or worker actions.
 
 #### Scenario: Delayed manual or webhook refresh
 - **WHEN** a manual, webhook, reconnect or show-time refresh is pending for the displayed repository or coordinator home
-- **THEN** known rows stay mounted without a temporary empty list or loading reflow
+- **THEN** known rows stay mounted without a temporary empty list or replacement Loading content
 - **AND** replacement facts apply directly, preserving expanded webhook depth and resetting manual pagination only when the replacement page is ready
 
 #### Scenario: Transient root or PR read failure
@@ -709,23 +722,23 @@ A same-context PR refresh SHALL retain displayed rows, pin geometry and paginati
 - **AND** later success replaces facts without a blank intermediate frame
 
 #### Scenario: Loading and fleet verification
-- **WHEN** the panel is loading or the same coordinator home temporarily loses fresh verification
-- **THEN** retained rows keep their Stale treatment without per-repository loading lines or displacement
-- **AND** cold verification uses one ordinary panel working bulb and Loading wording, with no extra Verifying header, invented PRs, counts or skeleton values
+- **WHEN** the panel has unresolved first reads or the same coordinator home temporarily loses fresh verification
+- **THEN** previously shown compatible rows remain with header activity only, no body Loading and no Stale text anywhere
+- **AND** cold verification uses only that ordinary panel working bulb and Loading wording as inventory feedback, with no extra Verifying header, invented PRs, counts, skeleton values or partial success sections
 
 #### Scenario: Off and on with slow or failed first verification
 - **WHEN** a verified coordinator list is switched off and back on and the first current read is slow, interrupted or fails
-- **THEN** off uses ordinary Git and clears inventory; on shows standard Loading for the current candidate, never Not a git repository while verification is pending or awaiting retry
-- **AND** no previous inventory returns across off/on; Stale retains only its same-context meaning and grants no reads or worker navigation
+- **THEN** off uses ordinary Git and clears inventory; on shows standard top-left Loading for the current candidate, never Not a git repository while verification is pending or awaiting retry
+- **AND** no previous inventory returns across off/on and retained presentation grants no reads or worker navigation
 
 #### Scenario: Negative completes before toggle without a panel render
 - **WHEN** authoritative absence completes without a Git render, then attachment is switched off/on and new verification is pending or fails
-- **THEN** Loading appears without old inventory or Stale resurrection
+- **THEN** top-left Loading appears without old inventory or Stale resurrection
 - **AND** only current fresh verification can populate the list
 
 #### Scenario: Changed coordinator owner with verification pending
 - **WHEN** a previous owner has a positive or negative result and a different labelled owner begins verification
-- **THEN** the current candidate shows Loading rather than ordinary folder Git or the previous inventory
+- **THEN** the current candidate shows top-left Loading rather than ordinary folder Git or the previous inventory
 - **AND** only a witnessed authoritative negative matching current dependency identity can suppress Loading
 
 #### Scenario: Authoritative context or membership change
@@ -735,7 +748,7 @@ A same-context PR refresh SHALL retain displayed rows, pin geometry and paginati
 
 #### Scenario: Bounded runtime return memory
 - **WHEN** a previously visited coordinator is selected again within the same runtime and enable generation
-- **THEN** only that exact machine, owner, home and selected-tab presentation can be restored, subject to current eligibility and fresh action verification
+- **THEN** only that exact machine, owner, home and selected-tab previously shown presentation can be restored, subject to current eligibility and fresh action verification
 - **AND** the cache is bounded, starts no hidden reads, and persists no PR/task inventory to disk, portable preferences or restart state
 - **AND** Git, Crew or attachment disablement and authoritative ownership loss invalidate affected cached presentations
 
@@ -859,7 +872,7 @@ Failed, unmatched and discarded fleet verification attempts SHALL retain a bound
 
 #### Scenario: Existing verification feedback
 - **WHEN** the selected coordinator has a relevant last verification failure
-- **THEN** a tooltip on the standard Loading working bulb or retained Stale indicator exposes the sanitized reason and time without adding header text, UI controls or notifications
+- **THEN** a tooltip on the existing working bulb exposes sanitized reason/time, in cold top-left Loading or warm header activity, without Stale text or notifications
 - **AND** a cold unverified coordinator candidate gains no attachment, PR inventory, GitHub-read permission or worker-navigation authority from that feedback
 
 #### Scenario: Runtime privacy and retention
@@ -1114,13 +1127,13 @@ Ordinary and coordinator Git lists SHALL reuse Spaces/Agents passive fade render
 - **AND** geometry and fade flags remain coherent through the shared atomic projection without render-time notifications or focus allocation
 
 ### Requirement: Quiet GitHub rate refusal episodes
-Any Git panel GitHub read refused for primary or secondary rate limits SHALL retain last-good rows, totals, pins and paging without an error notice, banner, replacement empty state or new Stale alarm. With no prior successful data it SHALL retain standard Loading feedback. Each refusal episode SHALL emit one sanitized customization-log line, never one per attempt. Actionable non-rate failures SHALL retain their existing notices.
+Any Git panel GitHub read refused for primary or secondary rate limits SHALL retain last-good rows, totals, pins and paging without an error notice, banner, replacement empty state or new Stale alarm. With no prior shown inventory it SHALL retain standard top-left Loading feedback without exposing cold partial success sections. Each refusal episode SHALL emit one sanitized customization-log line, never one per attempt. Actionable non-rate failures SHALL retain their existing notices.
 
 #### Scenario: Every read path is quiet
 - **WHEN** list, count, targeted, older/pinned, history, safety, check-detail, repository-resolution, account-diagnosis or panel auxiliary reads encounter a genuine rate refusal
-- **THEN** refusal alone introduces no error UI or new stale alarm, and already known rows and totals remain
-- **AND** first-load unknown data stays Loading with unknown-count semantics rather than settling as an empty list or disappearing behind healthy repositories
-- **AND** an unrelated existing actionable error or fleet-verification Stale state is not falsely cleared or reclassified
+- **THEN** refusal alone introduces no error UI or new stale alarm, and already shown rows and totals remain
+- **AND** first-load unknown data stays top-left Loading with unknown-count semantics rather than settling as an empty list or exposing partial successful repositories
+- **AND** unrelated existing actionable errors or fleet-verification waiting feedback are not falsely cleared or reclassified
 
 #### Scenario: Bounded retry and manual bypass
 - **WHEN** a refusal starts or extends a cooldown

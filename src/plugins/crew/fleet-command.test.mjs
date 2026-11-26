@@ -16,7 +16,7 @@ assert.doesNotMatch(fleetStatusScript([], {discover:false}),/'--discover-prs'/);
 if(process.platform!=='win32') {
  console.log('PASS fleet projection command contract; actual Windows PowerShell fixture runs on Windows');
 } else {
- const root=fs.mkdtempSync(path.resolve('.artifacts/fleet-command-'));
+ const root=fs.mkdtempSync(path.join(path.resolve(process.env.FLEET_TEST_ROOT??'.artifacts'),'fleet-command-'));
  try {
   const cli=path.join(root,'crew-fixture.mjs'),config=path.join(root,'config.json'),calls=path.join(root,'calls.jsonl');
   fs.writeFileSync(cli,`import fs from 'node:fs';const config=JSON.parse(fs.readFileSync(${JSON.stringify(config)},'utf8')),args=process.argv.slice(2);fs.appendFileSync(${JSON.stringify(calls)},JSON.stringify(args)+'\\n');if(args[0]==='--help'){console.log(config.capable?'crew status --json --view fleet [--discover-prs]':'crew status [--all] [--json] [--discover-prs]');}else{if(!args.includes('--all')&&!args.includes('--view'))throw Error('Legacy history must not disappear');if(!config.capable&&args.includes('--view'))throw Error('Old Crew can silently ignore this flag');if(config.exit){process.stderr.write(config.error??'fixture status failure');process.exit(config.exit);}const text=JSON.stringify(config.payload,null,config.pretty?2:undefined);const lines=text.split('\\n').length;console.log(text+'\\n'.repeat(Math.max(0,(config.lines??lines)-lines)));}`);
@@ -31,10 +31,10 @@ if(process.platform!=='win32') {
   };
   const discovery={status:'known',url:'https://github.com/example/repo/pull/1',source:'recorded',reason:null};
   const payload={home:'fixture/é界🚢',owner:{terminal:'t1',live:true,mine:false,unused:'x'.repeat(5000)},tasks:[
-   {id:'working',state:'working',terminal:'t2',pr:null,prDiscovery:{status:'none',url:null,source:null,reason:null},report:'x'.repeat(300000),standby:[{unused:true}]},
+   {id:'working',project:'herdr-app',state:'working',terminal:'t2',pr:null,prDiscovery:{status:'none',url:null,source:null,reason:null},report:'x'.repeat(300000),standby:[{unused:true}]},
    {id:'old-finished-open',state:'closed',terminal:null,pr:discovery.url,prDiscovery:discovery,elapsedSeconds:9999999,report:'unused'},
   ],prDiscovery:{version:1,unused:true},unused:'not needed'};
-  const expected={home:payload.home,owner:{terminal:'t1',live:true},tasks:payload.tasks.map(({id,state,terminal,pr,prDiscovery})=>({id,state,terminal,pr,prDiscovery})),prDiscovery:{version:1}};
+  const expected={home:payload.home,owner:{terminal:'t1',live:true},tasks:payload.tasks.map(({id,project,state,terminal,pr,prDiscovery})=>({id,...(project?{project}:{}),state,terminal,pr,prDiscovery})),prDiscovery:{version:1}};
   for(const capable of [false,true]) {
    const r=run(payload,capable);assert.deepEqual(r.value,expected);assert.ok(r.bytes<1000,'Reports and unused fields never reach native Base64 decoding');
    assert.deepEqual(r.calls,[['--help'],capable?['status','--json','--view','fleet','--discover-prs']:['status','--all','--json','--discover-prs']]);

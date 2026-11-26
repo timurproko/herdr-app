@@ -51,6 +51,7 @@ export function fleetStatusScript(prelude, {discover = true, legacy = false, cap
     '  $tasks = @(foreach ($task in $r.tasks) {',
     "    if (-not (HasFields $task @('id','state','terminal'))) { throw 'shape' }",
     '    $t = [ordered]@{id=$task.id;state=$task.state;terminal=$task.terminal}',
+    "    if ($null -ne $task.PSObject.Properties['project']) { $t.project = $task.project }",
     "    if ($null -ne $task.PSObject.Properties['pr']) { $t.pr = $task.pr }",
     "    if ($null -ne $task.PSObject.Properties['prDiscovery']) {",
     '      $d = $task.prDiscovery',

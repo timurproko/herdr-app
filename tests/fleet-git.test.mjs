@@ -113,7 +113,7 @@ for(const missingOwner of [true,false]) {
 }
 // An optional role hint disappearing is not itself contradictory owner status:
 // a witnessed exact native owner/home may retain read-only history without it.
-failStatus=true;delete list[0].labels['custom.crew.home'];tree=panel.render(cx);assert.ok(find(tree,'pr-example/a#12'));assert.equal(find(tree,'git-task-stale').kids[0],'Stale');assert.equal(r.pluginPullContext('coordinator'),null);await drain();
+failStatus=true;delete list[0].labels['custom.crew.home'];tree=panel.render(cx);assert.ok(find(tree,'pr-example/a#12'));assert.ok(find(tree,'git-task-stale').attrs.loop);assert.doesNotMatch(text(find(tree,'changes-header')),/Stale/);assert.equal(r.pluginPullContext('coordinator'),null);await drain();
 status.owner.live=false;f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();assert.equal(panel.aggregate.sync(cx),false,'A witnessed negative clears history even without a role-hint diagnostic subject');assert.equal(r.pluginPullContext('coordinator',{presentation:true}),null);
 status.owner.live=true;list[0].labels['custom.crew.home']='1';failStatus=false;f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();tree=panel.render(cx);await drain();tree=panel.render(cx);
 // A changed native owner membership cannot reuse the old inventory while the
@@ -265,7 +265,7 @@ noticeModes['example/a']='setup';noticeModes['example/b']='setup';tree=panel.ren
 failStatus=true;now+=2*86400000;defer=false;const staleCalls=calls.length,foldBefore=panel.foldedRepositories.has('example/a'),countsBefore=JSON.stringify(panel.aggregate.counts());
 const lastRobot=find(tree,'pr-agent-example/b#12'),lateRelay=websocket.onChange;
 rendering=true;try{tree=panel.render(renderCx);}finally{rendering=false;}
-assert.equal(find(tree,'git-task-stale').kids[0],'Stale');assert.ok(find(tree,'pr-example/b#12'));assert.equal(find(tree,'pr-agent-example/b#12'),undefined);assert.equal(JSON.stringify(panel.aggregate.counts()),countsBefore);sample();
+assert.ok(find(tree,'git-task-stale').attrs.loop);assert.doesNotMatch(text(find(tree,'changes-header')),/Stale/);assert.ok(find(tree,'pr-example/b#12'));assert.equal(find(tree,'pr-agent-example/b#12'),undefined);assert.equal(JSON.stringify(panel.aggregate.counts()),countsBefore);sample();
 assert.equal(websocket.enabled,false,'Stale presentation cannot subscribe for task reads');assert.equal(panel.ciSweep,null);
 lastRobot.attrs.on_click[0]({},cx);lateRelay({repository:'example/a'},cx);panel.aggregate.refresh(cx);await drain();assert.equal(calls.length,staleCalls);assert.equal(focus.length,1,'Stale callbacks cannot navigate');
 panel.setView('open',cx);tree=panel.render(cx);toggle('a');assert.equal(panel.foldedRepositories.has('example/a'),!foldBefore);assert.equal(calls.length,staleCalls,'Read-only folding still works while verification is unavailable');panel.setView('closed',cx);tree=panel.render(cx);
