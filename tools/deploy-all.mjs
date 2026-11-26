@@ -61,12 +61,9 @@ export function parseOptions(args) {
   return options;
 }
 export function printSummary(results, log) {
-  const cell = value => String(value || '-').replace(/[\r\n\t\x00-\x1f\x7f|]/g, ' ').slice(0, 250);
-  log('\nMachine | Action | Source commit | Backup');
-  for (const row of results) {
-    const qualifier = row.action === 'failed' ? ' (attempted)' : row.action === 'would deploy' ? ' (target)' : row.action === 'skipped' ? ' (checkout only)' : '';
-    log([row.machine, row.action + (row.reason ? ': ' + row.reason : ''), row.commit ? row.commit + qualifier : '-', row.backup || '-'].map(cell).join(' | '));
-  }
+  const [header, ...rows] = updater.summaryLines(results);
+  log('\n' + header);
+  for (const row of rows) log(row);
 }
 // Kept outside runtime/ and the ownership manifest: the row can reattach after
 // its own mod is replaced. Dry-run must remain byte-preserving, including here.
@@ -110,11 +107,14 @@ export function resultRecorder(env = process.env, dryRun = false, ioOptions = {}
       desktop = desktop ? { ...desktop, verified: false } : null;
     }
     const value = { version: 1, runId, token: env.HERDR_UPDATE_RUN_ID || null, at: Date.now(), complete, target, desktop, deferredPeers: [...deferred].sort(), results, error };
+    // Publish terminal evidence before the final filesystem replacement. A
+    // receipt-publication error must never erase what deployment already did.
+    if (complete && ioOptions.log) ioOptions.log(updater.TERMINAL + JSON.stringify(value));
     return updater.atomic(file, value, ioOptions);
   };
 }
 export function deployAll(args = [], { root = project, log = console.log, hostname = os.hostname(), ...options } = {}) {
-  const record = resultRecorder(options.env || process.env, args.includes('--dry-run'));
+  const record = resultRecorder(options.env || process.env, args.includes('--dry-run'), { log });
   let selection;
   try { selection = parseOptions(args); }
   catch (error) { record([], true, error.message); throw error; }

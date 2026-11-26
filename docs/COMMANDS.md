@@ -210,7 +210,15 @@ automatic retry. The installer's own eight-minute npm timeout is also unknown:
 especially on Windows, termination of cmd.exe does not prove npm/installer
 descendants stopped. Its structured unknown result retains update.lock even
 when the CLI exits and a fresh Check succeeds. Remote work already dispatched
-might still finish.
+might still finish. After recorded processes are dead and five seconds of evidence
+settling (or the deadline), inspection can reconcile an exact final receipt or
+same-run terminal completion evidence. Older runs require every final table row to
+match their intermediate receipt plus a trailing sharing-error rename of that exact
+result path. A proven completion reports **Deployed, but the result could not be
+saved.**, not a generic unknown. Partial and definite failures keep their precise
+meaning; explicit installer/remote uncertainty never becomes proven success. The
+installed SHA still requires matching ownership evidence. A dead local transport or
+an expired deadline alone never proves a remote update stopped.
 
 When the desktop succeeds, positively identified offline/unreachable skips and the
 deliberate **needs its own full deploy** exclusion are benign: after checking, the

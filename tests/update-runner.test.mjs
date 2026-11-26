@@ -237,7 +237,7 @@ try {
     if (kind === 'missing') {
       // Reload sees the same unresolved job; a later exact result can settle it.
       assert.equal(inspect(h.home, { isAlive: () => false }).job.state, 'unknown');
-      final(p, token); assert.equal(inspect(h.home, { isAlive: () => false }).job.state, 'complete'); assert.equal(fs.existsSync(p.lock), false);
+      final(p, token); assert.equal(inspect(h.home, { isAlive: () => false, now: () => Date.now() + worker.SETTLE + 1 }).job.state, 'complete'); assert.equal(fs.existsSync(p.lock), false);
     }
   }
   // An ordinary clean main clone can predate the result protocol. Only Git is

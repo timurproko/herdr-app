@@ -59,6 +59,8 @@ export function customizationRowState(snapshot, { busy = null, error = null, now
   else if (unknown) description = `${updateSentence(`Update outcome unknown${job?.error ? `: ${job.error}` : ''}`)} Inspect ${details?.kind === 'result' ? 'details' : 'log'}: ${details?.path || 'unavailable'}.`;
   else if (error) description = updateSentence(error);
   else if (job?.state === 'failed') description = `${updateSentence(`Update failed: ${job.error || 'inspect log'}`)} Recovery: documented rollback.${log}`;
+  else if (job?.receiptUnsaved && job.state === 'complete') description = `Deployed, but the result could not be saved.${log}`;
+  else if (job?.receiptUnsaved && job.state === 'partial') description = `Desktop deployed, but the result could not be saved. Some machines skipped or failed.${log}`;
   else if (check?.error) description = 'Check failed. Try again.';
   else if (snapshot?.partial || job?.state === 'partial') description = `Desktop updated; some machines skipped or failed.${log}`;
   else if (['complete', 'partial'].includes(job?.state) && (check?.attempted || 0) < job.finished) description = 'Updated. Check now.';

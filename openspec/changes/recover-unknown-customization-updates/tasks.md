@@ -10,10 +10,10 @@
 
 ## 2. Precise settlement of dead unknown runs
 
-- [ ] 2.1 Emit run-qualified terminal completion evidence before final receipt publication and reconcile it only after process death and settle/deadline checks; runner tests distinguish success, partial, failure, publication failure and explicit remote/installer uncertainty.
-- [ ] 2.2 Add conservative legacy final-table plus matching intermediate-receipt recovery for the reported receipt-write failure; sanitized fixtures cover the reported shape, truncated/foreign logs and missing evidence without reading the real archived files.
-- [ ] 2.3 Persist exact-run settlement, release only its own stale update lock and project deployed-but-result-unsaved diagnostics; runner/model tests retain manifest-digest revision verification and reject live owners or stale receipts.
-- [ ] 2.4 Update README and docs/COMMANDS.md missing-result classification guidance and current manual workaround; check that new text never treats local PID death or a deadline alone as proof that remote work stopped.
+- [x] 2.1 Emit run-qualified terminal completion evidence before final receipt publication and reconcile it only after process death and settle/deadline checks; runner tests distinguish success, partial, failure, publication failure and explicit remote/installer uncertainty.
+- [x] 2.2 Add conservative legacy final-table plus matching intermediate-receipt recovery for the reported receipt-write failure; sanitized fixtures cover the reported shape, truncated/foreign logs and missing evidence without reading the real archived files.
+- [x] 2.3 Persist exact-run settlement, release only its own stale update lock and project deployed-but-result-unsaved diagnostics; runner/model tests retain manifest-digest revision verification and reject live owners or stale receipts.
+- [x] 2.4 Update README and docs/COMMANDS.md missing-result classification guidance and current manual workaround; check that new text never treats local PID death or a deadline alone as proof that remote work stopped.
 
 ## 3. Deliberate unknown-outcome retry in the existing row
 

@@ -6,6 +6,7 @@ const cp = require('node:child_process');
 const { createHash, randomUUID } = require('node:crypto');
 const REPOSITORY = 'https://github.com/timurproko/herdr-app.git';
 const DEADLINE = 30 * 60 * 1000;
+const SETTLE = 5000, TERMINAL = 'HERDR_UPDATE_COMPLETION=';
 const CHECK_MIN = 120000, CHECK_MAX = 180000, RETRY_MAX = 1800000;
 const INVALIDATE_MIN = 15000, BUSY_CHECK_RETRY = 30000;
 const failures = check => Number.isInteger(check?.failures) ? Math.max(0, Math.min(4, check.failures)) : check?.error ? 1 : 0;
@@ -89,7 +90,9 @@ function atomic(file, value, options = {}) {
   return { recovery: null };
 }
 function readResult(p, job, options = {}) {
-  noRedirect(p.dir);
+  for (const dir of [p.dir, path.dirname(p.dir)]) {
+    if (fs.existsSync(dir) && fs.lstatSync(dir).isSymbolicLink()) throw Error('Update state path is redirected; inspect it manually');
+  }
   let primary, unreadable;
   try { primary = read(p.result, options); } catch (error) { unreadable = error; }
   const token = job?.token || primary?.token, runId = primary?.runId;
@@ -145,13 +148,65 @@ function deploymentTarget(job, result) {
   const local = result.results?.find(row => row.machine === 'local');
   return [local?.commit, result.target].find(value => typeof value === 'string' && /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i.test(value)) || null;
 }
+function summaryLines(results) {
+  const cell = value => String(value || '-').replace(/[\r\n\t\x00-\x1f\x7f|]/g, ' ').slice(0, 250);
+  return ['Machine | Action | Source commit | Backup', ...results.map(row => {
+    const qualifier = row.action === 'failed' ? ' (attempted)' : row.action === 'would deploy' ? ' (target)' : row.action === 'skipped' ? ' (checkout only)' : '';
+    return [row.machine, row.action + (row.reason ? ': ' + row.reason : ''), row.commit ? row.commit + qualifier : '-', row.backup || '-'].map(cell).join(' | ');
+  })];
+}
+function settled(p, job, now) {
+  const times = [job.started, job.finished || 0];
+  for (const file of [p.log, p.result, p.status]) {
+    try { times.push(fs.statSync(file).mtimeMs); } catch (error) { if (error.code !== 'ENOENT') return false; }
+  }
+  return now >= Math.max(...times) + SETTLE || (Number.isFinite(job.deadline) && now >= job.deadline);
+}
+function terminalEvidence(p, job, result) {
+  if (!job?.token || !Number.isFinite(job.started)) return null;
+  let text;
+  try {
+    // No stream or persistent descriptor. Refuse oversized/truncated logs rather
+    // than accidentally treating an earlier machine's success as final.
+    if (fs.statSync(p.log).size > 1024 * 1024) return null;
+    text = retryIO(() => fs.readFileSync(p.log, 'utf8'), { budget: 150 });
+  } catch { return null; }
+  const lines = text.trimEnd().split(/\r?\n/), marker = lines.findLast(line => line.startsWith(TERMINAL));
+  if (marker) {
+    try {
+      const value = JSON.parse(marker.slice(TERMINAL.length));
+      if (value.version === 1 && value.token === job.token && value.complete === true && value.at >= job.started && Array.isArray(value.results)) return value;
+    } catch {}
+    return null;
+  }
+  // Older CLIs print their complete summary immediately before the failed final
+  // rename. It must match *every* intermediate row and the exact result path.
+  if (result?.token !== job.token || result.complete !== false || result.at < job.started || !Array.isArray(result.results) || !result.results.length) return null;
+  const summary = summaryLines(result.results), index = lines.lastIndexOf(summary[0]);
+  const tail = lines.slice(index + summary.length);
+  const failure = tail.join('\n').replaceAll('\\', '/').toLowerCase();
+  const destination = failure.slice(failure.lastIndexOf('->') + 2).trim().replace(/^['"]|['"]$/g, '');
+  if (index < 0 || tail.length !== 1 || lines.slice(index, index + summary.length).join('\n') !== summary.join('\n')
+      || !/\b(?:eperm|ebusy|eacces)\b/.test(failure) || !failure.includes('rename')
+      || destination !== p.result.replaceAll('\\', '/').toLowerCase()) return null;
+  return { ...result, complete: true };
+}
 function inspect(home, { now = Date.now, isAlive = alive } = {}) {
   const p = files(home);
   let job = read(p.status);
-  const result = readResult(p, job);
+  let result = readResult(p, job);
+  const dead = job && !isAlive(job.pid) && !isAlive(job.childPid);
+  const ready = dead && settled(p, job, now());
+  if (job && ['running', 'unknown'].includes(job.state) && ready && result?.complete !== true) {
+    const recovered = terminalEvidence(p, job, result);
+    if (recovered) {
+      result = recovered;
+      job = { ...job, receiptUnsaved: true };
+    }
+  }
   // A lost supervisor may leave a complete CLI result. Never accept another run's
   // result or remove an uncertain lock just because a PID no longer exists.
-  if (job && ['running', 'unknown'].includes(job.state) && !isAlive(job.pid) && !isAlive(job.childPid)
+  if (job && ['running', 'unknown'].includes(job.state) && ready
       && result?.complete === true && result.token === job.token) {
     job = { ...job, ...outcome(result), finished: now() };
     atomic(p.status, job);
@@ -371,7 +426,7 @@ async function launch(home, { spawn = cp.spawn, source = fs.readFileSync(__filen
     return inspect(home);
   }
 }
-module.exports = { retryIO, acquire, remove, readResult, REPOSITORY, DEADLINE, CHECK_MIN, CHECK_MAX, RETRY_MAX, INVALIDATE_MIN, BUSY_CHECK_RETRY, nextAttempt, checkDelay, files, read, atomic, command, installedRevision, inspect, checkMain, prepareClone, peerSkipKind, deferredPeers, outcome, launch, runUpdate };
+module.exports = { SETTLE, TERMINAL, summaryLines, terminalEvidence, settled, retryIO, acquire, remove, readResult, REPOSITORY, DEADLINE, CHECK_MIN, CHECK_MAX, RETRY_MAX, INVALIDATE_MIN, BUSY_CHECK_RETRY, nextAttempt, checkDelay, files, read, atomic, command, installedRevision, inspect, checkMain, prepareClone, peerSkipKind, deferredPeers, outcome, launch, runUpdate };
 if (require.main === module) {
   if (process.argv[2] === '--run') runUpdate(process.argv[3], process.argv[4]).catch(error => { console.error(shortError(error)); process.exitCode = 1; });
   else {

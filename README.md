@@ -1480,8 +1480,12 @@ needed. Other peer skips, failures and inventory errors retain the successful
 desktop revision and show one short matching-details warning (`update.log` for Settings runs,
 `deploy-all-result.json` for ordinary CLI runs without a captured log); desktop
 failure names the cause and documented
-manual rollback. Missing results/deadlines say outcome unknown and block replay
-while the prior process/lock is unresolved. Ordinary CLI failures also retain
+manual rollback. Missing results/deadlines never imply success or automatic replay.
+After recorded processes are dead and evidence settles, matching final receipts or
+conclusive same-run terminal logs can resolve the outcome. A completed deployment
+whose final receipt could not be saved says **Deployed, but the result could not be
+saved.**, with its log pointer; incomplete/foreign evidence stays unknown. Installed
+revision still requires the matching ownership digest, never log text or checkout HEAD. Ordinary CLI failures also retain
 their cause/recovery/details line after checking; a CLI installer timeout's
 durable result blocks another Settings update even without a Settings lock. There is no per-machine UI, news,
 rollback button, automatic rollback, daemon, scheduler or job history. See
