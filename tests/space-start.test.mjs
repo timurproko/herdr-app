@@ -35,7 +35,8 @@ const mocks = {
   './ui.js': { hotkey: v => String(v ?? ''), menuRow: realUi(element).menuRow, rolePillButton: realUi(element).rolePillButton, U: { row: 28, rowGap: 2, icon: 16, gap: 8, font: 12.5 }, slot: icon => element().child(icon), menuHeading: (_t, text) => element().child(text), ROLE_LABELS: { firstmate: 'Crew' }, ROLE_ACTIONS: { firstmate: 'Start Crew' } },
   './profiles.js': { cachedProfiles: () => items, composeProfiles: () => items, warmProfiles: async () => items, PROFILE_ROLES: ['firstmate'],
     launchList: (list, roles = []) => list.filter(p => p.show || (p.key !== 'terminal' && roles.includes(p.role))), plainProfile: p => p.role ? { ...p, role: null } : p },
-  './plugins.js': { pluginEvent() {}, pluginGateReady: name => { assert.equal(name, 'profile.role.firstmate'); return crewOn; } },
+  './settings-kit.js': { badge: element },
+  './plugins.js': { pluginEvent() {}, pluginSettingsRows: () => [], pluginGateReady: name => { assert.equal(name, 'profile.role.firstmate'); return crewOn; } },
   './directory.js': { spaceStartFolder: s => { assert.equal(s.id, 'pc2/project'); return 'D:/Work/a project'; }, warmSpaceStartFolder: async s => { assert.equal(s.id, 'pc2/project'); } },
 };
 const context = vm.createContext({}), cache = new Map();

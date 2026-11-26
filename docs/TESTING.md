@@ -39,6 +39,16 @@ can satisfy GitHub protection, so metadata events must not publish a replacement
 aggregate; the latest non-cancelled ready run must still pass all dependencies.
 These live observations are separate from the local regression matrix.
 
+`node tests/deploy-all-cleanup.test.mjs` holds a disposable subprocess cwd while
+requesting complete fixture removal. This reproduces Windows' transient `EPERM`
+without native apps or real deployment. Shared deploy-all cleanup uses five bounded
+100ms-increment retries and still throws on permanent removal failure; the test
+asserts the directory is actually gone. `tests/deploy-all-pipeline.test.mjs` retains
+all real disposable CLI/npm pipeline assertions. Crew's declaration regression
+explicitly checks the hidden default-off global intent and unchanged visible card
+controls; the Start-page fixture separately supplies the Settings badge/contribution
+imports while keeping all independent last-tab and launch assertions.
+
 ## Connected project Spaces and coherent coordinator inventory
 
 `spaces-worktree-layout.test.mjs` covers the approved adaptive metadata grid:
