@@ -281,7 +281,13 @@ observed Node 20 experimental-VM crashes and meets the unchanged Cloudflare
 fixture's Node 22.12+ prerequisite.
 `scripts/test-ci.mjs` only builds this checkout, selects existing test entrypoints,
 passes their original VM flags, and propagates failures. It prints every included
-and excluded source path before execution. CI children use a disposable Herdr home,
+and excluded source path before execution. Required read-only tool preflights
+retry once only on a 15-second startup timeout, with a 45-second second allowance
+for cold hosted runners. Missing executables and nonzero exits still fail
+immediately; a second timeout fails the job. Test processes are never retried and
+their existing limits and failure propagation are unchanged.
+`tests/ci-tool-preflight.test.mjs` covers these cases with injected process results.
+CI children use a disposable Herdr home,
 unavailable native app executable and temporary fixture directories under ignored
 `.artifacts/`. No Herdr install, private snapshot or external A1 checkout is supplied.
 On Windows the CI child environment drops inherited PowerShell 7 module paths so
