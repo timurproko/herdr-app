@@ -21,7 +21,7 @@ export default class Fixture extends Changes {
  this.pulls[this.view]=[{number:933,title:'Pinned PR: ${state}',state:${JSON.stringify(['draft','merged'].includes(state)?state:'open')},
  meta:'#933 · fixture',mergeConflict:${state==='conflict'},checks:${state==='waiting'?'null':JSON.stringify({state:state.startsWith('fail')?'failure':pending?'pending':'success',pending:pending?1:0,label:'14/16'})}}];
  ${state==='notice'?"this.notices={sync(){return 'setup';}};":''}
- this.pinMotion.measureBody({width:360,height:240},1);this.startCISweep(cx);}
+ this.pinMotion.measureBody({width:360,height:240},1);this.pullLoading=${state==='pending'};}
  shown(){return true;}
  syncAgent(){} loadRelatedPull(){} syncWebhooks(){}
  render(cx){this.agentResolved=JSON.stringify(location());return super.render(cx);}

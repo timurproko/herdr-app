@@ -188,6 +188,7 @@ export class AggregatePulls {
         };
         try {
           await Promise.resolve();if(!current())return;
+          view.notify(); // Show pending-work feedback for timer-driven retries too.
           const results=await readTargetPulls(exec,batch.map(e=>e.link.number),repository,{on:context.machine,timeout:30000,current,manual:this.manualRead});
           for(const entry of batch) {
             if(!member(entry))continue;

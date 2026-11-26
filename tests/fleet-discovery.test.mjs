@@ -117,7 +117,7 @@ for(const failure of ['auth','timeout']) {
   now+=31001;await refresh();tree=await paint();
   assert.equal(statusCalls.length-before,1,'Auth/timeout never starts the recorded-only fallback');
   assert.equal(state[f.FLEET_KEY].entries.local.at,at);assert.equal(pullCalls.length,reads);
-  assert.ok(find(tree,'git-task-stale'));assert.ok(find(tree,'pr-example/repo#1'));assert.equal(r.pluginPullContext('coordinator'),null);
+  assert.equal(find(tree,'git-task-stale'),undefined,'No header bulb after failed reads');assert.ok(find(tree,'pr-example/repo#1'));assert.equal(r.pluginPullContext('coordinator'),null);
   assert.equal(state[f.FLEET_KEY].entries.local.status.discovery,undefined,'Transport failure cannot fabricate none');
 }
 panel.close();

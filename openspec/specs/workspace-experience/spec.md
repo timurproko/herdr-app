@@ -303,7 +303,7 @@ A coordinator and all its connected children SHALL remain independently selectab
 - **WHEN** a verified coordinator and fleet are attached in Spaces
 - **THEN** selecting either targets its own native space without moving tabs or terminals
 - **AND** child indentation and connectors coexist with ordinary selected/inactive name treatment
-- **AND** the coordinator's Crew pill retains existing styling and tooltip before the disclosure chevron at the far right, while the child has no Crew pill or chain icon
+- **AND** the coordinator's Crew label uses Agents machine-label styling and retains its tooltip before the disclosure chevron at the far right, while the child has no Crew label or chain icon
 - **AND** unrelated plugin tags remain on both rows with existing metadata order and tooltips
 
 #### Scenario: Attachment removed
@@ -410,13 +410,14 @@ After apply, Core Settings SHALL restore eligible runtime controls as soon as fr
 - **AND** existing error and offline behavior is preserved
 
 ### Requirement: Connected space parent disclosure
-Expanded connected coordinators SHALL use the Agents parent-row chevron to show or hide their children, default expanded, after Crew at the far right. No child count SHALL appear in either state. Disclosure SHALL be local, identity-scoped and nonportable. It SHALL NOT change native space selection, shortcut numbering, paired reorder semantics or compact-rail membership.
+Expanded connected coordinators SHALL show a far-right chevron aligned with machine headers, default expanded. Only collapsed coordinators SHALL show their connected child-space count in the Agents group number style and time/count rail. Disclosure SHALL remain local, identity-scoped and nonportable, without changing native selection, shortcuts, paired reorder or compact membership.
 
 #### Scenario: Parent toggle and collapsed count
 - **WHEN** the user activates the coordinator's fold control
 - **THEN** all that parent's child rows toggle together without starting drag, selecting a different space or making discovery reads
-- **AND** the chevron glyph, hit target and hover match the Agents parent fold control, with no child count when expanded or collapsed
-- **AND** Crew precedes the far-right chevron in both states and only the chevron direction indicates collapse
+- **AND** the chevron glyph axis, hit target and hover bounds match the machine header, with no count expanded and a right-aligned child-space count collapsed
+- **AND** collapsed Crew precedes count then chevron, with count on the Agents time/group-count rail rather than after the chevron
+- **AND** the count excludes the coordinator and counts connected spaces, not agents, tabs or tasks
 
 #### Scenario: Keyboard navigation to a hidden child
 - **WHEN** native keyboard or external navigation selects a child hidden by a collapsed parent
@@ -448,7 +449,7 @@ One coordinator SHALL support multiple validated same-machine project children t
 
 #### Scenario: One, two and three project children
 - **WHEN** validated contributions identify one, two or three children under one coordinator
-- **THEN** all appear under that coordinator with shared connector anchors, independently selectable native numbers, and one parent fold hiding all children with no count
+- **THEN** all appear under that coordinator with shared connector anchors, independently selectable native numbers, and one parent fold hiding all children with the child-space count visible only while collapsed
 - **AND** selecting any hidden child discloses the parent without selecting another child or remapping shortcuts
 - **AND** validated project children show the supplied registered project name rather than a worktree basename, while explicit user-renamed space titles take precedence
 
@@ -480,4 +481,28 @@ One coordinator SHALL support multiple validated same-machine project children t
 #### Scenario: Existing Agents and compact rail
 - **WHEN** the shared connector or fold primitives are used by Agents, or Spaces switches into compact rail
 - **THEN** Agents retains its existing connector geometry and collapsed-count behavior
-- **AND** compact Spaces retains the coordinator and every independently selectable child badge without connector, Crew pill or parent disclosure
+- **AND** compact Spaces retains the coordinator and every independently selectable child badge without connector, Crew label or parent disclosure
+
+### Requirement: Shared sidebar trailing grid
+Spaces and Agents SHALL share trailing label, numeric and disclosure/status rails, with existing native row semantics. Spaces Crew SHALL use plain Agents machine-label styling instead of the previous filled Crew-pill presentation, retaining its tooltip. Machine plus and expanded Crew SHALL share a right edge; collapsed Crew SHALL move to the label rail so the count retains the numeric rail.
+
+#### Scenario: Expanded and collapsed coordinator metadata
+- **WHEN** a coordinator is shown expanded or collapsed in a local or remote group
+- **THEN** expanded Crew ends at the numeric rail's right edge with no count, while collapsed Crew ends at the Agents machine-label edge and the count occupies the Agents time/group-count rail
+- **AND** machine-header plus right edge matches expanded Crew and all chevrons and ordinary agent status dots share the machine-chevron axis
+- **AND** labels are regular 12px dim text without fill, border or pill padding; unrelated tags retain their existing styling and metadata order
+- **AND** previous Spaces references to Crew pills describe the Crew role label, whose presentation is replaced by this plain-label contract
+
+#### Scenario: Long names and zoom
+- **WHEN** long space or machine names are shown at 100% or 130% zoom with one or several connected children
+- **THEN** names truncate without moving the fixed trailing rails, overlapping labels/counts or displacing connectors and numbered badges
+- **AND** selection, compact rail, native shortcuts and captured whole-block reorder remain unchanged
+
+### Requirement: Space rename trailing alignment
+Inline space rename SHALL retain tab rename's existing 24px action buttons, 2px inter-button gap and 4px input-to-actions gap. Cancel SHALL occupy the machine-chevron axis on every space row, replacing coordinator disclosure while editing. Confirm SHALL sit immediately to its left. Editing SHALL retain its captured target, full initial selection and existing Enter, Escape and blur behavior.
+
+#### Scenario: Parent child and ordinary inline editors
+- **WHEN** rename opens on a coordinator, child or ordinary space
+- **THEN** the Cancel target shares the machine/coordinator chevron centre and 24px hover bounds with the sidebar's 8px outer gutter preserved
+- **AND** Confirm is 2px to its left, the input ends 4px before Confirm, and ordinary tags/count/disclosure are suppressed while editing
+- **AND** Enter saves only the captured space, Escape or blur cancels unchanged, and repeated rename does not reset an existing draft or selection

@@ -229,8 +229,11 @@ failure remains evidence, not action permission. Reasons are allowlisted; numeri
 exit/timeout facts and bounded native owner/space references are allowed, never raw
 process errors, task inventories, home paths, transcripts or credentials. Generic
 presentation context carries only the relevant sanitized verification fact; Git
-uses the cold panel Loading bulb's tooltip, or the retained header activity tooltip,
-without importing Crew code. Empty verification adds no special header text. A uniquely
+uses the cold panel Loading message's tooltip without importing Crew code.
+Warm header bulbs/tooltips are removed. A generic presentation-only `loading`
+boolean reports an unexpired current-generation read for the exact parent/owner;
+it grants no action authority and distinguishes pending verification from a dormant
+retry. Git uses that work evidence for its single under-header moving line. Empty verification adds no special header text. A uniquely
 routed cold coordinator hint can route Loading even before a failure, with empty links, not a pair,
 verified home or GitHub/worker authority.
 
@@ -272,8 +275,8 @@ leases are not fresh verification. Space-only block ordering uses the displayed
 remembered link, revalidating exact captured pair identity and native acknowledgements
 at commit. This exception reorders spaces only; it never permits terminal/tab moves,
 worker navigation, messages or coordinator colour writes from remembered identity. Git requests presentation context
-only to retain already-loaded same-home rows/counts/folds with native header activity, or a
-standard Loading bulb with no extra header label or restored inventory on cold start.
+only to retain already-loaded same-home rows/counts/folds with the under-header moving line during pending work, or
+standard Loading text/static dot with no extra header label or restored inventory on cold start.
 There is no cross-toggle identity/inventory cache. Off or a scope change clears
 the aggregate's entries; on shows Loading until fresh verification and facts arrive.
 Same-context outages retain presentation only, never fresh action permission or Stale text.
@@ -288,7 +291,7 @@ changes cannot inherit those rows. Git additionally matches the successfully
 verified live-task membership, independently of the pair/adoption fingerprint: a
 Core-first worker exit cannot silently remove its PR before Crew publishes the
 closed record. A working/finished mismatch remains unverified rather than renewing
-action freshness, while existing same-home rows remain unverified with header activity.
+action freshness, while existing same-home rows remain unverified with the moving line only while reconciliation is pending.
 
 Spaces accepts multiple verified same-machine children per coordinator through the
 existing registry contribution. Crew placement v1 validates `crew.space.version=1`,
@@ -373,8 +376,8 @@ or an applicable `readNotice` before applying folds. Unknown-state queued,
 in-flight and quiet-deferred first reads share one cold panel bulb/Loading directly
 below Open/Closed, above the scroller; cold partial successes remain staged and
 create no unknown-only headers. Published same-home return/background lists stay
-mounted without body Loading; the existing native activity bulb in the Git header
-covers active updates and stops on completion. Quiet warm cooldowns are not active
+mounted without body Loading; the single native moving line below the Git header
+covers active updates and stops on completion or failure. Quiet warm cooldowns are not active
 requests. Bounded pure published snapshots are distinct from collected facts, so
 leaving an unfinished cold load cannot turn partial successes into a warm list. An applicable actionable failure retains its notice; confirmed
 missing and known ineligible history do not leave Loading behind. Empty settled sections have no header,
@@ -387,7 +390,7 @@ An unfolded header at a reveal boundary waits for its first row or visible notic
 no transition may leave it alone. Sections without selected-tab content or a
 notice are omitted even if a saved fold key remains. Cold panel Loading is not a PR,
 repository body, reveal item or safety target; it remains visible through folds.
-Warm native header activity has the same separation and never grants action authority.
+Warm native line activity has the same separation and never grants action authority.
 Same-home returns restore pure runtime presentation from at most four snapshots
 and 4096 admitted identities, with no native handles or callback-bearing trees.
 Exact scope and provider/Git enable generations reject stale cache/read results;

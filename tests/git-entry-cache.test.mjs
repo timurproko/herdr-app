@@ -33,7 +33,8 @@ Object.assign(place,{cwd:'/worktree-a',space:'worker-space-a',terminal:'worker-1
 let tree=h.render(()=>p.renderPanel(cx));validNativeChildren(tree);
 assert.ok(find(tree,'task-repo-header-fixture/repo'),'first destination frame has section');
 assert.ok(find(tree,'pr-1'));assert.ok(find(tree,'pr-2'));assert.equal(find(tree,'active-pull'),undefined,'entry does not pin its matching PR');assert.equal(p.pinMotion.current,null);
-assert.equal(find(tree,'git-empty'),undefined,'no body Loading');assert.ok(find(tree,'git-task-activity'),'existing header activity, not a new treatment');
+assert.equal(find(tree,'git-empty'),undefined,'no body Loading');assert.ok(find(tree,'git-loading-track'),'reuse main\'s single under-header loading line');
+assert.equal(find(tree,'git-task-activity'),undefined);assert.equal(find(tree,'git-task-stale'),undefined,'entry must not reintroduce the removed header bulb');
 assert.equal(p.counts.open,2);assert.equal(p.entrySeed,true);assert.equal(find(tree,'git-repo-name'),undefined);assert.equal(find(tree,'changes-header').attrs.on_mouse_down,undefined);
 assert.equal(p.repositoryPublication.value.pulls.open.length,2);
 for(let i=0;i<16;i++)await Promise.resolve();assert.equal(calls[0].cmd,'git');
@@ -79,4 +80,4 @@ v.setView('closed',tab.cx);assert.equal(v.pullsDue('closed'),true);v.loadPulls('
 for(let i=0;i<20;i++)await Promise.resolve();assert.equal(typeof releaseClosed,'function');assert.equal(v.repositoryPresentation().pulls.closed.length,1,'seed remains displayed during the real Closed request');
 releaseClosed({code:0,stdout:JSON.stringify({data:{repository:{open:{totalCount:20},closed:{totalCount:0},pullRequests:{nodes:[],pageInfo:{endCursor:null,hasNextPage:false}}}}})});
 for(let i=0;i<40;i++)await Promise.resolve();assert.equal(v.pulls.closed.length,0);assert.equal(v.counts.open,20);assert.equal(v.counts.closed,0);assert.equal(v.seedTabs.closed,false);assert.equal(v.seedTabs.open,true);assert.equal(v.entrySeed,false);
-console.log('PASS shared warm entry, task seed provenance, header-only activity, no entry pin, coordinator return, cold/machine isolation and bounded pure memory');
+console.log('PASS shared warm entry, task seed provenance, single loading line, no entry pin, coordinator return, cold/machine isolation and bounded pure memory');

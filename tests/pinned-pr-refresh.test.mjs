@@ -62,7 +62,7 @@ async function harness() {
     }
     return c;};
   // Rendering chrome should not start unrelated agent/repository reads in these tests.
-  view.syncAgent=()=>{};view.loadRelatedPull=()=>{};
+  view.syncAgent=()=>{};view.loadRelatedPull=()=>{};view.syncChecksFallback=()=>{};
   return {view,cx,place,pending,tasks,timers,phases,opened,tick,event,reply,render:()=>{rendering=true;try{return view.render(cx);}finally{rendering=false;}},hide:()=>{shown=false;},disable:()=>{enabled=false;}};
 }
 {
@@ -73,20 +73,20 @@ async function harness() {
   await h.event();assert.equal(h.pending.length,1);
   assert.equal(h.pending[0].options.on,'pc2');assert.equal(h.pending[0].options.cwd,'/repo');
   assert.ok(h.pending[0].args.some(a=>a.includes('pullRequests(first:10')));
-  let tree=h.render();const track=find(tree,`git-ci-track-${v.ciSweep.id}`);
+  let tree=h.render();const track=find(tree,'git-loading-track');
   assert.ok(track,'Unpinned CI animates below the Git header');
-  assert.ok(find(find(tree,'git-panel-body'),`git-ci-track-${v.ciSweep.id}`));
+  assert.ok(find(find(tree,'git-panel-body'),'git-loading-track'));
   assert.equal(find(find(tree,'active-pull'),'git-ci-line'),undefined);
   assert.equal(track.attrs.top[0],0);assert.equal(track.attrs.h[0],1);
-  const line=find(track,'git-ci-line');assert.equal(line.attrs.left[0],-96);
-  assert.equal(line.attrs.transition[1].duration,2400);assert.equal(line.attrs.loop,undefined);
+  const line=find(track,'git-ci-line');assert.equal(line.attrs.loop[0],'left');
+  assert.equal(line.attrs.loop[1].period,4800);assert.equal(line.attrs.transition,undefined);
   track.attrs.on_size_change[0]({width:400},h.cx);track.attrs.on_size_change[0]({width:400},h.cx);
-  assert.equal(h.phases.filter(p=>p.ms===16).length,1);h.phases.find(p=>p.ms===16).fn(h.cx);
-  assert.equal(find(h.render(),'git-ci-line').attrs.left[0],400);
+  assert.equal(h.phases.length,0,'Native loop has no JavaScript phase/frame timers');
+  assert.equal(find(h.render(),'git-ci-line').attrs.loop[1].to,400);
   await h.reply(page([raw(1),raw(2,{title:'Unpinned CI completed'})]));
   await h.reply(JSON.stringify({data:{repository:{open:{totalCount:2},closed:{totalCount:0}}}}));
   assert.equal(v.pulls.open[1].title,'Unpinned CI completed');
-  h.phases.find(p=>p.ms===2500).fn(h.cx);assert.equal(find(h.render(),'git-ci-line'),undefined);
+  assert.equal(find(h.render(),'git-ci-line'),undefined,'Line stops on read completion, not a fixed timeout');
   assert.equal(h.pending.length,0);assert.equal(h.timers.length,0,'No periodic GitHub or animation timers');
 }
 {
@@ -123,7 +123,7 @@ for(const change of ['folder','machine','hidden','disabled','reset']) {
   const h=await harness(),v=h.view,before=v.pulls.open;
   await h.event();await h.reply('',1);assert.equal(v.pulls.open,before,'Failures preserve good facts');
   for(let i=0;i<20;i++)h.render();assert.equal(h.pending.length,0,'No render-driven failure retries');
-  h.hide();h.render();assert.equal(v.ciSweep,null);assert.equal(h.pending.length,0);
+  h.hide();assert.equal(find(h.render(),'git-loading-track'),undefined);assert.equal(h.pending.length,0);
 }
 {
   const h=await harness(),calls=[];
