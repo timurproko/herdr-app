@@ -71,6 +71,17 @@ export function choice(t, id, options, value, onPick, enabled = true) {
       .on_click((_e, cx) => { if (enabled) onPick(v, cx); }).child(label)));
 }
 
+// Lightweight view tabs, matching the existing panel tab treatment rather than
+// the bordered field-choice control. Opt-in for picker categories only.
+export function pickerTabs(t, id, options, value, onPick, enabled = true) {
+  return h_flex().gap(2).items_center().children(options.map(([v, label]) =>
+    div().id(`${id}-${v}`).h(U.control).px(8).flex_none().flex().items_center().justify_center().rounded(U.radius)
+      .role('button').accessibility_label(label).text_size(U.meta).text_color(value === v ? t.foreground : t.muted)
+      .when(value === v, e => e.font_semibold()).disabled(!enabled)
+      .when(enabled, e => e.cursor_pointer().hover(e => e.bg(t.hover))).when(!enabled, e => e.opacity(0.4))
+      .on_click((_e, cx) => { if (enabled) onPick(v, cx); }).child(label)));
+}
+
 // One value from a list: an account, say. While `loading` it keeps its place with a
 // placeholder inside, so whatever sits beside it never moves.
 export function optionDropdown(t, { id, label = 'Choose', value = '', options = [], loading = false, disabled = false, open = false, focus, onOpen, onSelect }) {
@@ -122,8 +133,9 @@ export function actionInput(t, { id, label, widget, enabled = true }) {
 
 // A section's top row: what it is scoped to (Machine, Account), its dropdown, then the
 // section's action in the same column as Check above and each row's Remove below.
-export function scopeRow(t, { id, label, dropdown: picker, action }) {
-  return h_flex().id(`${id}-where`).w_full().gap(8).items_center().pb(10).border_b_1().border_color(t.border)
+export function scopeRow(t, { id, label, dropdown: picker, action, separator = true }) {
+  return h_flex().id(`${id}-where`).w_full().gap(8).items_center()
+    .when(separator, e => e.pb(10).border_b_1().border_color(t.border))
     .child(div().flex_1().min_w(0).text_size(U.font).text_color(t.foreground).child(label))
     .when(Boolean(picker), el => el.child(div().flex_none().child(picker)))
     // Inside a section the action ends at the right edge: no reserved status column.
@@ -133,7 +145,7 @@ export function scopeRow(t, { id, label, dropdown: picker, action }) {
 // Remove shown only then. Remove keeps its place while hidden, so nothing moves.
 // No w_full: stretched, the negative margins widen the row for the hover fill while
 // Remove stays in the Check/Add column.
-export function removableRow(state, t, rid, label, onRemove, enabled) {
+export function removableRow(state, t, rid, label, onRemove, enabled, resting = null) {
   const shown = state.pluginRowHover === rid;
   return h_flex().id(rid).h(U.control).mx(-8).px(8).gap(10).items_center().rounded(U.radius)
     .when(shown, el => el.bg(t.hover))
@@ -145,7 +157,7 @@ export function removableRow(state, t, rid, label, onRemove, enabled) {
     // Remove ends at the right edge, under the Add button above it.
     .child(div().id(`${rid}-rail`).flex_none().w(KIT.action).flex().justify_end().child(shown
       ? actionButton(t, rid.replace(/-row-(\d+)$/, '-remove-$1'), 'Remove', onRemove, { enabled })
-      : div().id(`${rid}-remove-slot`).h(KIT.actionHeight).w(KIT.action)));
+      : resting ?? div().id(`${rid}-remove-slot`).h(KIT.actionHeight).w(KIT.action)));
 }
 
 // The Add popups' frame: a 56px header (a search field or where you are), the list, and a

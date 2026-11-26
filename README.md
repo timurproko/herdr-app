@@ -158,10 +158,18 @@ settings or portable preferences; only the Node worker writes the private store.
 The selected direct-SSH machine uses its own private store through identity-bound
 SSH stdin, never this computer's setup. Requirements offers explicit Trello-only
 runtime Install/Update; temporary/custom-via or unverifiable/elevated execution
-identities refuse. `herdr-trello setup` remains the headless alternative.
+identities refuse. An elevated SSH connection gets one explanation, not three
+failures or a fix count: connect as the normal Core user or set up on that machine
+directly. Copying credentials cannot fix an unsafe execution identity.
+`herdr-trello setup` remains the headless alternative.
 Normal full build/deploy installs the standalone runtime and owned user-bin
 launchers (the selected bin must be on PATH); shell-only peers get no credentials
 or Trello installation. See [Trello setup, commands and security limits](docs/TRELLO.md).
+Card reads expose attachment IDs/counts. Agents can list attachment metadata and
+use `attachments get --out PRIVATE_DIR` to inspect an uploaded screenshot locally,
+optionally selecting a preview width. Downloads cap at 20 MiB, accept images by
+default and use Trello-only header authentication; external links, redirects and
+attachment uploads/deletes are refused.
 There is no MCP adapter, board panel, permanent deletion or automatic write replay.
 An agent running as the same OS user can read the private credential file; this
 client's allowlist/read-only policy is not a security sandbox.
@@ -256,7 +264,8 @@ session account switching remains independent of optional Usage statistics.
 
 ## Refresh feedback and Git
 
-Refresh icons dim/disable and rotate while their request runs. Manual clicks
+Refresh icons dim/disable and rotate while their request runs, except Git:
+Git keeps Refresh static and uses only its under-header moving line for loading. Manual clicks
 and Settings loads in Core, Profiles and Terminals stay visibly busy for at
 least **600 ms** to avoid a flash, including returning to an already-cached
 section. Each new section entry restarts that minimum. Refreshed data and
@@ -270,7 +279,8 @@ fails inconclusively. An older active PR also stays pinned during its targeted
 reread after page-one refresh. Only an authoritative replacement, proven
 non-repository or actual context change clears incompatible facts. Open/Closed
 count badges are always visible in ordinary and coordinator Git views, showing
-**0** on first load or a real context change until totals arrive. The fixed badge
+**0** when no compatible cached values exist, or retaining known scoped counts
+while refreshing a cached destination. The fixed badge
 width is 32px with centred digits, fitting three digits without moving tabs.
 Each tab has equal 8px padding before its label and after the painted badge,
 selected or not. Fully visible totals have no count-only tooltip; unknown totals
@@ -279,10 +289,17 @@ the exact number in their tooltip. Accessible labels always keep the full total
 and loading state. Same-repository refreshes keep the last-known counts. Coordinator totals stay loading
 until all admitted PR identities have authoritative facts or confirmed absence; a
 successful subset never becomes an exact total. New unread same-home membership
-keeps compatible last-good totals with loading hover/accessibility feedback. Unresolved first reads, including quiet deferrals, share one standard panel
-bulb/**Loading**, even when other repositories have loaded. Unknown-only
-repositories do not flash empty headers; a new section appears when selected-tab
-PRs are known or an actionable scoped failure needs to be shown. Cooldown expiry
+keeps compatible last-good totals with loading hover/accessibility feedback. On a cold coordinator visit, unresolved first reads (including quiet deferrals)
+share one standard top-left bulb/**Loading** directly below Open/Closed; partial
+successful sections stay hidden until the admitted first reads settle. Actionable
+repository notices remain visible immediately. Returning to a previously shown
+coordinator, or any background refresh, retains the previous list with no body
+Loading: only the moving line below Git's header animates during the update,
+stops when work finishes or fails, and replacement sections update in place.
+Git has no header activity bulb or tooltip. Cold Loading retains the existing
+blue text and dot, but the dot is static; Git Refresh stays static and disabled
+while busy, including its minimum-feedback interval. Other panels are unchanged. No Stale
+label appears. Unknown-only repositories never flash empty headers. Cooldown expiry
 still retries without a new event; warm refusals keep their rows and counts. Cold loading
 and coordinator verification remain panel feedback, never
 placeholder PR rows.
@@ -366,17 +383,23 @@ preferences; no Core document, terminal or agent is changed. Reconciliation yiel
 out of render and waits for native acknowledgements rather than polling/replaying
 layout commands.
 
-The Git header no longer has a separate PR-link tool. **Right-click its header**
-for a menu titled with the captured **owner/repository** name, followed by
-**Code...**, **Pull requests...** and **Actions...**. These open the repository
-root, pull-request list and workflow runs page respectively, in this computer's
-browser. The menu captures the clicked repository, supports arrow keys,
-Enter/Escape and does no Git/GitHub reads of its own. It is unavailable until a
-GitHub URL is known or outside a Git repository. Individual PR rows keep their
-existing Open... / Copy path menu. Like Files' folder label, the Git header shows
-the short repository name beside its title and the full GitHub URL on hover.
-The tooltip belongs only to the label, not the Refresh/Pin/Close tools rail.
-There is no stale folder fallback while repository metadata is unavailable.
+The main Git header contains only **Git**, its title chevron, existing refresh/status
+feedback and **Refresh · Pin · Close**. Repository identity lives in the list's
+canonical **owner/repository · count · chevron** section header, not beside the
+tools. The former main-header repository name/URL hover and repository context
+menu are removed. **Code... / Pull requests... / Actions...** shortcuts are gone
+from this panel, not relocated; individual PR **Open... / Copy path** menus remain.
+Verification diagnostics stay on the existing activity indicator, never a Stale label.
+
+Entering a worker space immediately reuses its exact machine/repository's cached
+section, including data already loaded by the coordinator. Returning to the
+coordinator restores its cached sections/order too. The same native header
+activity indicates background refresh in either direction; replacement updates in
+place, without clearing loaded rows or showing body Loading. Unknown directories
+must establish canonical identity before borrowing a cache; genuinely uncached
+repositories use ordinary Loading. Direct space entry creates no pin, row reorder
+or move-to-top animation. Cache memory is bounded and session-only; another
+machine/repository and disable/re-enable generations cannot borrow it.
 Git shows only **Open** and **Closed** pull requests. Both load **10 PRs initially**
 and fetch the next 10 near the bottom of the scrolling list, using GitHub cursors
 rather than redownloading earlier pages. Each tab keeps its own rows and cursor;
@@ -386,19 +409,24 @@ failed pages preserve existing rows, and the end of the list stops fetching.
 Expanded lists are retained across webhook refreshes; manual Refresh or a
 machine/folder change starts again at 10. Same-folder agent/tab/space switches
 retain repository metadata, counts, rows, pagination and in-flight GitHub requests;
-only the agent-specific active PR link changes (A1 and Claude Code read their selected session footer).
-The current pin stays steady until that read resolves; an unchanged PR never
-unpins/re-pins. Ordinary selection changes use a native 120ms opacity ease.
-Clicking a list PR's robot opens the agent tab **immediately**. The panel retains
+entry restores that section's order rather than pinning the selected agent's PR.
+When only a coordinator task subset is cached, its known Open/Closed values stay
+visible with incomplete-count metadata until full repository totals arrive; task
+counts are never asserted to be whole-repository totals. Existing click-origin
+pins and footer confirmation keep their normal lifecycle (managed Crew terminals
+use full `crew.pr` identity; A1 and Claude Code otherwise use their session footer).
+Clicking a list PR's Build/Review chip or fallback robot opens the agent tab
+**immediately**. The panel retains
 the original row slots while the destination footer/selection resolves, including
 when a repository refresh replaces the underlying rows. Once confirmed, native
-320ms motion moves the clicked PR into the pinned slot, returns the former pin
-to the list and slides any affected intermediate rows. The real layout commits
+320ms motion moves the clicked PR into the pinned slot, returns a former pin
+when one exists and slides affected intermediate rows. An initially unpinned
+list uses the same controller and timing, with no former pin to return. The real layout commits
 only after motion settles, using the latest refreshed PR facts. There is no
 optimistic pin change or delayed navigation. Geometry uses measured heights and
 current scroll/zoom; pagination and scroll remain intact. Geometry lives as long
-as the native element IDs, not the repository data: resolving a Git root cancels
-pending motion but must not discard size measurements that the host only emits
+as the native element IDs, not the repository data: a genuine repository reset
+cancels pending motion but must not discard size measurements that the host only emits
 when dimensions change. Only one arming and
 one cleanup callback run (no JavaScript frame loop). A bounded 3-second wait
 prevents an unavailable destination from freezing the old presentation.
@@ -407,7 +435,13 @@ rows even when its worktree/folder needs a fresh Git-root lookup; old-folder
 requests are invalidated first. Unrelated machine/folder or Open/Closed changes,
 scrolling, a mismatching destination or a newer selection cancel retention/motion
 without undoing navigation. Unmeasured rows and cross-repository switches safely
-use the normal pin reveal. Ordinary terminals keep the same list and
+use the normal pin reveal. A verified coordinator chip or robot click carries
+a bounded inert snapshot of its grouped list into the destination while the
+clicked row rises to the ordinary pinned slot; coordinator views themselves
+still have no permanent active pin. This uses the same `PinSwap.start()` and
+native overlay, not a second animator. A reviewer's valid `crew.pr` selects its
+PR even when its shell remains on the base branch or has no PR footer.
+Ordinary terminals keep the same list and
 use the existing explicit-tab/branch matching when available. An explicitly linked active PR older
 than the first page gets one targeted lookup so it can still be pinned, without
 fetching intermediate pages. The former Changes tab, diff
@@ -423,10 +457,11 @@ font unchanged. Titles always retain their full-title tooltip, including fitting
 titles, without width measurement or a resize gate. Every PR block uses the
 same three fixed lines: a 20px title, an
 18px number/author/time line and an 18px metadata line, for a 74px block including
-spacing. A blank 24px robot slot keeps titles' truncation boundaries identical
-with or without a related agent. Robot slots, label pills and the repository headers'
-24px chevron slots end 3 logical pixels inside their own row's highlight edge,
-matching Spaces' Crew pill (8px row padding minus its 5px negative trailing margin).
+spacing. A shared 80px stage/robot reservation keeps titles' truncation boundaries identical
+with or without a managed stage or related agent. The fallback robot keeps its
+24px target right-aligned inside it. Stage reservations, label pills and repository headers'
+24px chevron slots retain their 3 logical pixel inset inside each row's highlight.
+This Git inset is independent of Spaces' plain Crew metadata label.
 Git and Spaces highlights both sit 8 logical pixels inside their panel/sidebar
 on the left and right, with the same 6px corner radius. Git's state icon starts
 8px inside its highlight, matching Spaces' highlight-to-badge inset; trailing
@@ -480,14 +515,16 @@ reservation; label refreshes never add extra row lines or horizontal overflow. M
 including the number/author dot, share a clearly visible muted 3px round shape,
 vertically centred beside text/icons with equal 6px spacing on both sides.
 Git follows the selected terminal's live shell-reported directory (including remote
-Bash and PowerShell), not its launch folder. Changing locations immediately clears
-the old repository and counts; late Git/GitHub replies cannot restore them. A
-non-repository home folder shows **Not a git repository**. In the selected
-Open/Closed list, the active PR is always pinned above the scrollable rows with a
+Bash and PowerShell), not its launch folder. Changing locations removes incompatible
+repository data; a compatible destination cache restores immediately while it is
+revalidated. Late Git/GitHub replies cannot restore another context. A
+non-repository home folder shows **Not a git repository**. Panel-origin chip/robot
+navigation pins its PR above the scrollable rows with a
 divider underneath and a 2px theme-accent rail on the left, even when it is the only
 PR. The rail overlays the outer gutter without shifting content or the hover
 area. It is not duplicated below and has no special background; all PRs use the
-normal neutral hover. With no matching active PR, the whole list scrolls normally.
+normal neutral hover. Direct space entry never creates that pin or reorders rows;
+without a click-origin pin, the complete repository section scrolls normally.
 For A1 and Claude Code, the panel
 reads the selected terminal's current footer PR badge through the read-only `hc read`
 API (no history, input injection or transcript-wide PR searches). Claude's `PR #…`
@@ -577,18 +614,56 @@ open Add repo, select the repository and confirm Add yourself. The header **‹ 
 to the full catalog. Transport backoff and local agent discovery are
 separate from CI checking.
 
-When any loaded PR has running checks (including unpinned or draft PRs), an
-event-driven refresh starts one subtle 1px accent sweep **immediately below the Git
-header**, above Open/Closed. It eases left-to-right over **2.4 seconds**, then stops.
-Two one-shot phase callbacks sequence native motion, not JavaScript frames or a
-continuous loop. The pinned block and its bottom divider stay still.
+Every cold load, warm return and background update in ordinary or coordinator
+Git uses one subtle 1px moving line **immediately below the header**, above
+Open/Closed, whether or not a loaded PR has pending CI. Native motion moves it
+across and back (2.4 seconds each direction), without JavaScript frame or phase
+timers. It stays present through pending work and disappears on completion,
+failure, hide or context retirement; dormant retry cooldowns and unknown totals
+alone do not animate. The pinned block and its bottom divider stay still.
 
 An open PR with GitHub's explicit `CONFLICTING` mergeability replaces its normal
 PR icon with a **red outlined circle and X**, using the same stroke style as PR icons. Hover that icon for **Merge conflicts**.
 Unknown mergeability and failing/blocked checks are not conflicts. Closed/merged
 PRs keep their usual icons. Push events also refresh facts after base-branch changes.
 
-PRs with a related live agent show a separate white/foreground robot beside
+Managed review labels also supply a title-line stage: **Build**, **Review** or
+**Approved**, independently of CI and GitHub's separate review decision. The
+compatibility snapshot follows MyWorkflows `labels/base.json`: stable role
+`review-changes-needed` accepts Build and previous names Rework / Changes needed;
+`under-review` accepts Review / Under review; `review-approved` accepts Approved.
+Each accepts the plain name or its `🤖 ` prefix. Unknown labels are not guessed
+from colour or substrings. Existing label pills retain their exact GitHub names.
+Approved means the managed review label is assigned, not that CI passed; the
+existing checks item and GitHub's required checks communicate and gate CI.
+Build resolves `crew.kind=ship` or `fix` terminals through their full `crew.pr`
+URL, or the verified repository and head branch when that label is absent.
+Review resolves only `crew.kind=review` plus the matching full `crew.pr` URL,
+not the reviewer's base branch, footer or tab name. Coordinator actions additionally
+require that exact terminal/task to remain in the freshly verified same-home
+membership; a review task need not have its own recorded PR. Ended, unavailable
+or disconnected targets grant no focus; a disconnected target identifies its
+machine. Optional `crew.round` is the completed review number: round 1 enriches
+Build as **Build 2**, and supplied `crew.finding` adds **back from review 1:**
+followed by the finding. Missing metadata stays plain Build, with no invented
+round or finding. `crew.approved` is read as metadata, never a fourth stage or
+permission to infer Approved from CI.
+
+The title-line **Build** chip focuses the build terminal; **Review** focuses the
+reviewer. **Approved** has no agent action: clicking it opens the PR through the
+row, even while checks are pending or failed. There is no approved/CI-running
+stage or Review check CI chip. Build/Review chips dim when their exact target
+ends, is unavailable, or its machine is disconnected, and explain why on hover;
+clicking a dimmed chip does nothing. Coordinator rows retain their last verified
+same-home target only for explanations after membership becomes stale or a task
+finishes. That bounded runtime memory cannot focus an agent, start reads, cross
+homes or restore authority on reconnect; fresh live membership is required.
+The chips use the app palette's amber,
+purple and green tokens and keep the same bounded title reservation in every row.
+Motion previews never navigate. The no-label robot retains its original 24px hit
+target and immediate pin-navigation behavior.
+
+Without a managed stage, PRs with a related live agent show a white/foreground robot beside
 the title, matching the Agents sidebar. The original colored PR icon stays.
 The robot uses the usual rounded inset-icon hover tint, distinct from the
 row's hover, with a tooltip only for a known agent name; clicking opens
@@ -694,6 +769,9 @@ inline editor opens, so typing immediately replaces it. This is consistent for
 menu/keyboard requests and double-click. Automatic names still open an empty
 field with their usual placeholder. Invoking rename again while already editing
 preserves the draft, cursor and selection; it does not select everything again.
+Sidebar Cancel uses the machine/coordinator chevron's column on parent, child and
+ordinary rows, replacing disclosure while editing. The 24px Confirm/Cancel tools
+retain tab rename's 2px gap and 4px input-to-tools gap, with an 8px sidebar gutter.
 
 ## Sidebar scroll hints
 
@@ -731,8 +809,9 @@ motion are implemented once, not copied into each feature. See
 ## Spaces and the last tab
 
 Worktree spaces keep normal avatar/title alignment. Rows with plugin tags show
-name, ahead/behind counts, worktree icon, then tags at the existing right edge,
-so Crew pills line up on coordinator and fleet rows. Untagged worktree icons
+name, ahead/behind counts, worktree icon, then tags. Crew uses the same plain,
+regular 12px dim label as Agents' machine text, not a filled pill; unrelated tags
+keep their existing styling and tooltips. Untagged worktree icons
 keep the machine-header chevron's right inset and centre line. Drag them like other spaces within their machine: repository discovery
 never regroups them or overrides the saved order. This is Spaces presentation and
 works independently of the Git plugin.
@@ -756,9 +835,10 @@ pairing alone waits for successful verification; names never invent a link. The 
 switches on this page also save immediately; close actions and empty-space
 reconciliation read their current values without waiting for Settings to close.
 Fleet verification failures and discarded replies retain sanitized reason/time/generation
-facts in runtime-only `custom.fleet.diagnostics`. Hover the Git **Loading** bulb
-or **Stale** indicator for the last relevant failure. Empty verification uses the
-ordinary blue working bulb and **Loading**, without extra header text; a cold
+facts in runtime-only `custom.fleet.diagnostics`. Hover the Git cold **Loading**
+message for the last relevant failure; warm header activity and its tooltip are
+removed, while local diagnostics/logs remain available. No Stale label is shown.
+Empty verification uses a static blue dot and **Loading**, without extra header text; a cold
 candidate never invents attachment or a PR list.
 The local `.customizations/fleet-verification.log` keeps at most 128 lines / 64 KiB,
 deduplicating an unchanged reason episode without raw command output or secrets.
@@ -803,8 +883,14 @@ The fleet badge's fill uses the coordinator's actual colour and follows recolour
 without changing the fleet's saved colour. Expanded attached fleets are indented
 children, using the same rounded connector, stroke and spacing as child agents.
 Neither row shows a chain, and only the coordinator shows Crew; unrelated plugin
-tags remain. The coordinator's separate Agents-style chevron folds its children,
-showing their count beside the chevron only while collapsed. Folds are local,
+tags remain. Crew precedes the coordinator's far-right chevron, which folds its children.
+The chevron and its 24px hover target align with machine headers. Expanded Crew
+ends on the machine + column; collapsed Crew moves to Agents' machine-label rail
+and a connected-child-space count appears on Agents' right-aligned 32px time/count
+rail, before the chevron. The coordinator itself is not counted. Expanded rows
+show no count. The machine + target moves 10 logical pixels left; its right edge
+and expanded Crew end 41px from the sidebar edge, while chevrons stay centred
+20px from that edge. At 130% these offsets scale to 13px, 53.3px and 26px. Folds are local,
 identity-scoped and restored on reload, never portable preferences. Selecting a
 hidden child through native shortcuts/navigation discloses its parent without
 changing the native selection target. Explicit folding itself never selects the
@@ -814,6 +900,21 @@ weight, hover and selected backgrounds. Counts/worktree metadata stays before
 trailing tags; renaming hides markers/tags, and Worktree visibility does not hide
 the child connector. Each remote machine can have its own same-machine pair;
 cross-machine candidates stay independent under their original machine headers.
+With Crew placement v1, one coordinator can have several connected project children,
+including the legacy combined space at the same time. Project children show the exact
+registered project name unless explicitly renamed. All child badges align with the
+coordinator's name; one stem follows the parent badge centre, with intermediate
+branches and a rounded corner only on the last child. Collapse hides every child,
+while native shortcuts and compact rail keep each child's own selection number.
+Dragging the parent or any child moves the entire same-machine block in stable
+native child order, with captured-membership and acknowledgement guards. Crew's
+`crew.space.version/mode/project/name` labels are validated against its supplied task
+project, home tag and exact native terminal/pane/tab/space membership; names alone
+never link. Minimal Crew fleet replies omit task projects: combined placement accepts
+that absence, including legacy and v1 workers in one space, but rejects explicit
+contradictions. Per-project placement still requires matching task project evidence.
+Combined, project and mixed populations are supported without a Core document write.
+
 Choosing a colour or Automatic from either attached row edits the coordinator's
 colour; the fleet's saved colour and Automatic flag stay untouched. Its palette and
 mouse/keyboard choices use that same captured coordinator. Colour permission follows
@@ -838,10 +939,10 @@ background. Only completed contradictory evidence, disabling the feature or
 missing native spaces clears it; transport failures alone do not.
 Retained visuals are not action permission: pair moves and Git/worker actions
 still require fresh exact live identity. An unverified coordinator Git panel keeps
-its loaded rows and folds with **Stale**, or shows the standard **Loading** bulb
+its loaded rows and folds with the moving line below the header during pending work, or shows the standard **Loading** text and static dot
 without special header text on cold start. After off/on, a slow or failed first
 read shows **Loading**, not **Not a git repository**, for the current coordinator
-candidate. Off clears the inventory; on never restores a previous list as Stale.
+candidate. Off clears the inventory; on never restores a previous toggle's list.
 Only authoritative negative evidence for the current dependency identity returns
 to ordinary folder Git; a previous owner's result cannot suppress Loading. No new GitHub
 reads or worker navigation are allowed until verification succeeds.
@@ -908,8 +1009,11 @@ Names use the released width and truncate with a full-name tooltip only when the
 do not fit. Open and Closed totals remain in the panel's top tabs and still include
 folded sections. These counts cover distinct linked PRs only, never all repository PRs.
 Returning to the same coordinator restores compatible last-visit sections from
-bounded runtime memory while verification/reconciliation runs, with one panel
-Loading indication for unresolved work. Memory holds at most four coordinator
+bounded runtime memory while verification/reconciliation runs, with the under-header moving line
+only and no body Loading. Cold Loading is above the scroller, never at its bottom.
+The prior list remains during background updates until replacement is ready;
+actionable notices bypass staging, while quiet cooldowns retain facts and retry
+without new error UI. Collected cold partial facts are not a published return list. Memory holds at most four coordinator
 snapshots and 4096 admitted identities; eviction, restart, code reload and
 Git/Crew/attachment off-on start cold, never restoring persisted PR inventory.
 Stale presentation grants no reads or worker actions. A repository header appears
@@ -923,7 +1027,9 @@ Discovery is a bounded snapshot, not a completeness promise or a persistent PR
 record. Older Crew without discovery, or an unknown discovery version, keeps the
 recorded-only list and may omit PRs until tasks report. No generic incomplete-list
 notice is added.
-Robots open the exact live worker, and PR menus retain their captured URL.
+Stage chips focus the exact live same-home build/review task; without a managed
+stage, robots keep the exact live worker action. Historical-only and stale rows
+gain no worker navigation from a stage label. PR menus retain their captured URL.
 The source is read-only `crew status --all --json --discover-prs`, with `tasks[].pr`
 compatibility for older Crew, not app-side transcript/branch inference. A narrowly
 recognized unsupported-flag refusal allows one bounded recorded-only fallback;
@@ -1484,10 +1590,33 @@ needed. Other peer skips, failures and inventory errors retain the successful
 desktop revision and show one short matching-details warning (`update.log` for Settings runs,
 `deploy-all-result.json` for ordinary CLI runs without a captured log); desktop
 failure names the cause and documented
-manual rollback. Missing results/deadlines say outcome unknown and block replay
-while the prior process/lock is unresolved. Ordinary CLI failures also retain
+manual rollback. Missing results/deadlines never imply success or automatic replay.
+After recorded processes are dead and evidence settles, matching final receipts or
+conclusive same-run terminal logs can resolve the outcome. A completed deployment
+whose final receipt could not be saved says **Deployed, but the result could not be
+saved.**, with its log pointer; incomplete/foreign evidence stays unknown. Installed
+revision still requires the matching ownership digest, never log text or checkout HEAD. Ordinary CLI failures also retain
 their cause/recovery/details line after checking; a CLI installer timeout's
-durable result blocks another Settings update even without a Settings lock. There is no per-machine UI, news,
+durable result blocks ordinary Update even without a Settings lock.
+For a genuinely unknown run, **Retry update** is a separate deliberate action:
+a fresh successful check, dead recorded processes/known descendants, settled evidence
+and the original deadline (when dispatch remains uncertain) are required. Confirm
+that local and remote update work has stopped before pressing **Retry update** again;
+Cancel does nothing. Check now, reload, startup, timers and relay hints never replay.
+A changed run or late receipt invalidates confirmation; original evidence is preserved
+privately before a claimed retry. A stale terminal Settings record never supplies
+another CLI run's PID or deadline. Expired dead-owner retry claims are archived even
+after completion, without authorizing unknown replay.
+
+For a dead installer's lock, an orphan launch, or malformed legacy state,
+**Recover update** is a separate action: recorded owners must be dead, local process
+discovery must succeed and find no updater, and the person must confirm local and
+remote work has stopped. It moves stale locks/status/results into private recovery,
+logs the action, preserves ownership and rollback journals, and returns to **Check
+now**. It never retries or deploys. `deploy.lock` is never automatically removed;
+only that explicit stopped-state action may move it. The same guarded operation has
+a documented command. Active owners, unsafe paths or unavailable process/file facts
+still refuse recovery; they are not permission to force an update. There is no per-machine UI, news,
 rollback button, automatic rollback, daemon, scheduler or job history. See
 [first installation and real-app checks](docs/COMMANDS.md#trying-the-row-after-merge).
 The label is defined once in `src/shared/customization-update-model.js`.

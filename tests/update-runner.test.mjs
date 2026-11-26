@@ -208,7 +208,12 @@ try {
       });
       return child;
     };
-    const result = await runUpdate(h.home, token, { userHome: h.userHome, run: h.run, spawn, deadlineMs: kind === 'timeout' ? 1000 : 30000, kill: () => { killed = true; } });
+    // The old 1-second deadline included synchronous Git bootstrap. A loaded
+    // Windows runner could expire before dispatch, so no child existed to kill.
+    // Control the post-dispatch timer instead of racing wall-clock Git speed.
+    const result = await runUpdate(h.home, token, { userHome: h.userHome, run: h.run, spawn, deadlineMs: 300000,
+      ...(kind === 'timeout' ? { setTimer: fn => setImmediate(fn), clearTimer: clearImmediate } : {}),
+      kill: () => { killed = true; } });
     assert.equal(result.state, kind === 'success' ? 'complete' : kind === 'partial' ? 'partial' : ['missing', 'wrong-token', 'timeout', 'installer-timeout'].includes(kind) ? 'unknown' : 'failed', kind);
     assert.equal(fs.existsSync(p.lock), result.state === 'unknown', kind);
     assert.equal(killed, kind === 'timeout');
@@ -232,8 +237,37 @@ try {
     if (kind === 'missing') {
       // Reload sees the same unresolved job; a later exact result can settle it.
       assert.equal(inspect(h.home, { isAlive: () => false }).job.state, 'unknown');
-      final(p, token); assert.equal(inspect(h.home, { isAlive: () => false }).job.state, 'complete'); assert.equal(fs.existsSync(p.lock), false);
+      final(p, token);
+      const ahead = new Date(Date.now() + 250);
+      fs.utimesSync(p.result, ahead, ahead); // deterministically reproduce clock skew
+      // Windows filesystem timestamps can lead Date.now's coarse tick. Derive
+      // the fake clock from the evidence, not a one-millisecond wall-clock margin.
+      const settledAt = Math.ceil(Math.max(...[p.status, p.result, p.log].map(file => fs.statSync(file).mtimeMs), read(p.status).finished)) + worker.SETTLE;
+      assert.equal(inspect(h.home, { isAlive: () => false, now: () => settledAt - 1 }).job.state, 'unknown');
+      assert.equal(fs.existsSync(p.lock), true, 'the last unsettled millisecond remains blocked');
+      assert.equal(inspect(h.home, { isAlive: () => false, now: () => settledAt }).job.state, 'complete');
+      assert.equal(fs.existsSync(p.lock), false);
     }
+  }
+  // A receipt/status sharing failure after dispatch must not release the lock
+  // as a definite failure while that detached child can still be deploying.
+  {
+    const h = setup(), { p, token } = pending(h), write = fs.writeFileSync;
+    let refused = false;
+    fs.writeFileSync = (file, value, ...args) => {
+      if (!refused && String(file).startsWith(p.status) && String(value).includes('"childPid":')) {
+        refused = true; throw Object.assign(Error('fixture post-dispatch status failure'), { code: 'ENOSPC' });
+      }
+      return write(file, value, ...args);
+    };
+    let result;
+    try {
+      result = await runUpdate(h.home, token, { userHome: h.userHome, run: h.run, spawn() {
+        const child = new EventEmitter(); child.pid = 123456789; return child;
+      } });
+    } finally { fs.writeFileSync = write; }
+    assert.equal(refused, true); assert.equal(result.state, 'unknown');
+    assert.equal(read(p.status).childPid, 123456789); assert.equal(fs.existsSync(p.lock), true);
   }
   // An ordinary clean main clone can predate the result protocol. Only Git is
   // allowed to bootstrap it; the legacy loaded CLI must never run the deploy.
@@ -245,6 +279,7 @@ try {
   git(old.author, 'add', '.'); git(old.author, 'commit', '-m', 'legacy CLI'); git(old.author, 'push'); git(old.root, 'pull', '--ff-only');
   const before = git(old.root, 'rev-parse', 'HEAD');
   for (const name of ['deploy-all.mjs', 'deploy-all-worker.cjs']) put(`tools/${name}`, fs.readFileSync(path.join(project, 'tools', name)));
+  put('src/services/updates/update-worker.cjs', fs.readFileSync(path.join(project, 'src/services/updates/update-worker.cjs')));
   git(old.author, 'add', '.'); git(old.author, 'commit', '-m', 'published result protocol'); git(old.author, 'push');
   const target = git(old.author, 'rev-parse', 'HEAD');
   const preload = path.join(old.base, 'mock-hc.cjs');
@@ -259,6 +294,12 @@ try {
   assert.equal(upgraded.state, 'complete', JSON.stringify(upgraded)); assert.equal(fs.existsSync(launched.p.lock), false);
   assert.equal(read(launched.p.result).token, launched.token); assert.equal(inspect(old.home).revision, target);
   assert.equal(fs.existsSync(path.join(old.home, 'legacy-cli-ran')), false, 'legacy CLI must not be loaded even for a protocol probe');
+  // A distinct pre-dispatch deadline path must not spawn or claim it killed a child.
+  const expired = setup(), expiredJob = pending(expired);
+  const expiredState = await runUpdate(expired.home, expiredJob.token, { userHome: expired.userHome, run: expired.run,
+    now: () => read(expiredJob.p.status).started + 300001, deadlineMs: 300000,
+    spawn() { assert.fail('expired bootstrap must not dispatch'); }, kill() { assert.fail('no child exists'); } });
+  assert.equal(expiredState.state, 'unknown'); assert.equal(fs.existsSync(expiredJob.p.lock), true);
   const unsupported = setup(), unsupportedJob = pending(unsupported);
   const refused = await runUpdate(unsupported.home, unsupportedJob.token, { userHome: unsupported.userHome, run(program, args, options) { return program === process.execPath ? { code: 0, stdout: '{}' } : unsupported.run(program, args, options); }, spawn() { assert.fail('unsupported result protocol must not deploy'); } });
   assert.equal(refused.state, 'failed'); assert.match(refused.error, /result protocol unavailable/);

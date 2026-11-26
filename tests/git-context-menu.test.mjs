@@ -4,6 +4,7 @@ import {kitModule,withKitUi} from './support/panel-kit.mjs';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import * as labelColors from '../src/plugins/git/mod/label-colors.js';
+import {Publication} from '../src/plugins/git/mod/presentations.js';
 const U={row:28,gap:8,radius:6,smallIcon:14};
 
 function element() {
@@ -26,11 +27,12 @@ let properties=null,focused=0,background=0,stopped=0,receive;
 let commandReads=0,diagnosticReads=0;
 const host={props:()=>properties,openOverlay:spec=>opened.push(spec),closeOverlay:id=>closed.push(id),notify:n=>notices.push(n),
   exec:(...args)=>{browser.push(args);return Promise.resolve();},window:()=>({platform:'windows'}),theme:()=>({hover:'hover'}),
-  hc(){},run(command){assert.ok(['custom-changes.open-external','custom-changes.open-code','custom-changes.open-actions'].includes(command));receive(command.slice('custom-changes.'.length));},
+  hc(){},run(command){assert.equal(command,'custom-changes.open-external');receive(command.slice('custom-changes.'.length));},
   nextCommand:()=>{commandReads++;return new Promise(resolve=>{receive=resolve;});},layout(){},settings:()=>({zoom:1})};
 const modules={
   './enrollment-picker.js':{EnrollmentPicker:class{}},
   './label-colors.js':labelColors,
+  './presentations.js':{Publication},
   './aggregate.js':{AggregatePulls:class {sync(){return false;}stop(){}}},
   './ci-fix.js':{CIFix:class {sync(){}stop(){}}},
   './notices.js':{GitNotices:class {sync(){return null;}stop(){}retryNow(){}}},
@@ -102,34 +104,8 @@ keyboardMenu.render(cx).attrs.on_key_down[0]({key:'enter'},cx);
 for (let i=0;i<8;i++) await Promise.resolve();
 assert.equal(browser.length,2);assert.equal(closed.at(-1),'menu-keyboard');
 row.attrs.on_click[0]();assert.equal(browser.length,3,'Ordinary left click still opens GitHub');
-const pullsUrl='https://github.com/owner/repo/pulls';
-function headerPopup() {
-  panel.showPullMenu({url:pullsUrl,repo:'owner/repo'},cx,true);
-  const spec=opened.at(-1);properties={...spec.props,overlay:'header-menu'};
-  const popup=new Changes();popup.init({},cx);return {popup,spec,tree:popup.render(cx)};
-}
-let header=headerPopup();
-assert.equal(header.spec.props.pullMenu.header,true);assert.equal(header.spec.height,3*U.row+24+8);assert.equal(header.spec.width,240);
-assert.equal(header.tree.attrs.id[0],'git-header-context-menu');
-assert.deepEqual(header.tree.kids.map(item=>item.attrs.id[0]),['git-header-context-title','git-context-code','git-context-pulls','git-context-actions']);
-const title=find(header.tree,'git-header-context-title');assert.deepEqual(title.kids,['owner/repo']);
-assert.equal(title.attrs.on_click,undefined,'The repository title is not an action');
-for(const [id,label]of [['code','Code...'],['pulls','Pull requests...'],['actions','Actions...']])assert.equal(find(header.tree,`git-context-${id}`).attrs.accessibility_label[0],label);
-assert.equal(find(header.tree,'git-context-copy-path'),undefined,'The header menu is not an individual PR menu');
-panel.repo={name:'changed/repo',url:'https://github.com/changed/repo'};
-find(header.tree,'git-context-pulls').attrs.on_click[0]({},cx);
-for(let i=0;i<8;i++)await Promise.resolve();
-assert.equal(browser.length,4);assert.deepEqual(Array.from(browser.at(-1)[1]),['/c','start','',pullsUrl]);
-header=headerPopup();find(header.tree,'git-context-code').attrs.on_click[0]({},cx);
-for(let i=0;i<8;i++)await Promise.resolve();
-assert.equal(browser.length,5);assert.deepEqual(Array.from(browser.at(-1)[1]),['/c','start','','https://github.com/owner/repo']);
-header=headerPopup();header.tree.attrs.on_key_down[0]({key:'up'},cx);
-const selected=header.popup.render(cx);assert.equal(find(selected,'git-context-actions').attrs.bg[0],'hover');
-assert.equal(header.popup.menuAt,2,'Keyboard navigation skips the title and wraps to Actions');
-selected.attrs.on_key_down[0]({key:'enter'},cx);
-for(let i=0;i<8;i++)await Promise.resolve();
-assert.equal(browser.length,6);assert.deepEqual(Array.from(browser.at(-1)[1]),['/c','start','','https://github.com/owner/repo/actions']);
-assert.equal(browser.at(-1)[2].on,undefined,'All repository links open in this computer’s browser');
-assert.equal(closed.at(-1),'header-menu');assert.equal(clipboard.length,1,'Header actions do not copy or retarget a row');
+const source=fs.readFileSync(new URL('../src/plugins/git/mod/main.js',import.meta.url),'utf8');
+for(const retired of ['git-header-context-menu','git-header-context-title','open-code','open-actions','git-repo-name','git-repo-slot'])assert.ok(!source.includes(retired),`${retired} is removed, not relocated`);
+assert.equal(browser.length,3);assert.equal(clipboard.length,1,'Removing repository shortcuts preserves individual PR actions');
 assert.equal(diagnosticReads,0,'Context menus never initialize repository read diagnostics');
-console.log('PASS: Git header repo title, Code/Pull requests/Actions links, captured repo/local browser, keyboard navigation and unchanged PR-row clipboard/Open menus');
+console.log('PASS removed repository header/menu commands; captured local-browser PR Open, Copy path, keyboard and click isolation stay intact');

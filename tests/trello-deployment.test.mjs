@@ -18,7 +18,7 @@ try {
  const privateFiles=['credentials','policy'].map(n=>path.join(home,`.customizations/trello/${n}.json`));
  privateFiles.forEach(f=>fs.writeFileSync(f,'fake-private-bytes-do-not-read'));fs.writeFileSync(path.join(home,'.migration-fixture'),'fixture');
  const {output}=build(),manifest=JSON.parse(fs.readFileSync(path.join(output,'bundle.json')));
- for(const name of ['cli','help','client','credentials','errors','operations','policy','setup'])assert.ok(manifest.files[`.customizations/runtime/lib/trello/${name}.cjs`]);
+ for(const name of ['attachments','download','cli','help','client','credentials','errors','operations','policy','setup'])assert.ok(manifest.files[`.customizations/runtime/lib/trello/${name}.cjs`]);
  assert.ok(manifest.files['.customizations/runtime/lib/trello/TRELLO.txt']);
  const binLock=path.join(bin,'.herdr-trello.lock'),beforeFirst=snapshot(home);
  fs.writeFileSync(binLock,'another installer');
@@ -61,6 +61,9 @@ try {
  const run=(program,args)=>{const r=cp.spawnSync(program,args,{env,cwd:root,encoding:'utf8',timeout:30000,windowsVerbatimArguments:program==='cmd.exe'});assert.equal(r.status,0,`${program}: ${r.stderr}\n${r.stdout}`);return r.stdout;};
  const entry=path.join(home,'.customizations/runtime/lib/trello/cli.cjs');
  assert.match(run(process.execPath,[entry,'--help']),/herdr-trello/);
+ const help=run(process.execPath,[entry,'help','commands']);
+ for(const term of ['attachments get','--preview-width','--allow-other-types','20 MiB','data.path'])assert.ok(help.includes(term),term);
+ assert.equal(run(process.execPath,['-e',`const r=require(${JSON.stringify(entry.replace(/cli\.cjs$/,'download.cjs'))});console.log(r.MAX_BYTES)`]).trim(),String(20*1024*1024));
  const statusResult=cp.spawnSync(process.execPath,[entry,'--home',home,'status'],{env,cwd:root,encoding:'utf8',timeout:30000});
  assert.equal(statusResult.status,3);assert.match(JSON.parse(statusResult.stdout).error.code,/^STORE_/,'Corrupt preserved setup must not masquerade as missing');
  for(const topic of ['setup','commands','errors','security','docs']) assert.ok(run(process.execPath,[entry,'--home',home,'help',topic]).length>200);

@@ -37,7 +37,7 @@ function state(node, busy, spinning = busy) {
   assert.ok(node.attrs.accessibility_label[0], 'Refresh retains its accessibility label');
   assert.equal(node.attrs.disabled[0], busy);
   assert.equal(node.attrs.opacity?.[0], busy ? 0.4 : undefined);
-  assert.equal(node.kids[0].attrs.spin?.[0], spinning ? 900 : undefined);
+  assert.equal(node.kids[0].attrs.spin?.[0], node.attrs.id?.[0] !== 'git-refresh' && spinning ? 900 : undefined,'Git stays static during requests/minimum feedback; Files keeps its existing rotation');
   assert.equal(Boolean(node.attrs.cursor_pointer), !busy);
   assert.equal(Boolean(node.attrs.hover), !busy);
 }
@@ -92,6 +92,7 @@ async function harness(feature, pluginOn = true) {
     if (specifier === './ui.js') return new vm.SourceTextModule(fs.readFileSync(path.join(root, 'src/ui/ui.js'), 'utf8'), {context});
     if (specifier === './panel-kit.js') return new vm.SourceTextModule(fs.readFileSync(path.join(root, 'src/ui/panel-kit.js'), 'utf8'), {context});
     if (specifier === './settings-dialog.js') return new vm.SourceTextModule(fs.readFileSync(path.join(root, 'src/ui/settings-dialog.js'), 'utf8'), {context});
+    if (specifier === './presentations.js') return new vm.SourceTextModule(fs.readFileSync(path.join(root, 'src/plugins/git/mod/presentations.js'), 'utf8'), {context});
     if (specifier === './aggregate.js') return new vm.SourceTextModule(fs.readFileSync(path.join(root, 'src/plugins/git/mod/aggregate.js'), 'utf8'), {context});
     if (exports[specifier]) return new vm.SyntheticModule(Object.keys(exports[specifier]), function () {
       for (const [key, value] of Object.entries(exports[specifier])) this.setExport(key, value);
@@ -121,7 +122,7 @@ async function harness(feature, pluginOn = true) {
     changeFolder: cwd => { place.cwd = cwd; },
     linkPull: number => { place.pullNumber = number; },
     showGit: () => { gitShown=true; },
-    progress: () => find(render(), feature === 'files' ? 'files-header-progress' : 'git-header-progress'),
+    progress: () => find(render(), feature === 'files' ? 'files-header-progress' : 'git-loading-track'),
     button: () => find(render(), id), close: () => find(render(), feature === 'files' ? 'files-close' : 'git-close'),
     hold(program) {
       let resolve, reject;
@@ -141,7 +142,7 @@ for (const feature of ['files', 'changes']) {
     h.button().attrs.on_click[0]({}, h.cx);
     assert.ok(h.notify > before, 'Refresh requests an immediate busy redraw');
     state(h.button(), true);
-    assert.equal(h.progress(), undefined, 'Refresh uses icon rotation only');
+    assert.equal(h.progress(), undefined, 'Files uses its icon; hidden Git has no active line');
     assert.equal(h.close().attrs.disabled[0], false, 'Close stays available during refresh');
     const count = h.calls.length;
     h.button().attrs.on_click[0]({}, h.cx);
@@ -181,6 +182,7 @@ for (const view of ['open', 'closed']) for (const fail of [false, true]) {
   await h.tasks.shift(); // Local git is done; GitHub is still pending.
   assert.equal(h.view.loading, false);
   assert.equal(h.view.pullLoading, true);
+  assert.ok(h.progress(),'Shown Git uses the moving line while GitHub is pending, with no rotating Refresh');
   state(h.button(), true);
   const count = h.calls.length;
   h.button().attrs.on_click[0]({}, h.cx);
@@ -188,7 +190,7 @@ for (const view of ['open', 'closed']) for (const fail of [false, true]) {
   if (fail) pending.reject(new Error('network failed'));
   else pending.resolve({code: 0, stdout: '{"nameWithOwner":"owner/repo"}'});
   await h.tasks.shift();
-  state(h.button(), true);h.finishFeedback();state(h.button(), false);
+  state(h.button(), true);assert.equal(h.progress(),undefined,'Completion stops the line while disabled feedback remains static');h.finishFeedback();state(h.button(), false);
   if (fail) assert.ok(h.view.pullError);
   else assert.ok(h.calls.some(([cmd, args]) => cmd === 'gh' && args.some(a=>a.includes(`states:${view === 'closed' ? '[CLOSED,MERGED]' : '[OPEN]'}`))));
 }
@@ -271,6 +273,9 @@ assert.ok(!noTasks.some(node => node?.asset?.endsWith('checklist.svg')));
 // similarly named PR, PR number in the agent title, or a missing branch.
 const selectionColors = {selected:'selected',hover:'hover',accent:'accent',border:'border'};
 const selection = taskPanel.view;
+// Exercise the existing pin renderer explicitly; actual space entry now uses
+// unpinned section projection (git-entry-cache / git-entry-motion regressions).
+selection.sectionEntry=false;
 selection.pulls = {open:[{number:907,headRefName:'fix/907'}, {number:906,headRefName:'fix/906'}, {number:908}],closed:[{number:900,headRefName:'fix/907'}]};
 for (const state of ['open','closed']) {
   selection.view = state;

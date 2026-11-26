@@ -1,7 +1,7 @@
 import {localStatus, runtimeStatus, credentialAction, removeAccount, boardCheck, boardCandidates, removeBoard, accessState, setAccess} from './actions.js';
 export default {
-  id: 'trello', name: 'Trello', category: 'Agents', version: '1.2.0', icon: 'code',
-  description: 'JSON access to boards you add.',
+  id: 'trello', name: 'Trello', category: 'Agents', version: '1.3.0', icon: 'code',
+  description: 'Let agents read and update cards on the boards you choose.',
   descriptionLinks: [{label: 'API key and token', url: 'https://trello.com/apps/admin'}],
   defaultEnabled: false, machineScoped: true,
   settings: [
@@ -13,6 +13,7 @@ export default {
     {id: 'runtime', label: 'Trello runtime', check: runtimeStatus},
     {id: 'local-setup', label: 'Account', check: localStatus,
       saved: {
+        replace: true,
         row: result => result.configured === true ? {label: result.account?.name ?? 'Check to load name'} : null,
         confirm: (cx, result) => ({title: 'Remove account?', label: 'Remove',
           detail: `${cx.machine ?? 'This computer'} · ${result.account?.name ?? 'Account'}. This does not revoke the token.`}),
@@ -26,12 +27,12 @@ export default {
         ],
         enabled: (_cx, result) => result.configured === false && typeof result.revision === 'string',
         actions: [
-          {id: 'save', label: 'Save & verify', input: true, primary: true, when: result => result.configured === false,
+          {id: 'save', label: 'Save', busyLabel: 'Saving', input: true, primary: true, when: result => result.configured === false,
             run: (cx, values, item) => credentialAction(cx, values, item, 'save')},
         ],
       }},
     {id: 'boards', label: 'Boards', section: true, check: boardCheck,
-      list: {recheck: 'plugin', hideUnavailable: true, scope: {header: true}, picker: {kind: 'items', label: 'Add boards', search: 'Search boards…',
-        tabs: [['active', 'Active'], ['inactive', 'Inactive']]}, candidates: boardCandidates, remove: removeBoard}},
+      list: {recheck: 'plugin', hideUnavailable: true, scope: {header: true, divider: 'items'}, picker: {kind: 'items', label: 'Add boards', search: 'Search boards…',
+        tabStyle: 'tabs', tabs: [['active', 'Active'], ['inactive', 'Inactive']]}, candidates: boardCandidates, remove: removeBoard}},
   ],
 };

@@ -317,7 +317,11 @@ switches GitHub accounts nor saves preferences; if the selected account cannot
 see that repo, choose the appropriate account yourself. Opening the link never
 applies changes or creates webhooks. Its header navigation uses the shared parent-name component:
 ‹ Plugins returns to the catalog, and Sidebar settings use ‹ Look.
-The Git header shows the short repository name with its full GitHub URL on hover.
+Canonical repository identity is shown in the list's section header with its count
+and fold chevron. The main header has only Git/title chevron, tools and native
+refresh/status feedback; its duplicate repository label, full-URL hover and
+Code / Pull requests / Actions popup are removed, not relocated. Individual PR
+Open / Copy path menus and captured enrollment Settings navigation remain.
 
 ## Optional CI fix messages
 

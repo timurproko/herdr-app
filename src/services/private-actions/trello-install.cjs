@@ -1,9 +1,9 @@
 'use strict';
-// Fixed Trello-only installer. Payload comes from installed desktop files, never UI.
+// Fixed installer; only installed desktop payloads.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const hash=bytes=>bytes===null?null:crypto.createHash('sha256').update(bytes).digest('hex');
 const reject=code=>{throw Object.assign(Error(code),{code});};
-const names=['cli','client','control','credentials','errors','help','operations','owner','policy','setup'];
+const names=['attachments','download','cli','client','control','credentials','errors','help','operations','owner','policy','setup'];
 const paths=[...names.map(n=>`lib/trello/${n}.cjs`),'lib/trello/TRELLO.txt','scripts/trello-launchers.mjs','scripts/files.mjs','package.json'];
 function safe(file){for(let p=path.resolve(file);;p=path.dirname(p)){try{if(fs.lstatSync(p).isSymbolicLink())reject('RUNTIME_CONFLICT');}catch(e){if(e.code!=='ENOENT')throw e;}if(path.dirname(p)===p)break;}return file;}
 function bytes(file){safe(file);try{const s=fs.statSync(file);if(!s.isFile()||s.size>2097152)reject('RUNTIME_CONFLICT');return fs.readFileSync(file);}catch(e){if(e.code==='ENOENT')return null;throw e;}}
@@ -23,7 +23,7 @@ function probe(runtime,expected){
  catch{return {runtime:'blocked'};}
 }
 async function launcherModule(p){
- // Reuse the canonical installer/ownership implementation without staging any code.
+ // Reuse owned installer without staging.
  const url=source=>'data:text/javascript;base64,'+Buffer.from(source).toString('base64');
  const files=url(Buffer.from(p.files['scripts/files.mjs'],'base64').toString());
  const source=Buffer.from(p.files['scripts/trello-launchers.mjs'],'base64').toString().replace("'./files.mjs'",JSON.stringify(files));

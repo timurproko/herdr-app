@@ -11,6 +11,7 @@ import { exec, hc, theme, run, layout, openOverlay, closeOverlay, props, notify,
 import { location } from './location.js';
 import { AgentLinks } from './agent-links.js';
 import { AggregatePulls } from './aggregate.js';
+import { Publication } from './presentations.js';
 import { GitWebhooks } from './webhooks.js';
 import { GitNotices } from './notices.js';
 import * as host from './host.js';
@@ -34,7 +35,7 @@ const CI_SWEEP_WIDTH = 96;
 // The panel's 1px border plus this padding matches Spaces' 8px outer gutter.
 const LIST_INSET = 7;
 const TEXT_CACHE_LIMIT = 512;
-const ciPending = pr => ['open','draft'].includes(pr?.state) && pr.checks?.pending > 0;
+export const STAGE_CONTROL_WIDTH = 80;
 function find(node, id) { return node?.id === id ? node : (node?.children ?? []).map(c => find(c, id)).find(Boolean); }
 // Repository data survives agent/tab changes in the same machine and folder.
 const folderKey = ({cwd,on}) => JSON.stringify([cwd,on]);
@@ -95,6 +96,51 @@ export default class Changes extends View {
     for(const handle of this.retiredTaskHandles??[])handle.release();
   }
 
+  readEpoch() {try{return host.shared('custom.git.presentation-generation')??0;}catch{return 0;}}
+  repositoryOnline() {if(!this.on)return true;try{return host.machines().some(m=>m.name===this.on && m.layout==='ready');}catch{return false;}}
+
+  // A restored root belongs to the cached presentation, not this destination.
+  entryRootPending() {return this.entryVerify && (this.loading || !this.entryRootReady);}
+
+  rememberRepository() {
+    const memory=this.aggregate?.presentations;
+    if(!memory || !this.repo || !this.root || this.context?.startsWith('tasks:') || this.repositoryGeneration!==this.aggregate.presentationGeneration)return;
+    const value=this.repositoryPublication?.value;
+    if(!value)return;
+    const id=JSON.stringify(['repository',this.on??null,this.repo.name.toLowerCase()]);
+    memory.set(id,value);memory.rememberFolder(this.entryCwd??this.root,this.on,this.repo.name);
+  }
+
+  repositorySnapshot() {
+    return {repository:true,on:this.on??null,root:this.root,repo:{...this.repo},seed:Boolean(this.entrySeed),seedTabs:{...this.seedTabs},
+      pulls:Object.fromEntries(VIEWS.map(state=>[state,this.pulls[state]?[...this.pulls[state]]:null])),counts:this.counts?{...this.counts}:null,
+      source:this.entrySource??null,pages:Object.fromEntries(VIEWS.map(state=>[state,{...this.pages[state]}])),pullDepth:{...this.pullDepth},pullsAt:{...this.pullsAt}};
+  }
+
+  commitRepository() {
+    this.repositoryPublication??=new Publication();
+    if(this.repo && VIEWS.some(state=>this.pulls[state]!==null))this.repositoryPublication.commit(this.repositorySnapshot());
+  }
+
+  sourceCurrent(source) {
+    if(!source?.parent)return false;
+    const context=this.aggregate?.currentContext?.({presentation:true,space:source.parent});
+    return context?.scope===source.scope && (context.machine??null)===(source.machine??null)
+      && (context.presentationGeneration??0)===(source.providerGeneration??0);
+  }
+
+  restoreRepository(target,name) {
+    const saved=this.aggregate?.presentations?.repository?.(target.on,name,source=>this.sourceCurrent(source));
+    if(!saved)return;
+    this.root??=saved.root??null;this.repo={...saved.repo};this.counts=saved.counts?{...saved.counts}:null;
+    this.pulls=Object.fromEntries(VIEWS.map(state=>[state,saved.pulls[state]?.map(pr=>retimePull(pr))??null]));
+    if(saved.pages)this.pages=Object.fromEntries(VIEWS.map(state=>[state,{...saved.pages[state]}]));
+    if(saved.pullDepth)this.pullDepth={...saved.pullDepth};
+    this.pullsAt={...saved.pullsAt??{open:0,closed:0}};
+    this.entrySeed=Boolean(saved.seed);this.seedTabs={...saved.seedTabs??{open:Boolean(saved.seed),closed:Boolean(saved.seed)}};this.entrySource=saved.source??null;this.entryRefreshing=true;this.entryVerify=true;
+    this.repositoryPublication=new Publication(this.repositorySnapshot());
+  }
+
   resetRepository() {
     this.checksFallback?.stop();this.fallbackRequest=null;this.readWake=null;this.manualRead=null;
     this.factOrder ??= new PullFactsOrder();this.factOrder.reset();
@@ -103,6 +149,7 @@ export default class Changes extends View {
     // controller's geometry for these same element IDs across repository loads.
     this.pinMotion ??= new PinSwap(); this.pinMotion.cancel();
     this.pullPresentation = null; this.agentPress = null;
+    this.repositoryPublication=new Publication();this.entrySeed=false;this.seedTabs={open:false,closed:false};this.entrySource=null;this.entryRefreshing=false;this.entryAttempted=false;this.entryRootReady=false;this.entryVerify=false;this.clickPin=null;
     this.root = null; this.repo = null; this.counts = null; this.branch = null; this.agentPull = null;
     this.pulls = { open: null, closed: null }; this.pullsAt = { open: 0, closed: 0 };this.pullDepth={open:0,closed:0};
     this.pages = {open:{cursor:null,hasMore:false,expanded:false},closed:{cursor:null,hasMore:false,expanded:false}};
@@ -110,7 +157,7 @@ export default class Changes extends View {
     this.selection = null; this.agentRequest = null; this.agentResolved = null;
     this.pinKey = null; this.pinRevealed = true;
     this.relatedKey = null; this.relatedPull = null; this.relatedRequest = null;this.relatedRetry=null;
-    this.webhooks?.stop(); this.webhookDirty = false; this.ciSweep = null;
+    this.webhooks?.stop(); this.webhookDirty = false;
     this.pullError = null; this.pullLoading = false; this.pullRequest = null;
   }
 
@@ -123,7 +170,10 @@ export default class Changes extends View {
       // neither keep its repo visible nor block resolving the new location.
       const swap = this.pinMotion?.current;
       const retained = swap && swap.target === target.terminal && swap.folder === context && swap.repo === this.repo?.name;
+      this.rememberRepository();
       this.context = context; this.on = on; this.error = null;
+      this.entryCwd=cwd;this.repositoryGeneration=this.aggregate?.presentationGeneration;
+      this.sectionEntry=Boolean(target.space);
       this.rootRequest = null; this.loading = false;
       if (retained) {
         // The clicked link already verified this destination's repository.
@@ -135,11 +185,15 @@ export default class Changes extends View {
         this.selection = null; this.agentRequest = null; this.agentResolved = null;
         this.pullRequest = null; this.pullLoading = false;
         this.relatedRequest = null; this.relatedKey = null; this.webhookDirty = false;
-      } else this.resetRepository();
+      } else {
+        this.resetRepository();
+        const name=this.agentLinks?.cachedRepository?.(target)??this.aggregate?.presentations?.name?.(cwd,on);
+        this.restoreRepository(target,name);
+      }
     }
-    if (!cwd || this.loading) return;
-    const request = this.rootRequest = {};
-    const current = () => sidebarPanelEnabled('changes') && this.rootRequest === request && this.context === context && key() === context;
+    if (!cwd || this.loading || !this.repositoryOnline() || this.repositoryPublication?.value && !this.shown()) return;
+    const request = this.rootRequest = {},epoch=this.readEpoch();
+    const current = () => this.readEpoch()===epoch && this.repositoryOnline() && sidebarPanelEnabled('changes') && this.rootRequest === request && this.context === context && key() === context;
     this.loading = true;
     if (notify) cx.notify();
     cx.spawn(async cx => {
@@ -155,8 +209,11 @@ export default class Changes extends View {
         // repository disappeared. Retain its rows until we have a real result.
         if (!root && !absent) throw Error('Could not read repository; refresh to retry');
         const retained = root && this.pinMotion?.current?.context === context && this.pinMotion.current.repo === this.repo?.name;
-        if (!root || (root !== this.root && !retained)) this.resetRepository();
-        this.root = root;
+        if (!root || (root !== this.root && !retained && !this.entryRefreshing)) {
+          if(!root) {this.aggregate?.presentations?.folders?.delete(folderKey(target));this.agentLinks?.forgetRepository?.(target);}
+          this.resetRepository();
+        }
+        this.root = root;this.entryRootReady=Boolean(root);
         this.error = root ? null : 'Not a git repository';
         if (root) {
           // Resolve in the terminal's live folder/worktree, not the space's
@@ -175,12 +232,13 @@ export default class Changes extends View {
   }
 
   syncAggregate(cx) {
-    this.aggregate ??= new AggregatePulls({shown:()=>this.shown(),onUpdate:view=>this.startCISweep(view),presentationEpoch:()=>host.shared('custom.git.presentation-generation')??0,
+    this.aggregate ??= new AggregatePulls({shown:()=>this.shown(),presentationEpoch:()=>host.shared('custom.git.presentation-generation')??0,
       presentationAlive:saved=>!saved.parent || Boolean(saved.machine && host.machines().some(machine=>machine.name===saved.machine && machine.layout!=='ready'))
         || host.spaces().some(space=>space.id===saved.parent && (space.machine??null)===(saved.machine??null))});
     if(!this.aggregate.sync(cx)) return false;
     const scope=`tasks:${this.aggregate.context.scope}`;
     if(this.context!==scope || this.aggregateGeneration!==this.aggregate.presentationGeneration) {
+      this.rememberRepository();
       this.resetRepository();this.rootRequest=null;this.loading=false;this.context=scope;this.aggregateGeneration=this.aggregate.presentationGeneration;
     }
     this.syncTaskWebhooks(cx);
@@ -197,6 +255,8 @@ export default class Changes extends View {
     // or discard the targeted refresh that the same timer just started.
     if (selection !== this.selection) this.agentResolved = null;
     this.selection = selection;
+    const labelled=this.agentLinks?.pullNumber?.(target.terminal,this.repo?.name);
+    if(labelled!=null) {this.agentRequest=null;this.agentPull=labelled;this.agentResolved=selection;return;}
     const request = this.agentRequest = {};
     if (!['a1','claude-code'].includes(target.app) || !target.terminal) { this.agentPull = null; this.agentResolved = selection; return; }
     // Keep the existing pin until the new footer resolves: identical PRs must
@@ -219,7 +279,8 @@ export default class Changes extends View {
       const selected=this.selectedTaskWindow;if(selected){selected.correction=null;selected.anchorMarker=null;selected.scheduledCorrection=null;}
     }
     this.view = view;
-    if(this.repo && this.pulls[view]!==null)this.webhookDirty=true;
+    if(this.seedTabs?.[view]) {this.entryRefreshing=true;this.entryAttempted=false;}
+    if(this.repo && this.pulls[view]!==null && !this.seedTabs?.[view])this.webhookDirty=true;
     try { localStorage.setItem(VIEW_KEY, view); } catch {}
     cx.notify();
   }
@@ -232,34 +293,48 @@ export default class Changes extends View {
   }
 
   pullsDue(state) {
-    return Boolean(!(this.readWake?.due>Date.now()) && this.root && !this.pullLoading && this.pulls[state] === null && !this.pullsAt[state]);
+    return Boolean(!(this.readWake?.due>Date.now()) && this.root && !this.pullLoading && !this.entryRootPending() && (this.entryRefreshing && !this.entryAttempted || this.pulls[state] === null && !this.pullsAt[state]));
   }
 
   loadPulls(state, cx, force = false, notify = true, append = false) {
-    if (!this.shown() || !VIEWS.includes(state) || !this.root || this.pullLoading || key() !== this.context || (!force && !this.pullsDue(state))) return;
+    if (!this.shown() || !this.repositoryOnline() || this.entryRootPending() || !VIEWS.includes(state) || !this.root || this.pullLoading || key() !== this.context || (!force && !this.pullsDue(state))) return;
     const after = append ? this.pages[state].cursor : null;
     if (append && (!this.pages[state].hasMore || !after || state !== this.view || !this.shown())) return;
     const root = this.root, on = this.on, context = this.context;
-    const request = this.pullRequest = {},read=this.factOrder.begin();
+    const request = this.pullRequest = {},read=this.factOrder.begin(),epoch=this.readEpoch();
     let repo=this.repo,repository=repo?.name;
-    const current = () => sidebarPanelEnabled('changes') && this.pullRequest === request && this.root === root && this.context === context && key() === context && this.repo===repo && this.repo?.name===repository;
-    this.pullLoading = true; this.loadingState = state; this.appending = append; this.pageError = null;
+    const current = () => this.readEpoch()===epoch && this.repositoryOnline() && sidebarPanelEnabled('changes') && this.pullRequest === request && this.root === root && this.context === context && key() === context && this.repo===repo && this.repo?.name===repository;
+    this.pullLoading = true; this.loadingState = state; this.appending = append; this.pageError = null;this.entryAttempted=true;
     if (notify) cx.notify();
     cx.spawn(async cx => {
       try {
         const gh = args => repositoryRead(exec, args, repository, { cwd: root, on, timeout: 30000, current:()=>current() && this.shown(), manual:this.manualRead });
-        if (!repo) {
+        if (!repo || this.entryVerify) {
           const r = await gh(REPO_ARGS);
           if (!current()) return;
           if (r.code !== 0 || r.timed_out || r.timedOut || r.signal) throw new Error(pullError(r));
           const value = JSON.parse(r.stdout || '{}');
           if (!value?.nameWithOwner) throw new Error('No GitHub repository');
           if (!current()) return;
+          const mapped=this.agentLinks?.cachedRepository?.(location());
+          if(mapped && mapped.toLowerCase()!==value.nameWithOwner.toLowerCase())this.agentLinks?.forgetRepository?.(location());
+          if(repo && repo.name.toLowerCase()!==value.nameWithOwner.toLowerCase()) {
+            this.pulls={open:null,closed:null};this.counts=null;this.relatedPull=null;this.pinMotion?.cancel();
+            this.pages={open:{cursor:null,hasMore:false},closed:{cursor:null,hasMore:false}};this.pullDepth={open:0,closed:0};
+            this.repositoryPublication=new Publication();this.entrySeed=false;
+          }
           repo=this.repo={ name: value.nameWithOwner, owner: value.owner?.login ?? value.nameWithOwner.split('/')[0], url: value.url ?? `https://github.com/${value.nameWithOwner}` };
+          if(!this.repositoryPublication?.value)this.restoreRepository(location(),repo.name);
+          repo=this.repo;this.root=root;this.entryVerify=false;
+          this.aggregate?.presentations?.rememberFolder?.(location().cwd,on,repo.name);
+          cx.notify(); // Paint asynchronously adopted cache before awaiting the page.
         }
         repository=repo.name;
         const page = await readPullPage(exec,state,repository,after,{cwd:root,on,timeout:30000,current:()=>current()&&this.shown(),manual:this.manualRead});
         if (!current()) return;
+        const countReply=page.counts?null:await gh(countArgs(repository)).catch(error=>{if(quietRead(error))throw error;return null;});
+        if(!current())return;
+        const totals=page.counts??(countReply?.code===0?parseCounts(countReply.stdout):null);
         const rows = page.rows.map(pr => this.publishPull(pr,read).value).filter(Boolean);
         const incoming=new Map(rows.map(pr=>[pr.number,pr]));
         const existing = (append ? this.pulls[state] ?? [] : []).map(pr=>incoming.get(pr.number)??pr);
@@ -269,16 +344,13 @@ export default class Changes extends View {
         this.reconcilePulls(rows);
         this.ciRevision=(this.ciRevision??0)+1;
         this.pages[state] = {cursor:page.cursor,hasMore:page.hasMore && page.cursor !== after,expanded:append};
-        this.counts = page.counts ?? {...this.counts,[state]:page.total ?? this.counts?.[state] ?? null};
+        this.counts = totals ?? {...this.counts,[state]:page.total ?? this.counts?.[state] ?? null};
+        this.entrySeed=Boolean(this.entrySeed && !totals);this.seedTabs[state]=false;this.entryRefreshing=false;this.commitRepository();
         this.pullsAt[state] = Date.now(); this.pullError = null;
         // All list and webhook reads share pullRequest/pullLoading: one writer.
         if (append) return;
         this.relatedKey = null;this.relatedRetry=null;
-        // Real pages include both totals in the same GraphQL request, avoiding
-        // another Node/gh launch. Retain compatibility with partial responses.
-        const counts = page.counts ? null : await gh(countArgs(repository)).catch(error => {if(quietRead(error))throw error;return null;});
-        if (!current()) return;
-        this.counts = page.counts ?? (counts?.code===0?parseCounts(counts.stdout):null) ?? this.counts;
+        // Rows and available totals publish together, including warm seeds.
       } catch (e) {
         if (current() && this.shown()) {
           if(retryRead(this,cx,e,view=>{
@@ -295,7 +367,7 @@ export default class Changes extends View {
         }
       } finally {
         await Promise.resolve(); // even a synchronous transport throw must yield
-        if (this.pullRequest === request) { this.pullLoading = false; this.loadingState = null; this.appending = false; this.manualRead=null; }
+        if (this.pullRequest === request) { this.pullLoading = false; this.loadingState = null; this.appending = false; this.manualRead=null;this.entryRefreshing=false; }
         this.flushWebhook(cx);
         cx.notify();
       }
@@ -340,7 +412,7 @@ export default class Changes extends View {
     const number = this.agentPull ?? location().pullNumber;
     // Related reads use the same lease as list, event and fallback snapshots.
     // Do not cache a selection that has not actually acquired the queue.
-    if (!this.repo || !number || !this.shown() || this.pullLoading) return;
+    if (!this.repo || !number || !this.shown() || this.entryRootPending() || this.pullLoading) return;
     const scope = JSON.stringify([this.context,this.repo.name,number]);
     if (this.relatedKey === scope || (this.relatedRetry?.scope===scope && this.relatedRetry.until>Date.now())) return;
     this.relatedKey = scope; this.relatedRequest = null;
@@ -350,14 +422,15 @@ export default class Changes extends View {
     const known = [...(this.pulls.open ?? []), ...(this.pulls.closed ?? [])].find(pr => pr.number === number);
     if (known) { this.relatedPull = known; return; }
     const context = this.context, repo = this.repo, root = this.root, on = this.on;
-    const request = this.pullRequest = this.relatedRequest = {},read=this.factOrder.begin();
+    const request = this.pullRequest = this.relatedRequest = {},read=this.factOrder.begin(),epoch=this.readEpoch();
     this.pullLoading=true;
-    const current = () => sidebarPanelEnabled('changes') && this.pullRequest===request && this.relatedRequest === request && this.relatedKey === scope && this.context === context
+    const current = () => this.readEpoch()===epoch && this.repositoryOnline() && sidebarPanelEnabled('changes') && this.pullRequest===request && this.relatedRequest === request && this.relatedKey === scope && this.context === context
       && key() === context && this.shown() && (this.agentPull ?? location().pullNumber) === number;
     cx.spawn(async cx => {
       let accepted=false;
       try {
         await Promise.resolve();if(!current())return;
+        cx.notify();
         const result = (await readTargetPulls(exec,[number],repo.name,{cwd:root,on,timeout:30000,current,manual:this.manualRead})).get(number);
         if (!current() || result.error) return;
         const pr = result.row;
@@ -394,7 +467,7 @@ export default class Changes extends View {
 
   repositorySections() {
     const aggregate=this.aggregate,groups=new Map(aggregate.repositories().map(repo=>[repo,{repo,rows:[],error:aggregate.readNotice(repo,this.view)}]));
-    for(const row of aggregate.rows(this.view))groups.get(row.repo)?.rows.push(row);
+    for(const row of (aggregate.presentationRows?.(this.view)??aggregate.rows(this.view)))groups.get(row.repo)?.rows.push(row);
     return [...groups.values()].filter(section=>section.rows.length || section.error);
   }
 
@@ -405,7 +478,7 @@ export default class Changes extends View {
     if(on)try {online=host.machines().some(m=>m.name===on && m.layout==='ready');}catch {}
     const enabled=this.shown() && online && (task
       ? !aggregate?.context?.stale && aggregate?.currentContext()?.scope===aggregate?.context?.scope
-      : key()===this.context && Boolean(this.root && this.repo));
+      : key()===this.context && !this.entryVerify && !this.loading && Boolean(this.root && this.repo));
     const uncovered=name=>Boolean(this.notices?.active && this.notices.members?.get(name.toLowerCase())!==true);
     if(task) {
       const repositories=aggregate?.repositories()??[],rows=aggregate?.rows(this.view)??[];
@@ -426,12 +499,14 @@ export default class Changes extends View {
   }
 
   async readPendingChecks(repo,cx,current) {
+    const admitted=current,epoch=this.readEpoch();current=()=>this.readEpoch()===epoch && admitted();
     const aggregate=this.context?.startsWith('tasks:')?this.aggregate:null;
     if(this.pullLoading || this.relatedRequest || aggregate?.busy)return {busy:true};
     const root=this.root,on=aggregate?aggregate.context.machine:this.on;
     const request=this.fallbackRequest={},order=aggregate?aggregate.factOrder:this.factOrder,read=order.begin();
-    if(aggregate)aggregate.fallbackBusy=true;
+    if(aggregate) {aggregate.rememberCounts();aggregate.fallbackBusy=true;}
     else {this.pullLoading=true;this.pullRequest=request;}
+    cx.notify();
     let retryAfter=0,rateLimited=false;
     try {
       if(!current())return;
@@ -502,7 +577,7 @@ export default class Changes extends View {
     } finally {
       if(this.fallbackRequest===request)this.fallbackRequest=null;
       if(aggregate) {aggregate.fallbackBusy=false;aggregate.pump(cx);cx.notify();}
-      else if(this.pullRequest===request) {this.pullLoading=false;this.flushWebhook(cx);cx.notify();}
+      else if(this.pullRequest===request) {this.pullLoading=false;this.commitRepository();this.flushWebhook(cx);cx.notify();}
     }
   }
 
@@ -514,9 +589,8 @@ export default class Changes extends View {
       isCurrent:()=>this.shown() && !aggregate.context.stale && aggregate.currentContext()?.scope===scope && this.context===`tasks:${scope}`,
       onChange:(event,view)=> {
         if(!this.shown() || aggregate.currentContext()?.scope!==scope || this.context!==`tasks:${scope}`)return;
-        aggregate.invalidate(event?.repository??null);aggregate.pump(view);this.startCISweep(view);
+        aggregate.invalidate(event?.repository??null);aggregate.pump(view);view.notify();
       }});
-    if(!this.shown() || aggregate.context.stale)this.ciSweep=null;
   }
 
   syncWebhooks(cx) {
@@ -527,7 +601,6 @@ export default class Changes extends View {
     this.webhooks.sync(cx, {enabled:shown && Boolean(this.repo),scope:JSON.stringify([this.context,this.repo?.name]),repository:this.repo?.name,
       isCurrent:()=>this.shown() && this.context===context && key()===context && this.repo===repo,
       onChange:(event,cx) => this.queueWebhook(event,cx)});
-    if (!this.shown()) this.ciSweep = null;
     this.flushWebhook(cx);
   }
 
@@ -542,17 +615,17 @@ export default class Changes extends View {
   // selected PR, preserving expanded lists/cursors and handling newly opened PRs.
   // Reconnection/opening performs the same catch-up; no periodic GitHub requests.
   flushWebhook(cx) {
-    if (this.readWake?.due>Date.now() || !this.webhookDirty || !this.repo || !this.root || this.pullLoading || !this.shown() || key() !== this.context) return;
+    if (!this.repositoryOnline() || this.entryVerify || this.loading || this.readWake?.due>Date.now() || !this.webhookDirty || !this.repo || !this.root || this.pullLoading || !this.shown() || key() !== this.context) return;
     this.webhookDirty = false;
     // Related/older reads cannot overlap this snapshot's queue lease.
     const root=this.root,on=this.on,repo=this.repo,context=this.context;
-    const request=this.pullRequest={},read=this.factOrder.begin();this.pullLoading=true;
-    const current=()=>this.pullRequest===request && this.context===context && key()===context && this.repo===repo && this.shown();
+    const request=this.pullRequest={},read=this.factOrder.begin(),epoch=this.readEpoch();this.pullLoading=true;
+    const current=()=>this.readEpoch()===epoch && this.repositoryOnline() && this.pullRequest===request && this.context===context && key()===context && this.repo===repo && this.shown();
     cx.spawn(async cx=>{
       await Promise.resolve(); // request feedback must not notify synchronously from render
       try {
         if(!current())return;
-        this.startCISweep(cx);
+        cx.notify();
         const gh=async args=>{
           if(!current())throw Error('Obsolete request');
           const r=await repositoryRead(exec,args,repo.name,{cwd:root,on,timeout:30000,current,manual:this.manualRead});
@@ -598,7 +671,7 @@ export default class Changes extends View {
         }
         this.reconcilePulls([...Object.keys(updates).flatMap(state=>this.pulls[state]??[]),...[...transitions.values()].map(value=>value.row),...(this.relatedPull?[this.relatedPull]:[])],previousRows);
         this.counts=counts ?? this.counts;this.pullError=null;this.ciRevision=(this.ciRevision??0)+1;
-        this.startCISweep(cx);
+        this.entrySeed=false;this.entryRefreshing=false;this.commitRepository();
       } catch(e) { if(current()) {
         if(retryRead(this,cx,e,view=>this.flushWebhook(view)))this.webhookDirty=true;
         else {this.pullError=pullError(e);this.relatedKey=null;this.relatedRetry=null;}
@@ -612,27 +685,16 @@ export default class Changes extends View {
 
   // CI auto-fix delivery is owned by each Core-side monitor, never this panel.
 
-  // One native pass for an event-driven read when ANY loaded PR has running CI.
-  startCISweep(cx) {
-    const rows=this.aggregate?.context ? this.aggregate.rows('open') : [...(this.pulls.open ?? []),this.relatedPull];
-    if (!this.shown() || this.ciSweep || !rows.some(ciPending)) return;
-    const sweep = this.ciSweep = {id:this.ciSweepSerial = (this.ciSweepSerial ?? 0) + 1,
-      context:this.context,phase:'arm',width:this.pinMotion?.bodySize?.width ?? 320};
-    cx.timer.after(CI_SWEEP_MS + 100, cx => {
-      if (this.ciSweep !== sweep) return;
-      this.ciSweep = null; cx.notify();
-    });
-    cx.notify();
-  }
-
-  armCISweep(sweep, cx) {
-    if (this.ciSweep !== sweep || sweep.phase !== 'arm') return;
-    sweep.phase = 'armed';
-    // Let the offscreen starting position lay out before changing the target.
-    cx.timer.after(16, cx => {
-      if (this.ciSweep !== sweep) return;
-      sweep.phase = 'moving'; cx.notify();
-    });
+  // Pure projection of work, not pending CI, totals or retry history. Native
+  // motion owns every frame; removing the track stops the animation.
+  panelLoading() {
+    if (!this.shown()) return false;
+    if (this.context?.startsWith('tasks:')) {
+      const aggregate=this.aggregate;
+      return Boolean(aggregate?.busy || aggregate?.context?.loading
+        || !aggregate?.context?.stale && aggregate?.updating);
+    }
+    return Boolean(this.loading || this.pullLoading || this.relatedRequest || this.fallbackRequest);
   }
 
   morePulls(state, cx) { this.loadPulls(state, cx, true, true, true); }
@@ -664,55 +726,48 @@ export default class Changes extends View {
   }
   openPull(pr) { this.openUrl(pr?.url); }
 
-  showPullMenu(pr, cx, header = false) {
+  showPullMenu(pr, cx) {
     if (!pr?.url) return;
-    const base = header ? /^https:\/\/github\.com\/[^/]+\/[^/?#]+/.exec(pr.url)?.[0] : null;
-    if (header && !base) return;
-    const menu = {url:pr.url,...(header ? {header:true,repo:pr.repo ?? base.slice('https://github.com/'.length),codeUrl:base,actionsUrl:`${base}/actions`} : {})};
+    const menu = {url:pr.url};
     // The panel owns browser work: closing the popup ends its async tasks.
-    this.menuTarget = {open:menu.url,code:menu.codeUrl,actions:menu.actionsUrl};
+    this.menuTarget = {open:menu.url};
     if (!this.listening) {
       this.listening = true;
       cx.spawn(async () => {
         for (;;) {
           const command = await nextCommand(), targets = this.menuTarget;
-          const url = command === 'open-external' ? targets?.open : command === 'open-code' ? targets?.code : command === 'open-actions' ? targets?.actions : null;
+          const url = command === 'open-external' ? targets?.open : null;
           if (!url) continue;
           this.menuTarget = null;
           this.openUrl(url);
         }
       });
     }
-    // Capture the clicked PR/repository, never a later selection.
-    openOverlay({ mod: 'custom-changes', kind: 'popup', frame: 'none', width: header ? 240 : 180, height: header ? 3 * U.row + 24 + 8 : 2 * U.row + 12 + 9,
+    // Capture the clicked PR, never a later selection.
+    openOverlay({ mod: 'custom-changes', kind: 'popup', frame: 'none', width: 180, height: 2 * U.row + 12 + 9,
       props: { pullMenu: menu } });
   }
 
   renderPullMenu(t) {
     const overlay = props()?.overlay, url = this.pullMenu.url;
-    const items = this.pullMenu.header ? [
-      {id:'code',label:'Code...',icon:'code',run:()=>run('custom-changes.open-code')},
-      {id:'pulls',label:'Pull requests...',icon:'git-pull-request',run:()=>run('custom-changes.open-external')},
-      {id:'actions',label:'Actions...',icon:'circle-play',run:()=>run('custom-changes.open-actions')},
-    ] : [
+    const items = [
       { id: 'open', label: 'Open...', icon: 'arrow-up-right', run: () => run('custom-changes.open-external') },
       { id: 'copy-path', label: 'Copy path', icon: 'copy', run: cx => {
         cx.write_to_clipboard(url);
         notify({ title: 'Path copied', body: url, level: 'success', timeout: 3000 });
       } }];
     const choose = (item, cx) => { item.run(cx); closeOverlay(overlay); };
-    return contextMenu(t, { id: this.pullMenu.header ? 'git-header-context-menu' : 'git-context-menu', prefix: 'git-context', headingId: 'git-header-context-title',
-      heading: this.pullMenu.header ? this.pullMenu.repo ?? 'Repository' : null, focus: this.menuHandle, state: this,
+    return contextMenu(t, { id: 'git-context-menu', prefix: 'git-context', focus: this.menuHandle, state: this,
       items: items.map(item => ({ ...item, icon: `mods/custom-changes/${item.icon}.svg`, separator: item.id === 'copy-path' })),
       onChoose: choose, onClose: () => closeOverlay(overlay) });
   }
 
-  segment(t, id, label, count, on, onClick, loading = false) {
+  segment(t, id, label, count, on, onClick, loading = false, scopeHint = null) {
     loading ||= count == null;
     const value = count ?? 0, text = value > 999 ? '999+' : String(value);
-    const tooltip = loading ? `Count loading; showing ${value}` : value > 999 ? String(value) : null;
+    const tooltip = loading ? `Count loading; showing ${value}${scopeHint?`; ${scopeHint}`:''}` : value > 999 ? String(value) : null;
     return h_flex().id(id).h(U.control).px(8).gap(6).flex_none().items_center().rounded(U.radius).cursor_pointer()
-      .role('button').accessibility_label(`${label}: ${count ?? 0}${loading ? ' (loading)' : ''}`)
+      .role('button').accessibility_label(`${label}: ${count ?? 0}${loading ? ' (loading)' : ''}${scopeHint?`; ${scopeHint}`:''}`)
       .text_size(U.meta).text_color(on ? t.foreground : t.muted).when(on, el => el.font_semibold())
       .hover(s => s.bg(t.hover)).on_click((_e, cx) => onClick(cx))
       .child(div().id(`${id}-label`).flex_none().child(label))
@@ -734,6 +789,76 @@ export default class Changes extends View {
       .when(!stated,el=>el.tooltip(pr.state==='draft'?'Draft pull request':pr.state==='open'?'Open pull request':pr.state==='merged'?'Merged pull request':'Closed pull request'));
   }
 
+  beginAgentMotion(pr,press,agent,cx,controlOffset=6) {
+    if(!agent?.address || press?.number!==pr.number || Date.now()-press.at>=2000)return false;
+    let clicked=pr,snapshot=this.pullPresentation;
+    if(pr.key) {
+      const window=this.selectedTaskWindow;if(!window || !agent.cwd)return false;
+      const items=window.range().items;if(!items.some(item=>item.key===pr.key))return false;
+      let top=4-window.offset;
+      const backdrop=items.map(item=>{
+        const value={...item,top,count:window.repositoryCounts?.get(item.repo)?.value};top+=item.height+item.gap;return value;
+      });
+      clicked={...pr,key:undefined,repo:undefined};
+      snapshot={context:this.context,state:this.view,rows:[clicked],pinned:null,arrival:true,originKey:pr.key,backdrop};
+    }
+    const repo=pr.repo??this.repo?.name;
+    if(!this.pinMotion?.start(snapshot,clicked,press,{source:location().terminal,target:agent.address,folder:folderKey(agent),repo,controlOffset},cx))return false;
+    if(pr.key) {
+      // Only presentation is carried from the verified task PR. The destination
+      // still reads its own repository inventory/counts and resolves selection.
+      this.repo={name:repo,owner:repo.split('/')[0],url:`https://github.com/${repo}`};
+      this.relatedPull=clicked;
+    }
+    cx.notify();return true;
+  }
+
+  stageChip(t, pr, interactive = true) {
+    if(!pr.stage) {
+      const robot=this.agentButton(t,pr,interactive);
+      return robot?.absolute().left(STAGE_CONTROL_WIDTH-U.insetControl);
+    }
+    const role=pr.stage==='approved'?null:pr.stage,repo=pr.repo??this.repo?.name,context=this.context;
+    const scope=this.aggregate?.context?.scope;
+    const target=role && pr.key?(this.aggregate?.stagePresentation?this.aggregate.stagePresentation(pr,role,this.agentLinks):this.aggregate?.stageTarget?.(pr,role,this.agentLinks)):null;
+    const agent=role?(pr.key?target?.agent:this.agentLinks?.related?.(pr,repo,location().terminal,role)):null;
+    const available=agent?.availability==='live';
+    const round=role==='build'?agent?.crew?.round:null;
+    const caption=pr.stage==='approved'?'Approved':role==='review'?'Review':round?`Build ${round+1}`:'Build';
+    const history=round && agent?.crew?.finding?`back from review ${round}: ${agent.crew.finding}`:null;
+    const reason=!role||available?null:agent?.availability==='disconnected'?`on ${agent.on}, not connected`
+      :agent?.availability==='ended'?(role==='review'?'reviewer ended without a verdict':`build agent ended${pr.checks?.state?` - CI ${pr.checks.state}`:''}`)
+      :role==='review'?'reviewer unavailable':'build agent unavailable';
+    const tooltip=[history,reason,available&&agent.displayName?`Open agent: ${agent.displayName}`:null,
+      round>99?caption:null].filter(Boolean).join('\n');
+    const color=pr.stage==='approved'?t.ansi2:role==='review'?t.ansi5:t.ansi3;
+    return div().id(`${interactive?'':'swap-'}pr-stage-${pr.key??pr.number}`).absolute().left(0).top(0)
+      .w(STAGE_CONTROL_WIDTH).h(20).px(6).flex().items_center().justify_center().rounded_full()
+      .bg(t.raised).text_color(color).text_size(U.meta).truncate()
+      .when(Boolean(role&&!available),el=>el.opacity(0.45).cursor_default())
+      .when(Boolean(tooltip),el=>el.tooltip(tooltip))
+      .when(Boolean(interactive&&role),el=>el
+        .on_mouse_down('left',(event,cx)=>{
+          cx.stop_propagation();
+          if(available)this.agentPress={number:pr.number,position:event.position,bounds:event.bounds,at:Date.now()};
+        })
+        .on_click((_event,cx)=>{
+          cx.stop_propagation();const press=this.agentPress;this.agentPress=null;
+          if(!available || this.context!==context || !this.shown())return;
+          if(pr.key) {this.aggregate?.focus(pr,target,scope,this.agentLinks,current=>this.beginAgentMotion(pr,press,current.agent,cx));return;}
+          if(key()!==context || this.repo?.name!==repo)return;
+          const current=this.agentLinks?.related?.(pr,repo,location().terminal,role);
+          if(current?.key!==agent.key || current.availability!=='live')return;
+          const latest=[...(this.pulls?.open??[]),...(this.pulls?.closed??[]),this.relatedPull].find(row=>row?.number===pr.number);
+          if(latest && latest.stage!==pr.stage)return;
+          this.beginAgentMotion(pr,press,current,cx);
+          run('agent.focus',{terminal:current.address});
+        }))
+      .when(Boolean(interactive&&role&&available),el=>el.role('button').accessibility_label(`Open ${role==='review'?'reviewer':'build agent'} for ${repo} #${pr.number}`)
+        .cursor_pointer().hover(s=>s.bg(subtleActionFill(t))))
+      .child(caption);
+  }
+
   agentButton(t, pr, interactive = true) {
     if(pr.key) {
       const target=this.aggregate?.target(pr),scope=this.aggregate?.context?.scope;
@@ -741,8 +866,13 @@ export default class Changes extends View {
       return target ? div().id(`${interactive ? '' : 'swap-'}pr-agent-${pr.key}`).absolute().left(0).top((20-U.insetControl)/2)
         .size(U.insetControl).flex_none().flex().items_center().justify_center().rounded(U.insetRadius).text_color(t.foreground)
         .when(interactive, el=>el.cursor_pointer().role('button').accessibility_label(`Open related agent for ${pr.repo} #${pr.number}`)
-          .hover(s=>s.bg(subtleActionFill(t))).on_mouse_down('left',(_e,cx)=>cx.stop_propagation())
-          .on_click((_e,cx)=>{cx.stop_propagation();this.aggregate.focus(pr,target,scope);}))
+          .hover(s=>s.bg(subtleActionFill(t))).on_mouse_down('left',(event,cx)=>{
+            cx.stop_propagation();this.agentPress={number:pr.number,position:event.position,bounds:event.bounds,at:Date.now()};
+          })
+          .on_click((_e,cx)=>{
+            cx.stop_propagation();const press=this.agentPress;this.agentPress=null;
+            this.aggregate.focus(pr,target,scope,undefined,current=>this.beginAgentMotion(pr,press,this.agentLinks?.liveTarget?.(current.terminal),cx,4));
+          }))
         .when(Boolean(name),el=>el.tooltip(`Open agent: ${name}`))
         .child(svg('icons/agent.svg').size(U.icon)) : null;
     }
@@ -768,9 +898,7 @@ export default class Changes extends View {
             if (current?.key !== agent.key) return;
             // Capture presentation only. Focus changes immediately; the new
             // footer/selection must resolve before any row starts moving.
-            if (press?.number === pr.number && Date.now() - press.at < 2000
-              && this.pinMotion?.start(this.pullPresentation, pr, press,
-                {source:location().terminal,target:current.address,folder:folderKey(current),repo},cx)) cx.notify();
+            this.beginAgentMotion(pr,press,current,cx,4);
             run('agent.focus', {terminal:current.address});
           }))
         .when(Boolean(agent.displayName),el=>el.tooltip(`Open agent: ${agent.displayName}`))
@@ -910,7 +1038,7 @@ export default class Changes extends View {
 
   renderPullRow(t, pr, ghost = false) {
     const prefix = ghost ? 'swap-' : '', rowId = pr.key ?? pr.number;
-    const agentButton = this.agentButton(t, pr, !ghost);
+    const agentButton = this.stageChip(t, pr, !ghost);
     // Cache presentation by immutable fact identity; never retain native rows:
     // their event callbacks belong to the current native snapshot build.
     this.rowPresentations ??= new RowPresentations();
@@ -951,7 +1079,7 @@ export default class Changes extends View {
       .child(v_flex().flex_1().min_w(0).gap(3)
         .child(h_flex().id(`${prefix}pr-title-line-${rowId}`).w_full().min_w(0).h(20).flex_none().gap(4).items_center().line_height('20px')
           .child(div().id(`${prefix}pr-title-${rowId}`).flex_1().min_w(0).h(20).truncate().text_size(U.font).font_semibold().text_color(t.foreground).tooltip(pr.title).child(pr.title))
-          .child(div().id(`${prefix}pr-agent-slot-${rowId}`).w(U.insetControl).h(20).flex_none().relative()
+          .child(div().id(`${prefix}pr-agent-slot-${rowId}`).w(STAGE_CONTROL_WIDTH).h(20).flex_none().relative()
             .when(Boolean(agentButton), el => el.child(agentButton))))
         .child(byline.line).child(meta.line))
       .when(Boolean(byline.probes),el=>el.child(byline.probes))
@@ -969,11 +1097,16 @@ export default class Changes extends View {
         .bg(t.background).rounded(U.radius).shadow_sm().child(this.pullRow(t,card.pr,true))));
   }
 
+  repositoryPresentation() {
+    const current={pulls:this.pulls,counts:this.counts};
+    return this.repositoryPublication?.project(current,Boolean(this.pullLoading || this.entryRefreshing))??current;
+  }
+
   pullSelection() {
-    const state = this.view, list = this.pulls[state], pullNumber = this.agentPull ?? location().pullNumber;
-    const related = this.relatedPull && this.relatedPull.number === pullNumber && (state === 'open'
+    const state = this.view, list = this.repositoryPresentation().pulls[state], pullNumber = this.agentPull ?? location().pullNumber;
+    const related = (!this.sectionEntry || this.pinMotion?.current || this.clickPin?.terminal===location().terminal) && this.relatedPull && this.relatedPull.number === pullNumber && (state === 'open'
       ? ['open','draft'].includes(this.relatedPull.state) : ['closed','merged'].includes(this.relatedPull.state)) ? this.relatedPull : null;
-    const liveRows = related && list && !list.some(pr => pr.number === related.number) ? [...list,related] : list ?? [];
+    const liveRows = related && !list?.some(pr => pr.number === related.number) ? [...(list??[]),related] : list ?? [];
     const active = liveRows.find(pr => pullNumber != null
       ? pr.number === pullNumber : Boolean(this.branch && pr.headRefName === this.branch));
     return {liveRows,active};
@@ -1032,12 +1165,16 @@ export default class Changes extends View {
   }
 
   renderPulls(t) {
-    const state = this.view, list = this.pulls[state], {liveRows,active} = this.pullSelection();
+    const state = this.view, list = this.repositoryPresentation().pulls[state], selection = this.pullSelection(),liveRows=selection.liveRows;
+    const click=this.pinMotion?.current;
+    if(this.sectionEntry && !click && this.clickPin && this.clickPin.terminal===location().terminal && this.agentResolved===agentKey(location()) && this.clickPin.number!==selection.active?.number)this.clickPin=null;
+    if(this.sectionEntry && click && click.target===location().terminal && this.agentResolved===agentKey(location()))this.clickPin=selection.active?.number===click.number?{terminal:location().terminal,number:selection.active.number}:null;
+    const active=this.sectionEntry ? (this.clickPin && this.clickPin.terminal===location().terminal?liveRows.find(pr=>pr.number===this.clickPin.number):null):selection.active;
     const metrics=this.ordinaryScrollState(state), zoom=metrics.zoom, measurement=metrics.measurement;
     this.sampleNativeScroll(metrics,metrics.handle,zoom);
     this.pinMotion?.rebaseZoom?.(zoom);
     this.pinMotion?.active(this.context,state);
-    this.pinMotion?.resolve(location().terminal,active?.number,this.agentResolved === agentKey(location()));
+    this.pinMotion?.resolve(location().terminal,selection.active?.number,this.agentResolved === agentKey(location()));
     const retained = this.pinMotion?.current;
     const rows = retained?.snapshot.rows ?? liveRows, pinned = retained ? retained.snapshot.pinned : active;
     this.pullPresentation = {context:this.context,state,rows,pinned};
@@ -1048,9 +1185,21 @@ export default class Changes extends View {
       this.pinRevealed = this.pinKey == null || !pinned || Boolean(retained) || settled;
       this.pinKey = pinKey;this.pinRevealSequence=(this.pinRevealSequence??0)+1;
     }
-    const remaining = rows.filter(pr => pr !== pinned);
-    const empty = this.error || this.pullError || (!this.root ? (this.loading ? 'Loading…' : 'No folder')
+    const sectionRepo=this.sectionEntry?this.repo?.name:null,folded=sectionRepo && this.foldedRepositories?.has(sectionRepo);
+    const remaining = folded?[]:rows.filter(pr => pr !== pinned);
+    const empty = this.error || this.pullError || (!this.root ? (this.loading || location().cwd ? 'Loading…' : 'No folder')
       : list === null ? 'Loading…' : `No ${state} pull requests`);
+    if(retained?.snapshot.arrival)return v_flex().id('pulls-body').relative().flex_1().min_h(0).overflow_hidden()
+      .on_size_change((size,cx)=>{const before=this.pinMotion.bodySize?.width;this.pinMotion.measureBody(size,settings().zoom);if(before!==this.pinMotion.bodySize?.width)cx.notify();})
+      .on_mouse_move(event=>this.pinMotion.bodyPointer(event))
+      .on_scroll_wheel((_event,cx)=>{this.pinMotion.cancel();cx.notify();cx.stop_propagation();})
+      .on_mouse_down('left',(_event,cx)=>cx.stop_propagation()).on_click((_event,cx)=>cx.stop_propagation())
+      .children(retained.snapshot.backdrop.map(item=>div().id(`pin-origin-${item.key}`).absolute().left(LIST_INSET).right(LIST_INSET).top(item.top).h(item.height)
+        .when(Boolean(swap&&item.key===retained.snapshot.originKey),el=>el.invisible())
+        .child(item.row?this.pullRow(t,item.row,true):item.header?sidebarSectionHeader(t,{id:`pin-origin-header-${item.repo}`,label:item.repo,open:!item.folded,trailingSize:U.insetControl,trailingInset:3,children:[
+          div().flex_1().min_w(0).truncate().child(item.repo),sidebarNumericSlot(t,`pin-origin-count-${item.repo}`,String(item.count??0),{gap:U.gap,trailingSize:U.insetControl}),
+        ]}):div().px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(item.error??''))))
+      .when(Boolean(swap),el=>el.child(this.swapOverlay(t,swap)));
     return v_flex().id('pulls-body').relative().flex_1().min_h(0).overflow_hidden()
       .on_size_change((size, cx) => {
         const before = this.pinMotion?.bodySize?.width;
@@ -1058,7 +1207,7 @@ export default class Changes extends View {
         if (this.pinMotion?.bodySize?.width !== before) cx.notify();
       })
       .on_mouse_move(event => this.pinMotion?.bodyPointer(event))
-      .when(Boolean(pinned), el => el
+      .when(Boolean(pinned) && !folded, el => el
         .child(v_flex().id('active-pull').relative().flex_none().py(4).px(LIST_INSET)
           .child(div().id('active-pull-rail').absolute().left(0).top(0).bottom(0).w(2).bg(t.accent))
           .child(v_flex().id(`active-pull-content-${pinned.number}-${this.pinRevealSequence}`).w_full()
@@ -1081,12 +1230,13 @@ export default class Changes extends View {
             })
             .on_scroll_wheel(event => {this.contentMotion(event, 'wheel', state);metrics.contentMotion(event,'wheel');})
             .on_mouse_move(event => {this.contentMotion(event, 'move', state);metrics.contentMotion(event,'move');})
+            .when(Boolean(sectionRepo),el=>el.child(this.repositoryHeader(t,sectionRepo,this.context,rows.length,Boolean(this.entrySeed || this.seedTabs?.[this.view]))))
             .children(remaining.map(pr => this.pullRow(t, pr)
               .when(Boolean(swap?.cards.some(card => card.pr.number === pr.number)), el => el.invisible())))
-            .when(!rows.length, el => el.child(panelMessage(t, 'git-empty', { text: empty, loading: empty === 'Loading…', rowInset: 2 })))
-            .when(Boolean(rows.length) && Boolean(this.error || this.pullError), el => el.child(div().id('git-read-error').px(8).py(4).text_size(11).text_color(t.ansi1).child(this.error || this.pullError)))
-            .when(this.pageError?.state === state, el => el.child(div().px(8).py(4).text_size(11).text_color(t.ansi1).child(this.pageError.message)))
-            .when(Boolean(this.pages[state]?.hasMore), el => el.child(div().id('pulls-more').p(8).text_size(11).text_color(t.dim)
+            .when(!rows.length && !folded, el => el.child(panelMessage(t, 'git-empty', { text: empty, loading: empty === 'Loading…', rowInset: 2, animated: false })))
+            .when(!folded && Boolean(rows.length) && Boolean(this.error || this.pullError), el => el.child(div().id('git-read-error').px(8).py(4).text_size(11).text_color(t.ansi1).child(this.error || this.pullError)))
+            .when(!folded && this.pageError?.state === state, el => el.child(div().px(8).py(4).text_size(11).text_color(t.ansi1).child(this.pageError.message)))
+            .when(!folded && Boolean(this.pages[state]?.hasMore), el => el.child(div().id('pulls-more').p(8).text_size(11).text_color(t.dim)
               .role('button').accessibility_label('Load 10 more pull requests').disabled(this.pullLoading)
               .when(!this.pullLoading, el => el.cursor_pointer().hover(s => s.bg(t.hover)))
               .on_click((_event, cx) => { if (!this.pullLoading) this.morePulls(state, cx); })
@@ -1096,11 +1246,16 @@ export default class Changes extends View {
       .when(Boolean(swap), el => el.child(this.swapOverlay(t,swap)));
   }
 
-  sweepLayer(t,sweep) {
-    return div().id(`git-ci-track-${sweep.id}`).absolute().left(0).right(0).top(0).h(1).overflow_hidden()
-      .on_size_change((size,cx)=>{if(size.width>0)sweep.width=size.width;this.armCISweep(sweep,cx);})
+  loadingLine(t) {
+    const context=this.context;
+    return div().id('git-loading-track').absolute().left(0).right(0).top(0).h(1).overflow_hidden()
+      .role('status').accessibility_label('Loading Git')
+      .on_size_change((size,cx)=>{
+        if(this.context!==context || !this.shown() || !(size.width>0) || this.loadingLineWidth===size.width)return;
+        this.loadingLineWidth=size.width;cx.notify();
+      })
       .child(div().id('git-ci-line').absolute().top(0).h(1).w(CI_SWEEP_WIDTH).rounded_full().bg(t.accent).opacity(0.75)
-        .left(sweep.phase==='moving'?sweep.width:-CI_SWEEP_WIDTH).transition('left',{duration:CI_SWEEP_MS,easing:'ease-in-out'}));
+        .loop('left',{from:-CI_SWEEP_WIDTH,to:this.loadingLineWidth??320,period:2*CI_SWEEP_MS,easing:'ease-in-out'}));
   }
 
   enrollmentPresentation() {
@@ -1109,6 +1264,28 @@ export default class Changes extends View {
     const notice=this.notices?.presentation(aggregate.repositories());
     if(!notice)return null;
     return {choices:notice.choices,key:JSON.stringify([context.scope,location(),this.view,notice.key])};
+  }
+
+  repositoryScopeCurrent(repo,scope) {
+    return this.shown() && (scope===this.context && !scope.startsWith('tasks:')
+      ? this.repo?.name?.toLowerCase()===repo.toLowerCase()
+      : this.aggregate?.currentContext({presentation:true})?.scope===scope && this.aggregate.repositories().includes(repo));
+  }
+
+  repositoryHeader(t,repo,scope,count,loading=false) {
+    const folded=this.foldedRepositories.has(repo);
+    return sidebarSectionHeader(t,{id:`task-repo-header-${repo}`,label:repo,open:!folded,trailingSize:U.insetControl,trailingInset:3,children:[
+      this.repositoryNameLabel(repo,scope),
+      sidebarNumericSlot(t,`task-repo-count-${repo}`,String(count),{gap:U.gap,trailingSize:U.insetControl})
+        .accessibility_label(`${count} ${this.view} pull requests${loading?' (loading)':''}`)
+        .when(loading,el=>el.tooltip(`Count loading; showing ${count}`)),
+    ]}).cursor_pointer().hover(s=>s.bg(t.selected)).on_click((_e,cx)=>{
+      cx.stop_propagation();if(!this.repositoryScopeCurrent(repo,scope))return;
+      this.taskSelectionEpoch=(this.taskSelectionEpoch??0)+1;
+      this.foldedRepositories.has(repo)?this.foldedRepositories.delete(repo):this.foldedRepositories.add(repo);
+      try {localStorage.setItem(FOLDED_REPOS_KEY,JSON.stringify([...this.foldedRepositories]));}catch{}
+      cx.notify();
+    });
   }
 
   repositoryNameLabel(repo,scope) {
@@ -1122,7 +1299,7 @@ export default class Changes extends View {
     const zoom=settings().zoom>0?settings().zoom:1;
     const overflowing=()=>Number.isFinite(sizes.available)&&Number.isFinite(sizes.intrinsic)&&sizes.intrinsic>sizes.available+0.5;
     const measure=(kind,size,cx)=>{
-      if(!this.shown() || (settings().zoom>0?settings().zoom:1)!==zoom || this.repositoryNameSizes.get(id)!==sizes || this.aggregate?.currentContext({presentation:true})?.scope!==scope || !this.aggregate.repositories().includes(repo) || !Number.isFinite(size.width))return;
+      if(!this.shown() || (settings().zoom>0?settings().zoom:1)!==zoom || this.repositoryNameSizes.get(id)!==sizes || !this.repositoryScopeCurrent(repo,scope) || !Number.isFinite(size.width))return;
       const before=overflowing();sizes[kind]=size.width;this.repositoryNameSizes.set(id,sizes);
       if(before!==overflowing())cx.notify();
     };
@@ -1138,26 +1315,14 @@ export default class Changes extends View {
   }
 
   repositorySection(t, {repo, items}, scope, window) {
-    const aggregate = this.aggregate, folded = this.foldedRepositories.has(repo);
+    const folded = this.foldedRepositories.has(repo);
     const header=items.find(item=>item.header), body=items.filter(item=>!item.header);
     return v_flex().id(`task-repo-${repo}`).w_full().flex_none()
-      .when(Boolean(header),section=>section.child(div().flex_none().h(header.height+header.gap).child(sidebarSectionHeader(t, {id:`task-repo-header-${repo}`, label:repo, open:!folded, trailingSize:U.insetControl, trailingInset:3, children:[
-        this.repositoryNameLabel(repo,scope),
-        sidebarNumericSlot(t,`task-repo-count-${repo}`,String(window.repositoryCounts.get(repo).value),{gap:U.gap,trailingSize:U.insetControl})
-          .accessibility_label(`${window.repositoryCounts.get(repo).value} ${this.view} pull requests${window.repositoryCounts.get(repo).loading?' (loading)':''}`)
-          .when(window.repositoryCounts.get(repo).loading,el=>el.tooltip(`Count loading; showing ${window.repositoryCounts.get(repo).value}`)),
-      ]}).cursor_pointer().hover(s => s.bg(t.selected))
-        .on_click((_e, cx) => {
-          cx.stop_propagation();
-          if (!this.shown() || aggregate.currentContext({presentation:true})?.scope !== scope || ![...aggregate.entries.values()].some(e => e.link.repo === repo)) return;
-          this.taskSelectionEpoch=(this.taskSelectionEpoch??0)+1;
-          this.foldedRepositories.has(repo) ? this.foldedRepositories.delete(repo) : this.foldedRepositories.add(repo);
-          try { localStorage.setItem(FOLDED_REPOS_KEY, JSON.stringify([...this.foldedRepositories])); } catch {}
-          cx.notify();
-        }))))
+      .when(Boolean(header),section=>section.child(div().flex_none().h(header.height+header.gap)
+        .child(this.repositoryHeader(t,repo,scope,window.repositoryCounts.get(repo).value,window.repositoryCounts.get(repo).loading))))
       .when(!folded && body.length>0, el => el.child(v_flex().id(`task-repo-body-${repo}`).flex_none()
         .children(body.map(item=>div().id(`task-item-${item.key}`).flex_none().h(item.height+item.gap)
-          .child(item.row ? this.pullRow(t,item.row) : item.loading ? panelMessage(t,`task-loading-${repo}`,{text:'Loading',loading:true,rowInset:2}) : this.renderPart(`repository-notice:${repo}`,()=>div().id(`task-error-${repo}`).flex_none().w_full()
+          .child(item.row ? this.pullRow(t,item.row) : item.loading ? panelMessage(t,`task-loading-${repo}`,{text:'Loading',loading:true,rowInset:2,animated:false}) : this.renderPart(`repository-notice:${repo}`,()=>div().id(`task-error-${repo}`).flex_none().w_full()
             .child(div().id(`task-notice-measure-${window.measurement}-${encodeURIComponent(item.measureKey)}`).flex_none().w_full().px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(item.error)
             .on_size_change((size,cx)=>{
               if(!this.taskWindowCurrent(window,scope) || !window.items.some(current=>current.measureKey===item.measureKey) || !Number.isFinite(size.height))return;
@@ -1229,6 +1394,7 @@ export default class Changes extends View {
     // Handles are created after layout, never in render; they retain the same
     // native list's position across appends and same-home refreshes.
     if(!window.handle && base.ScrollHandle) {window.handle=base.ScrollHandle.new();cx.notify();}
+    if(which==='viewport')this.pinMotion?.measureBody(size,zoom);
     if(which==='viewport' && window.width!==size.width) {window.width=size.width;cx.notify();}
     if(which==='content')window.metrics.awaitZoom=false;
     window.metrics.measure(which,size,cx);
@@ -1264,6 +1430,7 @@ export default class Changes extends View {
 
   taskViewportMotion(window,scope,event,kind,cx) {
     if(!this.taskWindowCurrent(window,scope))return;
+    if(kind==='move')this.pinMotion?.bodyPointer(event);
     const native=this.sampleNativeScroll(window.metrics,window.handle,window.zoom);
     if(!native)window.metrics.viewportMotion(event,kind,cx);else window.metrics.update(cx);
     window.anchorMarker=null;
@@ -1303,7 +1470,7 @@ export default class Changes extends View {
     this.pullTextPending = new Set();
     if (this.pullTextScope!==this.context) {this.pullTextRequests=new Map();this.pullTextScope=this.context;}
     const aggregate=this.aggregate,counts=aggregate.counts(),scope=aggregate.context.scope;
-    const hasInventory=[...aggregate.entries.values()].some(e=>e.pr),verifying=aggregate.context.stale && !hasInventory;
+    const hasInventory=[...aggregate.entries.values()].some(e=>e.pr),warm=aggregate.hasPresentation??hasInventory;
     const verificationHint='Fleet status is unverified; actions are paused until fresh verification' + (aggregate.context.verification
       ? `\n${aggregate.context.verification.reason} at ${new Date(aggregate.context.verification.at).toISOString()} (generation ${aggregate.context.verification.generation})` : '');
     // Membership is cross-tab: enrollment and updates must retain hidden sections.
@@ -1326,15 +1493,13 @@ export default class Changes extends View {
       onChoose:repository=>openSettings({section:'plugins',plugin:'git',pluginSection:'repository',pluginSearch:repository})});
     const enrollment=this.enrollmentPicker.render(t,setup?null:this.enrollmentPresentation());
     this.syncChecksFallback(cx);
-    const sweep=!aggregate.context.stale && this.shown() && this.ciSweep?.context===this.context ? this.ciSweep : null;
+    const loading=this.panelLoading();
     return v_flex().id('changes').relative().size_full().min_h(0).rounded(8).overflow_hidden().bg(t.background).border_1().border_color(t.input).text_color(t.foreground).text_size(U.font)
       .child(h_flex().id('changes-header').relative().bg(t.surface).h(U.section).flex_none().pl(4).pr(U.gutter).gap(U.gap).items_center().border_b(1).border_color(t.border)
         .on_hover((hovered,view)=>{this.headerHovered=hovered;view.notify();})
         .child(sidebarTitle(t,'changes','git-title'))
-        .when(aggregate.context.stale && hasInventory, el=>el.child(div().id('git-task-stale').flex_none().text_size(U.meta).text_color(t.dim)
-          .child('Stale').tooltip(verificationHint)))
         .child(reveal(headerTools(h_flex()).id('git-actions').bg(t.surface),this.headerHovered)
-          .child(refreshButton(t,{id:'git-refresh',icon:'mods/custom-changes/refresh.svg',label:'Refresh',busy:aggregate.busy,spinning:aggregate.busy,
+          .child(refreshButton(t,{id:'git-refresh',icon:'mods/custom-changes/refresh.svg',label:'Refresh',busy:aggregate.busy,animate:false,
             owner:this,scope:this.context,enabled:this.headerHovered,size:U.insetControl,iconSize:U.tinyIcon,radius:U.insetRadius,color:t.dim,hover:subtleActionFill(t),
             onClick:(_e,view)=>{if(aggregate.context?.scope===scope && !aggregate.busy) {this.webhooks?.retryNow();this.notices?.retryNow();aggregate.refresh(view);}}}))
           .child(panelPin(t,{id:'git-pin',enabled:this.headerHovered}))
@@ -1342,6 +1507,9 @@ export default class Changes extends View {
       .child(h_flex().id('git-views').h(40).flex_none().px(4).gap(2).items_center().border_b(1).border_color(t.border)
         .child(this.segment(t,'git-view-open','Open',counts.open,this.view==='open',view=>this.setView('open',view),aggregate.countsLoading))
         .child(this.segment(t,'git-view-closed','Closed',counts.closed,this.view==='closed',view=>this.setView('closed',view),aggregate.countsLoading)))
+      .when(!warm && waiting,el=>el.child(div().id('git-task-waiting').flex_none().px(LIST_INSET)
+        .child(panelMessage(t,sections.length?'git-task-loading':'git-task-empty',{text:'Loading',loading:true,rowInset:2,animated:false})
+          .when(aggregate.context.stale,message=>message.tooltip(verificationHint)))))
       .child(v_flex().id('task-pulls-scroll').relative().flex_1().min_h(0).overflow_hidden()
         .child(v_flex().id(`task-pulls-frame-${scope}-${this.view}-${taskWindow.measurement}`).relative().flex_1().min_h(0).overflow_hidden()
           .on_size_change((size,cx)=>this.taskMeasure(taskWindow,scope,'viewport',size,cx))
@@ -1358,17 +1526,14 @@ export default class Changes extends View {
                 .accessibility_label(taskWindow.more?'Show more task pull requests':'Show first task pull requests again')
                 .tooltip(taskWindow.more?'Show the next mounted batch':'Return to the first mounted batch')
                 .on_click((_event,cx)=>this.nextTaskChunk(taskWindow,scope,cx)).child('Show more')))
-              .when(!sections.length && !waiting,el=>el.child(panelMessage(t,'git-task-empty',{text:`No ${this.view} pull requests`,rowInset:2}))))
+              .when(!sections.length && (!waiting || warm),el=>el.child(panelMessage(t,'git-task-empty',{text:`No ${this.view} pull requests`,rowInset:2}))))
             .when(Boolean(anchor),el=>el.child(div().id('task-pulls-anchor').absolute().left(0).w(1).h(1)
               .top(anchor.to+(anchor.to>anchor.from?taskWindow.viewport-1:0)))))
           .when(taskWindow.metrics.moreAbove,el=>el.child(topFade(taskWindow.metrics,'task-pulls-list',t.background,{left:LIST_INSET,right:LIST_INSET})))
           .when(taskWindow.metrics.moreBelow,el=>el.child(bottomFade(taskWindow.metrics,'task-pulls-list',t.background,{left:LIST_INSET,right:LIST_INSET})))))
-      .when(waiting,el=>el.child(div().id('git-task-waiting').flex_none().px(LIST_INSET)
-        .child(panelMessage(t,sections.length?'git-task-loading':'git-task-empty',{text:'Loading',loading:true,rowInset:2})
-          .when(aggregate.context.stale,message=>message.tooltip(verificationHint)))))
       .when(setup,el=>el.child(this.liveCIInfo(t)))
       .when(Boolean(enrollment),el=>el.child(enrollment))
-      .when(Boolean(sweep),el=>el.child(this.sweepLayer(t,sweep).top(U.section)));
+      .when(loading,el=>el.child(this.loadingLine(t).top(U.section)));
   }
 
   liveCIInfo(t,kind='setup',capturedRepository=null) {
@@ -1412,9 +1577,21 @@ export default class Changes extends View {
       return div();
     }
     if (this.pullMenu) return this.renderPullMenu(theme());
-    if (this.renderPart('coordinator-context',()=>this.syncAggregate(cx))) return this.renderPart('coordinator',()=>this.renderAggregate(cx,theme()));
+    if (this.renderPart('coordinator-context',()=>this.syncAggregate(cx))) {
+      const scope=this.aggregate?.context?.scope;
+      if(this.shown())this.agentLinks?.refresh?.(cx,address=>{
+        const context=this.aggregate?.currentContext?.();
+        return Boolean(context && context.scope===scope && (context.tasks??context.links).some(task=>!task.historical && task.terminal===address));
+      });
+      return this.renderPart('coordinator',()=>this.renderAggregate(cx,theme()));
+    }
     this.enrollmentPicker?.stop();
-    if (key() !== this.context) this.refresh(cx, false);
+    const mappedRepository=this.agentLinks?.cachedRepository?.(location());
+    if(this.repositoryGeneration!==undefined && this.repositoryGeneration!==this.aggregate?.presentationGeneration || (this.entrySeed || Object.values(this.seedTabs??{}).some(Boolean)) && !this.sourceCurrent(this.entrySource)
+      || key()===this.context && this.repo && mappedRepository && this.repo.name.toLowerCase()!==mappedRepository.toLowerCase()) {
+      this.resetRepository();this.rootRequest=null;this.loading=false;this.context=null;
+    }
+    if (key() !== this.context || this.entryRefreshing && !this.entryAttempted && !this.entryRootReady && !this.error && !this.loading && this.shown()) this.refresh(cx, false);
     for(const state of VIEWS)if(this.pulls[state]) {
       const old=this.pulls[state],rows=old.map(pr=>retimePull(pr));
       if(rows.some((pr,index)=>pr!==old[index]))this.pulls[state]=rows;
@@ -1422,7 +1599,7 @@ export default class Changes extends View {
     if(this.relatedPull)this.relatedPull=retimePull(this.relatedPull);
     this.syncAgent(cx);
     if (this.shown() && this.pullsDue(this.view)) this.loadPulls(this.view, cx, false, false);
-    this.loadRelatedPull(cx);
+    if(!this.sectionEntry || this.pinMotion?.current || this.clickPin?.terminal===location().terminal)this.loadRelatedPull(cx);
     this.syncWebhooks(cx);
     if (this.repo && this.shown()) this.agentLinks?.refresh(cx);
     if (!this.shown()) this.pinMotion?.cancel();
@@ -1430,39 +1607,32 @@ export default class Changes extends View {
     const notice=this.notices.sync(cx,{enabled:this.shown(),repository:this.repo?.name,
       pending:Boolean(this.loading||(this.root&&!this.repo&&!this.pullError))});
     this.syncChecksFallback(cx);
-    const t = theme(), busy = Boolean(this.loading || this.pullLoading);
-    const pullsUrl = this.repo?.url ? `${this.repo.url.replace(/\/$/, '')}/pulls` : null;
-    const canOpenPulls = Boolean(this.root && pullsUrl), linkScope = this.context, repoName = this.repo?.name;
-    const toolCount = 2 + Number(Boolean(this.root));
-    const sweep = this.shown() && this.ciSweep?.context === this.context ? this.ciSweep : null;
+    const t = theme(), busy = Boolean(this.loading || this.pullLoading),displayCounts=this.repositoryPresentation().counts;
+    const loading = this.panelLoading();
     return v_flex().id('changes').size_full().min_h(0).rounded(8).overflow_hidden().bg(t.background).border_1().border_color(t.input).text_color(t.foreground).text_size(U.font)
       .child(h_flex().id('changes-header').relative().bg(t.surface).h(U.section).flex_none().pl(4).pr(U.gutter).gap(U.gap).items_center().border_b(1).border_color(t.border)
         .on_hover((hovered, cx) => { this.headerHovered = hovered; cx.notify(); })
-        .on_mouse_down('right', (_event, cx) => {
-          cx.stop_propagation();
-          if (canOpenPulls && this.root && this.context === linkScope && key() === linkScope) this.showPullMenu({url:pullsUrl,repo:repoName},cx,true);
-        })
         .child(sidebarTitle(t, 'changes', 'git-title'))
-        .child(h_flex().id('git-repo-slot').flex_1().min_w(0).pr(U.insetControl * toolCount + 4 * (toolCount - 1) + 16 - U.gutter).items_center()
-          .when(Boolean(this.root && this.repo?.url && this.repo?.name), el=>el.child(div().id('git-repo-name').min_w(0).max_w_full().flex_shrink(1).truncate()
-            .text_size(U.meta).text_color(t.dim).tooltip(this.repo.url).child(this.repo.name.split('/').at(-1)))))
+        .child(div().flex_1())
         .child(reveal(headerTools(h_flex()).id('git-actions').bg(t.surface), this.headerHovered)
-          .when(Boolean(this.root), el => el.child(refreshButton(t, { id: 'git-refresh', icon: 'mods/custom-changes/refresh.svg', label: 'Refresh', busy, spinning: Boolean(this.root), owner: this, scope: this.context,
+          .when(Boolean(this.root || this.repo?.name), el => el.child(refreshButton(t, { id: 'git-refresh', icon: 'mods/custom-changes/refresh.svg', label: 'Refresh', busy, animate: false, owner: this, scope: this.context,
             enabled: this.headerHovered && Boolean(this.root), size: U.insetControl, iconSize: U.tinyIcon, radius: U.insetRadius, color: t.dim, hover: subtleActionFill(t),
             onClick: (_e, cx) => {
               if (!this.root || this.loading || this.pullLoading) return;
               this.webhooks?.retryNow();this.notices?.retryNow();
               this.manualRead={remaining:1,expires:Date.now()+30000};this.readWake=null;this.agentLinks?.invalidate?.();
+              // Keep demand queued while root verification blocks the read.
+              if(this.entryVerify){this.entryRefreshing=true;this.entryAttempted=false;}
               this.refresh(cx); this.loadPulls(this.view, cx, true);
             } })))
           .child(panelPin(t,{id:'git-pin',enabled:this.headerHovered}))
           .child(headerTool(t, { id: 'git-close', icon: 'mods/custom-pane/close.svg', label: 'Close Git panel', enabled: this.headerHovered, onClick: () => changePanel({open:false}) }))))
       .child(v_flex().id('git-panel-body').relative().flex_1().min_h(0)
       .child(h_flex().id('git-views').h(40).flex_none().px(4).gap(2).items_center().border_b(1).border_color(t.border)
-        .child(this.segment(t, 'git-view-open', 'Open', this.counts?.open ?? null, this.view === 'open', cx => this.setView('open', cx)))
-        .child(this.segment(t, 'git-view-closed', 'Closed', this.counts?.closed ?? null, this.view === 'closed', cx => this.setView('closed', cx))))
+        .child(this.segment(t, 'git-view-open', 'Open', displayCounts?.open ?? null, this.view === 'open', cx => this.setView('open', cx),Boolean(this.entrySeed),this.entrySeed?'cached task PRs; repository total pending':null))
+        .child(this.segment(t, 'git-view-closed', 'Closed', displayCounts?.closed ?? null, this.view === 'closed', cx => this.setView('closed', cx),Boolean(this.entrySeed),this.entrySeed?'cached task PRs; repository total pending':null)))
       .child(this.renderPulls(t))
       .when(Boolean(notice), el => el.child(this.liveCIInfo(t,notice)))
-      .when(Boolean(sweep), el => el.child(this.sweepLayer(t,sweep))));
+      .when(loading, el => el.child(this.loadingLine(t))));
   }
 }

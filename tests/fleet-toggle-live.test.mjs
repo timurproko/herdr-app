@@ -19,7 +19,7 @@ const find=(tree,id)=>nodes(tree).find(e=>e.attrs.id?.[0]===id);
 const plain=value=>JSON.parse(JSON.stringify(value));
 const theme={foreground:'#eeeeee',muted:'#aaaaaa',dim:'#888888',chrome:'#111111',background:'#222222',border:'#444444',selected:'#333333',hover:'#333333',ansi2:'#22aa44',ansi3:'#cc8833',ansi6:'#11aaaa'};
 
-async function mounted({enabled=false,initialMode='success',selected='coordinator',workers=1} = {}) {
+async function mounted({enabled=false,initialMode='success',selected='coordinator',workers=1,placement=false} = {}) {
  const state={'custom.plugins':{crew:{enabled:true},git:{enabled:false}},'custom.spaces.preferences':{connectFleetToCoordinator:enabled}},copies=[],refreshes=new Set(),jobs=[],requests=[];
  let rendering=false,dialogOpen=true,mode=initialMode,now=100000,allowOrder=false;
  const order=[];
@@ -34,7 +34,7 @@ async function mounted({enabled=false,initialMode='success',selected='coordinato
   terminals.push({address:q('t1'),state:'live',labels:{'custom.crew.home':'1'}});
   for(let i=0;i<workers;i++) {
    panes.push({tab:q(i===0?'w':`w${i}`),pane:q(i===0?'wp':`wp${i}`),terminal:q(`t${i+2}`),active:selected==='fm-crew-home'&&i===0});
-   terminals.push({address:q(`t${i+2}`),state:'live',labels:{'crew.task':i===0?'task':`task${i}`,'crew.home':'home','herdr.space':'fm-crew-home'}});
+   terminals.push({address:q(`t${i+2}`),state:'live',labels:{'crew.task':i===0?'task':`task${i}`,'crew.home':'home','herdr.space':'fm-crew-home',...(placement&&i%2?{'crew.space.version':'1','crew.space.mode':'combined','crew.space.project':i%3?'herdr-app':'crew'}:{})}});
   }
  }
  const colors=Object.fromEntries(groups.map(s=>[s.id,s.name==='coordinator'?theme.ansi2:s.name==='fleet'?theme.ansi3:theme.ansi6]));
@@ -51,7 +51,7 @@ async function mounted({enabled=false,initialMode='success',selected='coordinato
    assert.ok(!args.at(-1).includes("'--discover-prs'"),'Verification never performs GitHub discovery');
    const machine=args.includes('--on')?args[args.indexOf('--on')+1]:null;
    requests.push(machine);
-   const result={home:`${machine??'local'}/.crew`,owner:{terminal:'t1',live:true},tasks:Array.from({length:workers},(_,i)=>({id:i===0?'task':`task${i}`,terminal:`t${i+2}`,state:'working',pr:null}))};
+   const result={home:`${machine??'local'}/.crew`,owner:{terminal:'t1',live:true},tasks:Array.from({length:workers},(_,i)=>({id:i===0?'task':`task${i}`,terminal:`t${i+2}`,state:'working',pr:placement?`https://github.com/fixture/repo/pull/${i+1}`:null})).concat(placement?[{id:'history',terminal:null,state:'closed',pr:'https://github.com/fixture/repo/pull/99'}]:[])};
    const reply=type=>{
     if(type==='error')throw Error('Verification transport failed');
     if(type==='timeout')return {code:0,stdout:JSON.stringify({code:null,timed_out:true,stdout:'',stderr:''})};
@@ -79,9 +79,11 @@ async function mounted({enabled=false,initialMode='success',selected='coordinato
    spawn(fn){const job=Promise.resolve(fn(cx));jobs.push(job);return job;},timer:{every(ms,fn){timers.push({ms,fn});},after(ms,fn){assert.equal(ms,0,'Only bounded reply decoding can yield a task turn; recovery uses the existing lifecycle');if(mode==='interrupt')yielded.push(()=>fn(cx));else jobs.push(Promise.resolve().then(()=>fn(cx)));}},stop_propagation(){}};
   const api=await loadMod({host,mod:`custom-${kind}`,globals:{localStorage:{getItem:()=>null,setItem(){}},Date:class extends Date{static now(){return now;}}},
    modules:{...common,'main.js':'src/features/spaces/main.js','spaces-ui.js':'src/features/settings/spaces-ui.js'},
-   entry:kind==='settings'?'export {spacesPage} from "./spaces-ui.js";export * as r from "./plugins.js";':'export {default as Spaces} from "./main.js";export * as r from "./plugins.js";'});
+   entry:kind==='git'?'export * as r from "./plugins.js";':kind==='settings'?'export {spacesPage} from "./spaces-ui.js";export * as r from "./plugins.js";':'export {default as Spaces} from "./main.js";export * as r from "./plugins.js";'});
   Object.assign(copy,{cx,api,timers});
-  if(kind==='spaces'){
+  if(kind==='git'){
+   copy.render=()=>{for(const id of ['coordinator','pc2/coordinator'])api.r.pluginPullContext(id,{presentation:true});};
+  }else if(kind==='spaces'){
    copy.view=new api.Spaces();copy.view.init({},cx);copy.render=()=>copy.tree=copy.view.render(cx);
   }else{
    copy.owner={heading:(_t,title)=>element().child(title),row:(_t,label,_about,toggle)=>element().child(label).child(toggle),
@@ -90,7 +92,7 @@ async function mounted({enabled=false,initialMode='success',selected='coordinato
   }
   copies.push(copy);refreshes.add(copy);return copy;
  };
- const settings=await mount('settings');let sidebar=await mount('spaces');
+ const settings=await mount('settings'),git=await mount('git');let sidebar=await mount('spaces');
  const paint=()=>{for(const copy of [...refreshes]){refreshes.delete(copy);if(!copy.active)continue;rendering=true;try{copy.render();}finally{rendering=false;}}};
  let servicedRequest;
  const service=()=>{servicedRequest=state['custom.fleet.request']?.id;for(const copy of copies)if(copy.active)for(const timer of copy.timers)if(timer.ms===250)timer.fn(copy.cx);};
@@ -140,11 +142,34 @@ async function mounted({enabled=false,initialMode='success',selected='coordinato
   assert.equal(JSON.stringify({groups,panes,terminals,colors}),topology,'No native order, terminal, focus or saved colour mutation');
  };
  await drain();frame(false);
- return{state,settings,groups,order,allowOrder:()=>allowOrder=true,get sidebar(){return sidebar;},requests,flip,drain,tick,paint,frame,release,setMode:value=>mode=value,
+ return{state,settings,git,groups,order,allowOrder:()=>allowOrder=true,get sidebar(){return sidebar;},requests,flip,drain,tick,paint,frame,release,setMode:value=>mode=value,
   async pulse(ms,wait=true){now+=ms;for(const copy of copies)if(copy.active)for(const timer of copy.timers)if(timer.ms===250)timer.fn(copy.cx);await (wait?drain():tick());},
   advance(ms){now+=ms;},
   resumeYields(){for(const resume of yielded.splice(0))resume();},
   async replaceSidebar(){sidebar.active=false;sidebar=await mount('spaces');await tick();},get now(){return now;}};
+}
+
+// The reported mixed-generation case: real Settings callback, separate Git
+// consumer and normal Spaces timer. No force refresh or manual bind call.
+for(const workers of [2,7]) {
+ const x=await mounted({workers,placement:true,initialMode:'defer'});
+ for(let cycle=0;cycle<3;cycle++) {
+  x.flip('fleet');x.frame(cycle>0);await x.tick();
+  for(const id of ['coordinator','pc2/coordinator']) {
+   assert.equal(x.git.api.r.pluginPullContext(id),null,'On waits for current verification, not prior inventory');
+   assert.equal(x.git.api.r.pluginPullContext(id,{presentation:true}).stale,true,'Recognized owner routes cold Loading');
+  }
+  const requests=x.requests.length;await x.pulse(250,false);
+  assert.equal(x.requests.length,requests,'Ordinary owner tick coalesces the pending local/remote reads');
+  x.release();await x.drain();x.frame(true);
+  for(const id of ['coordinator','pc2/coordinator']) {
+   const context=x.git.api.r.pluginPullContext(id);
+   assert.equal(context.stale,false);assert.equal(context.links.length,workers+1,'Git receives live and finished task links');
+   assert.equal(context.links.filter(l=>l.historical).length,1);
+  }
+  x.flip('fleet');x.frame(false);await x.drain();
+  for(const id of ['coordinator','pc2/coordinator'])assert.equal(x.git.api.r.pluginPullContext(id,{presentation:true}),null,'Off revokes Git context immediately');
+ }
 }
 
 // Retain the same Settings/Spaces/provider graphs through real off intervals
@@ -179,7 +204,7 @@ for(const selected of ['coordinator','fm-crew-home'])for(const workers of [1,7])
 // overwrite its result, regardless of selected space and reply ordering.
 for(const selected of ['coordinator','fm-crew-home'])for(const delay of [0,1000,15000])
  for(const oldFirst of [false,true])for(const oldReply of ['success','error']) {
- const x=await mounted({selected,workers:7});x.flip('fleet');await x.drain();x.frame(true);
+ const x=await mounted({selected,workers:7,placement:true});x.flip('fleet');await x.drain();x.frame(true);
  x.setMode('defer');
  x.sidebar.api.r.pluginEvent('workspace.context.refresh',{cx:x.sidebar.cx,force:true});await x.tick();
  const oldGeneration=x.state['custom.fleet.generation'];const before=x.requests.length;

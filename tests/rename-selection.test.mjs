@@ -51,5 +51,9 @@ for(const kind of ['tab','space'])for(const route of ['direct','request'])for(co
   h.owner.rename.input.replace('Replacement');h.owner.rename.input.events.submit({},h.cx);
   const saved=h.calls.find(([command])=>command===`${kind}.rename`);
   assert.ok(saved);assert.equal(saved[1].id,h.id);assert.equal(saved[1].name,'Replacement');
+  h.begin();const blurred=h.owner.rename.input,prior=h.calls.filter(([c])=>c===`${kind}.rename`).length;
+  blurred.replace('Do not save on blur');blurred.events.blur({},h.cx);
+  assert.equal(h.owner.rename,null);assert.equal(blurred.released,1);
+  assert.equal(h.calls.filter(([c])=>c===`${kind}.rename`).length,prior,'Blur cancels the captured remote edit without saving');
 }
 console.log('PASS: tabs/sidebar consistently select existing names before focus; immediate replacement, Unicode, empty/automatic names, command/direct entry, repeat-F2 draft preservation and reopen/save');

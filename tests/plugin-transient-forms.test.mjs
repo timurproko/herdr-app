@@ -9,7 +9,7 @@ ui.reloadPlugins(view,cx,plugin.id);await flush();
 const id='st-plugin-form-fixture-private-account',get=()=>view.pluginForms['fixture-private:account'];
 const initial=get().fields.token;assert.equal(initial.masked,true);initial.set_value('fake-private-token');
 assert.equal(initial.events.blur,undefined);assert.equal(initial.events.submit,undefined);assert.equal(calls,0);const before=JSON.stringify(writes);
-click(id+'-save');click(id+'-save');assert.equal(jobs.length,1,'Pre-paint duplicates cannot queue actions');await flush();
+click(id+'-save');assert.ok(words(find(render(),id+'-save')).includes('Working…'),'Undeclared busy copy stays unchanged');click(id+'-save');assert.equal(jobs.length,1,'Pre-paint duplicates cannot queue actions');await flush();
 assert.equal(calls,1);assert.equal(received,'fake-private-token');assert.equal(get().fields.token.value(),'');assert.notEqual(get().fields.token,initial,'Submitted native input/undo entity replaced');assert.ok(words(render()).includes('Saved'));assert.equal(JSON.stringify(writes),before);
 // Error text, including a hostile exception echo, never reaches the renderer.
 action.run=async()=>{throw Error('fake-private-token');};get().fields.token.set_value('fake-private-token');click(id+'-save');await flush();assert.ok(!words(render()).join(' ').includes('fake-private-token'));assert.equal(get().fields.token.value(),'');

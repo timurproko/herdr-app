@@ -3,6 +3,7 @@
 import { exec, run } from './host.js';
 import { pluginPullContext, pluginEvent, sidebarPanelEnabled } from './plugins.js';
 import { location } from './location.js';
+import { Publication, PresentationMemory } from './presentations.js';
 import { pullFailure, repositoryFailure, readTargetPulls, finalPull, retimePull, quietRead, retryRead, PullFactsOrder } from './pulls.js';
 export function taskPullLink(url) {
   const match=/^https:\/\/github\.com\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\/pull\/([1-9]\d*)\/?$/.exec(url??'');
@@ -31,26 +32,26 @@ function rememberMissing(entry) {
   }
 }
 export class AggregatePulls {
-  constructor({shown,onUpdate,presentationEpoch=()=>0,presentationAlive=()=>true}) {this.shown=shown;this.onUpdate=onUpdate;this.presentationEpoch=presentationEpoch;this.presentationAlive=presentationAlive;this.presentations=new Map();this.entries=new Map();this.pending=new Map();this.diagnostics=new Map();this.serial=0;this.factOrder=new PullFactsOrder();}
-  currentContext({presentation = false} = {}) {
-    const context=sidebarPanelEnabled('changes') ? pluginPullContext(location().space,{presentation}) : null;
+  constructor({shown,onUpdate,presentationEpoch=()=>0,presentationAlive=()=>true}) {this.shown=shown;this.onUpdate=onUpdate;this.presentationEpoch=presentationEpoch;this.presentationAlive=presentationAlive;this.presentations=new PresentationMemory();this.stagePresentations=new Map();this.publication=new Publication();this.entries=new Map();this.pending=new Map();this.diagnostics=new Map();this.serial=0;this.factOrder=new PullFactsOrder();}
+  currentContext({presentation = false,space = location().space} = {}) {
+    const context=sidebarPanelEnabled('changes') ? pluginPullContext(space,{presentation}) : null;
     return !presentation && context?.stale ? null : context;
   }
   sync(cx) {
     if(this.shown()) pluginEvent('workspace.context.refresh',{cx,space:location().space});
     const context=this.currentContext({presentation:true}), previous=this.context;
     const generation=JSON.stringify([this.presentationEpoch(),context?.presentationGeneration??this.providerGeneration??0]);
-    if(this.presentationGeneration!==undefined && generation!==this.presentationGeneration)this.presentations.clear();
-    for(const [scope,saved]of this.presentations)if(!this.presentationAlive(saved))this.presentations.delete(scope);
+    if(this.presentationGeneration!==undefined && generation!==this.presentationGeneration){this.presentations.clear();this.stagePresentations.clear();}
+    for(const [scope,saved]of this.presentations)if(!saved.repository && !this.presentationAlive(saved))this.presentations.delete(scope);
     const compatible=this.presentationGeneration===generation;
     this.presentationGeneration=generation;if(context)this.providerGeneration=context.presentationGeneration??0;
     if(context?.scope!==previous?.scope || !compatible) {
       if(previous && compatible && sidebarPanelEnabled('changes') && (context || location().space!==previous.parent))this.rememberPresentation();
       else if(previous && !context)this.presentations.delete(previous.scope);
-      this.readWake=null;this.manualRead=null;this.serial++;this.factOrder.reset();this.entries.clear();this.pending.clear();this.diagnostics.clear();this.lastCounts=null;this.returning=false;
+      this.readWake=null;this.manualRead=null;this.serial++;this.factOrder.reset();this.entries.clear();this.pending.clear();this.diagnostics.clear();this.lastCounts=null;this.returning=false;this.published=null;
       if(context && !context.stale && context.parent)for(const [scope,saved]of this.presentations)if(scope!==context.scope && saved.parent===context.parent && saved.machine===context.machine)this.presentations.delete(scope);
       const saved=context && this.presentations.get(context.scope);
-      if(saved){this.returning=true;this.entries=new Map(saved.entries.map(([key,e])=>[key,{...e,link:{...e.link},dirty:true}]));this.lastCounts=saved.lastCounts;this.presentations.delete(context.scope);}
+      if(saved){this.returning=true;this.entries=new Map(saved.entries.map(([key,e])=>[key,{...e,link:{...e.link},dirty:true}]));this.lastCounts=saved.lastCounts;this.published=saved.published?new Map(saved.published):null;this.presentations.delete(context.scope);}
     }
     if(!sidebarPanelEnabled('changes'))this.presentations.clear();
     this.context=context;
@@ -80,18 +81,31 @@ export class AggregatePulls {
     return true;
   }
   rememberPresentation() {
-    if(!this.context || !this.entries.size)return;
+    if(!this.context || !this.entries.size && this.published===null)return;
+    this.rememberCounts();
     const entries=[...this.entries].map(([key,e])=>[key,{...e,link:{...e.link},dirty:true}]);
     this.presentations.delete(this.context.scope);
-    this.presentations.set(this.context.scope,{entries,lastCounts:this.lastCounts?new Map(this.lastCounts):null,parent:this.context.parent,machine:this.context.machine});
-    while(this.presentations.size>4 || [...this.presentations.values()].reduce((sum,s)=>sum+s.entries.length,0)>4096)this.presentations.delete(this.presentations.keys().next().value);
+    this.presentations.set(this.context.scope,{scope:this.context.scope,providerGeneration:this.context.presentationGeneration??0,entries,published:this.published?[...this.published]:null,lastCounts:this.lastCounts?new Map(this.lastCounts):null,parent:this.context.parent,machine:this.context.machine});
   }
-  stop() {this.presentations.clear();this.returning=false;this.lastCounts=null;this.serial++;this.factOrder.reset();this.context=null;this.entries.clear();this.pending.clear();this.diagnostics.clear();}
+  stop() {this.presentations.clear();this.stagePresentations.clear();this.published=null;this.returning=false;this.lastCounts=null;this.serial++;this.factOrder.reset();this.context=null;this.entries.clear();this.pending.clear();this.diagnostics.clear();}
   get busy() {return this.pending.size>0 || Boolean(this.fallbackBusy);}
   unresolved(entry) {return !entry.pr && !entry.missing;}
   get countsLoading() {return [...this.entries.values()].some(e=>this.unresolved(e)) || Boolean(this.context?.stale && !this.entries.size);}
   loading(repository) {return [...this.entries.values()].some(e=>e.link.repo===repository && this.unresolved(e) && !e.error);}
   get waiting() {return Boolean(this.returning) || [...this.entries.values()].some(e=>this.unresolved(e) && !e.error);}
+  get published() {return this.publication.value;}
+  set published(value) {this.publication.value=value;}
+  get publicationPending() {return Boolean(this.context?.stale || this.returning || this.busy || [...this.entries.values()].some(e=>e.dirty));}
+  get hasPresentation() {return this.published!==null || !this.publicationPending && !this.waiting;}
+  get updating() {return Boolean(this.context?.stale || this.busy || (!this.readWake || this.readWake.due<=Date.now()) && (this.returning || [...this.entries.values()].some(e=>e.dirty)));}
+  // Pure projection: a cold partial read cannot become warm on re-entry.
+  presentationEntries() {return this.publication.project(this.entries,this.publicationPending || this.waiting)??new Map();}
+  presentationRows(state) {
+    const now=Date.now();return [...this.presentationEntries()].flatMap(([key,entry])=>{
+      const current=this.entries.get(key);
+      return current && !current.missing && this.eligible({...entry,link:current.link},now) && (state==='open'?['open','draft']:['closed','merged']).includes(entry.pr.state)?[entry.pr]:[];
+    });
+  }
   eligible(entry, now = Date.now()) {
     if(!entry.pr)return false;
     if(['open','draft'].includes(entry.pr.state) || entry.link.targets.some(t=>!t.historical && typeof t.terminal==='string' && t.terminal))return true;
@@ -121,10 +135,13 @@ export class AggregatePulls {
     return [...new Set([...this.entries.values()].filter(e=>!e.missing && (!e.pr || this.eligible(e,now))).map(e=>e.link.repo))].sort();
   }
   rememberCounts() {
-    if(!this.countsLoading)this.lastCounts=new Map([...this.entries].map(([key,e])=>[key,{...e}]));
+    if(!this.publicationPending && !this.waiting) {
+      this.publication.commit(new Map([...this.entries].map(([key,e])=>[key,{...e,link:{...e.link}}])));
+      if(!this.countsLoading)this.lastCounts=new Map(this.published);
+    }
   }
   counts() {
-    if(!this.countsLoading)return {open:this.rows('open').length,closed:this.rows('closed').length};
+    if(!this.countsLoading)return {open:this.presentationRows('open').length,closed:this.presentationRows('closed').length};
     if(!this.lastCounts)return {open:null,closed:null};
     const now=Date.now(),counts={open:0,closed:0};
     for(const [key,prior]of this.lastCounts) {
@@ -133,7 +150,7 @@ export class AggregatePulls {
     }
     return counts;
   }
-  invalidate(repository=null) {this.diagnostics.clear();for(const e of this.entries.values())if((!repository || e.link.repo===repository.toLowerCase()) && !finalPull(e.pr))e.dirty=true;}
+  invalidate(repository=null) {this.rememberCounts();this.diagnostics.clear();for(const e of this.entries.values())if((!repository || e.link.repo===repository.toLowerCase()) && !finalPull(e.pr))e.dirty=true;}
   refresh(cx) {pluginEvent('workspace.context.refresh',{cx,space:location().space,force:true});this.manualRead={remaining:1,expires:Date.now()+30000};this.readWake=null;this.invalidate();this.pump(cx);}
   pump(cx) {
     if(this.fallbackBusy || this.readWake?.due>Date.now())return;
@@ -171,6 +188,7 @@ export class AggregatePulls {
         };
         try {
           await Promise.resolve();if(!current())return;
+          view.notify(); // Show pending-work feedback for timer-driven retries too.
           const results=await readTargetPulls(exec,batch.map(e=>e.link.number),repository,{on:context.machine,timeout:30000,current,manual:this.manualRead});
           for(const entry of batch) {
             if(!member(entry))continue;
@@ -193,14 +211,53 @@ export class AggregatePulls {
       });
     }
     if(!this.pending.size && ![...this.entries.values()].some(e=>e.dirty)){this.manualRead=null;this.returning=false;}
+    this.rememberCounts();
+  }
+  stageTarget(pr, role, agentLinks) {
+    const context=this.currentContext();
+    const entry=this.entries.get(pr.key);
+    if(!context || context.scope!==this.context?.scope || !entry || !liveLink(entry.link))return null;
+    // Verified context includes no-PR tasks as well as admitted PR links. A
+    // reviewer need not publish a task PR: its explicit crew.pr identifies the
+    // row, but only this home's currently verified task membership permits focus.
+    const members=(context.tasks??context.links).filter(t=>!t.historical && typeof t.terminal==='string' && t.terminal);
+    const agent=agentLinks?.related?.(pr,pr.repo,location().terminal,role,address=>members.some(t=>t.terminal===address));
+    if(!agent)return null;
+    const member=members.find(t=>t.terminal===agent.address);
+    const target={terminal:agent.address,task:member.id??member.task,role,agent};
+    if(agent.availability==='live') {
+      const key=JSON.stringify([context.scope,pr.key,role]);
+      this.stagePresentations.delete(key);this.stagePresentations.set(key,target);
+      while(this.stagePresentations.size>256)this.stagePresentations.delete(this.stagePresentations.keys().next().value);
+    }
+    return target;
+  }
+  stagePresentation(pr,role,agentLinks) {
+    const fresh=this.stageTarget(pr,role,agentLinks);if(fresh)return fresh;
+    const context=this.currentContext({presentation:true});
+    if(!context || context.scope!==this.context?.scope || !this.entries.has(pr.key))return null;
+    const saved=this.stagePresentations.get(JSON.stringify([context.scope,pr.key,role]));if(!saved)return null;
+    // Same-home last verified identity explains only this retained row. A live
+    // or reconnected terminal without fresh membership remains unavailable;
+    // neither this cache nor its returned descriptor may authorize focus.
+    const current=agentLinks?.related?.(pr,pr.repo,null,role,address=>address===saved.terminal);
+    const agent=current??saved.agent;
+    return {...saved,agent:{...agent,availability:['ended','disconnected'].includes(current?.availability)?current.availability:'unavailable'}};
   }
   target(pr) {
-    const context=this.currentContext();if(context?.scope!==this.context?.scope)return null;
+    const context=this.currentContext();if(!context || context.scope!==this.context?.scope)return null;
     const matches=context.links.filter(l=>!l.historical && typeof l.terminal==='string' && l.terminal && taskPullLink(l.url)?.key===pr.key);
     return matches.find(l=>l.terminal===location().terminal)??matches[0]??null;
   }
-  focus(pr,target,scope) {
-    if(!this.shown() || !target?.terminal || target.historical || this.currentContext()?.scope!==scope)return;
-    if(this.currentContext().links.some(l=>!l.historical && l.terminal===target.terminal && l.task===target.task && taskPullLink(l.url)?.key===pr.key))run('agent.focus',{terminal:target.terminal});
+  focus(pr,target,scope,agentLinks,beforeFocus=()=>{}) {
+    const context=this.currentContext();
+    if(!this.shown() || !context || !target?.terminal || target.historical || context.scope!==scope)return;
+    if(target.role) {
+      if(this.entries.get(pr.key)?.pr?.stage!==pr.stage)return;
+      const current=this.stageTarget(pr,target.role,agentLinks);
+      if(current?.terminal===target.terminal && current.task===target.task && current.agent.key===target.agent.key && current.agent.availability==='live') {beforeFocus(current);run('agent.focus',{terminal:target.terminal});}
+      return;
+    }
+    if(context.links.some(l=>!l.historical && l.terminal===target.terminal && l.task===target.task && taskPullLink(l.url)?.key===pr.key)) {beforeFocus(target);run('agent.focus',{terminal:target.terminal});}
   }
 }

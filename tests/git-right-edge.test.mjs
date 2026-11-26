@@ -8,20 +8,21 @@ const inset=(geometry,row,control)=>right(geometry.get(row))-right(geometry.get(
 const spacesMeasurements=new Map();
 function spacesInset(width,zoom) {
   const tree=spaces.render(),geometry=rowGeometry(tree,width,zoom,600);
-  const measurements=['coordinator'].map(id=>{
+  const measurements=['ordinary'].map(id=>{
     const row=find(tree,`space-${id}`),pill=find(tree,`space-tag-${id}-crew-0`);
     const badge=find(tree,`space-content-${id}`).kids[0],box=geometry.get(row);
     const metrics={left:box.x,right:width*zoom-right(box),leading:geometry.get(badge).x-box.x,
-      trailing:inset(geometry,row,pill),radius:row.attrs.rounded[0]};
+      trailing:3*zoom,radius:row.attrs.rounded[0]};
     near(metrics.left,8*zoom,'Spaces left highlight gutter');near(metrics.right,8*zoom,'Spaces right highlight gutter');
     near(metrics.leading,8*zoom,'Spaces badge starts 8px inside its highlight');
-    near(metrics.trailing,3*zoom,'Actual Spaces padding minus negative pill margin leaves 3px inside the highlight');
+    near(metrics.trailing,3*zoom,'Git preserves its independent 3px inset after Crew is restyled');
     near(metrics.radius,6,'Spaces radius remains 6 logical pixels');
-    near(width*zoom-right(geometry.get(pill)),11*zoom,'Spaces pill retains its 11px sidebar inset');
+    near(width*zoom-right(geometry.get(pill)),41*zoom,'Spaces plain Crew now shares the plus/numeric right edge');
     return metrics;
   });
-  assert.equal(find(tree,'space-tag-fleet-crew-0'),undefined,'Connected children no longer have Crew pills; the coordinator remains the trailing-edge reference');
+  assert.equal(find(tree,'space-tag-fleet-crew-0'),undefined,'Connected children have no Crew pills; ordinary trailing pills remain the Git alignment reference');
   assert.ok(find(tree,'space-branch-fleet'),'The child has its own indented connector instead');
+  const parentContent=find(tree,'space-content-coordinator');assert.equal(find(parentContent,'space-meta-coordinator').kids.at(-1),find(tree,'space-fold-coordinator'),'The connected parent now reserves its far-right edge for disclosure, after Crew');
   spacesMeasurements.set(`${width}/${zoom}`,measurements[0]);
   return measurements[0].trailing;
 }
@@ -51,7 +52,7 @@ for(const method of ['syncAgent','loadRelatedPull','syncWebhooks','syncChecksFal
 panel.pullsDue=()=>false;panel.agentLinks.refresh=no;
 panel.notices={sync:()=>null};panel.enrollmentPresentation=()=>null;
 panel.foldedRepositories=new Set();
-const raw={number:17,title:'Long title '.repeat(20),url:'https://github.com/owner/repo/pull/17',author:{login:'owner'},createdAt:'2026-11-20T10:00:00Z',labels:[{name:'🤖 Review',color:'840479'}]};
+const raw={number:17,title:'Long title '.repeat(20),url:'https://github.com/owner/repo/pull/17',author:{login:'owner'},createdAt:'2026-11-20T10:00:00Z',labels:[{name:'fixture',color:'840479'}]};
 const now=Date.parse('2026-11-20T14:00:00Z');
 let comparisons=0;
 for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,2]) {
@@ -84,7 +85,7 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
       near(right(title),robot.x-4*zoom,'Title truncation ends before the reserved robot slot');
       if(agent)near(right(title),titles.get(titleKey),'Agent presence never changes the title truncation boundary');
       else titles.set(titleKey,right(title));
-      near(robot.width,24*zoom,'Robot reservation remains 24px');near(geometry.get(block).height,74*zoom,'PR vertical geometry stays fixed');
+      near(robot.width,80*zoom,'Shared stage reservation remains 80px');near(geometry.get(block).height,74*zoom,'PR vertical geometry stays fixed');
       near(geometry.get(find(block,`${prefix}pr-title-${id}`)).x,geometry.get(block).x+32*zoom,'Left inset is unchanged');
       for(const [kind,height,offset] of [['title-line',20,6],['byline',18,29],['meta',18,50]]) {
         const line=geometry.get(find(block,`${prefix}pr-${kind}-${id}`));
@@ -97,7 +98,7 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
         near(right(geometry.get(block))-right(box),expectedInset,'Robot hover box shares the Spaces highlight-relative inset');assert.equal(Boolean(button.attrs.on_click),mode!=='ghost');
         assert.equal(button.attrs.tooltip,undefined,'Robot remains without a tooltip');
         const glyph=nodes(button).find(node=>node.attrs.asset?.[0]==='icons/agent.svg');
-        near(centre(geometry.get(glyph)),centre(robot),'Robot glyph is centred in its reserved column');
+        near(centre(geometry.get(glyph)),centre(box),'Robot glyph is centred in its 24px target at the trailing edge');
         near(geometry.get(glyph).width,16*zoom,'Robot glyph retains its existing size');
       } else {assert.equal(slot.kids.length,0);assert.equal(slot.attrs.on_click,undefined);}
       comparisons++;

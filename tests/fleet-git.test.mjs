@@ -9,10 +9,12 @@ let selected={space:'coordinator',cwd:'/not-a-repository',on:null,terminal:'t1'}
 const waiting=[],settingsOpened=[],noticeModes={};
 let holdStatus=false,releaseStatus,failStatus=false,now=Date.now();
 let checkFacts=null;
-let assignedLabels=[{name:'🤖 Under review',color:'840479'}];
+// Keep this legacy-robot lifecycle fixture unmanaged; role-labelled stage
+// navigation is covered through the real AgentLinks/aggregate in pr-agent-links.
+let assignedLabels=[{name:'fixture label',color:'840479'}];
 const groups=[{id:'coordinator',tabs:[{id:'c'}]},{id:'fm-crew-home',tabs:[{id:'a'},{id:'b'},{id:'dup'}]}];
 const all=[{pane:'cp',tab:'c',terminal:'t1'},...['a','b','dup'].map((id,i)=>({pane:id+'p',tab:id,terminal:'t'+(i+2)}))];
-const list=[{address:'t1',state:'live',labels:{'custom.crew.home':'1'}},...['a','b','dup'].map((id,i)=>({address:'t'+(i+2),state:'live',labels:{'crew.task':id,'crew.home':'home','herdr.space':'fm-crew-home'}}))];
+const list=[{address:'t1',state:'live',labels:{'custom.crew.home':'1'}},...['a','b','dup'].map((id,i)=>({address:'t'+(i+2),state:'live',labels:{'crew.task':id,'crew.home':'home','herdr.space':'fm-crew-home',...(i===1?{'crew.space.version':'1','crew.space.mode':'combined','crew.space.project':'b'}:{})}}))];
 const url=repo=>`https://github.com/example/${repo}/pull/12`;
 const status={home:'C:/fixture/.crew',owner:{terminal:'t1',live:true},tasks:[{id:'a',terminal:'t2',state:'reported',pr:url('a')},{id:'b',terminal:'t3',state:'working',pr:url('b')},{id:'dup',terminal:'t4',state:'reported',pr:url('a')}]};
 let rendering=false,lifecycle,consumerRegistry;
@@ -45,7 +47,7 @@ const panel=new Main();panel.init({},cx);await drain();let tree=panel.render(cx)
 // generic final-cache request budgets are measured without this adapter.
 panel.aggregate.invalidate=(repository=null)=>{gitReads(host.exec).facts.clear();for(const e of panel.aggregate.entries.values())if(!repository||e.link.repo===repository)e.dirty=true;};
 assert.equal(calls.length,2,'Duplicate task PR is fetched once');assert.equal(panel.aggregate.counts().open,1);assert.equal(panel.aggregate.counts().closed,1);
-assert.ok(calls.every(args=>args.at(-1).split(',').includes('labels')));assert.equal(panel.aggregate.rows('open')[0].labels[0].name,'🤖 Under review');
+assert.ok(calls.every(args=>args.at(-1).split(',').includes('labels')));assert.equal(panel.aggregate.rows('open')[0].labels[0].name,'fixture label');
 assert.ok(find(tree,'pr-labels-example/a#12'),'Coordinator rows use the shared labels row');
 // The mounted provider/panel must survive a real off/on invalidation while the
 // first on-read is slow or fails. Off uses ordinary Git; on never flashes the
@@ -111,7 +113,7 @@ for(const missingOwner of [true,false]) {
 }
 // An optional role hint disappearing is not itself contradictory owner status:
 // a witnessed exact native owner/home may retain read-only history without it.
-failStatus=true;delete list[0].labels['custom.crew.home'];tree=panel.render(cx);assert.ok(find(tree,'pr-example/a#12'));assert.equal(find(tree,'git-task-stale').kids[0],'Stale');assert.equal(r.pluginPullContext('coordinator'),null);await drain();
+failStatus=true;delete list[0].labels['custom.crew.home'];tree=panel.render(cx);assert.ok(find(tree,'pr-example/a#12'));assert.equal(find(tree,'git-task-stale'),undefined);assert.doesNotMatch(text(find(tree,'changes-header')),/Stale/);assert.equal(r.pluginPullContext('coordinator'),null);await drain();
 status.owner.live=false;f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();assert.equal(panel.aggregate.sync(cx),false,'A witnessed negative clears history even without a role-hint diagnostic subject');assert.equal(r.pluginPullContext('coordinator',{presentation:true}),null);
 status.owner.live=true;list[0].labels['custom.crew.home']='1';failStatus=false;f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();tree=panel.render(cx);await drain();tree=panel.render(cx);
 // A changed native owner membership cannot reuse the old inventory while the
@@ -186,7 +188,7 @@ const tick=async()=>{for(let i=0;i<30;i++)await Promise.resolve();};
 let before=calls.length;websocket.onChange({repository:'elsewhere/repo'},cx);await tick();assert.equal(calls.length,before);
 websocket.onChange({repository:'example/a'},cx);await tick();assert.equal(calls.length,before+1);
 websocket.onChange({repository:'example/a'},cx);websocket.onChange({repository:'example/a'},cx);await tick();assert.equal(calls.length,before+1);
-waiting.shift()();await tick();assert.equal(calls.length,before+2,'A burst produces only one coalesced follow-up');waiting.shift()();await drain();assert.ok(panel.ciSweep,'Task-linked running CI uses the header sweep');
+waiting.shift()();await tick();assert.equal(calls.length,before+2,'A burst produces only one coalesced follow-up');waiting.shift()();await drain();assert.equal(panel.panelLoading(),false,'Pending CI alone does not animate after reads finish');
 // The actual relay consumer is called by render, not an asynchronous socket.
 // Exercise the real fleet callback/sweep under an immediate-spawn render guard.
 const savedWebhooks=panel.webhooks;panel.webhooks=new GitWebhooks({debounce:0});defer=false;
@@ -194,22 +196,22 @@ state['custom.plugins'].git.settings={relay:'https://relay.test'};
 const relayState=state['custom.git.relay-runtime']={scope:'fleet-render',status:'connected',ready:1,repositories:{'example/a':{revision:1}}};
 const renderCx={...cx,spawn:fn=>jobs.push(fn(renderCx))};
 const renderSync=()=>{rendering=true;try{panel.syncTaskWebhooks(renderCx);}finally{rendering=false;}};
-assert.ok(panel.aggregate.rows('open')[0].checks.pending>0);panel.ciSweep=null;
+assert.ok(panel.aggregate.rows('open')[0].checks.pending>0);
 before=calls.length;renderSync();
-assert.equal(calls.length,before,'fleet render must not start GitHub reads');assert.equal(panel.ciSweep,null,'fleet render must not arm a sweep synchronously');
-await drain();assert.equal(calls.length,before+2,'Main consumer initialization retains its repository catch-up');assert.ok(panel.ciSweep);
+assert.equal(calls.length,before,'fleet render must not start GitHub reads');assert.equal(panel.panelLoading(),false,'Render does not invent loading for pending CI');
+await drain();assert.equal(calls.length,before+2,'Main consumer initialization retains its repository catch-up');assert.equal(panel.panelLoading(),false);
 // A new revision and repeated renders coalesce into one deferred refresh.
-panel.ciSweep=null;relayState.repositories['example/a'].revision++;
+relayState.repositories['example/a'].revision++;
 before=calls.length;renderSync();renderSync();renderSync();assert.equal(calls.length,before);
-await drain();assert.equal(calls.length,before+1,'Only the affected repository refreshes');assert.ok(panel.ciSweep);
+await drain();assert.equal(calls.length,before+1,'Only the affected repository refreshes');assert.equal(panel.panelLoading(),false);
 // Disable/hide/context changes between render and delivery cannot start work.
 for(const change of ['disable','hide','context']){
- panel.ciSweep=null;relayState.repositories['example/a'].revision++;before=calls.length;renderSync();
+ relayState.repositories['example/a'].revision++;before=calls.length;renderSync();
  const context=panel.context;
  if(change==='disable')state['custom.plugins'].git.enabled=false;
  if(change==='hide')shown=false;
  if(change==='context')panel.context='tasks:replaced';
- await drain();assert.equal(calls.length,before,`${change} cancels queued fleet delivery`);assert.equal(panel.ciSweep,null);
+ await drain();assert.equal(calls.length,before,`${change} cancels queued fleet delivery`);assert.equal(panel.panelLoading(),false);
  state['custom.plugins'].git.enabled=true;shown=true;panel.context=context;panel.webhooks.stop();
 }
 panel.webhooks=savedWebhooks;defer=true;
@@ -217,7 +219,7 @@ noticeModes['example/b']='repository';tree=panel.render(cx);find(tree,'git-enrol
 // Label add/remove invalidates the same targeted reads in both tabs.
 defer=false;pendingCI=false;
 for(const action of ['unlabeled','labeled']) {
-  assignedLabels=action==='labeled'?[{name:'🤖 Under review',color:'840479'}]:[];
+  assignedLabels=action==='labeled'?[{name:'fixture label',color:'840479'}]:[];
   const beforeLabels=calls.length;
   for(const repository of ['example/a','example/b'])websocket.onChange({repository,event:'pull_request',action},cx);
   await drain();assert.equal(calls.length,beforeLabels+2);
@@ -263,11 +265,11 @@ noticeModes['example/a']='setup';noticeModes['example/b']='setup';tree=panel.ren
 failStatus=true;now+=2*86400000;defer=false;const staleCalls=calls.length,foldBefore=panel.foldedRepositories.has('example/a'),countsBefore=JSON.stringify(panel.aggregate.counts());
 const lastRobot=find(tree,'pr-agent-example/b#12'),lateRelay=websocket.onChange;
 rendering=true;try{tree=panel.render(renderCx);}finally{rendering=false;}
-assert.equal(find(tree,'git-task-stale').kids[0],'Stale');assert.ok(find(tree,'pr-example/b#12'));assert.equal(find(tree,'pr-agent-example/b#12'),undefined);assert.equal(JSON.stringify(panel.aggregate.counts()),countsBefore);sample();
-assert.equal(websocket.enabled,false,'Stale presentation cannot subscribe for task reads');assert.equal(panel.ciSweep,null);
+assert.equal(find(tree,'git-task-stale'),undefined,'Header bulb removed');assert.doesNotMatch(text(find(tree,'changes-header')),/Stale/);assert.ok(find(tree,'pr-example/b#12'));assert.equal(find(tree,'pr-agent-example/b#12'),undefined);assert.equal(JSON.stringify(panel.aggregate.counts()),countsBefore);sample();
+assert.equal(websocket.enabled,false,'Stale presentation cannot subscribe for task reads');
 lastRobot.attrs.on_click[0]({},cx);lateRelay({repository:'example/a'},cx);panel.aggregate.refresh(cx);await drain();assert.equal(calls.length,staleCalls);assert.equal(focus.length,1,'Stale callbacks cannot navigate');
 panel.setView('open',cx);tree=panel.render(cx);toggle('a');assert.equal(panel.foldedRepositories.has('example/a'),!foldBefore);assert.equal(calls.length,staleCalls,'Read-only folding still works while verification is unavailable');panel.setView('closed',cx);tree=panel.render(cx);
-assert.match(find(tree,'git-task-stale').attrs.tooltip[0],new RegExp(`transport-error at .*generation ${state['custom.fleet.generation']}`),'Existing verification tooltip exposes the sanitized reason and time');
+assert.equal(find(tree,'git-task-stale'),undefined,'No replacement header tooltip; runtime diagnostics remain available');
 // A cold controller/module gets the attached first frame, but no persisted PR inventory or authority.
 const coldState=JSON.parse(JSON.stringify(state));delete coldState[f.FLEET_KEY];
 const cold=await loadMod({host:{...host,shared:k=>coldState[k],setShared:(k,v)=>{assert.equal(rendering,false);coldState[k]=v;}},modules,globals:{URL,localStorage,Date:class extends Date{static now(){return now;}}},mod:'custom-changes',entry:'export {default as Main} from "./main.js";export * as r from "./plugins.js";'});
@@ -305,7 +307,7 @@ for(const [ownerTab,ownerPane] of [['c','cp-moved'],['c-moved','cp-moved-again']
  assert.equal(verified.child,null);assert.equal(verified.ownerTab,ownerTab);assert.equal(verified.ownerPane,ownerPane);assert.equal(entries.length,2);
  failStatus=true;now+=31000;tree=panel.render(cx);await drain();tree=panel.render(cx);
  assert.equal(panel.aggregate.entries.size,2,'Verified owner membership must not revert to an older stale scope and clear loaded PRs');
- assert.equal(panel.aggregate.context.scope,scope);assert.equal(JSON.stringify(panel.aggregate.counts()),savedCounts);assert.ok(find(tree,'pr-example/a#12'));assert.ok(find(tree,'pr-example/b#12'));assert.ok(find(tree,'git-task-stale'));
+ assert.equal(panel.aggregate.context.scope,scope);assert.equal(JSON.stringify(panel.aggregate.counts()),savedCounts);assert.ok(find(tree,'pr-example/a#12'));assert.ok(find(tree,'pr-example/b#12'));assert.equal(find(tree,'git-task-stale'),undefined);
  assert.ok(entries.every(entry=>panel.aggregate.entries.get(entry.link.key)===entry));assert.equal(calls.length,reads,'Retained scope grants no new GitHub reads');assert.equal(r.pluginPullContext('coordinator'),null);assert.equal(find(tree,'pr-agent-example/b#12'),undefined);captured.attrs.on_click[0]({},cx);assert.equal(focus.length,1);
  const display=f.fleetContexts({presentation:true})[0];
  for(const field of ['machine','parent','home','owner','ownerTab','ownerPane'])assert.equal(display[field],verified[field],`${field} comes from successful verification`);

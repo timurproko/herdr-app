@@ -22,7 +22,7 @@ put('layouts/TrelloFixture.json',{id:'root',type:'row',theme:'Custom',titlebar:'
 const dispose=temporaryMod(home,'custom-trello-proof'),dir=path.join(home,'mods/custom-trello-proof');fs.cpSync(path.join(home,'mods/custom-settings'),dir,{recursive:true});put('mods/custom-trello-proof/mod.json',{place:'none'});
 fs.renameSync(path.join(dir,'host.js'),path.join(dir,'native-host.js'));fs.renameSync(path.join(dir,'main.js'),path.join(dir,'settings-view.js'));
 const runtime=path.join(home,'.customizations/runtime'),owner=path.join(runtime,'lib/trello/owner.cjs');
-fs.writeFileSync(owner,`globalThis.fetch=async(url,options)=>{if(options.method!=='GET'||new URL(url).origin!=='https://api.trello.com')throw Error('Fixture forbids real network');const u=new URL(url),route=u.pathname;
+fs.writeFileSync(owner,`globalThis.fetch=async(url,options)=>{if(require('node:fs').readFileSync(${JSON.stringify(control)},'utf8').trim()==='saving')await new Promise(r=>setTimeout(r,3500));if(options.method!=='GET'||new URL(url).origin!=='https://api.trello.com')throw Error('Fixture forbids real network');const u=new URL(url),route=u.pathname;
 if(route==='/1/members/me')return Response.json({id:'${'a'.repeat(24)}',username:'fixture-owner',fullName:u.searchParams.get('token').includes('REMOTE')?'Remote Owner':'Fixture Owner'});
 if(route==='/1/members/me/boards')return Response.json([{id:'${'a'.repeat(24)}',name:'Design board',closed:false},{id:'${'b'.repeat(24)}',name:'Engineering board',closed:false},{id:'${'c'.repeat(24)}',name:'Archive board',closed:true}]);throw Error('Fixture forbids unfaked route');};\n`+fs.readFileSync(owner,'utf8'));
 // Preserve the production dispatcher verbatim and wrap only its injected IO options.
@@ -45,7 +45,7 @@ const options={runtime,spawnSync:()=>({status:0,stdout:JSON.stringify({machines:
  queueMicrotask(()=>child.stdout.write(JSON.stringify({version:1,phase:'ready',binding:binding(),runtime:remoteState()})+'\\n'));return child;
 }};
 module.exports={...service,dispatch:async(home,destination,payload,register)=>{
- const phase=fs.readFileSync(phaseFile,'utf8').trim();if(phase==='storage-error'&&payload.action==='status'){const r=await service.dispatch(home,{machine:null},{action:'global.status'},register,options);return {version:1,ok:false,error:{code:'STORE_PERMISSION_CHECK'},global:r.data.global};}
+ const phase=fs.readFileSync(phaseFile,'utf8').trim();if(phase==='elevated')return {version:1,ok:false,error:{code:'MACHINE_ELEVATED'}};if(phase==='storage-error'&&payload.action==='status'){const r=await service.dispatch(home,{machine:null},{action:'global.status'},register,options);return {version:1,ok:false,error:{code:'STORE_PERMISSION_CHECK'},global:r.data.global};}
  return service.dispatch(home,destination,payload,register,options);
 }};
 if(require.main===module){const [mode,home,machine]=process.argv.slice(2);module.exports.dispatch(home,{machine:JSON.parse(machine??'null')},{action:mode==='--probe'?'runtime.probe':'status'},()=>{}).then(r=>{console.log(JSON.stringify(r));process.exitCode=r.ok?0:3;});}
@@ -70,7 +70,8 @@ export default class Fixture extends Settings {
  const access=()=>plugin.settings[0].live.state(viewContext(this,plugin));
  if(command&&command!==this.command&&!busy()){this.command=command;this.phase='working';
  if(command==='entered'||command==='remote-entered'){const s=this.pluginForms['trello:local-setup'];s.fields.apiKey.set_value(command==='entered'?'FAKE_NATIVE_KEY_NOT_REAL':'FAKE_NATIVE_REMOTE_KEY_NOT_REAL');s.fields.token.set_value(command==='entered'?'FAKE_NATIVE_TOKEN_NOT_REAL':'FAKE_NATIVE_REMOTE_TOKEN_NOT_REAL');this.phase=command;}
- if(command==='saved'||command==='remote-saved'){const i=item('local-setup');submitActionForm(this,cx,plugin,i,i.form.actions.find(a=>a.id==='save'));}
+ if(command==='saving'||command==='saved'||command==='remote-saved'){const i=item('local-setup');if(!i?.configured)submitActionForm(this,cx,plugin,i,i.form.actions.find(a=>a.id==='save'));}
+ if(command==='saved-rest'){this.pluginRowHover=null;this.phase=command;}
  if(command==='picker-active'||command==='remote-picker')openListPicker(this,cx,plugin,item('boards'));
  if(command==='picker-inactive'){this.listPicker.tab='inactive';this.phase=command;}
  if(command==='picker-search'){this.pluginSearches['trello:boards'].set_value('Engineering');this.phase=command;}
@@ -79,8 +80,10 @@ export default class Fixture extends Settings {
  if(command==='remote-missing'){this.settingsMachine='fixture-ssh';followSettingsMachine(this);reloadPlugins(this,cx,'trello');}
  if(command==='remote-installed')runFixes(this,cx,plugin,[item('runtime')]);
  if(command==='remove-confirm'){const i=item('local-setup'),context=viewContext(this,plugin);runFixes(this,cx,plugin,[{...i,fix:{requiresEnabled:true,confirm:i.saved.confirm(context,i),run:context=>i.saved.remove(context,i)}}]);this.phase=command;}
- if(command==='storage-error'){this.pluginConfirm=null;reloadPlugins(this,cx,'trello');}}
- const s=item('local-setup');if(!busy()){
+ if(command==='elevated'){this.pluginConfirm=null;this.settingsMachine='fixture-ssh';followSettingsMachine(this);reloadPlugins(this,cx,'trello');}
+ if(command==='storage-error'){this.pluginConfirm=null;this.settingsMachine=null;followSettingsMachine(this);reloadPlugins(this,cx,'trello');}}
+ const s=item('local-setup');if(this.command==='saving'&&this.pluginForms['trello:local-setup']?.busy)this.phase='saving';if(!busy()){
+ if(this.command==='elevated'&&(s?.problem==='MACHINE_ELEVATED'||item('runtime')?.problem==='MACHINE_ELEVATED'))this.phase=this.command;
  if((this.command==='saved'||this.command==='remote-saved')&&s?.configured){this.pluginRowHover='st-plugin-saved-trello-local-setup-row-0';this.phase=this.command;}
  if((this.command==='picker-active'||this.command==='remote-picker')&&this.listPicker&&!this.listPicker.loading)this.phase=this.command;
  if((this.command==='allowed'||this.command==='remote-allowed')&&s?.allowedBoards===1){this.pluginRowHover='st-plugin-list-trello-boards-row-0';this.phase=this.command;}
@@ -100,7 +103,7 @@ const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms)),app=args=>execFileS
 const result={home,remoteHome,session,pid:child.pid,version,synthetic:true,interaction:'Production native controls/handlers; injected provider, SSH and inventory; not a mouse hit-test or real remote acceptance',pictures:[]};
 const wait=async phase=>{for(let i=0;i<480;i++){await sleep(250);assert.equal(child.exitCode,null,'Disposable app exited');try{const data=JSON.parse(fs.readFileSync(path.join(home,'shared.json'),'utf8'))['proof.snapshot'];if(data?.phase===phase)return data;}catch{}}throw Error('Timed out waiting for '+phase);};
 try{
- for(const phase of ['missing','entered','saved','picker-active','picker-inactive','picker-search','allowed','writable','remote-missing','remote-installed','remote-entered','remote-saved','remote-picker','remote-allowed','remote-writable','remove-confirm','storage-error']){
+ for(const phase of ['missing','entered','saving','saved','saved-rest','picker-active','picker-inactive','picker-search','allowed','writable','remote-missing','remote-installed','remote-entered','remote-saved','remote-picker','remote-allowed','remote-writable','remove-confirm','elevated','storage-error']){
   if(phase!=='missing')fs.writeFileSync(control,phase);const state=await wait(phase);await sleep(500);const picture=path.join(output,phase+'.png');app(['shot',picture]);result.pictures.push({phase,picture,state});const status=JSON.parse(app(['status']));assert.deepEqual(status.errors,[],JSON.stringify(status.errors));
  }
  result.status=JSON.parse(app(['status']));

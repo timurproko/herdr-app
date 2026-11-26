@@ -13,7 +13,7 @@ function parse(argv) {
     if (!token.startsWith('--')) { words.push(token); continue; }
     const key = token.slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
     if (Object.hasOwn(flags, key) || !/^[a-zA-Z]+$/.test(key)) fail('INPUT');
-    if (['rotate', 'json', 'help'].includes(key)) flags[key] = true;
+    if (['rotate', 'json', 'help', 'allowOtherTypes'].includes(key)) flags[key] = true;
     else { if (!argv[i + 1] || argv[i + 1].startsWith('--')) fail('INPUT'); flags[key] = argv[++i]; }
   }
   return {words, flags};
@@ -59,7 +59,7 @@ async function execute(argv, options = {}) {
         if (rest.length !== 1 || !['cards.get', 'cards.update', 'cards.move', 'cards.archive'].includes(op) || flags.card) fail('INPUT');
         flags.card = rest[0];
       }
-      if ('limit' in flags) { if (!/^\d+$/.test(flags.limit)) fail('INPUT'); flags.limit = Number(flags.limit); }
+      for (const key of ['limit', 'previewWidth']) if (key in flags) { if (!/^\d+$/.test(flags[key])) fail('INPUT'); flags[key] = Number(flags[key]); }
       if (writes.has(op)) {
         const noPayload = ['cards.archive', 'cards.label.add', 'cards.label.remove'].includes(op);
         const body = noPayload && !file && options.input === undefined ? {} : await readInput(false);

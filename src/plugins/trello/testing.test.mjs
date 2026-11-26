@@ -23,6 +23,7 @@ export function fakeTransport(replace = () => undefined) {
       [`/boards/${A}/cards`]: [card], [`/lists/${L}/cards`]: [card], [`/cards/${C}`]: card,
       [`/boards/${A}/labels`]: [{id: LABEL, idBoard: A, name: 'ready', color: 'green'}],
       [`/cards/${C}/actions`]: [{id: ITEM, type: 'commentCard', date: '2026-01-01', data: {board: {id: A}, card: {id: C}, text: 'untrusted comment'}}],
+      [`/cards/${C}/attachments`]: [],
       [`/cards/${C}/checklists`]: [{id: CHECK, idBoard: A, idCard: C, name: 'Steps', checkItems: [{id: ITEM, name: 'one', state: 'incomplete'}]}],
     };
     if (options.method !== 'GET' || !Object.hasOwn(responses, route)) throw Error('Unfaked transport');

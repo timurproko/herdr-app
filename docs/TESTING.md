@@ -39,13 +39,136 @@ can satisfy GitHub protection, so metadata events must not publish a replacement
 aggregate; the latest non-cancelled ready run must still pass all dependencies.
 These live observations are separate from the local regression matrix.
 
+## Connected project Spaces and coherent coordinator inventory
+
+`spaces-worktree-layout.test.mjs` covers the approved adaptive metadata grid:
+expanded Crew ends at the machine + right edge; collapsed Crew shifts to the
+Agents machine-label rail and child-space count occupies the Agents numeric rail.
+Machine/coordinator chevrons share a centre and a 24px target, including hover.
+`agents-dot-column.test.mjs` protects existing numeric/status geometry; unrelated
+tags, native selection/numbering, connectors and captured block reorder stay intact.
+
+`tests/fleet-project-spaces.test.mjs` uses the Crew PR #22 placement-v1 contract
+with combined-only, project-only and mixed populations on local/qualified remote
+models. It covers exact native membership, malformed labels, project names versus
+user renames, durable registry links and colour authority. `fleet-command.test.mjs`
+checks actual PowerShell project projection; set `FLEET_TEST_ROOT` to an existing
+outside-checkout scratch directory for local disposable output.
+
+`fleet-combined-spaces.test.mjs` adds the minimal fleet-view shape (no task projects)
+with legacy and v1-combined workers inside one native child, both worker orders,
+multiple projects, live/finished PR links and local/qualified remote identities.
+It checks that explicit malformed/contradictory projects, unsupported/partial
+placement, wrong home/task/space, duplicate membership and foreign machines still
+refuse; omitted project does not authorize per-project placement. Its pre-fix failure
+is the whole combined binding becoming null, not a workspace drawing defect.
+
+`fleet-toggle-live.test.mjs` also mounts separate Settings, Spaces and Git provider
+copies with mixed combined workers and reduced status. The actual Settings callback
+and ordinary 250ms Spaces lifecycle restore remembered rows, publish fresh live/history
+PR context and clear inventory on off without a manual bind or forced refresh. The
+rendered `fleet-git.test.mjs` uses mixed legacy/v1-combined labels too, including its
+slow/failed first read and obsolete-generation cases. No separate toggle scheduler is
+needed: current generation invalidation already makes the next owner tick eligible.
+
+Opt-in `tests/features/fleet-combined-native.mjs --run --output <outside> --zoom 1|1.3`
+uses the supplied `HERDR_APP_BIN` 0.1.18 copy. It requires its sibling release archive
+to match the pinned published SHA-256 and the executable to match that archive. Actual
+Settings row/callback, recurring Spaces verification and Git aggregate/renderers run
+against synthetic local/remote membership, reduced status and GitHub replies. It captures
+off, cold pending/verified and remembered pending/verified states, records exact counts
+and native errors, and stops its isolated app/Core in finally. This is controller-driven
+callback/native-pixel proof, not pointer hit-testing or live SSH acceptance. No real
+terminal or account is used and nothing is installed outside disposable homes.
+
+`spaces-worktree-layout.test.mjs` and `fleet-reorder.test.mjs` cover one/two/three
+children, shared stem/last corner, native numbering, hidden-child selection,
+compact membership, any-member block reorder, ambiguity/cycles and changed captured
+membership without replay. Spaces additionally checks the shared machine/coordinator 24px disclosure bounds,
+expanded Crew/plus right edges, plain label styling and collapsed child counts
+at 100%/130%. Agents supplies the unchanged time/count and label rails. Git's
+right-edge oracle now asserts its independent preserved 3px inset rather than
+borrowing a filled Crew pill that Spaces no longer renders. Git geometry is unchanged.
+
+`fleet-color-menu.test.mjs` runs the actual separately packaged provider and menu
+with two/three verified children, coordinator/child origins, local/remote machines,
+live/retained/restarted states, pointer swatches and keyboard Automatic. Siblings
+share one captured coordinator binding; changed membership, conflicting parents or
+bindings, duplicates, missing/cross-machine endpoints and expired proof still refuse.
+Every child's saved colour and Automatic flag stays unchanged.
+
+`git-loading-line.test.mjs` checks one native moving line across ordinary and
+coordinator cold/warm/background/verification/safety work, overlap, completion,
+failure cooldown and retired measurement callbacks. Git cold Loading uses the
+shared message geometry with a static dot; Refresh is static even during its
+600ms disabled feedback. Files, tabs and shared activity remain animated as before.
+`fleet-history.test.mjs` checks provider work evidence: a live exact-owner read
+sets presentation-only loading; failed verification awaiting retry stops the line.
+
+`tests/features/sidebar-alignment-native.mjs --run --output <outside> --zoom 1|1.3
+--children 1|3 [--baseline <revision>]` verifies the supplied 0.1.18 archive and
+executable, mounts actual Spaces/Agents/Git with synthetic local/remote data and
+captures before/after rows and machine + (10 logical pixels left), collapsed
+counts, parent/child/ordinary rename, long names, compact/selection, cold/warm/
+background/ordinary line phases, completion and failures. Hover-only pointer
+movement targets its own disposable window; no clicks/keys, terminals or live
+SSH. Receipts check render errors and stop its desktop/Core in finally. Earlier
+fixtures/documented proofs using header bulbs or CI-only one-shot sweeps describe
+historical presentation, not the current loading contract.
+
+`git-inventory-presentation.test.mjs` covers cold whole-inventory admission,
+immediate actionable notices, no partial-return leak, staged warm replacements,
+under-header native line activity, no warm body Loading and quiet cooldown behavior.
+Healthy activity says Updating pull requests while worker actions remain available;
+only unverified activity carries the paused-action warning and sanitized diagnostics.
+`git-deferred-repositories.test.mjs` retains the exact-deadline no-event recovery
+and truthful-count checks, now withholding cold partial successes rather than
+displaying them. `git-checks-fallback.test.mjs` retains mounted safety admission.
+
+The opt-in Windows `tests/features/interface-native.mjs --run --output <outside>
+--spaces --children 1|2|3 --zoom 1|1.3` mounts actual production renderers with
+synthetic identity/PR transport, never real agents. Supply a checksum-verified
+`HERDR_APP_BIN`. It captures expanded/collapsed/selected/compact/reorder states,
+cold partial/full/failure/cooldown, warm return/background activity (two native
+phases) and completion. It stops its own desktop and isolated Core in finally;
+inspect both screenshots and cleanup/error receipts. Controller-driven actions
+are not real pointer/keyboard or live-SSH proof. No installed app or PATH changes.
+
+## Instant Git repository entry
+
+`node --experimental-vm-modules tests/git-entry-cache.test.mjs` uses production
+controller/aggregate renderers and held transport to sample the first worker frame,
+coordinator return and cross-machine cold entry. It covers bounded pure publication,
+task-section seed provenance, shared section chrome/header activity and no entry-driven
+pin or reorder. It does not use live GitHub, credentials, Core or agents. The existing
+inventory-presentation and paging suites remain guards for coherent warm replacement,
+quiet retry and cursor retention. Chip/robot motion remains owned by the existing
+click controller; direct entry does not start it.
+`tests/git-entry-motion.test.mjs` integrates the initially-unpinned support supplied
+by PR #87: after entry, chip and robot clicks use its controller with one immediate
+focus, retained native acknowledgement, one-shot timers and final measured row
+positions including the section header at 100%/130%. No controller is forked.
+
+Opt-in `tests/features/git-entry-native.mjs --run --output <outside-checkout>
+--zoom 1|1.3` mounts the production entry renderer with held synthetic transport
+in an isolated App 0.1.18/Core session. `--baseline` uses the pre-change main
+controller at b22df88 with the same synthetic dependency harness, not an entire
+old installation. It captures worker entry/replacement, another worker, coordinator
+return, genuinely cold Loading and a controller-driven chip transition. No native
+mouse/keyboard hit-testing or live sessions are claimed. It rejects render errors
+in the app log as well as status.errors (the latter alone missed a last-frame
+fallback). Native proof found and fixed an invalid null child on idle activity;
+the entry regression now rejects null/undefined native children. All owned
+instances stop in finally; screenshots, logs and receipts stay outside the checkout.
+
 ## Git read-budget and refusal fixtures
 
 `tests/git-deferred-repositories.test.mjs` runs a sanitized equivalent of the
 reported mixed-fleet case through real Crew verification, aggregate/read modules
 and panel rendering. With herdr-app #74/#76 refused and siblings supplying Open 2 /
-Closed 5, it requires one panel Loading indication with no unknown-only herdr-app
-header and both badges 0/loading, then the header and both rows and complete task totals after an exact fake-clock
+Closed 5, it requires one top-left cold Loading indication without partial successful
+sections or unknown-only headers and both badges 0/loading, then the complete
+eligible list and task totals after an exact fake-clock
 cooldown retry without another event. It also covers queued/in-flight uncertainty,
 actionable/missing exclusions, folds, atomic boundaries, 100-item cap, surviving
 anchors, new membership with retained/loading counts, warm retention and obsolete
@@ -53,8 +176,8 @@ retry guards. It is not evidence of the original unrecorded refusal or native pi
 
 `tests/git-coordinator-return.test.mjs` checks exact-scope runtime return memory,
 provider/Git generation invalidation even without an intermediate render, bounded
-snapshot retention, stale-action refusal, one panel Loading and visible cold
-failures. The renderer and safety selection share the same admission projection.
+snapshot retention, stale-action refusal, cold panel Loading and visible cold
+failures; warm return feedback now uses the header-only activity contract above. The renderer and safety selection share the same admission projection.
 
 `tests/git-rate-quiet.test.mjs` exercises strict primary/secondary refusal handling,
 episodes, Retry-After, manual bypass and the older-success/cooldown race. Ordinary
@@ -124,6 +247,13 @@ limits 1/50/100, and checks multi-page read/write membership with explicit `sort
 repeated local CAS conflicts, checking that the longest deadline persists and a
 new invocation cannot dispatch early. It makes no real HTTP request.
 `tests/trello-contract.test.mjs` checks documentation/catalog and payload boundaries.
+`src/plugins/trello/attachments.test.mjs` and `download.test.mjs` use loopback fake
+Trello/external servers with test-only production-URL mapping and no live-fetch
+fallback. They cover metadata/card counts, parent proofs, original/scaled preview
+reads, header-only authentication, zero external-link/redirect requests, 20 MiB
+stream bounds, MIME/signature checks, private ACL/mode output, unsafe paths,
+collisions and cleanup on refusal/revocation. Servers stop in finally; downloaded
+fixtures and stores are disposable, never the owner's account or board.
 
 Set `TRELLO_TEST_ROOT` to an existing outside-checkout scratch directory to choose
 fixture output. Hosted tests otherwise prefer `RUNNER_TEMP`, then the OS temp
@@ -163,8 +293,9 @@ home and the real Trello-only installer; no real remote/Core routing is attempte
 Test-only exports invoke the same handlers as the controls; this is native pixels
 and handler composition, not a mouse-hit-test or live Trello/SSH acceptance claim.
 
-The driver captures empty/masked inputs, the single saved account with hover Remove,
-zero-board readiness, Active/Inactive/search picker states, added-board hover Remove,
+The driver captures empty/masked inputs, Saving, the single saved account at rest
+and with hover Remove, zero-board readiness, Active/Inactive/search picker states,
+added-board hover Remove, an injected elevated-SSH whole-card refusal,
 global Access, a remote runtime Install prerequisite, remote account/board lifecycle,
 read-only new-host and explicitly applied global write states, captured-machine
 removal confirmation and an injected permission-check error without Save. Its receipt
@@ -190,6 +321,11 @@ and before any installation write.
 row kit, header-machine scope without a stray selection dropdown, fixed description
 links and category-local search/selection. These fixtures start no real SSH or Trello
 request and do not read private user setup.
+`tests/trello-card-polish.test.mjs` covers opt-in replacement/status hover, light
+tabs and empty separators while unrelated field choices/defaults stay unchanged.
+`tests/trello-unavailable.test.mjs` covers one actionable elevated-SSH explanation,
+no repair count or dependent controls, independent group completion, safe retry,
+stale machine replies and disable-session retirement without secret dispatch.
 
 ## Supported hosted subset
 
@@ -200,7 +336,13 @@ observed Node 20 experimental-VM crashes and meets the unchanged Cloudflare
 fixture's Node 22.12+ prerequisite.
 `scripts/test-ci.mjs` only builds this checkout, selects existing test entrypoints,
 passes their original VM flags, and propagates failures. It prints every included
-and excluded source path before execution. CI children use a disposable Herdr home,
+and excluded source path before execution. Required read-only tool preflights
+retry once only on a 15-second startup timeout, with a 45-second second allowance
+for cold hosted runners. Missing executables and nonzero exits still fail
+immediately; a second timeout fails the job. Test processes are never retried and
+their existing limits and failure propagation are unchanged.
+`tests/ci-tool-preflight.test.mjs` covers these cases with injected process results.
+CI children use a disposable Herdr home,
 unavailable native app executable and temporary fixture directories under ignored
 `.artifacts/`. No Herdr install, private snapshot or external A1 checkout is supplied.
 On Windows the CI child environment drops inherited PowerShell 7 module paths so
@@ -516,6 +658,54 @@ payloads run the shared UI VM fixture, including fixed 408px/57px geometry,
 command-only paging, native wheel ownership, scrollbar ranges and complete
 search/clear resets. Read-only installed Windows byte evidence and absent live
 interaction proof are in HERDR-0.1.18-PALETTE-REVIEW.md.
+
+## Managed Git stages
+
+`node --experimental-vm-modules tests/git-stages.test.mjs` covers the
+MyWorkflows stable-role compatibility snapshot: Build / Rework / Changes needed,
+Review / Under review, and Approved, with plain and robot-prefixed names. Array
+and connection results share parsing; null, unknown and removed labels clear the
+stage, narrow check reads preserve it, and CI/reviewDecision never invent a stage.
+Existing list and target reads already include labels; stage adds no label request.
+`tests/pr-agent-links.test.mjs` additionally exercises role-specific ship/fix
+PR-or-branch links, reviewers on the base branch matched by crew.pr only,
+repository isolation, optional round/finding/approval labels, disconnected and
+ended targets, reconnect and captured scope/role checks. Its actual aggregate
+boundary permits a freshly verified same-home reviewer task without its own PR,
+but rejects missing membership and stale context. Legacy robot/footer/branch
+callers retain their no-role behavior. These are synthetic facts and host snapshots,
+not live label mutation, remote focus or approval verification.
+
+`tests/pr-agent-links.test.mjs` renders the actual stage controls and checks
+Build/Review focus, Approved row opening regardless of CI, round/finding captions,
+missing metadata, inert ended/disconnected chips, stale captured roles and scopes,
+and ghost noninteraction. `tests/git-stage-chips.test.mjs` checks all captions and
+shared 80px title reservations across ordinary, pinned, scrolling, coordinator and
+ghost Open/Closed/merged rows, 280–480px and 75–200% zoom including 130%. Existing
+geometry/right-edge fixtures retain the 74px blocks, lower-line allocation,
+Spaces-derived trailing anchor and fallback robot's 24px target. The no-label
+main-relative tree/probe budget remains unchanged. These are render-tree assertions,
+not native pointer dispatch, pixel layout or real-agent focus proof.
+
+The same `pr-agent-links` fixture now prints `REASON_MATRIX` for 80 combinations:
+ordinary/coordinator, Open/Closed, row/ghost, local/pc2, and ship/fix matched by
+PR or branch plus PR-linked reviewers. Ended and disconnected reasons survive
+live-cache pruning and historical/stale coordinator membership. Reconnection
+without verification stays disabled; a fresh binding restores the plain stage.
+It also checks Approved's agent-free action and legacy robot absence/restoration.
+
+`PIN_MATRIX` covers 96 real-controller navigation sequences: Build/Review,
+chip/robot, ordinary/coordinator, Open/Closed, local/remote destinations and
+100%/130% zoom, including ordinary lists with and without a prior pin. Each
+acknowledges a different space/worktree through the production refresh path,
+checks immediate focus, waits for destination PR selection, drives the native
+320ms overlay phases, and asserts final pin settlement without another focus.
+Coordinator lists hand off a bounded inert source snapshot, not a permanent pin.
+`tests/pin-swap.test.mjs` exercises both initial pin states, intermediate rows,
+scroll/zoom, one-shot timing and coordinator arrival, including context/tab,
+wrong selection/PR, scroll and three-second timeout cancellation. The entry
+point for initially unpinned lists remains `PinSwap.start()`; no second animator
+is introduced. These are fixture transitions, not live native paint proof.
 
 ## Git PR label facts
 

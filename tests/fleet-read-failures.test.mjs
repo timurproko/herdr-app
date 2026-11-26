@@ -20,7 +20,7 @@ const host={run(){},exec:async(cmd,args,options)=>{
  return {code:0,stdout:JSON.stringify(facts.get(k))};
 }};
 host.exec=legacyTargetResponses(host.exec);
-const {AggregatePulls,pullFailure,pullError,gitReads}=await loadMod({host,modules:{'aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js','plugins.js':{sidebarPanelEnabled:()=>true,pluginPullContext:()=>context,pluginEvent(){}},'location.js':{location:()=>({space:'coordinator'})}},globals:{Date:class extends Date{static now(){return now;}}},entry:'export {AggregatePulls} from "./aggregate.js";export {pullFailure,pullError,gitReads} from "./pulls.js";'});
+const {AggregatePulls,pullFailure,pullError,gitReads}=await loadMod({host,modules:{'presentations.js':'src/plugins/git/mod/presentations.js','aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js','plugins.js':{sidebarPanelEnabled:()=>true,pluginPullContext:()=>context,pluginEvent(){}},'location.js':{location:()=>({space:'coordinator'})}},globals:{Date:class extends Date{static now(){return now;}}},entry:'export {AggregatePulls} from "./aggregate.js";export {pullFailure,pullError,gitReads} from "./pulls.js";'});
 const a=new AggregatePulls({shown:()=>shown});a.sync(cx);await drain();
 // These fixtures inject precise contradictory evidence; generic events do not
 // invalidate final history (raw request budgets cover that separately).

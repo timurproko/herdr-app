@@ -229,8 +229,11 @@ failure remains evidence, not action permission. Reasons are allowlisted; numeri
 exit/timeout facts and bounded native owner/space references are allowed, never raw
 process errors, task inventories, home paths, transcripts or credentials. Generic
 presentation context carries only the relevant sanitized verification fact; Git
-uses the standard panel Loading bulb's tooltip, or the retained Stale tooltip,
-without importing Crew code. Empty verification adds no special header text. A uniquely
+uses the cold panel Loading message's tooltip without importing Crew code.
+Warm header bulbs/tooltips are removed. A generic presentation-only `loading`
+boolean reports an unexpired current-generation read for the exact parent/owner;
+it grants no action authority and distinguishes pending verification from a dormant
+retry. Git uses that work evidence for its single under-header moving line. Empty verification adds no special header text. A uniquely
 routed cold coordinator hint can route Loading even before a failure, with empty links, not a pair,
 verified home or GitHub/worker authority.
 
@@ -272,11 +275,11 @@ leases are not fresh verification. Space-only block ordering uses the displayed
 remembered link, revalidating exact captured pair identity and native acknowledgements
 at commit. This exception reorders spaces only; it never permits terminal/tab moves,
 worker navigation, messages or coordinator colour writes from remembered identity. Git requests presentation context
-only to retain already-loaded same-home rows/counts/folds with a Stale badge, or a
-standard Loading bulb with no extra header label or restored inventory on cold start.
+only to retain already-loaded same-home rows/counts/folds with the under-header moving line during pending work, or
+standard Loading text/static dot with no extra header label or restored inventory on cold start.
 There is no cross-toggle identity/inventory cache. Off or a scope change clears
 the aggregate's entries; on shows Loading until fresh verification and facts arrive.
-Existing same-context outages retain their pre-existing Stale meaning only.
+Same-context outages retain presentation only, never fresh action permission or Stale text.
 Enabled current coordinator candidates pending verification or retry never fall
 back to ordinary folder Git. Only a witnessed completed negative whose dependency
 signature still matches the current native snapshot suppresses Loading. Old owner
@@ -288,10 +291,23 @@ changes cannot inherit those rows. Git additionally matches the successfully
 verified live-task membership, independently of the pair/adoption fingerprint: a
 Core-first worker exit cannot silently remove its PR before Crew publishes the
 closed record. A working/finished mismatch remains unverified rather than renewing
-action freshness, while existing same-home rows stay explicitly stale.
+action freshness, while existing same-home rows remain unverified with the moving line only while reconciliation is pending.
+
+Spaces accepts multiple verified same-machine children per coordinator through the
+existing registry contribution. Crew placement v1 validates `crew.space.version=1`,
+`mode`, `project` and `name` against each supplied status task project and exact native
+membership. The minimal fleet view omits task projects: only combined placement can
+accept that absence, because its child identity is project-independent. Present
+malformed/contradictory projects still refuse; per-project placement always requires
+matching authoritative task project evidence. Legacy/combined `fm-crew-<home>`,
+`-project-<registered-name>` and internal `-self` (`crew:self`, display `crew`) are supported together; `crew.home` remains
+unchanged. The transport keeps task project, not reports or placement authority.
+Durable display identity may contain multiple child placement records, never PRs.
+Projected child order follows native order; explicit user names override project
+metadata. Captured whole-block membership guards every acknowledged reorder.
 
 Spaces presents accepted same-machine blocks using Agents' shared child branch
-and parent disclosure primitives. The child retains its native index and badge
+and parent disclosure primitives, with a shared vertical stem and final-child corner. The child retains its native index and badge
 colour inheritance, but is indented; neither row has a chain and only the parent
 shows Crew. Unrelated tags and worktree metadata keep their ordinary trailing
 edge. A separate local `custom.spaces.parents.folded` set is bounded to 256 exact
@@ -357,9 +373,13 @@ panel recreation. Scoped rows/errors and repository-specific diagnostics fold wi
 the body; global setup stays visible. Counts and webhook-driven facts continue
 updating while folded. One shared projection derives selected-tab sections from known eligible rows
 or an applicable `readNotice` before applying folds. Unknown-state queued,
-in-flight and quiet-deferred first reads share one panel bulb/Loading outside
-repository bodies, above enrollment; they create no unknown-only header.
-Warm-only refreshes add no Loading. An applicable actionable failure retains its notice; confirmed
+in-flight and quiet-deferred first reads share one cold panel bulb/Loading directly
+below Open/Closed, above the scroller; cold partial successes remain staged and
+create no unknown-only headers. Published same-home return/background lists stay
+mounted without body Loading; the single native moving line below the Git header
+covers active updates and stops on completion or failure. Quiet warm cooldowns are not active
+requests. Bounded pure published snapshots are distinct from collected facts, so
+leaving an unfinished cold load cannot turn partial successes into a warm list. An applicable actionable failure retains its notice; confirmed
 missing and known ineligible history do not leave Loading behind. Empty settled sections have no header,
 but disappearing sections retain saved fold keys. A settled tab with no qualifying
 sections uses ordinary Git's **No open pull requests** / **No closed pull requests**;
@@ -368,8 +388,9 @@ is unchanged. The selected presentation reveals ten items initially, including h
 notices and rows, then appends ten near the scroll bottom without inventory IO.
 An unfolded header at a reveal boundary waits for its first row or visible notice;
 no transition may leave it alone. Sections without selected-tab content or a
-notice are omitted even if a saved fold key remains. Panel Loading is not a PR,
+notice are omitted even if a saved fold key remains. Cold panel Loading is not a PR,
 repository body, reveal item or safety target; it remains visible through folds.
+Warm native line activity has the same separation and never grants action authority.
 Same-home returns restore pure runtime presentation from at most four snapshots
 and 4096 admitted identities, with no native handles or callback-bearing trees.
 Exact scope and provider/Git enable generations reject stale cache/read results;
@@ -454,6 +475,35 @@ Both Git lists compose `SidebarScrollState` from `ui/sidebar-scroll.js` with
 metrics and passive 40px gradients, not copied approximations. Git retains its own
 padding and background; paired native content/frame geometry and changed-only
 size/input callbacks update edge hints without polling or render-time notifications.
+
+## Git repository entry presentation
+
+`plugins/git/mod/presentations.js` owns pure committed publication and the shared
+bounded entry memory used by the ordinary and coordinator adapters. The existing
+coordinator warm-entry policy is shared with worker entry: restore a compatible
+section before IO, keep the native header activity while refreshing, publish
+coherent replacement in place, and reserve body Loading for cold data/identity.
+The memory holds at most four retained contexts and 4096 admitted rows, plus 256
+folder mappings; eviction/generation clearing retires mappings. No callbacks,
+native handles, credentials or restart/portable PR inventory are stored.
+
+Identity is exact machine plus canonical repository and the existing inherited
+read route; folder/agent mappings require canonical lookup, not a task label or
+branch guess. Task-derived seeds retain owner/home/provider provenance and
+history eligibility. They show known values with incomplete repository-total
+metadata, never claim task totals are repository totals, and demand real pages
+for each tab independently. Git enable-generation changes clear cached inventory;
+source replacement/disablement invalidates dependent seeds. Confirmed absence
+retires folder identity; late replies are rejected by request/context/enable epoch.
+Ordinary reads and captured actions keep their own current authority. Hidden
+snapshots perform no IO.
+
+Direct entry restores section order without creating a pin, reordering or starting
+motion. Existing panel-origin chip/robot clicks keep their separate controller
+and selection acknowledgement. Repository name/count/folding live in the shared
+section header. The main header's repository label and repository-page popup
+(including keyboard actions) are removed; diagnostics remain on existing native
+activity/count feedback and PR row menus are unchanged.
 
 ## Right-sidebar tab pins
 

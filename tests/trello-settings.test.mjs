@@ -15,14 +15,22 @@ try {
  const refresh=async()=>{ui.reloadPlugins(view,cx,'trello');await flush();};await refresh();assert.equal(network,0,'Opening/checking the card never contacts Trello');
  const form=()=>view.pluginForms['trello:local-setup'],id='st-plugin-form-trello-local-setup';
  const enter=()=>{form().fields.apiKey.set_value(key);form().fields.token.set_value(token);assert.equal(form().fields.token.masked,true);};
- enter();click(id+'-save');await flush();assert.equal(store.read('credentials').token,token);assert.equal(form().fields.token.value(),'');assert.ok(words(render()).join(' ').includes('Fake Owner'));assert.equal(view.pluginChecks.trello.items.find(i=>i.id==='local-setup').status,'missing');
+ assert.equal(view.pluginChecks.trello.items.find(i=>i.id==='local-setup').statusLabel,'Add');
+ assert.ok(words(find(render(),id+'-save')).includes('Save'));assert.ok(!words(render()).includes('Save & verify'));
+ assert.ok(words(render()).includes('Let agents read and update cards on the boards you choose.'));
+ assert.ok(find(render(),'st-plugin-trello-description-link-0'));
+ assert.equal(find(render(),'st-plugin-list-trello-boards-where').attrs.border_b_1,undefined,'No divider for empty Boards');
+ enter();click(id+'-save');assert.ok(words(find(render(),id+'-save')).includes('Saving'));click(id+'-save');await flush();assert.equal(store.read('credentials').token,token);assert.equal(form().fields.token.value(),'');assert.ok(words(render()).join(' ').includes('Fake Owner'));assert.equal(view.pluginChecks.trello.items.find(i=>i.id==='local-setup').status,'ready');assert.ok(words(render()).includes('All ready'));
  const savedRow='st-plugin-saved-trello-local-setup-row-0',removeId='st-plugin-saved-trello-local-setup-remove-0';
- assert.ok(!find(render(),id+'-verify'));assert.ok(!find(render(),id+'-replace'));assert.ok(!find(render(),id+'-save'));assert.ok(!find(render(),id+'-token'));assert.ok(find(render(),savedRow));assert.equal(view.pluginChecks.trello.items.find(i=>i.id==='local-setup').statusLabel,'Add boards');assert.equal(view.pluginChecks.trello.items.find(i=>i.id==='boards').statusLabel,'0 added');assert.ok(!find(render(),id+'-help'));
- view.pluginRowHover=savedRow;
+ assert.ok(!find(render(),id+'-verify'));assert.ok(!find(render(),id+'-replace'));assert.ok(!find(render(),id+'-save'));assert.ok(!find(render(),id+'-token'));assert.ok(find(render(),savedRow));assert.equal(view.pluginChecks.trello.items.find(i=>i.id==='local-setup').statusLabel,'Ready');assert.equal(view.pluginChecks.trello.items.find(i=>i.id==='boards').statusLabel,'0 added');assert.ok(!find(render(),id+'-help'));
+ assert.ok(!find(render(),'st-plugin-req-trello-local-setup'),'Saved account replaces the redundant Account row');
+ assert.equal(words(render()).filter(t=>t==='Fake Owner').length,1);
+ assert.ok(words(find(render(),savedRow)).includes('Ready'));view.pluginRowHover=savedRow;
+ assert.ok(!words(find(render(),savedRow)).includes('Ready'));assert.ok(find(render(),removeId));
  const before=network;click('st-plugin-trello-recheck');await flush();assert.equal(network,before+1);assert.equal(form().fields.token.value(),'');
  const open=()=>find(render(),'st-plugin-list-trello-boards-add-popup').attrs.on_open_change[0](true,cx);
  open();await flush();assert.ok(words(render()).includes('Design board'));click('st-plugin-list-trello-boards-item-0');click('st-plugin-list-trello-boards-cancel');assert.deepEqual(store.read('policy').boards,[],'Tick+Cancel grants nothing');
- open();await flush();click('st-plugin-list-trello-boards-item-0');click('st-plugin-list-trello-boards-choose');await flush();assert.deepEqual(store.read('policy').boards,[A]);assert.equal(view.pluginChecks.trello.items.find(i=>i.id==='local-setup').status,'ready');assert.ok(words(render()).includes('Design board'));
+ open();await flush();click('st-plugin-list-trello-boards-item-0');click('st-plugin-list-trello-boards-choose');await flush();assert.deepEqual(store.read('policy').boards,[A]);assert.equal(view.pluginChecks.trello.items.find(i=>i.id==='local-setup').status,'ready');assert.ok(words(render()).includes('Design board'));assert.deepEqual(find(render(),'st-plugin-list-trello-boards-where').attrs.border_b_1,[]);
  // Imported public Access never calls the live setter or changes local policy.
  registry.setPluginSetting(plugin,'access','read-write');assert.equal(store.read('policy').allowWrites,false);assert.equal(plugin.settings[0].live.state({machine:null,result:()=>view.pluginChecks.trello.items.find(i=>i.id==='local-setup'),setting:k=>registry.pluginSetting(plugin,k)}).value,'read-only');
  const setting=plugin.settings[0],context={machine:null,session:view.pluginSessions.trello,isCurrent:()=>true,enabled:()=>true,setting:k=>registry.pluginSetting(plugin,k),setSetting:()=>false,result:id=>view.pluginChecks.trello.items.find(i=>i.id===id)};

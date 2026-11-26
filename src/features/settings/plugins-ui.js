@@ -5,7 +5,7 @@
 import { div, svg, image } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, Checkbox, TextareaState, Textarea } from "gpui-base";
 import { U, slot, description, button, control, chevron, emptyState, dropdown, menuSurface, searchField, settingsRow, iconButton, chevronSlot } from "./ui.js";
-import { KIT, badge, statusText, workingStatus, statusRail, actionButton, actionTrigger, checkButton, choice, optionDropdown, skeleton,
+import { KIT, badge, statusText, workingStatus, statusRail, actionButton, actionTrigger, checkButton, choice, pickerTabs, optionDropdown, skeleton,
   disclosure, fieldRow, scopeRow, removableRow, pickerHeader, pickerListHeight, pickerFooter, changeCount, changeLabel, actionInput } from './settings-kit.js';
 import { PLUGINS, pluginEnabled, setPluginEnabled, pluginSetting, setPluginSetting, checkPlugin, pluginContext, pluginOptions, orderedPlugins, setPluginOrder } from './plugins.js';
 import { reorder } from './reorder.js';
@@ -25,6 +25,11 @@ export { statusText };
 const I = (name) => `mods/custom-settings/${name}.svg`;
 const sectionKey = (plugin, item) => `${plugin.id}:${item.id}`;
 const listId = (plugin, item) => `st-plugin-list-${plugin.id}-${item.id}`;
+// A fixed, plugin-supplied connection refusal applies to setup as a whole, not
+// three repairable rows. Any completed group can supply it; machine/session
+// changes retire the results before the next card projection.
+const setupUnavailable = (view, plugin) => pluginEnabled(plugin) ? view.pluginChecks?.[plugin.id]?.items?.find(item =>
+  typeof item.unavailable?.detail === 'string' && item.unavailable.detail.length > 0 && item.unavailable.detail.length <= 600)?.unavailable : null;
 
 // On the Plugins page the Settings header's machine picker is the only one: every plugin's
 // machine setting follows it, and the cards name that machine instead of offering their own
@@ -298,7 +303,7 @@ export function clearPluginForms(view, only = null) {
 function submitActionForm(view, cx, plugin, item, action, confirmed = false) {
   const key = sectionKey(plugin, item), state = view.pluginForms?.[key];
   const machine = view.settingsMachine ?? null, epoch = state?.epoch;
-  const current = () => !view.pluginClosed && pluginEnabled(plugin) && view.pluginForms?.[key] === state && state.epoch === epoch && (view.settingsMachine ?? null) === machine;
+  const current = () => !view.pluginClosed && pluginEnabled(plugin) && !setupUnavailable(view,plugin) && view.pluginForms?.[key] === state && state.epoch === epoch && (view.settingsMachine ?? null) === machine;
   const context = viewContext(view, plugin, current, machine);
   if (!state || state.unavailable || state.busy || view.pluginFixing || !current() || item.form.enabled?.(context, item) === false || action.when?.(item) === false) return;
   if (action.confirm && !confirmed) { state.confirm = action; state.confirmItem = Object.freeze({...item}); cx.notify(); return; }
@@ -348,7 +353,7 @@ function actionForm(view, t, plugin, item) {
     }))))
     .when(Boolean(state?.result?.detail), el => el.child(description(t, state.result.detail)))
     .when(available, el => el.child(h_flex().w_full().gap(8).items_center().children((form.actions ?? []).filter(action => action.when?.(item) !== false).map(action =>
-      actionButton(t, `${id}-${action.id}`, state?.busy ? 'Working…' : action.label,
+      actionButton(t, `${id}-${action.id}`, state?.busy ? (action.busyLabel ?? 'Working…') : action.label,
         (_e, cx) => { if (current()) submitActionForm(view, cx, plugin, item, action); }, { enabled, primary: action.primary === true })))))
     .when(Boolean(state?.confirm), el => el.child(v_flex().gap(6)
       .child(description(t, state.confirm.confirm))
@@ -407,13 +412,13 @@ export function reloadPlugins(view, cx, only = null, checkingTarget = null, {rea
     for(const group of targets){
       const selected=plugin.prerequisites.filter(pre=>(pre.section?pre.id:'requirements')===group);
       if(!selected.length)continue;
-      const machine=view.settingsMachine??null;
+      const machine=view.settingsMachine??null,session=view.pluginSessions?.[plugin.id];
       const previous=view.pluginChecks[plugin.id],round={loading:true,target:checkingTarget??group};
       const groups={...previous?.groups,[group]:round};
       view.pluginChecks[plugin.id]={...previous,loading:true,serial:(previous?.serial??0)+1,groups,
         items:previous?.items??plugin.prerequisites.map(pre=>({...pre,status:null}))};
       cx.spawn(async cx=>{
-        const alive=()=>!view.pluginClosed&&(view.settingsMachine??null)===machine&&view.pluginChecks[plugin.id]?.groups?.[group]===round;
+        const alive=()=>!view.pluginClosed&&(view.settingsMachine??null)===machine&&view.pluginSessions?.[plugin.id]===session&&view.pluginChecks[plugin.id]?.groups?.[group]===round;
         if(!alive())return;
         const context={...viewContext(view,plugin,alive,machine),checkReason:reason};
         // Keep the registry's checking/error boundary, but run only this group.
@@ -427,6 +432,11 @@ export function reloadPlugins(view, cx, only = null, checkingTarget = null, {rea
         const groups={...current.groups,[group]:{...round,loading:false,checked:true}};
         view.pluginChecks[plugin.id]={...current,groups,loading:Object.values(groups).some(state=>state.loading),
           items:plugin.prerequisites.map(pre=>byId.get(pre.id)??{...pre,status:null})};
+        if (setupUnavailable(view,plugin)) {
+          clearPluginForms(view,plugin.id);
+          if (view.listPicker?.key?.startsWith(`${plugin.id}:`)) view.listPicker=null;
+          if (view.pluginConfirm?.plugin===plugin.id) view.pluginConfirm=null;
+        }
         if (group === 'requirements' && items.some(item => item.refreshSections === true))
           for (const pre of plugin.prerequisites.filter(pre => pre.section)) reloadPlugins(view, cx, plugin.id, pre.id);
         cx.notify();
@@ -438,8 +448,8 @@ export function reloadPlugins(view, cx, only = null, checkingTarget = null, {rea
 // Runs fixes one at a time (stopping at the first failure), then re-checks the plugin.
 function runFixes(view, cx, plugin, items, confirmed = false) {
   const machine = view.settingsMachine ?? null, session = view.pluginSessions?.[plugin.id];
-  const current = () => !view.pluginClosed && (view.settingsMachine ?? null) === machine && view.pluginSessions?.[plugin.id] === session;
-  if (view.pluginClosed || view.pluginFixing || !items.length || items.some(item=>view.pluginSettling?.[`${plugin.id}:${item.id}`]) || (items.some(item=>item.fix.confirm||item.fix.requiresEnabled)&&!pluginEnabled(plugin))) return;
+  const current = () => !view.pluginClosed && !setupUnavailable(view,plugin) && (view.settingsMachine ?? null) === machine && view.pluginSessions?.[plugin.id] === session;
+  if (view.pluginClosed || setupUnavailable(view,plugin) || view.pluginFixing || !items.length || items.some(item=>view.pluginSettling?.[`${plugin.id}:${item.id}`]) || (items.some(item=>item.fix.confirm||item.fix.requiresEnabled)&&!pluginEnabled(plugin))) return;
   if(!confirmed && items.length===1 && items[0].fix.confirm) {
     view.pluginConfirm={plugin:plugin.id,item:items[0]};cx.notify();return;
   }
@@ -495,17 +505,26 @@ function selectionDropdown(view, t, plugin, item, { loading = false, only = null
 
 function requirements(view, t, plugin) {
   const check = view.pluginChecks[plugin.id],checking=groupState(check,'requirements');
+  const unavailable = setupUnavailable(view,plugin), checkBusy = unavailable ? Boolean(check?.loading) : Boolean(checking.loading);
   const items = (check?.items ?? plugin.prerequisites.map(p => ({ ...p, status: null }))).filter(item=>!item.section);
   const problems = items.filter(i => i.status && i.status !== 'ready');
   // Manual actions (fix.manual: e.g. opening a system settings page) need a person, so
   // Install all leaves them out.
   const fixable = checking.loading ? [] : items.filter(i => i.fix && !i.fix.manual && !i.fix.confirm && i.status && i.status !== 'ready');
-  const recheck = checkButton(t, `st-plugin-${plugin.id}-recheck`, Boolean(checking.loading),
+  const recheck = checkButton(t, `st-plugin-${plugin.id}-recheck`, checkBusy,
     (_e, cx) => {
-      if(view.pluginFixing||groupState(view.pluginChecks[plugin.id],'requirements').loading)return;
+      if(view.pluginFixing||(unavailable ? view.pluginChecks[plugin.id]?.loading : groupState(view.pluginChecks[plugin.id],'requirements').loading))return;
       for(const item of items)delete view.pluginFixError[`${plugin.id}:${item.id}`];
-      reloadPlugins(view, cx, plugin.id,'requirements', {reason:'manual'}); cx.notify();
-    }, !checking.loading&&!view.pluginFixing);
+      // A whole-connection refusal can have been supplied by any group. Recheck
+      // all setup groups to retire it, without turning this into token verification.
+      // Ordinary Requirements Check remains independent and explicitly manual.
+      reloadPlugins(view, cx, plugin.id,unavailable ? null : 'requirements', {reason:unavailable ? 'automatic' : 'manual'}); cx.notify();
+    }, !checkBusy&&!view.pluginFixing);
+  if (unavailable) return v_flex().id(`st-plugin-${plugin.id}-unavailable`).w_full().p(8).gap(8).rounded(U.radius).bg(t.hover)
+    .child(h_flex().w_full().gap(10).items_center()
+      .child(div().flex_1().text_size(U.font).text_color(t.foreground).child('Requirements'))
+      .child(statusRail(badge(t,'error','Unavailable'),recheck)))
+    .child(description(t,unavailable.detail));
   const installAll = fixable.length > 1
     ? actionButton(t, `st-plugin-${plugin.id}-fix-all`, 'Install all', (_e, cx) => runFixes(view, cx, plugin, fixable), { enabled: !view.pluginFixing })
     : null;
@@ -546,12 +565,16 @@ function requirements(view, t, plugin) {
         .child(statusRail(fixing||(checking.loading&&checking.target===item.id)?workingStatus(t,fixing&&typeof item.fix?.statusLabel==='string'?item.fix.statusLabel:null):item.status ? badge(t, item.status, item.statusLabel ?? undefined).w_full().justify_center() : null,
           div().flex_none().w(KIT.action).flex().justify_end().when(Boolean(fix), el => el.child(fix)),`st-plugin-${plugin.id}-${item.id}-status-rail`));
       const saved = item.saved?.row?.(item), savedContext = viewContext(view,plugin);
-      return v_flex().w_full().gap(8).child(row)
-        .when(Boolean(saved) && pluginEnabled(plugin), el => el.child(removableRow(view, t, `st-plugin-saved-${plugin.id}-${item.id}-row-0`, saved?.label,
-          (_e,cx) => {
-            if(!savedContext.isCurrent())return;
-            runFixes(view,cx,plugin,[{...item,fix:{requiresEnabled:true,confirm:item.saved.confirm?.(savedContext,item),run:context=>item.saved.remove(context,item)}}]);
-          }, !checking.loading&&!fixing&&!view.pluginFixing&&!view.pluginClosed)))
+      const replace = Boolean(saved) && pluginEnabled(plugin) && item.saved.replace === true;
+      const savedRow = saved && pluginEnabled(plugin) ? removableRow(view, t, `st-plugin-saved-${plugin.id}-${item.id}-row-0`, saved.label,
+        (_e,cx) => {
+          if(!savedContext.isCurrent())return;
+          runFixes(view,cx,plugin,[{...item,fix:{requiresEnabled:true,confirm:item.saved.confirm?.(savedContext,item),run:context=>item.saved.remove(context,item)}}]);
+        }, !checking.loading&&!fixing&&!view.pluginFixing&&!view.pluginClosed,
+        replace ? (fixing ? workingStatus(t) : item.status ? badge(t,item.status,item.statusLabel ?? undefined) : null) : null) : null;
+      return v_flex().w_full().gap(8).child(replace ? savedRow : row)
+        .when(replace && Boolean(detail), el => el.child(description(t, detail)))
+        .when(Boolean(savedRow) && !replace, el => el.child(savedRow))
         .when(Boolean(item.form) && pluginEnabled(plugin) && item.form.when?.(item) !== false, el => el.child(actionForm(view, t, plugin, item)));
     })));
 }
@@ -565,8 +588,8 @@ function requirements(view, t, plugin) {
 // as the section's detail.
 function runListAction(view, cx, plugin, item, action, everything = false) {
   const key = sectionKey(plugin, item), machine = view.settingsMachine ?? null, session = view.pluginSessions?.[plugin.id];
-  const current = () => !view.pluginClosed && pluginEnabled(plugin) && (view.settingsMachine ?? null) === machine && view.pluginSessions?.[plugin.id] === session;
-  if (view.pluginFixing || view.pluginSettling?.[key] || view.pluginClosed || !pluginEnabled(plugin)) return;
+  const current = () => !view.pluginClosed && pluginEnabled(plugin) && !setupUnavailable(view,plugin) && (view.settingsMachine ?? null) === machine && view.pluginSessions?.[plugin.id] === session;
+  if (view.pluginFixing || view.pluginSettling?.[key] || view.pluginClosed || !pluginEnabled(plugin) || setupUnavailable(view,plugin)) return;
   view.pluginFixError[key] = null; view.pluginFixing = key;
   cx.spawn(async (cx) => {
     try { if (current()) await action(viewContext(view, plugin, () => current() && view.pluginFixing === key, machine)); }
@@ -660,7 +683,7 @@ function itemsAdd(view, t, plugin, item, canAdd) {
     return menuSurface(t, v_flex()).id(`${id}-panel`).w(KIT.picker.width).p(0).track_focus(focus)
       .on_scroll_wheel((_e, cx) => cx.stop_propagation())
       .when(Boolean(search), el => el.child(pickerHeader(t, `${id}-search-row`, searchField(t, search, { id: `${id}-search` }).flex_1())))
-      .when(tabs.length > 0, el => el.child(h_flex().w_full().flex_none().px(U.gutter).py(4).child(choice(t, `${id}-tab`, tabs, picker.tab, (tab,cx) => {
+      .when(tabs.length > 0, el => el.child(h_flex().w_full().flex_none().px(U.gutter).py(4).child((spec.picker?.tabStyle === 'tabs' ? pickerTabs : choice)(t, `${id}-tab`, tabs, picker.tab, (tab,cx) => {
         if(view.listPicker!==picker||view.pluginClosed||!pluginEnabled(plugin)||!ready||!tabs.some(([id])=>id===tab))return;
         picker.tab=tab;cx.notify();
       }, ready))))
@@ -702,7 +725,7 @@ function listSection(view, t, plugin, item, loading) {
   const detail = view.pluginFixError[key] ?? item.detail ?? item.about;
   const enabled = !locked;
   return v_flex().w_full().gap(8)
-    .child(scopeRow(t, { id, label: def ? machineName(pluginSetting(plugin, def.key)) : spec.scope?.header === true ? machineName(view.settingsMachine ?? null) : spec.scope?.label ?? 'Machine', dropdown: scope, action: add }))
+    .child(scopeRow(t, { id, label: def ? machineName(pluginSetting(plugin, def.key)) : spec.scope?.header === true ? machineName(view.settingsMachine ?? null) : spec.scope?.label ?? 'Machine', dropdown: scope, action: add, separator: spec.scope?.divider === 'items' ? rows.length > 0 : true }))
     .when(Boolean(detail), el => el.child(description(t, detail)))
     // A row's note (an incomplete webhook) follows its name: one line per item.
     .when(rows.length > 0, el => el.child(v_flex().id(id).w_full().gap(U.rowGap)
@@ -717,6 +740,7 @@ function listSection(view, t, plugin, item, loading) {
 }
 
 function prerequisiteSections(view,t,plugin) {
+  if (setupUnavailable(view,plugin)) return [];
   const check=view.pluginChecks[plugin.id];
   return (check?.items??plugin.prerequisites??[]).filter(item=>item.section&&item.list).map(item=>{
     const key=sectionKey(plugin,item),busy=view.pluginFixing===key||view.pluginSettling?.[key]===true,checking=itemState(view,plugin,item.id);
@@ -937,6 +961,7 @@ function card(view, t, plugin) {
         view.pluginConfirm=null;
         clearPluginForms(view, plugin.id);
         if (view.pluginSessions) view.pluginSessions[plugin.id] = {};
+        delete view.pluginChecks[plugin.id];
         setPluginEnabled(plugin, !on);
         if (!on) reloadPlugins(view, cx, plugin.id);
         cx.notify();
@@ -948,7 +973,7 @@ function card(view, t, plugin) {
           .on_click((_e,cx)=>cx.open_url(link.url)))))
     .when(Boolean(plugin.prerequisites?.some(item=>!item.section)), el => el.child(requirements(view, t, plugin)))
     .when(on,el=>el.children(prerequisiteSections(view,t,plugin)))
-    .when(on && shownSettings(view, plugin).length > 0, el => el.child(settingsBlock(view, t, plugin)));
+    .when(on && !setupUnavailable(view,plugin) && shownSettings(view, plugin).length > 0, el => el.child(settingsBlock(view, t, plugin)));
 }
 
 // Cards are reordered the way Usage's are (reorder.js `card`): press a card and drag it.
