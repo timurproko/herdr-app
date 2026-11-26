@@ -49,11 +49,17 @@ Refreshed data is read through existing routing/single-flight/publication order.
 
 Space entry only restores the destination's compatible section snapshot and starts the shared header refresh lifecycle. Do not start PinSwap, derive a new active pin from the selected agent's PR/branch, move a row to the top, or run an unpin transition on return to coordinator. Do not route native space/tab/agent changes through a new click-animation entrypoint. Cached ordering is presentation, not an instruction to refocus an agent.
 
-Keep PR #87's existing chip and fallback robot click handlers, role-aware focus, PinSwap controller, overlay, timing, geometry, confirmation, cancellation and settlement behavior unchanged. A panel click may naturally cause a space change; its already-started click transition must still complete through the existing acknowledgement path, rather than being cancelled by cache entry or started a second time. Space entry itself never creates such a transition. No changes to `pin-swap.js`, new section-motion endpoints, aggregate animation or new measurement machinery are planned.
+Keep PR #87's chip and fallback robot click handlers, role-aware focus, PinSwap controller, overlay, timing, geometry, confirmation, cancellation and settlement behavior owned by that PR. The coordinator chose click-only initially-unpinned support, to be delivered by the #87 worker; consume that dependency and add the enter-unpinned -> click-chip integration test here without editing the controller. A panel click may naturally cause a space change; its already-started click transition must still complete through the existing acknowledgement path, rather than being cancelled by cache entry or started a second time. Space entry itself never creates such a transition. No changes to `pin-swap.js`, new section-motion endpoints, aggregate animation or new measurement machinery are planned.
 
 On direct space entry, the section adapter must not invoke ordinary active-PR projection merely because the selection changed: render the cached section order and refresh in place. Existing click-origin transitions remain owned by their original click handlers; they are not generalized to navigation events. Regression tests distinguish direct selection (zero new pin/motion/reorder) from chip/robot clicks (existing behavior unchanged), including a click followed by its native selection acknowledgement.
 
-### 5. Invalidation rules
+### 5. Main header simplification
+
+The person's added instruction removes the duplicate repository label and its full-URL tooltip/right-click Code / Pull requests / Actions menu from the main header. Keep only Git, its existing title chevron, native header activity and Refresh/Pin/Close tools in both modes. The removed label had no left-click action or dedicated keyboard/focus entry; keyboard access belonged to the popup. Delete that repository popup path, including its keyboard actions; individual PR Open / Copy path menus stay unchanged. Do not relocate the three repository page shortcuts in this change: they will be gone from this panel, explicitly reported for the person to decide.
+
+Repository identity remains the canonical section name/count/chevron, with the existing clipped-name tooltip. Verification uncertainty and its sanitized reason/time remain on PR #88's header activity/refresh feedback rather than a duplicate label or Stale text. Pending count feedback stays on count badges. Update former header/menu tests and docs to assert absence, not merely hide the text.
+
+### 6. Invalidation rules
 
 | Event | Presentation | Reads / action authority |
 | --- | --- | --- |
@@ -68,7 +74,7 @@ On direct space entry, the section adapter must not invoke ordinary active-PR pr
 | Crew/attachment disable or owner/home replacement | Clear affected task-derived snapshots and worker seeds | Ordinary independently loaded repository data retains only its own authority |
 | Hide/close/restart | Hidden snapshots do no work; close/restart discards session presentation | No hidden IO or persisted PR inventory; no cached callback action |
 
-### 6. Dependency/collision integration
+### 7. Dependency/collision integration
 
 PR #87 is the required base and owns chip behavior. Before implementing, re-read its current head and merge status; use latest main after its merge, otherwise its branch. Preserve its chip-click motion and role-target refusals exactly, including robot fallback; do not connect direct space entry to that animation path.
 

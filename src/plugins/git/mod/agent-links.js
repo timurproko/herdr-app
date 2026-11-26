@@ -67,6 +67,14 @@ export class AgentLinks {
     return repo;
   }
 
+  // A full task URL identifies a PR, not the terminal's current directory.
+  // Only an exact live target with a canonical folder lookup can seed entry.
+  cachedRepository(place) {
+    const target=agentTargets().find(t=>t.address===place.terminal && t.cwd===place.cwd && (t.on??null)===(place.on??null));
+    const entry=target && this.entries.get(target.address);
+    return entry?.key===target?.key ? entry.canonicalRepo??null : null;
+  }
+
   displayName(address) {return displayName(agents().find(agent=>agent.address===address));}
 
   rememberBranch(entry) {
@@ -102,7 +110,8 @@ export class AgentLinks {
           await Promise.resolve();
           if(!this.enabled() || !admit(target.address))return;
           if(target.crewPr) {
-            if(this.pending.get(target.address)===request && agentTargets().some(t=>t.key===target.key))this.entries.set(target.address,{...target,repo:target.crewPr.repo,number:target.crewPr.number,at:Date.now()});
+            const canonicalRepo=await this.repository(target,()=>admit(target.address)&&agentTargets().some(t=>t.key===target.key)).catch(()=>null);
+            if(this.enabled() && admit(target.address) && this.pending.get(target.address)===request && agentTargets().some(t=>t.key===target.key))this.entries.set(target.address,{...target,repo:target.crewPr.repo,canonicalRepo,number:target.crewPr.number,at:Date.now()});
             return;
           }
           const folder = JSON.stringify([target.on,target.cwd]);
@@ -116,7 +125,7 @@ export class AgentLinks {
             number = (screen?.code === 0 ? agentPullNumber(screen.stdout, target.app) : null) ?? number;
           }
           if (!this.enabled() || !admit(target.address) || this.pending.get(target.address) !== request || !agentTargets().some(t => t.key === target.key)) return;
-          const entry={...target,repo,number,at:Date.now()};
+          const entry={...target,repo,canonicalRepo:repo,number,at:Date.now()};
           this.entries.set(target.address,entry);this.rememberBranch(entry);
         } finally {
           if (this.pending.get(target.address) === request) this.pending.delete(target.address);

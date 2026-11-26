@@ -60,6 +60,19 @@ Entering an agent space SHALL restore its cached repository section without crea
 - **AND** the resulting native space acknowledgement neither starts a second animation nor cancels the original merely because cached entry ran
 - **AND** Approved remains non-navigating and unavailable targets retain existing refusals
 
+### Requirement: Repository identity belongs to the Git section header
+The main Git header SHALL show only its Git title/chevron, tools and existing refresh/status feedback, not a duplicate repository name or repository popup. Canonical repository identity, counts and folding SHALL remain in the section header. Code, Pull requests and Actions page shortcuts SHALL be removed, not relocated. Existing PR Open and Copy path menus SHALL remain unchanged.
+
+#### Scenario: Worker and coordinator main headers
+- **WHEN** either view renders a known repository, refresh or unverified retained data
+- **THEN** the main header has no repository name, repository URL tooltip or repository context-menu entry by mouse or keyboard
+- **AND** refresh/verification activity and sanitized diagnostics remain on the existing status indicator, with canonical identity/count/chevron in the section header
+
+#### Scenario: Individual pull request actions
+- **WHEN** a user opens a PR row context menu after main-header simplification
+- **THEN** its captured Open and Copy path actions and keyboard handling remain intact
+- **AND** no Code, Pull requests or Actions repository-page shortcuts are offered anywhere in the panel
+
 ## MODIFIED Requirements
 
 ### Requirement: Always-visible Git tab counts

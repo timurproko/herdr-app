@@ -303,7 +303,8 @@ for(const value of ['0','-1','1.5','bad','9007199254740991']){reviewer.labels['c
 reviewer.labels['crew.round']='1';
 reviewer.state='finished';assert.equal(links.related(stagePr,'owner/repo',null,'review').availability,'ended');
 connected=false;assert.equal(links.related(stagePr,'owner/repo',null,'review').availability,'disconnected');
-const offline=calls.length;links.refresh(cx);await tick();assert.equal(calls.length,offline,'Disconnect starts no remote reads');
+const remoteReads=()=>calls.filter(c=>c.options?.on==='pc2'||c.cmd==='hc'&&c.args[1]?.startsWith('pc2/')).length;
+const offline=remoteReads();links.refresh(cx);await tick();assert.equal(remoteReads(),offline,'Disconnect starts no remote reads; canonical warming for local targets stays independent');
 connected=true;reviewer.state='live';assert.equal(links.related(stagePr,'owner/repo',null,'review').availability,'live');
 assert.notEqual(links.related(stagePr,'owner/repo',null,'review').key,roleTarget.key,'Moved branch invalidates captured identity');
 const {AggregatePulls}=cache.get(path.join(folder,'aggregate.js')).namespace;

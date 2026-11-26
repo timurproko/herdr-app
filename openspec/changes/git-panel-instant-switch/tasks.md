@@ -1,6 +1,6 @@
 # Tasks
 
-Implementation is not authorized until this draft plan is approved. Groups map one-to-one, in order, to the PR's Implementation outcomes.
+Implementation is not authorized until this draft plan is approved. Groups map one-to-one, in order, to the PR's Implementation outcomes. Plan approved; the coordinator assigned initially-unpinned click-only controller support to the #87 worker and added main-header label/menu removal as outcome 4.
 
 ## 1. Shared immediate cached repository entry
 
@@ -12,13 +12,18 @@ Implementation is not authorized until this draft plan is approved. Groups map o
 
 - [ ] 2.1 Share the coordinator native header activity/publication path with worker refresh; test no blank frame or body Loading through held successful reads, failures, cooldown and coordinator return, without changing the existing visual treatment.
 - [ ] 2.2 Preserve task-count provenance, full repository totals and per-tab pagination/cursors in their correct scopes; add count/loading/accessibility and page-depth regressions, and document cached-task seeds and coherent refresh in README.md and docs/TESTING.md.
-- [ ] 2.3 Preserve PR #87 chip/robot click handlers and existing PinSwap behavior without extending or unifying them with space entry; test direct entry starts no pin/motion/reorder and click-origin navigation still completes its existing transition through native space acknowledgement without duplication or cancellation by cache restore.
+- [ ] 2.3 Consume PR #87's click-only initially-unpinned controller support without editing PinSwap here; test entry starts no pin/motion/reorder, then clicking another PR chip animates it to the top through existing native acknowledgement, without cache restore duplication/cancellation; retain robot fallback and role guards.
 
 ## 3. Identity-safe cache and lifecycle integration
 
 - [ ] 3.1 Complete invalidation wiring for machine/repository/cwd/routing changes, authoritative absence, owner/home/provider/Git generations and task/history eligibility; add held-reply and away-and-back tests proving no incompatible rows, totals, agent targets or stale resurrection.
 - [ ] 3.2 Enforce the combined retained-context bounds and independent reader/action authority, with tests for eviction, hidden/disabled/offline reads, empty snapshots and no inventory persistence; update docs/ARCHITECTURE.md with exact lifetime and invalidation rules.
 - [ ] 3.3 Extend shared native-render fixtures and geometry/budget guards for warm/cold sections, cached counts, page/reveal/fold/anchor retention, no entry-driven pin/reorder and unchanged click-only animation; confirm focused suites pass without render-time notification, allocation or IO and without weakening upstream tests.
+
+## 4. Plain main header with section-owned repository identity
+
+- [ ] 4.1 Remove the main-header repository label/URL tooltip and repository popup including keyboard/Code/Pull requests/Actions actions; test both modes show only Git/chevron/tools/status and individual PR menus remain intact.
+- [ ] 4.2 Keep canonical identity/count/folding in the shared section header and verification/loading feedback on existing activity/count indicators; update README.md, relevant owner docs and former header/menu tests, explicitly documenting that repository page shortcuts are removed, not relocated.
 
 ## Workflow follow-up
 
