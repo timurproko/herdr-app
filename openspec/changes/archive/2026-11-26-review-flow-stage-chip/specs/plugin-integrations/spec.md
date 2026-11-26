@@ -96,6 +96,44 @@ Build and Review chips SHALL be dimmed and non-clickable when their target has e
 - **THEN** the managed stage is still shown dimmed with an unavailable-target explanation
 - **AND** the app does not claim to know that an unobserved terminal ended
 
+#### Scenario: Retained coordinator target loses live membership
+- **WHEN** a previously verified coordinator target ends or its machine disconnects while its PR remains displayed, including historical-only rows
+- **THEN** the same-home remembered identity supplies the known ended or disconnected explanation without requiring current live task membership for presentation
+- **AND** stale membership and remembered identity authorize no focus or reads, and another home cannot borrow that identity
+
+#### Scenario: Coordinator target reconnects before verification
+- **WHEN** the target becomes live again but its coordinator membership is still unverified
+- **THEN** the chip stays dimmed and explains that the role target is unavailable
+- **AND** only a fresh verified exact live task binding restores its focus action
+
+### Requirement: Agent navigation shares pin motion
+Build and Review chips and fallback robots SHALL share one navigation-first pin-motion controller in ordinary and coordinator views, with or without an existing pin. The clicked row SHALL rise to the ordinary pinned position after destination selection resolves, using native 320ms motion and guarded settlement. Coordinator handoff SHALL retain only bounded inert presentation, not add a permanent coordinator pin or infer read authority.
+
+#### Scenario: Ordinary click with an existing pin
+- **WHEN** a live Build or Review chip or fallback robot links another agent PR and the user clicks it from a pinned list
+- **THEN** focus changes immediately and the existing row slots are retained while the destination resolves
+- **AND** the clicked row moves to the pinned position, the former pin returns to the list and affected rows move without a final jump
+
+#### Scenario: Ordinary click before any pin exists
+- **WHEN** the user clicks a live Build or Review chip or fallback robot from an initially unpinned ordinary list
+- **THEN** the same controller moves that row to the pinned position with no former-pin return
+- **AND** timing, overlay, affected-row motion, cancellation and settlement remain the same as for a pinned list
+
+#### Scenario: Coordinator click into another agent space
+- **WHEN** the user clicks a live Build or Review chip or fallback robot in a verified coordinator list
+- **THEN** focus changes immediately to that exact agent and a bounded inert source presentation retains the clicked row's measured origin
+- **AND** the same controller moves that row to the destination's ordinary pinned position after selection resolves, without a permanent active pin in the coordinator list
+- **AND** the destination independently reads its repository inventory and totals rather than treating the coordinator subset as complete
+
+#### Scenario: Reviewer on its base branch
+- **WHEN** a clicked reviewer has a matching full crew.pr but remains on the base branch without a PR footer
+- **THEN** that current label resolves the destination pin for the animation without a fabricated head-branch match or transcript read
+
+#### Scenario: Cancelled or ghost navigation
+- **WHEN** a destination cannot resolve within three seconds, context or Open/Closed changes, scrolling cancels the motion, or a different target is selected
+- **THEN** the existing controller cancels retention without replaying focus or committing a false settled pin
+- **AND** moving ghost rows and retained coordinator presentation never become navigation or worker authority
+
 ## MODIFIED Requirements
 
 ### Requirement: Git trailing alignment with Spaces

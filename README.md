@@ -390,19 +390,22 @@ failed pages preserve existing rows, and the end of the list stops fetching.
 Expanded lists are retained across webhook refreshes; manual Refresh or a
 machine/folder change starts again at 10. Same-folder agent/tab/space switches
 retain repository metadata, counts, rows, pagination and in-flight GitHub requests;
-only the agent-specific active PR link changes (A1 and Claude Code read their selected session footer).
+only the agent-specific active PR link changes (managed Crew terminals use their
+full `crew.pr` identity; A1 and Claude Code otherwise read their selected session footer).
 The current pin stays steady until that read resolves; an unchanged PR never
 unpins/re-pins. Ordinary selection changes use a native 120ms opacity ease.
-Clicking a list PR's robot opens the agent tab **immediately**. The panel retains
+Clicking a list PR's Build/Review chip or fallback robot opens the agent tab
+**immediately**. The panel retains
 the original row slots while the destination footer/selection resolves, including
 when a repository refresh replaces the underlying rows. Once confirmed, native
-320ms motion moves the clicked PR into the pinned slot, returns the former pin
-to the list and slides any affected intermediate rows. The real layout commits
+320ms motion moves the clicked PR into the pinned slot, returns a former pin
+when one exists and slides affected intermediate rows. An initially unpinned
+list uses the same controller and timing, with no former pin to return. The real layout commits
 only after motion settles, using the latest refreshed PR facts. There is no
 optimistic pin change or delayed navigation. Geometry uses measured heights and
 current scroll/zoom; pagination and scroll remain intact. Geometry lives as long
-as the native element IDs, not the repository data: resolving a Git root cancels
-pending motion but must not discard size measurements that the host only emits
+as the native element IDs, not the repository data: a genuine repository reset
+cancels pending motion but must not discard size measurements that the host only emits
 when dimensions change. Only one arming and
 one cleanup callback run (no JavaScript frame loop). A bounded 3-second wait
 prevents an unavailable destination from freezing the old presentation.
@@ -411,7 +414,13 @@ rows even when its worktree/folder needs a fresh Git-root lookup; old-folder
 requests are invalidated first. Unrelated machine/folder or Open/Closed changes,
 scrolling, a mismatching destination or a newer selection cancel retention/motion
 without undoing navigation. Unmeasured rows and cross-repository switches safely
-use the normal pin reveal. Ordinary terminals keep the same list and
+use the normal pin reveal. A verified coordinator chip or robot click carries
+a bounded inert snapshot of its grouped list into the destination while the
+clicked row rises to the ordinary pinned slot; coordinator views themselves
+still have no permanent active pin. This uses the same `PinSwap.start()` and
+native overlay, not a second animator. A reviewer's valid `crew.pr` selects its
+PR even when its shell remains on the base branch or has no PR footer.
+Ordinary terminals keep the same list and
 use the existing explicit-tab/branch matching when available. An explicitly linked active PR older
 than the first page gets one targeted lookup so it can still be pinned, without
 fetching intermediate pages. The former Changes tab, diff
@@ -620,7 +629,11 @@ reviewer. **Approved** has no agent action: clicking it opens the PR through the
 row, even while checks are pending or failed. There is no approved/CI-running
 stage or Review check CI chip. Build/Review chips dim when their exact target
 ends, is unavailable, or its machine is disconnected, and explain why on hover;
-clicking a dimmed chip does nothing. The chips use the app palette's amber,
+clicking a dimmed chip does nothing. Coordinator rows retain their last verified
+same-home target only for explanations after membership becomes stale or a task
+finishes. That bounded runtime memory cannot focus an agent, start reads, cross
+homes or restore authority on reconnect; fresh live membership is required.
+The chips use the app palette's amber,
 purple and green tokens and keep the same bounded title reservation in every row.
 Motion previews never navigate. The no-label robot retains its original 24px hit
 target and immediate pin-navigation behavior.

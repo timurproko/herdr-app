@@ -466,6 +466,10 @@ for(const mode of ['ordinary','coordinator'])for(const state of ['open','closed'
   }
   taskContext=liveContext;group.context=liveContext;group.entries.get(row.key).link.targets=[{terminal:address}];model.refresh(cx,admit);await tick();reads=calls.length;
   const restored=chip();assert.equal(restored.kids[0],role==='build'?'Build':'Review');assert.equal(restored.attrs.opacity,undefined);assert.equal(Boolean(restored.attrs.on_click),!ghost);assert.equal(Boolean(restored.attrs.role),!ghost);assert.equal(restored.attrs.tooltip,undefined);nonAgentChecks(true);assert.equal(calls.length,reads);
+  if(mode==='coordinator') {
+    assert.ok(group.stagePresentations.size>0);group.presentationGeneration='retired';group.shown=()=>false;group.sync(cx);
+    assert.equal(group.stagePresentations.size,0,'Enable/provider generation replacement clears remembered target explanations');assert.equal(calls.length,reads);
+  }
   console.log(`REASON_MATRIX ${mode}/${state}/${ghost?'ghost':'row'}/${remote?'pc2':'local'}/${variant}: ended=${ended}; disconnected=${remote?'on pc2, not connected':'not applicable to local machine'}; reconnected=${restored.kids[0]}`);
 }
 taskContext=null;
