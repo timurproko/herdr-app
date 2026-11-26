@@ -6,6 +6,7 @@ import {spawn,execFileSync} from 'node:child_process';
 import {build,project} from '../../tools/build.mjs';import {deploy} from '../../tools/deploy.mjs';
 assert.ok(process.platform==='win32'&&process.argv.includes('--run'),'Explicit Windows --run required');
 const arg=(key,fallback)=>{const at=process.argv.indexOf(key);return at<0?fallback:process.argv[at+1];};
+const withGit=process.argv.includes('--git');
 const output=path.resolve(arg('--output')),zoom=Number(arg('--zoom','1'));assert.ok(path.relative(project,output).startsWith('..'));assert.ok([1,1.3].includes(zoom));
 const appBin=path.resolve(process.env.HERDR_APP_BIN),binRoot=path.resolve(path.dirname(appBin),'..'),coreBin=path.join(process.env.LOCALAPPDATA,'Programs/herdr-core/herdr-core.exe');
 const digest=x=>createHash('sha256').update(x).digest('hex'),expected='e6e78e1bec1f47bd0d94dbc872a5670f4ac9c8f6740210b62365ab8b28f897c1',archive=path.join(binRoot,'app.tar.gz');
@@ -22,7 +23,7 @@ const put=(rel,value)=>{const file=path.join(home,rel);fs.mkdirSync(path.dirname
 put('settings.json',{core:coreBin,telemetry:false,zoom});put('update-notes.json',{last_run:'0.1.18',presented:['0.1.18']});
 const initial=['coordinator','xrbuild','myworkflows','combined','independent','another','foreign'];
 put('shared.json',{layout:'OrderFixture','frame.welcomed':'skipped','fixture.order':initial,'custom.plugins':{git:{enabled:true},files:{enabled:false},usage:{enabled:false},crew:{enabled:false}},'space.colors':{coordinator:'#228855'}});
-put('layouts/OrderFixture.json',{id:'root',type:'row',theme:'Custom',titlebar:'system',children:[{id:'spaces',type:'block',size:{px:300},content:{mod:'custom-spaces'}},{id:'note',type:'block',content:{mod:'custom-order-note'}}]});
+put('layouts/OrderFixture.json',{id:'root',type:'row',theme:'Custom',titlebar:'system',children:[{id:'spaces',type:'block',size:{px:300},content:{mod:'custom-spaces'}},{id:'note',type:'block',content:{mod:'custom-order-note'}},...(withGit?[{id:'git',type:'block',size:{px:460},content:{mod:'custom-changes'}}]:[])]});
 const fixture=`import * as native from './native-host.js';
 const names={coordinator:'Coordinator',xrbuild:'xrbuild',myworkflows:'myworkflows',combined:'Combined projects',independent:'Independent space',another:'Another coordinator',foreign:'Another child'};
 export const groups=()=>native.shared('fixture.order').map(id=>({id,name:names[id],named:true,machine:null,active:id==='coordinator'}));
@@ -40,15 +41,32 @@ setShared('fixture.spaces',{order:spaces().map(s=>s.id),visible:this.visibleRows
 `);
 put('mods/custom-order-note/mod.json',{place:'none'});for(const f of ['host.js','compatibility.js'])put('mods/custom-order-note/'+f,fs.readFileSync(path.join(home,'mods/custom-spaces',f==='host.js'?'native-host.js':f),'utf8'));
 put('mods/custom-order-note/main.js',`import {View,div} from 'gpui-kit';import {theme} from './host.js';export default class Note extends View{render(){const t=theme();return div().size_full().bg(t.background).p(32).text_color(t.foreground).child('Disposable synthetic child-order proof · production Spaces drag and acknowledged order controller · no real terminals or space commands');}}`);
+if(withGit) {
+ const dir=path.join(home,'mods/custom-changes');for(const [from,to]of [['host.js','native-host.js'],['plugins.js','native-plugins.js'],['main.js','changes-view.js']])fs.renameSync(path.join(dir,from),path.join(dir,to));
+ put('mods/custom-changes/fixture.js',fixture+`
+export const repositories=[['xrbuild','xrbuild'],['myworkflows','myworkflows'],['alpha','combined'],['zeta','combined'],['finished',null]];
+export const context=()=>({kind:'tasks',scope:'fixture-home',parent:'coordinator',machine:null,children:['xrbuild','myworkflows','combined'].map(child=>({child})),stale:false,loading:false,links:repositories.flatMap(([repo,space])=>[1,2].map(number=>({url:'https://github.com/fixture/'+repo+'/pull/'+number,space,task:repo+number,terminal:space?repo+number:null,historical:!space})))});
+`);
+ put('mods/custom-changes/host.js',`export * from './native-host.js';import {groups} from './fixture.js';export const spaces=groups,panes=()=>[],terminals=()=>[],machines=()=>[];export const props=()=>({});export const layout=()=>({id:'panel',children:[{id:'panel-body',active:'changes'}]});export const exec=()=>{throw Error('No GitHub/subprocess reads');};export const hc=exec;export const run=exec;`);
+ put('mods/custom-changes/plugins.js',`export * from './native-plugins.js';import {context} from './fixture.js';export const pluginPullContext=()=>context();export const pluginEvent=()=>{};`);
+ put('mods/custom-changes/location.js',`export const location=()=>({space:'coordinator',cwd:'/fixture',on:null,terminal:'owner'});export const namedPullNumber=()=>null;`);
+ put('mods/custom-changes/main.js',`import Changes from './changes-view.js';import {AggregatePulls,taskPullLink} from './aggregate.js';import {pullRow} from './pulls.js';import {context,repositories} from './fixture.js';import {readTextFile,setShared,theme} from './host.js';
+export default class Fixture extends Changes{init(p,cx){this.resetRepository();this.foldedRepositories=new Set(['fixture/finished']);this.view='open';this.context='tasks:fixture-home';this.enrollmentFocus=cx.focus_handle();this.notices={sync(){},presentation(){},stop(){}};this.agentLinks={related(){return null;}};this.aggregate=new AggregatePulls({shown:()=>true});const a=this.aggregate;a.context=context();a.presentationGeneration='fixture';
+for(const source of context().links){const link=taskPullLink(source.url);link.targets=[source];const pr={...pullRow({number:link.number,title:link.repo.split('/')[1]+' task '+link.number,url:link.url,state:link.number===1?'OPEN':'MERGED',author:{login:'fixture'},createdAt:new Date(Date.now()-3600000).toISOString(),mergedAt:link.number===2?new Date(Date.now()-1000).toISOString():null,body:'',labels:[],statusCheckRollup:[]},'fixture'),repo:link.repo,key:link.key};a.entries.set(link.key,{link,pr,dirty:false,error:null,completedAt:Date.now()-1000});}a.published=new Map(a.entries);a.lastCounts=new Map(a.entries);
+cx.timer.every(100,cx=>cx.spawn(async view=>{const c=JSON.parse(await readTextFile(${JSON.stringify(control)}));if(c.gitView)this.view=c.gitView;setShared('fixture.git',{view:this.view,order:a.repositories(),sections:this.repositorySections().map(s=>s.repo),counts:a.counts(),folded:[...this.foldedRepositories]});view.notify();}));}shown(){return true;}render(cx){return this.renderAggregate(cx,theme());}}
+`);
+}
 const sleep=ms=>new Promise(r=>setTimeout(r,ms)),app=args=>execFileSync(appBin,args,{env,encoding:'utf8',timeout:20000}),state=()=>JSON.parse(fs.readFileSync(path.join(home,'shared.json')));
 const log=fs.openSync(path.join(root,'app.log'),'w'),child=spawn(appBin,[],{env,stdio:['ignore',log,log]});
 const receipt={version,zoom,home,pid:child.pid,session:env.HC_SESSION,archiveSha256:expected,executableSha256:digest(archived),frames:[],synthetic:true,interaction:'Production controller gestures and native pixels; synthetic acknowledged model, not OS pointer or real native-space persistence proof'};
 const wait=async fn=>{for(let i=0;i<180;i++){await sleep(100);assert.equal(child.exitCode,null);try{if(fn(state()))return;}catch{}}throw Error('Fixture timed out');};let id=0;
 const command=async c=>{fs.writeFileSync(control,JSON.stringify({...c,id:++id}));await wait(s=>s['fixture.ack']===id);};
-const capture=async name=>{await sleep(300);const file=path.join(root,name+'.png');app(['shot',file]);receipt.frames.push({name,file,spaces:state()['fixture.spaces']});assert.deepEqual(JSON.parse(app(['status'])).errors,[]);};
+const capture=async name=>{await sleep(300);const file=path.join(root,name+'.png');app(['shot',file]);receipt.frames.push({name,file,spaces:state()['fixture.spaces'],git:state()['fixture.git']});assert.deepEqual(JSON.parse(app(['status'])).errors,[]);};
 try{
- await wait(s=>s['fixture.spaces']);await capture('before');
+ await wait(s=>s['fixture.spaces']&&(!withGit||s['fixture.git']));await capture('before');
+ if(withGit){assert.deepEqual(state()['fixture.git'].order,['fixture/xrbuild','fixture/myworkflows','fixture/alpha','fixture/finished','fixture/zeta']);await command({kind:'view',gitView:'closed'});await wait(s=>s['fixture.git'].view==='closed');await capture('before-closed');await command({kind:'view',gitView:'open'});}
  await command({kind:'drag',source:'xrbuild',target:'combined'});await capture('drag-down');await command({kind:'drop'});await wait(s=>!s['fixture.spaces'].pending);assert.deepEqual(state()['fixture.order'].slice(0,4),['coordinator','myworkflows','combined','xrbuild']);await capture('after-down');
+ if(withGit){await wait(s=>s['fixture.git'].order[0]==='fixture/myworkflows');assert.deepEqual(state()['fixture.git'].counts,{open:5,closed:5});assert.deepEqual(state()['fixture.git'].folded,['fixture/finished']);await command({kind:'view',gitView:'closed'});await wait(s=>s['fixture.git'].view==='closed');await capture('after-down-closed');await command({kind:'view',gitView:'open'});}
  await command({kind:'drag',source:'xrbuild',target:'myworkflows'});await capture('drag-up');await command({kind:'drop'});await wait(s=>!s['fixture.spaces'].pending);assert.deepEqual(state()['fixture.order'],initial);await capture('after-up');
  await command({kind:'fold'});await command({kind:'drag',source:'coordinator',target:'foreign'});await capture('drag-coordinator-collapsed');await command({kind:'drop'});await wait(s=>!s['fixture.spaces'].pending);assert.deepEqual(state()['fixture.order'],['independent','another','foreign','coordinator','xrbuild','myworkflows','combined']);await capture('after-coordinator');
  await command({kind:'compact'});await capture('compact');receipt.commands=state()['fixture.commands'];receipt.status=JSON.parse(app(['status']));assert.equal(receipt.status.zoom,zoom);

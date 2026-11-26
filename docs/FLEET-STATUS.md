@@ -99,6 +99,24 @@ text; the existing native working bulb pulses in the Git header during updates.
 Cold first reads use top-left Loading below Open/Closed and withhold partial successes.
 Actionable repository notices remain visible, and retained display grants no reads/actions.
 
+## Coordinator repository section order
+
+The generic verified task-PR contribution includes the live task's exact native
+child-space ID. Git associates canonical task PR repositories with those IDs in
+the current machine/home scope; it never guesses from project labels, titles or
+shell paths. A child whose live task links name exactly one distinct repository
+can rank that repository. Multi-repository combined children cannot. The earliest
+matching native child wins when several children share a repository. Unmatched
+sections, including finished-only repositories with no remaining child, follow in
+the existing baseline relative order (currently alphabetical). Both tabs and the
+enrollment inventory use this same projection; PR-row order is unchanged.
+
+Acknowledged sibling changes reproject the section order from native model facts
+without a GitHub read, scope reset or new timer. Compatible warm/stale in-memory
+facts retain associations solely for presentation; absent native children cannot
+rank a section. Another machine/home/provider generation cannot borrow them, and
+ordering grants no reads, navigation or persisted inventory.
+
 ## Project-space placement v1
 
 Crew PR #22 keeps `crew.home` as the home tag and publishes versioned placement

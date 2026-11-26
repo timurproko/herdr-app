@@ -4,7 +4,7 @@ const KEY='custom.crew.worker-space',SETTING='separateProjectSpaces';
 const capability={capability:'worker-space-local-set',version:1,modes:['combined','per-project'],explicitHome:true};
 const reply=(stdout,code=0)=>({code:0,stdout:JSON.stringify({code,stdout:Buffer.from(stdout).toString('base64'),stderr:'',timed_out:false}),stderr:''});
 async function fixture({intent=false,remote=true,cap=capability,persisted,holdKind}={}) {
- let now=100000,online=remote,mode=new Map([['local|C:/fixture/local','combined'],['pc2|C:/fixture/remote','combined']]),refused=new Set(),hold=null;
+ let now=100000,online=remote,mode=new Map([['local|C:/fixture/local','combined'],['pc2|C:/fixture/remote','combined']]),refused=new Set(),busy=new Set(),hold=null;
  const state=persisted??{'custom.plugins':{crew:{enabled:true,settings:{[SETTING]:intent}}}},calls=[],jobs=[];
  const cx={spawn(fn){const p=fn(cx);jobs.push(p);return p;},notify(){}};
  const host={checking:()=>false,shared:k=>state[k],setShared:(k,v)=>state[k]=v,notify(){},
@@ -16,7 +16,7 @@ async function fixture({intent=false,remote=true,cap=capability,persisted,holdKi
    const home=/\$env:CREW_HOME = '([^']+)'/.exec(script)?.[1];
    let kind;if(script.includes('--capabilities --json'))kind='capability';else if(script.includes('status --json --view fleet'))kind='discover';else if(script.includes('--set-local'))kind='set';else if(script.includes('& node $main config worker-space'))kind='read';else throw Error('Unexpected script');
    calls.push({kind,machine,home,script});
-   if(kind===holdKind && hold){const fn=hold;hold=null;await fn({kind,machine,home});}
+   if((kind===holdKind || holdKind==='readback' && kind==='read' && calls.filter(c=>c.kind==='read'&&c.machine===machine&&c.home===home).length===2) && hold){const fn=hold;hold=null;await fn({kind,machine,home});}
    if(kind==='capability')return reply(JSON.stringify({identity:'fixture-'+machine,code:cap===null?2:0,stdout:JSON.stringify(cap)}));
    if(kind==='discover')return reply(JSON.stringify({home:machine==='local'?'C:/fixture/local':'C:/fixture/remote'}));
    const key=machine+'|'+home;assert.ok(mode.has(key),'Exact known home only');
@@ -25,6 +25,7 @@ async function fixture({intent=false,remote=true,cap=capability,persisted,holdKi
    assert.ok(!/CREW_TERMINAL|HC_TERMINAL_ID|crew\.json|start|end|takeover/.test(script),'No ownership/configuration workaround');
    if(!holdKind && hold){const fn=hold;hold=null;await fn({key,desired});}
    const envelope={capability:'worker-space-local-set',version:1,home,mode:desired,changed:mode.get(key)!==desired};
+   if(busy.has(key))return reply(JSON.stringify({...envelope,ok:false,mode:null,changed:false,error:{code:'registry-busy'}}),3);
    if(refused.has(key))return reply(JSON.stringify({...envelope,ok:false,mode:null,changed:false,error:{code:'invalid-registry',message:'private detail not for UI'}}),2);
    mode.set(key,desired);return reply(JSON.stringify({...envelope,ok:true}));
   }};
@@ -33,7 +34,7 @@ async function fixture({intent=false,remote=true,cap=capability,persisted,holdKi
  const drain=async()=>{while(jobs.length)await Promise.all(jobs.splice(0));};
  const step=async(n=1)=>{for(let i=0;i<n;i++){api.r.pluginEvent('workspace.settings.refresh',{cx});await drain();now+=250;}};
  const set=value=>api.r.setPluginSetting(api.r.pluginById('crew'),SETTING,value);
- return {state,calls,mode,refused,cx,step,set,drain,api,pulse:async()=>{api.r.pluginEvent('workspace.settings.refresh',{cx});await jobs.at(-1);},advance:n=>now+=n,online:v=>online=v,hold:fn=>hold=fn,restart:async()=>{api=await load();},board:()=>state[KEY]};
+ return {state,calls,mode,refused,busy,cx,step,set,drain,api,pulse:async()=>{api.r.pluginEvent('workspace.settings.refresh',{cx});await jobs.at(-1);},advance:n=>now+=n,online:v=>online=v,hold:fn=>hold=fn,restart:async()=>{api=await load();},board:()=>state[KEY]};
 }
 // On: every known home, not selected machine; two separate homes on one machine.
 {
@@ -88,8 +89,17 @@ for(const cap of [null,{...capability,version:2},{...capability,explicitHome:fal
  const f=await fixture({intent:true});await f.step(15);const count=f.calls.length;await f.restart();await f.step(15);assert.ok(f.calls.length>count);assert.ok([...f.mode.values()].every(m=>m==='per-project'));
  f.api.r.setPluginEnabled(f.api.r.pluginById('crew'),false);const before=f.calls.length;await f.step(5);assert.equal(f.calls.length,before);
 }
+// A finished busy refusal gets one concise failure, then clears after readback;
+// several refused homes on one machine never expand into several row lines.
+{
+ const f=await fixture({intent:true});f.busy.add('pc2|C:/fixture/remote');await f.step(15);
+ assert.equal(f.board().statuses.length,1);assert.equal(f.board().statuses[0].detail,'Crew is busy');assert.notEqual(f.board().statuses[0].label,'Pending');
+ f.busy.clear();f.advance(10000);await f.step(20);assert.equal(f.board().statuses.length,0);
+ f.mode.set('local|C:/fixture/custom','combined');f.api.p.observeWorkerHome(null,'C:/fixture/custom');f.refused.add('local|C:/fixture/custom');f.refused.add('local|C:/fixture/local');f.mode.set('local|C:/fixture/local','combined');f.advance(10000);await f.step(20);
+ assert.equal(f.board().statuses.length,1);assert.equal(f.board().statuses[0].machine,'This computer');
+}
 // Each slow phase stays quiet and resumes without a Settings close/click.
-for(const holdKind of ['capability','discover','read','set']) {
+for(const holdKind of ['capability','discover','read','set','readback']) {
  const f=await fixture({intent:true,holdKind});let release;
  f.hold(()=>new Promise(r=>release=r));f.api.r.pluginEvent('workspace.settings.refresh',{cx:f.cx});
  for(let i=0;i<100&&!release;i++)await Promise.resolve();

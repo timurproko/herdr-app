@@ -1012,8 +1012,15 @@ Real permission/authentication refusals still identify the repository and accoun
 network errors, rate limits and timeouts keep their existing notices.
 The panel keeps its normal Git title and controls, without an extra task heading
 or a generic incomplete-list notice. PR rows are grouped under repository headers
-using the same fold chevron and row style as Spaces machine headers. Click a
-header to fold just that repository; sections start expanded and remember their
+using the same fold chevron and row style as Spaces machine headers. Sections
+follow the current connected child order in Spaces, including after a sibling drag.
+Matching uses each canonical task PR repository and its verified live worker's
+exact native child space, never the space/project name or selected folder. A child
+with several repositories supplies no unique match; finished-only repositories
+without a matching child follow the matched ones in their previous relative order.
+One repository matching several children uses the earliest. PR order within each
+section, counts and folds stay unchanged, and ordering starts no additional reads.
+Click a header to fold just that repository; sections start expanded and remember their
 state locally, including panel reopen/reload. Expanded and folded headers show
 the canonical repository name, selected-tab task PR count and chevron. The number
 uses Agents' muted right-aligned group count and the same number-to-chevron gap;

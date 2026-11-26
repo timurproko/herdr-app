@@ -1226,7 +1226,7 @@ on, off, capability missing, one refused home, offline then reachable, a later h
 and restart persistence. These include several homes per machine, strict v1
 success/refusal parsing, superseded intent serialization, committed-but-lost reply
 readback, bounded catalog overflow and no disabled follow-ups. Held capability,
-discovery, read and set phases assert quiet progress and eventual completion;
+discovery, read, set and readback phases assert quiet progress and eventual completion;
 a lost read continuation is replaced after its command lease and its late reply
 cannot write. No permanent stall is reproduced in these cases. No installed Crew,
 real registry, coordinator or credential is used.
@@ -1272,6 +1272,17 @@ in both directions, collapsed coordinator dragging and compact rail screenshots.
 Its production drag/commit controller operates a synthetic acknowledged model,
 not live terminals or real native-space persistence; receipts assert desktop/Core
 shutdown. Native persistence relies on the existing public space.move contract.
+
+`node --experimental-vm-modules tests/git-space-order.test.mjs` exercises the real
+aggregate and controller section/reveal projection: canonical verified task-child
+associations, current native sibling order, duplicate links, multiple children for
+one repository, combined/history unmatched tails, stale/warm/recreated contexts,
+machine/home/generation isolation, both tabs and stable folds/counts/PR order.
+It asserts no subprocess, GitHub or native-write operation. The real Crew source's
+exact task-to-child propagation is covered by `tests/fleet-project-spaces.test.mjs`.
+Add `--git` to the native space-order fixture to capture both actual panels before
+and after reorder in Open and Closed at both zooms; counts stay 5/5 and the saved
+finished-repository fold stays closed. All membership/PR facts remain synthetic.
 
 
 `tests/fleet-diagnostics.test.mjs` loads the packaged Crew provider/transport and

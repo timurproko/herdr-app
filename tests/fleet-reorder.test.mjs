@@ -41,6 +41,8 @@ for(const [source,target,expected]of [['f1','f3',['f2','f3','f1']],['f3','f1',['
  const parentCapture=captureSpaceBlock(all,links,'c');assert.deepEqual(parentCapture.sources,['c',...expected]);
  assert.deepEqual(planBlockDrop(all,links,'c','end',parentCapture).filter(id=>parentCapture.sources.includes(id)),['c',...expected],'Parent carries new order');
 }
+all=initial();links=relations();captured=captureSpaceBlock(all,links,'f1');
+[all[3],all[5]]=[all[5],all[3]];assert.equal(planBlockDrop(all,links,'f1','f3',captured),null,'Concurrent sibling order before release rejects the captured gesture');
 for(const mutation of ['removed','binding','concurrent']) {
  all=initial();links=relations();commands=[];errors=[];captured=captureSpaceBlock(all,links,'f1');wanted=planBlockDrop(all,links,'f1','f3',captured);commit.start('f1',captured,wanted);
  if(mutation==='removed')links=links.filter(l=>l.child!=='f2');else if(mutation==='binding')links[1]={...links[1],binding:'new-owner'};else all.reverse();

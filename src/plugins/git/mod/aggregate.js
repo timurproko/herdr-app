@@ -1,6 +1,6 @@
 // Explicit task context, never a fake Git working directory. The panel's bounded
 // state/check safety reads share this queue, including settled/enrolled open rows.
-import { exec, run } from './host.js';
+import { exec, run, spaces } from './host.js';
 import { pluginPullContext, pluginEvent, sidebarPanelEnabled } from './plugins.js';
 import { location } from './location.js';
 import { Publication, PresentationMemory } from './presentations.js';
@@ -9,6 +9,21 @@ export function taskPullLink(url) {
   const match=/^https:\/\/github\.com\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\/pull\/([1-9]\d*)\/?$/.exec(url??'');
   const number=Number(match?.[2]);
   return match && !match[1].split('/').some(part=>part==='.' || part==='..') && Number.isSafeInteger(number) ? {repo:match[1].toLowerCase(),number,key:`${match[1].toLowerCase()}#${number}`,url:`https://github.com/${match[1]}/pull/${number}`} : null;
+}
+// Presentation only: exact verified live task membership, never child names or
+// folder probes. Preserve baseline order for multi-repository/unmatched children.
+export function repositorySpaceOrder(repositories,context,entries,all) {
+  const children=new Set((context?.children??(context?.child?[{child:context.child}]:[])).map(c=>c.child)),members=new Map();
+  for(const entry of entries)for(const target of entry.link.targets)
+    if(!target.historical && target.terminal && children.has(target.space)) {
+      const repos=members.get(target.space)??new Set();repos.add(entry.link.repo);members.set(target.space,repos);
+    }
+  const ranks=new Map();
+  for(const space of all)if((space.machine??null)===(context?.machine??null) && children.has(space.id)) {
+    const repos=members.get(space.id);if(repos?.size!==1)continue;
+    const repo=[...repos][0];if(!ranks.has(repo))ranks.set(repo,ranks.size);
+  }
+  return [...repositories].sort((a,b)=>(ranks.get(a)??Number.MAX_SAFE_INTEGER)-(ranks.get(b)??Number.MAX_SAFE_INTEGER));
 }
 const HISTORY_MS = 24 * 60 * 60 * 1000;
 const MISSING_LIVE_MS = 5 * 60 * 1000;
@@ -63,7 +78,7 @@ export class AggregatePulls {
       return true;
     }
     const links=new Map();
-    for(const source of context.links) {const link=taskPullLink(source.url);if(!link)continue;const entry=links.get(link.key)??{...link,targets:[]};entry.targets.push({terminal:source.terminal,task:source.task,historical:source.historical===true});links.set(link.key,entry);}
+    for(const source of context.links) {const link=taskPullLink(source.url);if(!link)continue;const entry=links.get(link.key)??{...link,targets:[]};entry.targets.push({terminal:source.terminal,task:source.task,historical:source.historical===true,...(typeof source.space==='string'?{space:source.space}:{})});links.set(link.key,entry);}
     for(const key of this.entries.keys()) if(!links.has(key)) {this.entries.delete(key);this.pending.delete(key);}
     for(const [key,link]of links) {
       const old=this.entries.get(key);if(old)old.link=link;else this.entries.set(key,{link,dirty:true,pr:null,error:null});
@@ -132,7 +147,9 @@ export class AggregatePulls {
   }
   repositories() {
     const now=Date.now();
-    return [...new Set([...this.entries.values()].filter(e=>!e.missing && (!e.pr || this.eligible(e,now))).map(e=>e.link.repo))].sort();
+    const repositories=[...new Set([...this.entries.values()].filter(e=>!e.missing && (!e.pr || this.eligible(e,now))).map(e=>e.link.repo))].sort();
+    return [...this.entries.values()].some(e=>e.link.targets.some(t=>t.space))
+      ? repositorySpaceOrder(repositories,this.context,this.entries.values(),spaces()) : repositories;
   }
   rememberCounts() {
     if(!this.publicationPending && !this.waiting) {

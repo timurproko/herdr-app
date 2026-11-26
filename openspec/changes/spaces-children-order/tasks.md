@@ -14,9 +14,9 @@
 
 ## 3. Coordinator Git sections follow children
 
-- [ ] 3.1 Expose the minimum verified task-to-child association through the generic task context and derive stable repository ranks from current native sibling order; add focused aggregate/fleet tests for renamed children, duplicate PR links, multiple children for one repository, multi-repository combined spaces, historical-only unmatched sections and machine/home/generation isolation without extra reads.
-- [ ] 3.2 Apply ranks to the existing full repository inventory so both tabs, warm returns and enrollment choices follow acknowledged sibling updates without changing PR-row order, folds, loading, counters, stage labels or read/focus authority; cover live reorder, stale presentation, membership removal and reopen/restart projections in targeted tests.
-- [ ] 3.3 Document matching and unmatched-tail behavior in README and fleet/testing guidance; capture synthetic coordinator Git before/after child reorder in Open and Closed at 100% and 130%, checking unchanged counts/folds and recording shutdown of every disposable instance/server.
+- [x] 3.1 Expose the minimum verified task-to-child association through the generic task context and derive stable repository ranks from current native sibling order; add focused aggregate/fleet tests for renamed children, duplicate PR links, multiple children for one repository, multi-repository combined spaces, historical-only unmatched sections and machine/home/generation isolation without extra reads.
+- [x] 3.2 Apply ranks to the existing full repository inventory so both tabs, warm returns and enrollment choices follow acknowledged sibling updates without changing PR-row order, folds, loading, counters, stage labels or read/focus authority; cover live reorder, stale presentation, membership removal and reopen/restart projections in targeted tests.
+- [x] 3.3 Document matching and unmatched-tail behavior in README and fleet/testing guidance; capture synthetic coordinator Git before/after child reorder in Open and Closed at 100% and 130%, checking unchanged counts/folds and recording shutdown of every disposable instance/server.
 
 ## Workflow follow-up
 
