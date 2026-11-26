@@ -21,7 +21,7 @@ When strict fleet action context is unavailable, the coordinator SHALL retain it
 - **AND** ordinary folder Git and existing stale-generation guards remain intact
 
 ### Requirement: Selected-tab coordinator repository visibility
-Coordinator Git SHALL withhold cold partial successes until first reads settle, using one top-left Loading text below Open/Closed. Warm return/refresh SHALL retain the shown list with only the under-header moving line for pending work, no body Loading and in-place replacement on completion. Actionable notices SHALL appear immediately. Eligibility SHALL precede folding, preserving history, truthful totals and saved folds. Enrollment SHALL use full eligible inventory independently of section visibility.
+Coordinator Git SHALL withhold cold partial successes until first reads settle, using top-left Loading below Open/Closed. Warm return/refresh SHALL retain the list with the under-header line, no body Loading and in-place completion. Actionable notices SHALL appear immediately. Eligibility SHALL precede folding, preserving history, truthful totals and saved folds. Enrollment SHALL use full eligible inventory independently of section visibility.
 
 #### Scenario: Open and Closed contain different repositories
 - **WHEN** one repository has only Open or Draft task PRs and another has only eligible Merged or Closed task PRs, with no unresolved task PRs
@@ -87,7 +87,7 @@ Coordinator Git SHALL withhold cold partial successes until first reads settle, 
 - **AND** new partial success sections are withheld until first reads settle, while current authoritative removals, history expiry and state transitions remain effective
 
 ### Requirement: Non-destructive same-context PR refresh presentation
-A same-context refresh SHALL retain displayed rows, pin geometry and pagination until replacement is ready. Pending reads, verification and transient failures SHALL NOT replace known rows with empty states. Coordinator return/background updates SHALL use the under-header moving line only, no body Loading and no Stale label. Returns SHALL reuse bounded compatible runtime presentation. Different identities SHALL invalidate incompatible facts; retained context SHALL NOT authorize reads or worker actions.
+Same-context refresh SHALL retain rows, pins and pagination until replacement is ready. Pending reads, verification and transient failures SHALL NOT replace known rows with empty states. Coordinator return/background updates SHALL use the under-header line, no body Loading or Stale label. Returns SHALL reuse bounded compatible runtime presentation. Different identities SHALL invalidate incompatible facts; retained context SHALL NOT authorize reads or worker actions.
 
 #### Scenario: Delayed manual or webhook refresh
 - **WHEN** a manual, webhook, reconnect or show-time refresh is pending for the displayed repository or coordinator home
