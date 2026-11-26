@@ -754,15 +754,34 @@ callers retain their no-role behavior. These are synthetic facts and host snapsh
 not live label mutation, remote focus or approval verification.
 
 `tests/pr-agent-links.test.mjs` renders the actual stage controls and checks
-Build/Review focus, Approved opening regardless of CI, visible Build rounds with finding hover,
-missing metadata, inert ended/disconnected chips, stale captured roles and scopes,
+Build/Review focus, Approved opening regardless of CI, visible Build rounds without stage hover,
+missing metadata, accessible inert ended/disconnected chips, stale captured roles and scopes,
 and ghost noninteraction. `tests/git-stage-chips.test.mjs` checks all captions and
-tight plain stage styling without emoji/outline or an 80px title reservation across ordinary, pinned, scrolling, coordinator and
+plain stage styling with 6px side padding, no tooltip/emoji/outline or title reservation across ordinary, pinned, scrolling, coordinator and
 ghost Open/Closed/merged rows, 280–480px and 75–200% zoom including 130%. Existing
 geometry/right-edge fixtures retain the 74px blocks, lower-line allocation,
 Spaces-derived trailing anchor and fallback robot's 24px target. The no-label
 main-relative tree/probe budget removes exactly one obsolete absent-control node per row without adding probes. These are render-tree assertions,
 not native pointer dispatch, pixel layout or real-agent focus proof.
+
+Initial-build regressions additionally cover unlabelled Open/Draft and planning-only
+ship/fix owners through exact PR and verified head-branch matching, missing/invalid
+rounds and Build 2/Build 3, action-time label/state/role/PR replacement and stale or
+historical coordinator refusals. GitHub stage facts stay null: this is a row-only
+projection, not an assignment or implementation-phase detector. Stage-only aliases,
+agent names and findings cannot leak through label-strip/metadata hover; unrelated
+clipped-label and title tooltips retain their existing policy.
+
+Opt-in `tests/features/pr-stage-native.mjs --run --pointer --output <outside> --zoom 1|1.3`
+verifies the supplied App 0.1.18 archive and executable checksum, then mounts the
+production ordinary/pinned/coordinator row renderers and role resolvers against
+synthetic ship/fix/review identities. It captures initial Build, planning-owner Build,
+Build 2/Build 3, Review, Approved and unavailable controls. PID-bound native pointer
+messages hover checked stage hit targets, capture after the hover delay and exercise
+real click handlers with intercepted focus/browser actions; no live agent or terminal
+input is used. It restores the pointer and stops its isolated app/Core in finally.
+Pixel proof is separate from the existing synthetic pin-motion controller matrix;
+this fixture does not claim live-agent navigation or motion acceptance.
 
 The same `pr-agent-links` fixture now prints `REASON_MATRIX` for 80 combinations:
 ordinary/coordinator, Open/Closed, row/ghost, local/pc2, and ship/fix matched by

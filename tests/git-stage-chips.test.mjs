@@ -53,4 +53,20 @@ for(const width of [280,390])for(const zoom of [1,1.3]) {
  assert.ok(!/🤖 Rework|Open agent|back from review|^Review$/m.test(hints));
  assert.match(hints,/Other 4/,'Omitted unrelated label names retain informative hover');
 }
+// A missing GitHub stage must not hide a known build owner, even for a plan.
+agent.crew.kind='ship';
+for(const zoom of [1,1.3])for(const width of [280,390])for(const state of ['open','draft'])for(const coordinator of [false,true])for(const ghost of [false,true])for(const round of [null,1,2]) {
+ h.setZoom(zoom);p.context=coordinator?'tasks:home':'ordinary';agent.crew.round=round;
+ const raw=h.facts.pullRow({number:11,title:state==='draft'?'Planning only':'Initial implementation',state:'OPEN',isDraft:state==='draft',labels:[],url:'https://github.com/owner/repo/pull/11'});
+ if(coordinator)Object.assign(raw,{key:'owner/repo#11',repo:'owner/repo'});
+ const id=raw.key??raw.number,prefix=ghost?'swap-':'';
+ const {tree,geometry}=h.settle(()=>p.pullRow(t,raw,ghost),width,zoom),chip=find(tree,`${prefix}pr-stage-${id}`);
+ assert.ok(chip,'Live build owner without managed labels has a bottom stage');
+ assert.equal(words(chip).join(''),round?`Build ${round+1}`:'Build');
+ assert.equal(find(tree,`${prefix}pr-agent-slot-${id}`),undefined);
+ assert.equal(geometry.get(find(tree,`${prefix}pr-${id}`)).height,74*zoom);
+ assert.equal(chip.attrs.tooltip,undefined);assert.equal(raw.stage,null);assert.deepEqual(raw.labels,[],'Projection never mutates GitHub facts');
+ if(ghost)assert.equal(chip.attrs.on_click,undefined);else assert.ok(chip.attrs.on_click);
+ agent.availability='ended';assert.equal(find(p.pullRow(t,raw),`pr-stage-${id}`),undefined,'No inferred Build from an ended owner');agent.availability='live';
+}
 console.log(`PASS ${count} bottom-stage geometry cases: plain tight stage styling, dynamic build rounds, restored title width, unchanged 74px rows, keyboard/pointer/ghost/probe policy and bounded deduplication`);

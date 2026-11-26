@@ -844,22 +844,26 @@ export default class Changes extends View {
   }
 
   stageDescriptor(pr) {
-    if(!pr.stage)return null;
-    const role=pr.stage==='approved'?null:pr.stage,repo=pr.repo??this.repo?.name,context=this.context;
+    // Initial ship/fix work has no managed GitHub label yet. Resolve the same
+    // build-owner action without writing an inferred stage into cached facts.
+    if(!pr.stage && !['open','draft'].includes(pr.state))return null;
+    const stage=pr.stage??'build';
+    const role=stage==='approved'?null:stage,repo=pr.repo??this.repo?.name,context=this.context;
     const scope=this.aggregate?.context?.scope;
-    const target=role && pr.key?(this.aggregate?.stagePresentation?this.aggregate.stagePresentation(pr,role,this.agentLinks,this.agentPresentation):this.aggregate?.stageTarget?.(pr,role,this.agentLinks,this.agentPresentation)):null;
+    const target=role && pr.key?(pr.stage&&this.aggregate?.stagePresentation?this.aggregate.stagePresentation(pr,role,this.agentLinks,this.agentPresentation):this.aggregate?.stageTarget?.(pr,role,this.agentLinks,this.agentPresentation)):null;
     const agent=role?(pr.key?target?.agent:this.agentLinks?.related?.(pr,repo,location().terminal,role,undefined,this.agentPresentation)):null;
     const available=agent?.availability==='live';
+    if(!pr.stage && (!available || !['ship','fix'].includes(agent?.crew?.kind)))return null;
     const round=role==='build'?agent?.crew?.round:null;
-    const label=stageLabels(pr).find(label=>label.stage);
+    const label=stageLabels({...pr,stage}).find(label=>label.stage);
     if(!label)return null;
     const caption=role==='build'&&round?`Build ${round+1}`:label.name;
-    return {role,repo,context,scope,target,agent,available,round,label:{...label,name:caption}};
+    return {stage,role,repo,context,scope,target,agent,available,round,label:{...label,name:caption}};
   }
 
   stageChip(t, pr, interactive = true, probe = false, descriptor = this.stageDescriptor(pr)) {
     if(!descriptor)return null;
-    const {role,repo,context,scope,target,agent,available,round,label}=descriptor;
+    const {role,repo,context,scope,target,agent,available,label}=descriptor;
     const reason=!role||available?null:agent?.availability==='disconnected'?`on ${agent.on}, not connected`
       :agent?.availability==='ended'?(role==='review'?'reviewer ended without a verdict':`build agent ended${pr.checks?.state?` - CI ${pr.checks.state}`:''}`)
       :role==='review'?'reviewer unavailable':'build agent unavailable';
@@ -868,11 +872,16 @@ export default class Changes extends View {
       if(this.context!==context || !this.shown())return;
       if(!role){this.openPull(pr);return;}
       if(!available)return;
-      if(pr.key) {this.aggregate?.focus(pr,target,scope,this.agentLinks,current=>this.beginAgentMotion(pr,press,current.agent,cx,STAGE_CONTROL_OFFSET));return;}
+      if(pr.key) {
+        const latest=this.aggregate?.entries?.get(pr.key)?.pr;
+        if(!pr.stage && (!latest || !['open','draft'].includes(latest.state)))return;
+        this.aggregate?.focus(pr,target,scope,this.agentLinks,current=>this.beginAgentMotion(pr,press,current.agent,cx,STAGE_CONTROL_OFFSET));return;
+      }
       if(key()!==context || this.repo?.name!==repo)return;
       const current=this.agentLinks?.related?.(pr,repo,location().terminal,role);
       if(current?.key!==agent.key || current.availability!=='live')return;
       const latest=[...(this.pulls?.open??[]),...(this.pulls?.closed??[]),this.relatedPull].find(row=>row?.number===pr.number);
+      if(!pr.stage && (!latest || !['open','draft'].includes(latest.state)))return;
       if(latest && latest.stage!==pr.stage)return;
       this.beginAgentMotion(pr,press,current,cx,STAGE_CONTROL_OFFSET);
       run('agent.focus',{terminal:current.address});
@@ -1082,12 +1091,12 @@ export default class Changes extends View {
 
   renderPullRow(t, pr, ghost = false) {
     const prefix = ghost ? 'swap-' : '', rowId = pr.key ?? pr.number;
-    const agentButton = pr.stage?null:this.agentButton(t, pr, !ghost);
+    const stage=this.stageDescriptor(pr);
+    const agentButton = stage?null:this.agentButton(t, pr, !ghost);
     // Cache presentation by immutable fact identity; never retain native rows:
     // their event callbacks belong to the current native snapshot build.
     this.rowPresentations ??= new RowPresentations();
-    const stage=this.stageDescriptor(pr);
-    const labelsFor=row=>stageLabels(row).map(label=>label.stage&&stage?stage.label:label);
+    const labelsFor=row=>stageLabels(stage?{...row,stage:stage.stage}:row).map(label=>label.stage&&stage?stage.label:label);
     const {facts:presentation,id:groupId}=this.rowPresentations.get(pr,this.context?.startsWith('tasks:')?3:Infinity,ghost,labelsFor,stage?.label.name);
     const {labels,labelNames}=presentation;
     const text = (kind, value, probe) => div().id(groupId(kind, probe)).min_w(0).h(18)

@@ -30,7 +30,7 @@ for(const coordinator of [false,true])for(const ghost of [false,true])for(const 
 for(const coordinator of [false,true])for(const zoom of [1,1.3]) {
   const f=fixture({body:'- [x] one\n- [x] two\n- [x] three',reviewDecision:null,labels:[{name:'🤖 Rework',color:'840479'}],statusCheckRollup:Array.from({length:11},(_,i)=>({name:`CI ${i}`,status:'COMPLETED',conclusion:'SUCCESS'}))},390,zoom,coordinator);
   for(const kind of ['tasks','checks','labels','meta','byline'])assert.equal(tip(f.get(kind)),undefined,'Complete screenshot parts have no combined summary');
-  assert.equal(tip(f.tree),undefined);assert.match(tip(f.get('stage')),/🤖 Rework\nbuild agent unavailable/,'The canonical managed pill explains its assigned alias and unavailable role');
+  assert.equal(tip(f.tree),undefined);assert.equal(tip(f.get('stage')),undefined,'Managed aliases and unavailable roles do not create stage hover');assert.equal(f.get('stage').attrs.accessibility_label[0],'build agent unavailable');
 }
 const check=(name,id,conclusion,status='COMPLETED',startedAt='2026-11-20T10:00:00Z')=>({name,workflowName:'CI',conclusion,status,startedAt,detailsUrl:`https://github.com/owner/repo/actions/runs/${id}/job/1`});
 assert.equal(facts.checks([check('removed',1,'FAILURE'),check('build',2,'SUCCESS')]).details,undefined);

@@ -672,8 +672,19 @@ there is no duplicate title chip or 80px reservation.
 Motion previews never navigate. The no-label robot retains its original 24px hit
 target and immediate pin-navigation behavior.
 
-Without a managed stage, PRs with a related live agent show a white/foreground robot beside
-the title, matching the Agents sidebar. The original colored PR icon stays.
+Without a managed stage, an Open/Draft PR with a verified live `crew.kind=ship`
+or `fix` target shows **Build** in that same bottom-right slot, not a title robot.
+This includes a planning-only task with its linked PR: Build identifies its build
+owner, not permission to implement or a claim of progress. No linked PR means no
+row. Missing/invalid `crew.round` keeps **Build**; completed rounds 1 and 2 produce
+**Build 2** and **Build 3**. The earlier first-build robot came from requiring an
+assigned managed GitHub label before resolving a stage, not from missing round
+data. Assigned Review/Approved still takes precedence; historical-only or
+unlabelled Closed/Merged rows invent no Build. Existing exact live role/membership
+checks remain necessary for focus.
+
+Other PRs without a managed stage may retain the white/foreground related-agent
+navigation robot beside the title, matching the Agents sidebar. The original colored PR icon stays.
 The robot uses the usual rounded inset-icon hover tint, distinct from the
 row's hover, with a tooltip only for a known agent name; clicking opens
 the agent's existing tab without opening GitHub.

@@ -62,10 +62,11 @@ export const forbidden=()=>{throw Error('No transport permitted in native row pr
 export default class Fixture extends Changes {
  init(p,cx){this.resetRepository();this.repo={name:'fixture/repo'};this.root='/fixture';this.context=JSON.stringify([place.cwd,place.on]);this.view='open';this.foldedRepositories=new Set();this.agentLinks=new AgentLinks();this.aggregate=new AggregatePulls({shown:()=>true});this.aggregate.context=context;this.rows=specs.map(s=>{const pr=pullRow({number:s.n,title:s.title,url:'https://github.com/fixture/repo/pull/'+s.n,state:'OPEN',isDraft:s.draft,labels:s.labels.map(name=>({name,color:'840479'})),createdAt:'2026-11-26T10:00:00Z',author:{login:'fixture'},body:'- [x] Synthetic proof',statusCheckRollup:[]});pr.checks={state:'pending',label:'2/3'};return mode==='coordinator'?{...pr,key:'fixture/repo#'+s.n,repo:'fixture/repo'}:pr;});
  for(const pr of this.rows)this.aggregate.entries.set(pr.key,{pr,link:{targets:[{terminal:'worker-'+pr.number}]}});
- this.pulls.open=this.rows;this.pulls.closed=[];cx.timer.every(100,cx=>cx.spawn(async view=>{const phase=await readTextFile(${JSON.stringify(control)});if(this.phase!==phase){this.phase=phase;this.agentPull=phase==='pinned'?3:null;view.notify();}setShared('fixture.stage.'+mode,{phase:this.phase,rows:this.rows.length,zoom:${zoom}});}));}
+ this.pulls.open=this.rows;this.pulls.closed=[];cx.timer.every(100,cx=>cx.spawn(async view=>{const phase=await readTextFile(${JSON.stringify(control)});if(this.phase!==phase){this.phase=phase;this.agentPull=phase==='pinned'?1:null;this.visibleRows=phase==='unavailable'?this.rows.slice(-2):this.rows;this.pulls.open=this.visibleRows;view.notify();}setShared('fixture.stage.'+mode,{phase:this.phase,rows:this.rows.length,zoom:${zoom}});}));}
  shown(){return true;}
+ stageChip(t,pr,...args){const node=super.stageChip(t,pr,...args);return node?.on_mouse_move(event=>setShared('fixture.stage.hover.'+mode,{number:pr.number,bounds:event.bounds}));}
  openPull(pr){setShared('fixture.stage.open.'+mode,pr.number);}
- render(cx){const t=theme();return div().size_full().bg(t.background).flex().flex_col().child(div().h(38).px(8).text_size(13).child((mode==='coordinator'?'Coordinator':'Ordinary / '+(this.phase??'ordinary'))+' · synthetic PR stage proof · ${zoom*100}%')).child(div().flex_1().min_h(0).flex().flex_col().overflow_y_scrollbar().child(mode==='ordinary'?this.renderPulls(t):this.repositorySection(t,this.taskSections([{repo:'fixture/repo',rows:this.rows}],'synthetic-home').sections[0],'synthetic-home',this.selectedTaskWindow)));}
+ render(cx){const t=theme();return div().size_full().bg(t.background).flex().flex_col().child(div().h(38).px(8).text_size(13).child((mode==='coordinator'?'Coordinator':'Ordinary / '+(this.phase??'ordinary'))+' · synthetic PR stage proof · ${zoom*100}%')).child(div().flex_1().min_h(0).flex().flex_col().overflow_y_scrollbar().child(mode==='ordinary'?this.renderPulls(t):this.repositorySection(t,this.taskSections([{repo:'fixture/repo',rows:this.visibleRows??this.rows}],'synthetic-home').sections[0],'synthetic-home',this.selectedTaskWindow)));}
 }`);
 }
 const app=args=>execFileSync(appBin,args,{env,encoding:'utf8',timeout:20000}),sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -74,10 +75,30 @@ const receipt={home,version,zoom,pid:child.pid,archiveSha256,executableSha256:di
 const snapshot=()=>{try{return JSON.parse(fs.readFileSync(path.join(home,'shared.json')));}catch{return {};}};
 try {
  for(let n=0;n<100;n++){await sleep(200);assert.equal(child.exitCode,null);if(snapshot()['fixture.stage.coordinator'])break;}
- for(const phase of ['ordinary','pinned']){fs.writeFileSync(control,phase);await sleep(750);const file=path.join(root,phase+'.png');app(['shot',file]);receipt.frames.push(file);}
+ for(const phase of ['ordinary','pinned','unavailable']){fs.writeFileSync(control,phase);await sleep(750);const file=path.join(root,phase+'.png');app(['shot',file]);receipt.frames.push(file);}
+ if(process.argv.includes('--pointer')) {
+  // Only this PID's disposable window; confirm the actual stage hit before clicking.
+  const pointer=path.join(root,'pointer.ps1');
+  fs.writeFileSync(pointer,`param([int]$AppPid,[double]$X,[double]$Y,[string]$Shot,[string]$Action)\nAdd-Type @'\nusing System;using System.Runtime.InteropServices;public class StagePointer{[DllImport("user32.dll")]public static extern bool SetProcessDPIAware();[StructLayout(LayoutKind.Sequential)]public struct R{public int L,T,Rt,B;}[StructLayout(LayoutKind.Sequential)]public struct P{public int X,Y;}[DllImport("user32.dll")]public static extern bool GetWindowRect(IntPtr h,out R r);[DllImport("user32.dll")]public static extern bool SetForegroundWindow(IntPtr h);[DllImport("user32.dll")]public static extern bool SetCursorPos(int x,int y);[DllImport("user32.dll")]public static extern bool GetCursorPos(out P p);[DllImport("user32.dll")]public static extern bool ScreenToClient(IntPtr h,ref P p);[DllImport("user32.dll")]public static extern bool PostMessage(IntPtr h,uint m,IntPtr w,IntPtr l);}\n'@\n[void][StagePointer]::SetProcessDPIAware();Add-Type -AssemblyName System.Drawing;$im=[System.Drawing.Image]::FromFile($Shot);$w=(Get-Process -Id $AppPid).MainWindowHandle;if(!$w){throw 'Disposable window missing'};$r=New-Object StagePointer+R;$p=New-Object StagePointer+P;[void][StagePointer]::GetWindowRect($w,[ref]$r);[void][StagePointer]::GetCursorPos([ref]$p);$tx=$r.L+[int]($X*($r.Rt-$r.L)/$im.Width);$ty=$r.T+[int]($Y*($r.B-$r.T)/$im.Height);$im.Dispose();[void][StagePointer]::SetForegroundWindow($w);[void][StagePointer]::SetCursorPos($tx,$ty);$cp=New-Object StagePointer+P;$cp.X=$tx;$cp.Y=$ty;[void][StagePointer]::ScreenToClient($w,[ref]$cp);$lp=[IntPtr](($cp.Y -shl 16) -bor ($cp.X -band 65535));[void][StagePointer]::PostMessage($w,0x0200,[IntPtr]0,$lp);if($Action -eq 'click'){[void][StagePointer]::PostMessage($w,0x0201,[IntPtr]1,$lp);[void][StagePointer]::PostMessage($w,0x0202,[IntPtr]0,$lp)};@{x=$p.X;y=$p.Y;targetX=$tx;targetY=$ty}|ConvertTo-Json -Compress`);
+  fs.writeFileSync(control,'ordinary');await sleep(650);
+  for(const [mode,number]of [['ordinary',1],['coordinator',1],['coordinator',2],['coordinator',5],['coordinator',6],['coordinator',7],['coordinator',8]]) {
+   if(number===7){fs.writeFileSync(control,'unavailable');await sleep(650);}
+   const slot=number>=7?number-7:number-1;
+   const x=(mode==='ordinary'?1280:2560)-60*zoom,y=(mode==='ordinary'?133:159)*2*zoom+slot*76*2*zoom;
+   const invoke=action=>JSON.parse(execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-File',pointer,'-AppPid',String(child.pid),'-X',String(x),'-Y',String(y),'-Shot',path.join(root,'ordinary.png'),'-Action',action],{encoding:'utf8'}));
+   const original=invoke('hover');receipt.pointerOrigin??=original;await sleep(850);
+   const file=path.join(root,`hover-${mode}-${number}.png`);app(['shot',file]);receipt.frames.push(file);
+   assert.equal(snapshot()['fixture.stage.hover.'+mode]?.number,number,'Pointer is over the intended synthetic stage');
+   const before=snapshot();invoke('click');await sleep(250);
+   if(number>=7){assert.deepEqual(snapshot()['fixture.stage.click.'+mode],before['fixture.stage.click.'+mode]);assert.equal(snapshot()['fixture.stage.open.'+mode],before['fixture.stage.open.'+mode],'Disabled stage consumes the click without opening the PR');}
+   else if(number===6)assert.equal(snapshot()['fixture.stage.open.'+mode],6);else assert.equal(snapshot()['fixture.stage.click.'+mode]?.args.terminal,'worker-'+number);
+   receipt.clicks??=[];receipt.clicks.push({mode,number,focus:snapshot()['fixture.stage.click.'+mode],opened:snapshot()['fixture.stage.open.'+mode]});
+  }
+ }
  receipt.status=JSON.parse(app(['status']));assert.deepEqual(receipt.status.errors,[]);
  assert.doesNotMatch(fs.readFileSync(path.join(root,'app.log'),'utf8'),/render failed|previous render did not complete|FIXTURE_RENDER_ERROR/);
 }finally {
+ try{if(receipt.pointerOrigin)execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',`Add-Type '[System.Runtime.InteropServices.DllImport("user32.dll")]public static extern bool SetCursorPos(int x,int y);[System.Runtime.InteropServices.DllImport("user32.dll")]public static extern bool SetProcessDPIAware();' -Name RestoreStagePointer -Namespace Native;[void][Native.RestoreStagePointer]::SetProcessDPIAware();[void][Native.RestoreStagePointer]::SetCursorPos(${receipt.pointerOrigin.x},${receipt.pointerOrigin.y})`]);}catch(error){receipt.pointerRestoreError=String(error);}
  try{app(['do','app.quit']);}catch{}await sleep(600);if(child.exitCode===null){child.kill();await sleep(500);}receipt.stopped=child.exitCode!==null||child.signalCode!==null;
  try{receipt.coreStop=execFileSync(coreBin,['server','stop'],{env,encoding:'utf8',timeout:10000}).trim();}catch(e){receipt.coreStop=e.status;}
  fs.closeSync(log);fs.writeFileSync(path.join(root,'receipt.json'),JSON.stringify(receipt,null,2));assert.ok(receipt.stopped);assert.equal(JSON.parse(receipt.coreStop).stopped,true,'Disposable Core stopped');

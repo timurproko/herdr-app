@@ -96,7 +96,7 @@ for(t.background of ['#191d28','#ffffff','#191d28'])for(zoom of [0.75,1,1.25,1.3
   assert.equal(meta.attrs.tooltip,undefined,'The metadata parent cannot repeat complete visible facts');
   for(const [index,label] of facts.stageLabels(pr).entries()) {
     const pill=find(row,label.stage?`${prefix}pr-stage-${id}`:`${prefix}pr-label-${id}-${index}`);
-    if(label.stage){assert.equal(text(pill),'Review');assert.equal(pill.attrs.px[0],2);assert.equal(pill.attrs.bg[0],t.raised);assert.equal(pill.attrs.border_1,undefined);assert.ok(pill.attrs.tooltip[0].includes('🤖 Under review'));continue;}
+    if(label.stage){assert.equal(text(pill),'Review');assert.equal(pill.attrs.px[0],6);assert.equal(pill.attrs.bg[0],t.raised);assert.equal(pill.attrs.border_1,undefined);assert.equal(pill.attrs.tooltip,undefined);continue;}
     const [color,darkText,lightText,lightBorder]=colorCases.find(([color])=>color===(label.color.startsWith('#')?label.color:`#${label.color}`)),dark=t.background!=='#ffffff';
     assert.equal(text(pill),label.name);if(label.stage)assert.ok(pill.attrs.tooltip[0].includes('🤖 Under review'));else assert.equal(pill.attrs.tooltip,undefined);assert.equal(pill.attrs.bg[0],dark?`${color}2e`:color);
     assertColor(pill.attrs.text_color[0],dark?darkText:lightText);assertColor(pill.attrs.border_color[0],dark?`${darkText}4d`:lightBorder);
