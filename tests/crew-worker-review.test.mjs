@@ -84,7 +84,7 @@ for(const disable of [false,true])test('superseded timed-out setter retains leas
  if(disable)f.enable(true);
  const before=f.calls.length;await f.step();assert.equal(f.calls.length,before,'No new getter or setter may run during the old command allowance');
  f.advance(deadline-1000-f.time());f.modes.set('C:/fixture/default','per-project'); // retired write publishes at 17s
- await f.step();assert.equal(f.calls.length,before);assert.ok(f.board().statuses.length,'An unknown retired write cannot clear incomplete status');
+ await f.step();assert.equal(f.calls.length,before);assert.equal(f.board().statuses.length,0,'Internal incomplete work stays quiet, not a Pending status line');
  assert.notEqual(Object.values(f.board().targets)[0].state,'ready');
  f.advance(deadline-f.time());await f.step(3);
  assert.equal(f.modes.get('C:/fixture/default'),'combined');assert.equal(f.board().intent,false);assert.equal(f.board().statuses.length,0);

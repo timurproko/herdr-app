@@ -443,7 +443,7 @@ function pullContext(space, {presentation = false} = {}) {
   if(context) {
     const display=fleetContexts({presentation:true}).find(d=>d.parent===space && d.pullScope===context.pullScope);
     if(!context.child && !display && !context.tasks.some(t=>canonicalPull(t.pr)))return null;
-    return {...context,kind:'tasks',scope:context.pullScope,stale:false,loading:fleetLoading(context),links:context.tasks.filter(t=>t.pr).map(t=>({url:t.pr,terminal:t.terminal,task:t.id,historical:t.historical===true}))};
+    return {...context,kind:'tasks',scope:context.pullScope,stale:false,loading:fleetLoading(context),links:context.tasks.filter(t=>t.pr).map(t=>({url:t.pr,terminal:t.terminal,task:t.id,historical:t.historical===true,...(t.space?{space:t.space}:{})}))};
   }
   if(!presentation || !enabled())return null;
   let identity=fleetContexts({presentation:true}).find(c=>c.parent===space);

@@ -66,9 +66,12 @@ now+=11000;event();await tick();frame();release();await drain();frame();
 now+=29000;mode='defer';event('workspace.context.refresh',true);await tick();frame();now+=2000;event();await tick();frame();
 assert.equal(r.pluginWorkspaceLinks().length,0);assert.equal(r.pluginPullContext('coordinator'),null);
 assert.equal(r.pluginPullContext('coordinator',{presentation:true}).stale,true);
-const captured=captureSpaceBlock(groups,links(),'fm-crew-home');assert.equal(captured.sources.length,2);
-assert.equal(planBlockDrop(groups,r.pluginWorkspaceLinks(),'fm-crew-home','other',captured),null);
-const moves=[];new SpaceBlockCommit({read:()=>groups,links:()=>r.pluginWorkspaceLinks(),move:(...args)=>moves.push(args),fail(){}}).start('fm-crew-home',captured,groups.map(s=>s.id));assert.equal(moves.length,0);
+for(const source of ['coordinator','fm-crew-home']) {
+ const captured=captureSpaceBlock(groups,links(),source);assert.equal(captured.sources.length,source==='coordinator'?2:1);
+ if(source==='fm-crew-home')assert.equal(captured.parent,'coordinator','Child capture remains sibling-scoped');
+ assert.equal(planBlockDrop(groups,r.pluginWorkspaceLinks(),source,'other',captured),null);
+ const moves=[];new SpaceBlockCommit({read:()=>groups,links:()=>r.pluginWorkspaceLinks(),move:(...args)=>moves.push(args),fail(){}}).start(source,captured,groups.map(s=>s.id));assert.equal(moves.length,0);
+}
 release();await drain();frame();assert.equal(r.pluginWorkspaceLinks().length,1);
 // Failed/malformed/timed-out reads never expire display, refresh age, or spin retries.
 const successAt=state[f.FLEET_KEY].entries.local.at,successDisplay=JSON.stringify(state[f.DISPLAY_KEY]);

@@ -1227,8 +1227,18 @@ production Crew transport and policy with **fake Crew only** for the seven cases
 on, off, capability missing, one refused home, offline then reachable, a later home
 and restart persistence. These include several homes per machine, strict v1
 success/refusal parsing, superseded intent serialization, committed-but-lost reply
-readback, bounded catalog overflow and no disabled follow-ups. No installed Crew,
+readback, bounded catalog overflow and no disabled follow-ups. Held capability,
+discovery, read, set and readback phases assert quiet progress and eventual completion;
+a lost read continuation is replaced after its command lease and its late reply
+cannot write. No permanent stall is reproduced in these cases. No installed Crew,
 real registry, coordinator or credential is used.
+
+`node --experimental-vm-modules tests/crew-worker-discovery.test.mjs` reproduces
+completed discovery exit-2 refusals, invalid JSON, missing homes and relative
+paths over 120 simulated seconds. The actual registry row must show one plain
+machine-named failure, retry exactly on the existing cadence, and clear after
+recovery. Healthy peers and known custom roots continue reconciling; held
+in-flight discovery stays quiet. No real Crew or machine is used.
 
 `node --experimental-vm-modules tests/crew-worker-review.test.mjs` covers both
 blocking review findings through production plugin/lifecycle paths. Existing
@@ -1250,14 +1260,42 @@ The opt-in `tests/features/worker-space-native.mjs --run --output <outside-check
 --zoom 1|1.3` requires `HERDR_APP_BIN` to name the provided verified App 0.1.18 copy.
 It checks release metadata/archive SHA-256, extracted executable byte equality and
 version, installs nothing, deploys only a disposable app home, and blocks all real
-Crew/Core control and unrelated subprocesses. It captures off, on and machine-named
-refusal with the real Settings row/toggle/badge, registry and policy, using synthetic
+Crew/Core control and unrelated subprocesses. It captures off, applying, on and machine-named
+refusal, completed discovery failure and recovery with the real plain Settings
+row/toggle, registry and policy, using synthetic
 in-memory home modes. A disposable controller invokes the production callback;
 these are native-rendering proofs, not physical pointer/keyboard or live SSH proof.
 Receipts include zoom, hashes, errors and desktop/Core stop acknowledgements. Every
 started disposable instance is stopped in finally; no real setting is changed.
 
 ## Connected fleet fixtures
+
+`node tests/fleet-reorder.test.mjs` covers sibling-only moves in both directions,
+singletons, parent-block moves, cross-parent/machine refusals, noncontiguous native
+slots, selection/index/connector projection after model recreation, delayed and
+missing acknowledgements, changed membership and concurrent native ordering.
+The actual Spaces caller is covered by `tests/spaces-worktree-layout.test.mjs`
+(including relationship loss after capture but before another render/release,
+with no independent-move fallback, plus a new detached gesture that still works)
+and `tests/fleet-toggle-live.test.mjs`, including remembered-only parent movement.
+`tests/features/space-order-native.mjs --run --output <outside-checkout> --zoom 1|1.3`
+uses the supplied checksum-verified release for before/during/after child drags
+in both directions, collapsed coordinator dragging and compact rail screenshots.
+Its production drag/commit controller operates a synthetic acknowledged model,
+not live terminals or real native-space persistence; receipts assert desktop/Core
+shutdown. Native persistence relies on the existing public space.move contract.
+
+`node --experimental-vm-modules tests/git-space-order.test.mjs` exercises the real
+aggregate and controller section/reveal projection: canonical verified task-child
+associations, current native sibling order, duplicate links, multiple children for
+one repository, combined/history unmatched tails, stale/warm/recreated contexts,
+machine/home/generation isolation, both tabs and stable folds/counts/PR order.
+It asserts no subprocess, GitHub or native-write operation. The real Crew source's
+exact task-to-child propagation is covered by `tests/fleet-project-spaces.test.mjs`.
+Add `--git` to the native space-order fixture to capture both actual panels before
+and after reorder in Open and Closed at both zooms; counts stay 5/5 and the saved
+finished-repository fold stays closed. All membership/PR facts remain synthetic.
+
 
 `tests/fleet-diagnostics.test.mjs` loads the packaged Crew provider/transport and
 uses disposable supported read/CAS log IO. It distinguishes transport, timeout,
