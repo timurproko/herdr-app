@@ -75,14 +75,16 @@ try {
 
   if (process.platform === 'win32') {
     // Real Windows handle allowing read/write but not delete (rename) sharing.
-    const ready = path.join(f.base, 'handle-ready'), quote = value => "'" + value.replaceAll("'", "''") + "'";
-    const script = `$f=[IO.File]::Open(${quote(p.result)},'Open','ReadWrite','ReadWrite'); try { [IO.File]::WriteAllText(${quote(ready)},'ready'); Start-Sleep -Milliseconds 500 } finally { $f.Dispose() }`;
+    const ready = path.join(f.base, 'handle-ready'), release = path.join(f.base, 'handle-release'), quote = value => "'" + value.replaceAll("'", "''") + "'";
+    // Release only after the actual rename has failed. A fixed hold duration
+    // would itself flake when a loaded CI runner notices readiness too late.
+    const script = `$f=[IO.File]::Open(${quote(p.result)},'Open','ReadWrite','ReadWrite'); try { [IO.File]::WriteAllText(${quote(ready)},'ready'); $until=[DateTime]::UtcNow.AddSeconds(15); while(-not [IO.File]::Exists(${quote(release)})) { if([DateTime]::UtcNow -gt $until){throw 'handle release not received'}; Start-Sleep -Milliseconds 20 } } finally { $f.Dispose() }`;
     const child = cp.spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { stdio: 'ignore', windowsHide: true });
     const exited = new Promise((resolve, reject) => { child.once('error', reject); child.once('exit', code => code === 0 ? resolve() : reject(Error(`handle fixture exited ${code}`))); });
     try {
       updater.retryIO(() => { if (!fs.existsSync(ready)) throw fault('EBUSY'); }, { budget: 10000 });
       let retries = 0;
-      updater.atomic(p.result, final, { sleep(ms) { retries++; Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); } });
+      updater.atomic(p.result, final, { sleep(ms) { retries++; fs.writeFileSync(release, 'release'); Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); } });
       assert.equal(updater.read(p.result).complete, true); assert.ok(retries > 0, 'real held target exercised rename retries');
       await exited;
     } finally { if (child.exitCode === null) { child.kill(); await exited.catch(() => {}); } }
