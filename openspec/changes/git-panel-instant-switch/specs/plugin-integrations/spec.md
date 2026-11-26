@@ -28,12 +28,12 @@ Reusable Git presentation SHALL be bounded runtime-only data qualified by machin
 
 #### Scenario: Same number or repository on another machine
 - **WHEN** two repositories share a PR number or two machines have the same repository name
-- **THEN** only facts with the destination's full qualified identity can populate its section or pin
+- **THEN** only facts with the destination's full qualified identity can populate its section
 - **AND** one machine's response, cached totals or folder mapping cannot be reused as the other's
 
 #### Scenario: Directory and routing change
 - **WHEN** a selected terminal changes directory, its repository mapping changes, effective routing changes, or a read proves the destination is not a repository
-- **THEN** incompatible rows, counts and pending transitions are rejected before the next destination presentation
+- **THEN** incompatible rows, counts and stale request publications are rejected before the next destination presentation
 - **AND** an unproven new directory never borrows a former folder's repository solely from a retained task label
 
 #### Scenario: Lifetime and authority
@@ -41,28 +41,24 @@ Reusable Git presentation SHALL be bounded runtime-only data qualified by machin
 - **THEN** affected entry snapshots cannot restore prior-generation inventory or grant stale worker actions
 - **AND** hidden snapshots do no reads and contain no native handles, callback trees, credentials or portable or restart-persisted PR inventory
 
-### Requirement: Unified selected-agent Git pin transition
-Entering a linked agent's space and clicking its stage chip SHALL use the same existing pin movement, retention and settlement behavior; robot fallback clicks SHALL remain equivalent. The matching PR SHALL pin within its repository section, with no duplicate list row. Returning to coordinator SHALL restore unpinned section order. Missing or unrelated matches SHALL NOT invent a pin or navigation.
+### Requirement: Space entry preserves order without pin motion
+Entering an agent space SHALL restore its cached repository section without creating a pin, reordering rows or starting move-to-top animation. Coordinator return SHALL restore its cached order directly. Existing panel-origin stage-chip and fallback robot-click pin behavior SHALL remain unchanged and separate from entry; an already-started click transition SHALL retain its existing selection acknowledgement behavior.
 
-#### Scenario: Stage chip changes selected agent
-- **WHEN** one agent space is selected and a live Build or Review chip on another PR is clicked
-- **THEN** existing role-aware navigation selects its agent immediately and the clicked PR moves to the pin using the existing native motion after destination confirmation
-- **AND** entering that same agent directly produces the same row-to-pin transition through the same behavior, while Approved remains non-navigating
+#### Scenario: Direct agent-space entry
+- **WHEN** the user enters an agent space directly and its PR or branch matches a row in the cached section
+- **THEN** the cached section is shown immediately in its existing order with header refresh activity
+- **AND** entry creates no pin, moves no row to the top and starts no pin animation
 
-#### Scenario: Explicit link and branch selection
-- **WHEN** the destination has a current explicit PR association or otherwise matches a PR head branch in its verified repository
-- **THEN** the existing explicit-link precedence and branch fallback select its pin without borrowing another machine's agent
-- **AND** a repeated selection of the same PR neither unpins nor restarts motion, and robot fallback navigation remains supported
+#### Scenario: Return to coordinator
+- **WHEN** the user returns from a worker space to the coordinator
+- **THEN** the coordinator's cached sections and ordering are restored directly with existing header refresh activity
+- **AND** no entry-driven pin, unpin animation or row reorder occurs
 
-#### Scenario: Coordinator order and latest facts
-- **WHEN** selection returns from a worker to the coordinator while refresh has changed underlying PR facts
-- **THEN** the shared motion removes the worker pin and restores the coordinator's latest eligible section order without refetch Loading
-- **AND** motion settlement commits the latest accepted facts, not an older captured row payload
-
-#### Scenario: Cancellation and unavailable geometry
-- **WHEN** another selection, repository mismatch, Open/Closed change, scroll, disconnect or unavailable destination supersedes a transition
-- **THEN** its retained motion is cancelled without undoing an already completed navigation
-- **AND** unmeasured or cross-repository transitions use the existing safe normal reveal, never invented coordinates or a second animation treatment
+#### Scenario: Existing chip and robot navigation
+- **WHEN** the user clicks another agent PR's live stage chip or fallback robot inside the panel
+- **THEN** the existing click-origin navigation and move-to-top pin animation remain unchanged, including their existing confirmation and cancellation rules
+- **AND** the resulting native space acknowledgement neither starts a second animation nor cancels the original merely because cached entry ran
+- **AND** Approved remains non-navigating and unavailable targets retain existing refusals
 
 ## MODIFIED Requirements
 
