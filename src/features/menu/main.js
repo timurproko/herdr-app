@@ -122,12 +122,16 @@ export default class Menu extends View {
     const source = p?.tab === 'space' && spaces().find(s => s.id === p.target?.id);
     this.colorSource = source ? {id: source.id, machine: source.machine ?? null} : null;
     const links = source ? pluginWorkspaceLinks({presentation:true}).filter(l => l.parent === source.id || l.child === source.id) : [];
-    this.colorAmbiguous = links.length > 1;
-    this.colorPair = links.length === 1 ? {...links[0]} : null;
-    this.colorTarget = this.colorPair?.parent ?? this.colorSource?.id;
+    this.colorPairs = links.map(link=>({...link}));
+    this.colorPair = this.colorPairs[0] ?? null;
+    // Several siblings share one verified coordinator binding. Distinct parents,
+    // bindings or duplicate child claims remain ambiguous, never action proof.
+    this.colorAmbiguous = new Set(links.map(link=>link.child)).size !== links.length
+      || links.some(link=>link.parent!==this.colorPair.parent || link.binding!==this.colorPair.binding);
+    this.colorTarget = this.colorAmbiguous ? this.colorSource?.id : this.colorPair?.parent ?? this.colorSource?.id;
     // Each mod must witness verification itself; sidebar proof is display-only here.
     // The generic lifecycle yields before reading or joining a shared in-flight read.
-    if (this.colorPair) pluginEvent('workspace.context.refresh', { owner: this, cx, space: this.colorSource.id });
+    if (this.colorPair && !this.colorAmbiguous) pluginEvent('workspace.context.refresh', { owner: this, cx, space: this.colorSource.id });
     this.pluginItems = p?.tab === 'agent' ? pluginMenuItems('agents.context', { terminal: p.target?.terminal })
       .map(action => [action.label, 'custom.plugin-action', {}, action.icon, null, false, action.run]) : [];
     // Do not focus the popup: right-click is a paste gesture, not a menu.
@@ -166,13 +170,12 @@ export default class Menu extends View {
       || !all.some(s => s.id === source.id && (s.machine ?? null) === source.machine)) return false;
     const shown = pluginWorkspaceLinks({presentation:true}).filter(l => l.parent === source.id || l.child === source.id);
     if (!this.colorPair) return shown.length === 0;
-    const pair = this.colorPair;
-    const same = l => l.parent === pair.parent && l.child === pair.child && l.binding === pair.binding;
-    // The provider verifies this displayed binding even when no live workers remain.
-    // Retained presentation alone is never permission; live move links are separate.
-    return shown.length === 1 && same(shown[0])
-      && [pair.parent,pair.child].every(id => all.some(s => s.id === id && (s.machine ?? null) === source.machine))
-      && pluginAllows('spaces.color', {pair});
+    // Revalidate every captured sibling, independently of provider ordering.
+    // Retained display is not freshness; each link still needs its provider guard.
+    return shown.length === this.colorPairs.length && this.colorPairs.every(pair=>
+      shown.some(link=>link.parent===pair.parent && link.child===pair.child && link.binding===pair.binding)
+      && [pair.parent,pair.child].every(id=>all.some(s=>s.id===id && (s.machine??null)===source.machine))
+      && pluginAllows('spaces.color', {pair}));
   }
 
   checkMove(cx) {

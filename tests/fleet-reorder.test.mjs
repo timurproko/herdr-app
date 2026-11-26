@@ -23,4 +23,14 @@ assert.deepEqual(all.map(s=>s.id),wanted);assert.equal(errors.length,0);
 commands=[];commit.start('f',captured,planBlockDrop(all,links,'f','a',captured));assert.ok(commit.pending);commit.observe(Date.now()+6000);assert.equal(commit.pending,null);assert.match(errors.at(-1),/unknown/);const count=commands.length;commit.observe();assert.equal(commands.length,count);
 // Current relation changes invalidate remaining commands, with no rollback.
 commit.start('f',captured,planBlockDrop(all,links,'f','a',captured));links=[];commit.observe();assert.equal(commit.pending,null);assert.match(errors.at(-1),/relationship/);
-console.log('PASS attached block projection, either source, pair edges, delayed acknowledgements, expiry, no replay and cross-machine protection');
+all=['c','other','f1','f2','f3','end'].map(s);links=['f1','f2','f3'].map(child=>({parent:'c',child,binding:'home'}));
+for(const source of ['c','f1','f2','f3']) {
+ const cap=captureSpaceBlock(all,links,source);assert.deepEqual(cap.sources,['c','f1','f2','f3']);
+ const wanted=planBlockDrop(all,links,source,'end',cap);assert.deepEqual(wanted,['other','end','c','f1','f2','f3']);
+ const prior=[...all];commands=[];errors=[];commit.start(source,cap,wanted);links=links.slice(0,2);commit.observe();
+ assert.equal(commit.pending,null);assert.match(errors.at(-1),/relationship/);const sent=commands.length;commit.observe();assert.equal(commands.length,sent);
+ all=prior;links=['f1','f2','f3'].map(child=>({parent:'c',child,binding:'home'}));
+}
+assert.equal(projectLinkedRows(all.map(w=>({w})),[...links,{parent:'other',child:'f1',binding:'foreign'}]).find(r=>r.w.id==='f1').linked,false,'Ambiguous ownership cannot silently select a parent');
+assert.ok(projectLinkedRows(all.map(w=>({w})),[{parent:'c',child:'f1'},{parent:'f1',child:'c'}]).every(r=>!r.linked),'Cycles are not connected blocks');
+console.log('PASS single/multi-child block projection, any source, pair edges, delayed acknowledgements, changed membership, expiry, no replay and cross-machine protection');

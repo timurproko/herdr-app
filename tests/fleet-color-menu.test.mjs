@@ -18,7 +18,7 @@ const modules={
 const paletteKeys=['custom.space-colors','space.colors','custom.space-color-auto'];
 const tick=async()=>{for(let i=0;i<30;i++)await Promise.resolve();};
 const phases=['live','closed-live-terminal','finished','no-tasks'];
-async function fixture(machine=null,phase='live',restart=false) {
+async function fixture(machine=null,phase='live',restart=false,childCount=1) {
  const id=value=>machine?`${machine}/${value}`:value,parent=id('coordinator'),child=id('fm-crew-home');
  const state={'custom.plugins':{crew:{enabled:true}},'custom.spaces.preferences':{connectFleetToCoordinator:true},
   'custom.space-colors':{[parent]:'ansi2',[child]:'ansi1'},'space.colors':{[parent]:'ansi2',[child]:'ansi1'},'custom.space-color-auto':{[child]:true}};
@@ -27,6 +27,14 @@ async function fixture(machine=null,phase='live',restart=false) {
  const terminals=[{address:id('t1'),state:'live',labels:{'custom.crew.home':'1'}},
   {address:id('t2'),state:'live',labels:{'crew.task':'task','crew.home':'home','herdr.space':'fm-crew-home'}}];
  const status={home:'C:/fixture/.crew',owner:{terminal:'t1',live:true},tasks:[{id:'task',terminal:'t2',state:'working',pr:null}]};
+ const addProjectChild=i=>{
+  const project=`child-${i}`,space=`fm-crew-home-project-${project}`,tab=id(`w${i+1}`),terminal=`t${i+2}`,task=`task${i+1}`;
+  groups.push({id:id(space),machine,tabs:[{id:tab}]});panes.push({pane:id(`wp${i+1}`),tab,terminal:id(terminal)});
+  terminals.push({address:id(terminal),state:'live',labels:{'crew.task':task,'crew.home':'home','herdr.space':space,'crew.space.version':'1','crew.space.mode':'per-project','crew.space.project':project,'crew.space.name':project}});
+  status.tasks.push({id:task,terminal,project,state:'working',pr:null});
+  state['custom.space-colors'][id(space)]='ansi1';state['space.colors'][id(space)]='ansi1';state['custom.space-color-auto'][id(space)]=true;
+ };
+ for(let i=1;i<childCount;i++)addProjectChild(i);
  let props={tab:'space',target:{id:child},overlay:'colour-menu'},requests=0,insideInit=false,hold=false,fail=false,now=100000,nativeLayout='ready';
  const jobs=[],waiting=[],warnings=[],closed=[];let sidebar,menu;
  const cx={focus_handle:()=>({focus(){}}),notify(){assert.equal(insideInit,false,'No synchronous notification in menu init');},stop_propagation(){},
@@ -43,26 +51,26 @@ async function fixture(machine=null,phase='live',restart=false) {
   entry:`export * as registry from './plugins.js';${mod==='custom-menu'?"export {default as Menu} from './main.js';":''}`});
  sidebar=await load('custom-spaces');
  sidebar.registry.pluginEvent('spaces.refresh',{cx});await drain();
- assert.equal(sidebar.registry.pluginWorkspaceLinks().length,1,'Sidebar freshly verifies its own packaged provider');
+ assert.equal(sidebar.registry.pluginWorkspaceLinks().length,childCount,'Sidebar freshly verifies its own packaged provider');
  if(phase!=='live') {
-  status.tasks[0].state='closed';
-  if(phase!=='closed-live-terminal') {terminals.pop();panes.pop();groups[1].tabs=[];}
+  status.tasks.forEach(task=>task.state='closed');
+  if(phase!=='closed-live-terminal') {terminals.splice(1);panes.splice(1);groups.slice(1).forEach(group=>group.tabs=[]);}
   if(phase==='no-tasks')status.tasks=[];
   sidebar.registry.pluginEvent('spaces.refresh',{cx,force:true});await drain();
   assert.equal(sidebar.registry.pluginWorkspaceLinks().length,0,'Retained finished/empty fleets do not gain live move/worker authority');
  }
- assert.equal(sidebar.registry.pluginWorkspaceLinks({presentation:true}).length,1,'Every enumerated state is displayed attached');
+ assert.equal(sidebar.registry.pluginWorkspaceLinks({presentation:true}).length,childCount,'Every enumerated state is displayed attached');
  if(restart) {
   if(restart==='display-only') {delete state['custom.fleet.links'];delete state['custom.fleet.reads'];}
   sidebar=await load('custom-spaces');
   assert.equal(sidebar.registry.pluginWorkspaceLinks().length,0,'Restart cannot trust persisted success tokens');
  }
  menu=await load('custom-menu');
- assert.equal(menu.registry.pluginWorkspaceLinks({presentation:true}).length,1,'Shared identity restores the menu presentation');
+ assert.equal(menu.registry.pluginWorkspaceLinks({presentation:true}).length,childCount,'Shared identity restores the menu presentation');
  assert.equal(menu.registry.pluginWorkspaceLinks().length,0,'Sidebar verification does not authorize a separate menu instance');
  const open=(source=child)=>{props={...props,target:{id:source}};const view=new menu.Menu();insideInit=true;try{view.init({},cx);}finally{insideInit=false;}return view;};
  const palette=()=>JSON.stringify(paletteKeys.map(k=>state[k]));
- return {state,parent,child,status,groups,panes,terminals,id,sidebar,menu,cx,open,drain,palette,warnings,closed,waiting,
+ return {state,parent,child,status,groups,panes,terminals,id,sidebar,menu,cx,open,drain,palette,warnings,closed,waiting,addProjectChild,
   get requests(){return requests;},set hold(v){hold=v;},set fail(v){fail=v;},set layout(v){nativeLayout=v;},advance(ms){now+=ms;}};
 }
 
@@ -150,4 +158,32 @@ for(const machine of [null,'pc2']) {
  assert.equal(f.state['custom.space-colors'][f.parent],parentColor,'No history means independent spaces, not an inferred coordinator target');
  assert.equal(f.state['custom.space-colors'][f.child],'ansi5');
 }
-console.log('PASS uniform live/finished/empty/restarted attached-pair colour permission, separate packaged sidebar/menu instances, both-origin local/remote mouse/keyboard palettes, in-flight witnessing/coalescing, immutable fleet preferences and stale binding guards');
+// Sibling links attest one coordinator block, not conflicting parent ownership.
+for(const machine of [null,'pc2'])for(const childCount of [2,3])for(const phase of phases)for(const origin of ['parent','first','last'])for(const automatic of [false,true]) {
+ const f=await fixture(machine,phase,'persisted',childCount),source=origin==='parent'?f.parent:origin==='first'?f.child:f.groups.at(-1).id;
+ const view=f.open(source),before=f.palette();view.chooseColor('ansi5',f.cx);assert.equal(f.palette(),before,'Sibling display links cannot borrow sidebar freshness');
+ await f.drain();assert.equal(view.colorReady(),true,`${machine}/${childCount}/${phase}/${origin}: verified siblings form one colour target`);
+ const provider=f.menu.registry.pluginById('crew'),original=provider.workspaceLinks;provider.workspaceLinks=options=>original(options).slice().reverse();
+ assert.equal(view.colorReady(),true,'Reordering sibling links does not change ownership or freshness');
+ const childPalettes=JSON.stringify(f.groups.slice(1).map(s=>paletteKeys.map(key=>f.state[key]?.[s.id])));
+ const tree=view.render(f.cx);
+ if(automatic){tree.attrs.on_key_down[0]({key:'right'},f.cx);view.render(f.cx).attrs.on_key_down[0]({key:'left'},f.cx);view.render(f.cx).attrs.on_key_down[0]({key:'left'},f.cx);view.render(f.cx).attrs.on_key_down[0]({key:'enter'},f.cx);assert.equal(f.state['custom.space-color-auto'][f.parent],true);}
+ else {find(tree,'space-color-5').attrs.on_click[0]({},f.cx);assert.equal(f.state['custom.space-colors'][f.parent],'ansi5');}
+ assert.equal(JSON.stringify(f.groups.slice(1).map(s=>paletteKeys.map(key=>f.state[key]?.[s.id]))),childPalettes,'Every sibling keeps its independent colour and Automatic setting');
+ assert.equal(f.closed.at(-1),'colour-menu');
+}
+for(const machine of [null,'pc2'])for(const change of ['expired','disable','plugin','missing','cross-machine','added-child','binding','parent','duplicate']) {
+ const f=await fixture(machine,'live',false,2),view=f.open(f.parent);await f.drain();assert.equal(view.colorReady(),true);
+ if(change==='expired')f.advance(30001);
+ if(change==='disable')f.state['custom.spaces.preferences'].connectFleetToCoordinator=false;
+ if(change==='plugin')f.state['custom.plugins'].crew.enabled=false;
+ if(change==='missing')f.groups.pop();
+ if(change==='cross-machine')f.groups.at(-1).machine=machine===null?'other':null;
+ if(change==='added-child'){f.addProjectChild(2);f.menu.registry.pluginEvent('workspace.context.refresh',{cx:f.cx,force:true});await f.drain();}
+ if(['binding','parent','duplicate'].includes(change)) {
+  const provider=f.menu.registry.pluginById('crew'),original=provider.workspaceLinks;
+  provider.workspaceLinks=options=>{const links=original(options);if(change==='duplicate')return [...links,{...links[0]}];return links.map((l,i)=>i?{...l,[change]:change==='binding'?'foreign-binding':f.child}:l);};
+ }
+ const before=f.palette();view.chooseColor('ansi5',f.cx);assert.equal(f.palette(),before,`${change}: no stale or ambiguous coordinator colour write`);assert.equal(f.warnings.at(-1).title,'Space colour unavailable');
+}
+console.log('PASS single/multi-child parent/child mouse and keyboard colour/Automatic, local/remote live/retained/restarted verification, unchanged sibling preferences and stale/ambiguous block refusal');
