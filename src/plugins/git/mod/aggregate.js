@@ -194,13 +194,30 @@ export class AggregatePulls {
     }
     if(!this.pending.size && ![...this.entries.values()].some(e=>e.dirty)){this.manualRead=null;this.returning=false;}
   }
+  stageTarget(pr, role, agentLinks) {
+    const context=this.currentContext();
+    if(!context || context.scope!==this.context?.scope || !this.entries.has(pr.key))return null;
+    // Verified context includes no-PR tasks as well as admitted PR links. A
+    // reviewer need not publish a task PR: its explicit crew.pr identifies the
+    // row, but only this home's currently verified task membership permits focus.
+    const members=(context.tasks??context.links).filter(t=>!t.historical && typeof t.terminal==='string' && t.terminal);
+    const agent=agentLinks?.related?.(pr,pr.repo,location().terminal,role,address=>members.some(t=>t.terminal===address));
+    if(!agent)return null;
+    const member=members.find(t=>t.terminal===agent.address);
+    return {terminal:agent.address,task:member.id??member.task,role,agent};
+  }
   target(pr) {
     const context=this.currentContext();if(context?.scope!==this.context?.scope)return null;
     const matches=context.links.filter(l=>!l.historical && typeof l.terminal==='string' && l.terminal && taskPullLink(l.url)?.key===pr.key);
     return matches.find(l=>l.terminal===location().terminal)??matches[0]??null;
   }
-  focus(pr,target,scope) {
+  focus(pr,target,scope,agentLinks) {
     if(!this.shown() || !target?.terminal || target.historical || this.currentContext()?.scope!==scope)return;
+    if(target.role) {
+      const current=this.stageTarget(pr,target.role,agentLinks);
+      if(current?.terminal===target.terminal && current.task===target.task && current.agent.key===target.agent.key && current.agent.availability==='live')run('agent.focus',{terminal:target.terminal});
+      return;
+    }
     if(this.currentContext().links.some(l=>!l.historical && l.terminal===target.terminal && l.task===target.task && taskPullLink(l.url)?.key===pr.key))run('agent.focus',{terminal:target.terminal});
   }
 }

@@ -1,5 +1,6 @@
 // Live, read-only PR -> agent links. No transcripts, terminal input or saved IDs.
 import { agents, panes, spaces, terminals, exec, hc } from './host.js';
+import * as host from './host.js';
 import { paneDirectory } from './directory.js';
 import { agentPullNumber, REPO_ARGS, repositoryRead } from './pulls.js';
 import { namedPullNumber } from './location.js';
@@ -14,6 +15,22 @@ export function repositoryName(stdout) {
   } catch { return null; }
 }
 
+const machineOf=address=>address.includes('/')?address.split('/')[0]:null;
+const connected=on=>!on || Boolean(host.machines?.().some(m=>m.name===on && m.layout==='ready'));
+export function crewMetadata(labels={}) {
+  const text=value=>typeof value==='string'?value.replace(/[\x00-\x1f\x7f]/g,' ').trim().slice(0,512):'';
+  const round=typeof labels['crew.round']==='string' && /^[1-9]\d*$/.test(labels['crew.round'])?Number(labels['crew.round']):null;
+  return {kind:labels['crew.kind'],pr:labels['crew.pr']??null,
+    round:Number.isSafeInteger(round)&&round<Number.MAX_SAFE_INTEGER?round:null,
+    finding:text(labels['crew.finding'])||null,
+    approved:/^[a-f\d]{40,64}$/i.test(labels['crew.approved']??'')?labels['crew.approved']:null};
+}
+export function crewPull(url) {
+  const match=/^https:\/\/github\.com\/([\w.-]+\/[\w.-]+)\/pull\/([1-9]\d*)\/?$/.exec(url??'');
+  const number=Number(match?.[2]);
+  return match && !match[1].split('/').some(p=>p==='.'||p==='..') && Number.isSafeInteger(number)?{repo:repoKey(match[1]),number}:null;
+}
+
 export function agentTargets() {
   const all = panes(), list = terminals(), groups = spaces();
   return agents().flatMap(agent => {
@@ -21,10 +38,11 @@ export function agentTargets() {
     const space = groups.find(s => s.id === agent.space);
     const tab = space?.tabs?.find(t => t.id === agent.tab);
     const {cwd} = paneDirectory(pane, list, null);
-    if (!pane || !tab || !cwd) return [];
+    const terminal=list.find(t=>t.address===agent.address);
+    if (!pane || !tab || !cwd || (terminal?.state && terminal.state!=='live') || !connected(machineOf(agent.address))) return [];
     const on = agent.address.includes('/') ? agent.address.split('/')[0] : null;
     const target = {address:agent.address, pane:pane.pane, space:agent.space, tab:agent.tab,
-      app:agent.app, cwd, on, branch:pane.branch ?? null, number:namedPullNumber(tab)};
+      app:agent.app, cwd, on, branch:pane.branch ?? null, number:namedPullNumber(tab),crewPr:crewPull(terminal?.labels?.['crew.pr'])};
     return [{...target, key:JSON.stringify(target), displayName:displayName(agent)}];
   });
 }
@@ -50,9 +68,9 @@ export class AgentLinks {
 
   displayName(address) {return displayName(agents().find(agent=>agent.address===address));}
 
-  refresh(cx) {
+  refresh(cx, admit=()=>true) {
     if (!this.enabled()) return;
-    const targets = agentTargets(), keys = new Map(targets.map(t => [t.address,t.key]));
+    const targets = agentTargets().filter(t=>admit(t.address)), keys = new Map(targets.map(t => [t.address,t.key]));
     for (const [address, entry] of this.entries) if (keys.get(address) !== entry.key) this.entries.delete(address);
     for (const [address, request] of this.pending) if (keys.get(address) !== request.key) this.pending.delete(address);
     const due = targets.filter(t => !this.pending.has(t.address) && Date.now() - (this.entries.get(t.address)?.at ?? 0) >= TTL);
@@ -67,6 +85,12 @@ export class AgentLinks {
       this.pending.set(target.address,request);
       cx.spawn(async cx => {
         try {
+          await Promise.resolve();
+          if(!this.enabled() || !admit(target.address))return;
+          if(target.crewPr) {
+            if(this.pending.get(target.address)===request && agentTargets().some(t=>t.key===target.key))this.entries.set(target.address,{...target,repo:target.crewPr.repo,number:target.crewPr.number,at:Date.now()});
+            return;
+          }
           const folder = JSON.stringify([target.on,target.cwd]);
           if (!folders.has(folder)) folders.set(folder,
             this.repository(target).catch(() => null));
@@ -77,7 +101,7 @@ export class AgentLinks {
             const screen = await hc(['read',target.address,'--json','--lines','0']).catch(() => null);
             number = (screen?.code === 0 ? agentPullNumber(screen.stdout, target.app) : null) ?? number;
           }
-          if (!this.enabled() || this.pending.get(target.address) !== request || !agentTargets().some(t => t.key === target.key)) return;
+          if (!this.enabled() || !admit(target.address) || this.pending.get(target.address) !== request || !agentTargets().some(t => t.key === target.key)) return;
           this.entries.set(target.address,{...target,repo,number,at:Date.now()});
         } finally {
           if (this.pending.get(target.address) === request) this.pending.delete(target.address);
@@ -94,6 +118,7 @@ export class AgentLinks {
     if(!live())return false;
     const result=await repositoryRead(exec,REPO_ARGS,null,{cwd:target.cwd,on:target.on,timeout:15000,current:live}).catch(()=>null);
     if(!live()||!result||result.code!==0||repositoryName(result.stdout)!==repoKey(repo))return false;
+    if(target.crewPr)return live() && target.crewPr.repo===repoKey(repo) && target.crewPr.number===pr.number;
     let number=target.number;
     if(['a1','claude-code'].includes(target.app)) {
       const screen=await hc(['read',target.address,'--json','--lines','0']);
@@ -103,7 +128,32 @@ export class AgentLinks {
     return live()&&(number!=null?number===pr.number:Boolean(pr.headRefName&&target.branch===pr.headRefName));
   }
 
-  related(pr, repo, preferred = null) {
+  // Role links use terminal labels directly, including an ended terminal's
+  // labels for explanation only. No IO, history, saved IDs or inferred reviewer
+  // branch/footer links. `admit` lets the verified aggregate constrain membership.
+  roleMatches(pr, repo, preferred, role, admit=()=>true) {
+    if(!this.enabled() || !['build','review'].includes(role))return [];
+    const all=panes(),groups=spaces(),liveAgents=agents(),generic=new Map(agentTargets().map(t=>[t.address,t]));
+    const matches=terminals().flatMap(terminal=>{
+      if(!admit(terminal.address))return [];
+      const crew=crewMetadata(terminal.labels);
+      if(!(role==='review'?crew.kind==='review':['ship','fix'].includes(crew.kind)))return [];
+      const agent=liveAgents.find(a=>a.address===terminal.address),pane=all.find(p=>p.terminal===terminal.address&&!p.mod&&(!agent||p.tab===agent.tab));
+      const space=groups.find(s=>s.tabs?.some(t=>t.id===pane?.tab)),tab=space?.tabs?.find(t=>t.id===pane?.tab);
+      const explicit=crew.pr!==null,link=crewPull(crew.pr),entry=this.entries.get(terminal.address),current=generic.get(terminal.address);
+      const exact=Boolean(link && link.repo===repoKey(repo) && link.number===pr.number);
+      if(explicit?!exact:role==='review'||!current||entry?.key!==current.key||entry.repo!==repoKey(repo)||!pr.headRefName||entry.branch!==pr.headRefName)return [];
+      const on=machineOf(terminal.address),availability=!connected(on)?'disconnected':terminal.state && terminal.state!=='live'?'ended':agent&&pane&&tab&&agent.space===space.id?'live':'unavailable';
+      const target={address:terminal.address,on,pane:pane?.pane??null,tab:tab?.id??null,space:space?.id??null,
+        cwd:current?.cwd??null,branch:pane?.branch??null,crew};
+      return [{...target,key:JSON.stringify(target),exact,availability,displayName:displayName(agent)}];
+    });
+    matches.sort((a,b)=>Number(b.availability==='live')-Number(a.availability==='live') || Number(b.exact)-Number(a.exact) || Number(b.address===preferred)-Number(a.address===preferred));
+    return matches;
+  }
+
+  related(pr, repo, preferred = null, role = null, admit) {
+    if(role)return this.roleMatches(pr,repo,preferred,role,admit)[0]??null;
     const matches = agentTargets().flatMap(target => {
       const entry = this.entries.get(target.address);
       if (!entry || entry.key !== target.key || !entry.repo || entry.repo !== repoKey(repo)) return [];

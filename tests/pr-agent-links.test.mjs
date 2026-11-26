@@ -29,12 +29,12 @@ function pathTo(node,target) {
   for(const child of node?.kids??[]) {const rest=pathTo(child,target);if(rest)return [node,...rest];}
   return null;
 }
-let allAgents=[], allPanes=[], allSpaces=[], allTerminals=[], shown=true;
+let allAgents=[], allPanes=[], allSpaces=[], allTerminals=[], shown=true, connected=true,taskContext=null;
 const calls=[], actions=[], tasks=[], remotes=new Map(), screens=new Map(),configs=new Map();
 const place={cwd:'/repo',on:null,terminal:'shell',tab:'shell-tab'};
 let heldRemote=null;
 const host={
-  agents:()=>allAgents,panes:()=>allPanes,spaces:()=>allSpaces,terminals:()=>allTerminals,
+  agents:()=>allAgents,panes:()=>allPanes,spaces:()=>allSpaces,terminals:()=>allTerminals,machines:()=>[{name:'pc2',layout:connected?'ready':'disconnected'}],
   focused:()=>null,home:()=>'/home/test',shared:()=>null,setShared(){},
   settings:()=>({zoom:1}),theme:()=>colors,window:()=>({platform:'linux'}),openOverlay(){},
   props:()=>null,closeOverlay(){},notify(){},nextCommand(){},
@@ -62,7 +62,7 @@ const modules={
   './ci-fix.js':{CIFix:class {sync(){}stop(){}}},
   './notices.js':{GitNotices:class {sync(){return null;}stop(){}retryNow(){}}},
   './webhooks.js':{GitWebhooks:class {sync(){} stop(){}}},
-  './plugins.js':{pluginPullContext:()=>null,pluginEvent(){},sidebarPanelEnabled:()=>true},'./sidebar-title.js':{sidebarTitle:element},
+  './plugins.js':{pluginPullContext:()=>taskContext,pluginEvent(){},sidebarPanelEnabled:()=>true},'./sidebar-title.js':{sidebarTitle:element},
   './panel-pin.js':{panelPin:(_t,{id})=>element().id(id)},'./panel-state.js':{changePanel(){}},
   './host.js':host,'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{},Background},
   'gpui-base':{h_flex:element,v_flex:element},
@@ -279,6 +279,42 @@ const named=allAgents.find(agent=>agent.address==='codex'),nameCalls=calls.lengt
 assert.equal(links.related(pr,'owner/repo','codex').displayName,'Build worker');
 assert.equal(links.related(pr,'owner/repo','codex').key,codexTarget.key,'Display name is not action identity');
 assert.equal(links.displayName('codex'),'Build worker');assert.equal(calls.length,nameCalls,'Naming a tooltip adds no transport read');
+// Managed stages select terminal roles without borrowing a reviewer's base branch.
+const stagePr={...pr,number:1200,headRefName:'stage-head',repo:'owner/repo',key:'owner/repo#1200'};
+function roleAgent(address,kind,prURL=stagePr.url.replace('922','1200'),extra={}) {
+  add(address,{app:'codex',cwd:`/${address.replace('/','-')}`,branch:kind==='review'?'main':'stage-head'});
+  const terminal=allTerminals.at(-1);terminal.state='live';terminal.labels={'crew.kind':kind,...(prURL===null?{}:{'crew.pr':prURL}),...extra};return terminal;
+}
+const ship=roleAgent('builder','ship',null),fix=roleAgent('fixer','fix'),reviewer=roleAgent('pc2/reviewer','review',undefined,{'crew.round':'1','crew.finding':'first defect\nsecond line','crew.approved':'a'.repeat(40)});
+links.refresh(cx);await tick();
+assert.equal(links.related(stagePr,'owner/repo',null,'build').address,'fixer','Explicit fix PR beats worker branch');
+assert.equal(links.related(stagePr,'owner/repo','builder','build').address,'fixer');
+fix.labels['crew.pr']='https://github.com/other/repo/pull/1200';
+assert.equal(links.related(stagePr,'owner/repo',null,'build').address,'builder');
+assert.equal(links.related(stagePr,'owner/repo',null,'review').address,'pc2/reviewer','Base-branch reviewer uses crew.pr only');
+const roleTarget=links.related(stagePr,'owner/repo',null,'review');
+assert.equal(roleTarget.availability,'live');assert.equal(roleTarget.crew.round,1);assert.equal(roleTarget.crew.finding,'first defect second line');assert.equal(roleTarget.crew.approved,'a'.repeat(40));
+assert.equal(links.related(stagePr,'other/repo',null,'review'),null);
+reviewer.labels['crew.pr']='https://github.com/owner/repo/pull/1201';assert.equal(links.related(stagePr,'owner/repo',null,'review'),null);
+delete reviewer.labels['crew.pr'];allPanes.find(p=>p.terminal==='pc2/reviewer').branch='stage-head';
+assert.equal(links.related(stagePr,'owner/repo',null,'review'),null,'Reviewer branch never substitutes for missing crew.pr');
+reviewer.labels['crew.pr']='https://github.com/owner/repo/pull/1200';
+for(const value of ['0','-1','1.5','bad','9007199254740991']){reviewer.labels['crew.round']=value;assert.equal(links.related(stagePr,'owner/repo',null,'review').crew.round,null);}
+reviewer.labels['crew.round']='1';
+reviewer.state='finished';assert.equal(links.related(stagePr,'owner/repo',null,'review').availability,'ended');
+connected=false;assert.equal(links.related(stagePr,'owner/repo',null,'review').availability,'disconnected');
+const offline=calls.length;links.refresh(cx);await tick();assert.equal(calls.length,offline,'Disconnect starts no remote reads');
+connected=true;reviewer.state='live';assert.equal(links.related(stagePr,'owner/repo',null,'review').availability,'live');
+assert.notEqual(links.related(stagePr,'owner/repo',null,'review').key,roleTarget.key,'Moved branch invalidates captured identity');
+const {AggregatePulls}=cache.get(path.join(folder,'aggregate.js')).namespace;
+const aggregate=new AggregatePulls({shown:()=>shown});
+taskContext={scope:'role-home',tasks:[{id:'ship',terminal:'builder'},{id:'review',terminal:'pc2/reviewer'}],links:[{url:stagePr.url.replace('922','1200'),terminal:'builder',task:'ship'}]};
+aggregate.context=taskContext;aggregate.entries.set(stagePr.key,{pr:stagePr});
+let scoped=aggregate.stageTarget(stagePr,'review',links);assert.equal(scoped.terminal,'pc2/reviewer','Verified no-PR review task is eligible without adding a PR');
+const beforeScoped=actions.length;aggregate.focus(stagePr,scoped,taskContext.scope,links);assert.equal(actions.at(-1)[1].terminal,'pc2/reviewer');assert.equal(actions.length,beforeScoped+1);
+taskContext.tasks.pop();aggregate.focus(stagePr,scoped,taskContext.scope,links);assert.equal(actions.length,beforeScoped+1,'Lost home membership refuses captured stage focus');assert.equal(aggregate.stageTarget(stagePr,'review',links),null);
+taskContext.tasks.push({id:'review',terminal:'pc2/reviewer'});taskContext={...taskContext,stale:true};aggregate.focus(stagePr,scoped,'role-home',links);assert.equal(actions.length,beforeScoped+1,'Stale coordinator has no role-focus authority');
+taskContext=null;
 shown=false;const hiddenCalls=calls.length;view.render(cx);await tick();
 assert.equal(calls.length,hiddenCalls,'Hidden Git panels start no agent scans');
 await Promise.all(tasks);

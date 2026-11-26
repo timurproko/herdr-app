@@ -593,6 +593,18 @@ Each accepts the plain name or its `🤖 ` prefix. Unknown labels are not guesse
 from colour or substrings. Existing label pills retain their exact GitHub names.
 Approved means the managed review label is assigned, not that CI passed; the
 existing checks item and GitHub's required checks communicate and gate CI.
+Build resolves `crew.kind=ship` or `fix` terminals through their full `crew.pr`
+URL, or the verified repository and head branch when that label is absent.
+Review resolves only `crew.kind=review` plus the matching full `crew.pr` URL,
+not the reviewer's base branch, footer or tab name. Coordinator actions additionally
+require that exact terminal/task to remain in the freshly verified same-home
+membership; a review task need not have its own recorded PR. Ended, unavailable
+or disconnected targets grant no focus; a disconnected target identifies its
+machine. Optional `crew.round` is the completed review number: round 1 enriches
+Build as **Build 2**, and supplied `crew.finding` adds **back from review 1:**
+followed by the finding. Missing metadata stays plain Build, with no invented
+round or finding. `crew.approved` is read as metadata, never a fourth stage or
+permission to infer Approved from CI.
 
 PRs with a related live agent show a separate white/foreground robot beside
 the title, matching the Agents sidebar. The original colored PR icon stays.

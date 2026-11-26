@@ -8,10 +8,10 @@
 
 ## 2. Build and Review resolve role-specific terminals with safe availability and optional review metadata
 
-- [ ] 2.1 Read crew.kind, crew.pr, crew.round, crew.finding and crew.approved from exact terminal records and implement role-specific matching without changing legacy no-role callers; verify ship/fix PR-or-branch matching, base-branch reviewer PR-only matching, repository isolation, exact-match priority and optional metadata in pr-agent-links fixtures.
-- [ ] 2.2 Model connected/live, ended, disconnected and unknown targets with bounded runtime-only explanatory metadata and fresh captured-action guards; verify disconnect/reconnect, role/PR changes, removed/moved terminals, stale clicks and no hidden/offline discovery reads with synthetic host fixtures.
-- [ ] 2.3 Route coordinator role targets through existing verified same-home membership and aggregate target/focus checks; verify reviewer and builder choices, historical/stale refusals and unchanged PR admission/deduplication in fleet fixtures.
-- [ ] 2.4 Document role matching, optional completed-round semantics and unavailable-target explanations in README and docs/TESTING.md; verify the documented cases have deterministic fixture assertions.
+- [x] 2.1 Read crew.kind, crew.pr, crew.round, crew.finding and crew.approved from exact terminal records and implement role-specific matching without changing legacy no-role callers; verify ship/fix PR-or-branch matching, base-branch reviewer PR-only matching, repository isolation, exact-match priority and optional metadata in pr-agent-links fixtures.
+- [x] 2.2 Model connected/live, ended, disconnected and unknown targets with bounded runtime-only explanatory metadata and fresh captured-action guards; verify disconnect/reconnect, role/PR changes, removed/moved terminals, stale clicks and no hidden/offline discovery reads with synthetic host fixtures.
+- [x] 2.3 Route coordinator role targets through existing verified same-home membership and aggregate target/focus checks; verify reviewer and builder choices, historical/stale refusals and unchanged PR admission/deduplication in fleet fixtures.
+- [x] 2.4 Document role matching, optional completed-round semantics and unavailable-target explanations in README and docs/TESTING.md; verify the documented cases have deterministic fixture assertions.
 
 ## 3. Git rows show themed stage chips with correct clicks, stable geometry and robot compatibility
 

@@ -1412,7 +1412,14 @@ export default class Changes extends View {
       return div();
     }
     if (this.pullMenu) return this.renderPullMenu(theme());
-    if (this.renderPart('coordinator-context',()=>this.syncAggregate(cx))) return this.renderPart('coordinator',()=>this.renderAggregate(cx,theme()));
+    if (this.renderPart('coordinator-context',()=>this.syncAggregate(cx))) {
+      const scope=this.aggregate?.context?.scope;
+      if(this.shown())this.agentLinks?.refresh?.(cx,address=>{
+        const context=this.aggregate?.currentContext?.();
+        return Boolean(context && context.scope===scope && (context.tasks??context.links).some(task=>!task.historical && task.terminal===address));
+      });
+      return this.renderPart('coordinator',()=>this.renderAggregate(cx,theme()));
+    }
     this.enrollmentPicker?.stop();
     if (key() !== this.context) this.refresh(cx, false);
     for(const state of VIEWS)if(this.pulls[state]) {

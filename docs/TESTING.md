@@ -501,7 +501,14 @@ Review / Under review, and Approved, with plain and robot-prefixed names. Array
 and connection results share parsing; null, unknown and removed labels clear the
 stage, narrow check reads preserve it, and CI/reviewDecision never invent a stage.
 Existing list and target reads already include labels; stage adds no label request.
-These are synthetic facts, not live label mutation or approval verification.
+`tests/pr-agent-links.test.mjs` additionally exercises role-specific ship/fix
+PR-or-branch links, reviewers on the base branch matched by crew.pr only,
+repository isolation, optional round/finding/approval labels, disconnected and
+ended targets, reconnect and captured scope/role checks. Its actual aggregate
+boundary permits a freshly verified same-home reviewer task without its own PR,
+but rejects missing membership and stale context. Legacy robot/footer/branch
+callers retain their no-role behavior. These are synthetic facts and host snapshots,
+not live label mutation, remote focus or approval verification.
 
 ## Git PR label facts
 
