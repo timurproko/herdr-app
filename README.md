@@ -275,10 +275,14 @@ the exact number in their tooltip. Accessible labels always keep the full total
 and loading state. Same-repository refreshes keep the last-known counts. Coordinator totals stay loading
 until all admitted PR identities have authoritative facts or confirmed absence; a
 successful subset never becomes an exact total. New unread same-home membership
-keeps compatible last-good totals with loading hover/accessibility feedback. Unresolved first reads, including quiet deferrals, share one standard panel
-bulb/**Loading**, even when other repositories have loaded. Unknown-only
-repositories do not flash empty headers; a new section appears when selected-tab
-PRs are known or an actionable scoped failure needs to be shown. Cooldown expiry
+keeps compatible last-good totals with loading hover/accessibility feedback. On a cold coordinator visit, unresolved first reads (including quiet deferrals)
+share one standard top-left bulb/**Loading** directly below Open/Closed; partial
+successful sections stay hidden until the admitted first reads settle. Actionable
+repository notices remain visible immediately. Returning to a previously shown
+coordinator, or any background refresh, retains the previous list with no body
+Loading: the existing native working bulb pulses beside Git's title during the
+update, stops when it finishes, and replacement sections update in place. No Stale
+label appears. Unknown-only repositories never flash empty headers. Cooldown expiry
 still retries without a new event; warm refusals keep their rows and counts. Cold loading
 and coordinator verification remain panel feedback, never
 placeholder PR rows.
@@ -916,8 +920,11 @@ Names use the released width and truncate with a full-name tooltip only when the
 do not fit. Open and Closed totals remain in the panel's top tabs and still include
 folded sections. These counts cover distinct linked PRs only, never all repository PRs.
 Returning to the same coordinator restores compatible last-visit sections from
-bounded runtime memory while verification/reconciliation runs, with one panel
-Loading indication for unresolved work. Memory holds at most four coordinator
+bounded runtime memory while verification/reconciliation runs, with header activity
+only and no body Loading. Cold Loading is above the scroller, never at its bottom.
+The prior list remains during background updates until replacement is ready;
+actionable notices bypass staging, while quiet cooldowns retain facts and retry
+without new error UI. Collected cold partial facts are not a published return list. Memory holds at most four coordinator
 snapshots and 4096 admitted identities; eviction, restart, code reload and
 Git/Crew/attachment off-on start cold, never restoring persisted PR inventory.
 Stale presentation grants no reads or worker actions. A repository header appears

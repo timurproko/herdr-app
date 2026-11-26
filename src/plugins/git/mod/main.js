@@ -394,7 +394,7 @@ export default class Changes extends View {
 
   repositorySections() {
     const aggregate=this.aggregate,groups=new Map(aggregate.repositories().map(repo=>[repo,{repo,rows:[],error:aggregate.readNotice(repo,this.view)}]));
-    for(const row of aggregate.rows(this.view))groups.get(row.repo)?.rows.push(row);
+    for(const row of (aggregate.presentationRows?.(this.view)??aggregate.rows(this.view)))groups.get(row.repo)?.rows.push(row);
     return [...groups.values()].filter(section=>section.rows.length || section.error);
   }
 
@@ -430,7 +430,7 @@ export default class Changes extends View {
     if(this.pullLoading || this.relatedRequest || aggregate?.busy)return {busy:true};
     const root=this.root,on=aggregate?aggregate.context.machine:this.on;
     const request=this.fallbackRequest={},order=aggregate?aggregate.factOrder:this.factOrder,read=order.begin();
-    if(aggregate)aggregate.fallbackBusy=true;
+    if(aggregate) {aggregate.rememberCounts();aggregate.fallbackBusy=true;}
     else {this.pullLoading=true;this.pullRequest=request;}
     let retryAfter=0,rateLimited=false;
     try {
@@ -1303,7 +1303,7 @@ export default class Changes extends View {
     this.pullTextPending = new Set();
     if (this.pullTextScope!==this.context) {this.pullTextRequests=new Map();this.pullTextScope=this.context;}
     const aggregate=this.aggregate,counts=aggregate.counts(),scope=aggregate.context.scope;
-    const hasInventory=[...aggregate.entries.values()].some(e=>e.pr),verifying=aggregate.context.stale && !hasInventory;
+    const hasInventory=[...aggregate.entries.values()].some(e=>e.pr),warm=aggregate.hasPresentation??hasInventory;
     const verificationHint='Fleet status is unverified; actions are paused until fresh verification' + (aggregate.context.verification
       ? `\n${aggregate.context.verification.reason} at ${new Date(aggregate.context.verification.at).toISOString()} (generation ${aggregate.context.verification.generation})` : '');
     // Membership is cross-tab: enrollment and updates must retain hidden sections.
@@ -1331,7 +1331,7 @@ export default class Changes extends View {
       .child(h_flex().id('changes-header').relative().bg(t.surface).h(U.section).flex_none().pl(4).pr(U.gutter).gap(U.gap).items_center().border_b(1).border_color(t.border)
         .on_hover((hovered,view)=>{this.headerHovered=hovered;view.notify();})
         .child(sidebarTitle(t,'changes','git-title'))
-        .when(aggregate.context.stale && hasInventory, el=>el.child(activity(t.working).id('git-task-stale')
+        .when(warm && (aggregate.updating??aggregate.context.stale), el=>el.child(activity(t.working).id(aggregate.context.stale?'git-task-stale':'git-task-activity')
           .role('status').accessibility_label('Updating pull requests').tooltip(verificationHint)))
         .child(reveal(headerTools(h_flex()).id('git-actions').bg(t.surface),this.headerHovered)
           .child(refreshButton(t,{id:'git-refresh',icon:'mods/custom-changes/refresh.svg',label:'Refresh',busy:aggregate.busy,spinning:aggregate.busy,
@@ -1342,6 +1342,9 @@ export default class Changes extends View {
       .child(h_flex().id('git-views').h(40).flex_none().px(4).gap(2).items_center().border_b(1).border_color(t.border)
         .child(this.segment(t,'git-view-open','Open',counts.open,this.view==='open',view=>this.setView('open',view),aggregate.countsLoading))
         .child(this.segment(t,'git-view-closed','Closed',counts.closed,this.view==='closed',view=>this.setView('closed',view),aggregate.countsLoading)))
+      .when(!warm && waiting,el=>el.child(div().id('git-task-waiting').flex_none().px(LIST_INSET)
+        .child(panelMessage(t,sections.length?'git-task-loading':'git-task-empty',{text:'Loading',loading:true,rowInset:2})
+          .when(aggregate.context.stale,message=>message.tooltip(verificationHint)))))
       .child(v_flex().id('task-pulls-scroll').relative().flex_1().min_h(0).overflow_hidden()
         .child(v_flex().id(`task-pulls-frame-${scope}-${this.view}-${taskWindow.measurement}`).relative().flex_1().min_h(0).overflow_hidden()
           .on_size_change((size,cx)=>this.taskMeasure(taskWindow,scope,'viewport',size,cx))
@@ -1358,14 +1361,11 @@ export default class Changes extends View {
                 .accessibility_label(taskWindow.more?'Show more task pull requests':'Show first task pull requests again')
                 .tooltip(taskWindow.more?'Show the next mounted batch':'Return to the first mounted batch')
                 .on_click((_event,cx)=>this.nextTaskChunk(taskWindow,scope,cx)).child('Show more')))
-              .when(!sections.length && !waiting,el=>el.child(panelMessage(t,'git-task-empty',{text:`No ${this.view} pull requests`,rowInset:2}))))
+              .when(!sections.length && (!waiting || warm),el=>el.child(panelMessage(t,'git-task-empty',{text:`No ${this.view} pull requests`,rowInset:2}))))
             .when(Boolean(anchor),el=>el.child(div().id('task-pulls-anchor').absolute().left(0).w(1).h(1)
               .top(anchor.to+(anchor.to>anchor.from?taskWindow.viewport-1:0)))))
           .when(taskWindow.metrics.moreAbove,el=>el.child(topFade(taskWindow.metrics,'task-pulls-list',t.background,{left:LIST_INSET,right:LIST_INSET})))
           .when(taskWindow.metrics.moreBelow,el=>el.child(bottomFade(taskWindow.metrics,'task-pulls-list',t.background,{left:LIST_INSET,right:LIST_INSET})))))
-      .when(waiting,el=>el.child(div().id('git-task-waiting').flex_none().px(LIST_INSET)
-        .child(panelMessage(t,sections.length?'git-task-loading':'git-task-empty',{text:'Loading',loading:true,rowInset:2})
-          .when(aggregate.context.stale,message=>message.tooltip(verificationHint)))))
       .when(setup,el=>el.child(this.liveCIInfo(t)))
       .when(Boolean(enrollment),el=>el.child(enrollment))
       .when(Boolean(sweep),el=>el.child(this.sweepLayer(t,sweep).top(U.section)));

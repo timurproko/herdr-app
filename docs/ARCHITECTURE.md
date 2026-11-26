@@ -367,9 +367,13 @@ panel recreation. Scoped rows/errors and repository-specific diagnostics fold wi
 the body; global setup stays visible. Counts and webhook-driven facts continue
 updating while folded. One shared projection derives selected-tab sections from known eligible rows
 or an applicable `readNotice` before applying folds. Unknown-state queued,
-in-flight and quiet-deferred first reads share one panel bulb/Loading outside
-repository bodies, above enrollment; they create no unknown-only header.
-Warm-only refreshes add no Loading. An applicable actionable failure retains its notice; confirmed
+in-flight and quiet-deferred first reads share one cold panel bulb/Loading directly
+below Open/Closed, above the scroller; cold partial successes remain staged and
+create no unknown-only headers. Published same-home return/background lists stay
+mounted without body Loading; the existing native activity bulb in the Git header
+covers active updates and stops on completion. Quiet warm cooldowns are not active
+requests. Bounded pure published snapshots are distinct from collected facts, so
+leaving an unfinished cold load cannot turn partial successes into a warm list. An applicable actionable failure retains its notice; confirmed
 missing and known ineligible history do not leave Loading behind. Empty settled sections have no header,
 but disappearing sections retain saved fold keys. A settled tab with no qualifying
 sections uses ordinary Git's **No open pull requests** / **No closed pull requests**;
@@ -378,8 +382,9 @@ is unchanged. The selected presentation reveals ten items initially, including h
 notices and rows, then appends ten near the scroll bottom without inventory IO.
 An unfolded header at a reveal boundary waits for its first row or visible notice;
 no transition may leave it alone. Sections without selected-tab content or a
-notice are omitted even if a saved fold key remains. Panel Loading is not a PR,
+notice are omitted even if a saved fold key remains. Cold panel Loading is not a PR,
 repository body, reveal item or safety target; it remains visible through folds.
+Warm native header activity has the same separation and never grants action authority.
 Same-home returns restore pure runtime presentation from at most four snapshots
 and 4096 admitted identities, with no native handles or callback-bearing trees.
 Exact scope and provider/Git enable generations reject stale cache/read results;

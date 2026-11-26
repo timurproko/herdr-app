@@ -39,13 +39,46 @@ can satisfy GitHub protection, so metadata events must not publish a replacement
 aggregate; the latest non-cancelled ready run must still pass all dependencies.
 These live observations are separate from the local regression matrix.
 
+## Connected project Spaces and coherent coordinator inventory
+
+`tests/fleet-project-spaces.test.mjs` uses the Crew PR #22 placement-v1 contract
+with combined-only, project-only and mixed populations on local/qualified remote
+models. It covers exact native membership, malformed labels, project names versus
+user renames, durable registry links and colour authority. `fleet-command.test.mjs`
+checks actual PowerShell project projection; set `FLEET_TEST_ROOT` to an existing
+outside-checkout scratch directory for local disposable output.
+
+`spaces-worktree-layout.test.mjs` and `fleet-reorder.test.mjs` cover one/two/three
+children, shared stem/last corner, native numbering, hidden-child selection,
+compact membership, any-member block reorder, ambiguity/cycles and changed captured
+membership without replay. Git's right-edge oracle uses an ordinary trailing Crew
+pill; connected parent Crew now precedes disclosure and is deliberately not the
+ordinary trailing-edge reference. Git geometry is unchanged.
+
+`git-inventory-presentation.test.mjs` covers cold whole-inventory admission,
+immediate actionable notices, no partial-return leak, staged warm replacements,
+header-only native activity, no warm body Loading and quiet cooldown behavior.
+`git-deferred-repositories.test.mjs` retains the exact-deadline no-event recovery
+and truthful-count checks, now withholding cold partial successes rather than
+displaying them. `git-checks-fallback.test.mjs` retains mounted safety admission.
+
+The opt-in Windows `tests/features/interface-native.mjs --run --output <outside>
+--spaces --children 1|2|3 --zoom 1|1.3` mounts actual production renderers with
+synthetic identity/PR transport, never real agents. Supply a checksum-verified
+`HERDR_APP_BIN`. It captures expanded/collapsed/selected/compact/reorder states,
+cold partial/full/failure/cooldown, warm return/background activity (two native
+phases) and completion. It stops its own desktop and isolated Core in finally;
+inspect both screenshots and cleanup/error receipts. Controller-driven actions
+are not real pointer/keyboard or live-SSH proof. No installed app or PATH changes.
+
 ## Git read-budget and refusal fixtures
 
 `tests/git-deferred-repositories.test.mjs` runs a sanitized equivalent of the
 reported mixed-fleet case through real Crew verification, aggregate/read modules
 and panel rendering. With herdr-app #74/#76 refused and siblings supplying Open 2 /
-Closed 5, it requires one panel Loading indication with no unknown-only herdr-app
-header and both badges 0/loading, then the header and both rows and complete task totals after an exact fake-clock
+Closed 5, it requires one top-left cold Loading indication without partial successful
+sections or unknown-only headers and both badges 0/loading, then the complete
+eligible list and task totals after an exact fake-clock
 cooldown retry without another event. It also covers queued/in-flight uncertainty,
 actionable/missing exclusions, folds, atomic boundaries, 100-item cap, surviving
 anchors, new membership with retained/loading counts, warm retention and obsolete
@@ -53,8 +86,8 @@ retry guards. It is not evidence of the original unrecorded refusal or native pi
 
 `tests/git-coordinator-return.test.mjs` checks exact-scope runtime return memory,
 provider/Git generation invalidation even without an intermediate render, bounded
-snapshot retention, stale-action refusal, one panel Loading and visible cold
-failures. The renderer and safety selection share the same admission projection.
+snapshot retention, stale-action refusal, cold panel Loading and visible cold
+failures; warm return feedback now uses the header-only activity contract above. The renderer and safety selection share the same admission projection.
 
 `tests/git-rate-quiet.test.mjs` exercises strict primary/secondary refusal handling,
 episodes, Retry-After, manual bypass and the older-success/cooldown race. Ordinary

@@ -23,11 +23,11 @@ Approved by the person: multi-child support and warm header-only activity, with 
 
 ## 5. Coherent cold loading and warm header activity
 
-- [ ] 5.1 Separate published presentation from collected facts and stage cold/warm replacement successes; verify cold partial, never-published return, warm return/update, authoritative removals and scope/enable invalidation.
-- [ ] 5.2 Mount one cold Loading below tabs and reuse the native working activity bulb in warm headers only; verify no warm body Loading, accessible/diagnostic labels and activity stop on update completion/refusal.
-- [ ] 5.3 Preserve immediate scoped failures, truthful incomplete totals and quiet cooldown retry; verify mixed/all failures, missing/history exclusions and no-event recovery without empty headers or partial success flashes.
-- [ ] 5.4 Keep section/window/safety admission aligned with existing folds, reveal/caps and anchors; verify focused projection/refresh regressions and unchanged ordinary Git.
-- [ ] 5.5 Extend synthetic native captures for cold, return, background, completion/failure/cooldown and two activity phases at both zooms; verify no live IO and finally cleanup receipts; update README/architecture/testing guidance to the approved contract.
+- [x] 5.1 Separate published presentation from collected facts and stage cold/warm replacement successes; verify cold partial, never-published return, warm return/update, authoritative removals and scope/enable invalidation.
+- [x] 5.2 Mount one cold Loading below tabs and reuse the native working activity bulb in warm headers only; verify no warm body Loading, accessible/diagnostic labels and activity stop on update completion/refusal.
+- [x] 5.3 Preserve immediate scoped failures, truthful incomplete totals and quiet cooldown retry; verify mixed/all failures, missing/history exclusions and no-event recovery without empty headers or partial success flashes.
+- [x] 5.4 Keep section/window/safety admission aligned with existing folds, reveal/caps and anchors; verify focused projection/refresh regressions and unchanged ordinary Git.
+- [x] 5.5 Extend synthetic native captures for cold, return, background, completion/failure/cooldown and two activity phases at both zooms; verify no live IO and finally cleanup receipts; update README/architecture/testing guidance to the approved contract.
 
 ## Workflow follow-up
 
