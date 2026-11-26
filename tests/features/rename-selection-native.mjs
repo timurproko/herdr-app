@@ -9,8 +9,9 @@ export function checkRenameSelection(home,app) {
   let checked=0;
   try {
   fs.cpSync(path.join(home,'mods/custom-tabs'),dir,{recursive:true});
-  fs.renameSync(path.join(dir,'host.js'),path.join(dir,'native-host.js'));
-  fs.writeFileSync(path.join(dir,'host.js'),`export * from './native-host.js';
+  // The source may already wrap native-host.js; preserve that whole chain.
+  fs.renameSync(path.join(dir,'host.js'),path.join(dir,'selection-base-host.js'));
+  fs.writeFileSync(path.join(dir,'host.js'),`export * from './selection-base-host.js';
 export const shared=key=>key==='layout'?'Custom':null;
 export const spaces=()=>[{id:'fixture-space',machine:null,name:'Build 🛠️ tools',named:true,active:true,tabs:[{id:'fixture-tab',name:'Build 🛠️ tools',named:true,active:true}]}];
 export const focused=()=>({space:'fixture-space',tab:'fixture-tab',pane:null});

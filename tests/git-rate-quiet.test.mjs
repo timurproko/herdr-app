@@ -64,7 +64,21 @@ retired=true;finishSerial({code:0});await Promise.all([heldJob,retiring,subscrib
 let eligible=true;
 const third=serial.read('third','owner/repo',{},()=>new Promise(resolve=>finishSerial=resolve));
 const cancelled=serial.read('cancelled','owner/repo',{current:()=>eligible},()=>assert.fail('Queued obsolete work cannot dispatch'));
-eligible=false;finishSerial({code:0});await third;await assert.rejects(cancelled,e=>e.quiet);assert.equal(serial.tails.size,0);
+eligible=false;serial.retireObsolete();const afterRetirement=serial.read('after-retirement','owner/repo',{},()=>{serialCalls++;return {code:0};});assert.equal(serialCalls,3,'Retiring an obsolete queued tail still waits behind its live predecessor');finishSerial({code:0});await third;await assert.rejects(cancelled,e=>e.quiet);await afterRetirement;assert.equal(serial.tails.size,0);
+// Native task abandonment may strand an inner promise. Only all-obsolete
+// leases may be detached; neither live consumers nor rate/fact state is erased.
+{
+ const leases=new f.GitReads();let owner=true,peer=true,releaseOld,releaseNew,runs=0;
+ const old=leases.read('page','owner/repo',{current:()=>owner},()=>{runs++;return new Promise(resolve=>releaseOld=resolve);});
+ const joined=leases.read('page','owner/repo',{current:()=>peer},()=>assert.fail('Healthy subscriber shares work'));
+ const job=[...leases.pending.values()][0];leases.lists.set('list',job);leases.targets.set('target',job);leases.facts.set('fact',42);leases.versions.set('version',7);
+ owner=false;leases.retireObsolete();assert.equal(leases.pending.size,1,'A healthy subscriber prevents retirement');
+ peer=false;leases.state({}).until=123;leases.retireObsolete();for(const map of [leases.pending,leases.tails,leases.lists,leases.targets])assert.equal(map.size,0);
+ assert.equal(leases.state({}).until,123);assert.equal(leases.facts.get('fact'),42);assert.equal(leases.versions.get('version'),7);leases.state({}).until=0;
+ const replacement=leases.read('page','owner/repo',{current:()=>true},()=>{runs++;return new Promise(resolve=>releaseNew=resolve);});assert.equal(runs,2,'Replacement does not wait on the abandoned repository tail');
+ releaseOld({code:0});await Promise.all([old,joined]);assert.equal(leases.pending.size,1,'Late obsolete cleanup cannot erase its replacement');
+ releaseNew({code:0});await replacement;assert.equal(leases.pending.size,0);
+}
 const tick=async()=>{for(let i=0;i<60;i++)await Promise.resolve();};
 for(const initial of [true,false]) {
  const h=await rowHarness({host:{exec:async()=>({code:1,stderr:'GraphQL: API rate limit already exceeded for user ID 123'})},modules:{'panel-kit.js':{headerTool:element,contextMenu:element,panelMessage:(_t,id,o)=>element().id(id).child(o.text)}}});

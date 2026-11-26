@@ -49,11 +49,30 @@ explicitly checks the hidden default-off global intent and unchanged visible car
 controls; the Start-page fixture separately supplies the Settings badge/contribution
 imports while keeping all independent last-tab and launch assertions.
 
+## PR 94 combined CI and review correction
+
+Ubuntu job `140094468448` on `d253573` failed three fixture contracts: missing
+`stageLabels` in the context-menu mock, refresh tests awaiting a render-guard job
+instead of root/page IO (and using timestamps instead of loaded pages), and missing
+shared rename tokens in source-evaluated Spaces. The native selection checker had
+an independent facade-wrapper cycle; its copied base now has a distinct filename.
+Worker regressions cover abandoned branch resolution/internal reset, one-shot
+manual root permission independent of rate credit, symmetric tab errors and
+selected-agent pin ownership. Pins now sit above sections, survive collapse,
+omit lone headers and exclude themselves from section counts, not tab totals.
+Stage tests now require tight plain text, visible supplied Build rounds, identical
+probe captions and full title width at normal/narrow sizes. These amendments are
+recorded in `spaces-sidebar-crew-label-fix-round`; the prior archive stays intact.
+No local test files or native probes were rerun in this round, as instructed;
+CI and delta review must validate the final push. Earlier screenshots describe
+checkpoint presentation, not this later style/placement decision.
+
 ## Connected project Spaces and coherent coordinator inventory
 
-`spaces-worktree-layout.test.mjs` covers the approved adaptive metadata grid:
-expanded Crew ends at the machine + right edge; collapsed Crew shifts to the
-Agents machine-label rail and child-space count occupies the Agents numeric rail.
+`spaces-worktree-layout.test.mjs` covers the fixed metadata grid: Crew and child
+count stay in place through disclosure. Count, machine + and rename Confirm share
+a centred inner axis; chevron and Cancel share the outer axis, including 1/12/123
+children, 160–360px, local/pc2 and 100%/130%. Agents' numeric defaults are unchanged.
 Machine/coordinator chevrons share a centre and a 24px target, including hover.
 `agents-dot-column.test.mjs` protects existing numeric/status geometry; unrelated
 tags, native selection/numbering, connectors and captured block reorder stay intact.
@@ -91,14 +110,62 @@ and native errors, and stops its isolated app/Core in finally. This is controlle
 callback/native-pixel proof, not pointer hit-testing or live SSH acceptance. No real
 terminal or account is used and nothing is installed outside disposable homes.
 
+`fleet-reported-history.test.mjs` reproduces the real Crew fleet/full payload
+shapes with reported live, finished and removed terminals. The former
+`incompleteMembership` gate required every reported terminal to remain live,
+so one completed task permanently rejected status for the entire home. Both
+pre-#90 main and #90 reproduce the null strict context/Loading failure. Completed
+nonlive reports now supply read-only same-home PR history; working/finished
+mismatches, live reported layout gaps and owner loss still refuse fresh authority.
+The test exercises local/pc2 cold publication, stage aliases, deduped counts and
+no navigation from completed records, using synthetic native/GitHub facts only.
+
+The same native fixture's `--reported-ended` case renders managed Build/Review/
+Approved labels with no live matching agent. `--baseline <revision>` uses that
+revision's Crew provider in the disposable mods. Against post-#90 `0fc8d99`, both
+machine selections remain Loading with displayed zero totals; the corrected
+provider publishes three PRs and Open 3 in both. Both 100% runs had no native
+errors and stopped their app/Core. This proves that Loading path, not the earlier
+unrecorded native `interrupted` banner: no common cause was established and the
+banner must not be relabelled as a caught JavaScript exception.
+
 `spaces-worktree-layout.test.mjs` and `fleet-reorder.test.mjs` cover one/two/three
 children, shared stem/last corner, native numbering, hidden-child selection,
 compact membership, any-member block reorder, ambiguity/cycles and changed captured
 membership without replay. Spaces additionally checks the shared machine/coordinator 24px disclosure bounds,
-expanded Crew/plus right edges, plain label styling and collapsed child counts
+fixed Crew placement, centred count/plus/Confirm columns, plain label styling and persistent child counts
 at 100%/130%. Agents supplies the unchanged time/count and label rails. Git's
 right-edge oracle now asserts its independent preserved 3px inset rather than
 borrowing a filled Crew pill that Spaces no longer renders. Git geometry is unchanged.
+
+`git-worker-cold-entry.test.mjs` covers absent/empty/unverified coordinator seeds,
+zero totals with null pages, abandoned root/page Tasks, obsolete shared lease/tail
+retirement, repeated-failure limits and reachable manual retry, stale replies and a selected
+Draft above its section, single-pin header suppression, collapse survival and header counts excluding the pin. `git-target-reads.test.mjs` refuses invalid alias identity,
+state/title and row normalization locally while publishing healthy siblings;
+transport/rate/unscoped failures remain whole-read failures. Malformed per-task
+Crew discovery becomes unavailable without weakening owner/native identity.
+
+`git-render-recovery.test.mjs` covers row-local 74px fallback, removal during build
+and waiting/moving pin motion, one deferred abort retry, success/close isolation
+and no repeated focus. `pr-agent-links.test.mjs` checks one native collection read
+per frame across 30 rows plus 120 irrelevant workers, with fresh action-time reads.
+`inline-rename-layout.test.mjs` uses actual Tabs/Spaces renderers to compare shared
+field/action geometry and styles at normal/narrow widths and 100%/130% zoom.
+
+Opt-in `tests/features/git-interruption-native.mjs --run --output <outside>
+[--baseline f7fe990]` forces a test-only infinite loop after accepting row removal;
+the unmodified App 0.1.18 watchdog stops it at its render budget. Baseline pixels
+retain the actual `interrupted` banner until another explicit change. Current
+source logs its surviving marker and recovers using the shipping 64ms retry with
+no new data change. This establishes recovery, not the historical workload trigger.
+App `status.errors` does not include last-frame render banners: inspect pixels and
+marker logs as well as receipts. `--worker-cold` instead exercises production
+worker root/canonical/page reads for all three seed cases. Earlier checkpoint pixels
+show Draft 94 and Open 1; placement and style were subsequently revised to pin above
+the section and use a plain chip. No final native rerun is claimed. Both modes verify the archive and stop app/Core in
+finally; fake IO never reaches GitHub or live terminals. Use an external
+`HERDR_APP_BIN` pointing to the verified executable. No native runtime is modified.
 
 `fleet-color-menu.test.mjs` runs the actual separately packaged provider and menu
 with two/three verified children, coordinator/child origins, local/remote machines,
@@ -116,10 +183,10 @@ shared message geometry with a static dot; Refresh is static even during its
 sets presentation-only loading; failed verification awaiting retry stops the line.
 
 `tests/features/sidebar-alignment-native.mjs --run --output <outside> --zoom 1|1.3
---children 1|3 [--baseline <revision>]` verifies the supplied 0.1.18 archive and
-executable, mounts actual Spaces/Agents/Git with synthetic local/remote data and
-captures before/after rows and machine + (10 logical pixels left), collapsed
-counts, parent/child/ordinary rename, long names, compact/selection, cold/warm/
+--children 1|3 --width 180|300 [--baseline <revision>]` verifies the supplied 0.1.18 archive and
+executable, mounts actual Spaces/Agents/Tabs/Git with synthetic local/remote data and
+captures before/after fixed Crew/count columns, section-contained worker pins,
+shared tab and parent/child/ordinary space rename, long names, compact/selection, cold/warm/
 background/ordinary line phases, completion and failures. Hover-only pointer
 movement targets its own disposable window; no clicks/keys, terminals or live
 SSH. Receipts check render errors and stop its desktop/Core in finally. Earlier
@@ -687,14 +754,14 @@ callers retain their no-role behavior. These are synthetic facts and host snapsh
 not live label mutation, remote focus or approval verification.
 
 `tests/pr-agent-links.test.mjs` renders the actual stage controls and checks
-Build/Review focus, Approved row opening regardless of CI, round/finding captions,
+Build/Review focus, Approved opening regardless of CI, visible Build rounds with finding hover,
 missing metadata, inert ended/disconnected chips, stale captured roles and scopes,
 and ghost noninteraction. `tests/git-stage-chips.test.mjs` checks all captions and
-shared 80px title reservations across ordinary, pinned, scrolling, coordinator and
+tight plain stage styling without emoji/outline or an 80px title reservation across ordinary, pinned, scrolling, coordinator and
 ghost Open/Closed/merged rows, 280–480px and 75–200% zoom including 130%. Existing
 geometry/right-edge fixtures retain the 74px blocks, lower-line allocation,
 Spaces-derived trailing anchor and fallback robot's 24px target. The no-label
-main-relative tree/probe budget remains unchanged. These are render-tree assertions,
+main-relative tree/probe budget removes exactly one obsolete absent-control node per row without adding probes. These are render-tree assertions,
 not native pointer dispatch, pixel layout or real-agent focus proof.
 
 The same `pr-agent-links` fixture now prints `REASON_MATRIX` for 80 combinations:

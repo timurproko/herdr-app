@@ -10,6 +10,7 @@ import {deploy} from '../../tools/deploy.mjs';
 assert.ok(process.argv.includes('--run')&&process.platform==='win32','Explicit Windows --run required');
 const arg=(name,fallback)=>{const i=process.argv.indexOf(name);return i<0?fallback:process.argv[i+1];};
 const output=path.resolve(arg('--output')),zoom=Number(arg('--zoom','1'));
+const reportedEnded=process.argv.includes('--reported-ended'),baseline=arg('--baseline',null);
 assert.ok(path.relative(project,output).startsWith('..'));assert.ok([1,1.3].includes(zoom));
 const appBin=path.resolve(process.env.HERDR_APP_BIN),binRoot=path.resolve(path.dirname(appBin),'..');
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
@@ -25,6 +26,7 @@ const env={...process.env,USERPROFILE:home,HERDR_APP_HOME:home,LOCALAPPDATA:path
 for(const key of ['HC_TERMINAL_ID','HC_PARENT','HC_ADDRESS','HC_TERMINAL_SOCKET','HC_SCOPE','GH_TOKEN','GITHUB_TOKEN'])delete env[key];
 fs.mkdirSync(home,{recursive:true});fs.mkdirSync(env.LOCALAPPDATA,{recursive:true});fs.writeFileSync(control,'{}');
 const {output:built}=build();deploy(built,home,{repair:false});
+if(baseline)for(const mod of ['custom-settings','custom-spaces','custom-changes'])fs.writeFileSync(path.join(home,'mods',mod,'plugins/crew/fleet.js'),execFileSync('git',['show',`${baseline}:src/plugins/crew/fleet.js`],{encoding:'utf8'}));
 const put=(rel,value)=>{const file=path.join(home,rel);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,typeof value==='string'?value:JSON.stringify(value,null,2));};
 put('settings.json',{core:coreBin,telemetry:false,zoom});put('update-notes.json',{last_run:'0.1.18',presented:['0.1.18']});
 put('shared.json',{layout:'CombinedFixture','frame.welcomed':'skipped','custom.plugins':{crew:{enabled:true},git:{enabled:true},files:{enabled:false},usage:{enabled:false}},'custom.spaces.preferences':{connectFleetToCoordinator:false},'fixture.selected':'coordinator','space.colors':{coordinator:'#22aa44','fm-crew-home':'#cc8833','pc2/coordinator':'#11aaaa','pc2/fm-crew-home':'#9955cc'}});
@@ -32,11 +34,11 @@ put('layouts/CombinedFixture.json',{id:'root',type:'row',theme:'Custom',titlebar
 const fixture=`import * as native from './native-host.js';
 const machines=[null,'pc2'];const q=(id,m)=>m?m+'/'+id:id;
 export const groups=()=>machines.flatMap(m=>[{id:q('coordinator',m),name:'coordinator',named:true,machine:m,active:native.shared('fixture.selected')===q('coordinator',m),tabs:[{id:q('c',m),active:true}]},{id:q('fm-crew-home',m),name:native.shared('fixture.title')??'crew',named:true,machine:m,tabs:[{id:q('a',m)},{id:q('b',m)}]}]);
-export const members=()=>machines.flatMap(m=>['c','a','b'].map((tab,i)=>({tab:q(tab,m),pane:q(tab+'p',m),terminal:q('t'+(i+1),m)})));
-export const live=()=>machines.flatMap(m=>[{address:q('t1',m),state:'live',labels:{'custom.crew.home':'1'}},...[2,3].map((n,i)=>({address:q('t'+n,m),state:'live',labels:{'crew.home':'home','crew.task':'task'+n,'herdr.space':'fm-crew-home',...(i?{'crew.space.version':'1','crew.space.mode':'combined','crew.space.project':'herdr-app'}:{})}}))]);
+export const members=()=>machines.flatMap(m=>['c','a','b'].map((tab,i)=>({tab:q(tab,m),pane:q(tab+'p',m),terminal:q('t'+(i+1),m)}))).filter(p=>!${reportedEnded}||!p.terminal.endsWith('t2'));
+export const live=()=>machines.flatMap(m=>[{address:q('t1',m),state:'live',labels:{'custom.crew.home':'1'}},...[2,3].map((n,i)=>({address:q('t'+n,m),state:${reportedEnded}&&n===2?'finished':'live',labels:{'crew.home':'home','crew.task':'task'+n,'herdr.space':'fm-crew-home',...(i?{'crew.space.version':'1','crew.space.mode':'combined','crew.space.project':'herdr-app'}:{})}}))]);
 export const location=()=>{const space=native.shared('fixture.selected')??'coordinator';return {space,on:space.startsWith('pc2/')?'pc2':null,cwd:'C:/fixture/.crew',terminal:space.startsWith('pc2/')?'pc2/t1':'t1'};};
 export const report=m=>({home:(m??'local')+'/.crew',owner:{terminal:'t1',live:true},tasks:[{id:'task2',terminal:'t2',state:'reported',pr:'https://github.com/fixture/crew/pull/1'},{id:'task3',terminal:'t3',state:'working',pr:'https://github.com/fixture/herdr-app/pull/2'},{id:'finished',terminal:null,state:'closed',pr:'https://github.com/fixture/xrbuild/pull/3'}]});
-export async function github(cmd,args){if(cmd==='git')return {code:128,stdout:'',stderr:'fatal: not a git repository'};if(cmd!=='node'||!args[1]?.includes('GH_REPO:repo'))throw Error('No real subprocess allowed');const repo=args[2],query=JSON.parse(args[3]).find(a=>a.startsWith('query='));if(!query)throw Error('Only synthetic GraphQL');const numbers=[...query.matchAll(/pr(\\d+):pullRequest/g)].map(m=>Number(m[1]));return {code:0,stdout:JSON.stringify({data:{repository:Object.fromEntries(numbers.map(number=>['pr'+number,{number,title:['','Recorded task PR','Mixed-generation combined fleet','Finished task still open'][number],url:'https://github.com/'+repo+'/pull/'+number,state:'OPEN',author:{login:'fixture'},createdAt:new Date(Date.now()-3600000).toISOString(),body:'',labels:[],statusCheckRollup:[]}]))}})};}
+export async function github(cmd,args){if(cmd==='git')return {code:128,stdout:'',stderr:'fatal: not a git repository'};if(cmd!=='node'||!args[1]?.includes('GH_REPO:repo'))throw Error('No real subprocess allowed');const repo=args[2],query=JSON.parse(args[3]).find(a=>a.startsWith('query='));if(!query)throw Error('Only synthetic GraphQL');const numbers=[...query.matchAll(/pr(\\d+):pullRequest/g)].map(m=>Number(m[1]));return {code:0,stdout:JSON.stringify({data:{repository:Object.fromEntries(numbers.map(number=>['pr'+number,{number,title:['','Recorded task PR','Mixed-generation combined fleet','Finished task still open'][number],url:'https://github.com/'+repo+'/pull/'+number,state:'OPEN',author:{login:'fixture'},createdAt:new Date(Date.now()-3600000).toISOString(),body:'',labels:${reportedEnded}?[{name:['','🤖 Rework','🤖 Review','🤖 Approved'][number],color:'840479'}]:[],statusCheckRollup:[]}]))}})};}
 `;
 for(const mod of ['custom-settings','custom-spaces','custom-changes']) {
  const dir=path.join(home,'mods',mod);fs.renameSync(path.join(dir,'host.js'),path.join(dir,'native-host.js'));
@@ -65,7 +67,7 @@ shown(){return true;}syncTaskWebhooks(){}syncWebhooks(){}syncChecksFallback(){}}
 const log=fs.openSync(path.join(root,'app.log'),'w'),child=spawn(appBin,[],{env,stdio:['ignore',log,log]});
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const app=args=>execFileSync(appBin,args,{env,encoding:'utf8',timeout:20000});
-const result={version,zoom,home,pid:child.pid,session:env.HC_SESSION,archiveSha256:expected,executableSha256:digest(fs.readFileSync(appBin)),synthetic:true,interaction:'Production Settings callback driven by disposable controller; not native pointer/SSH proof',frames:[]};
+const result={version,zoom,reportedEnded,baseline,home,pid:child.pid,session:env.HC_SESSION,archiveSha256:expected,executableSha256:digest(fs.readFileSync(appBin)),synthetic:true,interaction:'Production Settings callback driven by disposable controller; not native pointer/SSH proof',frames:[]};
 const state=()=>JSON.parse(fs.readFileSync(path.join(home,'shared.json'),'utf8'));
 const wait=async predicate=>{for(let i=0;i<160;i++){await sleep(100);assert.equal(child.exitCode,null);try{const s=state();if(predicate(s))return s;}catch{}}throw Error('Fixture state timed out');};
 let id=0;
@@ -73,6 +75,14 @@ const command=async c=>{const next=++id;fs.writeFileSync(control,JSON.stringify(
 const capture=async name=>{await sleep(150);const file=path.join(root,name+'.png');app(['shot',file]);result.frames.push({name,file,git:state()['fixture.git']});};
 try {
  await wait(s=>s['fixture.git']?.error==='Not a git repository');await capture('off-local');
+ if(reportedEnded) {
+  await command({flip:true,delay:0});
+  const settled=s=>baseline?s['custom.fleet.diagnostics']?.entries.local?.lastFailure?.reason==='membership-incomplete'&&s['fixture.git']?.stale===true:s['fixture.git']?.counts?.open===3&&s['fixture.git']?.stale===false;
+  await wait(settled);await capture(baseline?'before-reported-ended-local':'after-reported-ended-local');
+  await command({selected:'pc2/coordinator'});
+  await wait(s=>s['fixture.git']?.selected==='pc2/coordinator'&&(baseline?s['fixture.git']?.stale===true:s['fixture.git']?.counts?.open===3&&s['fixture.git']?.stale===false));
+  await capture(baseline?'before-reported-ended-remote':'after-reported-ended-remote');
+ } else {
  await command({flip:true,delay:3500});
  await wait(s=>s['fixture.git']?.stale===true&&(s['fixture.reads']??[]).length>=2);await capture('on-pending-local');
  await wait(s=>s['fixture.git']?.counts?.open===3&&s['fixture.git']?.stale===false);await capture('on-verified-local');
@@ -82,12 +92,14 @@ try {
  await command({flip:true});await wait(s=>s['fixture.git']?.error==='Not a git repository'&&s['fixture.git']?.links===null);await capture('off-remote');
  await command({flip:true,delay:3500});await wait(s=>s['fixture.git']?.stale===true);await capture('restored-pending-remote');
  await wait(s=>s['fixture.git']?.counts?.open===3&&s['fixture.git']?.stale===false);await capture('restored-verified-remote');
+ }
  result.status=JSON.parse(app(['status']));assert.deepEqual(result.status.errors,[]);assert.equal(result.status.zoom,zoom);
  result.reads=state()['fixture.reads'];result.display=state()['custom.fleet.display'];
- result.startDelays=state()['fixture.flips'].filter(f=>f.enabled).flatMap(f=>[null,'pc2'].map(machine=>{const read=result.reads.find(r=>r.generation===f.generation&&r.machine===machine);assert.ok(read,'Every on generation must start both machine reads');const ms=read.at-f.at;assert.ok(ms>=0&&ms<1000,'Next ordinary lifecycle tick starts verification without another event');return {generation:f.generation,machine,ms};}));
+ result.startDelays=state()['fixture.flips'].filter(f=>f.enabled&&!reportedEnded).flatMap(f=>[null,'pc2'].map(machine=>{const read=result.reads.find(r=>r.generation===f.generation&&r.machine===machine);assert.ok(read,'Every on generation must start both machine reads');const ms=read.at-f.at;assert.ok(ms>=0&&ms<1000,'Next ordinary lifecycle tick starts verification without another event');return {generation:f.generation,machine,ms};}));
 } finally {
  try{app(['do','app.quit']);}catch{}await sleep(700);if(child.exitCode===null){child.kill();await sleep(500);}result.stopped=child.exitCode!==null||child.signalCode!==null;
  try{result.coreStop=execFileSync(coreBin,['server','stop'],{env,encoding:'utf8',timeout:10000}).trim();}catch(e){result.coreStop={code:e.status,stderr:String(e.stderr)};}
  fs.closeSync(log);fs.writeFileSync(path.join(root,'receipt.json'),JSON.stringify(result,null,2));assert.ok(result.stopped);
+ assert.equal(JSON.parse(result.coreStop).stopped,true,'Disposable Core stopped');
 }
 console.log(JSON.stringify(result,null,2));

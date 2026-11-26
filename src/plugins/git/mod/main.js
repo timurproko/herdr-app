@@ -24,7 +24,7 @@ import { headerTool, contextMenu, panelMessage } from './panel-kit.js';
 import { changePanel } from './panel-state.js';
 import { sidebarPanelEnabled } from './plugins.js';
 import { sidebarTitle } from './sidebar-title.js';
-import { REPO_ARGS, countArgs, parseCounts, agentPullNumber, pullError, PR_PAGE_SIZE, gitReads, repositoryRead, repositoryFailure, quietRead, retryRead, readPullPage, readTargetPulls, rememberPull, retimePull, pendingChecksArgs, parsePendingChecks, refreshPullFacts, pullStateArgs, parsePullStates, pullPayload, pullRetryAfter, ChecksFallback, PullFactsOrder, CHECKS_BATCH_SIZE, stateBatches, needsChecks } from './pulls.js';
+import { stageLabels, REPO_ARGS, countArgs, parseCounts, agentPullNumber, pullError, PR_PAGE_SIZE, gitReads, repositoryRead, repositoryFailure, quietRead, retryRead, readPullPage, readTargetPulls, rememberPull, retimePull, pendingChecksArgs, parsePendingChecks, refreshPullFacts, pullStateArgs, parsePullStates, pullPayload, pullRetryAfter, ChecksFallback, PullFactsOrder, CHECKS_BATCH_SIZE, stateBatches, needsChecks } from './pulls.js';
 
 const VIEWS = ['open', 'closed'];
 const VIEW_KEY = 'custom.git.view';
@@ -35,12 +35,13 @@ const CI_SWEEP_WIDTH = 96;
 // The panel's 1px border plus this padding matches Spaces' 8px outer gutter.
 const LIST_INSET = 7;
 const TEXT_CACHE_LIMIT = 512;
-export const STAGE_CONTROL_WIDTH = 80;
+const STAGE_CONTROL_OFFSET = 50; // 6px inset + title/byline and their gaps.
 function find(node, id) { return node?.id === id ? node : (node?.children ?? []).map(c => find(c, id)).find(Boolean); }
 // Repository data survives agent/tab changes in the same machine and folder.
 const folderKey = ({cwd,on}) => JSON.stringify([cwd,on]);
 const key = () => folderKey(location());
 const agentKey = target => JSON.stringify(target);
+const ROOT_INTERRUPTED='Repository read interrupted; refresh to retry';
 
 export default class Changes extends View {
   init(_props, cx) {
@@ -87,6 +88,7 @@ export default class Changes extends View {
   }
 
   close() {
+    this.renderClosed=true;this.renderAttempt=null;this.agentPresentation=null;
     this.checksFallback?.stop();this.factOrder?.reset();
     this.enrollmentPicker?.stop();this.aggregate?.stop();this.webhooks?.stop();this.notices?.stop();
     this.rootRequest=null;this.pullRequest=null;this.relatedRequest=null;
@@ -141,7 +143,9 @@ export default class Changes extends View {
     this.repositoryPublication=new Publication(this.repositorySnapshot());
   }
 
-  resetRepository() {
+  resetRepository({preserveRootRetry=false}={}) {
+    const retryingRoot=preserveRootRetry&&this.orphanReadRetries?.has('root');
+    this.orphanReadRetries=new Set(retryingRoot?['root']:[]);this.rootRetryAuthorized=false;
     this.checksFallback?.stop();this.fallbackRequest=null;this.readWake=null;this.manualRead=null;
     this.factOrder ??= new PullFactsOrder();this.factOrder.reset();
     this.ciRevision=(this.ciRevision??0)+1;
@@ -149,7 +153,7 @@ export default class Changes extends View {
     // controller's geometry for these same element IDs across repository loads.
     this.pinMotion ??= new PinSwap(); this.pinMotion.cancel();
     this.pullPresentation = null; this.agentPress = null;
-    this.repositoryPublication=new Publication();this.entrySeed=false;this.seedTabs={open:false,closed:false};this.entrySource=null;this.entryRefreshing=false;this.entryAttempted=false;this.entryRootReady=false;this.entryVerify=false;this.clickPin=null;
+    this.repositoryPublication=new Publication();this.entrySeed=false;this.seedTabs={open:false,closed:false};this.entrySource=null;this.entryRefreshing=false;this.entryAttempted=false;this.entryRootReady=false;this.entryVerify=false;
     this.root = null; this.repo = null; this.counts = null; this.branch = null; this.agentPull = null;
     this.pulls = { open: null, closed: null }; this.pullsAt = { open: 0, closed: 0 };this.pullDepth={open:0,closed:0};
     this.pages = {open:{cursor:null,hasMore:false,expanded:false},closed:{cursor:null,hasMore:false,expanded:false}};
@@ -158,11 +162,27 @@ export default class Changes extends View {
     this.pinKey = null; this.pinRevealed = true;
     this.relatedKey = null; this.relatedPull = null; this.relatedRequest = null;this.relatedRetry=null;
     this.webhooks?.stop(); this.webhookDirty = false;
-    this.pullError = null; this.pullLoading = false; this.pullRequest = null;
+    this.pullErrors={open:null,closed:null};this.pullError = null; this.pullLoading = false; this.pullRequest = null;
+  }
+
+  recoverReadTasks() {
+    // Native task cancellation/deadline can skip JS finally. A completed Task
+    // must not leave a permanent busy latch. Healthy in-flight reads are untouched.
+    let retired=false;
+    for(const [kind,request,busy]of [['root',this.rootRequest,this.loading],['page',this.pullRequest,this.pullLoading]]) {
+      if(!busy || !request?.task?.is_done?.())continue;
+      retired=true;
+      this.orphanReadRetries??=new Set();const repeated=this.orphanReadRetries.has(kind);this.orphanReadRetries.add(kind);
+      if(kind==='root'){this.rootRequest=null;this.loading=false;this.entryRootReady=false;this.error=repeated?ROOT_INTERRUPTED:null;}
+      else {const state=request.state??this.loadingState??this.view;this.pullRequest=null;this.pullLoading=false;this.loadingState=null;this.appending=false;this.setPullError(state,repeated?'Pull request read interrupted; refresh to retry':null);}
+      this.entryRefreshing=!repeated;this.entryAttempted=false;
+    }
+    if(retired)gitReads(exec).retireObsolete();
   }
 
   refresh(cx, notify = true) {
     if (!sidebarPanelEnabled('changes')) return;
+    this.recoverReadTasks();
     if (this.syncAggregate(cx)) return;
     const target = location(), { cwd, on } = target, context = folderKey(target);
     if (context !== this.context) {
@@ -171,7 +191,7 @@ export default class Changes extends View {
       const swap = this.pinMotion?.current;
       const retained = swap && swap.target === target.terminal && swap.folder === context && swap.repo === this.repo?.name;
       this.rememberRepository();
-      this.context = context; this.on = on; this.error = null;
+      this.context = context; this.on = on; this.error = null;this.orphanReadRetries?.clear();this.rootRetryAuthorized=false;
       this.entryCwd=cwd;this.repositoryGeneration=this.aggregate?.presentationGeneration;
       this.sectionEntry=Boolean(target.space);
       this.rootRequest = null; this.loading = false;
@@ -191,14 +211,18 @@ export default class Changes extends View {
         this.restoreRepository(target,name);
       }
     }
+    if(this.error===ROOT_INTERRUPTED&&!this.rootRetryAuthorized)return;
     if (!cwd || this.loading || !this.repositoryOnline() || this.repositoryPublication?.value && !this.shown()) return;
+    // A UI refresh permits one root attempt, independently of GitHub rate credit.
+    this.rootRetryAuthorized=false;
     const request = this.rootRequest = {},epoch=this.readEpoch();
     const current = () => this.readEpoch()===epoch && this.repositoryOnline() && sidebarPanelEnabled('changes') && this.rootRequest === request && this.context === context && key() === context;
     this.loading = true;
     if (notify) cx.notify();
-    cx.spawn(async cx => {
+    request.task=cx.spawn(async cx => {
       await Promise.resolve(); // spawn may begin inline during render
       if (!current()) return;
+      let completed=false;
       try {
         const top = await exec('git', ['rev-parse', '--show-toplevel'], { cwd, on, timeout: 15000 });
         if (!current()) return;
@@ -211,7 +235,7 @@ export default class Changes extends View {
         const retained = root && this.pinMotion?.current?.context === context && this.pinMotion.current.repo === this.repo?.name;
         if (!root || (root !== this.root && !retained && !this.entryRefreshing)) {
           if(!root) {this.aggregate?.presentations?.folders?.delete(folderKey(target));this.agentLinks?.forgetRepository?.(target);}
-          this.resetRepository();
+          this.resetRepository({preserveRootRetry:true});
         }
         this.root = root;this.entryRootReady=Boolean(root);
         this.error = root ? null : 'Not a git repository';
@@ -225,9 +249,10 @@ export default class Changes extends View {
           } else this.error = 'Could not read branch; refresh to retry';
           this.syncAgent(cx, true);
         }
+        completed=!root || !this.error;
       } catch {
         if (current()) this.error = 'Could not read repository; refresh to retry';
-      } finally { if (this.rootRequest === request) this.loading = false; cx.notify(); }
+      } finally { if (this.rootRequest === request) {this.loading = false;if(completed)this.orphanReadRetries?.delete('root');} cx.notify(); }
     });
   }
 
@@ -278,7 +303,7 @@ export default class Changes extends View {
       this.taskSelectionEpoch=(this.taskSelectionEpoch??0)+1;
       const selected=this.selectedTaskWindow;if(selected){selected.correction=null;selected.anchorMarker=null;selected.scheduledCorrection=null;}
     }
-    this.view = view;
+    this.view = view;this.pullError=this.pullErrors?.[view]??null;
     if(this.seedTabs?.[view]) {this.entryRefreshing=true;this.entryAttempted=false;}
     if(this.repo && this.pulls[view]!==null && !this.seedTabs?.[view])this.webhookDirty=true;
     try { localStorage.setItem(VIEW_KEY, view); } catch {}
@@ -292,8 +317,13 @@ export default class Changes extends View {
     return Boolean(panel && !panel.hidden && (!body || body.active === 'changes'));
   }
 
+  setPullError(state,message) {
+    this.pullErrors??={open:null,closed:null};this.pullErrors[state]=message;
+    this.pullError=this.pullErrors[this.view]??null;
+  }
+
   pullsDue(state) {
-    return Boolean(!(this.readWake?.due>Date.now()) && this.root && !this.pullLoading && !this.entryRootPending() && (this.entryRefreshing && !this.entryAttempted || this.pulls[state] === null && !this.pullsAt[state]));
+    return Boolean(!(this.readWake?.due>Date.now()) && this.root && !this.pullLoading && !this.entryRootPending() && (this.entryRefreshing && !this.entryAttempted || this.pulls[state] === null && !this.pullErrors?.[state]));
   }
 
   loadPulls(state, cx, force = false, notify = true, append = false) {
@@ -301,12 +331,12 @@ export default class Changes extends View {
     const after = append ? this.pages[state].cursor : null;
     if (append && (!this.pages[state].hasMore || !after || state !== this.view || !this.shown())) return;
     const root = this.root, on = this.on, context = this.context;
-    const request = this.pullRequest = {},read=this.factOrder.begin(),epoch=this.readEpoch();
+    const request = this.pullRequest = {state},read=this.factOrder.begin(),epoch=this.readEpoch();
     let repo=this.repo,repository=repo?.name;
     const current = () => this.readEpoch()===epoch && this.repositoryOnline() && sidebarPanelEnabled('changes') && this.pullRequest === request && this.root === root && this.context === context && key() === context && this.repo===repo && this.repo?.name===repository;
     this.pullLoading = true; this.loadingState = state; this.appending = append; this.pageError = null;this.entryAttempted=true;
     if (notify) cx.notify();
-    cx.spawn(async cx => {
+    request.task=cx.spawn(async cx => {
       try {
         const gh = args => repositoryRead(exec, args, repository, { cwd: root, on, timeout: 30000, current:()=>current() && this.shown(), manual:this.manualRead });
         if (!repo || this.entryVerify) {
@@ -346,7 +376,7 @@ export default class Changes extends View {
         this.pages[state] = {cursor:page.cursor,hasMore:page.hasMore && page.cursor !== after,expanded:append};
         this.counts = totals ?? {...this.counts,[state]:page.total ?? this.counts?.[state] ?? null};
         this.entrySeed=Boolean(this.entrySeed && !totals);this.seedTabs[state]=false;this.entryRefreshing=false;this.commitRepository();
-        this.pullsAt[state] = Date.now(); this.pullError = null;
+        this.pullsAt[state] = Date.now(); this.setPullError(state,null);this.orphanReadRetries?.delete('page');
         // All list and webhook reads share pullRequest/pullLoading: one writer.
         if (append) return;
         this.relatedKey = null;this.relatedRetry=null;
@@ -363,7 +393,7 @@ export default class Changes extends View {
           const failure=await repositoryFailure(exec,e,repository,{cwd:root,on,current:()=>current()&&this.shown()});
           if(!current())return;
           if (append) this.pageError = {state,message:failure.message};
-          else { this.pullError = failure.message; this.pullsAt[state] = Date.now(); }
+          else { this.setPullError(state,failure.message); this.pullsAt[state] = Date.now(); }
         }
       } finally {
         await Promise.resolve(); // even a synchronous transport throw must yield
@@ -618,8 +648,8 @@ export default class Changes extends View {
     if (!this.repositoryOnline() || this.entryVerify || this.loading || this.readWake?.due>Date.now() || !this.webhookDirty || !this.repo || !this.root || this.pullLoading || !this.shown() || key() !== this.context) return;
     this.webhookDirty = false;
     // Related/older reads cannot overlap this snapshot's queue lease.
-    const root=this.root,on=this.on,repo=this.repo,context=this.context;
-    const request=this.pullRequest={},read=this.factOrder.begin(),epoch=this.readEpoch();this.pullLoading=true;
+    const root=this.root,on=this.on,repo=this.repo,context=this.context,requestedState=this.view;
+    const request=this.pullRequest={state:requestedState},read=this.factOrder.begin(),epoch=this.readEpoch();this.pullLoading=true;
     const current=()=>this.readEpoch()===epoch && this.repositoryOnline() && this.pullRequest===request && this.context===context && key()===context && this.repo===repo && this.shown();
     cx.spawn(async cx=>{
       await Promise.resolve(); // request feedback must not notify synchronously from render
@@ -634,7 +664,7 @@ export default class Changes extends View {
           return r.stdout;
         };
         const updates={},previousRows=VIEWS.flatMap(state=>this.pulls[state]??[]);
-        for(const state of [this.view]) {
+        for(const state of [requestedState]) {
           if(this.pulls[state]===null)continue;
           const depth=Math.max(1,this.pullDepth[state]??0,Math.ceil(this.pulls[state].length/PR_PAGE_SIZE));
           let after=null,page,rows=[];
@@ -670,11 +700,11 @@ export default class Changes extends View {
           this.relatedKey=published?.accepted?JSON.stringify([context,repo.name,number]):null;
         }
         this.reconcilePulls([...Object.keys(updates).flatMap(state=>this.pulls[state]??[]),...[...transitions.values()].map(value=>value.row),...(this.relatedPull?[this.relatedPull]:[])],previousRows);
-        this.counts=counts ?? this.counts;this.pullError=null;this.ciRevision=(this.ciRevision??0)+1;
+        this.counts=counts ?? this.counts;this.setPullError(requestedState,null);this.ciRevision=(this.ciRevision??0)+1;
         this.entrySeed=false;this.entryRefreshing=false;this.commitRepository();
       } catch(e) { if(current()) {
         if(retryRead(this,cx,e,view=>this.flushWebhook(view)))this.webhookDirty=true;
-        else {this.pullError=pullError(e);this.relatedKey=null;this.relatedRetry=null;}
+        else {this.setPullError(requestedState,pullError(e));this.relatedKey=null;this.relatedRetry=null;}
       } }
       finally {
         if(this.pullRequest===request)this.pullLoading=false;
@@ -803,7 +833,7 @@ export default class Changes extends View {
       snapshot={context:this.context,state:this.view,rows:[clicked],pinned:null,arrival:true,originKey:pr.key,backdrop};
     }
     const repo=pr.repo??this.repo?.name;
-    if(!this.pinMotion?.start(snapshot,clicked,press,{source:location().terminal,target:agent.address,folder:folderKey(agent),repo,controlOffset},cx))return false;
+    if(!this.pinMotion?.start(snapshot,clicked,press,{source:location().terminal,target:agent.address,folder:folderKey(agent),repo,controlOffset,pinTop:4},cx))return false;
     if(pr.key) {
       // Only presentation is carried from the verified task PR. The destination
       // still reads its own repository inventory/counts and resolves selection.
@@ -813,56 +843,66 @@ export default class Changes extends View {
     cx.notify();return true;
   }
 
-  stageChip(t, pr, interactive = true) {
-    if(!pr.stage) {
-      const robot=this.agentButton(t,pr,interactive);
-      return robot?.absolute().left(STAGE_CONTROL_WIDTH-U.insetControl);
-    }
+  stageDescriptor(pr) {
+    if(!pr.stage)return null;
     const role=pr.stage==='approved'?null:pr.stage,repo=pr.repo??this.repo?.name,context=this.context;
     const scope=this.aggregate?.context?.scope;
-    const target=role && pr.key?(this.aggregate?.stagePresentation?this.aggregate.stagePresentation(pr,role,this.agentLinks):this.aggregate?.stageTarget?.(pr,role,this.agentLinks)):null;
-    const agent=role?(pr.key?target?.agent:this.agentLinks?.related?.(pr,repo,location().terminal,role)):null;
+    const target=role && pr.key?(this.aggregate?.stagePresentation?this.aggregate.stagePresentation(pr,role,this.agentLinks,this.agentPresentation):this.aggregate?.stageTarget?.(pr,role,this.agentLinks,this.agentPresentation)):null;
+    const agent=role?(pr.key?target?.agent:this.agentLinks?.related?.(pr,repo,location().terminal,role,undefined,this.agentPresentation)):null;
     const available=agent?.availability==='live';
     const round=role==='build'?agent?.crew?.round:null;
-    const caption=pr.stage==='approved'?'Approved':role==='review'?'Review':round?`Build ${round+1}`:'Build';
-    const history=round && agent?.crew?.finding?`back from review ${round}: ${agent.crew.finding}`:null;
+    const label=stageLabels(pr).find(label=>label.stage);
+    if(!label)return null;
+    const caption=role==='build'&&round?`Build ${round+1}`:label.name;
+    return {role,repo,context,scope,target,agent,available,round,label:{...label,name:caption}};
+  }
+
+  stageChip(t, pr, interactive = true, probe = false, descriptor = this.stageDescriptor(pr)) {
+    if(!descriptor)return null;
+    const {role,repo,context,scope,target,agent,available,round,label}=descriptor;
+    const history=round?`Build ${round+1}${agent?.crew?.finding?`\nback from review ${round}: ${agent.crew.finding}`:''}`:null;
     const reason=!role||available?null:agent?.availability==='disconnected'?`on ${agent.on}, not connected`
       :agent?.availability==='ended'?(role==='review'?'reviewer ended without a verdict':`build agent ended${pr.checks?.state?` - CI ${pr.checks.state}`:''}`)
       :role==='review'?'reviewer unavailable':'build agent unavailable';
-    const tooltip=[history,reason,available&&agent.displayName?`Open agent: ${agent.displayName}`:null,
-      round>99?caption:null].filter(Boolean).join('\n');
+    const aliases=[...new Set(label.assignedNames??[label.assignedName])].filter(name=>name&&name!==label.name);
+    const tooltip=[...aliases,history,reason,
+      available&&agent.displayName?`Open agent: ${agent.displayName}`:null].filter(Boolean).join('\n');
+    const activate=(_event,cx)=>{
+      cx.stop_propagation();const press=this.agentPress;this.agentPress=null;
+      if(this.context!==context || !this.shown())return;
+      if(!role){this.openPull(pr);return;}
+      if(!available)return;
+      if(pr.key) {this.aggregate?.focus(pr,target,scope,this.agentLinks,current=>this.beginAgentMotion(pr,press,current.agent,cx,STAGE_CONTROL_OFFSET));return;}
+      if(key()!==context || this.repo?.name!==repo)return;
+      const current=this.agentLinks?.related?.(pr,repo,location().terminal,role);
+      if(current?.key!==agent.key || current.availability!=='live')return;
+      const latest=[...(this.pulls?.open??[]),...(this.pulls?.closed??[]),this.relatedPull].find(row=>row?.number===pr.number);
+      if(latest && latest.stage!==pr.stage)return;
+      this.beginAgentMotion(pr,press,current,cx,STAGE_CONTROL_OFFSET);
+      run('agent.focus',{terminal:current.address});
+    };
     const color=pr.stage==='approved'?t.ansi2:role==='review'?t.ansi5:t.ansi3;
-    return div().id(`${interactive?'':'swap-'}pr-stage-${pr.key??pr.number}`).absolute().left(0).top(0)
-      .w(STAGE_CONTROL_WIDTH).h(20).px(6).flex().items_center().justify_center().rounded_full()
-      .bg(t.raised).text_color(color).text_size(U.meta).truncate()
-      .when(Boolean(role&&!available),el=>el.opacity(0.45).cursor_default())
-      .when(Boolean(tooltip),el=>el.tooltip(tooltip))
-      .when(Boolean(interactive&&role),el=>el
+    return div().id(`${probe?'probe-':interactive?'':'swap-'}pr-stage-${pr.key??pr.number}`)
+      .h(18).min_w(0).max_w_full().px(2).flex_none().flex().items_center().rounded(U.insetRadius)
+      .bg(t.raised).text_color(color).text_size(U.meta).overflow_hidden()
+      .child(div().h(18).min_w(0).overflow_hidden().whitespace_nowrap().child(label.name))
+      .when(Boolean(!probe&&role&&!available),el=>el.opacity(0.45).cursor_default())
+      .when(Boolean(!probe&&tooltip),el=>el.tooltip(tooltip))
+      .when(interactive,el=>el
         .on_mouse_down('left',(event,cx)=>{
           cx.stop_propagation();
           if(available)this.agentPress={number:pr.number,position:event.position,bounds:event.bounds,at:Date.now()};
-        })
-        .on_click((_event,cx)=>{
-          cx.stop_propagation();const press=this.agentPress;this.agentPress=null;
-          if(!available || this.context!==context || !this.shown())return;
-          if(pr.key) {this.aggregate?.focus(pr,target,scope,this.agentLinks,current=>this.beginAgentMotion(pr,press,current.agent,cx));return;}
-          if(key()!==context || this.repo?.name!==repo)return;
-          const current=this.agentLinks?.related?.(pr,repo,location().terminal,role);
-          if(current?.key!==agent.key || current.availability!=='live')return;
-          const latest=[...(this.pulls?.open??[]),...(this.pulls?.closed??[]),this.relatedPull].find(row=>row?.number===pr.number);
-          if(latest && latest.stage!==pr.stage)return;
-          this.beginAgentMotion(pr,press,current,cx);
-          run('agent.focus',{terminal:current.address});
-        }))
-      .when(Boolean(interactive&&role&&available),el=>el.role('button').accessibility_label(`Open ${role==='review'?'reviewer':'build agent'} for ${repo} #${pr.number}`)
-        .cursor_pointer().hover(s=>s.bg(subtleActionFill(t))))
-      .child(caption);
+        }).on_click(activate))
+      .when(Boolean(interactive&&(!role||available)),el=>el.role('button').tab_index(0)
+        .accessibility_label(role?`Open ${role==='review'?'reviewer':'build agent'} for ${repo} #${pr.number}`:`Open pull request #${pr.number}`)
+        .on_key_down((event,cx)=>{if(['enter','space',' '].includes(event.key)){this.agentPress=null;activate(event,cx);}})
+        .cursor_pointer().hover(s=>s.bg(subtleActionFill(t))).focus(s=>s.bg(subtleActionFill(t))));
   }
 
   agentButton(t, pr, interactive = true) {
     if(pr.key) {
-      const target=this.aggregate?.target(pr),scope=this.aggregate?.context?.scope;
-      const name=target?this.agentLinks?.displayName?.(target.terminal):null;
+      const target=this.aggregate?.target(pr,this.agentPresentation),scope=this.aggregate?.context?.scope;
+      const name=target?this.agentLinks?.displayName?.(target.terminal,this.agentPresentation):null;
       return target ? div().id(`${interactive ? '' : 'swap-'}pr-agent-${pr.key}`).absolute().left(0).top((20-U.insetControl)/2)
         .size(U.insetControl).flex_none().flex().items_center().justify_center().rounded(U.insetRadius).text_color(t.foreground)
         .when(interactive, el=>el.cursor_pointer().role('button').accessibility_label(`Open related agent for ${pr.repo} #${pr.number}`)
@@ -876,7 +916,7 @@ export default class Changes extends View {
         .when(Boolean(name),el=>el.tooltip(`Open agent: ${name}`))
         .child(svg('icons/agent.svg').size(U.icon)) : null;
     }
-    const agent = this.agentLinks?.related(pr, this.repo?.name, location().terminal);
+    const agent = this.agentLinks?.related(pr, this.repo?.name, location().terminal,null,undefined,this.agentPresentation);
     if (!agent) return null;
     // A separate foreground robot, like the Agents sidebar. Its usual 24px
     // target fits around the title line without changing the PR icon or height.
@@ -1033,16 +1073,27 @@ export default class Changes extends View {
   }
 
   pullRow(t, pr, ghost = false) {
-    return this.renderPart(`pull-row:${pr.key??pr.number}`,()=>this.renderPullRow(t,pr,ghost));
+    try {return this.renderPart(`pull-row:${pr.key??pr.number}`,()=>this.renderPullRow(t,pr,ghost));}
+    catch {
+      // Isolate ordinary JS row failures, retaining geometry and a safe PR link.
+      // QuickJS deadline interrupts are uncatchable and use the frame retry below.
+      return v_flex().id(`${ghost?'swap-':''}pr-${pr.key??pr.number}`).h(74).flex_none().px(8).py(6).gap(3).rounded(U.radius)
+        .when(!ghost,el=>el.cursor_pointer().on_click(()=>this.openPull(pr)))
+        .child(div().h(20).truncate().text_size(U.font).child(typeof pr.title==='string'?pr.title:'Pull request'))
+        .child(div().h(18).text_size(11).text_color(t.muted).child(`#${pr.number}`))
+        .child(div().h(18).text_size(11).text_color(t.muted).child('Row unavailable; refresh to retry'));
+    }
   }
 
   renderPullRow(t, pr, ghost = false) {
     const prefix = ghost ? 'swap-' : '', rowId = pr.key ?? pr.number;
-    const agentButton = this.stageChip(t, pr, !ghost);
+    const agentButton = pr.stage?null:this.agentButton(t, pr, !ghost);
     // Cache presentation by immutable fact identity; never retain native rows:
     // their event callbacks belong to the current native snapshot build.
     this.rowPresentations ??= new RowPresentations();
-    const {facts:presentation,id:groupId}=this.rowPresentations.get(pr,this.context?.startsWith('tasks:')?3:Infinity,ghost);
+    const stage=this.stageDescriptor(pr);
+    const labelsFor=row=>stageLabels(row).map(label=>label.stage&&stage?stage.label:label);
+    const {facts:presentation,id:groupId}=this.rowPresentations.get(pr,this.context?.startsWith('tasks:')?3:Infinity,ghost,labelsFor,stage?.label.name);
     const {labels,labelNames}=presentation;
     const text = (kind, value, probe) => div().id(groupId(kind, probe)).min_w(0).h(18)
       .overflow_hidden().whitespace_nowrap().child(value);
@@ -1066,7 +1117,7 @@ export default class Changes extends View {
       }}] : []),
       ...(pr.review ? [{kind:'review', measureKey:pr.review, tooltip:presentation.review, render:(_short, probe) => text('review', presentation.review, probe).text_color(pr.review === 'approved' ? t.ansi2 : t.ansi1)}] : []),
       ...(labels.length ? [{kind:'labels', trailing:true, tooltip:labelNames, omitted:presentation.omittedLabels, measureKey:presentation.labelKey, render:(_short, probe) => h_flex().id(groupId('labels', probe)).min_w(0).h(18).gap(4).items_center().justify_end().overflow_hidden()
-        .children(labels.map((label, index) => this.labelPill(t, label, `${groupId('label', probe)}-${index}`)))}] : []),
+        .children(labels.map((label, index) => label.stage?this.stageChip(t,pr,!ghost&&!probe,probe,stage):this.labelPill(t, label, `${groupId('label', probe)}-${index}`)))}] : []),
     ], ['review', 'labels']);
     // Spaces' row padding (8) minus its trailing pill margin (5) leaves 3px inside the highlight.
     return h_flex().id(`${prefix}pr-${rowId}`).relative().w_full().h(74).flex_none().pl(8).pr(3).py(6).gap(U.gap).items_start().rounded(U.radius)
@@ -1079,8 +1130,7 @@ export default class Changes extends View {
       .child(v_flex().flex_1().min_w(0).gap(3)
         .child(h_flex().id(`${prefix}pr-title-line-${rowId}`).w_full().min_w(0).h(20).flex_none().gap(4).items_center().line_height('20px')
           .child(div().id(`${prefix}pr-title-${rowId}`).flex_1().min_w(0).h(20).truncate().text_size(U.font).font_semibold().text_color(t.foreground).tooltip(pr.title).child(pr.title))
-          .child(div().id(`${prefix}pr-agent-slot-${rowId}`).w(STAGE_CONTROL_WIDTH).h(20).flex_none().relative()
-            .when(Boolean(agentButton), el => el.child(agentButton))))
+          .when(Boolean(agentButton),el=>el.child(div().id(`${prefix}pr-agent-slot-${rowId}`).w(U.insetControl).h(20).flex_none().relative().child(agentButton))))
         .child(byline.line).child(meta.line))
       .when(Boolean(byline.probes),el=>el.child(byline.probes))
       .when(Boolean(meta.probes),el=>el.child(meta.probes));
@@ -1103,8 +1153,9 @@ export default class Changes extends View {
   }
 
   pullSelection() {
+    // Missing footer evidence does not veto the explicit-tab or branch fallback.
     const state = this.view, list = this.repositoryPresentation().pulls[state], pullNumber = this.agentPull ?? location().pullNumber;
-    const related = (!this.sectionEntry || this.pinMotion?.current || this.clickPin?.terminal===location().terminal) && this.relatedPull && this.relatedPull.number === pullNumber && (state === 'open'
+    const related = this.relatedPull && this.relatedPull.number === pullNumber && (state === 'open'
       ? ['open','draft'].includes(this.relatedPull.state) : ['closed','merged'].includes(this.relatedPull.state)) ? this.relatedPull : null;
     const liveRows = related && !list?.some(pr => pr.number === related.number) ? [...(list??[]),related] : list ?? [];
     const active = liveRows.find(pr => pullNumber != null
@@ -1166,16 +1217,15 @@ export default class Changes extends View {
 
   renderPulls(t) {
     const state = this.view, list = this.repositoryPresentation().pulls[state], selection = this.pullSelection(),liveRows=selection.liveRows;
-    const click=this.pinMotion?.current;
-    if(this.sectionEntry && !click && this.clickPin && this.clickPin.terminal===location().terminal && this.agentResolved===agentKey(location()) && this.clickPin.number!==selection.active?.number)this.clickPin=null;
-    if(this.sectionEntry && click && click.target===location().terminal && this.agentResolved===agentKey(location()))this.clickPin=selection.active?.number===click.number?{terminal:location().terminal,number:selection.active.number}:null;
-    const active=this.sectionEntry ? (this.clickPin && this.clickPin.terminal===location().terminal?liveRows.find(pr=>pr.number===this.clickPin.number):null):selection.active;
+    // Every selection path uses the resolved selected-agent PR, never click state.
+    const active=selection.active;
     const metrics=this.ordinaryScrollState(state), zoom=metrics.zoom, measurement=metrics.measurement;
     this.sampleNativeScroll(metrics,metrics.handle,zoom);
     this.pinMotion?.rebaseZoom?.(zoom);
     this.pinMotion?.active(this.context,state);
     this.pinMotion?.resolve(location().terminal,selection.active?.number,this.agentResolved === agentKey(location()));
     const retained = this.pinMotion?.current;
+    if(retained?.arrived)this.pinMotion.rebasePinTop?.(4);
     const rows = retained?.snapshot.rows ?? liveRows, pinned = retained ? retained.snapshot.pinned : active;
     this.pullPresentation = {context:this.context,state,rows,pinned};
     const swap = retained && retained.phase !== 'waiting' ? retained : null;
@@ -1207,7 +1257,7 @@ export default class Changes extends View {
         if (this.pinMotion?.bodySize?.width !== before) cx.notify();
       })
       .on_mouse_move(event => this.pinMotion?.bodyPointer(event))
-      .when(Boolean(pinned) && !folded, el => el
+      .when(Boolean(pinned), el => el
         .child(v_flex().id('active-pull').relative().flex_none().py(4).px(LIST_INSET)
           .child(div().id('active-pull-rail').absolute().left(0).top(0).bottom(0).w(2).bg(t.accent))
           .child(v_flex().id(`active-pull-content-${pinned.number}-${this.pinRevealSequence}`).w_full()
@@ -1230,7 +1280,7 @@ export default class Changes extends View {
             })
             .on_scroll_wheel(event => {this.contentMotion(event, 'wheel', state);metrics.contentMotion(event,'wheel');})
             .on_mouse_move(event => {this.contentMotion(event, 'move', state);metrics.contentMotion(event,'move');})
-            .when(Boolean(sectionRepo),el=>el.child(this.repositoryHeader(t,sectionRepo,this.context,rows.length,Boolean(this.entrySeed || this.seedTabs?.[this.view]))))
+            .when(Boolean(sectionRepo&&(!pinned||rows.length>1)),el=>el.child(this.repositoryHeader(t,sectionRepo,this.context,rows.length-(pinned?1:0),Boolean(this.entrySeed || this.seedTabs?.[this.view]))))
             .children(remaining.map(pr => this.pullRow(t, pr)
               .when(Boolean(swap?.cards.some(card => card.pr.number === pr.number)), el => el.invisible())))
             .when(!rows.length && !folded, el => el.child(panelMessage(t, 'git-empty', { text: empty, loading: empty === 'Loading…', rowInset: 2, animated: false })))
@@ -1562,15 +1612,31 @@ export default class Changes extends View {
     // QuickJS's deadline interrupt is deliberately uncatchable. A surviving
     // marker on the next attempt is evidence of an aborted frame, not its cause.
     if(this.renderAttempt) console.error('[custom-changes] previous render did not complete',JSON.stringify({component:this.renderComponent??'panel',view:this.view,error:'Native interruption or aborted render; consult the host error banner/log for the exact error'}));
-    this.renderAttempt=true;this.reportedRenderError=null;
+    const attempt={retry:Boolean(this.renderRetryPending)};
+    this.renderRetryPending=false;this.renderAttempt=attempt;this.reportedRenderError=null;
+    // Register before building: an uncatchable deadline skips catch/finally.
+    // A successful frame does nothing; an aborted frame gets one deferred retry,
+    // never a render-time notify, frame loop or retry of read/focus side effects.
+    if(!attempt.retry)cx.spawn?.(async view=>{
+      await Promise.resolve();
+      if(this.renderClosed || this.renderAttempt!==attempt || !this.shown())return;
+      view.timer?.after(64,next=>{
+        if(this.renderClosed || this.renderAttempt!==attempt || !this.shown())return;
+        this.renderRetryPending=true;next.notify();
+      });
+    });
     try {
+      // Read native identity collections once for presentation. Captured actions
+      // always re-query without this frame-local snapshot before granting focus.
+      this.agentPresentation=this.shown()?this.agentLinks?.presentationSnapshot?.():null;
       const tree=this.renderPart('panel',()=>this.renderPanel(cx));
-      this.renderAttempt=false;
+      this.renderAttempt=null;this.agentPresentation=null;
       return tree;
-    } catch(error) { this.renderAttempt=false;throw error; }
+    } catch(error) { this.renderAttempt=null;this.agentPresentation=null;throw error; }
   }
 
   renderPanel(cx) {
+    this.recoverReadTasks();
     if (!sidebarPanelEnabled('changes')) {
       this.enrollmentPicker?.stop();this.webhooks?.stop();this.notices?.stop();this.aggregate?.stop();
       this.resetRepository(); this.rootRequest = null; this.loading = false; this.context = null;
@@ -1599,7 +1665,7 @@ export default class Changes extends View {
     if(this.relatedPull)this.relatedPull=retimePull(this.relatedPull);
     this.syncAgent(cx);
     if (this.shown() && this.pullsDue(this.view)) this.loadPulls(this.view, cx, false, false);
-    if(!this.sectionEntry || this.pinMotion?.current || this.clickPin?.terminal===location().terminal)this.loadRelatedPull(cx);
+    this.loadRelatedPull(cx);
     this.syncWebhooks(cx);
     if (this.repo && this.shown()) this.agentLinks?.refresh(cx);
     if (!this.shown()) this.pinMotion?.cancel();
@@ -1615,12 +1681,12 @@ export default class Changes extends View {
         .child(sidebarTitle(t, 'changes', 'git-title'))
         .child(div().flex_1())
         .child(reveal(headerTools(h_flex()).id('git-actions').bg(t.surface), this.headerHovered)
-          .when(Boolean(this.root || this.repo?.name), el => el.child(refreshButton(t, { id: 'git-refresh', icon: 'mods/custom-changes/refresh.svg', label: 'Refresh', busy, animate: false, owner: this, scope: this.context,
-            enabled: this.headerHovered && Boolean(this.root), size: U.insetControl, iconSize: U.tinyIcon, radius: U.insetRadius, color: t.dim, hover: subtleActionFill(t),
+          .when(Boolean(this.root || this.repo?.name || this.error===ROOT_INTERRUPTED), el => el.child(refreshButton(t, { id: 'git-refresh', icon: 'mods/custom-changes/refresh.svg', label: 'Refresh', busy, animate: false, owner: this, scope: this.context,
+            enabled: this.headerHovered && Boolean(this.root || this.error===ROOT_INTERRUPTED), size: U.insetControl, iconSize: U.tinyIcon, radius: U.insetRadius, color: t.dim, hover: subtleActionFill(t),
             onClick: (_e, cx) => {
-              if (!this.root || this.loading || this.pullLoading) return;
+              if ((!this.root && this.error!==ROOT_INTERRUPTED) || this.loading || this.pullLoading) return;
               this.webhooks?.retryNow();this.notices?.retryNow();
-              this.manualRead={remaining:1,expires:Date.now()+30000};this.readWake=null;this.agentLinks?.invalidate?.();
+              this.rootRetryAuthorized=true;this.manualRead={remaining:1,expires:Date.now()+30000};this.readWake=null;this.agentLinks?.invalidate?.();
               // Keep demand queued while root verification blocks the read.
               if(this.entryVerify){this.entryRefreshing=true;this.entryAttempted=false;}
               this.refresh(cx); this.loadPulls(this.view, cx, true);

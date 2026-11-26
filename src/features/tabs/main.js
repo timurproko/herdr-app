@@ -1,7 +1,7 @@
 // Custom skin: presentation-only clone of Herdr App 0.1.13's tabs.
 import { View, div, svg, image } from "gpui-kit";
-import { h_flex, Toggle, Input } from "gpui-base";
-import { U, slot, itemHover, interactionFill, subtleActionFill, iconButton, spinner } from "./ui.js";
+import { h_flex, Toggle } from "gpui-base";
+import { U, slot, itemHover, interactionFill, subtleActionFill, iconButton, spinner, inlineRename, INLINE_RENAME } from "./ui.js";
 import { spaces, panes, run, openOverlay, theme, window, layout, settings } from "./host.js";
 import { fileIconAsset } from './file-icons.js';
 import { programIcon } from './program-icon.js';
@@ -43,7 +43,7 @@ export default class Tabs extends View {
     this.actionHovered = null;
     this.rename = null;
     this.titleWidths = new Map();
-    this.renameChromeWidth = 3 * U.gap + U.smallIcon + U.insetControl - 4;
+    this.renameChromeWidth = 3 * U.gap + U.smallIcon + U.insetControl - INLINE_RENAME.gap;
     // Unpinned tabs share the native sidebar choice; explicit pins override it.
   }
 
@@ -87,9 +87,8 @@ export default class Tabs extends View {
       const directory = !isFile && c.named === false && program?.shell ? tabDirectory(c.id,allPanes) : null;
       const name = tabTitle(c, i, isFile);
       const edit = this.rename?.id === c.id && this.rename.space === space.id ? this.rename : null;
-      const renameToolsWidth = 2 * U.insetControl + 2;
-      const renameWidth = Math.max(120 + 4 + renameToolsWidth, (edit?.startWidth ?? 0) + 24);
-      return drag.item(h_flex().id(`tab-${c.id}`).relative().h(U.control).pl(8).pr(2).gap(edit ? 4 : U.gap).rounded(U.radius).items_center().flex_none().text_size(U.font)
+      const renameWidth = Math.max(INLINE_RENAME.minFieldWidth + INLINE_RENAME.gap + INLINE_RENAME.actionsWidth, edit?.startWidth ?? 0);
+      return drag.item(h_flex().id(`tab-${c.id}`).relative().h(U.control).pl(8).pr(2).gap(edit ? INLINE_RENAME.gap : U.gap).rounded(U.radius).items_center().flex_none().text_size(U.font)
         .border(1).border_color(c.active ? t.border : inactive).bg(c.active ? t.selected : inactive).text_color(c.active ? t.foreground : t.muted), c.id,
         {hover: s => s.bg(this.actionHovered === `close-${c.id}` ? (c.active ? t.selected : inactive) : itemHover(t, c.active)), cursor: true,
           tooltip: !edit ? isFile ? c.name : directory?.cwd : null})
@@ -113,7 +112,10 @@ export default class Tabs extends View {
             if(this.rename===edit && !edit.expanded){edit.expanded=true;cx.notify();}
           }))
           .transition('width',{duration:edit ? 180 : 0,easing:'ease-out'})
-          .child(edit ? h_flex().id(`tab-rename-${c.id}`).w(renameWidth).h(U.insetControl).flex_none().gap(4).items_center()
+          .child(edit ? inlineRename(t,{id:'tab-rename',target:c.id,input:edit.input,inputLabel:`Rename tab ${i+1}`,
+            applyId:`rename-apply-${c.id}`,cancelId:`rename-cancel-${c.id}`,enabled:!drag.active,
+            onApply:drag.guard((_e,cx)=>{cx.stop_propagation();saveTabRename(this,cx,edit);}),
+            onCancel:drag.guard((_e,cx)=>{cx.stop_propagation();cancelTabRename(this,cx,edit,true);})}).w(renameWidth).flex_none()
             .track_focus(edit.handle).key_context('CustomTabRename')
             .on_action('custom-tab-rename.ignore',(_e,cx)=>cx.stop_propagation())
             .on_mouse_down('left',stop).on_mouse_down('right',stop).on_mouse_up('left',stop)
@@ -121,14 +123,6 @@ export default class Tabs extends View {
               if(e.key==='f2'){cx.stop_propagation();return;}
               if(e.key==='escape'){cx.stop_propagation();cancelTabRename(this,cx,edit,true);}
             })
-            .child(h_flex().id(`tab-rename-field-${c.id}`).w(renameWidth - 4 - renameToolsWidth).h(U.insetControl).px(6).items_center()
-              .rounded(U.insetRadius).border_1().border_color(t.input).bg(t.background).text_color(t.foreground).cursor_text()
-              .child(Input.new(edit.input).id(`tab-rename-input-${c.id}`).flex_1().min_w(0).h_full().text_size(U.font).accessibility_label(`Rename tab ${i+1}`)))
-            .child(h_flex().id(`tab-rename-actions-${c.id}`).gap(2).items_center().flex_none()
-              .child(tabAction(`rename-apply-${c.id}`,'mods/custom-workspace-chrome/check.svg',(_e,cx)=>{cx.stop_propagation();saveTabRename(this,cx,edit);},true,'Apply rename (Enter)')
-                .role('button').accessibility_label('Apply rename'))
-              .child(tabAction(`rename-cancel-${c.id}`,'mods/custom-pane/close.svg',(_e,cx)=>{cx.stop_propagation();cancelTabRename(this,cx,edit,true);},true,'Cancel rename (Escape)')
-                .role('button').accessibility_label('Cancel rename')))
             : div().id(`tab-label-${c.id}`).max_w(170).truncate()
               .on_size_change(size=>{if(size.width>0){this.titleWidths??=new Map();this.titleWidths.set(c.id,Math.ceil(size.width));}})
               .child(c.zoomed ? `${name} Z` : name)))

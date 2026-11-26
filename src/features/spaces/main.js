@@ -6,8 +6,8 @@
 // switch, right-click for its menu, drag to reorder.
 
 import { View, div, svg } from "gpui-kit";
-import { v_flex, h_flex, Input, ScrollHandle } from "gpui-base";
-import { U, slot, itemHover, interactionFill, subtleActionFill, iconButton, badge, spaceBadgeColor, sidebarSectionHeader, rolePill, menuSurface, menuHeading, menuRow, sidebarChildBranch, sidebarDisclosure, sidebarMachineLabel, sidebarNumericSlot } from "./ui.js";
+import { v_flex, h_flex, ScrollHandle } from "gpui-base";
+import { U, slot, itemHover, interactionFill, subtleActionFill, iconButton, badge, spaceBadgeColor, sidebarSectionHeader, rolePill, menuSurface, menuHeading, menuRow, sidebarChildBranch, sidebarDisclosure, sidebarMachineLabel, sidebarNumericSlot, inlineRename, INLINE_RENAME } from "./ui.js";
 import { spaceTitle } from './space-title.js';
 import { sidebarScroll } from './sidebar-scroll.js';
 import { startTabArrivals, tabArrivalMotion } from './tab-arrival.js';
@@ -99,9 +99,10 @@ export default class Spaces extends View {
   renameField(w, t) {
     const edit = this.rename;
     const stop = (_e, cx) => cx.stop_propagation();
-    const action = (name, asset, click) => iconButton(t, { id: `space-rename-${name}-${w.id}`, icon: asset, color: t.muted, onClick: click,
-      label: name === 'apply' ? 'Apply space rename' : 'Cancel space rename', tooltip: name === 'apply' ? 'Apply rename (Enter)' : 'Cancel rename (Escape)' });
-    return h_flex().id(`space-rename-${w.id}`).h(U.insetControl).flex_1().min_w(0).mr(-8).gap(4).items_center()
+    return inlineRename(t,{id:'space-rename',target:w.id,input:edit.input,inputLabel:`Rename space ${w.name}`,
+      applyId:`space-rename-apply-${w.id}`,cancelId:`space-rename-cancel-${w.id}`,
+      onApply:(_e,cx)=>{cx.stop_propagation();saveSpaceRename(this,cx,edit);},
+      onCancel:(_e,cx)=>{cx.stop_propagation();cancelSpaceRename(this,cx,edit,true);}}).flex_1().mr(-8)
       .track_focus(edit.handle).key_context('CustomSpaceRename')
       .on_action('custom-space-rename.ignore', stop)
       .on_mouse_down('left', stop).on_mouse_down('right', stop).on_mouse_up('left', stop)
@@ -109,13 +110,7 @@ export default class Spaces extends View {
       .on_key_down((e, cx) => {
         if (e.key === 'f2') { cx.stop_propagation();return; }
         if (e.key === 'escape') { cx.stop_propagation();cancelSpaceRename(this, cx, edit, true); }
-      })
-      .child(h_flex().id(`space-rename-field-${w.id}`).h(U.insetControl).flex_1().min_w(0).px(6).items_center()
-        .rounded(U.insetRadius).border_1().border_color(t.input).bg(t.background).text_color(t.foreground).cursor_text()
-        .child(Input.new(edit.input).id(`space-rename-input-${w.id}`).flex_1().min_w(0).h_full().text_size(U.font).accessibility_label(`Rename space ${w.name}`)))
-      .child(h_flex().id(`space-rename-actions-${w.id}`).gap(2).items_center().flex_none()
-        .child(action('apply', 'mods/custom-workspace-chrome/check.svg', (_e, cx) => { cx.stop_propagation();saveSpaceRename(this, cx, edit); }))
-        .child(action('cancel', 'mods/custom-pane/close.svg', (_e, cx) => { cx.stop_propagation();cancelSpaceRename(this, cx, edit, true); })));
+      });
   }
 
   checkNew(cx) {
@@ -399,17 +394,15 @@ export default class Spaces extends View {
             {hover: s => s.text_color(t.foreground), tooltip: repair?.error || 'This machine was rebuilt or replaced. Click to connect to the new one.'})
             .on_click(this.drag.guard((_e, cx) => { cx.stop_propagation(); this.reconnect(machine, cx); }))
             .child(repair?.busy ? "Connecting…" : "Connect"))] : []),
-        // The status dot, then +, then the shared fold chevron. The plus
-        // target ends on the same right edge as expanded Crew / Agents numbers.
+        // Status precedes the shared count/plus/approve and chevron/cancel axes.
         h_flex().id(`machine-actions-${m ?? "local"}`).flex_none().gap(3).items_center()
           .when(shows("spaces.show.machineStatus"), el => el.child(status()))
           .when(connected, el => el.child(iconButton(t, { id: `machine-add-${m ?? "local"}`, icon: "mods/custom-workspace-chrome/plus.svg", label: "New space", color: t.muted,
             enabled: !this.drag.active, onClick: this.drag.guard(() => run("space.new", { machine: m ?? "" })) })
-            .mr(1)
             .on_hover(this.drag.guard((hovered, cx) => { this.addHovered = hovered ? (m ?? "local") : null; cx.notify(); })))),
       ];
       const head = this.drag.control(sidebarSectionHeader(t, {id:`machine-${m ?? "local"}`, label:m ?? 'This computer', open:!folded, compact:collapsed, children,
-        trailingInset:0, trailingSize:U.insetControl,
+        trailingInset:0, trailingSize:U.insetControl, gap:INLINE_RENAME.actionGap,
         disclosure:sidebarDisclosure(t,{id:`machine-fold-${m ?? 'local'}`,open:!folded,label:`${folded?'Expand':'Collapse'} ${m ?? 'This computer'}`,enabled:!this.drag.active,
           onClick:this.drag.guard((_e,cx)=>{folded?this.folded.delete(m):this.folded.add(m);localStorage.setItem('machines.folded',JSON.stringify([...this.folded]));cx.notify();})})}),
         {hover: s => s.bg(t.selected), cursor: true, tooltip: collapsed ? m ?? 'This computer' : null})
@@ -566,13 +559,13 @@ export default class Spaces extends View {
               .when(k === all.length - 1 && !tags.some(tag=>tag.plugin==='crew') && !(attached && !linked), e => e.mr(-5))
               .when(Boolean(tag.tooltip), e => e.tooltip(tag.tooltip)))))
           .when(!edit && (tags.some(tag=>tag.plugin==='crew') || attached && !linked),el=>{
-            const open=!attached || !this.connectedFolds().has(this.parentKey({w,block,binding}));
-            return el.child(h_flex().id(`space-meta-${w.id}`).flex_none().items_center().gap(6).mr(-8)
+            const parent=attached&&!linked;
+            return el.child(h_flex().id(`space-meta-${w.id}`).flex_none().items_center().gap(INLINE_RENAME.actionGap).mr(-8)
               .children(tags.filter(tag=>tag.plugin==='crew').map(tag=>sidebarMachineLabel(t,tag.label)
-                .id(`space-tag-${w.id}-${tag.plugin}-${tag.index}`).when(open,e=>e.mr(3))
+                .id(`space-tag-${w.id}-${tag.plugin}-${tag.index}`).mr((parent?INLINE_RENAME.labelGap:9)-INLINE_RENAME.actionGap)
                 .when(Boolean(tag.tooltip),e=>e.tooltip(tag.tooltip))))
-              .when(!open,e=>e.child(sidebarNumericSlot(t,`space-count-${w.id}`,String(block.length-1),{trailingSize:U.insetControl})))
-              .child(attached && !linked ? this.parentDisclosure({w,block,binding},t) : div().size(U.insetControl).flex_none()));
+              .when(parent,e=>e.child(sidebarNumericSlot(t,`space-count-${w.id}`,String(block.length-1),{centered:true})))
+              .child(parent?this.parentDisclosure({w,block,binding},t):div().size(U.insetControl).flex_none()));
           }),
       );
   }

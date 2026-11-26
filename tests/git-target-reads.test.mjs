@@ -54,4 +54,9 @@ for(const result of [
 ])await assert.rejects(f.readTargetPulls(async()=>result,[1,2],'owner/repo'),undefined,'Transport, process, malformed and unscoped failures remain whole-batch failures');
 const limited={...partial,errors:[{type:'RATE_LIMITED',path:['repository','pr1'],message:'API rate limit exceeded'}]};
 await assert.rejects(f.readTargetPulls(async()=>({code:1,stdout:JSON.stringify(limited)}),[1,2],'owner/repo'),error=>error.quiet&&error.kind==='rate','A rate refusal still defers the complete batch');
-console.log('PASS overlapping ordinary/coordinator target facts, stale-subscriber isolation, real CLI exit-1 per-alias access/absence, whole-batch rate/transport handling, changed-only details, final cache and machine isolation');
+for(const bad of [{...metadata(1),number:99},{...metadata(1),url:42},{...metadata(1),state:{}},{...metadata(1),title:{unrecognized:true}}]) {
+ const isolated=await f.readTargetPulls(async()=>({code:0,stdout:JSON.stringify({data:{repository:{pr1:bad,pr2:metadata(2)}}})}),[1,2],'owner/repo');
+ assert.ok(isolated.get(1).error,'Bad alias is refused, never cached as facts');
+ assert.equal(isolated.get(2).row.number,2,'A healthy sibling survives invalid identity and normalization');
+}
+console.log('PASS shared target facts, per-alias access/absence/identity/shape isolation, whole-batch rate/transport handling, changed-only details, final cache and machine isolation');
