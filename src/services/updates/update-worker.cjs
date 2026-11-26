@@ -172,10 +172,17 @@ function terminalEvidence(p, job, result) {
   if (!job?.token || !Number.isFinite(job.started)) return null;
   let text;
   try {
-    // No stream or persistent descriptor. Refuse oversized/truncated logs rather
-    // than accidentally treating an earlier machine's success as final.
-    if (fs.statSync(p.log).size > 1024 * 1024) return null;
-    text = retryIO(() => fs.readFileSync(p.log, 'utf8'), { budget: 150 });
+    // One bounded tail read, immediately closed even on error. Large npm output
+    // must not hide final evidence; discard a leading partial line when seeking.
+    text = retryIO(() => {
+      const fd = fs.openSync(p.log, 'r');
+      try {
+        const size = fs.fstatSync(fd).size, length = Math.min(size, 1024 * 1024), offset = size - length;
+        const buffer = Buffer.alloc(length), count = fs.readSync(fd, buffer, 0, length, offset);
+        const tail = buffer.subarray(0, count).toString('utf8');
+        return offset ? (tail.includes('\n') ? tail.slice(tail.indexOf('\n') + 1) : '') : tail;
+      } finally { fs.closeSync(fd); }
+    }, { budget: 150 });
   } catch { return null; }
   const lines = text.trimEnd().split(/\r?\n/), marker = lines.findLast(line => line.startsWith(TERMINAL));
   if (marker) {

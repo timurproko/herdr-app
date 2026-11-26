@@ -6,7 +6,7 @@ import { updateProjection, customizationRowState } from '../src/shared/customiza
 import { fixture, clean } from './support/deploy-all.mjs';
 const { atomic, read, files, inspect, SETTLE, TERMINAL } = updater;
 try {
-  for (const kind of ['legacy', 'marker', 'partial', 'failed', 'installer-unknown', 'remote-unknown', 'foreign', 'truncated', 'wrong-path', 'live', 'unsettled']) {
+  for (const kind of ['legacy', 'marker', 'large-log', 'partial', 'failed', 'installer-unknown', 'remote-unknown', 'foreign', 'truncated', 'wrong-path', 'live', 'unsettled']) {
     const f = fixture(), p = files(f.env.HERDR_APP_HOME), started = Date.now() - 100;
     const job = { token: 'run', state: 'unknown', pid: 123456789, childPid: 123456788, started, deadline: started + 1800000 };
     atomic(p.status, job); atomic(p.lock, { token: job.token });
@@ -19,11 +19,11 @@ try {
     const record = resultRecorder({ ...f.env, HERDR_UPDATE_RUN_ID: 'run' }); record(rows);
     const result = read(p.result), log = [];
     printSummary(rows, line => log.push(line));
-    if (kind === 'marker') log.push(TERMINAL + JSON.stringify({ ...result, complete: true }));
+    if (kind === 'marker' || kind === 'large-log') log.push(TERMINAL + JSON.stringify({ ...result, complete: true }));
     else log.push(`EPERM: operation not permitted, rename '${p.result}.uuid.tmp' -> '${kind === 'wrong-path' ? 'foreign-result.json' : p.result}'`);
     if (kind === 'foreign') atomic(p.result, { ...result, token: 'foreign' });
     if (kind === 'truncated') log.splice(2, 1);
-    fs.writeFileSync(p.log, log.join('\n') + '\n');
+    fs.writeFileSync(p.log, (kind === 'large-log' ? 'x'.repeat(1024 * 1024) + '\n' : '') + log.join('\n') + '\n');
     const snapshot = inspect(f.env.HERDR_APP_HOME, { now: () => Date.now() + (kind === 'unsettled' ? 0 : SETTLE + 1), isAlive: () => kind === 'live' });
     const expected = ['foreign', 'truncated', 'wrong-path', 'live', 'unsettled', 'installer-unknown'].includes(kind) ? 'unknown'
       : ['partial', 'remote-unknown'].includes(kind) ? 'partial' : kind === 'failed' ? 'failed' : 'complete';
