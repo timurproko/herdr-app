@@ -613,6 +613,54 @@ command-only paging, native wheel ownership, scrollbar ranges and complete
 search/clear resets. Read-only installed Windows byte evidence and absent live
 interaction proof are in HERDR-0.1.18-PALETTE-REVIEW.md.
 
+## Managed Git stages
+
+`node --experimental-vm-modules tests/git-stages.test.mjs` covers the
+MyWorkflows stable-role compatibility snapshot: Build / Rework / Changes needed,
+Review / Under review, and Approved, with plain and robot-prefixed names. Array
+and connection results share parsing; null, unknown and removed labels clear the
+stage, narrow check reads preserve it, and CI/reviewDecision never invent a stage.
+Existing list and target reads already include labels; stage adds no label request.
+`tests/pr-agent-links.test.mjs` additionally exercises role-specific ship/fix
+PR-or-branch links, reviewers on the base branch matched by crew.pr only,
+repository isolation, optional round/finding/approval labels, disconnected and
+ended targets, reconnect and captured scope/role checks. Its actual aggregate
+boundary permits a freshly verified same-home reviewer task without its own PR,
+but rejects missing membership and stale context. Legacy robot/footer/branch
+callers retain their no-role behavior. These are synthetic facts and host snapshots,
+not live label mutation, remote focus or approval verification.
+
+`tests/pr-agent-links.test.mjs` renders the actual stage controls and checks
+Build/Review focus, Approved row opening regardless of CI, round/finding captions,
+missing metadata, inert ended/disconnected chips, stale captured roles and scopes,
+and ghost noninteraction. `tests/git-stage-chips.test.mjs` checks all captions and
+shared 80px title reservations across ordinary, pinned, scrolling, coordinator and
+ghost Open/Closed/merged rows, 280–480px and 75–200% zoom including 130%. Existing
+geometry/right-edge fixtures retain the 74px blocks, lower-line allocation,
+Spaces-derived trailing anchor and fallback robot's 24px target. The no-label
+main-relative tree/probe budget remains unchanged. These are render-tree assertions,
+not native pointer dispatch, pixel layout or real-agent focus proof.
+
+The same `pr-agent-links` fixture now prints `REASON_MATRIX` for 80 combinations:
+ordinary/coordinator, Open/Closed, row/ghost, local/pc2, and ship/fix matched by
+PR or branch plus PR-linked reviewers. Ended and disconnected reasons survive
+live-cache pruning and historical/stale coordinator membership. Reconnection
+without verification stays disabled; a fresh binding restores the plain stage.
+It also checks Approved's agent-free action and legacy robot absence/restoration.
+
+`PIN_MATRIX` covers 96 real-controller navigation sequences: Build/Review,
+chip/robot, ordinary/coordinator, Open/Closed, local/remote destinations and
+100%/130% zoom, including ordinary lists with and without a prior pin. Each
+acknowledges a different space/worktree through the production refresh path,
+checks immediate focus, waits for destination PR selection, drives the native
+320ms overlay phases, and asserts final pin settlement without another focus.
+Coordinator lists hand off a bounded inert source snapshot, not a permanent pin.
+`tests/pin-swap.test.mjs` exercises both initial pin states, intermediate rows,
+scroll/zoom, one-shot timing and coordinator arrival, including context/tab,
+wrong selection/PR, scroll and three-second timeout cancellation. The entry
+point for initially unpinned lists remains `PinSwap.start()`; no second animator
+is introduced. These are fixture transitions, not live native paint proof.
+
 ## Git PR label facts
 
 Pull facts, pagination, fleet and webhook fixtures cover assigned label names/colours

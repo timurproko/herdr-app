@@ -160,25 +160,30 @@ Failed, unmatched and discarded fleet verification attempts SHALL retain a bound
 - **AND** recovery history does not become a durable authorization record or contain raw task, transcript or authentication data
 
 ### Requirement: Git trailing alignment with Spaces
-Git PR rows and coordinator repository headers SHALL retain their existing 3px logical trailing inset inside each row highlight, independent of Spaces Crew's new plain-label presentation. Robot and header chevron reservations SHALL remain 24px wide with equal right edges matching actual Git label pills. Their glyphs SHALL share a centre line without resizing. All row variants SHALL preserve interaction targets, absent-agent title reservations, tooltips, callbacks and vertical geometry.
+Git PR rows and coordinator repository headers SHALL retain their 3px logical trailing inset inside each highlight, independent of Spaces Crew's plain label. Title-line stage or robot reservations SHALL share a stable trailing edge with label pills and the 24px header chevron reservation. Robot glyphs and hit targets SHALL retain their sizes. All row variants SHALL preserve absent-control title reservations, captured actions and vertical geometry.
 
 #### Scenario: Complete panel alignment
 - **WHEN** ordinary or coordinator Git panels render at 280, 320, 360, 390 or 480 logical pixels and 75%, 100%, 125%, 130%, 150% or 200% zoom
-- **THEN** robot slot, repository-header chevron slot and actual trailing Git label pill right edges retain a 3px inset from their own row highlight edge
+- **THEN** stage/robot reservation, repository-header chevron slot and actual trailing Git label pill right edges retain a 3px inset from their own row highlight edge
 - **AND** complete-panel border and list padding are included without using the restyled Spaces Crew label as a pill-edge oracle
 - **AND** Git and Spaces highlights retain equal 8px left and right panel/sidebar gutters, with Git's control-to-panel inset remaining 11px
 - **AND** Git row highlights match Spaces' 6px corner radius and their leading content starts 8px inside the highlight, matching Spaces' highlight-to-badge inset
 
 #### Scenario: Different glyph sizes
 - **WHEN** a 16px robot glyph and a 14px repository-header chevron are shown
-- **THEN** each remains centred within its 24px reservation in the same column
-- **AND** their literal SVG right edges may differ by 1px without shifting reservation or pill edges
+- **THEN** each remains centred within its 24px control at the shared trailing edge
+- **AND** their literal SVG right edges may differ by 1px without shifting control or pill edges
 
 #### Scenario: Missing agent, folded header and motion preview
 - **WHEN** an agent is absent, a repository header folds or a PR is pinned, scrolled or shown as a motion-preview row
 - **THEN** the existing trailing edge and row/header heights and line positions are preserved
-- **AND** the absent robot reservation remains inert, live robot hit targets remain 24px square, ghost robots remain noninteractive and existing tooltips and captured actions remain unchanged
+- **AND** the absent control reservation remains inert, live robot hit targets remain 24px square, ghost controls remain noninteractive and existing captured actions remain guarded
 - **AND** hover, selected/pinned and ghost highlights retain equal Spaces-derived left and right gutters and corner radius
+
+#### Scenario: Text chips replace the robot
+- **WHEN** otherwise identical rows show Build, Review, Approved, a robot or no control
+- **THEN** they reserve the same bounded title-line space sufficient for the stage words, with no overlapping title or additional line
+- **AND** all retain the existing 74px height, three fixed line boxes and label right anchor
 
 ## ADDED Requirements
 
