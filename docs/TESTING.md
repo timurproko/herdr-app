@@ -56,6 +56,24 @@ placement, wrong home/task/space, duplicate membership and foreign machines stil
 refuse; omitted project does not authorize per-project placement. Its pre-fix failure
 is the whole combined binding becoming null, not a workspace drawing defect.
 
+`fleet-toggle-live.test.mjs` also mounts separate Settings, Spaces and Git provider
+copies with mixed combined workers and reduced status. The actual Settings callback
+and ordinary 250ms Spaces lifecycle restore remembered rows, publish fresh live/history
+PR context and clear inventory on off without a manual bind or forced refresh. The
+rendered `fleet-git.test.mjs` uses mixed legacy/v1-combined labels too, including its
+slow/failed first read and obsolete-generation cases. No separate toggle scheduler is
+needed: current generation invalidation already makes the next owner tick eligible.
+
+Opt-in `tests/features/fleet-combined-native.mjs --run --output <outside> --zoom 1|1.3`
+uses the supplied `HERDR_APP_BIN` 0.1.18 copy. It requires its sibling release archive
+to match the pinned published SHA-256 and the executable to match that archive. Actual
+Settings row/callback, recurring Spaces verification and Git aggregate/renderers run
+against synthetic local/remote membership, reduced status and GitHub replies. It captures
+off, cold pending/verified and remembered pending/verified states, records exact counts
+and native errors, and stops its isolated app/Core in finally. This is controller-driven
+callback/native-pixel proof, not pointer hit-testing or live SSH acceptance. No real
+terminal or account is used and nothing is installed outside disposable homes.
+
 `spaces-worktree-layout.test.mjs` and `fleet-reorder.test.mjs` cover one/two/three
 children, shared stem/last corner, native numbering, hidden-child selection,
 compact membership, any-member block reorder, ambiguity/cycles and changed captured
