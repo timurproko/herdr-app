@@ -33,5 +33,9 @@ for(const machine of [null,'pc2'])for(const modes of [['combined'],['herdr-app',
  }
  list=before;const saved=copy(all);all.push({...all[1],pane:'duplicate'});assert.equal(f.bindFleet(status,machine,model())?.tasks.length===tasks.length,false);all=saved;
  const parsed=f.recordedSource(JSON.stringify(status));assert.equal(parsed.tasks[0].project,tasks[0].project,'Transport project survives normalization');
+ if(modes[0]!=='combined') {
+  f.refreshFleets(cx,async()=>{throw Error('Cached discovery must not reverify');},false,async()=>JSON.stringify({...status,tasks:tasks.map((t,i)=>i?t:{...t,project:'foreign-project'})}));
+  await Promise.all(jobs.splice(0));assert.equal(r.pluginPullContext(q('owner')).links.length,modes.length,'Discovery cannot replace a verified project binding or invalidate known facts');
+ }
 }
 console.log('PASS combined/project/mixed placement-v1 exact identities, names, native membership, qualified machines, durable registry links and colour authority');

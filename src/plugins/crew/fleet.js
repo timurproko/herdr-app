@@ -4,7 +4,7 @@ import { fleetError, fleetGeneration, recordFleetFailure, resolveFleetFailure, f
 export const FLEET_KEY = 'custom.fleet.links', DISPLAY_KEY = FLEET_DISPLAY_KEY;
 const READS = 'custom.fleet.reads', TTL = 10000, EXPIRY = 30000, READ_LEASE = 45000, PROCESSING_LEASE = 2000;
 const readerOwner=`${Date.now()}-${Math.random()}`, activeReads=new Map();
-const sourceIdentity = status => JSON.stringify([status?.home,status?.owner,status?.tasks?.map(t=>[t.id,t.state,t.terminal])]);
+const sourceIdentity = status => JSON.stringify([status?.home,status?.owner,status?.tasks?.map(t=>[t.id,t.state,t.terminal,t.project])]);
 // Only reads witnessed by this running mod can authorize actions. Persisted
 // timestamps/tokens alone are display history, not cold-start verification.
 const verifiedTokens = new Map(), pendingTokens = new Map();
@@ -163,7 +163,7 @@ function nextDisplay(machine, bound, snapshot) {
     const members=new Set(snapshot.all.filter(p=>tabs.has(p.tab) && !p.mod).map(p=>p.terminal));
     const conflict=snapshot.list.some(t=>members.has(t.address) && t.state==='live' && (t.labels?.['crew.task'] || t.labels?.['crew.home']) &&
       (t.labels?.['crew.home']!==child.adoption || t.labels?.['herdr.space']!==child.child.split('/').at(-1) ||
-       child.mode==='per-project' && (t.labels?.['crew.space.version']!=='1' || t.labels?.['crew.space.project']!==child.project || t.labels?.['crew.space.name']!==child.name)));
+       child.mode==='per-project' && (t.labels?.['crew.space.version']!=='1' || t.labels?.['crew.space.mode']!=='per-project' || t.labels?.['crew.space.project']!==child.project || t.labels?.['crew.space.name']!==child.name)));
     if(!conflict)children.set(child.child,child);
   }
   const records=[...children.values()].sort((a,b)=>a.child.localeCompare(b.child));
