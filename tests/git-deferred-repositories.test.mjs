@@ -77,11 +77,13 @@ const healthy=repository=>({code:0,stdout:JSON.stringify({data:{repository:Objec
 respond('timurproko/crew',healthy('timurproko/crew'));respond('timurproko/myworkflows',healthy('timurproko/myworkflows'));await flush();
 respond('timurproko/herdr-app',{code:1,stderr:'You have exceeded a secondary rate limit'});await flush();
 const allVisible=()=>{let out=render();while(panel.selectedTaskWindow.revealMore())out=render();return out;};
-tree=allVisible();assert.equal(find(tree,'task-repo-header-timurproko/herdr-app'),undefined);assert.ok(find(tree,'git-task-loading'));assert.equal(find(tree,'task-loading-timurproko/herdr-app'),undefined);
+tree=allVisible();assert.equal(find(tree,'task-repo-header-timurproko/herdr-app'),undefined);assert.ok(find(tree,'git-task-empty'));assert.equal(find(tree,'task-loading-timurproko/herdr-app'),undefined);
+assert.equal(find(tree,'task-repo-header-timurproko/crew'),undefined,'Cold healthy siblings wait behind the complete inventory barrier');
+assert.equal(find(tree,'task-repo-header-timurproko/myworkflows'),undefined);
 assert.equal(aggregate.rows('open').length,2);assert.equal(aggregate.rows('closed').length,5);
 assert.deepEqual({...aggregate.counts()},{open:null,closed:null});assert.doesNotMatch(words(tree).join(' '),/rate limit|Could not read|Stale/);
 for(const tab of ['open','closed']){assert.equal(words(find(tree,`git-view-${tab}-count`)).join(''),'0');assert.match(find(tree,`git-view-${tab}-count`).attrs.tooltip[0],/Count loading; showing 0/);}
-panel.view='closed';tree=allVisible();assert.ok(find(tree,'git-task-loading'));assert.equal(find(tree,'task-repo-header-timurproko/herdr-app'),undefined);assert.equal(aggregate.rows('closed').length,5);
+panel.view='closed';tree=allVisible();assert.ok(find(tree,'git-task-empty'));assert.equal(find(tree,'task-repo-header-timurproko/herdr-app'),undefined);assert.equal(aggregate.rows('closed').length,5);
 panel.view='open';tree=allVisible();const selectedWindow=panel.selectedTaskWindow,readsBefore=calls.length;
 const due=aggregate.readWake.due;now=due-1;aggregate.pump(cx);await flush();assert.equal(calls.length,readsBefore,'No automatic read before cooldown ends');
 now=due;timers.find(w=>w.at===due).fn(cx);await flush();assert.equal(held.length,1,'Cold aggregate retries without another event');

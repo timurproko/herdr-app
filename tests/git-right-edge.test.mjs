@@ -8,7 +8,7 @@ const inset=(geometry,row,control)=>right(geometry.get(row))-right(geometry.get(
 const spacesMeasurements=new Map();
 function spacesInset(width,zoom) {
   const tree=spaces.render(),geometry=rowGeometry(tree,width,zoom,600);
-  const measurements=['coordinator'].map(id=>{
+  const measurements=['ordinary'].map(id=>{
     const row=find(tree,`space-${id}`),pill=find(tree,`space-tag-${id}-crew-0`);
     const badge=find(tree,`space-content-${id}`).kids[0],box=geometry.get(row);
     const metrics={left:box.x,right:width*zoom-right(box),leading:geometry.get(badge).x-box.x,
@@ -20,8 +20,9 @@ function spacesInset(width,zoom) {
     near(width*zoom-right(geometry.get(pill)),11*zoom,'Spaces pill retains its 11px sidebar inset');
     return metrics;
   });
-  assert.equal(find(tree,'space-tag-fleet-crew-0'),undefined,'Connected children no longer have Crew pills; the coordinator remains the trailing-edge reference');
+  assert.equal(find(tree,'space-tag-fleet-crew-0'),undefined,'Connected children have no Crew pills; ordinary trailing pills remain the Git alignment reference');
   assert.ok(find(tree,'space-branch-fleet'),'The child has its own indented connector instead');
+  const parentContent=find(tree,'space-content-coordinator');assert.equal(parentContent.kids.at(-1),find(tree,'space-fold-coordinator'),'The connected parent now reserves its far-right edge for disclosure, after Crew');
   spacesMeasurements.set(`${width}/${zoom}`,measurements[0]);
   return measurements[0].trailing;
 }

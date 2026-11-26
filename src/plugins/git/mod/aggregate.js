@@ -98,6 +98,7 @@ export class AggregatePulls {
   get publicationPending() {return Boolean(this.context?.stale || this.returning || this.busy || [...this.entries.values()].some(e=>e.dirty));}
   get hasPresentation() {return this.published!==null || !this.publicationPending && !this.waiting;}
   get updating() {return Boolean(this.context?.stale || this.busy || (!this.readWake || this.readWake.due<=Date.now()) && (this.returning || [...this.entries.values()].some(e=>e.dirty)));}
+  // Pure projection: a cold partial read cannot become warm on re-entry.
   presentationEntries() {return this.publication.project(this.entries,this.publicationPending || this.waiting)??new Map();}
   presentationRows(state) {
     const now=Date.now();return [...this.presentationEntries()].flatMap(([key,entry])=>{
