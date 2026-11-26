@@ -244,7 +244,7 @@ instances stop in finally; screenshots, logs and receipts stay outside the check
 reported mixed-fleet case through real Crew verification, aggregate/read modules
 and panel rendering. With herdr-app #74/#76 refused and siblings supplying Open 2 /
 Closed 5, it requires one top-left cold Loading indication without partial successful
-sections or unknown-only headers and both badges 0/loading, then the complete
+sections or unknown-only headers and internally unknown counts with label-only tabs, then the complete
 eligible list and task totals after an exact fake-clock
 cooldown retry without another event. It also covers queued/in-flight uncertainty,
 actionable/missing exclusions, folds, atomic boundaries, 100-item cap, surviving
@@ -1055,26 +1055,16 @@ API invocation. Pagination distinguishes its selected-state filter from the new
 combined totals fields, applies both totals on append and retains cursor-depth
 repair. The 100-row render operation budget remains separately enforced.
 
-## Always-visible Git tab counts
+## Label-only Git tabs
 
-`tests/git-count-badges.test.mjs` renders the actual ordinary and coordinator chrome
-with the real shared segment, ordinary snapshot reader and aggregate index. It
-checks visible first-load/unknown zeros, loading tooltip/accessibility text,
-authoritative totals, retained counts during delayed and failed same-context reads,
-and first-load reset after a real repository/coordinator-home change. All IO is
-synthetic. The geometry matrix additionally compares tab and badge boxes across
-unknown/0/1/99/999/larger totals and verifies three-digit text fits inside the
-reserved 32px badge with padding at every tested width and zoom. Another 2,400
-complete-panel comparisons in `git-count-badges.test.mjs` cover both selected
-states and both tabs in ordinary/coordinator renderers at 280–480px and
-75–200% zoom including 130%. They compare the label's 8px left inset with the
-painted badge's 8px right inset, not just its reserved slot, and require centred
-one/two/three-digit text and stable tab/badge boxes. Known exact totals have no
-count-only tab or nested badge tooltip; unknown zeros keep loading information,
-and counts above 999 show a bounded 999+ with their exact total in a tooltip and
-accessible label. The 4px symmetric badge padding also contains the overflow
-indicator. Zero is an explicit first-load display choice, not an authoritative
-claim that reads finished. These checks resolve synthetic boxes, not native pixels.
+`tests/git-count-badges.test.mjs` renders actual ordinary/coordinator chrome with
+unknown, zero, cached subset and authoritative internal totals. It requires only
+Open/Closed labels and accessible names, no badge subtree or reserved slot, no
+count tooltip, symmetric 8px label padding, stable geometry and real tab callbacks.
+The 1,920 complete-panel comparisons cover both selected states at 280–480px and
+75–200% zoom including 130%. Repository-count and entry regressions independently
+retain scoped totals, folding and remaining-row pin counts. These are synthetic
+boxes, not native pixels; the opt-in Git loading fixture supplies native screenshots.
 
 ## Stable Git row geometry
 
@@ -1126,8 +1116,7 @@ uses ellipsis-only values. These are synthetic resolved-box comparisons, not nat
 GPUI pixels or visual interaction evidence; no app, session, credential or deployment
 is used.
 
-The same fixture compares Open/Closed segment positions for unknown, zero and
-multi-digit counts; empty badge reservations have no fabricated values.
+The same fixture checks natural Open/Closed label widths and symmetric padding with no badge reservations.
 `tests/git-location.test.mjs` now samples actual rendered row identities through
 pending/rejected/timed-out/signaled/abnormal/permission-denied/empty root replies,
 checks root/repository/count/page and native pin-size retention, then verifies

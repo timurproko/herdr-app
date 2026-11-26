@@ -9,9 +9,9 @@
 
 ## 2. Open and Closed tabs have labels only and repository counts remain
 
-- [ ] 2.1 Remove tab badge subtrees, count reservations and count-only tooltips from the shared Git segment renderer and both view call sites; update git-count-badges assertions to require label-only accessible controls across selected states and count knowledge states.
-- [ ] 2.2 Retain internal scoped counts and repository-header numbers, folding, remaining-row pin counts and selection behavior; run targeted repository-count and entry tests, and remove obsolete tab-badge promises from relevant feature documentation.
-- [ ] 2.3 Capture loaded Open and Closed tabs in ordinary and coordinator views at 100% and 130% with synthetic rows and section counts; inspect screenshots for label-only tabs with no empty badge gap and record owned-instance cleanup.
+- [x] 2.1 Remove tab badge subtrees, count reservations and count-only tooltips from the shared Git segment renderer and both view call sites; update git-count-badges assertions to require label-only accessible controls across selected states and count knowledge states.
+- [x] 2.2 Retain internal scoped counts and repository-header numbers, folding, remaining-row pin counts and selection behavior; run targeted repository-count and entry tests, and remove obsolete tab-badge promises from relevant feature documentation.
+- [x] 2.3 Capture loaded Open and Closed tabs in ordinary and coordinator views at 100% and 130% with synthetic rows and section counts; inspect screenshots for label-only tabs with no empty badge gap and record owned-instance cleanup.
 
 ## 3. Coordinator background-update rendering has a focused bounded regression
 

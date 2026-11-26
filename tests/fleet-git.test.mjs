@@ -57,7 +57,7 @@ for(const outcome of ['slow','failed']) {
  state['custom.spaces.preferences'].connectFleetToCoordinator=false;f.invalidateFleet();tree=panel.render(cx);await drain();tree=panel.render(cx);
  assert.match(text(tree),/Not a git repository/);assert.equal(panel.aggregate.entries.size,0);
  state['custom.spaces.preferences'].connectFleetToCoordinator=true;f.invalidateFleet();holdStatus=outcome==='slow';failStatus=outcome==='failed';
- const retainedFrame=()=>{tree=panel.render(cx);assert.doesNotMatch(text(tree),/Not a git repository|Waiting for fleet verification|Verifying|Stale/);assert.equal(text(find(tree,'git-task-empty')).trim(),'Loading');assert.equal(panel.aggregate.entries.size,0);assert.deepEqual(JSON.parse(JSON.stringify(panel.aggregate.counts())),{open:null,closed:null});assert.match(find(tree,'git-view-open-count').attrs.tooltip[0],/Count loading; showing 0/);assert.equal(r.pluginPullContext('coordinator'),null);assert.equal(find(tree,'pr-agent-example/a#12'),undefined);};
+ const retainedFrame=()=>{tree=panel.render(cx);assert.doesNotMatch(text(tree),/Not a git repository|Waiting for fleet verification|Verifying|Stale/);assert.equal(text(find(tree,'git-task-empty')).trim(),'Loading');assert.equal(panel.aggregate.entries.size,0);assert.deepEqual(JSON.parse(JSON.stringify(panel.aggregate.counts())),{open:null,closed:null});assert.equal(find(tree,'git-view-open-count'),undefined);assert.equal(find(tree,'git-view-open').attrs.accessibility_label[0],'Open');assert.equal(r.pluginPullContext('coordinator'),null);assert.equal(find(tree,'pr-agent-example/a#12'),undefined);};
  retainedFrame();for(let i=0;i<30;i++)await Promise.resolve();retainedFrame();
  const navigations=focus.length;robot.attrs.on_click[0]({},cx);assert.equal(focus.length,navigations);assert.equal(calls.length,reads,'Pending verification grants no GitHub IO');
  if(holdStatus){holdStatus=false;releaseStatus();await drain();}else {await drain();retainedFrame();failStatus=false;f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();}
@@ -147,7 +147,7 @@ const header=(repo,root=tree)=>find(root,`task-repo-header-example/${repo}`);
 const nameOnly=(repo,root=tree)=>{const row=header(repo,root);assert.equal(row.kids.length,3,'Name, selected-tab count and shared chevron');assert.equal(text(find(root,`task-repo-count-example/${repo}`)),'1');assert.doesNotMatch(text(row),/Open|Closed/);assert.ok(text(row).includes(`example/${repo}`));};
 const toggle=repo=>{header(repo).attrs.on_click[0]({},cx);tree=panel.render(cx);};
 assert.ok(find(tree,'task-repo-body-example/a'));assert.equal(header('b'),undefined,'Closed-only repository has no Open header');
-nameOnly('a');assert.equal(text(find(tree,'git-view-open')),'Open 1');assert.equal(text(find(tree,'git-view-closed')),'Closed 1');
+nameOnly('a');assert.equal(text(find(tree,'git-view-open')),'Open');assert.equal(text(find(tree,'git-view-closed')),'Closed');
 const aHeader=header('a');assert.equal(aHeader.attrs.h[0],28);assert.equal(aHeader.attrs.pr[0],3);assert.equal(aHeader.kids.at(-1).attrs.size[0],24);
 assert.match(aHeader.kids.at(-1).kids[0].attrs.asset[0],/chevron-down.svg$/);assert.equal(aHeader.attrs.accessibility_label[0],'Collapse example/a');
 let foldCalls=calls.length;const foldWrites=writes.length;
@@ -179,7 +179,7 @@ panel.setView('closed',cx);tree=panel.render(cx);assert.ok(find(tree,'task-error
 toggle('b');assert.equal(find(tree,'task-error-example/b'),undefined);assert.ok(find(tree,'git-enrollment-footer'),'Folding cannot hide enrollment');nameOnly('b');
 failRepo=null;bClosed=false;panel.aggregate.refresh(cx);await drain();tree=panel.render(cx);
 assert.equal(header('b'),undefined,'Reopened PR no longer leaves an empty Closed header');assert.ok(find(tree,'git-enrollment-footer'),'Hidden section still contributes enrollment');assert.equal(find(tree,'git-task-empty').kids[0],'No closed pull requests');
-assert.equal(text(find(tree,'git-view-open')),'Open 2','Top-level totals update while folded');assert.equal(panel.aggregate.counts().open,2);assert.equal(find(tree,'task-repo-body-example/b'),undefined);
+assert.equal(text(find(tree,'git-view-open')),'Open','Tabs stay label-only while folded');assert.equal(panel.aggregate.counts().open,2);assert.equal(find(tree,'task-repo-body-example/b'),undefined);
 bClosed=true;panel.aggregate.refresh(cx);await drain();tree=panel.render(cx);toggle('b');assert.ok(find(tree,'git-enrollment-footer'),'Reopening keeps the one footer');delete noticeModes['example/b'];
 assert.equal(A.taskPullLink('https://github.com/example/a/pull/12').key,'example/a#12');for(const bad of ['https://evil.test/a/b/pull/12','https://github.com/a/b/pull/0','https://github.com/a/b/pull/1?x=1'])assert.equal(A.taskPullLink(bad),null);
 // The same authenticated subscription routes only relevant repositories, coalescing bursts.

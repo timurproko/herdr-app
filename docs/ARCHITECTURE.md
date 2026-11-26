@@ -367,7 +367,7 @@ than mounted rows or GitHub repository totals. The flexible name
 uses all remaining width; a clipped invisible natural-width probe and the label's
 available width enable its full-name tooltip only on actual overflow. Geometry is
 local, scope-keyed and updated after layout with changed-only notifications, not
-render-time effects. Top-level tab totals still include folded repositories.
+render-time effects. Internal task totals still include folded repositories; Open/Closed controls show labels only, without badge subtrees or reservations.
 Sections persist a canonical repository-key set in localStorage
 (`custom.git.task-repositories.folded`), like Spaces' `machines.folded` set.
 Explicit toggles are UI-only: no preference export or Crew/host-document writes,
@@ -401,7 +401,7 @@ Git/Crew/attachment off-on and restart cannot restore old inventory. Fresh
 membership reconciles restored facts before actions; hidden snapshots do no work.
 Per-tab reveal/anchor facts use separately bounded pure snapshots and new native
 measurement identities on re-entry.
-Global counts remain unknown (visible 0 with existing loading metadata) while any
+Internal global counts remain unknown while any
 admitted identity lacks authoritative facts or confirmed absence. Compatible last-good
 same-scope totals survive new unread membership with loading metadata; removals and
 history expiry still reconcile. Complete-count snapshots update in the controller
