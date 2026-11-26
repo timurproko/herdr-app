@@ -344,22 +344,28 @@ Explicit toggles are UI-only: no preference export or Crew/host-document writes,
 and no new fetch or cancellation. Fold state survives tab/context changes and
 panel recreation. Scoped rows/errors and repository-specific diagnostics fold with
 the body; global setup stays visible. Counts and webhook-driven facts continue
-updating while folded. Rendering derives selected-tab sections from eligible rows,
-an applicable `readNotice`, or unresolved admitted first-read work, before applying
-folds. Unknown-state queued/in-flight/quiet-deferred repositories retain a standard
-bulb/Loading body in either tab, without inventing PR membership. Warm-only refreshes
-add no Loading. An applicable actionable failure retains its notice; confirmed
+updating while folded. One shared projection derives selected-tab sections from known eligible rows
+or an applicable `readNotice` before applying folds. Unknown-state queued,
+in-flight and quiet-deferred first reads share one panel bulb/Loading outside
+repository bodies, above enrollment; they create no unknown-only header.
+Warm-only refreshes add no Loading. An applicable actionable failure retains its notice; confirmed
 missing and known ineligible history do not leave Loading behind. Empty settled sections have no header,
 but disappearing sections retain saved fold keys. A settled tab with no qualifying
 sections uses ordinary Git's **No open pull requests** / **No closed pull requests**;
 notice-only and folded eligible sections are not empty. Pending/unverified feedback
 is unchanged. The selected presentation reveals ten items initially, including headers,
 notices and rows, then appends ten near the scroll bottom without inventory IO.
-An unfolded header at a reveal boundary waits for its first row, visible notice or Loading body;
-no transition may leave an unfolded header alone. Sections without selected-tab
-content or unresolved first-read work are omitted even if their saved fold key remains.
-Loading is one keyed 32px presentation item, not a PR row or safety target, and folds
-with the body. It obeys the 100-item cap and stable section/scroll identities.
+An unfolded header at a reveal boundary waits for its first row or visible notice;
+no transition may leave it alone. Sections without selected-tab content or a
+notice are omitted even if a saved fold key remains. Panel Loading is not a PR,
+repository body, reveal item or safety target; it remains visible through folds.
+Same-home returns restore pure runtime presentation from at most four snapshots
+and 4096 admitted identities, with no native handles or callback-bearing trees.
+Exact scope and provider/Git enable generations reject stale cache/read results;
+Git/Crew/attachment off-on and restart cannot restore old inventory. Fresh
+membership reconciles restored facts before actions; hidden snapshots do no work.
+Per-tab reveal/anchor facts use separately bounded pure snapshots and new native
+measurement identities on re-entry.
 Global counts remain unknown (visible 0 with existing loading metadata) while any
 admitted identity lacks authoritative facts or confirmed absence. Compatible last-good
 same-scope totals survive new unread membership with loading metadata; removals and

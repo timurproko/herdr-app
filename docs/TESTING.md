@@ -14,12 +14,17 @@ to reproduce hosted CI.
 `tests/git-deferred-repositories.test.mjs` runs a sanitized equivalent of the
 reported mixed-fleet case through real Crew verification, aggregate/read modules
 and panel rendering. With herdr-app #74/#76 refused and siblings supplying Open 2 /
-Closed 5, it requires the herdr-app header and standard Loading with both badges
-0/loading, then both rows and complete task totals after an exact fake-clock
+Closed 5, it requires one panel Loading indication with no unknown-only herdr-app
+header and both badges 0/loading, then the header and both rows and complete task totals after an exact fake-clock
 cooldown retry without another event. It also covers queued/in-flight uncertainty,
 actionable/missing exclusions, folds, atomic boundaries, 100-item cap, surviving
 anchors, new membership with retained/loading counts, warm retention and obsolete
 retry guards. It is not evidence of the original unrecorded refusal or native pixels.
+
+`tests/git-coordinator-return.test.mjs` checks exact-scope runtime return memory,
+provider/Git generation invalidation even without an intermediate render, bounded
+snapshot retention, stale-action refusal, one panel Loading and visible cold
+failures. The renderer and safety selection share the same admission projection.
 
 `tests/git-rate-quiet.test.mjs` exercises strict primary/secondary refusal handling,
 episodes, Retry-After, manual bypass and the older-success/cooldown race. Ordinary
@@ -39,8 +44,8 @@ and recovered screenshots at 130%, records native errors/build times and stopped
 instance evidence, and stops only its generated app/Core session in cleanup. The
 recorded four-row proof built in 0–2 ms with no native errors; this is small-fixture
 JS/native-element construction, not full-inventory timing, paint or live rate-limit
-proof. The native picture shows the same herdr-app header before and after retry,
-with standard Loading becoming #74/#76 and tab totals moving from 0/0 to 4/5.
+proof. That historical native picture predates the panel-wide Loading revision and
+shows the same herdr-app header before and after retry, with Loading becoming #74/#76 and tab totals moving from 0/0 to 4/5.
 
 `tests/git-target-reads.test.mjs` covers shared target subscriptions, per-alias
 failures with gh's real exit status 1 on partial GraphQL errors, final caching

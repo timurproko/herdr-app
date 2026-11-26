@@ -1,5 +1,5 @@
 // The stable changes stack/mod IDs preserve existing layouts and tab pins.
-import {exec} from '../api.js';
+import {exec,shared,setShared} from '../api.js';
 import {DEFAULT_CI_MESSAGE,effectiveCIMessage,validCIMessage,CI_MESSAGE_RULES,CI_MESSAGE_LIMIT,
   DEFAULT_CONFLICT_MESSAGE,effectiveConflictMessage,validConflictMessage,CONFLICT_MESSAGE_RULES,
   DEFAULT_MERGED_MESSAGE,effectiveMergedMessage,validMergedMessage,MERGED_MESSAGE_RULES} from './ci-message.js';
@@ -12,7 +12,7 @@ export default {
   description:'View repository pull requests, agent links, checklists, and CI status.',defaultEnabled:true,
   advancedSettings:true,
   lifecycle:{'sidebar.sync':context=>{ensureMonitors(context);syncRelay(context);},'updates.watch':watchUpdates,'sidebar.close':closeRelay},
-  onEnabledChange(next,cx){if(!next)stopRelay();return syncMonitors(cx);},
+  onEnabledChange(next,cx){setShared('custom.git.presentation-generation',(shared('custom.git.presentation-generation')??0)+1);if(!next)stopRelay();return syncMonitors(cx);},
   onSettingChange(key,cx){if(['autoFixCI','ciFixStates','ciFixMessage','ciFixEnabled','conflictFixMessage','conflictFixEnabled','mergedMessage','mergedEnabled','ciMonitorRepositories','relay','githubAccount'].includes(key))return syncMonitors(cx);},
   settings:[
     {key:'ciMonitorMachine',type:'machine',label:'Legacy monitor machine',default:null,hidden:true},
