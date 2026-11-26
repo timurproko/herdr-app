@@ -73,7 +73,7 @@ function security(file, create = false, directory = false) {
   } catch (e) { if (e instanceof TrelloError) throw e; fail('STORE_PERMISSION_CHECK'); }
 }
 class Store {
-  constructor(home, options = {}) { this.home = homePath(home); this.dir = path.join(this.home, '.customizations', 'trello'); this.security = options.security || security; }
+  constructor(home, options = {}) { this.home = homePath(home); this.dir = path.join(this.home, '.customizations', 'trello'); this.security = options.security || security; this.beforeCommit = options.beforeCommit || (() => {}); }
   file(name) { if (!['credentials', 'policy', 'cooldown', 'display', 'control', 'controller'].includes(name)) fail('INPUT'); return path.join(this.dir, name + '.json'); }
   directory(create = false) {
     try {
@@ -128,9 +128,9 @@ class Store {
       let temp = path.join(this.dir, `.write-${crypto.randomBytes(12).toString('hex')}`);
       try {
         const out = fs.openSync(temp, 'wx', 0o600);
-        try { this.security(temp, true); fs.writeFileSync(out, JSON.stringify(value) + '\n'); fs.fsyncSync(out); } finally { fs.closeSync(out); }
+        try { this.security(temp, true); this.beforeCommit(); fs.writeFileSync(out, JSON.stringify(value) + '\n'); fs.fsyncSync(out); } finally { fs.closeSync(out); }
         safePath(file);
-        fs.renameSync(temp, file); temp = null; this.security(file);
+        this.beforeCommit(); fs.renameSync(temp, file); temp = null; this.security(file);
       } finally { if (temp && stat(temp)) fs.unlinkSync(temp); }
     });
   }
@@ -138,7 +138,7 @@ class Store {
     return this.withLock(() => {
       const current = this.read(name, true);
       if (JSON.stringify(current) !== JSON.stringify(expected)) fail('CONFLICT');
-      if (current !== null) { const file = this.file(name); safePath(file); fs.unlinkSync(file); }
+      if (current !== null) { const file = this.file(name); safePath(file); this.beforeCommit(); fs.unlinkSync(file); }
     });
   }
 }

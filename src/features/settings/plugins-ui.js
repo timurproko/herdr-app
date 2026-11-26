@@ -694,7 +694,8 @@ function listSection(view, t, plugin, item, loading) {
   // otherwise the check's selection is offered as a dropdown.
   const def = scopeSetting(plugin, item);
   const scope = def || spec.scope?.header === true ? null : spec.scope ? selectionDropdown(view, t, plugin, item, { loading: loading && !applying, only: item.id }) : null;
-  const add = spec.picker?.kind === 'folders' ? foldersAdd(view, t, plugin, item, canAdd, loading) : itemsAdd(view, t, plugin, item, canAdd);
+  const add = spec.hideUnavailable === true && item.usable !== true ? null
+    : spec.picker?.kind === 'folders' ? foldersAdd(view, t, plugin, item, canAdd, loading) : itemsAdd(view, t, plugin, item, canAdd);
   // Applying already has header feedback. Keep the last confirmed body, including
   // through its authoritative re-check, rather than collapsing and restoring it.
   const rows = loading && !applying ? [] : item.rows ?? [];

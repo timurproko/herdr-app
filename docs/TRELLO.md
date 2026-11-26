@@ -125,7 +125,10 @@ A **Pending** badge names hosts where application failed; **Retry** explicitly
 applies the current choice again. Offline hosts keep their last acknowledged
 rights, including any previous write grant, until successfully contacted. There
 is no atomic disconnected-host revocation or automatic replay of grants on
-reconnect. Status checks do not apply rights. A write-capable Trello token is
+reconnect. Acknowledgements and unfinished membership are checkpointed as hosts
+complete; Retry visits unfinished hosts first and rechecks without replaying
+already-applied grants. Replaced identities cannot acknowledge an old scope;
+a verified rename of the same scope can. Status checks do not apply rights. A write-capable Trello token is
 still required, and a read-only token remains server-enforced read-only.
 
 Managed execution-host control is separate from board grants and credentials.
@@ -145,7 +148,9 @@ that machine's private store. The local one-shot bridge resolves the configured
 machine, pins its Core identity/session and execution user/home, then sends secrets
 only over strict noninteractive SSH stdin after a readiness handshake. There is no
 local fallback, remote listener, secret-bearing command/environment or temporary
-credential input file. Protected final-store atomic replacement files still exist.
+credential input file. Child SSH forwarding, agent forwarding, local commands,
+trust-store updates and persistent multiplexing are disabled for this request.
+Protected final-store atomic replacement files still exist.
 
 Temporary/custom-via connections, unprovable or elevated execution identities,
 changed Core sessions and unsupported shell arrangements are refused. Existing
@@ -153,9 +158,13 @@ SSH host trust, key authentication, Node 20+ and the selected user's Core sessio
 are prerequisites; the feature never accepts a new host key, prompts for a password
 or installs Node/changes PATH. A missing Trello runtime gets the normal Requirements
 Install action. Conflicting or modified launchers/runtime files refuse overwrite;
-owned installation keeps a public rollback record and preserves private setup.
+owned installation keeps uniquely named public rollback records and preserves
+private setup and unrelated journals. Monotonic request budgets are checked
+again before secret dispatch and private-file commits, including after slow ACL work.
 
-A timeout after possible commit means **setup outcome unknown**. Check destination
+A timeout after possible commit means **setup outcome unknown**. A safe storage
+error can also retain its specific code with `outcome: unknown` after a partial
+private transition; it does not claim nothing changed. Check destination
 status before an explicit retry; cancelling cannot recall an already committed
 change and there is no replay. Shell-only deployment remains shell-only, and no
 credential is copied between machines or provisioned by deployment.
@@ -346,6 +355,10 @@ race or prevent another same-user process from using the token directly.
 | STORE_BUSY / STORE_IO | Active setup lock or filesystem failure; inspect the operation/access before an explicit retry |
 | PUBLIC_STATE_INVALID | Host activation or Access could not be validated; no authority granted |
 | INTERNAL | Unclassified internal failure, with no raw exception or automatic retry |
+| MACHINE_CHANGED / MACHINE_IDENTITY / MACHINE_ELEVATED / MACHINE_UNSUPPORTED | Captured machine changed, its user/home cannot be proved, login is elevated, or temporary/custom-via routing is unsupported; no local fallback |
+| MACHINE_UNAVAILABLE | The configured Core session could not be queried; this is not proof that its identity changed |
+| SSH_UNAVAILABLE / RUNTIME_MISSING / RUNTIME_OUTDATED / RUNTIME_CONFLICT | Check SSH prerequisites or use the explicit Requirements runtime fix; modified/unknown owned files are never overwritten |
+| CONFIG_UNKNOWN | Private setup may have committed without acknowledgement; read destination status before an explicit retry |
 | CONFLICT | Existing credentials, concurrent local edit or unexpected rotation; inspect current local state and use explicit rotation only when intended |
 | DISABLED / STALE | Plugin disabled or authority changed; recheck Settings and local policy before a new command |
 | SCOPE | Board not allowed or child membership unverified within bounds; correct explicit IDs or allowlist, never bypass with an arbitrary URL |

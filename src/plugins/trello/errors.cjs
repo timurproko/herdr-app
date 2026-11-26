@@ -34,9 +34,9 @@ class TrelloError extends Error {
   constructor(code, extra = {}) { super(messages[code] || messages.RESPONSE); this.code = code in messages ? code : 'RESPONSE'; Object.assign(this, extra); }
 }
 const fail = code => { throw new TrelloError(code); };
-function publicError(error) {
+function publicError(error, {configurationUnknown = false} = {}) {
   const safe = error instanceof TrelloError ? error : new TrelloError('INTERNAL');
-  return {code: safe.code, message: messages[safe.code], outcome: safe.code === 'UNKNOWN_WRITE' ? 'unknown' : safe.code === 'WRITE_CHANGED' ? 'applied' : 'refused',
+  return {code: safe.code, message: messages[safe.code] + (configurationUnknown ? ' Setup may have changed; check status before retrying.' : ''), outcome: configurationUnknown || safe.code === 'UNKNOWN_WRITE' ? 'unknown' : safe.code === 'WRITE_CHANGED' ? 'applied' : 'refused',
     ...(Number.isSafeInteger(safe.retryAt) ? {retryAt: safe.retryAt} : {})};
 }
 module.exports = {TrelloError, fail, publicError, messages};

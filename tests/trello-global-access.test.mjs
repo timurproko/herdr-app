@@ -6,13 +6,14 @@ try{
  const {output}=build();fs.mkdirSync(runtime,{recursive:true});fs.cpSync(path.join(output,'lib'),path.join(runtime,'lib'),{recursive:true});fs.cpSync(path.join(output,'scripts'),path.join(runtime,'scripts'),{recursive:true});fs.writeFileSync(path.join(runtime,'package.json'),'{"type":"module"}\n');
  const localRequire=createRequire(path.join(runtime,'lib/trello/cli.cjs')),{Store}=localRequire('./credentials.cjs'),owner=localRequire('./owner.cjs'),cli=localRequire('./cli.cjs');
  const stores=new Map([[null,new Store(home,{security:()=>{}})],['pc2',new Store(path.join(root,'pc2'),{security:()=>{}})]]);
- const machine=name=>({name,id:'fake-core-'+name,session:'test',target:name,state:'connected'}),binding=name=>({...service.bindingFor(stores.get(name).home),id:'fake-core-'+name,session:'test'});
+ const identities=new Map();
+ const machine=name=>({name,id:identities.get(name)??'fake-core-'+name,session:'test',target:name,state:'connected'}),binding=name=>({...service.bindingFor(stores.get(name).home),id:machine(name).id,session:'test'});
  const agent=fakeTransport((_route,options)=>options.method!=='GET'?Response.json({id:ITEM,data:{card:{id:C},board:{id:A}}}):undefined),provider=async(url,opts)=>new URL(url).pathname==='/1/members/me'?Response.json({id:A,username:'fake-owner',fullName:'Fake owner'}):new URL(url).pathname==='/1/members/me/boards'?Response.json([{id:A,name:'Granted board',closed:false}]):agent.transport(url,opts);
- let offline=false,sent=0;
+ let offline=false,lostSetup=false,sent=0;const controlOrder=[];
  const spawn=(program,args)=>{
   assert.equal(program,'ssh');const name=args.at(-2);if(offline)throw Error('FAKE_SECRET_HOSTILE_ERROR');
   const child=new EventEmitter();child.stdin=new PassThrough();child.stdout=new PassThrough();child.stderr=new PassThrough();child.kill=()=>{child.stdin.destroy();child.stdout.destroy();};
-  child.stdin.on('data',async bytes=>{sent++;const request=JSON.parse(bytes);const result=await owner.execute(request.payload,{store:stores.get(name),transport:provider,binding:binding(name),initialControl:request.initialControl});if(result.ok)result.data.destination=binding(name);child.stdout.write(JSON.stringify({version:1,phase:'result',result})+'\n');});
+  child.stdin.on('data',async bytes=>{sent++;const request=JSON.parse(bytes);if(request.payload.action==='control')controlOrder.push(name);const result=await owner.execute(request.payload,{store:stores.get(name),transport:provider,binding:binding(name),initialControl:request.initialControl});if(result.ok)result.data.destination=binding(name);if(lostSetup&&request.payload.action==='save'){child.emit('close',1);return;}child.stdout.write(JSON.stringify({version:1,phase:'result',result})+'\n');});
   queueMicrotask(()=>child.stdout.write(JSON.stringify({version:1,phase:'ready',binding:binding(name),runtime:'ready'})+'\n'));return child;
  };
  const options={runtime,spawn,spawnSync:()=>({status:0,stdout:JSON.stringify({machines:[...stores.keys()].filter(Boolean).map(machine)})}),storeOptions:{security:()=>{}},ownerOptions:{store:stores.get(null),transport:provider}};
@@ -32,6 +33,8 @@ try{
  // New machines never inherit a previous read-write consent.
  stores.set('pc3',new Store(path.join(root,'pc3'),{security:()=>{}}));await save('pc3');assert.equal((await write('pc3')).result.error.code,'READ_ONLY');assert.ok((await status(null)).global.pending.includes('pc3'));
  applied=await apply('read-write');assert.equal(applied.ok,true);assert.equal((await write('pc3')).result.ok,true);
+ // A committed Save with a lost reply is still read-only and visibly Pending when its host is checked.
+ stores.set('pc4',new Store(path.join(root,'pc4'),{security:()=>{}}));const unsaved=await status('pc4');lostSetup=true;const lost=await call('pc4',{action:'save',expected:unsaved.data.revision,...credentials});lostSetup=false;assert.equal(lost.error.outcome,'unknown');const recovered=await status('pc4');assert.ok(recovered.global.pending.includes('pc4'));assert.equal(recovered.data.localWrites,false);assert.equal((await apply('read-write')).ok,true);
  // Offline hosts keep their last acknowledged rights; no status/reconnect grants replay.
  offline=true;applied=await apply('read-only');assert.equal(applied.ok,true);assert.ok(applied.data.global.pending.includes('pc2'));assert.equal((await write(null)).result.error.code,'READ_ONLY');assert.equal((await write('pc2')).result.ok,true);
  offline=false;await status('pc2');assert.equal((await write('pc2')).result.ok,true);applied=await apply('read-only');assert.deepEqual(applied.data.global.pending,[]);assert.equal((await write('pc2')).result.error.code,'READ_ONLY');
@@ -47,6 +50,21 @@ try{
  h.ui.reloadPlugins(h.view,h.cx,'trello');await h.flush();h.click('st-plugin-trello-access-read-write');await h.flush();assert.equal((await write('pc3')).result.ok,true);
  h.view.settingsMachine='pc3';h.ui.followSettingsMachine(h.view);h.ui.reloadPlugins(h.view,h.cx,'trello');await h.flush();assert.equal(field.live.state({...context,machine:'pc3',session:h.view.pluginSessions.trello}).value,'read-write');offline=true;h.click('st-plugin-trello-access-read-only');await h.flush();assert.equal((await write(null)).result.error.code,'READ_ONLY');assert.ok(words(h.render()).includes('Pending'));assert.ok(find(h.render(),'st-plugin-trello-access-retry'));
  offline=false;assert.equal((await write('pc3')).result.ok,true,'Reconnect alone does not apply a pending change');h.click('st-plugin-trello-access-retry');await h.flush();assert.equal((await write('pc3')).result.error.code,'READ_ONLY');assert.ok(!find(h.render(),'st-plugin-trello-access-retry'));
+ const storeWrite=Store.prototype.write;let publications=0;
+ Store.prototype.write=function(name,...args){if(name==='controller'&&++publications===2)throw Error('FAKE_PUBLICATION_ERROR');return storeWrite.call(this,name,...args);};
+ let publication;try{publication=await apply('read-write');}finally{Store.prototype.write=storeWrite;}
+ assert.equal(publication.ok,false);assert.equal(publication.error.outcome,'unknown');assert.ok(!JSON.stringify(publication).includes('FAKE_PUBLICATION_ERROR'));assert.equal((await apply('read-write')).ok,true);await apply('read-only');
+ // An interrupted multi-host application durably checkpoints acknowledgements and retries unfinished peers first.
+ let alive=true,checkpoints=0;Store.prototype.write=function(name,...args){const result=storeWrite.call(this,name,...args);if(name==='controller'&&++checkpoints===2)alive=false;return result;};
+ let partial;try{const current=await status(null);partial=await service.dispatch(home,{machine:null},{action:'global.apply',access:'read-write',expected:current.global.revision},()=>{},{...options,isCurrent:()=>alive});}finally{Store.prototype.write=storeWrite;}
+ assert.equal(partial.error.outcome,'unknown');assert.ok(!partial.global.pending.includes('This computer'));assert.ok(partial.global.pending.includes('pc2'));const offset=controlOrder.length;assert.deepEqual((await apply('read-write')).data.global.pending,[]);assert.equal(controlOrder[offset],'pc2');await apply('read-only');
+ // A replacement empty peer cannot acknowledge an old, still-authorized execution scope.
+ await apply('read-write');const originalPeer=stores.get('pc2');stores.set('pc2',new Store(path.join(root,'pc2-replacement'),{security:()=>{}}));identities.set('pc2','replacement-core');
+ const replacedPeer=await apply('read-only');assert.ok(replacedPeer.data.global.pending.includes('pc2'));assert.equal((await cli.execute(['comments','add','--board',A,'--card',C],{store:originalPeer,transport:provider,input:'{"text":"fake old-peer write"}'})).result.ok,true);
+ stores.set('pc2',originalPeer);identities.delete('pc2');assert.deepEqual((await apply('read-only')).data.global.pending,[]);
+ // A renamed route to the very same verified scope can acknowledge its old receipt.
+ stores.delete('pc2');stores.set('renamed-peer',originalPeer);identities.set('renamed-peer','fake-core-pc2');assert.deepEqual((await apply('read-only')).data.global.pending,[]);
+ stores.delete('renamed-peer');identities.delete('renamed-peer');stores.set('pc2',originalPeer);assert.deepEqual((await apply('read-only')).data.global.pending,[]);
  const remote=stores.get('pc2'),control=remote.read('control'),s=await status('pc2');
  const conflict=await owner.execute({action:'control',expected:s.data.revision,control:{...control,controller:'a'.repeat(64)}},{store:remote,binding:binding('pc2')});assert.equal(conflict.error.code,'CONTROL_CONFLICT');
  fs.unlinkSync(remote.file('control'));assert.equal((await write('pc2')).result.error.code,'PUBLIC_STATE_INVALID');fs.writeFileSync(remote.file('control'),JSON.stringify(control));

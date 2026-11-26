@@ -22,7 +22,7 @@ const socket={WebSocket:{connect:async()=>({write:async text=>payload=JSON.parse
 },close:async()=>{payload=null;}})}};
 try{
  const h=await formsHarness(host,null,{websocket:socket}),p=h.registry.pluginById('trello');h.registry.setPluginEnabled(p,true);h.view.settingsMachine='pc2';h.ui.initPlugins(h.view,h.cx,'trello');h.view.pluginOpen['trello-requirements']=true;h.view.pluginOpen['trello-boards']=true;
- h.ui.reloadPlugins(h.view,h.cx,'trello');await h.flush();assert.equal(provider,0);assert.ok(find(h.render(),'st-plugin-fix-trello-runtime'));assert.ok(!find(h.render(),'st-plugin-form-trello-local-setup-save'));
+ h.ui.reloadPlugins(h.view,h.cx,'trello');await h.flush();assert.equal(provider,0);assert.ok(find(h.render(),'st-plugin-fix-trello-runtime'));assert.ok(!find(h.render(),'st-plugin-form-trello-local-setup-save'));assert.ok(!find(h.render(),'st-plugin-list-trello-boards-add'));
  h.click('st-plugin-fix-trello-runtime');await h.flush();assert.equal(installed,true);assert.equal(fs.existsSync(remote.dir),false,'Install never provisions credentials');
  const form=()=>h.view.pluginForms['trello:local-setup'];form().fields.apiKey.set_value(key);form().fields.token.set_value(token);h.click('st-plugin-form-trello-local-setup-save');await h.flush();assert.equal(remote.read('credentials').token,token);assert.equal(fs.existsSync(local.dir),false);
  h.click('st-plugin-trello-recheck');await h.flush();assert.ok(words(h.render()).join(' ').includes('Remote owner'));

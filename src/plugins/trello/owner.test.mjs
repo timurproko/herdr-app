@@ -34,9 +34,13 @@ try {
  const stale=await run('verify',{}, {transport:async()=>{store.write('policy',{version:1,boards:[B],allowWrites:false},store.read('policy'));return Response.json({id:A,username:'fake-owner',fullName:'Fake Owner'});}});assert.equal(stale.error.code,'CONFLICT');await run('status');
  // Interrupted replacement resets authority before touching credentials.
  await run('policy',{allowWrites:true});
+ const security=store.security,policyBeforeExpiry=store.read('policy');let active=true;
+ store.security=file=>{if(path.basename(file).startsWith('.write-'))active=false;};
+ const expired=await run('replace',credentials,{isCurrent:()=>active});store.security=security;
+ assert.equal(expired.error.code,'STALE');assert.deepEqual(store.read('policy'),policyBeforeExpiry,'Expiry during synchronous ACL work is checked again immediately before commit');assert.ok(!fs.readdirSync(store.dir).some(n=>n.startsWith('.write-')));
  const write=store.write.bind(store),oldCredentials=store.read('credentials');
  store.write=(name,...args)=>{if(name==='credentials')throw Error('synthetic interruption');return write(name,...args);};
- assert.equal((await run('replace',credentials)).error.code,'STORE_IO');store.write=write;
+ const interrupted=await run('replace',credentials);assert.equal(interrupted.error.code,'STORE_IO');assert.equal(interrupted.error.outcome,'unknown','A partial private transition must not claim definite refusal');store.write=write;
  assert.deepEqual(store.read('credentials'),oldCredentials);assert.deepEqual(store.read('policy'),{version:1,boards:[],allowWrites:false});assert.equal(fs.existsSync(path.join(store.dir,'config.lock')),false);await run('status');
  const removed=await run('remove');assert.equal(removed.data.configured,false);assert.equal(removed.data.removed,true);assert.equal(fs.existsSync(store.file('credentials')),false);assert.deepEqual(store.read('policy'),{version:1,boards:[],allowWrites:false});
  assert.equal((await run('verify')).error.code,'STORE_MISSING');

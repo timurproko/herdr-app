@@ -31,7 +31,8 @@ async function launcherModule(p){
 }
 async function install(home,p,{bin=process.env.HERDR_TRELLO_BIN||path.join(require('node:os').homedir(),'.local/bin'),envPath=process.env.PATH||'',beforeCommit=()=>{}}={}){
  validate(p);home=path.resolve(home);safe(home);
- const runtime=path.join(home,'.customizations/runtime'),record=path.join(home,'.customizations/trello-runtime.json'),journal=path.join(home,'.customizations/trello-runtime-backup.json');
+ const runtime=path.join(home,'.customizations/runtime'),record=path.join(home,'.customizations/trello-runtime.json');
+ const backupName=crypto.randomBytes(12).toString('hex')+'.json',journal=path.join(home,'.customizations/trello-runtime-backups',backupName);
  const oldRecord=json(record),fullFile=path.join(home,'.customizations/manifest.json'),fullRaw=bytes(fullFile),full=fullRaw?JSON.parse(fullRaw):null;
  if(oldRecord&&(oldRecord.version!==1||oldRecord.home!==home||!oldRecord.files)||full&&(full.version!==2||full.id!=='custom'||!full.files))reject('RUNTIME_CONFLICT');
  const oldHashes={...oldRecord?.files,...full?.files};
@@ -43,30 +44,31 @@ async function install(home,p,{bin=process.env.HERDR_TRELLO_BIN||path.join(requi
  const launchers=await launcherModule(p);let plan;
  try{plan=launchers.planLaunchers(home,bin,envPath);}catch(e){reject(/PATH/.test(e.message??'')?'RUNTIME_PATH':'RUNTIME_CONFLICT');}
  const nextHashes=Object.fromEntries(jobs.map(j=>[j.key,hash(j.after)]));
- jobs.push({file:record,before:bytes(record),after:Buffer.from(JSON.stringify({version:1,home,revision:p.revision,files:nextHashes})+'\n')});
+ jobs.push({file:record,before:bytes(record),after:Buffer.from(JSON.stringify({version:1,home,revision:p.revision,files:nextHashes,backup:backupName})+'\n')});
  if(full)jobs.push({file:fullFile,before:fullRaw,after:Buffer.from(JSON.stringify({...full,files:{...full.files,...nextHashes}},null,2)+'\n')});
- const oldJournal=bytes(journal);
  const backup={version:1,home,files:jobs.map(j=>({file:j.file,before:j.before?.toString('base64')??null,after:hash(j.after)})),launchers:plan};
  const commit=()=>{
-  safe(journal);fs.mkdirSync(path.dirname(journal),{recursive:true});fs.writeFileSync(journal,JSON.stringify(backup)+'\n');
+  beforeCommit();safe(journal);fs.mkdirSync(path.dirname(journal),{recursive:true});fs.writeFileSync(journal,JSON.stringify(backup)+'\n',{flag:'wx'});
   const written=[];
   try{
    beforeCommit();
-   for(const j of jobs){if(hash(bytes(j.file))!==hash(j.before))reject('RUNTIME_CONFLICT');fs.mkdirSync(path.dirname(j.file),{recursive:true});const temp=j.file+'.trello-install-'+process.pid;safe(temp);fs.writeFileSync(temp,j.after,{flag:'wx'});try{fs.renameSync(temp,j.file);}finally{if(fs.existsSync(temp))fs.unlinkSync(temp);}written.push(j);}
+   for(const j of jobs){beforeCommit();if(hash(bytes(j.file))!==hash(j.before))reject('RUNTIME_CONFLICT');fs.mkdirSync(path.dirname(j.file),{recursive:true});const temp=j.file+'.trello-install-'+process.pid;safe(temp);fs.writeFileSync(temp,j.after,{flag:'wx'});try{beforeCommit();fs.renameSync(temp,j.file);}finally{if(fs.existsSync(temp))fs.unlinkSync(temp);}written.push(j);}
    return written;
   }catch(e){
    for(const j of written.reverse())if(hash(bytes(j.file))===hash(j.after)){if(j.before===null)fs.unlinkSync(j.file);else fs.writeFileSync(j.file,j.before);}
-   if(oldJournal===null)fs.unlinkSync(journal);else fs.writeFileSync(journal,oldJournal);
+   fs.unlinkSync(journal);
    throw e;
   }
  };
  let written;
- try{launchers.withLauncherLock(home,plan,false,apply=>{written=commit();try{apply();}catch(e){for(const j of written.reverse())if(hash(bytes(j.file))===hash(j.after)){if(j.before===null)fs.unlinkSync(j.file);else fs.writeFileSync(j.file,j.before);}throw e;}});}
- catch(e){if(e.code==='EEXIST')reject('RUNTIME_BUSY');if(e.code?.startsWith('RUNTIME_'))throw e;if(/PATH/.test(e.message??''))reject('RUNTIME_PATH');reject('RUNTIME_CONFLICT');}
+ try{launchers.withLauncherLock(home,plan,false,apply=>{written=commit();try{beforeCommit();apply();}catch(e){for(const j of written.reverse())if(hash(bytes(j.file))===hash(j.after)){if(j.before===null)fs.unlinkSync(j.file);else fs.writeFileSync(j.file,j.before);}throw e;}});}
+ catch(e){if(e.code==='EEXIST')reject('RUNTIME_BUSY');if(e.code==='STALE'||e.code?.startsWith('RUNTIME_'))throw e;if(/PATH/.test(e.message??''))reject('RUNTIME_PATH');reject('RUNTIME_CONFLICT');}
  return {runtime:'ready',installed:true,revision:p.revision};
 }
 async function rollback(home) {
- home=path.resolve(home);const journal=path.join(home,'.customizations/trello-runtime-backup.json'),saved=json(journal);
+ home=path.resolve(home);const record=json(path.join(home,'.customizations/trello-runtime.json'));
+ if(!record||!/^[a-f0-9]{24}\.json$/.test(record.backup??''))reject('RUNTIME_CONFLICT');
+ const journal=path.join(home,'.customizations/trello-runtime-backups',record.backup),saved=json(journal);
  const targets=[...paths.map(rel=>path.join(home,'.customizations/runtime',rel)),path.join(home,'.customizations/trello-runtime.json'),path.join(home,'.customizations/manifest.json')];
  if(saved?.version!==1||saved.home!==home||!Array.isArray(saved.files)||saved.files.some(j=>!targets.includes(j.file)||j.before!==null&&typeof j.before!=='string'||! /^[a-f0-9]{64}$/.test(j.after)))reject('RUNTIME_CONFLICT');
  for(const j of saved.files)if(hash(bytes(j.file))!==j.after)reject('RUNTIME_CONFLICT');

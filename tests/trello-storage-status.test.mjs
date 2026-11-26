@@ -7,7 +7,7 @@ for (const code of ['STORE_MALFORMED','STORE_PERMISSIONS','STORE_PERMISSION_CHEC
   h.ui.reloadPlugins(h.view,h.cx,'trello');await h.flush();
   const setup=h.view.pluginChecks.trello.items.find(i=>i.id==='local-setup'),boards=h.view.pluginChecks.trello.items.find(i=>i.id==='boards');
   assert.equal(setup.status,'error');assert.equal(setup.configured,null);assert.equal(boards.detail,setup.detail);
-  assert.ok(!find(h.render(),'st-plugin-form-trello-local-setup-save'));
+  assert.ok(!find(h.render(),'st-plugin-form-trello-local-setup-save'));assert.ok(!find(h.render(),'st-plugin-list-trello-boards-add'));
   assert.ok(!words(h.render()).join(' ').includes('HOSTILE_FAKE_SECRET'));
   assert.ok(!words(h.render()).join(' ').includes('Save credentials above'));
 }

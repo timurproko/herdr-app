@@ -10,9 +10,9 @@ const {spawn, fork} = require('node:child_process');
 const LIMIT = 262144;
 const FAILURE = {version: 1, ok: false, error: {code: 'TRANSPORT', message: 'Private setup did not finish. Check local status before trying again.'}};
 const TARGETS = Object.freeze({trello: path.join(__dirname, '../trello/owner.cjs')});
-function worker(home, target, payload, register, destination = {machine: null}) {
+function worker(home, target, payload, register, destination = {machine: null}, options = {}) {
   if (destination.machine !== null || destination.binding || ['runtime.install', 'runtime.probe', 'global.status', 'global.apply'].includes(payload.action))
-    return require('./trello-transport.cjs').dispatch(home, destination, payload, register);
+    return require('./trello-transport.cjs').dispatch(home, destination, payload, register, options);
   return new Promise(resolve => {
     const child = spawn(process.execPath, [TARGETS[target], home], {stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true});
     register(child); const chunks = []; let size = 0, bad = false;
@@ -38,6 +38,7 @@ async function serve({home, target, destination = {machine: null}, lifetime = 60
   const session = crypto.randomBytes(32).toString('hex');
   const server = http.createServer((_req, res) => { res.writeHead(403); res.end(); });
   const ws = new WebSocketServer({noServer: true, perMessageDeflate: false, maxPayload: LIMIT});
+  const deadline = performance.now() + Math.min(lifetime, 60000);
   const sockets = new Set(); let consumed = false, stopped = false, child = null;
   let resolveClosed; const closed = new Promise(resolve => { resolveClosed = resolve; });
   const stop = () => {
@@ -69,7 +70,7 @@ async function serve({home, target, destination = {machine: null}, lifetime = 60
       // A replay on this connection is a protocol refusal, not another dispatch.
       socket.on('message', () => stop());
       let result;
-      try { result = await dispatch(home, target, request.payload, value => { child = value; }, destination); }
+      try { result = await dispatch(home, target, request.payload, value => { child = value; }, destination, {deadline}); }
       catch { result = FAILURE; }
       finally { request.payload = null; }
       if (!stopped && socket.readyState === 1) socket.send(JSON.stringify(result), () => stop());

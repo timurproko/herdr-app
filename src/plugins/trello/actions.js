@@ -17,6 +17,7 @@ const safeErrors = {
   FORBIDDEN: 'Trello refused this account’s access.',
   RATE_LIMIT: 'Trello rate limit. Wait for the cooldown before an explicit retry.',
   CONFLICT: 'Private Trello configuration changed. Check it again before applying this action.',
+  STALE: 'Setup changed or expired. Check again.',
   STORE: 'Private setup is unavailable. Check permissions.',
   STORE_MISSING: 'No account added',
   STORE_MALFORMED: 'Private setup is malformed. It was not replaced.',
@@ -28,9 +29,11 @@ const safeErrors = {
   STORE_IO: 'Private setup could not be read or updated.',
   PUBLIC_STATE_INVALID: 'Activation or Access could not be checked.',
   INTERNAL: 'Setup could not finish. No retry was started.',
-  SSH_UNAVAILABLE: 'SSH unavailable. Check keys and host trust.',
+  SSH_UNAVAILABLE: 'SSH unavailable. Check Node, keys and host trust.',
+  MACHINE_UNAVAILABLE: 'Configured Core session unavailable.',
   MACHINE_CHANGED: 'Machine changed. Check again.',
   MACHINE_IDENTITY: 'Execution user or home could not be verified.',
+  MACHINE_ELEVATED: 'Elevated SSH login unsupported.',
   MACHINE_UNSUPPORTED: 'Temporary or custom-via machine unsupported.',
   RUNTIME_PREREQUISITE: 'Node 20+ and the configured Core are required.',
   RUNTIME_MISSING: 'Install Trello on this machine.',
@@ -54,7 +57,7 @@ function globalState(value) {
 function rememberGlobal(cx, result) { const g=globalState(result?.global ?? result?.data?.global); if(g && cx.isCurrent?.() !== false) hints(cx).global=g; return g; }
 function data(result) {
   if (result?.version !== 1 || result.ok !== true) {
-    const error = Error(safeErrors[result?.error?.code] ?? 'Private Trello setup did not finish. Check status before trying again.');
+    const error = Error(result?.error?.outcome === 'unknown' ? safeErrors.CONFIG_UNKNOWN : safeErrors[result?.error?.code] ?? 'Private Trello setup did not finish. Check status before trying again.');
     error.code = Object.hasOwn(safeErrors, result?.error?.code) ? result.error.code : 'INTERNAL'; throw error;
   }
   const d = result.data;
@@ -115,7 +118,7 @@ export async function runtimeStatus(cx = {}) {
           const result = await privateAction('trello', {action: 'runtime.install'}, {...current, privateDestination: binding});
           if (!result?.ok) throw Error(safeErrors[result?.error?.code] ?? 'Installation failed. Check again.');
         }}};
-  } catch (e) { return {status: 'error', statusLabel: 'Unavailable', detail: Object.values(safeErrors).includes(e.message) ? e.message : 'Runtime check failed.', fix: null}; }
+  } catch (e) { return {status: 'error', statusLabel: 'Unavailable', detail: Object.values(safeErrors).includes(e.message) ? e.message : 'Check Node 20+ and the Trello runtime.', fix: null}; }
 }
 export async function localStatus(cx = {}) {
   if (checking()) return {status: 'recommended', detail: 'Private setup is checked only in the running app.', configured: null, usable: false};
@@ -175,7 +178,7 @@ export async function setAccess(cx, value, snapshot) {
   const old = cx.setting('access'), context = {...cx,machine:null,privateDestination:undefined};
   const result=await privateAction('trello',{action:'global.apply',access:value,expected:snapshot.revision},context);
   const g=rememberGlobal(cx,result);
-  if (!result?.ok || !g) throw Error(safeErrors[result?.error?.code] ?? 'Access could not be applied. Check again.');
+  if (!result?.ok || !g) throw Error(result?.error?.outcome === 'unknown' ? safeErrors.CONFIG_UNKNOWN : safeErrors[result?.error?.code] ?? 'Access could not be applied. Check again.');
   if (!cx.setSetting?.('access',value,old)) {
     if (value==='read-write') {
       const reduced=await privateAction('trello',{action:'global.apply',access:'read-only',expected:g.revision},context);

@@ -140,13 +140,19 @@ async function operate(input, {store, ...io}) {
   return publicStatus(snapshot(store));
 }
 async function execute(input, options = {}) {
+  let commitAttempted = false;
   try {
     const backing = options.store ?? new Store(options.home);
     // The transport's lifetime is checked again under the local commit lock.
-    const store = options.isCurrent ? new Proxy(backing, {get(target, key, receiver) {
-      if (key === 'withLock') return action => target.withLock(() => { if (!options.isCurrent()) fail('STALE'); return action(); });
+    const store = new Proxy(backing, {get(target, key, receiver) {
+      if (key === 'withLock') return action => target.withLock(() => { if (options.isCurrent?.() === false) fail('STALE'); return action(); });
+      if (key === 'beforeCommit') return () => { if (options.isCurrent?.() === false) fail('STALE'); target.beforeCommit?.(); };
+      if (['write','remove'].includes(key)) return (...args) => {
+        if (['credentials','policy','display','control'].includes(args[0])) commitAttempted = true;
+        return Reflect.get(target, key, receiver).apply(receiver,args);
+      };
       return Reflect.get(target, key, receiver);
-    }}) : backing;
+    }});
     if (options.isCurrent?.() === false) fail('STALE');
     const previous = snapshot(store);
     const data = await operate(input, {...options, store});
@@ -158,7 +164,7 @@ async function execute(input, options = {}) {
     const result = {version: 1, ok: true, data}, encoded = JSON.stringify(result);
     for (const value of [input?.apiKey, input?.token, previous.credentials?.apiKey, previous.credentials?.token].filter(v => typeof v === 'string' && v)) if (encoded.includes(value)) fail('RESPONSE');
     return result;
-  } catch (e) { return {version: 1, ok: false, error: publicError(e)}; }
+  } catch (e) { return {version: 1, ok: false, error: publicError(e, {configurationUnknown:commitAttempted})}; }
 }
 if (require.main === module) {
   (async () => {

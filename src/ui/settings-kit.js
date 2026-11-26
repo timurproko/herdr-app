@@ -127,7 +127,7 @@ export function scopeRow(t, { id, label, dropdown: picker, action }) {
     .child(div().flex_1().min_w(0).text_size(U.font).text_color(t.foreground).child(label))
     .when(Boolean(picker), el => el.child(div().flex_none().child(picker)))
     // Inside a section the action ends at the right edge: no reserved status column.
-    .child(div().id(`${id}-where-rail`).flex_none().w(KIT.action).child(action));
+    .child(div().id(`${id}-where-rail`).flex_none().w(KIT.action).when(Boolean(action), el => el.child(action)));
 }
 // One added item: a single line that highlights on hover like the section headers, with
 // Remove shown only then. Remove keeps its place while hidden, so nothing moves.

@@ -191,6 +191,8 @@ belongs to, then Add), the description, and one row per item with **Remove** on 
   check: async cx => ({ status: 'ready', statusLabel: '3 projects', usable: true, rows: [{ id, label, path?, detail? }] }) }
 ```
 
+- `list.hideUnavailable: true` omits Add while `usable` is false, leaving the same
+  tools rail geometry; in-flight controls on otherwise usable lists keep normal busy feedback.
 - The **check** returns the added `rows` (`path` for folders, so the browser can tick them;
   `detail` is a note shown after the label), `usable` (Add works now), a `statusLabel` for the
   header badge and, for an account scope, the `selection` to offer.

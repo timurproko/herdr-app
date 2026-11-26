@@ -51,8 +51,8 @@ These six groups match the draft PR's Implementation outcomes in the same order.
 - [x] 6.5 Add Active/Inactive picker tabs with Active default and tab-local search, preserving selected IDs across tabs until explicit Add; tests cover no Closed board warning, Cancel, empty/partial results and stale account/machine bindings.
 - [x] 6.6 Hide all unavailable or input-less form actions and retain transient input/undo retirement, duplicate guards and busy presentation; shared-form/production-card tests cover disable, close, machine away-and-back and late responses.
 - [x] 6.7 Update README, Trello guide, plugin declaration guidance and testing instructions to match the card and supported remote limits; targeted contract tests assert the new public wording and omitted out-of-scope features.
-- [ ] 6.8 Extend and run the opt-in disposable native card fixture with fake provider/injected SSH for empty/masked/saved-hover/zero-board/Boards/both-picker-tabs/global-Access/runtime-fix/error states; retain outside-checkout screenshots and a zero-owned-process cleanup receipt before handoff.
-- [ ] 6.9 Compose installed Settings/CLI/remote/global-access paths with fake homes and transports; dispatch the existing hosted CI workflow on the final reported branch head and identify successful Windows and Ubuntu matrix jobs without marking the PR ready or merging.
+- [x] 6.8 Extend and run the opt-in disposable native card fixture with fake provider/injected SSH for empty/masked/saved-hover/zero-board/Boards/both-picker-tabs/global-Access/runtime-fix/error states; retain outside-checkout screenshots and a zero-owned-process cleanup receipt before handoff.
+- [x] 6.9 Compose installed Settings/CLI/remote/global-access paths with fake homes and transports; dispatch the existing hosted CI workflow on the final reported branch head and identify successful Windows and Ubuntu matrix jobs without marking the PR ready or merging.
 
 ## Workflow follow-up
 
