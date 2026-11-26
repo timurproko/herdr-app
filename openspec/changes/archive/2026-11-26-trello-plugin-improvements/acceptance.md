@@ -20,7 +20,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-26-trello-plugin-improvements/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-26-trello-plugin-improvements/acceptance.md",
   "finalizedDate": "2026-11-26",
-  "specBaseSha": "cccc23950be60f0be736fdb5778cf2069632a3ac",
+  "specBaseSha": "e7387ec91a5b9aea4719f353ec56d3f0db165efd",
   "acceptanceScenarios": [
     "Card detail and attachment listing retain allowed-board parent proofs, bounded metadata and truthful attachment counts and IDs.",
     "Read-only original and scaled-preview downloads enforce a 20 MiB ceiling, MIME and image signatures, private output and explicit other-type opt-in.",
