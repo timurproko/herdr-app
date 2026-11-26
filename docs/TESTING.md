@@ -90,6 +90,10 @@ pin or reorder. It does not use live GitHub, credentials, Core or agents. The ex
 inventory-presentation and paging suites remain guards for coherent warm replacement,
 quiet retry and cursor retention. Chip/robot motion remains owned by the existing
 click controller; direct entry does not start it.
+`tests/git-entry-motion.test.mjs` integrates the initially-unpinned support supplied
+by PR #87: after entry, chip and robot clicks use its controller with one immediate
+focus, retained native acknowledgement, one-shot timers and final measured row
+positions including the section header at 100%/130%. No controller is forked.
 
 ## Git read-budget and refusal fixtures
 

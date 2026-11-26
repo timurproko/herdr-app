@@ -270,7 +270,8 @@ fails inconclusively. An older active PR also stays pinned during its targeted
 reread after page-one refresh. Only an authoritative replacement, proven
 non-repository or actual context change clears incompatible facts. Open/Closed
 count badges are always visible in ordinary and coordinator Git views, showing
-**0** on first load or a real context change until totals arrive. The fixed badge
+**0** when no compatible cached values exist, or retaining known scoped counts
+while refreshing a cached destination. The fixed badge
 width is 32px with centred digits, fitting three digits without moving tabs.
 Each tab has equal 8px padding before its label and after the painted badge,
 selected or not. Fully visible totals have no count-only tooltip; unknown totals
@@ -502,14 +503,16 @@ reservation; label refreshes never add extra row lines or horizontal overflow. M
 including the number/author dot, share a clearly visible muted 3px round shape,
 vertically centred beside text/icons with equal 6px spacing on both sides.
 Git follows the selected terminal's live shell-reported directory (including remote
-Bash and PowerShell), not its launch folder. Changing locations immediately clears
-the old repository and counts; late Git/GitHub replies cannot restore them. A
-non-repository home folder shows **Not a git repository**. In the selected
-Open/Closed list, the active PR is always pinned above the scrollable rows with a
+Bash and PowerShell), not its launch folder. Changing locations removes incompatible
+repository data; a compatible destination cache restores immediately while it is
+revalidated. Late Git/GitHub replies cannot restore another context. A
+non-repository home folder shows **Not a git repository**. Panel-origin chip/robot
+navigation pins its PR above the scrollable rows with a
 divider underneath and a 2px theme-accent rail on the left, even when it is the only
 PR. The rail overlays the outer gutter without shifting content or the hover
 area. It is not duplicated below and has no special background; all PRs use the
-normal neutral hover. With no matching active PR, the whole list scrolls normally.
+normal neutral hover. Direct space entry never creates that pin or reorders rows;
+without a click-origin pin, the complete repository section scrolls normally.
 For A1 and Claude Code, the panel
 reads the selected terminal's current footer PR badge through the read-only `hc read`
 API (no history, input injection or transcript-wide PR searches). Claude's `PR #…`

@@ -12,7 +12,7 @@ Implementation is not authorized until this draft plan is approved. Groups map o
 
 - [x] 2.1 Share the coordinator native header activity/publication path with worker refresh; test no blank frame or body Loading through held successful reads, failures, cooldown and coordinator return, without changing the existing visual treatment.
 - [x] 2.2 Preserve task-count provenance, full repository totals and per-tab pagination/cursors in their correct scopes; add count/loading/accessibility and page-depth regressions, and document cached-task seeds and coherent refresh in README.md and docs/TESTING.md.
-- [ ] 2.3 Consume PR #87's click-only initially-unpinned controller support without editing PinSwap here; test entry starts no pin/motion/reorder, then clicking another PR chip animates it to the top through existing native acknowledgement, without cache restore duplication/cancellation; retain robot fallback and role guards.
+- [x] 2.3 Consume PR #87's click-only initially-unpinned controller support without editing PinSwap here; test entry starts no pin/motion/reorder, then clicking another PR chip animates it to the top through existing native acknowledgement, without cache restore duplication/cancellation; retain robot fallback and role guards.
 
 ## 3. Identity-safe cache and lifecycle integration
 

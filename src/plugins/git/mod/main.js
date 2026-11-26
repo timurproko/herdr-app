@@ -1175,14 +1175,6 @@ export default class Changes extends View {
     const metrics=this.ordinaryScroll?.get(this.view);if(metrics){this.ordinaryHandle(metrics,cx);metrics.measure('viewport',size,cx);}
   }
 
-  renderSectionPulls(t) {
-    if(!this.sectionEntry || !this.repo)return this.renderPulls(t);
-    const rows=this.pullSelection().liveRows;
-    return v_flex().flex_1().min_h(0)
-      .child(div().flex_none().px(LIST_INSET).py(4).child(this.repositoryHeader(t,this.repo.name,this.context,rows.length,Boolean(this.entrySeed || this.seedTabs?.[this.view]))))
-      .child(this.renderPulls(t));
-  }
-
   renderPulls(t) {
     const state = this.view, list = this.repositoryPresentation().pulls[state], selection = this.pullSelection(),liveRows=selection.liveRows;
     const click=this.pinMotion?.current;
@@ -1248,6 +1240,7 @@ export default class Changes extends View {
             })
             .on_scroll_wheel(event => {this.contentMotion(event, 'wheel', state);metrics.contentMotion(event,'wheel');})
             .on_mouse_move(event => {this.contentMotion(event, 'move', state);metrics.contentMotion(event,'move');})
+            .when(Boolean(sectionRepo),el=>el.child(this.repositoryHeader(t,sectionRepo,this.context,rows.length,Boolean(this.entrySeed || this.seedTabs?.[this.view]))))
             .children(remaining.map(pr => this.pullRow(t, pr)
               .when(Boolean(swap?.cards.some(card => card.pr.number === pr.number)), el => el.invisible())))
             .when(!rows.length && !folded, el => el.child(panelMessage(t, 'git-empty', { text: empty, loading: empty === 'Loading…', rowInset: 2 })))
@@ -1643,7 +1636,7 @@ export default class Changes extends View {
       .child(h_flex().id('git-views').h(40).flex_none().px(4).gap(2).items_center().border_b(1).border_color(t.border)
         .child(this.segment(t, 'git-view-open', 'Open', displayCounts?.open ?? null, this.view === 'open', cx => this.setView('open', cx),Boolean(this.entrySeed),this.entrySeed?'cached task PRs; repository total pending':null))
         .child(this.segment(t, 'git-view-closed', 'Closed', displayCounts?.closed ?? null, this.view === 'closed', cx => this.setView('closed', cx),Boolean(this.entrySeed),this.entrySeed?'cached task PRs; repository total pending':null)))
-      .child(this.renderSectionPulls(t))
+      .child(this.renderPulls(t))
       .when(Boolean(notice), el => el.child(this.liveCIInfo(t,notice)))
       .when(Boolean(sweep), el => el.child(this.sweepLayer(t,sweep))));
   }
