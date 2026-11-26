@@ -6,7 +6,7 @@ import { div, svg, image } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, Checkbox, TextareaState, Textarea } from "gpui-base";
 import { U, slot, description, button, control, chevron, emptyState, dropdown, menuSurface, searchField, settingsRow, iconButton, chevronSlot } from "./ui.js";
 import { KIT, badge, statusText, workingStatus, statusRail, actionButton, actionTrigger, checkButton, choice, optionDropdown, skeleton,
-  disclosure, fieldRow, scopeRow, removableRow, pickerHeader, pickerListHeight, pickerFooter, changeCount, changeLabel } from './settings-kit.js';
+  disclosure, fieldRow, scopeRow, removableRow, pickerHeader, pickerListHeight, pickerFooter, changeCount, changeLabel, actionInput } from './settings-kit.js';
 import { PLUGINS, pluginEnabled, setPluginEnabled, pluginSetting, setPluginSetting, checkPlugin, pluginContext, pluginOptions, orderedPlugins, setPluginOrder } from './plugins.js';
 import { reorder } from './reorder.js';
 import { machinePicker } from './machine-picker.js';
@@ -32,6 +32,16 @@ const listId = (plugin, item) => `st-plugin-list-${plugin.id}-${item.id}`;
 const machineName = machine => machine ?? 'This computer';
 export function followSettingsMachine(view) {
   const machine = view.settingsMachine ?? null, changed = [];
+  if (view.pluginMachine !== machine) {
+    clearPluginForms(view);
+    view.listPicker = null; view.pluginConfirm = null; view.pluginFixError = {};
+    view.pluginSessions = Object.fromEntries(PLUGINS.map(p => [p.id, {}]));
+    view.pluginMachine = machine;
+    for (const plugin of PLUGINS) if (plugin.machineScoped) {
+      changed.push(plugin.id);
+      delete view.pluginChecks?.[plugin.id];
+    }
+  }
   for (const plugin of PLUGINS) for (const def of (plugin.settings ?? []).filter(d => d.type === 'machine')) {
     if ((pluginSetting(plugin, def.key) ?? null) === machine) continue;
     setPluginSetting(plugin, def.key, machine);
@@ -41,6 +51,10 @@ export function followSettingsMachine(view) {
 }
 
 export function initPlugins(view, cx, requested = null, options = {}) {
+  clearPluginForms(view);
+  view.pluginMachine = view.settingsMachine ?? null;
+  view.pluginForms = {};
+  view.pluginSessions = Object.fromEntries(PLUGINS.map(p => [p.id, {}]));
   view.pluginTarget = PLUGINS.some(p => p.id === requested) ? requested : null;
   const target = PLUGINS.find(p => p.id === view.pluginTarget);
   const section = target?.prerequisites?.find(p => p.section && p.id === options?.section);
@@ -69,6 +83,7 @@ export function initPlugins(view, cx, requested = null, options = {}) {
   view.pluginRowHover = null; // the added item under the pointer, which shows its Remove
   for (const plugin of PLUGINS) for (const p of plugin.prerequisites ?? []) {
     view.pluginFocus[`${plugin.id}-${p.id}-selection`] = cx.focus_handle();
+    if (p.form) view.pluginForms[sectionKey(plugin, p)] = newActionForm(p.form);
     if (!p.list) continue;
     view.pluginFocus[`${plugin.id}-${p.id}-pick`] = cx.focus_handle();
     view.pluginFocus[`${plugin.id}-${p.id}-scope`] = cx.focus_handle();
@@ -254,8 +269,98 @@ export function pluginTextActions(view, t) {
     }, { enabled })));
 }
 
-export function prerequisiteContext(plugin, alive = () => true) {
-  return {...pluginContext(plugin),
+// Secret inputs are native, view-local entities: never a registry setting. No submit/blur
+// subscription, no localStorage, and no exception text (which could echo input).
+function newActionForm(form) {
+  const state = { fields: {}, epoch: 0, busy: false, result: null, cancel: null, confirm: null, confirmItem: null };
+  try {
+    for (const def of form.fields ?? []) {
+      if (!['text', 'secret'].includes(def.type)) throw Error('Unsupported transient field');
+      const input = InputState.new({ placeholder: def.placeholder ?? '', value: '' });
+      if (def.type === 'secret') {
+        if (typeof input.set_masked !== 'function') throw Error('Masked input unavailable');
+        input.set_masked(true);
+      }
+      input.on('change', (_e, cx) => cx.notify());
+      state.fields[def.key] = input;
+    }
+  } catch { state.unavailable = true; }
+  return state;
+}
+export function clearPluginForms(view, only = null) {
+  for (const [key, state] of Object.entries(view.pluginForms ?? {})) {
+    if (only && !key.startsWith(`${only}:`)) continue;
+    state.epoch++; state.busy = false; state.confirm = null; state.confirmItem = null; state.result = null;
+    try { state.cancel?.()?.catch?.(() => {}); } catch {} state.cancel = null;
+    for (const field of Object.values(state.fields)) { try { field.set_value(''); } catch {} }
+  }
+}
+function submitActionForm(view, cx, plugin, item, action, confirmed = false) {
+  const key = sectionKey(plugin, item), state = view.pluginForms?.[key];
+  const machine = view.settingsMachine ?? null, epoch = state?.epoch;
+  const current = () => !view.pluginClosed && pluginEnabled(plugin) && view.pluginForms?.[key] === state && state.epoch === epoch && (view.settingsMachine ?? null) === machine;
+  const context = viewContext(view, plugin, current, machine);
+  if (!state || state.unavailable || state.busy || view.pluginFixing || !current() || item.form.enabled?.(context, item) === false || action.when?.(item) === false) return;
+  if (action.confirm && !confirmed) { state.confirm = action; state.confirmItem = Object.freeze({...item}); cx.notify(); return; }
+  state.confirm = null; state.confirmItem = null; state.busy = true;
+  const values = {};
+  if (action.input) for (const def of item.form.fields ?? []) {
+    const value = state.fields[def.key]?.value() ?? '';
+    if (!value || value.length > (def.maxLength ?? 512) || /[\u0000-\u001f\u007f]/.test(value)) {
+      clearPluginForms(view, plugin.id);
+      state.result = { detail: 'Complete the input fields before saving.' }; cx.notify(); return;
+    }
+    values[def.key] = value;
+  }
+  // Values never enter the generic fix queue/confirmation snapshot.
+  cx.spawn(async cx => {
+    try {
+      if (!current()) return;
+      const result = await action.run({ ...context, onCancel: fn => { if (current()) state.cancel = fn; } }, values, item);
+      if (current()) state.result = result ?? null;
+    } catch { if (current()) state.result = { detail: 'Action did not finish. Check setup and try again.' }; }
+    finally {
+      for (const key of Object.keys(values)) values[key] = '';
+      if (current()) {
+        // Replace native entities too, discarding their undo history after submission.
+        const result = state.result;
+        const fresh = newActionForm(item.form); fresh.result = result;
+        for (const field of Object.values(state.fields)) field.set_value('');
+        state.epoch++; view.pluginForms[key] = fresh;
+        reloadPlugins(view, cx, plugin.id); cx.notify();
+      }
+    }
+  });
+  cx.notify();
+}
+function actionForm(view, t, plugin, item) {
+  const key = sectionKey(plugin, item), state = view.pluginForms?.[key], form = item.form;
+  const machine = view.settingsMachine ?? null, epoch = state?.epoch;
+  const current = () => view.pluginForms?.[key] === state && state?.epoch === epoch && (view.settingsMachine ?? null) === machine;
+  const context = viewContext(view, plugin, () => !view.pluginClosed && current(), machine);
+  const enabled = Boolean(state) && !state.unavailable && !state.busy && !view.pluginFixing && form.enabled?.(context, item) !== false;
+  const id = `st-plugin-form-${plugin.id}-${item.id}`;
+  return v_flex().id(id).w_full().gap(8)
+    .when(state?.unavailable, el => el.child(description(t, 'This host does not support protected input. Update the app or use headless setup.')))
+    .when(enabled || state?.busy, el => el.children((form.fields ?? []).map(def => actionInput(t, {
+      id: `${id}-${def.key}`, label: def.label, widget: Input.new(state.fields[def.key]), enabled,
+    }))))
+    .when(Boolean(state?.result?.detail), el => el.child(description(t, state.result.detail)))
+    .child(h_flex().w_full().gap(8).items_center().children((form.actions ?? []).filter(action => action.when?.(item) !== false).map(action =>
+      actionButton(t, `${id}-${action.id}`, state?.busy ? 'Working…' : action.label,
+        (_e, cx) => { if (current()) submitActionForm(view, cx, plugin, item, action); }, { enabled, primary: action.primary === true }))))
+    .when(Boolean(state?.confirm), el => el.child(v_flex().gap(6)
+      .child(description(t, state.confirm.confirm))
+      .child(h_flex().gap(8)
+        .child(actionButton(t, `${id}-cancel`, 'Cancel', (_e, cx) => { clearPluginForms(view, plugin.id); cx.notify(); }))
+        .child(actionButton(t, `${id}-confirm`, 'Confirm', (_e, cx) => { const action = state.confirm, captured = state.confirmItem; if (action && captured && current()) submitActionForm(view, cx, plugin, captured, action, true); }, { enabled })))))
+    .when(Boolean(form.help), el => el.child(button(t, `${id}-help`, form.help.label, (_e, cx) => {
+      if (/^https:\/\//.test(form.help.url)) cx.open_url(form.help.url);
+    })));
+}
+
+export function prerequisiteContext(plugin, alive = () => true, machine = null) {
+  return {...pluginContext(plugin), machine, isCurrent: alive,
     enabled:()=>pluginEnabled(plugin),
     directory() {
       const space=spaces().find(s=>s.active);if(!space)return null;
@@ -269,6 +374,13 @@ export function prerequisiteContext(plugin, alive = () => true) {
       setPluginSetting(plugin,key,value);return pluginSetting(plugin,key)===value;
     },
   };
+}
+
+function viewContext(view, plugin, alive = () => !view.pluginClosed, machine = view.settingsMachine ?? null) {
+  const session = view.pluginSessions?.[plugin.id];
+  const current = () => alive() && (view.settingsMachine ?? null) === machine && view.pluginSessions?.[plugin.id] === session;
+  return { ...prerequisiteContext(plugin, current, machine), session,
+    result: id => current() ? view.pluginChecks?.[plugin.id]?.items?.find(item => item.id === id) ?? null : null };
 }
 
 // Requirements are one check group; each section is its own, so a slow list never holds
@@ -294,19 +406,22 @@ export function reloadPlugins(view, cx, only = null, checkingTarget = null) {
     for(const group of targets){
       const selected=plugin.prerequisites.filter(pre=>(pre.section?pre.id:'requirements')===group);
       if(!selected.length)continue;
+      const machine=view.settingsMachine??null;
       const previous=view.pluginChecks[plugin.id],round={loading:true,target:checkingTarget??group};
       const groups={...previous?.groups,[group]:round};
       view.pluginChecks[plugin.id]={...previous,loading:true,serial:(previous?.serial??0)+1,groups,
         items:previous?.items??plugin.prerequisites.map(pre=>({...pre,status:null}))};
       cx.spawn(async cx=>{
-        const alive=()=>!view.pluginClosed&&view.pluginChecks[plugin.id]?.groups?.[group]===round;
+        const alive=()=>!view.pluginClosed&&(view.settingsMachine??null)===machine&&view.pluginChecks[plugin.id]?.groups?.[group]===round;
         if(!alive())return;
-        const context={...prerequisiteContext(plugin,alive),isCurrent:alive};
+        const context=viewContext(view,plugin,alive,machine);
         // Keep the registry's checking/error boundary, but run only this group.
         // Context/memoized workers and completion tokens never span groups.
         const items=await checkPlugin({...plugin,prerequisites:selected.map(pre=>({...pre,check:()=>pre.check(context)}))});
         if(!alive())return;
         for(const pre of selected)delete view.pluginSettling?.[`${plugin.id}:${pre.id}`];
+        if (group === 'requirements') for (const key of Object.keys(view.pluginSettling ?? {}))
+          if (key.startsWith(`${plugin.id}:live-`)) delete view.pluginSettling[key];
         const current=view.pluginChecks[plugin.id],byId=new Map([...current.items,...items].map(item=>[item.id,item]));
         const groups={...current.groups,[group]:{...round,loading:false,checked:true}};
         view.pluginChecks[plugin.id]={...current,groups,loading:Object.values(groups).some(state=>state.loading),
@@ -319,7 +434,9 @@ export function reloadPlugins(view, cx, only = null, checkingTarget = null) {
 
 // Runs fixes one at a time (stopping at the first failure), then re-checks the plugin.
 function runFixes(view, cx, plugin, items, confirmed = false) {
-  if (view.pluginFixing || !items.length || items.some(item=>view.pluginSettling?.[`${plugin.id}:${item.id}`]) || (items.some(item=>item.fix.confirm||item.fix.requiresEnabled)&&!pluginEnabled(plugin))) return;
+  const machine = view.settingsMachine ?? null, session = view.pluginSessions?.[plugin.id];
+  const current = () => !view.pluginClosed && (view.settingsMachine ?? null) === machine && view.pluginSessions?.[plugin.id] === session;
+  if (view.pluginClosed || view.pluginFixing || !items.length || items.some(item=>view.pluginSettling?.[`${plugin.id}:${item.id}`]) || (items.some(item=>item.fix.confirm||item.fix.requiresEnabled)&&!pluginEnabled(plugin))) return;
   if(!confirmed && items.length===1 && items[0].fix.confirm) {
     view.pluginConfirm={plugin:plugin.id,item:items[0]};cx.notify();return;
   }
@@ -332,10 +449,15 @@ function runFixes(view, cx, plugin, items, confirmed = false) {
       if((item.fix.confirm||item.fix.requiresEnabled)&&!pluginEnabled(plugin))break;
       (view.pluginSettling ??= {})[key] = true;
       try {
-        await item.fix.run(prerequisiteContext(plugin,()=>!view.pluginClosed&&view.pluginFixing===key));
-      } catch (e) { view.pluginFixError[key] = String(e?.message ?? e).slice(0, 300); break; }
+        if (!current()) break;
+        await item.fix.run(viewContext(view,plugin,()=>current()&&view.pluginFixing===key,machine));
+      } catch (e) { if (current()) view.pluginFixError[key] = String(e?.message ?? e).slice(0, 300); break; }
     }
-    view.pluginFixing = null;if(view.pluginClosed)return;
+    view.pluginFixing = null;
+    if (!current()) {
+      for (const item of items) delete view.pluginSettling?.[`${plugin.id}:${item.id}`];
+      if (!view.pluginClosed) cx.notify(); return;
+    }
     for(const def of plugin.settings??[])if(def.type==='text'){
       const input=view.pluginInputs[`${plugin.id}-${def.key}`];if(input&&!input.focused)input.state.set_value(pluginSetting(plugin,def.key));
     }
@@ -406,7 +528,7 @@ function requirements(view, t, plugin) {
         ? actionButton(t, `st-plugin-fix-${plugin.id}-${item.id}`, fixing ? (item.fix.busyLabel ?? `${item.fix.label}…`) : item.fix.label,
           (_e, cx) => runFixes(view, cx, plugin, [item]), { enabled: !view.pluginFixing&&!fixing&&(!item.fix.requiresEnabled||pluginEnabled(plugin)), primary: item.fix.primary ?? !item.fix.manual }) : null;
       const detail = statusText(view.pluginFixError[key] ?? item.detail ?? item.about);
-      return h_flex().id(`st-plugin-req-${plugin.id}-${item.id}`).w_full().gap(10).items_center()
+      const row = h_flex().id(`st-plugin-req-${plugin.id}-${item.id}`).w_full().gap(10).items_center()
         // Name and detail wrap inside their own column, clear of the status and button columns.
         .child(v_flex().flex_1().min_w(0).pr(8).gap(2)
           .child(div().text_size(U.font).text_color(t.foreground).child(item.label))
@@ -420,6 +542,8 @@ function requirements(view, t, plugin) {
         // when the plugin names one; a re-check keeps the bare spinner.
         .child(statusRail(fixing||(checking.loading&&checking.target===item.id)?workingStatus(t,fixing&&typeof item.fix?.statusLabel==='string'?item.fix.statusLabel:null):item.status ? badge(t, item.status, item.statusLabel ?? undefined).w_full().justify_center() : null,
           div().flex_none().w(KIT.action).flex().justify_end().when(Boolean(fix), el => el.child(fix)),`st-plugin-${plugin.id}-${item.id}-status-rail`));
+      return v_flex().w_full().gap(8).child(row)
+        .when(Boolean(item.form) && pluginEnabled(plugin), el => el.child(actionForm(view, t, plugin, item)));
     })));
 }
 
@@ -431,15 +555,17 @@ function requirements(view, t, plugin) {
 // `selection` to offer. One change at a time, like fixes; what the plugin refuses is shown
 // as the section's detail.
 function runListAction(view, cx, plugin, item, action, everything = false) {
-  const key = sectionKey(plugin, item);
+  const key = sectionKey(plugin, item), machine = view.settingsMachine ?? null, session = view.pluginSessions?.[plugin.id];
+  const current = () => !view.pluginClosed && pluginEnabled(plugin) && (view.settingsMachine ?? null) === machine && view.pluginSessions?.[plugin.id] === session;
   if (view.pluginFixing || view.pluginSettling?.[key] || view.pluginClosed || !pluginEnabled(plugin)) return;
   view.pluginFixError[key] = null; view.pluginFixing = key;
   cx.spawn(async (cx) => {
-    try { await action(prerequisiteContext(plugin, () => !view.pluginClosed && view.pluginFixing === key)); }
-    catch (e) { view.pluginFixError[key] = String(e?.message ?? e).slice(0, 600); }
+    try { if (current()) await action(viewContext(view, plugin, () => current() && view.pluginFixing === key, machine)); }
+    catch (e) { if (current()) view.pluginFixError[key] = String(e?.message ?? e).slice(0, 600); }
+    view.pluginFixing = null;
+    if (!current()) { delete view.pluginSettling?.[key]; if (!view.pluginClosed) cx.notify(); return; }
     (view.pluginSettling ??= {})[key] = true;
-    view.pluginFixing = null; if (view.pluginClosed) return;
-    reloadPlugins(view, cx, plugin.id, everything ? null : item.id); cx.notify();
+    reloadPlugins(view, cx, plugin.id, everything || item.list?.recheck === 'plugin' ? null : item.id); cx.notify();
   });
   cx.notify();
 }
@@ -477,16 +603,16 @@ function foldersAdd(view, t, plugin, item, canAdd, loading) {
 // (`list.candidates(cx) -> { items: [{ id, label, detail?, disabled? }], add(cx, ids) }`)
 // only when it opens, since listing every candidate can be slow.
 function openListPicker(view, cx, plugin, item, { keepSearch = false } = {}) {
-  const key = sectionKey(plugin, item);
+  const key = sectionKey(plugin, item), machine=view.settingsMachine??null;
   const picker = { key, loading: true, error: null, items: [], add: null, selected: [] };
   view.listPicker = picker;
   if (!keepSearch) view.pluginSearches[key]?.set_value('');
   cx.spawn(async (cx) => {
-    const alive = () => view.listPicker === picker && !view.pluginClosed;
+    const alive = () => view.listPicker === picker && !view.pluginClosed && (view.settingsMachine??null)===machine;
     try {
-      const found = await item.list.candidates({ ...prerequisiteContext(plugin, alive), isCurrent: alive });
+      const found = await item.list.candidates(viewContext(view, plugin, alive, machine));
       if (!alive()) return;
-      Object.assign(picker, { loading: false, items: Array.isArray(found?.items) ? found.items : [], add: found?.add ?? item.list.add ?? null });
+      Object.assign(picker, { loading: false, notice: found?.detail ?? null, items: Array.isArray(found?.items) ? found.items : [], add: found?.add ?? item.list.add ?? null });
     } catch (e) {
       if (!alive()) return;
       Object.assign(picker, { loading: false, error: String(e?.message ?? e).slice(0, 300) });
@@ -524,6 +650,7 @@ function itemsAdd(view, t, plugin, item, canAdd) {
     return menuSurface(t, v_flex()).id(`${id}-panel`).w(KIT.picker.width).p(0).track_focus(focus)
       .on_scroll_wheel((_e, cx) => cx.stop_propagation())
       .when(Boolean(search), el => el.child(pickerHeader(t, `${id}-search-row`, searchField(t, search, { id: `${id}-search` }).flex_1())))
+      .when(Boolean(picker.notice), el => el.child(div().px(8).child(description(t, picker.notice))))
       .child(v_flex().id(`${id}-list`).w_full().h(pickerListHeight()).p(4).gap(U.rowGap).overflow_y_scrollbar()
         .when(Boolean(picker.error), el => el.child(div().id(`${id}-error`).p(8).text_size(U.meta).text_color(t.blocked).child(picker.error)))
         .when(ready, el => el.children(rows.map(line)))
@@ -674,20 +801,23 @@ function selectField(view, t, plugin, def, id, value) {
 // A `live` setting is not saved by the registry: its value lives somewhere else (a file on
 // the chosen machine, say). `live.state(cx)` says what the plugin's last check saw there,
 // `{ shown, value }` or null before the first check, and the row exists only while `shown`.
-const liveState = (plugin, def) => def.live.state(pluginContext(plugin)) ?? null;
+const liveState = (view, plugin, def) => def.live.state(viewContext(view, plugin)) ?? null;
 // A machine setting is never a field: the Settings header's machine picker sets it.
-const shownSettings = plugin => (plugin.settings ?? []).filter(d => !d.hidden && d.type !== 'machine' && d.place !== 'requirements' && (!d.live || liveState(plugin, d)?.shown === true));
+const shownSettings = (view, plugin) => (plugin.settings ?? []).filter(d => !d.hidden && d.type !== 'machine' && d.place !== 'requirements' && (!d.live || liveState(view, plugin, d)?.shown === true));
 
 function settingField(view, t, plugin, def) {
   const value = pluginSetting(plugin, def.key), id = `st-plugin-${plugin.id}-${def.key}`;
-  if (def.type === 'toggle' && def.live) {
-    // Flipping it runs `live.set(cx, value)` the way a requirement's fix runs, and the
-    // re-check that follows reads the real value back: the switch shows what is set, never
-    // what was asked for. A refusal is said on the row and the switch stays where it was.
-    const on = liveState(plugin, def)?.value === true, item = { id: `live-${def.key}`, fix: { run: cx => def.live.set(cx, !on) } };
-    const refused = view.pluginFixError[`${plugin.id}:${item.id}`];
+  if (def.live && ['toggle', 'choice'].includes(def.type)) {
+    const state = liveState(view, plugin, def), machine = view.settingsMachine ?? null;
+    const current = () => !view.pluginClosed && pluginEnabled(plugin) && (view.settingsMachine ?? null) === machine;
+    const apply = (next, cx) => {
+      if (!current()) return;
+      runFixes(view, cx, plugin, [{ id: `live-${def.key}`, fix: { requiresEnabled: true, run: context => def.live.set(context, next, state) } }]);
+    };
+    const refused = view.pluginFixError[`${plugin.id}:live-${def.key}`];
     return fieldRow(t, { label: def.label, about: refused ? `${def.about} Not changed: ${refused}` : def.about,
-      widget: view.toggle(t, id, on, (_e, cx) => runFixes(view, cx, plugin, [item])) });
+      widget: def.type === 'toggle' ? view.toggle(t, id, state?.value === true, (_e, cx) => apply(!state?.value, cx))
+        : choice(t, id, def.options, state?.value, apply, current() && !view.pluginFixing) });
   }
   if (def.type === 'profiles') {
     // A row that opens the role's profile list, like a longtext row.
@@ -736,7 +866,7 @@ function settingField(view, t, plugin, def) {
 }
 function settingsBlock(view, t, plugin) {
   return disclosure(view, t, `${plugin.id}-settings`, 'Settings', {}, () => v_flex().w_full().gap(10)
-    .children(shownSettings(plugin).map(def => settingField(view, t, plugin, def))));
+    .children(shownSettings(view, plugin).map(def => settingField(view, t, plugin, def))));
 }
 
 // --- Plugin pages ----------------------------------------------------------------------
@@ -787,6 +917,8 @@ function card(view, t, plugin) {
         .child(div().id(`st-plugin-version-${plugin.id}`).text_size(12).text_color(t.dim).child(plugin.version)))
       .child(view.toggle(t, `st-plugin-${plugin.id}-enabled`, on, (_e, cx) => {
         view.pluginConfirm=null;
+        clearPluginForms(view, plugin.id);
+        if (view.pluginSessions) view.pluginSessions[plugin.id] = {};
         setPluginEnabled(plugin, !on);
         if (!on) reloadPlugins(view, cx, plugin.id);
         cx.notify();
@@ -794,7 +926,7 @@ function card(view, t, plugin) {
     .child(description(t, plugin.description))
     .when(Boolean(plugin.prerequisites?.some(item=>!item.section)), el => el.child(requirements(view, t, plugin)))
     .when(on,el=>el.children(prerequisiteSections(view,t,plugin)))
-    .when(on && shownSettings(plugin).length > 0, el => el.child(settingsBlock(view, t, plugin)));
+    .when(on && shownSettings(view, plugin).length > 0, el => el.child(settingsBlock(view, t, plugin)));
 }
 
 // Cards are reordered the way Usage's are (reorder.js `card`): press a card and drag it.

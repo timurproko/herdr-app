@@ -149,8 +149,12 @@ core privileges are **not** part of `npm test` and require separate approval.
 **Settings → Plugins → Trello** enables the installed `herdr-trello` JSON CLI for
 shell-capable agents. It is off and read-only by default. Reads and writes require
 an explicit machine-local board allowlist; writes additionally require local
-opt-in and public Read-write mode. API-key/user-token credentials are entered only
-through protected local setup, never plugin settings or portable preferences.
+opt-in and public Read-write mode. The card can save and verify a masked API key/user
+token, show the account, replace/remove credentials, choose boards by name and set
+local Read-only / Read-write authorization. Inputs are transient, never saved plugin
+settings or portable preferences; only the Node worker writes the private store.
+SSH-selected setup is explicitly refused here; `herdr-trello setup` remains the
+headless alternative on each execution host.
 Normal full build/deploy installs the standalone runtime and owned user-bin
 launchers (the selected bin must be on PATH); shell-only peers get no credentials
 or Trello installation. See [Trello setup, commands and security limits](docs/TRELLO.md).

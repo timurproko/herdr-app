@@ -8,7 +8,7 @@ import {settingsShortcuts} from './settings-sections.js';
 const read=file=>fs.existsSync(file)?fs.readFileSync(file,'utf8'):null;
 function object(raw){try{const value=JSON.parse(raw);if(!value||typeof value!=='object'||Array.isArray(value))throw Error();return value;}catch{throw Error('Invalid preference JSON; nothing exported.');}}
 function safe(value){
- const visit=v=>{if(!v||typeof v!=='object')return;for(const [key,child]of Object.entries(v)){if(/^(?:password|secret|access[_-]?token|refresh[_-]?token|api[_-]?key|authorization)$/i.test(key))throw Error('Potential credential in preferences; export/import refused.');visit(child);}};visit(value);
+ const visit=v=>{if(!v||typeof v!=='object')return;for(const [key,child]of Object.entries(v)){if(/^(?:password|secret|token|access[_-]?token|refresh[_-]?token|api[_-]?key|authorization)$/i.test(key))throw Error('Potential credential in preferences; export/import refused.');visit(child);}};visit(value);
  const text=JSON.stringify(value);
  if(text.length>131072||/-----BEGIN [A-Z ]*PRIVATE KEY|\bBearer\s+\S+|\b(?:sk-ant-|sk-proj-|gh[pousr]_|github_pat_)[A-Za-z0-9_-]+|\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|--(?:api[-_]?key|token|password|secret)(?:[= "\\]|$)|https?:\/\/[^/\s"]+:[^/\s"]+@/i.test(text))throw Error('Potential credential in preferences; export/import refused.');
  return value;

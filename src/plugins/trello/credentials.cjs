@@ -70,21 +70,39 @@ class Store {
       return validate(name, JSON.parse(fs.readFileSync(fd, 'utf8')));
     } catch { fail('STORE'); } finally { fs.closeSync(fd); }
   }
-  write(name, value, expected = null) {
-    validate(name, value); this.directory(true);
-    const file = this.file(name), lock = path.join(this.dir, 'config.lock'); safePath(lock);
-    let fd, temp;
+  // Synchronous multi-file local transitions reuse the same protected lock.
+  // Never hold it across network IO. Nested writes keep their expected-value checks.
+  withLock(action) {
+    if (this.lockHeld) return action();
+    this.directory(true);
+    const lock = path.join(this.dir, 'config.lock'); safePath(lock);
+    let fd;
     try {
       fd = fs.openSync(lock, 'wx', 0o600); this.lockHeld = true; this.security(lock, true);
+      return action();
+    } catch (e) { if (e instanceof TrelloError) throw e; fail('STORE'); }
+    finally { if (fd !== undefined) { this.lockHeld = false; fs.closeSync(fd); fs.unlinkSync(lock); } }
+  }
+  write(name, value, expected = null) {
+    validate(name, value);
+    return this.withLock(() => {
+      const file = this.file(name), current = this.read(name, true);
+      if (JSON.stringify(current) !== JSON.stringify(expected)) fail('CONFLICT');
+      let temp = path.join(this.dir, `.write-${crypto.randomBytes(12).toString('hex')}`);
+      try {
+        const out = fs.openSync(temp, 'wx', 0o600);
+        try { this.security(temp, true); fs.writeFileSync(out, JSON.stringify(value) + '\n'); fs.fsyncSync(out); } finally { fs.closeSync(out); }
+        safePath(file);
+        fs.renameSync(temp, file); temp = null; this.security(file);
+      } finally { if (temp) fs.unlinkSync(temp); }
+    });
+  }
+  remove(name, expected) {
+    return this.withLock(() => {
       const current = this.read(name, true);
       if (JSON.stringify(current) !== JSON.stringify(expected)) fail('CONFLICT');
-      temp = path.join(this.dir, `.write-${crypto.randomBytes(12).toString('hex')}`);
-      const out = fs.openSync(temp, 'wx', 0o600);
-      try { this.security(temp, true); fs.writeFileSync(out, JSON.stringify(value) + '\n'); fs.fsyncSync(out); } finally { fs.closeSync(out); }
-      safePath(file);
-      fs.renameSync(temp, file); temp = null; this.security(file);
-    } catch (e) { if (e instanceof TrelloError) throw e; fail('STORE'); }
-    finally { if (temp) fs.unlinkSync(temp); if (fd !== undefined) { this.lockHeld = false; fs.closeSync(fd); fs.unlinkSync(lock); } }
+      if (current !== null) { const file = this.file(name); safePath(file); fs.unlinkSync(file); }
+    });
   }
 }
 function protectedInput(file) {

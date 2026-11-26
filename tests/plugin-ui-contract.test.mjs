@@ -41,7 +41,7 @@ for (const id of plugins) {
     assert.ok(!retired.test(text), `${id} declares a retired section kind (${retired}); use list`);
   if (/\blist\s*:/.test(text)) sections.push(id);
 }
-assert.deepEqual(sections.sort(), ['crew', 'git'], 'Crew Projects and Git Repositories are list sections');
+assert.deepEqual(sections.sort(), ['crew', 'git', 'trello'], 'Crew Projects, Git Repositories and Trello boards use shared list sections');
 
 // 4. Plugin panels share the panel kit's parts instead of rebuilding them: header tools,
 // right-click menus, confirmations, status messages, tags and text dropdowns.
