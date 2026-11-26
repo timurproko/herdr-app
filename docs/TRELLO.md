@@ -35,9 +35,21 @@ owned installation through normal removal before deploying to a different bin.
 
 `deploy:shell` still installs only its four shell-reporting files; it does not
 install Trello. Consequently deploy:all's shell-only peers do not get this CLI or
-credentials. Every execution host needs its own explicit full deployment, plugin
-enablement, private credential setup and board/write policy. Merely mounting a
+credentials. Every execution host needs its own explicit Trello runtime installation, activation,
+private credential setup and board/write policy. Settings can install only the
+Trello runtime/launchers on a safely configured direct-SSH peer; no full App
+installation is needed there. Merely mounting a
 remote agent on this desktop does not authorize its host.
+
+## Offline installed help
+
+`herdr-trello --help` is sufficient to start without this checkout or a browser.
+Use `herdr-trello help setup`, `help commands`, `help errors` or `help security`
+for focused guidance. `herdr-trello help docs` prints the packaged offline reference
+(`lib/trello/TRELLO.txt` beside the installed CLI), with embedded fallback guidance
+if that optional reference is missing. Help reads no private store and sends no
+network request. It covers safe input, explicit board/access gates, JSON/exits,
+uncertain writes, revocation and untrusted Trello text; it adds no agent hooks.
 
 ## Generate a user token for your API key
 
@@ -70,37 +82,95 @@ local read-only mode alone is not.
 
 ## Set up from the Settings card
 
-Select **This computer** in the Settings header and enable **Plugins → Trello**.
+Select the execution machine in the Settings header and enable **Plugins → Trello**.
+If Requirements offers Trello runtime **Install/Update**, use that explicit action
+first; it installs no credentials, grants or activation.
 Expand **Requirements**, enter your API key and user token in the protected input
 fields, then press **Save & verify**. The worker checks them with Trello before
-saving and shows the token’s account. The fields clear after submission; saved
-secrets are never loaded back into the card. **Verify saved** checks the existing
-copy. **Replace** verifies newly entered values after confirmation, then clears
-old board grants and local write authority. **Remove** confirms removal of this
-computer’s copy and permissions; it does not revoke the token at Trello.
-The card’s **How to generate a user token** opens official help without putting
-your key or token in its URL.
+saving. After submission the masked fields clear and disappear; the single saved
+account name is listed with **Remove** on hover, like Crew's project rows. Removing
+asks about the captured machine, clears that account's board/write grants and brings
+the empty inputs back. It does not revoke the token at Trello. To replace the account,
+remove it first, then save the new credentials. Saved secrets never return to the UI.
 
-Expand **Allowed boards → Add boards** to discover visible boards by name. Tick
+The **Check** button in the Requirements header verifies the saved account. Ordinary
+opening reads cached names/status only. With an account but no boards, the existing
+status badge says **Add boards**, not missing credentials. The short card description
+links directly to https://trello.com/apps/admin; there is no separate help button.
+
+Expand **Boards → Add boards** to discover visible boards by name. Tick
 only the boards agents may use and press **Add**; discovery, search and Cancel
-never grant scope. The main list’s **Remove** revokes one saved grant. Incomplete
+never grant scope. The list names its selected machine and uses an **N added** badge. The picker has
+**Active** (open, default) and **Inactive** (closed) tabs; search filters only the
+selected tab, without a redundant closed-board warning. Selections can span tabs
+but only explicit Add grants them. The main list's hover **Remove** revokes one
+saved grant. Incomplete
 discovery is labeled and never erases unseen grants. There is no all-boards option.
+Account and allowed-board names are saved as bounded non-secret hints beside the
+private setup. Reopening the card reads those names without contacting Trello.
+Legacy/headless setup without names needs one explicit **Requirements → Check**;
+it verifies the account and hydrates missing allowed-board names. Incomplete results
+never erase unseen grants. Hints are not portable preferences or authorization.
 The requirement becomes Ready only with saved credentials and at least one allowed
 board; local Ready does not claim an unverified token is still valid.
 
-Under **Settings → Access**, **Read-only / Read-write** explicitly changes this
-computer’s private write authorization as well as public Access. The displayed
-value reflects both gates, not imported public preferences alone. A read-only
-Trello token remains server-enforced read-only regardless of client settings.
-No board grant or local write permission is exported/imported with preferences.
+Under **Settings → Access**, **Read-only / Read-write** is one global choice,
+independent of the header machine. An explicit change applies protected control
+and private write gates on each configured account host. The displayed value is
+backed by private owner consent, never an imported preference alone. New account
+hosts start read-only even when the global choice was previously Read-write;
+explicitly apply that choice again before they may write.
+
+A **Pending** badge names hosts where application failed; **Retry** explicitly
+applies the current choice again. Offline hosts keep their last acknowledged
+rights, including any previous write grant, until successfully contacted. There
+is no atomic disconnected-host revocation or automatic replay of grants on
+reconnect. Acknowledgements and unfinished membership are checkpointed as hosts
+complete; Retry visits unfinished hosts first and rechecks without replaying
+already-applied grants. Replaced identities cannot acknowledge an old scope;
+a verified rename of the same scope can. Status checks do not apply rights. A write-capable Trello token is
+still required, and a read-only token remains server-enforced read-only.
+
+Managed execution-host control is separate from board grants and credentials.
+Missing/invalid managed control denies access instead of falling back to legacy
+public state. Existing full installations keep their old gates until explicit
+owner adoption; local disabled state remains authoritative and the card says
+**Enable on host** rather than claiming effective readiness. Another controller
+cannot silently take over: remove the account explicitly first. Headless writes
+off can always reduce authority and writes on cannot bypass the global gate.
+No board grant, control receipt or private write permission is exported/imported
+with preferences.
 Credential-bearing snapshot fields, including `apiKey` and `token`, are refused
 rather than imported into shared plugin state.
 
-For an SSH-selected machine this card **refuses setup, discovery and policy
-changes**, explaining that no local store was accessed. It does not show this
-computer’s saved credentials or board inventory as the remote machine’s. Use the
-headless alternative on that execution host after its own explicit full deployment.
-No credential is copied remotely by Settings, deployment or shell-only deployment.
+For an SSH-selected machine, status and explicit account/board actions use only
+that machine's private store. The local one-shot bridge resolves the configured
+machine, pins its Core identity/session and execution user/home, then sends secrets
+only over strict noninteractive SSH stdin after a readiness handshake. There is no
+local fallback, remote listener, secret-bearing command/environment or temporary
+credential input file. Child SSH forwarding, agent forwarding, local commands,
+trust-store updates and persistent multiplexing are disabled for this request.
+Protected final-store atomic replacement files still exist. The fixed public
+bootstrap uses Brotli compression and a 7,600-character command budget, leaving
+headroom below CMD's 8,191-character limit even with captured identity bindings;
+all actions and credentials still travel only through stdin after READY.
+
+Temporary/custom-via connections, unprovable or elevated execution identities,
+changed Core sessions and unsupported shell arrangements are refused. Existing
+SSH host trust, key authentication, Node 20+ and the selected user's Core session
+are prerequisites; the feature never accepts a new host key, prompts for a password
+or installs Node/changes PATH. A missing Trello runtime gets the normal Requirements
+Install action. Conflicting or modified launchers/runtime files refuse overwrite;
+owned installation keeps uniquely named public rollback records and preserves
+private setup and unrelated journals. Monotonic request budgets are checked
+again before secret dispatch and private-file commits, including after slow ACL work.
+
+A timeout after possible commit means **setup outcome unknown**. A safe storage
+error can also retain its specific code with `outcome: unknown` after a partial
+private transition; it does not claim nothing changed. Check destination
+status before an explicit retry; cancelling cannot recall an already committed
+change and there is no replay. Shell-only deployment remains shell-only, and no
+credential is copied between machines or provisioned by deployment.
 
 ## Headless local setup
 
@@ -119,7 +189,8 @@ Protect it for your OS user only (Unix: `chmod 600`); use a private current-user
 ACL on Windows. Import with `herdr-trello setup --input <private-file>`. Alternatively,
 feed the same JSON over protected stdin, not an echoed shell-history command.
 Remove the input copy when you no longer need it. Rotation is explicit:
-`herdr-trello setup --rotate --input <private-file>`. Invalid existing stores are
+`herdr-trello setup --rotate --input <private-file>`. Rotation clears board/write
+authority and old display names; add grants again explicitly. Invalid existing stores are
 not silently replaced; inspect and fix local storage before trying again.
 
 Installed launchers already supply the deployment's `--home`; do not supply a
@@ -279,7 +350,18 @@ race or prevent another same-user process from using the token directly.
 | Code | Meaning / next action |
 |---|---|
 | INPUT | Unknown command/field, invalid ID/date/position or invalid/oversized JSON; use help and correct input |
-| STORE | Missing, malformed, checkout-local, linked or insufficiently protected local store; inspect permissions/setup, never paste credentials into errors or chat |
+| STORE_MISSING | A private setup file is missing; status distinguishes absent credentials from incomplete policy without pretending the account vanished |
+| STORE_MALFORMED | Invalid private JSON/schema; inspect locally, never paste secrets into errors or chat; no automatic replacement |
+| STORE_PERMISSIONS | Wrong owner or another user has access; restrict storage before continuing |
+| STORE_PERMISSION_CHECK | Permission tooling could not verify storage; check ACL tooling, not credential setup |
+| STORE_IN_CHECKOUT / STORE_UNSAFE_PATH | Checkout-local, linked, non-regular or multiply linked storage is refused |
+| STORE_BUSY / STORE_IO | Active setup lock or filesystem failure; inspect the operation/access before an explicit retry |
+| PUBLIC_STATE_INVALID | Host activation or Access could not be validated; no authority granted |
+| INTERNAL | Unclassified internal failure, with no raw exception or automatic retry |
+| MACHINE_CHANGED / MACHINE_IDENTITY / MACHINE_ELEVATED / MACHINE_UNSUPPORTED | Captured machine changed, its user/home cannot be proved, login is elevated, or temporary/custom-via routing is unsupported; no local fallback |
+| MACHINE_UNAVAILABLE | The configured Core session could not be queried; this is not proof that its identity changed |
+| SSH_UNAVAILABLE / RUNTIME_MISSING / RUNTIME_OUTDATED / RUNTIME_CONFLICT | Check SSH prerequisites or use the explicit Requirements runtime fix; modified/unknown owned files are never overwritten |
+| CONFIG_UNKNOWN | Private setup may have committed without acknowledgement; read destination status before an explicit retry |
 | CONFLICT | Existing credentials, concurrent local edit or unexpected rotation; inspect current local state and use explicit rotation only when intended |
 | DISABLED / STALE | Plugin disabled or authority changed; recheck Settings and local policy before a new command |
 | SCOPE | Board not allowed or child membership unverified within bounds; correct explicit IDs or allowlist, never bypass with an arbitrary URL |
@@ -290,16 +372,20 @@ race or prevent another same-user process from using the token directly.
 | LIMIT / RESPONSE / TRANSPORT / REMOTE | Request/time/response bound, malformed reply, connectivity failure or HTTP rejection; inspect/narrow the read and retry explicitly |
 | UNKNOWN_WRITE / WRITE_CHANGED | Unknown outcome / acknowledged write with changed authority; reconcile through reads before another explicit mutation |
 
-`status` and the Settings prerequisite inspect only local configuration; they do
-not contact Trello and cannot confirm that a token is still valid. No error
+`status` and automatic Settings checks inspect only local configuration; they do
+not contact Trello and cannot confirm that a token is still valid. Absent setup is
+distinct from a failed permission check or corrupt store; failed checks refuse access
+rather than pretending credentials are missing. On Windows, the ACL subprocess uses
+system Windows PowerShell with its own module path, even when launched from PowerShell 7;
+the caller environment and owner-only permission requirements stay unchanged. No error
 causes an account switch, credential search, write retry or webhook setup.
 
 ## Revocation and security limits
 
 At `https://trello.com/u/YOUR_USERNAME/account`, open **Applications** and click
 **Revoke** beside this authorization. Trello then rejects that token (HTTP 401).
-To continue later, explicitly authorize a new token and use Replace in the local
-Settings card or run headless setup with `--rotate`.
+To continue later, explicitly authorize a new token, remove/add the account on the
+selected machine in Settings, or run headless setup with `--rotate`.
 To stop this client immediately, disable Trello, use `policy writes off`, and/or
 remove boards from local policy. Deleting the protected local credential file
 after use is stopped removes this copy only: it does **not** revoke the token at

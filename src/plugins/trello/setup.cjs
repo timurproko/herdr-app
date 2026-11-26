@@ -1,7 +1,7 @@
 'use strict';
 const {validate, id, exact} = require('./credentials.cjs');
-const {fail} = require('./errors.cjs');
-const defaultPolicy = () => ({version: 1, boards: [], allowWrites: false});
+const {fail, publicError} = require('./errors.cjs');
+const defaultPolicy = old => ({version: 1, boards: [], allowWrites: false, ...(old?.authority === 'managed' ? {authority: 'managed'} : {})});
 function setup(store, input, rotate = false) {
   if (!exact(input, ['apiKey', 'token'])) fail('INPUT');
   let value; try { value = validate('credentials', {version: 1, ...input}); } catch { fail('INPUT'); }
@@ -9,9 +9,14 @@ function setup(store, input, rotate = false) {
   const old = store.read('credentials', true);
   if ((old !== null) !== rotate) fail('CONFLICT');
   // Validate existing policy before replacing credentials; never silently repair it.
-  const policy = store.read('policy', true);
-  if (!policy) store.write('policy', defaultPolicy());
-  store.write('credentials', value, old);
+  const policy = store.read('policy', true), display = store.read('display', true), control = store.read('control', true);
+  store.withLock(() => {
+    if (JSON.stringify(store.read('credentials', true)) !== JSON.stringify(old)) fail('CONFLICT');
+    if (rotate || !policy) store.write('policy', defaultPolicy(policy), policy);
+    if (control) store.write('control', {...control, access: 'read-only'}, control);
+    if (display) store.remove('display', display);
+    store.write('credentials', value, old);
+  });
   return {configured: true, rotated: rotate};
 }
 function configure(store, action, value) {
@@ -24,9 +29,14 @@ function configure(store, action, value) {
   store.write('policy', next, old); return next;
 }
 function status(store) {
+  let credentialsSaved = false;
   try {
-    store.read('credentials'); const p = store.read('policy');
-    return {configured: true, allowedBoards: p.boards.length, localWrites: p.allowWrites};
-  } catch { return {configured: false}; }
+    store.read('credentials'); credentialsSaved = true; const p = store.read('policy');
+    return {configured: true, storage: 'ready', allowedBoards: p.boards.length, localWrites: p.allowWrites};
+  } catch (e) {
+    const problem = publicError(e);
+    if (problem.code === 'STORE_MISSING') return {configured: credentialsSaved, storage: credentialsSaved ? 'incomplete' : 'missing', problem: {...problem, resource: credentialsSaved ? 'policy' : 'credentials'}};
+    throw e; // A check that failed is not absent setup.
+  }
 }
 module.exports = {setup, configure, status};
