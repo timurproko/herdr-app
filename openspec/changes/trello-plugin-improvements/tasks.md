@@ -19,11 +19,11 @@ All tasks remain unstarted until plan approval. Groups match the four PR Impleme
 
 ## 3. Trello Settings uses clear save labels, one ready account row, lightweight board tabs and empty-list separators
 
-- [ ] 3.1 Add generic optional form busyLabel support and declare Trello Add, Save and Saving plus the friendly description/link; verify all requested text and non-Trello Working defaults using real renderer and synthetic-plugin tests.
-- [ ] 3.2 Separate account readiness from board count/names and add opt-in saved-row replacement with resting Ready/hover Remove; verify a single account name, zero-board All ready with CLI denial, missing account-name Check, explicit verification and captured removal/undo retirement.
-- [ ] 3.3 Add generic picker-tab presentation based on the existing lightweight tab treatment and conditional scope separators; verify Active/Inactive/search/selection/Cancel semantics, empty versus populated Boards and unchanged unrelated choice settings.
-- [ ] 3.4 Update plugin UI and Trello docs for the new declaration options and copy; verify contract tests keep renderer/kit free of plugin-specific switches and preserve shared status/action geometry.
-- [ ] 3.5 Capture and inspect matched before/after disposable native card/picker states with fake setup, including saving and hover removal, under the crew task directory; verify native error logs and stop all fixture-owned app/Core/worker/server processes.
+- [x] 3.1 Add generic optional form busyLabel support and declare Trello Add, Save and Saving plus the friendly description/link; verify all requested text and non-Trello Working defaults using real renderer and synthetic-plugin tests.
+- [x] 3.2 Separate account readiness from board count/names and add opt-in saved-row replacement with resting Ready/hover Remove; verify a single account name, zero-board All ready with CLI denial, missing account-name Check, explicit verification and captured removal/undo retirement.
+- [x] 3.3 Add generic picker-tab presentation based on the existing lightweight tab treatment and conditional scope separators; verify Active/Inactive/search/selection/Cancel semantics, empty versus populated Boards and unchanged unrelated choice settings.
+- [x] 3.4 Update plugin UI and Trello docs for the new declaration options and copy; verify contract tests keep renderer/kit free of plugin-specific switches and preserve shared status/action geometry.
+- [x] 3.5 Capture and inspect matched before/after disposable native card/picker states with fake setup, including saving and hover removal, under the crew task directory; verify native error logs and stop all fixture-owned app/Core/worker/server processes.
 
 ## 4. Unsupported Trello setup connections show one actionable explanation without duplicate failures or misleading fix counts
 

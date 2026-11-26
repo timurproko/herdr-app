@@ -123,7 +123,9 @@ disabled feedback. This is an
 explicit operational action, **not** a setting type. `fields` contain
 `{ key, type: 'text' | 'secret', label, placeholder?, maxLength? }`; secret fields
 use native `InputState.set_masked(true)` and start empty. `actions` contain
-`{ id, label, input?, primary?, when?(result), confirm?, run(cx, values, result) }`.
+`{ id, label, busyLabel?, input?, primary?, when?(result), confirm?, run(cx, values, result) }`.
+`busyLabel` changes only that action's in-flight text; undeclared actions retain
+Working… (Trello's Save declares Saving).
 Only an explicit action with `input: true` receives the transient field values.
 `confirm` is explanatory text; confirmation snapshots never contain input values.
 `help: { label, url }` opens a fixed HTTPS help page. `enabled(cx, result)` can
@@ -166,7 +168,9 @@ fix, using only public deterministic runtime files.
 
 A requirement may declare `saved: { row(result), confirm?(cx, result), remove(cx, result) }`.
 A non-null row `{label}` renders the same hover-Remove component as a list item,
-not a different account widget. Removal uses the existing fixed confirmation footer
+not a different account widget. Optional `saved.replace: true` replaces the
+requirement heading row with that saved name and displays its current status at
+the right until hover reveals Remove; the default keeps the separate saved row. Removal uses the existing fixed confirmation footer
 and fix lifecycle, binding the rendered revision, selected machine and view generation.
 A saved row can replace a `form.when`-controlled empty state. Labels/confirmations
 contain public names only; no stored credential is loaded into input fields.
@@ -205,6 +209,10 @@ belongs to, then Add), the description, and one row per item with **Remove** on 
   the popup's height by reducing its list viewport. Candidate `tab` values select a
   category, the first tab is the opening default, and search filters within that tab.
   Selected IDs survive tab changes until Add or Cancel; changing tabs grants nothing.
+  Optional `picker.tabStyle: 'tabs'` uses the lightweight app view-tab treatment
+  rather than the field-choice segment; unrelated Settings choices are unchanged.
+  `scope.divider: 'items'` draws the scope separator only when added rows exist;
+  without that opt-in, scope rows retain their existing separator.
 - `list.recheck: 'plugin'` refreshes all that plugin's prerequisite groups after a
   committed list action when the change also affects another requirement's readiness.
 - One change runs at a time; refusals become the section's detail. Folder-change failures

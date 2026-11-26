@@ -5,7 +5,7 @@
 import { div, svg, image } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, Checkbox, TextareaState, Textarea } from "gpui-base";
 import { U, slot, description, button, control, chevron, emptyState, dropdown, menuSurface, searchField, settingsRow, iconButton, chevronSlot } from "./ui.js";
-import { KIT, badge, statusText, workingStatus, statusRail, actionButton, actionTrigger, checkButton, choice, optionDropdown, skeleton,
+import { KIT, badge, statusText, workingStatus, statusRail, actionButton, actionTrigger, checkButton, choice, pickerTabs, optionDropdown, skeleton,
   disclosure, fieldRow, scopeRow, removableRow, pickerHeader, pickerListHeight, pickerFooter, changeCount, changeLabel, actionInput } from './settings-kit.js';
 import { PLUGINS, pluginEnabled, setPluginEnabled, pluginSetting, setPluginSetting, checkPlugin, pluginContext, pluginOptions, orderedPlugins, setPluginOrder } from './plugins.js';
 import { reorder } from './reorder.js';
@@ -348,7 +348,7 @@ function actionForm(view, t, plugin, item) {
     }))))
     .when(Boolean(state?.result?.detail), el => el.child(description(t, state.result.detail)))
     .when(available, el => el.child(h_flex().w_full().gap(8).items_center().children((form.actions ?? []).filter(action => action.when?.(item) !== false).map(action =>
-      actionButton(t, `${id}-${action.id}`, state?.busy ? 'Working…' : action.label,
+      actionButton(t, `${id}-${action.id}`, state?.busy ? (action.busyLabel ?? 'Working…') : action.label,
         (_e, cx) => { if (current()) submitActionForm(view, cx, plugin, item, action); }, { enabled, primary: action.primary === true })))))
     .when(Boolean(state?.confirm), el => el.child(v_flex().gap(6)
       .child(description(t, state.confirm.confirm))
@@ -546,12 +546,16 @@ function requirements(view, t, plugin) {
         .child(statusRail(fixing||(checking.loading&&checking.target===item.id)?workingStatus(t,fixing&&typeof item.fix?.statusLabel==='string'?item.fix.statusLabel:null):item.status ? badge(t, item.status, item.statusLabel ?? undefined).w_full().justify_center() : null,
           div().flex_none().w(KIT.action).flex().justify_end().when(Boolean(fix), el => el.child(fix)),`st-plugin-${plugin.id}-${item.id}-status-rail`));
       const saved = item.saved?.row?.(item), savedContext = viewContext(view,plugin);
-      return v_flex().w_full().gap(8).child(row)
-        .when(Boolean(saved) && pluginEnabled(plugin), el => el.child(removableRow(view, t, `st-plugin-saved-${plugin.id}-${item.id}-row-0`, saved?.label,
-          (_e,cx) => {
-            if(!savedContext.isCurrent())return;
-            runFixes(view,cx,plugin,[{...item,fix:{requiresEnabled:true,confirm:item.saved.confirm?.(savedContext,item),run:context=>item.saved.remove(context,item)}}]);
-          }, !checking.loading&&!fixing&&!view.pluginFixing&&!view.pluginClosed)))
+      const replace = Boolean(saved) && pluginEnabled(plugin) && item.saved.replace === true;
+      const savedRow = saved && pluginEnabled(plugin) ? removableRow(view, t, `st-plugin-saved-${plugin.id}-${item.id}-row-0`, saved.label,
+        (_e,cx) => {
+          if(!savedContext.isCurrent())return;
+          runFixes(view,cx,plugin,[{...item,fix:{requiresEnabled:true,confirm:item.saved.confirm?.(savedContext,item),run:context=>item.saved.remove(context,item)}}]);
+        }, !checking.loading&&!fixing&&!view.pluginFixing&&!view.pluginClosed,
+        replace ? (fixing ? workingStatus(t) : item.status ? badge(t,item.status,item.statusLabel ?? undefined) : null) : null) : null;
+      return v_flex().w_full().gap(8).child(replace ? savedRow : row)
+        .when(replace && Boolean(detail), el => el.child(description(t, detail)))
+        .when(Boolean(savedRow) && !replace, el => el.child(savedRow))
         .when(Boolean(item.form) && pluginEnabled(plugin) && item.form.when?.(item) !== false, el => el.child(actionForm(view, t, plugin, item)));
     })));
 }
@@ -660,7 +664,7 @@ function itemsAdd(view, t, plugin, item, canAdd) {
     return menuSurface(t, v_flex()).id(`${id}-panel`).w(KIT.picker.width).p(0).track_focus(focus)
       .on_scroll_wheel((_e, cx) => cx.stop_propagation())
       .when(Boolean(search), el => el.child(pickerHeader(t, `${id}-search-row`, searchField(t, search, { id: `${id}-search` }).flex_1())))
-      .when(tabs.length > 0, el => el.child(h_flex().w_full().flex_none().px(U.gutter).py(4).child(choice(t, `${id}-tab`, tabs, picker.tab, (tab,cx) => {
+      .when(tabs.length > 0, el => el.child(h_flex().w_full().flex_none().px(U.gutter).py(4).child((spec.picker?.tabStyle === 'tabs' ? pickerTabs : choice)(t, `${id}-tab`, tabs, picker.tab, (tab,cx) => {
         if(view.listPicker!==picker||view.pluginClosed||!pluginEnabled(plugin)||!ready||!tabs.some(([id])=>id===tab))return;
         picker.tab=tab;cx.notify();
       }, ready))))
@@ -702,7 +706,7 @@ function listSection(view, t, plugin, item, loading) {
   const detail = view.pluginFixError[key] ?? item.detail ?? item.about;
   const enabled = !locked;
   return v_flex().w_full().gap(8)
-    .child(scopeRow(t, { id, label: def ? machineName(pluginSetting(plugin, def.key)) : spec.scope?.header === true ? machineName(view.settingsMachine ?? null) : spec.scope?.label ?? 'Machine', dropdown: scope, action: add }))
+    .child(scopeRow(t, { id, label: def ? machineName(pluginSetting(plugin, def.key)) : spec.scope?.header === true ? machineName(view.settingsMachine ?? null) : spec.scope?.label ?? 'Machine', dropdown: scope, action: add, separator: spec.scope?.divider === 'items' ? rows.length > 0 : true }))
     .when(Boolean(detail), el => el.child(description(t, detail)))
     // A row's note (an incomplete webhook) follows its name: one line per item.
     .when(rows.length > 0, el => el.child(v_flex().id(id).w_full().gap(U.rowGap)

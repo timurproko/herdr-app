@@ -130,8 +130,8 @@ export async function localStatus(cx = {}) {
     if (cx.isCurrent?.() === false) return {status: 'missing', detail: 'Settings changed. Check again.', usable: false};
     remember(cx, d);
     const activationBlocked=d.configured && d.activation && d.activation!=='enabled';
-    return {...d, refreshSections: verified, status: d.configured && d.allowedBoards && !d.namesMissing && !activationBlocked ? 'ready' : 'missing', usable: d.configured,
-      statusLabel:!d.configured ? 'Add account' : d.namesMissing ? 'Check names' : !d.allowedBoards ? 'Add boards' : activationBlocked ? d.activation==='disabled'?'Enable on host':'Check activation' : 'Ready',
+    return {...d, refreshSections: verified, status: d.configured && d.account && !activationBlocked ? 'ready' : 'missing', usable: d.configured,
+      statusLabel:!d.configured ? 'Add' : !d.account ? 'Check names' : activationBlocked ? d.activation==='disabled'?'Enable on host':'Check activation' : 'Ready',
       detail:activationBlocked ? `${cx.machine ?? 'This computer'} · ${d.activation==='disabled'?'Trello is disabled':'Activation check failed'}` : null};
   } catch (e) { return {...cached, status: 'error', statusLabel:'Check failed', detail:Object.values(safeErrors).includes(e?.message) ? e.message : 'Setup check failed.', configured:cached?.configured ?? null, problem:e.code ?? 'INTERNAL', usable:cached?.configured === true}; }
 }
@@ -145,7 +145,7 @@ export async function credentialAction(cx, values, item, action) {
 export async function removeAccount(cx, item) { await invoke(cx, 'remove', item.revision); }
 export async function boardCheck(cx) {
   const d = await localStatus(cx), h = hints(cx);
-  return {...d, statusLabel: d.configured ? `${d.allowedBoards} added` : null,
+  return {...d, status: d.status === 'ready' && d.namesMissing ? 'missing' : d.status, statusLabel: d.configured ? `${d.allowedBoards} added` : null,
     rows: (d.boards ?? []).map(id => ({id, label: h.names.get(id) ?? 'Check to load name'})),
     detail: d.status === 'error' ? d.detail : d.configured ? null : 'Add an account first.'};
 }

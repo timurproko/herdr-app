@@ -86,7 +86,7 @@ Select the execution machine in the Settings header and enable **Plugins → Tre
 If Requirements offers Trello runtime **Install/Update**, use that explicit action
 first; it installs no credentials, grants or activation.
 Expand **Requirements**, enter your API key and user token in the protected input
-fields, then press **Save & verify**. The worker checks them with Trello before
+fields, then press **Save** (the button reads **Saving** during submission). The worker checks them with Trello before
 saving. After submission the masked fields clear and disappear; the single saved
 account name is listed with **Remove** on hover, like Crew's project rows. Removing
 asks about the captured machine, clears that account's board/write grants and brings
@@ -94,8 +94,10 @@ the empty inputs back. It does not revoke the token at Trello. To replace the ac
 remove it first, then save the new credentials. Saved secrets never return to the UI.
 
 The **Check** button in the Requirements header verifies the saved account. Ordinary
-opening reads cached names/status only. With an account but no boards, the existing
-status badge says **Add boards**, not missing credentials. The short card description
+opening reads cached names/status only. A saved account appears once by name, with **Ready** at the right and **Remove**
+on hover, without a redundant Account heading. With ready runtime/activation and a
+named account, Requirements says **All ready** even with no boards. The empty
+account state says **Add**; adding board grants belongs only in Boards. The short card description
 links directly to https://trello.com/apps/admin; there is no separate help button.
 
 Expand **Boards → Add boards** to discover visible boards by name. Tick
@@ -111,8 +113,11 @@ private setup. Reopening the card reads those names without contacting Trello.
 Legacy/headless setup without names needs one explicit **Requirements → Check**;
 it verifies the account and hydrates missing allowed-board names. Incomplete results
 never erase unseen grants. Hints are not portable preferences or authorization.
-The requirement becomes Ready only with saved credentials and at least one allowed
-board; local Ready does not claim an unverified token is still valid.
+Account readiness does not depend on board grants or board names. An empty board
+allowlist still denies agent data access; local Ready does not claim an unverified
+token is still valid. The machine scope has no divider while its board list is
+empty. Active/Inactive use the existing lightweight app tab treatment rather than
+the bordered field-choice control.
 
 Under **Settings → Access**, **Read-only / Read-write** is one global choice,
 independent of the header machine. An explicit change applies protected control
