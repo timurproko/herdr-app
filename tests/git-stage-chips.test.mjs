@@ -7,7 +7,7 @@ p.aggregate.stageTarget=()=>({terminal:'worker',task:'task',agent});
 let count=0;
 for(const width of [280,320,360,390,480])for(const zoom of [.75,1,1.25,1.3,1.5,2])for(const mode of ['ordinary','pinned','scrolling','coordinator','ghost'])for(const state of ['OPEN','CLOSED','MERGED']) {
  h.setZoom(zoom);p.view=state==='OPEN'?'open':'closed';let baseline;
- for(const [stage,caption]of [['Rework','🤖 Build'],['🤖 Under review','🤖 Review'],['Approved','🤖 Approved'],[null,null]]) {
+ for(const [stage,caption]of [['Rework','Build 2'],['🤖 Under review','Review'],['Approved','Approved'],[null,null]]) {
   const pr=h.facts.pullRow({number:9,state,title:'A long title '.repeat(30),url:'https://github.com/owner/repo/pull/9',labels:stage?[{name:stage,color:'840479'}]:[],author:{login:'fixture'},statusCheckRollup:[]});
   if(mode==='coordinator')Object.assign(pr,{key:'owner/repo#9',repo:'owner/repo'});
   const prefix=mode==='ghost'?'swap-':'',id=pr.key??9;
@@ -23,10 +23,13 @@ for(const width of [280,320,360,390,480])for(const zoom of [.75,1,1.25,1.3,1.5,2
   assert.equal(block.height,74*zoom);
   if(stage){
    assert.ok(chip);assert.equal(words(chip).join(''),caption);assert.equal(geometry.get(chip).height,18*zoom);
-   const reference=p.labelPill(t,{name:caption,color:'#840479'},'reference');
-   for(const key of ['bg','border_color','text_color','rounded_full','border_1','px'])assert.deepEqual(chip.attrs[key],reference.attrs[key],'Managed control reuses the actual label pill style');
+   assert.equal(chip.attrs.bg[0],t.raised);assert.equal(chip.attrs.px[0],2,'Plain stage is tight around its text');
+   assert.equal(chip.attrs.text_color[0],pr.stage==='approved'?t.ansi2:pr.stage==='review'?t.ansi5:t.ansi3);
+   assert.equal(chip.attrs.border_1,undefined);assert.equal(chip.attrs.border_color,undefined);assert.equal(chip.attrs.rounded_full,undefined);assert.equal(chip.attrs.w,undefined);
+   assert.equal(words(chip).join('').includes('🤖'),false);
    const box=geometry.get(chip);assert.ok(Math.abs(box.x+box.width-(block.x+block.width-3*zoom))<1e-6,'Bottom stage ends on the existing label anchor');
    assert.ok(box.y>=title.y+40*zoom,'Stage is on metadata, not title');
+   assert.ok(Math.abs(title.x+title.width-(block.x+block.width-3*zoom))<1e-6,'Default and narrow titles use the full right content edge');
    assert.equal(chip.attrs.opacity,undefined);
    if(mode==='ghost'){assert.equal(chip.attrs.on_click,undefined);assert.equal(chip.attrs.tab_index,undefined);}
    else {assert.ok(chip.attrs.on_click);assert.equal(chip.attrs.tab_index[0],0);assert.ok(chip.attrs.hover);assert.ok(chip.attrs.focus);}
@@ -40,6 +43,6 @@ let pr=h.facts.pullRow({number:10,title:'Fallback',labels:[]});
 let row=p.pullRow(t,pr);assert.equal(find(row,'pr-agent-slot-10').attrs.w[0],24);assert.ok(find(row,'pr-agent-10'));
 p.context='tasks:home';pr={...pr,key:'owner/repo#10',repo:'owner/repo',stage:'build',labels:[...Array.from({length:5},(_,i)=>({name:'Other '+i,color:'#123456'})),{name:'🤖 Rework',color:'#9a6700'},{name:'Review',color:'#840479'}]};
 row=p.pullRow(t,pr);assert.equal(find(row,'pr-agent-slot-owner/repo#10'),undefined);assert.equal(nodes(row).filter(n=>String(n.attrs?.id?.[0]).startsWith('pr-stage-')).length,1);
-assert.equal(words(find(row,'pr-stage-owner/repo#10')).join(''),'🤖 Build','Stage survives bounded labels and conflicting managed aliases without duplication');
+assert.equal(words(find(row,'pr-stage-owner/repo#10')).join(''),'Build 2','Stage survives bounded labels and conflicting managed aliases without duplication');
 const aliasHover=find(row,'pr-stage-owner/repo#10').attrs.tooltip[0];assert.ok(aliasHover.includes('🤖 Rework')&&aliasHover.includes('Review'),'Every suppressed managed alias remains available in hover');
-console.log(`PASS ${count} bottom-stage geometry cases: canonical emoji, actual label styles, restored title width, unchanged 74px rows, keyboard/pointer/ghost/probe policy and bounded deduplication`);
+console.log(`PASS ${count} bottom-stage geometry cases: plain tight stage styling, dynamic build rounds, restored title width, unchanged 74px rows, keyboard/pointer/ghost/probe policy and bounded deduplication`);

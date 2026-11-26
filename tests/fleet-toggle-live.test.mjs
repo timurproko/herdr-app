@@ -47,6 +47,7 @@ async function mounted({enabled=false,initialMode='success',selected='coordinato
   notify(){assert.fail('No toast');},run(name,args){assertEvent();if(allowOrder&&name==='space.move'){order.push(args);return;}assert.fail('No native mutation');},openOverlay(){assert.fail('No overlay replacement');},closeOverlay(){dialogOpen=false;assert.fail('The dialog must stay open');},
   exec(){assert.fail('No Git probe');},watchFolder(){assert.fail('No watcher');},
   async hc(args){assertEvent();if(args[0]==='machine')return {code:0,stdout:'{"machines":[]}'};
+   if(args.at(-1).includes('--capabilities --json'))return {code:0,stdout:JSON.stringify({code:1,stdout:'',stderr:''})};
    assert.match(args.at(-1),/status '--all' '--json'/);
    assert.ok(!args.at(-1).includes("'--discover-prs'"),'Verification never performs GitHub discovery');
    const machine=args.includes('--on')?args[args.indexOf('--on')+1]:null;
@@ -65,7 +66,7 @@ async function mounted({enabled=false,initialMode='success',selected='coordinato
  const common={
   'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{}},
   'gpui-base':{v_flex:element,h_flex:element,Input:{},Popover:{},Popup:{},ScrollHandle:{new:()=>({})}},
-  'ui.js':'src/ui/ui.js','reorder.js':'src/ui/reorder.js',
+  'ui.js':'src/ui/ui.js','settings-kit.js':'src/ui/settings-kit.js','reorder.js':'src/ui/reorder.js',
   'space-color-state.js':'src/shared/space-color-state.js','space-preferences.js':'src/shared/space-preferences.js',
   'workspace-links.js':'src/shared/workspace-links.js','space-title.js':'src/ui/space-title.js',
   'directory.js':{displaySpace:s=>s,spaceDirectory:()=>({cwd:null})},

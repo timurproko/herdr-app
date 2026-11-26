@@ -288,13 +288,13 @@ Git SHALL share natural-width metadata across all row variants, without Owner ba
 - **AND** clipping stays within the fixed-height line with no overlap or lone ellipsis; full task progress, labels and review values remain available in tooltips
 
 ### Requirement: GitHub label presentation
-Assigned labels SHALL use fully rounded 18px pills derived from GitHub colours, preserving exact names and emoji except that managed aliases collapse into one canonical emoji stage pill. Dark palettes SHALL use GitHub's 18% tint, readable coloured text and 30% text-colour border; light palettes SHALL use solid fill and contrasting text. Pills SHALL remain bounded in one ordered right-aligned group with informative full-value hover and no extra row height.
+Unmanaged assigned labels SHALL use fully rounded 18px pills derived from GitHub colours, preserving exact names and emoji. Managed aliases SHALL instead collapse into one plain stage chip on the same bottom-right line, with stage-coloured palette text, subtle raised fill, 2px horizontal padding and no emoji or outline. Dark palettes SHALL use GitHub's 18% tint, readable coloured text and 30% text-colour border; light palettes SHALL use solid fill and contrasting text. Pills SHALL remain bounded in one ordered right-aligned group with informative full-value hover and no extra row height.
 
 #### Scenario: Under review label
 - **WHEN** a PR has the label named `🤖 Under review` with GitHub colour `840479`
-- **THEN** the row displays one `🤖 Review` pill derived from that colour at the bottom-right content edge, with no separator dot before the label group
+- **THEN** the row displays one plain `Review` chip at the bottom-right content edge, without an emoji, outline or separator dot before the group
 - **AND** the assigned alias remains available in informative hover and no duplicate title-line stage appears
-- **AND** on a dark palette it uses a translucent purple tint, lightened purple text and a thin translucent purple border rather than a solid purple block
+- **AND** it uses the stage's palette purple text and existing subtle raised fill with tight 2px side padding rather than a GitHub-colour pill
 
 #### Scenario: Several labels in a narrow panel
 - **WHEN** assigned labels do not all fit beside the preceding metadata
@@ -1024,6 +1024,7 @@ Caught Git row failures SHALL log the actual error and failing component and sho
 - **WHEN** a native read Task is definitively done but its root or page busy latch remains set because cleanup was interrupted
 - **THEN** the next existing lifecycle/render releases that obsolete latch and permits one guarded replacement read
 - **AND** a repeated interruption shows a truthful retry message with accessible manual Refresh even before root resolution, rather than looping
+- **AND** rev-parse alone does not clear the root retry budget: complete branch resolution must succeed, and manual root authorization is consumed once independently of retained or expired GitHub rate credit
 - **AND** only all-obsolete shared read leases/tails may be retired; healthy consumers, cached facts, rate cooldowns and stale-reply ordering remain intact
 
 ### Requirement: Bounded coordinator render work
@@ -1480,12 +1481,17 @@ A combined fleet SHALL accept legacy and supported placement-v1 workers in the s
 - **THEN** the fleet relationship and coordinator task-PR scope remain unchanged
 - **AND** renaming does not substitute for any missing identity proof
 
+#### Scenario: Page failure belongs to one tab
+- **WHEN** Open fails with an actionable page error while Closed has never loaded, or vice versa
+- **THEN** the unread sibling remains due and can fetch its own page without manual Refresh
+- **AND** switching tabs restores only that tab's failure while repeated orphan suppression remains bounded
+
 ### Requirement: Three managed pull request stages
-Git SHALL derive Build, Review or Approved from assigned managed label names and their previous names using existing reads. A managed stage SHALL appear exactly once as the bottom-right emoji label pill, using the existing GitHub label shape and colour treatment, with no title-line stage or robot. Stage SHALL remain independent of CI and GitHub's review decision. Rows without managed labels SHALL retain only a live linked robot fallback.
+Git SHALL derive Build, Review or Approved from assigned managed label names and their previous names using existing reads. A managed stage SHALL appear exactly once as a tight plain-text chip on the bottom-right checks line, using existing stage-coloured text and subtle raised fill, without emoji, outline, title-line stage or reserved title width. Stage SHALL remain independent of CI and GitHub's review decision. Rows without managed labels SHALL retain only a live linked robot fallback.
 
 #### Scenario: Current and historical label names
 - **WHEN** an ordinary or coordinator PR has a managed Build, Review or Approved label, with or without the managed robot prefix
-- **THEN** its single bottom-right stage pill shows the robot emoji and canonical Build, Review or Approved name
+- **THEN** its single bottom-right plain chip shows Build, Review or Approved, with the supplied next build round when present, and no robot emoji
 - **AND** Rework and Changes needed map to Build, and Under review maps to Review, including their robot-prefixed previous names
 - **AND** unrelated label names remain unchanged and raw assigned managed names remain available as additional hover information without duplicate visible stage pills
 
@@ -1507,7 +1513,7 @@ Git SHALL derive Build, Review or Approved from assigned managed label names and
 
 #### Scenario: Multiple labels and unavailable agents
 - **WHEN** several managed aliases coexist or the chosen stage has no live connected role target
-- **THEN** the existing deterministic precedence produces one bottom-right managed-stage pill without a separate robot or top chip
+- **THEN** the existing deterministic precedence produces one bottom-right plain stage chip without a separate robot or top chip
 - **AND** the stage remains represented in the bounded coordinator label group even when unrelated labels precede it
 - **AND** unavailable Build or Review retains its dimmed explanatory tooltip and cannot focus an agent or fall through to opening the PR
 
@@ -1540,12 +1546,12 @@ Build SHALL target ship or fix terminals by a validated full crew.pr identity or
 - **AND** Build and Review focus actions do not also activate that row action
 
 ### Requirement: Optional build review history
-Git SHALL read optional crew.round, crew.finding and crew.approved from matched terminal labels without inventing history or deriving stage from approval metadata. Visible stage names SHALL remain Build, Review or Approved. After completed review round n, informative hover SHALL expose the next build round and any supplied finding as back from review n: finding. Missing or invalid metadata SHALL add no invented round or finding.
+Git SHALL read optional crew.round, crew.finding and crew.approved from matched terminal labels without inventing history or deriving stage from approval metadata. Visible stage names SHALL be Build, Review or Approved, with Build n+1 when completed review round n is supplied. Informative hover SHALL expose any supplied finding as back from review n: finding. Missing or invalid metadata SHALL add no invented round or finding.
 
 #### Scenario: First return from review
 - **WHEN** the Build terminal reports completed review round 1 and a finding
-- **THEN** its chip still reads `🤖 Build` and its tooltip identifies build round 2 and includes back from review 1: followed by that finding
-- **AND** later completed rounds advance the hover's build number by one without adding another visible stage
+- **THEN** its plain chip reads `Build 2` and its tooltip includes back from review 1: followed by that finding
+- **AND** later completed rounds advance the same chip's build number without adding another visible stage
 
 #### Scenario: Older Crew has no review metadata
 - **WHEN** terminal labels omit round, finding and approval metadata
@@ -1682,11 +1688,11 @@ Reusable Git presentation SHALL be bounded runtime-only data qualified by machin
 - **AND** hidden snapshots do no reads and contain no native handles, callback trees, credentials or portable or restart-persisted PR inventory
 
 ### Requirement: Space entry preserves order without pin motion
-Entering an agent space SHALL restore its cached repository section immediately and place the selected agent's matching PR directly below its own repository header, without entry-driven motion. Remaining rows and coordinator returns SHALL retain their relative order. Panel-origin stage and fallback robot clicks SHALL retain the existing guarded animation and selection acknowledgement, ending below the destination repository header.
+The currently selected agent's resolved matching PR SHALL pin above its repository section for tab, sidebar, keyboard or label selection. Direct selection SHALL not animate; panel-origin stage and fallback robot clicks SHALL retain existing guarded animation and acknowledgement, ending at the top inset. The pin SHALL remain visible while its section is collapsed. The header SHALL count only remaining rows beneath it and SHALL be omitted when the pin is the only row; Open/Closed totals SHALL still include the pin. Remaining rows and coordinator returns SHALL retain relative order.
 
 #### Scenario: Direct agent-space entry
 - **WHEN** the user enters an agent space directly and its PR or branch matches a row in the cached section
-- **THEN** the section header retains its count and chevron, followed by the selected PR as its first row and then the remaining rows in their relative order
+- **THEN** the selected PR pins first, followed by a section header only if other rows remain; that header counts only those remaining rows
 - **AND** entry starts no pin animation, including for a selected Draft PR
 
 #### Scenario: Return to coordinator
@@ -1696,14 +1702,23 @@ Entering an agent space SHALL restore its cached repository section immediately 
 
 #### Scenario: Existing chip and robot navigation
 - **WHEN** the user clicks another agent PR's live stage label or fallback robot inside the panel
-- **THEN** the existing click-origin navigation and move-to-top animation retain confirmation and cancellation rules and settle inside the destination section directly below its header
+- **THEN** existing click-origin navigation and move-to-top animation retain confirmation and cancellation rules and settle above the destination repository header
 - **AND** native selection acknowledgement neither starts a second animation nor cancels the first because cached entry ran
 - **AND** Approved opens the PR and unavailable targets retain their refusals
 
 #### Scenario: Empty or unverified coordinator seed
 - **WHEN** the destination worker has no seed, a zero-count empty seed or an unverified coordinator source
 - **THEN** it independently resolves its repository and requests its own selected page rather than treating seed counts as complete data
-- **AND** successful reads clear Loading and a selected matching Draft PR appears directly below its section header
+- **AND** successful reads clear Loading and the selected matching Draft PR pins above its section, without an empty header if it is alone
+
+#### Scenario: Collapsed section and remaining counts
+- **WHEN** one of four repository PRs is selected and its section is expanded or collapsed
+- **THEN** the pin stays visible above the header, its header count is 3 and the tab total is 4
+- **AND** unpinning restores header count 4, while a lone pin has no empty section header
+
+#### Scenario: Agent selection changes without a chip click
+- **WHEN** tab, sidebar or keyboard selection changes between two agents or to a terminal with no PR
+- **THEN** the pin follows the resolved selected-agent PR or clears for a resolved no-PR target, without entry animation or clickPin authority
 
 ### Requirement: Repository identity belongs to the Git section header
 The main Git header SHALL show only its Git title/chevron, tools and existing refresh/status feedback, not a duplicate repository name or repository popup. Canonical repository identity, counts and folding SHALL remain in the section header. Code, Pull requests and Actions page shortcuts SHALL be removed, not relocated. Existing PR Open and Copy path menus SHALL remain unchanged.
@@ -1733,3 +1748,79 @@ Git MAY reuse native identity collections and verified/presentation provider con
 - **WHEN** several Git rows render against the same native collections and provider context
 - **THEN** presentation reuses those frame-local facts without per-row transport or repeated native collection reads
 - **AND** a subsequent click resolves current role, PR, membership and native identity again, refusing a stale or changed target
+
+### Requirement: One worker-space intent reconciles all known homes
+One Herdr intent SHALL cover every authoritative known local and connected-machine Crew home, including several homes on one machine. Capable reachable homes SHALL receive the current mode through existing Crew machine execution. New homes and returning offline machines SHALL receive the latest intent without another switch change. Home observations SHALL NOT overwrite intent.
+
+#### Scenario: On and off apply globally
+- **WHEN** the switch changes on or off with several known homes on local and remote machines
+- **THEN** each capable reachable home is reconciled to per-project or combined respectively, independent of current selection
+- **AND** equal local home paths on different machines remain distinct targets
+- **AND** combined is the default when the preference is absent
+
+#### Scenario: Machine returns after missing several changes
+- **WHEN** a known machine is offline while intent changes and then becomes reachable
+- **THEN** its homes remain pending during the outage and receive only the latest intent when eligible
+- **AND** already-applied homes do not conceal the pending machine
+
+#### Scenario: Later home and restart
+- **WHEN** an authoritative new home appears or Herdr restarts with saved intent
+- **THEN** reachable homes are checked and reconciled without requiring another toggle
+- **AND** a later home on an already-known machine is not mistaken for that machine's earlier home
+- **AND** remembered observations never count as current confirmation after restart
+
+#### Scenario: Bounded private target catalog
+- **WHEN** a home temporarily becomes unreachable or target capacity is exhausted
+- **THEN** known unresolved homes are not silently forgotten and capacity is reported as incomplete coverage
+- **AND** the app neither scans arbitrary directories nor exports home identities, errors or pending state as preferences
+
+### Requirement: Worker-space writes require Crew local-set capability
+Before writing, Herdr SHALL require exit-zero capability JSON advertising worker-space-local-set version 1, both modes and explicitHome true. Writes SHALL use only crew config worker-space --set-local combined|per-project --home with an absolute target and --json. Success SHALL require a valid matching target/mode result. Missing support, refusals and uncertain results SHALL NOT authorize success or ownership workarounds.
+
+#### Scenario: Strict installed capability probe
+- **WHEN** installed Crew receives crew config worker-space --capabilities --json
+- **THEN** only the exact supported capability schema enables the desktop setter
+- **AND** missing capability, an unsupported version, text output, ignored flags or malformed JSON leaves writes unavailable
+- **AND** timeout or transport failure remains unavailable rather than proof of unsupported Crew
+
+#### Scenario: Read and write confinement
+- **WHEN** a known home's observed mode differs from intent
+- **THEN** the read uses crew config worker-space in that explicitly scoped home and the setter receives that home's absolute path
+- **AND** the app validates capability, version, ok, canonical home, effective mode and changed in the JSON response against the captured request
+- **AND** it does not use the legacy positional owner-only setter, direct crew.json edits, terminal-identity impersonation, crew start/end or lock manipulation
+
+#### Scenario: Refused result
+- **WHEN** a setter returns a documented refusal with exit 2, 3, 4 or 70, or an invalid success response
+- **THEN** its home remains unresolved with a stable sanitized reason and no fabricated mode change
+- **AND** other successful homes and global intent are preserved
+- **AND** no refusal is bypassed by initialization, repair, elevation or coordinator control
+
+#### Scenario: Existing work is untouched
+- **WHEN** Crew accepts either worker-space mode
+- **THEN** only future independent task admissions use the current choice
+- **AND** running agents stay in place while reviews and replacements retain source placement
+- **AND** Herdr does not move, restart, relabel, create or delete terminals, spaces, tabs or panes to apply the choice
+
+### Requirement: Worker-space reconciliation is bounded and truthful
+Enabled policy work SHALL run outside rendering on the existing recurring lifecycle with bounded transport, shared single-flight ownership and per-home write serialization. Changed intent SHALL supersede queued work and stale replies SHALL NOT confirm newer intent. Failures SHALL retain truthful machine status and retry when eligible. Closing Settings SHALL NOT abandon the policy; disabling Crew SHALL stop new work.
+
+#### Scenario: Intent changes during application
+- **WHEN** a setter is in flight while intent changes again
+- **THEN** the old result cannot mark the new intent applied and no overlapping setter targets that home
+- **AND** after settlement the current intent is reconsidered, not an earlier queued value
+
+#### Scenario: Timeout then recovery
+- **WHEN** a write outcome is unknown, a home refuses, or a machine disconnects
+- **THEN** no optimistic confirmation is published and current intent remains pending, refused or failed for that machine
+- **AND** an uncertain outcome requires a fresh read before another write
+- **AND** existing lifecycle reachability checks and bounded retry reconsider the current intent without a new transport or busy loop
+
+#### Scenario: Multiple mounted copies and disablement
+- **WHEN** several views need the same home or Crew is disabled during a request
+- **THEN** healthy requests coalesce and disabled or superseded continuations start no follow-up work
+- **AND** an expired owner cannot publish over its successor or turn an abandoned request into confirmed success
+
+#### Scenario: Fake-only setting verification
+- **WHEN** on, off, missing capability, one refused home, offline return, later home and restart persistence are exercised
+- **THEN** Crew commands, homes and responses are fake and isolated from the person's configuration and coordinators
+- **AND** both intent and machine-scoped application status are asserted rather than inferring success from a switch change

@@ -1,6 +1,6 @@
 // Empty/unverified coordinator memory must never substitute for a worker read.
 import assert from 'node:assert/strict';
-import {rowHarness,rowGeometry,find,t} from './support/git-row.mjs';
+import {rowHarness,rowGeometry,find,words,t} from './support/git-row.mjs';
 const tick=async()=>{for(let i=0;i<100;i++)await Promise.resolve();};
 for(const seed of ['none','empty','unverified'])for(const orphan of [false,'root','page']) {
  const calls=[],tasks=[];
@@ -31,8 +31,11 @@ for(const seed of ['none','empty','unverified'])for(const orphan of [false,'root
  }
  page.resolve({code:0,stdout:JSON.stringify({data:{repository:{open:{totalCount:1},closed:{totalCount:0},pullRequests:{nodes:[{number:94,title:'Draft visual correction',state:'OPEN',isDraft:true,headRefName:'fix/visual',url:'https://github.com/owner/repo/pull/94',labels:[],commits:{nodes:[]}}],pageInfo:{endCursor:null,hasNextPage:false}}}}})});await tick();
  const tree=h.render(()=>p.renderPanel(h.cx));assert.equal(p.pullLoading,false);assert.equal(p.loading,false);assert.equal(p.pulls.open[0].state,'draft');assert.equal(p.counts.open,1);assert.equal(find(tree,'git-empty'),undefined);
- const pin=find(tree,'active-pull'),header=find(tree,'task-repo-header-owner/repo');assert.ok(pin);assert.ok(find(pin,'pr-94'),'Selected draft pins inside its repository section');
- const geometry=rowGeometry(tree,320,1,500);assert.ok(geometry.get(header).y+geometry.get(header).height<=geometry.get(pin).y);assert.equal(p.pinMotion.current,null,'Entry pins without click-only motion');
+ const pin=find(tree,'active-pull'),header=find(tree,'task-repo-header-owner/repo');assert.ok(pin);assert.ok(find(pin,'pr-94'),'Selected draft pins above its repository section');
+ assert.equal(header,undefined,'A lone pinned PR has no empty repository header');
+ p.pulls.open.push(h.facts.pullRow({number:95,title:'Other',state:'OPEN'}));
+ let section=p.renderPulls(t),geometry=rowGeometry(section,320,1,500);assert.ok(geometry.get(find(section,'active-pull')).y<geometry.get(find(section,'task-repo-header-owner/repo')).y,'Pin precedes the section header');
+ p.foldedRepositories.add('owner/repo');section=p.renderPulls(t);assert.ok(find(find(section,'active-pull'),'pr-94'),'Collapsed section never hides its selected pin');assert.equal(find(section,'pr-95'),undefined);assert.ok(find(section,'task-repo-header-owner/repo')); assert.equal(p.pinMotion.current,null,'Entry pins without click-only motion');
  assert.equal(calls.length,0);
 }
 // Repeated orphaning stops automatic demand, but Refresh remains reachable even
@@ -47,4 +50,40 @@ for(const seed of ['none','empty','unverified'])for(const orphan of [false,'root
  p.resetRepository();assert.equal(p.orphanReadRetries.size,0,'A new repository context has its own retry budget');
  p.orphanReadRetries.add('page');p.pullLoading=true;p.pullRequest={task:{is_done:()=>true}};p.recoverReadTasks();assert.match(p.pullError,/interrupted; refresh to retry/);assert.equal(p.pullsDue('open'),false,'Repeated abandoned pages do not auto-read');
 }
-console.log('PASS cold worker independent reads with absent/empty/unverified seeds, abandoned root/page tasks, bounded repeated failure with accessible manual retry, stale replies and selected Draft below its header');
+// A root task includes branch resolution: rev-parse alone must not reset its
+// retry budget, including when repository reset occurs inside that same task.
+for(const entryRefreshing of [false,true]) {
+ const calls=[],h=await rowHarness({host:{exec:(cmd,args)=>new Promise(resolve=>calls.push({cmd,args,resolve}))}}),p=h.panel;
+ h.cx.spawn=fn=>{const task={done:false,is_done(){return this.done;}};Promise.resolve().then(()=>fn(h.cx)).finally(()=>task.done=true);return task;};h.cx.timer={after(){return {cancel(){}};}};
+ p.syncAggregate=()=>false;p.syncAgent=()=>{};p.syncWebhooks=()=>{};p.syncChecksFallback=()=>{};p.loadPulls=()=>{};p.loadRelatedPull=()=>{};p.agentLinks={refresh(){}};p.notices={sync(){},retryNow(){}};p.enrollmentPicker={stop(){}};p.root=null;p.repo=null;p.loading=false;p.entryRefreshing=entryRefreshing;
+ p.refresh(h.cx);await tick();
+ for(let attempt=0;attempt<2;attempt++){
+  const top=calls.shift();assert.equal(top.args[0],'rev-parse');if(attempt)p.entryRefreshing=false;top.resolve({code:0,stdout:'/root-'+attempt});await tick();assert.equal(calls.shift().args[0],'symbolic-ref');
+  p.rootRequest.task.done=true;p.refresh(h.cx);await tick();
+ }
+ assert.match(p.error,/interrupted; refresh to retry/);assert.equal(calls.length,0,'Two abandoned branch reads exhaust automatic root recovery');
+ for(const credit of [{remaining:1,expires:Date.now()-1},{remaining:1,expires:Date.now()+30000}]){p.manualRead=credit;p.refresh(h.cx);await tick();assert.equal(calls.length,0,'Rate credits are not root retry authorization');}
+ p.headerHovered=true;find(p.renderPanel(h.cx),'git-refresh').attrs.on_click[0]({},h.cx);await tick();assert.equal(calls.shift().args[0],'rev-parse');assert.equal(p.rootRetryAuthorized,false,'Explicit Refresh consumes one root authorization');
+ p.rootRequest.task.done=true;p.refresh(h.cx);await tick();assert.equal(calls.length,0,'Abandoning the manual attempt cannot start another automatic attempt');assert.match(p.error,/interrupted/);
+ for(let i=0;i<4;i++){p.refresh(h.cx);await tick();assert.equal(calls.length,0,'Retained manual rate credit cannot loop root retries');}
+}
+// Tab-local page errors must not suppress the other tab's first read.
+for(const failed of ['open','closed']) {
+ const calls=[],h=await rowHarness({host:{exec:async(cmd,args)=>{calls.push({cmd,args});return {code:1,stderr:'HTTP 503 Service Unavailable'};}}}),p=h.panel;
+ p.view=failed;p.loadPulls(failed,h.cx);await tick();assert.ok(p.pullError);assert.equal(p.pullsDue(failed),false);
+ const other=failed==='open'?'closed':'open';p.setView(other,h.cx);assert.equal(p.pullError,null);assert.equal(p.pullsDue(other),true,'A failed sibling tab does not suppress this tab');
+ const before=calls.length;p.loadPulls(other,h.cx);await tick();assert.ok(calls.length>before);assert.ok(p.pullError);p.setView(failed,h.cx);assert.equal(p.pullsDue(failed),false,'Both tabs retain their own failures');
+}
+// Tab, sidebar and keyboard selection all resolve the same selected-agent pin.
+{
+ const h=await rowHarness(),p=h.panel;p.sectionEntry=true;p.branch=null;p.agentLinks={pullNumber:terminal=>({first:94,second:95}[terminal]??null)};
+ p.pulls.open=[94,95,96,97].map(number=>h.facts.pullRow({number,title:'Selected '+number,state:'OPEN',headRefName:'head-'+number}));p.counts={open:4,closed:0};p.branch='head-94';
+ for(const [via,terminal,number]of [['tab','first',94],['sidebar','second',95],['keyboard','first',94],['tab','no-pr',null]]){
+  Object.assign(h.place,{terminal,app:number?'codex':'bash',tab:'tab-'+terminal,pullNumber:number??94});p.syncAgent(h.cx);const tree=p.renderPulls(t);const pin=find(tree,'active-pull');
+  assert.equal(Boolean(pin),number!==null,`${via}: pin follows the resolved selected agent`);if(number)assert.ok(find(pin,'pr-'+number));assert.equal(p.pinMotion.current,null,'Direct selection never starts label-click motion');
+  assert.equal(words(find(tree,'task-repo-count-owner/repo')).join(''),number?'3':'4','Header counts only its unpinned rows');
+  assert.ok(words(p.segment(t,'git-view-open','Open',p.counts.open,true,()=>{})).join('').includes('4'),'Open badge retains the full total');
+  if(number){p.foldedRepositories.add('owner/repo');const folded=p.renderPulls(t);assert.ok(find(folded,'active-pull'));assert.equal(words(find(folded,'task-repo-count-owner/repo')).join(''),'3');p.foldedRepositories.clear();}
+ }
+}
+console.log('PASS independent worker reads, bounded branch/manual root recovery, tab-local errors, selection-owned pins above sections, lone-pin header suppression and collapse survival');

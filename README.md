@@ -398,7 +398,7 @@ activity indicates background refresh in either direction; replacement updates i
 place, without clearing loaded rows or showing body Loading. Unknown directories
 must establish canonical identity before borrowing a cache; genuinely uncached
 repositories use ordinary Loading. Direct worker entry places its matching PR,
-including Draft, below its repository header without entry-driven animation.
+including Draft, above its repository header without entry-driven animation.
 Other rows retain their relative order; coordinator returns have no permanent pin. Cache memory is bounded and session-only; another
 machine/repository and disable/re-enable generations cannot borrow it.
 Git shows only **Open** and **Closed** pull requests. Both load **10 PRs initially**
@@ -410,7 +410,7 @@ failed pages preserve existing rows, and the end of the list stops fetching.
 Expanded lists are retained across webhook refreshes; manual Refresh or a
 machine/folder change starts again at 10. Same-folder agent/tab/space switches
 retain repository metadata, counts, rows, pagination and in-flight GitHub requests;
-entry restores that section with the selected agent's matching PR first below its header.
+entry restores that section with the selected agent's matching PR pinned above its header.
 When only a coordinator task subset is cached, its known Open/Closed values stay
 visible with incomplete-count metadata until full repository totals arrive; task
 counts are never asserted to be whole-repository totals. Existing click-origin
@@ -458,7 +458,7 @@ font unchanged. Titles always retain their full-title tooltip, including fitting
 titles, without width measurement or a resize gate. Every PR block uses the
 same three fixed lines: a 20px title, an
 18px number/author/time line and an 18px metadata line, for a 74px block including
-spacing. Managed stages occupy their existing bottom-right label pill, not title space.
+spacing. Managed stages use one tight plain-text chip on the bottom-right checks line, not title space.
 Only a live unlabelled agent reserves a 24px title-line robot target; absent agents
 reserve nothing. Label pills, live robot targets and repository headers'
 24px chevron slots retain their 3 logical pixel inset inside each row's highlight.
@@ -502,7 +502,7 @@ Late facts may move left-run neighbors, but never the pill group's right anchor,
 three line positions, 74px block height or title/robot reservation. Native post-layout measurements of
 clipped invisible probes choose shortening; there is no guessed character budget,
 percentage allocation, render-time notification or extra visible line.
-Labels keep their exact GitHub names (including emoji) in fully rounded 18px pills.
+Unmanaged labels keep their exact GitHub names (including emoji) in fully rounded 18px pills; managed labels use the single plain stage chip described below.
 Dark palettes use GitHub's 18% colour tint, lightness-adjusted coloured text and thin
 30% text-colour border rather than solid blocks. Light palettes use solid label
 colours with contrasting black/white text and GitHub's near-white border rule.
@@ -524,9 +524,12 @@ navigation pins its PR above the scrollable rows with a
 divider underneath and a 2px theme-accent rail on the left, even when it is the only
 PR. The rail overlays the outer gutter without shifting content or the hover
 area. It is not duplicated below and has no special background; all PRs use the
-normal neutral hover. The repository header stays above the selected row, never
-below it. Direct worker entry also selects its matching PR without motion; other
-rows keep their order. Empty, zero-count or unverified coordinator seeds never
+normal neutral hover. The selected row stays above the repository section and
+remains visible when that section is collapsed. Its header counts only the other
+rows beneath it and disappears when there are none; tab totals still count every PR.
+Tab, sidebar and keyboard selection pin the resolved agent PR without motion;
+only label/robot clicks animate. Switching agents follows the selected PR and a
+resolved no-PR terminal clears the pin. Other rows keep their relative order. Empty, zero-count or unverified coordinator seeds never
 replace the worker's own canonical repository and page reads.
 For A1 and Claude Code, the panel
 reads the selected terminal's current footer PR badge through the read-only `hc read`
@@ -630,8 +633,10 @@ PR icon with a **red outlined circle and X**, using the same stroke style as PR 
 Unknown mergeability and failing/blocked checks are not conflicts. Closed/merged
 PRs keep their usual icons. Push events also refresh facts after base-branch changes.
 
-Managed review labels supply exactly one bottom-right emoji pill: **🤖 Build**,
-**🤖 Review** or **🤖 Approved**, independently of CI and GitHub's separate review decision. The
+Managed review labels supply one tight bottom-right plain chip: **Build**,
+**Review** or **Approved**, independently of CI and GitHub's separate review decision.
+It uses stage-coloured text on the existing subtle raised background, 2px side
+padding, no emoji or outline, and leaves the entire title content width free. The
 compatibility snapshot follows MyWorkflows `labels/base.json`: stable role
 `review-changes-needed` accepts Build and previous names Rework / Changes needed;
 `under-review` accepts Review / Under review; `review-approved` accepts Approved.
@@ -647,11 +652,12 @@ not the reviewer's base branch, footer or tab name. Coordinator actions addition
 require that exact terminal/task to remain in the freshly verified same-home
 membership; a review task need not have its own recorded PR. Ended, unavailable
 or disconnected targets grant no focus; a disconnected target identifies its
-machine. Optional `crew.round` and `crew.finding` enrich hover only; visible stage
-names remain Build, Review or Approved. Missing metadata invents no round or finding. `crew.approved` is read as metadata, never a fourth stage or
+machine. Optional `crew.round` advances the Build caption (completed round 1
+shows **Build 2**); `crew.finding` remains informative hover. Missing metadata
+invents no round or finding. `crew.approved` is read as metadata, never a fourth stage or
 permission to infer Approved from CI.
 
-The bottom-right **🤖 Build** pill focuses the build terminal; **🤖 Review** focuses the
+The bottom-right **Build** chip focuses the build terminal; **Review** focuses the
 reviewer. **Approved** has no agent action: clicking it opens the PR through the
 row, even while checks are pending or failed. There is no approved/CI-running
 stage or Review check CI chip. Build/Review chips dim when their exact target
@@ -660,7 +666,7 @@ clicking a dimmed chip does nothing. Coordinator rows retain their last verified
 same-home target only for explanations after membership becomes stale or a task
 finishes. That bounded runtime memory cannot focus an agent, start reads, cross
 homes or restore authority on reconnect; fresh live membership is required.
-The pills keep their assigned GitHub colour and existing rounded label styling;
+The stage chips use the existing amber, purple and green palette text and subtle raised fill;
 there is no duplicate title chip or 80px reservation.
 Motion previews never navigate. The no-label robot retains its original 24px hit
 target and immediate pin-navigation behavior.
@@ -827,6 +833,19 @@ Known non-repositories omit them, and known linked checkouts also show **Remove
 worktree**. Rows and popup height never change during an open menu; reopening picks
 up newer metadata. Worktree dialogs keep the clicked folder rather than a later
 selected terminal's folder.
+
+**Settings → Spaces → Separate space per project**, contributed by enabled Crew,
+stores one global preference: off/default combines Crew workers; on gives each
+project its own space for new work. It is independent of fleet attachment and the
+selected machine. Running agents stay where they are; reviews and replacements
+inherit their original placement. The switch displays saved intent, not a single
+home's observed mode. Machine-named status identifies incomplete application;
+unsupported Crew leaves the switch disabled rather than guessing support. Every
+known local or connected-machine home is reconciled through Crew's explicit-home
+setter after its installed v1 capability probe succeeds. New homes and returning
+machines receive current intent without another click. Home paths, observations
+and retry facts stay host-local, not in portable preferences. No Crew installation,
+coordinator control or new transport is involved; see [scope and contract](docs/FLEET-STATUS.md#global-worker-space-choice).
 
 **Settings → Spaces → Connect fleet space to coordinator** is off by default
 (`connectFleetToCoordinator`). Changes apply while Settings stays open: enabling

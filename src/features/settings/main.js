@@ -230,7 +230,7 @@ export default class Settings extends View {
 
   // Keep separators before another section, note or action footer. Only the
   // final content row omits its trailing rule (not simply the last in a group).
-  row(t, title, about, control, endOfContent = false) {
+  row(t, title, about, control, endOfContent = false, detail = null) {
     return sectionRow(t,h_flex(),{last:endOfContent})
       .id(`st-row-${title}`)
       .gap(16)
@@ -241,7 +241,8 @@ export default class Settings extends View {
           .min_w(0)
           .gap(U.descriptionGap)
           .child(div().text_size(U.font).text_color(t.foreground).child(title))
-          .when(Boolean(about), (el) => el.child(description(t, about))),
+          .when(Boolean(about), (el) => el.child(description(t, about)))
+          .when(Boolean(detail), el => el.child(detail)),
       )
       .child(div().flex_none().child(control));
   }

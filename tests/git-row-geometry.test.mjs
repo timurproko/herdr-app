@@ -119,6 +119,7 @@ for(const mode of ['ordinary','pinned','scrolling','coordinator','ghost'])for(co
     snapshot.row=plain(box);snapshot.next=plain(geometry.get(find(tree,`${prefix}pr-${pr.key?'owner/repo#18':18}`)));
     near(box.height,74*zoom,'Block height');near(snapshot['title-line'].height,20*zoom,'Title height');near(snapshot.byline.height,18*zoom,'Byline height');near(snapshot.meta.height,18*zoom,'Metadata height');
     near(snapshot.title.x,(box.x/zoom+32)*zoom,'Title left reservation');near(snapshot.title.width,(box.width/zoom-35-(agent&&!pr.stage?28:0))*zoom,'Only a live fallback robot reserves title width');
+    near(snapshot.title.x+snapshot.title.width,box.x+box.width-3*zoom-(agent&&!pr.stage?28*zoom:0),'Default/narrow title ends only at the row content edge or live fallback robot');
     const labelStrip=find(row,`${prefix}pr-labels-${id}`);
     if(labelStrip) {
       const pill=geometry.get(labelStrip.kids.at(-1));

@@ -39,6 +39,34 @@ can satisfy GitHub protection, so metadata events must not publish a replacement
 aggregate; the latest non-cancelled ready run must still pass all dependencies.
 These live observations are separate from the local regression matrix.
 
+`node tests/deploy-all-cleanup.test.mjs` holds a disposable subprocess cwd while
+requesting complete fixture removal. This reproduces Windows' transient `EPERM`
+without native apps or real deployment. Shared deploy-all cleanup uses five bounded
+100ms-increment retries and still throws on permanent removal failure; the test
+asserts the directory is actually gone. `tests/deploy-all-pipeline.test.mjs` retains
+all real disposable CLI/npm pipeline assertions. Crew's declaration regression
+explicitly checks the hidden default-off global intent and unchanged visible card
+controls; the Start-page fixture separately supplies the Settings badge/contribution
+imports while keeping all independent last-tab and launch assertions.
+
+## PR 94 combined CI and review correction
+
+Ubuntu job `140094468448` on `d253573` failed three fixture contracts: missing
+`stageLabels` in the context-menu mock, refresh tests awaiting a render-guard job
+instead of root/page IO (and using timestamps instead of loaded pages), and missing
+shared rename tokens in source-evaluated Spaces. The native selection checker had
+an independent facade-wrapper cycle; its copied base now has a distinct filename.
+Worker regressions cover abandoned branch resolution/internal reset, one-shot
+manual root permission independent of rate credit, symmetric tab errors and
+selected-agent pin ownership. Pins now sit above sections, survive collapse,
+omit lone headers and exclude themselves from section counts, not tab totals.
+Stage tests now require tight plain text, visible supplied Build rounds, identical
+probe captions and full title width at normal/narrow sizes. These amendments are
+recorded in `spaces-sidebar-crew-label-fix-round`; the prior archive stays intact.
+No local test files or native probes were rerun in this round, as instructed;
+CI and delta review must validate the final push. Earlier screenshots describe
+checkpoint presentation, not this later style/placement decision.
+
 ## Connected project Spaces and coherent coordinator inventory
 
 `spaces-worktree-layout.test.mjs` covers the fixed metadata grid: Crew and child
@@ -113,7 +141,7 @@ borrowing a filled Crew pill that Spaces no longer renders. Git geometry is unch
 `git-worker-cold-entry.test.mjs` covers absent/empty/unverified coordinator seeds,
 zero totals with null pages, abandoned root/page Tasks, obsolete shared lease/tail
 retirement, repeated-failure limits and reachable manual retry, stale replies and a selected
-Draft below its header. `git-target-reads.test.mjs` refuses invalid alias identity,
+Draft above its section, single-pin header suppression, collapse survival and header counts excluding the pin. `git-target-reads.test.mjs` refuses invalid alias identity,
 state/title and row normalization locally while publishing healthy siblings;
 transport/rate/unscoped failures remain whole-read failures. Malformed per-task
 Crew discovery becomes unavailable without weakening owner/native identity.
@@ -133,8 +161,9 @@ source logs its surviving marker and recovers using the shipping 64ms retry with
 no new data change. This establishes recovery, not the historical workload trigger.
 App `status.errors` does not include last-frame render banners: inspect pixels and
 marker logs as well as receipts. `--worker-cold` instead exercises production
-worker root/canonical/page reads for all three seed cases, showing Draft 94 and
-Open 1 inside its section. Both modes verify the archive and stop app/Core in
+worker root/canonical/page reads for all three seed cases. Earlier checkpoint pixels
+show Draft 94 and Open 1; placement and style were subsequently revised to pin above
+the section and use a plain chip. No final native rerun is claimed. Both modes verify the archive and stop app/Core in
 finally; fake IO never reaches GitHub or live terminals. Use an external
 `HERDR_APP_BIN` pointing to the verified executable. No native runtime is modified.
 
@@ -725,10 +754,10 @@ callers retain their no-role behavior. These are synthetic facts and host snapsh
 not live label mutation, remote focus or approval verification.
 
 `tests/pr-agent-links.test.mjs` renders the actual stage controls and checks
-Build/Review focus, Approved opening regardless of CI, hover-only round/finding facts,
+Build/Review focus, Approved opening regardless of CI, visible Build rounds with finding hover,
 missing metadata, inert ended/disconnected chips, stale captured roles and scopes,
 and ghost noninteraction. `tests/git-stage-chips.test.mjs` checks all captions and
-canonical pill styling with no 80px title reservation across ordinary, pinned, scrolling, coordinator and
+tight plain stage styling without emoji/outline or an 80px title reservation across ordinary, pinned, scrolling, coordinator and
 ghost Open/Closed/merged rows, 280–480px and 75–200% zoom including 130%. Existing
 geometry/right-edge fixtures retain the 74px blocks, lower-line allocation,
 Spaces-derived trailing anchor and fallback robot's 24px target. The no-label
@@ -1185,6 +1214,46 @@ packaging. `tools/measure-git-render.mjs` records five disposable native render-
 samples for complete 30/60/100/200 mounted trees, deliberately bypassing the runtime
 cap; warm mode warms only pure caches, never native callbacks. It records native
 interruptions honestly. These are not live desktop paint/input timings or deployment evidence.
+
+## Global Crew worker-space fixtures
+
+`node --experimental-vm-modules tests/crew-worker-space.test.mjs` exercises the
+production registry and Spaces contribution: default/off, on/off, saved intent,
+restart/export/import, disabled callbacks and effect-free rendering.
+`node --experimental-vm-modules tests/crew-worker-policy.test.mjs` drives the
+production Crew transport and policy with **fake Crew only** for the seven cases:
+on, off, capability missing, one refused home, offline then reachable, a later home
+and restart persistence. These include several homes per machine, strict v1
+success/refusal parsing, superseded intent serialization, committed-but-lost reply
+readback, bounded catalog overflow and no disabled follow-ups. No installed Crew,
+real registry, coordinator or credential is used.
+
+`node --experimental-vm-modules tests/crew-worker-review.test.mjs` covers both
+blocking review findings through production plugin/lifecycle paths. Existing
+validated display roots and status observations must join a distinct default home
+with attachment off, remain pending until scoped reads, and survive display pruning.
+Real successful inspection/preparation paths must feed observations without direct
+test calls to the observer. Combined supersession/timeout cases hold an old setter,
+change intent, return timeout at 15 seconds, publish its old value at 17 seconds,
+and forbid new reads/writes/confirmation until its 18-second bound, including
+plugin disable/re-enable. All six cases fail on the pre-fix implementation.
+
+`node tests/crew-worker-command.test.mjs` checks fixed command grammar everywhere;
+on Windows it also runs the actual PowerShell wrappers against a disposable fake
+Node CLI, including cached capability and both modes. Targeted fleet-toggle and
+fleet-refresh suites preserve the existing sidebar lifecycle and identity guards;
+`workspace.settings.refresh` reuses that lifecycle, not another timer.
+
+The opt-in `tests/features/worker-space-native.mjs --run --output <outside-checkout>
+--zoom 1|1.3` requires `HERDR_APP_BIN` to name the provided verified App 0.1.18 copy.
+It checks release metadata/archive SHA-256, extracted executable byte equality and
+version, installs nothing, deploys only a disposable app home, and blocks all real
+Crew/Core control and unrelated subprocesses. It captures off, on and machine-named
+refusal with the real Settings row/toggle/badge, registry and policy, using synthetic
+in-memory home modes. A disposable controller invokes the production callback;
+these are native-rendering proofs, not physical pointer/keyboard or live SSH proof.
+Receipts include zoom, hashes, errors and desktop/Core stop acknowledgements. Every
+started disposable instance is stopped in finally; no real setting is changed.
 
 ## Connected fleet fixtures
 

@@ -102,7 +102,7 @@ async function harness(feature, pluginOn = true) {
   });
   await main.evaluate();
   const view = new main.namespace.default();
-  const cx = {spawn: fn => tasks.push(fn(cx)), notify: () => { assert.equal(rendering,false,'Never notify synchronously during native render'); notify++; },
+  const cx = {spawn: fn => {const task=fn(cx);tasks.push(task);return task;}, notify: () => { assert.equal(rendering,false,'Never notify synchronously during native render'); notify++; },
     focus_handle: () => { assert.equal(rendering,false,'Never allocate focus during native render'); return {}; }, timer: {every() {}, after: (ms, fn) => timers.push({ms,fn})}, stop_propagation() {}};
   view.init({}, cx);
   await tasks.shift();
@@ -175,11 +175,12 @@ for (const view of ['open', 'closed']) for (const fail of [false, true]) {
   const h = await harness('changes');
   h.showGit();h.button();await Promise.all(h.tasks.splice(0));
   h.view.view = view;
-  h.view.pullsAt[view] = Date.now(); // No unrelated automatic TTL fetch.
+  h.view.pulls[view]??=[]; // A real loaded page, not a timestamp masking null data.
+  h.view.pullsAt[view] = Date.now();
   const pending = h.hold('gh');
   h.button().attrs.on_click[0]({}, h.cx);
   state(h.button(), true);
-  await h.tasks.shift(); // Local git is done; GitHub is still pending.
+  await h.view.rootRequest.task; // Await root IO, not a render-completion guard.
   assert.equal(h.view.loading, false);
   assert.equal(h.view.pullLoading, true);
   assert.ok(h.progress(),'Shown Git uses the moving line while GitHub is pending, with no rotating Refresh');
@@ -188,8 +189,8 @@ for (const view of ['open', 'closed']) for (const fail of [false, true]) {
   h.button().attrs.on_click[0]({}, h.cx);
   assert.equal(h.calls.length, count);
   if (fail) pending.reject(new Error('network failed'));
-  else pending.resolve({code: 0, stdout: '{"nameWithOwner":"owner/repo"}'});
-  await h.tasks.shift();
+  else pending.resolve({code:0,stdout:JSON.stringify({data:{repository:{open:{totalCount:0},closed:{totalCount:0},pullRequests:{nodes:[],pageInfo:{hasNextPage:false,endCursor:null}}}}})});
+  await h.view.pullRequest.task;
   state(h.button(), true);assert.equal(h.progress(),undefined,'Completion stops the line while disabled feedback remains static');h.finishFeedback();state(h.button(), false);
   if (fail) assert.ok(h.view.pullError);
   else assert.ok(h.calls.some(([cmd, args]) => cmd === 'gh' && args.some(a=>a.includes(`states:${view === 'closed' ? '[CLOSED,MERGED]' : '[OPEN]'}`))));

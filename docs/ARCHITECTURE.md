@@ -501,14 +501,17 @@ retires folder identity; late replies are rejected by request/context/enable epo
 Ordinary reads and captured actions keep their own current authority. Hidden
 snapshots perform no IO.
 
-Direct worker entry puts its selected matching PR, including Draft, below the
-repository header without entry motion; remaining rows keep relative order.
-Panel-origin stage/robot clicks keep their controller and selection acknowledgement,
-rebasing the destination below that header. Empty/unverified seeds never count as
+The resolved selected-agent PR, including Draft, pins above the repository header
+for tab/sidebar/keyboard selection without entry motion. No clickPin state grants
+pin ownership. Section collapse never hides the pin; the header counts only other
+rows and disappears if none remain. Panel-origin stage/robot clicks alone retain
+the existing animation and selection acknowledgement, settling at the top inset. Empty/unverified seeds never count as
 loaded pages: worker canonical/page reads remain independently due.
 
 Native done Tasks can release an abandoned root/page busy latch once under existing
-request/epoch guards; repeated interruption needs manual retry. Caught row failures
+request/epoch guards; repeated interruption needs a separate one-shot manual root
+authorization, never a retained rate-bypass credit. Root budget survives rev-parse
+and resets only after complete branch-resolution success; page errors are per tab. Caught row failures
 keep actual diagnostics and a safe fixed-height fallback. Native aborts bypass catch:
 a surviving render marker gets one deferred 64ms retry, not a frame loop. Successful
 frames allocate no retry timer. Presentation collections/provider context may be

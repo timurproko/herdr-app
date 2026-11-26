@@ -1,8 +1,8 @@
 // Pure facts only. Never store native elements, render closures or event handlers.
 export class RowPresentations {
   constructor(){this.rows=new WeakMap();this.styles=new Map();this.layouts=new Map();}
-  get(pr,limit,ghost=false,labelsFor=value=>value.labels??[]){
-    const signature=[pr.stage,pr.key,pr.number,pr.title,pr.meta,pr.login,pr.when,pr.compactWhen,pr.review,pr.labels,pr.tasks?.done,pr.tasks?.total,pr.tasks?.label,pr.checks?.state,pr.checks?.label,pr.checks?.details,pr.state,pr.createdAt,pr.closedAt,pr.mergedAt,limit];
+  get(pr,limit,ghost=false,labelsFor=value=>value.labels??[],stageCaption=null){
+    const signature=[pr.stage,pr.key,pr.number,pr.title,pr.meta,pr.login,pr.when,pr.compactWhen,pr.review,pr.labels,pr.tasks?.done,pr.tasks?.total,pr.tasks?.label,pr.checks?.state,pr.checks?.label,pr.checks?.details,pr.state,pr.createdAt,pr.closedAt,pr.mergedAt,limit,stageCaption];
     let entry=this.rows.get(pr);
     if(!entry||signature.some((value,i)=>value!==entry.signature[i])){
       const all=labelsFor(pr),stage=all.find(label=>label.stage);

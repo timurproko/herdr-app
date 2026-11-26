@@ -329,7 +329,7 @@ let chipOpened=null;view.openPull=row=>chipOpened=row;
 function chipRow(stage,extra={}) {const row={...ordinaryStage,stage,...extra};view.pulls.open=[row];return view.pullRow(colors,row);}
 for(const [stage,caption,color,address]of [['build','Build','yellow','builder'],['review','Review','purple','pc2/reviewer']]) {
   const row=chipRow(stage),chip=find(row,'pr-stage-1200');assert.ok(chip);
-  assert.equal(chip.kids[0].kids[0],`🤖 ${caption}`);assert.equal(chip.attrs.h[0],18);assert.equal(chip.attrs.opacity,undefined);assert.equal(chip.attrs.role[0],'button');
+  assert.equal(chip.kids[0].kids[0],caption);assert.equal(chip.attrs.h[0],18);assert.equal(chip.attrs.opacity,undefined);assert.equal(chip.attrs.role[0],'button');
   assert.equal(chip.attrs.tooltip,undefined,'Missing metadata and unknown names add no repeat-only tooltip');
   const before=actions.length;let stopped=0;const eventCx={stop_propagation(){stopped++;}};
   chip.attrs.on_mouse_down[1]({},eventCx);chip.attrs.on_click[0]({},eventCx);
@@ -337,12 +337,12 @@ for(const [stage,caption,color,address]of [['build','Build','yellow','builder'],
   const ghost=view.pullRow(colors,{...ordinaryStage,stage},true),preview=find(ghost,'swap-pr-stage-1200');assert.ok(preview);assert.equal(preview.attrs.on_click,undefined);assert.equal(preview.attrs.role,undefined);
 }
 ship.labels['crew.round']='1';ship.labels['crew.finding']='fix the guard';ship.labels['crew.approved']='b'.repeat(40);
-let stageChip=find(chipRow('build'),'pr-stage-1200');assert.equal(stageChip.kids[0].kids[0],'🤖 Build');assert.equal(stageChip.attrs.tooltip[0],'Build 2\nback from review 1: fix the guard');
-ship.labels['crew.round']='2';assert.equal(find(chipRow('build'),'pr-stage-1200').kids[0].kids[0],'🤖 Build');assert.match(find(chipRow('build'),'pr-stage-1200').attrs.tooltip[0],/Build 3/);
-delete ship.labels['crew.round'];stageChip=find(chipRow('build'),'pr-stage-1200');assert.equal(stageChip.kids[0].kids[0],'🤖 Build');assert.equal(stageChip.attrs.tooltip,undefined);
+let stageChip=find(chipRow('build'),'pr-stage-1200');assert.equal(stageChip.kids[0].kids[0],'Build 2');assert.equal(stageChip.attrs.tooltip[0],'Build 2\nback from review 1: fix the guard');
+ship.labels['crew.round']='2';assert.equal(find(chipRow('build'),'pr-stage-1200').kids[0].kids[0],'Build 3');assert.match(find(chipRow('build'),'pr-stage-1200').attrs.tooltip[0],/Build 3/);
+delete ship.labels['crew.round'];stageChip=find(chipRow('build'),'pr-stage-1200');assert.equal(stageChip.kids[0].kids[0],'Build');assert.equal(stageChip.attrs.tooltip,undefined);
 for(const state of ['pending','success','failure']) {
   const row=chipRow('approved',{checks:{state,label:'1/2'}}),chip=find(row,'pr-stage-1200');
-  assert.equal(chip.kids[0].kids[0],'🤖 Approved');assert.ok(chip.attrs.on_click);assert.equal(chip.attrs.role[0],'button');assert.equal(chip.attrs.opacity,undefined);
+  assert.equal(chip.kids[0].kids[0],'Approved');assert.ok(chip.attrs.on_click);assert.equal(chip.attrs.role[0],'button');assert.equal(chip.attrs.opacity,undefined);
   const before=actions.length;chip.attrs.on_click[0]({},cx);assert.equal(chipOpened.stage,'approved');assert.equal(actions.length,before,'Approved bubbles to the PR row, never an agent');
   assert.ok(!descendants(row).some(n=>typeof n==='string'&&/CI running|Review.*CI/.test(n)));
 }
@@ -359,7 +359,7 @@ const missing=find(chipRow('review',{number:1209}),'pr-stage-1209');assert.equal
 // The coordinator renderer uses the same chip through its guarded aggregate.
 taskContext={scope:'role-home',tasks:[{id:'ship',terminal:'builder'},{id:'review',terminal:'pc2/reviewer'}],links:[{url:'https://github.com/owner/repo/pull/1200',terminal:'builder',task:'ship'}]};
 aggregate.context=taskContext;view.aggregate=aggregate;aggregate.entries.get(stagePr.key).pr={...stagePr,stage:'review'};
-const aggregateChip=find(view.pullRow(colors,{...stagePr,stage:'review'}),'pr-stage-owner/repo#1200');assert.equal(aggregateChip.kids[0].kids[0],'🤖 Review');
+const aggregateChip=find(view.pullRow(colors,{...stagePr,stage:'review'}),'pr-stage-owner/repo#1200');assert.equal(aggregateChip.kids[0].kids[0],'Review');
 aggregateChip.attrs.on_click[0]({},cx);assert.equal(actions.at(-1)[1].terminal,'pc2/reviewer');
 aggregate.entries.get(stagePr.key).link.targets=[{terminal:null,historical:true}];
 assert.equal(aggregate.stageTarget(stagePr,'review',links),null,'Historical-only row gains no focus from a reviewer label');
@@ -530,10 +530,10 @@ for(const mode of ['ordinary','coordinator'])for(const role of ['build','review'
   assert.ok(Math.abs(find(overlay,`pin-swap-${swap.id}-${number}`).attrs.top[0]-from)<1e-6);
   overlay.attrs.on_size_change[0]({},motionCx);assert.equal(timers.find(t=>t.ms===3000).cancelled,true);
   timers.find(t=>t.ms===16).fn(motionCx);moving=panel.renderPulls(colors);overlay=find(moving,`pin-swap-${swap.id}`);
-  assert.equal(find(overlay,`pin-swap-${swap.id}-${number}`).attrs.top[0],34,'The clicked row travels below its repository header');
+  assert.equal(find(overlay,`pin-swap-${swap.id}-${number}`).attrs.top[0],4,'The clicked row travels above its repository header');
   timers.find(t=>t.ms===352).fn(motionCx);const settled=panel.renderPulls(colors);
   assert.equal(panel.pinMotion.current,null);assert.ok(find(find(settled,'active-pull'),`pr-${number}`),'The destination commits the clicked pin after motion');assert.equal(actions.length,before+1,'Motion never delays or repeats focus');
-  console.log(`PIN_MATRIX ${mode}/${role}/${state}/${remote?'pc2':'local'}/${zoom}/${control}/${initiallyPinned?'pinned':'unpinned'}: immediate focus; ${from}->34; destination pin committed`);
+  console.log(`PIN_MATRIX ${mode}/${role}/${state}/${remote?'pc2':'local'}/${zoom}/${control}/${initiallyPinned?'pinned':'unpinned'}: immediate focus; ${from}->4; destination pin committed`);
   await tick();
 }
 Object.keys(place).forEach(key=>delete place[key]);Object.assign(place,savedPlace);taskContext=null;currentZoom=1;
@@ -569,4 +569,4 @@ await Promise.all(tasks);
   assert.equal(contextReads,2,'Provider verified/presentation contexts are each read at most once per frame');
   verified=false;assert.equal(group.stageTarget(coordinated[0],'review',model),null,'Action rechecks provider verification outside the frame snapshot');assert.equal(contextReads,3);
 }
-console.log('PASS: Canonical role labels, isolated actions, metadata-line motion below repository headers, remote/background identity, freshness and one native presentation snapshot per frame');
+console.log('PASS: Canonical role labels, isolated actions, metadata-line motion above repository headers, remote/background identity, freshness and one native presentation snapshot per frame');

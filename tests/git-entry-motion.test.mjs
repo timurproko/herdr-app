@@ -22,18 +22,18 @@ for(const control of ['chip','robot'])for(const zoom of [1,1.3])for(const initia
  Object.assign(h.place,{space:'worker-b',terminal:'b'});p.syncAgent(h.cx);
  tree=h.render(()=>p.renderPulls(t));assert.equal(p.pinMotion.current,swap);assert.equal(swap.phase,'start');assert.equal(Boolean(find(tree,'active-pull')),initiallyPinned,'Native selection acknowledgement retains old row slots');
  const overlay=find(tree,`pin-swap-${swap.id}`);overlay.attrs.on_size_change[0]({},h.cx);timers.find(timer=>timer.ms===16).fn(h.cx);
- assert.equal(swap.phase,'moving');assert.equal(swap.cards[0].to,34);
+ assert.equal(swap.phase,'moving');assert.equal(swap.cards[0].to,4);
  timers.find(timer=>timer.ms===352).fn(h.cx);assert.equal(p.pinMotion.current,null);
  tree=h.render(()=>p.renderPulls(t));assert.ok(find(tree,'active-pull'));assert.equal(p.pullPresentation.pinned.number,2);assert.equal(h.focus.length,1,'entry/ack never sends a second focus');
  const final=rowGeometry(tree,320,zoom,500),header=find(tree,'task-repo-header-owner/repo');
- assert.ok(header,'The pin retains its repository section header');assert.ok(final.get(header).y+final.get(header).height<=final.get(find(tree,'pr-2')).y,'Pinned row is directly below its own header');
+ assert.ok(header,'The pin retains its repository section header');assert.ok(final.get(find(tree,'pr-2')).y+final.get(find(tree,'pr-2')).height<=final.get(header).y,'Pinned row is above its repository header');
  for(const card of swap.cards){const node=find(tree,`pr-${card.pr.number}`);assert.ok(node);assert.ok(Math.abs(final.get(node).y/zoom-card.to)<0.1,'native motion settles at the actual final row position');}
  assert.equal(timers.length,3,'one wait, one arming and one cleanup, no frame loop');
  p.agentLinks.pullNumber=()=>1;p.syncAgent(h.cx,true);
  tree=h.render(()=>p.renderPulls(t));
  assert.equal(p.agentPull,1,'same terminal independently resolves a changed PR after click settlement');
- assert.equal(p.clickPin,null,`${control} at ${zoom}: fresh selected PR change clears the settled click pin`);
- assert.ok(find(find(tree,'active-pull'),'pr-1'),'The independently resolved selected PR pins below the header without new motion');
+ assert.equal(p.clickPin,undefined,`${control} at ${zoom}: selected PR ownership has no clickPin state`);
+ assert.ok(find(find(tree,'active-pull'),'pr-1'),'The independently resolved selected PR pins above the header without new motion');
  assert.equal(p.pinMotion.current,null);assert.equal(h.focus.length,1,'fresh identity change starts no motion or second focus');
 }
 for(const terminal of [null,undefined]){const h=await rowHarness();h.panel.sectionEntry=true;h.place.terminal=terminal;h.panel.agentResolved=JSON.stringify(h.place);assert.doesNotThrow(()=>h.render(()=>h.panel.renderPulls(t)),'a space without a terminal cannot dereference a missing click');}

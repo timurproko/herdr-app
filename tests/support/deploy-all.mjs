@@ -47,4 +47,6 @@ export function fixture() {
     originMatches: value => value === origin, log() {},
   };
 }
-export const clean = () => fs.rmSync(scratch, { recursive: true, force: true });
+// Windows subprocess/antivirus handles can outlive command completion briefly.
+// Retry only transient removal failures; permanent failures still throw.
+export const clean = () => fs.rmSync(scratch, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });

@@ -568,7 +568,7 @@ export function stageLabels(pr) {
   if(!role)return labels;
   const assigned=labels.find(label=>pullStage([label])===pr.stage);
   return [...labels.filter(label=>!pullStage([label])),{
-    ...assigned,name:`🤖 ${role.name}`,stage:role.stage,assignedName:assigned?.name??null,
+    ...assigned,name:role.name,stage:role.stage,assignedName:assigned?.name??null,
     assignedNames:labels.filter(label=>pullStage([label])).map(label=>label.name),
   }];
 }

@@ -32,7 +32,7 @@ p.agentLinks={cachedRepository:()=> 'fixture/repo',related:()=>null,refresh(){}}
 Object.assign(place,{cwd:'/worktree-a',space:'worker-space-a',terminal:'worker-1',app:'a1',pullNumber:1});context=null;
 let tree=h.render(()=>p.renderPanel(cx));validNativeChildren(tree);
 assert.ok(find(tree,'task-repo-header-fixture/repo'),'first destination frame has section');
-assert.ok(find(tree,'pr-1'));assert.ok(find(tree,'pr-2'));assert.ok(find(find(tree,'active-pull'),'pr-1'),'Selected PR pins below its repository header without entry motion');assert.equal(p.pinMotion.current,null);
+assert.ok(find(tree,'pr-1'));assert.ok(find(tree,'pr-2'));assert.ok(find(find(tree,'active-pull'),'pr-1'),'Selected PR pins above its repository header without entry motion');assert.equal(p.pinMotion.current,null);
 assert.equal(find(tree,'git-empty'),undefined,'no body Loading');assert.ok(find(tree,'git-loading-track'),'reuse main\'s single under-header loading line');
 assert.equal(find(tree,'git-task-activity'),undefined);assert.equal(find(tree,'git-task-stale'),undefined,'entry must not reintroduce the removed header bulb');
 assert.equal(p.counts.open,2);assert.equal(p.entrySeed,true);assert.equal(find(tree,'git-repo-name'),undefined);assert.equal(find(tree,'changes-header').attrs.on_mouse_down,undefined);
