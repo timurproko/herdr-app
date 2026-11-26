@@ -33,6 +33,23 @@ try {
     await retryUpdate(h.home, { identity: snapshot.recovery?.identity, confirmedStopped: true }, { now: () => h.now, spawn() { spawned++; throw Error('must not dispatch'); } });
     assert.equal(spawned, 0); assert.equal(read(h.p.status).token, 'old-settings', 'projection does not overwrite another run');
   }
+  // An ownerless legacy CLI is not ordinary Update permission either. The
+  // default survey parser refuses an unrecorded live CLI after all time bounds.
+  {
+    const h = setup(), now = () => h.now + 2 * DEADLINE;
+    atomic(h.p.result, { version: 1, token: null, at: h.now - 6000, complete: false, results: [{ machine: 'local', action: 'deployed' }] });
+    let active = true;
+    const options = { now, run(program) {
+      const rows = [{ ProcessId: process.pid, ParentProcessId: 0, Name: 'node.exe', CommandLine: 'node fixture' },
+        ...(active ? [{ ProcessId: 333, ParentProcessId: 0, Name: 'node.exe', CommandLine: 'node tools/deploy-all.mjs' }] : [])];
+      return { code: 0, stdout: program === 'powershell.exe' ? JSON.stringify(rows) : rows.map(row => `${row.ProcessId} ${row.ParentProcessId} ${row.CommandLine}`).join('\n') };
+    } };
+    const blocked = inspect(h.home, options);
+    assert.equal(blocked.job.state, 'unknown'); assert.equal(blocked.recovery, null); assert.equal(blocked.clearRecovery.eligible, false);
+    await launch(h.home, { now, inspectOptions: options, spawn() { assert.fail('ownerless CLI must not dispatch'); } });
+    active = false; const stopped = inspect(h.home, options);
+    assert.equal(stopped.clearRecovery.eligible, true); assert.equal(stopped.recovery, null);
+  }
   // P2: only expired AND dead-owner claims are reclaimed, irrespective of the
   // deployment result. Reclaiming a claim is not permission to replay unknowns.
   for (const state of ['complete', 'unknown']) for (const claim of ['dead-expired', 'live-expired', 'dead-unexpired']) {

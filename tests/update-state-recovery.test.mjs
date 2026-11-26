@@ -24,6 +24,7 @@ function setup(kind) {
   if (kind === 'bad-result') fs.writeFileSync(p.result, '{');
   if (kind === 'bad-cache') fs.writeFileSync(p.check, '{');
   if (kind === 'ownerless-status') atomic(p.status, { token: 'legacy', state: 'unknown', started, deadline });
+  if (kind === 'ownerless-result') atomic(p.result, { version: 1, token: null, at: started, complete: false, results: [{ machine: 'local', action: 'deployed' }] });
   if (kind === 'future-work-deadline') atomic(p.status, { token: 'legacy', state: 'unknown', pid, started, deadline: now + DEADLINE * 100 });
   if (kind === 'future-file-time') { fs.writeFileSync(p.deployLock, String(pid)); const future = new Date(now + DEADLINE * 100); fs.utimesSync(p.deployLock, future, future); }
   if (kind === 'failed-lock-write') {
@@ -46,7 +47,7 @@ function setup(kind) {
   return { f, home, p, now, journals, payload, options, settledWait: () => settledWait };
 }
 try {
-  for (const kind of ['installer', 'lock-before-status', 'legacy-token-only', 'empty-check', 'empty-claim', 'bad-check-lease', 'bad-retry-lease', 'bad-status', 'bad-status-shape', 'bad-result', 'bad-result-shape', 'bad-cache',  'ownerless-status', 'future-work-deadline', 'future-file-time', 'failed-lock-write', 'mixed-orphans']) {
+  for (const kind of ['installer', 'lock-before-status', 'legacy-token-only', 'empty-check', 'empty-claim', 'bad-check-lease', 'bad-retry-lease', 'bad-status', 'bad-status-shape', 'bad-result', 'bad-result-shape', 'bad-cache',  'ownerless-status', 'ownerless-result', 'future-work-deadline', 'future-file-time', 'failed-lock-write', 'mixed-orphans']) {
     const h = setup(kind), snapshot = inspect(h.home, h.options);
     assert.equal(snapshot.clearRecovery?.eligible, true, kind);
     const row = customizationRowState(updateProjection(snapshot), { now: h.now });

@@ -431,6 +431,9 @@ function inspectRun(home, { now = Date.now, isAlive = alive, isQuiescent = job =
       error: classified?.state === 'unknown' ? classified.error : peerUnknown ? 'A dispatched peer outcome is unknown' : null,
       state: classified?.state !== 'unknown' && !peerUnknown && isAlive(result.owner.pid) && now() < result.owner.deadline ? 'running' : 'unknown' };
   }
+  // Ownerless legacy receipts are unfinished too: never guess a safe retry or
+  // expose ordinary Update merely because no peer has reported a timeout yet.
+  if (!job && result?.complete === false) job = { state: 'unknown', source: 'cli', phase: 'deploying', finished: result.at };
   const recovery = recoveryState(p, job, result, check, job?.state === 'unknown' || lastRun?.state === 'unknown' || peerUnknown, now(), isQuiescent);
   return { job, lastRun, result, peerPending, peerUnknown, recovery, check, checking: (read(p.checkLock)?.until || 0) > now(), revision, locked: fs.existsSync(p.lock), details, log: details?.kind === 'log' ? details.path : '' };
 }
