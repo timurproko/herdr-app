@@ -123,6 +123,20 @@ assert.equal(view.pluginFixError['crew:projects'],'Could not add D:\\Git\\bad: i
 assert.equal(jobs.length,1,'The list is read again afterwards');
 delete view.pluginFixError['crew:projects'];
 
+// A folder Crew already lists under another name is refused by the plugin itself: the
+// message is shown once, as written, and not attributed to Crew.
+{
+  const said='Could not add D:\\Git\\xrbuild\\.xrbuild: it is already added as xrbuild-private.';
+  seed();popup().attrs.on_open_change[0](true,cx);opened.length=0;
+  list.add=async(c,folder)=>{calls.push(['add',c.setting('machine'),folder]);throw crewErrors.alreadyAdded(folder,'xrbuild-private');};
+  popup().attrs.on_pick[0]({add:['D:\\Git\\xrbuild\\.xrbuild'],remove:[]},cx);await runJob();list.add=addOne;
+  assert.deepEqual(calls.splice(0),[['add','pc2','D:\\Git\\xrbuild\\.xrbuild']]);
+  assert.equal(view.pluginFixError['crew:projects'],said,'Shown once, as written, without Crew named as its source');
+  assert.equal(jobs.length,1,'The list is read again afterwards');
+  seed();assert.ok(words(find(render(),'st-plugin-crew-projects-body')).includes(said),'The section shows that one sentence');
+  delete view.pluginFixError['crew:projects'];
+}
+
 // Summaries replace the raw wrapper, including a multiline usage dump.
 const rejected='Could not add D:\\Git\\agentnumberone.dev. Crew did not accept the project name agentnumberone.dev; update the Crew tool and try again.';
 for (const [reason,expected] of [

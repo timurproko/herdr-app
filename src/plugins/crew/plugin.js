@@ -641,15 +641,22 @@ export function parseProjects(stdout) {
     // every row reads the same.
     .map(([name, folder]) => ({ id: name, label: winPath(folder), path: winPath(folder) }));
 }
-// What the tool accepts as a project name.
-const PROJECT_NAME = /^(?!.*\.\.)(?!.*\.$)[a-z0-9][a-z0-9.-]{0,39}$/;
-// A project is named after its folder: 'D:\Git\My App' -> 'my-app'. '' when nothing usable is left.
+// What the tool accepts as a project name. One leading dot is allowed, so a '.xrbuild'
+// folder is not confused with 'xrbuild'.
+const PROJECT_NAME = /^(?=.{1,40}$)(?!.*\.\.)(?!.*\.$)\.?[a-z0-9][a-z0-9.-]*$/;
+// A project is named after its folder: 'D:\Git\My App' -> 'my-app', 'D:\Git\x\.x' -> '.x'.
+// '' when nothing usable is left.
 export function projectName(folder) {
   const last = String(folder ?? '').replace(/[\\/]+$/, '').split(/[\\/]/).at(-1) ?? '';
-  const name = last.toLowerCase().replace(/[^a-z0-9.]+/g, '-').replace(/\.{2,}/g, '.')
-    .replace(/^[.-]+|[.-]+$/g, '').slice(0, 40).replace(/[.-]+$/, '');
+  const rest = last.toLowerCase().replace(/[^a-z0-9.]+/g, '-').replace(/\.{2,}/g, '.')
+    .replace(/^[.-]+|[.-]+$/g, '');
+  const name = ((last.startsWith('.') ? '.' : '') + rest).slice(0, 40).replace(/[.-]+$/, '');
   return PROJECT_NAME.test(name) ? name : '';
 }
+// The projects the last Projects check listed, per machine, so Add can tell a folder that is
+// already registered (under any name) without asking the machine again.
+const listedProjects = new Map();
+const folderKey = path => winPath(path).replace(/\\+$/, '').toLowerCase();
 // The tool's own words for a refusal ("crew: Project x already points at …").
 const crewSaid = r => (tail(r.stderr || r.stdout) || `Exited with ${r.code}.`).replace(/^crew:\s*/, '');
 // A summarized folder error carries its own target-aware wording so Settings can use
@@ -685,6 +692,14 @@ export function projectFailure(output, { operation, name, folder = name, machine
   error.folderMessage = summary;
   return error;
 }
+// A folder Crew already lists: refused here, before Crew is asked, so the text is not
+// attributed to Crew (Settings shows folderMessage as it is).
+export function alreadyAdded(folder, name) {
+  const summary = target => `Could not add ${target}: it is already added as ${name}.`;
+  const error = new Error(summary(folder));
+  error.folderMessage = summary;
+  return error;
+}
 async function crewProject(cx, args) {
   const [operation, name, folder = name] = args, machine = machineOf(cx);
   let output;
@@ -705,10 +720,17 @@ const PROJECTS = Object.freeze({
     picker: Object.freeze({ kind: 'folders', label: 'Add project' }),
     async add(cx, folder) {
       const name = projectName(folder);
-      if (!name) throw projectFailure('That folder’s name cannot be used as a project name (1–40 lowercase ASCII letters, digits, dashes and dots; start with a letter or digit; no consecutive or trailing dots).', { operation: 'add', name, folder });
+      if (!name) throw projectFailure('That folder’s name cannot be used as a project name (1–40 lowercase ASCII letters, digits, dashes and dots; start with a letter, digit or one dot followed by one; no consecutive or trailing dots).', { operation: 'add', name, folder });
+      // Crew would register one folder twice, and a re-add drops the project's settings.
+      const known = listedProjects.get(machineOf(cx))?.find(row => folderKey(row.path) === folderKey(folder));
+      if (known) throw alreadyAdded(folder, known.id);
       await crewProject(cx, ['add', name, folder]);
     },
-    async remove(cx, id) { await crewProject(cx, ['remove', id]); },
+    async remove(cx, id) {
+      await crewProject(cx, ['remove', id]);
+      const machine = machineOf(cx), rows = listedProjects.get(machine);
+      if (rows) listedProjects.set(machine, rows.filter(row => row.id !== id));
+    },
   }),
   check: async cx => {
     if (!(await connected(cx)).ready) return { ...DISCONNECTED, statusLabel: null, rows: [] };
@@ -718,8 +740,12 @@ const PROJECTS = Object.freeze({
     if (!p.tool) return { status: 'missing', statusLabel: null, detail: 'Install the crew tool first (Requirements).', rows: [] };
     if (!p.home) return { status: 'missing', statusLabel: null, detail: 'Create the crew home first (Requirements).', rows: [] };
     const r = await ps(cx, crewProjectScript(['list']), CHECK_TIMEOUT);
-    if (r.code !== 0) return { status: 'error', statusLabel: null, detail: crewSaid(r), rows: [] };
+    if (r.code !== 0) {
+      listedProjects.delete(machineOf(cx));
+      return { status: 'error', statusLabel: null, detail: crewSaid(r), rows: [] };
+    }
     const rows = parseProjects(r.stdout);
+    listedProjects.set(machineOf(cx), rows);
     return { status: 'ready', statusLabel: `${rows.length} added`, rows, usable: true };
   },
 });
