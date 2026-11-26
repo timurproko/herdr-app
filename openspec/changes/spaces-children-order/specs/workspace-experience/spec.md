@@ -59,7 +59,7 @@ Dragging a displayed coordinator SHALL reorder its whole same-machine block, coo
 - **AND** selection remains on the same native space and coordinator dragging retains the new sibling order
 
 ### Requirement: Multiple connected project spaces
-One coordinator SHALL support multiple validated same-machine project children through the existing contribution boundary, with legacy single-child compatibility. Each child SHALL retain its native target and shortcut number. Coordinator dragging SHALL move the whole block in saved sibling order; child dragging SHALL affect only siblings. Captured membership and acknowledgements SHALL be revalidated. Ambiguous ownership, cross-machine links and uncertain outcomes SHALL fail closed without replay.
+One coordinator SHALL support multiple validated same-machine project children through the existing contribution boundary, including legacy single-child links. Children SHALL retain native targets and shortcut numbers. Coordinator drags SHALL move the whole block in saved sibling order; child drags SHALL affect only siblings. Captured membership and acknowledgements SHALL be revalidated. Ambiguous ownership, cross-machine links and uncertain outcomes SHALL fail closed without replay.
 
 #### Scenario: One, two and three project children
 - **WHEN** validated contributions identify one, two or three children under one coordinator
