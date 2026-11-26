@@ -6,6 +6,7 @@ const cp = require('node:child_process');
 const { createHash, randomUUID } = require('node:crypto');
 const REPOSITORY = 'https://github.com/timurproko/herdr-app.git';
 const DEADLINE = 30 * 60 * 1000;
+const SETTLE = 5000, TERMINAL = 'HERDR_UPDATE_COMPLETION=';
 const CHECK_MIN = 120000, CHECK_MAX = 180000, RETRY_MAX = 1800000;
 const INVALIDATE_MIN = 15000, BUSY_CHECK_RETRY = 30000;
 const failures = check => Number.isInteger(check?.failures) ? Math.max(0, Math.min(4, check.failures)) : check?.error ? 1 : 0;
@@ -31,20 +32,112 @@ function deferredPeers(result) {
     : (Array.isArray(result?.results) ? result.results : []).filter(row => peerSkipKind(row) === 'offline').map(row => row.machine);
   return [...new Set(saved.filter(name => typeof name === 'string' && name !== 'local' && !name.startsWith('(') && name.length <= 200 && name.trim() === name && name.length > 0 && !/[\x00-\x1f\x7f]/.test(name)).slice(0, 256))];
 }
-const read = file => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
+const sharing = error => ['EPERM', 'EBUSY', 'EACCES'].includes(error?.code);
+const pause = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+// Public one-shot requests reserve a second for JSON/transport completion. The
+// detached 30-minute supervisor and imported CLI have their own existing bounds.
+let requestDeadline = Infinity;
+function retryIO(operation, { budget = 3000, sleep = pause } = {}) {
+  // Bounded attempt count even with a clock jump; only one-shot Node workers.
+  let waited = 0, delay = 25;
+  for (;;) {
+    try { return operation(); }
+    catch (error) {
+      if (!sharing(error) || waited >= budget || Date.now() >= requestDeadline) throw error;
+      const wait = Math.min(delay, budget - waited, requestDeadline - Date.now());
+      sleep(wait); waited += wait; delay = Math.min(200, delay * 2);
+    }
+  }
+}
+function read(file, options = {}) {
+  const io = options.io || fs;
+  try {
+    return retryIO(() => {
+      const text = io.readFileSync(file, 'utf8'); // closed before parsing
+      try { return JSON.parse(text); }
+      catch (error) { error.code = 'EBUSY'; throw error; }
+    }, { budget: 150, ...options });
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw error; // unreadable is not absent, particularly for locks/status
+  }
+}
+function acquire(file, value, options = {}) {
+  const io = options.io || fs;
+  const fd = retryIO(() => io.openSync(file, 'wx'), options);
+  try { retryIO(() => io.writeFileSync(fd, JSON.stringify(value)), options); }
+  finally { io.closeSync(fd); }
+}
+const remove = file => retryIO(() => fs.unlinkSync(file));
+const runIdentity = result => result?.token || result?.runId || null;
+const terminalState = job => ['complete', 'partial', 'failed'].includes(job?.state);
+const supersedesTerminal = (job, result) => terminalState(job) && result && runIdentity(result) !== job.token
+  && (result.at >= job.started || (result.complete === false && result.owner));
+function reapRetryClaim(p, now, isAlive = alive) {
+  assertStatePaths(p);
+  const held = read(p.retryLock);
+  if (held?.token && Number.isInteger(held.pid) && held.pid > 0 && Number.isFinite(held.until)
+      && held.until <= now && !isAlive(held.pid) && read(p.retryLock)?.token === held.token) {
+    const archive = path.join(p.dir, 'recovery', `expired-claim-${randomUUID()}`);
+    fs.mkdirSync(archive, { recursive: true, mode: 0o700 });
+    retryIO(() => fs.renameSync(p.retryLock, path.join(archive, 'update-retry.lock')));
+  }
+}
 function files(home) {
   const dir = path.join(path.resolve(home), '.customizations');
-  return Object.fromEntries(Object.entries({ dir: '', status: 'update-status.json', lock: 'update.lock', log: 'update.log', runner: 'update-runner.cjs', result: 'deploy-all-result.json', check: 'update-check.json', checkLock: 'update-check.lock', manifest: 'manifest.json' }).map(([key, name]) => [key, path.join(dir, name)]));
+  return Object.fromEntries(Object.entries({ dir: '', status: 'update-status.json', lock: 'update.lock', log: 'update.log', runner: 'update-runner.cjs', result: 'deploy-all-result.json', check: 'update-check.json', checkLock: 'update-check.lock', retryLock: 'update-retry.lock', deployLock: 'deploy.lock', manifest: 'manifest.json' }).map(([key, name]) => [key, path.join(dir, name)]));
 }
-function atomic(file, value) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
+function atomic(file, value, options = {}) {
+  const io = options.io || fs, policy = { ...options, budget: options.budget ?? 2500 };
+  retryIO(() => io.mkdirSync(path.dirname(file), { recursive: true }), policy);
   const temp = `${file}.${randomUUID()}.tmp`;
-  try { fs.writeFileSync(temp, typeof value === 'string' ? value : JSON.stringify(value, null, 2) + '\n'); fs.renameSync(temp, file); }
-  finally { if (fs.existsSync(temp)) fs.unlinkSync(temp); }
+  const text = typeof value === 'string' ? value : JSON.stringify(value, null, 2) + '\n';
+  retryIO(() => io.writeFileSync(temp, text), policy);
+  try { retryIO(() => io.renameSync(temp, file), policy); }
+  catch (error) {
+    if (!sharing(error)) throw error;
+    try { retryIO(() => io.writeFileSync(file, text), { ...options, budget: 500 }); }
+    catch (fallback) {
+      // Only receipts have a recovery reader. Other publication fails closed.
+      if (value?.complete === true) return { recovery: temp };
+      throw fallback;
+    }
+  }
+  try { if (io.existsSync(temp)) retryIO(() => io.unlinkSync(temp), { ...options, budget: 100 }); } catch {}
+  return { recovery: null };
+}
+function readResult(p, job, options = {}) {
+  for (const dir of [p.result, p.dir, path.dirname(p.dir)]) {
+    if (fs.existsSync(dir) && fs.lstatSync(dir).isSymbolicLink()) throw Error('Update state path is redirected; inspect it manually');
+  }
+  let primary, unreadable;
+  try { primary = read(p.result, options); } catch (error) { unreadable = error; }
+  const staleJob = supersedesTerminal(job, primary);
+  const token = (!staleJob && job?.token) || primary?.token, runId = primary?.runId;
+  if (primary?.complete === true) return primary;
+  if (!token && !runId) { if (unreadable) throw unreadable; return primary; }
+  const prefix = path.basename(p.result) + '.', candidates = [];
+  if (!fs.existsSync(p.dir)) return primary;
+  for (const name of fs.readdirSync(p.dir).filter(name => name.startsWith(prefix) && /^[a-f0-9-]{36}\.tmp$/.test(name.slice(prefix.length))).slice(0, 64)) {
+    const file = path.join(p.dir, name), stat = fs.lstatSync(file);
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 1024 * 1024) continue;
+    let candidate; try { candidate = read(file, options); } catch { continue; }
+    if (candidate?.version !== 1 || candidate.complete !== true || !Array.isArray(candidate.results)
+        || !Number.isFinite(candidate.at) || candidate.at < (job?.started || primary?.at || 0)
+        || (token ? candidate.token !== token : candidate.runId !== runId)
+        || (runId && candidate.runId !== runId)) continue;
+    candidates.push(candidate);
+  }
+  if (candidates.length) return candidates.sort((a, b) => b.at - a.at)[0];
+  if (unreadable) throw unreadable;
+  return primary;
 }
 const shortError = error => String(error?.message || error || 'Update failed').replace(/[\x00-\x1f\x7f]/g, ' ').slice(0, 160);
 function command(program, args, options = {}) {
-  const value = cp.spawnSync(program, args, { encoding: 'utf8', windowsHide: true, timeout: 15000, maxBuffer: 8 * 1024 * 1024, ...options });
+  const remaining = requestDeadline - Date.now();
+  if (remaining <= 0) return { code: 1, stdout: '', stderr: 'Update request budget exceeded' };
+  const value = cp.spawnSync(program, args, { encoding: 'utf8', windowsHide: true, maxBuffer: 8 * 1024 * 1024, ...options,
+    timeout: Math.max(1, Math.min(options.timeout || 15000, remaining)) });
   return { code: value.status, stdout: value.stdout || '', stderr: value.stderr || '', error: value.error };
 }
 function alive(pid) {
@@ -52,13 +145,13 @@ function alive(pid) {
   try { process.kill(pid, 0); return true; } catch (error) { return error.code !== 'ESRCH'; }
 }
 function unlock(p, token) {
-  if (read(p.lock)?.token === token) fs.unlinkSync(p.lock);
+  if (read(p.lock)?.token === token) remove(p.lock);
 }
 function installedRevision(p, result) {
   const desktop = result?.desktop;
   if (!desktop?.verified || !/^[a-f0-9]{40,64}$/i.test(desktop.commit || '') || !desktop.manifest) return null;
   try {
-    const bytes = fs.readFileSync(p.manifest), manifest = JSON.parse(bytes);
+    const bytes = retryIO(() => fs.readFileSync(p.manifest), { budget: 150 }), manifest = JSON.parse(bytes);
     if (manifest.version !== 2 || manifest.id !== 'custom' || !manifest.files) return null;
     return createHash('sha256').update(bytes).digest('hex') === desktop.manifest ? desktop.commit : null;
   } catch { return null; }
@@ -76,21 +169,241 @@ function deploymentTarget(job, result) {
   const local = result.results?.find(row => row.machine === 'local');
   return [local?.commit, result.target].find(value => typeof value === 'string' && /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i.test(value)) || null;
 }
-function inspect(home, { now = Date.now, isAlive = alive } = {}) {
-  const p = files(home), result = read(p.result);
+function summaryLines(results) {
+  const cell = value => String(value || '-').replace(/[\r\n\t\x00-\x1f\x7f|]/g, ' ').slice(0, 250);
+  return ['Machine | Action | Source commit | Backup', ...results.map(row => {
+    const qualifier = row.action === 'failed' ? ' (attempted)' : row.action === 'would deploy' ? ' (target)' : row.action === 'skipped' ? ' (checkout only)' : '';
+    return [row.machine, row.action + (row.reason ? ': ' + row.reason : ''), row.commit ? row.commit + qualifier : '-', row.backup || '-'].map(cell).join(' | ');
+  })];
+}
+function settled(p, job, now) {
+  const times = [job.started, job.finished || 0];
+  for (const file of [p.log, p.result, p.status]) {
+    try { times.push(fs.statSync(file).mtimeMs); } catch (error) { if (error.code !== 'ENOENT') return false; }
+  }
+  return now >= Math.max(...times) + SETTLE || (Number.isFinite(job.deadline) && now >= job.deadline);
+}
+function terminalEvidence(p, job, result) {
+  if (!job?.token || !Number.isFinite(job.started)) return null;
+  let text;
+  try {
+    // One bounded tail read, immediately closed even on error. Large npm output
+    // must not hide final evidence; discard a leading partial line when seeking.
+    text = retryIO(() => {
+      const fd = fs.openSync(p.log, 'r');
+      try {
+        const size = fs.fstatSync(fd).size, length = Math.min(size, 1024 * 1024), offset = size - length;
+        const buffer = Buffer.alloc(length), count = fs.readSync(fd, buffer, 0, length, offset);
+        const tail = buffer.subarray(0, count).toString('utf8');
+        return offset ? (tail.includes('\n') ? tail.slice(tail.indexOf('\n') + 1) : '') : tail;
+      } finally { fs.closeSync(fd); }
+    }, { budget: 150 });
+  } catch { return null; }
+  const lines = text.trimEnd().split(/\r?\n/), marker = lines.findLast(line => line.startsWith(TERMINAL));
+  if (marker) {
+    try {
+      const value = JSON.parse(marker.slice(TERMINAL.length));
+      if (value.version === 1 && value.token === job.token && value.complete === true && value.at >= job.started && Array.isArray(value.results)) return value;
+    } catch {}
+    return null;
+  }
+  // Older CLIs print their complete summary immediately before the failed final
+  // rename. It must match *every* intermediate row and the exact result path.
+  if (result?.token !== job.token || result.complete !== false || result.at < job.started || !Array.isArray(result.results) || !result.results.length) return null;
+  const summary = summaryLines(result.results), index = lines.lastIndexOf(summary[0]);
+  const tail = lines.slice(index + summary.length);
+  const failure = tail.join('\n').replaceAll('\\', '/').toLowerCase();
+  const destination = failure.slice(failure.lastIndexOf('->') + 2).trim().replace(/^['"]|['"]$/g, '');
+  if (index < 0 || tail.length !== 1 || lines.slice(index, index + summary.length).join('\n') !== summary.join('\n')
+      || !/\b(?:eperm|ebusy|eacces)\b/.test(failure) || !failure.includes('rename')
+      || destination !== p.result.replaceAll('\\', '/').toLowerCase()) return null;
+  return { ...result, complete: true };
+}
+function quiescent(job, { isAlive = alive, run = command, platform = process.platform } = {}) {
+  if (!Number.isInteger(job?.pid) || job.pid < 1 || isAlive(job.pid) || isAlive(job.childPid)) return false;
+  // Windows retains parent PIDs after exit. On POSIX a detached CLI's process
+  // group remains detectable even when its leader exits and children reparent.
+  if (platform !== 'win32' && Number.isInteger(job.childPid)) {
+    try { process.kill(-job.childPid, 0); return false; } catch (error) { if (error.code !== 'ESRCH') return false; }
+  }
+  const reply = platform === 'win32'
+    ? run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', 'ConvertTo-Json -Compress -InputObject @(Get-CimInstance Win32_Process -ErrorAction Stop | Select-Object ProcessId,ParentProcessId,CommandLine,Name)'], { timeout: 5000 })
+    : run('ps', ['-eo', 'pid=,ppid=,args='], { timeout: 5000 });
+  if (reply.code !== 0) return false;
+  let processes;
+  try {
+    processes = platform === 'win32' ? JSON.parse(reply.stdout).map(p => [p.ProcessId, p.ParentProcessId])
+      : reply.stdout.trim().split('\n').map(line => { const match = /^\s*(\d+)\s+(\d+)\s+.+$/.exec(line); if (!match) throw Error('Incomplete process facts'); return [Number(match[1]), Number(match[2])]; });
+    if (!Array.isArray(processes) || !processes.length || processes.some(p => p.length !== 2 || p.some(n => !Number.isInteger(n)))) return false;
+  } catch { return false; }
+  const roots = new Set([job.pid, job.childPid, ...(job.descendantPids || [])].filter(Number.isInteger));
+  return !processes.some(([pid, parent]) => roots.has(pid) || roots.has(parent));
+}
+function recoveryState(p, job, result, check, unknown, now, isQuiescent) {
+  if (!unknown) return null;
+  // Additive CLI owner metadata makes future tokenless runs identifiable. Old
+  // receipts without it remain investigation-only, never guessed from time.
+  const matchingJob = job && (!result || runIdentity(result) === job.token || (!terminalState(job) && result.at < job.started && result.complete === true
+    && outcome(result).state !== 'unknown' && !result.results.some(row => row.outcome === 'unknown' || /\boutcome unknown\b/i.test(row.reason || ''))));
+  if (job && !matchingJob && !terminalState(job)) return null; // unresolved overlapping identities are not a retry grant
+  const owner = matchingJob ? { ...job,
+    childPid: job.childPid || (result?.owner?.pid !== job.pid ? result?.owner?.pid : undefined),
+    deadline: Math.max(job.deadline || 0, runIdentity(result) === job.token ? result?.owner?.deadline || 0 : 0) }
+    : result?.owner && runIdentity(result) ? { ...result.owner, token: runIdentity(result), finished: result.at } : null;
+  if (!owner?.token || !Number.isFinite(owner.started) || !Number.isFinite(owner.deadline)) return null;
+  const identity = createHash('sha256').update(JSON.stringify({ job: owner, result })).digest('hex');
+  const fresh = check?.checked && !check.error && check.attempted > (owner.finished || owner.started)
+    && now >= check.checked && now - check.checked < CHECK_MAX;
+  const evidence = result?.complete === true ? result : terminalEvidence(p, owner, result);
+  const terminal = evidence && (evidence.token === owner.token || evidence.runId === owner.token)
+    && !evidence.results?.some(row => row.outcome === 'unknown' || /\boutcome unknown\b/i.test(row.reason || ''));
+  const quietTime = settled(p, owner, now) && (terminal || now >= owner.deadline);
+  const lock = read(p.lock);
+  const matchingLock = !lock || lock.token === owner.token;
+  const retryable = Boolean(fresh && quietTime && matchingLock && !fs.existsSync(p.deployLock) && isQuiescent(owner));
+  return { identity, retryable, until: check?.checked ? check.checked + CHECK_MAX : 0 };
+}
+const RECOVERY_CONFIRMATION = 'No recorded owner or local updater is running. Clear stale locks, status and results only after confirming all local and remote update work has stopped. This does not retry the update.';
+const recoveryKeys = ['check', 'lock', 'retryLock', 'checkLock', 'deployLock', 'status', 'result'];
+function assertStatePaths(p) {
+  for (const file of [p.dir, path.dirname(p.dir), path.join(p.dir, 'recovery'), p.log, p.runner, ...recoveryKeys.map(key => p[key])])
+    if (fs.existsSync(file) && fs.lstatSync(file).isSymbolicLink()) throw Error('Linked updater state is unsafe; recovery refused');
+}
+function stateRecords(p) {
+  const records = {};
+  try { assertStatePaths(p); } catch (error) { return { unsafe: { error: shortError(error) } }; }
+  for (const key of recoveryKeys) {
+    try {
+      const stat = fs.lstatSync(p[key]);
+      if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 8 * 1024 * 1024) throw Error('Unsafe updater state file');
+      const raw = retryIO(() => fs.readFileSync(p[key], 'utf8'), { budget: 150 });
+      let value, malformed = false;
+      try { value = JSON.parse(raw); } catch { malformed = true; }
+      records[key] = { raw, value, malformed, mtime: stat.mtimeMs };
+    } catch (error) { if (error.code !== 'ENOENT') records[key] = { error: shortError(error) }; }
+  }
+  return records;
+}
+const stateIdentity = records => createHash('sha256').update(JSON.stringify(records)).digest('hex');
+const recordedPid = value => ((typeof value === 'number' || (typeof value === 'string' && /^[1-9]\d*$/.test(value))) && Number.isSafeInteger(Number(value)) && Number(value) > 0) ? Number(value) : null;
+function updaterProcessesStopped({ run = command, platform = process.platform } = {}) {
+  const reply = platform === 'win32'
+    ? run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', 'ConvertTo-Json -Compress -InputObject @(Get-CimInstance Win32_Process -ErrorAction Stop | Select-Object ProcessId,ParentProcessId,CommandLine,Name)'], { timeout: 5000 })
+    : run('ps', ['-eo', 'pid=,ppid=,args='], { timeout: 5000 });
+  if (reply.code !== 0) return false;
+  try {
+    const rows = platform === 'win32' ? JSON.parse(reply.stdout).map(row => ({ pid: row.ProcessId, command: row.CommandLine, name: row.Name }))
+      : reply.stdout.trim().split('\n').map(line => { const match = /^\s*(\d+)\s+\d+\s+(.+)$/.exec(line); if (!match) throw Error('Incomplete process facts'); return { pid: Number(match[1]), command: match[2] }; });
+    return rows.some(row => row.pid === process.pid) && rows.every(row => Number.isInteger(row.pid) && (platform !== 'win32' || typeof row.name === 'string') && (row.pid === process.pid ||
+      (!(!row.command && /^(node|npm|cmd)(?:\.exe)?$/i.test(row.name || '')) &&
+       !/(?:update-(?:worker|runner)\.cjs|(?:deploy-all|deploy|rollback)\.mjs|npm\s+run\s+deploy)/i.test(row.command || ''))));
+  } catch { return false; }
+}
+function clearStateOffer(p, records, snapshot, options = {}) {
+  const now = (options.now || Date.now)(), isAlive = options.isAlive || alive;
+  const values = Object.fromEntries(Object.entries(records).map(([key, record]) => [key, record.value]));
+  const badStatus = records.status && (records.status.malformed || !values.status?.token || !Number.isFinite(values.status?.started) || !['running', 'unknown', 'complete', 'partial', 'failed'].includes(values.status?.state));
+  const badResult = records.result && (records.result.malformed || !Array.isArray(values.result?.results));
+  const trustedTime = record => Number.isFinite(record?.mtime) && record.mtime <= now + 1000 ? record.mtime : 0;
+  const validDeadline = (value, record) => Number.isFinite(value) && value <= trustedTime(record) + DEADLINE + 1000;
+  const badDeadline = (values.status && ['running', 'unknown'].includes(values.status.state) && !validDeadline(values.status.deadline, records.status))
+    || (values.result?.owner && !validDeadline(values.result.owner.deadline, records.result))
+    || (values.lock?.deadline !== undefined && !validDeadline(values.lock.deadline, records.lock));
+  const futureTime = Object.values(records).some(record => Number.isFinite(record.mtime) && record.mtime > now + 1000);
+  const malformed = Object.values(records).some(record => record.malformed) || badStatus || badResult || badDeadline || futureTime;
+  const orphanLock = records.lock && (!values.status?.token || values.lock?.token !== values.status.token);
+  const orphanStatus = ['running', 'unknown'].includes(values.status?.state) &&
+    (!Number.isInteger(values.status?.pid) || values.status.pid < 1 || !Number.isFinite(values.status?.started) || !Number.isFinite(values.status?.deadline));
+  const invalidRunOwner = values.result?.owner && (!Number.isInteger(values.result.owner.pid) || values.result.owner.pid < 1 || !Number.isFinite(values.result.owner.started) || !Number.isFinite(values.result.owner.deadline));
+  const unidentifiable = !snapshot.stateError && (snapshot.job?.state === 'unknown' || snapshot.lastRun?.state === 'unknown' || snapshot.peerUnknown) && !snapshot.recovery;
+  const validUntil = (key, duration) => Number.isFinite(values[key]?.until) && values[key].until <= Math.max(trustedTime(records[key]), now) + duration + 1000;
+  const invalidLease = (records.retryLock && (!values.retryLock?.token || !Number.isInteger(values.retryLock?.pid) || !validUntil('retryLock', 30000)))
+    || (records.checkLock && (!values.checkLock?.token || !validUntil('checkLock', 20000)));
+  const expiredLaunch = !snapshot.job && !snapshot.lastRun && !records.lock && !records.status && !records.result && !records.deployLock
+    && options.expiredLaunch && Number.isFinite(options.expiredLaunch.started) && Number.isFinite(options.expiredLaunch.deadline)
+    && options.expiredLaunch.deadline < now ? options.expiredLaunch : null;
+  if (!expiredLaunch && !records.deployLock && !orphanLock && !orphanStatus && !invalidRunOwner && !malformed && !unidentifiable && !invalidLease && !snapshot.stateError) return null;
+  const physicalIdentity = stateIdentity(records), identity = expiredLaunch ? stateIdentity({ records, expiredLaunch }) : physicalIdentity;
+  const base = { identity, physicalIdentity, eligible: false, until: now + 30000, needsSettle: futureTime, confirmation: RECOVERY_CONFIRMATION };
+  if ((!Object.keys(records).length && !expiredLaunch) || Object.values(records).some(record => record.error)) return base;
+  const owners = [values.status, values.result?.owner, values.lock, values.retryLock, values.checkLock,
+    values.deployLock].filter(Boolean).map(value => {
+      const owner = typeof value === 'object' ? value : { pid: value };
+      return { ...owner, pid: recordedPid(owner.pid), childPid: recordedPid(owner.childPid),
+        descendantPids: Array.isArray(owner.descendantPids) ? owner.descendantPids.map(recordedPid).filter(Boolean) : [] };
+    });
+  for (const owner of owners) for (const pid of [owner.pid, owner.childPid, ...(Array.isArray(owner.descendantPids) ? owner.descendantPids : [])]) {
+    if (Number.isInteger(pid) && pid > 0 && isAlive(pid)) return base;
+  }
+  const resultRows = Array.isArray(values.result?.results) ? values.result.results : [];
+  const unknownWrites = ['running', 'unknown'].includes(values.status?.state) || values.result?.complete === false
+    || resultRows.some(row => row?.outcome === 'unknown' || /\boutcome unknown\b/i.test(row?.reason || ''));
+  const uncertain = orphanLock || orphanStatus || invalidRunOwner || badStatus || badResult || unidentifiable || unknownWrites;
+  const workTimes = ['lock', 'status', 'result', 'deployLock'].filter(key => records[key]).map(key => trustedTime(records[key])).filter(Boolean);
+  const latestWork = Math.max(0, ...workTimes);
+  const deadline = Math.max(expiredLaunch ? expiredLaunch.started + DEADLINE : 0, ...owners.map(owner => Number.isFinite(owner.deadline) && owner.deadline <= latestWork + DEADLINE + 1000 ? owner.deadline : 0),
+    ...workTimes.map(time => time + (uncertain || records.deployLock ? DEADLINE : SETTLE)));
+  if (now < deadline) return base;
+  for (const [key, duration] of [['retryLock', 30000], ['checkLock', 20000]]) {
+    if (records[key] && now < Math.max(trustedTime(records[key]) + duration, validUntil(key, duration) ? values[key].until : 0)) return base;
+  }
+  // Reuse one process-tree read per proof, not one slow PowerShell call per PID.
+  const cache = new Map(), run = options.run || command;
+  const cachedRun = (program, args, opts) => { const key = JSON.stringify([program, args]); if (!cache.has(key)) cache.set(key, run(program, args, opts)); return cache.get(key); };
+  const quiet = options.isQuiescent || (owner => quiescent(owner, { isAlive, run: cachedRun }));
+  if (owners.some(owner => Number.isInteger(owner.pid) && owner.pid > 0 && !quiet(owner))) return base;
+  if (!(options.updatersStopped || (() => updaterProcessesStopped({ run: cachedRun })))()) return base;
+  return { ...base, eligible: true };
+}
+function inspect(home, options = {}) {
+  const p = files(home), replies = new Map(), run = options.run || command;
+  const cachedRun = (program, args, opts) => { const key = JSON.stringify([program, args]); if (!replies.has(key)) replies.set(key, run(program, args, opts)); return replies.get(key); };
+  const proofOptions = { ...options, run: cachedRun, isQuiescent: options.isQuiescent || (owner => quiescent(owner, { isAlive: options.isAlive || alive, run: cachedRun })) };
+  let snapshot;
+  try { snapshot = inspectRun(home, proofOptions); }
+  catch (error) {
+    snapshot = { job: { state: 'unknown', error: shortError(error) }, stateError: true, result: null,
+      revision: null, check: null, locked: fs.existsSync(p.lock), checking: false,
+      details: { kind: 'result', path: p.dir }, log: '' };
+  }
+  const records = stateRecords(p);
+  const clearRecovery = clearStateOffer(p, records, snapshot, proofOptions);
+  return { ...snapshot, ...(clearRecovery?.eligible ? { checking: false } : {}), clearRecovery };
+}
+function inspectRun(home, { now = Date.now, isAlive = alive, isQuiescent = job => quiescent(job, { isAlive }) } = {}) {
+  const p = files(home);
+  assertStatePaths(p);
+  reapRetryClaim(p, now(), isAlive);
   let job = read(p.status);
+  read(p.lock); // unreadable lock contents never authorize launch or recovery
+  let result = readResult(p, job);
+  const dead = job && !isAlive(job.pid) && !isAlive(job.childPid);
+  const ready = dead && settled(p, job, now());
+  if (job && ['running', 'unknown'].includes(job.state) && ready && result?.complete !== true) {
+    const recovered = terminalEvidence(p, job, result);
+    if (recovered) {
+      result = recovered;
+      job = { ...job, receiptUnsaved: true };
+    }
+  }
   // A lost supervisor may leave a complete CLI result. Never accept another run's
   // result or remove an uncertain lock just because a PID no longer exists.
-  if (job && ['running', 'unknown'].includes(job.state) && !isAlive(job.pid) && !isAlive(job.childPid)
+  if (job && ['running', 'unknown'].includes(job.state) && ready
       && result?.complete === true && result.token === job.token) {
-    job = { ...job, ...outcome(result), finished: now() };
-    atomic(p.status, job);
-    if (job.state !== 'unknown') unlock(p, job.token);
+    const final = outcome(result);
+    if (final.state !== 'unknown') {
+      job = { ...job, ...final, finished: now() };
+      atomic(p.status, job);
+      unlock(p, job.token);
+    }
   }
+  // finish() publishes before unlinking. A scanner can outlive unlink's retry
+  // budget too; a settled terminal owner must not leave a permanent stale lock.
+  if (job && ['complete', 'partial', 'failed'].includes(job.state) && ready) unlock(p, job.token);
   if (job?.state === 'running' && (now() > job.deadline || (job.phase !== 'starting' && !isAlive(job.pid)) || (job.phase === 'starting' && now() - job.started > 5000))) job = { ...job, state: 'unknown' };
   // A later ordinary CLI run has no Settings launch token/log. Do not attach
   // its result to a stale completed Settings job or that job's unrelated log.
-  if (job && !['running', 'unknown'].includes(job.state) && result?.complete && result.at >= job.started && result.token !== job.token) job = null;
+  if (supersedesTerminal(job, result)) job = null;
   // Old completed Settings jobs may have called a benign skip partial. Only
   // their exact final receipt can refine that state; never resolve live/unknown work.
   if (job && ['complete', 'partial'].includes(job.state) && !fs.existsSync(p.lock)
@@ -113,10 +426,23 @@ function inspect(home, { now = Date.now, isAlive = alive } = {}) {
   if (check?.target) check = { ...check, available: revision !== check.target && (!check.error || check.available === true) };
   const peerPending = deferredPeers(result).length > 0;
   const peerUnknown = Boolean(result?.results?.some(row => row.machine !== 'local' && (row.outcome === 'unknown' || /\boutcome unknown\b/i.test(row.reason || ''))));
-  return { job, lastRun, result, peerPending, peerUnknown, check, checking: (read(p.checkLock)?.until || 0) > now(), revision, locked: fs.existsSync(p.lock), details, log: details?.kind === 'log' ? details.path : '' };
+  // An incomplete CLI receipt owns current work even before it has an unknown
+  // peer. Never borrow a previous Settings job's PID/deadline or log for it.
+  if (!job && result?.owner && runIdentity(result) && result.complete === false) {
+    job = { ...result.owner, token: runIdentity(result), source: 'cli', phase: 'deploying', finished: result.at,
+      error: classified?.state === 'unknown' ? classified.error : peerUnknown ? 'A dispatched peer outcome is unknown' : null,
+      state: classified?.state !== 'unknown' && !peerUnknown && isAlive(result.owner.pid) && now() < result.owner.deadline ? 'running' : 'unknown' };
+  }
+  // Ownerless legacy receipts are unfinished too: never guess a safe retry or
+  // expose ordinary Update merely because no peer has reported a timeout yet.
+  if (!job && result?.complete === false) job = { state: 'unknown', source: 'cli', phase: 'deploying', finished: result.at };
+  const recovery = recoveryState(p, job, result, check, job?.state === 'unknown' || lastRun?.state === 'unknown' || peerUnknown, now(), isQuiescent);
+  return { job, lastRun, result, peerPending, peerUnknown, recovery, check, checking: (read(p.checkLock)?.until || 0) > now(), revision, locked: fs.existsSync(p.lock), details, log: details?.kind === 'log' ? details.path : '' };
 }
-function checkMain(home, { force = false, invalidate = false, now = Date.now, random = Math.random, run = command, env = process.env } = {}) {
-  const p = files(home), snapshot = inspect(home, { now });
+function checkMain(home, { force = false, invalidate = false, now = Date.now, random = Math.random, run = command, env = process.env, expiredLaunch = null } = {}) {
+  const inspectOptions = { now, expiredLaunch };
+  const p = files(home), snapshot = inspect(home, inspectOptions);
+  if (snapshot.clearRecovery?.eligible || snapshot.stateError) return snapshot;
   if (snapshot.job?.state === 'running') return { ...snapshot, retryAfter:now() + BUSY_CHECK_RETRY };
   let previous = snapshot.check || {};
   const latest = snapshot.job || snapshot.lastRun;
@@ -133,22 +459,21 @@ function checkMain(home, { force = false, invalidate = false, now = Date.now, ra
     return now() < nextAttempt(check, now()) ? value : null;
   };
   const reused = cached(snapshot); if (reused) return reused;
-  fs.mkdirSync(p.dir, { recursive: true });
+  retryIO(() => fs.mkdirSync(p.dir, { recursive: true }));
   const held = read(p.checkLock);
-  if (held && held.until <= now() && read(p.checkLock)?.token === held.token) fs.unlinkSync(p.checkLock);
-  let fd;
-  try { fd = fs.openSync(p.checkLock, 'wx'); }
+  if (held && held.until <= now() && read(p.checkLock)?.token === held.token) remove(p.checkLock);
+  const token = randomUUID();
+  try { acquire(p.checkLock, { token, pid: process.pid, until: now() + 20000 }); }
   catch (error) {
-    if (error.code === 'EEXIST') return { ...inspect(home, { now }),
+    if (error.code === 'EEXIST') return { ...inspect(home, inspectOptions),
       ...(invalidate ? { retryAfter:Math.max(now() + 300, read(p.checkLock)?.until || now() + 20000) } : {}) };
     throw error;
   }
-  const token = randomUUID(); fs.writeFileSync(fd, JSON.stringify({ token, until: now() + 20000 })); fs.closeSync(fd);
   const attempted = now();
   try {
     // Recheck after exclusive acquisition: another process can have completed
     // between our first snapshot and open. Do not lose a deferred merge hint.
-    const fresh = { ...inspect(home, { now }), checking:false };
+    const fresh = { ...inspect(home, inspectOptions), checking:false };
     if (fresh.job?.state === 'running') return { ...fresh, retryAfter:now() + BUSY_CHECK_RETRY };
     const reused = cached(fresh); if (reused) return reused;
     previous = fresh.check || {};
@@ -162,8 +487,8 @@ function checkMain(home, { force = false, invalidate = false, now = Date.now, ra
   } catch {
     const count = Math.min(4, failures(previous) + 1);
     atomic(p.check, { ...previous, attempted, nextAttempt: attempted + checkDelay(count, random), failures: count, error: 'Check failed. Try again.' });
-  } finally { if (read(p.checkLock)?.token === token) fs.unlinkSync(p.checkLock); }
-  return inspect(home, { now });
+  } finally { if (read(p.checkLock)?.token === token) remove(p.checkLock); }
+  return inspect(home, inspectOptions);
 }
 function noRedirect(file) {
   // Covers junctions as well as symlinks, including existing parent components.
@@ -214,15 +539,18 @@ function killTree(pid) {
   if (process.platform === 'win32') command('taskkill.exe', ['/pid', String(pid), '/t', '/f'], { timeout: 10000 });
   else try { process.kill(-pid, 'SIGKILL'); } catch { /* already exited */ }
 }
-async function runUpdate(home, token, { userHome, run = command, spawn = cp.spawn, now = Date.now, kill = killTree, deadlineMs = DEADLINE } = {}) {
+async function runUpdate(home, token, { userHome, run = command, spawn = cp.spawn, now = Date.now, kill = killTree, deadlineMs = DEADLINE, setTimer = setTimeout, clearTimer = clearTimeout } = {}) {
   const p = files(home);
   let job = read(p.status);
   if (job?.token !== token || read(p.lock)?.token !== token || job.state !== 'running') throw Error('Update launch identity changed');
   job = { ...job, pid: process.pid, phase: 'preparing', deadline: job.started + deadlineMs };
   atomic(p.status, job);
-  const log = text => { if (text) fs.appendFileSync(p.log, text.endsWith('\n') ? text : text + '\n'); };
+  const log = text => { if (text) retryIO(() => fs.appendFileSync(p.log, text.endsWith('\n') ? text : text + '\n')); };
+  let dispatched = false;
   const finish = (state, error, release = state !== 'unknown') => {
-    job = { ...job, target: deploymentTarget(job, read(p.result)) || job.target, state, error: error ? shortError(error) : null, finished: now() };
+    let target;
+    try { target = deploymentTarget(job, readResult(p, job)); } catch {}
+    job = { ...job, target: target || job.target, state, error: error ? shortError(error) : null, finished: now() };
     atomic(p.status, job);
     if (release) unlock(p, token);
     return job;
@@ -237,10 +565,11 @@ async function runUpdate(home, token, { userHome, run = command, spawn = cp.spaw
     return await new Promise(resolve => {
       let child, timer, settled = false;
       const done = (state, error, release = state !== 'unknown') => {
-        if (settled) return; settled = true; clearTimeout(timer);
-        resolve(finish(state, error, release));
+        if (settled) return; settled = true; clearTimer(timer);
+        try { resolve(finish(state, error, release)); }
+        catch (persistenceError) { resolve({ ...job, state: 'unknown', error: `Update status could not be saved: ${shortError(persistenceError)}` }); }
       };
-      const fd = fs.openSync(p.log, 'a');
+      const fd = retryIO(() => fs.openSync(p.log, 'a'));
       try {
         child = spawn(process.execPath, [path.join(root, 'tools/deploy-all.mjs')], {
           cwd: root, env: { ...process.env, HERDR_APP_HOME: path.resolve(home), HERDR_UPDATE_RUN_ID: token },
@@ -249,38 +578,53 @@ async function runUpdate(home, token, { userHome, run = command, spawn = cp.spaw
       } catch (error) { done('failed', error); }
       finally { fs.closeSync(fd); }
       if (!child || settled) return;
+      dispatched = Number.isInteger(child.pid);
       job = { ...job, childPid: child.pid }; atomic(p.status, job);
       child.once('error', error => done('failed', error));
       child.once('exit', code => {
-        const result = read(p.result);
-        if (result?.token !== token || result.complete !== true) return done('unknown', 'No final deployment result; inspect log', false);
-        const final = outcome(result);
-        if (code !== 0 && final.state === 'complete') return done('unknown', 'Deployment exit disagrees with result; inspect log', false);
-        done(final.state, final.error);
+        try {
+          const result = readResult(p, job);
+          if (result?.token !== token || result.complete !== true) return done('unknown', 'No final deployment result; inspect log', false);
+          const final = outcome(result);
+          if (code !== 0 && final.state === 'complete') return done('unknown', 'Deployment exit disagrees with result; inspect log', false);
+          done(final.state, final.error);
+        } catch (error) { done('unknown', `Deployment result unreadable: ${shortError(error)}`, false); }
       });
-      timer = setTimeout(() => {
+      timer = setTimer(() => {
         log('Update deadline exceeded; dispatched remote outcomes may be unknown. No automatic retry.');
         kill(child.pid); done('unknown', 'Update deadline exceeded; inspect log', false);
       }, Math.max(1, job.deadline - now()));
     });
-  } catch (error) { log(shortError(error)); return finish('failed', error); }
+  } catch (error) { log(shortError(error)); return finish(dispatched ? 'unknown' : 'failed', error, !dispatched); }
 }
-async function launch(home, { spawn = cp.spawn, source = fs.readFileSync(__filename, 'utf8'), now = Date.now, sleep = ms => new Promise(resolve => setTimeout(resolve, ms)) } = {}) {
-  const p = files(home), current = inspect(home);
+async function launch(home, { spawn = cp.spawn, source = fs.readFileSync(__filename, 'utf8'), now = Date.now, sleep = ms => new Promise(resolve => setTimeout(resolve, ms)), retryClaim = null, inspectOptions = {} } = {}) {
+  const p = files(home), current = inspect(home, { ...inspectOptions, now });
   // Enforce this at the process boundary too: a stale UI or absent Settings lock
   // cannot replay a tokenless CLI timeout whose descendants may still be alive.
-  if (current.job?.state === 'unknown' || current.lastRun?.state === 'unknown' || current.peerUnknown) return current;
-  fs.mkdirSync(p.dir, { recursive: true });
-  let fd;
-  try { fd = fs.openSync(p.lock, 'wx'); }
-  catch (error) { if (error.code === 'EEXIST') return inspect(home); throw error; }
+  const authorizedRetry = !current.clearRecovery && !current.stateError && retryClaim && current.recovery?.identity === retryClaim && current.recovery.retryable;
+  if (retryClaim && !authorizedRetry) return current;
+  if (!authorizedRetry && (current.clearRecovery || current.stateError || fs.existsSync(p.retryLock) || current.job?.state === 'running' || current.job?.state === 'unknown' || current.lastRun?.state === 'unknown' || current.peerUnknown)) return current;
+  retryIO(() => fs.mkdirSync(p.dir, { recursive: true }));
   const token = randomUUID();
-  fs.writeFileSync(fd, JSON.stringify({ token })); fs.closeSync(fd);
+  try { acquire(p.lock, { token, pid: process.pid, started: now(), deadline: now() + DEADLINE }); }
+  catch (error) { if (error.code === 'EEXIST') return inspect(home); throw error; }
+  if (authorizedRetry) {
+    const claimed = inspectRun(home, { ...inspectOptions, now });
+    if (claimed.recovery?.identity !== retryClaim || fs.existsSync(p.deployLock)) {
+      unlock(p, token);
+      return inspect(home, { ...inspectOptions, now });
+    }
+  }
   let job = { token, state: 'running', phase: 'starting', started: now(), deadline: now() + DEADLINE, log: p.log };
   let dispatched = false;
   try {
-    atomic(p.runner, source); fs.writeFileSync(p.log, 'Starting customization update.\n'); atomic(p.status, job);
-    const logFd = fs.openSync(p.log, 'a');
+    if (authorizedRetry) {
+      // New identity becomes durable before overwriting the old log/result.
+      atomic(p.status, job);
+      atomic(p.result, { version: 1, token, at: now(), complete: false, desktop: current.result?.desktop || null, results: [] });
+    }
+    atomic(p.runner, source); retryIO(() => fs.writeFileSync(p.log, 'Starting customization update.\n')); atomic(p.status, job);
+    const logFd = retryIO(() => fs.openSync(p.log, 'a'));
     let child, failure;
     try { child = spawn(process.execPath, [p.runner, '--run', path.resolve(home), token], { detached: true, windowsHide: true, stdio: ['ignore', logFd, logFd] }); }
     finally { fs.closeSync(logFd); }
@@ -304,16 +648,95 @@ async function launch(home, { spawn = cp.spawn, source = fs.readFileSync(__filen
     return inspect(home);
   }
 }
-module.exports = { REPOSITORY, DEADLINE, CHECK_MIN, CHECK_MAX, RETRY_MAX, INVALIDATE_MIN, BUSY_CHECK_RETRY, nextAttempt, checkDelay, files, read, atomic, command, installedRevision, inspect, checkMain, prepareClone, peerSkipKind, deferredPeers, outcome, launch, runUpdate };
+async function recoverUpdate(home, { identity, confirmedStopped } = {}, options = {}) {
+  const p = files(home), now = options.now || Date.now;
+  const snapshot = options.initialSnapshot || inspect(home, options), offer = snapshot.clearRecovery;
+  if (confirmedStopped !== true || !offer?.eligible || offer.identity !== identity) return snapshot;
+  const original = stateRecords(p), archive = path.join(p.dir, 'recovery', `stopped-update-${randomUUID()}`);
+  // A future filesystem clock is not an indefinite lease. Observe stability
+  // directly before clearing, still requiring the full stopped-work proof.
+  if (offer.needsSettle) (options.sleep || pause)(SETTLE);
+  if (stateIdentity(stateRecords(p)) !== offer.physicalIdentity) return inspect(home, options);
+  fs.mkdirSync(archive, { recursive: true, mode: 0o700 });
+  const claim = randomUUID();
+  let owned = false;
+  try {
+    if (stateIdentity(stateRecords(p)) !== offer.physicalIdentity) return inspect(home, options);
+    // A malformed legacy claim cannot be silently reaped. Only this confirmed
+    // operation may archive it after complete stopped-owner/process proof.
+    if (original.retryLock) retryIO(() => fs.renameSync(p.retryLock, path.join(archive, 'update-retry.lock')));
+    try { acquire(p.retryLock, { token: claim, pid: process.pid, until: now() + 30000 }); owned = true; }
+    catch (error) { if (error.code === 'EEXIST') return inspect(home, options); throw error; }
+    const afterClaim = stateRecords(p); delete afterClaim.retryLock;
+    const beforeClaim = { ...original }; delete beforeClaim.retryLock;
+    if (stateIdentity(afterClaim) !== stateIdentity(beforeClaim)) return inspect(home, options);
+    const proof = Object.keys(beforeClaim).length ? clearStateOffer(p, beforeClaim, snapshot, options)
+      : { eligible: (options.updatersStopped || (() => updaterProcessesStopped(options)))() };
+    if (!proof?.eligible || read(p.retryLock)?.token !== claim) return inspect(home, options);
+    if (fs.existsSync(p.log)) retryIO(() => fs.copyFileSync(p.log, path.join(archive, 'update.log'), fs.constants.COPYFILE_EXCL));
+    retryIO(() => fs.appendFileSync(p.log, `Explicit stopped-update recovery authorized: stale locks/status/results will be moved to ${archive}; recorded owners stopped, local process inventory clear, local/remote stopped-work confirmation received. No update will be started.\n`));
+    // Preserve every journal/manifest/payload byte. Recheck identity before any
+    // move; recovery clears metadata only, never deploys, retries or rolls back.
+    for (const key of recoveryKeys.filter(key => key !== 'retryLock')) {
+      const current = stateRecords(p); delete current.retryLock;
+      if (stateIdentity(current) !== stateIdentity(beforeClaim)) throw Error('Updater state changed during recovery; nothing further cleared');
+      if (!original[key]) continue;
+      retryIO(() => fs.renameSync(p[key], path.join(archive, path.basename(p[key]))));
+      delete beforeClaim[key];
+    }
+    atomic(path.join(archive, 'recovery.json'), { version: 1, at: now(), confirmedStopped: true, cleared: Object.keys(original), identity, expiredLaunch: options.expiredLaunch || null });
+    retryIO(() => fs.appendFileSync(p.log, `Explicit stopped-update recovery: archived stale locks/status/results in ${archive}; recorded owners stopped and local process inventory clear; local/remote stopped-work confirmation received. No update was started.\n`));
+    return { ...inspectRun(home, options), recovered: true, recoveryDirectory: archive,
+      clearedTokens: [...new Set([original.status?.value?.token, runIdentity(original.result?.value), original.lock?.value?.token].filter(token => typeof token === 'string' && token))] };
+  } finally { if (owned && read(p.retryLock)?.token === claim) remove(p.retryLock); }
+}
+async function retryUpdate(home, { identity, confirmedStopped } = {}, options = {}) {
+  const p = files(home), now = options.now || Date.now, inspectOptions = { ...options.inspectOptions, now };
+  let current = inspect(home, inspectOptions);
+  if (confirmedStopped !== true || !identity || current.clearRecovery || current.stateError || current.recovery?.identity !== identity || !current.recovery.retryable) return current;
+  const claim = randomUUID();
+  try { acquire(p.retryLock, { token: claim, pid: process.pid, until: now() + 30000 }); }
+  catch (error) { if (error.code === 'EEXIST') return current; throw error; }
+  try {
+    current = inspect(home, inspectOptions);
+    if (current.clearRecovery || current.stateError || current.recovery?.identity !== identity || !current.recovery.retryable) return current;
+    const lock = read(p.lock);
+    if (lock && lock.token !== current.job?.token) return current;
+    // Copy, don't move, before claiming: an archive failure leaves live state
+    // untouched. No journals, deployment locks or unrelated files are removed.
+    const archive = path.join(p.dir, 'recovery', `update-retry-${claim}`);
+    fs.mkdirSync(archive, { recursive: true, mode: 0o700 });
+    for (const file of [p.status, p.result, p.log, p.lock]) {
+      if (fs.existsSync(file)) retryIO(() => fs.copyFileSync(file, path.join(archive, path.basename(file)), fs.constants.COPYFILE_EXCL));
+    }
+    const fresh = inspect(home, inspectOptions);
+    if (fresh.clearRecovery || fresh.stateError || fresh.recovery?.identity !== identity || !fresh.recovery.retryable) return fresh;
+    if (lock && read(p.lock)?.token === lock.token) remove(p.lock);
+    return await launch(home, { ...options, retryClaim: identity });
+  } finally { if (read(p.retryLock)?.token === claim) remove(p.retryLock); }
+}
+module.exports = { recoverUpdate, clearStateOffer, stateRecords, updaterProcessesStopped, RECOVERY_CONFIRMATION, runIdentity, reapRetryClaim, retryUpdate, recoveryState, quiescent, SETTLE, TERMINAL, summaryLines, terminalEvidence, settled, retryIO, acquire, remove, readResult, REPOSITORY, DEADLINE, CHECK_MIN, CHECK_MAX, RETRY_MAX, INVALIDATE_MIN, BUSY_CHECK_RETRY, nextAttempt, checkDelay, files, read, atomic, command, installedRevision, inspect, checkMain, prepareClone, peerSkipKind, deferredPeers, outcome, launch, runUpdate };
 if (require.main === module) {
   if (process.argv[2] === '--run') runUpdate(process.argv[3], process.argv[4]).catch(error => { console.error(shortError(error)); process.exitCode = 1; });
   else {
     Promise.resolve().then(() => {
-      const request = JSON.parse(process.argv[2]);
+      requestDeadline = Date.now() + 21000;
+      const request = process.argv[2] === '--recover'
+        ? { action: 'recover', home: process.argv[3], confirmedStopped: process.argv[4] === '--confirm-stopped' }
+        : JSON.parse(process.argv[2]);
       if (!request.home || !path.isAbsolute(request.home)) throw Error('An absolute Herdr home is required');
       if (request.action === 'launch') return launch(request.home);
-      if (request.action === 'status') return inspect(request.home);
-      if (request.action === 'check') return checkMain(request.home, { force: request.force === true, invalidate: request.invalidate === true });
+      if (request.action === 'retry') return retryUpdate(request.home, request);
+      if (request.action === 'recover') {
+        const options = { expiredLaunch: request.expiredLaunch || null };
+        if (request.confirmedStopped && request.identity) return recoverUpdate(request.home, request, options);
+        const snapshot = inspect(request.home, options);
+        if (!request.confirmedStopped) return { confirmation: RECOVERY_CONFIRMATION, clearRecovery: snapshot.clearRecovery };
+        if (!snapshot.clearRecovery?.eligible) throw Error('Recovery unavailable: owners, leases or process evidence are not stopped and safe');
+        return recoverUpdate(request.home, { ...request, identity: snapshot.clearRecovery?.identity }, { ...options, initialSnapshot: snapshot });
+      }
+      if (request.action === 'status') return inspect(request.home, { expiredLaunch: request.expiredLaunch || null });
+      if (request.action === 'check') return checkMain(request.home, { force: request.force === true, invalidate: request.invalidate === true, expiredLaunch: request.expiredLaunch || null });
       throw Error('Unknown update action');
     }).then(value => console.log(JSON.stringify(value))).catch(error => { console.log(JSON.stringify({ error: shortError(error) })); process.exitCode = 1; });
   }

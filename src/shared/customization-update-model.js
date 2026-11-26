@@ -13,6 +13,7 @@ export function updateProjection(snapshot) {
     revision: snapshot?.revision || null, check: snapshot?.check || null,
     checking: snapshot?.checking === true, locked: snapshot?.locked === true,
     peerPending: snapshot?.peerPending === true, peerUnknown: snapshot?.peerUnknown === true,
+    recovery: snapshot?.recovery || null, clearRecovery: snapshot?.clearRecovery || null, stateError: snapshot?.stateError === true,
     log: snapshot?.log || '', details: snapshot?.details || null, job: snapshot?.job || snapshot?.lastRun || null,
     partial: Boolean(result?.complete && ok(result.results?.find(row => row.machine === 'local')) && result.results.some(row => row.machine !== 'local' && !ok(row) && !peerSkipKind(row))),
   };
@@ -39,14 +40,16 @@ export function customizationRowState(snapshot, { busy = null, error = null, now
   const log = details ? ` ${details.kind === 'log' ? 'Log' : 'Details'}: ${details.path}.` : '';
   const launch = snapshot?.launch;
   const unknown = (launch && launch.deadline < now) || job?.state === 'unknown' || (job?.state === 'running' && job.deadline < now);
-  const running = busy === 'launch' || ((launch || job?.state === 'running') && !unknown);
+  const running = busy === 'launch' || busy === 'retry' || ((launch || job?.state === 'running') && !unknown);
   const checking = busy === 'check' || snapshot?.checking;
   const freshAfterFailure = !job?.finished || (check?.attempted || 0) > job.finished;
   const catchUp = snapshot?.peerPending && check?.checked && check.available === false && (!job?.finished || check.attempted >= job.finished);
-  const canUpdate = !unknown && !running && !snapshot?.locked && !snapshot?.peerUnknown && !check?.error && (updateAvailable(snapshot) || catchUp) && (job?.state !== 'failed' || freshAfterFailure);
+  const canUpdate = !snapshot?.clearRecovery && !snapshot?.stateError && !unknown && !running && !snapshot?.locked && !snapshot?.peerUnknown && !check?.error && (updateAvailable(snapshot) || catchUp) && (job?.state !== 'failed' || freshAfterFailure);
+  const canRetry = !snapshot?.clearRecovery && !snapshot?.stateError && (unknown || snapshot?.peerUnknown) && !running && snapshot?.recovery?.retryable === true && snapshot.recovery.until > now && check?.checked && !check.error;
+  const canRecover = !running && snapshot?.clearRecovery?.eligible === true && snapshot.clearRecovery.until > now;
   let description, current = false;
   if (running) {
-    const progress = launch?.progress || (busy === 'launch' ? updateLaunchProgress(snapshot)
+    const progress = launch?.progress || (busy === 'launch' || busy === 'retry' ? updateLaunchProgress(snapshot)
       : sameUpdateRun(snapshot?.progress, job) ? snapshot.progress : null);
     const target = updateTarget(snapshot) || commit(progress?.target);
     const peerRevision = commit(progress?.peerRevision);
@@ -57,8 +60,11 @@ export function customizationRowState(snapshot, { busy = null, error = null, now
     description = target ? `${scope} to ${target.slice(0, 7)}.` : `${scope}.`;
   }
   else if (unknown) description = `${updateSentence(`Update outcome unknown${job?.error ? `: ${job.error}` : ''}`)} Inspect ${details?.kind === 'result' ? 'details' : 'log'}: ${details?.path || 'unavailable'}.`;
+  else if (snapshot?.clearRecovery) description = canRecover ? `Stopped updater state can be cleared without retrying.${log}` : `Updater state needs recovery; wait for work and its lease to stop.${log}`;
   else if (error) description = updateSentence(error);
   else if (job?.state === 'failed') description = `${updateSentence(`Update failed: ${job.error || 'inspect log'}`)} Recovery: documented rollback.${log}`;
+  else if (job?.receiptUnsaved && job.state === 'complete') description = `Deployed, but the result could not be saved.${log}`;
+  else if (job?.receiptUnsaved && job.state === 'partial') description = `Desktop deployed, but the result could not be saved. Some machines skipped or failed.${log}`;
   else if (check?.error) description = 'Check failed. Try again.';
   else if (snapshot?.partial || job?.state === 'partial') description = `Desktop updated; some machines skipped or failed.${log}`;
   else if (['complete', 'partial'].includes(job?.state) && (check?.attempted || 0) < job.finished) description = 'Updated. Check now.';
@@ -68,5 +74,5 @@ export function customizationRowState(snapshot, { busy = null, error = null, now
     current = check.available === false && !snapshot?.locked && !snapshot?.peerPending && !snapshot?.peerUnknown;
   }
   else description = 'Not checked.';
-  return { title, description, current, action: canUpdate ? 'launch' : 'check', label: running ? 'Updating…' : checking ? 'Checking…' : canUpdate ? 'Update' : 'Check now', enabled: !busy && !running && !checking };
+  return { title, description, current: current && !snapshot?.clearRecovery, canUpdate: Boolean(canUpdate), canRetry: Boolean(canRetry), canRecover: Boolean(canRecover), action: canRecover ? 'recover' : canRetry ? 'retry' : canUpdate ? 'launch' : 'check', label: running ? 'Updating…' : checking ? 'Checking…' : canRecover ? 'Recover update' : canRetry ? 'Retry update' : canUpdate ? 'Update' : 'Check now', enabled: !busy && !running && !checking };
 }

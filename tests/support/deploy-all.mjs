@@ -8,7 +8,7 @@ import worker from '../../tools/deploy-all-worker.cjs';
 export const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const artifacts = path.join(project, '.artifacts');
 fs.mkdirSync(artifacts, { recursive: true });
-export const scratch = fs.mkdtempSync(path.join(artifacts, 'deploy-all-'));
+export const scratch = fs.mkdtempSync(path.join(fs.realpathSync(artifacts), 'deploy-all-'));
 const empty = path.join(scratch, 'gitconfig'); fs.writeFileSync(empty, '');
 export const env = { ...process.env, GIT_CONFIG_GLOBAL: empty, GIT_CONFIG_NOSYSTEM: '1',
   HERDR_APP_HOME: path.join(scratch, 'desktop home'), HERDR_APP_BIN: path.join(scratch, 'no-app'),

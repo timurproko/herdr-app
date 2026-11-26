@@ -197,6 +197,7 @@ export default class Settings extends View {
     if (this.pluginClosed || !SECTIONS.some(s => s.id === section && sectionAvailable(s))) return;
     if (section !== 'plugins') clearPluginForms(this);
     this.section = section;
+    this.customUpdateRetry = null;
     if (section !== 'updates') this.clearUpdateResume();
   }
 
@@ -212,6 +213,7 @@ export default class Settings extends View {
     clearPluginForms(this);
     this.pluginClosed=true;this.pluginConfirm=null;
     this.customUpdateClosed = true;
+    this.customUpdateRetry = null;
   }
 
   dismiss() {

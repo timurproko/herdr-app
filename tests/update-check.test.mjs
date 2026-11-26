@@ -13,7 +13,9 @@ const base = fs.mkdtempSync(path.resolve('.artifacts/update-check-'));
 try {
   const home = path.join(base, 'home'), p = worker.files(home);
   assert.equal(fs.existsSync(home), false); worker.inspect(home); assert.equal(fs.existsSync(home), false);
-  let clock = 1000000, calls = 0, target = 'a'.repeat(40), fail = false;
+  // This suite advances a synthetic wall clock; epoch time would make every
+  // real fixture write look like malformed far-future filesystem metadata.
+  let clock = Date.now() + worker.DEADLINE, calls = 0, target = 'a'.repeat(40), fail = false;
   const options = { now: () => clock, random: () => 0, run(command, args, config) {
     calls++; assert.equal(command, 'git'); assert.deepEqual(args, ['ls-remote', '--', worker.REPOSITORY, 'refs/heads/main']);
     assert.equal(config.timeout, 15000); assert.equal(config.env.GIT_TERMINAL_PROMPT, '0');
@@ -55,7 +57,7 @@ try {
   // Separate desktops, legacy caches, failures, invalidation and clock skew.
   {
     const one = path.join(base, 'one'), two = path.join(base, 'two');
-    let at = 5000000, reads = 0, offline = false;
+    let at = Date.now() + worker.DEADLINE, reads = 0, offline = false;
     const io = { now: () => at, random: () => 0.5, run() { reads++; return { code: offline ? 1 : 0, stdout: `${target}\trefs/heads/main\n` }; } };
     let first = worker.checkMain(one, io); worker.checkMain(two, io);
     assert.equal(reads, 2, 'desktops have independent caches and evidence');

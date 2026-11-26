@@ -8,7 +8,8 @@ import { createHash } from 'node:crypto';
 const worker=createRequire(import.meta.url)('../src/services/updates/update-worker.cjs');
 fs.mkdirSync('.artifacts',{recursive:true});
 const home=fs.mkdtempSync(path.resolve('.artifacts/update-hints-')),p=worker.files(home);
-let clock=1000000,target='a'.repeat(40),fail=false,reads=0;
+// Keep simulated scheduling time beyond real fixture mtimes, not in 1970.
+let clock=Date.now()+worker.DEADLINE,target='a'.repeat(40),fail=false,reads=0;
 class Clock extends Date{static now(){return clock;}}
 const state=new Map(),timers=[],jobs=[],calls=[];
 const cx={notify(){},spawn:fn=>jobs.push(fn(cx)),timer:{after:(ms,fn)=>timers.push({at:clock+ms,fn})}};

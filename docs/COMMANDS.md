@@ -32,7 +32,8 @@ source/binary provenance, never a public version allowlist. See [exact behavior 
 Definite update failures keep their stage/cause in the Settings row, for example
 **host check refused Herdr 0.1.17: missing command tab.new**, **build failed** or
 **install failed: Personal file conflict**. Details still link the matching log or
-result; timeout/missing-result outcomes remain unknown and block replay.
+result; timeout/missing-result outcomes never imply success or automatic replay.
+Evidence-based settlement and deliberate unknown-retry rules are described below.
 
 ## Build and install
 
@@ -142,6 +143,15 @@ timeout after dispatch means outcome unknown: inspect the machine before retryin
 There is no automatic retry or rollback, or cross-machine transaction; retain the
 printed backup IDs and use the existing recovery commands below.
 
+Updater IO retries EPERM/EBUSY/EACCES with short backoff. Replacement is preferred;
+after 2.5 seconds it attempts in-place publication for up to another 0.5 seconds.
+If both fail, a closed complete result temp file is retained and the same-run reader
+can accept it rather than staying on an incomplete receipt. Readers close each read
+and briefly retry sharing errors or incomplete JSON; unreadable locks/status never
+count as absent. Exclusive lock creation and token checks are unchanged. Permanent
+disk/permission failures are still reported honestly; no persistence guarantee can
+survive unwritable storage, and complete recovery evidence is never discarded.
+
 ### Settings customization updater
 
 The Updates row launches one terminal-free detached Node runner; the mod does not
@@ -189,7 +199,7 @@ webhook operation runs just because you install this code or open Settings. See
 
 The selected Herdr home's `.customizations/` holds only the latest operation:
 `update-status.json`, `deploy-all-result.json`, `update-check.json`, `update.log`,
-`update-runner.cjs` and the active `update.lock` (plus a short check lock). These
+`update-runner.cjs` and the active `update.lock` (plus short check/retry claim locks). These
 are private runtime files, not portable preferences. The result sidecar also carries
 bounded `deferredPeers` identities for peers skipped offline, preserving them across
 later selected runs or failed inventories. Successful/current peer deployment, a
@@ -201,7 +211,15 @@ automatic retry. The installer's own eight-minute npm timeout is also unknown:
 especially on Windows, termination of cmd.exe does not prove npm/installer
 descendants stopped. Its structured unknown result retains update.lock even
 when the CLI exits and a fresh Check succeeds. Remote work already dispatched
-might still finish.
+might still finish. After recorded processes are dead and five seconds of evidence
+settling (or the deadline), inspection can reconcile an exact final receipt or
+same-run terminal completion evidence. Older runs require every final table row to
+match their intermediate receipt plus a trailing sharing-error rename of that exact
+result path. A proven completion reports **Deployed, but the result could not be
+saved.**, not a generic unknown. Partial and definite failures keep their precise
+meaning; explicit installer/remote uncertainty never becomes proven success. The
+installed SHA still requires matching ownership evidence. A dead local transport or
+an expired deadline alone never proves a remote update stopped.
 
 When the desktop succeeds, positively identified offline/unreachable skips and the
 deliberate **needs its own full deploy** exclusion are benign: after checking, the
@@ -227,21 +245,95 @@ the failure line. A CLI installer timeout remains unknown and blocks Settings
 launches at the worker boundary too, even when no Settings job/lock was created;
 its durable result itself carries the unresolved outcome. Deferred peer work also
 cannot authorize replay of a dispatched remote unknown outcome: its partial diagnostics
-remain, and both the row and worker refuse another launch until manual resolution.
+remain, and ordinary Update stays blocked. Only conclusive settlement or the separate
+confirmed recovery path below can resolve that guard; background activity never replays.
 There is **no automatic rollback**: from the managed clone with the same HERDR_APP_HOME,
 use the existing `npm run disable` then `npm run rollback -- <backup-id>` sequence
 below. If a failure produced no printed ID, inspect `.customizations/backups/` and
 the log to identify the matching journal; do not guess or bypass refusal gates.
 
-An unresolved `update.lock` blocks another Update even after a crash. Inspect its
+**Retry update** is offered for an identifiable unknown run after a fresh successful
+main check, dead recorded owners/known descendants, and settled evidence. When
+completion/dispatch is unproven, the original 30-minute deadline must pass too.
+Unreadable process/state facts, mismatched locks and deploy.lock keep retry blocked.
+The inline explanation says the previous update may have finished: first inspect
+local installer descendants and every dispatched remote machine and confirm they
+have stopped; then explicitly confirm **Retry update**, or **Cancel** to do nothing.
+A dead local transport and elapsed time do not prove remote work stopped. The worker
+rechecks the captured identity and exclusive claim; a late receipt or another window
+invalidates stale confirmations. At most one new run starts, with all normal managed
+source/ownership gates. Check now, startup, reload, timers and relay hints cannot
+confirm it. Prior files are copied privately under `.customizations/recovery/` before
+an accepted retry replaces them. This is not portable state or a browsable job history.
+New CLI results record an owner/run identity for this path; an older completed
+Settings status never supplies the PID/deadline for a newer incomplete CLI result.
+Expired retry claims with a dead owner are archived during ordinary inspection,
+including after a completed update; that housekeeping never authorizes unknown replay.
+Older unidentifiable CLI results and orphan/malformed metadata use the separate
+stopped-state recovery below after investigation, not an automatic retry.
+
+### Explicit stopped-state recovery
+
+**Recover update** appears only when interrupted installer/orphaned or malformed
+updater metadata can be safely cleared. All recorded PIDs must be dead, process
+and descendant discovery must succeed, and no local updater/installer/rollback CLI
+may be running. Unknown writes and orphan launch metadata wait through a 30-minute
+settle/deadline bound; malformed check/retry leases also wait their 20/30-second
+bounds. Malformed far-future times cannot impose an unlimited lease: recovery
+uses bounded fallback age or directly observes stable bytes for five seconds when
+the filesystem clock itself is unusable. Neither supplies success or replay permission.
+An expired UI-only launch with no saved receipt waits the deployment bound and uses
+the same stopped-process proof and confirmation in Settings, then clears its old
+runtime intent. A missing PID is not evidence of success: the complete process survey and
+the person's confirmation of **all local and remote work stopped** are still required.
+A live owner, unavailable process facts, unreadable files or redirected paths refuse
+recovery. There is no force flag.
+
+One confirmation explains that stale locks/status/results will be cleared, why
+recorded owners are stopped, and that this **does not retry the update**. Cancel,
+Check now and background checks do nothing destructive. Confirming moves only
+`update.lock`, `update-retry.lock`, `update-check.lock`, `deploy.lock`,
+`update-status.json`, `deploy-all-result.json` and `update-check.json` that exist into
+a new private `.customizations/recovery/stopped-update-*` directory. The old log is
+preserved, a recovery record is written, and `update.log` records the explicit action.
+Ownership, installed payload, preferences and backup/rollback journals stay intact.
+A changed identity or another claim invalidates consent. Newly started ordinary
+all-machine CLIs refuse an active recovery claim before publishing or deploying.
+
+After success the row offers **Check now**, not Update or Retry update. Check again,
+inspect any uncertain writes and use the existing guarded rollback if needed, then
+choose a separate explicit Update. Deployment still takes its normal exclusive lock
+and refuses ownership conflicts. `deploy.lock` is **never removed automatically**;
+only this confirmed stopped-state action can move a dead installer's stale lock.
+Do not manually delete it to force a deployment.
+
+The same operation is available from the installed worker (PowerShell; select the
+actual absolute home first). The first command previews the confirmation/proof;
+only adding the explicit flag permits archival, never deployment:
+
+```powershell
+$worker = Join-Path $env:HERDR_APP_HOME 'mods/custom-settings/update-worker.cjs'
+node $worker --recover $env:HERDR_APP_HOME
+node $worker --recover $env:HERDR_APP_HOME --confirm-stopped
+```
+
+The command handles saved state; use Settings for an orphaned runtime-only launch,
+whose live cross-mod context is not accessible to a standalone command.
+
+From a current source checkout the equivalent entrypoint is
+`node src/services/updates/update-worker.cjs --recover <absolute-home>` with the
+same optional confirmation flag. Do not run it on the real home as a test.
+
+For older installations (including a recurrence before this fix ships), an unresolved `update.lock` blocks ordinary Update
+even after a crash. Inspect its
 matching `update-status.json`, PID/childPid, log, result and any dispatched machine;
 wait for active work, and use normal rollback recovery for uncertain writes.
 **Manual resolution, one step:** only after checking that the recorded processes,
 all npm/installer descendants and any dispatched remote updates have stopped,
 and completing any required recovery, move `deploy-all-result.json` out of the
 captured home's active `.customizations/` path to a private recovery location,
-and remove `update.lock` and `update-status.json` if present; then reopen Settings
-and Check now. Preserve that moved result, the log and backup journals. This also
+and move `update.lock` and `update-status.json` there if present; then reopen Settings
+and Check now. Preserve those files, a copy of the log and all backup journals. This also
 resolves a plain CLI timeout with no Settings lock. Removing only the lock/status
 deliberately does not clear the durable unknown result; revision evidence will
 be unknown until the next successful full deployment. Never delete
@@ -256,8 +348,10 @@ click **Check now**, then click **Update** once offered. The existing runner
 fetches and fast-forwards fixed published main in `~/.local/share/herdr-app`
 **before** loading its deployment CLI/host check, so the old exact-version refusal
 does not prevent receiving this fix. A definite failed attempt can be retried
-following a fresh successful check; a running/unknown outcome or unresolved lock
-must be investigated, never bypassed by deleting status/locks or resetting source.
+following a fresh successful check; active work must be investigated, never bypassed
+by deleting status/locks or resetting source. An identifiable, quiescent unknown uses
+only the separate confirmed Retry update path above; older blocked installations
+require the documented inspection and manual recovery before fetching this fix.
 The desktop update can finish with historical palette-retirement or optional
 feedback advisories; see the palette and native-patch policies above for what is
 preserved or deferred. An already
