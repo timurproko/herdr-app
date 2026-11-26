@@ -30,10 +30,10 @@ The maintainer integration decision accepts these scenarios:
     "Tab, sidebar and keyboard selection own the pin without entry motion; collapse retains it, lone headers disappear and section counts exclude it while tab totals remain full.",
     "Existing sidebar columns, shared rename presentation, captured targets and native input ownership remain intact with no live runtime modifications."
   ],
-  "archiveDigest": "3f097446366ac402b4ce9acc197f951d53acbf9dbcda4264fda929fd9065006c",
+  "archiveDigest": "3df58cfbe0bf052f518dc6d20648dcf5b275db12505b4894fde7d0e8b12b0f8e",
   "specDigest": "32b723c2e8a3699737fb8fc01a65801ab4a8e4fc01b52caa95e5795d0140f2ca",
-  "tasksDigest": "dc3090997267dbd580f4e751d70911c1c4ce1fdbc9e42ef04a76bc45f3501390",
-  "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "tasksDigest": "a216c8696fdc337054fd2e3448a3467815aee224be806b7539c8d1706676ad46",
+  "evidenceDigest": "fefbeaba24df049ccef92046a74b6dce9c15be0656838b7d53f9a3e762eb9b61",
   "knownGaps": []
 }
 ```
