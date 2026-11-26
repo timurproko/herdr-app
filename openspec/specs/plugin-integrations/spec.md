@@ -1828,6 +1828,38 @@ The resolved currently selected agent PR SHALL own the pin independently of clic
 - **THEN** its header shows 3 and its tab total remains 4; collapse hides only the three remaining rows
 - **AND** unpinning restores header count 4, while a section consisting only of the pin has no empty header
 
+### Requirement: Label-only Git tabs
+Ordinary and coordinator Git panels SHALL display only Open and Closed labels in their tab controls, without count bubbles, count reservations or count-only tooltips. Existing selected styling, accessible tab names and selection behavior SHALL remain. Repository section counts SHALL remain unchanged.
+
+#### Scenario: Unknown cached and loaded totals
+- **WHEN** either Git view renders with unknown, partial, cached, zero or authoritative totals, including during refresh or failure
+- **THEN** the controls read only Open and Closed and reserve no badge width
+- **AND** internal total uncertainty does not introduce a visual tab counter or count-only tooltip
+
+#### Scenario: Repository counts remain
+- **WHEN** loaded repository sections expand, fold, refresh or contain a selected pinned PR
+- **THEN** their existing scoped counts remain, including the ordinary header's remaining-row count
+- **AND** removing tab badges changes no repository eligibility, order, cursor, pin or selected tab
+
+### Requirement: Exclusive cold Git loading presentation
+Ordinary and coordinator Git panels SHALL never show repository section headers or their counts together with body Loading. Unresolved cold reads SHALL show one pulsing Loading message at the same position below Open/Closed in both views. Successful partial sections SHALL wait for coherent publication. Actionable failures SHALL remain visible without a section header while Loading remains.
+
+#### Scenario: Ordinary identity arrives before its first page
+- **WHEN** the repository identity is known but no compatible selected-tab page or published section is ready
+- **THEN** only the standard pulsing Loading message represents the pending list, without a repository header or zero section count
+- **AND** the header and eligible rows appear together when ready, replacing Loading
+
+#### Scenario: Coordinator mixed pending success and failure
+- **WHEN** a cold coordinator has successful sibling reads and unresolved first reads, with or without actionable repository failures
+- **THEN** one pulsing Loading message remains, all repository headers/counts and successful partial rows are withheld, and applicable failures remain visible as scoped notices
+- **AND** failures are not hidden by saved folds while their headers are withheld
+- **AND** after first reads settle, eligible sections and applicable failure sections use their ordinary headers and Loading disappears
+
+#### Scenario: Warm empty and nonempty results
+- **WHEN** a compatible previously published list or authoritative empty result refreshes
+- **THEN** that presentation remains without body Loading, and only the under-header line animates while work is active
+- **AND** visible failures, pins, folds, paging and scroll behavior retain their existing policy
+
 ### Requirement: Coordinator repository sections follow connected children
 Coordinator Git repository sections SHALL follow matching connected child-space order. Matching SHALL use verified same-home live task PR repository identity and exact same-machine native membership, never names or guessed folders. A child representing several repositories SHALL supply no unique match. Unmatched sections SHALL follow matched sections in their existing relative order. Ordering SHALL grant no read or navigation authority.
 
@@ -1862,35 +1894,3 @@ Coordinator Git repository sections SHALL follow matching connected child-space 
 - **THEN** presentation-only ordering can retain compatible already-verified associations but cannot establish new authority or borrow another scope's matches
 - **AND** existing cold/warm loading, counters, row labels, disclosure, reveal limits, cache eligibility and worker actions retain their own behavior
 - **AND** section reordering changes no Crew record, native tab/terminal placement or portable preference
-
-### Requirement: Label-only Git tabs
-Ordinary and coordinator Git panels SHALL display only Open and Closed labels in their tab controls, without count bubbles, count reservations or count-only tooltips. Existing selected styling, accessible tab names and selection behavior SHALL remain. Repository section counts SHALL remain unchanged.
-
-#### Scenario: Unknown cached and loaded totals
-- **WHEN** either Git view renders with unknown, partial, cached, zero or authoritative totals, including during refresh or failure
-- **THEN** the controls read only Open and Closed and reserve no badge width
-- **AND** internal total uncertainty does not introduce a visual tab counter or count-only tooltip
-
-#### Scenario: Repository counts remain
-- **WHEN** loaded repository sections expand, fold, refresh or contain a selected pinned PR
-- **THEN** their existing scoped counts remain, including the ordinary header's remaining-row count
-- **AND** removing tab badges changes no repository eligibility, order, cursor, pin or selected tab
-
-### Requirement: Exclusive cold Git loading presentation
-Ordinary and coordinator Git panels SHALL never show repository section headers or their counts together with body Loading. Unresolved cold reads SHALL show one pulsing Loading message at the same position below Open/Closed in both views. Successful partial sections SHALL wait for coherent publication. Actionable failures SHALL remain visible without a section header while Loading remains.
-
-#### Scenario: Ordinary identity arrives before its first page
-- **WHEN** the repository identity is known but no compatible selected-tab page or published section is ready
-- **THEN** only the standard pulsing Loading message represents the pending list, without a repository header or zero section count
-- **AND** the header and eligible rows appear together when ready, replacing Loading
-
-#### Scenario: Coordinator mixed pending success and failure
-- **WHEN** a cold coordinator has successful sibling reads and unresolved first reads, with or without actionable repository failures
-- **THEN** one pulsing Loading message remains, all repository headers/counts and successful partial rows are withheld, and applicable failures remain visible as scoped notices
-- **AND** failures are not hidden by saved folds while their headers are withheld
-- **AND** after first reads settle, eligible sections and applicable failure sections use their ordinary headers and Loading disappears
-
-#### Scenario: Warm empty and nonempty results
-- **WHEN** a compatible previously published list or authoritative empty result refreshes
-- **THEN** that presentation remains without body Loading, and only the under-header line animates while work is active
-- **AND** visible failures, pins, folds, paging and scroll behavior retain their existing policy

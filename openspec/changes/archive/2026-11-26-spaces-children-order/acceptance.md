@@ -19,7 +19,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-26-spaces-children-order/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-26-spaces-children-order/acceptance.md",
   "finalizedDate": "2026-11-26",
-  "specBaseSha": "b71a4206510202a51d15cc96f7822fe80940ac81",
+  "specBaseSha": "68fa7be454ac8800f1452b939c9a3e32199458a7",
   "acceptanceScenarios": [
     "Normal project-space application and success show no machine status lines; completed failures use one short plain line per machine.",
     "Slow and abandoned application fixtures recover on the existing lifecycle without overlapping uncertain setters or inventing success.",
@@ -29,7 +29,7 @@ The maintainer integration decision accepts these scenarios:
     "Section reordering retains PR order, counts, folds, existing loading and stage-label behavior without extra GitHub reads."
   ],
   "archiveDigest": "9f8ee82bb337df905adbe52017245221a07af908c058025e701d38e16550b415",
-  "specDigest": "09dd9b7182d81cb501a9a0970a8ab568222c55c8e93905185dde712f6dc3e8e1",
+  "specDigest": "58570f2c6add73dccefe733686011a6025f4e8f6fd2d91b9a28b30273e0604fb",
   "tasksDigest": "2dd440f26e1fcd5e2974d8d91ea7f020e6f7e9a06855a537081aeca150f50410",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []
