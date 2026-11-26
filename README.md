@@ -826,8 +826,11 @@ branches and a rounded corner only on the last child. Collapse hides every child
 while native shortcuts and compact rail keep each child's own selection number.
 Dragging the parent or any child moves the entire same-machine block in stable
 native child order, with captured-membership and acknowledgement guards. Crew's
-`crew.space.version/mode/project/name` labels are validated against its task project,
-home tag and exact native terminal/pane/tab/space membership; names alone never link.
+`crew.space.version/mode/project/name` labels are validated against its supplied task
+project, home tag and exact native terminal/pane/tab/space membership; names alone
+never link. Minimal Crew fleet replies omit task projects: combined placement accepts
+that absence, including legacy and v1 workers in one space, but rejects explicit
+contradictions. Per-project placement still requires matching task project evidence.
 Combined, project and mixed populations are supported without a Core document write.
 
 Choosing a colour or Automatic from either attached row edits the coordinator's
