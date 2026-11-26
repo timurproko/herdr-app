@@ -237,7 +237,16 @@ try {
     if (kind === 'missing') {
       // Reload sees the same unresolved job; a later exact result can settle it.
       assert.equal(inspect(h.home, { isAlive: () => false }).job.state, 'unknown');
-      final(p, token); assert.equal(inspect(h.home, { isAlive: () => false, now: () => Date.now() + worker.SETTLE + 1 }).job.state, 'complete'); assert.equal(fs.existsSync(p.lock), false);
+      final(p, token);
+      const ahead = new Date(Date.now() + 250);
+      fs.utimesSync(p.result, ahead, ahead); // deterministically reproduce clock skew
+      // Windows filesystem timestamps can lead Date.now's coarse tick. Derive
+      // the fake clock from the evidence, not a one-millisecond wall-clock margin.
+      const settledAt = Math.ceil(Math.max(...[p.status, p.result, p.log].map(file => fs.statSync(file).mtimeMs), read(p.status).finished)) + worker.SETTLE;
+      assert.equal(inspect(h.home, { isAlive: () => false, now: () => settledAt - 1 }).job.state, 'unknown');
+      assert.equal(fs.existsSync(p.lock), true, 'the last unsettled millisecond remains blocked');
+      assert.equal(inspect(h.home, { isAlive: () => false, now: () => settledAt }).job.state, 'complete');
+      assert.equal(fs.existsSync(p.lock), false);
     }
   }
   // A receipt/status sharing failure after dispatch must not release the lock

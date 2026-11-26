@@ -24,7 +24,8 @@ try {
     if (kind === 'foreign') atomic(p.result, { ...result, token: 'foreign' });
     if (kind === 'truncated') log.splice(2, 1);
     fs.writeFileSync(p.log, (kind === 'large-log' ? 'x'.repeat(1024 * 1024) + '\n' : '') + log.join('\n') + '\n');
-    const snapshot = inspect(f.env.HERDR_APP_HOME, { now: () => Date.now() + (kind === 'unsettled' ? 0 : SETTLE + 1), isAlive: () => kind === 'live' });
+    const settledAt = Math.ceil(Math.max(...[p.status, p.result, p.log].map(file => fs.statSync(file).mtimeMs))) + SETTLE;
+    const snapshot = inspect(f.env.HERDR_APP_HOME, { now: () => settledAt - (kind === 'unsettled' ? 1 : 0), isAlive: () => kind === 'live' });
     const expected = ['foreign', 'truncated', 'wrong-path', 'live', 'unsettled', 'installer-unknown'].includes(kind) ? 'unknown'
       : ['partial', 'remote-unknown'].includes(kind) ? 'partial' : kind === 'failed' ? 'failed' : 'complete';
     assert.equal(snapshot.job.state, expected, kind);
