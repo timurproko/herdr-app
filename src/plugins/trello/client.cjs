@@ -10,6 +10,8 @@ const routes = [
   ['GET', new RegExp(`^/lists/${ID}/cards$`), ['fields', 'filter', 'sort', 'limit', 'before']],
   ['GET', new RegExp(`^/cards/${ID}$`), ['fields', 'attachments', 'members', 'checklists', 'actions', 'pluginData', 'stickers']],
   ['GET', new RegExp(`^/cards/${ID}/actions$`), ['filter', 'limit', 'before']],
+  ['GET', new RegExp(`^/cards/${ID}/attachments$`), ['fields', 'filter']],
+  ['GET', new RegExp(`^/cards/${ID}/attachments/${ID}$`), ['fields']],
   ['GET', new RegExp(`^/cards/${ID}/checklists$`), ['checkItems', 'filter', 'fields', 'checkItem_fields']],
   ['POST', /^\/cards$/, ['idList', 'name', 'desc', 'due', 'start', 'dueComplete', 'pos']],
   ['PUT', new RegExp(`^/cards/${ID}$`), ['name', 'desc', 'due', 'start', 'dueComplete', 'pos', 'idList', 'idBoard', 'closed']],
@@ -55,13 +57,27 @@ class Client {
   async request(method, route, query = {}) {
     const rule = this.routes.find(([m, re]) => method === m && re.test(route));
     if (!rule || Object.keys(query).some(k => !rule[2].includes(k))) fail('INPUT');
-    this.gate.check();
-    const cooldown = this.store.read('cooldown', true);
-    if (cooldown?.retryAt > this.now()) throw new TrelloError('RATE_LIMIT', {retryAt: cooldown.retryAt});
-    if (++this.count > 20 || this.now() - this.started >= 60000) fail('LIMIT');
     const url = new URL('https://api.trello.com/1' + route);
     for (const [k, v] of Object.entries(query)) url.searchParams.set(k, String(v));
     url.searchParams.set('key', this.gate.credentials.apiKey); url.searchParams.set('token', this.gate.credentials.token);
+    return this.exchange(method, url, jsonResponse, {Accept: 'application/json'});
+  }
+  check() {
+    this.gate.check();
+    if (this.now() - this.started >= 60000) fail('LIMIT');
+  }
+  async download(url, card, attachment, consume) {
+    // This method is private to the typed attachment command, never a CLI URL flag.
+    const {downloadUrl} = require('./attachments.cjs');
+    downloadUrl(url, card, attachment);
+    const {apiKey, token} = this.gate.credentials;
+    return this.exchange('GET', new URL(url), consume, {Authorization: `OAuth oauth_consumer_key="${encodeURIComponent(apiKey)}", oauth_token="${encodeURIComponent(token)}"`});
+  }
+  async exchange(method, url, consume, headers) {
+    this.check();
+    const cooldown = this.store.read('cooldown', true);
+    if (cooldown?.retryAt > this.now()) throw new TrelloError('RATE_LIMIT', {retryAt: cooldown.retryAt});
+    if (++this.count > 20) fail('LIMIT');
     const write = method !== 'GET';
     if (write && ++this.writes !== 1) fail('INPUT');
     const controller = new AbortController(); let timer, dispatched = false;
@@ -70,7 +86,7 @@ class Client {
       this.gate.check();
       if (this.now() - this.started >= 60000) fail('LIMIT');
       dispatched = true;
-      const response = await this.transport(url, {method, redirect: 'manual', signal: controller.signal, headers: {Accept: 'application/json'}});
+      const response = await this.transport(url, {method, redirect: 'manual', signal: controller.signal, headers});
       if (response.status === 429) {
         const deadline = retryTime(response.headers, this.now());
         if (response.body) await response.body.cancel().catch(() => {});
@@ -82,8 +98,9 @@ class Client {
         if (write && (response.status >= 500 || response.status < 400)) fail('UNKNOWN_WRITE');
         throw new TrelloError(({401: 'AUTH', 403: 'FORBIDDEN', 404: 'NOT_FOUND'})[response.status] || 'REMOTE');
       }
-      const value = await jsonResponse(response);
-      try { this.gate.check(); } catch (e) { if (write) fail('WRITE_CHANGED'); throw e; }
+      const value = await consume(response, controller.signal);
+      if (controller.signal.aborted) fail('TRANSPORT');
+      try { this.check(); } catch (e) { if (write) fail('WRITE_CHANGED'); throw e; }
       return value;
     };
     try {

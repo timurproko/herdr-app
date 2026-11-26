@@ -220,6 +220,13 @@ limits 1/50/100, and checks multi-page read/write membership with explicit `sort
 repeated local CAS conflicts, checking that the longest deadline persists and a
 new invocation cannot dispatch early. It makes no real HTTP request.
 `tests/trello-contract.test.mjs` checks documentation/catalog and payload boundaries.
+`src/plugins/trello/attachments.test.mjs` and `download.test.mjs` use loopback fake
+Trello/external servers with test-only production-URL mapping and no live-fetch
+fallback. They cover metadata/card counts, parent proofs, original/scaled preview
+reads, header-only authentication, zero external-link/redirect requests, 20 MiB
+stream bounds, MIME/signature checks, private ACL/mode output, unsafe paths,
+collisions and cleanup on refusal/revocation. Servers stop in finally; downloaded
+fixtures and stores are disposable, never the owner's account or board.
 
 Set `TRELLO_TEST_ROOT` to an existing outside-checkout scratch directory to choose
 fixture output. Hosted tests otherwise prefer `RUNNER_TEMP`, then the OS temp
@@ -259,8 +266,9 @@ home and the real Trello-only installer; no real remote/Core routing is attempte
 Test-only exports invoke the same handlers as the controls; this is native pixels
 and handler composition, not a mouse-hit-test or live Trello/SSH acceptance claim.
 
-The driver captures empty/masked inputs, the single saved account with hover Remove,
-zero-board readiness, Active/Inactive/search picker states, added-board hover Remove,
+The driver captures empty/masked inputs, Saving, the single saved account at rest
+and with hover Remove, zero-board readiness, Active/Inactive/search picker states,
+added-board hover Remove, an injected elevated-SSH whole-card refusal,
 global Access, a remote runtime Install prerequisite, remote account/board lifecycle,
 read-only new-host and explicitly applied global write states, captured-machine
 removal confirmation and an injected permission-check error without Save. Its receipt
@@ -286,6 +294,11 @@ and before any installation write.
 row kit, header-machine scope without a stray selection dropdown, fixed description
 links and category-local search/selection. These fixtures start no real SSH or Trello
 request and do not read private user setup.
+`tests/trello-card-polish.test.mjs` covers opt-in replacement/status hover, light
+tabs and empty separators while unrelated field choices/defaults stay unchanged.
+`tests/trello-unavailable.test.mjs` covers one actionable elevated-SSH explanation,
+no repair count or dependent controls, independent group completion, safe retry,
+stale machine replies and disable-session retirement without secret dispatch.
 
 ## Supported hosted subset
 
@@ -296,7 +309,13 @@ observed Node 20 experimental-VM crashes and meets the unchanged Cloudflare
 fixture's Node 22.12+ prerequisite.
 `scripts/test-ci.mjs` only builds this checkout, selects existing test entrypoints,
 passes their original VM flags, and propagates failures. It prints every included
-and excluded source path before execution. CI children use a disposable Herdr home,
+and excluded source path before execution. Required read-only tool preflights
+retry once only on a 15-second startup timeout, with a 45-second second allowance
+for cold hosted runners. Missing executables and nonzero exits still fail
+immediately; a second timeout fails the job. Test processes are never retried and
+their existing limits and failure propagation are unchanged.
+`tests/ci-tool-preflight.test.mjs` covers these cases with injected process results.
+CI children use a disposable Herdr home,
 unavailable native app executable and temporary fixture directories under ignored
 `.artifacts/`. No Herdr install, private snapshot or external A1 checkout is supplied.
 On Windows the CI child environment drops inherited PowerShell 7 module paths so

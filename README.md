@@ -158,10 +158,18 @@ settings or portable preferences; only the Node worker writes the private store.
 The selected direct-SSH machine uses its own private store through identity-bound
 SSH stdin, never this computer's setup. Requirements offers explicit Trello-only
 runtime Install/Update; temporary/custom-via or unverifiable/elevated execution
-identities refuse. `herdr-trello setup` remains the headless alternative.
+identities refuse. An elevated SSH connection gets one explanation, not three
+failures or a fix count: connect as the normal Core user or set up on that machine
+directly. Copying credentials cannot fix an unsafe execution identity.
+`herdr-trello setup` remains the headless alternative.
 Normal full build/deploy installs the standalone runtime and owned user-bin
 launchers (the selected bin must be on PATH); shell-only peers get no credentials
 or Trello installation. See [Trello setup, commands and security limits](docs/TRELLO.md).
+Card reads expose attachment IDs/counts. Agents can list attachment metadata and
+use `attachments get --out PRIVATE_DIR` to inspect an uploaded screenshot locally,
+optionally selecting a preview width. Downloads cap at 20 MiB, accept images by
+default and use Trello-only header authentication; external links, redirects and
+attachment uploads/deletes are refused.
 There is no MCP adapter, board panel, permanent deletion or automatic write replay.
 An agent running as the same OS user can read the private credential file; this
 client's allowlist/read-only policy is not a security sandbox.
