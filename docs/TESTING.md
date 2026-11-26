@@ -9,6 +9,36 @@ selection: it includes installed Core/private-profile assumptions and Windows
 recycle operations. Do not run the broad command on a working installation just
 to reproduce hosted CI.
 
+## CI trigger and required-check regressions
+
+`node --test scripts/ci-required.test.mjs` checks the workflow event matrix and
+aggregate guard alongside the real `scripts/ci-required.mjs` dependency validator.
+CI runs for PR open, synchronize, reopen and draft/ready transitions, main pushes
+and manual dispatch, not `edited`, `labeled` or `unlabeled`. No CI job consumes the
+PR title/body: Readiness uses event/draft, OpenSpec validates checked-out files,
+the platform suites test the checkout, and the aggregate uses needs/head facts.
+Delivery retains its independent `edited` trigger for body reconciliation; label
+additions call only the separate advisory workflow.
+
+The `CI required` name and all three dependencies remain unchanged. Its explicit
+`!cancelled()` status guard still runs after a genuine dependency failure (without
+Actions' implicit success gate), but skips a cancelled/superseded run. Drafts still
+skip suites and the aggregate; unexpected skips in a ready run still fail closed.
+The tests cover these cases with the extracted guard and synthetic needs results;
+they do not execute GitHub's scheduler or claim live cancellation proof.
+
+For hosted proof on the change's own PR, note the CI run ID and head SHA, then
+change a label and edit the description without pushing. Neither operation should
+start or restart **CI** or replace/cancel its run; Delivery or advisory label runs
+are separate and expected. A subsequent push should supersede the old CI run,
+with the old aggregate skipped/cancelled rather than failed. On a ready head, a
+real suite failure must still fail `CI required`. Check the latest head's required
+checks, not an older cancelled run: the live main ruleset requires `CI required`
+and `delivery / Delivery check`, with strict up-to-date checks. A skipped check
+can satisfy GitHub protection, so metadata events must not publish a replacement
+aggregate; the latest non-cancelled ready run must still pass all dependencies.
+These live observations are separate from the local regression matrix.
+
 ## Git read-budget and refusal fixtures
 
 `tests/git-deferred-repositories.test.mjs` runs a sanitized equivalent of the
