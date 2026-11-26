@@ -18,7 +18,7 @@ Implementation is not authorized until this draft plan is approved. Groups map o
 
 - [x] 3.1 Complete invalidation wiring for machine/repository/cwd/routing changes, authoritative absence, owner/home/provider/Git generations and task/history eligibility; add held-reply and away-and-back tests proving no incompatible rows, totals, agent targets or stale resurrection.
 - [x] 3.2 Enforce the combined retained-context bounds and independent reader/action authority, with tests for eviction, hidden/disabled/offline reads, empty snapshots and no inventory persistence; update docs/ARCHITECTURE.md with exact lifetime and invalidation rules.
-- [ ] 3.3 Extend shared native-render fixtures and geometry/budget guards for warm/cold sections, cached counts, page/reveal/fold/anchor retention, no entry-driven pin/reorder and unchanged click-only animation; confirm focused suites pass without render-time notification, allocation or IO and without weakening upstream tests.
+- [x] 3.3 Extend shared native-render fixtures and geometry/budget guards for warm/cold sections, cached counts, page/reveal/fold/anchor retention, no entry-driven pin/reorder and unchanged click-only animation; confirm focused suites pass without render-time notification, allocation or IO and without weakening upstream tests.
 
 ## 4. Plain main header with section-owned repository identity
 

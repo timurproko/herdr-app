@@ -139,8 +139,8 @@ export default class Changes extends View {
     this.repositoryPublication=new Publication(this.repositorySnapshot());
   }
 
-  entryActivity(t,warm,updating,id='git-task-activity',hint='Updating pull requests') {
-    return warm && updating ? activity(t.working).id(id).role('status').accessibility_label('Updating pull requests').tooltip(hint):null;
+  entryActivity(t,id='git-task-activity',hint='Updating pull requests') {
+    return activity(t.working).id(id).role('status').accessibility_label('Updating pull requests').tooltip(hint);
   }
 
   resetRepository() {
@@ -1503,7 +1503,7 @@ export default class Changes extends View {
       .child(h_flex().id('changes-header').relative().bg(t.surface).h(U.section).flex_none().pl(4).pr(U.gutter).gap(U.gap).items_center().border_b(1).border_color(t.border)
         .on_hover((hovered,view)=>{this.headerHovered=hovered;view.notify();})
         .child(sidebarTitle(t,'changes','git-title'))
-        .child(this.entryActivity(t,warm,aggregate.updating??aggregate.context.stale,aggregate.context.stale?'git-task-stale':'git-task-activity',aggregate.context.stale?verificationHint:'Updating pull requests'))
+        .when(warm && (aggregate.updating??aggregate.context.stale),el=>el.child(this.entryActivity(t,aggregate.context.stale?'git-task-stale':'git-task-activity',aggregate.context.stale?verificationHint:'Updating pull requests')))
         .child(reveal(headerTools(h_flex()).id('git-actions').bg(t.surface),this.headerHovered)
           .child(refreshButton(t,{id:'git-refresh',icon:'mods/custom-changes/refresh.svg',label:'Refresh',busy:aggregate.busy,spinning:aggregate.busy,
             owner:this,scope:this.context,enabled:this.headerHovered,size:U.insetControl,iconSize:U.tinyIcon,radius:U.insetRadius,color:t.dim,hover:subtleActionFill(t),
@@ -1619,10 +1619,10 @@ export default class Changes extends View {
       .child(h_flex().id('changes-header').relative().bg(t.surface).h(U.section).flex_none().pl(4).pr(U.gutter).gap(U.gap).items_center().border_b(1).border_color(t.border)
         .on_hover((hovered, cx) => { this.headerHovered = hovered; cx.notify(); })
         .child(sidebarTitle(t, 'changes', 'git-title'))
-        .child(this.entryActivity(t,Boolean(this.repositoryPublication?.value),Boolean(this.loading || this.pullLoading || this.entryRefreshing)))
+        .when(Boolean(this.repositoryPublication?.value) && (this.loading || this.pullLoading || this.entryRefreshing),el=>el.child(this.entryActivity(t)))
         .child(div().flex_1())
         .child(reveal(headerTools(h_flex()).id('git-actions').bg(t.surface), this.headerHovered)
-          .when(Boolean(this.root), el => el.child(refreshButton(t, { id: 'git-refresh', icon: 'mods/custom-changes/refresh.svg', label: 'Refresh', busy, spinning: Boolean(this.root), owner: this, scope: this.context,
+          .when(Boolean(this.root || this.repo?.name), el => el.child(refreshButton(t, { id: 'git-refresh', icon: 'mods/custom-changes/refresh.svg', label: 'Refresh', busy, spinning: Boolean(this.root || this.repo?.name), owner: this, scope: this.context,
             enabled: this.headerHovered && Boolean(this.root), size: U.insetControl, iconSize: U.tinyIcon, radius: U.insetRadius, color: t.dim, hover: subtleActionFill(t),
             onClick: (_e, cx) => {
               if (!this.root || this.loading || this.pullLoading) return;

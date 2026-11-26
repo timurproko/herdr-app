@@ -3,6 +3,7 @@ import {Publication,PresentationMemory} from '../src/plugins/git/mod/presentatio
 import {rowHarness,find,words} from './support/git-row.mjs';
 const memory=new PresentationMemory(),pub=new Publication();
 pub.commit(['old']);assert.deepEqual(pub.project(['partial'],true),['old']);pub.commit(['new'],true);assert.deepEqual(pub.value,['old']);
+const validNativeChildren=node=>{for(const child of node?.kids??[]){assert.notEqual(child,null,'native child(value) rejects null, even when synthetic builders accept it');assert.notEqual(child,undefined);validNativeChildren(child);}};
 const row=(n,state='open')=>({number:n,title:`PR ${n}`,state,url:`https://github.com/fixture/repo/pull/${n}`,headRefName:`branch-${n}`});
 const e=(n,state='open')=>({link:{repo:'fixture/repo',number:n,key:`fixture/repo#${n}`,targets:[{terminal:'worker'}]},pr:{...row(n,state),key:`fixture/repo#${n}`,repo:'fixture/repo'},dirty:false});
 memory.set('home',{machine:null,published:[[e(1).link.key,e(1)],[e(2,'merged').link.key,e(2,'merged')]],entries:[[e(1).link.key,e(1)],[e(2,'merged').link.key,e(2,'merged')]]});
@@ -29,7 +30,7 @@ for(let n=1;n<=2;n++){const value=e(n);value.pr={...h.facts.pullRow({number:n,ti
 p.aggregate.rememberCounts();p.context='tasks:home';p.aggregateGeneration=p.aggregate.presentationGeneration;
 p.agentLinks={cachedRepository:()=> 'fixture/repo',related:()=>null,refresh(){}};p.notices={sync(){},presentation(){},stop(){}};p.enrollmentPicker={render(){},stop(){}};p.syncChecksFallback=()=>{};
 Object.assign(place,{cwd:'/worktree-a',space:'worker-space-a',terminal:'worker-1',app:'a1',pullNumber:1});context=null;
-let tree=h.render(()=>p.renderPanel(cx));
+let tree=h.render(()=>p.renderPanel(cx));validNativeChildren(tree);
 assert.ok(find(tree,'task-repo-header-fixture/repo'),'first destination frame has section');
 assert.ok(find(tree,'pr-1'));assert.ok(find(tree,'pr-2'));assert.equal(find(tree,'active-pull'),undefined,'entry does not pin its matching PR');assert.equal(p.pinMotion.current,null);
 assert.equal(find(tree,'git-empty'),undefined,'no body Loading');assert.ok(find(tree,'git-task-activity'),'existing header activity, not a new treatment');
@@ -49,7 +50,7 @@ tree=h.render(()=>p.renderPanel(cx));assert.ok(find(tree,'pr-2'));assert.equal(f
 const pageCall=calls.shift();assert.ok(pageCall.args.some(a=>a.startsWith('query=')));
 pageCall.resolve({code:0,stdout:JSON.stringify({data:{repository:{open:{totalCount:19},closed:{totalCount:9},pullRequests:{nodes:[{number:7,title:'Fresh 7',state:'OPEN',url:'https://github.com/fixture/repo/pull/7',commits:{nodes:[{commit:{statusCheckRollup:null}}]}}],pageInfo:{endCursor:'next',hasNextPage:true}}}}})});
 for(let i=0;i<40;i++)await Promise.resolve();tree=h.render(()=>p.renderPanel(cx));
-assert.ok(find(tree,'pr-7'));assert.equal(find(tree,'pr-1'),undefined);assert.equal(p.counts.open,19);assert.equal(p.counts.closed,9);assert.equal(p.entrySeed,false);assert.equal(p.pages.open.cursor,'next');assert.equal(find(tree,'git-empty'),undefined);
+validNativeChildren(tree);assert.ok(find(tree,'pr-7'));assert.equal(find(tree,'pr-1'),undefined);assert.equal(p.counts.open,19);assert.equal(p.counts.closed,9);assert.equal(p.entrySeed,false);assert.equal(p.pages.open.cursor,'next');assert.equal(find(tree,'git-empty'),undefined);
 // A second worker gets the same scoped order, never a new active pin.
 Object.assign(place,{cwd:'/worktree-b',space:'worker-space-b',terminal:'worker-2',pullNumber:2});
 tree=h.render(()=>p.renderPanel(cx));assert.ok(find(tree,'pr-7'));assert.equal(p.counts.open,19);assert.equal(p.pages.open.cursor,'next');assert.equal(find(tree,'active-pull'),undefined);assert.equal(p.pinMotion.current,null);assert.equal(find(tree,'git-empty'),undefined);

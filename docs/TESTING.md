@@ -95,6 +95,18 @@ by PR #87: after entry, chip and robot clicks use its controller with one immedi
 focus, retained native acknowledgement, one-shot timers and final measured row
 positions including the section header at 100%/130%. No controller is forked.
 
+Opt-in `tests/features/git-entry-native.mjs --run --output <outside-checkout>
+--zoom 1|1.3` mounts the production entry renderer with held synthetic transport
+in an isolated App 0.1.18/Core session. `--baseline` uses the pre-change main
+controller at b22df88 with the same synthetic dependency harness, not an entire
+old installation. It captures worker entry/replacement, another worker, coordinator
+return, genuinely cold Loading and a controller-driven chip transition. No native
+mouse/keyboard hit-testing or live sessions are claimed. It rejects render errors
+in the app log as well as status.errors (the latter alone missed a last-frame
+fallback). Native proof found and fixed an invalid null child on idle activity;
+the entry regression now rejects null/undefined native children. All owned
+instances stop in finally; screenshots, logs and receipts stay outside the checkout.
+
 ## Git read-budget and refusal fixtures
 
 `tests/git-deferred-repositories.test.mjs` runs a sanitized equivalent of the
