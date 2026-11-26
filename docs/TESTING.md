@@ -1138,6 +1138,36 @@ samples for complete 30/60/100/200 mounted trees, deliberately bypassing the run
 cap; warm mode warms only pure caches, never native callbacks. It records native
 interruptions honestly. These are not live desktop paint/input timings or deployment evidence.
 
+## Global Crew worker-space fixtures
+
+`node --experimental-vm-modules tests/crew-worker-space.test.mjs` exercises the
+production registry and Spaces contribution: default/off, on/off, saved intent,
+restart/export/import, disabled callbacks and effect-free rendering.
+`node --experimental-vm-modules tests/crew-worker-policy.test.mjs` drives the
+production Crew transport and policy with **fake Crew only** for the seven cases:
+on, off, capability missing, one refused home, offline then reachable, a later home
+and restart persistence. These include several homes per machine, strict v1
+success/refusal parsing, superseded intent serialization, committed-but-lost reply
+readback, bounded catalog overflow and no disabled follow-ups. No installed Crew,
+real registry, coordinator or credential is used.
+
+`node tests/crew-worker-command.test.mjs` checks fixed command grammar everywhere;
+on Windows it also runs the actual PowerShell wrappers against a disposable fake
+Node CLI, including cached capability and both modes. Targeted fleet-toggle and
+fleet-refresh suites preserve the existing sidebar lifecycle and identity guards;
+`workspace.settings.refresh` reuses that lifecycle, not another timer.
+
+The opt-in `tests/features/worker-space-native.mjs --run --output <outside-checkout>
+--zoom 1|1.3` requires `HERDR_APP_BIN` to name the provided verified App 0.1.18 copy.
+It checks release metadata/archive SHA-256, extracted executable byte equality and
+version, installs nothing, deploys only a disposable app home, and blocks all real
+Crew/Core control and unrelated subprocesses. It captures off, on and machine-named
+refusal with the real Settings row/toggle/badge, registry and policy, using synthetic
+in-memory home modes. A disposable controller invokes the production callback;
+these are native-rendering proofs, not physical pointer/keyboard or live SSH proof.
+Receipts include zoom, hashes, errors and desktop/Core stop acknowledgements. Every
+started disposable instance is stopped in finally; no real setting is changed.
+
 ## Connected fleet fixtures
 
 `tests/fleet-diagnostics.test.mjs` loads the packaged Crew provider/transport and

@@ -9,7 +9,7 @@ existing recurring Spaces lifecycle emits `workspace.settings.refresh` for this
 policy; there is no second scheduler or Settings-owned subprocess job.
 
 The implementation follows Crew PR 23's documented v1 contract, reviewed at
-`42ddc7396dbbd7323bb4e12548edcb5394ba29a1`, and its
+`4382c4b3ee44312b0ea9312f6c3fd23a01f982ce` before handoff, and its
 [contract handoff](https://github.com/timurproko/herdr-app/pull/88#issuecomment-7192748318).
 The installed tool on each machine must answer
 `crew config worker-space --capabilities --json` with exit 0 and

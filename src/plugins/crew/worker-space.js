@@ -10,7 +10,7 @@ const read=()=>{const b=shared(WORKER_SPACE_KEY);return b?.version===1 ? {...b,h
 const enabled=()=>shared('custom.plugins')?.crew?.enabled===true;
 let initialized=false;
 function save(change) {
-  const b=change({...read(),hosts:{...read().hosts},targets:{...read().targets}});
+  const previous=read(),b=change({...previous,hosts:{...previous.hosts},targets:{...previous.targets}});
   const desired=b.intent ? 'per-project':'combined', unresolved=new Map(), weight={failed:5,refused:4,unsupported:3,pending:2};
   const add=(machine,status,detail)=>{const key=machineKey(machine),prior=unresolved.get(key);if(!prior || weight[status]>weight[prior.kind])unresolved.set(key,{machine:machine??'This computer',kind:status,detail});};
   const hosts=Object.values(b.hosts).filter(h=>validMachine(h?.machine));
@@ -18,14 +18,15 @@ function save(change) {
     else if(h.state!=='ready')add(h.machine,h.state??'pending',h.reason??'Checking Crew support');
   for(const t of Object.values(b.targets))if(validMachine(t?.machine)&&absoluteHome(t?.home)) {
     const h=b.hosts[machineKey(t.machine)];
-    if(h?.connected && h.state==='ready' && (t.state!=='ready' || t.mode!==desired))add(t.machine,t.state==='ready'?'pending':t.state??'pending',t.reason??'Applying current choice');
+    if(!h?.connected)add(t.machine,'pending','Waiting for connection');
+    else if(h.state==='ready' && (t.state!=='ready' || t.mode!==desired))add(t.machine,t.state==='ready'?'pending':t.state??'pending',t.reason??'Applying current choice');
   }
   if(b.overflow)add(null,'failed','More Crew homes than can be tracked');
   const names={pending:'Pending',unsupported:'Unsupported',refused:'Refused',failed:'Failed'};
   b.statuses=[...unresolved.values()].map(s=>({machine:s.machine,label:names[s.kind]??'Pending',status:s.kind==='pending'?'recommended':'error',detail:s.detail}));
   b.available=hosts.some(h=>h.state==='ready'&&h.connected) && !hosts.some(h=>h.connected&&h.state==='unsupported') && !b.overflow;
   if(!hosts.length)b.statuses=[{machine:'',label:'Checking',status:'recommended',detail:'Checking Crew support'}];
-  setShared(WORKER_SPACE_KEY,b);return b;
+  if(JSON.stringify(previous)!==JSON.stringify(b))setShared(WORKER_SPACE_KEY,b);return b;
 }
 export function observeWorkerHome(machine,home) {
   if(!validMachine(machine??null)||!absoluteHome(home))return;
@@ -62,7 +63,7 @@ export function refreshWorkerSpaces({cx,setting},ask) {
       for(const host of live) {
         const key=machineKey(host.name),prior=before[key];
         if(!prior && Object.keys(b.hosts).length>=LIMIT){b.overflow=true;continue;}
-        const connected=host.name===null || host.layout==='ready' || host.state==='connected';
+        const connected=host.name===null || host.connected!==false && (typeof host.state==='string' ? host.state==='connected' : host.layout==='ready');
         b.hosts[key]={...prior,machine:host.name,connected,state:prior?.state??'pending',at:prior?.connected===false&&connected?0:prior?.at??0};
         if(prior?.connected===false&&connected)for(const [id,t]of Object.entries(b.targets))if(t.machine===host.name)b.targets[id]={...t,state:'pending',at:0};
       }
