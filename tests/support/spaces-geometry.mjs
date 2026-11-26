@@ -2,7 +2,7 @@
 import {loadMod} from '../../tools/plugin-harness.mjs';
 import {element,svg,t} from './git-row.mjs';
 export async function spacesGeometryHarness() {
-  const spaces=[{id:'coordinator',name:'Coordinator',machine:null},{id:'fleet',name:'Fleet',machine:null}];
+  const spaces=[{id:'coordinator',name:'Coordinator',machine:null},{id:'fleet',name:'Fleet',machine:null},{id:'ordinary',name:'Ordinary',machine:null}];
   const drag={view:null,control:e=>e,item:e=>e,sourceLayer:e=>e,surface:e=>e,guard:fn=>fn};
   const fail=()=>{throw Error('Geometry must not perform host actions');};
   const {Main}=await loadMod({mod:'custom-spaces',host:{spaces:()=>spaces,panes:()=>[],machines:()=>[],theme:()=>t,
@@ -18,6 +18,6 @@ export async function spacesGeometryHarness() {
       'workspace-links.js':{projectLinkedRows:rows=>rows,captureSpaceBlock(){},blockTarget(){},planBlockDrop(){},SpaceBlockCommit:class{}}},
     entry:'export {default as Main} from "./main.js";'});
   const panel=new Main();panel.machines=[];panel.reconnecting={};panel.shown=new Set(spaces.map(s=>s.id));
-  panel.ordered=()=>spaces.map((w,i)=>({w,i,linked:i===1,block:['coordinator','fleet']}));
+  panel.ordered=()=>spaces.map((w,i)=>({w,i,linked:i===1,...(i<2?{block:['coordinator','fleet']}:{})}));
   return {panel,render:()=>panel.render({notify:fail})};
 }

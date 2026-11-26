@@ -3,14 +3,14 @@
 ## Presentation is not operational authority
 
 `custom.fleet.display` version 1 is bounded host-local last-verified identity: machine,
-coordinator/fleet space IDs, owner/home, owner tab/pane and adoption identity. It holds
+coordinator/child space IDs, owner/home, owner tab/pane and adoption/placement identity. It holds
 no task/PR inventory, reports, credentials or transcripts and is excluded from portable
 preferences. Preference/plugin off immediately hides attachment and invalidates live
 status, generations and retries, but does **not** erase that memory.
 
-On enable, restart, mod replacement or update, both exact remembered native spaces
-restore adjacency, chains, Crew pills and the coordinator's badge colour in the first
-render, before any read completes. Native shortcut numbers remain truthful; the fleet's
+On enable, restart, mod replacement or update, exact remembered native spaces
+restore coordinator/children nesting, numbered badges, coordinator-only Crew and
+shared coordinator colour before any read completes. Native shortcut numbers remain truthful; the fleet's
 saved colour remains untouched. Names and role hints never invent a first pair. Failed,
 slow, interrupted or expired verification retains the picture. Successful contradictory
 evidence atomically clears/replaces memory. Missing-space memory is ignored immediately
@@ -23,8 +23,31 @@ revalidate the displayed pair. This exception is **space ordering only**, not mo
 or terminals. Coordinator colour writes, new consolidated Git inventory reads, worker
 navigation and operational actions still require current witnessed verification. Off/on
 never restores old inventory; remembered-only coordinator Git uses the standard Loading
-bulb until verified. An already-loaded same-context outage retains its ordinary Stale
-semantics. No new Git UI, setting or companion is introduced.
+bulb until verified. An already-shown same-context list remains visible without body Loading or Stale
+text; the existing native working bulb pulses in the Git header during updates.
+Cold first reads use top-left Loading below Open/Closed and withhold partial successes.
+Actionable repository notices remain visible, and retained display grants no reads/actions.
+
+## Project-space placement v1
+
+Crew PR #22 keeps `crew.home` as the home tag and publishes versioned placement
+labels on new workers. This adapter accepts legacy/combined `fm-crew-<home>`,
+per-project `fm-crew-<home>-project-<registered-name>` and internal repair
+`fm-crew-<home>-self`, including mixed populations. New placement labels require
+`crew.space.version=1`, `crew.space.mode=combined|per-project` and a project matching
+the status task. Per-project `crew.space.name` equals the exact registered name,
+or `crew` for internal `crew:self`; a repair bound to registered `crew` retains
+that documented exception. Combined omits a requested name. Unknown versions,
+partial/mismatching labels and nonmatching adoption IDs fail closed.
+
+Every worker still requires exact `crew.task`, home tag, `herdr.space` and actual
+machine-qualified terminal/pane/tab/space membership. Project names are never
+ownership evidence and cannot override explicit user-renamed space titles.
+Multiple children share one coordinator/home Git scope, continuous sidebar stem
+and whole-block reorder, without tab/terminal movement. Changed home adoption
+replaces the old children; uncertain or structurally invalid display evidence
+retains prior identity rather than publishing absence. Discovery cannot change
+a verified task project or placement identity.
 
 ## Recorded-first reader contract
 
@@ -62,7 +85,7 @@ The projected status shape remains:
 {
   "home": "canonical Crew home",
   "owner": {"terminal": "t1", "live": true},
-  "tasks": [{"id": "task-id", "state": "working", "terminal": "t2", "pr": null}]
+  "tasks": [{"id": "task-id", "project": "herdr-app", "state": "working", "terminal": "t2", "pr": null}]
 }
 ```
 
@@ -73,7 +96,9 @@ The projected status shape remains:
   none uses null URL/source/reason; unavailable uses null URL/source and a bounded
   sanitized reason. Unknown/missing versions remain recorded-only, never confirmed none.
 - Malformed required fields remain read uncertainty, never invented empty ownership.
-  Exact live machine-qualified membership and adoption checks remain unchanged.
+  Exact live machine-qualified membership and adoption checks remain required.
+  Task project is optional for legacy combined workers, required by placement-v1
+  validation, and retained by the existing bounded transport projection.
 - No launch, recovery, standby, report/transcript or copy-return fields are consumed.
 
 Recorded requests allow 15 seconds and discovery 25 seconds. Exact standalone unsupported
@@ -219,7 +244,7 @@ that fault-injected case can therefore require another probe by the replacement.
   replies, lost processing turns, owner replacement and actual Spaces.drop calls.
 - `fleet-refresh.test.mjs`, colour/menu and Git integration suites: memory preservation,
   missing-space pruning, cold restoration, exact identity, remembered-only action refusals,
-  independent consumer witnessing, Loading versus Stale and no cross-toggle inventory.
+  independent consumer witnessing, cold Loading versus warm header activity and no cross-toggle inventory.
 - `fleet-transport.test.mjs`: recorded-first reads, shared capability evidence, isolated
   discovery, Task cancellation with permanently pending promise, cross-copy two-second
   recovery, healthy long reads, enrichment age and obsolete-reply guards.
