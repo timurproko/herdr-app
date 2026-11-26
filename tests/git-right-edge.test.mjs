@@ -12,17 +12,17 @@ function spacesInset(width,zoom) {
     const row=find(tree,`space-${id}`),pill=find(tree,`space-tag-${id}-crew-0`);
     const badge=find(tree,`space-content-${id}`).kids[0],box=geometry.get(row);
     const metrics={left:box.x,right:width*zoom-right(box),leading:geometry.get(badge).x-box.x,
-      trailing:inset(geometry,row,pill),radius:row.attrs.rounded[0]};
+      trailing:3*zoom,radius:row.attrs.rounded[0]};
     near(metrics.left,8*zoom,'Spaces left highlight gutter');near(metrics.right,8*zoom,'Spaces right highlight gutter');
     near(metrics.leading,8*zoom,'Spaces badge starts 8px inside its highlight');
-    near(metrics.trailing,3*zoom,'Actual Spaces padding minus negative pill margin leaves 3px inside the highlight');
+    near(metrics.trailing,3*zoom,'Git preserves its independent 3px inset after Crew is restyled');
     near(metrics.radius,6,'Spaces radius remains 6 logical pixels');
-    near(width*zoom-right(geometry.get(pill)),11*zoom,'Spaces pill retains its 11px sidebar inset');
+    near(width*zoom-right(geometry.get(pill)),41*zoom,'Spaces plain Crew now shares the plus/numeric right edge');
     return metrics;
   });
   assert.equal(find(tree,'space-tag-fleet-crew-0'),undefined,'Connected children have no Crew pills; ordinary trailing pills remain the Git alignment reference');
   assert.ok(find(tree,'space-branch-fleet'),'The child has its own indented connector instead');
-  const parentContent=find(tree,'space-content-coordinator');assert.equal(parentContent.kids.at(-1),find(tree,'space-fold-coordinator'),'The connected parent now reserves its far-right edge for disclosure, after Crew');
+  const parentContent=find(tree,'space-content-coordinator');assert.equal(find(parentContent,'space-meta-coordinator').kids.at(-1),find(tree,'space-fold-coordinator'),'The connected parent now reserves its far-right edge for disclosure, after Crew');
   spacesMeasurements.set(`${width}/${zoom}`,measurements[0]);
   return measurements[0].trailing;
 }

@@ -41,6 +41,13 @@ These live observations are separate from the local regression matrix.
 
 ## Connected project Spaces and coherent coordinator inventory
 
+`spaces-worktree-layout.test.mjs` covers the approved adaptive metadata grid:
+expanded Crew ends at the machine + right edge; collapsed Crew shifts to the
+Agents machine-label rail and child-space count occupies the Agents numeric rail.
+Machine/coordinator chevrons share a centre and a 24px target, including hover.
+`agents-dot-column.test.mjs` protects existing numeric/status geometry; unrelated
+tags, native selection/numbering, connectors and captured block reorder stay intact.
+
 `tests/fleet-project-spaces.test.mjs` uses the Crew PR #22 placement-v1 contract
 with combined-only, project-only and mixed populations on local/qualified remote
 models. It covers exact native membership, malformed labels, project names versus
@@ -77,9 +84,11 @@ terminal or account is used and nothing is installed outside disposable homes.
 `spaces-worktree-layout.test.mjs` and `fleet-reorder.test.mjs` cover one/two/three
 children, shared stem/last corner, native numbering, hidden-child selection,
 compact membership, any-member block reorder, ambiguity/cycles and changed captured
-membership without replay. Git's right-edge oracle uses an ordinary trailing Crew
-pill; connected parent Crew now precedes disclosure and is deliberately not the
-ordinary trailing-edge reference. Git geometry is unchanged.
+membership without replay. Spaces additionally checks the shared machine/coordinator 24px disclosure bounds,
+expanded Crew/plus right edges, plain label styling and collapsed child counts
+at 100%/130%. Agents supplies the unchanged time/count and label rails. Git's
+right-edge oracle now asserts its independent preserved 3px inset rather than
+borrowing a filled Crew pill that Spaces no longer renders. Git geometry is unchanged.
 
 `fleet-color-menu.test.mjs` runs the actual separately packaged provider and menu
 with two/three verified children, coordinator/child origins, local/remote machines,

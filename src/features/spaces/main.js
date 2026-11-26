@@ -7,7 +7,7 @@
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, Input, ScrollHandle } from "gpui-base";
-import { U, slot, itemHover, interactionFill, subtleActionFill, iconButton, badge, spaceBadgeColor, sidebarSectionHeader, rolePill, menuSurface, menuHeading, menuRow, sidebarChildBranch, sidebarParentFold } from "./ui.js";
+import { U, slot, itemHover, interactionFill, subtleActionFill, iconButton, badge, spaceBadgeColor, sidebarSectionHeader, rolePill, menuSurface, menuHeading, menuRow, sidebarChildBranch, sidebarDisclosure, sidebarMachineLabel, sidebarNumericSlot } from "./ui.js";
 import { spaceTitle } from './space-title.js';
 import { sidebarScroll } from './sidebar-scroll.js';
 import { startTabArrivals, tabArrivalMotion } from './tab-arrival.js';
@@ -334,7 +334,8 @@ export default class Spaces extends View {
   }
   parentDisclosure(row,t) {
     const key=this.parentKey(row),open=!this.connectedFolds().has(key);
-    return this.drag.control(sidebarParentFold(t,{id:`space-fold-${row.w.id}`,open,onToggle:this.drag.guard(cx=>this.toggleConnected(row,cx))}))
+    return this.drag.control(sidebarDisclosure(t,{id:`space-fold-${row.w.id}`,open,label:`${open?'Collapse':'Expand'} ${row.w.name}`,enabled:!this.drag.active,
+      onClick:this.drag.guard((_e,cx)=>this.toggleConnected(row,cx))}))
       .on_mouse_down('left',(_e,cx)=>cx.stop_propagation());
   }
   toggleConnected(row,cx) {
@@ -402,10 +403,13 @@ export default class Spaces extends View {
           .when(shows("spaces.show.machineStatus"), el => el.child(status()))
           .when(connected, el => el.child(iconButton(t, { id: `machine-add-${m ?? "local"}`, icon: "mods/custom-workspace-chrome/plus.svg", label: "New space", color: t.muted,
             enabled: !this.drag.active, onClick: this.drag.guard(() => run("space.new", { machine: m ?? "" })) })
-            .ml(5).mr(-5)
+            .mr(1)
             .on_hover(this.drag.guard((hovered, cx) => { this.addHovered = hovered ? (m ?? "local") : null; cx.notify(); })))),
       ];
-      const head = this.drag.control(sidebarSectionHeader(t, {id:`machine-${m ?? "local"}`, label:m ?? 'This computer', open:!folded, compact:collapsed, children}),
+      const head = this.drag.control(sidebarSectionHeader(t, {id:`machine-${m ?? "local"}`, label:m ?? 'This computer', open:!folded, compact:collapsed, children,
+        trailingInset:0, trailingSize:U.insetControl,
+        disclosure:sidebarDisclosure(t,{id:`machine-fold-${m ?? 'local'}`,open:!folded,label:`${folded?'Expand':'Collapse'} ${m ?? 'This computer'}`,enabled:!this.drag.active,
+          onClick:this.drag.guard((_e,cx)=>{folded?this.folded.delete(m):this.folded.add(m);localStorage.setItem('machines.folded',JSON.stringify([...this.folded]));cx.notify();})})}),
         {hover: s => s.bg(t.selected), cursor: true, tooltip: collapsed ? m ?? 'This computer' : null})
         .when(!this.drag.active && this.addHovered === (m ?? "local"), el => el.bg(t.selected))
         .on_click(this.drag.guard((_e, cx) => {
@@ -555,11 +559,19 @@ export default class Spaces extends View {
           // With tags, metadata precedes the shared trailing tag edge instead.
           .when(worktree, el => el.child(slot(svg("mods/custom-workspace-chrome/branch.svg").size(U.smallIcon).text_color(t.muted))
             .id(`space-worktree-${w.id}`).when(!tags.length, e => e.mr(-4)).tooltip('Git worktree')))
-          .when(!edit, el => el.children(trailing.map((tag, k, all) =>
+          .when(!edit, el => el.children(trailing.filter(tag=>tag.plugin!=='crew').map((tag, k, all) =>
             rolePill(t, tag.label, { status: true }).id(`space-tag-${w.id}-${tag.plugin}-${tag.index}`)
-              .when(k === all.length - 1 && !(attached && !linked), e => e.mr(-5))
+              .when(k === all.length - 1 && !tags.some(tag=>tag.plugin==='crew') && !(attached && !linked), e => e.mr(-5))
               .when(Boolean(tag.tooltip), e => e.tooltip(tag.tooltip)))))
-          .when(!edit && attached && !linked,el=>el.child(this.parentDisclosure({w,block,binding},t))),
+          .when(!edit && (tags.some(tag=>tag.plugin==='crew') || attached && !linked),el=>{
+            const open=!attached || !this.connectedFolds().has(this.parentKey({w,block,binding}));
+            return el.child(h_flex().id(`space-meta-${w.id}`).flex_none().items_center().gap(6).mr(-8)
+              .children(tags.filter(tag=>tag.plugin==='crew').map(tag=>sidebarMachineLabel(t,tag.label)
+                .id(`space-tag-${w.id}-${tag.plugin}-${tag.index}`).when(open,e=>e.mr(3))
+                .when(Boolean(tag.tooltip),e=>e.tooltip(tag.tooltip))))
+              .when(!open,e=>e.child(sidebarNumericSlot(t,`space-count-${w.id}`,String(block.length-1),{trailingSize:U.insetControl})))
+              .child(attached && !linked ? this.parentDisclosure({w,block,binding},t) : div().size(U.insetControl).flex_none()));
+          }),
       );
   }
 

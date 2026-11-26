@@ -2,9 +2,9 @@
 
 ## 1. Shared Spaces and Agents trailing grid
 
-- [ ] 1.1 Implement the recommended design grid with shared existing UI primitives, plain Crew labels and collapsed-only child-space counts; assert exact machine/coordinator chevron and hover bounds, plus/Crew right edges, Agents number/time alignment and simultaneous Crew/count placement in real-renderer fixtures at 100%/130%.
-- [ ] 1.2 Extend spaces-worktree-layout, agents-dot-column and relevant fleet/reorder coverage for local/remote groups, one/two/three children, long names, truncation, selection, compact badges, native shortcuts and captured block membership; preserve Git's existing 3px trailing inset with an independent geometry oracle.
-- [ ] 1.3 Update README and docs/TESTING.md for plain Crew and collapsed counts, reconciling legacy pill/no-count wording without changing native identity or action-authority documentation; check against the workspace delta.
+- [x] 1.1 Implement the recommended design grid with shared existing UI primitives, plain Crew labels and collapsed-only child-space counts; assert exact machine/coordinator chevron and hover bounds, plus/Crew right edges, Agents number/time alignment and simultaneous Crew/count placement in real-renderer fixtures at 100%/130%.
+- [x] 1.2 Extend spaces-worktree-layout, agents-dot-column and relevant fleet/reorder coverage for local/remote groups, one/two/three children, long names, truncation, selection, compact badges, native shortcuts and captured block membership; preserve Git's existing 3px trailing inset with an independent geometry oracle.
+- [x] 1.3 Update README and docs/TESTING.md for plain Crew and collapsed counts, reconciling legacy pill/no-count wording without changing native identity or action-authority documentation; check against the workspace delta.
 
 ## 2. Tab-spaced sidebar rename
 

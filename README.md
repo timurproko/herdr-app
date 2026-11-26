@@ -429,8 +429,8 @@ same three fixed lines: a 20px title, an
 18px number/author/time line and an 18px metadata line, for a 74px block including
 spacing. A blank 24px robot slot keeps titles' truncation boundaries identical
 with or without a related agent. Robot slots, label pills and the repository headers'
-24px chevron slots end 3 logical pixels inside their own row's highlight edge,
-matching Spaces' Crew pill (8px row padding minus its 5px negative trailing margin).
+24px chevron slots retain their 3 logical pixel inset inside each row's highlight.
+This Git inset is independent of Spaces' plain Crew metadata label.
 Git and Spaces highlights both sit 8 logical pixels inside their panel/sidebar
 on the left and right, with the same 6px corner radius. Git's state icon starts
 8px inside its highlight, matching Spaces' highlight-to-badge inset; trailing
@@ -735,8 +735,9 @@ motion are implemented once, not copied into each feature. See
 ## Spaces and the last tab
 
 Worktree spaces keep normal avatar/title alignment. Rows with plugin tags show
-name, ahead/behind counts, worktree icon, then tags at the existing right edge,
-so Crew pills line up on coordinator and fleet rows. Untagged worktree icons
+name, ahead/behind counts, worktree icon, then tags. Crew uses the same plain,
+regular 12px dim label as Agents' machine text, not a filled pill; unrelated tags
+keep their existing styling and tooltips. Untagged worktree icons
 keep the machine-header chevron's right inset and centre line. Drag them like other spaces within their machine: repository discovery
 never regroups them or overrides the saved order. This is Spaces presentation and
 works independently of the Git plugin.
@@ -807,8 +808,14 @@ The fleet badge's fill uses the coordinator's actual colour and follows recolour
 without changing the fleet's saved colour. Expanded attached fleets are indented
 children, using the same rounded connector, stroke and spacing as child agents.
 Neither row shows a chain, and only the coordinator shows Crew; unrelated plugin
-tags remain. Crew precedes the coordinator's far-right Agents-style chevron, which folds its children,
-with no child count in either state; only its direction indicates collapse. Folds are local,
+tags remain. Crew precedes the coordinator's far-right chevron, which folds its children.
+The chevron and its 24px hover target align with machine headers. Expanded Crew
+ends on the machine + column; collapsed Crew moves to Agents' machine-label rail
+and a connected-child-space count appears on Agents' right-aligned 32px time/count
+rail, before the chevron. The coordinator itself is not counted. Expanded rows
+show no count. The machine + target moves 10 logical pixels left; its right edge
+and expanded Crew end 41px from the sidebar edge, while chevrons stay centred
+20px from that edge. At 130% these offsets scale to 13px, 53.3px and 26px. Folds are local,
 identity-scoped and restored on reload, never portable preferences. Selecting a
 hidden child through native shortcuts/navigation discloses its parent without
 changing the native selection target. Explicit folding itself never selects the
