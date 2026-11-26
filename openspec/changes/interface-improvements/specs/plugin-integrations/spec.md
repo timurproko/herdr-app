@@ -28,7 +28,7 @@ Fresh fleet action bindings SHALL require a live Crew owner and exact machine-qu
 - **AND** presentation memory contains no PR/task inventory, grants no action freshness and does not alter Crew ownership, task records or running agents
 
 ### Requirement: Collapsible coordinator repository sections
-Each coordinator repository section SHALL default expanded with independent locally persisted folding. Headers SHALL show canonical repository name, selected-tab eligible task PR count and chevron, using existing section styling and Agents group number styling and number-to-chevron spacing. Names SHALL truncate only on overflow with a full-name tooltip then. Folding SHALL remain responsive without changing top-level totals or starting reads.
+Each coordinator repository section SHALL default expanded with independent locally persisted folding. Headers SHALL show canonical repository name, selected-tab eligible task PR count and chevron, using existing section styling and Agents group number styling and number-to-chevron spacing. Names SHALL truncate only on overflow with a full-name tooltip then. Folding SHALL preserve top-level totals without starting reads.
 
 #### Scenario: First display
 - **WHEN** a repository has no saved folded state and appears in the coordinator overview
@@ -59,11 +59,6 @@ Each coordinator repository section SHALL default expanded with independent loca
 - **THEN** it uses all width not reserved for the count, chevron and existing header insets
 - **AND** fitting names have no repeat-only tooltip, while overflowing names truncate with the full canonical name on hover
 - **AND** count and chevron geometry remains stable for one-, two- and three-digit values
-
-#### Scenario: Closed collapse with 41 items
-- **WHEN** Closed contains 41 eligible PRs across repository sections and the user repeatedly collapses and reopens sections at different reveal depths and scroll positions
-- **THEN** every action completes with the current fold state rather than an interrupted-render banner or frozen previous version
-- **AND** rows remain reachable with the existing mounted reveal and batch limits, totals remain unchanged, and native error handling and deadlines are not weakened
 
 #### Scenario: Incomplete repository count
 - **WHEN** a visible repository has authoritative selected-tab rows plus unresolved admitted identities, or only an applicable initial failure notice

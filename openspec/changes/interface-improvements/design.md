@@ -9,7 +9,7 @@ See `proposal.md` for motivation and safety limits. Inspection was read-only exc
 - #79 (`keep-deferred-repositories-visible`) fixed cold unresolved repositories silently disappearing behind successful siblings. Its design explicitly rejected a global Loading-only remedy because it could hide a missing repository; it also corrected incomplete global counts, preserved absolute-deadline retries and added bounded diagnostics. This change intentionally revises its presentation, not those read/count guarantees.
 - `aggregate.js` clears entries and complete-count memory on scope changes; returning to a coordinator can therefore lose its known section membership. It already distinguishes missing, unresolved, quiet deferred and actionable failed reads and uses existing guarded cooldown callbacks.
 - `main.js` independently derives section lists in `renderAggregate` and `fallbackSnapshot`; `TaskReveal.project` repeats the eligibility filter. All must agree. Repository counts must be based on full selected-tab eligible rows, not the revealed mounted subset.
-- #45's tests cover synchronous notice failures and component diagnostics, but explicitly do not reproduce the original native `interrupted` banner. Herdr's 50 ms native deadline is not a catchable ordinary JavaScript error, and Node operation counts cannot prove native layout safety.
+- The Closed-tab collapse error was investigated without reproducing it and is excluded from this change by maintainer decision. Retained fold regressions establish only the exercised behavior, not a repair. Existing native deadlines, caps, diagnostics and error propagation remain unchanged.
 - Agents has two distinct patterns: group counts use a 32px right-aligned muted meta-text slot immediately before the chevron; agent parents use a small chevron followed by child count only when folded. Child branches use a 1.5px theme-input stroke and rounded elbow. These are the references, not newly designed controls.
 - `workspace-links.js` and Crew verification reject cross-machine parent/child relationships. Only one verified fleet child per machine is currently admitted. Spaces already projects that pair together and uses public acknowledged `space.move` commands for block reorder; projected badge numbers remain the native global indices.
 - Existing specs explicitly require count-free Git headers, both chain icons and both Crew pills. The delta replaces those statements rather than pretending this is a cosmetic no-spec fix.
@@ -20,28 +20,17 @@ See `proposal.md` for motivation and safety limits. Inspection was read-only exc
 
 - Separate presentation retention from read/action authority, and unresolved work from proof that a selected-tab section exists.
 - Share the existing Agents visual primitives, with direct parity tests against actual callers rather than approximate screenshots or duplicated magic styles.
-- Establish a cause-specific collapse regression before implementation changes that could mask the symptom.
 - Keep all runtime changes inside owned mods and public host APIs.
 
 **Non-Goals**
 
 - No new cross-machine relationship, arbitrary multi-fleet discovery, terminal relocation, native navigation override or shortcut remapping.
 - No production deployment, live agent/terminal interaction, relay/account/Trello/Settings setup changes, persistent PR inventory, new scheduler, deadline increase or native patch.
-- No clearing valid rows to make a stuck render appear repaired; no disabling the host banner, instrumentation or error propagation.
+- No diagnosis or repair of the excluded Closed-tab collapse error, and no claim that passing fold controls reproduce it. No clearing valid rows to suggest a repair or disabling native safeguards.
 
 ## Decisions
 
-### 1. Reproduce Closed collapse before the other UI implementation
-
-The first implementation outcome is the bug fix, not counts or new projection. Extend the disposable fixture approach in `tests/features/git-deferred-native.mjs` to mount the unmodified packaged Git controller with 41 realistic Closed items across at least two repositories. Use fixed synthetic task/status/GitHub facts, recent historical merged and closed-unmerged rows, live rows, normal metadata and scoped notices. Exercise actual header clicks: partial/full reveal, top/middle/bottom, all collapsed and reopened, repeated toggles, pending measurements and a held refresh. Expand to 60/100/200-known inventories as controls without bypassing production caps.
-
-Record the failing native status/banner, log/component marker, current projection/reveal geometry and reproduction sequence before changing production code. Compare the actual fold callback, projection, anchor correction, measurement lifetime and subsequent native layout. Distinguish a JS exception, synchronous render-side effect, repeated invalidation and true native render/layout interruption with evidence, not a presumed row-count cause. Minimize the sequence into a failing-before/passing-after deterministic regression of the demonstrated mechanism, retaining the native sequence as independent proof.
-
-Fix the smallest demonstrated owned-code cause. Preserve caught-error propagation, uncaught-interruption diagnostics, current watchdog, PR-row geometry and reveal caps. Node success alone, a build-only native `check`, or suppressing the banner is not success. If the safe fixture cannot reproduce the reported collapse failure, stop the bug outcome and report that blocker rather than claiming an unrelated optimization fixed it.
-
-**Rejected:** Guessing that 41 is too many PRs, reducing the visible rows until the symptom disappears, or recycling #45's unrelated synchronous-notice repair as a reproduction.
-
-### 2. Reuse both Agents count and parent/child patterns
+### 1. Reuse both Agents count and parent/child patterns
 
 Promote the narrow reusable numeric-rail and parent-disclosure/branch decorations from Agents into shared UI helpers where needed, retaining Agents' current output. Package them through `customization.json` if a new helper is introduced. No general hierarchy framework or new component dependency is needed.
 
@@ -53,7 +42,7 @@ Spaces uses Agents' parent-row chevron/count ordering (chevron then count only w
 
 **Rejected:** Colored badges or tab-count pill styling for repository headers, independently styled branch SVGs, or blindly copying a count slot without testing its visible gap next to Git's larger chevron reservation.
 
-### 3. Reconcile #79 with non-flashing section admission
+### 2. Reconcile #79 with non-flashing section admission
 
 Derive one selected-tab projection for both rendering and safety selection, separate from the full cross-tab inventory used for enrollment and read routing. A new section is admitted only when it has a known eligible row or an applicable actionable read notice. Unknown-only repositories no longer get headers or per-repository Loading bodies. Genuine failures remain the explicit exception to the nonempty-row rule, so access/auth/process/network failures cannot silently vanish merely because no PR state has arrived yet; preserve existing historical-versus-live tab scoping and folded notice behavior.
 
@@ -65,7 +54,7 @@ At successful retry, admit the repository only into tabs with actual eligible ro
 
 **Rejected:** Undoing #79 wholesale (loses retry/count/failure guarantees); keeping every header with an empty body; settling at partial exact totals; hiding failures until a row appears; or making global Loading disappear as soon as any repository succeeds.
 
-### 4. Keep the last compatible coordinator presentation in bounded runtime memory
+### 3. Keep the last compatible coordinator presentation in bounded runtime memory
 
 Retain pure presentation facts per exact machine/coordinator-space/owner/home and Git/Crew/attachment enable generation, with separate Open/Closed presentation/reveal facts. Use the existing sanitized context scope plus explicit generation invalidation, never names or mere directory similarity. Retain at most four coordinator snapshots and at most the existing 4096 admitted PR-identity bound across them; evict least recently used inactive snapshots. An evicted or never-visited context has one panel Loading state, not guessed sections. This bound is a stated limit on last-visit restoration, not a promise of indefinite history.
 
@@ -75,7 +64,7 @@ Disablement of Git/Crew/attachment, authoritative owner/home replacement or nati
 
 **Rejected:** Persisting task inventory into the durable pair record, reusing native callback-bearing trees, or restoring unrelated cached rows and pretending their old verification authorizes current reads/actions.
 
-### 5. Fold nested spaces without changing native topology
+### 4. Fold nested spaces without changing native topology
 
 Apply nesting only to existing accepted same-machine display blocks. Remove both chain decorations. Suppress the Crew tag only on the attached child; preserve its unrelated tags and restore ordinary independent tags on unlink/off. Prefer presentation filtering in the Spaces caller; alter Crew's contribution only if its generic semantics require it, keeping all project-name/Settings work untouched.
 
@@ -87,24 +76,24 @@ A ready remote group may contain its own local-to-that-machine nested pair. Cros
 
 **Rejected:** Renumbering based on visible rows; native space reorder merely to indent a row; hiding children from native commands; cross-machine links; moving only the visible parent when folded; or changing the reusable drag engine's thresholds for this feature.
 
-### 6. Verification and evidence remain outcome-specific
+### 5. Verification and evidence remain outcome-specific
 
 Each outcome lands its tests and relevant README/architecture/testing updates. Focused checks use packaged actual controllers and UI with fake external facts, immediate-spawn/render-side-effect guards and strict no-live-transport fallbacks. Existing regressions that assert count-free headers, duplicate Crew pills, chains or per-repository Loading must be revised to the new explicit contract while preserving their other assertions.
 
-- Collapse: reproduce 41 Closed items first, exercise repeated toggles at reveal/cap/scroll boundaries, notices, pending layout and held refresh; retain native error logs/status and the failing-before regression. Preserve `git-panel-errors`, render-budget, safety-paging and mounted-reveal coverage.
+- Retain useful passing fold controls and existing `git-panel-errors`, render-budget, safety-paging and mounted-reveal coverage as regressions for unchanged behavior; they neither reproduce nor claim to repair the excluded collapse error.
 - Header counts: compare actual Agents and Git callers for 1/10/100 counts, both tabs/fold states, narrow/long names and 75–200% zoom including 100%/130%; prove task-scoped deduplication and no fold-triggered IO. Counts cover full eligible inventory, not mounted rows.
 - No flash: sample every projection during cold/return/home-away-home, delayed siblings, first-read queued/deferred cooldown, actionable failure, missing/expired/other-tab facts, enable-generation changes and late responses. Preserve global count completeness, bounded diagnostics, original no-event retry, enrollment inventory and scroll anchors.
 - Spaces: compare actual Agents branch/disclosure styles; cover active/inactive, parent folds and counts, child selection through native shortcuts, compact rail, rename/metadata/colour, machine folds, local/remote/cross-machine refusal, expanded and folded block drags/cancellation and acknowledged order. Existing Agents render output must stay unchanged when helpers move.
 
-After implementation run disposable native instances only, with synthetic providers, no terminals, isolated home/Core identity, loopback/no-network fallbacks and no inherited production tokens. Capture initial/intermediate/settled Git states, 41-item collapse/reopen, counts beside chevrons, and Spaces expanded/collapsed/selected/drag states at 100% and 130%. Use actual pointer/keyboard interactions for folding/navigation/reorder, not only a test export or native build check. Inspect pictures, native status/errors and bounded build/layout diagnostics; label synthetic facts and build-only versus interactive proof honestly. No browser tool is needed unless a web UI is examined; if used, read `chrome-devtools-axi --help` first.
+Disposable native evidence uses synthetic providers, no terminals, isolated home/Core identity, loopback/no-network fallbacks and no inherited production tokens. Inspected frames cover initial/intermediate/settled Git states, counts beside chevrons, and Spaces expanded/collapsed/selected/drag states at 100% and 130%. The driver executes the exact production Git fold-handler body and Spaces domain methods outside render. Physical pointer/keyboard hit-testing and live SSH were not performed: this is an explicitly accepted validation limitation, not a completed input test or an unfinished implementation outcome. Controller tests cover selection/reorder semantics with synthetic local/remote identities. Preserve this distinction in evidence and handoff rather than promising physical validation in this PR.
 
 The brief explicitly keeps all scratch, pictures, receipts, temporary app homes and report under `C:/Users/tprokopiev/.crew/tasks/interface-improvements`, outside this checkout; use an absolute external root in proof drivers rather than copying existing scripts' `.artifacts/` default. Only generated `dist/` may be built inside the checkout. Keep any temporary socket path within the platform's limit. Every launched app/Core/server belongs to a unique disposable session and must be stopped in `finally` cleanup before reporting or `crew done`; record positive shutdown evidence and never stop production processes.
 
-Hosted Windows/Ubuntu green is required before an Implementation report, but draft PR test jobs skip. Use existing `.github/workflows/tests.yml` `workflow_dispatch` with `--ref feature/interface-improvements`, which runs the same Node 24 matrix without changing PR readiness. Record the run's exact `head_sha`, both OS checks and required result; any later code push invalidates the evidence. Inspect status rather than foreground-watching. Do not change CI guards or mark the PR ready to get tests.
+Allow the delivery bot to promote and finalize the three-outcome PR after this authorized scope update. Pull its finalization commit before any subsequent push. Dispatch existing `.github/workflows/tests.yml` with `--ref feature/interface-improvements` on the final head and record the exact `head_sha`, successful Windows/Ubuntu Node 24 matrix and required result before reporting. Any later commit invalidates that exact-head evidence. Inspect current status rather than foreground-watching; never mark ready manually, change CI guards or merge.
 
 ## Risks / Trade-offs
 
-- [Original interruption not yet reproduced] → Bug outcome is first and cannot be claimed complete without actual cause and native before/after proof. A required host patch or unsafe reproduction is a blocker, not implicit authorization.
+- [Physical-input validation not performed] → State the limitation explicitly; native render/callback evidence and deterministic model tests are not OS pointer/keyboard or live-SSH proof. The maintainer accepts this limitation for the three delivered outcomes.
 - [New header count reduces name width] → Reuse overflow-only name tooltips and compare real count/glyph gaps while keeping the existing trailing alignment and hit target.
 - [Global Loading obscures which cold repository is waiting] → Intentional requested trade-off; known sections remain, actionable failures identify repositories, diagnostics retain deferred identity, unknown global totals remain loading and original retry still runs.
 - [Warm return accidentally authorizes stale inventory] → Pure bounded runtime snapshots, exact identity/generation matching and fresh action gates; no persisted inventory or cached callback trees.
