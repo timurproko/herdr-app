@@ -34,6 +34,7 @@ const CI_SWEEP_WIDTH = 96;
 // The panel's 1px border plus this padding matches Spaces' 8px outer gutter.
 const LIST_INSET = 7;
 const TEXT_CACHE_LIMIT = 512;
+export const STAGE_CONTROL_WIDTH = 80;
 const ciPending = pr => ['open','draft'].includes(pr?.state) && pr.checks?.pending > 0;
 function find(node, id) { return node?.id === id ? node : (node?.children ?? []).map(c => find(c, id)).find(Boolean); }
 // Repository data survives agent/tab changes in the same machine and folder.
@@ -734,6 +735,53 @@ export default class Changes extends View {
       .when(!stated,el=>el.tooltip(pr.state==='draft'?'Draft pull request':pr.state==='open'?'Open pull request':pr.state==='merged'?'Merged pull request':'Closed pull request'));
   }
 
+  stageChip(t, pr, interactive = true) {
+    if(!pr.stage) {
+      const robot=this.agentButton(t,pr,interactive);
+      return robot?.absolute().left(STAGE_CONTROL_WIDTH-U.insetControl);
+    }
+    const role=pr.stage==='approved'?null:pr.stage,repo=pr.repo??this.repo?.name,context=this.context;
+    const scope=this.aggregate?.context?.scope;
+    const target=role && pr.key?this.aggregate?.stageTarget?.(pr,role,this.agentLinks):null;
+    const agent=role?(pr.key?target?.agent:this.agentLinks?.related?.(pr,repo,location().terminal,role)):null;
+    const available=agent?.availability==='live';
+    const round=role==='build'?agent?.crew?.round:null;
+    const caption=pr.stage==='approved'?'Approved':role==='review'?'Review':round?`Build ${round+1}`:'Build';
+    const history=round && agent?.crew?.finding?`back from review ${round}: ${agent.crew.finding}`:null;
+    const reason=!role||available?null:agent?.availability==='disconnected'?`on ${agent.on}, not connected`
+      :agent?.availability==='ended'?(role==='review'?'reviewer ended without a verdict':`build agent ended${pr.checks?.state?` - CI ${pr.checks.state}`:''}`)
+      :role==='review'?'reviewer unavailable':'build agent unavailable';
+    const tooltip=[history,reason,available&&agent.displayName?`Open agent: ${agent.displayName}`:null,
+      round>99?caption:null].filter(Boolean).join('\n');
+    const color=pr.stage==='approved'?t.ansi2:role==='review'?t.ansi5:t.ansi3;
+    return div().id(`${interactive?'':'swap-'}pr-stage-${pr.key??pr.number}`).absolute().left(0).top(0)
+      .w(STAGE_CONTROL_WIDTH).h(20).px(6).flex().items_center().justify_center().rounded_full()
+      .bg(t.raised).text_color(color).text_size(U.meta).truncate()
+      .when(Boolean(role&&!available),el=>el.opacity(0.45).cursor_default())
+      .when(Boolean(tooltip),el=>el.tooltip(tooltip))
+      .when(Boolean(interactive&&role),el=>el
+        .on_mouse_down('left',(event,cx)=>{
+          cx.stop_propagation();
+          if(available)this.agentPress={number:pr.number,position:event.position,bounds:event.bounds,at:Date.now()};
+        })
+        .on_click((_event,cx)=>{
+          cx.stop_propagation();const press=this.agentPress;this.agentPress=null;
+          if(!available || this.context!==context || !this.shown())return;
+          if(pr.key) {this.aggregate?.focus(pr,target,scope,this.agentLinks);return;}
+          if(key()!==context || this.repo?.name!==repo)return;
+          const current=this.agentLinks?.related?.(pr,repo,location().terminal,role);
+          if(current?.key!==agent.key || current.availability!=='live')return;
+          const latest=[...(this.pulls?.open??[]),...(this.pulls?.closed??[]),this.relatedPull].find(row=>row?.number===pr.number);
+          if(latest && latest.stage!==pr.stage)return;
+          if(press?.number===pr.number && Date.now()-press.at<2000 && this.pinMotion?.start(this.pullPresentation,pr,press,
+            {source:location().terminal,target:current.address,folder:folderKey(current),repo},cx))cx.notify();
+          run('agent.focus',{terminal:current.address});
+        }))
+      .when(Boolean(interactive&&role&&available),el=>el.role('button').accessibility_label(`Open ${role==='review'?'reviewer':'build agent'} for ${repo} #${pr.number}`)
+        .cursor_pointer().hover(s=>s.bg(subtleActionFill(t))))
+      .child(caption);
+  }
+
   agentButton(t, pr, interactive = true) {
     if(pr.key) {
       const target=this.aggregate?.target(pr),scope=this.aggregate?.context?.scope;
@@ -910,7 +958,7 @@ export default class Changes extends View {
 
   renderPullRow(t, pr, ghost = false) {
     const prefix = ghost ? 'swap-' : '', rowId = pr.key ?? pr.number;
-    const agentButton = this.agentButton(t, pr, !ghost);
+    const agentButton = this.stageChip(t, pr, !ghost);
     // Cache presentation by immutable fact identity; never retain native rows:
     // their event callbacks belong to the current native snapshot build.
     this.rowPresentations ??= new RowPresentations();
@@ -951,7 +999,7 @@ export default class Changes extends View {
       .child(v_flex().flex_1().min_w(0).gap(3)
         .child(h_flex().id(`${prefix}pr-title-line-${rowId}`).w_full().min_w(0).h(20).flex_none().gap(4).items_center().line_height('20px')
           .child(div().id(`${prefix}pr-title-${rowId}`).flex_1().min_w(0).h(20).truncate().text_size(U.font).font_semibold().text_color(t.foreground).tooltip(pr.title).child(pr.title))
-          .child(div().id(`${prefix}pr-agent-slot-${rowId}`).w(U.insetControl).h(20).flex_none().relative()
+          .child(div().id(`${prefix}pr-agent-slot-${rowId}`).w(STAGE_CONTROL_WIDTH).h(20).flex_none().relative()
             .when(Boolean(agentButton), el => el.child(agentButton))))
         .child(byline.line).child(meta.line))
       .when(Boolean(byline.probes),el=>el.child(byline.probes))

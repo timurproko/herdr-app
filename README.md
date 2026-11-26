@@ -419,8 +419,9 @@ font unchanged. Titles always retain their full-title tooltip, including fitting
 titles, without width measurement or a resize gate. Every PR block uses the
 same three fixed lines: a 20px title, an
 18px number/author/time line and an 18px metadata line, for a 74px block including
-spacing. A blank 24px robot slot keeps titles' truncation boundaries identical
-with or without a related agent. Robot slots, label pills and the repository headers'
+spacing. A shared 80px stage/robot reservation keeps titles' truncation boundaries identical
+with or without a managed stage or related agent. The fallback robot keeps its
+24px target right-aligned inside it. Stage reservations, label pills and repository headers'
 24px chevron slots end 3 logical pixels inside their own row's highlight edge,
 matching Spaces' Crew pill (8px row padding minus its 5px negative trailing margin).
 Git and Spaces highlights both sit 8 logical pixels inside their panel/sidebar
@@ -606,7 +607,17 @@ followed by the finding. Missing metadata stays plain Build, with no invented
 round or finding. `crew.approved` is read as metadata, never a fourth stage or
 permission to infer Approved from CI.
 
-PRs with a related live agent show a separate white/foreground robot beside
+The title-line **Build** chip focuses the build terminal; **Review** focuses the
+reviewer. **Approved** has no agent action: clicking it opens the PR through the
+row, even while checks are pending or failed. There is no approved/CI-running
+stage or Review check CI chip. Build/Review chips dim when their exact target
+ends, is unavailable, or its machine is disconnected, and explain why on hover;
+clicking a dimmed chip does nothing. The chips use the app palette's amber,
+purple and green tokens and keep the same bounded title reservation in every row.
+Motion previews never navigate. The no-label robot retains its original 24px hit
+target and immediate pin-navigation behavior.
+
+Without a managed stage, PRs with a related live agent show a white/foreground robot beside
 the title, matching the Agents sidebar. The original colored PR icon stays.
 The robot uses the usual rounded inset-icon hover tint, distinct from the
 row's hover, with a tooltip only for a known agent name; clicking opens
@@ -941,7 +952,9 @@ Discovery is a bounded snapshot, not a completeness promise or a persistent PR
 record. Older Crew without discovery, or an unknown discovery version, keeps the
 recorded-only list and may omit PRs until tasks report. No generic incomplete-list
 notice is added.
-Robots open the exact live worker, and PR menus retain their captured URL.
+Stage chips focus the exact live same-home build/review task; without a managed
+stage, robots keep the exact live worker action. Historical-only and stale rows
+gain no worker navigation from a stage label. PR menus retain their captured URL.
 The source is read-only `crew status --all --json --discover-prs`, with `tasks[].pr`
 compatibility for older Crew, not app-side transcript/branch inference. A narrowly
 recognized unsupported-flag refusal allows one bounded recorded-only fallback;

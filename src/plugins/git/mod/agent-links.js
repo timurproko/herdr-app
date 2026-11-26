@@ -18,6 +18,7 @@ export function repositoryName(stdout) {
 const machineOf=address=>address.includes('/')?address.split('/')[0]:null;
 const connected=on=>!on || Boolean(host.machines?.().some(m=>m.name===on && m.layout==='ready'));
 export function crewMetadata(labels={}) {
+  labels??={};
   const text=value=>typeof value==='string'?value.replace(/[\x00-\x1f\x7f]/g,' ').trim().slice(0,512):'';
   const round=typeof labels['crew.round']==='string' && /^[1-9]\d*$/.test(labels['crew.round'])?Number(labels['crew.round']):null;
   return {kind:labels['crew.kind'],pr:labels['crew.pr']??null,

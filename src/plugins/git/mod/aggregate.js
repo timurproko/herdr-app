@@ -196,7 +196,8 @@ export class AggregatePulls {
   }
   stageTarget(pr, role, agentLinks) {
     const context=this.currentContext();
-    if(!context || context.scope!==this.context?.scope || !this.entries.has(pr.key))return null;
+    const entry=this.entries.get(pr.key);
+    if(!context || context.scope!==this.context?.scope || !entry || !liveLink(entry.link))return null;
     // Verified context includes no-PR tasks as well as admitted PR links. A
     // reviewer need not publish a task PR: its explicit crew.pr identifies the
     // row, but only this home's currently verified task membership permits focus.
@@ -214,6 +215,7 @@ export class AggregatePulls {
   focus(pr,target,scope,agentLinks) {
     if(!this.shown() || !target?.terminal || target.historical || this.currentContext()?.scope!==scope)return;
     if(target.role) {
+      if(this.entries.get(pr.key)?.pr?.stage!==pr.stage)return;
       const current=this.stageTarget(pr,target.role,agentLinks);
       if(current?.terminal===target.terminal && current.task===target.task && current.agent.key===target.agent.key && current.agent.availability==='live')run('agent.focus',{terminal:target.terminal});
       return;

@@ -51,7 +51,7 @@ for(const method of ['syncAgent','loadRelatedPull','syncWebhooks','syncChecksFal
 panel.pullsDue=()=>false;panel.agentLinks.refresh=no;
 panel.notices={sync:()=>null};panel.enrollmentPresentation=()=>null;
 panel.foldedRepositories=new Set();
-const raw={number:17,title:'Long title '.repeat(20),url:'https://github.com/owner/repo/pull/17',author:{login:'owner'},createdAt:'2026-11-20T10:00:00Z',labels:[{name:'🤖 Review',color:'840479'}]};
+const raw={number:17,title:'Long title '.repeat(20),url:'https://github.com/owner/repo/pull/17',author:{login:'owner'},createdAt:'2026-11-20T10:00:00Z',labels:[{name:'fixture',color:'840479'}]};
 const now=Date.parse('2026-11-20T14:00:00Z');
 let comparisons=0;
 for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,2]) {
@@ -84,7 +84,7 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
       near(right(title),robot.x-4*zoom,'Title truncation ends before the reserved robot slot');
       if(agent)near(right(title),titles.get(titleKey),'Agent presence never changes the title truncation boundary');
       else titles.set(titleKey,right(title));
-      near(robot.width,24*zoom,'Robot reservation remains 24px');near(geometry.get(block).height,74*zoom,'PR vertical geometry stays fixed');
+      near(robot.width,80*zoom,'Shared stage reservation remains 80px');near(geometry.get(block).height,74*zoom,'PR vertical geometry stays fixed');
       near(geometry.get(find(block,`${prefix}pr-title-${id}`)).x,geometry.get(block).x+32*zoom,'Left inset is unchanged');
       for(const [kind,height,offset] of [['title-line',20,6],['byline',18,29],['meta',18,50]]) {
         const line=geometry.get(find(block,`${prefix}pr-${kind}-${id}`));
@@ -97,7 +97,7 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
         near(right(geometry.get(block))-right(box),expectedInset,'Robot hover box shares the Spaces highlight-relative inset');assert.equal(Boolean(button.attrs.on_click),mode!=='ghost');
         assert.equal(button.attrs.tooltip,undefined,'Robot remains without a tooltip');
         const glyph=nodes(button).find(node=>node.attrs.asset?.[0]==='icons/agent.svg');
-        near(centre(geometry.get(glyph)),centre(robot),'Robot glyph is centred in its reserved column');
+        near(centre(geometry.get(glyph)),centre(box),'Robot glyph is centred in its 24px target at the trailing edge');
         near(geometry.get(glyph).width,16*zoom,'Robot glyph retains its existing size');
       } else {assert.equal(slot.kids.length,0);assert.equal(slot.attrs.on_click,undefined);}
       comparisons++;

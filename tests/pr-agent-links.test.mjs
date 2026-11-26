@@ -92,7 +92,7 @@ await main.link((specifier,ref)=>{
 });
 await main.evaluate();
 const {AgentLinks,repositoryName}=cache.get(path.join(folder,'agent-links.js')).namespace;
-const cx={notify(){},spawn:fn=>tasks.push(fn(cx))};
+const cx={notify(){},stop_propagation(){},spawn:fn=>tasks.push(fn(cx))};
 const tick=async()=>{for(let i=0;i<24;i++)await Promise.resolve();};
 const footer=number=>({code:0,stdout:JSON.stringify({how:'screen',complete:true,text:`/repo (feature) • #${number}\n13.1%/500k (auto)`})});
 function add(address,{repo='owner/repo',cwd='/repo',branch='feature',app='a1',name='1',named=false}={}) {
@@ -309,11 +309,57 @@ assert.notEqual(links.related(stagePr,'owner/repo',null,'review').key,roleTarget
 const {AggregatePulls}=cache.get(path.join(folder,'aggregate.js')).namespace;
 const aggregate=new AggregatePulls({shown:()=>shown});
 taskContext={scope:'role-home',tasks:[{id:'ship',terminal:'builder'},{id:'review',terminal:'pc2/reviewer'}],links:[{url:stagePr.url.replace('922','1200'),terminal:'builder',task:'ship'}]};
-aggregate.context=taskContext;aggregate.entries.set(stagePr.key,{pr:stagePr});
+aggregate.context=taskContext;aggregate.entries.set(stagePr.key,{pr:stagePr,link:{targets:[{terminal:'builder'}]}});
 let scoped=aggregate.stageTarget(stagePr,'review',links);assert.equal(scoped.terminal,'pc2/reviewer','Verified no-PR review task is eligible without adding a PR');
 const beforeScoped=actions.length;aggregate.focus(stagePr,scoped,taskContext.scope,links);assert.equal(actions.at(-1)[1].terminal,'pc2/reviewer');assert.equal(actions.length,beforeScoped+1);
 taskContext.tasks.pop();aggregate.focus(stagePr,scoped,taskContext.scope,links);assert.equal(actions.length,beforeScoped+1,'Lost home membership refuses captured stage focus');assert.equal(aggregate.stageTarget(stagePr,'review',links),null);
 taskContext.tasks.push({id:'review',terminal:'pc2/reviewer'});taskContext={...taskContext,stale:true};aggregate.focus(stagePr,scoped,'role-home',links);assert.equal(actions.length,beforeScoped+1,'Stale coordinator has no role-focus authority');
+taskContext=null;
+// Actual managed chips, their isolated clicks, and existing row/ghost actions.
+ship.labels['crew.pr']='https://github.com/owner/repo/pull/1200';
+const ordinaryStage={...stagePr,key:undefined};
+view.repo={name:'owner/repo'};view.context=JSON.stringify([place.cwd,place.on]);
+let chipOpened=null;view.openPull=row=>chipOpened=row;
+function chipRow(stage,extra={}) {const row={...ordinaryStage,stage,...extra};view.pulls.open=[row];return view.pullRow(colors,row);}
+for(const [stage,caption,color,address]of [['build','Build','yellow','builder'],['review','Review','purple','pc2/reviewer']]) {
+  const row=chipRow(stage),chip=find(row,'pr-stage-1200');assert.ok(chip);
+  assert.equal(chip.kids[0],caption);assert.equal(chip.attrs.text_color[0],color);assert.equal(chip.attrs.opacity,undefined);assert.equal(chip.attrs.role[0],'button');
+  assert.equal(chip.attrs.tooltip,undefined,'Missing metadata and unknown names add no repeat-only tooltip');
+  const before=actions.length;let stopped=0;const eventCx={stop_propagation(){stopped++;}};
+  chip.attrs.on_mouse_down[1]({},eventCx);chip.attrs.on_click[0]({},eventCx);
+  assert.equal(stopped,2);assert.equal(actions.length,before+1);assert.equal(actions.at(-1)[1].terminal,address);assert.equal(chipOpened,null);
+  const ghost=view.pullRow(colors,{...ordinaryStage,stage},true),preview=find(ghost,'swap-pr-stage-1200');assert.ok(preview);assert.equal(preview.attrs.on_click,undefined);assert.equal(preview.attrs.role,undefined);
+}
+ship.labels['crew.round']='1';ship.labels['crew.finding']='fix the guard';ship.labels['crew.approved']='b'.repeat(40);
+let stageChip=find(chipRow('build'),'pr-stage-1200');assert.equal(stageChip.kids[0],'Build 2');assert.equal(stageChip.attrs.tooltip[0],'back from review 1: fix the guard');
+ship.labels['crew.round']='2';assert.equal(find(chipRow('build'),'pr-stage-1200').kids[0],'Build 3');
+delete ship.labels['crew.round'];stageChip=find(chipRow('build'),'pr-stage-1200');assert.equal(stageChip.kids[0],'Build');assert.equal(stageChip.attrs.tooltip,undefined);
+for(const state of ['pending','success','failure']) {
+  const row=chipRow('approved',{checks:{state,label:'1/2'}}),chip=find(row,'pr-stage-1200');
+  assert.equal(chip.kids[0],'Approved');assert.equal(chip.attrs.text_color[0],'green');assert.equal(chip.attrs.on_click,undefined);assert.equal(chip.attrs.role,undefined);assert.equal(chip.attrs.opacity,undefined);
+  const before=actions.length;row.attrs.on_click[0]();assert.equal(chipOpened.stage,'approved');assert.equal(actions.length,before,'Approved bubbles to the PR row, never an agent');
+  assert.ok(!descendants(row).some(n=>typeof n==='string'&&/CI running|Review.*CI/.test(n)));
+}
+chipOpened=null;
+for(const [stage,terminal,reason]of [['build',ship,'build agent ended - CI failure'],['review',reviewer,'reviewer ended without a verdict']]) {
+  terminal.state='finished';const chip=find(chipRow(stage,{checks:{state:'failure',label:'0/1'}}),'pr-stage-1200');
+  assert.equal(chip.attrs.opacity[0],0.45);assert.equal(chip.attrs.tooltip[0],reason);assert.equal(chip.attrs.role,undefined);assert.equal(chip.attrs.cursor_pointer,undefined);
+  const before=actions.length;chip.attrs.on_click[0]({},cx);assert.equal(actions.length,before);assert.equal(chipOpened,null);terminal.state='live';
+}
+connected=false;stageChip=find(chipRow('review'),'pr-stage-1200');assert.equal(stageChip.attrs.tooltip[0],'on pc2, not connected');assert.equal(stageChip.attrs.opacity[0],0.45);connected=true;
+const capturedChip=find(chipRow('review'),'pr-stage-1200'),beforeStale=actions.length;
+reviewer.labels['crew.kind']='ship';capturedChip.attrs.on_click[0]({},cx);assert.equal(actions.length,beforeStale,'Changed role refuses stale chip click');reviewer.labels['crew.kind']='review';
+const missing=find(chipRow('review',{number:1209}),'pr-stage-1209');assert.equal(missing.attrs.tooltip[0],'reviewer unavailable');assert.equal(missing.attrs.opacity[0],0.45);
+// The coordinator renderer uses the same chip through its guarded aggregate.
+taskContext={scope:'role-home',tasks:[{id:'ship',terminal:'builder'},{id:'review',terminal:'pc2/reviewer'}],links:[{url:'https://github.com/owner/repo/pull/1200',terminal:'builder',task:'ship'}]};
+aggregate.context=taskContext;view.aggregate=aggregate;aggregate.entries.get(stagePr.key).pr={...stagePr,stage:'review'};
+const aggregateChip=find(view.pullRow(colors,{...stagePr,stage:'review'}),'pr-stage-owner/repo#1200');assert.equal(aggregateChip.kids[0],'Review');
+aggregateChip.attrs.on_click[0]({},cx);assert.equal(actions.at(-1)[1].terminal,'pc2/reviewer');
+aggregate.entries.get(stagePr.key).link.targets=[{terminal:null,historical:true}];
+assert.equal(aggregate.stageTarget(stagePr,'review',links),null,'Historical-only row gains no focus from a reviewer label');
+aggregate.entries.get(stagePr.key).link.targets=[{terminal:'builder'}];
+taskContext={...taskContext,stale:true};const staleChip=find(view.pullRow(colors,{...stagePr,stage:'review'}),'pr-stage-owner/repo#1200');assert.equal(staleChip.attrs.opacity[0],0.45);
+const beforeStaleHome=actions.length;aggregateChip.attrs.on_click[0]({},cx);assert.equal(actions.length,beforeStaleHome);
 taskContext=null;
 shown=false;const hiddenCalls=calls.length;view.render(cx);await tick();
 assert.equal(calls.length,hiddenCalls,'Hidden Git panels start no agent scans');

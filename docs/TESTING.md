@@ -510,6 +510,17 @@ but rejects missing membership and stale context. Legacy robot/footer/branch
 callers retain their no-role behavior. These are synthetic facts and host snapshots,
 not live label mutation, remote focus or approval verification.
 
+`tests/pr-agent-links.test.mjs` renders the actual stage controls and checks
+Build/Review focus, Approved row opening regardless of CI, round/finding captions,
+missing metadata, inert ended/disconnected chips, stale captured roles and scopes,
+and ghost noninteraction. `tests/git-stage-chips.test.mjs` checks all captions and
+shared 80px title reservations across ordinary, pinned, scrolling, coordinator and
+ghost Open/Closed/merged rows, 280–480px and 75–200% zoom including 130%. Existing
+geometry/right-edge fixtures retain the 74px blocks, lower-line allocation,
+Spaces-derived trailing anchor and fallback robot's 24px target. The no-label
+main-relative tree/probe budget remains unchanged. These are render-tree assertions,
+not native pointer dispatch, pixel layout or real-agent focus proof.
+
 ## Git PR label facts
 
 Pull facts, pagination, fleet and webhook fixtures cover assigned label names/colours
