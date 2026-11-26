@@ -17,17 +17,20 @@ function setup() {
 try {
   // P1: an old terminal Settings status must not lend its dead PID/deadline to
   // a newer incomplete CLI, including one which already has a timed-out peer.
-  for (const peerUnknown of [false, true]) for (const expired of [false, true]) for (const skewedClock of [false, true]) {
+  for (const settingsState of ['complete', 'unknown']) for (const peerUnknown of [false, true]) for (const expired of [false, true]) for (const skewedClock of [false, true]) {
     const h = setup(), owner = { pid: process.pid, started: h.now - 10000, deadline: expired ? h.now - 1000 : h.now + DEADLINE };
+    atomic(h.p.status, { ...h.job, state: settingsState });
     atomic(h.p.result, { version: 1, runId: 'current-cli', token: null, owner, at: skewedClock ? h.job.started - 1000 : h.now - 6000, complete: false,
       results: [{ machine: 'local', action: 'deployed' }, ...(peerUnknown ? [{ machine: 'pc2', action: 'failed', reason: 'remote timed out; outcome unknown' }] : [])] });
     const snapshot = inspect(h.home, { now: () => h.now }); // real/default process liveness, no mocked Windows discovery
-    assert.equal(snapshot.job.token, 'current-cli'); assert.equal(snapshot.job.pid, process.pid);
-    assert.equal(snapshot.job.state, expired || peerUnknown ? 'unknown' : 'running'); assert.equal(snapshot.job.source, 'cli');
-    assert.equal(snapshot.details.kind, 'result');
+    if (settingsState === 'complete') {
+      assert.equal(snapshot.job.token, 'current-cli'); assert.equal(snapshot.job.pid, process.pid);
+      assert.equal(snapshot.job.state, expired || peerUnknown ? 'unknown' : 'running'); assert.equal(snapshot.job.source, 'cli');
+      assert.equal(snapshot.details.kind, 'result');
+    } else assert.equal(snapshot.recovery, null, 'overlapping unknown identities never borrow an owner, even with clock rollback');
     assert.equal(Boolean(snapshot.recovery?.retryable), false);
     const row = customizationRowState(updateProjection(snapshot), { now: h.now });
-    assert.equal(row.canUpdate, false); assert.equal(row.canRetry, false);
+    assert.equal(row.canUpdate, false); assert.equal(row.canRetry, false); assert.equal(row.canRecover, false);
     let spawned = 0;
     await launch(h.home, { now: () => h.now, spawn() { spawned++; throw Error('must not dispatch'); } });
     await retryUpdate(h.home, { identity: snapshot.recovery?.identity, confirmedStopped: true }, { now: () => h.now, spawn() { spawned++; throw Error('must not dispatch'); } });

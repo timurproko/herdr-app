@@ -242,7 +242,8 @@ function recoveryState(p, job, result, check, unknown, now, isQuiescent) {
   if (!unknown) return null;
   // Additive CLI owner metadata makes future tokenless runs identifiable. Old
   // receipts without it remain investigation-only, never guessed from time.
-  const matchingJob = job && (!result || runIdentity(result) === job.token || (!terminalState(job) && result.at < job.started));
+  const matchingJob = job && (!result || runIdentity(result) === job.token || (!terminalState(job) && result.at < job.started && result.complete === true
+    && outcome(result).state !== 'unknown' && !result.results.some(row => row.outcome === 'unknown' || /\boutcome unknown\b/i.test(row.reason || ''))));
   if (job && !matchingJob && !terminalState(job)) return null; // unresolved overlapping identities are not a retry grant
   const owner = matchingJob ? { ...job,
     childPid: job.childPid || (result?.owner?.pid !== job.pid ? result?.owner?.pid : undefined),
