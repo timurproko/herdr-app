@@ -107,8 +107,9 @@ The projected status shape remains:
   sanitized reason. Unknown/missing versions remain recorded-only, never confirmed none.
 - Malformed required fields remain read uncertainty, never invented empty ownership.
   Exact live machine-qualified membership and adoption checks remain required.
-  Task project is optional for legacy combined workers, required by placement-v1
-  validation, and retained by the existing bounded transport projection.
+  Task project is optional for legacy and v1 combined placement, required for
+  per-project placement, and retained by the existing bounded transport projection
+  whenever supplied. A present malformed project is a failed read, not absent evidence.
 - No launch, recovery, standby, report/transcript or copy-return fields are consumed.
 
 Recorded requests allow 15 seconds and discovery 25 seconds. Exact standalone unsupported
