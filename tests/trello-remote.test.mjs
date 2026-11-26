@@ -27,8 +27,8 @@ try{
  let sends=0,starts=0,lastCommand,mode='normal';
  const spawn=(program,args,options)=>{
   starts++;assert.equal(program,'ssh');assert.ok(args.includes('BatchMode=yes'));assert.ok(args.includes('StrictHostKeyChecking=yes'));for(const flag of ['ClearAllForwardings=yes','ForwardAgent=no','UpdateHostKeys=no','PermitLocalCommand=no','ControlMaster=no','ControlPath=none','ServerAliveInterval=5','ServerAliveCountMax=2'])assert.ok(args.includes(flag));assert.ok(args.includes('-T'));assert.equal(options.stdio[0],'pipe');
-  lastCommand=args.at(-1);assert.ok(lastCommand.length<30000);assert.ok(!JSON.stringify(args).includes(key));assert.ok(!JSON.stringify(args).includes(token));
-  const encoded=/Buffer.from\('([^']+)','base64'\)/.exec(lastCommand)[1],publicSource=zlib.gunzipSync(Buffer.from(encoded,'base64')).toString();assert.ok(!publicSource.includes(key));assert.ok(!publicSource.includes(token));
+  lastCommand=args.at(-1);assert.ok(lastCommand.length<=transport.COMMAND_LIMIT);assert.ok(!JSON.stringify(args).includes(key));assert.ok(!JSON.stringify(args).includes(token));
+  const encoded=/Buffer.from\('([^']+)','base64'\)/.exec(lastCommand)[1],publicSource=zlib.brotliDecompressSync(Buffer.from(encoded,'base64')).toString();assert.ok(!publicSource.includes(key));assert.ok(!publicSource.includes(token));
   const child=new EventEmitter();child.stdin=new PassThrough();child.stdout=new PassThrough();child.stderr=new PassThrough();child.kill=()=>{child.stdin.destroy();child.stdout.destroy();};
   child.stdin.on('data',async bytes=>{
    sends++;const req=JSON.parse(bytes.toString());assert.equal(req.version,1);

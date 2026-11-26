@@ -150,7 +150,10 @@ only over strict noninteractive SSH stdin after a readiness handshake. There is 
 local fallback, remote listener, secret-bearing command/environment or temporary
 credential input file. Child SSH forwarding, agent forwarding, local commands,
 trust-store updates and persistent multiplexing are disabled for this request.
-Protected final-store atomic replacement files still exist.
+Protected final-store atomic replacement files still exist. The fixed public
+bootstrap uses Brotli compression and a 7,600-character command budget, leaving
+headroom below CMD's 8,191-character limit even with captured identity bindings;
+all actions and credentials still travel only through stdin after READY.
 
 Temporary/custom-via connections, unprovable or elevated execution identities,
 changed Core sessions and unsupported shell arrangements are refused. Existing

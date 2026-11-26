@@ -4,6 +4,8 @@ const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),cp=r
 const installer=require('./trello-install.cjs');
 const controller=require('./trello-controller.cjs');
 const defaults=()=>path.resolve(__dirname,'../..');
+// CMD accepts 8,191 characters, not Windows CreateProcess's 32K. Reserve shell overhead.
+const COMMAND_LIMIT=7600;
 const safeMessages={SSH_UNAVAILABLE:'SSH or Node unavailable. Check host trust and prerequisites.',MACHINE_UNAVAILABLE:'The configured Core session is unavailable.',MACHINE_CHANGED:'Machine changed. Check again.',MACHINE_IDENTITY:'Execution user or home could not be verified.',MACHINE_ELEVATED:'Elevated SSH logins are unsupported. Use the Core user without elevation.',MACHINE_UNSUPPORTED:'Temporary or custom-via machines are unsupported.',RUNTIME_PREREQUISITE:'Node 20+ and the configured Core session are required.',RUNTIME_MISSING:'Install Trello on this machine.',RUNTIME_OUTDATED:'Update Trello on this machine.',RUNTIME_CONFLICT:'Trello runtime ownership conflict.',RUNTIME_BUSY:'Trello installer is busy.',RUNTIME_INVALID:'Trello runtime payload is invalid.',RUNTIME_PATH:'Add the user bin to PATH first.',CONFIG_UNKNOWN:'Setup outcome unknown. Check this machine before retrying.'};
 const fail=code=>{throw Object.assign(Error(code),{code});};
 function error(code,runtime){let messages={};try{messages=require(path.join(runtime,'lib/trello/errors.cjs')).messages;}catch{}const known=Object.hasOwn(safeMessages,code)||Object.hasOwn(messages,code);code=known?code:'INTERNAL';return {version:1,ok:false,error:{code,message:safeMessages[code]??messages[code]??'Setup failed. No retry was started.',outcome:code==='CONFIG_UNKNOWN'?'unknown':code==='WRITE_CHANGED'?'applied':code==='UNKNOWN_WRITE'?'unknown':'refused'}};}
@@ -34,8 +36,10 @@ function commandFor(machine,binding,expected,runtime){
  const source=fs.readFileSync(path.join(runtime,'lib/private-actions/trello-bootstrap.cjs'),'utf8');
  const installSource=fs.readFileSync(path.join(runtime,'lib/private-actions/trello-install.cjs'),'utf8');
  const script=`const m={exports:{}};new Function('require','module','exports',${JSON.stringify(source)})(require,m,m.exports);m.exports.main(${JSON.stringify(config)},${JSON.stringify(installSource)});`;
- const encoded=zlib.gzipSync(Buffer.from(script)).toString('base64');
- return `node -e "eval(require('node:zlib').gunzipSync(Buffer.from('${encoded}','base64')).toString())"`;
+ const encoded=zlib.brotliCompressSync(Buffer.from(script),{params:{[zlib.constants.BROTLI_PARAM_QUALITY]:11}}).toString('base64');
+ const command=`node -e "eval(require('node:zlib').brotliDecompressSync(Buffer.from('${encoded}','base64')).toString())"`;
+ if(command.length>COMMAND_LIMIT)fail('RUNTIME_INVALID');
+ return command;
 }
 function validBinding(b){return b&&typeof b.id==='string'&&/^[a-zA-Z0-9._:-]{1,256}$/.test(b.id)&&typeof b.session==='string'&&/^[a-zA-Z0-9_-]{1,64}$/.test(b.session)&&/^[a-f0-9]{64}$/.test(b.principal)&&/^[a-f0-9]{64}$/.test(b.home)&&Object.keys(b).sort().join()==='home,id,principal,session';}
 async function remote(home,destination,payload,register,{runtime=defaults(),spawn=cp.spawn,spawnSync=cp.spawnSync,timeout=55000,storeOptions,deadline=Infinity,isCurrent=()=>true}={}){
@@ -45,13 +49,14 @@ async function remote(home,destination,payload,register,{runtime=defaults(),spaw
  const kind=payload.action==='runtime.install'?'install':payload.action==='runtime.probe'?'probe':'owner';
  if(!current())fail('STALE');
  if(kind!=='owner'&&Object.keys(payload).some(k=>k!=='action'))fail('INPUT');
+ const command=commandFor(machine,destination.binding,expected,runtime);
  return new Promise(resolve=>{
   let child,buffer='',size=0,ready=false,sent=false,finished=false,readyBinding;
   const finish=result=>{if(finished)return;finished=true;clearTimeout(timer);child?.stdin.end();child?.kill();resolve(result);};
   const failed=()=>finish(error(sent&&kind!=='probe'&&payload.action!=='status'?'CONFIG_UNKNOWN':'SSH_UNAVAILABLE',runtime));
   const timer=setTimeout(failed,Math.max(1,Math.min(timeout,55000,deadline-performance.now())));
   try{
-   child=spawn('ssh',['-T','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes','-o','ConnectTimeout=8','-o','ClearAllForwardings=yes','-o','ForwardAgent=no','-o','UpdateHostKeys=no','-o','PermitLocalCommand=no','-o','ControlMaster=no','-o','ControlPath=none','-o','ServerAliveInterval=5','-o','ServerAliveCountMax=2',...sshTarget(machine.target),commandFor(machine,destination.binding,expected,runtime)],{windowsHide:true,stdio:['pipe','pipe','pipe']});register(child);
+   child=spawn('ssh',['-T','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes','-o','ConnectTimeout=8','-o','ClearAllForwardings=yes','-o','ForwardAgent=no','-o','UpdateHostKeys=no','-o','PermitLocalCommand=no','-o','ControlMaster=no','-o','ControlPath=none','-o','ServerAliveInterval=5','-o','ServerAliveCountMax=2',...sshTarget(machine.target),command],{windowsHide:true,stdio:['pipe','pipe','pipe']});register(child);
    child.on('error',failed);child.on('close',failed);child.stdin.on('error',failed);child.stderr.resume();child.stdout.setEncoding('utf8');
    child.stdout.on('data',chunk=>{
     if(finished)return;size+=Buffer.byteLength(chunk);if(size>2097152)return failed();buffer+=chunk;
@@ -125,4 +130,4 @@ if(require.main===module){
  else{let target;try{target=JSON.parse(machine??'null');}catch{target=undefined;}
   dispatch(home,{machine:target},{action:mode==='--probe'?'runtime.probe':'status'}).then(result=>{process.stdout.write(JSON.stringify(result)+'\n');process.exitCode=result.ok?0:3;});}
 }
-module.exports={dispatch,remote,machineAt,sshTarget,commandFor,validBinding,safeMessages,bindingFor};
+module.exports={dispatch,remote,machineAt,sshTarget,commandFor,validBinding,safeMessages,bindingFor,COMMAND_LIMIT};

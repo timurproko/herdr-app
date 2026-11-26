@@ -77,7 +77,7 @@ async function main(config,installerSource,{getHello=hello,executionHome=private
    if(result.ok)result.data={...result.data,destination:binding};
   }
   send({version:1,phase:'result',result});
- }catch(e){send({version:1,phase:'result',result:{version:1,ok:false,error:{code:['INPUT','MACHINE_CHANGED','MACHINE_IDENTITY','MACHINE_ELEVATED','MACHINE_UNAVAILABLE','STALE','RUNTIME_PREREQUISITE','RUNTIME_MISSING','RUNTIME_OUTDATED','RUNTIME_CONFLICT','RUNTIME_BUSY','RUNTIME_INVALID','SSH_UNAVAILABLE'].includes(e.code)?e.code:'SSH_UNAVAILABLE'}}});}
+ }catch(e){send({version:1,phase:'result',result:{version:1,ok:false,error:{code:['INPUT','MACHINE_CHANGED','MACHINE_IDENTITY','MACHINE_ELEVATED','MACHINE_UNAVAILABLE','STALE','RUNTIME_PREREQUISITE','RUNTIME_MISSING','RUNTIME_OUTDATED','RUNTIME_CONFLICT','RUNTIME_BUSY','RUNTIME_INVALID','RUNTIME_PATH','SSH_UNAVAILABLE'].includes(e.code)?e.code:'SSH_UNAVAILABLE'}}});}
  finally{clearTimeout(timer);input.destroy?.();}
 }
 module.exports={main,privateHome,windowsUser,hello};

@@ -179,6 +179,13 @@ runtime conflict/update/rollback behavior. `tests/trello-global-access.test.mjs`
 composes the real controller and card setter with installed CLI gates on fake hosts,
 including preference refusal, offline retained rights, explicit same-value Retry,
 new-host read-only defaults, missing control and local disable precedence.
+`tests/trello-ssh-shell.test.mjs` executes the exact public command through real
+CMD on Windows and sh on Ubuntu with default UUID and maximum-length captured
+identities for every remote action, preserving at least 512 characters of CMD
+headroom. Its public-only preload replaces only the bootstrap entry call, so no
+real Core, SSH or private setup is consulted. It also checks the production
+installer/bootstrap retain RUNTIME_PATH after successful fake identity readiness
+and before any installation write.
 `tests/plugin-saved-rows.test.mjs` checks generic declarations against the same Crew
 row kit, header-machine scope without a stray selection dropdown, fixed description
 links and category-local search/selection. These fixtures start no real SSH or Trello
