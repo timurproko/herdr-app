@@ -13,7 +13,7 @@ try {
  const freshHome=path.join(f.root,'fresh'),fresh=new (require('./credentials.cjs').Store)(freshHome,{security:()=>{}});
  const setup=await execute(['setup'],{store:fresh,input});assert.equal(setup.exit,0);assert.ok(!JSON.stringify(setup).includes(credentials.token));
  assert.equal(fresh.read('policy').boards.length,0);assert.equal(fresh.read('policy').allowWrites,false);
- const fake=fakeTransport();const off=await execute(['boards','list'],{store:fresh,...fake});assert.equal(off.result.error.code,'DISABLED');assert.equal(fake.calls.length,0);
+ const fake=fakeTransport();const off=await execute(['boards','list'],{store:fresh,...fake});assert.equal(off.result.error.code,'PUBLIC_STATE_INVALID');assert.equal(fake.calls.length,0);
  assert.equal((await execute(['policy','allow',A],{store:fresh})).exit,0);
  assert.equal((await execute(['policy','writes','on'],{store:fresh})).exit,0);
  assert.equal((await execute(['policy','allow','*'],{store:fresh})).exit,2);

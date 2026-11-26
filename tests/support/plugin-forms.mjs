@@ -12,7 +12,7 @@ export async function formsHarness(host={},plugins=null,extraModules={}){
  'ui.js':{...realUi(element),U:{control:28,field:32,font:13,meta:12,radius:6,gutter:12,statusSize:7},slot:x=>x,searchField:(_t,state,{id})=>element().id(id).state(state),emptyState:(_t,{id,title='No results'})=>element().id(id).child(title),description:(_t,text)=>element().child(text),control:(_t,x=element())=>x,itemHover(){},spinner:()=>element(),chevron:element,dialogScrollbar:x=>x,menuSurface:(_t,e)=>e,dropdown:(id,trigger,content,{open,onOpen})=>element().id(id).on_open_change(onOpen).child(trigger).when(open,e=>e.child(content)),button:(_t,id,label,click,options={})=>element().id(id).child(label).on_click(click).disabled(options.enabled===false)},
  ...extraModules},entry:"export * as ui from './plugins-ui.js';export * as registry from './plugins.js';"});
  const view={heading:element,toggle:(_t,id,on,click)=>element().id(id).pressed(on).on_click(click)};
- const render=()=>ui.pluginsPage(view,{working:'#5599dd',blocked:'#dd5555'});
+ const render=()=>element().child(ui.pluginsPage(view,{working:'#5599dd',blocked:'#dd5555'})).child(ui.pluginConfirmation(view,{working:'#5599dd',blocked:'#dd5555'}));
  const click=id=>{const node=find(render(),id);if(!node)throw Error('Missing '+id);node.attrs.on_click[0]({},cx);};
  const flush=async()=>{while(jobs.length)await jobs.shift()(cx);};
  return {ui,registry,view,cx,jobs,inputs,writes,shared,render,click,flush};

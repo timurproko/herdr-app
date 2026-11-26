@@ -188,17 +188,41 @@ and credential removal. No fixture reads a real token or account.
 
 The opt-in Windows `tests/features/trello-settings-native.mjs --run --output
 <outside-checkout-directory>` uses an explicitly supplied `HERDR_APP_BIN`, a
-random outside-checkout home and isolated Core session. It mounts the packaged
-Settings view as a terminal-free root, injects only fixed Trello responses and
-unrelated host inventory, and runs the production native input, card, action,
-WebSocket bridge, owner worker and protected file writer. Test-only exports invoke
-the same handlers as the controls; it is not a mouse-hit-test or live Trello proof.
-The recorded App 0.1.18 run captured Missing, masked input, Saved/account, named
-board picker, one allowed board, selected Read-write and SSH refusal. Its final
-native status had no errors. The outside-checkout receipt records desktop stopped,
-Core stop acknowledged and zero remaining home-qualified Node workers. Every
-started disposable instance is stopped before handoff; production sessions and
-credentials remain untouched. Hosted tests never launch this opt-in fixture.
+random outside-checkout home and isolated Core session. It mounts packaged Settings
+as a terminal-free root and runs native masked inputs, the card, fixed confirmation
+footer, WebSocket bridge, controller, owner and protected file writer. Only provider,
+SSH and machine inventory are injected. The fake remote uses a second disposable
+home and the real Trello-only installer; no real remote/Core routing is attempted.
+Test-only exports invoke the same handlers as the controls; this is native pixels
+and handler composition, not a mouse-hit-test or live Trello/SSH acceptance claim.
+
+The driver captures empty/masked inputs, the single saved account with hover Remove,
+zero-board readiness, Active/Inactive/search picker states, added-board hover Remove,
+global Access, a remote runtime Install prerequisite, remote account/board lifecycle,
+read-only new-host and explicitly applied global write states, captured-machine
+removal confirmation and an injected permission-check error without Save. Its receipt
+records each state, native errors, stopped desktop/Core and zero remaining owned
+Node workers. The older seven-state SSH-refusal proof describes the prior version,
+not the current supported SSH flow. Every instance/server/worker started for proof
+is stopped before handoff. Hosted tests never launch this opt-in fixture.
+
+`tests/trello-remote.test.mjs` exercises the public bootstrap, injected strict SSH,
+pre-secret READY/identity refusal, distinct homes, lost replies, deadlines and owned
+runtime conflict/update/rollback behavior. `tests/trello-global-access.test.mjs`
+composes the real controller and card setter with installed CLI gates on fake hosts,
+including preference refusal, offline retained rights, explicit same-value Retry,
+new-host read-only defaults, missing control and local disable precedence.
+`tests/trello-ssh-shell.test.mjs` executes the exact public command through real
+CMD on Windows and sh on Ubuntu with default UUID and maximum-length captured
+identities for every remote action, preserving at least 512 characters of CMD
+headroom. Its public-only preload replaces only the bootstrap entry call, so no
+real Core, SSH or private setup is consulted. It also checks the production
+installer/bootstrap retain RUNTIME_PATH after successful fake identity readiness
+and before any installation write.
+`tests/plugin-saved-rows.test.mjs` checks generic declarations against the same Crew
+row kit, header-machine scope without a stray selection dropdown, fixed description
+links and category-local search/selection. These fixtures start no real SSH or Trello
+request and do not read private user setup.
 
 ## Supported hosted subset
 

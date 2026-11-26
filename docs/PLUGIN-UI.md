@@ -52,7 +52,9 @@ rebuild these parts. Add a part here when a second panel needs something a first
 
 ## The card
 
-Every plugin gets a card: icon, name, version, on/off switch and `description`. Below it,
+Every plugin gets a card: icon, name, version, on/off switch and `description`.
+Optional `descriptionLinks: [{label, url}]` appends fixed HTTPS text links using the
+existing inline-link styling. No URL is assembled from credentials or form values. Below it,
 in this order, as declared:
 
 | Declared | Drawn as |
@@ -89,9 +91,12 @@ A `toggle` or `choice` may be **live**: `live: { state(cx), set(cx, value, snaps
 Its operational value is not saved automatically by the renderer; it lives where
 the plugin says (a file on the chosen machine, say). The setter may synchronize an
 additional public preference explicitly after private acknowledgement. `state(cx)` returns
-what the plugin's last check saw, `{ shown, value }`, or null before the first check, and the row
+what the plugin's last check saw, `{ shown, value, available?, statusLabel?, detail?, retry? }`, or null before the first check, and the row
 is drawn only while `shown`. Flipping the switch runs `set` like a requirement's fix and then
 re-checks the plugin, so the switch shows what is really set; a refusal is said on the row.
+`available: false` blocks editing, `statusLabel` uses the existing unmet badge and
+`retry: true` adds the standard Retry action for an explicit same-value application.
+These are generic declaration capabilities, not plugin-specific render branches.
 
 ## Requirements
 
@@ -111,7 +116,10 @@ unknown update evidence does not claim outdated, and optional tools remain Optio
 
 ## Transient action forms
 
-A prerequisite may declare `form: { fields, actions, enabled?, help? }`. This is an
+A prerequisite may declare `form: { fields, actions, when?, enabled?, help? }`.
+`when(result)` controls whether the form exists; unavailable forms show no dangling
+action buttons or hidden-input actions. Busy but available actions retain the normal
+disabled feedback. This is an
 explicit operational action, **not** a setting type. `fields` contain
 `{ key, type: 'text' | 'secret', label, placeholder?, maxLength? }`; secret fields
 use native `InputState.set_masked(true)` and start empty. `actions` contain
@@ -130,7 +138,10 @@ results may contain public `detail` only, never input echoes. The renderer does
 not display thrown exception text from secret actions.
 
 Action/check context includes captured `machine` (`null` for this computer) and
-`isCurrent()`. `result(id)` reads that view’s latest prerequisite result and an
+`isCurrent()`. Check context also has `checkReason: 'automatic' | 'manual'`:
+only an explicit Requirements Check is manual, not opening or an action recheck.
+A requirement returning `refreshSections: true` refreshes its list sections after
+publication without rerunning Requirements. `result(id)` reads that view’s latest prerequisite result and an
 opaque `session` object permits non-secret view/machine-local hint memoization.
 `machineScoped: true` on a plugin rechecks it on header-machine
 changes without a portable machine setting. A form action additionally receives
@@ -143,9 +154,22 @@ secrets in argv, or substitute temporary input files. The bridge uses only
 127.0.0.1, a random single-use session, a 60-second hard lifetime and 256 KiB input;
 it rejects browser Origin requests and replays. Its vendored ws dependency and
 license are installed with the runtime. Only fixed owner workers are allowed;
-there is no arbitrary command facility. Private actions refuse remote-selected
-machines and native checking. Closing/cancelling cannot promise an already
-accepted private-store write was undone; reconcile local status explicitly.
+there is no arbitrary command facility. Native checking refuses private actions. The fixed Trello route supports captured
+direct-SSH destinations through the local bridge: Core/session/user/home readiness
+precedes stdin secrets, strict existing host trust is required and no remote socket
+or arbitrary command facility is exposed. Closing/cancelling cannot promise an
+already accepted private-store write was undone; reconcile destination status
+explicitly before retrying. Runtime install is a separate explicit prerequisite
+fix, using only public deterministic runtime files.
+
+## Saved requirement rows
+
+A requirement may declare `saved: { row(result), confirm?(cx, result), remove(cx, result) }`.
+A non-null row `{label}` renders the same hover-Remove component as a list item,
+not a different account widget. Removal uses the existing fixed confirmation footer
+and fix lifecycle, binding the rendered revision, selected machine and view generation.
+A saved row can replace a `form.when`-controlled empty state. Labels/confirmations
+contain public names only; no stored credential is loaded into input fields.
 
 ## List sections
 
@@ -155,7 +179,8 @@ belongs to, then Add), the description, and one row per item with **Remove** on 
 ```js
 { id: 'projects', label: 'Projects', section: true, about: 'Git folders crew may work in on this machine.',
   list: {
-    scope:  { label: 'Machine', setting: 'machine' },   // a machine setting → machine dropdown
+    scope:  { label: 'Machine', setting: 'machine' },
+         // { header: true }                              // captured Settings header machine   // a machine setting → machine dropdown
          // { label: 'Account' }                          // or the check's `selection` → dropdown
     picker: { kind: 'folders', label: 'Add project' },   // the folder browser on the scope's machine
          // { kind: 'items', label: 'Add repo', search: 'Search repositories…' }
@@ -166,6 +191,8 @@ belongs to, then Add), the description, and one row per item with **Remove** on 
   check: async cx => ({ status: 'ready', statusLabel: '3 projects', usable: true, rows: [{ id, label, path?, detail? }] }) }
 ```
 
+- `list.hideUnavailable: true` omits Add while `usable` is false, leaving the same
+  tools rail geometry; in-flight controls on otherwise usable lists keep normal busy feedback.
 - The **check** returns the added `rows` (`path` for folders, so the browser can tick them;
   `detail` is a note shown after the label), `usable` (Add works now), a `statusLabel` for the
   header badge and, for an account scope, the `selection` to offer.
@@ -174,6 +201,10 @@ belongs to, then Add), the description, and one row per item with **Remove** on 
 - **items** picker: `candidates` runs only when the popup opens (listing can be slow). The
   popup has a search field (`search` is its placeholder), Loading bottom left, and Add.
   Candidates may return public `detail` for an incomplete-inventory explanation above the list.
+  `picker.tabs: [[value,label]]` adds the existing segmented choice control, retaining
+  the popup's height by reducing its list viewport. Candidate `tab` values select a
+  category, the first tab is the opening default, and search filters within that tab.
+  Selected IDs survive tab changes until Add or Cancel; changing tabs grants nothing.
 - `list.recheck: 'plugin'` refreshes all that plugin's prerequisite groups after a
   committed list action when the change also affects another requirement's readiness.
 - One change runs at a time; refusals become the section's detail. Folder-change failures
