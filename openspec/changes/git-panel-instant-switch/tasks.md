@@ -22,8 +22,8 @@ Implementation is not authorized until this draft plan is approved. Groups map o
 
 ## 4. Plain main header with section-owned repository identity
 
-- [ ] 4.1 Remove the main-header repository label/URL tooltip and repository popup including keyboard/Code/Pull requests/Actions actions; test both modes show only Git/chevron/tools/status and individual PR menus remain intact.
-- [ ] 4.2 Keep canonical identity/count/folding in the shared section header and verification/loading feedback on existing activity/count indicators; update README.md, relevant owner docs and former header/menu tests, explicitly documenting that repository page shortcuts are removed, not relocated.
+- [x] 4.1 Remove the main-header repository label/URL tooltip and repository popup including keyboard/Code/Pull requests/Actions actions; test both modes show only Git/chevron/tools/status and individual PR menus remain intact.
+- [x] 4.2 Keep canonical identity/count/folding in the shared section header and verification/loading feedback on existing activity/count indicators; update README.md, relevant owner docs and former header/menu tests, explicitly documenting that repository page shortcuts are removed, not relocated.
 
 ## Workflow follow-up
 
