@@ -369,6 +369,53 @@ const beforeObsoleteFooter=calls.filter(call=>call.cmd==='hc').length;admitted=f
 releaseScoped({code:0,stdout:JSON.stringify({nameWithOwner:'owner/repo'})});await tick();
 assert.equal(calls.filter(call=>call.cmd==='hc').length,beforeObsoleteFooter,'Retired coordinator membership starts no footer follow-up');
 assert.equal(scopedLinks.entries.size,0);
+// Current Crew's branch-only Build link keeps an explanation after liveness
+// disappears, even after refresh prunes the authorizing live-entry cache.
+const branchOnly=roleAgent('pc2/branch-only','ship',null);
+const branchPane=allPanes.find(p=>p.terminal===branchOnly.address);
+branchPane.branch='branch-only-head';
+const branchPr={...ordinaryStage,number:1800,headRefName:branchPane.branch,stage:'build',checks:{state:'failure',label:'0/1'}};
+const originalLinks=view.agentLinks;
+for(const transition of ['ended','disconnected']) {
+  const branchLinks=new AgentLinks();view.agentLinks=branchLinks;
+  const admit=address=>address===branchOnly.address;
+  const renderBranch=()=>{view.pulls.open=[branchPr];return find(view.pullRow(colors,branchPr),'pr-stage-1800');};
+  branchLinks.refresh(cx,admit);await tick();
+  const live=branchLinks.related(branchPr,'owner/repo',null,'build'),liveChip=renderBranch();
+  assert.equal(live.address,branchOnly.address);assert.equal(live.availability,'live');assert.equal(liveChip.attrs.role[0],'button');
+  assert.ok(branchLinks.branchPresentations.has(branchOnly.address));
+  if(transition==='ended')branchOnly.state='finished';else connected=false;
+  const reads=calls.length,focuses=actions.length;
+  const reason=transition==='ended'?'build agent ended - CI failure':'on pc2, not connected';
+  for(const afterRefresh of [false,true]) {
+    if(afterRefresh){branchLinks.refresh(cx,admit);await tick();assert.equal(branchLinks.entries.has(branchOnly.address),false);}
+    const target=branchLinks.related(branchPr,'owner/repo',null,'build'),chip=renderBranch();
+    assert.equal(target.address,branchOnly.address);assert.equal(target.availability,transition);
+    assert.equal(chip.attrs.tooltip[0],reason);assert.equal(chip.attrs.opacity[0],0.45);assert.equal(chip.attrs.role,undefined);assert.equal(chip.attrs.cursor_pointer,undefined);
+    chip.attrs.on_click[0]({},cx);liveChip.attrs.on_click[0]({},cx);
+    assert.equal(actions.length,focuses,'Neither retained presentation nor a captured live click can focus');
+    assert.equal(calls.length,reads,'Disabled branch presentation starts no remote or repository read');
+    assert.equal(await branchLinks.confirm(live,branchPr,'owner/repo'),false,'Remembered metadata never confirms a live action');
+    assert.equal(branchLinks.related(branchPr,'owner/repo'),null,'Legacy robot never borrows disabled branch history');
+    assert.equal(branchLinks.related(branchPr,'other/repo',null,'build'),null);
+    assert.equal(branchLinks.related({...branchPr,headRefName:'other-head'},'owner/repo',null,'build'),null);
+  }
+  const paneIndex=allPanes.indexOf(branchPane),agentIndex=allAgents.findIndex(a=>a.address===branchOnly.address),knownAgent=allAgents[agentIndex];
+  allPanes.splice(paneIndex,1);allAgents.splice(agentIndex,1);
+  assert.equal(renderBranch().attrs.tooltip[0],reason,'The explanation survives absent live pane/agent records');
+  assert.equal(calls.length,reads);assert.equal(actions.length,focuses);
+  allPanes.splice(paneIndex,0,branchPane);allAgents.splice(agentIndex,0,knownAgent);
+  branchOnly.labels['crew.pr']='https://github.com/owner/repo/pull/1801';
+  assert.equal(branchLinks.related(branchPr,'owner/repo',null,'build'),null,'Explicit contradictory PR cannot borrow branch metadata');
+  delete branchOnly.labels['crew.pr'];
+  const oldBranch=branchPane.branch;branchPane.branch='moved-head';
+  assert.equal(branchLinks.related(branchPr,'owner/repo',null,'build'),null,'Changed pane branch cannot borrow the old binding');branchPane.branch=oldBranch;
+  branchOnly.state='live';connected=true;
+  assert.equal(branchLinks.related(branchPr,'owner/repo',null,'build'),null,'Reconnect cannot authorize focus from remembered presentation');
+  assert.equal(renderBranch().attrs.role,undefined);
+  branchLinks.refresh(cx,admit);await tick();assert.equal(branchLinks.related(branchPr,'owner/repo',null,'build').availability,'live');
+}
+view.agentLinks=originalLinks;
 shown=false;const hiddenCalls=calls.length;view.render(cx);await tick();
 assert.equal(calls.length,hiddenCalls,'Hidden Git panels start no agent scans');
 await Promise.all(tasks);

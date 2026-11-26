@@ -49,7 +49,7 @@ export function agentTargets() {
 }
 
 export class AgentLinks {
-  constructor(enabled = () => true) { this.enabled = enabled; this.entries = new Map(); this.pending = new Map(); this.repositories=new Map(); }
+  constructor(enabled = () => true) { this.enabled = enabled; this.entries = new Map(); this.pending = new Map(); this.repositories=new Map(); this.branchPresentations=new Map(); }
 
   invalidate() {this.repositories.clear();for(const entry of this.entries.values())entry.at=0;}
   async repository(target, current=()=>true) {
@@ -69,10 +69,23 @@ export class AgentLinks {
 
   displayName(address) {return displayName(agents().find(agent=>agent.address===address));}
 
+  rememberBranch(entry) {
+    const crew=crewMetadata(terminals().find(t=>t.address===entry.address)?.labels);
+    if(!entry.repo || !entry.branch || crew.pr!==null || !['ship','fix'].includes(crew.kind))return;
+    // Bounded session-only explanation, never a replacement for live entries.
+    this.branchPresentations.delete(entry.address);
+    this.branchPresentations.set(entry.address,{key:entry.key,repo:entry.repo,branch:entry.branch,cwd:entry.cwd,
+      pane:entry.pane,tab:entry.tab,space:entry.space,kind:crew.kind});
+    while(this.branchPresentations.size>256)this.branchPresentations.delete(this.branchPresentations.keys().next().value);
+  }
+
   refresh(cx, admit=()=>true) {
     if (!this.enabled()) return;
     const targets = agentTargets().filter(t=>admit(t.address)), keys = new Map(targets.map(t => [t.address,t.key]));
-    for (const [address, entry] of this.entries) if (keys.get(address) !== entry.key) this.entries.delete(address);
+    for (const [address, entry] of this.entries) {
+      if(keys.get(address)===entry.key)this.rememberBranch(entry);
+      else this.entries.delete(address);
+    }
     for (const [address, request] of this.pending) if (keys.get(address) !== request.key) this.pending.delete(address);
     const due = targets.filter(t => !this.pending.has(t.address) && Date.now() - (this.entries.get(t.address)?.at ?? 0) >= TTL);
     if (!due.length) return;
@@ -103,7 +116,8 @@ export class AgentLinks {
             number = (screen?.code === 0 ? agentPullNumber(screen.stdout, target.app) : null) ?? number;
           }
           if (!this.enabled() || !admit(target.address) || this.pending.get(target.address) !== request || !agentTargets().some(t => t.key === target.key)) return;
-          this.entries.set(target.address,{...target,repo,number,at:Date.now()});
+          const entry={...target,repo,number,at:Date.now()};
+          this.entries.set(target.address,entry);this.rememberBranch(entry);
         } finally {
           if (this.pending.get(target.address) === request) this.pending.delete(target.address);
           cx.notify();
@@ -146,8 +160,16 @@ export class AgentLinks {
       // scan. Only an unlabelled build branch needs the legacy repository cache.
       const current=!explicit&&role==='build'?(generic??=new Map(agentTargets().map(t=>[t.address,t]))).get(terminal.address):null;
       const exact=Boolean(link && link.repo===repoKey(repo) && link.number===pr.number);
-      if(explicit?!exact:role==='review'||!current||entry?.key!==current.key||entry.repo!==repoKey(repo)||!pr.headRefName||entry.branch!==pr.headRefName)return [];
       const on=machineOf(terminal.address),availability=!connected(on)?'disconnected':terminal.state && terminal.state!=='live'?'ended':agent&&pane&&tab&&agent.space===space.id?'live':'unavailable';
+      const saved=this.branchPresentations.get(terminal.address);
+      // Only an ended/offline terminal may borrow its verified old branch for
+      // disabled presentation. A live/reconnected or moved target must earn a
+      // fresh live entry; explicit PR labels and review roles never borrow it.
+      const remembered=!current && ['ended','disconnected'].includes(availability) && saved?.kind===crew.kind
+        && (!pane || pane.pane===saved.pane && pane.tab===saved.tab && pane.branch===saved.branch)
+        && (!space || space.id===saved.space) && (!pane || paneDirectory(pane,list,null).cwd===saved.cwd)?saved:null;
+      const branchEntry=current && entry?.key===current.key?entry:remembered;
+      if(explicit?!exact:role==='review'||!branchEntry||branchEntry.repo!==repoKey(repo)||!pr.headRefName||branchEntry.branch!==pr.headRefName)return [];
       const target={address:terminal.address,on,pane:pane?.pane??null,tab:tab?.id??null,space:space?.id??null,
         cwd:current?.cwd??paneDirectory(pane,list,null).cwd,branch:pane?.branch??null,crew};
       return [{...target,key:JSON.stringify(target),exact,availability,displayName:displayName(agent)}];
