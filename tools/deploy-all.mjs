@@ -5,6 +5,7 @@ import os from 'node:os';
 import { createHash, randomUUID } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import worker from './deploy-all-worker.cjs';
+import updater from '../src/services/updates/update-worker.cjs';
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const project = path.resolve(directory, '..');
 const MARKER = 'HERDR_DEPLOY_ALL_RESULT=';
@@ -60,12 +61,9 @@ export function parseOptions(args) {
   return options;
 }
 export function printSummary(results, log) {
-  const cell = value => String(value || '-').replace(/[\r\n\t\x00-\x1f\x7f|]/g, ' ').slice(0, 250);
-  log('\nMachine | Action | Source commit | Backup');
-  for (const row of results) {
-    const qualifier = row.action === 'failed' ? ' (attempted)' : row.action === 'would deploy' ? ' (target)' : row.action === 'skipped' ? ' (checkout only)' : '';
-    log([row.machine, row.action + (row.reason ? ': ' + row.reason : ''), row.commit ? row.commit + qualifier : '-', row.backup || '-'].map(cell).join(' | '));
-  }
+  const [header, ...rows] = updater.summaryLines(results);
+  log('\n' + header);
+  for (const row of rows) log(row);
 }
 // Kept outside runtime/ and the ownership manifest: the row can reattach after
 // its own mod is replaced. Dry-run must remain byte-preserving, including here.
@@ -77,12 +75,14 @@ export function manifestDigest(home) {
     return createHash('sha256').update(bytes).digest('hex');
   } catch { return null; }
 }
-export function resultRecorder(env = process.env, dryRun = false) {
+export function resultRecorder(env = process.env, dryRun = false, ioOptions = {}) {
   if (dryRun) return () => {};
   const home = env.HERDR_APP_HOME || path.join(os.homedir(), '.config/herdr-app');
   const file = path.join(home, '.customizations/deploy-all-result.json');
   let previous = null, localRecorded = false;
-  try { previous = JSON.parse(fs.readFileSync(file, 'utf8')); } catch {}
+  try { previous = updater.read(file); } catch {}
+  const runId = env.HERDR_UPDATE_RUN_ID || randomUUID();
+  const started = Date.now(), owner = { pid: process.pid, started, deadline: started + updater.DEADLINE };
   let desktop = previous?.desktop ?? null, target = null;
   const peerName = name => typeof name === 'string' && name !== 'local' && !name.startsWith('(') && name.length <= 200 && name.trim() === name && name.length > 0 && !/[\x00-\x1f\x7f]/.test(name);
   const offline = row => row?.action === 'skipped' && row.outcome !== 'unknown' && /^offline \((?:offline|unreachable|disconnected)\)$/.test(row.reason);
@@ -107,15 +107,24 @@ export function resultRecorder(env = process.env, dryRun = false) {
     } else if (local?.action === 'failed' || error) {
       desktop = desktop ? { ...desktop, verified: false } : null;
     }
-    const value = { version: 1, token: env.HERDR_UPDATE_RUN_ID || null, at: Date.now(), complete, target, desktop, deferredPeers: [...deferred].sort(), results, error };
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    const temp = `${file}.${randomUUID()}.tmp`;
-    try { fs.writeFileSync(temp, JSON.stringify(value, null, 2) + '\n'); fs.renameSync(temp, file); }
-    finally { if (fs.existsSync(temp)) fs.unlinkSync(temp); }
+    const value = { version: 1, runId, owner, token: env.HERDR_UPDATE_RUN_ID || null, at: Date.now(), complete, target, desktop, deferredPeers: [...deferred].sort(), results, error };
+    // Publish terminal evidence before the final filesystem replacement. A
+    // receipt-publication error must never erase what deployment already did.
+    if (complete && ioOptions.log) ioOptions.log(updater.TERMINAL + JSON.stringify(value));
+    return updater.atomic(file, value, ioOptions);
   };
 }
 export function deployAll(args = [], { root = project, log = console.log, hostname = os.hostname(), ...options } = {}) {
-  const record = resultRecorder(options.env || process.env, args.includes('--dry-run'));
+  const env = options.env || process.env;
+  if (!args.includes('--dry-run')) {
+    const p = updater.files(env.HERDR_APP_HOME || path.join(os.homedir(), '.config/herdr-app'));
+    updater.reapRetryClaim(p, Date.now());
+    // A confirmed state recovery surveys live CLIs before moving evidence. A
+    // newly started ordinary CLI must not cross that recovery claim boundary.
+    if (fs.existsSync(p.retryLock) && (!env.HERDR_UPDATE_RUN_ID || updater.read(p.lock)?.token !== env.HERDR_UPDATE_RUN_ID))
+      throw Error('Updater recovery/launch claim is active; no deployment started');
+  }
+  const record = resultRecorder(options.env || process.env, args.includes('--dry-run'), { log });
   let selection;
   try { selection = parseOptions(args); }
   catch (error) { record([], true, error.message); throw error; }
