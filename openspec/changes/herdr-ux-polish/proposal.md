@@ -2,16 +2,17 @@
 
 ## Why
 
-Connected Spaces currently put disclosure before Crew, add a redundant collapsed count, and indent the child beyond its intended badge/name anchors. Coordinator Git exposes Stale in its header and places Loading below a growing partial inventory, unlike existing panel feedback.
+Connected Spaces put disclosure before Crew, add a redundant collapsed count and indent children beyond their intended anchors. Coordinator Git shows Stale and a bottom Loading line while exposing partial cold inventory.
 
 ## What Changes
 
-- Put the coordinator's Crew pill before its far-right collapse chevron, preserving existing pill and control styling.
-- Omit connected-space child counts in both disclosure states; only the chevron direction indicates collapse.
-- Anchor the existing Agents-style connector at the coordinator badge's horizontal centre and align the child badge's left edge with the coordinator name's left edge, at 100% and 130% zoom.
-- Remove Stale from the coordinator Git header without weakening freshness, read or worker-navigation guards; preserve sanitized verification diagnostics on Loading.
-- Put one standard Loading bulb/text at the top left of the body directly below Open/Closed. Hold newly loading partial inventory until its first reads settle, with immediate applicable repository failure notices.
-- **Approval decision:** literal loading-only on return conflicts with PR #84's immediate retained sections. Recommend keeping previously shown compatible sections on return and during refresh, placing any Loading above them, and staging new partial sections rather than blanking known content. The four concrete cases and failure/cooldown rules are in design.md; approval of this plan must explicitly accept this exception or request a revision before implementation.
+- Put Crew before the coordinator's far-right chevron; omit child counts in both states.
+- Support several same-machine connected project children, not just a pair. Every child badge aligns with the coordinator name; one continuous Agents-style stem starts at the coordinator badge centre, with intermediate branches and a last-child corner.
+- Preserve native shortcut numbers, independent selection, compact badges and acknowledged whole-block reorder from the parent or any child.
+- Never show a Stale label. Keep verification/read/action guards intact.
+- Cold first visit: only standard top-left Loading below Open/Closed until admitted first reads settle; show applicable actionable failure notices immediately.
+- Approved return/background behavior: show the previous compatible list immediately, no body Loading, and animate the header while updating. Stop animation and update the list in place on completion. Reuse `activity(t.working)` from `src/ui/ui.js`, the native softly pulsing bulb already used in Tabs headers and other status controls; no new visual language or JavaScript animation loop.
+- Preserve truthful totals, quiet cooldown retry, bounded runtime memory and failure notices.
 
 ## Capabilities
 
@@ -21,13 +22,13 @@ None.
 
 ### Modified Capabilities
 
-- `workspace-experience`: connected-space disclosure order/count and connector/badge alignment, preserving independent native identity, shortcuts, compact rail and paired reorder.
-- `plugin-integrations`: coordinator loading admission, top-of-body feedback, retained return/refresh presentation and verification diagnostics without a Stale header label.
+- `workspace-experience`: multi-child connected block geometry, disclosure and safe navigation/reorder.
+- `plugin-integrations`: coherent cold inventory admission, header-only warm progress and verification diagnostics without Stale text.
 
 ## Impact
 
-- Source: `src/features/spaces/main.js`, existing shared primitives in `src/ui/ui.js` as narrowly needed, and `src/plugins/git/mod/{aggregate,main}.js` plus the existing section projection if required.
-- Regression coverage: Spaces layout/interaction and fleet reorder tests; coordinator return, deferred repository, read-notice, truthful-total and presentation/window tests.
-- Evidence after approval: synthetic-only disposable native fixtures, inspected screenshots for each item at 100% and 130%, verified release 0.1.18 executable, and exact-head Windows/Ubuntu manually dispatched CI results.
-- Update relevant README/architecture/testing guidance with the approved presentation contract; no Trello, Settings plugin UI, native binary changes, new dependencies, live sessions or installation/PATH changes.
-- Planning only: no implementation, screenshots or test workflow dispatch until approval. Never manually mark ready or merge.
+Spaces, shared workspace-link projection, the Crew contribution boundary and Git aggregate/presentation are affected. Shared UI changes retain Agents defaults. Tests and inspected synthetic screenshots cover one, two and three children at 100% and 130%, plus cold/warm Git states and failures. Use only checksum-verified release 0.1.18 and disposable instances; stop everything started. No Trello, Settings plugin UI, native binary changes, real agent interaction, installation or PATH changes. Dispatch CI on the final branch head and confirm Windows/Ubuntu pass; never manually mark ready or merge.
+
+## Approval
+
+The person approved this plan including multi-child support and header-only progress on warm return/background refresh. Implementation may proceed after the artifacts and draft PR reflect that decision.

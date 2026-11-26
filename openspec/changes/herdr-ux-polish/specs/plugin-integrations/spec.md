@@ -3,11 +3,11 @@
 ## MODIFIED Requirements
 
 ### Requirement: Stale coordinator presentation without action authority
-When strict fleet action context is unavailable, the selected persisted coordinator SHALL retain already-shown same-home Git rows with one standard Loading indication directly below Open/Closed, never a Stale header label. Retained context SHALL NOT start new GitHub reads or authorize worker navigation. Fresh verification SHALL restore operation or replace invalid context. No PR/task inventory SHALL be persisted for restart merely to retain presentation.
+When strict fleet action context is unavailable, the coordinator SHALL retain its shown same-home list with header activity, no body Loading and no Stale label. Cold context SHALL show top-left Loading below Open/Closed. Retained context SHALL NOT authorize GitHub reads or worker navigation. Fresh verification SHALL restore operation or replace invalid context. PR/task inventory SHALL NOT persist for restart.
 
 #### Scenario: Status unavailable beyond action freshness
 - **WHEN** a status read fails or times out after strict action freshness expires while the verified pair's native spaces still exist
-- **THEN** the sidebar stays attached and the selected coordinator's previously shown Git rows, counts and fold state remain with one top-left Loading indication directly below Open/Closed
+- **THEN** the sidebar stays attached and previously shown Git rows, counts and folds remain with header activity while reconciliation is pending, no body Loading and no Stale label
 - **AND** no new aggregate read or robot navigation uses the retained context as authorization
 - **AND** Stale, the removed task heading and the generic incomplete-list notice do not appear in the header
 
@@ -22,7 +22,7 @@ When strict fleet action context is unavailable, the selected persisted coordina
 - **AND** ordinary folder Git and existing stale-generation guards remain intact
 
 ### Requirement: Selected-tab coordinator repository visibility
-Coordinator Git SHALL withhold cold partial success sections until admitted first reads settle; actionable notices SHALL remain visible immediately. Pending work SHALL use one standard Loading directly below Open/Closed. Shown compatible sections SHALL remain on return and refresh, with new partial success sections withheld. Eligibility SHALL precede folding and preserve history, truthful totals and saved folds. Enrollment SHALL use full eligible inventory independently of section visibility.
+Coordinator Git SHALL withhold cold partial successes until first reads settle, using one top-left Loading below Open/Closed. Warm return/refresh SHALL retain the shown list with header activity, no body Loading and in-place replacement on completion. Actionable notices SHALL appear immediately. Eligibility SHALL precede folding, preserving history, truthful totals and saved folds. Enrollment SHALL use full eligible inventory independently of section visibility.
 
 #### Scenario: Open and Closed contain different repositories
 - **WHEN** one repository has only Open or Draft task PRs and another has only eligible Merged or Closed task PRs, with no unresolved task PRs
@@ -70,7 +70,7 @@ Coordinator Git SHALL withhold cold partial success sections until admitted firs
 #### Scenario: Return to a previously visited coordinator
 - **WHEN** the user returns to the same coordinator machine, owner, home and enable generation during the same runtime
 - **THEN** the last compatible previously shown selected-tab sections, rows, counts and folds are shown immediately while current verification or membership reconciliation runs
-- **AND** unresolved work shares one top-left Loading indication directly below Open/Closed and above retained sections, never at the panel bottom
+- **AND** pending reconciliation uses the existing header activity indicator, with no body Loading or Stale label, and completion stops activity and updates the list in place
 - **AND** newly loading partial success sections are withheld until first reads settle, while actionable notices appear immediately
 - **AND** authoritative removals, state transitions and expiry reconcile without restoring incompatible facts or granting stale worker actions
 
@@ -82,12 +82,12 @@ Coordinator Git SHALL withhold cold partial success sections until admitted firs
 
 #### Scenario: Background refresh of an already shown list
 - **WHEN** the coordinator list is on screen and known PR facts refresh without new unread membership or lost verification
-- **THEN** existing sections and rows remain mounted without a body Loading line or Stale label; existing refresh-control busy feedback remains
-- **AND** new unread membership or pending verification adds exactly one top-left Loading indication without blanking retained sections
+- **THEN** existing sections and rows remain mounted without body Loading or Stale text, and the existing working bulb animates in the header throughout the update
+- **AND** new unread membership or pending verification also uses header activity only; activity stops and the list updates in place when the update finishes
 - **AND** new partial success sections are withheld until first reads settle, while current authoritative removals, history expiry and state transitions remain effective
 
 ### Requirement: Non-destructive same-context PR refresh presentation
-A same-context PR refresh SHALL retain displayed rows, pin geometry and pagination until replacement data is ready. Pending reads, verification and transient failures SHALL NOT replace known rows with empty states. Coordinator returns SHALL reuse only bounded compatible runtime presentation, with any Loading above it and no Stale header label. Different identities SHALL invalidate incompatible facts, and retained stale coordinator presentation SHALL NOT authorize reads or worker actions.
+A same-context refresh SHALL retain displayed rows, pin geometry and pagination until replacement is ready. Pending reads, verification and transient failures SHALL NOT replace known rows with empty states. Coordinator return/background updates SHALL use header activity, no body Loading and no Stale label. Returns SHALL reuse bounded compatible runtime presentation. Different identities SHALL invalidate incompatible facts; retained context SHALL NOT authorize reads or worker actions.
 
 #### Scenario: Delayed manual or webhook refresh
 - **WHEN** a manual, webhook, reconnect or show-time refresh is pending for the displayed repository or coordinator home
@@ -101,7 +101,7 @@ A same-context PR refresh SHALL retain displayed rows, pin geometry and paginati
 
 #### Scenario: Loading and fleet verification
 - **WHEN** the panel has unresolved first reads or the same coordinator home temporarily loses fresh verification
-- **THEN** previously shown compatible rows remain, with one standard top-left Loading indication directly below Open/Closed rather than Stale text in the header or per-repository loading lines
+- **THEN** previously shown compatible rows remain with header activity only, no body Loading and no Stale text anywhere
 - **AND** cold verification uses only that ordinary panel working bulb and Loading wording as inventory feedback, with no extra Verifying header, invented PRs, counts, skeleton values or partial success sections
 
 #### Scenario: Off and on with slow or failed first verification
@@ -150,7 +150,7 @@ Failed, unmatched and discarded fleet verification attempts SHALL retain a bound
 
 #### Scenario: Existing verification feedback
 - **WHEN** the selected coordinator has a relevant last verification failure
-- **THEN** a tooltip on the standard top-left Loading working bulb exposes the sanitized reason and time without a Stale label, extra header text, UI controls or notifications
+- **THEN** a tooltip on the existing working bulb exposes sanitized reason/time, in cold top-left Loading or warm header activity, without Stale text or notifications
 - **AND** a cold unverified coordinator candidate gains no attachment, PR inventory, GitHub-read permission or worker-navigation authority from that feedback
 
 #### Scenario: Runtime privacy and retention

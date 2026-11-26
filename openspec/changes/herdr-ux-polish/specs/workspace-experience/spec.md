@@ -3,7 +3,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Independent attached-space identity and tags
-Attached coordinator and fleet SHALL remain independently selectable native spaces with distinct tabs and terminals. Expanded connected blocks SHALL show Crew only on the coordinator before its far-right disclosure chevron, retain unrelated plugin tags, and show no chain icons. Child presentation and folding SHALL NOT grant native operations or replace captured space targets.
+A coordinator and all its connected children SHALL remain independently selectable native spaces with distinct tabs and terminals. Expanded blocks SHALL show Crew only on the coordinator before its far-right chevron, retain unrelated plugin tags and show no chain icons. Child presentation/folding SHALL NOT grant native operations or replace captured targets.
 
 #### Scenario: Attached row selection and tags
 - **WHEN** a verified coordinator and fleet are attached in Spaces
@@ -22,7 +22,7 @@ Expanded connected coordinators SHALL use the Agents parent-row chevron to show 
 
 #### Scenario: Parent toggle and collapsed count
 - **WHEN** the user activates the coordinator's fold control
-- **THEN** only that parent's child rows toggle without starting drag, selecting a different space or making discovery reads
+- **THEN** all that parent's child rows toggle together without starting drag, selecting a different space or making discovery reads
 - **AND** the chevron glyph, hit target and hover match the Agents parent fold control, with no child count when expanded or collapsed
 - **AND** Crew precedes the far-right chevron in both states and only the chevron direction indicates collapse
 
@@ -33,8 +33,8 @@ Expanded connected coordinators SHALL use the Agents parent-row chevron to show 
 
 #### Scenario: Reorder a collapsed connected block
 - **WHEN** the user drags the collapsed parent within its machine group
-- **THEN** the hidden child moves with the parent through the existing acknowledged same-machine block operation
-- **AND** expanding restores the same child identity and truthful number, while cancellation or changed pair identity commits no stale move
+- **THEN** all hidden children move with the parent through acknowledged same-machine block operations
+- **AND** expanding restores every child's identity and truthful number, while cancellation or changed captured membership commits no stale move
 
 #### Scenario: Remote pair and invalid cross-machine link
 - **WHEN** ready remote groups contain valid same-machine pairs or a candidate points across machines
@@ -44,15 +44,33 @@ Expanded connected coordinators SHALL use the Agents parent-row chevron to show 
 ## ADDED Requirements
 
 ### Requirement: Connected space badge and connector anchors
-Expanded connected Spaces SHALL anchor the child connector's vertical stem at the horizontal centre of the coordinator's numbered badge and align the child badge's left edge with the coordinator name's left edge. The connector SHALL retain the Agents rounded branch style, stroke and colour. Geometry SHALL scale with interface zoom without changing native numbering, selection, compact rail or paired reorder.
+Expanded connected Spaces SHALL use one continuous vertical stem from the coordinator badge centre, intermediate child branches and a last-child corner. Every child badge SHALL align left with the coordinator name. Connectors SHALL retain the Agents stroke, colour and rounded style. Geometry SHALL scale with zoom without changing native numbering, selection, compact membership or whole-block reorder.
 
 #### Scenario: Expanded connected row at supported zoom
-- **WHEN** a coordinator and child are shown at 100% or 130% zoom
+- **WHEN** a coordinator and one, two or three children are shown at 100% or 130% zoom
 - **THEN** the connector runs down from the horizontal centre of the parent badge and across toward the child badge
 - **AND** the left edge of the child numbered badge aligns with the left edge of the coordinator name, rather than sitting farther right
-- **AND** both badges retain their ordinary size and native shortcut numbers, and shared parent colour, selected/inactive text, hover and row heights remain unchanged
+- **AND** all badges retain ordinary size and native shortcut numbers, shared parent colour, selected/inactive text, hover and row heights
+- **AND** intermediate children connect to the continuing stem and only the last child has the final rounded corner; removing a sibling updates the last-child corner without breaking continuity
+
+### Requirement: Multiple connected project spaces
+One coordinator SHALL support multiple validated same-machine project children through the existing contribution boundary, with legacy single-child compatibility. Each child SHALL retain its native target and shortcut number. Dragging any member SHALL move the entire coordinator-first block in stable child order, revalidating captured membership and acknowledgements. Ambiguous ownership, cross-machine links and uncertain outcomes SHALL fail closed without replay.
+
+#### Scenario: One, two and three project children
+- **WHEN** validated contributions identify one, two or three children under one coordinator
+- **THEN** all appear under that coordinator with shared connector anchors, independently selectable native numbers, and one parent fold hiding all children with no count
+- **AND** selecting any hidden child discloses the parent without selecting another child or remapping shortcuts
+
+#### Scenario: Drag any member or change membership
+- **WHEN** the parent or any child is dragged within its machine group
+- **THEN** the whole block moves with coordinator first and stable child order, without splitting another block or selecting/moving terminals
+- **AND** the preview keeps the grabbed row's own number/name, and cancellation, changed captured child membership or concurrent native order stops further commands without replay
+
+#### Scenario: Unsupported or ambiguous contribution
+- **WHEN** project child identity is unverified, multiply owned, cross-machine or structurally unsupported
+- **THEN** no inferred nesting or stale operational authority is granted from project names, and legacy valid single-child identities remain supported
 
 #### Scenario: Existing Agents and compact rail
 - **WHEN** the shared connector or fold primitives are used by Agents, or Spaces switches into compact rail
 - **THEN** Agents retains its existing connector geometry and collapsed-count behavior
-- **AND** compact Spaces retains both independently selectable badges without connector, Crew pill or parent disclosure
+- **AND** compact Spaces retains the coordinator and every independently selectable child badge without connector, Crew pill or parent disclosure
