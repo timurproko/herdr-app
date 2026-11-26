@@ -57,6 +57,7 @@ export function recordedSource(stdout) {
     !(value.owner===null || object(value.owner) && text(value.owner.terminal) && typeof value.owner.live==='boolean') ||
     !Array.isArray(value.tasks) || value.tasks.length>4096 || value.tasks.some(t=>!object(t) || !text(t.id,128) ||
       !['preparing','working','reported','stopped','failed','closed'].includes(t.state) ||
+      Object.hasOwn(t,'project') && !text(t.project,128) ||
       !(text(t.terminal) || t.terminal===null && !['working','reported'].includes(t.state)))) throw Error('Invalid Crew status');
   // Missing/unknown versions are recorded-only, never confirmed none. A v1
   // result must be complete: malformed discovery is a failed read, not absence.
@@ -77,8 +78,13 @@ function placement(labels, task, tag) {
     return {child:base,adoption:tag,mode:'combined',project:null,name:null};
   if(version!=='1' || !['combined','per-project'].includes(mode))return null;
   const project=labels['crew.space.project'],name=labels['crew.space.name'];
-  if(!text(project,128) || !(project===task.project || task.project==='crew:self' && project==='crew'))return null;
-  if(mode==='combined')return name===undefined ? {child:base,adoption:tag,mode,project:null,name:null}:null;
+  if(!text(project,128))return null;
+  // Crew's minimal fleet view omits task.project. Combined placement is
+  // project-independent; supplied project evidence must still agree. Never
+  // borrow this allowance for a per-project child or a contradictory task.
+  const matches=project===task.project || task.project==='crew:self' && project==='crew';
+  if(mode==='combined')return name===undefined && (matches || !Object.hasOwn(task,'project')) ? {child:base,adoption:tag,mode,project:null,name:null}:null;
+  if(!matches)return null;
   if(project==='crew:self')return name==='crew'?{child:`${base}-self`,adoption:tag,mode,project,name}:null;
   return projectName(project) && name===project ? {child:`${base}-project-${project}`,adoption:tag,mode,project,name}:null;
 }

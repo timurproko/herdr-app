@@ -292,9 +292,12 @@ action freshness, while existing same-home rows remain unverified with header ac
 
 Spaces accepts multiple verified same-machine children per coordinator through the
 existing registry contribution. Crew placement v1 validates `crew.space.version=1`,
-`mode`, `project` and `name` against each status task's project and exact native
-membership. Legacy/combined `fm-crew-<home>`, `-project-<registered-name>` and internal
-`-self` (`crew:self`, display `crew`) are supported together; `crew.home` remains
+`mode`, `project` and `name` against each supplied status task project and exact native
+membership. The minimal fleet view omits task projects: only combined placement can
+accept that absence, because its child identity is project-independent. Present
+malformed/contradictory projects still refuse; per-project placement always requires
+matching authoritative task project evidence. Legacy/combined `fm-crew-<home>`,
+`-project-<registered-name>` and internal `-self` (`crew:self`, display `crew`) are supported together; `crew.home` remains
 unchanged. The transport keeps task project, not reports or placement authority.
 Durable display identity may contain multiple child placement records, never PRs.
 Projected child order follows native order; explicit user names override project
