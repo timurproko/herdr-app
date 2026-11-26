@@ -256,7 +256,8 @@ session account switching remains independent of optional Usage statistics.
 
 ## Refresh feedback and Git
 
-Refresh icons dim/disable and rotate while their request runs. Manual clicks
+Refresh icons dim/disable and rotate while their request runs, except Git:
+Git keeps Refresh static and uses only its under-header moving line for loading. Manual clicks
 and Settings loads in Core, Profiles and Terminals stay visibly busy for at
 least **600 ms** to avoid a flash, including returning to an already-cached
 section. Each new section entry restarts that minimum. Refreshed data and

@@ -13,9 +13,9 @@
 
 ## 3. One complete-lifecycle Git loading line
 
-- [ ] 3.1 Replace the pending-CI-only one-shot sweep with the same single native moving line throughout shown-panel cold, warm and background work in ordinary/coordinator modes; use scoped lifecycle completion and assert overlapping requests, stale verification, long reads, error, hide, disable, context replacement and dormant cooldown behavior.
-- [ ] 3.2 Remove the Git header bulb/tooltip, make only Git cold Loading dot and Refresh static, and retain cold text, warm rows, visible failures and shared activity elsewhere; update git-inventory-presentation, fleet-git, relevant refresh/diagnostic fixtures and README/testing guidance with assertions against duplicate panel-loading animations.
-- [ ] 3.3 Adapt disposable interface/rename native fixtures for the full combined change, checksum-verify the supplied 0.1.18 archive/executable, capture synthetic 100%/130% local/remote one/multiple-child, long-name, hover/rename and cold/warm/background Git states under the crew task folder; inspect two moving-line phases, completed states and cleanup receipts proving all owned processes stopped.
+- [x] 3.1 Replace the pending-CI-only one-shot sweep with the same single native moving line throughout shown-panel cold, warm and background work in ordinary/coordinator modes; use scoped lifecycle completion and assert overlapping requests, stale verification, long reads, error, hide, disable, context replacement and dormant cooldown behavior.
+- [x] 3.2 Remove the Git header bulb/tooltip, make only Git cold Loading dot and Refresh static, and retain cold text, warm rows, visible failures and shared activity elsewhere; update git-inventory-presentation, fleet-git, relevant refresh/diagnostic fixtures and README/testing guidance with assertions against duplicate panel-loading animations.
+- [x] 3.3 Adapt disposable interface/rename native fixtures for the full combined change, checksum-verify the supplied 0.1.18 archive/executable, capture synthetic 100%/130% local/remote one/multiple-child, long-name, hover/rename and cold/warm/background Git states under the crew task folder; inspect two moving-line phases, completed states and cleanup receipts proving all owned processes stopped.
 
 ## Workflow follow-up
 

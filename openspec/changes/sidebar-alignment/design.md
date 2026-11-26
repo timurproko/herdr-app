@@ -2,7 +2,7 @@
 
 ## Context
 
-See proposal.md. Main is `cccc239` and already contains merged PR 92. Spaces uses 8px row padding, a 22px parent-fold wrapper, machine headers with 16px chevron slots, and 24px rename buttons. Agents already has a fixed 32px right-aligned number slot, 7px compensating margin and 6px metadata gap. Tab rename already uses 24px buttons, a 2px button gap and a 4px input-to-actions gap.
+See proposal.md. Planning began on main `cccc239`, including merged PR 92; implementation merges main `e7387ec` and preserves its PR 87 stage/robot reservations. The maintainer approved the adaptive Crew/count rails and Git static-dot/Refresh variants. Spaces uses 8px row padding, a 22px parent-fold wrapper, machine headers with 16px chevron slots, and 24px rename buttons. Agents already has a fixed 32px right-aligned number slot, 7px compensating margin and 6px metadata gap. Tab rename already uses 24px buttons, a 2px button gap and a 4px input-to-actions gap.
 
 ## Goals / Non-Goals
 
