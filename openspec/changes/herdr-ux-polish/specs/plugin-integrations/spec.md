@@ -22,7 +22,7 @@ When strict fleet action context is unavailable, the selected persisted coordina
 - **AND** ordinary folder Git and existing stale-generation guards remain intact
 
 ### Requirement: Selected-tab coordinator repository visibility
-Coordinator Git SHALL withhold cold partial success sections until admitted first reads settle; actionable notices SHALL remain visible immediately. Pending work SHALL use one standard Loading directly below Open/Closed. Previously shown compatible sections SHALL remain on return and refresh, with new partial success sections withheld. Eligibility SHALL precede folding and preserve history, truthful totals and saved folds. Enrollment SHALL use full eligible inventory independently of section visibility.
+Coordinator Git SHALL withhold cold partial success sections until admitted first reads settle; actionable notices SHALL remain visible immediately. Pending work SHALL use one standard Loading directly below Open/Closed. Shown compatible sections SHALL remain on return and refresh, with new partial success sections withheld. Eligibility SHALL precede folding and preserve history, truthful totals and saved folds. Enrollment SHALL use full eligible inventory independently of section visibility.
 
 #### Scenario: Open and Closed contain different repositories
 - **WHEN** one repository has only Open or Draft task PRs and another has only eligible Merged or Closed task PRs, with no unresolved task PRs
