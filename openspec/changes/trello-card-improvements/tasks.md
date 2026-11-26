@@ -25,13 +25,13 @@ These six groups match the draft PR's Implementation outcomes in the same order.
 
 ## 4. Identity-bound SSH owner setup and explicit runtime installation
 
-- [ ] 4.1 Add fixed versioned public destination/probe/READY/result contracts and safe SSH/runtime codes; injected transport tests reject temporary/custom-via/replaced/untrusted/unsupported-shell and ambiguous user/home identities before payload dispatch.
-- [ ] 4.2 Extend only the allowlisted local private-action bridge/API with captured-machine routing and strict SSH/stdin dispatch; fake secret sentinel spies assert no argv/env/log/file/shared-state leakage, no remote listener and no local fallback.
-- [ ] 4.3 Route status/save/verify/remove/discover/add/remove-board through the selected execution-host worker; distinct fake local/remote homes verify every operation, CAS, incomplete discovery and no accidental local changes.
-- [ ] 4.4 Enforce end-to-end lifetime, bounded frames, current view/identity and commit deadlines with owned-child cleanup; injected held/cancel/timeout/response-loss tests require explicit unknown-configuration reconciliation and no replay.
-- [ ] 4.5 Build a deterministic Trello-only runtime/help/launcher payload and explicit installer reusing ownership locks/hash/conflict/home/rollback checks; disposable install tests prove no credentials, activation, grants, PATH edits or full-app writes.
-- [ ] 4.6 Add Requirements runtime status and Install/Update fix declarations using existing patterns; Settings fixtures cover missing Node, missing/outdated runtime, off-PATH bin, unavailable target and successful fake-host installation without dangling Save.
-- [ ] 4.7 Update Trello/plugin API and remote installation guidance; installed/deployment fixtures verify a Core-only fake host and an existing full home, with deploy:shell still limited to its four files.
+- [x] 4.1 Add fixed versioned public destination/probe/READY/result contracts and safe SSH/runtime codes; injected transport tests reject temporary/custom-via/replaced/untrusted/unsupported-shell and ambiguous user/home identities before payload dispatch.
+- [x] 4.2 Extend only the allowlisted local private-action bridge/API with captured-machine routing and strict SSH/stdin dispatch; fake secret sentinel spies assert no argv/env/log/file/shared-state leakage, no remote listener and no local fallback.
+- [x] 4.3 Route status/save/verify/remove/discover/add/remove-board through the selected execution-host worker; distinct fake local/remote homes verify every operation, CAS, incomplete discovery and no accidental local changes.
+- [x] 4.4 Enforce end-to-end lifetime, bounded frames, current view/identity and commit deadlines with owned-child cleanup; injected held/cancel/timeout/response-loss tests require explicit unknown-configuration reconciliation and no replay.
+- [x] 4.5 Build a deterministic Trello-only runtime/help/launcher payload and explicit installer reusing ownership locks/hash/conflict/home/rollback checks; disposable install tests prove no credentials, activation, grants, PATH edits or full-app writes.
+- [x] 4.6 Add Requirements runtime status and Install/Update fix declarations using existing patterns; Settings fixtures cover missing Node, missing/outdated runtime, off-PATH bin, unavailable target and successful fake-host installation without dangling Save.
+- [x] 4.7 Update Trello/plugin API and remote installation guidance; installed/deployment fixtures verify a Core-only fake host and an existing full home, with deploy:shell still limited to its four files.
 
 ## 5. One global Access setting enforced on execution hosts
 

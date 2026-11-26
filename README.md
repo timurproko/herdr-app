@@ -153,8 +153,10 @@ opt-in and public Read-write mode. The card can save and verify a masked API key
 token, show the account, replace/remove credentials, choose boards by name and set
 local Read-only / Read-write authorization. Inputs are transient, never saved plugin
 settings or portable preferences; only the Node worker writes the private store.
-SSH-selected setup is explicitly refused here; `herdr-trello setup` remains the
-headless alternative on each execution host.
+The selected direct-SSH machine uses its own private store through identity-bound
+SSH stdin, never this computer's setup. Requirements offers explicit Trello-only
+runtime Install/Update; temporary/custom-via or unverifiable/elevated execution
+identities refuse. `herdr-trello setup` remains the headless alternative.
 Normal full build/deploy installs the standalone runtime and owned user-bin
 launchers (the selected bin must be on PATH); shell-only peers get no credentials
 or Trello installation. See [Trello setup, commands and security limits](docs/TRELLO.md).

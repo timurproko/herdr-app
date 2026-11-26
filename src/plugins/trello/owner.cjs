@@ -47,7 +47,7 @@ function expected(store, revision) {
   return s;
 }
 function client(store, s, credentials, io) {
-  const gate = {credentials, check() { expected(store, s.revision); }};
+  const gate = {credentials, check() { if (io.isCurrent?.() === false) fail('STALE'); expected(store, s.revision); }};
   // Verification before first save needs no credential file or directory. A 429
   // may create only the protected non-secret cooldown, never save an unverified key.
   const cooldownStore = {read(name, optional) { safePath(store.dir); return fs.existsSync(store.dir) ? store.read(name, optional) : null; }, write: (...args) => store.write(...args)};
@@ -130,7 +130,14 @@ async function operate(input, {store, ...io}) {
 }
 async function execute(input, options = {}) {
   try {
-    const store = options.store ?? new Store(options.home), previous = snapshot(store);
+    const backing = options.store ?? new Store(options.home);
+    // The transport's lifetime is checked again under the local commit lock.
+    const store = options.isCurrent ? new Proxy(backing, {get(target, key, receiver) {
+      if (key === 'withLock') return action => target.withLock(() => { if (!options.isCurrent()) fail('STALE'); return action(); });
+      return Reflect.get(target, key, receiver);
+    }}) : backing;
+    if (options.isCurrent?.() === false) fail('STALE');
+    const previous = snapshot(store);
     const data = await operate(input, {...options, store});
     // Defense in depth: never forward an account/board name echoing submitted secrets.
     const result = {version: 1, ok: true, data}, encoded = JSON.stringify(result);

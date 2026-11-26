@@ -6,7 +6,16 @@ There is no permanent service, temporary secret file, argv/environment payload o
 shared-state rendezvous. Sessions expire within 60 seconds, reject browser Origin
 requests, disable compression and cap input at 256 KiB. Closing an authenticated
 socket terminates the bridge and any still-running worker; a possibly completed
-setup must be reconciled from local status, never replayed automatically.
+setup must be reconciled from destination status, never replayed automatically.
+
+The Trello route additionally captures a configured direct-SSH Core/session and
+execution user/home, verifies READY before stdin payload, and uses only existing
+host-key/key-auth trust. The bridge remains local; no listener runs remotely.
+Temporary/custom-via/unverifiable/elevated identities refuse rather than falling
+back to local setup. Only a fixed owner worker or public Trello-only runtime
+installer is reachable, never a caller-supplied command/path/script. Runtime
+installation reuses the owned launcher module, refuses conflicts, preserves
+private files and keeps a public rollback snapshot. Tests inject SSH/identities.
 
 `vendor/ws/` is the unmodified npm `ws@8.23.0` package (MIT):
 

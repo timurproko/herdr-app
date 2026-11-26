@@ -35,8 +35,10 @@ owned installation through normal removal before deploying to a different bin.
 
 `deploy:shell` still installs only its four shell-reporting files; it does not
 install Trello. Consequently deploy:all's shell-only peers do not get this CLI or
-credentials. Every execution host needs its own explicit full deployment, plugin
-enablement, private credential setup and board/write policy. Merely mounting a
+credentials. Every execution host needs its own explicit Trello runtime installation, activation,
+private credential setup and board/write policy. Settings can install only the
+Trello runtime/launchers on a safely configured direct-SSH peer; no full App
+installation is needed there. Merely mounting a
 remote agent on this desktop does not authorize its host.
 
 ## Offline installed help
@@ -80,7 +82,9 @@ local read-only mode alone is not.
 
 ## Set up from the Settings card
 
-Select **This computer** in the Settings header and enable **Plugins → Trello**.
+Select the execution machine in the Settings header and enable **Plugins → Trello**.
+If Requirements offers Trello runtime **Install/Update**, use that explicit action
+first; it installs no credentials, grants or activation.
 Expand **Requirements**, enter your API key and user token in the protected input
 fields, then press **Save & verify**. The worker checks them with Trello before
 saving and shows the token’s account. The fields clear after submission; saved
@@ -111,11 +115,25 @@ No board grant or local write permission is exported/imported with preferences.
 Credential-bearing snapshot fields, including `apiKey` and `token`, are refused
 rather than imported into shared plugin state.
 
-For an SSH-selected machine this card **refuses setup, discovery and policy
-changes**, explaining that no local store was accessed. It does not show this
-computer’s saved credentials or board inventory as the remote machine’s. Use the
-headless alternative on that execution host after its own explicit full deployment.
-No credential is copied remotely by Settings, deployment or shell-only deployment.
+For an SSH-selected machine, status and explicit account/board actions use only
+that machine's private store. The local one-shot bridge resolves the configured
+machine, pins its Core identity/session and execution user/home, then sends secrets
+only over strict noninteractive SSH stdin after a readiness handshake. There is no
+local fallback, remote listener, secret-bearing command/environment or temporary
+credential input file. Protected final-store atomic replacement files still exist.
+
+Temporary/custom-via connections, unprovable or elevated execution identities,
+changed Core sessions and unsupported shell arrangements are refused. Existing
+SSH host trust, key authentication, Node 20+ and the selected user's Core session
+are prerequisites; the feature never accepts a new host key, prompts for a password
+or installs Node/changes PATH. A missing Trello runtime gets the normal Requirements
+Install action. Conflicting or modified launchers/runtime files refuse overwrite;
+owned installation keeps a public rollback record and preserves private setup.
+
+A timeout after possible commit means **setup outcome unknown**. Check destination
+status before an explicit retry; cancelling cannot recall an already committed
+change and there is no replay. Shell-only deployment remains shell-only, and no
+credential is copied between machines or provisioned by deployment.
 
 ## Headless local setup
 

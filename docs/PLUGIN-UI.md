@@ -146,9 +146,13 @@ secrets in argv, or substitute temporary input files. The bridge uses only
 127.0.0.1, a random single-use session, a 60-second hard lifetime and 256 KiB input;
 it rejects browser Origin requests and replays. Its vendored ws dependency and
 license are installed with the runtime. Only fixed owner workers are allowed;
-there is no arbitrary command facility. Private actions refuse remote-selected
-machines and native checking. Closing/cancelling cannot promise an already
-accepted private-store write was undone; reconcile local status explicitly.
+there is no arbitrary command facility. Native checking refuses private actions. The fixed Trello route supports captured
+direct-SSH destinations through the local bridge: Core/session/user/home readiness
+precedes stdin secrets, strict existing host trust is required and no remote socket
+or arbitrary command facility is exposed. Closing/cancelling cannot promise an
+already accepted private-store write was undone; reconcile destination status
+explicitly before retrying. Runtime install is a separate explicit prerequisite
+fix, using only public deterministic runtime files.
 
 ## List sections
 

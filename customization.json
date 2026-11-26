@@ -93,6 +93,9 @@
   },
   "files": {
     "lib/private-actions/bridge.cjs": "src/services/private-actions/bridge.cjs",
+    "lib/private-actions/trello-transport.cjs": "src/services/private-actions/trello-transport.cjs",
+    "lib/private-actions/trello-bootstrap.cjs": "src/services/private-actions/trello-bootstrap.cjs",
+    "lib/private-actions/trello-install.cjs": "src/services/private-actions/trello-install.cjs",
     "lib/private-actions/vendor/ws/LICENSE.txt": "src/services/private-actions/vendor/ws/LICENSE",
     "lib/private-actions/vendor/ws/package.json": "src/services/private-actions/vendor/ws/package.json",
     "lib/private-actions/vendor/ws/browser.js": "src/services/private-actions/vendor/ws/browser.js",

@@ -1,4 +1,4 @@
-import {localStatus, credentialAction, boardCheck, boardCandidates, removeBoard, accessState, setAccess} from './actions.js';
+import {localStatus, runtimeStatus, credentialAction, boardCheck, boardCandidates, removeBoard, accessState, setAccess} from './actions.js';
 export default {
   id: 'trello', name: 'Trello', category: 'Agents', version: '1.1.0', icon: 'code',
   description: 'Give shell agents JSON access to boards you choose below. Verify private credentials, select boards and authorize writes on this computer; secrets stay in its protected local store, never plugin preferences.',
@@ -10,6 +10,7 @@ export default {
       about: 'Explicit changes set this computer’s private write authorization and public Access gate. Imported preferences cannot grant writes. A write-capable token is also required.'},
   ],
   prerequisites: [
+    {id: 'runtime', label: 'Trello runtime', check: runtimeStatus},
     {id: 'local-setup', label: 'Private local setup',
       about: 'Save and verify credentials, then allow at least one board. Headless herdr-trello setup remains available on each execution host.',
       check: localStatus,
@@ -18,7 +19,7 @@ export default {
           {key: 'apiKey', type: 'secret', label: 'Trello API key', maxLength: 512},
           {key: 'token', type: 'secret', label: 'User token', maxLength: 512},
         ],
-        enabled: (cx, result) => cx.machine == null && typeof result.revision === 'string',
+        enabled: (_cx, result) => typeof result.revision === 'string',
         help: {label: 'How to generate a user token', url: 'https://developer.atlassian.com/cloud/trello/guides/rest-api/authorization/'},
         actions: [
           {id: 'save', label: 'Save & verify', input: true, primary: true, when: result => result.configured === false,

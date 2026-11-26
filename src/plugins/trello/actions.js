@@ -1,6 +1,6 @@
 import {exec, appHome, checking, privateAction} from '../api.js';
 const ID = /^[a-f0-9]{24}$/, REV = /^[a-f0-9]{64}$/;
-const remote = 'Private Trello setup is not supported for SSH-selected machines here. Run herdr-trello setup and policy commands on that machine; no local store was accessed.';
+const reads = new WeakMap(); // One local service read per captured check context.
 const sessions = new WeakMap(); // Non-secret account/board hints, one mounted view/machine only.
 function hints(cx) {
   if (!cx.session) return {names: new Map()};
@@ -8,7 +8,7 @@ function hints(cx) {
   return sessions.get(cx.session);
 }
 function current(cx) {
-  if (cx.machine != null) throw Error(remote);
+  if (cx.machine != null && !hints(cx).destination) throw Error('Check this machine first.');
   if (checking() || cx.isCurrent?.() === false || cx.enabled?.() === false) throw Error('Enable Trello on this computer and check setup before continuing.');
 }
 const safeErrors = {
@@ -28,8 +28,24 @@ const safeErrors = {
   STORE_IO: 'Private setup could not be read or updated.',
   PUBLIC_STATE_INVALID: 'Activation or Access could not be checked.',
   INTERNAL: 'Setup could not finish. No retry was started.',
+  SSH_UNAVAILABLE: 'SSH unavailable. Check keys and host trust.',
+  MACHINE_CHANGED: 'Machine changed. Check again.',
+  MACHINE_IDENTITY: 'Execution user or home could not be verified.',
+  MACHINE_UNSUPPORTED: 'Temporary or custom-via machine unsupported.',
+  RUNTIME_PREREQUISITE: 'Node 20+ and the configured Core are required.',
+  RUNTIME_MISSING: 'Install Trello on this machine.',
+  RUNTIME_OUTDATED: 'Update Trello on this machine.',
+  RUNTIME_CONFLICT: 'Trello runtime ownership conflict.',
+  RUNTIME_BUSY: 'Trello installer is busy.',
+  RUNTIME_INVALID: 'Trello runtime payload is invalid.',
+  RUNTIME_PATH: 'Add the user bin to PATH first.',
+  CONFIG_UNKNOWN: 'Setup outcome unknown. Check before retrying.',
   SCOPE: 'A selected board is no longer visible to this token. Refresh the board picker.',
 };
+function destination(value) {
+  if (!value || typeof value.id !== 'string' || typeof value.session !== 'string' || !REV.test(value.principal) || !REV.test(value.home)) return null;
+  return {id: value.id, session: value.session, principal: value.principal, home: value.home};
+}
 function data(result) {
   if (result?.version !== 1 || result.ok !== true) {
     const error = Error(safeErrors[result?.error?.code] ?? 'Private Trello setup did not finish. Check status before trying again.');
@@ -44,6 +60,7 @@ function data(result) {
     clean.namedBoards = d.namedBoards.map(b => ({id: b.id, label: b.label}));
   }
   clean.namesMissing = d.namesMissing === true;
+  if (d.destination) { clean.destination = destination(d.destination); if (!clean.destination) throw Error('Machine identity was invalid.'); }
   if (d.items !== undefined) {
     if (!Array.isArray(d.items) || d.items.length > 1000 || typeof d.complete !== 'boolean' || d.items.some(b => !ID.test(b?.id) || typeof b.label !== 'string' || b.label.length > 1024 || /[\u0000-\u001f\u007f]/.test(b.label) || typeof b.closed !== 'boolean')) throw Error('Trello board inventory was invalid.');
     clean.items = d.items.map(b => ({id: b.id, label: b.label, closed: b.closed})); clean.complete = d.complete;
@@ -54,6 +71,7 @@ function remember(cx, d, reset = false) {
   const h = hints(cx);
   if (reset || h.revision && h.revision !== d.revision) { h.names.clear(); h.account = null; }
   h.revision = d.revision;
+  if (d.destination) h.destination = d.destination;
   if (d.account) h.account = d.account;
   if (d.items) for (const b of d.items) h.names.set(b.id, b.label);
   if (d.namedBoards) for (const b of d.namedBoards) h.names.set(b.id, b.label);
@@ -62,19 +80,40 @@ function remember(cx, d, reset = false) {
 }
 async function invoke(cx, action, expected, extra = {}) {
   current(cx);
-  const d = data(await privateAction('trello', {action, expected, ...extra}, cx));
+  const d = data(await privateAction('trello', {action, expected, ...extra}, {...cx, privateDestination: hints(cx).destination}));
   if (cx.isCurrent?.() === false) throw Error('Settings changed before the result arrived. Check local status.');
   // Own acknowledged policy edits preserve known board names/account hints.
   const h = hints(cx); if (h.revision === expected && !['save', 'replace', 'remove'].includes(action)) h.revision = d.revision;
   remember(cx, d, ['save', 'replace', 'remove'].includes(action));
   return d;
 }
+async function readStatus(cx) {
+  if (!reads.has(cx)) reads.set(cx, exec('node', [`${appHome()}/.customizations/runtime/lib/private-actions/trello-transport.cjs`, '--status', appHome(), JSON.stringify(cx.machine ?? null)], {timeout: 60000}).then(r => JSON.parse(r.stdout)));
+  return reads.get(cx);
+}
+export async function runtimeStatus(cx = {}) {
+  if (checking()) return {status: 'recommended', statusLabel: 'Check in app', fix: null};
+  try {
+    const r = await exec('node', [`${appHome()}/.customizations/runtime/lib/private-actions/trello-transport.cjs`, '--probe', appHome(), JSON.stringify(cx.machine ?? null)], {timeout: 60000});
+    const result = JSON.parse(r.stdout);
+    if (!result.ok) throw Error(safeErrors[result.error?.code] ?? 'Runtime check failed.');
+    const d = result.data, binding = destination(d?.destination);
+    if (!binding || !['ready', 'missing', 'outdated'].includes(d.runtime)) throw Error('Runtime check failed.');
+    if (cx.isCurrent?.() === false) return {status: 'error', statusLabel: 'Check again', fix: null};
+    hints(cx).destination = binding;
+    const ready = d.runtime === 'ready';
+    return {status: ready ? 'ready' : 'missing', statusLabel: ready ? 'Ready' : d.runtime === 'missing' ? 'Not installed' : 'Outdated',
+      fix: ready ? null : {label: d.runtime === 'missing' ? 'Install' : 'Update', manual: true, requiresEnabled: true,
+        run: async current => {
+          const result = await privateAction('trello', {action: 'runtime.install'}, {...current, privateDestination: binding});
+          if (!result?.ok) throw Error(safeErrors[result?.error?.code] ?? 'Installation failed. Check again.');
+        }}};
+  } catch (e) { return {status: 'error', statusLabel: 'Unavailable', detail: Object.values(safeErrors).includes(e.message) ? e.message : 'Runtime check failed.', fix: null}; }
+}
 export async function localStatus(cx = {}) {
-  if (cx.machine != null) return {status: 'missing', detail: remote, configured: null, usable: false};
   if (checking()) return {status: 'recommended', detail: 'Private setup is checked only in the running app.', configured: null, usable: false};
   try {
-    const r = await exec('node', [`${appHome()}/.customizations/runtime/lib/trello/owner.cjs`, '--status', appHome()], {timeout: 30000});
-    let d = data(JSON.parse(r.stdout));
+    let d = data(await readStatus(cx));
     const verified = d.configured && cx.checkReason === 'manual' && cx.enabled?.() !== false;
     if (verified) d = await invoke(cx, 'verify', d.revision);
     if (cx.isCurrent?.() === false) return {status: 'missing', detail: 'Settings changed. Check again.', usable: false};
@@ -95,7 +134,7 @@ export async function boardCheck(cx) {
   const d = await localStatus(cx), h = hints(cx);
   return {...d, statusLabel: d.configured ? `${d.allowedBoards} allowed` : null,
     rows: (d.boards ?? []).map(id => ({id, label: h.names.get(id) ?? 'Check to load name'})),
-    detail: cx.machine != null ? remote : d.status === 'error' ? d.detail : d.configured ? 'Only these boards are available to agents. Add boards by name; Remove revokes that board’s local permission.' : 'Save credentials above before choosing boards.'};
+    detail: d.status === 'error' ? d.detail : d.configured ? 'Only these boards are available to agents. Add boards by name; Remove revokes that board’s local permission.' : 'Save credentials above before choosing boards.'};
 }
 export async function boardCandidates(cx) {
   const saved = cx.result?.('boards');

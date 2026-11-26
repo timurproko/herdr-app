@@ -10,7 +10,9 @@ const {spawn, fork} = require('node:child_process');
 const LIMIT = 262144;
 const FAILURE = {version: 1, ok: false, error: {code: 'TRANSPORT', message: 'Private setup did not finish. Check local status before trying again.'}};
 const TARGETS = Object.freeze({trello: path.join(__dirname, '../trello/owner.cjs')});
-function worker(home, target, payload, register) {
+function worker(home, target, payload, register, destination = {machine: null}) {
+  if (destination.machine !== null || ['runtime.install', 'runtime.probe'].includes(payload.action))
+    return require('./trello-transport.cjs').dispatch(home, destination, payload, register);
   return new Promise(resolve => {
     const child = spawn(process.execPath, [TARGETS[target], home], {stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true});
     register(child); const chunks = []; let size = 0, bad = false;
@@ -31,7 +33,7 @@ function worker(home, target, payload, register) {
     child.stdin.end(JSON.stringify(payload));
   });
 }
-async function serve({home, target, lifetime = 60000, dispatch = worker} = {}) {
+async function serve({home, target, destination = {machine: null}, lifetime = 60000, dispatch = worker} = {}) {
   if (!Object.hasOwn(TARGETS, target)) throw Error('Unsupported private action');
   const session = crypto.randomBytes(32).toString('hex');
   const server = http.createServer((_req, res) => { res.writeHead(403); res.end(); });
@@ -67,7 +69,7 @@ async function serve({home, target, lifetime = 60000, dispatch = worker} = {}) {
       // A replay on this connection is a protocol refusal, not another dispatch.
       socket.on('message', () => stop());
       let result;
-      try { result = await dispatch(home, target, request.payload, value => { child = value; }); }
+      try { result = await dispatch(home, target, request.payload, value => { child = value; }, destination); }
       catch { result = FAILURE; }
       finally { request.payload = null; }
       if (!stopped && socket.readyState === 1) socket.send(JSON.stringify(result), () => stop());
@@ -79,12 +81,14 @@ async function serve({home, target, lifetime = 60000, dispatch = worker} = {}) {
   return {address: {port: server.address().port, session, expires: Date.now() + Math.min(lifetime, 60000)}, stop, closed};
 }
 if (require.main === module) {
-  const [mode, home, target] = process.argv.slice(2);
+  const [mode, home, target, route] = process.argv.slice(2);
+  let destination; try { destination = route === undefined ? {machine: null} : JSON.parse(route); } catch {}
+  if (!destination || destination.machine !== null && typeof destination.machine !== 'string') process.exit(2);
   if (!Object.hasOwn(TARGETS, target) || !path.isAbsolute(home || '') || !['--start', '--serve'].includes(mode)) process.exitCode = 2;
   else if (mode === '--serve') {
-    serve({home, target}).then(server => { process.send?.(server.address); process.disconnect?.(); }).catch(() => { process.exitCode = 1; process.disconnect?.(); });
+    serve({home, target, destination}).then(server => { process.send?.(server.address); process.disconnect?.(); }).catch(() => { process.exitCode = 1; process.disconnect?.(); });
   } else {
-    const child = fork(__filename, ['--serve', home, target], {detached: true, windowsHide: true, stdio: ['ignore', 'ignore', 'ignore', 'ipc']});
+    const child = fork(__filename, ['--serve', home, target, JSON.stringify(destination)], {detached: true, windowsHide: true, stdio: ['ignore', 'ignore', 'ignore', 'ipc']});
     const timer = setTimeout(() => { child.kill(); process.exitCode = 1; }, 5000);
     child.once('error', () => { clearTimeout(timer); process.exitCode = 1; });
     child.once('message', address => { clearTimeout(timer); process.stdout.write(JSON.stringify(address) + '\n'); child.unref(); });
