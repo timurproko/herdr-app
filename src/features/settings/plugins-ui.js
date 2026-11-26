@@ -811,15 +811,18 @@ function settingField(view, t, plugin, def) {
   const value = pluginSetting(plugin, def.key), id = `st-plugin-${plugin.id}-${def.key}`;
   if (def.live && ['toggle', 'choice'].includes(def.type)) {
     const state = liveState(view, plugin, def), machine = view.settingsMachine ?? null;
-    const current = () => !view.pluginClosed && pluginEnabled(plugin) && (view.settingsMachine ?? null) === machine;
+    const current = () => !view.pluginClosed && pluginEnabled(plugin) && state?.available !== false && (view.settingsMachine ?? null) === machine;
     const apply = (next, cx) => {
       if (!current()) return;
       runFixes(view, cx, plugin, [{ id: `live-${def.key}`, fix: { requiresEnabled: true, run: context => def.live.set(context, next, state) } }]);
     };
     const refused = view.pluginFixError[`${plugin.id}:live-${def.key}`];
-    return fieldRow(t, { label: def.label, about: refused ? `${def.about} Not changed: ${refused}` : def.about,
-      widget: def.type === 'toggle' ? view.toggle(t, id, state?.value === true, (_e, cx) => apply(!state?.value, cx))
-        : choice(t, id, def.options, state?.value, apply, current() && !view.pluginFixing) });
+    const widget = def.type === 'toggle' ? view.toggle(t, id, state?.value === true, (_e, cx) => apply(!state?.value, cx))
+      : choice(t, id, def.options, state?.value, apply, current() && !view.pluginFixing);
+    return fieldRow(t, { label: def.label, about: refused ?? state?.detail ?? def.about,
+      widget: h_flex().gap(8).items_center().child(widget)
+        .when(Boolean(state?.statusLabel), el => el.child(badge(t, 'missing', state.statusLabel)))
+        .when(state?.retry === true, el => el.child(actionButton(t, `${id}-retry`, 'Retry', (_e, cx) => apply(state.value, cx), {enabled:current()&&!view.pluginFixing}))) });
   }
   if (def.type === 'profiles') {
     // A row that opens the role's profile list, like a longtext row.

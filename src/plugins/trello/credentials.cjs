@@ -20,7 +20,7 @@ function validate(name, v) {
   let ok = false;
   if (name === 'credentials') ok = exact(v, ['version', 'apiKey', 'token']) && v.version === 1 &&
     [v.apiKey, v.token].every(s => typeof s === 'string' && /^[A-Za-z0-9_-]{16,512}$/.test(s));
-  if (name === 'policy') ok = exact(v, ['version', 'boards', 'allowWrites']) && v.version === 1 && typeof v.allowWrites === 'boolean' &&
+  if (name === 'policy') ok = exact(v, ['version', 'boards', 'allowWrites', 'authority']) && v.version === 1 && (v.authority === undefined || v.authority === 'managed') && typeof v.allowWrites === 'boolean' &&
     Array.isArray(v.boards) && v.boards.length <= 100 && v.boards.every(id) && new Set(v.boards).size === v.boards.length;
   if (name === 'cooldown') ok = exact(v, ['version', 'retryAt']) && v.version === 1 && Number.isSafeInteger(v.retryAt) && v.retryAt >= 0;
   if (name === 'display') {
@@ -29,6 +29,9 @@ function validate(name, v) {
       (v.account === null || exact(v.account, ['id', 'username', 'name']) && id(v.account.id) && text(v.account.username, 256) && text(v.account.name, 256)) &&
       Array.isArray(v.boards) && v.boards.length <= 100 && v.boards.every(b => exact(b, ['id', 'label']) && id(b.id) && text(b.label, 1024)) && new Set(v.boards.map(b => b.id)).size === v.boards.length;
   }
+  const binding = b => exact(b, ['id', 'session', 'principal', 'home']) && typeof b.id === 'string' && typeof b.session === 'string' && [b.principal,b.home].every(s => /^[a-f0-9]{64}$/.test(s));
+  if (name === 'control') ok = exact(v, ['version','controller','binding','enabled','access','intent']) && v.version === 1 && /^[a-f0-9]{64}$/.test(v.controller) && binding(v.binding) && typeof v.enabled === 'boolean' && ['read-only','read-write'].includes(v.access) && /^[a-f0-9]{64}$/.test(v.intent);
+  if (name === 'controller') ok = exact(v, ['version','id','access','intent','hosts','pending']) && v.version === 1 && [v.id,v.intent].every(s => /^[a-f0-9]{64}$/.test(s)) && ['read-only','read-write'].includes(v.access) && Array.isArray(v.hosts) && v.hosts.length <= 256 && v.hosts.every(h => exact(h,['machine','binding','access','intent']) && (h.machine === null || typeof h.machine === 'string' && h.machine.length <= 256) && binding(h.binding) && ['read-only','read-write'].includes(h.access) && /^[a-f0-9]{64}$/.test(h.intent)) && Array.isArray(v.pending) && v.pending.length <= 256 && v.pending.every(s => typeof s === 'string' && s.length <= 256 && !/[\u0000-\u001f\u007f]/.test(s));
   if (!ok) fail('STORE_MALFORMED');
   return v;
 }
@@ -71,7 +74,7 @@ function security(file, create = false, directory = false) {
 }
 class Store {
   constructor(home, options = {}) { this.home = homePath(home); this.dir = path.join(this.home, '.customizations', 'trello'); this.security = options.security || security; }
-  file(name) { if (!['credentials', 'policy', 'cooldown', 'display'].includes(name)) fail('INPUT'); return path.join(this.dir, name + '.json'); }
+  file(name) { if (!['credentials', 'policy', 'cooldown', 'display', 'control', 'controller'].includes(name)) fail('INPUT'); return path.join(this.dir, name + '.json'); }
   directory(create = false) {
     try {
       safePath(this.dir);
@@ -92,7 +95,7 @@ class Store {
       const s = stat(file);
       if (!s) { if (optional) return null; fail('STORE_MISSING'); }
       if (!s.isFile() || s.nlink !== 1) fail('STORE_UNSAFE_PATH');
-      const max = name === 'display' ? 262144 : 32768;
+      const max = ['display','controller'].includes(name) ? 262144 : 32768;
       if (s.size > max) fail('STORE_MALFORMED');
       this.security(file);
       fd = fs.openSync(file, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0));

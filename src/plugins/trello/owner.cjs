@@ -9,7 +9,8 @@ const ownerRoutes = [
   ['GET', /^\/members\/me$/, ['fields']],
   ['GET', /^\/members\/me\/boards$/, ['fields', 'filter']],
 ];
-const defaults = () => ({version: 1, boards: [], allowWrites: false});
+const {applyControl, resetControl} = require('./control.cjs');
+const defaults = policy => ({version: 1, boards: [], allowWrites: false, ...(policy?.authority === 'managed' ? {authority: 'managed'} : {})});
 const text = (value, max = 256) => typeof value === 'string' && value.length > 0 && value.length <= max && !/[\u0000-\u001f\u007f]/.test(value);
 function snapshot(store) {
   safePath(store.dir);
@@ -17,8 +18,9 @@ function snapshot(store) {
   const credentials = exists ? store.read('credentials', true) : null;
   const policy = exists ? store.read('policy', true) : null;
   const display = exists ? store.read('display', true) : null;
-  const revision = crypto.createHash('sha256').update(JSON.stringify([credentials, policy, display])).digest('hex');
-  return {credentials, policy, display, revision};
+  const control = exists ? store.read('control', true) : null;
+  const revision = crypto.createHash('sha256').update(JSON.stringify([credentials, policy, display, control])).digest('hex');
+  return {credentials, policy, display, control, revision};
 }
 const credentialTag = credentials => crypto.createHash('sha256').update(JSON.stringify(credentials)).digest('hex');
 function displayFor(s) {
@@ -30,7 +32,8 @@ function publicStatus(s) {
   return {configured: s.credentials !== null, storage: s.credentials === null ? 'missing' : 'ready', revision: s.revision,
     allowedBoards: boards.length, localWrites: s.policy?.allowWrites ?? false, boards,
     ...(named.account ? {account: named.account} : {}), namedBoards: named.boards,
-    namesMissing: Boolean(s.credentials && (!named.account || boards.some(id => !named.boards.some(b => b.id === id))))};
+    namesMissing: Boolean(s.credentials && (!named.account || boards.some(id => !named.boards.some(b => b.id === id)))),
+    control: s.control, managed: s.policy?.authority === 'managed'};
 }
 function writeDisplay(store, previous, credentials, policy, account, items = []) {
   const old = displayFor({...previous, credentials, policy});
@@ -68,16 +71,18 @@ async function inventory(c) {
   return {items: boards.slice(0, 1000).map(b => ({id: b.id, label: b.name, closed: b.closed})), complete: boards.length <= 1000};
 }
 async function operate(input, {store, ...io}) {
-  if (!exact(input, ['action', 'apiKey', 'token', 'expected', 'add', 'remove', 'allowWrites'])) fail('INPUT');
+  if (!exact(input, ['action', 'apiKey', 'token', 'expected', 'add', 'remove', 'allowWrites', 'control'])) fail('INPUT');
   const keys = {
     status: ['action'], save: ['action', 'apiKey', 'token', 'expected'], replace: ['action', 'apiKey', 'token', 'expected'],
     verify: ['action', 'expected'], remove: ['action', 'expected'], discover: ['action', 'expected'],
     policy: ['action', 'expected', 'add', 'remove', 'allowWrites'],
+    control: ['action', 'expected', 'control'],
   }[input.action];
   if (!keys || !exact(input, keys)) fail('INPUT');
   if (input.action === 'status') return publicStatus(snapshot(store));
   const s = expected(store, input.expected);
   if (['save', 'replace'].includes(input.action)) {
+    if (io.initialControl && s.control && s.control.controller !== io.initialControl.controller) fail('CONTROL_CONFLICT');
     if ((s.credentials !== null) !== (input.action === 'replace')) fail('CONFLICT');
     let credentials;
     try { credentials = validate('credentials', {version: 1, apiKey: input.apiKey, token: input.token}); }
@@ -87,14 +92,20 @@ async function operate(input, {store, ...io}) {
     // interrupted transition can only lose authority, not inherit another account's.
     store.withLock(() => {
       expected(store, s.revision);
-      store.write('policy', defaults(), s.policy);
+      store.write('policy', defaults(s.policy), s.policy);
+      resetControl(store, s);
       store.write('credentials', credentials, s.credentials);
       // A different account never inherits former names, even with reused grants.
-      writeDisplay(store, {...s, credentials: null, policy: null, display: s.display}, credentials, defaults(), account);
+      writeDisplay(store, {...s, credentials: null, policy: null, display: s.display}, credentials, defaults(s.policy), account);
+      if (io.initialControl) applyControl(store, snapshot(store), io.initialControl, io.binding);
     });
     return {...publicStatus(snapshot(store)), account};
   }
   if (!s.credentials) fail('STORE_MISSING');
+  if (input.action === 'control') {
+    store.withLock(() => { expected(store, s.revision); applyControl(store, s, input.control, io.binding); });
+    return publicStatus(snapshot(store));
+  }
   if (input.action === 'verify') {
     const c = client(store, s, s.credentials, io), account = await identity(c);
     // Only explicit verification hydrates missing legacy board names.
@@ -103,7 +114,7 @@ async function operate(input, {store, ...io}) {
     return publicStatus(snapshot(store));
   }
   if (input.action === 'remove') {
-    store.withLock(() => { expected(store, s.revision); store.write('policy', defaults(), s.policy); if (s.display) store.remove('display', s.display); store.remove('credentials', s.credentials); });
+    store.withLock(() => { expected(store, s.revision); store.write('policy', defaults(s.policy), s.policy); resetControl(store, s); if (s.display) store.remove('display', s.display); store.remove('credentials', s.credentials); if (s.control) store.remove('control', store.read('control')); });
     return {...publicStatus(snapshot(store)), removed: true};
   }
   if (input.action === 'discover') {

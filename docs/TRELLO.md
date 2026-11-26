@@ -107,11 +107,28 @@ never erase unseen grants. Hints are not portable preferences or authorization.
 The requirement becomes Ready only with saved credentials and at least one allowed
 board; local Ready does not claim an unverified token is still valid.
 
-Under **Settings → Access**, **Read-only / Read-write** explicitly changes this
-computer’s private write authorization as well as public Access. The displayed
-value reflects both gates, not imported public preferences alone. A read-only
-Trello token remains server-enforced read-only regardless of client settings.
-No board grant or local write permission is exported/imported with preferences.
+Under **Settings → Access**, **Read-only / Read-write** is one global choice,
+independent of the header machine. An explicit change applies protected control
+and private write gates on each configured account host. The displayed value is
+backed by private owner consent, never an imported preference alone. New account
+hosts start read-only even when the global choice was previously Read-write;
+explicitly apply that choice again before they may write.
+
+A **Pending** badge names hosts where application failed; **Retry** explicitly
+applies the current choice again. Offline hosts keep their last acknowledged
+rights, including any previous write grant, until successfully contacted. There
+is no atomic disconnected-host revocation or automatic replay of grants on
+reconnect. Status checks do not apply rights. A write-capable Trello token is
+still required, and a read-only token remains server-enforced read-only.
+
+Managed execution-host control is separate from board grants and credentials.
+Missing/invalid managed control denies access instead of falling back to legacy
+public state. Existing full installations keep their old gates until explicit
+owner adoption; local disabled state remains authoritative. Another controller
+cannot silently take over: remove the account explicitly first. Headless writes
+off can always reduce authority and writes on cannot bypass the global gate.
+No board grant, control receipt or private write permission is exported/imported
+with preferences.
 Credential-bearing snapshot fields, including `apiKey` and `token`, are refused
 rather than imported into shared plugin state.
 

@@ -7,7 +7,7 @@ export default {
     {key: 'access', type: 'choice', default: 'read-only', label: 'Access',
       options: [['read-only', 'Read-only'], ['read-write', 'Read-write']],
       live: {state: accessState, set: setAccess},
-      about: 'Explicit changes set this computer’s private write authorization and public Access gate. Imported preferences cannot grant writes. A write-capable token is also required.'},
+      about: 'Applies to all configured machines. A write-capable token is also required.'},
   ],
   prerequisites: [
     {id: 'runtime', label: 'Trello runtime', check: runtimeStatus},

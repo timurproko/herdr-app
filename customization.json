@@ -94,6 +94,7 @@
   "files": {
     "lib/private-actions/bridge.cjs": "src/services/private-actions/bridge.cjs",
     "lib/private-actions/trello-transport.cjs": "src/services/private-actions/trello-transport.cjs",
+    "lib/private-actions/trello-controller.cjs": "src/services/private-actions/trello-controller.cjs",
     "lib/private-actions/trello-bootstrap.cjs": "src/services/private-actions/trello-bootstrap.cjs",
     "lib/private-actions/trello-install.cjs": "src/services/private-actions/trello-install.cjs",
     "lib/private-actions/vendor/ws/LICENSE.txt": "src/services/private-actions/vendor/ws/LICENSE",
@@ -118,6 +119,7 @@
     "lib/trello/help.cjs": "src/plugins/trello/help.cjs",
     "lib/trello/TRELLO.txt": "docs/TRELLO.md",
     "lib/trello/client.cjs": "src/plugins/trello/client.cjs",
+    "lib/trello/control.cjs": "src/plugins/trello/control.cjs",
     "lib/trello/credentials.cjs": "src/plugins/trello/credentials.cjs",
     "lib/trello/errors.cjs": "src/plugins/trello/errors.cjs",
     "lib/trello/operations.cjs": "src/plugins/trello/operations.cjs",

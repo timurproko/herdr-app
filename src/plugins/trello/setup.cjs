@@ -1,7 +1,7 @@
 'use strict';
 const {validate, id, exact} = require('./credentials.cjs');
 const {fail, publicError} = require('./errors.cjs');
-const defaultPolicy = () => ({version: 1, boards: [], allowWrites: false});
+const defaultPolicy = old => ({version: 1, boards: [], allowWrites: false, ...(old?.authority === 'managed' ? {authority: 'managed'} : {})});
 function setup(store, input, rotate = false) {
   if (!exact(input, ['apiKey', 'token'])) fail('INPUT');
   let value; try { value = validate('credentials', {version: 1, ...input}); } catch { fail('INPUT'); }
@@ -9,10 +9,11 @@ function setup(store, input, rotate = false) {
   const old = store.read('credentials', true);
   if ((old !== null) !== rotate) fail('CONFLICT');
   // Validate existing policy before replacing credentials; never silently repair it.
-  const policy = store.read('policy', true), display = store.read('display', true);
+  const policy = store.read('policy', true), display = store.read('display', true), control = store.read('control', true);
   store.withLock(() => {
     if (JSON.stringify(store.read('credentials', true)) !== JSON.stringify(old)) fail('CONFLICT');
-    if (rotate || !policy) store.write('policy', defaultPolicy(), policy);
+    if (rotate || !policy) store.write('policy', defaultPolicy(policy), policy);
+    if (control) store.write('control', {...control, access: 'read-only'}, control);
     if (display) store.remove('display', display);
     store.write('credentials', value, old);
   });

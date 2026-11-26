@@ -11,7 +11,7 @@ const LIMIT = 262144;
 const FAILURE = {version: 1, ok: false, error: {code: 'TRANSPORT', message: 'Private setup did not finish. Check local status before trying again.'}};
 const TARGETS = Object.freeze({trello: path.join(__dirname, '../trello/owner.cjs')});
 function worker(home, target, payload, register, destination = {machine: null}) {
-  if (destination.machine !== null || ['runtime.install', 'runtime.probe'].includes(payload.action))
+  if (destination.machine !== null || destination.binding || ['runtime.install', 'runtime.probe', 'global.status', 'global.apply'].includes(payload.action))
     return require('./trello-transport.cjs').dispatch(home, destination, payload, register);
   return new Promise(resolve => {
     const child = spawn(process.execPath, [TARGETS[target], home], {stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true});

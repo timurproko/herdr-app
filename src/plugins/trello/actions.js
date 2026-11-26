@@ -40,12 +40,18 @@ const safeErrors = {
   RUNTIME_INVALID: 'Trello runtime payload is invalid.',
   RUNTIME_PATH: 'Add the user bin to PATH first.',
   CONFIG_UNKNOWN: 'Setup outcome unknown. Check before retrying.',
+  CONTROL_CONFLICT: 'Managed by another controller. Remove the account first.',
   SCOPE: 'A selected board is no longer visible to this token. Refresh the board picker.',
 };
 function destination(value) {
   if (!value || typeof value.id !== 'string' || typeof value.session !== 'string' || !REV.test(value.principal) || !REV.test(value.home)) return null;
   return {id: value.id, session: value.session, principal: value.principal, home: value.home};
 }
+function globalState(value) {
+  if (!value || !['read-only','read-write'].includes(value.access) || !REV.test(value.revision) || !Array.isArray(value.pending) || value.pending.length > 256 || value.pending.some(s => typeof s !== 'string' || s.length > 256 || /[\u0000-\u001f\u007f]/.test(s))) return null;
+  return {access:value.access,revision:value.revision,pending:[...value.pending]};
+}
+function rememberGlobal(cx, result) { const g=globalState(result?.global ?? result?.data?.global); if(g && cx.isCurrent?.() !== false) hints(cx).global=g; return g; }
 function data(result) {
   if (result?.version !== 1 || result.ok !== true) {
     const error = Error(safeErrors[result?.error?.code] ?? 'Private Trello setup did not finish. Check status before trying again.');
@@ -88,14 +94,14 @@ async function invoke(cx, action, expected, extra = {}) {
   return d;
 }
 async function readStatus(cx) {
-  if (!reads.has(cx)) reads.set(cx, exec('node', [`${appHome()}/.customizations/runtime/lib/private-actions/trello-transport.cjs`, '--status', appHome(), JSON.stringify(cx.machine ?? null)], {timeout: 60000}).then(r => JSON.parse(r.stdout)));
+  if (!reads.has(cx)) reads.set(cx, exec('node', [`${appHome()}/.customizations/runtime/lib/private-actions/trello-transport.cjs`, '--status', appHome(), JSON.stringify(cx.machine ?? null)], {timeout: 60000}).then(r => { const result=JSON.parse(r.stdout);rememberGlobal(cx,result);return result; }));
   return reads.get(cx);
 }
 export async function runtimeStatus(cx = {}) {
   if (checking()) return {status: 'recommended', statusLabel: 'Check in app', fix: null};
   try {
     const r = await exec('node', [`${appHome()}/.customizations/runtime/lib/private-actions/trello-transport.cjs`, '--probe', appHome(), JSON.stringify(cx.machine ?? null)], {timeout: 60000});
-    const result = JSON.parse(r.stdout);
+    const result = JSON.parse(r.stdout); rememberGlobal(cx, result);
     if (!result.ok) throw Error(safeErrors[result.error?.code] ?? 'Runtime check failed.');
     const d = result.data, binding = destination(d?.destination);
     if (!binding || !['ready', 'missing', 'outdated'].includes(d.runtime)) throw Error('Runtime check failed.');
@@ -154,17 +160,24 @@ export async function removeBoard(cx, id) {
   await invoke(cx, 'policy', s.revision, {remove: [id]});
 }
 export function accessState(cx) {
-  const s = cx.result?.('local-setup');
-  return {shown: cx.machine == null && s?.configured === true, revision: s?.revision,
-    value: s?.localWrites === true && cx.setting('access') === 'read-write' ? 'read-write' : 'read-only'};
+  const g = hints(cx).global;
+  return {shown:true, available:Boolean(g), revision:g?.revision, value:g?.access ?? 'read-only',
+    statusLabel:!g ? 'Check needed' : g.pending.length ? 'Pending' : null,
+    detail:g?.pending.length ? g.pending.join(', ') : null, retry:Boolean(g?.pending.length)};
 }
 export async function setAccess(cx, value, snapshot) {
-  if (!['read-only', 'read-write'].includes(value)) throw Error('Invalid access selection.');
-  const old = cx.setting('access');
-  await invoke(cx, 'policy', snapshot?.revision, {allowWrites: value === 'read-write'});
-  if (!cx.setSetting?.('access', value, old)) {
-    // Public preference failure must not leave a newly granted private write opt-in.
-    if (value === 'read-write' && cx.isCurrent?.() !== false) await invoke(cx, 'policy', hints(cx).revision, {allowWrites: false});
-    throw Error('The public Access setting changed. Check private status before choosing access again.');
+  if (!['read-only','read-write'].includes(value) || !REV.test(snapshot?.revision)) throw Error('Check Access first.');
+  if (checking() || cx.isCurrent?.() === false || cx.enabled?.() === false) throw Error('Access action unavailable.');
+  const old = cx.setting('access'), context = {...cx,machine:null,privateDestination:undefined};
+  const result=await privateAction('trello',{action:'global.apply',access:value,expected:snapshot.revision},context);
+  const g=rememberGlobal(cx,result);
+  if (!result?.ok || !g) throw Error(safeErrors[result?.error?.code] ?? 'Access could not be applied. Check again.');
+  if (!cx.setSetting?.('access',value,old)) {
+    if (value==='read-write') {
+      const reduced=await privateAction('trello',{action:'global.apply',access:'read-only',expected:g.revision},context);
+      rememberGlobal(cx,reduced);
+      if (!reduced?.ok || reduced.data?.global?.pending?.length) throw Error('Access cleanup pending. Check machines before retrying.');
+    }
+    throw Error('The public Access setting changed. Check Access again.');
   }
 }

@@ -20,6 +20,6 @@ reply={version:1,ok:true,data:{runtime:'missing',destination:{id:'fixture-core',
 assert.equal((await runtime.check({machine:'ssh-fixture'})).fix.label,'Install');
 assert.equal(setup.fix, undefined);
 assert.ok(setup.form.fields.every(f=>f.type==='secret'));
-assert.equal(ns.plugin.settings[0].live.state({machine:'ssh-fixture',result:()=>({configured:true,localWrites:true}),setting:()=> 'read-write'}).shown,false);
+assert.equal(ns.plugin.settings[0].live.state({machine:'ssh-fixture',result:()=>({configured:true,localWrites:true}),setting:()=> 'read-write'}).shown,true);
 assert.ok(!fs.readFileSync(fileURLToPath(new URL('./plugin.js', import.meta.url)), 'utf8').includes('gpui-kit'));
 console.log('PASS: declarative off-by-default Trello plugin, sanitized machine-bound prerequisites and explicit runtime installation');

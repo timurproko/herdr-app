@@ -89,9 +89,12 @@ A `toggle` or `choice` may be **live**: `live: { state(cx), set(cx, value, snaps
 Its operational value is not saved automatically by the renderer; it lives where
 the plugin says (a file on the chosen machine, say). The setter may synchronize an
 additional public preference explicitly after private acknowledgement. `state(cx)` returns
-what the plugin's last check saw, `{ shown, value }`, or null before the first check, and the row
+what the plugin's last check saw, `{ shown, value, available?, statusLabel?, detail?, retry? }`, or null before the first check, and the row
 is drawn only while `shown`. Flipping the switch runs `set` like a requirement's fix and then
 re-checks the plugin, so the switch shows what is really set; a refusal is said on the row.
+`available: false` blocks editing, `statusLabel` uses the existing unmet badge and
+`retry: true` adds the standard Retry action for an explicit same-value application.
+These are generic declaration capabilities, not plugin-specific render branches.
 
 ## Requirements
 

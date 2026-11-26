@@ -71,7 +71,7 @@ async function main(config,installerSource,{getHello=hello,executionHome=private
   else{
    if(state.runtime!=='ready')refused(state.runtime==='missing'?'RUNTIME_MISSING':state.runtime==='outdated'?'RUNTIME_OUTDATED':'RUNTIME_CONFLICT');
    const owner=require(path.join(runtime,'lib/trello/owner.cjs'));
-   result=await owner.execute(request.payload,{home:execution.home,isCurrent:current});
+   result=await owner.execute(request.payload,{home:execution.home,isCurrent:current,binding,initialControl:request.initialControl});
    if(result.ok)result.data={...result.data,destination:binding};
   }
   send({version:1,phase:'result',result});

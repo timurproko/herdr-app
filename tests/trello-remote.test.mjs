@@ -31,11 +31,11 @@ try{
   const child=new EventEmitter();child.stdin=new PassThrough();child.stdout=new PassThrough();child.stderr=new PassThrough();child.kill=()=>{child.stdin.destroy();child.stdout.destroy();};
   child.stdin.on('data',async bytes=>{
    sends++;const req=JSON.parse(bytes.toString());assert.equal(req.version,1);
-   if(mode==='lost'){await owner.execute(req.payload,{store,transport:fakeFetch});queueMicrotask(()=>child.emit('close',1));return;}
+   if(mode==='lost'){await owner.execute(req.payload,{store,transport:fakeFetch,binding,initialControl:req.initialControl});queueMicrotask(()=>child.emit('close',1));return;}
    let result;
    if(req.kind==='probe')result={version:1,ok:true,data:{runtime:'ready',destination:binding}};
    else if(req.kind==='install')result={version:1,ok:true,data:{runtime:'ready',installed:true,destination:binding}};
-   else{result=await owner.execute(req.payload,{store,transport:fakeFetch});if(result.ok)result.data.destination=binding;}
+   else{result=await owner.execute(req.payload,{store,transport:fakeFetch,binding,initialControl:req.initialControl});if(result.ok)result.data.destination=binding;}
    child.stdout.write(JSON.stringify({version:1,phase:'result',result})+'\n');
   });
   if(mode!=='hang')queueMicrotask(()=>child.stdout.write(mode==='malformed'?'not a frame\n':JSON.stringify({version:1,phase:'ready',binding:mode==='wrong'?{...binding,id:'wrong-core'}:binding,runtime:'ready'})+'\n'));
@@ -44,12 +44,14 @@ try{
  const options={runtime,spawn,spawnSync};
  let state=await transport.dispatch(local,{machine:'pc2'},{action:'status'},()=>{},options);assert.equal(state.ok,true);assert.equal(state.data.configured,false);
  const run=async(action,extra={})=>{const r=await transport.dispatch(local,{machine:'pc2',binding},{action,...(action==='status'?{}:{expected:state.data.revision}),...extra},()=>{},options);if(r.ok)state=r;return r;};
- assert.equal((await run('save',{apiKey:key,token})).data.account.name,'Remote owner');assert.equal(fs.existsSync(path.join(local,'.customizations/trello')),false);
- assert.equal((await run('verify')).ok,true);assert.equal((await run('discover')).data.items[0].label,'Remote board');assert.equal((await run('policy',{add:[A]})).data.allowedBoards,1);assert.equal((await run('policy',{remove:[A]})).data.allowedBoards,0);assert.equal((await run('remove')).data.configured,false);assert.equal(fs.existsSync(path.join(local,'.customizations/trello')),false);
+ assert.equal((await run('save',{apiKey:key,token})).data.account.name,'Remote owner');assert.equal(fs.existsSync(path.join(local,'.customizations/trello/credentials.json')),false);
+ assert.equal((await run('verify')).ok,true);assert.equal((await run('discover')).data.items[0].label,'Remote board');assert.equal((await run('policy',{add:[A]})).data.allowedBoards,1);assert.equal((await run('policy',{remove:[A]})).data.allowedBoards,0);assert.equal((await run('remove')).data.configured,false);assert.equal(fs.existsSync(path.join(local,'.customizations/trello/credentials.json')),false);
  const before=sends;mode='wrong';assert.equal((await run('save',{apiKey:key,token})).error.code,'MACHINE_CHANGED');assert.equal(sends,before,'No credential bytes before valid READY');mode='normal';
+ const beforeRefused=starts;
  for(const change of [{temporary:true},{via:'custom'}, {id:'replaced-core'}]){
-  const r=await transport.dispatch(local,{machine:'pc2',binding},{action:'save',apiKey:key,token},()=>{assert.fail('Refused target cannot spawn SSH');},{...options,spawnSync:()=>({status:0,stdout:JSON.stringify({machines:[{...machine,...change}]})})});assert.equal(r.ok,false);assert.ok(['MACHINE_UNSUPPORTED','MACHINE_CHANGED'].includes(r.error.code));
+  const r=await transport.dispatch(local,{machine:'pc2',binding},{action:'save',apiKey:key,token},()=>{},{...options,spawnSync:()=>({status:0,stdout:JSON.stringify({machines:[{...machine,...change}]})})});assert.equal(r.ok,false);assert.ok(['MACHINE_UNSUPPORTED','MACHINE_CHANGED'].includes(r.error.code));
  }
+ assert.equal(starts,beforeRefused,'Refused targets cannot spawn SSH');
  mode='lost';const unknown=await run('save',{apiKey:key,token});assert.equal(unknown.error.code,'CONFIG_UNKNOWN');assert.equal(unknown.error.outcome,'unknown');mode='normal';
  assert.ok(!JSON.stringify(unknown).includes(token));assert.equal((await run('status')).data.configured,true,'A lost reply may have committed; status reconciles without replay');
  const beforeHang=sends;mode='hang';assert.equal((await transport.dispatch(local,{machine:'pc2',binding},{action:'save',apiKey:key,token},()=>{},{...options,timeout:10})).error.code,'SSH_UNAVAILABLE');assert.equal(sends,beforeHang);mode='malformed';assert.equal((await run('status')).error.code,'SSH_UNAVAILABLE');assert.equal(sends,beforeHang);mode='normal';

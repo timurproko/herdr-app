@@ -35,12 +35,12 @@ These six groups match the draft PR's Implementation outcomes in the same order.
 
 ## 5. One global Access setting enforced on execution hosts
 
-- [ ] 5.1 Add protected explicit-consent/controller and versioned host-control records with captured identity and revision; policy tests cover invalid/missing managed records, controller conflicts and fail-closed mode selection.
-- [ ] 5.2 Enforce applied control plus host-local board/write gates in CLI preflight/follow-ups; two-host fake CLI tests cover read/write, local disable precedence, headless writes-off and unchanged stale/unknown-write semantics.
-- [ ] 5.3 Apply one explicit global Access operation to configured account hosts, retaining per-host acknowledgements and short pending/error facts; injected tests cover both hosts, unknown offline membership and partial application without false global success.
-- [ ] 5.4 Keep import/install/check/discovery outside the grant/migration path and preserve legacy authority until explicit adoption; actual preference-export/import and owner tests prove no new board/write scope, including a newly saved host while global Read-write is selected.
-- [ ] 5.5 Add conservative transition cleanup and explicit same-value retry using generic existing action controls; tests cover stale consent, failed public/controller publication, unknown cleanup outcome and no reconnect replay of Read-write grants.
-- [ ] 5.6 Document global intent versus applied host rights and the last-acknowledged offline limit; two-host Settings tests show the same global value across header selection and truthful unapplied host feedback.
+- [x] 5.1 Add protected explicit-consent/controller and versioned host-control records with captured identity and revision; policy tests cover invalid/missing managed records, controller conflicts and fail-closed mode selection.
+- [x] 5.2 Enforce applied control plus host-local board/write gates in CLI preflight/follow-ups; two-host fake CLI tests cover read/write, local disable precedence, headless writes-off and unchanged stale/unknown-write semantics.
+- [x] 5.3 Apply one explicit global Access operation to configured account hosts, retaining per-host acknowledgements and short pending/error facts; injected tests cover both hosts, unknown offline membership and partial application without false global success.
+- [x] 5.4 Keep import/install/check/discovery outside the grant/migration path and preserve legacy authority until explicit adoption; actual preference-export/import and owner tests prove no new board/write scope, including a newly saved host while global Read-write is selected.
+- [x] 5.5 Add conservative transition cleanup and explicit same-value retry using generic existing action controls; tests cover stale consent, failed public/controller publication, unknown cleanup outcome and no reconnect replay of Read-write grants.
+- [x] 5.6 Document global intent versus applied host rights and the last-acknowledged offline limit; two-host Settings tests show the same global value across header selection and truthful unapplied host feedback.
 
 ## 6. Crew-pattern account and Boards card
 
