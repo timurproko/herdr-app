@@ -457,6 +457,17 @@ One coordinator SHALL support multiple validated same-machine project children t
 - **THEN** every exact same-machine native space is connected after validating task identity and placement labels, without changing crew.home or inferring links from names
 - **AND** unsupported placement versions, mismatching project/name labels, wrong adoption IDs and cross-machine members do not establish a link
 
+#### Scenario: Mixed generations within one combined space
+- **WHEN** a valid same-home combined native space contains legacy workers and placement-v1 combined workers, including when the fleet view omits task projects
+- **THEN** that single child remains connected after exact membership validation, with one connector and Crew only on its coordinator
+- **AND** a change in the child's directory-derived title does not detach it or remove the coordinator's eligible task PRs
+
+#### Scenario: Mixed combined fleet switched off and on
+- **WHEN** the preference is switched off and on with Settings still open for a valid local or ready remote mixed combined fleet
+- **THEN** off immediately hides nesting and revokes task inventory, while on immediately restores valid remembered presentation and starts current verification through the recurring Spaces owner
+- **AND** without remembered identity, only successful current verification attaches the child and enables task PR reads; pending verification shows ordinary coordinator Loading rather than Not a git repository
+- **AND** no dialog close, unrelated topology event, prior-toggle inventory or pre-toggle reply is required or accepted to complete the current binding
+
 #### Scenario: Drag any member or change membership
 - **WHEN** the parent or any child is dragged within its machine group
 - **THEN** the whole block moves with coordinator first and stable child order, without splitting another block or selecting/moving terminals
