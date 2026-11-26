@@ -108,10 +108,11 @@ for(const warm of [false,true]) {
  assert.equal(panel.pullError,null);
  let tree=h.render(()=>panel.render(cx));
  for(const tab of ['open','closed']) {
-   const badge=(await import('./support/git-row.mjs')).find(tree,`git-view-${tab}-count`);
-   assert.equal(words(badge).join(''),warm?(tab==='open'?'12':'7'):'0');
-   if(!warm)assert.match(badge.attrs.tooltip[0],/Count loading/);
+   const find=(await import('./support/git-row.mjs')).find;
+   assert.equal(find(tree,`git-view-${tab}-count`),undefined);
+   assert.equal(words(find(tree,`git-view-${tab}`)).join(''),tab==='open'?'Open':'Closed');
  }
+ assert.equal(panel.counts?.open??null,warm?12:null);assert.equal(panel.counts?.closed??null,warm?7:null);
  const wake=wakeups.find(w=>w.at===panel.readWake.due);clock=wake.at;wake.fn(cx);await tick();
  assert.deepEqual({...panel.counts},{open:12,closed:7});assert.equal(panel.pullError,null);
 }

@@ -174,11 +174,24 @@ share one captured coordinator binding; changed membership, conflicting parents 
 bindings, duplicates, missing/cross-machine endpoints and expired proof still refuse.
 Every child's saved colour and Automatic flag stays unchanged.
 
-`git-loading-line.test.mjs` checks one native moving line across ordinary and
-coordinator cold/warm/background/verification/safety work, overlap, completion,
-failure cooldown and retired measurement callbacks. Git cold Loading uses the
-shared message geometry with a static dot; Refresh is static even during its
-600ms disabled feedback. Files, tabs and shared activity remain animated as before.
+`git-loading-line.test.mjs` checks the shared pulsing dot for cold ordinary/coordinator
+Loading, equal message placement at 100%/130%, no simultaneous repository headers
+or moving line, warm/background/verification/safety line activity, overlap,
+completion, cooldown and retired callbacks. Folded cold failures stay visible.
+Refresh remains static during its 600ms disabled feedback; other panels are unchanged.
+`tests/features/git-loading-native.mjs --run --zoom 1|1.3 --output <outside>`
+uses a checksum-verified release 0.1.18 executable, synthetic data and isolated
+app/Core homes. It captures ordinary/coordinator cold Loading (two pulse phases),
+loaded Open/Closed, warm/background activity and visible failures. Both views'
+Loading blue pixels occupy y=241–261 at 100% and y=312–338 at 130% in the same
+2560×1640 capture geometry; dot brightness changes while text stays fixed. Cold
+frames have no repository header or line, and loaded tabs have no badge space.
+`--stress` adds frequent four-PR updates beside a repainting sibling; see
+[GIT-RENDER-BUDGET.md](GIT-RENDER-BUDGET.md) for the honest non-reproduction result.
+The fixture checks native logs as well as status.errors, writes proof outside the
+checkout, and stops every owned desktop/Core instance in finally. It is not a
+live-agent, network or native pointer hit-test.
+
 `fleet-history.test.mjs` checks provider work evidence: a live exact-owner read
 sets presentation-only loading; failed verification awaiting retry stops the line.
 
@@ -194,7 +207,7 @@ fixtures/documented proofs using header bulbs or CI-only one-shot sweeps describ
 historical presentation, not the current loading contract.
 
 `git-inventory-presentation.test.mjs` covers cold whole-inventory admission,
-immediate actionable notices, no partial-return leak, staged warm replacements,
+immediate actionable notices without section headers during cold Loading, no partial-return leak, staged warm replacements,
 under-header native line activity, no warm body Loading and quiet cooldown behavior.
 Healthy activity says Updating pull requests while worker actions remain available;
 only unverified activity carries the paused-action warning and sanitized diagnostics.
@@ -244,7 +257,7 @@ instances stop in finally; screenshots, logs and receipts stay outside the check
 reported mixed-fleet case through real Crew verification, aggregate/read modules
 and panel rendering. With herdr-app #74/#76 refused and siblings supplying Open 2 /
 Closed 5, it requires one top-left cold Loading indication without partial successful
-sections or unknown-only headers and both badges 0/loading, then the complete
+sections or unknown-only headers and internally unknown counts with label-only tabs, then the complete
 eligible list and task totals after an exact fake-clock
 cooldown retry without another event. It also covers queued/in-flight uncertainty,
 actionable/missing exclusions, folds, atomic boundaries, 100-item cap, surviving
@@ -1055,26 +1068,16 @@ API invocation. Pagination distinguishes its selected-state filter from the new
 combined totals fields, applies both totals on append and retains cursor-depth
 repair. The 100-row render operation budget remains separately enforced.
 
-## Always-visible Git tab counts
+## Label-only Git tabs
 
-`tests/git-count-badges.test.mjs` renders the actual ordinary and coordinator chrome
-with the real shared segment, ordinary snapshot reader and aggregate index. It
-checks visible first-load/unknown zeros, loading tooltip/accessibility text,
-authoritative totals, retained counts during delayed and failed same-context reads,
-and first-load reset after a real repository/coordinator-home change. All IO is
-synthetic. The geometry matrix additionally compares tab and badge boxes across
-unknown/0/1/99/999/larger totals and verifies three-digit text fits inside the
-reserved 32px badge with padding at every tested width and zoom. Another 2,400
-complete-panel comparisons in `git-count-badges.test.mjs` cover both selected
-states and both tabs in ordinary/coordinator renderers at 280–480px and
-75–200% zoom including 130%. They compare the label's 8px left inset with the
-painted badge's 8px right inset, not just its reserved slot, and require centred
-one/two/three-digit text and stable tab/badge boxes. Known exact totals have no
-count-only tab or nested badge tooltip; unknown zeros keep loading information,
-and counts above 999 show a bounded 999+ with their exact total in a tooltip and
-accessible label. The 4px symmetric badge padding also contains the overflow
-indicator. Zero is an explicit first-load display choice, not an authoritative
-claim that reads finished. These checks resolve synthetic boxes, not native pixels.
+`tests/git-count-badges.test.mjs` renders actual ordinary/coordinator chrome with
+unknown, zero, cached subset and authoritative internal totals. It requires only
+Open/Closed labels and accessible names, no badge subtree or reserved slot, no
+count tooltip, symmetric 8px label padding, stable geometry and real tab callbacks.
+The 1,920 complete-panel comparisons cover both selected states at 280–480px and
+75–200% zoom including 130%. Repository-count and entry regressions independently
+retain scoped totals, folding and remaining-row pin counts. These are synthetic
+boxes, not native pixels; the opt-in Git loading fixture supplies native screenshots.
 
 ## Stable Git row geometry
 
@@ -1126,8 +1129,7 @@ uses ellipsis-only values. These are synthetic resolved-box comparisons, not nat
 GPUI pixels or visual interaction evidence; no app, session, credential or deployment
 is used.
 
-The same fixture compares Open/Closed segment positions for unknown, zero and
-multi-digit counts; empty badge reservations have no fabricated values.
+The same fixture checks natural Open/Closed label widths and symmetric padding with no badge reservations.
 `tests/git-location.test.mjs` now samples actual rendered row identities through
 pending/rejected/timed-out/signaled/abnormal/permission-denied/empty root replies,
 checks root/repository/count/page and native pin-size retention, then verifies

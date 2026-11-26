@@ -413,7 +413,7 @@ When strict fleet action context is unavailable, the coordinator SHALL retain it
 
 #### Scenario: Cold restart before verification
 - **WHEN** the selected coordinator is restored from durable pair identity but no task/PR facts have been verified in this runtime
-- **THEN** Git shows its standard top-left Loading text and static dot with the moving line while work is pending, rather than switching to folder-based non-repository mode or showing partial sections
+- **THEN** Git shows its standard top-left Loading text and pulsing dot without repository headers/counts or the moving line, rather than switching to folder-based non-repository mode or showing partial sections
 - **AND** only a fresh verified same-home status result can start task-linked GitHub reads
 
 #### Scenario: Different selected space or confirmed home change
@@ -630,16 +630,16 @@ Verification SHALL use recorded-only status, preferring an explicitly advertised
 - **AND** later enrichment cannot renew verification age, change pair identity or discard unchanged discovered links during the next recorded refresh
 
 ### Requirement: Selected-tab coordinator repository visibility
-Coordinator Git SHALL withhold cold partial successes until first reads settle, using top-left Loading below Open/Closed. Warm return/refresh SHALL retain the list with the under-header line, no body Loading and in-place completion. Actionable notices SHALL appear immediately. Eligibility SHALL precede folding, preserving history, truthful totals and saved folds. Enrollment SHALL use full eligible inventory independently of section visibility.
+Coordinator Git SHALL withhold cold partial successes until first reads settle, using pulsing top-left Loading below Open/Closed without repository headers/counts or the moving line. Warm return/refresh SHALL retain the list with the under-header line, no body Loading and in-place completion. Actionable notices SHALL appear immediately. Eligibility SHALL precede folding; enrollment SHALL use full eligible inventory independently of section visibility.
 
 #### Scenario: Open and Closed contain different repositories
 - **WHEN** one repository has only Open or Draft task PRs and another has only eligible Merged or Closed task PRs, with no unresolved task PRs
 - **THEN** Open shows only the first repository section and Closed shows only the second
-- **AND** omitted sections leave no header or chevron, and switching tabs preserves both totals
+- **AND** omitted sections leave no header or chevron, and switching tabs preserves internal scoped totals without tab badges
 
 #### Scenario: Genuine selected-tab notice without rows
 - **WHEN** a repository has no eligible selected-tab rows but has an applicable actionable PR-read notice
-- **THEN** its section appears immediately with that notice under existing folding behavior, even without a known PR state or while other repositories are still loading
+- **THEN** its notice appears immediately; while cold body Loading remains it has no repository header/count, and after cold work settles it uses existing section folding behavior
 - **AND** a failure scoped only to the other tab does not keep an otherwise empty section visible
 - **AND** this explicit failure exception never becomes an empty Loading-only section
 
@@ -665,10 +665,10 @@ Coordinator Git SHALL withhold cold partial successes until first reads settle, 
 
 #### Scenario: Mixed successful repositories and a quietly deferred cold repository
 - **WHEN** no compatible sections have previously been shown and admitted links include unread PRs in one repository while healthy siblings have supplied rows
-- **THEN** only one standard top-left static dot and Loading text appear as body inventory feedback, with successful sibling headers and rows withheld until all admitted first reads settle
-- **AND** queued, in-flight and quietly deferred work remain unresolved; genuine applicable failures may show their repository notice immediately below Loading
+- **THEN** only one standard top-left pulsing dot and Loading text appear as body inventory feedback, with successful sibling headers and rows withheld until all admitted first reads settle
+- **AND** queued, in-flight and quietly deferred work remain unresolved; genuine applicable failures may show their scoped notice immediately below Loading without repository headers or counts
 - **AND** no error or rate-limit wording, placeholder PR, per-repository Loading flash or falsely complete global total is introduced
-- **AND** only pending work animates the under-header line; a dormant cooldown alone does not animate
+- **AND** no under-header line appears while body Loading is shown
 
 #### Scenario: Retry fills the existing section
 - **WHEN** the existing cooldown expires while the panel remains shown, enabled and freshly verified, and its automatic retry succeeds
@@ -685,9 +685,9 @@ Coordinator Git SHALL withhold cold partial successes until first reads settle, 
 
 #### Scenario: One cold repository fails while others load
 - **WHEN** one admitted repository has an actionable first-read failure and other repositories have pending or deferred first reads
-- **THEN** one top-left Loading indication remains and the failed repository's applicable header and notice appear beneath it under existing folding rules
-- **AND** successful partial sections remain withheld; when all remaining reads succeed, confirm absence or fail actionably, eligible successes appear and Loading disappears
-- **AND** actionable failures without authoritative PR state keep totals loading rather than inventing exact totals, even after the body Loading disappears
+- **THEN** one top-left pulsing Loading indication remains and the failed repository's applicable scoped notice appears beneath it without any repository header or count
+- **AND** successful partial sections remain withheld; when all remaining reads succeed, confirm absence or fail actionably, eligible successes and applicable failure sections appear and Loading disappears
+- **AND** actionable failures without authoritative PR state keep internal totals uncertain rather than inventing exact totals, even after the body Loading disappears
 
 #### Scenario: Background refresh of an already shown list
 - **WHEN** the coordinator list is on screen and known PR facts refresh without new unread membership or lost verification
@@ -734,7 +734,7 @@ Same-context refresh SHALL retain rows, pins and pagination until replacement is
 #### Scenario: Loading and fleet verification
 - **WHEN** the panel has unresolved first reads or the same coordinator home temporarily loses fresh verification
 - **THEN** previously shown compatible rows remain with only the under-header moving line for pending work, no body Loading and no Stale text anywhere
-- **AND** cold verification uses the ordinary top-left static dot and Loading wording plus the same single line while work is pending, with no extra Verifying header, invented PRs, counts, skeleton values or partial success sections
+- **AND** cold verification uses the ordinary top-left pulsing dot and Loading wording without the moving line or repository headers/counts, extra Verifying header, invented PRs, skeleton values or partial success sections
 
 #### Scenario: Off and on with slow or failed first verification
 - **WHEN** a verified coordinator list is switched off and back on and the first current read is slow, interrupted or fails
@@ -761,43 +761,6 @@ Same-context refresh SHALL retain rows, pins and pagination until replacement is
 - **THEN** only that exact machine, owner, home and selected-tab previously shown presentation can be restored, subject to current eligibility and fresh action verification
 - **AND** the cache is bounded, starts no hidden reads, and persists no PR/task inventory to disk, portable preferences or restart state
 - **AND** Git, Crew or attachment disablement and authoritative ownership loss invalidate affected cached presentations
-
-### Requirement: Always-visible Git tab counts
-Ordinary and coordinator Git views SHALL always display Open and Closed count badges. Unknown or incomplete totals SHALL retain loading feedback, using 0 without compatible cached values and otherwise retaining scoped known values. Cached task subsets SHALL NOT appear as exact repository-wide totals. Badge geometry SHALL remain stable; only loading or abbreviated counts SHALL have count tooltips and accessible labels SHALL retain exact known totals and scope.
-
-#### Scenario: Unknown and loaded totals
-- **WHEN** an ordinary or coordinator Git panel first loads, then receives authoritative totals
-- **THEN** both badges visibly start at 0 unless compatible scoped cached values exist and change to authoritative counts without moving the tabs
-- **AND** three-digit totals remain fully contained in the fixed badge geometry at supported zooms
-- **AND** unknown counts have a loading tooltip and accessible label, while fully visible exact totals have no count-only tooltip on the tab or badge
-
-#### Scenario: Refresh retains counts
-- **WHEN** known same-repository or coordinator-home counts are refreshed, including delayed and failed same-context reads
-- **THEN** their last-known totals remain visible rather than returning to 0
-- **AND** only an incompatible identity change clears counts back to the first-load presentation
-
-#### Scenario: Symmetric tab padding across digit changes
-- **WHEN** either selected or unselected Open or Closed tabs display one-, two- or three-digit counts in ordinary or coordinator views at 75–200% zoom including 130%
-- **THEN** the gap from the tab's left edge to its label equals the gap from its painted count badge's right edge to the tab's right edge
-- **AND** digits remain centred within the badge without moving tab or badge bounds as digit counts change
-
-#### Scenario: Abbreviated large counts
-- **WHEN** a count exceeds 999
-- **THEN** its bounded badge displays 999+ and exposes the full exact total through its tooltip and accessible label
-- **AND** its tab geometry remains unchanged
-
-#### Scenario: One admitted repository remains unresolved
-- **WHEN** some admitted coordinator PR identities have no authoritative state while other repositories have supplied rows
-- **THEN** both totals remain marked loading rather than presenting the successfully loaded subset as complete
-- **AND** before any complete total exists both badges show 0 using the existing count-loading tooltip and accessible state
-- **AND** if new unread membership arrives after a complete same-scope snapshot, compatible last-good totals remain visibly marked loading until resolution
-- **AND** completion counts only deduplicated eligible coordinator task PRs, never guessed states or whole-repository totals
-
-#### Scenario: Worker seeded from coordinator section
-- **WHEN** worker entry reuses that repository's known coordinator task section before repository-wide totals have loaded
-- **THEN** both badges immediately show that section's known Open and Closed values with existing count-loading feedback identifying the cached task scope and incomplete repository totals
-- **AND** no global multi-repository coordinator total is copied to the worker and no task subset is asserted to be the whole repository
-- **AND** authoritative repository-wide rows and both totals replace the seed coherently when the ordinary read succeeds, while return to coordinator retains task-scoped counts
 
 ### Requirement: Pending checks fallback without live coverage
 Shown Open/Draft PRs SHALL use 45-second safety reads while checks are pending or unknown, even when enrolled; settled rows SHALL retain 45-second unenrolled and 120-second enrolled state/check reads. Known Closed/Merged rows SHALL stay session-cached. Failures SHALL retain values with bounded backoff and at least 15 minutes for rate refusals. Hidden, disabled, offline and superseded contexts SHALL stop safety reads; window activity alone SHALL NOT gate reads.
@@ -888,7 +851,7 @@ Failed, unmatched and discarded fleet verification attempts SHALL retain a bound
 
 #### Scenario: Existing verification feedback
 - **WHEN** the selected coordinator has a relevant last verification failure
-- **THEN** cold top-left Loading retains sanitized reason/time in its tooltip without an animated dot, Stale text or notifications
+- **THEN** cold top-left Loading retains sanitized reason/time in its tooltip with the shared pulsing dot, without Stale text or notifications
 - **AND** warm header activity and its tooltip are absent; bounded runtime diagnostics and the local log remain available without a replacement header tooltip
 - **AND** a cold unverified coordinator candidate gains no attachment, PR inventory, GitHub-read permission or worker-navigation authority from that feedback
 
@@ -1042,8 +1005,8 @@ Coordinator Open and Closed SHALL reveal ten presentation items initially and ap
 
 #### Scenario: Atomic section reveal
 - **WHEN** a reveal or safe-cap boundary would end with an unfolded repository header
-- **THEN** the header is held for the next batch with at least its first row, visible notice or standard Loading body, never rendered alone
-- **AND** after every reveal and state transition each rendered unfolded header has a row, visible notice or standard Loading beneath it
+- **THEN** the header is held for the next batch with at least its first row or visible notice, never rendered alone or together with body Loading
+- **AND** after every reveal and state transition each rendered unfolded header has a row or visible notice beneath it
 - **AND** settled sections with no eligible row or notice disappear after rows move tabs, expire or are authoritatively absent, while intentionally folded eligible sections keep their headers
 
 #### Scenario: Long Closed inventory
@@ -1071,7 +1034,7 @@ Coordinator Open and Closed SHALL reveal ten presentation items initially and ap
 
 #### Scenario: Refresh or appended facts while scrolled
 - **WHEN** known rows arrive or same-context facts refresh
-- **THEN** the surviving row anchor, folded sections, full counts and fixed row geometry are retained
+- **THEN** the surviving row anchor, folded sections, full internal counts and fixed row geometry are retained
 - **AND** accepted native anchor requests unconditionally request a subsequent layout, even when both fade flags are unchanged
 - **AND** a genuine context change cannot inherit incompatible facts or scroll requests
 
@@ -1081,8 +1044,8 @@ Coordinator Open and Closed SHALL reveal ten presentation items initially and ap
 - **AND** the shared scroll hints do not replace its existing explicit load or retry control
 
 #### Scenario: Unresolved section within the existing watchdog budget
-- **WHEN** unresolved repositories render or recover alongside loaded rows
-- **THEN** Loading is bounded by the existing presentation-item cap, preserves atomic header/body reveal and introduces no render-time measurement, notification or diagnostic IO
+- **WHEN** unresolved repositories render or recover alongside collected facts
+- **THEN** cold Loading and immediately visible actionable notices introduce no render-time measurement, notification or diagnostic IO, and repository headers wait until Loading disappears
 - **AND** the 50 ms render watchdog and existing PR-row cap remain unchanged
 
 ### Requirement: Coherent pull request state transitions
@@ -1620,13 +1583,12 @@ Build and Review chips and fallback robots SHALL share one navigation-first pin-
 - **AND** moving ghost rows and retained coordinator presentation never become navigation or worker authority
 
 ### Requirement: One complete-lifecycle Git loading animation
-Ordinary and coordinator Git panels SHALL use the existing moving line immediately below the header as their only panel-loading animation throughout pending cold, warm and background work, regardless of pending CI. The line SHALL stop on completion, failure, hide, disable or scope replacement. The header activity bulb and its tooltip SHALL be absent; shared activity components and other panels SHALL remain unchanged.
+Ordinary and coordinator Git panels SHALL show one loading animation at a time: the shared pulsing dot with cold body Loading, otherwise the existing moving line immediately below the header during pending work. The line SHALL stop on completion, failure, hide, disable or scope replacement. Header activity bulbs and tooltips SHALL remain absent; other panels SHALL remain unchanged.
 
 #### Scenario: Cold ordinary and coordinator work
 - **WHEN** an enabled shown Git panel begins folder, repository, list, targeted, pagination, verification or inventory work without previously shown compatible content
-- **THEN** one moving line runs until the pending work completes or fails, including work exceeding one 2.4-second pass and work with no loaded pending CI
-- **AND** cold top-left Loading retains the other right-side panel's 7px dot, 6px gap, blue 12px text and existing insets, but its dot is static in Git
-- **AND** references elsewhere to a Git Loading working bulb mean this static message, not a second loading animation
+- **THEN** cold body Loading uses the shared 7px pulsing dot, 6px gap and blue 12px text, with identical vertical placement and existing horizontal insets in both views
+- **AND** no moving under-header line appears in a frame containing body Loading, including cold verification or quiet-deferred first reads
 - **AND** actionable failures remain visible and coherent inventory publication and count uncertainty remain unchanged
 
 #### Scenario: Warm background and manual work
@@ -1638,7 +1600,7 @@ Ordinary and coordinator Git panels SHALL use the existing moving line immediate
 #### Scenario: Idle failure cooldown and retired callbacks
 - **WHEN** work completes, fails, becomes dormant awaiting a future retry, or the panel is hidden, disabled or changes context
 - **THEN** no obsolete callback keeps the old loading line running or clears a newer context's work
-- **AND** a dormant cooldown, uncertain count or historical failure alone does not assert an active request
+- **AND** a dormant cooldown, uncertain count or historical failure alone does not assert an active request; unresolved cold inventory may retain its pulsing Loading without a line
 - **AND** no loading animation changes another panel, tab, status slot or shared activity component
 
 ### Requirement: Shared warm Git repository entry
@@ -1900,3 +1862,35 @@ Coordinator Git repository sections SHALL follow matching connected child-space 
 - **THEN** presentation-only ordering can retain compatible already-verified associations but cannot establish new authority or borrow another scope's matches
 - **AND** existing cold/warm loading, counters, row labels, disclosure, reveal limits, cache eligibility and worker actions retain their own behavior
 - **AND** section reordering changes no Crew record, native tab/terminal placement or portable preference
+
+### Requirement: Label-only Git tabs
+Ordinary and coordinator Git panels SHALL display only Open and Closed labels in their tab controls, without count bubbles, count reservations or count-only tooltips. Existing selected styling, accessible tab names and selection behavior SHALL remain. Repository section counts SHALL remain unchanged.
+
+#### Scenario: Unknown cached and loaded totals
+- **WHEN** either Git view renders with unknown, partial, cached, zero or authoritative totals, including during refresh or failure
+- **THEN** the controls read only Open and Closed and reserve no badge width
+- **AND** internal total uncertainty does not introduce a visual tab counter or count-only tooltip
+
+#### Scenario: Repository counts remain
+- **WHEN** loaded repository sections expand, fold, refresh or contain a selected pinned PR
+- **THEN** their existing scoped counts remain, including the ordinary header's remaining-row count
+- **AND** removing tab badges changes no repository eligibility, order, cursor, pin or selected tab
+
+### Requirement: Exclusive cold Git loading presentation
+Ordinary and coordinator Git panels SHALL never show repository section headers or their counts together with body Loading. Unresolved cold reads SHALL show one pulsing Loading message at the same position below Open/Closed in both views. Successful partial sections SHALL wait for coherent publication. Actionable failures SHALL remain visible without a section header while Loading remains.
+
+#### Scenario: Ordinary identity arrives before its first page
+- **WHEN** the repository identity is known but no compatible selected-tab page or published section is ready
+- **THEN** only the standard pulsing Loading message represents the pending list, without a repository header or zero section count
+- **AND** the header and eligible rows appear together when ready, replacing Loading
+
+#### Scenario: Coordinator mixed pending success and failure
+- **WHEN** a cold coordinator has successful sibling reads and unresolved first reads, with or without actionable repository failures
+- **THEN** one pulsing Loading message remains, all repository headers/counts and successful partial rows are withheld, and applicable failures remain visible as scoped notices
+- **AND** failures are not hidden by saved folds while their headers are withheld
+- **AND** after first reads settle, eligible sections and applicable failure sections use their ordinary headers and Loading disappears
+
+#### Scenario: Warm empty and nonempty results
+- **WHEN** a compatible previously published list or authoritative empty result refreshes
+- **THEN** that presentation remains without body Loading, and only the under-header line animates while work is active
+- **AND** visible failures, pins, folds, paging and scroll behavior retain their existing policy

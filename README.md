@@ -277,27 +277,15 @@ accessibility labels remain available. Git keeps loaded rows, counts, pagination
 pin measurements while a same-context refresh runs or a Git-root/branch probe
 fails inconclusively. An older active PR also stays pinned during its targeted
 reread after page-one refresh. Only an authoritative replacement, proven
-non-repository or actual context change clears incompatible facts. Open/Closed
-count badges are always visible in ordinary and coordinator Git views, showing
-**0** when no compatible cached values exist, or retaining known scoped counts
-while refreshing a cached destination. The fixed badge
-width is 32px with centred digits, fitting three digits without moving tabs.
-Each tab has equal 8px padding before its label and after the painted badge,
-selected or not. Fully visible totals have no count-only tooltip; unknown totals
-keep **Count loading; showing 0**, while totals above 999 display **999+** with
-the exact number in their tooltip. Accessible labels always keep the full total
-and loading state. Same-repository refreshes keep the last-known counts. Coordinator totals stay loading
-until all admitted PR identities have authoritative facts or confirmed absence; a
-successful subset never becomes an exact total. New unread same-home membership
-keeps compatible last-good totals with loading hover/accessibility feedback. On a cold coordinator visit, unresolved first reads (including quiet deferrals)
+non-repository or actual context change clears incompatible facts. Ordinary and coordinator Git tabs read only **Open** and **Closed**, without count bubbles, badge space or count tooltips. Each label retains equal 8px side padding and its accessible name. Repository section counts remain, including the count of unpinned rows beneath an ordinary section header. Internal scoped totals and their uncertainty remain separate from the label-only tabs. On a cold coordinator visit, unresolved first reads (including quiet deferrals)
 share one standard top-left bulb/**Loading** directly below Open/Closed; partial
 successful sections stay hidden until the admitted first reads settle. Actionable
-repository notices remain visible immediately. Returning to a previously shown
+repository notices remain visible immediately, without section headers while Loading is shown. Neither Git view shows a repository header or count beside cold Loading; headers and rows replace it together. Returning to a previously shown
 coordinator, or any background refresh, retains the previous list with no body
 Loading: only the moving line below Git's header animates during the update,
 stops when work finishes or fails, and replacement sections update in place.
 Git has no header activity bulb or tooltip. Cold Loading retains the existing
-blue text and dot, but the dot is static; Git Refresh stays static and disabled
+blue text and shared pulsing dot at the same vertical position in both views, without the moving line; Git Refresh stays static and disabled
 while busy, including its minimum-feedback interval. Other panels are unchanged. No Stale
 label appears. Unknown-only repositories never flash empty headers. Cooldown expiry
 still retries without a new event; warm refusals keep their rows and counts. Cold loading
@@ -411,9 +399,7 @@ Expanded lists are retained across webhook refreshes; manual Refresh or a
 machine/folder change starts again at 10. Same-folder agent/tab/space switches
 retain repository metadata, counts, rows, pagination and in-flight GitHub requests;
 entry restores that section with the selected agent's matching PR pinned above its header.
-When only a coordinator task subset is cached, its known Open/Closed values stay
-visible with incomplete-count metadata until full repository totals arrive; task
-counts are never asserted to be whole-repository totals. Existing click-origin
+When only a coordinator task subset is cached, its internal Open/Closed values retain incomplete-count metadata until full repository totals arrive; task counts are never asserted to be whole-repository totals. Tabs remain label-only. Existing click-origin
 pins and footer confirmation keep their normal lifecycle (managed Crew terminals
 use full `crew.pr` identity; A1 and Claude Code otherwise use their session footer).
 Clicking a list PR's Build/Review chip or fallback robot opens the agent tab
@@ -526,7 +512,7 @@ PR. The rail overlays the outer gutter without shifting content or the hover
 area. It is not duplicated below and has no special background; all PRs use the
 normal neutral hover. The selected row stays above the repository section and
 remains visible when that section is collapsed. Its header counts only the other
-rows beneath it and disappears when there are none; tab totals still count every PR.
+rows beneath it and disappears when there are none; the Open/Closed tabs stay label-only.
 Tab, sidebar and keyboard selection pin the resolved agent PR without motion;
 only label/robot clicks animate. Switching agents follows the selected PR and a
 resolved no-PR terminal clears the pin. Other rows keep their relative order. Empty, zero-count or unverified coordinator seeds never
@@ -620,8 +606,7 @@ open Add repo, select the repository and confirm Add yourself. The header **‹ 
 to the full catalog. Transport backoff and local agent discovery are
 separate from CI checking.
 
-Every cold load, warm return and background update in ordinary or coordinator
-Git uses one subtle 1px moving line **immediately below the header**, above
+Cold ordinary and coordinator Git show only their shared pulsing **Loading** message, not the moving line. Warm returns and background updates retain their list and use one subtle 1px moving line **immediately below the header**, above
 Open/Closed, whether or not a loaded PR has pending CI. Native motion moves it
 across and back (2.4 seconds each direction), without JavaScript frame or phase
 timers. It stays present through pending work and disappears on completion,
@@ -863,7 +848,7 @@ Fleet verification failures and discarded replies retain sanitized reason/time/g
 facts in runtime-only `custom.fleet.diagnostics`. Hover the Git cold **Loading**
 message for the last relevant failure; warm header activity and its tooltip are
 removed, while local diagnostics/logs remain available. No Stale label is shown.
-Empty verification uses a static blue dot and **Loading**, without extra header text; a cold
+Empty verification uses a pulsing blue dot and **Loading**, without extra header text; a cold
 candidate never invents attachment or a PR list.
 The local `.customizations/fleet-verification.log` keeps at most 128 lines / 64 KiB,
 deduplicating an unchanged reason episode without raw command output or secrets.
@@ -965,8 +950,10 @@ layout changes restore the attached first frame while verification runs in the
 background. Only completed contradictory evidence, disabling the feature or
 missing native spaces clears it; transport failures alone do not.
 Retained visuals are not operational permission: Git/worker actions
-still require fresh exact live identity; space-only ordering uses the captured displayed relationship. An unverified coordinator Git panel keeps
-its loaded rows and folds with the moving line below the header during pending work, or shows the standard **Loading** text and static dot
+still require fresh exact live identity; space-only ordering uses the captured
+displayed relationship. An unverified coordinator Git panel keeps its loaded rows
+and folds with the moving line below the header during pending work, or shows the
+standard **Loading** text and pulsing dot
 without special header text on cold start. After off/on, a slow or failed first
 read shows **Loading**, not **Not a git repository**, for the current coordinator
 candidate. Off clears the inventory; on never restores a previous toggle's list.

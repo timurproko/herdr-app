@@ -41,7 +41,7 @@ panel.notices={sync(){},presentation(){}};panel.enrollmentPicker={render(){},sto
 aggregate.entries.set('owner/loading#1',entry('owner/loading',1));
 const render=()=>{const tree=h.render(()=>panel.renderAggregate(cx,t));assertTaskSections(tree,panel);return tree;};
 let tree=render();assert.equal(words(find(tree,'git-task-empty')).join(' '),'Loading');assert.equal(find(tree,'task-repo-header-owner/loading'),undefined);
-for(const state of ['open','closed'])assert.match(find(tree,`git-view-${state}`).attrs.accessibility_label[0],/0 \(loading\)/);
+for(const state of ['open','closed'])assert.equal(find(tree,`git-view-${state}`).attrs.accessibility_label[0],state==='open'?'Open':'Closed');
 const headerId='task-repo-header-owner/loading',listId=panel.selectedTaskWindow.key;
 panel.foldedRepositories.add('owner/loading');tree=render();assert.equal(find(tree,headerId),undefined);assert.ok(find(tree,'git-task-waiting'));assert.equal(find(tree,'task-loading-owner/loading'),undefined);
 panel.foldedRepositories.clear();tree=render();
@@ -60,7 +60,7 @@ anchor.project(loaded,new Set(),28,2,'130');anchor.observe(200,100);const prior=
 loaded[1]={repo:'owner/b',rows:[{key:'owner/b#1'},{key:'owner/b#2'}]};anchor.project(loaded,new Set(),28,2,'130');
 assert.ok(anchor.offset>prior);assert.ok(anchor.correction,'Arrival preserves the surviving lower repository anchor');
 await Promise.all(jobs);
-console.log('PASS standard Loading, incomplete badges, folded/header/list continuity, atomic boundaries, 100-item cap and surviving scroll anchor');
+console.log('PASS standard Loading, label-only tabs with internal count uncertainty, folded/header/list continuity, atomic boundaries, 100-item cap and surviving scroll anchor');
 
 // Real Crew verification/admission, aggregate, read queue and renderer; only
 // transport, clock and native builders are synthetic. Healthy replies complete
@@ -82,7 +82,7 @@ assert.equal(find(tree,'task-repo-header-timurproko/crew'),undefined,'Cold healt
 assert.equal(find(tree,'task-repo-header-timurproko/myworkflows'),undefined);
 assert.equal(aggregate.rows('open').length,2);assert.equal(aggregate.rows('closed').length,5);
 assert.deepEqual({...aggregate.counts()},{open:null,closed:null});assert.doesNotMatch(words(tree).join(' '),/rate limit|Could not read|Stale/);
-for(const tab of ['open','closed']){assert.equal(words(find(tree,`git-view-${tab}-count`)).join(''),'0');assert.match(find(tree,`git-view-${tab}-count`).attrs.tooltip[0],/Count loading; showing 0/);}
+for(const tab of ['open','closed'])assert.equal(find(tree,`git-view-${tab}-count`),undefined,'Cold tabs stay label-only');
 panel.view='closed';tree=allVisible();assert.ok(find(tree,'git-task-empty'));assert.equal(find(tree,'task-repo-header-timurproko/herdr-app'),undefined);assert.equal(aggregate.rows('closed').length,5);
 panel.view='open';tree=allVisible();const selectedWindow=panel.selectedTaskWindow,readsBefore=calls.length;
 const due=aggregate.readWake.due;now=due-1;aggregate.pump(cx);await flush();assert.equal(calls.length,readsBefore,'No automatic read before cooldown ends');
@@ -90,10 +90,10 @@ now=due;timers.find(w=>w.at===due).fn(cx);await flush();assert.equal(held.length
 respond('timurproko/herdr-app',healthy('timurproko/herdr-app'));await flush();tree=allVisible();
 assert.ok(find(tree,'pr-timurproko/herdr-app#74'));assert.ok(find(tree,'pr-timurproko/herdr-app#76'));assert.equal(find(tree,'task-loading-timurproko/herdr-app'),undefined);
 assert.equal(panel.selectedTaskWindow,selectedWindow);assert.deepEqual({...aggregate.counts()},{open:4,closed:5});
-assert.equal(find(tree,'git-view-open-count').attrs.tooltip,undefined);
+assert.equal(find(tree,'git-view-open-count'),undefined);
 // Newly admitted membership retains compatible known totals, explicitly loading.
 context.links.push({url:'https://github.com/other/new/pull/99',terminal:'t9'});aggregate.sync(cx);await flush();tree=allVisible();
-assert.equal(words(find(tree,'git-view-open-count')).join(''),'4');assert.match(find(tree,'git-view-open-count').attrs.tooltip[0],/Count loading; showing 4/);
+assert.equal(find(tree,'git-view-open-count'),undefined);assert.deepEqual({...aggregate.counts()},{open:4,closed:5});assert.equal(aggregate.countsLoading,true);
 respond('other/new',{code:1,stderr:'secondary rate limit'});await flush();
 // Warm repository refusal retains facts and never replaces them with Loading.
 aggregate.refresh(cx);await flush();if(held.length)respond(held[0].options.env.GH_REPO,{code:1,stderr:'secondary rate limit'});await flush();tree=allVisible();
