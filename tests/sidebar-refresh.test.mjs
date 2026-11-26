@@ -177,6 +177,7 @@ for (const view of ['open', 'closed']) for (const fail of [false, true]) {
   h.view.view = view;
   h.view.pulls[view]??=[]; // A real loaded page, not a timestamp masking null data.
   h.view.pullsAt[view] = Date.now();
+  h.view.commitRepository(); // Publish the simulated loaded tab before refreshing it.
   const pending = h.hold('gh');
   h.button().attrs.on_click[0]({}, h.cx);
   state(h.button(), true);

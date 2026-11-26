@@ -43,7 +43,7 @@ assert.deepEqual(JSON.parse(JSON.stringify(settings.at(-1))),{section:'plugins',
 change({'owner/a':false,'owner/b':false,'owner/c':false});await drain();open();
 assert.deepEqual([...panel.enrollmentPicker.opening.choices],['owner/c','owner/a','owner/b'],'Deduplicated exact rendered section order');
 const footer=find(tree,'git-enrollment-footer'),scroll=find(tree,'task-pulls-scroll');assert.ok(footer.attrs.flex_none);assert.ok(scroll.attrs.flex_1);assert.ok(scroll.attrs.min_h);assert.ok(scroll.attrs.overflow_hidden);assert.ok(walk(scroll).some(node=>node.attrs.overflow_y_scrollbar));
-assert.ok(tree.kids.indexOf(footer)>tree.kids.indexOf(scroll));assert.ok(new Set(walk(scroll).filter(e=>/^pr-owner\//.test(e.attrs.id?.[0]??'')).map(e=>e.attrs.id[0])).size<=10,'Long PR inventory builds only the bounded window in the scroll sibling');assert.equal(text(find(tree,'git-view-open')),'Open 80','Windowing does not change the task total');assert.equal(find(tree,'task-pulls-more'),undefined);
+assert.ok(tree.kids.indexOf(footer)>tree.kids.indexOf(scroll));assert.ok(new Set(walk(scroll).filter(e=>/^pr-owner\//.test(e.attrs.id?.[0]??'')).map(e=>e.attrs.id[0])).size<=10,'Long PR inventory builds only the bounded window in the scroll sibling');assert.equal(text(find(tree,'git-view-open')),'Open','Revealing does not add a tab counter');assert.equal(panel.aggregate.counts().open,80);assert.equal(find(tree,'task-pulls-more'),undefined);
 assert.equal(find(scroll,'git-enrollment-footer'),undefined);assert.ok(find(tree,'task-error-owner/c'));
 for(const repo of repositories)panel.foldedRepositories.add(repo);render();assert.ok(find(tree,'git-enrollment-footer'));assert.equal(find(tree,'task-error-owner/c'),undefined);assert.equal(find(tree,'task-repo-body-owner/a'),undefined);assert.equal(find(tree,'git-task-empty'),undefined);
 key('up');assert.equal(panel.enrollmentPicker.index,2);key('down');assert.equal(panel.enrollmentPicker.index,0);key('down');assert.equal(find(tree,'git-enrollment-choice-1').attrs.bg[0],t.hover);key('enter');assert.equal(settings.at(-1).pluginSearch,'owner/a');
@@ -84,6 +84,6 @@ for(const zoom of [0.75,1,1.25,1.5,2]){
  label().kids[0].attrs.on_size_change[0]({width:320*zoom},cx);render();assert.equal(label().attrs.tooltip,undefined,'Widening removes unnecessary tooltip even when folded');panel.foldedRepositories.delete(longRepo);
 }
 const staleMeasure=label().kids[0].attrs.on_size_change[0],notified=notifications;context={...context,scope:'replacement'};panel.aggregate.context=context;render();staleMeasure({width:1},cx);assert.equal(notifications,notified,'Old-scope geometry cannot affect another coordinator');assert.equal(label().attrs.tooltip,undefined);
-assert.equal(text(find(tree,'git-view-open')),'Open 80');assert.equal(text(find(tree,'git-view-closed')),'Closed 0');
+assert.equal(text(find(tree,'git-view-open')),'Open');assert.equal(text(find(tree,'git-view-closed')),'Closed');assert.deepEqual({...panel.aggregate.counts()},{open:80,closed:0});
 assert.equal(handles.length,1,'Repeated render, open/close and context changes never allocate another handle');
 console.log('PASS real coordinator footer, zero/one/many choices, ordered dedup, fold/scroll, keyboard/dismissal, cached reads and stale Settings guards');

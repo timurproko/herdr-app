@@ -51,9 +51,8 @@ assert.equal(errors(render('open')).length,0);tree=render('closed');assert.equal
 assert.deepEqual({...panel.aggregate.counts()},{open:null,closed:null});assert.equal(panel.aggregate.countsLoading,true);
 assert.equal(panel.aggregate.rows('open').length,1);assert.equal(panel.aggregate.rows('closed').length,0);
 for(const tab of ['open','closed']) {
- assert.equal(text(find(tree,`git-view-${tab}-count`)),'0');
- assert.equal(find(tree,`git-view-${tab}-count`).attrs.tooltip[0],'Count loading; showing 0');
- assert.match(find(tree,`git-view-${tab}`).attrs.accessibility_label[0],/0 \(loading\)/);
+ assert.equal(find(tree,`git-view-${tab}-count`),undefined);
+ assert.equal(find(tree,`git-view-${tab}`).attrs.accessibility_label[0],tab==='open'?'Open':'Closed');
 }
 assert.ok(find(tree,`task-repo-${repo}`),'A genuine notice alone keeps its section');assert.equal(find(tree,'git-task-empty'),undefined,'Notice-only is not empty');
 // Cold historical failures belong only to Closed, without phantom Open headers.
