@@ -1013,16 +1013,21 @@ export default class Changes extends View {
     };
     this.rowPresentations ??= new RowPresentations();
     const {widths,ready,compact,visible}=this.rowPresentations.layout(id,sizes,items,clipOrder);
+    const hiddenItems=items.filter((item,index)=>item.omitted||(ready&&widths[index]===0)).map(item=>item.tooltip).filter(Boolean);
+    // A stage must not inherit any popup region, even one about unrelated data.
+    // Move omitted-item summaries to a surviving left-run item in such lines.
+    const scoped=items.some(item=>item.scopedTooltip),summaryAt=scoped?visible.find(index=>!items[index].trailing):null;
     const line = h_flex().id(id).w_full().min_w(0).h(18).flex_none().gap(6).items_center()
       .overflow_hidden().line_height('18px').text_size(11).text_color(t.muted)
       .on_size_change((size, cx) => measure('available', size, cx))
       .children(visible.flatMap((index, at) => {
         const item=items[index];
         const hidden=compact.has(item.kind)||(ready&&widths[index]+0.01<sizes[`${item.kind}-full`])||item.omitted;
-        const tooltip=item.info||(hidden?item.tooltip:null);
-        const node = item.render(compact.has(item.kind), false).flex_none()
+        const ownTooltip=item.info||(hidden?item.tooltip:null);
+        const tooltip=index===summaryAt?[...new Set([ownTooltip,...hiddenItems].filter(Boolean))].join('\n'):ownTooltip;
+        const node = item.render(compact.has(item.kind), false, tooltip).flex_none()
           .when(ready && clipOrder.includes(item.kind), el => el.w(widths[index]))
-          .when(Boolean(tooltip),el=>el.tooltip(tooltip));
+          .when(Boolean(tooltip&&!item.scopedTooltip),el=>el.tooltip(tooltip));
         // The flexible slot owns only the free space, never the task/check
         // cells. There is one normal gap, but no dot, before assigned labels.
         if (item.trailing) return [h_flex().id(`${id}-right`).flex_1().min_w(0).h(18).justify_end().overflow_hidden().child(node)];
@@ -1030,8 +1035,7 @@ export default class Changes extends View {
       }));
     // These absolute invisible children are outside the visible run, so their
     // text never adds a line, gap, hover target or horizontal reservation.
-    const hidden=items.filter((item,index)=>item.omitted||(ready&&widths[index]===0)).map(item=>item.tooltip).filter(Boolean);
-    if(hidden.length)line.tooltip(hidden.join('\n'));
+    if(!scoped&&hiddenItems.length)line.tooltip(hiddenItems.join('\n'));
     const pending = items.flatMap(item => [false, ...(item.compact ? [true] : [])].flatMap(short => {
         const key = keyed ? textKey(item, short) : null;
         if (key && (this.pullTextWidths.has(key) || this.pullTextPending.has(key))) return [];
@@ -1120,8 +1124,9 @@ export default class Changes extends View {
           .child(div().flex_none().whitespace_nowrap().underline().child(pr.checks.label));
       }}] : []),
       ...(pr.review ? [{kind:'review', measureKey:pr.review, tooltip:presentation.review, render:(_short, probe) => text('review', presentation.review, probe).text_color(pr.review === 'approved' ? t.ansi2 : t.ansi1)}] : []),
-      ...(labels.length ? [{kind:'labels', trailing:true, tooltip:labelNames, omitted:presentation.omittedLabels, measureKey:presentation.labelKey, render:(_short, probe) => h_flex().id(groupId('labels', probe)).min_w(0).h(18).gap(4).items_center().justify_end().overflow_hidden()
-        .children(labels.map((label, index) => label.stage?this.stageChip(t,pr,!ghost&&!probe,probe,stage):this.labelPill(t, label, `${groupId('label', probe)}-${index}`)))}] : []),
+      ...(labels.length ? [{kind:'labels', trailing:true, scopedTooltip:Boolean(stage), tooltip:labelNames, omitted:presentation.omittedLabels, measureKey:presentation.labelKey, render:(_short, probe, tooltip) => h_flex().id(groupId('labels', probe)).min_w(0).h(18).gap(4).items_center().justify_end().overflow_hidden()
+        .children(labels.map((label,index)=>label.stage?this.stageChip(t,pr,!ghost&&!probe,probe,stage):this.labelPill(t,label,`${groupId('label',probe)}-${index}`)
+          .when(Boolean(stage&&!probe&&tooltip),el=>el.tooltip(tooltip))))}] : []),
     ], ['review', 'labels']);
     // Spaces' row padding (8) minus its trailing pill margin (5) leaves 3px inside the highlight.
     return h_flex().id(`${prefix}pr-${rowId}`).relative().w_full().h(74).flex_none().pl(8).pr(3).py(6).gap(U.gap).items_start().rounded(U.radius)

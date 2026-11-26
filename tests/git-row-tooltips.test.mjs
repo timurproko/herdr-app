@@ -32,6 +32,19 @@ for(const coordinator of [false,true])for(const zoom of [1,1.3]) {
   for(const kind of ['tasks','checks','labels','meta','byline'])assert.equal(tip(f.get(kind)),undefined,'Complete screenshot parts have no combined summary');
   assert.equal(tip(f.tree),undefined);assert.equal(tip(f.get('stage')),undefined,'Managed aliases and unavailable roles do not create stage hover');assert.equal(f.get('stage').attrs.accessibility_label[0],'build agent unavailable');
 }
+// Regression for the reviewer's mixed-strip repro: a tooltip-free stage may
+// not sit inside any tooltip-bearing strip or metadata ancestor either.
+const ancestors=(node,target,path=[])=>node===target?path:(node?.kids??[]).map(child=>typeof child==='object'&&child?ancestors(child,target,[...path,node]):null).find(Boolean);
+for(const coordinator of [false,true])for(const ghost of [false,true])for(const zoom of [1,1.3])for(const width of [280,390]) {
+ const f=fixture({labels:[{name:'Review',color:'840479'},...Array.from({length:5},(_,i)=>({name:`Other ${i} with a long label name`,color:'123456'}))]},width,zoom,coordinator,ghost);
+ const stage=f.get('stage');assert.ok(stage);assert.equal(tip(stage),undefined);
+ assert.ok(ancestors(f.tree,stage).every(node=>!tip(node)),'Stage hit region has no tooltip-bearing ancestor');
+ assert.equal(tip(f.get('meta')),undefined);assert.equal(tip(f.get('labels')),undefined);
+ const hover=find(f.tree,`${ghost?'swap-':''}pr-label-${f.pr.key??17}-0`);assert.ok(hover);assert.ok(!nodes(hover).includes(stage),'Existing unrelated-pill hover target excludes the stage');
+ assert.match(tip(hover),/Other 4 with a long label name/,'Clipped or omitted unrelated labels remain recoverable');
+ assert.ok(f.geometry.get(hover).x+f.geometry.get(hover).width<=f.geometry.get(stage).x,'Unrelated-pill tooltip bounds end before the stage');
+ assert.equal(tip(f.get('title')),f.pr.title);
+}
 const check=(name,id,conclusion,status='COMPLETED',startedAt='2026-11-20T10:00:00Z')=>({name,workflowName:'CI',conclusion,status,startedAt,detailsUrl:`https://github.com/owner/repo/actions/runs/${id}/job/1`});
 assert.equal(facts.checks([check('removed',1,'FAILURE'),check('build',2,'SUCCESS')]).details,undefined);
 assert.deepEqual(Array.from(facts.checks([check('build',2,'FAILURE'),check('build',2,null,'IN_PROGRESS','2026-11-20T11:00:00Z')]).details),['Pending: CI / build']);

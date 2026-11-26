@@ -769,8 +769,12 @@ ship/fix owners through exact PR and verified head-branch matching, missing/inva
 rounds and Build 2/Build 3, action-time label/state/role/PR replacement and stale or
 historical coordinator refusals. GitHub stage facts stay null: this is a row-only
 projection, not an assignment or implementation-phase detector. Stage-only aliases,
-agent names and findings cannot leak through label-strip/metadata hover; unrelated
-clipped-label and title tooltips retain their existing policy.
+agent names and findings cannot leak through label-strip/metadata hover. Mixed
+stage strips put unrelated-label hints on existing unrelated pills only, not the
+shared strip or metadata parent; hidden-item summaries use a surviving left-run
+item. The stage has no tooltip-bearing ancestor. Regressions check the 390px
+coordinator case, narrow rows, ghosts and 100%/130%, with unchanged probes and
+unrelated clipped-label/title recovery.
 
 Opt-in `tests/features/pr-stage-native.mjs --run --pointer --output <outside> --zoom 1|1.3`
 verifies the supplied App 0.1.18 archive and executable checksum, then mounts the
@@ -779,7 +783,12 @@ synthetic ship/fix/review identities. It captures initial Build, planning-owner 
 Build 2/Build 3, Review, Approved and unavailable controls. PID-bound native pointer
 messages hover checked stage hit targets, capture after the hover delay and exercise
 real click handlers with intercepted focus/browser actions; no live agent or terminal
-input is used. It restores the pointer and stops its isolated app/Core in finally.
+input is used. The mixed-strip phase limits rows to 390 logical pixels and compares
+hovering Review with hovering its clipped/omitted unrelated labels, in ordinary and
+coordinator views. It restores the pointer and stops its isolated app/Core in finally,
+then shared `temporaryMod` disposal removes exactly the claimed mod/data paths,
+including partial setup failures. `cleanup.json` records and asserts that removal.
+The temporary-mod entrypoint guard counts this additional adopter (28 total).
 Pixel proof is separate from the existing synthetic pin-motion controller matrix;
 this fixture does not claim live-agent navigation or motion acceptance.
 

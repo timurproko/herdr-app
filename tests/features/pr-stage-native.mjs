@@ -6,6 +6,7 @@ import {createHash} from 'node:crypto';
 import {spawn,execFileSync} from 'node:child_process';
 import {build,project} from '../../tools/build.mjs';
 import {deploy} from '../../tools/deploy.mjs';
+import {temporaryMod} from '../../tools/temporary-mod.mjs';
 assert.ok(process.platform==='win32'&&process.argv.includes('--run'),'Explicit Windows --run required');
 const arg=(key,fallback)=>process.argv.includes(key)?process.argv[process.argv.indexOf(key)+1]:fallback;
 const output=path.resolve(arg('--output')),zoom=Number(arg('--zoom','1'));
@@ -26,8 +27,11 @@ const version=execFileSync(appBin,['--version'],{encoding:'utf8'}).trim();assert
 put('settings.json',{core:coreBin,telemetry:false,zoom});put('update-notes.json',{last_run:'0.1.18',presented:['0.1.18']});
 put('shared.json',{layout:'StageProof','frame.welcomed':'skipped','custom.plugins':{git:{enabled:true},files:{enabled:false},usage:{enabled:false},crew:{enabled:false}}});
 put('layouts/StageProof.json',{id:'root',type:'row',theme:'Custom',titlebar:'system',children:[{id:'ordinary',type:'block',content:{mod:'custom-stage-ordinary'}},{id:'coordinator',type:'block',content:{mod:'custom-stage-coordinator'}}]});
+const disposers=[];
+try {
 for(const mode of ['ordinary','coordinator']) {
  const mod=`custom-stage-${mode}`,base=`mods/${mod}`;
+ disposers.push(temporaryMod(home,mod));
  fs.cpSync(path.join(home,'mods/custom-changes'),path.join(home,base),{recursive:true});
  fs.renameSync(path.join(home,base,'main.js'),path.join(home,base,'changes-view.js'));
  fs.renameSync(path.join(home,base,'host.js'),path.join(home,base,'native-host.js'));
@@ -60,13 +64,15 @@ export const forbidden=()=>{throw Error('No transport permitted in native row pr
  put(`${base}/location.js`,`import {place} from './fixture.js';export const location=()=>place;export const namedPullNumber=()=>null;`);
  put(`${base}/main.js`,`import {div} from 'gpui-kit';import Changes from './changes-view.js';import {AgentLinks} from './agent-links.js';import {AggregatePulls} from './aggregate.js';import {pullRow} from './pulls.js';import {theme,readTextFile,setShared} from './host.js';import {context,mode,specs,place} from './fixture.js';
 export default class Fixture extends Changes {
- init(p,cx){this.resetRepository();this.repo={name:'fixture/repo'};this.root='/fixture';this.context=JSON.stringify([place.cwd,place.on]);this.view='open';this.foldedRepositories=new Set();this.agentLinks=new AgentLinks();this.aggregate=new AggregatePulls({shown:()=>true});this.aggregate.context=context;this.rows=specs.map(s=>{const pr=pullRow({number:s.n,title:s.title,url:'https://github.com/fixture/repo/pull/'+s.n,state:'OPEN',isDraft:s.draft,labels:s.labels.map(name=>({name,color:'840479'})),createdAt:'2026-11-26T10:00:00Z',author:{login:'fixture'},body:'- [x] Synthetic proof',statusCheckRollup:[]});pr.checks={state:'pending',label:'2/3'};return mode==='coordinator'?{...pr,key:'fixture/repo#'+s.n,repo:'fixture/repo'}:pr;});
+ init(p,cx){this.resetRepository();this.repo={name:'fixture/repo'};this.root='/fixture';this.context=mode==='coordinator'?'tasks:synthetic-home':JSON.stringify([place.cwd,place.on]);this.view='open';this.foldedRepositories=new Set();this.agentLinks=new AgentLinks();this.aggregate=new AggregatePulls({shown:()=>true});this.aggregate.context=context;this.rows=specs.map(s=>{const pr=pullRow({number:s.n,title:s.title,url:'https://github.com/fixture/repo/pull/'+s.n,state:'OPEN',isDraft:s.draft,labels:s.labels.map(name=>({name,color:'840479'})),createdAt:'2026-11-26T10:00:00Z',author:{login:'fixture'},body:'- [x] Synthetic proof',statusCheckRollup:[]});pr.checks={state:'pending',label:'2/3'};return mode==='coordinator'?{...pr,key:'fixture/repo#'+s.n,repo:'fixture/repo'}:pr;});
+ this.mixedRows=this.rows.filter(pr=>pr.number===5).map(pr=>({...pr,labels:[...pr.labels,...Array.from({length:5},(_,i)=>({name:'Other '+i+' with a long label name',color:'#123456'}))]}));
  for(const pr of this.rows)this.aggregate.entries.set(pr.key,{pr,link:{targets:[{terminal:'worker-'+pr.number}]}});
- this.pulls.open=this.rows;this.pulls.closed=[];cx.timer.every(100,cx=>cx.spawn(async view=>{const phase=await readTextFile(${JSON.stringify(control)});if(this.phase!==phase){this.phase=phase;this.agentPull=phase==='pinned'?1:null;this.visibleRows=phase==='unavailable'?this.rows.slice(-2):this.rows;this.pulls.open=this.visibleRows;view.notify();}setShared('fixture.stage.'+mode,{phase:this.phase,rows:this.rows.length,zoom:${zoom}});}));}
+ this.pulls.open=this.rows;this.pulls.closed=[];cx.timer.every(100,cx=>cx.spawn(async view=>{const phase=await readTextFile(${JSON.stringify(control)});if(this.phase!==phase){this.phase=phase;this.agentPull=phase==='pinned'?1:null;this.visibleRows=phase==='mixed'?this.mixedRows:phase==='unavailable'?this.rows.slice(-2):this.rows;this.pulls.open=this.visibleRows;view.notify();}setShared('fixture.stage.'+mode,{phase:this.phase,rows:this.rows.length,zoom:${zoom}});}));}
  shown(){return true;}
+ labelPill(t,label,id){return super.labelPill(t,label,id).on_mouse_move(()=>setShared('fixture.labels.hover.'+mode,label.name));}
  stageChip(t,pr,...args){const node=super.stageChip(t,pr,...args);return node?.on_mouse_move(event=>setShared('fixture.stage.hover.'+mode,{number:pr.number,bounds:event.bounds}));}
  openPull(pr){setShared('fixture.stage.open.'+mode,pr.number);}
- render(cx){const t=theme();return div().size_full().bg(t.background).flex().flex_col().child(div().h(38).px(8).text_size(13).child((mode==='coordinator'?'Coordinator':'Ordinary / '+(this.phase??'ordinary'))+' · synthetic PR stage proof · ${zoom*100}%')).child(div().flex_1().min_h(0).flex().flex_col().overflow_y_scrollbar().child(mode==='ordinary'?this.renderPulls(t):this.repositorySection(t,this.taskSections([{repo:'fixture/repo',rows:this.visibleRows??this.rows}],'synthetic-home').sections[0],'synthetic-home',this.selectedTaskWindow)));}
+ render(cx){const t=theme();return div().size_full().bg(t.background).flex().flex_col().child(div().h(38).px(8).text_size(13).child((mode==='coordinator'?'Coordinator':'Ordinary / '+(this.phase??'ordinary'))+' · synthetic PR stage proof · ${zoom*100}%')).child(div().flex_1().min_h(0).flex().flex_col().overflow_y_scrollbar().when(this.phase==='mixed',el=>el.w(390)).child(mode==='ordinary'?this.renderPulls(t):this.repositorySection(t,this.taskSections([{repo:'fixture/repo',rows:this.visibleRows??this.rows}],'synthetic-home').sections[0],'synthetic-home',this.selectedTaskWindow)));}
 }`);
 }
 const app=args=>execFileSync(appBin,args,{env,encoding:'utf8',timeout:20000}),sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -75,7 +81,7 @@ const receipt={home,version,zoom,pid:child.pid,archiveSha256,executableSha256:di
 const snapshot=()=>{try{return JSON.parse(fs.readFileSync(path.join(home,'shared.json')));}catch{return {};}};
 try {
  for(let n=0;n<100;n++){await sleep(200);assert.equal(child.exitCode,null);if(snapshot()['fixture.stage.coordinator'])break;}
- for(const phase of ['ordinary','pinned','unavailable']){fs.writeFileSync(control,phase);await sleep(750);const file=path.join(root,phase+'.png');app(['shot',file]);receipt.frames.push(file);}
+ for(const phase of ['ordinary','pinned','unavailable','mixed']){fs.writeFileSync(control,phase);await sleep(750);const file=path.join(root,phase+'.png');app(['shot',file]);receipt.frames.push(file);}
  if(process.argv.includes('--pointer')) {
   // Only this PID's disposable window; confirm the actual stage hit before clicking.
   const pointer=path.join(root,'pointer.ps1');
@@ -94,6 +100,15 @@ try {
    else if(number===6)assert.equal(snapshot()['fixture.stage.open.'+mode],6);else assert.equal(snapshot()['fixture.stage.click.'+mode]?.args.terminal,'worker-'+number);
    receipt.clicks??=[];receipt.clicks.push({mode,number,focus:snapshot()['fixture.stage.click.'+mode],opened:snapshot()['fixture.stage.open.'+mode]});
   }
+  fs.writeFileSync(control,'mixed');await sleep(650);
+  for(const mode of ['ordinary','coordinator'])for(const target of ['stage','unrelated']) {
+   const x=(mode==='ordinary'?0:1280)+(390-(target==='stage'?30:100))*zoom*2,y=(mode==='ordinary'?133:159)*2*zoom;
+   const invoke=action=>JSON.parse(execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-File',pointer,'-AppPid',String(child.pid),'-X',String(x),'-Y',String(y),'-Shot',path.join(root,'ordinary.png'),'-Action',action],{encoding:'utf8'}));
+   invoke('hover');await sleep(850);const file=path.join(root,`hover-mixed-${mode}-${target}.png`);app(['shot',file]);receipt.frames.push(file);
+   if(target==='stage'){assert.equal(snapshot()['fixture.stage.hover.'+mode]?.number,5);invoke('click');await sleep(200);assert.equal(snapshot()['fixture.stage.click.'+mode]?.args.terminal,'worker-5');}
+   else assert.match(snapshot()['fixture.labels.hover.'+mode]??'',/^Other /,'The unrelated-label hover region remains reachable beside the stage');
+   receipt.mixed??=[];receipt.mixed.push({mode,target,stage:snapshot()['fixture.stage.hover.'+mode],label:snapshot()['fixture.labels.hover.'+mode]});
+  }
  }
  receipt.status=JSON.parse(app(['status']));assert.deepEqual(receipt.status.errors,[]);
  assert.doesNotMatch(fs.readFileSync(path.join(root,'app.log'),'utf8'),/render failed|previous render did not complete|FIXTURE_RENDER_ERROR/);
@@ -104,3 +119,12 @@ try {
  fs.closeSync(log);fs.writeFileSync(path.join(root,'receipt.json'),JSON.stringify(receipt,null,2));assert.ok(receipt.stopped);assert.equal(JSON.parse(receipt.coreStop).stopped,true,'Disposable Core stopped');
 }
 console.log(JSON.stringify(receipt,null,2));
+} finally {
+ for(const dispose of disposers.reverse()) {
+  try { /* App/Core shutdown above precedes exact mod/data disposal. */ }
+  finally { dispose(); }
+ }
+ const removed=['ordinary','coordinator'].every(mode=>['mods','data'].every(area=>!fs.existsSync(path.join(home,area,'custom-stage-'+mode))));
+ fs.writeFileSync(path.join(root,'cleanup.json'),JSON.stringify({temporaryModsAndDataRemoved:removed}));
+ assert.ok(removed,'Shared disposal removed only the claimed fixture mods and their data');
+}
