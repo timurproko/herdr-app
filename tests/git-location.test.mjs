@@ -31,7 +31,7 @@ function element(asset) {
   return proxy;
 }
 const native = {
-  shared:()=>null, setShared(){}, settings:()=>({zoom:1}),
+  shared:()=>null, setShared(){}, settings:()=>({zoom:1}), machines:()=>[{name:'pc2',layout:'ready'}],
   agents:()=>[], spaces:()=>[space], panes:()=>[pane], terminals:()=>[terminal], focused:()=>focus,
   home:()=>home, theme:()=>({dim:'dim',hover:'hover',foreground:'foreground'}), layout:()=>null, window:()=>({platform:'windows'}), run(){}, openOverlay(){}, props:()=>null, closeOverlay(){}, notify(){}, nextCommand(){},
   hc:args=> { screenCalls.push(args); return Promise.resolve(screenReply); },
@@ -131,7 +131,7 @@ delete pane.mod; pane.terminal = correctFocus.terminal; focus = correctFocus;
 selectedTab.named = false;
 
 const view = new main.namespace.default();
-const cx = {focus_handle(){assert.equal(rendering,false,'No focus allocation from render');return {};},spawn:fn=>tasks.push(fn(cx)),notify:()=>assert.equal(rendering,false,'No synchronous notify from render'),timer:{every(){}}};
+const cx = {focus_handle(){assert.equal(rendering,false,'No focus allocation from render');return {};},spawn:fn=>tasks.push(fn(cx)),notify:()=>assert.equal(rendering,false,'No synchronous notify from render'),timer:{every(){},after(){return {cancel(){}};}}};
 const render = () => {rendering=true;try{return view.render(cx);}finally{rendering=false;}};
 const tick = async () => {for(let i=0;i<16;i++) await Promise.resolve();};
 async function take(cmd,subcommand) {
@@ -319,12 +319,11 @@ select(home); await reply(take('git'),'',128);
 releaseScreen({code:0,stdout:JSON.stringify({how:'screen',complete:true,text:'D:\\repo (fix/stale) • #906\n13.1%/500k (auto)'})});
 await tick();
 assert.equal(view.agentPull,null,'Late session replies cannot restore the old PR highlight');
-// The Git header's context menu replaces the old PR-link tool.
+// Repository identity and folding now belong to the section, not main chrome.
 function findId(node,id) {
   if (node?.attrs?.id?.[0] === id) return node;
   for (const child of node?.kids ?? []) { const found = findId(child,id); if (found) return found; }
 }
-let oldHeaderClick;
 const headerMenus=[];
 view.showPullMenu=(pr,_cx,header)=>headerMenus.push({url:pr.url,repo:pr.repo,header});
 view.root = repo;
@@ -335,26 +334,24 @@ for (const url of ['https://github.com/example/xrbuild','https://github.com/exam
     const tree=render(),header=findId(tree,'changes-header');
     assert.equal(findId(tree,'git-actions').attrs.opacity[0],hovered?1:0,'Header controls still reveal together');
     assert.equal(findId(tree,'git-repo'),undefined,'The old PR-link icon has been removed');
-    const repoLabel=findId(tree,'git-repo-name');assert.deepEqual(repoLabel.kids,['xrbuild']);assert.equal(repoLabel.attrs.tooltip[0],url,'The repository label tooltip is its full GitHub URL');
-    assert.ok(repoLabel.attrs.truncate);assert.equal(repoLabel.attrs.font_family,undefined,'Repository header inherits the interface font unchanged');assert.ok(repoLabel.attrs.max_w_full);assert.equal(findId(tree,'git-repo-slot').attrs.tooltip,undefined,'Only the intrinsic label owns the tooltip, not the tools rail');
+    assert.equal(findId(tree,'git-repo-name'),undefined,'No duplicate repository label or full-URL hover in main header');
+    assert.equal(findId(tree,'git-repo-slot'),undefined,'No repository-labelled main-header slot');
     assert.ok(findId(tree,'git-pin'),'Pin replaces the old tool');
-    assert.equal(header.attrs.on_mouse_down[0],'right');
-    oldHeaderClick=header.attrs.on_mouse_down[1];
-    let stopped=false;oldHeaderClick({}, {stop_propagation(){stopped=true;}});
-    assert.equal(stopped,true);assert.deepEqual(headerMenus.at(-1),{url:'https://github.com/example/xrbuild/pulls',repo:'example/xrbuild',header:true});
+    assert.equal(header.attrs.on_mouse_down,undefined,'Main header has no repository context-menu handler');
+    assert.equal(header.attrs.tooltip,undefined);assert.equal(header.attrs.on_key_down,undefined);
   }
 }
 view.repo = {name:'example/xrbuild'};
 const unlinkedTree = render();
 assert.equal(findId(unlinkedTree,'git-repo'),undefined,'No GitHub URL means no PR link tool');
 assert.equal(findId(unlinkedTree,'git-location'),undefined,'No fallback folder label or tooltip in the header');
-assert.equal(findId(unlinkedTree,'git-repo-slot').kids.length,0,'The header spacer stays empty without GitHub metadata');assert.equal(findId(unlinkedTree,'git-repo-name'),undefined);
+assert.equal(findId(unlinkedTree,'git-repo-slot'),undefined);assert.equal(findId(unlinkedTree,'git-repo-name'),undefined);
 view.repo = null;
 for (const loading of [true,false]) {
   view.loading = loading; view.pullLoading = loading;
   const fetching = render();
   assert.equal(findId(fetching,'git-location'),undefined,'No transient repository name while Git loads');
-  assert.equal(findId(fetching,'git-repo-slot').kids.length,0);
+  assert.equal(findId(fetching,'git-repo-slot'),undefined);
 }
 view.loading = false; view.pullLoading = false;
 view.root = null; view.repo = null;
@@ -363,9 +360,8 @@ const noRepo = render();
 assert.equal(findId(noRepo,'git-repo'),undefined);
 assert.equal(findId(noRepo,'git-refresh'),undefined,'Refresh hides outside Git repositories');
 assert.ok(findId(noRepo,'git-close'),'Close remains available outside Git repositories');
-oldHeaderClick({}, {stop_propagation(){}});
-findId(noRepo,'changes-header').attrs.on_mouse_down[1]({}, {stop_propagation(){}});
-assert.equal(headerMenus.length,menusBefore,'Neither non-repo nor stale header callbacks can expose the old URL');
+assert.equal(findId(noRepo,'changes-header').attrs.on_mouse_down,undefined);
+assert.equal(headerMenus.length,menusBefore,'No main-header state exposes repository page shortcuts');
 
 // A verified robot destination can change worktrees without clearing the
 // retained rows. Unrelated location changes above must still clear normally.

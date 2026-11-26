@@ -134,6 +134,33 @@ phases) and completion. It stops its own desktop and isolated Core in finally;
 inspect both screenshots and cleanup/error receipts. Controller-driven actions
 are not real pointer/keyboard or live-SSH proof. No installed app or PATH changes.
 
+## Instant Git repository entry
+
+`node --experimental-vm-modules tests/git-entry-cache.test.mjs` uses production
+controller/aggregate renderers and held transport to sample the first worker frame,
+coordinator return and cross-machine cold entry. It covers bounded pure publication,
+task-section seed provenance, shared section chrome/header activity and no entry-driven
+pin or reorder. It does not use live GitHub, credentials, Core or agents. The existing
+inventory-presentation and paging suites remain guards for coherent warm replacement,
+quiet retry and cursor retention. Chip/robot motion remains owned by the existing
+click controller; direct entry does not start it.
+`tests/git-entry-motion.test.mjs` integrates the initially-unpinned support supplied
+by PR #87: after entry, chip and robot clicks use its controller with one immediate
+focus, retained native acknowledgement, one-shot timers and final measured row
+positions including the section header at 100%/130%. No controller is forked.
+
+Opt-in `tests/features/git-entry-native.mjs --run --output <outside-checkout>
+--zoom 1|1.3` mounts the production entry renderer with held synthetic transport
+in an isolated App 0.1.18/Core session. `--baseline` uses the pre-change main
+controller at b22df88 with the same synthetic dependency harness, not an entire
+old installation. It captures worker entry/replacement, another worker, coordinator
+return, genuinely cold Loading and a controller-driven chip transition. No native
+mouse/keyboard hit-testing or live sessions are claimed. It rejects render errors
+in the app log as well as status.errors (the latter alone missed a last-frame
+fallback). Native proof found and fixed an invalid null child on idle activity;
+the entry regression now rejects null/undefined native children. All owned
+instances stop in finally; screenshots, logs and receipts stay outside the checkout.
+
 ## Git read-budget and refusal fixtures
 
 `tests/git-deferred-repositories.test.mjs` runs a sanitized equivalent of the
@@ -220,6 +247,13 @@ limits 1/50/100, and checks multi-page read/write membership with explicit `sort
 repeated local CAS conflicts, checking that the longest deadline persists and a
 new invocation cannot dispatch early. It makes no real HTTP request.
 `tests/trello-contract.test.mjs` checks documentation/catalog and payload boundaries.
+`src/plugins/trello/attachments.test.mjs` and `download.test.mjs` use loopback fake
+Trello/external servers with test-only production-URL mapping and no live-fetch
+fallback. They cover metadata/card counts, parent proofs, original/scaled preview
+reads, header-only authentication, zero external-link/redirect requests, 20 MiB
+stream bounds, MIME/signature checks, private ACL/mode output, unsafe paths,
+collisions and cleanup on refusal/revocation. Servers stop in finally; downloaded
+fixtures and stores are disposable, never the owner's account or board.
 
 Set `TRELLO_TEST_ROOT` to an existing outside-checkout scratch directory to choose
 fixture output. Hosted tests otherwise prefer `RUNNER_TEMP`, then the OS temp
@@ -259,8 +293,9 @@ home and the real Trello-only installer; no real remote/Core routing is attempte
 Test-only exports invoke the same handlers as the controls; this is native pixels
 and handler composition, not a mouse-hit-test or live Trello/SSH acceptance claim.
 
-The driver captures empty/masked inputs, the single saved account with hover Remove,
-zero-board readiness, Active/Inactive/search picker states, added-board hover Remove,
+The driver captures empty/masked inputs, Saving, the single saved account at rest
+and with hover Remove, zero-board readiness, Active/Inactive/search picker states,
+added-board hover Remove, an injected elevated-SSH whole-card refusal,
 global Access, a remote runtime Install prerequisite, remote account/board lifecycle,
 read-only new-host and explicitly applied global write states, captured-machine
 removal confirmation and an injected permission-check error without Save. Its receipt
@@ -286,6 +321,11 @@ and before any installation write.
 row kit, header-machine scope without a stray selection dropdown, fixed description
 links and category-local search/selection. These fixtures start no real SSH or Trello
 request and do not read private user setup.
+`tests/trello-card-polish.test.mjs` covers opt-in replacement/status hover, light
+tabs and empty separators while unrelated field choices/defaults stay unchanged.
+`tests/trello-unavailable.test.mjs` covers one actionable elevated-SSH explanation,
+no repair count or dependent controls, independent group completion, safe retry,
+stale machine replies and disable-session retirement without secret dispatch.
 
 ## Supported hosted subset
 
@@ -296,7 +336,13 @@ observed Node 20 experimental-VM crashes and meets the unchanged Cloudflare
 fixture's Node 22.12+ prerequisite.
 `scripts/test-ci.mjs` only builds this checkout, selects existing test entrypoints,
 passes their original VM flags, and propagates failures. It prints every included
-and excluded source path before execution. CI children use a disposable Herdr home,
+and excluded source path before execution. Required read-only tool preflights
+retry once only on a 15-second startup timeout, with a 45-second second allowance
+for cold hosted runners. Missing executables and nonzero exits still fail
+immediately; a second timeout fails the job. Test processes are never retried and
+their existing limits and failure propagation are unchanged.
+`tests/ci-tool-preflight.test.mjs` covers these cases with injected process results.
+CI children use a disposable Herdr home,
 unavailable native app executable and temporary fixture directories under ignored
 `.artifacts/`. No Herdr install, private snapshot or external A1 checkout is supplied.
 On Windows the CI child environment drops inherited PowerShell 7 module paths so

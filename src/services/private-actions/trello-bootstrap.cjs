@@ -1,5 +1,5 @@
 'use strict';
-// Public fixed bootstrap sent as code, never containing credentials. No remote listener.
+// Public bootstrap: no secrets or listener.
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),cp=require('node:child_process'),crypto=require('node:crypto');
 const hash=value=>crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const refused=code=>{throw Object.assign(Error(code),{code});};
@@ -46,7 +46,7 @@ async function main(config,installerSource,{getHello=hello,executionHome=private
   input.on('error',()=>{retired=true;reject(Object.assign(Error(),{code:'SSH_UNAVAILABLE'}));});
   input.on('end',()=>{retired=true;if(!consumed)reject(Object.assign(Error(),{code:'INPUT'}));});
  });
- // Attach rejection handling before readiness probes; no unhandled payload failure.
+ // Handle early input rejection before probing.
  receive.catch(()=>{});
  timer=setTimeout(()=>{retired=true;input.destroy?.();rejectInput(Object.assign(Error(),{code:'SSH_UNAVAILABLE'}));},55000);
  output.on?.('error',()=>{retired=true;});

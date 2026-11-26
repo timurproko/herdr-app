@@ -2,13 +2,15 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {loadMod} from '../../../tools/plugin-harness.mjs';
-let calls = [], reply = {version: 1, ok: true, data: {configured: true, revision: 'f'.repeat(64), boards: ['a'.repeat(24),'b'.repeat(24)], allowedBoards: 2, localWrites: false}};
+let calls = [], reply = {version: 1, ok: true, data: {configured: true, revision: 'f'.repeat(64), boards: ['a'.repeat(24),'b'.repeat(24)], allowedBoards: 2, localWrites: false, account: {id:'a'.repeat(24),username:'fixture-user',name:'Fixture Owner'}}};
 const ns = await loadMod({modules: {'space-color-state.js': {currentSpaceColor: () => null}}, host: {checking: () => false, appHome: () => 'X:/fixture', exec: async (program, args) => {calls.push([program, args]); return {code: 0, stdout: JSON.stringify(reply)};}},
   entry: "import plugin from './plugins/trello/plugin.js'; export {plugin};"});
 assert.equal(ns.plugin.defaultEnabled, false); assert.equal(ns.plugin.settings[0].default, 'read-only');
 const setup = ns.plugin.prerequisites.find(p => p.id === 'local-setup'), runtime = ns.plugin.prerequisites.find(p => p.id === 'runtime');
 assert.equal((await setup.check()).status, 'ready');
 assert.equal(JSON.stringify(calls[0]), JSON.stringify(['node', ['X:/fixture/.customizations/runtime/lib/private-actions/trello-transport.cjs', '--status', 'X:/fixture', 'null']]));
+delete reply.data.account;
+assert.equal((await setup.check()).statusLabel, 'Check names', 'Legacy credentials without account hints need an explicit name check');
 reply = {version: 1, ok: true, data: {configured: false, revision:'e'.repeat(64), boards:[], allowedBoards:0, localWrites:false}};
 assert.equal((await setup.check()).status, 'missing');
 reply = {rawSecret: 'must never surface'};

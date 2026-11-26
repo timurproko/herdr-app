@@ -33,7 +33,7 @@ const safeErrors = {
   MACHINE_UNAVAILABLE: 'Configured Core session unavailable.',
   MACHINE_CHANGED: 'Machine changed. Check again.',
   MACHINE_IDENTITY: 'Execution user or home could not be verified.',
-  MACHINE_ELEVATED: 'Elevated SSH login unsupported.',
+  MACHINE_ELEVATED: 'This machine is connected with an administrator (elevated) SSH login, which Trello refuses for safety. Connect to this machine as a normal user running Herdr Core, or set up the plugin on that machine directly.',
   MACHINE_UNSUPPORTED: 'Temporary or custom-via machine unsupported.',
   RUNTIME_PREREQUISITE: 'Node 20+ and the configured Core are required.',
   RUNTIME_MISSING: 'Install Trello on this machine.',
@@ -46,6 +46,14 @@ const safeErrors = {
   CONTROL_CONFLICT: 'Managed by another controller. Remove the account first.',
   SCOPE: 'A selected board is no longer visible to this token. Refresh the board picker.',
 };
+const unsupported = {
+  MACHINE_ELEVATED: safeErrors.MACHINE_ELEVATED,
+  MACHINE_UNSUPPORTED: 'This machine uses a temporary or custom-routed connection, so Trello cannot verify where credentials would be saved. Use a direct SSH connection as a normal user, or set up the plugin on that machine directly.',
+  MACHINE_IDENTITY: 'Trello cannot verify the user and home for this SSH connection, so no credentials were sent. Connect as the normal user running Herdr Core, or set up the plugin on that machine directly.',
+};
+function unavailable(cx, code) {
+  return cx.machine != null && unsupported[code] ? {unavailable: {detail: unsupported[code]}} : {};
+}
 function destination(value) {
   if (!value || typeof value.id !== 'string' || typeof value.session !== 'string' || !REV.test(value.principal) || !REV.test(value.home)) return null;
   return {id: value.id, session: value.session, principal: value.principal, home: value.home};
@@ -106,7 +114,7 @@ export async function runtimeStatus(cx = {}) {
   try {
     const r = await exec('node', [`${appHome()}/.customizations/runtime/lib/private-actions/trello-transport.cjs`, '--probe', appHome(), JSON.stringify(cx.machine ?? null)], {timeout: 60000});
     const result = JSON.parse(r.stdout); rememberGlobal(cx, result);
-    if (!result.ok) throw Error(safeErrors[result.error?.code] ?? 'Runtime check failed.');
+    if (!result.ok) throw Object.assign(Error(safeErrors[result.error?.code] ?? 'Runtime check failed.'), {code: result.error?.code});
     const d = result.data, binding = destination(d?.destination);
     if (!binding || !['ready', 'missing', 'outdated'].includes(d.runtime)) throw Error('Runtime check failed.');
     if (cx.isCurrent?.() === false) return {status: 'error', statusLabel: 'Check again', fix: null};
@@ -118,7 +126,7 @@ export async function runtimeStatus(cx = {}) {
           const result = await privateAction('trello', {action: 'runtime.install'}, {...current, privateDestination: binding});
           if (!result?.ok) throw Error(safeErrors[result?.error?.code] ?? 'Installation failed. Check again.');
         }}};
-  } catch (e) { return {status: 'error', statusLabel: 'Unavailable', detail: Object.values(safeErrors).includes(e.message) ? e.message : 'Check Node 20+ and the Trello runtime.', fix: null}; }
+  } catch (e) { return {status: 'error', statusLabel: 'Unavailable', problem: e.code ?? 'INTERNAL', ...unavailable(cx,e.code), detail: Object.values(safeErrors).includes(e.message) ? e.message : 'Check Node 20+ and the Trello runtime.', fix: null}; }
 }
 export async function localStatus(cx = {}) {
   if (checking()) return {status: 'recommended', detail: 'Private setup is checked only in the running app.', configured: null, usable: false};
@@ -130,10 +138,10 @@ export async function localStatus(cx = {}) {
     if (cx.isCurrent?.() === false) return {status: 'missing', detail: 'Settings changed. Check again.', usable: false};
     remember(cx, d);
     const activationBlocked=d.configured && d.activation && d.activation!=='enabled';
-    return {...d, refreshSections: verified, status: d.configured && d.allowedBoards && !d.namesMissing && !activationBlocked ? 'ready' : 'missing', usable: d.configured,
-      statusLabel:!d.configured ? 'Add account' : d.namesMissing ? 'Check names' : !d.allowedBoards ? 'Add boards' : activationBlocked ? d.activation==='disabled'?'Enable on host':'Check activation' : 'Ready',
+    return {...d, refreshSections: verified, status: d.configured && d.account && !activationBlocked ? 'ready' : 'missing', usable: d.configured,
+      statusLabel:!d.configured ? 'Add' : !d.account ? 'Check names' : activationBlocked ? d.activation==='disabled'?'Enable on host':'Check activation' : 'Ready',
       detail:activationBlocked ? `${cx.machine ?? 'This computer'} · ${d.activation==='disabled'?'Trello is disabled':'Activation check failed'}` : null};
-  } catch (e) { return {...cached, status: 'error', statusLabel:'Check failed', detail:Object.values(safeErrors).includes(e?.message) ? e.message : 'Setup check failed.', configured:cached?.configured ?? null, problem:e.code ?? 'INTERNAL', usable:cached?.configured === true}; }
+  } catch (e) { return {...cached, status: 'error', statusLabel:'Check failed', detail:Object.values(safeErrors).includes(e?.message) ? e.message : 'Setup check failed.', configured:cached?.configured ?? null, problem:e.code ?? 'INTERNAL', ...unavailable(cx,e.code), usable:cached?.configured === true}; }
 }
 export async function credentialAction(cx, values, item, action) {
   try {
@@ -145,7 +153,7 @@ export async function credentialAction(cx, values, item, action) {
 export async function removeAccount(cx, item) { await invoke(cx, 'remove', item.revision); }
 export async function boardCheck(cx) {
   const d = await localStatus(cx), h = hints(cx);
-  return {...d, statusLabel: d.configured ? `${d.allowedBoards} added` : null,
+  return {...d, status: d.status === 'ready' && d.namesMissing ? 'missing' : d.status, statusLabel: d.configured ? `${d.allowedBoards} added` : null,
     rows: (d.boards ?? []).map(id => ({id, label: h.names.get(id) ?? 'Check to load name'})),
     detail: d.status === 'error' ? d.detail : d.configured ? null : 'Add an account first.'};
 }

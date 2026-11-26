@@ -26,6 +26,21 @@ export function ciTestPlan(platform=process.platform) {
   return {platform,included,excluded};
 }
 
+// These are read-only tool-readiness probes, not test executions. A cold hosted
+// Windows process can exceed 15 seconds before printing its version. Retry only
+// ETIMEDOUT once with a larger startup allowance; actual refusals stay fatal.
+export function checkRunnerTool(command,args,env,{spawnSync=cp.spawnSync,warn=console.warn}={}) {
+  for(const timeout of [15000,45000]) {
+    const result=spawnSync(command,args,{env,encoding:'utf8',timeout});
+    if(!result.error&&result.status===0)return;
+    if(result.error?.code==='ETIMEDOUT'&&timeout===15000){
+      warn(`Runner tool preflight timed out: ${command}; retrying once with a 45-second startup allowance.`);
+      continue;
+    }
+    throw Error(`Required runner tool unavailable: ${command}: ${result.error??result.stderr}`);
+  }
+}
+
 function run(plan) {
   if(process.env.CI!=='true')throw Error('This command is for disposable CI runners. Use --list locally; the unchanged suites can include OS recycle operations.');
   fs.mkdirSync(path.join(project,'.artifacts'),{recursive:true});
@@ -40,8 +55,7 @@ function run(plan) {
   if(plan.platform==='win32')for(const key of Object.keys(env))if(key.toLowerCase()==='psmodulepath')delete env[key];
   try {
     for(const [command,args] of [['gh',['--version']],plan.platform==='win32'?['powershell.exe',['-NoProfile','-NonInteractive','-Command','$PSVersionTable.PSVersion.ToString(); Get-Command Get-Acl,Set-Acl | Select-Object -ExpandProperty Name']]:['/bin/bash',['--version']]]){
-      const result=cp.spawnSync(command,args,{env,encoding:'utf8',timeout:15000});
-      if(result.error||result.status!==0)throw Error(`Required runner tool unavailable: ${command}: ${result.error??result.stderr}`);
+      checkRunnerTool(command,args,env);
     }
     const {output}=build();
     const results=[];

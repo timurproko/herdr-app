@@ -27,6 +27,10 @@ const messages = {
   TRANSPORT: 'The Trello read did not complete. Retry explicitly when ready.',
   RESPONSE: 'The Trello response was invalid or exceeded a safety bound.',
   LIMIT: 'This command reached its request or time bound; narrow the request.',
+  ATTACHMENT_LINK: 'This attachment is an external link. Only metadata is returned; no URL was fetched.',
+  ATTACHMENT_TYPE: 'Attachment MIME or image signature is unsupported or inconsistent. Other uploaded types require --allow-other-types; files are never opened automatically.',
+  ATTACHMENT_SIZE: 'The selected attachment exceeds the 20 MiB download limit. Try an available smaller preview.',
+  ATTACHMENT_PREVIEW: 'This attachment has no usable scaled image preview. List its metadata or explicitly request the original.',
   WRITE_CHANGED: 'Trello acknowledged the write, but local authority changed. No result content or follow-up is available; inspect the board before another action.',
   UNKNOWN_WRITE: 'Write outcome unknown. Read the card and its comments/checklists before any explicit retry; this command will not replay it.',
 };
