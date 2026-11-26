@@ -964,8 +964,11 @@ report. The app accepts Crew's version-1 known links, preserves **none** (no PR 
 that read) separately from **unavailable** (unknown, including discovery budget
 exhaustion), and does not guess links itself.
 Live working and reported tasks (including plans awaiting approval) are included.
-Finished (`closed`) tasks from that coordinator's same Crew home keep their linked
-Open/Draft PRs, without a robot or worker navigation. Their Merged/Closed PRs remain
+Completed tasks from that coordinator's same Crew home keep their linked
+Open/Draft PRs, without worker navigation: both `closed` tasks and `reported`
+tasks whose terminal has ended or disappeared. A completed report does not need
+a live worker to remain readable and cannot block the whole panel on Loading.
+Still-working tasks and live reported terminals retain exact membership checks. Their Merged/Closed PRs remain
 in Closed for only **24 hours after GitHub's merge/close timestamp**; older or
 undated historical closed PRs are excluded. Live-task PRs keep normal eligibility
 regardless of age. Shared PRs are fetched/displayed/counted once, and a live task

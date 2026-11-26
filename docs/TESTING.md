@@ -81,6 +81,25 @@ and native errors, and stops its isolated app/Core in finally. This is controlle
 callback/native-pixel proof, not pointer hit-testing or live SSH acceptance. No real
 terminal or account is used and nothing is installed outside disposable homes.
 
+`fleet-reported-history.test.mjs` reproduces the real Crew fleet/full payload
+shapes with reported live, finished and removed terminals. The former
+`incompleteMembership` gate required every reported terminal to remain live,
+so one completed task permanently rejected status for the entire home. Both
+pre-#90 main and #90 reproduce the null strict context/Loading failure. Completed
+nonlive reports now supply read-only same-home PR history; working/finished
+mismatches, live reported layout gaps and owner loss still refuse fresh authority.
+The test exercises local/pc2 cold publication, stage aliases, deduped counts and
+no navigation from completed records, using synthetic native/GitHub facts only.
+
+The same native fixture's `--reported-ended` case renders managed Build/Review/
+Approved labels with no live matching agent. `--baseline <revision>` uses that
+revision's Crew provider in the disposable mods. Against post-#90 `0fc8d99`, both
+machine selections remain Loading with displayed zero totals; the corrected
+provider publishes three PRs and Open 3 in both. Both 100% runs had no native
+errors and stopped their app/Core. This proves that Loading path, not the earlier
+unrecorded native `interrupted` banner: no common cause was established and the
+banner must not be relabelled as a caught JavaScript exception.
+
 `spaces-worktree-layout.test.mjs` and `fleet-reorder.test.mjs` cover one/two/three
 children, shared stem/last corner, native numbering, hidden-child selection,
 compact membership, any-member block reorder, ambiguity/cycles and changed captured

@@ -23,13 +23,15 @@ function coordinatorCandidate(machine, snapshot) {
   return candidates.length===1 ? candidates[0] : null;
 }
 const readyLayout = (machine, hosts=machines()) => hosts.some(h=>(h.name??null)===machine && h.layout==='ready');
-// A status reply can race native membership or crew finish's record update.
-// Missing workers remain uncertain; a finished owner or conflicting join is not.
+// Working tasks can race Core exit before Crew confirms completion. Reported
+// tasks have completed: their ended/removed terminals cannot block the home,
+// but a still-live reported terminal must retain exact native membership.
 const incompleteMembership = (status, machine, snapshot) => status.owner.live &&
-  [status.owner.terminal,...status.tasks.filter(t=>['working','reported'].includes(t.state)).map(t=>t.terminal)].some(address=>{
-    const id=qualify(address,machine);if(!id)return false;
-    const terminal=snapshot.list.find(t=>t.address===id);if(!terminal)return true;
-    if(terminal.state!=='live')return id!==qualify(status.owner.terminal,machine);
+  [{terminal:status.owner.terminal,state:'owner'},...status.tasks.filter(t=>['working','reported'].includes(t.state))].some(task=>{
+    const id=qualify(task.terminal,machine);if(!id)return false;
+    const terminal=snapshot.list.find(t=>t.address===id);
+    if(!terminal)return task.state!=='reported';
+    if(terminal.state!=='live')return task.state==='working';
     const members=snapshot.all.filter(p=>p.terminal===id && !p.mod);
     return !members.length || members.length===1 && !snapshot.groups.some(s=>(s.machine??null)===machine && s.tabs?.some(t=>t.id===members[0].tab));
   });
@@ -122,10 +124,12 @@ export function bindFleet(status, machine, {groups, all, list}) {
   const extra=children.length>1 || children.some(c=>c.mode!=='combined') ? {children}:{};
   const identity=[machine,status.home,owner.terminal.address,owner.space,owner.tab,owner.pane];
   const binding=JSON.stringify([...identity,extra.children??child]), pullScope=JSON.stringify(identity);
-  // --all records belong to this verified status home, not to a former live
-  // terminal. They contribute links only: never adoption identity or navigation.
-  const history=status.tasks.filter(t=>t.state==='closed' && typeof t.id==='string' && t.id.length>0 && t.id.length<=128 && (typeof t.pr==='string' && t.pr.length>0 || t.discovery))
-    .map(t=>({id:t.id,state:'closed',pr:t.pr,terminal:null,historical:true,...(t.discovery?{discovery:t.discovery}:{})}));
+  // Completed records belong to this freshly verified status home, not to a
+  // former live terminal. Reported tasks can outlive their terminal indefinitely
+  // before being closed. They contribute links only, never adoption or focus.
+  const liveTasks=new Set(workers.map(t=>t.id));
+  const history=status.tasks.filter(t=>(t.state==='closed' || t.state==='reported' && !liveTasks.has(t.id)) && typeof t.id==='string' && t.id.length>0 && t.id.length<=128 && (typeof t.pr==='string' && t.pr.length>0 || t.discovery))
+    .map(t=>({id:t.id,state:t.state,pr:t.pr,terminal:null,historical:true,...(t.discovery?{discovery:t.discovery}:{})}));
   const tasks=[...workers,...history];
   return {parent:owner.space,child,...extra,machine,binding,pullScope,home:status.home,owner:owner.terminal.address,
     ownerTab:owner.tab??null,ownerPane:owner.pane??null,adoption:[...tags][0]??null,tasks,

@@ -289,8 +289,8 @@ not the chrome-owned shared broker or independent update checks. Fresh verificat
 resumes targeted reads and controls; different selected spaces or confirmed ownership
 changes cannot inherit those rows. Git additionally matches the successfully
 verified live-task membership, independently of the pair/adoption fingerprint: a
-Core-first worker exit cannot silently remove its PR before Crew publishes the
-closed record. A working/finished mismatch remains unverified rather than renewing
+Core-first worker exit cannot silently remove its PR before Crew publishes a
+completed record. A working/finished mismatch remains unverified rather than renewing
 action freshness, while existing same-home rows remain unverified with the moving line only while reconciliation is pending.
 
 Spaces accepts multiple verified same-machine children per coordinator through the
@@ -335,8 +335,11 @@ refresh lifecycle; it yields before reads and joins the shared lease when possib
 for the selected coordinator. It reads exact validated task PR URLs on that machine with
 three bounded concurrent requests, keys rows by repository plus PR number, and
 never probes the coordinator's directory. Working/reported live terminals are
-eligible. Same-home closed-task records contribute validated links without live
-worker authority; they cannot establish a fleet child. The verified owner/home
+eligible. Same-home closed-task records and reported tasks whose terminals have
+ended or disappeared contribute validated links without live worker authority;
+they cannot establish a fleet child. Reported means completed, not necessarily
+still running. Their absence cannot block verification of the entire home; a
+still-live reported terminal retains exact native-membership checks. The verified owner/home
 PR scope excludes the optional child so last-worker exit does not discard PR facts.
 Full PR identities deduplicate before reads/counts; current live sources win robot
 selection, and historical-only rows have no target. Captured robot callbacks still
