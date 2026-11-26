@@ -12,10 +12,10 @@ Approved by the person: multi-child support and warm header-only activity, with 
 
 ## 3. Multi-child connected block alignment and reorder
 
-- [ ] 3.1 Generalize validated same-machine block projection for multiple children and continuous intermediate/last-child connectors anchored to parent badge centre/name left edge; verify one/two/three-child geometry at zoom 1.0/1.3 and unchanged Agents.
-- [ ] 3.2 Integrate the authoritative upstream Crew project-space contract behind existing registry/identity guards with legacy compatibility; verify versioned synthetic fixtures, independent coordinator Git scope and no guessed identity or stale action authority.
-- [ ] 3.3 Preserve every child's native number/selection, compact membership and whole-block drag from any member; verify membership/concurrency cancellation, acknowledgements, hidden-child selection and cross-machine refusal in focused regressions.
-- [ ] 3.4 Add native fixture scenarios for one/two/three children and document projection/reorder boundaries; verify fixture isolation, expected screenshot names and cleanup paths.
+- [x] 3.1 Generalize validated same-machine block projection for multiple children and continuous intermediate/last-child connectors anchored to parent badge centre/name left edge; verify one/two/three-child geometry at zoom 1.0/1.3 and unchanged Agents.
+- [x] 3.2 Integrate the authoritative upstream Crew project-space contract behind existing registry/identity guards with legacy compatibility; verify versioned synthetic fixtures, independent coordinator Git scope and no guessed identity or stale action authority.
+- [x] 3.3 Preserve every child's native number/selection, compact membership and whole-block drag from any member; verify membership/concurrency cancellation, acknowledgements, hidden-child selection and cross-machine refusal in focused regressions.
+- [x] 3.4 Add native fixture scenarios for one/two/three children and document projection/reorder boundaries; verify fixture isolation, expected screenshot names and cleanup paths.
 
 ## 4. Coordinator Git without Stale
 

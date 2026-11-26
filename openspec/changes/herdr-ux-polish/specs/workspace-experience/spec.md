@@ -60,6 +60,12 @@ One coordinator SHALL support multiple validated same-machine project children t
 - **WHEN** validated contributions identify one, two or three children under one coordinator
 - **THEN** all appear under that coordinator with shared connector anchors, independently selectable native numbers, and one parent fold hiding all children with no count
 - **AND** selecting any hidden child discloses the parent without selecting another child or remapping shortcuts
+- **AND** validated project children show the supplied registered project name rather than a worktree basename, while explicit user-renamed space titles take precedence
+
+#### Scenario: Combined and project populations
+- **WHEN** legacy combined workers, placement-v1 project workers or both coexist for the same verified home
+- **THEN** every exact same-machine native space is connected after validating task identity and placement labels, without changing crew.home or inferring links from names
+- **AND** unsupported placement versions, mismatching project/name labels, wrong adoption IDs and cross-machine members do not establish a link
 
 #### Scenario: Drag any member or change membership
 - **WHEN** the parent or any child is dragged within its machine group

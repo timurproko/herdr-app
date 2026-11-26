@@ -22,8 +22,8 @@ for(const machine of [null,'pc2']) {
  assert.ok(nodes(c).some(n=>String(n.attrs.id?.[0]).includes('-other-')),'Unrelated child tags remain');
  assert.equal(badge(c).kids[0],'3');assert.equal(badge(p).kids[0],'1');assert.equal(c.attrs.h[0],26);assert.equal(p.attrs.h[0],28);
  const cb=find(c,'space-branch-child'),reference=branch(t,'└');
- for(const k of ['border_l','border_b','border_color','rounded_bl','w','h','mt'])assert.deepEqual(cb.attrs[k],reference.attrs[k]);
- for(const zoom of [.75,1,1.3,2]){const boxes=rowGeometry(c,268,zoom),b=boxes.get(badge(c));assert.equal(b.x,53*zoom,'Agents child icon column');assert.equal(b.width,16*zoom);}
+ for(const k of ['border_l','border_b','border_color','rounded_bl'])assert.deepEqual(cb.attrs[k],reference.attrs[k]);
+ for(const zoom of [.75,1,1.3,2]){const boxes=rowGeometry(c,268,zoom),b=boxes.get(badge(c));assert.equal(b.x,32*zoom,'Child badge aligns with coordinator name');assert.equal(b.width,16*zoom);assert.equal(boxes.get(cb).x,16*zoom,'Stem aligns with parent badge centre');}
  const button=find(p,'space-fold-parent'),ref=fold(t,{id:'ref',open:true,count:1,onToggle(){}});
  for(const k of ['h','px','gap','rounded','text_size'])assert.deepEqual(button.attrs[k],ref.attrs[k]);
  assert.equal(button.kids.length,1);assert.equal(fold(t,{id:'agents',open:false,count:3,onToggle(){}}).kids.at(-1),'3','Agents still shows collapsed counts');
@@ -58,4 +58,23 @@ take={kind:'drop',id:'parent',target:'other',meta:{sources:['parent','child'],bi
 view.drop('other',cx);for(let i=0;i<5;i++)view.blockCommit?.observe();
 assert.deepEqual(all.map(s=>s.id),['other','parent','child'],'Collapsed parent moves its hidden child as one acknowledged block');assert.equal(view.blockCommit.pending,null);
 assert.deepEqual(Array.from(view.visibleRows(false),r=>r.w.id),['other','parent']);
-console.log('PASS real Spaces child/parent parity, native numbering, selection disclosure, local folds, compact rail, metadata, colours, previews, independent cross-machine rows and reorder guards');
+for(const count of [1,2,3])for(const zoom of [1,1.3]) {
+ all=[{id:'parent',name:'Coordinator',active:true},{id:'other',name:'Other'},...Array.from({length:count},(_,i)=>({id:`child${i}`,name:'worktree',named:false}))];
+ links=all.slice(2).map((s,i)=>({parent:'parent',child:s.id,binding:'verified',name:`project${i}`}));view.connectedFolds().clear();view.shown=new Set(all.map(s=>s.id));
+ const ordered=view.ordered();assert.deepEqual(Array.from(ordered,r=>r.i),[0,...Array.from({length:count},(_,i)=>i+2),1]);
+ for(let i=0;i<count;i++) {
+  const rec=record(`child${i}`),tree=row(rec.w.id),boxes=rowGeometry(tree,268,zoom),branch=find(tree,`space-branch-${rec.w.id}`);
+  assert.equal(rec.w.name,`project${i}`);assert.equal(boxes.get(badge(tree)).x,32*zoom);assert.equal(boxes.get(branch).x,16*zoom);
+  assert.equal(branch.attrs.rounded_bl[0],i===count-1?6:0);assert.equal(Boolean(find(tree,`space-stem-${rec.w.id}`)),i<count-1);
+  view.connectedFolds().add(view.parentKey(record('parent')));assert.deepEqual(Array.from(view.visibleRows(false),r=>r.w.id),['parent','other']);
+  view.connectedSelection='parent';all.forEach(s=>s.active=s.id===rec.w.id);view.syncConnectedSelection(cx);assert.equal(view.connectedFolds().size,0);
+  assert.equal(view.compact(rec,t).kids.length,1);assert.equal(badge(view.compact(rec,t)).kids[0],String(i+3));
+ }
+ for(const id of ['parent',...all.slice(2).map(s=>s.id)]) {
+  const original=[...all],block=record(id);view.blockCommit=null;view.connectedFolds().clear();
+  take={kind:'drop',id,target:'other',meta:{sources:[...block.block],binding:block.binding}};
+  view.drop('other',cx);for(let n=0;n<10;n++)view.blockCommit?.observe();
+  assert.deepEqual(all.map(s=>s.id),['other','parent',...original.slice(2).map(s=>s.id)]);all=original;
+ }
+}
+console.log('PASS actual Spaces one/two/three-child geometry, names, all-child folding, native numbering/selection/compact membership and any-member acknowledged block reorder');

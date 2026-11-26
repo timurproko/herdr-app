@@ -810,6 +810,18 @@ weight, hover and selected backgrounds. Counts/worktree metadata stays before
 trailing tags; renaming hides markers/tags, and Worktree visibility does not hide
 the child connector. Each remote machine can have its own same-machine pair;
 cross-machine candidates stay independent under their original machine headers.
+With Crew placement v1, one coordinator can have several connected project children,
+including the legacy combined space at the same time. Project children show the exact
+registered project name unless explicitly renamed. All child badges align with the
+coordinator's name; one stem follows the parent badge centre, with intermediate
+branches and a rounded corner only on the last child. Collapse hides every child,
+while native shortcuts and compact rail keep each child's own selection number.
+Dragging the parent or any child moves the entire same-machine block in stable
+native child order, with captured-membership and acknowledgement guards. Crew's
+`crew.space.version/mode/project/name` labels are validated against its task project,
+home tag and exact native terminal/pane/tab/space membership; names alone never link.
+Combined, project and mixed populations are supported without a Core document write.
+
 Choosing a colour or Automatic from either attached row edits the coordinator's
 colour; the fleet's saved colour and Automatic flag stay untouched. Its palette and
 mouse/keyboard choices use that same captured coordinator. Colour permission follows

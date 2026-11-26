@@ -482,7 +482,7 @@ export default class Spaces extends View {
     return badge(String(i + 1), fill);
   }
 
-  row({ w, i, g, tree, linked = false, block, binding, position = i }, t) {
+  row({ w, i, g, tree, linked = false, firstChild = true, lastChild = true, block, binding, position = i }, t) {
     const on = w.active;
     const edit = this.rename?.id === w.id ? this.rename : null;
     const drag = this.drag, d = drag.view;
@@ -538,11 +538,14 @@ export default class Spaces extends View {
       .child(
         h_flex()
           .id(`space-content-${w.id}`)
-          .min_w(0).when(linked,el=>el.pl(32).h(U.subrow))
+          .relative().min_w(0).when(linked,el=>el.pl(24).h(U.subrow))
           .gap(U.gap)
           .items_center()
           .when(this.tabArrival?.spaceId === w.id && !edit, el => tabArrivalMotion(this, el))
-          .when(linked,el=>el.child(sidebarChildBranch(t,'└').id(`space-branch-${w.id}`).mr(-4)))
+          .when(linked,el=>el
+            .child(sidebarChildBranch(t,'└').id(`space-branch-${w.id}`).absolute().left(8).top(firstChild?-8:-16)
+              .mt(0).mr(0).w(16).h(firstChild?21:29).rounded_bl(lastChild?6:0))
+            .when(!lastChild,e=>e.child(div().id(`space-stem-${w.id}`).absolute().left(8).top(13).h(15).border_l(1.5).border_color(t.input))))
           .child(this.spaceBadge({ w, i, linked, block }, t))
           .when(Boolean(edit), el => el.child(this.renameField(w, t)))
           .when(!edit, el => el

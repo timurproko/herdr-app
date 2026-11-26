@@ -35,7 +35,7 @@ Group validated registry links by exact same-machine parent, deduplicate childre
 
 Reordering generalizes the existing paired operation to parent plus every captured child. Grabbing any member moves the whole block coordinator-first, preserving child order and the grabbed row's chip/name/number. Prevent drops inside another block. Capture complete binding/membership and revalidate before each native acknowledged move; cancellation, membership replacement or concurrent order stops without stale replay. No tab/terminal movement or action freshness is granted.
 
-Crew verification/display normalization must consume authoritative project-space identities supplied by the upstream contract, preserving legacy single-child support. The evolving wire contract is an integration dependency: inspect a versioned synthetic upstream fixture before changing parsing; do not invent labels, guess project names or weaken ambiguity checks. Keep coordinator/home Git scope independent of child count; durable display stores identities only, and unrelated topology remains irrelevant. If the upstream contract is unavailable, report that specific blocker instead of claiming rendered synthetic links prove end-to-end Crew support.
+Crew PR #22 supplies the placement-v1 contract: combined remains `fm-crew-<crew.home>`; per-project uses `fm-crew-<crew.home>-project-<registered-name>`; internal repair uses `fm-crew-<crew.home>-self`. Accept only version `1`, mode `combined|per-project`, matching `crew.space.project`, and per-project `crew.space.name` equal to the project (or `crew` for self repair). Keep `crew.home`, exact `crew.task`, `herdr.space` and native machine/terminal/pane/tab joins. Legacy workers without placement labels remain combined-only. Status task project survives the existing transport projection; no new status version is invented. Registered `crew` repair bindings accept task project `crew:self` only for the documented `crew` name/ID. Display supplied project names on automatic unnamed children, preserving explicit native rename precedence. Keep coordinator/home Git scope independent of child count; durable display stores only identity/placement metadata and unrelated topology remains irrelevant.
 
 ### Git publication
 
@@ -61,7 +61,7 @@ State whether evidence is native pixels, controller-driven or real pointer/keybo
 ## Risks / Trade-offs
 
 - Quiet cold cooldown hides healthy successes until retry: intentional; retain explicit Refresh and automatic recovery.
-- Multi-child upstream contract still evolving: require versioned fixture evidence and fail closed, report unavailable integration rather than guessing.
+- Companion release mismatch: accept only documented placement v1 and legacy combined, test malformed/mixed populations and fail closed without guessed identity.
 - Publication staging can mask errors or poison counts: notices bypass staging, totals remain independent, scope generations reject obsolete callbacks.
 - More children increase reorder steps: preserve native acknowledgement and concurrent-change refusal, never claim atomicity or replay uncertain operations.
 - Shared primitives affect Agents: keep defaults, test actual caller geometry and collapsed counts.

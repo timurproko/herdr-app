@@ -63,12 +63,27 @@ export function recordedSource(stdout) {
   const supported=object(value.prDiscovery) && value.prDiscovery.version===1;
   const tasks=value.tasks.map(t=> {
     const discovery=supported?discoveryResult(t.prDiscovery):null;
-    return {id:t.id,terminal:t.terminal,state:t.state,pr:discovery?discovery.url:typeof t.pr==='string'?t.pr:null,
+    return {id:t.id,terminal:t.terminal,state:t.state,...(typeof t.project==='string'?{project:t.project}:{}),pr:discovery?discovery.url:typeof t.pr==='string'?t.pr:null,
       ...(discovery?{discovery}: {})};
   });
   return {home:value.home,owner:value.owner===null?{terminal:null,live:false}:{terminal:value.owner.terminal,live:value.owner.live},tasks,
     ...(supported?{discovery:{version:1}}:{})};
 }
+// Placement labels are trusted only after exact live task/native membership.
+const projectName = name => text(name,40) && /^(?:[a-z0-9]|\.[a-z0-9])[a-z0-9.-]*$/.test(name) && !name.includes('..') && !name.endsWith('.');
+function placement(labels, task, tag) {
+  const base=`fm-crew-${tag}`, version=labels['crew.space.version'], mode=labels['crew.space.mode'];
+  if(version===undefined && mode===undefined && labels['crew.space.project']===undefined && labels['crew.space.name']===undefined)
+    return {child:base,adoption:tag,mode:'combined',project:null,name:null};
+  if(version!=='1' || !['combined','per-project'].includes(mode))return null;
+  const project=labels['crew.space.project'],name=labels['crew.space.name'];
+  if(!text(project,128) || !(project===task.project || task.project==='crew:self' && project==='crew'))return null;
+  if(mode==='combined')return name===undefined ? {child:base,adoption:tag,mode,project:null,name:null}:null;
+  if(project==='crew:self')return name==='crew'?{child:`${base}-self`,adoption:tag,mode,project,name}:null;
+  return projectName(project) && name===project ? {child:`${base}-project-${project}`,adoption:tag,mode,project,name}:null;
+}
+export const fleetChildren = value => value?.children ?? (value?.child ? [{child:value.child,adoption:value.adoption,mode:'combined',project:null,name:null}] : []);
+export const fleetLinks = context => fleetChildren(context).map(child=>({...context,...child,binding:context.binding}));
 export function bindFleet(status, machine, {groups, all, list}) {
   if(!status?.owner?.live || !Array.isArray(status.tasks)) return null;
   const membership = address => {
@@ -81,37 +96,40 @@ export function bindFleet(status, machine, {groups, all, list}) {
   };
   const owner = membership(status.owner.terminal);
   if(!owner) return null;
-  const workers=[], fleets=new Set(), tags=new Set();
+  const workers=[], fleets=new Map(), tags=new Set();
   for(const task of status.tasks) {
     if(task.state==='closed') continue;
     const member=membership(task.terminal);
     if(!member) continue;
     const labels=member.terminal.labels??{}, tag=labels['crew.home'];
     if(typeof task.id!=='string' || labels['crew.task']!==task.id || typeof tag!=='string' || !/^[a-zA-Z0-9-]{1,80}$/.test(tag)) return null;
-    const fleet=`fm-crew-${tag}`;
-    if(member.space.split('/').at(-1)!==fleet || labels['herdr.space']!==fleet || member.space===owner.space) return null;
-    fleets.add(member.space);tags.add(tag);
+    const child=placement(labels,task,tag);
+    if(!child || member.space.split('/').at(-1)!==child.child || labels['herdr.space']!==child.child || member.space===owner.space) return null;
+    const record={...child,child:member.space},prior=fleets.get(member.space);
+    if(prior && JSON.stringify(prior)!==JSON.stringify(record))return null;
+    fleets.set(member.space,record);tags.add(tag);
     if(['working','reported'].includes(task.state)) workers.push({id:task.id,terminal:member.terminal.address,space:member.space,tab:member.tab,pane:member.pane,state:task.state,pr:task.pr,
       ...(task.discovery?{discovery:task.discovery}:{})});
   }
-  if(fleets.size>1 || tags.size>1) return null;
-  const child=[...fleets][0]??null;
+  if(tags.size>1) return null;
+  const children=[...fleets.values()].sort((a,b)=>a.child.localeCompare(b.child)),child=children[0]?.child??null;
+  const extra=children.length>1 || children.some(c=>c.mode!=='combined') ? {children}:{};
   const identity=[machine,status.home,owner.terminal.address,owner.space,owner.tab,owner.pane];
-  const binding=JSON.stringify([...identity,child]), pullScope=JSON.stringify(identity);
+  const binding=JSON.stringify([...identity,extra.children??child]), pullScope=JSON.stringify(identity);
   // --all records belong to this verified status home, not to a former live
   // terminal. They contribute links only: never adoption identity or navigation.
   const history=status.tasks.filter(t=>t.state==='closed' && typeof t.id==='string' && t.id.length>0 && t.id.length<=128 && (typeof t.pr==='string' && t.pr.length>0 || t.discovery))
     .map(t=>({id:t.id,state:'closed',pr:t.pr,terminal:null,historical:true,...(t.discovery?{discovery:t.discovery}:{})}));
   const tasks=[...workers,...history];
-  return {parent:owner.space,child,machine,binding,pullScope,home:status.home,owner:owner.terminal.address,
+  return {parent:owner.space,child,...extra,machine,binding,pullScope,home:status.home,owner:owner.terminal.address,
     ownerTab:owner.tab??null,ownerPane:owner.pane??null,adoption:[...tags][0]??null,tasks,
     ...(status.discovery?.version===1?{discovery:{version:1,tasks:tasks.map(t=>({task:t.id,historical:t.historical===true,...t.discovery}))}}:{}),
     incomplete:status.discovery?.version===1?tasks.some(t=>t.discovery?.status==='unavailable'):workers.some(t=>t.state==='working')};
 }
-const identityOf = bound => bound ? Object.fromEntries(['machine','parent','child','home','owner','ownerTab','ownerPane','adoption'].map(key=>[key,bound[key]])) : null;
+const identityOf = bound => bound ? Object.fromEntries(['machine','parent','child','home','owner','ownerTab','ownerPane','adoption',...(bound.children?['children']:[])].map(key=>[key,bound[key]])) : null;
 const identityParts = identity => [identity.machine,identity.home,identity.owner,identity.parent,identity.ownerTab,identity.ownerPane];
 const taskMembership = bound => JSON.stringify((bound?.tasks??[]).filter(t=>!t.historical).map(t=>[t.id,t.terminal,t.space,t.tab,t.pane]).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))));
-const withScopes = identity => ({...identity,pullScope:JSON.stringify(identityParts(identity)),binding:JSON.stringify([...identityParts(identity),identity.child])});
+const withScopes = identity => ({...identity,pullScope:JSON.stringify(identityParts(identity)),binding:JSON.stringify([...identityParts(identity),identity.children??identity.child])});
 const text = (value, max = 512) => typeof value==='string' && value.length>0 && value.length<=max && !/[\u0000-\u001f\u007f]/.test(value);
 const inMachine = (snapshot, id, machine) => snapshot.groups.some(s=>s.id===id && (s.machine??null)===machine);
 function displayRecord(value) {
@@ -119,7 +137,14 @@ function displayRecord(value) {
     !text(value.parent) || !text(value.child) || value.parent===value.child || !text(value.home,2048) || !text(value.owner) ||
     !(value.ownerTab===null || text(value.ownerTab)) || !(value.ownerPane===null || text(value.ownerPane)) ||
     typeof value.adoption!=='string' || !/^[a-zA-Z0-9-]{1,80}$/.test(value.adoption) ||
-    value.child.split('/').at(-1)!==`fm-crew-${value.adoption}` || machineOf(value.owner)!==value.machine) return null;
+    machineOf(value.owner)!==value.machine) return null;
+  const children=fleetChildren(value);
+  if(!Array.isArray(children) || !children.length || children.length>4096 || new Set(children.map(c=>c?.child)).size!==children.length || children[0]?.child!==value.child || children.some(c=>{
+    if(!c || !text(c.child) || c.child===value.parent || c.adoption!==value.adoption)return true;
+    const labels={'crew.space.version':'1','crew.space.mode':c.mode,'crew.space.project':c.project??'legacy',...(c.name!==null?{'crew.space.name':c.name}:{})};
+    const expected=placement(labels,{project:c.project??'legacy'},c.adoption);
+    return !expected || c.child.split('/').at(-1)!==expected.child || machineOf(c.child)!==value.machine;
+  }))return null;
   return withScopes(identityOf(value));
 }
 function savedDisplays() {
@@ -130,21 +155,21 @@ function savedDisplays() {
   return [...unique.values()];
 }
 function nextDisplay(machine, bound, snapshot) {
-  const fresh=displayRecord(identityOf(bound));if(fresh || !bound)return fresh;
-  if(bound.child!==null)throw Error('Fleet display identity is not coherent');
-  const prior=savedDisplays().find(d=>d.machine===machine);
-  if(!prior || prior.home!==bound.home || prior.owner!==bound.owner || prior.parent!==bound.parent ||
-    ![prior.parent,prior.child].every(id=>inMachine(snapshot,id,machine)))return null;
-  const tabs=new Set(snapshot.groups.find(s=>s.id===prior.child)?.tabs?.map(t=>t.id)??[]);
-  const members=new Set(snapshot.all.filter(p=>tabs.has(p.tab) && !p.mod).map(p=>p.terminal));
-  const conflict=snapshot.list.some(t=>members.has(t.address) && t.state==='live' && (t.labels?.['crew.task'] || t.labels?.['crew.home']) &&
-    (t.labels?.['crew.home']!==prior.adoption || t.labels?.['herdr.space']!==prior.child.split('/').at(-1)));
-  // Keep only the extant fleet's child/adoption identity; fresh owner membership
-  // must also drive the retained scopes after successful verification.
-  if(conflict)return null;
-  const retained=displayRecord({...identityOf(bound),child:prior.child,adoption:prior.adoption});
-  if(!retained)throw Error('Retained owner membership is not coherent');
-  return retained;
+  if(!bound)return null;
+  const prior=savedDisplays().find(d=>d.machine===machine),children=new Map(fleetChildren(bound).map(c=>[c.child,c]));
+  if(prior && prior.home===bound.home && prior.owner===bound.owner && prior.parent===bound.parent)for(const child of fleetChildren(prior)) {
+    if(children.has(child.child) || !inMachine(snapshot,child.child,machine))continue;
+    const tabs=new Set(snapshot.groups.find(s=>s.id===child.child)?.tabs?.map(t=>t.id)??[]);
+    const members=new Set(snapshot.all.filter(p=>tabs.has(p.tab) && !p.mod).map(p=>p.terminal));
+    const conflict=snapshot.list.some(t=>members.has(t.address) && t.state==='live' && (t.labels?.['crew.task'] || t.labels?.['crew.home']) &&
+      (t.labels?.['crew.home']!==child.adoption || t.labels?.['herdr.space']!==child.child.split('/').at(-1) ||
+       child.mode==='per-project' && (t.labels?.['crew.space.version']!=='1' || t.labels?.['crew.space.project']!==child.project || t.labels?.['crew.space.name']!==child.name)));
+    if(!conflict)children.set(child.child,child);
+  }
+  const records=[...children.values()].sort((a,b)=>a.child.localeCompare(b.child));
+  if(!records.length)return null;
+  const extra=records.length>1 || records[0].mode!=='combined'?{children:records}:{};
+  return displayRecord({...identityOf(bound),children:undefined,...extra,child:records[0].child,adoption:records[0].adoption});
 }
 function publishDisplay(machine, bound, evidence) {
   const record=displayRecord(identityOf(bound));
@@ -153,10 +178,12 @@ function publishDisplay(machine, bound, evidence) {
 function pruneDisplays(snapshot, hosts) {
   const removed=[];
   for(const record of savedDisplays()) {
-    const missing=![record.parent,record.child].every(id=>inMachine(snapshot,id,record.machine));
-    // Losing the optional child ends attachment, not the live owner's Git scope.
-    if(updateFleetDisplay(record.machine,null,{ready:readyLayout(record.machine,hosts),missing}) &&
-      !inMachine(snapshot,record.parent,record.machine))removed.push(record.machine??'local');
+    const parentPresent=inMachine(snapshot,record.parent,record.machine),children=fleetChildren(record).filter(c=>inMachine(snapshot,c.child,record.machine));
+    const missing=!parentPresent || children.length!==fleetChildren(record).length;
+    if(!missing || !readyLayout(record.machine,hosts))continue;
+    // Prune only absent identities; this does not witness status or renew actions.
+    const kept=parentPresent && children.length ? withScopes({...identityOf(record),child:children[0].child,...(record.children?{children}:{})}):null;
+    if(updateFleetDisplay(record.machine,kept,{ready:true,missing:true,verified:kept!==null}) && !parentPresent)removed.push(record.machine??'local');
   }
   if(removed.length) {
     const cached=shared(FLEET_KEY), reads={...shared(READS)};
@@ -174,12 +201,15 @@ function signature(machine, snapshot, identity) {
     snapshot.groups.filter(s=>(s.machine??null)===machine && s.tabs?.some(t=>t.id===p.tab)).map(s=>s.id).sort(),p.tab,p.pane]).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)));
   if(!identity) return JSON.stringify(snapshot.list.filter(t=>machineOf(t.address)===machine && (t.labels?.['custom.crew.home']==='1' || t.labels?.['crew.task']))
     .map(t=>[t.address,t.state,t.labels?.['custom.crew.home'],t.labels?.['crew.home'],t.labels?.['herdr.space'],locations(t.address)]).sort((a,b)=>a[0].localeCompare(b[0])));
-  const owner=snapshot.list.find(t=>t.address===identity.owner), child=snapshot.groups.find(s=>s.id===identity.child && (s.machine??null)===machine);
-  const tabs=new Set(child?.tabs?.map(t=>t.id)??[]), fleet=new Set(snapshot.all.filter(p=>tabs.has(p.tab) && !p.mod).map(p=>p.terminal));
-  const labels=[...new Set(snapshot.list.filter(t=>fleet.has(t.address) && (t.labels?.['crew.home'] || t.labels?.['crew.task']))
-    .map(t=>JSON.stringify([t.state,t.labels?.['crew.home'],t.labels?.['herdr.space']])) )].sort();
-  return JSON.stringify([machine,identity.home,identity.parent,inMachine(snapshot,identity.parent,machine),identity.child,
-    Boolean(child),owner?.state,owner?.labels?.['custom.crew.home'],locations(identity.owner),labels]);
+  const owner=snapshot.list.find(t=>t.address===identity.owner),children=fleetChildren(identity);
+  const facts=children.map(c=>{
+    const child=snapshot.groups.find(s=>s.id===c.child && (s.machine??null)===machine),tabs=new Set(child?.tabs?.map(t=>t.id)??[]);
+    const fleet=new Set(snapshot.all.filter(p=>tabs.has(p.tab) && !p.mod).map(p=>p.terminal));
+    const labels=[...new Set(snapshot.list.filter(t=>fleet.has(t.address) && (t.labels?.['crew.home'] || t.labels?.['crew.task']))
+      .map(t=>JSON.stringify([t.state,t.labels?.['crew.home'],t.labels?.['herdr.space'],t.labels?.['crew.space.version'],t.labels?.['crew.space.mode'],t.labels?.['crew.space.project'],t.labels?.['crew.space.name']])) )].sort();
+    return [c.child,Boolean(child),labels];
+  });
+  return JSON.stringify([machine,identity.home,identity.parent,inMachine(snapshot,identity.parent,machine),owner?.state,owner?.labels?.['custom.crew.home'],locations(identity.owner),facts]);
 }
 function locallyVerified(key, entry) {
   if(entry?.token && pendingTokens.get(key)===entry.token)verifiedTokens.set(key,entry.token);
@@ -192,7 +222,7 @@ export function fleetWitnessMachines(space) {
     const token=entry?.attemptToken??entry?.token,machine=entry?.machine??null;
     const candidate=coordinatorCandidate(machine,snapshot),display=displays.find(d=>d.machine===machine);
     const applicable=space===undefined ? candidate || display
-      : group && (group.machine??null)===machine && (candidate?.parent===space || [display?.parent,display?.child].includes(space));
+      : group && (group.machine??null)===machine && (candidate?.parent===space || [display?.parent,...fleetChildren(display).map(c=>c.child)].includes(space));
     return applicable && readyLayout(machine,hosts) && token && !witnessed(key,token)?[key]:[];
   });
 }
@@ -203,7 +233,11 @@ export function fleetContexts({presentation = false} = {}) {
   // token. Native shared changes redraw them before and after publication.
   for(const [key,read] of Object.entries(shared(READS)??{}))
     if(read.until>now && read.generation===fleetGeneration() && read.kind!=='discovery' && read.token!==state?.entries?.[key]?.attemptToken)pendingTokens.set(key,read.token);
-  if(presentation) return savedDisplays().filter(record=>[record.parent,record.child].every(id=>inMachine(snapshot,id,record.machine)));
+  if(presentation) return savedDisplays().flatMap(record=>{
+    if(!inMachine(snapshot,record.parent,record.machine))return [];
+    const children=fleetChildren(record).filter(c=>inMachine(snapshot,c.child,record.machine));
+    return children.length?[withScopes({...identityOf(record),child:children[0].child,...(record.children?{children}:{})})]:[];
+  });
   if(state?.version!==1) return [];
   return Object.entries(state.entries??{}).flatMap(([key,entry])=> {
     const age=now-entry.at;
@@ -223,8 +257,8 @@ export function fleetColorAllowed(pair) {
     const entry=shared(FLEET_KEY)?.entries?.[context.machine??'local'];
     const verified=displayRecord(entry?.displayIdentity);
     const displayed=shown.find(record=>record.machine===context.machine);
-    return Boolean(verified && displayed && verified.parent===pair.parent && verified.child===pair.child && verified.binding===pair.binding
-      && context.pullScope===verified.pullScope && (!context.child || context.child===verified.child)
+    return Boolean(verified && displayed && verified.parent===pair.parent && fleetChildren(verified).some(c=>c.child===pair.child) && verified.binding===pair.binding
+      && context.pullScope===verified.pullScope
       && JSON.stringify(identityOf(displayed))===JSON.stringify(identityOf(verified))
       && signature(context.machine,snapshot,verified)===entry.displaySignature);
   });

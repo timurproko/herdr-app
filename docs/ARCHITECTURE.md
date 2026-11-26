@@ -290,8 +290,18 @@ Core-first worker exit cannot silently remove its PR before Crew publishes the
 closed record. A working/finished mismatch remains unverified rather than renewing
 action freshness, while existing same-home rows stay explicitly stale.
 
+Spaces accepts multiple verified same-machine children per coordinator through the
+existing registry contribution. Crew placement v1 validates `crew.space.version=1`,
+`mode`, `project` and `name` against each status task's project and exact native
+membership. Legacy/combined `fm-crew-<home>`, `-project-<registered-name>` and internal
+`-self` (`crew:self`, display `crew`) are supported together; `crew.home` remains
+unchanged. The transport keeps task project, not reports or placement authority.
+Durable display identity may contain multiple child placement records, never PRs.
+Projected child order follows native order; explicit user names override project
+metadata. Captured whole-block membership guards every acknowledged reorder.
+
 Spaces presents accepted same-machine blocks using Agents' shared child branch
-and parent disclosure primitives. The child retains its native index and badge
+and parent disclosure primitives, with a shared vertical stem and final-child corner. The child retains its native index and badge
 colour inheritance, but is indented; neither row has a chain and only the parent
 shows Crew. Unrelated tags and worktree metadata keep their ordinary trailing
 edge. A separate local `custom.spaces.parents.folded` set is bounded to 256 exact
