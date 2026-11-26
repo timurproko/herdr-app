@@ -31,7 +31,7 @@ function rememberMissing(entry) {
   }
 }
 export class AggregatePulls {
-  constructor({shown,onUpdate,presentationEpoch=()=>0,presentationAlive=()=>true}) {this.shown=shown;this.onUpdate=onUpdate;this.presentationEpoch=presentationEpoch;this.presentationAlive=presentationAlive;this.presentations=new Map();this.entries=new Map();this.pending=new Map();this.diagnostics=new Map();this.serial=0;this.factOrder=new PullFactsOrder();}
+  constructor({shown,onUpdate,presentationEpoch=()=>0,presentationAlive=()=>true}) {this.shown=shown;this.onUpdate=onUpdate;this.presentationEpoch=presentationEpoch;this.presentationAlive=presentationAlive;this.presentations=new Map();this.stagePresentations=new Map();this.entries=new Map();this.pending=new Map();this.diagnostics=new Map();this.serial=0;this.factOrder=new PullFactsOrder();}
   currentContext({presentation = false} = {}) {
     const context=sidebarPanelEnabled('changes') ? pluginPullContext(location().space,{presentation}) : null;
     return !presentation && context?.stale ? null : context;
@@ -40,7 +40,7 @@ export class AggregatePulls {
     if(this.shown()) pluginEvent('workspace.context.refresh',{cx,space:location().space});
     const context=this.currentContext({presentation:true}), previous=this.context;
     const generation=JSON.stringify([this.presentationEpoch(),context?.presentationGeneration??this.providerGeneration??0]);
-    if(this.presentationGeneration!==undefined && generation!==this.presentationGeneration)this.presentations.clear();
+    if(this.presentationGeneration!==undefined && generation!==this.presentationGeneration){this.presentations.clear();this.stagePresentations.clear();}
     for(const [scope,saved]of this.presentations)if(!this.presentationAlive(saved))this.presentations.delete(scope);
     const compatible=this.presentationGeneration===generation;
     this.presentationGeneration=generation;if(context)this.providerGeneration=context.presentationGeneration??0;
@@ -86,7 +86,7 @@ export class AggregatePulls {
     this.presentations.set(this.context.scope,{entries,lastCounts:this.lastCounts?new Map(this.lastCounts):null,parent:this.context.parent,machine:this.context.machine});
     while(this.presentations.size>4 || [...this.presentations.values()].reduce((sum,s)=>sum+s.entries.length,0)>4096)this.presentations.delete(this.presentations.keys().next().value);
   }
-  stop() {this.presentations.clear();this.returning=false;this.lastCounts=null;this.serial++;this.factOrder.reset();this.context=null;this.entries.clear();this.pending.clear();this.diagnostics.clear();}
+  stop() {this.presentations.clear();this.stagePresentations.clear();this.returning=false;this.lastCounts=null;this.serial++;this.factOrder.reset();this.context=null;this.entries.clear();this.pending.clear();this.diagnostics.clear();}
   get busy() {return this.pending.size>0 || Boolean(this.fallbackBusy);}
   unresolved(entry) {return !entry.pr && !entry.missing;}
   get countsLoading() {return [...this.entries.values()].some(e=>this.unresolved(e)) || Boolean(this.context?.stale && !this.entries.size);}
@@ -205,21 +205,39 @@ export class AggregatePulls {
     const agent=agentLinks?.related?.(pr,pr.repo,location().terminal,role,address=>members.some(t=>t.terminal===address));
     if(!agent)return null;
     const member=members.find(t=>t.terminal===agent.address);
-    return {terminal:agent.address,task:member.id??member.task,role,agent};
+    const target={terminal:agent.address,task:member.id??member.task,role,agent};
+    if(agent.availability==='live') {
+      const key=JSON.stringify([context.scope,pr.key,role]);
+      this.stagePresentations.delete(key);this.stagePresentations.set(key,target);
+      while(this.stagePresentations.size>256)this.stagePresentations.delete(this.stagePresentations.keys().next().value);
+    }
+    return target;
+  }
+  stagePresentation(pr,role,agentLinks) {
+    const fresh=this.stageTarget(pr,role,agentLinks);if(fresh)return fresh;
+    const context=this.currentContext({presentation:true});
+    if(!context || context.scope!==this.context?.scope || !this.entries.has(pr.key))return null;
+    const saved=this.stagePresentations.get(JSON.stringify([context.scope,pr.key,role]));if(!saved)return null;
+    // Same-home last verified identity explains only this retained row. A live
+    // or reconnected terminal without fresh membership remains unavailable;
+    // neither this cache nor its returned descriptor may authorize focus.
+    const current=agentLinks?.related?.(pr,pr.repo,null,role,address=>address===saved.terminal);
+    const agent=current??saved.agent;
+    return {...saved,agent:{...agent,availability:['ended','disconnected'].includes(current?.availability)?current.availability:'unavailable'}};
   }
   target(pr) {
-    const context=this.currentContext();if(context?.scope!==this.context?.scope)return null;
+    const context=this.currentContext();if(!context || context.scope!==this.context?.scope)return null;
     const matches=context.links.filter(l=>!l.historical && typeof l.terminal==='string' && l.terminal && taskPullLink(l.url)?.key===pr.key);
     return matches.find(l=>l.terminal===location().terminal)??matches[0]??null;
   }
-  focus(pr,target,scope,agentLinks) {
+  focus(pr,target,scope,agentLinks,beforeFocus=()=>{}) {
     if(!this.shown() || !target?.terminal || target.historical || this.currentContext()?.scope!==scope)return;
     if(target.role) {
       if(this.entries.get(pr.key)?.pr?.stage!==pr.stage)return;
       const current=this.stageTarget(pr,target.role,agentLinks);
-      if(current?.terminal===target.terminal && current.task===target.task && current.agent.key===target.agent.key && current.agent.availability==='live')run('agent.focus',{terminal:target.terminal});
+      if(current?.terminal===target.terminal && current.task===target.task && current.agent.key===target.agent.key && current.agent.availability==='live') {beforeFocus(current);run('agent.focus',{terminal:target.terminal});}
       return;
     }
-    if(this.currentContext().links.some(l=>!l.historical && l.terminal===target.terminal && l.task===target.task && taskPullLink(l.url)?.key===pr.key))run('agent.focus',{terminal:target.terminal});
+    if(this.currentContext().links.some(l=>!l.historical && l.terminal===target.terminal && l.task===target.task && taskPullLink(l.url)?.key===pr.key)) {beforeFocus(target);run('agent.focus',{terminal:target.terminal});}
   }
 }

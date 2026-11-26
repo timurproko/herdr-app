@@ -198,6 +198,8 @@ export default class Changes extends View {
     // or discard the targeted refresh that the same timer just started.
     if (selection !== this.selection) this.agentResolved = null;
     this.selection = selection;
+    const labelled=this.agentLinks?.pullNumber?.(target.terminal,this.repo?.name);
+    if(labelled!=null) {this.agentRequest=null;this.agentPull=labelled;this.agentResolved=selection;return;}
     const request = this.agentRequest = {};
     if (!['a1','claude-code'].includes(target.app) || !target.terminal) { this.agentPull = null; this.agentResolved = selection; return; }
     // Keep the existing pin until the new footer resolves: identical PRs must
@@ -735,6 +737,30 @@ export default class Changes extends View {
       .when(!stated,el=>el.tooltip(pr.state==='draft'?'Draft pull request':pr.state==='open'?'Open pull request':pr.state==='merged'?'Merged pull request':'Closed pull request'));
   }
 
+  beginAgentMotion(pr,press,agent,cx,controlOffset=6) {
+    if(!agent?.address || press?.number!==pr.number || Date.now()-press.at>=2000)return false;
+    let clicked=pr,snapshot=this.pullPresentation;
+    if(pr.key) {
+      const window=this.selectedTaskWindow;if(!window || !agent.cwd)return false;
+      const items=window.range().items;if(!items.some(item=>item.key===pr.key))return false;
+      let top=4-window.offset;
+      const backdrop=items.map(item=>{
+        const value={...item,top,count:window.repositoryCounts?.get(item.repo)?.value};top+=item.height+item.gap;return value;
+      });
+      clicked={...pr,key:undefined,repo:undefined};
+      snapshot={context:this.context,state:this.view,rows:[clicked],pinned:null,arrival:true,originKey:pr.key,backdrop};
+    }
+    const repo=pr.repo??this.repo?.name;
+    if(!this.pinMotion?.start(snapshot,clicked,press,{source:location().terminal,target:agent.address,folder:folderKey(agent),repo,controlOffset},cx))return false;
+    if(pr.key) {
+      // Only presentation is carried from the verified task PR. The destination
+      // still reads its own repository inventory/counts and resolves selection.
+      this.repo={name:repo,owner:repo.split('/')[0],url:`https://github.com/${repo}`};
+      this.relatedPull=clicked;
+    }
+    cx.notify();return true;
+  }
+
   stageChip(t, pr, interactive = true) {
     if(!pr.stage) {
       const robot=this.agentButton(t,pr,interactive);
@@ -742,7 +768,7 @@ export default class Changes extends View {
     }
     const role=pr.stage==='approved'?null:pr.stage,repo=pr.repo??this.repo?.name,context=this.context;
     const scope=this.aggregate?.context?.scope;
-    const target=role && pr.key?this.aggregate?.stageTarget?.(pr,role,this.agentLinks):null;
+    const target=role && pr.key?(this.aggregate?.stagePresentation?this.aggregate.stagePresentation(pr,role,this.agentLinks):this.aggregate?.stageTarget?.(pr,role,this.agentLinks)):null;
     const agent=role?(pr.key?target?.agent:this.agentLinks?.related?.(pr,repo,location().terminal,role)):null;
     const available=agent?.availability==='live';
     const round=role==='build'?agent?.crew?.round:null;
@@ -767,14 +793,13 @@ export default class Changes extends View {
         .on_click((_event,cx)=>{
           cx.stop_propagation();const press=this.agentPress;this.agentPress=null;
           if(!available || this.context!==context || !this.shown())return;
-          if(pr.key) {this.aggregate?.focus(pr,target,scope,this.agentLinks);return;}
+          if(pr.key) {this.aggregate?.focus(pr,target,scope,this.agentLinks,current=>this.beginAgentMotion(pr,press,current.agent,cx));return;}
           if(key()!==context || this.repo?.name!==repo)return;
           const current=this.agentLinks?.related?.(pr,repo,location().terminal,role);
           if(current?.key!==agent.key || current.availability!=='live')return;
           const latest=[...(this.pulls?.open??[]),...(this.pulls?.closed??[]),this.relatedPull].find(row=>row?.number===pr.number);
           if(latest && latest.stage!==pr.stage)return;
-          if(press?.number===pr.number && Date.now()-press.at<2000 && this.pinMotion?.start(this.pullPresentation,pr,press,
-            {source:location().terminal,target:current.address,folder:folderKey(current),repo},cx))cx.notify();
+          this.beginAgentMotion(pr,press,current,cx);
           run('agent.focus',{terminal:current.address});
         }))
       .when(Boolean(interactive&&role&&available),el=>el.role('button').accessibility_label(`Open ${role==='review'?'reviewer':'build agent'} for ${repo} #${pr.number}`)
@@ -789,8 +814,13 @@ export default class Changes extends View {
       return target ? div().id(`${interactive ? '' : 'swap-'}pr-agent-${pr.key}`).absolute().left(0).top((20-U.insetControl)/2)
         .size(U.insetControl).flex_none().flex().items_center().justify_center().rounded(U.insetRadius).text_color(t.foreground)
         .when(interactive, el=>el.cursor_pointer().role('button').accessibility_label(`Open related agent for ${pr.repo} #${pr.number}`)
-          .hover(s=>s.bg(subtleActionFill(t))).on_mouse_down('left',(_e,cx)=>cx.stop_propagation())
-          .on_click((_e,cx)=>{cx.stop_propagation();this.aggregate.focus(pr,target,scope);}))
+          .hover(s=>s.bg(subtleActionFill(t))).on_mouse_down('left',(event,cx)=>{
+            cx.stop_propagation();this.agentPress={number:pr.number,position:event.position,bounds:event.bounds,at:Date.now()};
+          })
+          .on_click((_e,cx)=>{
+            cx.stop_propagation();const press=this.agentPress;this.agentPress=null;
+            this.aggregate.focus(pr,target,scope,undefined,current=>this.beginAgentMotion(pr,press,this.agentLinks?.liveTarget?.(current.terminal),cx,4));
+          }))
         .when(Boolean(name),el=>el.tooltip(`Open agent: ${name}`))
         .child(svg('icons/agent.svg').size(U.icon)) : null;
     }
@@ -816,9 +846,7 @@ export default class Changes extends View {
             if (current?.key !== agent.key) return;
             // Capture presentation only. Focus changes immediately; the new
             // footer/selection must resolve before any row starts moving.
-            if (press?.number === pr.number && Date.now() - press.at < 2000
-              && this.pinMotion?.start(this.pullPresentation, pr, press,
-                {source:location().terminal,target:current.address,folder:folderKey(current),repo},cx)) cx.notify();
+            this.beginAgentMotion(pr,press,current,cx,4);
             run('agent.focus', {terminal:current.address});
           }))
         .when(Boolean(agent.displayName),el=>el.tooltip(`Open agent: ${agent.displayName}`))
@@ -1021,7 +1049,7 @@ export default class Changes extends View {
     const state = this.view, list = this.pulls[state], pullNumber = this.agentPull ?? location().pullNumber;
     const related = this.relatedPull && this.relatedPull.number === pullNumber && (state === 'open'
       ? ['open','draft'].includes(this.relatedPull.state) : ['closed','merged'].includes(this.relatedPull.state)) ? this.relatedPull : null;
-    const liveRows = related && list && !list.some(pr => pr.number === related.number) ? [...list,related] : list ?? [];
+    const liveRows = related && !list?.some(pr => pr.number === related.number) ? [...(list??[]),related] : list ?? [];
     const active = liveRows.find(pr => pullNumber != null
       ? pr.number === pullNumber : Boolean(this.branch && pr.headRefName === this.branch));
     return {liveRows,active};
@@ -1099,6 +1127,17 @@ export default class Changes extends View {
     const remaining = rows.filter(pr => pr !== pinned);
     const empty = this.error || this.pullError || (!this.root ? (this.loading ? 'Loading…' : 'No folder')
       : list === null ? 'Loading…' : `No ${state} pull requests`);
+    if(retained?.snapshot.arrival)return v_flex().id('pulls-body').relative().flex_1().min_h(0).overflow_hidden()
+      .on_size_change((size,cx)=>{const before=this.pinMotion.bodySize?.width;this.pinMotion.measureBody(size,settings().zoom);if(before!==this.pinMotion.bodySize?.width)cx.notify();})
+      .on_mouse_move(event=>this.pinMotion.bodyPointer(event))
+      .on_scroll_wheel((_event,cx)=>{this.pinMotion.cancel();cx.notify();cx.stop_propagation();})
+      .on_mouse_down('left',(_event,cx)=>cx.stop_propagation()).on_click((_event,cx)=>cx.stop_propagation())
+      .children(retained.snapshot.backdrop.map(item=>div().id(`pin-origin-${item.key}`).absolute().left(LIST_INSET).right(LIST_INSET).top(item.top).h(item.height)
+        .when(Boolean(swap&&item.key===retained.snapshot.originKey),el=>el.invisible())
+        .child(item.row?this.pullRow(t,item.row,true):item.header?sidebarSectionHeader(t,{id:`pin-origin-header-${item.repo}`,label:item.repo,open:!item.folded,trailingSize:U.insetControl,trailingInset:3,children:[
+          div().flex_1().min_w(0).truncate().child(item.repo),sidebarNumericSlot(t,`pin-origin-count-${item.repo}`,String(item.count??0),{gap:U.gap,trailingSize:U.insetControl}),
+        ]}):div().px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(item.error??''))))
+      .when(Boolean(swap),el=>el.child(this.swapOverlay(t,swap)));
     return v_flex().id('pulls-body').relative().flex_1().min_h(0).overflow_hidden()
       .on_size_change((size, cx) => {
         const before = this.pinMotion?.bodySize?.width;
@@ -1277,6 +1316,7 @@ export default class Changes extends View {
     // Handles are created after layout, never in render; they retain the same
     // native list's position across appends and same-home refreshes.
     if(!window.handle && base.ScrollHandle) {window.handle=base.ScrollHandle.new();cx.notify();}
+    if(which==='viewport')this.pinMotion?.measureBody(size,zoom);
     if(which==='viewport' && window.width!==size.width) {window.width=size.width;cx.notify();}
     if(which==='content')window.metrics.awaitZoom=false;
     window.metrics.measure(which,size,cx);
@@ -1312,6 +1352,7 @@ export default class Changes extends View {
 
   taskViewportMotion(window,scope,event,kind,cx) {
     if(!this.taskWindowCurrent(window,scope))return;
+    if(kind==='move')this.pinMotion?.bodyPointer(event);
     const native=this.sampleNativeScroll(window.metrics,window.handle,window.zoom);
     if(!native)window.metrics.viewportMotion(event,kind,cx);else window.metrics.update(cx);
     window.anchorMarker=null;

@@ -69,6 +69,14 @@ export class AgentLinks {
 
   displayName(address) {return displayName(agents().find(agent=>agent.address===address));}
 
+  liveTarget(address) {return agentTargets().find(target=>target.address===address)??null;}
+
+  pullNumber(address,repo) {
+    const terminal=terminals().find(t=>t.address===address),crew=crewMetadata(terminal?.labels),link=crewPull(crew.pr);
+    return terminal?.state==='live' && connected(machineOf(address)) && ['ship','fix','review'].includes(crew.kind)
+      && link?.repo===repoKey(repo)?link.number:null;
+  }
+
   rememberBranch(entry) {
     const crew=crewMetadata(terminals().find(t=>t.address===entry.address)?.labels);
     if(!entry.repo || !entry.branch || crew.pr!==null || !['ship','fix'].includes(crew.kind))return;

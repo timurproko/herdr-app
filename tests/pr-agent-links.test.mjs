@@ -29,20 +29,22 @@ function pathTo(node,target) {
   for(const child of node?.kids??[]) {const rest=pathTo(child,target);if(rest)return [node,...rest];}
   return null;
 }
-let allAgents=[], allPanes=[], allSpaces=[], allTerminals=[], shown=true, connected=true,taskContext=null;
+let allAgents=[], allPanes=[], allSpaces=[], allTerminals=[], shown=true, connected=true,taskContext=null,currentZoom=1;
 const calls=[], actions=[], tasks=[], remotes=new Map(), screens=new Map(),configs=new Map();
 const place={cwd:'/repo',on:null,terminal:'shell',tab:'shell-tab'};
 let heldRemote=null;
 const host={
   agents:()=>allAgents,panes:()=>allPanes,spaces:()=>allSpaces,terminals:()=>allTerminals,machines:()=>[{name:'pc2',layout:connected?'ready':'disconnected'}],
   focused:()=>null,home:()=>'/home/test',shared:()=>null,setShared(){},
-  settings:()=>({zoom:1}),theme:()=>colors,window:()=>({platform:'linux'}),openOverlay(){},
+  settings:()=>({zoom:currentZoom}),theme:()=>colors,window:()=>({platform:'linux'}),openOverlay(){},
   props:()=>null,closeOverlay(){},notify(){},nextCommand(){},
   layout:()=>({id:'panel',hidden:!shown,children:[{id:'panel-body',active:'changes'}]}),
   run:(...args)=>actions.push(args),
   exec:async(cmd,args,options)=>{
     calls.push({cmd,args,options});
     if(cmd==='git') {
+      if(args[0]==='rev-parse')return {code:0,stdout:options.cwd};
+      if(args[0]==='symbolic-ref')return {code:0,stdout:allPanes.find(p=>p.cwd===options.cwd)?.branch??'main'};
       const key=JSON.stringify([options.on,options.cwd]),config=configs.get(key);
       // Apply the real --get-regexp filter so omitting gh-resolved really does
       // hide a marker-only change, rather than letting the mock mask the bug.
@@ -416,6 +418,117 @@ for(const transition of ['ended','disconnected']) {
   branchLinks.refresh(cx,admit);await tick();assert.equal(branchLinks.related(branchPr,'owner/repo',null,'build').availability,'live');
 }
 view.agentLinks=originalLinks;
+// Whole-plugin availability matrix: the shared ordinary/coordinator row in
+// both tabs and ghost presentation, every role and current-Crew branch fallback.
+let matrixCases=0;
+for(const mode of ['ordinary','coordinator'])for(const state of ['open','closed'])for(const ghost of [false,true])for(const remote of [false,true])for(const variant of ['ship-pr','ship-branch','fix-pr','fix-branch','review-pr']) {
+  const number=2200+matrixCases++,role=variant.startsWith('review')?'review':'build',address=`${remote?'pc2/':''}matrix-${number}`;
+  const url=`https://github.com/owner/repo/pull/${number}`,terminal=roleAgent(address,variant.split('-')[0],variant.endsWith('branch')?null:url);
+  const row={...ordinaryStage,number,state,stage:role,url,headRefName:'stage-head',checks:{state:'failure',label:'0/1'},...(mode==='coordinator'?{repo:'owner/repo',key:`owner/repo#${number}`}:{})};
+  const panel=new main.namespace.default();panel.resetRepository();panel.repo={name:'owner/repo'};panel.root='/repo';panel.context=JSON.stringify([place.cwd,place.on]);panel.view=state;
+  const model=new AgentLinks();panel.agentLinks=model;const admit=a=>a===address;
+  const group=new AggregatePulls({shown:()=>shown});panel.aggregate=group;
+  const liveContext={scope:`matrix-${number}`,machine:remote?'pc2':null,tasks:[{id:'task',terminal:address}],links:[{url,terminal:address,task:'task'}]};
+  taskContext=liveContext;group.context=liveContext;group.entries.set(row.key,{pr:row,link:{targets:[{terminal:address}]}});
+  const chip=()=>{panel.pulls[state]=[row];return find(panel.pullRow(colors,row,ghost),`${ghost?'swap-':''}pr-stage-${row.key??number}`);};
+  const nonAgentChecks=robot=>{
+    const approved=find(panel.pullRow(colors,{...row,stage:'approved'},ghost),`${ghost?'swap-':''}pr-stage-${row.key??number}`);
+    assert.equal(approved.kids[0],'Approved');assert.equal(approved.attrs.tooltip,undefined);assert.equal(approved.attrs.opacity,undefined);assert.equal(approved.attrs.on_click,undefined);
+    const fallback=find(panel.pullRow(colors,{...row,stage:null},ghost),`${ghost?'swap-':''}pr-agent-${row.key??number}`);
+    assert.equal(Boolean(fallback),robot);if(fallback&&ghost)assert.equal(fallback.attrs.on_click,undefined);
+  };
+  model.refresh(cx,admit);await tick();const liveChip=chip();assert.equal(liveChip.attrs.opacity,undefined);nonAgentChecks(true);
+  const focusCount=actions.length;terminal.state='finished';
+  if(mode==='coordinator'){taskContext={...liveContext,tasks:[{id:'task',terminal:null,historical:true}],links:[{url,terminal:null,task:'task',historical:true}]};group.context=taskContext;group.entries.get(row.key).link.targets=[{terminal:null,historical:true}];}
+  model.refresh(cx,admit);await tick();let reads=calls.length;
+  const ended=role==='build'?'build agent ended - CI failure':'reviewer ended without a verdict';
+  let disabled=chip();assert.equal(disabled.attrs.tooltip[0],ended);assert.equal(disabled.attrs.opacity[0],0.45);assert.equal(disabled.attrs.role,undefined);
+  disabled.attrs.on_click?.[0]({},cx);liveChip.attrs.on_click?.[0]({},cx);nonAgentChecks(false);assert.equal(actions.length,focusCount);assert.equal(calls.length,reads);
+  terminal.state='live';connected=false;
+  if(remote) {
+    if(mode==='coordinator'){taskContext={...liveContext,stale:true};group.context=taskContext;}
+    disabled=chip();assert.equal(disabled.attrs.tooltip[0],'on pc2, not connected');assert.equal(disabled.attrs.opacity[0],0.45);assert.equal(disabled.attrs.role,undefined);
+    model.refresh(cx,admit);await tick();nonAgentChecks(false);assert.equal(calls.length,reads);liveChip.attrs.on_click?.[0]({},cx);assert.equal(actions.length,focusCount);
+    if(mode==='coordinator'){
+      taskContext={...liveContext,scope:'different-home',stale:true};group.context=taskContext;
+      assert.equal(chip().attrs.tooltip[0],role==='build'?'build agent unavailable':'reviewer unavailable','Another scope cannot borrow a remembered target');
+      taskContext={...liveContext,stale:true};group.context=taskContext;
+    }
+  } else {
+    taskContext=liveContext;group.context=liveContext;group.entries.get(row.key).link.targets=[{terminal:address}];
+    model.refresh(cx,admit);await tick();assert.equal(chip().attrs.opacity,undefined,'An unrelated remote disconnect never dims a local target');nonAgentChecks(true);
+  }
+  connected=true;
+  if(mode==='coordinator') {
+    taskContext={...liveContext,stale:true};group.context=taskContext;disabled=chip();assert.equal(disabled.attrs.opacity[0],0.45);
+    assert.equal(disabled.attrs.tooltip[0],role==='build'?'build agent unavailable':'reviewer unavailable','Reconnected but unverified remains non-authorizing');
+    liveChip.attrs.on_click?.[0]({},cx);assert.equal(actions.length,focusCount);
+  }
+  taskContext=liveContext;group.context=liveContext;group.entries.get(row.key).link.targets=[{terminal:address}];model.refresh(cx,admit);await tick();reads=calls.length;
+  const restored=chip();assert.equal(restored.kids[0],role==='build'?'Build':'Review');assert.equal(restored.attrs.opacity,undefined);assert.equal(Boolean(restored.attrs.on_click),!ghost);assert.equal(Boolean(restored.attrs.role),!ghost);assert.equal(restored.attrs.tooltip,undefined);nonAgentChecks(true);assert.equal(calls.length,reads);
+  console.log(`REASON_MATRIX ${mode}/${state}/${ghost?'ghost':'row'}/${remote?'pc2':'local'}/${variant}: ended=${ended}; disconnected=${remote?'on pc2, not connected':'not applicable to local machine'}; reconnected=${restored.kids[0]}`);
+}
+taskContext=null;
+// Real PinSwap end-to-end for both chips, source view types, tabs and machines.
+// A reviewer's base branch/footer must not prevent the destination crew.pr pin.
+Object.assign(modules['./ui.js'].U,{control:28,rowGap:2,gap:8,meta:12,font:13,radius:6});
+const savedPlace={...place};let animationCases=0;
+for(const mode of ['ordinary','coordinator'])for(const role of ['build','review'])for(const state of ['open','closed'])for(const remote of [false,true])for(const zoom of [1,1.3])for(const control of ['chip','robot'])for(const initiallyPinned of mode==='ordinary'?[true,false]:[false]) {
+  currentZoom=zoom;
+  const number=4000+animationCases++,other=number+100,url=`https://github.com/owner/repo/pull/${number}`;
+  const address=`${remote?'pc2/':''}motion-${number}`,terminal=roleAgent(address,role==='review'?'review':'ship',url);
+  const sourceAddress=`source-${number}`;roleAgent(sourceAddress,'ship',`https://github.com/owner/repo/pull/${other}`);
+  const agentRecord=allAgents.find(a=>a.address===address),targetPane=allPanes.find(p=>p.terminal===address);
+  Object.assign(place,{terminal:sourceAddress,cwd:'/repo',on:null,app:'codex',space:'source-space',tab:'source-tab'});
+  const panel=new main.namespace.default();panel.resetRepository();panel.view=state;panel.foldedRepositories=new Set();
+  panel.repo={name:'owner/repo'};panel.root='/repo';panel.context=JSON.stringify([place.cwd,place.on]);
+  const model=new AgentLinks();panel.agentLinks=model;model.refresh(cx,a=>a===address||a===sourceAddress);await tick();
+  const plain={...ordinaryStage,number,state,stage:control==='chip'?role:null,url,headRefName:'stage-head'},old={...plain,number:other,url:`https://github.com/owner/repo/pull/${other}`,stage:control==='chip'?'build':null};
+  panel.pulls[state]=[old,plain];panel.agentPull=initiallyPinned?other:null;
+  let source,from;
+  if(mode==='coordinator') {
+    const group=new AggregatePulls({shown:()=>shown});panel.aggregate=group;
+    taskContext={scope:`motion-${number}`,tasks:[{id:'target',terminal:address},{id:'source',terminal:sourceAddress}],links:[{url,terminal:address,task:'target'},{url:old.url,terminal:sourceAddress,task:'source'}]};group.context=taskContext;
+    for(const [row,target]of [[old,sourceAddress],[plain,address]]){const key=`owner/repo#${row.number}`;group.entries.set(key,{pr:{...row,key,repo:'owner/repo'},link:{repo:'owner/repo',key,targets:[{terminal:target}]}});}
+    panel.context=`tasks:${taskContext.scope}`;panel.repo=null;panel.root=null;panel.pulls={open:null,closed:null};panel.agentPull=null;
+    panel.notices={sync(){return null;},presentation(){return null;},stop(){}};panel.enrollmentPicker={render(){return null;},stop(){}};panel.syncChecksFallback=()=>{};
+    source=panel.renderAggregate(cx,colors);const window=panel.selectedTaskWindow;
+    panel.taskMeasure(window,taskContext.scope,'viewport',{width:300*zoom,height:400*zoom},cx);
+    panel.taskViewportMotion(window,taskContext.scope,{position:{x:280*zoom,y:230*zoom},bounds:{x:0,y:100*zoom,width:300*zoom,height:400*zoom}},'move',cx);
+    from=4-window.offset;for(const item of window.range().items){if(item.row?.number===number)break;from+=item.height+item.gap;}
+    assert.equal(find(source,'active-pull'),undefined,'Coordinator has no permanent active pin');
+  } else {
+    source=panel.renderPulls(colors);find(source,'pulls-body').attrs.on_size_change[0]({width:300*zoom,height:400*zoom},cx);
+    from=initiallyPinned?87:80;for(const n of [number,other])find(source,`pr-${n}`).attrs.on_size_change[0]({width:286*zoom,height:74*zoom});
+    find(source,`pr-${number}`).attrs.on_mouse_move[0]({position:{x:280*zoom,y:(100+from+10)*zoom},bounds:{x:7*zoom,y:(100+from)*zoom,width:286*zoom,height:74*zoom}});
+    find(source,'pulls-body').attrs.on_mouse_move[0]({bounds:{x:0,y:100*zoom,width:300*zoom,height:400*zoom}});
+  }
+  const timers=[],motionCx={...cx,timer:{after:(ms,fn)=>{const timer={ms,fn,cancel(){this.cancelled=true;}};timers.push(timer);return timer;}}};
+  const sourceId=mode==='coordinator'?`owner/repo#${number}`:number,kind=control==='chip'?'stage':'agent',button=find(source,`pr-${kind}-${sourceId}`),before=actions.length,offset=control==='chip'?6:4;
+  button.attrs.on_mouse_down[1]({position:{x:280*zoom,y:(100+from+10)*zoom},bounds:{x:(control==='chip'?213:269)*zoom,y:(100+from+offset)*zoom,width:(control==='chip'?80:24)*zoom,height:(control==='chip'?20:24)*zoom}},motionCx);button.attrs.on_click[0]({},motionCx);
+  assert.equal(actions.length,before+1,'Chip focuses immediately, before animation');assert.equal(actions.at(-1)[1].terminal,address);
+  const swap=panel.pinMotion.current;assert.ok(swap,`${mode}/${role}/${state}: pin motion armed`);assert.equal(swap.phase,'waiting');assert.equal(swap.target,address);
+  assert.equal(Boolean(swap.snapshot.arrival),mode==='coordinator');assert.ok(Math.abs(swap.cards.find(c=>c.pr.number===number).from-from)<1e-6,'Chip starts at the measured row, not the robot glyph offset');
+  if(mode==='ordinary'){assert.equal(panel.agentPull,initiallyPinned?other:null,'No optimistic pin selection');assert.equal(swap.snapshot.pinned?.number??null,initiallyPinned?other:null);}
+  // Native focus acknowledgement selects another space and worktree. Use the
+  // real retained-refresh/root/branch path before resolving the destination pin.
+  taskContext=null;Object.assign(place,{terminal:address,space:agentRecord.space,tab:agentRecord.tab,cwd:terminal.cwd,on:remote?'pc2':null,app:'codex'});
+  panel.refresh(motionCx);assert.equal(panel.pinMotion.current,swap,'Correct destination retains the pending motion across a context refresh');
+  let waiting=panel.renderPulls(colors);assert.equal(find(waiting,`pin-swap-${swap.id}`),undefined);
+  if(mode==='coordinator')assert.ok(find(waiting,`pin-origin-owner/repo#${number}`),'Coordinator body is retained as inert presentation');
+  await tick();assert.equal(panel.branch,role==='review'?'main':'stage-head');assert.equal(panel.agentPull,number,'crew.pr pins the reviewer even on its base branch without a footer');
+  let moving=panel.renderPulls(colors),overlay=find(moving,`pin-swap-${swap.id}`);assert.ok(overlay);
+  const ghost=find(overlay,`swap-pr-${kind}-${number}`);assert.ok(ghost);assert.equal(ghost.attrs.on_click,undefined,'Moving chips cannot navigate');
+  assert.ok(Math.abs(find(overlay,`pin-swap-${swap.id}-${number}`).attrs.top[0]-from)<1e-6);
+  overlay.attrs.on_size_change[0]({},motionCx);assert.equal(timers.find(t=>t.ms===3000).cancelled,true);
+  timers.find(t=>t.ms===16).fn(motionCx);moving=panel.renderPulls(colors);overlay=find(moving,`pin-swap-${swap.id}`);
+  assert.equal(find(overlay,`pin-swap-${swap.id}-${number}`).attrs.top[0],4,'The clicked row travels to the normal pinned slot');
+  timers.find(t=>t.ms===352).fn(motionCx);const settled=panel.renderPulls(colors);
+  assert.equal(panel.pinMotion.current,null);assert.ok(find(find(settled,'active-pull'),`pr-${number}`),'The destination commits the clicked pin after motion');assert.equal(actions.length,before+1,'Motion never delays or repeats focus');
+  console.log(`PIN_MATRIX ${mode}/${role}/${state}/${remote?'pc2':'local'}/${zoom}/${control}/${initiallyPinned?'pinned':'unpinned'}: immediate focus; ${from}->4; destination pin committed`);
+  await tick();
+}
+Object.keys(place).forEach(key=>delete place[key]);Object.assign(place,savedPlace);taskContext=null;currentZoom=1;
 shown=false;const hiddenCalls=calls.length;view.render(cx);await tick();
 assert.equal(calls.length,hiddenCalls,'Hidden Git panels start no agent scans');
 await Promise.all(tasks);
