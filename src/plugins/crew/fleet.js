@@ -157,7 +157,7 @@ function savedDisplays() {
 function nextDisplay(machine, bound, snapshot) {
   if(!bound)return null;
   const prior=savedDisplays().find(d=>d.machine===machine),children=new Map(fleetChildren(bound).map(c=>[c.child,c]));
-  if(prior && prior.home===bound.home && prior.owner===bound.owner && prior.parent===bound.parent)for(const child of fleetChildren(prior)) {
+  if(prior && prior.home===bound.home && prior.owner===bound.owner && prior.parent===bound.parent && (!bound.adoption || prior.adoption===bound.adoption))for(const child of fleetChildren(prior)) {
     if(children.has(child.child) || !inMachine(snapshot,child.child,machine))continue;
     const tabs=new Set(snapshot.groups.find(s=>s.id===child.child)?.tabs?.map(t=>t.id)??[]);
     const members=new Set(snapshot.all.filter(p=>tabs.has(p.tab) && !p.mod).map(p=>p.terminal));
@@ -169,7 +169,9 @@ function nextDisplay(machine, bound, snapshot) {
   const records=[...children.values()].sort((a,b)=>a.child.localeCompare(b.child));
   if(!records.length)return null;
   const extra=records.length>1 || records[0].mode!=='combined'?{children:records}:{};
-  return displayRecord({...identityOf(bound),children:undefined,...extra,child:records[0].child,adoption:records[0].adoption});
+  const record=displayRecord({...identityOf(bound),children:undefined,...extra,child:records[0].child,adoption:records[0].adoption});
+  if(!record)throw Error('Fleet display identity is not coherent');
+  return record;
 }
 function publishDisplay(machine, bound, evidence) {
   const record=displayRecord(identityOf(bound));
