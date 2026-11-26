@@ -14,12 +14,17 @@ to reproduce hosted CI.
 `tests/git-deferred-repositories.test.mjs` runs a sanitized equivalent of the
 reported mixed-fleet case through real Crew verification, aggregate/read modules
 and panel rendering. With herdr-app #74/#76 refused and siblings supplying Open 2 /
-Closed 5, it requires the herdr-app header and standard Loading with both badges
-0/loading, then both rows and complete task totals after an exact fake-clock
+Closed 5, it requires one panel Loading indication with no unknown-only herdr-app
+header and both badges 0/loading, then the header and both rows and complete task totals after an exact fake-clock
 cooldown retry without another event. It also covers queued/in-flight uncertainty,
 actionable/missing exclusions, folds, atomic boundaries, 100-item cap, surviving
 anchors, new membership with retained/loading counts, warm retention and obsolete
 retry guards. It is not evidence of the original unrecorded refusal or native pixels.
+
+`tests/git-coordinator-return.test.mjs` checks exact-scope runtime return memory,
+provider/Git generation invalidation even without an intermediate render, bounded
+snapshot retention, stale-action refusal, one panel Loading and visible cold
+failures. The renderer and safety selection share the same admission projection.
 
 `tests/git-rate-quiet.test.mjs` exercises strict primary/secondary refusal handling,
 episodes, Retry-After, manual bypass and the older-success/cooldown race. Ordinary
@@ -39,8 +44,8 @@ and recovered screenshots at 130%, records native errors/build times and stopped
 instance evidence, and stops only its generated app/Core session in cleanup. The
 recorded four-row proof built in 0–2 ms with no native errors; this is small-fixture
 JS/native-element construction, not full-inventory timing, paint or live rate-limit
-proof. The native picture shows the same herdr-app header before and after retry,
-with standard Loading becoming #74/#76 and tab totals moving from 0/0 to 4/5.
+proof. That historical native picture predates the panel-wide Loading revision and
+shows the same herdr-app header before and after retry, with Loading becoming #74/#76 and tab totals moving from 0/0 to 4/5.
 
 `tests/git-target-reads.test.mjs` covers shared target subscriptions, per-alias
 failures with gh's real exit status 1 on partial GraphQL errors, final caching
@@ -556,6 +561,39 @@ each paired sample and median must stay within main +2ms. These are build-only
 JS/native-element timings, not GPU paint or real input latency. The disposable
 checker never contacts the live app/Core; see GIT-RENDER-BUDGET.md for results.
 
+`tests/git-repository-counts.test.mjs` checks the actual aggregate/header renderer
+for full-inventory 1/10/100 counts in both tabs and fold states, including unrevealed
+rows. Agents keeps its shared 32px numeric rail; Git compensates the larger 24px
+chevron slot and 8px surrounding gap to retain the same painted number-to-glyph
+gap. The existing Agents column suite protects its unchanged time/count geometry.
+
+## Closed-section fold exploration
+
+`node --experimental-vm-modules tests/git-closed-folds.test.mjs` exercises the
+actual coordinator fold handlers, reveal and scroll projection for 41, 60, 100
+and 200 known Closed PRs at 100%/130%. Each case runs 60 fold/reveal/scroll
+transitions with scoped notices, unchanged totals and no reads. It passes on the
+pre-change source: **it does not reproduce or fix the reported native interruption**.
+
+Opt-in `tests/features/interface-native.mjs --run --output <outside-checkout-dir>`
+uses a supplied `HERDR_APP_BIN`, isolated app/Core session and synthetic facts.
+It drives the exact production fold callback outside render, captures native
+frames/status and stops its own session. It is not a mouse-hit-test or real-agent
+proof. The 41-item pre-change App 0.1.18 run at 130% completed 20 fold callbacks
+without native errors (0–13 ms JS/native tree construction); no cause for the
+reported `interrupted` banner was established. Native deadlines and error handling
+are unchanged. The combined `--spaces` fixture mounts actual Spaces, Agents and
+Git together at 100%/130%, and captures counted headers, expanded/folded child
+spaces, compact badges, production drag preview and acknowledged fake-model paired
+reorder, panel Loading/failure and same-home stale return. It drives production
+callbacks/domain APIs with synthetic events rather than pointer/key injection;
+remote identity and keyboard-selection guards are deterministic fixtures, not a
+live SSH or OS input claim. The final 41-item native runs had no errors and built
+in 0–14 ms; timings exclude later layout/paint. The four-row failure fixture makes
+the scoped notice visible without needing to scroll; long-list anchor retention
+may correctly keep a newly inserted notice above the current viewport. Downloaded proof executables must match the official release
+archive checksum; never install them or alter PATH.
+
 ## Coordinator render error diagnostics
 
 `node --experimental-vm-modules tests/git-panel-errors.test.mjs` exercises the
@@ -1000,35 +1038,19 @@ reorder and Spaces render fixtures cover both-source dimming, a single ordinary
 grabbed-row chip (`2 crew` or `1 coordinator`) with its own number/name and shared
 coordinator fill from either grabbed member (including arm/return/fade), no stacked
 preview or floating chain icon, and each expanded/compact row's own numbered badge
-while preserving ordinary worktree order. Geometry assertions compare numbered badge
-boxes (16px, 4px rounding) and both attached rows' trailing chain slots with the
-worktree marker: matching 14px muted outline glyphs in ordinary centred 16px slots,
-without a filled background. Equal Crew text/style, right inset, gap and slot
-geometry put both chains in one column independently of preceding metadata.
-Counts precede worktree, then chain/Crew; unrelated tags retain their relative
-order before the trailing chain/Crew group on both members. Detachment removes
-both chains; hidden worktree icons do not, and renaming suppresses the edited
-row's markers/tags. These are render-tree constraints, not native pixel evidence.
-The real colour resolver covers distinct coordinator/fleet colours, named and hex
-overrides, recolouring between renders, and retained display identity in both modes;
-missing/cross-machine parents cannot lend colour. Fleet names share ordinary names'
-left edge, without connector lines. The real shared title helper proves that only
-inactive fleet names are muted; active names match ordinary selected foreground and
-normal weight. Expanded and compact hover/selection treatments match ordinary rows,
-and rename hides chain, worktree and tags while the Worktree switch hides only its
-own marker. Rail selection, name/directory
-tooltips and ordinary numbering stay unchanged. Packaged Crew
-fixtures retain Crew tags on both attached rows through refresh, finished fleets
-and cold restoration, restore ordinary worker tag rules on confirmed detach/attachment-off,
-and hide all Crew tags when the plugin is disabled; tag reads start no discovery or state writes.
-Worktree layout fixtures compare the real shared Crew pill styling and trailing
-placement on both attached rows: counts and worktree markers precede matching
-chain/Crew groups, and a coordinator without a worktree marker and a tagged fleet
-share the same chain column and Crew right inset. Local/remote,
-ordinary/attached and multiple-tag cases keep the final pill at that edge while
-untagged branch slots retain the machine-chevron axis. Long names, active/inactive
-rows, hidden icons and rename mode are covered. Compact rail fixtures
-remain badge-only and never query plugin tags.
+while preserving ordinary worktree order. The packaged Spaces layout regression
+now compares the actual Agents branch/disclosure helpers: indented 16px numbered
+child badges, 1.5px rounded connector, parent-only Crew and collapsed child count.
+It covers both machine groups, truthful native indices, local fold restoration,
+selection-transition disclosure, compact rail membership, unrelated child tags,
+colour inheritance, previews, metadata/rename and independent cross-machine rows.
+These are render-tree/geometry checks, not native hit-testing or pixels. Existing
+Crew provider tests still assert its generic tag contributions; Spaces filters
+only the attached child's Crew tag at presentation, with ordinary rules restored
+on detach. No provider discovery or state write is added by tag rendering.
+The existing colour-menu suites retain fresh-authority, Automatic, remote and
+stale-target coverage; the shared right-edge suite uses the coordinator's actual
+Crew pill as its reference now that attached children intentionally have none.
 The packaged `tests/regression/space-colors.test.mjs` fixture covers coordinator and
 fleet palette origins, selected swatches, mouse/keyboard and Automatic choices,
 unchanged saved fleet colour/Automatic flags and unrelated-space preferences.
@@ -1062,7 +1084,7 @@ links, webhook burst coalescing, no membership-triggered GitHub reads, hide/show
 stale completions. It loads the real shared UI header and covers machine-style
 chevron geometry, default expansion, independent repository folds, localStorage
 restore after panel recreation, temporary repository absence, tab/refresh changes,
-count-free expanded/collapsed headers, unchanged top-level totals while folded,
+selected-tab counted expanded/collapsed headers, unchanged top-level totals while folded,
 hidden/restored scoped body errors, fixed enrollment visibility, stale toggle
 guards, no fold-triggered reads and no false empty state when all sections fold.
 Open/Closed switches omit other-tab-only headers, restore saved folds on reappearance,

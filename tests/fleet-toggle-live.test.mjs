@@ -98,6 +98,7 @@ async function mounted({enabled=false,initialMode='success',selected='coordinato
  const tick=async()=>{for(let i=0;i<30;i++)await Promise.resolve();if(state['custom.fleet.request']?.id!==servicedRequest)service();for(let i=0;i<30;i++)await Promise.resolve();paint();};
  const release=(count=pending.length,type='success',offset=0)=>{assert.ok(count+offset<=pending.length);for(const done of pending.splice(offset,count))done(type);};
  const flip=key=>{assert.ok(dialogOpen);find(settings.tree,`st-spaces-${key}`).attrs.on_click[0]({},settings.cx);paint();};
+ const numbered=row=>row.kids.find(n=>n?.attrs?.size?.[0]===16 && typeof n.kids?.[0]==='string');
  const rows=machine=>nodes(sidebar.tree).filter(n=>n.attrs.id?.[0]?.startsWith('space-content-')).filter(n=>groups.find(s=>`space-content-${s.id}`===n.attrs.id[0])?.machine===machine);
  const frame=attached=>{
   assert.ok(dialogOpen,'Assertions never close Settings');
@@ -110,7 +111,7 @@ async function mounted({enabled=false,initialMode='success',selected='coordinato
    // Keep every advertised shortcut truthful, including the unrelated row.
    for(const row of rows(machine)){
     const nativeIndex=groups.findIndex(s=>`space-content-${s.id}`===row.attrs.id[0]);
-    assert.equal(row.kids[0].kids[0],String(nativeIndex+1),'Expanded badge denotes the native selection index');
+    assert.equal(numbered(row).kids[0],String(nativeIndex+1),'Expanded badge denotes the native selection index');
    }
    for(const record of sidebar.view.ordered().filter(r=>r.w.machine===machine)){
     const expected=String(groups.findIndex(s=>s.id===record.w.id)+1);
@@ -125,15 +126,14 @@ async function mounted({enabled=false,initialMode='success',selected='coordinato
      assert.equal(find(chip,`space-link-${record.w.id}`),undefined,'Drag chip never shows a chain');
     }finally{sidebar.view.drag.leaving=null;rendering=false;}
    }
-   assert.equal(child.kids[0].attrs.bg[0],attached?theme.ansi2:theme.ansi3);
+   assert.equal(numbered(child).attrs.bg[0],attached?theme.ansi2:theme.ansi3);
    for(const id of ['coordinator','fm-crew-home']){
     const row=find(sidebar.tree,`space-content-${q(id)}`),chain=find(sidebar.tree,`space-link-${q(id)}`);
-    assert.equal(Boolean(chain),attached,'Both expanded-row chains follow the live preference and verified pair');
+    assert.equal(chain,undefined,'Neither attached row has a chain');
     if(attached){
-     assert.equal(row.kids.at(-2),chain,'Each chain immediately precedes Crew');
-     assert.equal(row.kids.at(-1).attrs.id[0],`space-tag-${q(id)}-crew-0`);
-     assert.equal(chain.attrs.size[0],16);assert.equal(chain.kids[0].attrs.size[0],14);
-     assert.equal(chain.kids[0].attrs.text_color[0],theme.muted);
+     const child=id==='fm-crew-home';
+     assert.equal(Boolean(find(sidebar.tree,`space-branch-${q(id)}`)),child,'Only the attached child has the shared connector');
+     assert.equal(Boolean(find(sidebar.tree,`space-tag-${q(id)}-crew-0`)),!child,'Only the coordinator shows Crew');
     }
    }
   }

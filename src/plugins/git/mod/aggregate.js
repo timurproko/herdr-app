@@ -31,7 +31,7 @@ function rememberMissing(entry) {
   }
 }
 export class AggregatePulls {
-  constructor({shown,onUpdate}) {this.shown=shown;this.onUpdate=onUpdate;this.entries=new Map();this.pending=new Map();this.diagnostics=new Map();this.serial=0;this.factOrder=new PullFactsOrder();}
+  constructor({shown,onUpdate,presentationEpoch=()=>0,presentationAlive=()=>true}) {this.shown=shown;this.onUpdate=onUpdate;this.presentationEpoch=presentationEpoch;this.presentationAlive=presentationAlive;this.presentations=new Map();this.entries=new Map();this.pending=new Map();this.diagnostics=new Map();this.serial=0;this.factOrder=new PullFactsOrder();}
   currentContext({presentation = false} = {}) {
     const context=sidebarPanelEnabled('changes') ? pluginPullContext(location().space,{presentation}) : null;
     return !presentation && context?.stale ? null : context;
@@ -39,7 +39,20 @@ export class AggregatePulls {
   sync(cx) {
     if(this.shown()) pluginEvent('workspace.context.refresh',{cx,space:location().space});
     const context=this.currentContext({presentation:true}), previous=this.context;
-    if(context?.scope!==previous?.scope) {this.readWake=null;this.manualRead=null;this.serial++;this.factOrder.reset();this.entries.clear();this.pending.clear();this.diagnostics.clear();this.lastCounts=null;}
+    const generation=JSON.stringify([this.presentationEpoch(),context?.presentationGeneration??this.providerGeneration??0]);
+    if(this.presentationGeneration!==undefined && generation!==this.presentationGeneration)this.presentations.clear();
+    for(const [scope,saved]of this.presentations)if(!this.presentationAlive(saved))this.presentations.delete(scope);
+    const compatible=this.presentationGeneration===generation;
+    this.presentationGeneration=generation;if(context)this.providerGeneration=context.presentationGeneration??0;
+    if(context?.scope!==previous?.scope || !compatible) {
+      if(previous && compatible && sidebarPanelEnabled('changes') && (context || location().space!==previous.parent))this.rememberPresentation();
+      else if(previous && !context)this.presentations.delete(previous.scope);
+      this.readWake=null;this.manualRead=null;this.serial++;this.factOrder.reset();this.entries.clear();this.pending.clear();this.diagnostics.clear();this.lastCounts=null;this.returning=false;
+      if(context && !context.stale && context.parent)for(const [scope,saved]of this.presentations)if(scope!==context.scope && saved.parent===context.parent && saved.machine===context.machine)this.presentations.delete(scope);
+      const saved=context && this.presentations.get(context.scope);
+      if(saved){this.returning=true;this.entries=new Map(saved.entries.map(([key,e])=>[key,{...e,link:{...e.link},dirty:true}]));this.lastCounts=saved.lastCounts;this.presentations.delete(context.scope);}
+    }
+    if(!sidebarPanelEnabled('changes'))this.presentations.clear();
     this.context=context;
     if(!context) return false;
     if(context.stale) {
@@ -66,12 +79,19 @@ export class AggregatePulls {
     else this.pump(cx);
     return true;
   }
-  stop() {this.lastCounts=null;this.serial++;this.factOrder.reset();this.context=null;this.entries.clear();this.pending.clear();this.diagnostics.clear();}
+  rememberPresentation() {
+    if(!this.context || !this.entries.size)return;
+    const entries=[...this.entries].map(([key,e])=>[key,{...e,link:{...e.link},dirty:true}]);
+    this.presentations.delete(this.context.scope);
+    this.presentations.set(this.context.scope,{entries,lastCounts:this.lastCounts?new Map(this.lastCounts):null,parent:this.context.parent,machine:this.context.machine});
+    while(this.presentations.size>4 || [...this.presentations.values()].reduce((sum,s)=>sum+s.entries.length,0)>4096)this.presentations.delete(this.presentations.keys().next().value);
+  }
+  stop() {this.presentations.clear();this.returning=false;this.lastCounts=null;this.serial++;this.factOrder.reset();this.context=null;this.entries.clear();this.pending.clear();this.diagnostics.clear();}
   get busy() {return this.pending.size>0 || Boolean(this.fallbackBusy);}
   unresolved(entry) {return !entry.pr && !entry.missing;}
   get countsLoading() {return [...this.entries.values()].some(e=>this.unresolved(e)) || Boolean(this.context?.stale && !this.entries.size);}
   loading(repository) {return [...this.entries.values()].some(e=>e.link.repo===repository && this.unresolved(e) && !e.error);}
-  get waiting() {return [...this.entries.values()].some(e=>this.unresolved(e) && !e.error);}
+  get waiting() {return Boolean(this.returning) || [...this.entries.values()].some(e=>this.unresolved(e) && !e.error);}
   eligible(entry, now = Date.now()) {
     if(!entry.pr)return false;
     if(['open','draft'].includes(entry.pr.state) || entry.link.targets.some(t=>!t.historical && typeof t.terminal==='string' && t.terminal))return true;
@@ -118,7 +138,7 @@ export class AggregatePulls {
   pump(cx) {
     if(this.fallbackBusy || this.readWake?.due>Date.now())return;
     if(!this.context || this.context.stale || !this.shown() || this.currentContext()?.scope!==this.context.scope) {this.manualRead=null;return;}
-    const context=this.context,scope=context.scope,serial=this.serial,groups=new Map();
+    const context=this.context,scope=context.scope,serial=this.serial,epoch=this.presentationEpoch(),providerGeneration=context.presentationGeneration??0,groups=new Map();
     for(const [key,entry]of this.entries) {
       if(!entry.dirty || this.pending.has(key))continue;
       const missingAt=missingPulls.get(key);
@@ -132,7 +152,8 @@ export class AggregatePulls {
       if(new Set(this.pending.values()).size>=3)return;
       const batch=entries.slice(at,at+20),token={},read=this.factOrder.begin();
       for(const entry of batch) {entry.dirty=false;this.pending.set(entry.link.key,token);}
-      const current=()=>this.serial===serial && this.shown() && this.currentContext()?.scope===scope;
+      const current=()=>this.serial===serial && this.shown() && this.currentContext()?.scope===scope
+        && this.presentationEpoch()===epoch && (this.currentContext()?.presentationGeneration??0)===providerGeneration;
       const member=entry=>current() && this.pending.get(entry.link.key)===token && this.entries.get(entry.link.key)===entry
         && this.currentContext()?.links.some(l=>taskPullLink(l.url)?.key===entry.link.key);
       cx.spawn(async view=>{
@@ -165,13 +186,13 @@ export class AggregatePulls {
         finally {
           for(const entry of batch)if(this.pending.get(entry.link.key)===token)this.pending.delete(entry.link.key);
           if(this.serial===serial && this.shown())this.pump(view);
-          if(!this.pending.size && ![...this.entries.values()].some(e=>e.dirty)) {this.diagnostics.clear();this.manualRead=null;}
+          if(!this.pending.size && ![...this.entries.values()].some(e=>e.dirty)) {this.diagnostics.clear();this.manualRead=null;this.returning=false;}
           this.rememberCounts();view.notify();
         }
         if(updated && current())this.onUpdate?.(view);
       });
     }
-    if(!this.pending.size && ![...this.entries.values()].some(e=>e.dirty))this.manualRead=null;
+    if(!this.pending.size && ![...this.entries.values()].some(e=>e.dirty)){this.manualRead=null;this.returning=false;}
   }
   target(pr) {
     const context=this.currentContext();if(context?.scope!==this.context?.scope)return null;

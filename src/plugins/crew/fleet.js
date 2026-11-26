@@ -360,7 +360,11 @@ export function invalidateFleet() {
   setShared(FLEET_KEY,null);setShared(READS,{}); // Hide, never forget the last verified pair.
   verifiedTokens.clear();pendingTokens.clear();activeReads.clear();
 }
-export function fleetPullContext(space, {presentation = false} = {}) {
+export function fleetPullContext(space, options = {}) {
+  const context=pullContext(space,options);
+  return context ? {...context,presentationGeneration:fleetGeneration()} : null;
+}
+function pullContext(space, {presentation = false} = {}) {
   const context=fleetContexts().find(c=>c.parent===space && c.taskMembershipVerified);
   if(context) {
     const display=fleetContexts({presentation:true}).find(d=>d.parent===space && d.pullScope===context.pullScope);

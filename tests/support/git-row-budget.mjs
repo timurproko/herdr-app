@@ -14,7 +14,7 @@ export async function rowBudgetHarness({main='src/plugins/git/mod/main.js',prese
     const node={kids:[],attrs:{},mouse:{}};let proxy;
     proxy=new Proxy(node,{get(n,key){
       if(key in n)return n[key];if(key==='then')return undefined;
-      return(...args)=>{operations++;
+      return(...args)=>{operations++;n.builderOperations=(n.builderOperations??0)+1;
         if(key==='when')return args[0]?args[1](proxy):proxy;
         if(key==='child')n.kids.push(args[0]);else if(key==='children')n.kids.push(...args[0]);
         else if(key==='on_mouse_down')n.mouse[args[0]]=args[1];else n.attrs[key]=args;
@@ -32,7 +32,7 @@ export async function rowBudgetHarness({main='src/plugins/git/mod/main.js',prese
     p.resetRepository();p.context=coordinator?'tasks:fixture':'ordinary';p.root='/fixture';p.view=state;p.agentPull=-1;
     p.aggregate={context:{scope:'fixture'},entries:new Map(rows.map(pr=>[pr.key,{pr}])),
       counts:()=>({open:state==='open'?count:0,closed:state==='closed'?count:0}),repositories:()=>['owner/a','owner/b'],
-      rows:()=>rows,currentContext:()=>({scope:'fixture'}),readNotice:()=>null,target:()=>null};
+      rows:()=>rows,sections:()=>['owner/a','owner/b'].map(repo=>({repo,rows:rows.filter(pr=>pr.repo===repo)})),currentContext:()=>({scope:'fixture'}),readNotice:()=>null,target:()=>null};
     p.agentLinks={related:()=>null};p.pulls[state]=rows;
     p.notices={sync(){},presentation(){}};p.enrollmentPicker={render(){}};p.syncChecksFallback=()=>{};
     p.taskWindows=new Map();p.rowPresentations=null;
@@ -47,7 +47,8 @@ export async function rowBudgetHarness({main='src/plugins/git/mod/main.js',prese
     operations=0;
     const tree=h.render(()=>coordinator?p.renderAggregate(cx,t):p.renderPulls(t));
     const all=nodes(tree),mounted=all.filter(n=>/^pr-(?:owner\/[ab]#)?\d+$/.test(n.attrs.id?.[0]??''));
-    return {tree,operations,elements:all.length,mounted:mounted.length,
+    const countElements=all.filter(n=>String(n.attrs.id?.[0]).startsWith('task-repo-count-')).flatMap(n=>nodes(n));
+    return {tree,operations:operations-countElements.reduce((sum,n)=>sum+(n.builderOperations??0),0),elements:all.length-countElements.length,repositoryCountElements:countElements.length,mounted:mounted.length,
       probes:all.filter(n=>n.attrs.on_size_change&&/-probe-/.test(n.attrs.id?.[0]??'')).length};
   };
   return {...h,renderMounted:render,setEnvironment:z=>{zoom=z;}};
