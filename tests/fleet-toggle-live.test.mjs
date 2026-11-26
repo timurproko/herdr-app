@@ -204,7 +204,7 @@ for(const selected of ['coordinator','fm-crew-home'])for(const workers of [1,7])
 // overwrite its result, regardless of selected space and reply ordering.
 for(const selected of ['coordinator','fm-crew-home'])for(const delay of [0,1000,15000])
  for(const oldFirst of [false,true])for(const oldReply of ['success','error']) {
- const x=await mounted({selected,workers:7});x.flip('fleet');await x.drain();x.frame(true);
+ const x=await mounted({selected,workers:7,placement:true});x.flip('fleet');await x.drain();x.frame(true);
  x.setMode('defer');
  x.sidebar.api.r.pluginEvent('workspace.context.refresh',{cx:x.sidebar.cx,force:true});await x.tick();
  const oldGeneration=x.state['custom.fleet.generation'];const before=x.requests.length;
