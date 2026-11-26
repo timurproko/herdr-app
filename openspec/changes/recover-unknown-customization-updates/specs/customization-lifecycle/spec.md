@@ -66,7 +66,7 @@ Unknown runs SHALL settle only from attributable completion evidence after recor
 ## MODIFIED Requirements
 
 ### Requirement: Single Custom customization update row
-Custom Settings Updates SHALL retain its native rows and add one herdr-app-custom row with a short verified installed revision when known, a short status and one action slot. Without a verified revision, its title SHALL be only herdr-app-custom. The slot SHALL show Check now, Update, deliberately confirmed Retry update for eligible unknowns, or transient busy/current feedback matching the native rows. It SHALL NOT add machine rows, news, settings or rollback controls. Checking and updating SHALL disable only that row's action.
+Custom Settings Updates SHALL retain its native rows and add one herdr-app-custom row with a short verified installed revision when known, a short status and one action slot. Without a verified revision, its title SHALL be only herdr-app-custom. The slot SHALL show Check now, Update, Retry update or transient busy/current feedback matching the native rows. It SHALL NOT add machine rows, news, settings or rollback controls. Checking and updating SHALL disable only that row's action.
 
 #### Scenario: Current or newer published main
 - **WHEN** a successful check compares the verified desktop installation with published main
@@ -116,7 +116,7 @@ Custom Settings Updates SHALL retain its native rows and add one herdr-app-custo
 - **AND** unknown desktop currency never claims that only other machines need updating
 
 ### Requirement: Reload-independent bounded update result
-An update SHALL run independently of the mod it replaces, with a finite deadline and one latest durable status/result/log under the selected Herdr home. Reload, closing Settings or duplicate clicks SHALL NOT cancel or repeat it. A missing final result SHALL NOT imply success or authorize replay without evidence-based settlement or deliberate unknown-outcome recovery. No daemon, scheduler or job history SHALL be introduced. Replacement of an open Updates view SHALL preserve that section and reconcile truthful row feedback without exporting navigation state as preferences.
+An update SHALL run independently of the mod it replaces, with a finite deadline and one latest durable status/result/log under the selected Herdr home. Reload, closing Settings or duplicate clicks SHALL NOT cancel or repeat it. Missing results SHALL NOT imply success or automatic replay. No daemon, scheduler or job history SHALL be introduced. Replacement of an open Updates view SHALL preserve that section and reconcile truthful row feedback without exporting navigation state as preferences.
 
 #### Scenario: Page replaced during deploy
 - **WHEN** deployment replaces Settings or the user closes and reopens it
