@@ -176,7 +176,8 @@ export default class Changes extends View {
 
   syncAggregate(cx) {
     this.aggregate ??= new AggregatePulls({shown:()=>this.shown(),onUpdate:view=>this.startCISweep(view),presentationEpoch:()=>host.shared('custom.git.presentation-generation')??0,
-      presentationAlive:saved=>!saved.parent || host.spaces().some(space=>space.id===saved.parent && (space.machine??null)===(saved.machine??null))});
+      presentationAlive:saved=>!saved.parent || Boolean(saved.machine && host.machines().some(machine=>machine.name===saved.machine && machine.layout!=='ready'))
+        || host.spaces().some(space=>space.id===saved.parent && (space.machine??null)===(saved.machine??null))});
     if(!this.aggregate.sync(cx)) return false;
     const scope=`tasks:${this.aggregate.context.scope}`;
     if(this.context!==scope) {

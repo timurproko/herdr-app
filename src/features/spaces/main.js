@@ -318,7 +318,10 @@ export default class Spaces extends View {
     return this.parentFolds;
   }
   parentKey(row) {return JSON.stringify([row.w.machine??null,row.block,row.binding??null]);}
-  saveConnectedFolds() {try{localStorage.setItem('custom.spaces.parents.folded',JSON.stringify([...this.connectedFolds()].slice(-256)));}catch{}}
+  saveConnectedFolds() {
+    this.parentFolds=new Set([...this.connectedFolds()].slice(-256));
+    try{localStorage.setItem('custom.spaces.parents.folded',JSON.stringify([...this.parentFolds]));}catch{}
+  }
   visibleRows(collapsed,rows=this.ordered()) {
     return rows.filter(row=>collapsed || !row.linked || !this.connectedFolds().has(this.parentKey(row))).map((row,position)=>({...row,position}));
   }
