@@ -20,7 +20,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-26-git-panel-instant-switch/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-26-git-panel-instant-switch/acceptance.md",
   "finalizedDate": "2026-11-26",
-  "specBaseSha": "e7387ec91a5b9aea4719f353ec56d3f0db165efd",
+  "specBaseSha": "bc309c0a8e507a18d17384a83235778b1291922e",
   "acceptanceScenarios": [
     "Cached worker sections and coordinator returns display compatible rows and counts immediately without body Loading or a blank frame.",
     "Direct space entry preserves section ordering without creating a pin, reordering rows or starting move-to-top animation.",
