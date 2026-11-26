@@ -47,6 +47,7 @@ async function harness(feature, pluginOn = true) {
   let notify = 0, gate, rendering = false,gitShown=false;
   const place = {cwd: '/repo', on: null, space: 'space'};
   const host = {
+    shared: () => null,
     spaces: () => [{id: 'space', active: true, folder: place.cwd}], panes: () => [], terminals: () => [],
     focused: () => ({pane: null, cwd: place.cwd}), props: () => ({}), home: () => '/home',
     theme: () => ({}), settings: () => ({}), window: () => ({platform: 'linux'}), layout: () => gitShown?({id:'panel',children:[{id:'panel-body',active:'changes'}]}):null,

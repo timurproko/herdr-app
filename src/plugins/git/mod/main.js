@@ -6,7 +6,7 @@ import { TaskReveal } from './task-reveal.js';
 import { RowPresentations } from './row-presentation.js';
 import { SidebarScrollState } from './sidebar-scroll.js';
 import { topFade, bottomFade } from './scroll-fade.js';
-import { U, headerTools, reveal, subtleActionFill, refreshButton, sidebarSectionHeader } from './ui.js';
+import { U, headerTools, reveal, subtleActionFill, refreshButton, sidebarSectionHeader, sidebarNumericSlot } from './ui.js';
 import { exec, hc, theme, run, layout, openOverlay, closeOverlay, props, notify, nextCommand, window, settings } from './host.js';
 import { location } from './location.js';
 import { AgentLinks } from './agent-links.js';
@@ -175,11 +175,13 @@ export default class Changes extends View {
   }
 
   syncAggregate(cx) {
-    this.aggregate ??= new AggregatePulls({shown:()=>this.shown(),onUpdate:view=>this.startCISweep(view)});
+    this.aggregate ??= new AggregatePulls({shown:()=>this.shown(),onUpdate:view=>this.startCISweep(view),presentationEpoch:()=>host.shared('custom.git.presentation-generation')??0,
+      presentationAlive:saved=>!saved.parent || Boolean(saved.machine && host.machines().some(machine=>machine.name===saved.machine && machine.layout!=='ready'))
+        || host.spaces().some(space=>space.id===saved.parent && (space.machine??null)===(saved.machine??null))});
     if(!this.aggregate.sync(cx)) return false;
     const scope=`tasks:${this.aggregate.context.scope}`;
-    if(this.context!==scope) {
-      this.resetRepository();this.rootRequest=null;this.loading=false;this.context=scope;
+    if(this.context!==scope || this.aggregateGeneration!==this.aggregate.presentationGeneration) {
+      this.resetRepository();this.rootRequest=null;this.loading=false;this.context=scope;this.aggregateGeneration=this.aggregate.presentationGeneration;
     }
     this.syncTaskWebhooks(cx);
     return true;
@@ -390,6 +392,12 @@ export default class Changes extends View {
     });
   }
 
+  repositorySections() {
+    const aggregate=this.aggregate,groups=new Map(aggregate.repositories().map(repo=>[repo,{repo,rows:[],error:aggregate.readNotice(repo,this.view)}]));
+    for(const row of aggregate.rows(this.view))groups.get(row.repo)?.rows.push(row);
+    return [...groups.values()].filter(section=>section.rows.length || section.error);
+  }
+
   fallbackSnapshot() {
     const aggregate=this.aggregate,task=this.context?.startsWith('tasks:');
     const on=task?aggregate?.context?.machine:this.on;
@@ -401,12 +409,12 @@ export default class Changes extends View {
     const uncovered=name=>Boolean(this.notices?.active && this.notices.members?.get(name.toLowerCase())!==true);
     if(task) {
       const repositories=aggregate?.repositories()??[],rows=aggregate?.rows(this.view)??[];
-      const sections=repositories.map(repo=>({repo,rows:rows.filter(pr=>pr.repo===repo),error:aggregate.readNotice(repo,this.view),loading:aggregate.loading?.(repo)})).filter(section=>section.rows.length || section.error || section.loading);
+      const sections=this.repositorySections();
       const paging=this.taskSections(sections,aggregate.context.scope);
       // The native host cannot reliably notify viewport motion. Safety covers
       // the entire revealed unfolded batch, never guessed pixel intersections.
       const shownRows=paging.revealedRows;
-      return {enabled,scope:JSON.stringify([this.context,on,this.view,this.taskSelectionEpoch,paging.window.selectionGeneration]),repositories:repositories.map(name=>({name,uncovered:uncovered(name),rows:shownRows.filter(pr=>pr.repo===name)}))};
+      return {enabled,scope:JSON.stringify([this.context,on,this.view,aggregate.presentationGeneration,this.taskSelectionEpoch,paging.window.selectionGeneration]),repositories:repositories.map(name=>({name,uncovered:uncovered(name),rows:shownRows.filter(pr=>pr.repo===name)}))};
     }
     const selection=this.pullSelection();
     return {enabled,scope:JSON.stringify([this.context,on,this.view,this.repo?.name]),repositories:this.repo?[{name:this.repo.name,uncovered:uncovered(this.repo.name),rows:[...selection.liveRows,...(selection.active?[selection.active]:[])]}]:[]};
@@ -1135,6 +1143,9 @@ export default class Changes extends View {
     return v_flex().id(`task-repo-${repo}`).w_full().flex_none()
       .when(Boolean(header),section=>section.child(div().flex_none().h(header.height+header.gap).child(sidebarSectionHeader(t, {id:`task-repo-header-${repo}`, label:repo, open:!folded, trailingSize:U.insetControl, trailingInset:3, children:[
         this.repositoryNameLabel(repo,scope),
+        sidebarNumericSlot(t,`task-repo-count-${repo}`,String(window.repositoryCounts.get(repo).value),{gap:U.gap,trailingSize:U.insetControl})
+          .accessibility_label(`${window.repositoryCounts.get(repo).value} ${this.view} pull requests${window.repositoryCounts.get(repo).loading?' (loading)':''}`)
+          .when(window.repositoryCounts.get(repo).loading,el=>el.tooltip(`Count loading; showing ${window.repositoryCounts.get(repo).value}`)),
       ]}).cursor_pointer().hover(s => s.bg(t.selected))
         .on_click((_e, cx) => {
           cx.stop_propagation();
@@ -1158,13 +1169,24 @@ export default class Changes extends View {
 
   taskSections(sections, scope) {
     const key=`${scope}\0${this.view}`;
-    if(this.taskWindowScope!==scope) {
+    this.taskPresentations ??= new Map();
+    const compatibleEpoch=this.taskPresentationEpoch===this.aggregate.presentationGeneration;
+    if(!compatibleEpoch){this.taskPresentations.clear();this.taskPresentationEpoch=this.aggregate.presentationGeneration;}
+    if(this.taskWindowScope!==scope || !compatibleEpoch) {
+      for(const [id,window]of compatibleEpoch?(this.taskWindows??[]):[]) {
+        const saved={};for(const field of ['start','limit','chunk','items','starts','offset','headerHeight','gap','viewport'])saved[field]=window[field];
+        this.taskPresentations.delete(id);this.taskPresentations.set(id,saved);
+      }
+      while(this.taskPresentations.size>8 || [...this.taskPresentations.values()].reduce((sum,s)=>sum+s.items.filter(item=>item.row).length,0)>4096)this.taskPresentations.delete(this.taskPresentations.keys().next().value);
       this.retiredTaskHandles=[...(this.retiredTaskHandles??[]),...[...(this.taskWindows?.values()??[])].flatMap(window=>window.handle?[window.handle]:[])];
       this.taskWindows=new Map();this.taskWindowScope=scope;
     }
     let window=this.taskWindows.get(key);
     if(!window) {
-      window=new TaskReveal();window.key=key;window.metrics=new SidebarScrollState();
+      window=new TaskReveal();
+      if(this.aggregate.entries?.size)Object.assign(window,this.taskPresentations.get(key)??{});
+      if(window.offset>0)window.restoreOffset=window.offset;
+      window.key=key;window.metrics=new SidebarScrollState();
       window.measurement=this.taskMeasureSequence=(this.taskMeasureSequence??0)+1;
       this.taskWindows.set(key,window);
     }
@@ -1172,6 +1194,7 @@ export default class Changes extends View {
       this.selectedTaskWindow=window;this.taskSelectionEpoch=(this.taskSelectionEpoch??0)+1;
       window.correction=null;window.anchorMarker=null;window.scheduledCorrection=null;
     }
+    if(window.restoreOffset){window.correction={from:0,to:window.restoreOffset};delete window.restoreOffset;}
     const zoom=settings().zoom||1;
     if(window.zoom && window.zoom!==zoom) {
       window.metrics.awaitZoom=true;
@@ -1185,6 +1208,7 @@ export default class Changes extends View {
     }
     window.zoom=zoom;
     if(this.sampleNativeScroll(window.metrics,window.handle,zoom))window.observe(window.metrics.offset/zoom,window.metrics.viewport/zoom,true);
+    window.repositoryCounts=new Map(sections.map(section=>[section.repo,{value:section.rows.length,loading:Boolean(this.aggregate.loading?.(section.repo) || [...(this.aggregate.entries?.values()??[])].some(e=>e.link?.repo===section.repo && !e.pr && !e.missing))}]));
     window.project(sections,this.foldedRepositories,U.control,U.rowGap,`${zoom}:${window.width??0}`);
     const range=window.range(),visible=[];
     for(const item of range.items) {
@@ -1284,8 +1308,8 @@ export default class Changes extends View {
       ? `\n${aggregate.context.verification.reason} at ${new Date(aggregate.context.verification.at).toISOString()} (generation ${aggregate.context.verification.generation})` : '');
     // Membership is cross-tab: enrollment and updates must retain hidden sections.
     const repositories=aggregate.repositories(), rows=aggregate.rows(this.view);
-    const sections=repositories.map(repo=>({repo,rows:rows.filter(pr=>pr.repo===repo),error:aggregate.readNotice(repo,this.view),loading:aggregate.loading?.(repo)}))
-      .filter(section=>section.rows.length || section.error || section.loading);
+    const sections=this.repositorySections();
+    const waiting=Boolean(aggregate.context.stale || aggregate.waiting);
     if(this.repositoryNameSizes){
       const ids=new Set(repositories.map(repo=>`task-repo-name-${scope}-${repo}`));
       for(const id of this.repositoryNameSizes.keys())if(!ids.has(id))this.repositoryNameSizes.delete(id);
@@ -1334,12 +1358,14 @@ export default class Changes extends View {
                 .accessibility_label(taskWindow.more?'Show more task pull requests':'Show first task pull requests again')
                 .tooltip(taskWindow.more?'Show the next mounted batch':'Return to the first mounted batch')
                 .on_click((_event,cx)=>this.nextTaskChunk(taskWindow,scope,cx)).child('Show more')))
-              .when(!sections.length,el=>el.child(panelMessage(t,'git-task-empty',{text:verifying || aggregate.busy || aggregate.waiting?'Loading':`No ${this.view} pull requests`,loading:verifying || aggregate.busy || aggregate.waiting,rowInset:2})
-                .when(verifying,message=>message.tooltip(verificationHint)))))
+              .when(!sections.length && !waiting,el=>el.child(panelMessage(t,'git-task-empty',{text:`No ${this.view} pull requests`,rowInset:2}))))
             .when(Boolean(anchor),el=>el.child(div().id('task-pulls-anchor').absolute().left(0).w(1).h(1)
               .top(anchor.to+(anchor.to>anchor.from?taskWindow.viewport-1:0)))))
           .when(taskWindow.metrics.moreAbove,el=>el.child(topFade(taskWindow.metrics,'task-pulls-list',t.background,{left:LIST_INSET,right:LIST_INSET})))
           .when(taskWindow.metrics.moreBelow,el=>el.child(bottomFade(taskWindow.metrics,'task-pulls-list',t.background,{left:LIST_INSET,right:LIST_INSET})))))
+      .when(waiting,el=>el.child(div().id('git-task-waiting').flex_none().px(LIST_INSET)
+        .child(panelMessage(t,sections.length?'git-task-loading':'git-task-empty',{text:'Loading',loading:true,rowInset:2})
+          .when(aggregate.context.stale,message=>message.tooltip(verificationHint)))))
       .when(setup,el=>el.child(this.liveCIInfo(t)))
       .when(Boolean(enrollment),el=>el.child(enrollment))
       .when(Boolean(sweep),el=>el.child(this.sweepLayer(t,sweep).top(U.section)));

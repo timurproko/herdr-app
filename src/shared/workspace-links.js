@@ -16,7 +16,7 @@ export function captureSpaceBlock(all,links,id) {
 }
 export function projectLinkedRows(rows,links) {
   const map=new Map(rows.map(r=>[r.w.id,r]));
-  return linkedBlocks(rows.map(r=>r.w),links).flatMap(block=>block.ids.map((id,i)=>({...map.get(id),linked:i>0,block:block.ids}))).map((r,position)=>({...r,position}));
+  return linkedBlocks(rows.map(r=>r.w),links).flatMap(block=>block.ids.map((id,i)=>({...map.get(id),linked:i>0,block:block.ids,binding:block.binding}))).map((r,position)=>({...r,position}));
 }
 export function blockTarget(all,links,source,target) {
   const blocks=linkedBlocks(all,links),from=blocks.findIndex(b=>b.ids.includes(source)),to=blocks.findIndex(b=>b.ids.includes(target));

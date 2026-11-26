@@ -142,7 +142,7 @@ assert.ok(find(tree,'pr-example/a#12'));assert.equal(find(tree,'pr-example/b#12'
 assert.doesNotMatch(text(tree),/Recorded task PRs|possibly incomplete until tasks report/);
 assert.ok(find(tree,'git-actions'));assert.ok(find(tree,'git-views'));
 const header=(repo,root=tree)=>find(root,`task-repo-header-example/${repo}`);
-const nameOnly=(repo,root=tree)=>{assert.equal(find(root,`task-repo-counts-example/${repo}`),undefined);const row=header(repo,root);assert.equal(row.kids.length,2,'Name plus shared chevron only');assert.doesNotMatch(text(row),/Open|Closed/);assert.ok(text(row).includes(`example/${repo}`));};
+const nameOnly=(repo,root=tree)=>{const row=header(repo,root);assert.equal(row.kids.length,3,'Name, selected-tab count and shared chevron');assert.equal(text(find(root,`task-repo-count-example/${repo}`)),'1');assert.doesNotMatch(text(row),/Open|Closed/);assert.ok(text(row).includes(`example/${repo}`));};
 const toggle=repo=>{header(repo).attrs.on_click[0]({},cx);tree=panel.render(cx);};
 assert.ok(find(tree,'task-repo-body-example/a'));assert.equal(header('b'),undefined,'Closed-only repository has no Open header');
 nameOnly('a');assert.equal(text(find(tree,'git-view-open')),'Open 1');assert.equal(text(find(tree,'git-view-closed')),'Closed 1');

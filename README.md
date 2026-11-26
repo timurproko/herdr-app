@@ -279,11 +279,11 @@ the exact number in their tooltip. Accessible labels always keep the full total
 and loading state. Same-repository refreshes keep the last-known counts. Coordinator totals stay loading
 until all admitted PR identities have authoritative facts or confirmed absence; a
 successful subset never becomes an exact total. New unread same-home membership
-keeps compatible last-good totals with loading hover/accessibility feedback. A
-verified admitted repository awaiting its first read, including a quiet deferral,
-keeps its header and the standard bulb/**Loading** inside the unfolded section,
-even when other repositories have loaded. Cooldown expiry retries it in place;
-warm refusals keep their rows and counts without adding Loading. Cold loading
+keeps compatible last-good totals with loading hover/accessibility feedback. Unresolved first reads, including quiet deferrals, share one standard panel
+bulb/**Loading**, even when other repositories have loaded. Unknown-only
+repositories do not flash empty headers; a new section appears when selected-tab
+PRs are known or an actionable scoped failure needs to be shown. Cooldown expiry
+still retries without a new event; warm refusals keep their rows and counts. Cold loading
 and coordinator verification remain panel feedback, never
 placeholder PR rows.
 Git's event-driven CI line sits immediately below its header and applies to
@@ -800,18 +800,20 @@ native reorder, which this presentation-only switch does not perform.
 See the [Herdr 0.1.17 shipped shortcuts](https://github.com/herdrdev/herdr-app/blob/v0.1.17/defaults/keys.json)
 and [native index-selection implementation](https://github.com/herdrdev/herdr-app/blob/v0.1.17/src/window.rs#L3194-L3202).
 The fleet badge's fill uses the coordinator's actual colour and follows recolouring
-without changing the fleet's saved colour. Both expanded attached rows show a small
-muted outline chain immediately before their Crew pills, matching the worktree
-marker's size and alignment, not a filled badge. The two chains line up in one
-column just left of the right-aligned Crew pills. Metadata order is counts, worktree, chain, then tags; with multiple
-tags, the chain/Crew group stays last and unrelated tags retain their relative order.
-No elbow or connector lines remain. The fleet name starts at the ordinary left edge;
-only inactive names are muted. Selected fleet names use the same foreground and normal
-weight as other selected spaces, with ordinary hover and selection backgrounds.
-Both expanded rows show the same Crew pill at the right; the pills share the same
-right edge. Renaming hides markers and tags; the Worktree icon switch hides only
-worktree markers, not either row's independent chain. Both chains disappear on
-detachment; neither the compact rail nor a drag chip shows a chain.
+without changing the fleet's saved colour. Expanded attached fleets are indented
+children, using the same rounded connector, stroke and spacing as child agents.
+Neither row shows a chain, and only the coordinator shows Crew; unrelated plugin
+tags remain. The coordinator's separate Agents-style chevron folds its children,
+showing their count beside the chevron only while collapsed. Folds are local,
+identity-scoped and restored on reload, never portable preferences. Selecting a
+hidden child through native shortcuts/navigation discloses its parent without
+changing the native selection target. Explicit folding itself never selects the
+parent. The compact rail ignores these folds and keeps both numbered badges.
+Only inactive names are muted; selected child names keep ordinary foreground,
+weight, hover and selected backgrounds. Counts/worktree metadata stays before
+trailing tags; renaming hides markers/tags, and Worktree visibility does not hide
+the child connector. Each remote machine can have its own same-machine pair;
+cross-machine candidates stay independent under their original machine headers.
 Choosing a colour or Automatic from either attached row edits the coordinator's
 colour; the fleet's saved colour and Automatic flag stay untouched. Its palette and
 mouse/keyboard choices use that same captured coordinator. Colour permission follows
@@ -827,7 +829,7 @@ worker navigation, coordinator colour writes or messages. Disabling
 attachment or confirmed unlinking restores that independent fleet colour.
 Unrelated plugin tags remain; the compact rail stays badge-only. Refreshing Git or
 Crew, relay events, focus changes and unrelated pane changes do not temporarily remove
-either attached-row chain, shared badge colour or attached row order. The pair is a persisted property of its exact native
+child nesting, shared badge colour or attached row order. The pair is a persisted property of its exact native
 space IDs and verified coordinator home/owner/adoption identity, not a temporary
 mode with a display timeout. Adding, renaming, removing or reordering unrelated
 spaces/tabs/panes on either machine cannot detach it. App restart, mod reload and
@@ -845,7 +847,8 @@ to ordinary folder Git; a previous owner's result cannot suppress Loading. No ne
 reads or worker navigation are allowed until verification succeeds.
 Only sanitized pair identity is persisted for restoration, not task/PR inventory,
 reports or credentials; it is never exported as a portable preference.
-Dragging either expanded row moves the pair, with both rows dimmed and exactly one
+Dragging either expanded row, or a collapsed coordinator, moves the whole pair
+(including its hidden child), with visible source rows dimmed and exactly one
 chip showing the grabbed row's own number and name: **2 crew** when grabbed there,
 or **1 coordinator** when grabbed on the coordinator. Its badge uses the shared
 coordinator colour in either case, including return/fade; no chain or second row
@@ -880,7 +883,9 @@ or a generic incomplete-list notice. PR rows are grouped under repository header
 using the same fold chevron and row style as Spaces machine headers. Click a
 header to fold just that repository; sections start expanded and remember their
 state locally, including panel reopen/reload. Expanded and folded headers show
-only the canonical repository name and chevron, without per-repository counts.
+the canonical repository name, selected-tab task PR count and chevron. The number
+uses Agents' muted right-aligned group count and the same number-to-chevron gap;
+it includes eligible unrevealed rows, not all PRs in that GitHub repository.
 Long coordinator lists reveal **10 presentation items** (headers, notices and PRs)
 initially and append ten more automatically near the scroll bottom. An unfolded
 repository header is revealed only with its first row or visible notice; a header
@@ -902,8 +907,14 @@ three label pills, with every complete label name retained in tooltips. See
 Names use the released width and truncate with a full-name tooltip only when they
 do not fit. Open and Closed totals remain in the panel's top tabs and still include
 folded sections. These counts cover distinct linked PRs only, never all repository PRs.
-A repository header appears only when the selected tab has an eligible PR row or
-an applicable read notice. Switching tabs re-evaluates visibility without losing
+Returning to the same coordinator restores compatible last-visit sections from
+bounded runtime memory while verification/reconciliation runs, with one panel
+Loading indication for unresolved work. Memory holds at most four coordinator
+snapshots and 4096 admitted identities; eviction, restart, code reload and
+Git/Crew/attachment off-on start cold, never restoring persisted PR inventory.
+Stale presentation grants no reads or worker actions. A repository header appears
+only when the selected tab has a known eligible PR row or an applicable actionable
+read notice; failures remain visible even before a PR's state is known. Switching tabs re-evaluates visibility without losing
 saved folds; folded eligible sections still keep their header. With no qualifying
 sections, settled tabs show **No open pull requests** or **No closed pull requests**,
 matching ordinary Git. Loading and unverified waiting feedback remain unchanged.

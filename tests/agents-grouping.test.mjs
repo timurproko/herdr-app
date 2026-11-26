@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import {realUi} from './support/panel-kit.mjs';
 
 function element() {
   const node = { attrs: {}, kids: [] }; let proxy;
@@ -45,7 +46,7 @@ const context = vm.createContext({ localStorage: {
 const dependencies = {
   'gpui-kit': { View: class {}, div: element, image: element, svg: element },
   'gpui-base': { v_flex: element, h_flex: element },
-  './ui.js': { U: {}, emptyState: element, slot: element, itemHover() {}, statusBulb: element, menuSurface: (_t, el) => el, chevron: element, menuHeading: element },
+  './ui.js': { ...realUi(element), U: {}, emptyState: element, slot: element, itemHover() {}, statusBulb: element, menuSurface: (_t, el) => el, chevron: element, menuHeading: element },
   './program-icon.js': { programIcon: element },
   './plugins.js': { pluginMenuItems:(name) => {
     assert.equal(name, 'agents.context');

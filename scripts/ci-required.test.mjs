@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
+import { runInNewContext } from 'node:vm';
 import { fileURLToPath } from 'node:url';
 import { requiredProblems } from './ci-required.mjs';
 
@@ -34,14 +35,52 @@ test('aggregate command returns nonzero on a skipped suite', () => {
   assert.equal(r.status, 1, r.stderr); assert.match(r.stderr, /tests: expected success, got skipped/);
 });
 
-test('workflow ignores label-only changes and preserves other PR triggers and supersession', () => {
+test('workflow ignores metadata-only changes and preserves code/lifecycle triggers and supersession', () => {
   const workflow = readFileSync(new URL('../.github/workflows/tests.yml', import.meta.url), 'utf8');
   const prTrigger = workflow.match(/^  pull_request:\n([\s\S]*?)(?=^  \w)/m)?.[1];
   assert.ok(prTrigger, 'pull_request trigger is present');
   const types = prTrigger.match(/types: \[([^\]]+)\]/)?.[1].split(',').map(type => type.trim());
-  assert.deepEqual(types, ['opened', 'synchronize', 'reopened', 'ready_for_review', 'converted_to_draft', 'edited']);
+  assert.deepEqual(types, ['opened', 'synchronize', 'reopened', 'ready_for_review', 'converted_to_draft']);
+  for (const action of ['labeled', 'unlabeled', 'edited']) assert.ok(!types.includes(action), action);
+  assert.match(workflow, /^  push:\n    branches: \[main\]/m);
+  assert.match(workflow, /^  workflow_dispatch:/m);
+  // CI consumes code/readiness/head facts, never title/body edits. Delivery owns those.
+  assert.doesNotMatch(workflow, /pull_request\.(?:title|body)|GITHUB_EVENT_PATH/);
   assert.ok(workflow.includes("group: ${{ github.event_name == 'pull_request' && format('ci-pr-{0}', github.event.pull_request.number) || format('ci-run-{0}', github.run_id) }}"));
   assert.match(workflow, /cancel-in-progress: true/);
+});
+
+test('aggregate guard skips cancelled runs without hiding real dependency failures', () => {
+  const workflow = readFileSync(new URL('../.github/workflows/tests.yml', import.meta.url), 'utf8');
+  const job = workflow.match(/^  required:\n([\s\S]*)/m)?.[1];
+  const expression = job?.match(/^    if: \$\{\{ (.+) \}\}$/m)?.[1];
+  assert.equal(expression, "!cancelled() && (github.event_name != 'pull_request' || !github.event.pull_request.draft)");
+  // This status function also avoids Actions' implicit success() dependency gate.
+  assert.ok(expression.includes('cancelled()'));
+  assert.match(job, /run: node scripts\/ci-required\.mjs\n        env:\n          NEEDS: \$\{\{ toJSON\(needs\) \}\}/);
+  for (const event of ['pull_request', 'push', 'workflow_dispatch']) {
+    for (const draft of [false, true]) {
+      for (const cancelled of [false, true]) {
+        const runs = runInNewContext(expression, {
+          cancelled: () => cancelled,
+          github: { event_name: event, event: { pull_request: { draft } } },
+        });
+        assert.equal(runs, !cancelled && (event !== 'pull_request' || !draft), `${event}, draft=${draft}, cancelled=${cancelled}`);
+        if (!runs) continue; // Draft-light and superseded jobs never invoke the gate.
+        assert.deepEqual(requiredProblems(successful()), []);
+        for (const name of ['readiness', 'openspec', 'tests']) {
+          for (const result of ['failure', 'cancelled', 'skipped']) {
+            const needs = successful(); needs[name].result = result;
+            assert.ok(requiredProblems(needs).length, `${event}: ${name}=${result} must block`);
+          }
+        }
+      }
+    }
+  }
+  // Push/dispatch payloads have no PR; their first branch must short-circuit.
+  for (const event of ['push', 'workflow_dispatch']) {
+    assert.equal(runInNewContext(expression, { cancelled: () => false, github: { event_name: event, event: {} } }), true);
+  }
 });
 
 test('review label additions call only the separate advisory workflow', () => {
@@ -79,7 +118,7 @@ test('protection adds the advisory caller without changing required checks or ex
 test('workflow keeps draft suites and aggregate disabled and checks both platforms', () => {
   const workflow = readFileSync(new URL('../.github/workflows/tests.yml', import.meta.url), 'utf8');
   assert.match(workflow, /if: needs\.readiness\.outputs\.ready == 'true'/);
-  assert.match(workflow, /if: always\(\) && \(github\.event_name != 'pull_request' \|\| !github\.event\.pull_request\.draft\)/);
+  assert.match(workflow, /if: \$\{\{ !cancelled\(\) && \(github\.event_name != 'pull_request' \|\| !github\.event\.pull_request\.draft\) \}\}/);
   assert.match(workflow, /os: \[windows-latest, ubuntu-latest\]/);
   assert.match(workflow, /needs: \[readiness, openspec, tests\]/);
   assert.equal((workflow.match(/name: CI required/g) || []).length, 1);

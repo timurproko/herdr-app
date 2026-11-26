@@ -7,7 +7,7 @@
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, Input, ScrollHandle } from "gpui-base";
-import { U, slot, itemHover, interactionFill, subtleActionFill, iconButton, badge, spaceBadgeColor, sidebarSectionHeader, rolePill, menuSurface, menuHeading, menuRow } from "./ui.js";
+import { U, slot, itemHover, interactionFill, subtleActionFill, iconButton, badge, spaceBadgeColor, sidebarSectionHeader, rolePill, menuSurface, menuHeading, menuRow, sidebarChildBranch, sidebarParentFold } from "./ui.js";
 import { spaceTitle } from './space-title.js';
 import { sidebarScroll } from './sidebar-scroll.js';
 import { startTabArrivals, tabArrivalMotion } from './tab-arrival.js';
@@ -83,6 +83,8 @@ export default class Spaces extends View {
     this.reconnecting = JSON.parse(localStorage.getItem("machines.reconnecting") ?? "{}");
     for (const state of Object.values(this.reconnecting)) state.busy = false;
     this.folded = new Set(JSON.parse(localStorage.getItem("machines.folded") ?? "[]"));
+    this.connectedFolds();
+    this.connectedSelection=spaces().find(space=>space.active)?.id;
     startTabArrivals(this, cx);
     this.refreshMachines(cx);
     cx.timer.every(15000, cx => this.refreshMachines(cx));
@@ -118,6 +120,7 @@ export default class Spaces extends View {
   checkNew(cx) {
     pluginEvent('spaces.refresh', { owner: this, cx });
     this.blockCommit?.observe();
+    this.syncConnectedSelection(cx);
     const now = Date.now();
     const sp = spaces();
     for (const s of sp) if (!this.shown.has(s.id)) this.born[s.id] ??= now;
@@ -309,9 +312,41 @@ export default class Spaces extends View {
     }).filter(r => this.shown.has(r.w.id)), displayLinks());
   }
 
+  connectedFolds() {
+    if(!this.parentFolds){let saved=[];try{saved=JSON.parse(localStorage.getItem('custom.spaces.parents.folded')??'[]');}catch{}
+      this.parentFolds=new Set(Array.isArray(saved)?saved.filter(key=>typeof key==='string').slice(-256):[]);}
+    return this.parentFolds;
+  }
+  parentKey(row) {return JSON.stringify([row.w.machine??null,row.block,row.binding??null]);}
+  saveConnectedFolds() {
+    this.parentFolds=new Set([...this.connectedFolds()].slice(-256));
+    try{localStorage.setItem('custom.spaces.parents.folded',JSON.stringify([...this.parentFolds]));}catch{}
+  }
+  visibleRows(collapsed,rows=this.ordered()) {
+    return rows.filter(row=>collapsed || !row.linked || !this.connectedFolds().has(this.parentKey(row))).map((row,position)=>({...row,position}));
+  }
+  syncConnectedSelection(cx) {
+    const selected=spaces().find(space=>space.active)?.id;
+    if(selected===this.connectedSelection)return;
+    this.connectedSelection=selected;
+    const row=this.ordered().find(row=>row.w.id===selected);
+    if(row?.linked && this.connectedFolds().delete(this.parentKey(row))){this.saveConnectedFolds();cx.notify();}
+  }
+  parentDisclosure(row,t) {
+    const key=this.parentKey(row),open=!this.connectedFolds().has(key);
+    return this.drag.control(sidebarParentFold(t,{id:`space-fold-${row.w.id}`,open,count:row.block.length-1,onToggle:this.drag.guard(cx=>this.toggleConnected(row,cx))}))
+      .on_mouse_down('left',(_e,cx)=>cx.stop_propagation());
+  }
+  toggleConnected(row,cx) {
+    const key=this.parentKey(row);
+    if(this.drag.active || this.rename || this.blockCommit?.pending || !this.ordered().some(current=>current.w.id===row.w.id && this.parentKey(current)===key))return;
+    this.connectedFolds().has(key)?this.connectedFolds().delete(key):this.connectedFolds().add(key);
+    this.saveConnectedFolds();cx.notify();
+  }
+
   // The rows, under a header per machine once one isn't this computer.
   grouped(t, collapsed) {
-    const rows = this.ordered();
+    const rows = this.visibleRows(collapsed);
     const draw = (r) => (collapsed ? this.compact(r, t) : this.row(r, t));
     const remote = [...new Set([...rows.map(r => r.w.machine).filter(Boolean), ...this.machines.map(m => m.name), ...Object.keys(this.reconnecting)])].sort();
     const loading = m => {
@@ -447,21 +482,20 @@ export default class Spaces extends View {
     return badge(String(i + 1), fill);
   }
 
-  row({ w, i, g, tree, linked = false, block, position = i }, t) {
+  row({ w, i, g, tree, linked = false, block, binding, position = i }, t) {
     const on = w.active;
     const edit = this.rename?.id === w.id ? this.rename : null;
     const drag = this.drag, d = drag.view;
-    const fromIndex = d ? this.ordered().findIndex(r => r.w.id === d.id) : -1;
+    const fromIndex = d ? this.visibleRows(false).findIndex(r => r.w.id === d.id) : -1;
     const worktree = !edit && Boolean(g?.linked || tree) && shows("spaces.show.worktree");
     const attached = !edit && block?.length > 1 && block.includes(w.id);
-    const tags = (edit ? [] : pluginSpaceTags(w)).map((tag, index) => ({...tag, index}));
-    // Keep unrelated tags stable; the chain/Crew group stays at the trailing edge.
+    const tags = (edit ? [] : pluginSpaceTags(w)).filter(tag=>!(linked && tag.plugin==='crew')).map((tag, index) => ({...tag, index}));
     const trailing = attached ? [...tags.filter(tag => tag.plugin !== 'crew'), ...tags.filter(tag => tag.plugin === 'crew')] : tags;
     return drag.item(v_flex()
       .relative()
       .id(`space-${w.id}`)
       .px(8)
-      .h(rowHeight({ tree }))
+      .h(linked ? U.subrow : rowHeight({ tree }))
       .flex_none()
       .justify_center()
       .rounded(U.radius)
@@ -492,7 +526,8 @@ export default class Spaces extends View {
           const mine = all.filter(s => (s.machine ?? null) === machine);
           over = (i > from ? mine.at(-1) : mine[0])?.id ?? null;
         }
-        drag.over(e, blockTarget(all, displayLinks(), drag.current?.id, over), cx);
+        const target=blockTarget(all, displayLinks(), drag.current?.id, over),targetRow=this.ordered().find(row=>row.w.id===target);
+        drag.over(e, targetRow?.linked && this.connectedFolds().has(this.parentKey(targetRow)) ? targetRow.block[0] : target, cx);
       })
       .on_mouse_up("left", (_e, cx) => {
         if (this.rename) { this.cancelDrag();cx.stop_propagation();return; }
@@ -503,10 +538,11 @@ export default class Spaces extends View {
       .child(
         h_flex()
           .id(`space-content-${w.id}`)
-          .min_w(0)
+          .min_w(0).when(linked,el=>el.pl(32).h(U.subrow))
           .gap(U.gap)
           .items_center()
           .when(this.tabArrival?.spaceId === w.id && !edit, el => tabArrivalMotion(this, el))
+          .when(linked,el=>el.child(sidebarChildBranch(t,'└').id(`space-branch-${w.id}`).mr(-4)))
           .child(this.spaceBadge({ w, i, linked, block }, t))
           .when(Boolean(edit), el => el.child(this.renameField(w, t)))
           .when(!edit, el => el
@@ -516,12 +552,11 @@ export default class Spaces extends View {
           // With tags, metadata precedes the shared trailing tag edge instead.
           .when(worktree, el => el.child(slot(svg("mods/custom-workspace-chrome/branch.svg").size(U.smallIcon).text_color(t.muted))
             .id(`space-worktree-${w.id}`).when(!tags.length, e => e.mr(-4)).tooltip('Git worktree')))
-          .when(!edit, el => el.children(trailing.flatMap((tag, k, all) => [
-            ...(attached && tag.plugin === 'crew' ? [slot(svg('mods/custom-spaces/link.svg').size(U.smallIcon).text_color(t.muted))
-              .id(`space-link-${w.id}`)] : []),
+          .when(!edit && attached && !linked,el=>el.child(this.parentDisclosure({w,block,binding},t)))
+          .when(!edit, el => el.children(trailing.map((tag, k, all) =>
             rolePill(t, tag.label, { status: true }).id(`space-tag-${w.id}-${tag.plugin}-${tag.index}`)
               .when(k === all.length - 1, e => e.mr(-5))
-              .when(Boolean(tag.tooltip), e => e.tooltip(tag.tooltip))]))),
+              .when(Boolean(tag.tooltip), e => e.tooltip(tag.tooltip))))),
       );
   }
 
