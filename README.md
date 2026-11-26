@@ -584,6 +584,16 @@ PR icon with a **red outlined circle and X**, using the same stroke style as PR 
 Unknown mergeability and failing/blocked checks are not conflicts. Closed/merged
 PRs keep their usual icons. Push events also refresh facts after base-branch changes.
 
+Managed review labels also supply a title-line stage: **Build**, **Review** or
+**Approved**, independently of CI and GitHub's separate review decision. The
+compatibility snapshot follows MyWorkflows `labels/base.json`: stable role
+`review-changes-needed` accepts Build and previous names Rework / Changes needed;
+`under-review` accepts Review / Under review; `review-approved` accepts Approved.
+Each accepts the plain name or its `🤖 ` prefix. Unknown labels are not guessed
+from colour or substrings. Existing label pills retain their exact GitHub names.
+Approved means the managed review label is assigned, not that CI passed; the
+existing checks item and GitHub's required checks communicate and gate CI.
+
 PRs with a related live agent show a separate white/foreground robot beside
 the title, matching the Agents sidebar. The original colored PR icon stays.
 The robot uses the usual rounded inset-icon hover tint, distinct from the

@@ -2,9 +2,9 @@
 
 ## 1. Pull request facts expose the three managed stages with current and previous label names
 
-- [ ] 1.1 Add the pure stable-role/current-name/previous-name stage contract and derive stage from normalized labels in pulls.js; verify array/connection, plain/robot-prefixed Build, Review, Approved, Rework, Changes needed and Under review cases with parsing fixtures.
-- [ ] 1.2 Preserve stage across narrow state/check updates and replace or remove it on authoritative label refresh; verify list, older-active and coordinator reads reuse existing labels queries without extra requests and cover empty/null/unknown labels and transient conflicts.
-- [ ] 1.3 Document the alias snapshot, source keys and approval-versus-checks independence in the relevant README Git section and docs/TESTING.md; verify documented aliases match the table-driven parsing expectations.
+- [x] 1.1 Add the pure stable-role/current-name/previous-name stage contract and derive stage from normalized labels in pulls.js; verify array/connection, plain/robot-prefixed Build, Review, Approved, Rework, Changes needed and Under review cases with parsing fixtures.
+- [x] 1.2 Preserve stage across narrow state/check updates and replace or remove it on authoritative label refresh; verify list, older-active and coordinator reads reuse existing labels queries without extra requests and cover empty/null/unknown labels and transient conflicts.
+- [x] 1.3 Document the alias snapshot, source keys and approval-versus-checks independence in the relevant README Git section and docs/TESTING.md; verify documented aliases match the table-driven parsing expectations.
 
 ## 2. Build and Review resolve role-specific terminals with safe availability and optional review metadata
 

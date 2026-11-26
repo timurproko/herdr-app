@@ -527,9 +527,23 @@ export function pullLabels(value) {
     .map(label => ({name: label.name, color: /^[a-f\d]{6}$/i.test(label.color ?? '') ? `#${label.color}` : null}));
 }
 
+// Compatibility snapshot of MyWorkflows labels/base.json stable roles. Build
+// is the forward name of review-changes-needed; aliases keep old assignments
+// usable without a manifest request for every panel. Order is conservative if
+// concurrent writers temporarily assign conflicting stages.
+export const MANAGED_STAGES = Object.freeze([
+  {key:'review-changes-needed', stage:'build', name:'Build', previousNames:['Rework','Changes needed']},
+  {key:'under-review', stage:'review', name:'Review', previousNames:['Under review']},
+  {key:'review-approved', stage:'approved', name:'Approved', previousNames:[]},
+]);
+export function pullStage(labels) {
+  const names=new Set((labels??[]).map(label=>label.name));
+  return MANAGED_STAGES.find(role=>[role.name,...role.previousNames].some(name=>names.has(name)||names.has(`🤖 ${name}`)))?.stage??null;
+}
+
 // One row's facts from a gh JSON entry. `owner` is the repo owner's login.
 export function pullRow(pr, owner, now = Date.now()) {
-  const login = pr.author?.login ?? '',checkFacts=checks(pr.statusCheckRollup);
+  const login = pr.author?.login ?? '',checkFacts=checks(pr.statusCheckRollup), labels=pullLabels(pr.labels);
   const state = pr.state === 'MERGED' ? 'merged' : pr.state === 'CLOSED' ? 'closed' : pr.isDraft ? 'draft' : 'open';
   const when = state === 'merged' ? `merged ${ago(pr.mergedAt ?? pr.closedAt, now)}`
     : state === 'closed' ? `closed ${ago(pr.closedAt, now)}` : `opened ${ago(pr.createdAt, now)}`;
@@ -544,7 +558,7 @@ export function pullRow(pr, owner, now = Date.now()) {
     checksKnown: Array.isArray(pr.statusCheckRollup),
     checksReadAt:Array.isArray(pr.statusCheckRollup)?now:null,
     owner: Boolean(owner && login && login.toLowerCase() === String(owner).toLowerCase()),
-    tasks: tasks(pr.body), checks: checkFacts, checkSummary:pr.checkSummary??checkFacts?.state??null, labels: pullLabels(pr.labels),
+    tasks: tasks(pr.body), checks: checkFacts, checkSummary:pr.checkSummary??checkFacts?.state??null, labels, stage:pullStage(labels),
     review: pr.reviewDecision === 'APPROVED' ? 'approved' : pr.reviewDecision === 'CHANGES_REQUESTED' ? 'changes' : null,
   };
 }

@@ -493,6 +493,16 @@ command-only paging, native wheel ownership, scrollbar ranges and complete
 search/clear resets. Read-only installed Windows byte evidence and absent live
 interaction proof are in HERDR-0.1.18-PALETTE-REVIEW.md.
 
+## Managed Git stages
+
+`node --experimental-vm-modules tests/git-stages.test.mjs` covers the
+MyWorkflows stable-role compatibility snapshot: Build / Rework / Changes needed,
+Review / Under review, and Approved, with plain and robot-prefixed names. Array
+and connection results share parsing; null, unknown and removed labels clear the
+stage, narrow check reads preserve it, and CI/reviewDecision never invent a stage.
+Existing list and target reads already include labels; stage adds no label request.
+These are synthetic facts, not live label mutation or approval verification.
+
 ## Git PR label facts
 
 Pull facts, pagination, fleet and webhook fixtures cover assigned label names/colours
