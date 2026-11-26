@@ -19,7 +19,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-26-recover-unknown-customization-updates/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-26-recover-unknown-customization-updates/acceptance.md",
   "finalizedDate": "2026-11-26",
-  "specBaseSha": "cccc23950be60f0be736fdb5778cf2069632a3ac",
+  "specBaseSha": "e7387ec91a5b9aea4719f353ec56d3f0db165efd",
   "acceptanceScenarios": [
     "Final deployment content survives transient Windows sharing errors and persistent rename refusal, with complete recovery evidence retained when destination publication also fails.",
     "Matching settled terminal evidence distinguishes a deployed-but-unsaved result from genuine uncertainty without manufacturing installed revision provenance.",
