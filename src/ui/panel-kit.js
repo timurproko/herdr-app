@@ -25,10 +25,10 @@ export const headerTool = (t, { id, icon, label, enabled = true, onClick }) => i
 // the row's height with the text centred. `rowInset` grows that box by the same amount
 // above and below, for rows whose first line sits lower than a plain list row's (the Git
 // panel's PR rows: a 20px title line 6px down = a 28px row plus 2px).
-export function panelMessage(t, id, { text, loading = false, rowInset = 0 }) {
+export function panelMessage(t, id, { text, loading = false, rowInset = 0, animated = true }) {
   const line = el => el.px(8).py(rowInset).min_h(U.row + 2 * rowInset).items_center();
   if (loading) return line(h_flex().id(id)).gap(6)
-    .child(spinner(t.working)).child(div().text_size(U.meta).text_color(t.working).child((text ?? 'Loading').replace(/\s*(?:…|\.{3})$/u, '')));
+    .child(animated ? spinner(t.working) : div().size(U.statusSize).flex_none().rounded_full().bg(t.working)).child(div().text_size(U.meta).text_color(t.working).child((text ?? 'Loading').replace(/\s*(?:…|\.{3})$/u, '')));
   return line(h_flex().id(id)).text_size(U.meta).text_color(t.dim).child(text);
 }
 

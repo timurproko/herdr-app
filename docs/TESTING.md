@@ -41,6 +41,13 @@ These live observations are separate from the local regression matrix.
 
 ## Connected project Spaces and coherent coordinator inventory
 
+`spaces-worktree-layout.test.mjs` covers the approved adaptive metadata grid:
+expanded Crew ends at the machine + right edge; collapsed Crew shifts to the
+Agents machine-label rail and child-space count occupies the Agents numeric rail.
+Machine/coordinator chevrons share a centre and a 24px target, including hover.
+`agents-dot-column.test.mjs` protects existing numeric/status geometry; unrelated
+tags, native selection/numbering, connectors and captured block reorder stay intact.
+
 `tests/fleet-project-spaces.test.mjs` uses the Crew PR #22 placement-v1 contract
 with combined-only, project-only and mixed populations on local/qualified remote
 models. It covers exact native membership, malformed labels, project names versus
@@ -77,9 +84,11 @@ terminal or account is used and nothing is installed outside disposable homes.
 `spaces-worktree-layout.test.mjs` and `fleet-reorder.test.mjs` cover one/two/three
 children, shared stem/last corner, native numbering, hidden-child selection,
 compact membership, any-member block reorder, ambiguity/cycles and changed captured
-membership without replay. Git's right-edge oracle uses an ordinary trailing Crew
-pill; connected parent Crew now precedes disclosure and is deliberately not the
-ordinary trailing-edge reference. Git geometry is unchanged.
+membership without replay. Spaces additionally checks the shared machine/coordinator 24px disclosure bounds,
+expanded Crew/plus right edges, plain label styling and collapsed child counts
+at 100%/130%. Agents supplies the unchanged time/count and label rails. Git's
+right-edge oracle now asserts its independent preserved 3px inset rather than
+borrowing a filled Crew pill that Spaces no longer renders. Git geometry is unchanged.
 
 `fleet-color-menu.test.mjs` runs the actual separately packaged provider and menu
 with two/three verified children, coordinator/child origins, local/remote machines,
@@ -88,9 +97,28 @@ share one captured coordinator binding; changed membership, conflicting parents 
 bindings, duplicates, missing/cross-machine endpoints and expired proof still refuse.
 Every child's saved colour and Automatic flag stays unchanged.
 
+`git-loading-line.test.mjs` checks one native moving line across ordinary and
+coordinator cold/warm/background/verification/safety work, overlap, completion,
+failure cooldown and retired measurement callbacks. Git cold Loading uses the
+shared message geometry with a static dot; Refresh is static even during its
+600ms disabled feedback. Files, tabs and shared activity remain animated as before.
+`fleet-history.test.mjs` checks provider work evidence: a live exact-owner read
+sets presentation-only loading; failed verification awaiting retry stops the line.
+
+`tests/features/sidebar-alignment-native.mjs --run --output <outside> --zoom 1|1.3
+--children 1|3 [--baseline <revision>]` verifies the supplied 0.1.18 archive and
+executable, mounts actual Spaces/Agents/Git with synthetic local/remote data and
+captures before/after rows and machine + (10 logical pixels left), collapsed
+counts, parent/child/ordinary rename, long names, compact/selection, cold/warm/
+background/ordinary line phases, completion and failures. Hover-only pointer
+movement targets its own disposable window; no clicks/keys, terminals or live
+SSH. Receipts check render errors and stop its desktop/Core in finally. Earlier
+fixtures/documented proofs using header bulbs or CI-only one-shot sweeps describe
+historical presentation, not the current loading contract.
+
 `git-inventory-presentation.test.mjs` covers cold whole-inventory admission,
 immediate actionable notices, no partial-return leak, staged warm replacements,
-header-only native activity, no warm body Loading and quiet cooldown behavior.
+under-header native line activity, no warm body Loading and quiet cooldown behavior.
 Healthy activity says Updating pull requests while worker actions remain available;
 only unverified activity carries the paused-action warning and sanitized diagnostics.
 `git-deferred-repositories.test.mjs` retains the exact-deadline no-event recovery

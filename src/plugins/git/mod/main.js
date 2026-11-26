@@ -6,7 +6,7 @@ import { TaskReveal } from './task-reveal.js';
 import { RowPresentations } from './row-presentation.js';
 import { SidebarScrollState } from './sidebar-scroll.js';
 import { topFade, bottomFade } from './scroll-fade.js';
-import { U, activity, headerTools, reveal, subtleActionFill, refreshButton, sidebarSectionHeader, sidebarNumericSlot } from './ui.js';
+import { U, headerTools, reveal, subtleActionFill, refreshButton, sidebarSectionHeader, sidebarNumericSlot } from './ui.js';
 import { exec, hc, theme, run, layout, openOverlay, closeOverlay, props, notify, nextCommand, window, settings } from './host.js';
 import { location } from './location.js';
 import { AgentLinks } from './agent-links.js';
@@ -35,7 +35,6 @@ const CI_SWEEP_WIDTH = 96;
 const LIST_INSET = 7;
 const TEXT_CACHE_LIMIT = 512;
 export const STAGE_CONTROL_WIDTH = 80;
-const ciPending = pr => ['open','draft'].includes(pr?.state) && pr.checks?.pending > 0;
 function find(node, id) { return node?.id === id ? node : (node?.children ?? []).map(c => find(c, id)).find(Boolean); }
 // Repository data survives agent/tab changes in the same machine and folder.
 const folderKey = ({cwd,on}) => JSON.stringify([cwd,on]);
@@ -111,7 +110,7 @@ export default class Changes extends View {
     this.selection = null; this.agentRequest = null; this.agentResolved = null;
     this.pinKey = null; this.pinRevealed = true;
     this.relatedKey = null; this.relatedPull = null; this.relatedRequest = null;this.relatedRetry=null;
-    this.webhooks?.stop(); this.webhookDirty = false; this.ciSweep = null;
+    this.webhooks?.stop(); this.webhookDirty = false;
     this.pullError = null; this.pullLoading = false; this.pullRequest = null;
   }
 
@@ -176,7 +175,7 @@ export default class Changes extends View {
   }
 
   syncAggregate(cx) {
-    this.aggregate ??= new AggregatePulls({shown:()=>this.shown(),onUpdate:view=>this.startCISweep(view),presentationEpoch:()=>host.shared('custom.git.presentation-generation')??0,
+    this.aggregate ??= new AggregatePulls({shown:()=>this.shown(),presentationEpoch:()=>host.shared('custom.git.presentation-generation')??0,
       presentationAlive:saved=>!saved.parent || Boolean(saved.machine && host.machines().some(machine=>machine.name===saved.machine && machine.layout!=='ready'))
         || host.spaces().some(space=>space.id===saved.parent && (space.machine??null)===(saved.machine??null))});
     if(!this.aggregate.sync(cx)) return false;
@@ -361,6 +360,7 @@ export default class Changes extends View {
       let accepted=false;
       try {
         await Promise.resolve();if(!current())return;
+        cx.notify();
         const result = (await readTargetPulls(exec,[number],repo.name,{cwd:root,on,timeout:30000,current,manual:this.manualRead})).get(number);
         if (!current() || result.error) return;
         const pr = result.row;
@@ -435,6 +435,7 @@ export default class Changes extends View {
     const request=this.fallbackRequest={},order=aggregate?aggregate.factOrder:this.factOrder,read=order.begin();
     if(aggregate) {aggregate.rememberCounts();aggregate.fallbackBusy=true;}
     else {this.pullLoading=true;this.pullRequest=request;}
+    cx.notify();
     let retryAfter=0,rateLimited=false;
     try {
       if(!current())return;
@@ -517,9 +518,8 @@ export default class Changes extends View {
       isCurrent:()=>this.shown() && !aggregate.context.stale && aggregate.currentContext()?.scope===scope && this.context===`tasks:${scope}`,
       onChange:(event,view)=> {
         if(!this.shown() || aggregate.currentContext()?.scope!==scope || this.context!==`tasks:${scope}`)return;
-        aggregate.invalidate(event?.repository??null);aggregate.pump(view);this.startCISweep(view);
+        aggregate.invalidate(event?.repository??null);aggregate.pump(view);view.notify();
       }});
-    if(!this.shown() || aggregate.context.stale)this.ciSweep=null;
   }
 
   syncWebhooks(cx) {
@@ -530,7 +530,6 @@ export default class Changes extends View {
     this.webhooks.sync(cx, {enabled:shown && Boolean(this.repo),scope:JSON.stringify([this.context,this.repo?.name]),repository:this.repo?.name,
       isCurrent:()=>this.shown() && this.context===context && key()===context && this.repo===repo,
       onChange:(event,cx) => this.queueWebhook(event,cx)});
-    if (!this.shown()) this.ciSweep = null;
     this.flushWebhook(cx);
   }
 
@@ -555,7 +554,7 @@ export default class Changes extends View {
       await Promise.resolve(); // request feedback must not notify synchronously from render
       try {
         if(!current())return;
-        this.startCISweep(cx);
+        cx.notify();
         const gh=async args=>{
           if(!current())throw Error('Obsolete request');
           const r=await repositoryRead(exec,args,repo.name,{cwd:root,on,timeout:30000,current,manual:this.manualRead});
@@ -601,7 +600,6 @@ export default class Changes extends View {
         }
         this.reconcilePulls([...Object.keys(updates).flatMap(state=>this.pulls[state]??[]),...[...transitions.values()].map(value=>value.row),...(this.relatedPull?[this.relatedPull]:[])],previousRows);
         this.counts=counts ?? this.counts;this.pullError=null;this.ciRevision=(this.ciRevision??0)+1;
-        this.startCISweep(cx);
       } catch(e) { if(current()) {
         if(retryRead(this,cx,e,view=>this.flushWebhook(view)))this.webhookDirty=true;
         else {this.pullError=pullError(e);this.relatedKey=null;this.relatedRetry=null;}
@@ -615,27 +613,16 @@ export default class Changes extends View {
 
   // CI auto-fix delivery is owned by each Core-side monitor, never this panel.
 
-  // One native pass for an event-driven read when ANY loaded PR has running CI.
-  startCISweep(cx) {
-    const rows=this.aggregate?.context ? this.aggregate.rows('open') : [...(this.pulls.open ?? []),this.relatedPull];
-    if (!this.shown() || this.ciSweep || !rows.some(ciPending)) return;
-    const sweep = this.ciSweep = {id:this.ciSweepSerial = (this.ciSweepSerial ?? 0) + 1,
-      context:this.context,phase:'arm',width:this.pinMotion?.bodySize?.width ?? 320};
-    cx.timer.after(CI_SWEEP_MS + 100, cx => {
-      if (this.ciSweep !== sweep) return;
-      this.ciSweep = null; cx.notify();
-    });
-    cx.notify();
-  }
-
-  armCISweep(sweep, cx) {
-    if (this.ciSweep !== sweep || sweep.phase !== 'arm') return;
-    sweep.phase = 'armed';
-    // Let the offscreen starting position lay out before changing the target.
-    cx.timer.after(16, cx => {
-      if (this.ciSweep !== sweep) return;
-      sweep.phase = 'moving'; cx.notify();
-    });
+  // Pure projection of work, not pending CI, totals or retry history. Native
+  // motion owns every frame; removing the track stops the animation.
+  panelLoading() {
+    if (!this.shown()) return false;
+    if (this.context?.startsWith('tasks:')) {
+      const aggregate=this.aggregate;
+      return Boolean(aggregate?.busy || aggregate?.context?.loading
+        || !aggregate?.context?.stale && aggregate?.updating);
+    }
+    return Boolean(this.loading || this.pullLoading || this.relatedRequest || this.fallbackRequest);
   }
 
   morePulls(state, cx) { this.loadPulls(state, cx, true, true, true); }
@@ -1170,7 +1157,7 @@ export default class Changes extends View {
             .on_mouse_move(event => {this.contentMotion(event, 'move', state);metrics.contentMotion(event,'move');})
             .children(remaining.map(pr => this.pullRow(t, pr)
               .when(Boolean(swap?.cards.some(card => card.pr.number === pr.number)), el => el.invisible())))
-            .when(!rows.length, el => el.child(panelMessage(t, 'git-empty', { text: empty, loading: empty === 'Loading…', rowInset: 2 })))
+            .when(!rows.length, el => el.child(panelMessage(t, 'git-empty', { text: empty, loading: empty === 'Loading…', rowInset: 2, animated: false })))
             .when(Boolean(rows.length) && Boolean(this.error || this.pullError), el => el.child(div().id('git-read-error').px(8).py(4).text_size(11).text_color(t.ansi1).child(this.error || this.pullError)))
             .when(this.pageError?.state === state, el => el.child(div().px(8).py(4).text_size(11).text_color(t.ansi1).child(this.pageError.message)))
             .when(Boolean(this.pages[state]?.hasMore), el => el.child(div().id('pulls-more').p(8).text_size(11).text_color(t.dim)
@@ -1183,11 +1170,16 @@ export default class Changes extends View {
       .when(Boolean(swap), el => el.child(this.swapOverlay(t,swap)));
   }
 
-  sweepLayer(t,sweep) {
-    return div().id(`git-ci-track-${sweep.id}`).absolute().left(0).right(0).top(0).h(1).overflow_hidden()
-      .on_size_change((size,cx)=>{if(size.width>0)sweep.width=size.width;this.armCISweep(sweep,cx);})
+  loadingLine(t) {
+    const context=this.context;
+    return div().id('git-loading-track').absolute().left(0).right(0).top(0).h(1).overflow_hidden()
+      .role('status').accessibility_label('Loading Git')
+      .on_size_change((size,cx)=>{
+        if(this.context!==context || !this.shown() || !(size.width>0) || this.loadingLineWidth===size.width)return;
+        this.loadingLineWidth=size.width;cx.notify();
+      })
       .child(div().id('git-ci-line').absolute().top(0).h(1).w(CI_SWEEP_WIDTH).rounded_full().bg(t.accent).opacity(0.75)
-        .left(sweep.phase==='moving'?sweep.width:-CI_SWEEP_WIDTH).transition('left',{duration:CI_SWEEP_MS,easing:'ease-in-out'}));
+        .loop('left',{from:-CI_SWEEP_WIDTH,to:this.loadingLineWidth??320,period:2*CI_SWEEP_MS,easing:'ease-in-out'}));
   }
 
   enrollmentPresentation() {
@@ -1244,7 +1236,7 @@ export default class Changes extends View {
         }))))
       .when(!folded && body.length>0, el => el.child(v_flex().id(`task-repo-body-${repo}`).flex_none()
         .children(body.map(item=>div().id(`task-item-${item.key}`).flex_none().h(item.height+item.gap)
-          .child(item.row ? this.pullRow(t,item.row) : item.loading ? panelMessage(t,`task-loading-${repo}`,{text:'Loading',loading:true,rowInset:2}) : this.renderPart(`repository-notice:${repo}`,()=>div().id(`task-error-${repo}`).flex_none().w_full()
+          .child(item.row ? this.pullRow(t,item.row) : item.loading ? panelMessage(t,`task-loading-${repo}`,{text:'Loading',loading:true,rowInset:2,animated:false}) : this.renderPart(`repository-notice:${repo}`,()=>div().id(`task-error-${repo}`).flex_none().w_full()
             .child(div().id(`task-notice-measure-${window.measurement}-${encodeURIComponent(item.measureKey)}`).flex_none().w_full().px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(item.error)
             .on_size_change((size,cx)=>{
               if(!this.taskWindowCurrent(window,scope) || !window.items.some(current=>current.measureKey===item.measureKey) || !Number.isFinite(size.height))return;
@@ -1415,15 +1407,13 @@ export default class Changes extends View {
       onChoose:repository=>openSettings({section:'plugins',plugin:'git',pluginSection:'repository',pluginSearch:repository})});
     const enrollment=this.enrollmentPicker.render(t,setup?null:this.enrollmentPresentation());
     this.syncChecksFallback(cx);
-    const sweep=!aggregate.context.stale && this.shown() && this.ciSweep?.context===this.context ? this.ciSweep : null;
+    const loading=this.panelLoading();
     return v_flex().id('changes').relative().size_full().min_h(0).rounded(8).overflow_hidden().bg(t.background).border_1().border_color(t.input).text_color(t.foreground).text_size(U.font)
       .child(h_flex().id('changes-header').relative().bg(t.surface).h(U.section).flex_none().pl(4).pr(U.gutter).gap(U.gap).items_center().border_b(1).border_color(t.border)
         .on_hover((hovered,view)=>{this.headerHovered=hovered;view.notify();})
         .child(sidebarTitle(t,'changes','git-title'))
-        .when(warm && (aggregate.updating??aggregate.context.stale), el=>el.child(activity(t.working).id(aggregate.context.stale?'git-task-stale':'git-task-activity')
-          .role('status').accessibility_label('Updating pull requests').tooltip(aggregate.context.stale?verificationHint:'Updating pull requests')))
         .child(reveal(headerTools(h_flex()).id('git-actions').bg(t.surface),this.headerHovered)
-          .child(refreshButton(t,{id:'git-refresh',icon:'mods/custom-changes/refresh.svg',label:'Refresh',busy:aggregate.busy,spinning:aggregate.busy,
+          .child(refreshButton(t,{id:'git-refresh',icon:'mods/custom-changes/refresh.svg',label:'Refresh',busy:aggregate.busy,animate:false,
             owner:this,scope:this.context,enabled:this.headerHovered,size:U.insetControl,iconSize:U.tinyIcon,radius:U.insetRadius,color:t.dim,hover:subtleActionFill(t),
             onClick:(_e,view)=>{if(aggregate.context?.scope===scope && !aggregate.busy) {this.webhooks?.retryNow();this.notices?.retryNow();aggregate.refresh(view);}}}))
           .child(panelPin(t,{id:'git-pin',enabled:this.headerHovered}))
@@ -1432,7 +1422,7 @@ export default class Changes extends View {
         .child(this.segment(t,'git-view-open','Open',counts.open,this.view==='open',view=>this.setView('open',view),aggregate.countsLoading))
         .child(this.segment(t,'git-view-closed','Closed',counts.closed,this.view==='closed',view=>this.setView('closed',view),aggregate.countsLoading)))
       .when(!warm && waiting,el=>el.child(div().id('git-task-waiting').flex_none().px(LIST_INSET)
-        .child(panelMessage(t,sections.length?'git-task-loading':'git-task-empty',{text:'Loading',loading:true,rowInset:2})
+        .child(panelMessage(t,sections.length?'git-task-loading':'git-task-empty',{text:'Loading',loading:true,rowInset:2,animated:false})
           .when(aggregate.context.stale,message=>message.tooltip(verificationHint)))))
       .child(v_flex().id('task-pulls-scroll').relative().flex_1().min_h(0).overflow_hidden()
         .child(v_flex().id(`task-pulls-frame-${scope}-${this.view}-${taskWindow.measurement}`).relative().flex_1().min_h(0).overflow_hidden()
@@ -1457,7 +1447,7 @@ export default class Changes extends View {
           .when(taskWindow.metrics.moreBelow,el=>el.child(bottomFade(taskWindow.metrics,'task-pulls-list',t.background,{left:LIST_INSET,right:LIST_INSET})))))
       .when(setup,el=>el.child(this.liveCIInfo(t)))
       .when(Boolean(enrollment),el=>el.child(enrollment))
-      .when(Boolean(sweep),el=>el.child(this.sweepLayer(t,sweep).top(U.section)));
+      .when(loading,el=>el.child(this.loadingLine(t).top(U.section)));
   }
 
   liveCIInfo(t,kind='setup',capturedRepository=null) {
@@ -1530,7 +1520,7 @@ export default class Changes extends View {
     const pullsUrl = this.repo?.url ? `${this.repo.url.replace(/\/$/, '')}/pulls` : null;
     const canOpenPulls = Boolean(this.root && pullsUrl), linkScope = this.context, repoName = this.repo?.name;
     const toolCount = 2 + Number(Boolean(this.root));
-    const sweep = this.shown() && this.ciSweep?.context === this.context ? this.ciSweep : null;
+    const loading = this.panelLoading();
     return v_flex().id('changes').size_full().min_h(0).rounded(8).overflow_hidden().bg(t.background).border_1().border_color(t.input).text_color(t.foreground).text_size(U.font)
       .child(h_flex().id('changes-header').relative().bg(t.surface).h(U.section).flex_none().pl(4).pr(U.gutter).gap(U.gap).items_center().border_b(1).border_color(t.border)
         .on_hover((hovered, cx) => { this.headerHovered = hovered; cx.notify(); })
@@ -1543,7 +1533,7 @@ export default class Changes extends View {
           .when(Boolean(this.root && this.repo?.url && this.repo?.name), el=>el.child(div().id('git-repo-name').min_w(0).max_w_full().flex_shrink(1).truncate()
             .text_size(U.meta).text_color(t.dim).tooltip(this.repo.url).child(this.repo.name.split('/').at(-1)))))
         .child(reveal(headerTools(h_flex()).id('git-actions').bg(t.surface), this.headerHovered)
-          .when(Boolean(this.root), el => el.child(refreshButton(t, { id: 'git-refresh', icon: 'mods/custom-changes/refresh.svg', label: 'Refresh', busy, spinning: Boolean(this.root), owner: this, scope: this.context,
+          .when(Boolean(this.root), el => el.child(refreshButton(t, { id: 'git-refresh', icon: 'mods/custom-changes/refresh.svg', label: 'Refresh', busy, animate: false, owner: this, scope: this.context,
             enabled: this.headerHovered && Boolean(this.root), size: U.insetControl, iconSize: U.tinyIcon, radius: U.insetRadius, color: t.dim, hover: subtleActionFill(t),
             onClick: (_e, cx) => {
               if (!this.root || this.loading || this.pullLoading) return;
@@ -1559,6 +1549,6 @@ export default class Changes extends View {
         .child(this.segment(t, 'git-view-closed', 'Closed', this.counts?.closed ?? null, this.view === 'closed', cx => this.setView('closed', cx))))
       .child(this.renderPulls(t))
       .when(Boolean(notice), el => el.child(this.liveCIInfo(t,notice)))
-      .when(Boolean(sweep), el => el.child(this.sweepLayer(t,sweep))));
+      .when(loading, el => el.child(this.loadingLine(t))));
   }
 }

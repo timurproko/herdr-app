@@ -400,17 +400,18 @@ Refreshing fleet status SHALL distinguish pending or failed transport from a com
 - **AND** no extra healthy polling loop, companion or cross-machine inference is introduced; bounded unverified-fleet recovery uses the existing periodic lifecycle without a second scheduler
 
 ### Requirement: Stale coordinator presentation without action authority
-When strict fleet action context is unavailable, the coordinator SHALL retain its shown same-home list with header activity, no body Loading and no Stale label. Cold context SHALL show top-left Loading below Open/Closed. Retained context SHALL NOT authorize GitHub reads or worker navigation. Fresh verification SHALL restore operation or replace invalid context. PR/task inventory SHALL NOT persist for restart.
+When strict fleet action context is unavailable, the coordinator SHALL retain its shown same-home list with only the under-header moving line for pending reconciliation, no body Loading and no Stale label. Cold context SHALL show top-left Loading below Open/Closed. Retained context SHALL NOT authorize GitHub reads or worker navigation. Fresh verification SHALL restore operation or replace invalid context. PR/task inventory SHALL NOT persist for restart.
 
 #### Scenario: Status unavailable beyond action freshness
 - **WHEN** a status read fails or times out after strict action freshness expires while the verified pair's native spaces still exist
-- **THEN** the sidebar stays attached and previously shown Git rows, counts and folds remain with header activity while reconciliation is pending, no body Loading and no Stale label
+- **THEN** the sidebar stays attached and previously shown Git rows, counts and folds remain with the moving line while reconciliation is pending, no body Loading and no Stale label
 - **AND** no new aggregate read or robot navigation uses the retained context as authorization
 - **AND** Stale, the removed task heading and the generic incomplete-list notice do not appear in the header
+- **AND** the line stops when work finishes or fails rather than animating solely because a retry deadline or unresolved total remains
 
 #### Scenario: Cold restart before verification
 - **WHEN** the selected coordinator is restored from durable pair identity but no task/PR facts have been verified in this runtime
-- **THEN** Git shows only its standard top-left Loading inventory feedback rather than switching to folder-based non-repository mode or showing partial sections
+- **THEN** Git shows its standard top-left Loading text and static dot with the moving line while work is pending, rather than switching to folder-based non-repository mode or showing partial sections
 - **AND** only a fresh verified same-home status result can start task-linked GitHub reads
 
 #### Scenario: Different selected space or confirmed home change
@@ -621,7 +622,7 @@ Verification SHALL use recorded-only status, preferring an explicitly advertised
 - **AND** later enrichment cannot renew verification age, change pair identity or discard unchanged discovered links during the next recorded refresh
 
 ### Requirement: Selected-tab coordinator repository visibility
-Coordinator Git SHALL withhold cold partial successes until first reads settle, using one top-left Loading below Open/Closed. Warm return/refresh SHALL retain the shown list with header activity, no body Loading and in-place replacement on completion. Actionable notices SHALL appear immediately. Eligibility SHALL precede folding, preserving history, truthful totals and saved folds. Enrollment SHALL use full eligible inventory independently of section visibility.
+Coordinator Git SHALL withhold cold partial successes until first reads settle, using top-left Loading below Open/Closed. Warm return/refresh SHALL retain the list with the under-header line, no body Loading and in-place completion. Actionable notices SHALL appear immediately. Eligibility SHALL precede folding, preserving history, truthful totals and saved folds. Enrollment SHALL use full eligible inventory independently of section visibility.
 
 #### Scenario: Open and Closed contain different repositories
 - **WHEN** one repository has only Open or Draft task PRs and another has only eligible Merged or Closed task PRs, with no unresolved task PRs
@@ -647,7 +648,7 @@ Coordinator Git SHALL withhold cold partial successes until first reads settle, 
 #### Scenario: Empty settled tab
 - **WHEN** no repository has an eligible row or applicable read notice and no unresolved work remains in a settled verified tab
 - **THEN** ordinary Git's `No open pull requests` or `No closed pull requests` appears without empty repository headers
-- **AND** pending or unverified work uses one standard panel Loading indication instead of a false empty state
+- **AND** pending or unverified work uses one standard panel Loading text indication instead of a false empty state
 
 #### Scenario: Hidden section remains an enrollment choice
 - **WHEN** a confirmed unenrolled repository has eligible PRs only in the other tab
@@ -656,9 +657,10 @@ Coordinator Git SHALL withhold cold partial successes until first reads settle, 
 
 #### Scenario: Mixed successful repositories and a quietly deferred cold repository
 - **WHEN** no compatible sections have previously been shown and admitted links include unread PRs in one repository while healthy siblings have supplied rows
-- **THEN** only one standard top-left Loading bulb and text appear as inventory feedback, with successful sibling headers and rows withheld until all admitted first reads settle
+- **THEN** only one standard top-left static dot and Loading text appear as body inventory feedback, with successful sibling headers and rows withheld until all admitted first reads settle
 - **AND** queued, in-flight and quietly deferred work remain unresolved; genuine applicable failures may show their repository notice immediately below Loading
 - **AND** no error or rate-limit wording, placeholder PR, per-repository Loading flash or falsely complete global total is introduced
+- **AND** only pending work animates the under-header line; a dormant cooldown alone does not animate
 
 #### Scenario: Retry fills the existing section
 - **WHEN** the existing cooldown expires while the panel remains shown, enabled and freshly verified, and its automatic retry succeeds
@@ -669,7 +671,7 @@ Coordinator Git SHALL withhold cold partial successes until first reads settle, 
 #### Scenario: Return to a previously visited coordinator
 - **WHEN** the user returns to the same coordinator machine, owner, home and enable generation during the same runtime
 - **THEN** the last compatible previously shown selected-tab sections, rows, counts and folds are shown immediately while current verification or membership reconciliation runs
-- **AND** pending reconciliation uses the existing header activity indicator, with no body Loading or Stale label, and completion stops activity and updates the list in place
+- **AND** pending reconciliation uses only the under-header moving line, with no header bulb, body Loading or Stale label, and completion stops the line and updates the list in place
 - **AND** newly loading partial success sections are withheld until first reads settle, while actionable notices appear immediately
 - **AND** authoritative removals, state transitions and expiry reconcile without restoring incompatible facts or granting stale worker actions
 
@@ -681,8 +683,8 @@ Coordinator Git SHALL withhold cold partial successes until first reads settle, 
 
 #### Scenario: Background refresh of an already shown list
 - **WHEN** the coordinator list is on screen and known PR facts refresh without new unread membership or lost verification
-- **THEN** existing sections and rows remain mounted without body Loading or Stale text, and the existing working bulb animates in the header throughout the update
-- **AND** new unread membership or pending verification also uses header activity only; activity stops and the list updates in place when the update finishes
+- **THEN** existing sections and rows remain mounted without body Loading or Stale text, and only the under-header line animates throughout pending work
+- **AND** new unread membership or pending verification also uses the line only; it stops and the list updates in place when the update finishes
 - **AND** new partial success sections are withheld until first reads settle, while current authoritative removals, history expiry and state transitions remain effective
 
 ### Requirement: Stable pull request block geometry
@@ -709,7 +711,7 @@ Every PR block SHALL retain fixed state-icon, title and related-agent slots, thr
 - **AND** full author, action and relative-time values remain in the byline tooltip while the number, author and time remain left-aligned with constant separator gaps
 
 ### Requirement: Non-destructive same-context PR refresh presentation
-A same-context refresh SHALL retain displayed rows, pin geometry and pagination until replacement is ready. Pending reads, verification and transient failures SHALL NOT replace known rows with empty states. Coordinator return/background updates SHALL use header activity, no body Loading and no Stale label. Returns SHALL reuse bounded compatible runtime presentation. Different identities SHALL invalidate incompatible facts; retained context SHALL NOT authorize reads or worker actions.
+Same-context refresh SHALL retain rows, pins and pagination until replacement is ready. Pending reads, verification and transient failures SHALL NOT replace known rows with empty states. Coordinator return/background updates SHALL use the under-header line, no body Loading or Stale label. Returns SHALL reuse bounded compatible runtime presentation. Different identities SHALL invalidate incompatible facts; retained context SHALL NOT authorize reads or worker actions.
 
 #### Scenario: Delayed manual or webhook refresh
 - **WHEN** a manual, webhook, reconnect or show-time refresh is pending for the displayed repository or coordinator home
@@ -723,8 +725,8 @@ A same-context refresh SHALL retain displayed rows, pin geometry and pagination 
 
 #### Scenario: Loading and fleet verification
 - **WHEN** the panel has unresolved first reads or the same coordinator home temporarily loses fresh verification
-- **THEN** previously shown compatible rows remain with header activity only, no body Loading and no Stale text anywhere
-- **AND** cold verification uses only that ordinary panel working bulb and Loading wording as inventory feedback, with no extra Verifying header, invented PRs, counts, skeleton values or partial success sections
+- **THEN** previously shown compatible rows remain with only the under-header moving line for pending work, no body Loading and no Stale text anywhere
+- **AND** cold verification uses the ordinary top-left static dot and Loading wording plus the same single line while work is pending, with no extra Verifying header, invented PRs, counts, skeleton values or partial success sections
 
 #### Scenario: Off and on with slow or failed first verification
 - **WHEN** a verified coordinator list is switched off and back on and the first current read is slow, interrupted or fails
@@ -872,7 +874,8 @@ Failed, unmatched and discarded fleet verification attempts SHALL retain a bound
 
 #### Scenario: Existing verification feedback
 - **WHEN** the selected coordinator has a relevant last verification failure
-- **THEN** a tooltip on the existing working bulb exposes sanitized reason/time, in cold top-left Loading or warm header activity, without Stale text or notifications
+- **THEN** cold top-left Loading retains sanitized reason/time in its tooltip without an animated dot, Stale text or notifications
+- **AND** warm header activity and its tooltip are absent; bounded runtime diagnostics and the local log remain available without a replacement header tooltip
 - **AND** a cold unverified coordinator candidate gains no attachment, PR inventory, GitHub-read permission or worker-navigation authority from that feedback
 
 #### Scenario: Runtime privacy and retention
@@ -1075,13 +1078,13 @@ Every successful row refresh SHALL read authoritative Open/Draft/Merged/Closed s
 - **AND** unrelated row order, saved folds and ordinary pagination and pin geometry remain intact
 
 ### Requirement: Git trailing alignment with Spaces
-Git PR rows and coordinator repository headers SHALL match the actual Spaces Crew pill inset inside its own row highlight: 3 logical pixels. Title-line stage or robot reservations SHALL share a stable trailing edge with label pills and the 24px header chevron reservation. Robot glyphs and hit targets SHALL retain their sizes. All row variants SHALL preserve absent-control title reservations, captured actions and vertical geometry.
+Git PR rows and coordinator repository headers SHALL retain their 3px logical trailing inset inside each highlight, independent of Spaces Crew's plain label. Title-line stage or robot reservations SHALL share a stable trailing edge with label pills and the 24px header chevron reservation. Robot glyphs and hit targets SHALL retain their sizes. All row variants SHALL preserve absent-control title reservations, captured actions and vertical geometry.
 
 #### Scenario: Complete panel alignment
 - **WHEN** ordinary or coordinator Git panels render at 280, 320, 360, 390 or 480 logical pixels and 75%, 100%, 125%, 130%, 150% or 200% zoom
-- **THEN** stage/robot reservation, repository-header chevron slot and actual trailing label pill right edges are inset from their own row highlight edge by the same amount as the actual Spaces Crew pill from its own row highlight edge
-- **AND** complete-panel border, list padding and Spaces negative trailing pill margin are included in the comparison, yielding a 3px logical row-relative inset
-- **AND** Git and Spaces highlights have equal 8px left and right panel/sidebar gutters, yielding equal 11px control-to-panel/sidebar insets
+- **THEN** stage/robot reservation, repository-header chevron slot and actual trailing Git label pill right edges retain a 3px inset from their own row highlight edge
+- **AND** complete-panel border and list padding are included without using the restyled Spaces Crew label as a pill-edge oracle
+- **AND** Git and Spaces highlights retain equal 8px left and right panel/sidebar gutters, with Git's control-to-panel inset remaining 11px
 - **AND** Git row highlights match Spaces' 6px corner radius and their leading content starts 8px inside the highlight, matching Spaces' highlight-to-badge inset
 
 #### Scenario: Different glyph sizes
@@ -1091,7 +1094,7 @@ Git PR rows and coordinator repository headers SHALL match the actual Spaces Cre
 
 #### Scenario: Missing agent, folded header and motion preview
 - **WHEN** an agent is absent, a repository header folds or a PR is pinned, scrolled or shown as a motion-preview row
-- **THEN** the shared trailing edge and existing row/header heights and line positions are preserved
+- **THEN** the existing trailing edge and row/header heights and line positions are preserved
 - **AND** the absent control reservation remains inert, live robot hit targets remain 24px square, ghost controls remain noninteractive and existing captured actions remain guarded
 - **AND** hover, selected/pinned and ghost highlights retain equal Spaces-derived left and right gutters and corner radius
 
@@ -1583,3 +1586,25 @@ Build and Review chips and fallback robots SHALL share one navigation-first pin-
 - **WHEN** a destination cannot resolve within three seconds, context or Open/Closed changes, scrolling cancels the motion, or a different target is selected
 - **THEN** the existing controller cancels retention without replaying focus or committing a false settled pin
 - **AND** moving ghost rows and retained coordinator presentation never become navigation or worker authority
+
+### Requirement: One complete-lifecycle Git loading animation
+Ordinary and coordinator Git panels SHALL use the existing moving line immediately below the header as their only panel-loading animation throughout pending cold, warm and background work, regardless of pending CI. The line SHALL stop on completion, failure, hide, disable or scope replacement. The header activity bulb and its tooltip SHALL be absent; shared activity components and other panels SHALL remain unchanged.
+
+#### Scenario: Cold ordinary and coordinator work
+- **WHEN** an enabled shown Git panel begins folder, repository, list, targeted, pagination, verification or inventory work without previously shown compatible content
+- **THEN** one moving line runs until the pending work completes or fails, including work exceeding one 2.4-second pass and work with no loaded pending CI
+- **AND** cold top-left Loading retains the other right-side panel's 7px dot, 6px gap, blue 12px text and existing insets, but its dot is static in Git
+- **AND** references elsewhere to a Git Loading working bulb mean this static message, not a second loading animation
+- **AND** actionable failures remain visible and coherent inventory publication and count uncertainty remain unchanged
+
+#### Scenario: Warm background and manual work
+- **WHEN** a shown ordinary or coordinator list performs warm return reconciliation, verification, manual, webhook or safety work
+- **THEN** only the one under-header moving line animates for panel loading and the existing list remains mounted without body Loading or Stale text
+- **AND** overlapping work shares the line until the last pending operation finishes, with no separate CI-only track
+- **AND** Git Refresh remains disabled with its existing feedback timing but does not rotate, including on hover during a request
+
+#### Scenario: Idle failure cooldown and retired callbacks
+- **WHEN** work completes, fails, becomes dormant awaiting a future retry, or the panel is hidden, disabled or changes context
+- **THEN** no obsolete callback keeps the old loading line running or clears a newer context's work
+- **AND** a dormant cooldown, uncertain count or historical failure alone does not assert an active request
+- **AND** no loading animation changes another panel, tab, status slot or shared activity component

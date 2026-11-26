@@ -4,7 +4,7 @@
 
 import { View, div, image, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { U, slot, itemHover, statusBulb, menuSurface, chevron, menuHeading, emptyState, sidebarNumericSlot, sidebarChildBranch, sidebarParentFold } from "./ui.js";
+import { U, slot, itemHover, statusBulb, menuSurface, chevron, menuHeading, emptyState, sidebarNumericSlot, sidebarMachineLabel, sidebarChildBranch, sidebarParentFold } from "./ui.js";
 import { programIcon } from './program-icon.js';
 import { sidebarScroll } from './sidebar-scroll.js';
 import { paneDirectory } from './directory.js';
@@ -361,7 +361,7 @@ export default class Agents extends View {
           })))
         .child(div().id(`agent-name-${a.address}`).flex_1().min_w(0).truncate().text_color(labelColor).child(name))
         .child(h_flex().id(`agent-meta-${a.address}`).flex_none().gap(6).items_center()
-          .when(Boolean(machine), el => el.child(div().max_w(48).truncate().text_size(U.meta).text_color(t.dim).child(machine)))
+          .when(Boolean(machine), el => el.child(sidebarMachineLabel(t,machine)))
           .when(subs.length > 0, el => el.child(fold(a, subs)))
           .child(this.numericSlot(t, `agent-age-${a.address}`, when ? duration(now - when) : ""))
           .child(this.statusSlot(t, a, byPriority && !isPinned)));
