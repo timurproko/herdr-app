@@ -179,6 +179,19 @@ Loading, equal message placement at 100%/130%, no simultaneous repository header
 or moving line, warm/background/verification/safety line activity, overlap,
 completion, cooldown and retired callbacks. Folded cold failures stay visible.
 Refresh remains static during its 600ms disabled feedback; other panels are unchanged.
+`tests/features/git-loading-native.mjs --run --zoom 1|1.3 --output <outside>`
+uses a checksum-verified release 0.1.18 executable, synthetic data and isolated
+app/Core homes. It captures ordinary/coordinator cold Loading (two pulse phases),
+loaded Open/Closed, warm/background activity and visible failures. Both views'
+Loading blue pixels occupy y=241–261 at 100% and y=312–338 at 130% in the same
+2560×1640 capture geometry; dot brightness changes while text stays fixed. Cold
+frames have no repository header or line, and loaded tabs have no badge space.
+`--stress` adds frequent four-PR updates beside a repainting sibling; see
+[GIT-RENDER-BUDGET.md](GIT-RENDER-BUDGET.md) for the honest non-reproduction result.
+The fixture checks native logs as well as status.errors, writes proof outside the
+checkout, and stops every owned desktop/Core instance in finally. It is not a
+live-agent, network or native pointer hit-test.
+
 `fleet-history.test.mjs` checks provider work evidence: a live exact-owner read
 sets presentation-only loading; failed verification awaiting retry stops the line.
 

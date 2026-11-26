@@ -15,9 +15,9 @@
 
 ## 3. Coordinator background-update rendering has a focused bounded regression
 
-- [ ] 3.1 Exercise four rich Open PRs across several repository sections under repeated synthetic background fact/membership updates in the disposable native fixture at 100% and 130%; record native render timings/errors and component markers, with Closed folding/tab transitions as controls rather than the only workload.
-- [ ] 3.2 If interruption reproduces, fix only its measured local cause and add a targeted regression; otherwise add the bounded background-update regression and document exact non-reproduction scope without claiming a fix. Keep the 50ms deadline, row/item caps, ordering, pure caches and once-only retry unchanged; run only relevant render-budget/diagnostic checks.
-- [ ] 3.3 Record the investigation result and known limitations in the appropriate testing/render-budget guidance, inspect final screenshots for each changed view, and stop every app/Core/server owned by this task before the implementation report.
+- [x] 3.1 Exercise four rich Open PRs across several repository sections under repeated synthetic background fact/membership updates in the disposable native fixture at 100% and 130%; record native render timings/errors and component markers, with Closed folding/tab transitions as controls rather than the only workload.
+- [x] 3.2 If interruption reproduces, fix only its measured local cause and add a targeted regression; otherwise add the bounded background-update regression and document exact non-reproduction scope without claiming a fix. Keep the 50ms deadline, row/item caps, ordering, pure caches and once-only retry unchanged; run only relevant render-budget/diagnostic checks.
+- [x] 3.3 Record the investigation result and known limitations in the appropriate testing/render-budget guidance, inspect final screenshots for each changed view, and stop every app/Core/server owned by this task before the implementation report.
 
 ## Workflow follow-up
 

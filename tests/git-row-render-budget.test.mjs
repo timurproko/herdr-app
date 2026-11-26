@@ -8,7 +8,7 @@ function budget(result,mode,count) {
   assert.equal(result.repositoryCountElements,mode==='coordinator'?4:0,'Only two nodes per intentional repository count; PR-row baseline remains unchanged');
   assert.equal(result.mounted,mode==='coordinator'?Math.min(count,MAX_MOUNTED_ROWS):count,'All revealed rows mount; coordinator retains main\'s safe row cap');
   assert.ok(result.operations<=before.operations+2*result.mounted,`${mode}/${count}: tooltip policy adds only bounded decoration, not measurement subtrees`);
-  assert.equal(result.elements,before.elements-result.mounted,'One obsolete title-control placeholder is removed per mounted row; no native elements are added');
+  assert.equal(result.elements,before.elements-result.mounted-(mode==='coordinator'?6:0),'One obsolete title-control placeholder per row and six coordinator chrome tab-badge nodes are removed; ordinary measurements include only the list body; no native elements added');
   assert.equal(result.probes,before.probes,'No intrinsic probe is added to main\'s fit computation');
 }
 const h=await rowBudgetHarness();let comparisons=0;
