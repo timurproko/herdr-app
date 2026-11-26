@@ -390,19 +390,22 @@ failed pages preserve existing rows, and the end of the list stops fetching.
 Expanded lists are retained across webhook refreshes; manual Refresh or a
 machine/folder change starts again at 10. Same-folder agent/tab/space switches
 retain repository metadata, counts, rows, pagination and in-flight GitHub requests;
-only the agent-specific active PR link changes (A1 and Claude Code read their selected session footer).
+only the agent-specific active PR link changes (managed Crew terminals use their
+full `crew.pr` identity; A1 and Claude Code otherwise read their selected session footer).
 The current pin stays steady until that read resolves; an unchanged PR never
 unpins/re-pins. Ordinary selection changes use a native 120ms opacity ease.
-Clicking a list PR's robot opens the agent tab **immediately**. The panel retains
+Clicking a list PR's Build/Review chip or fallback robot opens the agent tab
+**immediately**. The panel retains
 the original row slots while the destination footer/selection resolves, including
 when a repository refresh replaces the underlying rows. Once confirmed, native
-320ms motion moves the clicked PR into the pinned slot, returns the former pin
-to the list and slides any affected intermediate rows. The real layout commits
+320ms motion moves the clicked PR into the pinned slot, returns a former pin
+when one exists and slides affected intermediate rows. An initially unpinned
+list uses the same controller and timing, with no former pin to return. The real layout commits
 only after motion settles, using the latest refreshed PR facts. There is no
 optimistic pin change or delayed navigation. Geometry uses measured heights and
 current scroll/zoom; pagination and scroll remain intact. Geometry lives as long
-as the native element IDs, not the repository data: resolving a Git root cancels
-pending motion but must not discard size measurements that the host only emits
+as the native element IDs, not the repository data: a genuine repository reset
+cancels pending motion but must not discard size measurements that the host only emits
 when dimensions change. Only one arming and
 one cleanup callback run (no JavaScript frame loop). A bounded 3-second wait
 prevents an unavailable destination from freezing the old presentation.
@@ -411,7 +414,13 @@ rows even when its worktree/folder needs a fresh Git-root lookup; old-folder
 requests are invalidated first. Unrelated machine/folder or Open/Closed changes,
 scrolling, a mismatching destination or a newer selection cancel retention/motion
 without undoing navigation. Unmeasured rows and cross-repository switches safely
-use the normal pin reveal. Ordinary terminals keep the same list and
+use the normal pin reveal. A verified coordinator chip or robot click carries
+a bounded inert snapshot of its grouped list into the destination while the
+clicked row rises to the ordinary pinned slot; coordinator views themselves
+still have no permanent active pin. This uses the same `PinSwap.start()` and
+native overlay, not a second animator. A reviewer's valid `crew.pr` selects its
+PR even when its shell remains on the base branch or has no PR footer.
+Ordinary terminals keep the same list and
 use the existing explicit-tab/branch matching when available. An explicitly linked active PR older
 than the first page gets one targeted lookup so it can still be pinned, without
 fetching intermediate pages. The former Changes tab, diff
@@ -427,8 +436,9 @@ font unchanged. Titles always retain their full-title tooltip, including fitting
 titles, without width measurement or a resize gate. Every PR block uses the
 same three fixed lines: a 20px title, an
 18px number/author/time line and an 18px metadata line, for a 74px block including
-spacing. A blank 24px robot slot keeps titles' truncation boundaries identical
-with or without a related agent. Robot slots, label pills and the repository headers'
+spacing. A shared 80px stage/robot reservation keeps titles' truncation boundaries identical
+with or without a managed stage or related agent. The fallback robot keeps its
+24px target right-aligned inside it. Stage reservations, label pills and repository headers'
 24px chevron slots end 3 logical pixels inside their own row's highlight edge,
 matching Spaces' Crew pill (8px row padding minus its 5px negative trailing margin).
 Git and Spaces highlights both sit 8 logical pixels inside their panel/sidebar
@@ -592,7 +602,43 @@ PR icon with a **red outlined circle and X**, using the same stroke style as PR 
 Unknown mergeability and failing/blocked checks are not conflicts. Closed/merged
 PRs keep their usual icons. Push events also refresh facts after base-branch changes.
 
-PRs with a related live agent show a separate white/foreground robot beside
+Managed review labels also supply a title-line stage: **Build**, **Review** or
+**Approved**, independently of CI and GitHub's separate review decision. The
+compatibility snapshot follows MyWorkflows `labels/base.json`: stable role
+`review-changes-needed` accepts Build and previous names Rework / Changes needed;
+`under-review` accepts Review / Under review; `review-approved` accepts Approved.
+Each accepts the plain name or its `🤖 ` prefix. Unknown labels are not guessed
+from colour or substrings. Existing label pills retain their exact GitHub names.
+Approved means the managed review label is assigned, not that CI passed; the
+existing checks item and GitHub's required checks communicate and gate CI.
+Build resolves `crew.kind=ship` or `fix` terminals through their full `crew.pr`
+URL, or the verified repository and head branch when that label is absent.
+Review resolves only `crew.kind=review` plus the matching full `crew.pr` URL,
+not the reviewer's base branch, footer or tab name. Coordinator actions additionally
+require that exact terminal/task to remain in the freshly verified same-home
+membership; a review task need not have its own recorded PR. Ended, unavailable
+or disconnected targets grant no focus; a disconnected target identifies its
+machine. Optional `crew.round` is the completed review number: round 1 enriches
+Build as **Build 2**, and supplied `crew.finding` adds **back from review 1:**
+followed by the finding. Missing metadata stays plain Build, with no invented
+round or finding. `crew.approved` is read as metadata, never a fourth stage or
+permission to infer Approved from CI.
+
+The title-line **Build** chip focuses the build terminal; **Review** focuses the
+reviewer. **Approved** has no agent action: clicking it opens the PR through the
+row, even while checks are pending or failed. There is no approved/CI-running
+stage or Review check CI chip. Build/Review chips dim when their exact target
+ends, is unavailable, or its machine is disconnected, and explain why on hover;
+clicking a dimmed chip does nothing. Coordinator rows retain their last verified
+same-home target only for explanations after membership becomes stale or a task
+finishes. That bounded runtime memory cannot focus an agent, start reads, cross
+homes or restore authority on reconnect; fresh live membership is required.
+The chips use the app palette's amber,
+purple and green tokens and keep the same bounded title reservation in every row.
+Motion previews never navigate. The no-label robot retains its original 24px hit
+target and immediate pin-navigation behavior.
+
+Without a managed stage, PRs with a related live agent show a white/foreground robot beside
 the title, matching the Agents sidebar. The original colored PR icon stays.
 The robot uses the usual rounded inset-icon hover tint, distinct from the
 row's hover, with a tooltip only for a known agent name; clicking opens
@@ -945,7 +991,9 @@ Discovery is a bounded snapshot, not a completeness promise or a persistent PR
 record. Older Crew without discovery, or an unknown discovery version, keeps the
 recorded-only list and may omit PRs until tasks report. No generic incomplete-list
 notice is added.
-Robots open the exact live worker, and PR menus retain their captured URL.
+Stage chips focus the exact live same-home build/review task; without a managed
+stage, robots keep the exact live worker action. Historical-only and stale rows
+gain no worker navigation from a stage label. PR menus retain their captured URL.
 The source is read-only `crew status --all --json --discover-prs`, with `tasks[].pr`
 compatibility for older Crew, not app-side transcript/branch inference. A narrowly
 recognized unsupported-flag refusal allows one bounded recorded-only fallback;
