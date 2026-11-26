@@ -4,7 +4,7 @@ Approved by the person: multi-child support and warm header-only activity, with 
 
 ## 1. Coordinator Crew before far-right chevron
 
-- [ ] 1.1 Move attached-parent disclosure after Crew/trailing tags and correct margins; verify actual Spaces layout and fold-action guards in focused tests, and document row order.
+- [x] 1.1 Move attached-parent disclosure after Crew/trailing tags and correct margins; verify actual Spaces layout and fold-action guards in focused tests, and document row order.
 
 ## 2. Connected disclosure without a child count
 

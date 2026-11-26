@@ -552,11 +552,11 @@ export default class Spaces extends View {
           // With tags, metadata precedes the shared trailing tag edge instead.
           .when(worktree, el => el.child(slot(svg("mods/custom-workspace-chrome/branch.svg").size(U.smallIcon).text_color(t.muted))
             .id(`space-worktree-${w.id}`).when(!tags.length, e => e.mr(-4)).tooltip('Git worktree')))
-          .when(!edit && attached && !linked,el=>el.child(this.parentDisclosure({w,block,binding},t)))
           .when(!edit, el => el.children(trailing.map((tag, k, all) =>
             rolePill(t, tag.label, { status: true }).id(`space-tag-${w.id}-${tag.plugin}-${tag.index}`)
-              .when(k === all.length - 1, e => e.mr(-5))
-              .when(Boolean(tag.tooltip), e => e.tooltip(tag.tooltip))))),
+              .when(k === all.length - 1 && !(attached && !linked), e => e.mr(-5))
+              .when(Boolean(tag.tooltip), e => e.tooltip(tag.tooltip)))))
+          .when(!edit && attached && !linked,el=>el.child(this.parentDisclosure({w,block,binding},t))),
       );
   }
 

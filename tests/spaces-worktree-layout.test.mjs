@@ -15,7 +15,10 @@ for(const machine of [null,'pc2']) {
  assert.deepEqual([...view.ordered()].map(r=>r.w.id),['parent','child','other']);assert.deepEqual([...view.ordered()].map(r=>r.i),[0,2,1]);
  const p=row('parent'),c=row('child');
  assert.equal(find(p,'space-link-parent'),undefined);assert.equal(find(c,'space-link-child'),undefined);
- assert.ok(find(p,'space-tag-parent-crew-0'));assert.equal(nodes(c).some(n=>String(n.attrs.id?.[0]).includes('-crew-')),false);
+ const crew=find(p,'space-tag-parent-crew-0'),parentContent=content(p,'parent');
+ assert.ok(crew);assert.equal(parentContent.kids.at(-1),find(p,'space-fold-parent'),'Disclosure is after Crew at the far right');
+ assert.ok(parentContent.kids.indexOf(crew)<parentContent.kids.length-1);assert.equal(crew.attrs.mr,undefined,'Crew no longer owns a negative trailing margin before disclosure');
+ assert.equal(nodes(c).some(n=>String(n.attrs.id?.[0]).includes('-crew-')),false);
  assert.ok(nodes(c).some(n=>String(n.attrs.id?.[0]).includes('-other-')),'Unrelated child tags remain');
  assert.equal(badge(c).kids[0],'3');assert.equal(badge(p).kids[0],'1');assert.equal(c.attrs.h[0],26);assert.equal(p.attrs.h[0],28);
  const cb=find(c,'space-branch-child'),reference=branch(t,'└');

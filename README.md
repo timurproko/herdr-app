@@ -799,7 +799,7 @@ The fleet badge's fill uses the coordinator's actual colour and follows recolour
 without changing the fleet's saved colour. Expanded attached fleets are indented
 children, using the same rounded connector, stroke and spacing as child agents.
 Neither row shows a chain, and only the coordinator shows Crew; unrelated plugin
-tags remain. The coordinator's separate Agents-style chevron folds its children,
+tags remain. Crew precedes the coordinator's far-right Agents-style chevron, which folds its children,
 showing their count beside the chevron only while collapsed. Folds are local,
 identity-scoped and restored on reload, never portable preferences. Selecting a
 hidden child through native shortcuts/navigation discloses its parent without
