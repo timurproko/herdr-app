@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
-import {fixture, fakeTransport, configure, A, L, ITEM} from './testing.test.mjs';
+import {fixture, fakeTransport, configure, A, C, L, ITEM} from './testing.test.mjs';
 const require = createRequire(import.meta.url), {run} = require('./operations.cjs');
 // Distinct creation timestamps; position order is deliberately not newest-first.
 const created = Array.from({length: 101}, (_, i) => ({
@@ -53,4 +53,38 @@ for (const order of ['ascending', 'permuted']) {
     for (const c of fake.calls.filter(c => c.route === `/boards/${A}/cards` || c.route === `/lists/${L}/cards`)) assert.equal(c.query.sort, '-id');
   } finally { f.cleanup(); }
 }
-console.log('PASS: creation-ordered board/list pagination, full 101-card coverage and multi-page read/write membership proof');
+// Card detail must not add a third membership scan for attachment metadata.
+// 600 newer cards took 17 requests before attachments; the added endpoint should
+// cost one request, not another seven-page proof that exhausts the 20-read budget.
+{
+  const f = fixture();
+  const older = {id: C, idBoard: A, idList: L, name: 'Existing older card', labels: []};
+  const rows = [...Array.from({length: 600}, (_, n) => ({id: 'd' + (600 - n).toString(16).padStart(23, '0'), idBoard: A, idList: L})), older];
+  let revoke = false;
+  const fake = fakeTransport((route, options, url) => {
+    assert.equal(options.method, 'GET');
+    if (route === `/boards/${A}/cards`) {
+      assert.equal(url.searchParams.get('sort'), '-id');
+      const before = url.searchParams.get('before'), start = before ? rows.findIndex(r => r.id === before) + 1 : 0;
+      return Response.json(rows.slice(start, start + 100));
+    }
+    if (route === `/cards/${C}`) return Response.json(older);
+    if (route === `/cards/${C}/checklists` && revoke) f.state(false);
+    if (['/actions', '/checklists', '/attachments'].some(s => route === `/cards/${C}` + s)) return Response.json([]);
+    throw Error('Unfaked card-detail route');
+  });
+  try {
+    const detail = await run(f.store, 'cards.get', {board: A, card: C}, fake);
+    assert.equal(detail.card.name, older.name); assert.deepEqual(detail.card.attachmentIds, []);
+    assert.equal(detail.card.attachmentCount, 0); assert.equal(detail.attachments.complete, true);
+    assert.equal(fake.calls.length, 18, 'Only one metadata request is added to the baseline 17');
+    assert.equal(fake.calls.filter(c => c.route === `/boards/${A}/cards`).length, 14, 'Existing initial/checklist proofs are retained, without a third scan');
+    fake.calls.length = 0;
+    await run(f.store, 'attachments.list', {board: A, card: C}, fake);
+    assert.equal(fake.calls.length, 8, 'Standalone attachment access still proves its own membership');
+    fake.calls.length = 0; revoke = true;
+    await assert.rejects(run(f.store, 'cards.get', {board: A, card: C}, fake), {code: 'STALE'});
+    assert.ok(!fake.calls.some(c => c.route.endsWith('/attachments')), 'Reused proof cannot bypass per-request authority revocation');
+  } finally { f.cleanup(); }
+}
+console.log('PASS: creation-ordered pagination, multi-page membership and 601-card detail within the unchanged request/authority bounds');

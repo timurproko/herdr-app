@@ -138,7 +138,7 @@ async function readOperation(client, scope, op, a, gate) {
       return {...pick(r, ['date']), text: r.data.text};
     });
     const checklists = await scope.checklists(a.board, a.card);
-    const attachments = await listAttachments(client, scope, a.board, a.card);
+    const attachments = await listAttachments(client, scope, a.board, a.card, row);
     return {card: {...row, attachmentIds: attachments.items.map(r => r.id), attachmentCount: attachments.count, attachmentCountExact: attachments.countExact},
       comments: page(comments, limit), checklists: page(checklists, 100, false), attachments};
   }

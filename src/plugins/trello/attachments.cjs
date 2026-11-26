@@ -36,8 +36,11 @@ function singleAttachment(value, expected) {
   if (Array.isArray(value)) { if (value.length !== 1) fail('RESPONSE'); [value] = value; }
   const out = attachment(value); if (out.id !== expected) fail('SCOPE'); return out;
 }
-async function listAttachments(client, scope, board, card) {
-  await scope.card(board, card);
+async function listAttachments(client, scope, board, card, verifiedCard) {
+  // Card detail already proved membership and validated this card response.
+  // Reuse only that invocation's proof; standalone attachment reads still scan.
+  if (verifiedCard === undefined) await scope.card(board, card);
+  else if (!object(verifiedCard) || verifiedCard.id !== card || verifiedCard.idBoard !== board || !id(verifiedCard.idList)) fail('SCOPE');
   const rows = await client.get(`/cards/${card}/attachments`, {fields: 'all', filter: 'all'});
   if (!Array.isArray(rows)) fail('RESPONSE');
   const items = rows.slice(0, 100).map(attachment), complete = rows.length < 100;
