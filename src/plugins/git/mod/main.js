@@ -860,13 +860,9 @@ export default class Changes extends View {
   stageChip(t, pr, interactive = true, probe = false, descriptor = this.stageDescriptor(pr)) {
     if(!descriptor)return null;
     const {role,repo,context,scope,target,agent,available,round,label}=descriptor;
-    const history=round?`Build ${round+1}${agent?.crew?.finding?`\nback from review ${round}: ${agent.crew.finding}`:''}`:null;
     const reason=!role||available?null:agent?.availability==='disconnected'?`on ${agent.on}, not connected`
       :agent?.availability==='ended'?(role==='review'?'reviewer ended without a verdict':`build agent ended${pr.checks?.state?` - CI ${pr.checks.state}`:''}`)
       :role==='review'?'reviewer unavailable':'build agent unavailable';
-    const aliases=[...new Set(label.assignedNames??[label.assignedName])].filter(name=>name&&name!==label.name);
-    const tooltip=[...aliases,history,reason,
-      available&&agent.displayName?`Open agent: ${agent.displayName}`:null].filter(Boolean).join('\n');
     const activate=(_event,cx)=>{
       cx.stop_propagation();const press=this.agentPress;this.agentPress=null;
       if(this.context!==context || !this.shown())return;
@@ -883,11 +879,10 @@ export default class Changes extends View {
     };
     const color=pr.stage==='approved'?t.ansi2:role==='review'?t.ansi5:t.ansi3;
     return div().id(`${probe?'probe-':interactive?'':'swap-'}pr-stage-${pr.key??pr.number}`)
-      .h(18).min_w(0).max_w_full().px(2).flex_none().flex().items_center().rounded(U.insetRadius)
+      .h(18).min_w(0).max_w_full().px(6).flex_none().flex().items_center().rounded(U.insetRadius)
       .bg(t.raised).text_color(color).text_size(U.meta).overflow_hidden()
       .child(div().h(18).min_w(0).overflow_hidden().whitespace_nowrap().child(label.name))
-      .when(Boolean(!probe&&role&&!available),el=>el.opacity(0.45).cursor_default())
-      .when(Boolean(!probe&&tooltip),el=>el.tooltip(tooltip))
+      .when(Boolean(!probe&&role&&!available),el=>el.opacity(0.45).cursor_default().accessibility_label(reason))
       .when(interactive,el=>el
         .on_mouse_down('left',(event,cx)=>{
           cx.stop_propagation();

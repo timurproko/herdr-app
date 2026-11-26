@@ -2,9 +2,9 @@
 
 ## 1. Tooltip-free stage controls with comfortable horizontal padding
 
-- [ ] 1.1 Remove stage tooltips from chips and stage-only label/metadata hover values while preserving unrelated informative tooltips and accessible action/disabled reasons; cover enabled, ended, disconnected, mixed-label, ghost and probe cases in the existing stage/agent-link fixtures.
-- [ ] 1.2 Change stage side padding to 6px with the existing plain-chip pattern; extend `tests/git-stage-chips.test.mjs` to assert 18px chip height, 74px row height, trailing anchor, title width and probe parity at normal/narrow widths and 100%/130% zoom.
-- [ ] 1.3 Update README stage-style/hover guidance with the delivered behavior; capture and inspect ordinary, pinned and coordinator managed-stage views at 100% and 130% in checksum-verified disposable App 0.1.18 fixtures, with synthetic data and outside-checkout proof; stop all started processes.
+- [x] 1.1 Remove stage tooltips from chips and stage-only label/metadata hover values while preserving unrelated informative tooltips and accessible action/disabled reasons; cover enabled, ended, disconnected, mixed-label, ghost and probe cases in the existing stage/agent-link fixtures.
+- [x] 1.2 Change stage side padding to 6px with the existing plain-chip pattern; extend `tests/git-stage-chips.test.mjs` to assert 18px chip height, 74px row height, trailing anchor, title width and probe parity at normal/narrow widths and 100%/130% zoom.
+- [x] 1.3 Update README stage-style/hover guidance with the delivered behavior; capture and inspect ordinary, pinned and coordinator managed-stage views at 100% and 130% in checksum-verified disposable App 0.1.18 fixtures, with synthetic data and outside-checkout proof; stop all started processes.
 
 ## 2. Initial build and planning-owner chips share the later-round slot and action
 
