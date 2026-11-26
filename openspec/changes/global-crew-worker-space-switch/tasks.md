@@ -8,11 +8,11 @@
 
 ## 2. Capability-gated application to every known home
 
-- [ ] 2.1 Check Crew PR 23's final contract comment on PR 88 and latest docs/worker-spaces.md against the reviewed v1 contract at 841ff2d; record the exact integrated revision in feature documentation and refuse adapter work on unresolved material contract differences.
-- [ ] 2.2 Add Crew-owned capability/getter/setter helpers over existing machine execution, requiring exact v1 JSON and explicit absolute home arguments; verify fake-Crew on/off and capability-missing cases cover all advertised success/refusal envelopes, stable exits, exact routing and zero unsupported/owner-only setter calls.
-- [ ] 2.3 Add the bounded authoritative machine/home catalog, including existing default and independently known custom homes, and lifecycle-owned read/set/readback reconciliation independent of attachment; verify on/off across local and remote targets, including two homes on one machine, without real Crew reads/writes or movement of synthetic running agents.
-- [ ] 2.4 Add shared single-flight ownership, finite command deadlines, generation checks and per-home serialization; verify superseded intent, unknown-outcome readback and stale/disabled continuations within the fake refusal/restart cases, with no overlapping setter or render-time IO.
-- [ ] 2.5 Document exact capability gating, home discovery, intent versus observations and future-admission-only semantics in docs/FLEET-STATUS.md and README; verify documented command forms and error mapping match the integrated Crew contract without versions, new transport, installs or ownership workarounds.
+- [x] 2.1 Check Crew PR 23's final contract comment on PR 88 and latest docs/worker-spaces.md against the reviewed v1 contract at 841ff2d; record the exact integrated revision in feature documentation and refuse adapter work on unresolved material contract differences.
+- [x] 2.2 Add Crew-owned capability/getter/setter helpers over existing machine execution, requiring exact v1 JSON and explicit absolute home arguments; verify fake-Crew on/off and capability-missing cases cover all advertised success/refusal envelopes, stable exits, exact routing and zero unsupported/owner-only setter calls.
+- [x] 2.3 Add the bounded authoritative machine/home catalog, including existing default and independently known custom homes, and lifecycle-owned read/set/readback reconciliation independent of attachment; verify on/off across local and remote targets, including two homes on one machine, without real Crew reads/writes or movement of synthetic running agents.
+- [x] 2.4 Add shared single-flight ownership, finite command deadlines, generation checks and per-home serialization; verify superseded intent, unknown-outcome readback and stale/disabled continuations within the fake refusal/restart cases, with no overlapping setter or render-time IO.
+- [x] 2.5 Document exact capability gating, home discovery, intent versus observations and future-admission-only semantics in docs/FLEET-STATUS.md and README; verify documented command forms and error mapping match the integrated Crew contract without versions, new transport, installs or ownership workarounds.
 
 ## 3. Honest machine status and eventual recovery
 

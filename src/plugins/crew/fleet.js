@@ -1,5 +1,6 @@
 // Crew owns identity and versioned task PR sourcing. Consumers use registry contributions only.
 import { shared, setShared, spaces, panes, terminals, machines, checking, FLEET_DISPLAY_KEY, fleetDisplayChangeAllowed, updateFleetDisplay } from '../api.js';
+import { observeWorkerHome } from './worker-space.js';
 import { fleetError, fleetGeneration, recordFleetFailure, resolveFleetFailure, fleetVerification, fleetRetry, deferFleetRetry, clearFleetRetry, clearFleetRetries } from './fleet-diagnostics.js';
 export const FLEET_KEY = 'custom.fleet.links', DISPLAY_KEY = FLEET_DISPLAY_KEY;
 const READS = 'custom.fleet.reads', TTL = 10000, EXPIRY = 30000, READ_LEASE = 45000, PROCESSING_LEASE = 2000;
@@ -354,6 +355,7 @@ export function refreshFleets(cx, readStatus, force = false, readDiscovery = nul
             ...(same?{status}: {attemptAt:0}),discoveryAttemptAt:Date.now()}}});
           return;
         }
+        observeWorkerHome(machine,status.home);
         const verificationStatus=status;
         if(prior && JSON.stringify(status)===JSON.stringify(previous.verificationStatus))status=prior;
         const evidence={ready:readyLayout(machine),verified:true};

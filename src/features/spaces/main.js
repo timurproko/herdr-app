@@ -63,6 +63,7 @@ export default class Spaces extends View {
   init(_props, cx) {
     if (props()?.optionsMenu) return; // the ⋯ popup: no sidebar work
     pluginEvent('spaces.refresh', { owner: this, cx }); // e.g. A1 colors follows space colors
+    pluginEvent('workspace.settings.refresh', { owner: this, cx });
     this.git = {}; // where() -> { name, branch, ahead, behind, repo, linked }, null: not a repo
     this.checked = {}; // where() -> when it was last looked at
     this.unsure = new Set(); // where()s git couldn't answer for (a machine away)
@@ -119,6 +120,7 @@ export default class Spaces extends View {
 
   checkNew(cx) {
     pluginEvent('spaces.refresh', { owner: this, cx });
+    pluginEvent('workspace.settings.refresh', { owner: this, cx });
     this.blockCommit?.observe();
     this.syncConnectedSelection(cx);
     const now = Date.now();

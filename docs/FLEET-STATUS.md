@@ -1,5 +1,54 @@
 # Fleet status transport, remembered presentation and recovery
 
+## Global worker-space choice
+
+Enabled Crew contributes **Separate space per project** to Settings → Spaces. One
+hidden boolean in the existing plugin preferences is intent for all known homes,
+not a selected-machine observation. It is independent of fleet attachment. The
+existing recurring Spaces lifecycle emits `workspace.settings.refresh` for this
+policy; there is no second scheduler or Settings-owned subprocess job.
+
+The implementation follows Crew PR 23's documented v1 contract, reviewed at
+`42ddc7396dbbd7323bb4e12548edcb5394ba29a1`, and its
+[contract handoff](https://github.com/timurproko/herdr-app/pull/88#issuecomment-7192748318).
+The installed tool on each machine must answer
+`crew config worker-space --capabilities --json` with exit 0 and
+`worker-space-local-set`, version 1, both modes and `explicitHome: true`. File
+path/mtime/size identity controls reuse of that exact probe, rechecked before
+application. Help/version age cannot authorize it. Unsupported Crew disables the
+row with a short machine-named reason; no install/update is performed.
+
+The getter is `crew config worker-space` scoped through `CREW_HOME` to an already
+known root; it must return `worker-space: combined` or `worker-space: per-project`.
+Only the new setter is used for writes:
+`crew config worker-space --set-local combined|per-project --home <absolute-home> --json`.
+Its v1 envelope, exact canonical target/mode, ok/changed and exit status are checked,
+then a getter confirms current intent. Exit 2 is a stable configuration refusal,
+3 (`registry-busy`) stays pending, and 4/70 remain failed. Malformed/mismatched
+replies cannot become success; uncertain publication requires a read before retry.
+No owner identity, positional owner setter, direct registry edit, start/end,
+initialization, lock manipulation or native space operation is involved. Only
+future independent admissions change; existing workers and inherited work stay put.
+
+A host-local catalog retains up to 256 exact machine/canonical-home targets,
+including multiple homes per machine. Existing default-home status on every known
+reachable machine and validated fleet status supply roots, not folder guesses or
+filesystem scans. Newly observed custom roots are admitted separately. Outages and
+missing terminals do not erase them. Capacity is explicit incomplete coverage.
+The catalog, probe cache, observations, locks, failures and retries are excluded
+from portable preferences. Restart rechecks confirmation and installed support.
+
+One shared finite command lease serializes policy work across mounts; each command
+uses the existing Crew execution transport with a 15-second allowance. A retired
+or uncertain setter retains its 18-second deadline before replacement and readback.
+Healthy reinspection uses the existing ten-second cadence; transient target failures
+retry after 2/5/10 seconds from completion, configuration refusals and unsupported
+Crew after bounded 60-second reinspection. Reconnection reconsiders targets immediately;
+changed executable identity also makes known homes eligible again. Saved intent wins
+over external per-home changes on the next eligible check. This is eventual
+application while the mounted desktop and transport are available, not an offline
+machine service or a guarantee against another writer after confirmation.
+
 ## Presentation is not operational authority
 
 `custom.fleet.display` version 1 is bounded host-local last-verified identity: machine,

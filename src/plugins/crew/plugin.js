@@ -11,6 +11,8 @@ import { refreshFleets, fleetContexts, fleetWitnessMachines, fleetPullContext, f
 import { fleetError } from './fleet-diagnostics.js';
 import { fleetStatusScript } from './fleet-command.js';
 import { workerSpaceRows, WORKER_SPACE_SETTING } from './worker-space-state.js';
+import { refreshWorkerSpaces, invalidateWorkerSpaces } from './worker-space.js';
+import { workerSpaceScript } from './worker-space-command.js';
 
 const winPath = path => String(path).replace(/\//g, '\\');
 const CHECK_TIMEOUT = 15, INSTALL_TIMEOUT = 300;
@@ -980,12 +982,15 @@ export default {
     PROJECTS,
   ],
   hooks: {},
-  lifecycle: { 'spaces.refresh': refreshFleetContext },
+  lifecycle: { 'spaces.refresh': refreshFleetContext,
+    'workspace.settings.refresh': context => refreshWorkerSpaces(context, (machine, request) =>
+      powershell(machine, workerSpaceScript(crewCommandPrelude(), request), {timeout:15})) },
+  onSettingChange: key => { if (key === WORKER_SPACE_SETTING) invalidateWorkerSpaces(); },
   events: { 'workspace.context.refresh': requestFleetContext },
   workspaceLinks: ({presentation = false} = {}) => fleetContexts({presentation}).flatMap(fleetLinks),
   guards: { 'spaces.color': ({pair}) => fleetColorAllowed(pair) },
   pullContext: ({space,presentation = false}) => fleetPullContext(space,{presentation}),
-  onEnabledChange: invalidateFleet,
+  onEnabledChange: () => { invalidateFleet(); invalidateWorkerSpaces(); },
   // The Spaces sidebar's tag for a space the coordinator or crew workers run in.
   spaceTags: space => {
     const display = fleetContexts({presentation:true});
