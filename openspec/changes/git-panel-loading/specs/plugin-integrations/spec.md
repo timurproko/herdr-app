@@ -174,7 +174,7 @@ Same-context refresh SHALL retain rows, pins and pagination until replacement is
 - **AND** Git, Crew or attachment disablement and authoritative ownership loss invalidate affected cached presentations
 
 ### Requirement: Stale coordinator presentation without action authority
-When strict fleet action context is unavailable, the coordinator SHALL retain its shown same-home list with only the under-header moving line for pending reconciliation, no body Loading and no Stale label. Cold context SHALL show pulsing top-left Loading below Open/Closed without repository headers/counts or the moving line. Retained context SHALL NOT authorize GitHub reads or worker navigation. Fresh verification SHALL restore operation or replace invalid context. PR/task inventory SHALL NOT persist for restart.
+When strict fleet action context is unavailable, the coordinator SHALL retain its shown same-home list with only the under-header moving line for pending reconciliation, no body Loading and no Stale label. Cold context SHALL show top-left Loading below Open/Closed. Retained context SHALL NOT authorize GitHub reads or worker navigation. Fresh verification SHALL restore operation or replace invalid context. PR/task inventory SHALL NOT persist for restart.
 
 #### Scenario: Status unavailable beyond action freshness
 - **WHEN** a status read fails or times out after strict action freshness expires while the verified pair's native spaces still exist
