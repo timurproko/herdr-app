@@ -287,10 +287,14 @@ the exact number in their tooltip. Accessible labels always keep the full total
 and loading state. Same-repository refreshes keep the last-known counts. Coordinator totals stay loading
 until all admitted PR identities have authoritative facts or confirmed absence; a
 successful subset never becomes an exact total. New unread same-home membership
-keeps compatible last-good totals with loading hover/accessibility feedback. Unresolved first reads, including quiet deferrals, share one standard panel
-bulb/**Loading**, even when other repositories have loaded. Unknown-only
-repositories do not flash empty headers; a new section appears when selected-tab
-PRs are known or an actionable scoped failure needs to be shown. Cooldown expiry
+keeps compatible last-good totals with loading hover/accessibility feedback. On a cold coordinator visit, unresolved first reads (including quiet deferrals)
+share one standard top-left bulb/**Loading** directly below Open/Closed; partial
+successful sections stay hidden until the admitted first reads settle. Actionable
+repository notices remain visible immediately. Returning to a previously shown
+coordinator, or any background refresh, retains the previous list with no body
+Loading: the existing native working bulb pulses beside Git's title during the
+update, stops when it finishes, and replacement sections update in place. No Stale
+label appears. Unknown-only repositories never flash empty headers. Cooldown expiry
 still retries without a new event; warm refusals keep their rows and counts. Cold loading
 and coordinator verification remain panel feedback, never
 placeholder PR rows.
@@ -764,8 +768,8 @@ pairing alone waits for successful verification; names never invent a link. The 
 switches on this page also save immediately; close actions and empty-space
 reconciliation read their current values without waiting for Settings to close.
 Fleet verification failures and discarded replies retain sanitized reason/time/generation
-facts in runtime-only `custom.fleet.diagnostics`. Hover the Git **Loading** bulb
-or **Stale** indicator for the last relevant failure. Empty verification uses the
+facts in runtime-only `custom.fleet.diagnostics`. Hover the Git cold **Loading** bulb
+or warm header activity bulb for the last relevant failure; no Stale label is shown. Empty verification uses the
 ordinary blue working bulb and **Loading**, without extra header text; a cold
 candidate never invents attachment or a PR list.
 The local `.customizations/fleet-verification.log` keeps at most 128 lines / 64 KiB,
@@ -811,8 +815,8 @@ The fleet badge's fill uses the coordinator's actual colour and follows recolour
 without changing the fleet's saved colour. Expanded attached fleets are indented
 children, using the same rounded connector, stroke and spacing as child agents.
 Neither row shows a chain, and only the coordinator shows Crew; unrelated plugin
-tags remain. The coordinator's separate Agents-style chevron folds its children,
-showing their count beside the chevron only while collapsed. Folds are local,
+tags remain. Crew precedes the coordinator's far-right Agents-style chevron, which folds its children,
+with no child count in either state; only its direction indicates collapse. Folds are local,
 identity-scoped and restored on reload, never portable preferences. Selecting a
 hidden child through native shortcuts/navigation discloses its parent without
 changing the native selection target. Explicit folding itself never selects the
@@ -822,6 +826,18 @@ weight, hover and selected backgrounds. Counts/worktree metadata stays before
 trailing tags; renaming hides markers/tags, and Worktree visibility does not hide
 the child connector. Each remote machine can have its own same-machine pair;
 cross-machine candidates stay independent under their original machine headers.
+With Crew placement v1, one coordinator can have several connected project children,
+including the legacy combined space at the same time. Project children show the exact
+registered project name unless explicitly renamed. All child badges align with the
+coordinator's name; one stem follows the parent badge centre, with intermediate
+branches and a rounded corner only on the last child. Collapse hides every child,
+while native shortcuts and compact rail keep each child's own selection number.
+Dragging the parent or any child moves the entire same-machine block in stable
+native child order, with captured-membership and acknowledgement guards. Crew's
+`crew.space.version/mode/project/name` labels are validated against its task project,
+home tag and exact native terminal/pane/tab/space membership; names alone never link.
+Combined, project and mixed populations are supported without a Core document write.
+
 Choosing a colour or Automatic from either attached row edits the coordinator's
 colour; the fleet's saved colour and Automatic flag stay untouched. Its palette and
 mouse/keyboard choices use that same captured coordinator. Colour permission follows
@@ -846,10 +862,10 @@ background. Only completed contradictory evidence, disabling the feature or
 missing native spaces clears it; transport failures alone do not.
 Retained visuals are not action permission: pair moves and Git/worker actions
 still require fresh exact live identity. An unverified coordinator Git panel keeps
-its loaded rows and folds with **Stale**, or shows the standard **Loading** bulb
+its loaded rows and folds with a native working bulb in the header, or shows the standard **Loading** bulb
 without special header text on cold start. After off/on, a slow or failed first
 read shows **Loading**, not **Not a git repository**, for the current coordinator
-candidate. Off clears the inventory; on never restores a previous list as Stale.
+candidate. Off clears the inventory; on never restores a previous toggle's list.
 Only authoritative negative evidence for the current dependency identity returns
 to ordinary folder Git; a previous owner's result cannot suppress Loading. No new GitHub
 reads or worker navigation are allowed until verification succeeds.
@@ -916,8 +932,11 @@ Names use the released width and truncate with a full-name tooltip only when the
 do not fit. Open and Closed totals remain in the panel's top tabs and still include
 folded sections. These counts cover distinct linked PRs only, never all repository PRs.
 Returning to the same coordinator restores compatible last-visit sections from
-bounded runtime memory while verification/reconciliation runs, with one panel
-Loading indication for unresolved work. Memory holds at most four coordinator
+bounded runtime memory while verification/reconciliation runs, with header activity
+only and no body Loading. Cold Loading is above the scroller, never at its bottom.
+The prior list remains during background updates until replacement is ready;
+actionable notices bypass staging, while quiet cooldowns retain facts and retry
+without new error UI. Collected cold partial facts are not a published return list. Memory holds at most four coordinator
 snapshots and 4096 admitted identities; eviction, restart, code reload and
 Git/Crew/attachment off-on start cold, never restoring persisted PR inventory.
 Stale presentation grants no reads or worker actions. A repository header appears

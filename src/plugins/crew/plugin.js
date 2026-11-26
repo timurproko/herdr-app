@@ -7,7 +7,7 @@
 // identity labels) or refuses with the reason; the only thing it ever writes is the crew
 // home itself, the first time.
 import { hc, shared, setShared, panes, terminals, pluginMod } from '../api.js';
-import { refreshFleets, fleetContexts, fleetWitnessMachines, fleetPullContext, fleetColorAllowed, invalidateFleet } from './fleet.js';
+import { refreshFleets, fleetContexts, fleetWitnessMachines, fleetPullContext, fleetColorAllowed, fleetLinks, invalidateFleet } from './fleet.js';
 import { fleetError } from './fleet-diagnostics.js';
 import { fleetStatusScript } from './fleet-command.js';
 
@@ -979,7 +979,7 @@ export default {
   hooks: {},
   lifecycle: { 'spaces.refresh': refreshFleetContext },
   events: { 'workspace.context.refresh': requestFleetContext },
-  workspaceLinks: ({presentation = false} = {}) => fleetContexts({presentation}).filter(c=>c.child),
+  workspaceLinks: ({presentation = false} = {}) => fleetContexts({presentation}).flatMap(fleetLinks),
   guards: { 'spaces.color': ({pair}) => fleetColorAllowed(pair) },
   pullContext: ({space,presentation = false}) => fleetPullContext(space,{presentation}),
   onEnabledChange: invalidateFleet,
@@ -987,7 +987,7 @@ export default {
   spaceTags: space => {
     const display = fleetContexts({presentation:true});
     const kind = display.some(c=>c.parent===space.id) ? 'coordinator'
-      : display.some(c=>c.child===space.id) ? 'worker' : crewInSpace(space);
+      : display.some(c=>fleetLinks(c).some(link=>link.child===space.id)) ? 'worker' : crewInSpace(space);
     return kind ? [{ label: 'Crew', tooltip: kind === 'coordinator' ? 'Crew coordinator' : 'Crew worker' }] : [];
   },
   // Required moment behind a profile's role: prepare the launch or refuse. The role id stays
