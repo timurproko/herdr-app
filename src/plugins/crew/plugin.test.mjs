@@ -415,7 +415,8 @@ crew.latest = '';
   // A folder already listed, under any name and spelling, is never registered again.
   for (const folder of ['D:/Git/xrbuild/.xrbuild', 'd:\\git\\XRBUILD\\.xrbuild\\']) {
     ran2.length = 0;
-    await assert.rejects(section.list.add(cx(), folder), e => e.message === `Could not add ${folder}: it is already added as .xrbuild.`);
+    await assert.rejects(section.list.add(cx(), folder), e => e.message === `Could not add ${folder}: it is already added as .xrbuild.`
+      && e.folderMessage('X:/f') === 'Could not add X:/f: it is already added as .xrbuild.');
     same(ran2, [], 'An already added folder sends nothing');
   }
   projects.set('xrbuild-private', 'D:/Git/other/.hidden'); await statuses(); ran2.length = 0;

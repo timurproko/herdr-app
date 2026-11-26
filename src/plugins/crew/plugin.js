@@ -692,6 +692,14 @@ export function projectFailure(output, { operation, name, folder = name, machine
   error.folderMessage = summary;
   return error;
 }
+// A folder Crew already lists: refused here, before Crew is asked, so the text is not
+// attributed to Crew (Settings shows folderMessage as it is).
+export function alreadyAdded(folder, name) {
+  const summary = target => `Could not add ${target}: it is already added as ${name}.`;
+  const error = new Error(summary(folder));
+  error.folderMessage = summary;
+  return error;
+}
 async function crewProject(cx, args) {
   const [operation, name, folder = name] = args, machine = machineOf(cx);
   let output;
@@ -715,7 +723,7 @@ const PROJECTS = Object.freeze({
       if (!name) throw projectFailure('That folder’s name cannot be used as a project name (1–40 lowercase ASCII letters, digits, dashes and dots; start with a letter, digit or one dot followed by one; no consecutive or trailing dots).', { operation: 'add', name, folder });
       // Crew would register one folder twice, and a re-add drops the project's settings.
       const known = listedProjects.get(machineOf(cx))?.find(row => folderKey(row.path) === folderKey(folder));
-      if (known) throw new Error(`Could not add ${folder}: it is already added as ${known.id}.`);
+      if (known) throw alreadyAdded(folder, known.id);
       await crewProject(cx, ['add', name, folder]);
     },
     async remove(cx, id) {
