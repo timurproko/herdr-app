@@ -180,8 +180,8 @@ export default class Changes extends View {
         || host.spaces().some(space=>space.id===saved.parent && (space.machine??null)===(saved.machine??null))});
     if(!this.aggregate.sync(cx)) return false;
     const scope=`tasks:${this.aggregate.context.scope}`;
-    if(this.context!==scope) {
-      this.resetRepository();this.rootRequest=null;this.loading=false;this.context=scope;
+    if(this.context!==scope || this.aggregateGeneration!==this.aggregate.presentationGeneration) {
+      this.resetRepository();this.rootRequest=null;this.loading=false;this.context=scope;this.aggregateGeneration=this.aggregate.presentationGeneration;
     }
     this.syncTaskWebhooks(cx);
     return true;
@@ -414,7 +414,7 @@ export default class Changes extends View {
       // The native host cannot reliably notify viewport motion. Safety covers
       // the entire revealed unfolded batch, never guessed pixel intersections.
       const shownRows=paging.revealedRows;
-      return {enabled,scope:JSON.stringify([this.context,on,this.view,this.taskSelectionEpoch,paging.window.selectionGeneration]),repositories:repositories.map(name=>({name,uncovered:uncovered(name),rows:shownRows.filter(pr=>pr.repo===name)}))};
+      return {enabled,scope:JSON.stringify([this.context,on,this.view,aggregate.presentationGeneration,this.taskSelectionEpoch,paging.window.selectionGeneration]),repositories:repositories.map(name=>({name,uncovered:uncovered(name),rows:shownRows.filter(pr=>pr.repo===name)}))};
     }
     const selection=this.pullSelection();
     return {enabled,scope:JSON.stringify([this.context,on,this.view,this.repo?.name]),repositories:this.repo?[{name:this.repo.name,uncovered:uncovered(this.repo.name),rows:[...selection.liveRows,...(selection.active?[selection.active]:[])]}]:[]};
@@ -1172,7 +1172,7 @@ export default class Changes extends View {
     this.taskPresentations ??= new Map();
     const compatibleEpoch=this.taskPresentationEpoch===this.aggregate.presentationGeneration;
     if(!compatibleEpoch){this.taskPresentations.clear();this.taskPresentationEpoch=this.aggregate.presentationGeneration;}
-    if(this.taskWindowScope!==scope) {
+    if(this.taskWindowScope!==scope || !compatibleEpoch) {
       for(const [id,window]of compatibleEpoch?(this.taskWindows??[]):[]) {
         const saved={};for(const field of ['start','limit','chunk','items','starts','offset','headerHeight','gap','viewport'])saved[field]=window[field];
         this.taskPresentations.delete(id);this.taskPresentations.set(id,saved);

@@ -22,4 +22,6 @@ const sections=[{repo:'fixture/repo',rows:Array.from({length:30},(_,i)=>({key:`f
 let w=panel.taskSections(sections,'scroll-a').window;while(w.revealMore()){}w.observe(700,400);const depth=w.limit;
 panel.taskSections(sections,'scroll-b');w=panel.taskSections(sections,'scroll-a').window;
 assert.equal(w.offset,700);assert.equal(w.limit,depth);assert.equal(w.correction.to,700,'New native handle must receive the saved anchor, not start at zero');assert.equal(w.handle,undefined);
+a.presentationGeneration='new-enable-generation';const replacement=panel.taskSections(sections,'scroll-a').window;
+assert.notEqual(replacement,w,'Off/on renews native measurement/safety owners even for the same scope');
 console.log('PASS bounded same-home return, stale action refusal, Git/provider generation invalidation, one panel Loading and visible actionable cold failure');
