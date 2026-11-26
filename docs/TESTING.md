@@ -55,9 +55,18 @@ membership without replay. Git's right-edge oracle uses an ordinary trailing Cre
 pill; connected parent Crew now precedes disclosure and is deliberately not the
 ordinary trailing-edge reference. Git geometry is unchanged.
 
+`fleet-color-menu.test.mjs` runs the actual separately packaged provider and menu
+with two/three verified children, coordinator/child origins, local/remote machines,
+live/retained/restarted states, pointer swatches and keyboard Automatic. Siblings
+share one captured coordinator binding; changed membership, conflicting parents or
+bindings, duplicates, missing/cross-machine endpoints and expired proof still refuse.
+Every child's saved colour and Automatic flag stays unchanged.
+
 `git-inventory-presentation.test.mjs` covers cold whole-inventory admission,
 immediate actionable notices, no partial-return leak, staged warm replacements,
 header-only native activity, no warm body Loading and quiet cooldown behavior.
+Healthy activity says Updating pull requests while worker actions remain available;
+only unverified activity carries the paused-action warning and sanitized diagnostics.
 `git-deferred-repositories.test.mjs` retains the exact-deadline no-event recovery
 and truthful-count checks, now withholding cold partial successes rather than
 displaying them. `git-checks-fallback.test.mjs` retains mounted safety admission.

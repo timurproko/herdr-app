@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {rowHarness,find,words,t} from './support/git-row.mjs';
-let context={scope:'one',parent:'coordinator',links:[]};
+let context={scope:'one',parent:'coordinator',stale:false,links:[{url:'https://github.com/fixture/a/pull/1',terminal:'worker',task:'task'}]};
 const h=await rowHarness({modules:{'aggregate.js':'src/plugins/git/mod/aggregate.js','plugins.js':{sidebarPanelEnabled:()=>true,pluginPullContext:()=>context,pluginEvent(){}},'panel-kit.js':'src/ui/panel-kit.js'}});
 const a=new h.AggregatePulls({shown:()=>true}),p=h.panel;a.context=context;p.aggregate=a;p.context='tasks:one';p.shown=()=>true;p.notices={sync(){},presentation(){}};p.enrollmentPicker={render(){}};p.syncChecksFallback=()=>{};
 const entry=(repo,n,pr=true)=>({link:{repo,number:n,key:`${repo}#${n}`,targets:[{terminal:'worker'}]},dirty:false,pr:pr?{...h.facts.pullRow({number:n,title:'Old '+n,state:'OPEN'},'fixture'),repo,key:`${repo}#${n}`}:null});
@@ -20,6 +20,8 @@ a.entries.delete('fixture/c#3');a.entries.delete('fixture/b#2');a.rememberCounts
 a.entries.set('fixture/b#2',entry('fixture/b',2));a.rememberCounts();
 a.entries.get('fixture/a#1').dirty=true;a.entries.get('fixture/b#2').dirty=true;
 tree=render();assert.equal(bodyLoading(tree),undefined);assert.ok(activity(tree)?.attrs.loop);assert.equal(words(find(tree,'pr-fixture/a#1')).includes('Old 1'),true);
+assert.ok(a.target(a.rows('open')[0]),'Healthy update retains an available worker target');
+assert.equal(activity(tree).attrs.tooltip[0],'Updating pull requests','Healthy activity must not claim unverified status or paused actions');
 a.entries.get('fixture/a#1').pr={...a.entries.get('fixture/a#1').pr,title:'Updated'};a.entries.get('fixture/a#1').dirty=false;
 tree=render();assert.ok(words(find(tree,'pr-fixture/a#1')).includes('Old 1'),'Partial replacement remains staged');assert.equal(bodyLoading(tree),undefined);
 a.entries.get('fixture/b#2').dirty=false;a.rememberCounts();tree=render();assert.equal(activity(tree),undefined);assert.ok(words(find(tree,'pr-fixture/a#1')).includes('Updated'));
@@ -28,7 +30,11 @@ a.entries.set('fixture/c#3',entry('fixture/c',3,false));a.entries.get('fixture/c
 tree=render();assert.equal(bodyLoading(tree),undefined);assert.ok(activity(tree));assert.equal(find(tree,'task-repo-header-fixture/c'),undefined);
 a.readWake={due:Date.now()+100000};tree=render();assert.equal(activity(tree),undefined,'Quiet cooldown is not an endlessly active warm request');assert.equal(bodyLoading(tree),undefined);assert.ok(find(tree,'pr-fixture/a#1'));
 // Verification keeps prior list but grants no worker target and no Stale text.
-a.context={...context,stale:true};tree=render();assert.equal(bodyLoading(tree),undefined);assert.ok(activity(tree));assert.doesNotMatch(words(tree).join(' '),/Stale|Loading/);
+context={...context,stale:true,verification:{reason:'transport-error',at:1000,generation:7}};a.context=context;tree=render();assert.equal(bodyLoading(tree),undefined);assert.ok(activity(tree));assert.doesNotMatch(words(tree).join(' '),/Stale|Loading/);
+assert.equal(a.target(a.rows('open')[0]),null,'Unverified activity still refuses worker actions');
+assert.match(activity(tree).attrs.tooltip[0],/Fleet status is unverified; actions are paused/);
+assert.match(activity(tree).attrs.tooltip[0],/transport-error at .*generation 7/,'Unverified activity keeps sanitized diagnostics');
+context={...context,stale:false};a.context=context;a.fallbackBusy=true;tree=render();assert.equal(activity(tree).attrs.tooltip[0],'Updating pull requests','Recovered verification does not retain the old warning');a.fallbackBusy=false;
 // Real return-memory restoration includes the published snapshot, not partial facts.
 a.context=context;a.rememberPresentation();const saved=a.presentations.get('one');assert.ok(saved.published.length===2);
 a.published=null;a.entries.clear();context={scope:'other',parent:'other',links:[]};a.context=context;

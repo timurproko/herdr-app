@@ -1332,7 +1332,7 @@ export default class Changes extends View {
         .on_hover((hovered,view)=>{this.headerHovered=hovered;view.notify();})
         .child(sidebarTitle(t,'changes','git-title'))
         .when(warm && (aggregate.updating??aggregate.context.stale), el=>el.child(activity(t.working).id(aggregate.context.stale?'git-task-stale':'git-task-activity')
-          .role('status').accessibility_label('Updating pull requests').tooltip(verificationHint)))
+          .role('status').accessibility_label('Updating pull requests').tooltip(aggregate.context.stale?verificationHint:'Updating pull requests')))
         .child(reveal(headerTools(h_flex()).id('git-actions').bg(t.surface),this.headerHovered)
           .child(refreshButton(t,{id:'git-refresh',icon:'mods/custom-changes/refresh.svg',label:'Refresh',busy:aggregate.busy,spinning:aggregate.busy,
             owner:this,scope:this.context,enabled:this.headerHovered,size:U.insetControl,iconSize:U.tinyIcon,radius:U.insetRadius,color:t.dim,hover:subtleActionFill(t),
