@@ -20,7 +20,7 @@ const host={run(){throw Error('No worker action');},exec:async(cmd,args,options)
  const value=results.get(k);assert.ok(value,`Missing fixture ${k}`);if(value instanceof Error)throw value;return value;
 }};
 host.exec=legacyTargetResponses(host.exec);
-const load=(log=line=>logs.push(line))=>loadMod({host,modules:{'aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js','plugins.js':{sidebarPanelEnabled:()=>enabled,pluginPullContext:()=>context,pluginEvent(){}},'location.js':{location:()=>({space:'coordinator'})}},globals:{Date:class extends Date{static now(){return now;}},console:{log}},entry:'export {AggregatePulls} from "./aggregate.js";export {gitReads} from "./pulls.js";'});
+const load=(log=line=>logs.push(line))=>loadMod({host,modules:{'presentations.js':'src/plugins/git/mod/presentations.js','aggregate.js':'src/plugins/git/mod/aggregate.js','pulls.js':'src/plugins/git/mod/pulls.js','plugins.js':{sidebarPanelEnabled:()=>enabled,pluginPullContext:()=>context,pluginEvent(){}},'location.js':{location:()=>({space:'coordinator'})}},globals:{Date:class extends Date{static now(){return now;}},console:{log}},entry:'export {AggregatePulls} from "./aggregate.js";export {gitReads} from "./pulls.js";'});
 const {AggregatePulls,gitReads}=await load();let a=new AggregatePulls({shown:()=>shown});
 const reads=k=>calls.filter(c=>c===k).length;
 const silent=()=>{for(const state of ['open','closed'])assert.equal(a.readNotice(repo,state),null);};

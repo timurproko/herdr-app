@@ -3,6 +3,7 @@
 import { exec, run } from './host.js';
 import { pluginPullContext, pluginEvent, sidebarPanelEnabled } from './plugins.js';
 import { location } from './location.js';
+import { Publication, PresentationMemory } from './presentations.js';
 import { pullFailure, repositoryFailure, readTargetPulls, finalPull, retimePull, quietRead, retryRead, PullFactsOrder } from './pulls.js';
 export function taskPullLink(url) {
   const match=/^https:\/\/github\.com\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\/pull\/([1-9]\d*)\/?$/.exec(url??'');
@@ -31,9 +32,9 @@ function rememberMissing(entry) {
   }
 }
 export class AggregatePulls {
-  constructor({shown,onUpdate,presentationEpoch=()=>0,presentationAlive=()=>true}) {this.shown=shown;this.onUpdate=onUpdate;this.presentationEpoch=presentationEpoch;this.presentationAlive=presentationAlive;this.presentations=new Map();this.stagePresentations=new Map();this.published=null;this.entries=new Map();this.pending=new Map();this.diagnostics=new Map();this.serial=0;this.factOrder=new PullFactsOrder();}
-  currentContext({presentation = false} = {}) {
-    const context=sidebarPanelEnabled('changes') ? pluginPullContext(location().space,{presentation}) : null;
+  constructor({shown,onUpdate,presentationEpoch=()=>0,presentationAlive=()=>true}) {this.shown=shown;this.onUpdate=onUpdate;this.presentationEpoch=presentationEpoch;this.presentationAlive=presentationAlive;this.presentations=new PresentationMemory();this.stagePresentations=new Map();this.publication=new Publication();this.entries=new Map();this.pending=new Map();this.diagnostics=new Map();this.serial=0;this.factOrder=new PullFactsOrder();}
+  currentContext({presentation = false,space = location().space} = {}) {
+    const context=sidebarPanelEnabled('changes') ? pluginPullContext(space,{presentation}) : null;
     return !presentation && context?.stale ? null : context;
   }
   sync(cx) {
@@ -41,7 +42,7 @@ export class AggregatePulls {
     const context=this.currentContext({presentation:true}), previous=this.context;
     const generation=JSON.stringify([this.presentationEpoch(),context?.presentationGeneration??this.providerGeneration??0]);
     if(this.presentationGeneration!==undefined && generation!==this.presentationGeneration){this.presentations.clear();this.stagePresentations.clear();}
-    for(const [scope,saved]of this.presentations)if(!this.presentationAlive(saved))this.presentations.delete(scope);
+    for(const [scope,saved]of this.presentations)if(!saved.repository && !this.presentationAlive(saved))this.presentations.delete(scope);
     const compatible=this.presentationGeneration===generation;
     this.presentationGeneration=generation;if(context)this.providerGeneration=context.presentationGeneration??0;
     if(context?.scope!==previous?.scope || !compatible) {
@@ -80,12 +81,11 @@ export class AggregatePulls {
     return true;
   }
   rememberPresentation() {
-    if(!this.context || !this.entries.size)return;
+    if(!this.context || !this.entries.size && this.published===null)return;
     this.rememberCounts();
     const entries=[...this.entries].map(([key,e])=>[key,{...e,link:{...e.link},dirty:true}]);
     this.presentations.delete(this.context.scope);
-    this.presentations.set(this.context.scope,{entries,published:this.published?[...this.published]:null,lastCounts:this.lastCounts?new Map(this.lastCounts):null,parent:this.context.parent,machine:this.context.machine});
-    while(this.presentations.size>4 || [...this.presentations.values()].reduce((sum,s)=>sum+s.entries.length,0)>4096)this.presentations.delete(this.presentations.keys().next().value);
+    this.presentations.set(this.context.scope,{scope:this.context.scope,providerGeneration:this.context.presentationGeneration??0,entries,published:this.published?[...this.published]:null,lastCounts:this.lastCounts?new Map(this.lastCounts):null,parent:this.context.parent,machine:this.context.machine});
   }
   stop() {this.presentations.clear();this.stagePresentations.clear();this.published=null;this.returning=false;this.lastCounts=null;this.serial++;this.factOrder.reset();this.context=null;this.entries.clear();this.pending.clear();this.diagnostics.clear();}
   get busy() {return this.pending.size>0 || Boolean(this.fallbackBusy);}
@@ -93,12 +93,13 @@ export class AggregatePulls {
   get countsLoading() {return [...this.entries.values()].some(e=>this.unresolved(e)) || Boolean(this.context?.stale && !this.entries.size);}
   loading(repository) {return [...this.entries.values()].some(e=>e.link.repo===repository && this.unresolved(e) && !e.error);}
   get waiting() {return Boolean(this.returning) || [...this.entries.values()].some(e=>this.unresolved(e) && !e.error);}
+  get published() {return this.publication.value;}
+  set published(value) {this.publication.value=value;}
   get publicationPending() {return Boolean(this.context?.stale || this.returning || this.busy || [...this.entries.values()].some(e=>e.dirty));}
   get hasPresentation() {return this.published!==null || !this.publicationPending && !this.waiting;}
   get updating() {return Boolean(this.context?.stale || this.busy || (!this.readWake || this.readWake.due<=Date.now()) && (this.returning || [...this.entries.values()].some(e=>e.dirty)));}
-  // Pure projection: never publish native trees or mutate during render. A cold
-  // partial read cannot become a warm list by navigating away and back.
-  presentationEntries() {return this.publicationPending || this.waiting ? this.published??new Map():this.entries;}
+  // Pure projection: a cold partial read cannot become warm on re-entry.
+  presentationEntries() {return this.publication.project(this.entries,this.publicationPending || this.waiting)??new Map();}
   presentationRows(state) {
     const now=Date.now();return [...this.presentationEntries()].flatMap(([key,entry])=>{
       const current=this.entries.get(key);
@@ -135,7 +136,7 @@ export class AggregatePulls {
   }
   rememberCounts() {
     if(!this.publicationPending && !this.waiting) {
-      this.published=new Map([...this.entries].map(([key,e])=>[key,{...e,link:{...e.link}}]));
+      this.publication.commit(new Map([...this.entries].map(([key,e])=>[key,{...e,link:{...e.link}}])));
       if(!this.countsLoading)this.lastCounts=new Map(this.published);
     }
   }

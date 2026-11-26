@@ -279,7 +279,8 @@ fails inconclusively. An older active PR also stays pinned during its targeted
 reread after page-one refresh. Only an authoritative replacement, proven
 non-repository or actual context change clears incompatible facts. Open/Closed
 count badges are always visible in ordinary and coordinator Git views, showing
-**0** on first load or a real context change until totals arrive. The fixed badge
+**0** when no compatible cached values exist, or retaining known scoped counts
+while refreshing a cached destination. The fixed badge
 width is 32px with centred digits, fitting three digits without moving tabs.
 Each tab has equal 8px padding before its label and after the painted badge,
 selected or not. Fully visible totals have no count-only tooltip; unknown totals
@@ -382,17 +383,23 @@ preferences; no Core document, terminal or agent is changed. Reconciliation yiel
 out of render and waits for native acknowledgements rather than polling/replaying
 layout commands.
 
-The Git header no longer has a separate PR-link tool. **Right-click its header**
-for a menu titled with the captured **owner/repository** name, followed by
-**Code...**, **Pull requests...** and **Actions...**. These open the repository
-root, pull-request list and workflow runs page respectively, in this computer's
-browser. The menu captures the clicked repository, supports arrow keys,
-Enter/Escape and does no Git/GitHub reads of its own. It is unavailable until a
-GitHub URL is known or outside a Git repository. Individual PR rows keep their
-existing Open... / Copy path menu. Like Files' folder label, the Git header shows
-the short repository name beside its title and the full GitHub URL on hover.
-The tooltip belongs only to the label, not the Refresh/Pin/Close tools rail.
-There is no stale folder fallback while repository metadata is unavailable.
+The main Git header contains only **Git**, its title chevron, existing refresh/status
+feedback and **Refresh · Pin · Close**. Repository identity lives in the list's
+canonical **owner/repository · count · chevron** section header, not beside the
+tools. The former main-header repository name/URL hover and repository context
+menu are removed. **Code... / Pull requests... / Actions...** shortcuts are gone
+from this panel, not relocated; individual PR **Open... / Copy path** menus remain.
+Verification diagnostics stay on the existing activity indicator, never a Stale label.
+
+Entering a worker space immediately reuses its exact machine/repository's cached
+section, including data already loaded by the coordinator. Returning to the
+coordinator restores its cached sections/order too. The same native header
+activity indicates background refresh in either direction; replacement updates in
+place, without clearing loaded rows or showing body Loading. Unknown directories
+must establish canonical identity before borrowing a cache; genuinely uncached
+repositories use ordinary Loading. Direct space entry creates no pin, row reorder
+or move-to-top animation. Cache memory is bounded and session-only; another
+machine/repository and disable/re-enable generations cannot borrow it.
 Git shows only **Open** and **Closed** pull requests. Both load **10 PRs initially**
 and fetch the next 10 near the bottom of the scrolling list, using GitHub cursors
 rather than redownloading earlier pages. Each tab keeps its own rows and cursor;
@@ -402,10 +409,12 @@ failed pages preserve existing rows, and the end of the list stops fetching.
 Expanded lists are retained across webhook refreshes; manual Refresh or a
 machine/folder change starts again at 10. Same-folder agent/tab/space switches
 retain repository metadata, counts, rows, pagination and in-flight GitHub requests;
-only the agent-specific active PR link changes (managed Crew terminals use their
-full `crew.pr` identity; A1 and Claude Code otherwise read their selected session footer).
-The current pin stays steady until that read resolves; an unchanged PR never
-unpins/re-pins. Ordinary selection changes use a native 120ms opacity ease.
+entry restores that section's order rather than pinning the selected agent's PR.
+When only a coordinator task subset is cached, its known Open/Closed values stay
+visible with incomplete-count metadata until full repository totals arrive; task
+counts are never asserted to be whole-repository totals. Existing click-origin
+pins and footer confirmation keep their normal lifecycle (managed Crew terminals
+use full `crew.pr` identity; A1 and Claude Code otherwise use their session footer).
 Clicking a list PR's Build/Review chip or fallback robot opens the agent tab
 **immediately**. The panel retains
 the original row slots while the destination footer/selection resolves, including
@@ -506,14 +515,16 @@ reservation; label refreshes never add extra row lines or horizontal overflow. M
 including the number/author dot, share a clearly visible muted 3px round shape,
 vertically centred beside text/icons with equal 6px spacing on both sides.
 Git follows the selected terminal's live shell-reported directory (including remote
-Bash and PowerShell), not its launch folder. Changing locations immediately clears
-the old repository and counts; late Git/GitHub replies cannot restore them. A
-non-repository home folder shows **Not a git repository**. In the selected
-Open/Closed list, the active PR is always pinned above the scrollable rows with a
+Bash and PowerShell), not its launch folder. Changing locations removes incompatible
+repository data; a compatible destination cache restores immediately while it is
+revalidated. Late Git/GitHub replies cannot restore another context. A
+non-repository home folder shows **Not a git repository**. Panel-origin chip/robot
+navigation pins its PR above the scrollable rows with a
 divider underneath and a 2px theme-accent rail on the left, even when it is the only
 PR. The rail overlays the outer gutter without shifting content or the hover
 area. It is not duplicated below and has no special background; all PRs use the
-normal neutral hover. With no matching active PR, the whole list scrolls normally.
+normal neutral hover. Direct space entry never creates that pin or reorders rows;
+without a click-origin pin, the complete repository section scrolls normally.
 For A1 and Claude Code, the panel
 reads the selected terminal's current footer PR badge through the read-only `hc read`
 API (no history, input injection or transcript-wide PR searches). Claude's `PR #…`

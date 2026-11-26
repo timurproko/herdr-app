@@ -134,6 +134,33 @@ phases) and completion. It stops its own desktop and isolated Core in finally;
 inspect both screenshots and cleanup/error receipts. Controller-driven actions
 are not real pointer/keyboard or live-SSH proof. No installed app or PATH changes.
 
+## Instant Git repository entry
+
+`node --experimental-vm-modules tests/git-entry-cache.test.mjs` uses production
+controller/aggregate renderers and held transport to sample the first worker frame,
+coordinator return and cross-machine cold entry. It covers bounded pure publication,
+task-section seed provenance, shared section chrome/header activity and no entry-driven
+pin or reorder. It does not use live GitHub, credentials, Core or agents. The existing
+inventory-presentation and paging suites remain guards for coherent warm replacement,
+quiet retry and cursor retention. Chip/robot motion remains owned by the existing
+click controller; direct entry does not start it.
+`tests/git-entry-motion.test.mjs` integrates the initially-unpinned support supplied
+by PR #87: after entry, chip and robot clicks use its controller with one immediate
+focus, retained native acknowledgement, one-shot timers and final measured row
+positions including the section header at 100%/130%. No controller is forked.
+
+Opt-in `tests/features/git-entry-native.mjs --run --output <outside-checkout>
+--zoom 1|1.3` mounts the production entry renderer with held synthetic transport
+in an isolated App 0.1.18/Core session. `--baseline` uses the pre-change main
+controller at b22df88 with the same synthetic dependency harness, not an entire
+old installation. It captures worker entry/replacement, another worker, coordinator
+return, genuinely cold Loading and a controller-driven chip transition. No native
+mouse/keyboard hit-testing or live sessions are claimed. It rejects render errors
+in the app log as well as status.errors (the latter alone missed a last-frame
+fallback). Native proof found and fixed an invalid null child on idle activity;
+the entry regression now rejects null/undefined native children. All owned
+instances stop in finally; screenshots, logs and receipts stay outside the checkout.
+
 ## Git read-budget and refusal fixtures
 
 `tests/git-deferred-repositories.test.mjs` runs a sanitized equivalent of the
