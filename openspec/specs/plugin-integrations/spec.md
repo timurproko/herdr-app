@@ -288,19 +288,18 @@ Git SHALL share natural-width metadata across all row variants, without Owner ba
 - **AND** clipping stays within the fixed-height line with no overlap or lone ellipsis; full task progress, labels and review values remain available in tooltips
 
 ### Requirement: GitHub label presentation
-Assigned labels SHALL use fully rounded 18px pills derived from GitHub colours, preserving exact names and emoji except that managed aliases collapse into one canonical emoji stage pill. Dark palettes SHALL use GitHub's 18% tint, readable coloured text and 30% text-colour border; light palettes SHALL use solid fill and contrasting text. Pills SHALL remain bounded in one ordered right-aligned group with informative full-value hover and no extra row height.
+Each assigned PR label SHALL retain its exact name, including emoji, in a fully rounded 18px pill derived from its GitHub colour. Dark palettes SHALL use GitHub's 18% tint, readable lightness-adjusted coloured text and 30% text-colour border; light palettes SHALL use GitHub's solid fill and contrasting black/white text. Names SHALL remain bounded in one line with full-name tooltips, without horizontal overflow or label-driven row-height jumps. Pills SHALL form one ordered right-aligned group.
 
 #### Scenario: Under review label
 - **WHEN** a PR has the label named `🤖 Under review` with GitHub colour `840479`
-- **THEN** the row displays one `🤖 Review` pill derived from that colour at the bottom-right content edge, with no separator dot before the label group
-- **AND** the assigned alias remains available in informative hover and no duplicate title-line stage appears
+- **THEN** the row displays that exact name in a pill derived from that colour at the row's right content edge, with no separator dot before the label group
 - **AND** on a dark palette it uses a translucent purple tint, lightened purple text and a thin translucent purple border rather than a solid purple block
 
 #### Scenario: Several labels in a narrow panel
 - **WHEN** assigned labels do not all fit beside the preceding metadata
-- **THEN** they remain one right-aligned group in their existing relative order, except duplicate managed aliases collapse to one stage, within a bounded single-height strip rather than expanding the panel or row height
+- **THEN** they remain one right-aligned group in their existing order, within a bounded single-height strip rather than expanding the panel or row height
 - **AND** pill words remain whole while task compaction and secondary review-text reduction can make room; only remaining overflow clips the label group without overlap or a lone ellipsis
-- **AND** tooltips expose complete assigned names, including clipped names and managed aliases
+- **AND** tooltips expose the complete assigned names, including any clipped names
 
 #### Scenario: Different hues and extreme colours on dark palettes
 - **WHEN** green, amber, purple, red, blue, near-black or near-white labels appear on a dark panel palette
@@ -315,14 +314,13 @@ Assigned labels SHALL use fully rounded 18px pills derived from GitHub colours, 
 #### Scenario: Shared rendering and invalid colour
 - **WHEN** labels appear in ordinary or coordinator views, in either tab, or in pinned and motion-preview rows
 - **THEN** all use the same palette-dependent right-aligned pill presentation without changing left-run spacing or row geometry
-- **AND** an invalid or missing colour uses the existing neutral theme fallback rather than producing invalid colours or hiding its label
-- **AND** native measurement probes and motion-preview pills are noninteractive
+- **AND** an invalid or missing colour uses the existing neutral theme fallback rather than producing invalid colours or hiding its exact name
 
 #### Scenario: Stable right content anchor
 - **WHEN** rows with different task progress, check widths, absent checks or absent tasks display assigned labels at the same panel width and zoom
-- **THEN** each label group's rightmost visible pill ends at the same right content edge whether or not a title-line fallback robot is present
-- **AND** the anchor uses the content edge, not an inset SVG glyph or the panel border
-- **AND** adding or removing the final label adds no separator and does not alter line geometry or row height
+- **THEN** each label group's rightmost visible pill ends at the same right content edge as the title line's reserved robot control, whether or not a robot is present
+- **AND** the anchor uses the control's outer edge, not its inset SVG glyph or the panel border
+- **AND** adding or removing the final label adds no separator and does not alter title or line geometry
 
 ### Requirement: Labels share PR data refresh
 PR labels SHALL be obtained with existing PR reads rather than additional per-row requests. Mutable PR labels SHALL refresh with other row facts on panel opening, manual refresh, reconnect and relevant webhook invalidation, including pull_request labeled and unlabeled actions. Session-final rows SHALL reuse cached labels unless precise change evidence invalidates them. Stale replies SHALL NOT restore labels in another context, and unchanged PRs SHALL NOT acquire periodic label polling.
@@ -422,7 +420,7 @@ When strict fleet action context is unavailable, the coordinator SHALL retain it
 - **AND** ordinary folder Git and existing stale-generation guards remain intact
 
 ### Requirement: Bounded finished-task pull request history
-Completed tasks from the verified coordinator's Crew home SHALL contribute validated Open/Draft PRs without live workers, including closed tasks and reported tasks whose terminals ended or disappeared. Historical-only Merged/Closed PRs SHALL appear only within 24 hours of GitHub completion. Live sources SHALL win deduplication and retain worker navigation. Completed nonlive records SHALL grant no worker action; fresh owner/status and bounded reads remain required.
+Closed tasks from the verified coordinator's crew home SHALL contribute their validated Open/Draft task PRs without live workers. Historical-only Merged/Closed PRs SHALL appear only within 24 hours of GitHub's merge/close timestamp; undated closed history SHALL be excluded. Live sources SHALL win deduplication and keep worker navigation. Historical-only rows SHALL have no robot or worker action. Status and targeted-read bounds SHALL remain enforced.
 
 #### Scenario: Worker finishes before merge
 - **WHEN** a same-home task becomes closed and loses its live worker while its validated task PR remains Open or Draft on GitHub
@@ -437,10 +435,10 @@ Completed tasks from the verified coordinator's Crew home SHALL contribute valid
 - **AND** PRs still linked by eligible live tasks retain normal Closed behavior regardless of age
 
 #### Scenario: Live task shares a historical PR
-- **WHEN** several completed tasks and an eligible live task link the same repository and PR number
-- **THEN** the panel fetches, displays and counts one full PR identity and retains the live task's navigation control
+- **WHEN** several closed tasks and an eligible live task link the same repository and PR number
+- **THEN** the panel fetches, displays and counts one full PR identity and retains the live task's robot
 - **AND** closing that live task removes its worker navigation but does not remove an otherwise eligible historical PR
-- **AND** a stale captured callback cannot navigate to the former worker
+- **AND** a stale captured robot callback cannot navigate to the former worker
 
 #### Scenario: No recorded PR or wrong home
 - **WHEN** a reviewer or scout has no PR, a task link is malformed, or status does not belong to the verified coordinator's crew home and owner
@@ -449,15 +447,9 @@ Completed tasks from the verified coordinator's Crew home SHALL contribute valid
 
 #### Scenario: Existing bounded reader and refresh
 - **WHEN** historical candidates are read or updated by the shown enabled aggregate panel
-- **THEN** recorded-only status includes completed tasks through the advertised fleet view when available or legacy --all JSON, with separate lower-priority discovery when supported, retaining response-size, task-count and finite transport bounds
+- **THEN** recorded-only status includes closed tasks through the advertised fleet view when available or legacy `--all --json`, with separate lower-priority discovery when supported, and retains response-size, task-count and finite transport bounds
 - **AND** targeted GitHub reads retain their concurrency and batch bounds
 - **AND** webhook/manual refresh and the eligible state-and-check fallback handle mutable PR transitions without repository-wide inventory, while unchanged final facts are reused and historical expiry needs no GitHub request
-
-#### Scenario: Reported task outlives its terminal
-- **WHEN** fresh same-home status reports a completed task as reported but its terminal has ended or been removed
-- **THEN** that task's PR is admitted as read-only history rather than blocking the entire coordinator on Loading
-- **AND** no terminal, adoption, colour or navigation authority comes from that completed record
-- **AND** a still-working task with incomplete native membership remains unverified, and a still-live reported terminal must retain exact native membership
 
 ### Requirement: Truthful repository-scoped pull request read notices
 The coordinator Git overview SHALL render at most one actionable PR-read failure notice per repository section in the selected tab. Notices SHALL distinguish GitHub responses from transport unreachability. Rate-limit refusals and confirmed missing recorded task PRs SHALL produce no error UI. Missing task PRs SHALL have no row, hint or tooltip. Failures SHALL preserve healthy last-good rows and existing history eligibility.
@@ -579,7 +571,7 @@ Opening the coordinator enrollment picker SHALL capture its choices and coordina
 - **AND** a repository choice must still belong to the captured presentation and be confirmed unenrolled before navigation
 
 ### Requirement: Validated task PR discovery results
-The app SHALL accept discovery only for top-level version 1 with valid per-task status, URL, source and reason combinations. Known results SHALL provide canonical HTTPS GitHub PR links. None SHALL mean no PR on that read; unavailable SHALL mean unknown. Malformed task PR facts SHALL become unavailable for that task without blocking healthy tasks, never evidence of absent tasks, ownership or PRs. Identity validation SHALL remain strict.
+The app SHALL accept discovery only for top-level version 1 with valid per-task status, URL, source and reason combinations. Known results SHALL provide canonical HTTPS GitHub PR links. None SHALL mean no PR on that read; unavailable SHALL mean unknown. Both states SHALL survive binding into the generic pull context without inventing links or action authority. Malformed v1 fields SHALL be read uncertainty, never evidence of absent tasks, ownership or PRs.
 
 #### Scenario: Known result before the first report
 - **WHEN** a valid v1 status has a working task with no recorded PR and a known canonical discovery URL from GitHub
@@ -593,8 +585,8 @@ The app SHALL accept discovery only for top-level version 1 with valid per-task 
 
 #### Scenario: Strict discovery schema
 - **WHEN** a v1 task result omits a required field, has a wrong type or contradictory field combination, or supplies a noncanonical or unsafe known URL
-- **THEN** that task contributes unavailable PR knowledge with no guessed link while healthy task results can still publish
-- **AND** malformed owner or native task identity still refuses verification rather than granting another task or home authority
+- **THEN** the app treats the read as uncertain instead of publishing authoritative missing ownership, tasks or PRs
+- **AND** prior verified presentation and freshness obey the existing failed-read policy
 
 ### Requirement: Bounded discovery compatibility
 Verification SHALL use recorded-only status, preferring an explicitly advertised fleet view. PR discovery SHALL be separate lower-priority work after verified recorded inventory is available, never blocking attachment or first inventory. Capability probes SHALL be cached by CLI path and modification time across repeated reads and mod copies. Unknown discovery versions SHALL remain recorded-only; only exact unsupported-flag refusals SHALL permit bounded capability fallback.
@@ -998,33 +990,22 @@ A GitHub access refusal SHALL identify the refused canonical repository and the 
 - **AND** it does not assume a wrapper's owner mapping proves the server-authenticated login
 
 ### Requirement: Diagnosable coordinator render failures
-Caught Git row failures SHALL log the actual error and failing component and show a fixed-height row-local fallback without blocking healthy rows. Other caught panel failures SHALL preserve native last-frame diagnostics. A native abort's surviving marker SHALL remain distinguishable from a caught exception. An incomplete frame SHALL receive at most one deferred retry; repeated failure SHALL NOT create a render loop or new read/focus authority.
+Caught Git render failures SHALL log the actual error text and innermost failing row, section or notice component before preserving native last-frame fallback. A surviving component marker after an uncatchable native abort SHALL be reported on the next render attempt, explicitly distinguishing incomplete-render evidence from a known exception or timeout cause.
 
 #### Scenario: Caught failure while rendering mixed history
-- **WHEN** Closed contains two repositories with mixed rows and notices and one row renderer throws
-- **THEN** the log identifies its actual error and innermost row component and that row has a safe 74px fallback while healthy rows still render
-- **AND** a non-row failure retains the host's last-good-frame fallback and actual diagnostic
+- **WHEN** Closed contains two repositories with merged and closed-unmerged rows, historical and live-agent targets, and a section read notice, and a row or notice renderer throws
+- **THEN** the log identifies its actual error and innermost component without replacing them with a generic outer-panel error
+- **AND** the error still reaches the host's last-good-frame fallback
 
 #### Scenario: Native interruption leaves a surviving marker
 - **WHEN** a native abort bypasses JavaScript catch/finally and a later render observes the prior component marker
-- **THEN** the log identifies an incomplete render rather than inventing an exception or row-removal cause
-- **AND** a deferred once-only retry can replace the stale frame after the interruption settles; repeated failure or view retirement cannot keep notifying
+- **THEN** it logs the last entered component and an explicitly incomplete-render diagnostic
+- **AND** it refers to the native banner or host log for the exact unavailable native error rather than inventing a cause
 
 #### Scenario: Synchronous notice transport refusal
 - **WHEN** the host begins a notice request inline during render and its transport fails synchronously
 - **THEN** request fallback and notification happen only after yielding out of render
 - **AND** healthy repository rows and section notices retain their ordinary presentation
-
-#### Scenario: Row removal during render or pin motion
-- **WHEN** accepted facts remove a merged PR from Open while a replacement is built or click-origin pin motion is waiting or moving
-- **THEN** the next coherent render excludes the removed row and cancels incompatible motion without replaying focus
-- **AND** surviving sections, rows, counts and geometry remain usable without an indefinitely stale frame
-
-#### Scenario: Abandoned native read task
-- **WHEN** a native read Task is definitively done but its root or page busy latch remains set because cleanup was interrupted
-- **THEN** the next existing lifecycle/render releases that obsolete latch and permits one guarded replacement read
-- **AND** a repeated interruption shows a truthful retry message with accessible manual Refresh even before root resolution, rather than looping
-- **AND** only all-obsolete shared read leases/tails may be retired; healthy consumers, cached facts, rate cooldowns and stale-reply ordering remain intact
 
 ### Requirement: Bounded coordinator render work
 Coordinator Open and Closed SHALL reveal ten presentation items initially and append ten near the bottom while keeping every revealed unfolded row of the selected mounted batch present. There SHALL be no viewport spacers or replacement-page footer. Pure row/measurement caches SHALL keep native render work within measured budgets; if 200 mounted rows exceed about 35ms, a measured safe cap SHALL use only one quiet end Show more row. Revealing SHALL start no GitHub inventory read.
@@ -1103,11 +1084,11 @@ Every successful row refresh SHALL read authoritative Open/Draft/Merged/Closed s
 - **AND** unrelated row order, saved folds and ordinary pagination and pin geometry remain intact
 
 ### Requirement: Git trailing alignment with Spaces
-Git PR rows and coordinator repository headers SHALL retain their 3px logical trailing inset inside each highlight, independent of Spaces Crew. Bottom-right labels and the 24px header chevron SHALL share the trailing edge. Managed stages SHALL have no title-line reservation or separate robot; only a live no-managed-stage fallback robot SHALL occupy its existing 24px target. All row variants SHALL retain captured actions and vertical geometry.
+Git PR rows and coordinator repository headers SHALL retain their 3px logical trailing inset inside each highlight, independent of Spaces Crew's plain label. Title-line stage or robot reservations SHALL share a stable trailing edge with label pills and the 24px header chevron reservation. Robot glyphs and hit targets SHALL retain their sizes. All row variants SHALL preserve absent-control title reservations, captured actions and vertical geometry.
 
 #### Scenario: Complete panel alignment
 - **WHEN** ordinary or coordinator Git panels render at 280, 320, 360, 390 or 480 logical pixels and 75%, 100%, 125%, 130%, 150% or 200% zoom
-- **THEN** repository-header chevron slots, live fallback robot controls and actual trailing Git label pill right edges retain a 3px inset from their own row highlight edge
+- **THEN** stage/robot reservation, repository-header chevron slot and actual trailing Git label pill right edges retain a 3px inset from their own row highlight edge
 - **AND** complete-panel border and list padding are included without using the restyled Spaces Crew label as a pill-edge oracle
 - **AND** Git and Spaces highlights retain equal 8px left and right panel/sidebar gutters, with Git's control-to-panel inset remaining 11px
 - **AND** Git row highlights match Spaces' 6px corner radius and their leading content starts 8px inside the highlight, matching Spaces' highlight-to-badge inset
@@ -1119,13 +1100,13 @@ Git PR rows and coordinator repository headers SHALL retain their 3px logical tr
 
 #### Scenario: Missing agent, folded header and motion preview
 - **WHEN** an agent is absent, a repository header folds or a PR is pinned, scrolled or shown as a motion-preview row
-- **THEN** the existing trailing edge and row/header heights and line positions are preserved without an empty 80px stage reservation
-- **AND** live fallback robot hit targets remain 24px square, ghost controls remain noninteractive and existing captured actions remain guarded
+- **THEN** the existing trailing edge and row/header heights and line positions are preserved
+- **AND** the absent control reservation remains inert, live robot hit targets remain 24px square, ghost controls remain noninteractive and existing captured actions remain guarded
 - **AND** hover, selected/pinned and ghost highlights retain equal Spaces-derived left and right gutters and corner radius
 
 #### Scenario: Text chips replace the robot
-- **WHEN** otherwise identical rows show Build, Review, Approved, a fallback robot or no control
-- **THEN** managed stages appear only in the bottom-right label group and titles reclaim the removed stage reservation without overlap or an additional line
+- **WHEN** otherwise identical rows show Build, Review, Approved, a robot or no control
+- **THEN** they reserve the same bounded title-line space sufficient for the stage words, with no overlapping title or additional line
 - **AND** all retain the existing 74px height, three fixed line boxes and label right anchor
 
 ### Requirement: Consistent Git list content gutters
@@ -1481,13 +1462,13 @@ A combined fleet SHALL accept legacy and supported placement-v1 workers in the s
 - **AND** renaming does not substitute for any missing identity proof
 
 ### Requirement: Three managed pull request stages
-Git SHALL derive Build, Review or Approved from assigned managed label names and their previous names using existing reads. A managed stage SHALL appear exactly once as the bottom-right emoji label pill, using the existing GitHub label shape and colour treatment, with no title-line stage or robot. Stage SHALL remain independent of CI and GitHub's review decision. Rows without managed labels SHALL retain only a live linked robot fallback.
+Git SHALL derive Build, Review or Approved from assigned managed label names, including their previous names, using existing PR reads. The stage SHALL replace the title-line robot and use amber, purple or green theme tokens respectively. Stage SHALL remain independent of CI and GitHub's separate review decision. Rows without managed labels SHALL retain the live linked robot fallback.
 
 #### Scenario: Current and historical label names
 - **WHEN** an ordinary or coordinator PR has a managed Build, Review or Approved label, with or without the managed robot prefix
-- **THEN** its single bottom-right stage pill shows the robot emoji and canonical Build, Review or Approved name
+- **THEN** its title-line control shows the corresponding plain stage name
 - **AND** Rework and Changes needed map to Build, and Under review maps to Review, including their robot-prefixed previous names
-- **AND** unrelated label names remain unchanged and raw assigned managed names remain available as additional hover information without duplicate visible stage pills
+- **AND** unrelated label names and assigned label pill wording are unchanged
 
 #### Scenario: Existing label reads and refresh
 - **WHEN** a list, targeted older-active or coordinator PR read returns label arrays or a label connection, including null or empty labels
@@ -1496,20 +1477,14 @@ Git SHALL derive Build, Review or Approved from assigned managed label names and
 
 #### Scenario: Approved while checks are pending or failed
 - **WHEN** the assigned managed label is Approved and the PR's checks are pending, failed or successful
-- **THEN** the chip remains Approved without a reviewer target and opens the PR when clicked
+- **THEN** the chip remains Approved without a reviewer target
 - **AND** CI remains exclusively in the existing checks item, with no approved-CI-running state or Review check CI chip
 - **AND** GitHub's required checks remain the merge gate; the app does not promote or merge the PR
 
 #### Scenario: No managed label
 - **WHEN** a PR has no managed stage label and a live linked agent exists
 - **THEN** its existing robot action, known-agent tooltip and focus behavior remain available
-- **AND** a row with neither managed stage nor live related agent has no stage control or unnecessary title-stage reservation
-
-#### Scenario: Multiple labels and unavailable agents
-- **WHEN** several managed aliases coexist or the chosen stage has no live connected role target
-- **THEN** the existing deterministic precedence produces one bottom-right managed-stage pill without a separate robot or top chip
-- **AND** the stage remains represented in the bounded coordinator label group even when unrelated labels precede it
-- **AND** unavailable Build or Review retains its dimmed explanatory tooltip and cannot focus an agent or fall through to opening the PR
+- **AND** a row with neither managed stage nor live related agent has an inert blank reservation
 
 ### Requirement: Role-aware stage navigation
 Build SHALL target ship or fix terminals by a validated full crew.pr identity or matching repository/head branch. Review SHALL target only crew.kind=review terminals whose crew.pr matches the PR, never by branch. Live connected targets SHALL focus their existing machine-qualified terminal without opening GitHub. Approved SHALL have no agent action and SHALL allow the row's PR action.
@@ -1540,16 +1515,16 @@ Build SHALL target ship or fix terminals by a validated full crew.pr identity or
 - **AND** Build and Review focus actions do not also activate that row action
 
 ### Requirement: Optional build review history
-Git SHALL read optional crew.round, crew.finding and crew.approved from matched terminal labels without inventing history or deriving stage from approval metadata. Visible stage names SHALL remain Build, Review or Approved. After completed review round n, informative hover SHALL expose the next build round and any supplied finding as back from review n: finding. Missing or invalid metadata SHALL add no invented round or finding.
+Git SHALL read optional crew.round, crew.finding and crew.approved from matched terminal labels without inventing missing history or deriving stage from approval metadata. After completed review round n, Build SHALL display Build n+1 and expose a supplied finding as back from review n: finding. Missing or invalid round metadata SHALL retain plain Build without an invented round or finding tooltip.
 
 #### Scenario: First return from review
 - **WHEN** the Build terminal reports completed review round 1 and a finding
-- **THEN** its chip still reads `🤖 Build` and its tooltip identifies build round 2 and includes back from review 1: followed by that finding
-- **AND** later completed rounds advance the hover's build number by one without adding another visible stage
+- **THEN** its chip reads Build 2 and its tooltip includes back from review 1: followed by that finding
+- **AND** later completed rounds advance the displayed build number by one
 
 #### Scenario: Older Crew has no review metadata
 - **WHEN** terminal labels omit round, finding and approval metadata
-- **THEN** the stage remains usable with canonical Build and no round or finding tooltip text
+- **THEN** the stage remains usable with plain Build and no round or finding tooltip text
 - **AND** absent findings are not replaced with invented text
 
 #### Scenario: Approval metadata is not a fourth stage
@@ -1682,28 +1657,23 @@ Reusable Git presentation SHALL be bounded runtime-only data qualified by machin
 - **AND** hidden snapshots do no reads and contain no native handles, callback trees, credentials or portable or restart-persisted PR inventory
 
 ### Requirement: Space entry preserves order without pin motion
-Entering an agent space SHALL restore its cached repository section immediately and place the selected agent's matching PR directly below its own repository header, without entry-driven motion. Remaining rows and coordinator returns SHALL retain their relative order. Panel-origin stage and fallback robot clicks SHALL retain the existing guarded animation and selection acknowledgement, ending below the destination repository header.
+Entering an agent space SHALL restore its cached repository section without creating a pin, reordering rows or starting move-to-top animation. Coordinator return SHALL restore its cached order directly. Existing panel-origin stage-chip and fallback robot-click pin behavior SHALL remain unchanged and separate from entry; an already-started click transition SHALL retain its existing selection acknowledgement behavior.
 
 #### Scenario: Direct agent-space entry
 - **WHEN** the user enters an agent space directly and its PR or branch matches a row in the cached section
-- **THEN** the section header retains its count and chevron, followed by the selected PR as its first row and then the remaining rows in their relative order
-- **AND** entry starts no pin animation, including for a selected Draft PR
+- **THEN** the cached section is shown immediately in its existing order with header refresh activity
+- **AND** entry creates no pin, moves no row to the top and starts no pin animation
 
 #### Scenario: Return to coordinator
 - **WHEN** the user returns from a worker space to the coordinator
 - **THEN** the coordinator's cached sections and ordering are restored directly with existing header refresh activity
-- **AND** no permanent coordinator pin or entry-driven pin motion appears
+- **AND** no entry-driven pin, unpin animation or row reorder occurs
 
 #### Scenario: Existing chip and robot navigation
-- **WHEN** the user clicks another agent PR's live stage label or fallback robot inside the panel
-- **THEN** the existing click-origin navigation and move-to-top animation retain confirmation and cancellation rules and settle inside the destination section directly below its header
-- **AND** native selection acknowledgement neither starts a second animation nor cancels the first because cached entry ran
-- **AND** Approved opens the PR and unavailable targets retain their refusals
-
-#### Scenario: Empty or unverified coordinator seed
-- **WHEN** the destination worker has no seed, a zero-count empty seed or an unverified coordinator source
-- **THEN** it independently resolves its repository and requests its own selected page rather than treating seed counts as complete data
-- **AND** successful reads clear Loading and a selected matching Draft PR appears directly below its section header
+- **WHEN** the user clicks another agent PR's live stage chip or fallback robot inside the panel
+- **THEN** the existing click-origin navigation and move-to-top pin animation remain unchanged, including their existing confirmation and cancellation rules
+- **AND** the resulting native space acknowledgement neither starts a second animation nor cancels the original merely because cached entry ran
+- **AND** Approved remains non-navigating and unavailable targets retain existing refusals
 
 ### Requirement: Repository identity belongs to the Git section header
 The main Git header SHALL show only its Git title/chevron, tools and existing refresh/status feedback, not a duplicate repository name or repository popup. Canonical repository identity, counts and folding SHALL remain in the section header. Code, Pull requests and Actions page shortcuts SHALL be removed, not relocated. Existing PR Open and Copy path menus SHALL remain unchanged.
@@ -1793,19 +1763,3 @@ Enabled policy work SHALL run outside rendering on the existing recurring lifecy
 - **WHEN** on, off, missing capability, one refused home, offline return, later home and restart persistence are exercised
 - **THEN** Crew commands, homes and responses are fake and isolated from the person's configuration and coordinators
 - **AND** both intent and machine-scoped application status are asserted rather than inferring success from a switch change
-
-### Requirement: Isolated targeted pull facts
-Targeted reads SHALL refuse invalid per-alias PR identity or row shapes without publishing those facts or blocking healthy sibling aliases. Transport, rate and unscoped failures SHALL retain existing whole-read refusal rules.
-
-#### Scenario: Malformed alias beside healthy PR
-- **WHEN** one targeted alias has a mismatching number/URL, unknown state, invalid title or failing normalization beside a valid sibling
-- **THEN** that alias returns an entry-local error and contributes no new cached facts while the valid sibling publishes normally
-- **AND** a malformed owner/native envelope or whole-read rate/transport failure cannot gain authority from partial data
-
-### Requirement: Frame-local Git presentation snapshots
-Git MAY reuse native identity collections and verified/presentation provider contexts within one frame to bound repeated presentation work. Snapshots SHALL NOT grant read or focus authority after that frame.
-
-#### Scenario: Many rows and a changed captured target
-- **WHEN** several Git rows render against the same native collections and provider context
-- **THEN** presentation reuses those frame-local facts without per-row transport or repeated native collection reads
-- **AND** a subsequent click resolves current role, PR, membership and native identity again, refusing a stale or changed target

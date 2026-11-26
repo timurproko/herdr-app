@@ -16,8 +16,9 @@ PR 94 needs the latest main merged without losing either set of specifications. 
 
 ### Modified Capabilities
 
-- `plugin-integrations`: complete-task retry bounds, tab-local failures, plain stage presentation and selected-agent pin projection.
+- `plugin-integrations`: the complete original PR-94 discovery/history/render contracts plus revised retry bounds, tab-local failures, plain stages and selected-agent pin projection.
+- `workspace-experience`: the original PR-94 fixed sidebar columns, persistent counts and shared rename presentation, retained through main integration.
 
 ## Impact
 
-Git presentation/recovery, relevant regression fixtures, native selection-check setup and specifications. This approved follow-up stays in PR 94. The previously finalized archive is retained unchanged; this change records the later instructions without rewriting its acceptance digests. No live deployment, native runtime modification or new local test run is authorized in this round.
+Git presentation/recovery, relevant regression fixtures, native selection-check setup and specifications. This approved follow-up stays in PR 94. The previously finalized archive is retained unchanged. This change carries the complete original and revised requirement deltas against main, not merely the later additions. Canonical specs are the target-branch baseline until bot-owned finalization applies that complete delta; no acceptance digests are edited manually. No live deployment, native runtime modification or new local test run is authorized in this round.

@@ -4,6 +4,8 @@ The person explicitly approved this combined CI/review fix and the subsequent st
 
 ## Decisions
 
+- Stage the complete PR contract, not only the latest additions. The failed finalization on `4b50e02` reported `delivery-specs-diverged`: an active, not-yet-finalized change requires canonical specs equal to the target branch. Consolidate all eight original modified Git requirements, four modified workspace requirements and their added requirements with the approved later decisions. Keep canonical files byte-identical to main as the bot's input, and keep previously finalized archives/digests unchanged. This corrects the staging precondition without bypassing the guard or changing runtime behavior.
+
 - Keep root retry use across internal repository reset and awaited symbolic-ref. Clear it only after complete success releases loading. Dispatch consumes a separate rootRetryAuthorized flag set by the UI, not manualRead rate credit; context reset revokes it.
 - Record actionable page failures by Open/Closed state. Restore only the selected tab's error and leave an unread sibling due. Keep request/context/epoch guards and shared lease serialization.
 - Derive one stage descriptor per row. Render a plain 18px chip with stage-palette text, existing raised fill, 2px side padding and no border/emoji. Build captions include supplied next round. Intrinsic probes render the identical caption/style without handlers; the pure cache signature includes that caption. Titles have no managed-stage reservation.

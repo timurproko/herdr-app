@@ -1,6 +1,7 @@
 ## 1. Coordinator publication and main integration
 
 - [x] 1.1 Retain ended-report history, qualified remote history tests and ambiguous-live membership refusal; merge current main and retain both independent spec additions.
+- [x] 1.2 Correct the failed finalization baseline: consolidate the full approved Git/workspace deltas, restore canonical input to main and preserve prior archive/digest provenance for bot-owned finalization.
 
 ## 2. Single bottom-right stage control
 
