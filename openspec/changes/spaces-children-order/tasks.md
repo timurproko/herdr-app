@@ -2,9 +2,9 @@
 
 ## 1. Quiet bounded project-space choice
 
-- [ ] 1.1 Separate normal application from completed machine failures in the Crew Settings contribution and existing Spaces row; extend worker-space/policy tests to assert no checking, Applying or Pending lines during ordinary on/off application or success, and one short line per failed machine.
-- [ ] 1.2 Exercise held capability/discovery/read/set/readback, local/remote multi-home fairness, interrupted native continuations and expired ownership through the actual recurring lifecycle; fix any reproduced stall and assert automatic completion or bounded failure without another click while preserving uncertain-setter serialization and stale-generation refusal.
-- [ ] 1.3 Update README and fleet/testing guidance with the quiet presentation and evidence-backed Pending diagnosis; use the checksum-verified supplied 0.1.18 copy for synthetic Settings off/on/applying/refusal screenshots at 100% and 130%, recording hashes and complete disposable-process shutdown outside the checkout.
+- [x] 1.1 Separate normal application from completed machine failures in the Crew Settings contribution and existing Spaces row; extend worker-space/policy tests to assert no checking, Applying or Pending lines during ordinary on/off application or success, and one short line per failed machine.
+- [x] 1.2 Exercise held capability/discovery/read/set/readback, local/remote multi-home fairness, interrupted native continuations and expired ownership through the actual recurring lifecycle; fix any reproduced stall and assert automatic completion or bounded failure without another click while preserving uncertain-setter serialization and stale-generation refusal.
+- [x] 1.3 Update README and fleet/testing guidance with the quiet presentation and evidence-backed Pending diagnosis; use the checksum-verified supplied 0.1.18 copy for synthetic Settings off/on/applying/refusal screenshots at 100% and 130%, recording hashes and complete disposable-process shutdown outside the checkout.
 
 ## 2. Persisted sibling-only child reordering
 

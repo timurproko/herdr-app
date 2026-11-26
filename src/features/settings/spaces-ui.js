@@ -25,6 +25,6 @@ export function spacesPage(owner, t) {
         .child(div().min_w(0).truncate().text_size(12).text_color(t.muted)
           .tooltip([status.machine, status.detail].filter(Boolean).join(' · '))
           .child([status.machine, status.detail].filter(Boolean).join(' · ')))
-        .child(badge(t, status.status, status.label)))) : null)));
+        .when(Boolean(status.label), el => el.child(badge(t, status.status, status.label))))) : null)));
   return page;
 }

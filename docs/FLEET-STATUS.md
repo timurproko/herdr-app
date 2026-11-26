@@ -17,6 +17,13 @@ The installed tool on each machine must answer
 path/mtime/size identity controls reuse of that exact probe, rechecked before
 application. Help/version age cannot authorize it. Unsupported Crew disables the
 row with a short machine-named reason; no install/update is performed.
+The row stays a plain switch during normal checking, application and success;
+only finished failures/refusals or confirmed unreachable machines add one short
+line per machine, without a Pending/progress badge. Internal pending/lease facts
+remain independent of this quiet projection. Held capability, discovery, read and
+set fixtures resume on the existing lifecycle; abandoned reads recover after the
+18-second command allowance. These fixtures reproduce transitional Pending, not
+a permanent application stall or the duration/cause of the original screenshot.
 
 The getter is `crew config worker-space` scoped through `CREW_HOME` to an already
 known root; it must return `worker-space: combined` or `worker-space: per-project`.

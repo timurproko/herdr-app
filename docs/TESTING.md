@@ -1225,7 +1225,10 @@ production Crew transport and policy with **fake Crew only** for the seven cases
 on, off, capability missing, one refused home, offline then reachable, a later home
 and restart persistence. These include several homes per machine, strict v1
 success/refusal parsing, superseded intent serialization, committed-but-lost reply
-readback, bounded catalog overflow and no disabled follow-ups. No installed Crew,
+readback, bounded catalog overflow and no disabled follow-ups. Held capability,
+discovery, read and set phases assert quiet progress and eventual completion;
+a lost read continuation is replaced after its command lease and its late reply
+cannot write. No permanent stall is reproduced in these cases. No installed Crew,
 real registry, coordinator or credential is used.
 
 `node --experimental-vm-modules tests/crew-worker-review.test.mjs` covers both
@@ -1248,8 +1251,8 @@ The opt-in `tests/features/worker-space-native.mjs --run --output <outside-check
 --zoom 1|1.3` requires `HERDR_APP_BIN` to name the provided verified App 0.1.18 copy.
 It checks release metadata/archive SHA-256, extracted executable byte equality and
 version, installs nothing, deploys only a disposable app home, and blocks all real
-Crew/Core control and unrelated subprocesses. It captures off, on and machine-named
-refusal with the real Settings row/toggle/badge, registry and policy, using synthetic
+Crew/Core control and unrelated subprocesses. It captures off, applying, on and machine-named
+refusal with the real plain Settings row/toggle, registry and policy, using synthetic
 in-memory home modes. A disposable controller invokes the production callback;
 these are native-rendering proofs, not physical pointer/keyboard or live SSH proof.
 Receipts include zoom, hashes, errors and desktop/Core stop acknowledgements. Every

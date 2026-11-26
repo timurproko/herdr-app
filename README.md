@@ -839,8 +839,10 @@ stores one global preference: off/default combines Crew workers; on gives each
 project its own space for new work. It is independent of fleet attachment and the
 selected machine. Running agents stay where they are; reviews and replacements
 inherit their original placement. The switch displays saved intent, not a single
-home's observed mode. Machine-named status identifies incomplete application;
-unsupported Crew leaves the switch disabled rather than guessing support. Every
+home's observed mode. Normal background application and success add no status
+lines. Only a completed failure, refusal, unsupported Crew or unreachable machine
+adds one short line naming that machine; no Pending badge is shown.
+Unsupported Crew leaves the switch disabled rather than guessing support. Every
 known local or connected-machine home is reconciled through Crew's explicit-home
 setter after its installed v1 capability probe succeeds. New homes and returning
 machines receive current intent without another click. Home paths, observations
