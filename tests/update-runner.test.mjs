@@ -208,7 +208,12 @@ try {
       });
       return child;
     };
-    const result = await runUpdate(h.home, token, { userHome: h.userHome, run: h.run, spawn, deadlineMs: kind === 'timeout' ? 1000 : 30000, kill: () => { killed = true; } });
+    // The old 1-second deadline included synchronous Git bootstrap. A loaded
+    // Windows runner could expire before dispatch, so no child existed to kill.
+    // Control the post-dispatch timer instead of racing wall-clock Git speed.
+    const result = await runUpdate(h.home, token, { userHome: h.userHome, run: h.run, spawn, deadlineMs: 300000,
+      ...(kind === 'timeout' ? { setTimer: fn => setImmediate(fn), clearTimer: clearImmediate } : {}),
+      kill: () => { killed = true; } });
     assert.equal(result.state, kind === 'success' ? 'complete' : kind === 'partial' ? 'partial' : ['missing', 'wrong-token', 'timeout', 'installer-timeout'].includes(kind) ? 'unknown' : 'failed', kind);
     assert.equal(fs.existsSync(p.lock), result.state === 'unknown', kind);
     assert.equal(killed, kind === 'timeout');
@@ -245,6 +250,7 @@ try {
   git(old.author, 'add', '.'); git(old.author, 'commit', '-m', 'legacy CLI'); git(old.author, 'push'); git(old.root, 'pull', '--ff-only');
   const before = git(old.root, 'rev-parse', 'HEAD');
   for (const name of ['deploy-all.mjs', 'deploy-all-worker.cjs']) put(`tools/${name}`, fs.readFileSync(path.join(project, 'tools', name)));
+  put('src/services/updates/update-worker.cjs', fs.readFileSync(path.join(project, 'src/services/updates/update-worker.cjs')));
   git(old.author, 'add', '.'); git(old.author, 'commit', '-m', 'published result protocol'); git(old.author, 'push');
   const target = git(old.author, 'rev-parse', 'HEAD');
   const preload = path.join(old.base, 'mock-hc.cjs');
@@ -259,6 +265,12 @@ try {
   assert.equal(upgraded.state, 'complete', JSON.stringify(upgraded)); assert.equal(fs.existsSync(launched.p.lock), false);
   assert.equal(read(launched.p.result).token, launched.token); assert.equal(inspect(old.home).revision, target);
   assert.equal(fs.existsSync(path.join(old.home, 'legacy-cli-ran')), false, 'legacy CLI must not be loaded even for a protocol probe');
+  // A distinct pre-dispatch deadline path must not spawn or claim it killed a child.
+  const expired = setup(), expiredJob = pending(expired);
+  const expiredState = await runUpdate(expired.home, expiredJob.token, { userHome: expired.userHome, run: expired.run,
+    now: () => read(expiredJob.p.status).started + 300001, deadlineMs: 300000,
+    spawn() { assert.fail('expired bootstrap must not dispatch'); }, kill() { assert.fail('no child exists'); } });
+  assert.equal(expiredState.state, 'unknown'); assert.equal(fs.existsSync(expiredJob.p.lock), true);
   const unsupported = setup(), unsupportedJob = pending(unsupported);
   const refused = await runUpdate(unsupported.home, unsupportedJob.token, { userHome: unsupported.userHome, run(program, args, options) { return program === process.execPath ? { code: 0, stdout: '{}' } : unsupported.run(program, args, options); }, spawn() { assert.fail('unsupported result protocol must not deploy'); } });
   assert.equal(refused.state, 'failed'); assert.match(refused.error, /result protocol unavailable/);

@@ -5,6 +5,7 @@ import os from 'node:os';
 import { createHash, randomUUID } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import worker from './deploy-all-worker.cjs';
+import updater from '../src/services/updates/update-worker.cjs';
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const project = path.resolve(directory, '..');
 const MARKER = 'HERDR_DEPLOY_ALL_RESULT=';
@@ -77,12 +78,13 @@ export function manifestDigest(home) {
     return createHash('sha256').update(bytes).digest('hex');
   } catch { return null; }
 }
-export function resultRecorder(env = process.env, dryRun = false) {
+export function resultRecorder(env = process.env, dryRun = false, ioOptions = {}) {
   if (dryRun) return () => {};
   const home = env.HERDR_APP_HOME || path.join(os.homedir(), '.config/herdr-app');
   const file = path.join(home, '.customizations/deploy-all-result.json');
   let previous = null, localRecorded = false;
-  try { previous = JSON.parse(fs.readFileSync(file, 'utf8')); } catch {}
+  try { previous = updater.read(file); } catch {}
+  const runId = env.HERDR_UPDATE_RUN_ID || randomUUID();
   let desktop = previous?.desktop ?? null, target = null;
   const peerName = name => typeof name === 'string' && name !== 'local' && !name.startsWith('(') && name.length <= 200 && name.trim() === name && name.length > 0 && !/[\x00-\x1f\x7f]/.test(name);
   const offline = row => row?.action === 'skipped' && row.outcome !== 'unknown' && /^offline \((?:offline|unreachable|disconnected)\)$/.test(row.reason);
@@ -107,11 +109,8 @@ export function resultRecorder(env = process.env, dryRun = false) {
     } else if (local?.action === 'failed' || error) {
       desktop = desktop ? { ...desktop, verified: false } : null;
     }
-    const value = { version: 1, token: env.HERDR_UPDATE_RUN_ID || null, at: Date.now(), complete, target, desktop, deferredPeers: [...deferred].sort(), results, error };
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    const temp = `${file}.${randomUUID()}.tmp`;
-    try { fs.writeFileSync(temp, JSON.stringify(value, null, 2) + '\n'); fs.renameSync(temp, file); }
-    finally { if (fs.existsSync(temp)) fs.unlinkSync(temp); }
+    const value = { version: 1, runId, token: env.HERDR_UPDATE_RUN_ID || null, at: Date.now(), complete, target, desktop, deferredPeers: [...deferred].sort(), results, error };
+    return updater.atomic(file, value, ioOptions);
   };
 }
 export function deployAll(args = [], { root = project, log = console.log, hostname = os.hostname(), ...options } = {}) {

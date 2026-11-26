@@ -14,6 +14,7 @@ const snapshot = dir => !fs.existsSync(dir) ? null : Object.fromEntries(fs.readd
 try {
   const f = fixture();
   for (const name of ['deploy-all.mjs','deploy-all-worker.cjs']) write(path.join(f.author,'tools',name),fs.readFileSync(path.join(project,'tools',name)));
+  write(path.join(f.author,'src/services/updates/update-worker.cjs'),fs.readFileSync(path.join(project,'src/services/updates/update-worker.cjs')));
   write(path.join(f.author,'.gitignore'),'dist/\n');
   write(path.join(f.author,'package.json'),JSON.stringify({type:'module',scripts:{
     deploy:'node tools/check-host-api.mjs && node tools/build.mjs && node tools/deploy.mjs deploy',

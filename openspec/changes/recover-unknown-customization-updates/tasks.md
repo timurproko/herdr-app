@@ -2,11 +2,11 @@
 
 ## 1. Sharing-tolerant updater persistence
 
-- [ ] 1.1 Add canonical bounded sharing-error retry/read/atomic helpers in the self-contained worker and reuse them in deploy-all receipt publication; fault-injection fixtures prove transient rename recovery and persistent-rename in-place fallback both leave a complete final receipt.
-- [ ] 1.2 Preserve and accept validated same-run complete recovery content when destination publication also fails; fixtures reject stale, foreign, malformed and redirected candidates and prove dry-run remains byte-preserving.
-- [ ] 1.3 Apply bounded IO handling to status, check, runner and lock helpers without weakening exclusive creation or token checks; tests cover all write sites, unreadable-state refusal, single-read descriptor closure, EEXIST and aggregate request budgets.
-- [ ] 1.4 Update synthetic checkout dependencies and packaging assertions for shared helpers; targeted deployment/runner checks prove no deployed worker imports its source checkout and no fixture falls through to real hc.
-- [ ] 1.5 Document publication/fallback behavior and permanent-storage limits in docs/COMMANDS.md; inspect the delivered command text against the fault cases and add a real locked-target disposable Windows fixture where the runner supports it.
+- [x] 1.1 Add canonical bounded sharing-error retry/read/atomic helpers in the self-contained worker and reuse them in deploy-all receipt publication; fault-injection fixtures prove transient rename recovery and persistent-rename in-place fallback both leave a complete final receipt.
+- [x] 1.2 Preserve and accept validated same-run complete recovery content when destination publication also fails; fixtures reject stale, foreign, malformed and redirected candidates and prove dry-run remains byte-preserving.
+- [x] 1.3 Apply bounded IO handling to status, check, runner and lock helpers without weakening exclusive creation or token checks; tests cover all write sites, unreadable-state refusal, single-read descriptor closure, EEXIST and aggregate request budgets.
+- [x] 1.4 Update synthetic checkout dependencies and packaging assertions for shared helpers; targeted deployment/runner checks prove no deployed worker imports its source checkout and no fixture falls through to real hc.
+- [x] 1.5 Document publication/fallback behavior and permanent-storage limits in docs/COMMANDS.md; inspect the delivered command text against the fault cases and add a real locked-target disposable Windows fixture where the runner supports it.
 
 ## 2. Precise settlement of dead unknown runs
 

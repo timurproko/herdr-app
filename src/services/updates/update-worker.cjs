@@ -31,16 +31,85 @@ function deferredPeers(result) {
     : (Array.isArray(result?.results) ? result.results : []).filter(row => peerSkipKind(row) === 'offline').map(row => row.machine);
   return [...new Set(saved.filter(name => typeof name === 'string' && name !== 'local' && !name.startsWith('(') && name.length <= 200 && name.trim() === name && name.length > 0 && !/[\x00-\x1f\x7f]/.test(name)).slice(0, 256))];
 }
-const read = file => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
+const sharing = error => ['EPERM', 'EBUSY', 'EACCES'].includes(error?.code);
+const pause = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+function retryIO(operation, { budget = 3000, sleep = pause } = {}) {
+  // Bounded attempt count even with a clock jump; only one-shot Node workers.
+  let waited = 0, delay = 25;
+  for (;;) {
+    try { return operation(); }
+    catch (error) {
+      if (!sharing(error) || waited >= budget) throw error;
+      const wait = Math.min(delay, budget - waited);
+      sleep(wait); waited += wait; delay = Math.min(200, delay * 2);
+    }
+  }
+}
+function read(file, options = {}) {
+  const io = options.io || fs;
+  try {
+    return retryIO(() => {
+      const text = io.readFileSync(file, 'utf8'); // closed before parsing
+      try { return JSON.parse(text); }
+      catch (error) { error.code = 'EBUSY'; throw error; }
+    }, { budget: 150, ...options });
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw error; // unreadable is not absent, particularly for locks/status
+  }
+}
+function acquire(file, value, options = {}) {
+  const io = options.io || fs;
+  const fd = retryIO(() => io.openSync(file, 'wx'), options);
+  try { retryIO(() => io.writeFileSync(fd, JSON.stringify(value)), options); }
+  finally { io.closeSync(fd); }
+}
+const remove = file => retryIO(() => fs.unlinkSync(file));
 function files(home) {
   const dir = path.join(path.resolve(home), '.customizations');
   return Object.fromEntries(Object.entries({ dir: '', status: 'update-status.json', lock: 'update.lock', log: 'update.log', runner: 'update-runner.cjs', result: 'deploy-all-result.json', check: 'update-check.json', checkLock: 'update-check.lock', manifest: 'manifest.json' }).map(([key, name]) => [key, path.join(dir, name)]));
 }
-function atomic(file, value) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
+function atomic(file, value, options = {}) {
+  const io = options.io || fs, policy = { ...options, budget: options.budget ?? 2500 };
+  retryIO(() => io.mkdirSync(path.dirname(file), { recursive: true }), policy);
   const temp = `${file}.${randomUUID()}.tmp`;
-  try { fs.writeFileSync(temp, typeof value === 'string' ? value : JSON.stringify(value, null, 2) + '\n'); fs.renameSync(temp, file); }
-  finally { if (fs.existsSync(temp)) fs.unlinkSync(temp); }
+  const text = typeof value === 'string' ? value : JSON.stringify(value, null, 2) + '\n';
+  retryIO(() => io.writeFileSync(temp, text), policy);
+  try { retryIO(() => io.renameSync(temp, file), policy); }
+  catch (error) {
+    if (!sharing(error)) throw error;
+    try { retryIO(() => io.writeFileSync(file, text), { ...options, budget: 500 }); }
+    catch (fallback) {
+      // Only receipts have a recovery reader. Other publication fails closed.
+      if (value?.complete === true) return { recovery: temp };
+      throw fallback;
+    }
+  }
+  try { if (io.existsSync(temp)) retryIO(() => io.unlinkSync(temp), { ...options, budget: 100 }); } catch {}
+  return { recovery: null };
+}
+function readResult(p, job, options = {}) {
+  noRedirect(p.dir);
+  let primary, unreadable;
+  try { primary = read(p.result, options); } catch (error) { unreadable = error; }
+  const token = job?.token || primary?.token, runId = primary?.runId;
+  if (primary?.complete === true) return primary;
+  if (!token && !runId) { if (unreadable) throw unreadable; return primary; }
+  const prefix = path.basename(p.result) + '.', candidates = [];
+  if (!fs.existsSync(p.dir)) return primary;
+  for (const name of fs.readdirSync(p.dir).filter(name => name.startsWith(prefix) && /^[a-f0-9-]{36}\.tmp$/.test(name.slice(prefix.length))).slice(0, 64)) {
+    const file = path.join(p.dir, name), stat = fs.lstatSync(file);
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 1024 * 1024) continue;
+    let candidate; try { candidate = read(file, options); } catch { continue; }
+    if (candidate?.version !== 1 || candidate.complete !== true || !Array.isArray(candidate.results)
+        || !Number.isFinite(candidate.at) || candidate.at < (job?.started || primary?.at || 0)
+        || (token ? candidate.token !== token : candidate.runId !== runId)
+        || (runId && candidate.runId !== runId)) continue;
+    candidates.push(candidate);
+  }
+  if (candidates.length) return candidates.sort((a, b) => b.at - a.at)[0];
+  if (unreadable) throw unreadable;
+  return primary;
 }
 const shortError = error => String(error?.message || error || 'Update failed').replace(/[\x00-\x1f\x7f]/g, ' ').slice(0, 160);
 function command(program, args, options = {}) {
@@ -52,7 +121,7 @@ function alive(pid) {
   try { process.kill(pid, 0); return true; } catch (error) { return error.code !== 'ESRCH'; }
 }
 function unlock(p, token) {
-  if (read(p.lock)?.token === token) fs.unlinkSync(p.lock);
+  if (read(p.lock)?.token === token) remove(p.lock);
 }
 function installedRevision(p, result) {
   const desktop = result?.desktop;
@@ -77,8 +146,9 @@ function deploymentTarget(job, result) {
   return [local?.commit, result.target].find(value => typeof value === 'string' && /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i.test(value)) || null;
 }
 function inspect(home, { now = Date.now, isAlive = alive } = {}) {
-  const p = files(home), result = read(p.result);
+  const p = files(home);
   let job = read(p.status);
+  const result = readResult(p, job);
   // A lost supervisor may leave a complete CLI result. Never accept another run's
   // result or remove an uncertain lock just because a PID no longer exists.
   if (job && ['running', 'unknown'].includes(job.state) && !isAlive(job.pid) && !isAlive(job.childPid)
@@ -135,15 +205,14 @@ function checkMain(home, { force = false, invalidate = false, now = Date.now, ra
   const reused = cached(snapshot); if (reused) return reused;
   fs.mkdirSync(p.dir, { recursive: true });
   const held = read(p.checkLock);
-  if (held && held.until <= now() && read(p.checkLock)?.token === held.token) fs.unlinkSync(p.checkLock);
-  let fd;
-  try { fd = fs.openSync(p.checkLock, 'wx'); }
+  if (held && held.until <= now() && read(p.checkLock)?.token === held.token) remove(p.checkLock);
+  const token = randomUUID();
+  try { acquire(p.checkLock, { token, until: now() + 20000 }); }
   catch (error) {
     if (error.code === 'EEXIST') return { ...inspect(home, { now }),
       ...(invalidate ? { retryAfter:Math.max(now() + 300, read(p.checkLock)?.until || now() + 20000) } : {}) };
     throw error;
   }
-  const token = randomUUID(); fs.writeFileSync(fd, JSON.stringify({ token, until: now() + 20000 })); fs.closeSync(fd);
   const attempted = now();
   try {
     // Recheck after exclusive acquisition: another process can have completed
@@ -162,7 +231,7 @@ function checkMain(home, { force = false, invalidate = false, now = Date.now, ra
   } catch {
     const count = Math.min(4, failures(previous) + 1);
     atomic(p.check, { ...previous, attempted, nextAttempt: attempted + checkDelay(count, random), failures: count, error: 'Check failed. Try again.' });
-  } finally { if (read(p.checkLock)?.token === token) fs.unlinkSync(p.checkLock); }
+  } finally { if (read(p.checkLock)?.token === token) remove(p.checkLock); }
   return inspect(home, { now });
 }
 function noRedirect(file) {
@@ -214,7 +283,7 @@ function killTree(pid) {
   if (process.platform === 'win32') command('taskkill.exe', ['/pid', String(pid), '/t', '/f'], { timeout: 10000 });
   else try { process.kill(-pid, 'SIGKILL'); } catch { /* already exited */ }
 }
-async function runUpdate(home, token, { userHome, run = command, spawn = cp.spawn, now = Date.now, kill = killTree, deadlineMs = DEADLINE } = {}) {
+async function runUpdate(home, token, { userHome, run = command, spawn = cp.spawn, now = Date.now, kill = killTree, deadlineMs = DEADLINE, setTimer = setTimeout, clearTimer = clearTimeout } = {}) {
   const p = files(home);
   let job = read(p.status);
   if (job?.token !== token || read(p.lock)?.token !== token || job.state !== 'running') throw Error('Update launch identity changed');
@@ -237,7 +306,7 @@ async function runUpdate(home, token, { userHome, run = command, spawn = cp.spaw
     return await new Promise(resolve => {
       let child, timer, settled = false;
       const done = (state, error, release = state !== 'unknown') => {
-        if (settled) return; settled = true; clearTimeout(timer);
+        if (settled) return; settled = true; clearTimer(timer);
         resolve(finish(state, error, release));
       };
       const fd = fs.openSync(p.log, 'a');
@@ -252,13 +321,13 @@ async function runUpdate(home, token, { userHome, run = command, spawn = cp.spaw
       job = { ...job, childPid: child.pid }; atomic(p.status, job);
       child.once('error', error => done('failed', error));
       child.once('exit', code => {
-        const result = read(p.result);
+        const result = readResult(p, job);
         if (result?.token !== token || result.complete !== true) return done('unknown', 'No final deployment result; inspect log', false);
         const final = outcome(result);
         if (code !== 0 && final.state === 'complete') return done('unknown', 'Deployment exit disagrees with result; inspect log', false);
         done(final.state, final.error);
       });
-      timer = setTimeout(() => {
+      timer = setTimer(() => {
         log('Update deadline exceeded; dispatched remote outcomes may be unknown. No automatic retry.');
         kill(child.pid); done('unknown', 'Update deadline exceeded; inspect log', false);
       }, Math.max(1, job.deadline - now()));
@@ -271,11 +340,9 @@ async function launch(home, { spawn = cp.spawn, source = fs.readFileSync(__filen
   // cannot replay a tokenless CLI timeout whose descendants may still be alive.
   if (current.job?.state === 'unknown' || current.lastRun?.state === 'unknown' || current.peerUnknown) return current;
   fs.mkdirSync(p.dir, { recursive: true });
-  let fd;
-  try { fd = fs.openSync(p.lock, 'wx'); }
-  catch (error) { if (error.code === 'EEXIST') return inspect(home); throw error; }
   const token = randomUUID();
-  fs.writeFileSync(fd, JSON.stringify({ token })); fs.closeSync(fd);
+  try { acquire(p.lock, { token }); }
+  catch (error) { if (error.code === 'EEXIST') return inspect(home); throw error; }
   let job = { token, state: 'running', phase: 'starting', started: now(), deadline: now() + DEADLINE, log: p.log };
   let dispatched = false;
   try {
@@ -304,7 +371,7 @@ async function launch(home, { spawn = cp.spawn, source = fs.readFileSync(__filen
     return inspect(home);
   }
 }
-module.exports = { REPOSITORY, DEADLINE, CHECK_MIN, CHECK_MAX, RETRY_MAX, INVALIDATE_MIN, BUSY_CHECK_RETRY, nextAttempt, checkDelay, files, read, atomic, command, installedRevision, inspect, checkMain, prepareClone, peerSkipKind, deferredPeers, outcome, launch, runUpdate };
+module.exports = { retryIO, acquire, remove, readResult, REPOSITORY, DEADLINE, CHECK_MIN, CHECK_MAX, RETRY_MAX, INVALIDATE_MIN, BUSY_CHECK_RETRY, nextAttempt, checkDelay, files, read, atomic, command, installedRevision, inspect, checkMain, prepareClone, peerSkipKind, deferredPeers, outcome, launch, runUpdate };
 if (require.main === module) {
   if (process.argv[2] === '--run') runUpdate(process.argv[3], process.argv[4]).catch(error => { console.error(shortError(error)); process.exitCode = 1; });
   else {

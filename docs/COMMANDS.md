@@ -142,6 +142,15 @@ timeout after dispatch means outcome unknown: inspect the machine before retryin
 There is no automatic retry or rollback, or cross-machine transaction; retain the
 printed backup IDs and use the existing recovery commands below.
 
+Updater IO retries EPERM/EBUSY/EACCES with short backoff. Replacement is preferred;
+after 2.5 seconds it attempts in-place publication for up to another 0.5 seconds.
+If both fail, a closed complete result temp file is retained and the same-run reader
+can accept it rather than staying on an incomplete receipt. Readers close each read
+and briefly retry sharing errors or incomplete JSON; unreadable locks/status never
+count as absent. Exclusive lock creation and token checks are unchanged. Permanent
+disk/permission failures are still reported honestly; no persistence guarantee can
+survive unwritable storage, and complete recovery evidence is never discarded.
+
 ### Settings customization updater
 
 The Updates row launches one terminal-free detached Node runner; the mod does not
