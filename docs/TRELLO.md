@@ -85,6 +85,11 @@ Expand **Allowed boards → Add boards** to discover visible boards by name. Tic
 only the boards agents may use and press **Add**; discovery, search and Cancel
 never grant scope. The main list’s **Remove** revokes one saved grant. Incomplete
 discovery is labeled and never erases unseen grants. There is no all-boards option.
+Account and allowed-board names are saved as bounded non-secret hints beside the
+private setup. Reopening the card reads those names without contacting Trello.
+Legacy/headless setup without names needs one explicit **Requirements → Check**;
+it verifies the account and hydrates missing allowed-board names. Incomplete results
+never erase unseen grants. Hints are not portable preferences or authorization.
 The requirement becomes Ready only with saved credentials and at least one allowed
 board; local Ready does not claim an unverified token is still valid.
 
@@ -119,7 +124,8 @@ Protect it for your OS user only (Unix: `chmod 600`); use a private current-user
 ACL on Windows. Import with `herdr-trello setup --input <private-file>`. Alternatively,
 feed the same JSON over protected stdin, not an echoed shell-history command.
 Remove the input copy when you no longer need it. Rotation is explicit:
-`herdr-trello setup --rotate --input <private-file>`. Invalid existing stores are
+`herdr-trello setup --rotate --input <private-file>`. Rotation clears board/write
+authority and old display names; add grants again explicitly. Invalid existing stores are
 not silently replaced; inspect and fix local storage before trying again.
 
 Installed launchers already supply the deployment's `--home`; do not supply a

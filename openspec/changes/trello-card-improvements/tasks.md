@@ -1,6 +1,6 @@
 # Tasks
 
-These six groups match the draft PR's Implementation outcomes in the same order. All are unimplemented. Plan approval must explicitly accept the offline-access and legacy-name limits in `proposal.md`; no production deployment or real-account/SSH testing is authorized.
+These six groups match the draft PR's Implementation outcomes in the same order. The coordinator approved implementation and accepted all four listed limits, including offline last-acknowledged authority and explicit legacy-name hydration. No production deployment or real-account/SSH testing is authorized.
 
 ## 1. Protected Windows storage and actionable diagnostics
 
@@ -12,10 +12,10 @@ These six groups match the draft PR's Implementation outcomes in the same order.
 
 ## 2. Durable account and board names without background requests
 
-- [ ] 2.1 Add bounded versioned protected display metadata bound to credentials and allowed boards; owner tests cover schema, Unicode, secret echoes, stale revisions and malformed hints without inherited grants.
-- [ ] 2.2 Persist account hints on verified save/check and board hints on explicit discovery/add; owner tests cover remove/rotate invalidation, incomplete inventory retention and interrupted CAS transitions.
-- [ ] 2.3 Return validated persisted names in status and consume them in fresh Settings views; reopen/machine-switch tests require account/board names with zero injected provider calls.
-- [ ] 2.4 Implement explicit missing-name hydration without implicit initial requests; owner/Settings fixtures cover legacy setup and headless rotation, and the Trello guide documents the one-time explicit Check limit.
+- [x] 2.1 Add bounded versioned protected display metadata bound to credentials and allowed boards; owner tests cover schema, Unicode, secret echoes, stale revisions and malformed hints without inherited grants.
+- [x] 2.2 Persist account hints on verified save/check and board hints on explicit discovery/add; owner tests cover remove/rotate invalidation, incomplete inventory retention and interrupted CAS transitions.
+- [x] 2.3 Return validated persisted names in status and consume them in fresh Settings views; reopen/machine-switch tests require account/board names with zero injected provider calls.
+- [x] 2.4 Implement explicit missing-name hydration without implicit initial requests; owner/Settings fixtures cover legacy setup and headless rotation, and the Trello guide documents the one-time explicit Check limit.
 
 ## 3. Self-sufficient installed CLI help
 

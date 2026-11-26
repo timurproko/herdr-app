@@ -398,7 +398,7 @@ export function recheckAllPlugins(view, cx) {
   for (const key of Object.keys(view.pluginFixError ?? {})) delete view.pluginFixError[key];
   reloadPlugins(view, cx);
 }
-export function reloadPlugins(view, cx, only = null, checkingTarget = null) {
+export function reloadPlugins(view, cx, only = null, checkingTarget = null, {reason = 'automatic'} = {}) {
   if(view.pluginClosed)return;
   for (const plugin of PLUGINS) {
     if (!plugin.prerequisites?.length || (only && plugin.id !== only)) continue;
@@ -414,7 +414,7 @@ export function reloadPlugins(view, cx, only = null, checkingTarget = null) {
       cx.spawn(async cx=>{
         const alive=()=>!view.pluginClosed&&(view.settingsMachine??null)===machine&&view.pluginChecks[plugin.id]?.groups?.[group]===round;
         if(!alive())return;
-        const context=viewContext(view,plugin,alive,machine);
+        const context={...viewContext(view,plugin,alive,machine),checkReason:reason};
         // Keep the registry's checking/error boundary, but run only this group.
         // Context/memoized workers and completion tokens never span groups.
         const items=await checkPlugin({...plugin,prerequisites:selected.map(pre=>({...pre,check:()=>pre.check(context)}))});
@@ -426,6 +426,8 @@ export function reloadPlugins(view, cx, only = null, checkingTarget = null) {
         const groups={...current.groups,[group]:{...round,loading:false,checked:true}};
         view.pluginChecks[plugin.id]={...current,groups,loading:Object.values(groups).some(state=>state.loading),
           items:plugin.prerequisites.map(pre=>byId.get(pre.id)??{...pre,status:null})};
+        if (group === 'requirements' && items.some(item => item.refreshSections === true))
+          for (const pre of plugin.prerequisites.filter(pre => pre.section)) reloadPlugins(view, cx, plugin.id, pre.id);
         cx.notify();
       });
     }
@@ -501,7 +503,7 @@ function requirements(view, t, plugin) {
     (_e, cx) => {
       if(view.pluginFixing||groupState(view.pluginChecks[plugin.id],'requirements').loading)return;
       for(const item of items)delete view.pluginFixError[`${plugin.id}:${item.id}`];
-      reloadPlugins(view, cx, plugin.id,'requirements'); cx.notify();
+      reloadPlugins(view, cx, plugin.id,'requirements', {reason:'manual'}); cx.notify();
     }, !checking.loading&&!view.pluginFixing);
   const installAll = fixable.length > 1
     ? actionButton(t, `st-plugin-${plugin.id}-fix-all`, 'Install all', (_e, cx) => runFixes(view, cx, plugin, fixable), { enabled: !view.pluginFixing })

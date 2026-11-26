@@ -38,7 +38,7 @@ Add a bounded versioned private metadata record alongside credentials/policy, wi
 
 Save/verify records the account. Committed board addition records verified board names. Explicit discovery may refresh existing allowed-board names but cannot grant or remove scope. Remove/rotate clears credential-bound hints; board removal removes its hint. Interrupted transitions may lose hints/authority, never inherit another account's grants. A malformed metadata record is a distinct local metadata problem, not proof credentials are absent and not permission to silently replace unrelated files.
 
-All ordinary opening and machine-switch checks read saved status only. Shared check context gains a generic invocation reason so explicit Requirements Check can verify the account and hydrate missing allowed-board names through bounded allowed-board reads. Initial/recheck-after-action status is not treated as a click. Verify does not change grants or write authority.
+All ordinary opening and machine-switch checks read saved status only. Shared check context gains a generic invocation reason so explicit Requirements Check can verify the account and hydrate missing allowed-board names from a bounded explicit owner inventory read, retaining only already-granted IDs. Initial/recheck-after-action status is not treated as a click. Verify does not change grants or write authority.
 
 **Legacy limit:** old credentials and IDs do not encode names. They require one explicit Check, after which names persist across openings. Until then show concise Check-needed status, not invented account names or Saved board ID rows. No silent network migration is permitted. Headless setup remains supported and documents the same first-verification path.
 

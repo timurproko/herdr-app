@@ -23,6 +23,12 @@ function validate(name, v) {
   if (name === 'policy') ok = exact(v, ['version', 'boards', 'allowWrites']) && v.version === 1 && typeof v.allowWrites === 'boolean' &&
     Array.isArray(v.boards) && v.boards.length <= 100 && v.boards.every(id) && new Set(v.boards).size === v.boards.length;
   if (name === 'cooldown') ok = exact(v, ['version', 'retryAt']) && v.version === 1 && Number.isSafeInteger(v.retryAt) && v.retryAt >= 0;
+  if (name === 'display') {
+    const text = (s, max) => typeof s === 'string' && s.length > 0 && s.length <= max && !/[\u0000-\u001f\u007f]/.test(s);
+    ok = exact(v, ['version', 'credentialTag', 'account', 'boards']) && v.version === 1 && /^[a-f0-9]{64}$/.test(v.credentialTag) &&
+      (v.account === null || exact(v.account, ['id', 'username', 'name']) && id(v.account.id) && text(v.account.username, 256) && text(v.account.name, 256)) &&
+      Array.isArray(v.boards) && v.boards.length <= 100 && v.boards.every(b => exact(b, ['id', 'label']) && id(b.id) && text(b.label, 1024)) && new Set(v.boards.map(b => b.id)).size === v.boards.length;
+  }
   if (!ok) fail('STORE_MALFORMED');
   return v;
 }
@@ -65,7 +71,7 @@ function security(file, create = false, directory = false) {
 }
 class Store {
   constructor(home, options = {}) { this.home = homePath(home); this.dir = path.join(this.home, '.customizations', 'trello'); this.security = options.security || security; }
-  file(name) { if (!['credentials', 'policy', 'cooldown'].includes(name)) fail('INPUT'); return path.join(this.dir, name + '.json'); }
+  file(name) { if (!['credentials', 'policy', 'cooldown', 'display'].includes(name)) fail('INPUT'); return path.join(this.dir, name + '.json'); }
   directory(create = false) {
     try {
       safePath(this.dir);
@@ -86,12 +92,13 @@ class Store {
       const s = stat(file);
       if (!s) { if (optional) return null; fail('STORE_MISSING'); }
       if (!s.isFile() || s.nlink !== 1) fail('STORE_UNSAFE_PATH');
-      if (s.size > 32768) fail('STORE_MALFORMED');
+      const max = name === 'display' ? 262144 : 32768;
+      if (s.size > max) fail('STORE_MALFORMED');
       this.security(file);
       fd = fs.openSync(file, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0));
       const opened = fs.fstatSync(fd);
       if (!opened.isFile() || opened.nlink !== 1 || opened.dev !== s.dev || opened.ino !== s.ino) fail('STORE_UNSAFE_PATH');
-      if (opened.size > 32768) fail('STORE_MALFORMED');
+      if (opened.size > max) fail('STORE_MALFORMED');
       let value; try { value = JSON.parse(fs.readFileSync(fd, 'utf8')); } catch (e) { if (e instanceof SyntaxError) fail('STORE_MALFORMED'); throw e; }
       return validate(name, value);
     } catch (e) { storageError(e); } finally { if (fd !== undefined) fs.closeSync(fd); }

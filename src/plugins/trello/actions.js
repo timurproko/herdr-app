@@ -39,6 +39,11 @@ function data(result) {
   if (typeof d?.configured !== 'boolean' || !REV.test(d.revision) || typeof d.localWrites !== 'boolean' || !Number.isInteger(d.allowedBoards) || d.allowedBoards < 0 || d.allowedBoards > 100 || !Array.isArray(d.boards) || d.boards.length !== d.allowedBoards || d.boards.some(b => !ID.test(b)) || new Set(d.boards).size !== d.boards.length) throw Error('Private Trello status was invalid. Check the local installation.');
   const clean = {configured: d.configured, revision: d.revision, localWrites: d.localWrites, allowedBoards: d.allowedBoards, boards: d.boards};
   if (d.account && ID.test(d.account.id) && [d.account.username, d.account.name].every(s => typeof s === 'string' && s.length > 0 && s.length <= 256 && !/[\u0000-\u001f\u007f]/.test(s))) clean.account = {id: d.account.id, username: d.account.username, name: d.account.name};
+  if (d.namedBoards !== undefined) {
+    if (!Array.isArray(d.namedBoards) || d.namedBoards.length > 100 || d.namedBoards.some(b => !ID.test(b?.id) || !d.boards.includes(b.id) || typeof b.label !== 'string' || !b.label || b.label.length > 1024 || /[\u0000-\u001f\u007f]/.test(b.label))) throw Error('Saved board names were invalid. Check private setup.');
+    clean.namedBoards = d.namedBoards.map(b => ({id: b.id, label: b.label}));
+  }
+  clean.namesMissing = d.namesMissing === true;
   if (d.items !== undefined) {
     if (!Array.isArray(d.items) || d.items.length > 1000 || typeof d.complete !== 'boolean' || d.items.some(b => !ID.test(b?.id) || typeof b.label !== 'string' || b.label.length > 1024 || /[\u0000-\u001f\u007f]/.test(b.label) || typeof b.closed !== 'boolean')) throw Error('Trello board inventory was invalid.');
     clean.items = d.items.map(b => ({id: b.id, label: b.label, closed: b.closed})); clean.complete = d.complete;
@@ -51,6 +56,7 @@ function remember(cx, d, reset = false) {
   h.revision = d.revision;
   if (d.account) h.account = d.account;
   if (d.items) for (const b of d.items) h.names.set(b.id, b.label);
+  if (d.namedBoards) for (const b of d.namedBoards) h.names.set(b.id, b.label);
   if (!d.configured) { h.names.clear(); h.account = null; }
   return h;
 }
@@ -68,10 +74,12 @@ export async function localStatus(cx = {}) {
   if (checking()) return {status: 'recommended', detail: 'Private setup is checked only in the running app.', configured: null, usable: false};
   try {
     const r = await exec('node', [`${appHome()}/.customizations/runtime/lib/trello/owner.cjs`, '--status', appHome()], {timeout: 30000});
-    const d = data(JSON.parse(r.stdout));
+    let d = data(JSON.parse(r.stdout));
+    const verified = d.configured && cx.checkReason === 'manual' && cx.enabled?.() !== false;
+    if (verified) d = await invoke(cx, 'verify', d.revision);
     if (cx.isCurrent?.() === false) return {status: 'missing', detail: 'Settings changed. Check again.', usable: false};
     const h = remember(cx, d), saved = h.account ? `Saved · ${h.account.name} (@${h.account.username})` : 'Credentials saved';
-    return {...d, status: d.configured && d.allowedBoards ? 'ready' : 'missing', usable: d.configured,
+    return {...d, refreshSections: verified, status: d.configured && d.allowedBoards ? 'ready' : 'missing', usable: d.configured,
       detail: !d.configured ? 'Enter an API key and user token below, then choose allowed boards.' : `${saved} · ${d.allowedBoards} allowed boards · ${d.localWrites ? 'Local writes permitted' : 'Local read-only policy'}.`};
   } catch (e) { return {status: 'error', detail: e instanceof SyntaxError ? 'Install the Trello runtime through normal full deployment.' : (Object.values(safeErrors).includes(e?.message) ? e.message : 'Local Trello status could not be read. Check Node.js and protected setup.'), configured: null, problem: e.code ?? 'INTERNAL', usable: false}; }
 }
@@ -86,7 +94,7 @@ export async function credentialAction(cx, values, item, action) {
 export async function boardCheck(cx) {
   const d = await localStatus(cx), h = hints(cx);
   return {...d, statusLabel: d.configured ? `${d.allowedBoards} allowed` : null,
-    rows: (d.boards ?? []).map(id => ({id, label: h.names.get(id) ?? `Saved board ${id}`})),
+    rows: (d.boards ?? []).map(id => ({id, label: h.names.get(id) ?? 'Check to load name'})),
     detail: cx.machine != null ? remote : d.status === 'error' ? d.detail : d.configured ? 'Only these boards are available to agents. Add boards by name; Remove revokes that board’s local permission.' : 'Save credentials above before choosing boards.'};
 }
 export async function boardCandidates(cx) {

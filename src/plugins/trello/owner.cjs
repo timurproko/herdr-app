@@ -16,13 +16,30 @@ function snapshot(store) {
   const exists = fs.existsSync(store.dir);
   const credentials = exists ? store.read('credentials', true) : null;
   const policy = exists ? store.read('policy', true) : null;
-  const revision = crypto.createHash('sha256').update(JSON.stringify([credentials, policy])).digest('hex');
-  return {credentials, policy, revision};
+  const display = exists ? store.read('display', true) : null;
+  const revision = crypto.createHash('sha256').update(JSON.stringify([credentials, policy, display])).digest('hex');
+  return {credentials, policy, display, revision};
+}
+const credentialTag = credentials => crypto.createHash('sha256').update(JSON.stringify(credentials)).digest('hex');
+function displayFor(s) {
+  const d = s.credentials && s.display?.credentialTag === credentialTag(s.credentials) ? s.display : null;
+  return {account: d?.account ?? null, boards: (d?.boards ?? []).filter(b => s.policy?.boards.includes(b.id))};
 }
 function publicStatus(s) {
+  const named = displayFor(s), boards = s.policy?.boards ?? [];
   return {configured: s.credentials !== null, storage: s.credentials === null ? 'missing' : 'ready', revision: s.revision,
-    allowedBoards: s.policy?.boards.length ?? 0, localWrites: s.policy?.allowWrites ?? false,
-    boards: s.policy?.boards ?? []};
+    allowedBoards: boards.length, localWrites: s.policy?.allowWrites ?? false, boards,
+    ...(named.account ? {account: named.account} : {}), namedBoards: named.boards,
+    namesMissing: Boolean(s.credentials && (!named.account || boards.some(id => !named.boards.some(b => b.id === id))))};
+}
+function writeDisplay(store, previous, credentials, policy, account, items = []) {
+  const old = displayFor({...previous, credentials, policy});
+  const names = new Map(old.boards.map(b => [b.id, b.label]));
+  for (const b of items) if (policy.boards.includes(b.id)) names.set(b.id, b.label);
+  const next = {version: 1, credentialTag: credentialTag(credentials), account: account ?? old.account,
+    boards: policy.boards.filter(id => names.has(id)).map(id => ({id, label: names.get(id)}))};
+  if ([credentials.apiKey, credentials.token].some(secret => JSON.stringify(next.account).includes(secret) || JSON.stringify(next.boards).includes(secret))) fail('RESPONSE');
+  if (JSON.stringify(next) !== JSON.stringify(previous.display)) store.write('display', next, previous.display);
 }
 function expected(store, revision) {
   const s = snapshot(store);
@@ -72,30 +89,43 @@ async function operate(input, {store, ...io}) {
       expected(store, s.revision);
       store.write('policy', defaults(), s.policy);
       store.write('credentials', credentials, s.credentials);
+      // A different account never inherits former names, even with reused grants.
+      writeDisplay(store, {...s, credentials: null, policy: null, display: s.display}, credentials, defaults(), account);
     });
     return {...publicStatus(snapshot(store)), account};
   }
   if (!s.credentials) fail('STORE_MISSING');
   if (input.action === 'verify') {
-    const account = await identity(client(store, s, s.credentials, io));
-    return {...publicStatus(expected(store, s.revision)), account};
+    const c = client(store, s, s.credentials, io), account = await identity(c);
+    // Only explicit verification hydrates missing legacy board names.
+    const items = publicStatus(s).namesMissing && s.policy?.boards.length ? (await inventory(c)).items : [];
+    store.withLock(() => { expected(store, s.revision); writeDisplay(store, s, s.credentials, s.policy ?? defaults(), account, items); });
+    return publicStatus(snapshot(store));
   }
   if (input.action === 'remove') {
-    store.withLock(() => { expected(store, s.revision); store.write('policy', defaults(), s.policy); store.remove('credentials', s.credentials); });
+    store.withLock(() => { expected(store, s.revision); store.write('policy', defaults(), s.policy); if (s.display) store.remove('display', s.display); store.remove('credentials', s.credentials); });
     return {...publicStatus(snapshot(store)), removed: true};
   }
-  if (input.action === 'discover') return {...publicStatus(s), ...await inventory(client(store, s, s.credentials, io))};
+  if (input.action === 'discover') {
+    const found = await inventory(client(store, s, s.credentials, io));
+    store.withLock(() => { expected(store, s.revision); writeDisplay(store, s, s.credentials, s.policy ?? defaults(), null, found.items); });
+    return {...publicStatus(snapshot(store)), ...found};
+  }
   const adds = input.add ?? [], removes = input.remove ?? [];
   if (![adds, removes].every(a => Array.isArray(a) && a.length <= 100 && a.every(id) && new Set(a).size === a.length) || adds.some(b => removes.includes(b)) || input.allowWrites !== undefined && typeof input.allowWrites !== 'boolean') fail('INPUT');
   const policy = structuredClone(s.policy ?? defaults());
   policy.boards = [...new Set([...policy.boards.filter(b => !removes.includes(b)), ...adds])];
   if (input.allowWrites !== undefined) policy.allowWrites = input.allowWrites;
   validate('policy', policy);
+  let items = [];
   if (adds.length) {
-    const found = await inventory(client(store, s, s.credentials, io));
-    if (adds.some(b => !found.items.some(item => item.id === b))) fail('SCOPE');
+    const found = await inventory(client(store, s, s.credentials, io)); items = found.items;
+    if (adds.some(b => !items.some(item => item.id === b))) fail('SCOPE');
   }
-  store.withLock(() => { expected(store, s.revision); store.write('policy', policy, s.policy); });
+  store.withLock(() => {
+    expected(store, s.revision); store.write('policy', policy, s.policy);
+    writeDisplay(store, s, s.credentials, policy, null, items);
+  });
   return publicStatus(snapshot(store));
 }
 async function execute(input, options = {}) {

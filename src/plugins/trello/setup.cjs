@@ -9,9 +9,13 @@ function setup(store, input, rotate = false) {
   const old = store.read('credentials', true);
   if ((old !== null) !== rotate) fail('CONFLICT');
   // Validate existing policy before replacing credentials; never silently repair it.
-  const policy = store.read('policy', true);
-  if (!policy) store.write('policy', defaultPolicy());
-  store.write('credentials', value, old);
+  const policy = store.read('policy', true), display = store.read('display', true);
+  store.withLock(() => {
+    if (JSON.stringify(store.read('credentials', true)) !== JSON.stringify(old)) fail('CONFLICT');
+    if (rotate || !policy) store.write('policy', defaultPolicy(), policy);
+    if (display) store.remove('display', display);
+    store.write('credentials', value, old);
+  });
   return {configured: true, rotated: rotate};
 }
 function configure(store, action, value) {

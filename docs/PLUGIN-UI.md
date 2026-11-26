@@ -130,7 +130,10 @@ results may contain public `detail` only, never input echoes. The renderer does
 not display thrown exception text from secret actions.
 
 Action/check context includes captured `machine` (`null` for this computer) and
-`isCurrent()`. `result(id)` reads that view’s latest prerequisite result and an
+`isCurrent()`. Check context also has `checkReason: 'automatic' | 'manual'`:
+only an explicit Requirements Check is manual, not opening or an action recheck.
+A requirement returning `refreshSections: true` refreshes its list sections after
+publication without rerunning Requirements. `result(id)` reads that view’s latest prerequisite result and an
 opaque `session` object permits non-secret view/machine-local hint memoization.
 `machineScoped: true` on a plugin rechecks it on header-machine
 changes without a portable machine setting. A form action additionally receives
