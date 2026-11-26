@@ -752,8 +752,8 @@ pairing alone waits for successful verification; names never invent a link. The 
 switches on this page also save immediately; close actions and empty-space
 reconciliation read their current values without waiting for Settings to close.
 Fleet verification failures and discarded replies retain sanitized reason/time/generation
-facts in runtime-only `custom.fleet.diagnostics`. Hover the Git **Loading** bulb
-or **Stale** indicator for the last relevant failure. Empty verification uses the
+facts in runtime-only `custom.fleet.diagnostics`. Hover the Git cold **Loading** bulb
+or warm header activity bulb for the last relevant failure; no Stale label is shown. Empty verification uses the
 ordinary blue working bulb and **Loading**, without extra header text; a cold
 candidate never invents attachment or a PR list.
 The local `.customizations/fleet-verification.log` keeps at most 128 lines / 64 KiB,
@@ -846,10 +846,10 @@ background. Only completed contradictory evidence, disabling the feature or
 missing native spaces clears it; transport failures alone do not.
 Retained visuals are not action permission: pair moves and Git/worker actions
 still require fresh exact live identity. An unverified coordinator Git panel keeps
-its loaded rows and folds with **Stale**, or shows the standard **Loading** bulb
+its loaded rows and folds with a native working bulb in the header, or shows the standard **Loading** bulb
 without special header text on cold start. After off/on, a slow or failed first
 read shows **Loading**, not **Not a git repository**, for the current coordinator
-candidate. Off clears the inventory; on never restores a previous list as Stale.
+candidate. Off clears the inventory; on never restores a previous toggle's list.
 Only authoritative negative evidence for the current dependency identity returns
 to ordinary folder Git; a previous owner's result cannot suppress Loading. No new GitHub
 reads or worker navigation are allowed until verification succeeds.

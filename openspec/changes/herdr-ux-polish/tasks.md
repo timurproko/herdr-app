@@ -19,7 +19,7 @@ Approved by the person: multi-child support and warm header-only activity, with 
 
 ## 4. Coordinator Git without Stale
 
-- [ ] 4.1 Remove Stale header text without changing stale-context read/action guards; verify retained rows, refused stale reads/actions and diagnostic plumbing, and update relevant documentation.
+- [x] 4.1 Remove Stale header text without changing stale-context read/action guards; verify retained rows, refused stale reads/actions and diagnostic plumbing, and update relevant documentation.
 
 ## 5. Coherent cold loading and warm header activity
 

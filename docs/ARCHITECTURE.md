@@ -229,7 +229,7 @@ failure remains evidence, not action permission. Reasons are allowlisted; numeri
 exit/timeout facts and bounded native owner/space references are allowed, never raw
 process errors, task inventories, home paths, transcripts or credentials. Generic
 presentation context carries only the relevant sanitized verification fact; Git
-uses the standard panel Loading bulb's tooltip, or the retained Stale tooltip,
+uses the cold panel Loading bulb's tooltip, or the retained header activity tooltip,
 without importing Crew code. Empty verification adds no special header text. A uniquely
 routed cold coordinator hint can route Loading even before a failure, with empty links, not a pair,
 verified home or GitHub/worker authority.
@@ -272,11 +272,11 @@ leases are not fresh verification. Space-only block ordering uses the displayed
 remembered link, revalidating exact captured pair identity and native acknowledgements
 at commit. This exception reorders spaces only; it never permits terminal/tab moves,
 worker navigation, messages or coordinator colour writes from remembered identity. Git requests presentation context
-only to retain already-loaded same-home rows/counts/folds with a Stale badge, or a
+only to retain already-loaded same-home rows/counts/folds with native header activity, or a
 standard Loading bulb with no extra header label or restored inventory on cold start.
 There is no cross-toggle identity/inventory cache. Off or a scope change clears
 the aggregate's entries; on shows Loading until fresh verification and facts arrive.
-Existing same-context outages retain their pre-existing Stale meaning only.
+Same-context outages retain presentation only, never fresh action permission or Stale text.
 Enabled current coordinator candidates pending verification or retry never fall
 back to ordinary folder Git. Only a witnessed completed negative whose dependency
 signature still matches the current native snapshot suppresses Loading. Old owner
@@ -288,7 +288,7 @@ changes cannot inherit those rows. Git additionally matches the successfully
 verified live-task membership, independently of the pair/adoption fingerprint: a
 Core-first worker exit cannot silently remove its PR before Crew publishes the
 closed record. A working/finished mismatch remains unverified rather than renewing
-action freshness, while existing same-home rows stay explicitly stale.
+action freshness, while existing same-home rows remain unverified with header activity.
 
 Spaces accepts multiple verified same-machine children per coordinator through the
 existing registry contribution. Crew placement v1 validates `crew.space.version=1`,
