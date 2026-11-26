@@ -7,9 +7,12 @@
 // identity labels) or refuses with the reason; the only thing it ever writes is the crew
 // home itself, the first time.
 import { hc, shared, setShared, panes, terminals, pluginMod } from '../api.js';
-import { refreshFleets, fleetContexts, fleetWitnessMachines, fleetPullContext, fleetColorAllowed, fleetLinks, invalidateFleet } from './fleet.js';
+import { refreshFleets, fleetContexts, fleetWitnessMachines, fleetPullContext, fleetColorAllowed, fleetLinks, invalidateFleet, knownFleetHomes } from './fleet.js';
 import { fleetError } from './fleet-diagnostics.js';
 import { fleetStatusScript } from './fleet-command.js';
+import { workerSpaceRows, WORKER_SPACE_SETTING } from './worker-space-state.js';
+import { refreshWorkerSpaces, invalidateWorkerSpaces, observeWorkerHome } from './worker-space.js';
+import { workerSpaceScript } from './worker-space-command.js';
 
 const winPath = path => String(path).replace(/\//g, '\\');
 const CHECK_TIMEOUT = 15, INSTALL_TIMEOUT = 300;
@@ -498,6 +501,10 @@ const crewProbe = (cx, remote) => once(cx, `crew:${remote ? 'remote' : 'local'}`
   const r = await ps(cx, crewProbeScript({ remote }), remote ? 30 : CHECK_TIMEOUT);
   if (r.code !== 0) return { error: tail(r.stderr) || `Exited with ${r.code}.` };
   const probe = parseCrewProbe(r.stdout), key = machineOf(cx);
+  // An inspected existing root is queued for scoped mode/capability validation,
+  // never treated as current application proof. Legacy names are allowlisted.
+  if(probe.home && (!probe.legacy || ['crew','home'].includes(probe.old)))
+    observeWorkerHome(key, probe.legacy ? `${probe.root}/${probe.old}` : probe.root);
   const previous = projectToolFacts.get(key);
   projectToolFacts.set(key, { revision: probe.revision,
     outdated: Boolean(probe.revision && (remote ? probe.latest && probe.latest !== probe.revision
@@ -887,6 +894,13 @@ export async function prepareCoordinatorLaunch(launch) {
   const saved = (await claudeAccounts(cx)).accounts.map(a => a.email);
   const stored = String(cx.setting?.('claudeAccount') ?? '').trim();
   const account = saved.includes(stored) ? stored : saved[0] ?? '';
+  // Ask Crew for the actual root from its returned launch folder, rather than
+  // guessing it by stripping a cwd suffix. Observation failure cannot authorize
+  // anything or change the existing coordinator launch decision.
+  try {
+    const seen = await powershell(machine, workerSpaceScript(crewCommandPrelude(), {kind:'discover',cwd:homeFolder}), {timeout:CHECK_TIMEOUT});
+    if(seen.code===0)observeWorkerHome(machine,json(seen.stdout)?.home);
+  } catch { /* A later successful inspection/status can supply the root. */ }
   return { cwd: homeFolder, labels, env: { PATH: `${winPath(probe.tool)};${probe.path}`, ...(account ? { CREW_CLAUDE_ACCOUNT: account } : {}) } };
 }
 
@@ -913,7 +927,9 @@ export default {
   icon: 'agent',
   description: 'Run a coordinator agent that hands work to worker agents, each in its own terminal and working copy.',
   defaultEnabled: false,
+  settingsRows: workerSpaceRows,
   settings: [
+    { key: WORKER_SPACE_SETTING, type: 'toggle', hidden: true, default: false },
     // Shown at the top of Requirements: it is where everything in that list is checked and installed.
     { key: 'machine', type: 'machine', place: 'requirements', default: null, label: 'Machine' },
     // A dropdown of the accounts saved on that machine (read each time the requirements are
@@ -977,12 +993,15 @@ export default {
     PROJECTS,
   ],
   hooks: {},
-  lifecycle: { 'spaces.refresh': refreshFleetContext },
+  lifecycle: { 'spaces.refresh': refreshFleetContext,
+    'workspace.settings.refresh': context => refreshWorkerSpaces({...context,knownHomes:knownFleetHomes}, (machine, request) =>
+      powershell(machine, workerSpaceScript(crewCommandPrelude(), request), {timeout:15})) },
+  onSettingChange: key => { if (key === WORKER_SPACE_SETTING) invalidateWorkerSpaces(); },
   events: { 'workspace.context.refresh': requestFleetContext },
   workspaceLinks: ({presentation = false} = {}) => fleetContexts({presentation}).flatMap(fleetLinks),
   guards: { 'spaces.color': ({pair}) => fleetColorAllowed(pair) },
   pullContext: ({space,presentation = false}) => fleetPullContext(space,{presentation}),
-  onEnabledChange: invalidateFleet,
+  onEnabledChange: () => { invalidateFleet(); invalidateWorkerSpaces(); },
   // The Spaces sidebar's tag for a space the coordinator or crew workers run in.
   spaceTags: space => {
     const display = fleetContexts({presentation:true});

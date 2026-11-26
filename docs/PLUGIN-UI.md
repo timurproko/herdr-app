@@ -247,6 +247,18 @@ belongs to, then Add), the description, and one row per item with **Remove** on 
 - A deep link `{ section, search }` (Settings props `pluginSection`, `pluginSearch`) opens
   an items picker filtered to that search.
 
+## Settings section rows
+
+An enabled plugin can declare `settingsRows(section, context)` returning toggle rows
+`{key, title, about, available, statuses}`. The key binds an existing hidden typed
+plugin setting; Settings uses `pluginSettingsRows(section)` and the standard row,
+toggle and status badge, not plugin-rendered UI. Status entries contain public
+`machine`, `detail`, `label` and `status` facts. Queries must be effect-free. Captured
+change callbacks recheck plugin enablement and current availability before saving.
+Crew contributes its single global project-space choice to `spaces`; selected
+machine and fleet attachment do not scope this preference. Private target/status
+state stays outside portable plugin settings.
+
 ## Space tags
 
 `spaceTags(space, cx)` → `[{ label, tooltip? }]`: small pills at the right edge of a space's row

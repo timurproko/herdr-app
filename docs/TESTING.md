@@ -39,6 +39,16 @@ can satisfy GitHub protection, so metadata events must not publish a replacement
 aggregate; the latest non-cancelled ready run must still pass all dependencies.
 These live observations are separate from the local regression matrix.
 
+`node tests/deploy-all-cleanup.test.mjs` holds a disposable subprocess cwd while
+requesting complete fixture removal. This reproduces Windows' transient `EPERM`
+without native apps or real deployment. Shared deploy-all cleanup uses five bounded
+100ms-increment retries and still throws on permanent removal failure; the test
+asserts the directory is actually gone. `tests/deploy-all-pipeline.test.mjs` retains
+all real disposable CLI/npm pipeline assertions. Crew's declaration regression
+explicitly checks the hidden default-off global intent and unchanged visible card
+controls; the Start-page fixture separately supplies the Settings badge/contribution
+imports while keeping all independent last-tab and launch assertions.
+
 ## Connected project Spaces and coherent coordinator inventory
 
 `spaces-worktree-layout.test.mjs` covers the approved adaptive metadata grid:
@@ -1137,6 +1147,46 @@ packaging. `tools/measure-git-render.mjs` records five disposable native render-
 samples for complete 30/60/100/200 mounted trees, deliberately bypassing the runtime
 cap; warm mode warms only pure caches, never native callbacks. It records native
 interruptions honestly. These are not live desktop paint/input timings or deployment evidence.
+
+## Global Crew worker-space fixtures
+
+`node --experimental-vm-modules tests/crew-worker-space.test.mjs` exercises the
+production registry and Spaces contribution: default/off, on/off, saved intent,
+restart/export/import, disabled callbacks and effect-free rendering.
+`node --experimental-vm-modules tests/crew-worker-policy.test.mjs` drives the
+production Crew transport and policy with **fake Crew only** for the seven cases:
+on, off, capability missing, one refused home, offline then reachable, a later home
+and restart persistence. These include several homes per machine, strict v1
+success/refusal parsing, superseded intent serialization, committed-but-lost reply
+readback, bounded catalog overflow and no disabled follow-ups. No installed Crew,
+real registry, coordinator or credential is used.
+
+`node --experimental-vm-modules tests/crew-worker-review.test.mjs` covers both
+blocking review findings through production plugin/lifecycle paths. Existing
+validated display roots and status observations must join a distinct default home
+with attachment off, remain pending until scoped reads, and survive display pruning.
+Real successful inspection/preparation paths must feed observations without direct
+test calls to the observer. Combined supersession/timeout cases hold an old setter,
+change intent, return timeout at 15 seconds, publish its old value at 17 seconds,
+and forbid new reads/writes/confirmation until its 18-second bound, including
+plugin disable/re-enable. All six cases fail on the pre-fix implementation.
+
+`node tests/crew-worker-command.test.mjs` checks fixed command grammar everywhere;
+on Windows it also runs the actual PowerShell wrappers against a disposable fake
+Node CLI, including cached capability and both modes. Targeted fleet-toggle and
+fleet-refresh suites preserve the existing sidebar lifecycle and identity guards;
+`workspace.settings.refresh` reuses that lifecycle, not another timer.
+
+The opt-in `tests/features/worker-space-native.mjs --run --output <outside-checkout>
+--zoom 1|1.3` requires `HERDR_APP_BIN` to name the provided verified App 0.1.18 copy.
+It checks release metadata/archive SHA-256, extracted executable byte equality and
+version, installs nothing, deploys only a disposable app home, and blocks all real
+Crew/Core control and unrelated subprocesses. It captures off, on and machine-named
+refusal with the real Settings row/toggle/badge, registry and policy, using synthetic
+in-memory home modes. A disposable controller invokes the production callback;
+these are native-rendering proofs, not physical pointer/keyboard or live SSH proof.
+Receipts include zoom, hashes, errors and desktop/Core stop acknowledgements. Every
+started disposable instance is stopped in finally; no real setting is changed.
 
 ## Connected fleet fixtures
 
