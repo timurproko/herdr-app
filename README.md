@@ -620,14 +620,15 @@ PRs keep their usual icons. Push events also refresh facts after base-branch cha
 
 Managed review labels supply one tight bottom-right plain chip: **Build**,
 **Review** or **Approved**, independently of CI and GitHub's separate review decision.
-It uses stage-coloured text on the existing subtle raised background, 2px side
-padding, no emoji or outline, and leaves the entire title content width free. The
+It uses stage-coloured text on the existing subtle raised background, 6px side
+padding, no emoji, outline or hover tooltip, and leaves the entire title content width free. The
 compatibility snapshot follows MyWorkflows `labels/base.json`: stable role
 `review-changes-needed` accepts Build and previous names Rework / Changes needed;
 `under-review` accepts Review / Under review; `review-approved` accepts Approved.
 Each accepts the plain name or its `🤖 ` prefix. Unknown labels are not guessed
 from colour or substrings. Managed aliases collapse to the canonical name without
-renaming GitHub labels; raw aliases remain in hover. Unrelated labels keep their names.
+renaming GitHub labels. Stage aliases, agent names and findings do not create chip or
+parent-label hover popups; unrelated labels keep their names and informative hover.
 Approved means the managed review label is assigned, not that CI passed; the
 existing checks item and GitHub's required checks communicate and gate CI.
 Build resolves `crew.kind=ship` or `fix` terminals through their full `crew.pr`
@@ -638,7 +639,7 @@ require that exact terminal/task to remain in the freshly verified same-home
 membership; a review task need not have its own recorded PR. Ended, unavailable
 or disconnected targets grant no focus; a disconnected target identifies its
 machine. Optional `crew.round` advances the Build caption (completed round 1
-shows **Build 2**); `crew.finding` remains informative hover. Missing metadata
+shows **Build 2**); `crew.finding` remains source metadata, not hover text. Missing metadata
 invents no round or finding. `crew.approved` is read as metadata, never a fourth stage or
 permission to infer Approved from CI.
 
@@ -646,7 +647,7 @@ The bottom-right **Build** chip focuses the build terminal; **Review** focuses t
 reviewer. **Approved** has no agent action: clicking it opens the PR through the
 row, even while checks are pending or failed. There is no approved/CI-running
 stage or Review check CI chip. Build/Review chips dim when their exact target
-ends, is unavailable, or its machine is disconnected, and explain why on hover;
+ends, is unavailable, or its machine is disconnected, and expose why through accessibility labels;
 clicking a dimmed chip does nothing. Coordinator rows retain their last verified
 same-home target only for explanations after membership becomes stale or a task
 finishes. That bounded runtime memory cannot focus an agent, start reads, cross
@@ -656,8 +657,19 @@ there is no duplicate title chip or 80px reservation.
 Motion previews never navigate. The no-label robot retains its original 24px hit
 target and immediate pin-navigation behavior.
 
-Without a managed stage, PRs with a related live agent show a white/foreground robot beside
-the title, matching the Agents sidebar. The original colored PR icon stays.
+Without a managed stage, an Open/Draft PR with a verified live `crew.kind=ship`
+or `fix` target shows **Build** in that same bottom-right slot, not a title robot.
+This includes a planning-only task with its linked PR: Build identifies its build
+owner, not permission to implement or a claim of progress. No linked PR means no
+row. Missing/invalid `crew.round` keeps **Build**; completed rounds 1 and 2 produce
+**Build 2** and **Build 3**. The earlier first-build robot came from requiring an
+assigned managed GitHub label before resolving a stage, not from missing round
+data. Assigned Review/Approved still takes precedence; historical-only or
+unlabelled Closed/Merged rows invent no Build. Existing exact live role/membership
+checks remain necessary for focus.
+
+Other PRs without a managed stage may retain the white/foreground related-agent
+navigation robot beside the title, matching the Agents sidebar. The original colored PR icon stays.
 The robot uses the usual rounded inset-icon hover tint, distinct from the
 row's hover, with a tooltip only for a known agent name; clicking opens
 the agent's existing tab without opening GitHub.

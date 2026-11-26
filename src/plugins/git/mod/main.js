@@ -842,50 +842,54 @@ export default class Changes extends View {
   }
 
   stageDescriptor(pr) {
-    if(!pr.stage)return null;
-    const role=pr.stage==='approved'?null:pr.stage,repo=pr.repo??this.repo?.name,context=this.context;
+    // Initial ship/fix work has no managed GitHub label yet. Resolve the same
+    // build-owner action without writing an inferred stage into cached facts.
+    if(!pr.stage && !['open','draft'].includes(pr.state))return null;
+    const stage=pr.stage??'build';
+    const role=stage==='approved'?null:stage,repo=pr.repo??this.repo?.name,context=this.context;
     const scope=this.aggregate?.context?.scope;
-    const target=role && pr.key?(this.aggregate?.stagePresentation?this.aggregate.stagePresentation(pr,role,this.agentLinks,this.agentPresentation):this.aggregate?.stageTarget?.(pr,role,this.agentLinks,this.agentPresentation)):null;
+    const target=role && pr.key?(pr.stage&&this.aggregate?.stagePresentation?this.aggregate.stagePresentation(pr,role,this.agentLinks,this.agentPresentation):this.aggregate?.stageTarget?.(pr,role,this.agentLinks,this.agentPresentation)):null;
     const agent=role?(pr.key?target?.agent:this.agentLinks?.related?.(pr,repo,location().terminal,role,undefined,this.agentPresentation)):null;
     const available=agent?.availability==='live';
+    if(!pr.stage && (!available || !['ship','fix'].includes(agent?.crew?.kind)))return null;
     const round=role==='build'?agent?.crew?.round:null;
-    const label=stageLabels(pr).find(label=>label.stage);
+    const label=stageLabels({...pr,stage}).find(label=>label.stage);
     if(!label)return null;
     const caption=role==='build'&&round?`Build ${round+1}`:label.name;
-    return {role,repo,context,scope,target,agent,available,round,label:{...label,name:caption}};
+    return {stage,role,repo,context,scope,target,agent,available,round,label:{...label,name:caption}};
   }
 
   stageChip(t, pr, interactive = true, probe = false, descriptor = this.stageDescriptor(pr)) {
     if(!descriptor)return null;
-    const {role,repo,context,scope,target,agent,available,round,label}=descriptor;
-    const history=round?`Build ${round+1}${agent?.crew?.finding?`\nback from review ${round}: ${agent.crew.finding}`:''}`:null;
+    const {role,repo,context,scope,target,agent,available,label}=descriptor;
     const reason=!role||available?null:agent?.availability==='disconnected'?`on ${agent.on}, not connected`
       :agent?.availability==='ended'?(role==='review'?'reviewer ended without a verdict':`build agent ended${pr.checks?.state?` - CI ${pr.checks.state}`:''}`)
       :role==='review'?'reviewer unavailable':'build agent unavailable';
-    const aliases=[...new Set(label.assignedNames??[label.assignedName])].filter(name=>name&&name!==label.name);
-    const tooltip=[...aliases,history,reason,
-      available&&agent.displayName?`Open agent: ${agent.displayName}`:null].filter(Boolean).join('\n');
     const activate=(_event,cx)=>{
       cx.stop_propagation();const press=this.agentPress;this.agentPress=null;
       if(this.context!==context || !this.shown())return;
       if(!role){this.openPull(pr);return;}
       if(!available)return;
-      if(pr.key) {this.aggregate?.focus(pr,target,scope,this.agentLinks,current=>this.beginAgentMotion(pr,press,current.agent,cx,STAGE_CONTROL_OFFSET));return;}
+      if(pr.key) {
+        const latest=this.aggregate?.entries?.get(pr.key)?.pr;
+        if(!pr.stage && (!latest || !['open','draft'].includes(latest.state)))return;
+        this.aggregate?.focus(pr,target,scope,this.agentLinks,current=>this.beginAgentMotion(pr,press,current.agent,cx,STAGE_CONTROL_OFFSET));return;
+      }
       if(key()!==context || this.repo?.name!==repo)return;
       const current=this.agentLinks?.related?.(pr,repo,location().terminal,role);
       if(current?.key!==agent.key || current.availability!=='live')return;
       const latest=[...(this.pulls?.open??[]),...(this.pulls?.closed??[]),this.relatedPull].find(row=>row?.number===pr.number);
+      if(!pr.stage && (!latest || !['open','draft'].includes(latest.state)))return;
       if(latest && latest.stage!==pr.stage)return;
       this.beginAgentMotion(pr,press,current,cx,STAGE_CONTROL_OFFSET);
       run('agent.focus',{terminal:current.address});
     };
     const color=pr.stage==='approved'?t.ansi2:role==='review'?t.ansi5:t.ansi3;
     return div().id(`${probe?'probe-':interactive?'':'swap-'}pr-stage-${pr.key??pr.number}`)
-      .h(18).min_w(0).max_w_full().px(2).flex_none().flex().items_center().rounded(U.insetRadius)
+      .h(18).min_w(0).max_w_full().px(6).flex_none().flex().items_center().rounded(U.insetRadius)
       .bg(t.raised).text_color(color).text_size(U.meta).overflow_hidden()
       .child(div().h(18).min_w(0).overflow_hidden().whitespace_nowrap().child(label.name))
-      .when(Boolean(!probe&&role&&!available),el=>el.opacity(0.45).cursor_default())
-      .when(Boolean(!probe&&tooltip),el=>el.tooltip(tooltip))
+      .when(Boolean(!probe&&role&&!available),el=>el.opacity(0.45).cursor_default().accessibility_label(reason))
       .when(interactive,el=>el
         .on_mouse_down('left',(event,cx)=>{
           cx.stop_propagation();
@@ -1007,16 +1011,21 @@ export default class Changes extends View {
     };
     this.rowPresentations ??= new RowPresentations();
     const {widths,ready,compact,visible}=this.rowPresentations.layout(id,sizes,items,clipOrder);
+    const hiddenItems=items.filter((item,index)=>item.omitted||(ready&&widths[index]===0)).map(item=>item.tooltip).filter(Boolean);
+    // A stage must not inherit any popup region, even one about unrelated data.
+    // Move omitted-item summaries to a surviving left-run item in such lines.
+    const scoped=items.some(item=>item.scopedTooltip),summaryAt=scoped?visible.find(index=>!items[index].trailing):null;
     const line = h_flex().id(id).w_full().min_w(0).h(18).flex_none().gap(6).items_center()
       .overflow_hidden().line_height('18px').text_size(11).text_color(t.muted)
       .on_size_change((size, cx) => measure('available', size, cx))
       .children(visible.flatMap((index, at) => {
         const item=items[index];
         const hidden=compact.has(item.kind)||(ready&&widths[index]+0.01<sizes[`${item.kind}-full`])||item.omitted;
-        const tooltip=item.info||(hidden?item.tooltip:null);
-        const node = item.render(compact.has(item.kind), false).flex_none()
+        const ownTooltip=item.info||(hidden?item.tooltip:null);
+        const tooltip=index===summaryAt?[...new Set([ownTooltip,...hiddenItems].filter(Boolean))].join('\n'):ownTooltip;
+        const node = item.render(compact.has(item.kind), false, tooltip).flex_none()
           .when(ready && clipOrder.includes(item.kind), el => el.w(widths[index]))
-          .when(Boolean(tooltip),el=>el.tooltip(tooltip));
+          .when(Boolean(tooltip&&!item.scopedTooltip),el=>el.tooltip(tooltip));
         // The flexible slot owns only the free space, never the task/check
         // cells. There is one normal gap, but no dot, before assigned labels.
         if (item.trailing) return [h_flex().id(`${id}-right`).flex_1().min_w(0).h(18).justify_end().overflow_hidden().child(node)];
@@ -1024,8 +1033,7 @@ export default class Changes extends View {
       }));
     // These absolute invisible children are outside the visible run, so their
     // text never adds a line, gap, hover target or horizontal reservation.
-    const hidden=items.filter((item,index)=>item.omitted||(ready&&widths[index]===0)).map(item=>item.tooltip).filter(Boolean);
-    if(hidden.length)line.tooltip(hidden.join('\n'));
+    if(!scoped&&hiddenItems.length)line.tooltip(hiddenItems.join('\n'));
     const pending = items.flatMap(item => [false, ...(item.compact ? [true] : [])].flatMap(short => {
         const key = keyed ? textKey(item, short) : null;
         if (key && (this.pullTextWidths.has(key) || this.pullTextPending.has(key))) return [];
@@ -1085,12 +1093,12 @@ export default class Changes extends View {
 
   renderPullRow(t, pr, ghost = false) {
     const prefix = ghost ? 'swap-' : '', rowId = pr.key ?? pr.number;
-    const agentButton = pr.stage?null:this.agentButton(t, pr, !ghost);
+    const stage=this.stageDescriptor(pr);
+    const agentButton = stage?null:this.agentButton(t, pr, !ghost);
     // Cache presentation by immutable fact identity; never retain native rows:
     // their event callbacks belong to the current native snapshot build.
     this.rowPresentations ??= new RowPresentations();
-    const stage=this.stageDescriptor(pr);
-    const labelsFor=row=>stageLabels(row).map(label=>label.stage&&stage?stage.label:label);
+    const labelsFor=row=>stageLabels(stage?{...row,stage:stage.stage}:row).map(label=>label.stage&&stage?stage.label:label);
     const {facts:presentation,id:groupId}=this.rowPresentations.get(pr,this.context?.startsWith('tasks:')?3:Infinity,ghost,labelsFor,stage?.label.name);
     const {labels,labelNames}=presentation;
     const text = (kind, value, probe) => div().id(groupId(kind, probe)).min_w(0).h(18)
@@ -1114,8 +1122,9 @@ export default class Changes extends View {
           .child(div().flex_none().whitespace_nowrap().underline().child(pr.checks.label));
       }}] : []),
       ...(pr.review ? [{kind:'review', measureKey:pr.review, tooltip:presentation.review, render:(_short, probe) => text('review', presentation.review, probe).text_color(pr.review === 'approved' ? t.ansi2 : t.ansi1)}] : []),
-      ...(labels.length ? [{kind:'labels', trailing:true, tooltip:labelNames, omitted:presentation.omittedLabels, measureKey:presentation.labelKey, render:(_short, probe) => h_flex().id(groupId('labels', probe)).min_w(0).h(18).gap(4).items_center().justify_end().overflow_hidden()
-        .children(labels.map((label, index) => label.stage?this.stageChip(t,pr,!ghost&&!probe,probe,stage):this.labelPill(t, label, `${groupId('label', probe)}-${index}`)))}] : []),
+      ...(labels.length ? [{kind:'labels', trailing:true, scopedTooltip:Boolean(stage), tooltip:labelNames, omitted:presentation.omittedLabels, measureKey:presentation.labelKey, render:(_short, probe, tooltip) => h_flex().id(groupId('labels', probe)).min_w(0).h(18).gap(4).items_center().justify_end().overflow_hidden()
+        .children(labels.map((label,index)=>label.stage?this.stageChip(t,pr,!ghost&&!probe,probe,stage):this.labelPill(t,label,`${groupId('label',probe)}-${index}`)
+          .when(Boolean(stage&&!probe&&tooltip),el=>el.tooltip(tooltip))))}] : []),
     ], ['review', 'labels']);
     // Spaces' row padding (8) minus its trailing pill margin (5) leaves 3px inside the highlight.
     return h_flex().id(`${prefix}pr-${rowId}`).relative().w_full().h(74).flex_none().pl(8).pr(3).py(6).gap(U.gap).items_start().rounded(U.radius)

@@ -23,7 +23,8 @@ for(const width of [280,320,360,390,480])for(const zoom of [.75,1,1.25,1.3,1.5,2
   assert.equal(block.height,74*zoom);
   if(stage){
    assert.ok(chip);assert.equal(words(chip).join(''),caption);assert.equal(geometry.get(chip).height,18*zoom);
-   assert.equal(chip.attrs.bg[0],t.raised);assert.equal(chip.attrs.px[0],2,'Plain stage is tight around its text');
+   assert.equal(chip.attrs.bg[0],t.raised);assert.equal(chip.attrs.px[0],6,'Plain stage has comfortable symmetric side padding');
+   assert.equal(chip.attrs.tooltip,undefined,'Stage chips never show hover popups');
    assert.equal(chip.attrs.text_color[0],pr.stage==='approved'?t.ansi2:pr.stage==='review'?t.ansi5:t.ansi3);
    assert.equal(chip.attrs.border_1,undefined);assert.equal(chip.attrs.border_color,undefined);assert.equal(chip.attrs.rounded_full,undefined);assert.equal(chip.attrs.w,undefined);
    assert.equal(words(chip).join('').includes('🤖'),false);
@@ -44,5 +45,28 @@ let row=p.pullRow(t,pr);assert.equal(find(row,'pr-agent-slot-10').attrs.w[0],24)
 p.context='tasks:home';pr={...pr,key:'owner/repo#10',repo:'owner/repo',stage:'build',labels:[...Array.from({length:5},(_,i)=>({name:'Other '+i,color:'#123456'})),{name:'🤖 Rework',color:'#9a6700'},{name:'Review',color:'#840479'}]};
 row=p.pullRow(t,pr);assert.equal(find(row,'pr-agent-slot-owner/repo#10'),undefined);assert.equal(nodes(row).filter(n=>String(n.attrs?.id?.[0]).startsWith('pr-stage-')).length,1);
 assert.equal(words(find(row,'pr-stage-owner/repo#10')).join(''),'Build 2','Stage survives bounded labels and conflicting managed aliases without duplication');
-const aliasHover=find(row,'pr-stage-owner/repo#10').attrs.tooltip[0];assert.ok(aliasHover.includes('🤖 Rework')&&aliasHover.includes('Review'),'Every suppressed managed alias remains available in hover');
+assert.equal(find(row,'pr-stage-owner/repo#10').attrs.tooltip,undefined);
+assert.ok(nodes(row).every(node=>!(node.attrs?.tooltip?.[0]??'').match(/🤖 Rework|Open agent|back from review|^Review$/)),'Stage-only text never leaks through strip or metadata hover');
+for(const width of [280,390])for(const zoom of [1,1.3]) {
+ const {tree}=h.settle(()=>p.pullRow(t,pr),width,zoom);
+ const hints=nodes(tree).map(node=>node.attrs?.tooltip?.[0]).filter(Boolean).join('\n');
+ assert.ok(!/🤖 Rework|Open agent|back from review|^Review$/m.test(hints));
+ assert.match(hints,/Other 4/,'Omitted unrelated label names retain informative hover');
+}
+// A missing GitHub stage must not hide a known build owner, even for a plan.
+agent.crew.kind='ship';
+for(const zoom of [1,1.3])for(const width of [280,390])for(const state of ['open','draft'])for(const coordinator of [false,true])for(const ghost of [false,true])for(const round of [null,1,2]) {
+ h.setZoom(zoom);p.context=coordinator?'tasks:home':'ordinary';agent.crew.round=round;
+ const raw=h.facts.pullRow({number:11,title:state==='draft'?'Planning only':'Initial implementation',state:'OPEN',isDraft:state==='draft',labels:[],url:'https://github.com/owner/repo/pull/11'});
+ if(coordinator)Object.assign(raw,{key:'owner/repo#11',repo:'owner/repo'});
+ const id=raw.key??raw.number,prefix=ghost?'swap-':'';
+ const {tree,geometry}=h.settle(()=>p.pullRow(t,raw,ghost),width,zoom),chip=find(tree,`${prefix}pr-stage-${id}`);
+ assert.ok(chip,'Live build owner without managed labels has a bottom stage');
+ assert.equal(words(chip).join(''),round?`Build ${round+1}`:'Build');
+ assert.equal(find(tree,`${prefix}pr-agent-slot-${id}`),undefined);
+ assert.equal(geometry.get(find(tree,`${prefix}pr-${id}`)).height,74*zoom);
+ assert.equal(chip.attrs.tooltip,undefined);assert.equal(raw.stage,null);assert.deepEqual(raw.labels,[],'Projection never mutates GitHub facts');
+ if(ghost)assert.equal(chip.attrs.on_click,undefined);else assert.ok(chip.attrs.on_click);
+ agent.availability='ended';assert.equal(find(p.pullRow(t,raw),`pr-stage-${id}`),undefined,'No inferred Build from an ended owner');agent.availability='live';
+}
 console.log(`PASS ${count} bottom-stage geometry cases: plain tight stage styling, dynamic build rounds, restored title width, unchanged 74px rows, keyboard/pointer/ghost/probe policy and bounded deduplication`);

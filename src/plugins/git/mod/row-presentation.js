@@ -8,7 +8,8 @@ export class RowPresentations {
       const all=labelsFor(pr),stage=all.find(label=>label.stage);
       let labels=all.slice(0,limit);
       if(stage&&!labels.includes(stage))labels=[...labels.slice(0,Math.max(0,limit-1)),stage];
-      const labelNames=(pr.labels??[]).map(label=>label.name).join('\n');
+      // Stage controls deliberately have no hover, including through parents.
+      const labelNames=all.filter(label=>!label.stage).map(label=>label.name).join('\n');
       entry={signature,labels,labelNames,labelKey:labels.map(label=>label.name).join('\0'),number:`#${pr.number}`,
         taskFraction:pr.tasks?`${pr.tasks.done}/${pr.tasks.total}`:'',review:pr.review?(pr.review==='approved'?'Approved':'Changes requested'):'',
         accessibility:`Open pull request #${pr.number} on GitHub`,ids:new Map()};

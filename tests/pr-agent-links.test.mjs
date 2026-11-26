@@ -337,8 +337,8 @@ for(const [stage,caption,color,address]of [['build','Build','yellow','builder'],
   const ghost=view.pullRow(colors,{...ordinaryStage,stage},true),preview=find(ghost,'swap-pr-stage-1200');assert.ok(preview);assert.equal(preview.attrs.on_click,undefined);assert.equal(preview.attrs.role,undefined);
 }
 ship.labels['crew.round']='1';ship.labels['crew.finding']='fix the guard';ship.labels['crew.approved']='b'.repeat(40);
-let stageChip=find(chipRow('build'),'pr-stage-1200');assert.equal(stageChip.kids[0].kids[0],'Build 2');assert.equal(stageChip.attrs.tooltip[0],'Build 2\nback from review 1: fix the guard');
-ship.labels['crew.round']='2';assert.equal(find(chipRow('build'),'pr-stage-1200').kids[0].kids[0],'Build 3');assert.match(find(chipRow('build'),'pr-stage-1200').attrs.tooltip[0],/Build 3/);
+let stageChip=find(chipRow('build'),'pr-stage-1200');assert.equal(stageChip.kids[0].kids[0],'Build 2');assert.equal(stageChip.attrs.tooltip,undefined,'Supplied round/finding adds no hover popup');
+ship.labels['crew.round']='2';assert.equal(find(chipRow('build'),'pr-stage-1200').kids[0].kids[0],'Build 3');assert.equal(find(chipRow('build'),'pr-stage-1200').attrs.tooltip,undefined);
 delete ship.labels['crew.round'];stageChip=find(chipRow('build'),'pr-stage-1200');assert.equal(stageChip.kids[0].kids[0],'Build');assert.equal(stageChip.attrs.tooltip,undefined);
 for(const state of ['pending','success','failure']) {
   const row=chipRow('approved',{checks:{state,label:'1/2'}}),chip=find(row,'pr-stage-1200');
@@ -349,13 +349,13 @@ for(const state of ['pending','success','failure']) {
 chipOpened=null;
 for(const [stage,terminal,reason]of [['build',ship,'build agent ended - CI failure'],['review',reviewer,'reviewer ended without a verdict']]) {
   terminal.state='finished';const chip=find(chipRow(stage,{checks:{state:'failure',label:'0/1'}}),'pr-stage-1200');
-  assert.equal(chip.attrs.opacity[0],0.45);assert.equal(chip.attrs.tooltip[0],reason);assert.equal(chip.attrs.role,undefined);assert.equal(chip.attrs.cursor_pointer,undefined);
+  assert.equal(chip.attrs.opacity[0],0.45);assert.equal(chip.attrs.tooltip,undefined);assert.equal(chip.attrs.accessibility_label[0],reason);assert.equal(chip.attrs.role,undefined);assert.equal(chip.attrs.cursor_pointer,undefined);
   const before=actions.length;chip.attrs.on_click[0]({},cx);assert.equal(actions.length,before);assert.equal(chipOpened,null);terminal.state='live';
 }
-connected=false;stageChip=find(chipRow('review'),'pr-stage-1200');assert.equal(stageChip.attrs.tooltip[0],'on pc2, not connected');assert.equal(stageChip.attrs.opacity[0],0.45);connected=true;
+connected=false;stageChip=find(chipRow('review'),'pr-stage-1200');assert.equal(stageChip.attrs.tooltip,undefined);assert.equal(stageChip.attrs.accessibility_label[0],'on pc2, not connected');assert.equal(stageChip.attrs.opacity[0],0.45);connected=true;
 const capturedChip=find(chipRow('review'),'pr-stage-1200'),beforeStale=actions.length;
 reviewer.labels['crew.kind']='ship';capturedChip.attrs.on_click[0]({},cx);assert.equal(actions.length,beforeStale,'Changed role refuses stale chip click');reviewer.labels['crew.kind']='review';
-const missing=find(chipRow('review',{number:1209}),'pr-stage-1209');assert.equal(missing.attrs.tooltip[0],'reviewer unavailable');assert.equal(missing.attrs.opacity[0],0.45);
+const missing=find(chipRow('review',{number:1209}),'pr-stage-1209');assert.equal(missing.attrs.tooltip,undefined);assert.equal(missing.attrs.accessibility_label[0],'reviewer unavailable');assert.equal(missing.attrs.opacity[0],0.45);
 // The coordinator renderer uses the same chip through its guarded aggregate.
 taskContext={scope:'role-home',tasks:[{id:'ship',terminal:'builder'},{id:'review',terminal:'pc2/reviewer'}],links:[{url:'https://github.com/owner/repo/pull/1200',terminal:'builder',task:'ship'}]};
 aggregate.context=taskContext;view.aggregate=aggregate;aggregate.entries.get(stagePr.key).pr={...stagePr,stage:'review'};
@@ -366,6 +366,43 @@ assert.equal(aggregate.stageTarget(stagePr,'review',links),null,'Historical-only
 aggregate.entries.get(stagePr.key).link.targets=[{terminal:'builder'}];
 taskContext={...taskContext,stale:true};const staleChip=find(view.pullRow(colors,{...stagePr,stage:'review'}),'pr-stage-owner/repo#1200');assert.equal(staleChip.attrs.opacity[0],0.45);
 const beforeStaleHome=actions.length;aggregateChip.attrs.on_click[0]({},cx);assert.equal(actions.length,beforeStaleHome);
+taskContext=null;
+// Initial Build uses live role evidence, not GitHub label or review-history presence.
+let initialCases=0;
+for(const mode of ['ordinary','coordinator'])for(const state of ['open','draft'])for(const kind of ['ship','fix'])for(const matching of ['pr','branch']) {
+ const number=1900+initialCases++,address=`initial-${number}`,url=`https://github.com/owner/repo/pull/${number}`;
+ const terminal=roleAgent(address,kind,matching==='pr'?url:null),model=new AgentLinks();
+ model.refresh(cx,a=>a===address);await tick();
+ const panel=new main.namespace.default();panel.resetRepository();panel.repo={name:'owner/repo'};panel.root='/repo';panel.context=JSON.stringify([place.cwd,place.on]);panel.view='open';panel.agentLinks=model;
+ const raw={...ordinaryStage,number,url,state,stage:null,labels:[],title:state==='draft'?'Planning only':'First implementation',...(mode==='coordinator'?{key:`owner/repo#${number}`,repo:'owner/repo'}:{})};
+ const group=new AggregatePulls({shown:()=>shown});panel.aggregate=group;
+ const context={scope:`initial-${number}`,tasks:[{id:'task',terminal:address}],links:[{url,terminal:address,task:'task'}]};
+ taskContext=context;group.context=context;group.entries.set(raw.key,{pr:raw,link:{targets:[{terminal:address}]}});panel.pulls.open=[raw];
+ const id=`pr-stage-${raw.key??number}`,render=()=>panel.pullRow(colors,raw),build=()=>find(render(),id);
+ const reads=calls.length;
+ for(const [round,caption]of [[undefined,'Build'],['0','Build'],['invalid','Build'],['1','Build 2'],['2','Build 3']]) {
+  if(round===undefined)delete terminal.labels['crew.round'];else terminal.labels['crew.round']=round;
+  const row=render(),chip=find(row,id);assert.ok(chip);assert.equal(chip.kids[0].kids[0],caption);assert.equal(chip.attrs.tooltip,undefined);
+  assert.equal(find(row,`pr-agent-${raw.key??number}`),undefined);assert.equal(raw.stage,null);assert.deepEqual(raw.labels,[]);
+ }
+ delete terminal.labels['crew.round'];
+ const chip=build(),before=actions.length;chip.attrs.on_click[0]({},cx);assert.equal(actions.length,before+1);assert.equal(actions.at(-1)[1].terminal,address);
+ chip.attrs.on_key_down[0]({key:'enter'},cx);assert.equal(actions.length,before+2,'Initial Build keeps keyboard focus action');
+ const captured=build(),count=actions.length;
+ const replace=row=>{panel.pulls.open=[row];group.entries.get(raw.key).pr=row;};
+ replace({...raw,state:'closed'});captured.attrs.on_click[0]({},cx);assert.equal(actions.length,count,'Closed replacement rejects a captured inferred Build');
+ replace({...raw,stage:'review'});captured.attrs.on_click[0]({},cx);assert.equal(actions.length,count,'Assigned Review supersedes inferred Build');replace(raw);
+ terminal.labels['crew.kind']='review';captured.attrs.on_click[0]({},cx);assert.equal(actions.length,count);assert.equal(build(),undefined,'Reviewer is not guessed to be a builder');terminal.labels['crew.kind']=kind;
+ terminal.labels['crew.pr']='https://github.com/another/repo/pull/'+number;captured.attrs.on_click[0]({},cx);assert.equal(actions.length,count);assert.equal(build(),undefined,'Exact contradictory identity beats branch');
+ if(matching==='pr')terminal.labels['crew.pr']=url;else delete terminal.labels['crew.pr'];
+ terminal.state='finished';assert.equal(build(),undefined);captured.attrs.on_click[0]({},cx);assert.equal(actions.length,count);terminal.state='live';
+ if(mode==='coordinator') {
+  taskContext={...context,stale:true};assert.equal(build(),undefined);captured.attrs.on_click[0]({},cx);assert.equal(actions.length,count);
+  taskContext=context;group.entries.get(raw.key).link.targets=[{terminal:null,historical:true}];assert.equal(build(),undefined);captured.attrs.on_click[0]({},cx);assert.equal(actions.length,count);
+  group.entries.get(raw.key).link.targets=[{terminal:address}];
+ }
+ assert.ok(build());assert.equal(calls.length,reads,'Presentation and activation add no reads');
+}
 taskContext=null;
 // Scope retirement while the repository read is held must not start a footer read.
 add('scoped-read',{cwd:'/scoped-read'});let releaseScoped,admitted=true;
@@ -397,7 +434,7 @@ for(const transition of ['ended','disconnected']) {
     if(afterRefresh){branchLinks.refresh(cx,admit);await tick();assert.equal(branchLinks.entries.has(branchOnly.address),false);}
     const target=branchLinks.related(branchPr,'owner/repo',null,'build'),chip=renderBranch();
     assert.equal(target.address,branchOnly.address);assert.equal(target.availability,transition);
-    assert.equal(chip.attrs.tooltip[0],reason);assert.equal(chip.attrs.opacity[0],0.45);assert.equal(chip.attrs.role,undefined);assert.equal(chip.attrs.cursor_pointer,undefined);
+    assert.equal(chip.attrs.tooltip,undefined);assert.equal(chip.attrs.accessibility_label[0],reason);assert.equal(chip.attrs.opacity[0],0.45);assert.equal(chip.attrs.role,undefined);assert.equal(chip.attrs.cursor_pointer,undefined);
     chip.attrs.on_click[0]({},cx);liveChip.attrs.on_click[0]({},cx);
     assert.equal(actions.length,focuses,'Neither retained presentation nor a captured live click can focus');
     assert.equal(calls.length,reads,'Disabled branch presentation starts no remote or repository read');
@@ -408,7 +445,7 @@ for(const transition of ['ended','disconnected']) {
   }
   const paneIndex=allPanes.indexOf(branchPane),agentIndex=allAgents.findIndex(a=>a.address===branchOnly.address),knownAgent=allAgents[agentIndex];
   allPanes.splice(paneIndex,1);allAgents.splice(agentIndex,1);
-  assert.equal(renderBranch().attrs.tooltip[0],reason,'The explanation survives absent live pane/agent records');
+  assert.equal(renderBranch().attrs.accessibility_label[0],reason,'The accessible explanation survives absent live pane/agent records');
   assert.equal(calls.length,reads);assert.equal(actions.length,focuses);
   allPanes.splice(paneIndex,0,branchPane);allAgents.splice(agentIndex,0,knownAgent);
   branchOnly.labels['crew.pr']='https://github.com/owner/repo/pull/1801';
@@ -439,23 +476,26 @@ for(const mode of ['ordinary','coordinator'])for(const state of ['open','closed'
     const approved=find(panel.pullRow(colors,{...row,stage:'approved'},ghost),`${ghost?'swap-':''}pr-stage-${row.key??number}`);
     assert.equal(approved.kids[0].kids[0],'Approved');assert.equal(approved.attrs.tooltip,undefined);assert.equal(approved.attrs.opacity,undefined);assert.equal(Boolean(approved.attrs.on_click),!ghost);
     const fallback=find(panel.pullRow(colors,{...row,stage:null},ghost),`${ghost?'swap-':''}pr-agent-${row.key??number}`);
-    assert.equal(Boolean(fallback),robot);if(fallback&&ghost)assert.equal(fallback.attrs.on_click,undefined);
+    const initialBuild=robot&&state==='open'&&role==='build';
+    assert.equal(Boolean(fallback),robot&&!initialBuild);
+    if(initialBuild)assert.ok(find(panel.pullRow(colors,{...row,stage:null},ghost),`${ghost?'swap-':''}pr-stage-${row.key??number}`),'Unlabelled live builds use the bottom chip');
+    if(fallback&&ghost)assert.equal(fallback.attrs.on_click,undefined);
   };
   model.refresh(cx,admit);await tick();const liveChip=chip();assert.equal(liveChip.attrs.opacity,undefined);nonAgentChecks(true);
   const focusCount=actions.length;terminal.state='finished';
   if(mode==='coordinator'){taskContext={...liveContext,tasks:[{id:'task',terminal:null,historical:true}],links:[{url,terminal:null,task:'task',historical:true}]};group.context=taskContext;group.entries.get(row.key).link.targets=[{terminal:null,historical:true}];}
   model.refresh(cx,admit);await tick();let reads=calls.length;
   const ended=role==='build'?'build agent ended - CI failure':'reviewer ended without a verdict';
-  let disabled=chip();assert.equal(disabled.attrs.tooltip[0],ended);assert.equal(disabled.attrs.opacity[0],0.45);assert.equal(disabled.attrs.role,undefined);
+  let disabled=chip();assert.equal(disabled.attrs.tooltip,undefined);assert.equal(disabled.attrs.accessibility_label[0],ended);assert.equal(disabled.attrs.opacity[0],0.45);assert.equal(disabled.attrs.role,undefined);
   disabled.attrs.on_click?.[0]({},cx);liveChip.attrs.on_click?.[0]({},cx);nonAgentChecks(false);assert.equal(actions.length,focusCount);assert.equal(calls.length,reads);
   terminal.state='live';connected=false;
   if(remote) {
     if(mode==='coordinator'){taskContext={...liveContext,stale:true};group.context=taskContext;}
-    disabled=chip();assert.equal(disabled.attrs.tooltip[0],'on pc2, not connected');assert.equal(disabled.attrs.opacity[0],0.45);assert.equal(disabled.attrs.role,undefined);
+    disabled=chip();assert.equal(disabled.attrs.tooltip,undefined);assert.equal(disabled.attrs.accessibility_label[0],'on pc2, not connected');assert.equal(disabled.attrs.opacity[0],0.45);assert.equal(disabled.attrs.role,undefined);
     model.refresh(cx,admit);await tick();nonAgentChecks(false);assert.equal(calls.length,reads);liveChip.attrs.on_click?.[0]({},cx);assert.equal(actions.length,focusCount);
     if(mode==='coordinator'){
       taskContext={...liveContext,scope:'different-home',stale:true};group.context=taskContext;
-      assert.equal(chip().attrs.tooltip[0],role==='build'?'build agent unavailable':'reviewer unavailable','Another scope cannot borrow a remembered target');
+      assert.equal(chip().attrs.accessibility_label[0],role==='build'?'build agent unavailable':'reviewer unavailable','Another scope cannot borrow a remembered target');
       taskContext={...liveContext,stale:true};group.context=taskContext;
     }
   } else {
@@ -465,7 +505,7 @@ for(const mode of ['ordinary','coordinator'])for(const state of ['open','closed'
   connected=true;
   if(mode==='coordinator') {
     taskContext={...liveContext,stale:true};group.context=taskContext;disabled=chip();assert.equal(disabled.attrs.opacity[0],0.45);
-    assert.equal(disabled.attrs.tooltip[0],role==='build'?'build agent unavailable':'reviewer unavailable','Reconnected but unverified remains non-authorizing');
+    assert.equal(disabled.attrs.accessibility_label[0],role==='build'?'build agent unavailable':'reviewer unavailable','Reconnected but unverified remains non-authorizing');
     liveChip.attrs.on_click?.[0]({},cx);assert.equal(actions.length,focusCount);
   }
   taskContext=liveContext;group.context=liveContext;group.entries.get(row.key).link.targets=[{terminal:address}];model.refresh(cx,admit);await tick();reads=calls.length;
@@ -512,8 +552,9 @@ for(const mode of ['ordinary','coordinator'])for(const role of ['build','review'
     find(source,'pulls-body').attrs.on_mouse_move[0]({bounds:{x:0,y:100*zoom,width:300*zoom,height:400*zoom}});
   }
   const timers=[],motionCx={...cx,timer:{after:(ms,fn)=>{const timer={ms,fn,cancel(){this.cancelled=true;}};timers.push(timer);return timer;}}};
-  const sourceId=mode==='coordinator'?`owner/repo#${number}`:number,kind=control==='chip'?'stage':'agent',button=find(source,`pr-${kind}-${sourceId}`),before=actions.length,offset=control==='chip'?50:4;
-  button.attrs.on_mouse_down[1]({position:{x:280*zoom,y:(100+from+10)*zoom},bounds:{x:(control==='chip'?213:269)*zoom,y:(100+from+offset)*zoom,width:(control==='chip'?80:24)*zoom,height:(control==='chip'?18:24)*zoom}},motionCx);button.attrs.on_click[0]({},motionCx);
+  const isChip=control==='chip'||role==='build'&&state==='open';
+  const sourceId=mode==='coordinator'?`owner/repo#${number}`:number,kind=isChip?'stage':'agent',button=find(source,`pr-${kind}-${sourceId}`),before=actions.length,offset=isChip?50:4;
+  button.attrs.on_mouse_down[1]({position:{x:280*zoom,y:(100+from+10)*zoom},bounds:{x:(isChip?213:269)*zoom,y:(100+from+offset)*zoom,width:(isChip?80:24)*zoom,height:(isChip?18:24)*zoom}},motionCx);button.attrs.on_click[0]({},motionCx);
   assert.equal(actions.length,before+1,'Chip focuses immediately, before animation');assert.equal(actions.at(-1)[1].terminal,address);
   const swap=panel.pinMotion.current;assert.ok(swap,`${mode}/${role}/${state}: pin motion armed`);assert.equal(swap.phase,'waiting');assert.equal(swap.target,address);
   assert.equal(Boolean(swap.snapshot.arrival),mode==='coordinator');assert.ok(Math.abs(swap.cards.find(c=>c.pr.number===number).from-from)<1e-6,'Chip starts at the measured row, not the robot glyph offset');
