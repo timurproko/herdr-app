@@ -267,16 +267,13 @@ for(const [kind,shortKind,textKind] of [['meta','tasks','tasks'],['byline','time
   const time=find(narrow.tree,'pr-time-41'),text=narrow.geometry.visibleTextLines.find(l=>l.ancestors.includes(time));
   assert.ok(text.x+text.naturalWidth<=narrow.geometry.get(time).x+narrow.geometry.get(time).width+1e-6,'Long authors cannot clip compact time');
 }
-// Count badges still reserve width independently of the natural PR runs.
-for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.5,2]){
-  let baseline;
-  for(const count of [null,0,1,99,999,99999]){
-    const tree=h.render(()=>element().flex().gap(2).children([panel.segment(t,'open','Open',count,true,()=>{}),panel.segment(t,'closed','Closed',count,false,()=>{})]));
-    const boxes=rowGeometry(tree,width,zoom),snapshot=['open','closed','open-count-slot','closed-count-slot'].map(id=>plain(boxes.get(find(tree,id))));
-    baseline??=snapshot;assert.deepEqual(snapshot,baseline);assert.equal(words(find(tree,'open-count-slot')).join(''),count>999?'999+':String(count??0));
-    if(count==null||count<=999)for(const line of boxes.visibleTextLines.filter(l=>l.ancestors.includes(find(tree,'open-count-slot')))) {
-      const badge=boxes.get(find(tree,'open-count-slot'));assert.ok(line.x+line.naturalWidth<=badge.x+badge.width-4*zoom+1e-6,'At least three digits fit inside badge padding');
-    }
+// Tabs have natural label widths and no count reservations.
+for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,2]){
+  const tree=h.render(()=>element().flex().gap(2).children([panel.segment(t,'open','Open',true,()=>{}),panel.segment(t,'closed','Closed',false,()=>{})]));
+  const boxes=rowGeometry(tree,width,zoom);
+  for(const [id,label]of [['open','Open'],['closed','Closed']]){
+    assert.equal(words(find(tree,id)).join(''),label);assert.equal(find(tree,id+'-count-slot'),undefined);
+    near(boxes.get(find(tree,id)).width,boxes.get(find(tree,id+'-label')).width+16*zoom,'Only label and symmetric 8px padding');
   }
 }
 for(const coordinator of [false,true])for(const ghost of [false,true])for(const zoom of [0.75,1,1.25,1.5,2])for(const [kind,value] of [['title-line',20],['byline',18],['meta',18]]) {

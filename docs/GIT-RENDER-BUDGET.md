@@ -134,6 +134,32 @@ unconditionally, not only when an edge changes. Equal-height refreshes in the
 middle and at the bottom have size-change-only regressions; stale scopes reject
 queued requests. A one-pixel marker preserves anchors and never replaces content.
 
+## Four-PR background interruption investigation
+
+The reported coordinator interrupted-render banner was **not reproduced** with
+four rich Open PRs across three synthetic repositories on release App 0.1.18.
+`tests/features/git-loading-native.mjs --run --stress --zoom 1|1.3 --output <outside>`
+verifies the supplied release archive and executable and mounts shipping renderers
+in a disposable home/Core session. A sibling view repaints every 33ms while 240
+controller updates at 40ms intervals replace PR titles, 13 check contexts and
+membership; folding and Closed-tab transitions provide controls. There is no
+forced loop, watchdog override, live account, terminal or GitHub operation.
+
+The final 100% run recorded 246 stress builds at 1–10ms (median 3ms); the 130%
+run recorded 247 at 0–9ms (median 3ms). Both native logs and final status were
+error-free; inspected screenshots had no fallback banner. These are synchronous
+JS/native-tree construction samples, not layout/paint, a live fleet workload or
+proof that the original interruption cannot recur. No speculative production
+render recovery change is made. Existing component diagnostics and once-only
+retry remain intact. All owned app/Core processes stopped in finally.
+
+`tests/git-background-render.test.mjs` adds 480 deterministic four-PR frames at
+100%/130%, checking coherent warm feedback, complete render markers, fold/tab/
+membership changes and bounded native trees (219 elements maximum in this fixture).
+The mounted-row budget retains its frozen PR/probe baseline and caps; only the
+six removed coordinator tab-badge chrome nodes are deducted from its element
+expectation. Ordinary budget measurements render the list body without tabs.
+
 ## Measurement lifetime audit
 
 - Notice measurement IDs include text/width/zoom and owner identity; equal-height
