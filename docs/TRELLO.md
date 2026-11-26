@@ -299,6 +299,48 @@ Local merge retries never replay an HTTP request. Another invocation cannot
 bypass the saved cooldown. Respect `retryAt` (Unix milliseconds),
 then explicitly retry. Longer Retry-After or token/key intervals take precedence.
 
+## Inspect a screenshot or other attachment
+
+First read the card or list its attachments to find the attachment ID. Then use
+an existing output directory outside any Git checkout (all IDs below are fake):
+
+```sh
+herdr-trello attachments list --board aaaaaaaaaaaaaaaaaaaaaaaa --card cccccccccccccccccccccccc
+herdr-trello attachments get --board aaaaaaaaaaaaaaaaaaaaaaaa --card cccccccccccccccccccccccc --attachment 111111111111111111111111 --out PRIVATE_DIR
+herdr-trello attachments get --board aaaaaaaaaaaaaaaaaaaaaaaa --card cccccccccccccccccccccccc --attachment 111111111111111111111111 --out PRIVATE_DIR --preview-width 800
+```
+
+The JSON result's `data.path` is the absolute local file to inspect with your
+agent's image/file tool. The CLI never opens or executes it. It creates a unique
+owner-only child folder (0700/0600 on POSIX, verified user ACL on Windows), refuses
+linked/checkout-local output and never overwrites another file. Downloaded copies
+remain private until you explicitly remove them; they are not deployment output.
+
+Read-only client access and a read-only user token suffice. Originals and previews
+are bounded to **20 MiB (20,971,520 bytes)** for the selected representation, with
+metadata, Content-Length and streamed-byte checks. Default accepted types are
+PNG/JPEG/GIF/WebP with matching MIME and signature. Other uploaded types require
+explicit `--allow-other-types`; they remain untrusted inert files. HTML/SVG are not
+default screenshot types. A stored link (`isUpload:false`) is metadata only and is
+never fetched, including with that flag.
+
+`--preview-width 1..16384` selects the smallest scaled preview at least that wide,
+or the largest if all are smaller. Missing/unsafe previews refuse without silently
+downloading the original. An available small preview can be read even when the
+original exceeds the limit. No automatic retries, attachment uploads or deletion
+are added. Failed reads leave no owned partial file or successful path.
+
+Attachment binary requests use only `Authorization: OAuth oauth_consumer_key=...,
+oauth_token=...`, never credential query parameters. Only exact HTTPS
+`trello.com` and `api.trello.com` card/attachment download paths are accepted.
+No redirect is followed, even to the same host, and no authenticated request goes
+to external links, arbitrary Trello subdomains or S3. If Trello redirects, the read
+refuses safely instead of forwarding credentials. See the
+[authorization guide](https://developer.atlassian.com/cloud/trello/guides/rest-api/authorization/#passing-token-and-key-in-api-requests)
+and [Trello download guidance](https://community.developer.atlassian.com/t/update-authenticated-access-to-s3/43681).
+The existing 2 MiB JSON, 20-request, 20-second-request and 60-second-command bounds
+still apply; binary downloads share those budgets and the persisted cooldown.
+
 ## Explicit writes
 
 Prepare one JSON object in an input file (or send it on stdin). IDs below are fake.
@@ -374,6 +416,7 @@ race or prevent another same-user process from using the token directly.
 | AUTH | HTTP 401; key/token invalid, expired or revoked; locally re-authorize and rotate (the tool cannot distinguish those causes from status alone) |
 | FORBIDDEN / NOT_FOUND | HTTP 403 / 404; check the owner's access and IDs; not-found may also hide access, so it is not proof the object was deleted |
 | RATE_LIMIT | Wait until retryAt; do not spin or launch parallel retries |
+| ATTACHMENT_LINK / ATTACHMENT_TYPE / ATTACHMENT_SIZE / ATTACHMENT_PREVIEW | Link-only attachment, unsupported/inconsistent MIME/signature, selected binary above 20 MiB or unavailable scaled preview; inspect metadata and choose an explicit supported representation |
 | LIMIT / RESPONSE / TRANSPORT / REMOTE | Request/time/response bound, malformed reply, connectivity failure or HTTP rejection; inspect/narrow the read and retry explicitly |
 | UNKNOWN_WRITE / WRITE_CHANGED | Unknown outcome / acknowledged write with changed authority; reconcile through reads before another explicit mutation |
 

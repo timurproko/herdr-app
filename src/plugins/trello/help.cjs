@@ -48,6 +48,19 @@ Labels require --label. Checklist input: name/pos. Check-item input: name/checke
 or state (complete|incomplete)/pos, with --checklist and --item for updates.
 Input comes from --input FILE or stdin, never arbitrary URL/method flags.
 No permanent deletion, bulk operations, board administration or attachment mutations.
+
+LOOK AT A CARD SCREENSHOT (fake IDs; PRIVATE_DIR must exist outside a checkout)
+Read the card to find attachment IDs, or list attachments and their image previews:
+  herdr-trello attachments list --board aaaaaaaaaaaaaaaaaaaaaaaa --card cccccccccccccccccccccccc
+  herdr-trello attachments get --board aaaaaaaaaaaaaaaaaaaaaaaa --card cccccccccccccccccccccccc --attachment 111111111111111111111111 --out PRIVATE_DIR
+Optional --preview-width 800 selects a scaled preview (no silent original fallback).
+Inspect the printed data.path with your image/file tool; this CLI never opens files.
+Downloads create a unique owner-only subfolder; retained copies stay private until
+explicitly removed. Limit: 20 MiB, including streamed bytes. PNG/JPEG/GIF/WebP only
+by default, with matching MIME/signature. --allow-other-types permits other uploaded
+files as inert data, not external link attachments. No link is fetched, no redirect
+is followed. Download auth is an OAuth header only to exact Trello hosts; never copy
+keys/tokens into URLs. Read-only mode/tokens suffice. No upload or attachment delete.
 Installed launchers bind their home. Direct Node use may pass --home HERDR_HOME;
 otherwise HERDR_APP_HOME or ~/.config/herdr-app is used. Do not pass --home twice.
 `;

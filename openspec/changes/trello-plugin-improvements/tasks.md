@@ -11,11 +11,11 @@ All tasks remain unstarted until plan approval. Groups match the four PR Impleme
 
 ## 2. Read-only attachment downloads enforce private output, size/type limits and Trello-only header authentication with installed screenshot guidance
 
-- [ ] 2.1 Add exact download flags and the narrow binary transport sharing authority, cooldown and command budgets; verify fake-server originals/previews succeed read-only and unknown flags, unsafe origins/paths and every redirect refuse.
-- [ ] 2.2 Enforce OAuth-header-only binary auth, no link fetching and no secret-bearing output; verify fake external/link/redirect destinations receive zero requests/credentials and hostile diagnostics reveal no sentinels.
-- [ ] 2.3 Enforce the 20 MiB selected-binary limit, PNG/JPEG/GIF/WebP MIME/signature defaults, explicit other-type opt-in and deterministic scaled-preview width selection; verify declared/chunked oversize, mismatches, absent previews and preview-of-large-original cases.
-- [ ] 2.4 Add owner-only unique output directories, exclusive sanitized files and partial cleanup with final authority checks; verify POSIX modes/Windows ACLs, linked/reparse/checkout paths, traversal/device/ADS names, collisions, cancellation and revocation without overwrites or leaked partial files.
-- [ ] 2.5 Package the helper and update installed help/offline docs with the card-to-list-to-download-to-local-image workflow; verify source-independent installed CLI fixtures, no attachment uploads/deletes and unchanged write gates.
+- [x] 2.1 Add exact download flags and the narrow binary transport sharing authority, cooldown and command budgets; verify fake-server originals/previews succeed read-only and unknown flags, unsafe origins/paths and every redirect refuse.
+- [x] 2.2 Enforce OAuth-header-only binary auth, no link fetching and no secret-bearing output; verify fake external/link/redirect destinations receive zero requests/credentials and hostile diagnostics reveal no sentinels.
+- [x] 2.3 Enforce the 20 MiB selected-binary limit, PNG/JPEG/GIF/WebP MIME/signature defaults, explicit other-type opt-in and deterministic scaled-preview width selection; verify declared/chunked oversize, mismatches, absent previews and preview-of-large-original cases.
+- [x] 2.4 Add owner-only unique output directories, exclusive sanitized files and partial cleanup with final authority checks; verify POSIX modes/Windows ACLs, linked/reparse/checkout paths, traversal/device/ADS names, collisions, cancellation and revocation without overwrites or leaked partial files.
+- [x] 2.5 Package the helper and update installed help/offline docs with the card-to-list-to-download-to-local-image workflow; verify source-independent installed CLI fixtures, no attachment uploads/deletes and unchanged write gates.
 
 ## 3. Trello Settings uses clear save labels, one ready account row, lightweight board tabs and empty-list separators
 

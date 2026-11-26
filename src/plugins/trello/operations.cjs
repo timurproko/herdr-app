@@ -10,6 +10,7 @@ const definitions = {
   'boards.list': ['before'], 'lists.list': ['board', 'filter'], 'cards.list': ['board', 'list', 'filter', 'limit', 'before'],
   'cards.get': ['board', 'card', 'limit', 'before'], 'labels.list': ['board', 'card'],
   'attachments.list': ['board', 'card'],
+  'attachments.get': ['board', 'card', 'attachment', 'out', 'previewWidth', 'allowOtherTypes'],
   'checklists.list': ['board', 'card'], 'checkitems.list': ['board', 'card', 'checklist'],
   'cards.create': ['board', 'list', ...cardFields], 'cards.update': ['board', 'card', ...cardFields],
   'cards.move': ['board', 'card', 'list', 'destinationBoard', 'pos'], 'cards.archive': ['board', 'card'],
@@ -23,9 +24,12 @@ function validateArgs(op, args) {
   const allowed = definitions[op];
   if (!allowed || !exact(args, allowed)) fail('INPUT');
   if (op !== 'boards.list' && !id(args.board)) fail('INPUT');
-  for (const key of ['card', 'list', 'checklist', 'before', 'item', 'label', 'destinationBoard']) if (key in args && !id(args[key])) fail('INPUT');
-  if (['cards.get', 'checklists.list', 'checkitems.list', 'attachments.list'].includes(op) && !id(args.card)) fail('INPUT');
+  for (const key of ['card', 'list', 'checklist', 'before', 'item', 'label', 'destinationBoard', 'attachment']) if (key in args && !id(args[key])) fail('INPUT');
+  if (['cards.get', 'checklists.list', 'checkitems.list', 'attachments.list', 'attachments.get'].includes(op) && !id(args.card)) fail('INPUT');
   if (op === 'checkitems.list' && !id(args.checklist)) fail('INPUT');
+  if (op === 'attachments.get' && (!id(args.attachment) || typeof args.out !== 'string' || !args.out.trim() || args.out.length > 4096 || /[\u0000-\u001f\u007f]/.test(args.out))) fail('INPUT');
+  if ('previewWidth' in args && (!Number.isInteger(args.previewWidth) || args.previewWidth < 1 || args.previewWidth > 16384)) fail('INPUT');
+  if ('allowOtherTypes' in args && typeof args.allowOtherTypes !== 'boolean') fail('INPUT');
   if ('limit' in args && (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > 100)) fail('INPUT');
   if ('filter' in args && !['open', 'closed', 'all'].includes(args.filter)) fail('INPUT');
   if (writes.has(op)) {
@@ -124,6 +128,7 @@ async function readOperation(client, scope, op, a, gate) {
     return page(rows.map(r => pick(r, ['name', 'color'])), 100, false);
   }
   if (op === 'attachments.list') return listAttachments(client, scope, a.board, a.card);
+  if (op === 'attachments.get') return require('./download.cjs').downloadAttachment(client, scope, a);
   if (op === 'cards.get') {
     await scope.card(a.board, a.card);
     const row = card(await client.get(`/cards/${a.card}`, {fields, attachments: false, members: false, checklists: 'none', actions: 'none', pluginData: false, stickers: false}), a.board);
@@ -202,7 +207,9 @@ async function run(store, op, args = {}, options = {}) {
   const write = writes.has(op), boards = args.board ? [...new Set([args.board, ...(args.destinationBoard ? [args.destinationBoard] : [])])] : [];
   const gate = authority(store, write, boards), client = new Client(store, gate, options);
   const data = write ? await writeOperation(client, new Scope(client), op, args) : await readOperation(client, new Scope(client), op, args, gate);
-  try { gate.check(); } catch (e) { if (write) fail('WRITE_CHANGED'); throw e; }
+  // Attachment publication already performs its final check inside protected output;
+  // no asynchronous step or second authority read may orphan its successful file.
+  try { if (op !== 'attachments.get') gate.check(); } catch (e) { if (write) fail('WRITE_CHANGED'); throw e; }
   return redact({untrusted: true, ...data}, gate.credentials);
 }
 module.exports = {run, definitions, writes, validateArgs, Scope, pick, array, card, page, redact};

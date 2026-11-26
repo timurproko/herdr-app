@@ -124,6 +124,13 @@ limits 1/50/100, and checks multi-page read/write membership with explicit `sort
 repeated local CAS conflicts, checking that the longest deadline persists and a
 new invocation cannot dispatch early. It makes no real HTTP request.
 `tests/trello-contract.test.mjs` checks documentation/catalog and payload boundaries.
+`src/plugins/trello/attachments.test.mjs` and `download.test.mjs` use loopback fake
+Trello/external servers with test-only production-URL mapping and no live-fetch
+fallback. They cover metadata/card counts, parent proofs, original/scaled preview
+reads, header-only authentication, zero external-link/redirect requests, 20 MiB
+stream bounds, MIME/signature checks, private ACL/mode output, unsafe paths,
+collisions and cleanup on refusal/revocation. Servers stop in finally; downloaded
+fixtures and stores are disposable, never the owner's account or board.
 
 Set `TRELLO_TEST_ROOT` to an existing outside-checkout scratch directory to choose
 fixture output. Hosted tests otherwise prefer `RUNNER_TEMP`, then the OS temp

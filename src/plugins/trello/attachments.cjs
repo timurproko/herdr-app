@@ -44,4 +44,20 @@ async function listAttachments(client, scope, board, card) {
   if (new Set(items.map(r => r.id)).size !== items.length) fail('RESPONSE');
   return {items, count: items.length, countExact: complete, complete, truncated: !complete};
 }
-module.exports = {attachment, singleAttachment, listAttachments, bytes, safeUrl};
+function filename(value) {
+  if (!text(value, 512) || !value || value === '.' || value === '..' || /[/\\\\:]/.test(value) || /[. ]$/.test(value) || /^(?:con|prn|aux|nul|com[0-9]|lpt[0-9])(?:\.|$)/i.test(value)) fail('RESPONSE');
+  return value;
+}
+function downloadUrl(value, card, target) {
+  if (!id(card) || !id(target)) fail('SCOPE');
+  let u; try { u = new URL(value); } catch { fail('RESPONSE'); }
+  if (!['https://trello.com', 'https://api.trello.com'].includes(u.origin) || u.username || u.password || u.search || u.hash) fail('SCOPE');
+  const prefix = `/1/cards/${card}/attachments/${target}/`;
+  if (!u.pathname.startsWith(prefix)) fail('SCOPE');
+  const rest = u.pathname.slice(prefix.length);
+  if (/^previews\/[a-f0-9]{24}\/download$/.test(rest)) return u;
+  if (!/^download\/[^/]+$/.test(rest)) fail('SCOPE');
+  let name; try { name = decodeURIComponent(rest.slice('download/'.length)); } catch { fail('RESPONSE'); }
+  filename(name); return u;
+}
+module.exports = {attachment, singleAttachment, listAttachments, bytes, safeUrl, filename, downloadUrl};
