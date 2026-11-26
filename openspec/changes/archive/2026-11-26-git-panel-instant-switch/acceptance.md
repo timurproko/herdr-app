@@ -20,7 +20,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-26-git-panel-instant-switch/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-26-git-panel-instant-switch/acceptance.md",
   "finalizedDate": "2026-11-26",
-  "specBaseSha": "bc309c0a8e507a18d17384a83235778b1291922e",
+  "specBaseSha": "19ebb1ffe11b8b1ba2dcf5eed74c89a8eb8011dc",
   "acceptanceScenarios": [
     "Cached worker sections and coordinator returns display compatible rows and counts immediately without body Loading or a blank frame.",
     "Direct space entry preserves section ordering without creating a pin, reordering rows or starting move-to-top animation.",
@@ -31,7 +31,7 @@ The maintainer integration decision accepts these scenarios:
     "Main Git headers omit repository labels and repository-page shortcuts while section identity, verification diagnostics and PR row menus remain."
   ],
   "archiveDigest": "156c45289dc8e7d8de15ff19be841527efd576ce910a8aa435c41d719cbf9850",
-  "specDigest": "45b8c92e5e8de714e58f9813cc00e678ddd9d5b6da3c5940afad55b4af605e41",
+  "specDigest": "e03d3343ba7421a2ffafb84910f7c8d75a0616d032cea86e64b7eb2e980397b6",
   "tasksDigest": "f3e897ab2a372c630037439df191ada81d3e511f24bd5696b740fb96bf50bef9",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []

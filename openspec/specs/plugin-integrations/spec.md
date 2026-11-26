@@ -1593,6 +1593,28 @@ Build and Review chips and fallback robots SHALL share one navigation-first pin-
 - **THEN** the existing controller cancels retention without replaying focus or committing a false settled pin
 - **AND** moving ghost rows and retained coordinator presentation never become navigation or worker authority
 
+### Requirement: One complete-lifecycle Git loading animation
+Ordinary and coordinator Git panels SHALL use the existing moving line immediately below the header as their only panel-loading animation throughout pending cold, warm and background work, regardless of pending CI. The line SHALL stop on completion, failure, hide, disable or scope replacement. The header activity bulb and its tooltip SHALL be absent; shared activity components and other panels SHALL remain unchanged.
+
+#### Scenario: Cold ordinary and coordinator work
+- **WHEN** an enabled shown Git panel begins folder, repository, list, targeted, pagination, verification or inventory work without previously shown compatible content
+- **THEN** one moving line runs until the pending work completes or fails, including work exceeding one 2.4-second pass and work with no loaded pending CI
+- **AND** cold top-left Loading retains the other right-side panel's 7px dot, 6px gap, blue 12px text and existing insets, but its dot is static in Git
+- **AND** references elsewhere to a Git Loading working bulb mean this static message, not a second loading animation
+- **AND** actionable failures remain visible and coherent inventory publication and count uncertainty remain unchanged
+
+#### Scenario: Warm background and manual work
+- **WHEN** a shown ordinary or coordinator list performs warm return reconciliation, verification, manual, webhook or safety work
+- **THEN** only the one under-header moving line animates for panel loading and the existing list remains mounted without body Loading or Stale text
+- **AND** overlapping work shares the line until the last pending operation finishes, with no separate CI-only track
+- **AND** Git Refresh remains disabled with its existing feedback timing but does not rotate, including on hover during a request
+
+#### Scenario: Idle failure cooldown and retired callbacks
+- **WHEN** work completes, fails, becomes dormant awaiting a future retry, or the panel is hidden, disabled or changes context
+- **THEN** no obsolete callback keeps the old loading line running or clears a newer context's work
+- **AND** a dormant cooldown, uncertain count or historical failure alone does not assert an active request
+- **AND** no loading animation changes another panel, tab, status slot or shared activity component
+
 ### Requirement: Shared warm Git repository entry
 Coordinator and worker entry SHALL share immediate compatible cached presentation, existing header activity and coherent in-place refresh. Worker entry SHALL show only its resolved repository section with the coordinator's header, count and chevron. Warm refresh SHALL NOT show body Loading or a blank frame. An unresolved destination without compatible cached presentation SHALL use existing cold Loading, never another destination's rows.
 
@@ -1665,24 +1687,3 @@ The main Git header SHALL show only its Git title/chevron, tools and existing re
 - **WHEN** a user opens a PR row context menu after main-header simplification
 - **THEN** its captured Open and Copy path actions and keyboard handling remain intact
 - **AND** no Code, Pull requests or Actions repository-page shortcuts are offered anywhere in the panel
-### Requirement: One complete-lifecycle Git loading animation
-Ordinary and coordinator Git panels SHALL use the existing moving line immediately below the header as their only panel-loading animation throughout pending cold, warm and background work, regardless of pending CI. The line SHALL stop on completion, failure, hide, disable or scope replacement. The header activity bulb and its tooltip SHALL be absent; shared activity components and other panels SHALL remain unchanged.
-
-#### Scenario: Cold ordinary and coordinator work
-- **WHEN** an enabled shown Git panel begins folder, repository, list, targeted, pagination, verification or inventory work without previously shown compatible content
-- **THEN** one moving line runs until the pending work completes or fails, including work exceeding one 2.4-second pass and work with no loaded pending CI
-- **AND** cold top-left Loading retains the other right-side panel's 7px dot, 6px gap, blue 12px text and existing insets, but its dot is static in Git
-- **AND** references elsewhere to a Git Loading working bulb mean this static message, not a second loading animation
-- **AND** actionable failures remain visible and coherent inventory publication and count uncertainty remain unchanged
-
-#### Scenario: Warm background and manual work
-- **WHEN** a shown ordinary or coordinator list performs warm return reconciliation, verification, manual, webhook or safety work
-- **THEN** only the one under-header moving line animates for panel loading and the existing list remains mounted without body Loading or Stale text
-- **AND** overlapping work shares the line until the last pending operation finishes, with no separate CI-only track
-- **AND** Git Refresh remains disabled with its existing feedback timing but does not rotate, including on hover during a request
-
-#### Scenario: Idle failure cooldown and retired callbacks
-- **WHEN** work completes, fails, becomes dormant awaiting a future retry, or the panel is hidden, disabled or changes context
-- **THEN** no obsolete callback keeps the old loading line running or clears a newer context's work
-- **AND** a dormant cooldown, uncertain count or historical failure alone does not assert an active request
-- **AND** no loading animation changes another panel, tab, status slot or shared activity component
