@@ -27,6 +27,12 @@ for(const control of ['chip','robot'])for(const zoom of [1,1.3]){
  tree=h.render(()=>p.renderPulls(t));assert.ok(find(tree,'active-pull'));assert.equal(p.pullPresentation.pinned.number,2);assert.equal(h.focus.length,1,'entry/ack never sends a second focus');
  const final=rowGeometry(tree,320,zoom,500);for(const card of swap.cards){const node=find(tree,`pr-${card.pr.number}`);assert.ok(node);assert.ok(Math.abs(final.get(node).y/zoom-card.to)<0.1,'native motion settles at the actual final row position');}
  assert.equal(timers.length,3,'one wait, one arming and one cleanup, no frame loop');
+ p.agentLinks.pullNumber=()=>1;p.syncAgent(h.cx,true);
+ tree=h.render(()=>p.renderPulls(t));
+ assert.equal(p.agentPull,1,'same terminal independently resolves a changed PR after click settlement');
+ assert.equal(p.clickPin,null,`${control} at ${zoom}: fresh selected PR change clears the settled click pin`);
+ assert.equal(find(tree,'active-pull'),undefined,'clearing an obsolete click pin does not create a new entry pin');
+ assert.equal(p.pinMotion.current,null);assert.equal(h.focus.length,1,'fresh identity change starts no motion or second focus');
 }
 for(const terminal of [null,undefined]){const h=await rowHarness();h.panel.sectionEntry=true;h.place.terminal=terminal;h.panel.agentResolved=JSON.stringify(h.place);assert.doesNotThrow(()=>h.render(()=>h.panel.renderPulls(t)),'a space without a terminal cannot dereference a missing click');}
 console.log('PASS enter worker unpinned -> chip/robot click -> existing native pin motion, actual section geometry, one focus, retained acknowledgement and exact settled positions at 100/130%');

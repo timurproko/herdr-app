@@ -53,15 +53,16 @@ export class AgentLinks {
 
   invalidate() {this.repositories.clear();for(const entry of this.entries.values())entry.at=0;}
   async repository(target, current=()=>true) {
-    const key=JSON.stringify([target.on,target.cwd]);
+    const key=JSON.stringify([target.on,target.cwd]),cached=this.repositories.get(key);
+    const live=()=>this.enabled() && current() && this.repositories.get(key)===cached;
     // Effective Git routing is local IO, not a GitHub read. Include gh's
     // default-remote marker (also from inherited config), not just remote URLs.
     const config=await exec('git',['config','--get-regexp','^(remote\\..*\\.(url|pushurl|gh-resolved)|branch\\..*\\.(remote|merge))$'],{cwd:target.cwd,on:target.on,timeout:15000}).catch(()=>null);
-    if(!this.enabled() || !current())return null;
+    if(!live())return null;
     const fingerprint=config && [0,1].includes(config.code) && !config.signal && !config.timed_out ? config.stdout : null;
-    const cached=this.repositories.get(key);
     if(fingerprint!=null && cached?.fingerprint===fingerprint)return cached.repo;
-    const result=await repositoryRead(exec,REPO_ARGS,null,{cwd:target.cwd,on:target.on,timeout:15000,current:()=>this.enabled()&&current()});
+    const result=await repositoryRead(exec,REPO_ARGS,null,{cwd:target.cwd,on:target.on,timeout:15000,current:live});
+    if(!live())return null;
     const repo=result.code===0?repositoryName(result.stdout):null;
     if(repo && fingerprint!=null)this.repositories.set(key,{fingerprint,repo});
     return repo;
@@ -77,7 +78,8 @@ export class AgentLinks {
   }
 
   forgetRepository(place) {
-    this.repositories.delete(JSON.stringify([place.on??null,place.cwd]));
+    // Replace the slot so an older in-flight lookup cannot repopulate it.
+    this.repositories.set(JSON.stringify([place.on??null,place.cwd]),{});
     for(const entry of this.entries.values())if(entry.cwd===place.cwd && (entry.on??null)===(place.on??null))entry.canonicalRepo=null;
   }
 

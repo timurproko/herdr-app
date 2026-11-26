@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {rowHarness,rowGeometry,find,t} from './support/git-row.mjs';
+import {loadMod} from '../tools/plugin-harness.mjs';
 
 const tick=async()=>{for(let i=0;i<80;i++)await Promise.resolve();};
 async function cachedHarness() {
@@ -120,6 +121,63 @@ const cases=[
     assert.equal(h.calls.length,0,'forced list and related reads cannot bypass destination-root verification');
     const tree=h.render(()=>p.renderPanel(h.cx));assert.ok(find(tree,'pr-1'));assert.deepEqual({...p.counts},{open:1,closed:0});
     assert.ok(find(tree,'git-read-error'),'failed root retains cached presentation and actionable error');
+  }],
+  ['canonical-identity-replacement',async()=>{
+    const h=await cachedHarness(),p=h.panel,linkCalls=[];let forgot=0;
+    const {AgentLinks}=await loadMod({host:{agents:()=>[],panes:()=>[],spaces:()=>[],terminals:()=>[],
+      exec:(cmd,args,options)=>new Promise(resolve=>linkCalls.push({cmd,args,options,resolve}))},
+      modules:{'agent-links.js':'src/plugins/git/mod/agent-links.js','location.js':{namedPullNumber:()=>null},'directory.js':{paneDirectory:()=>({cwd:'/new-worktree'})},
+        'pulls.js':{agentPullNumber:()=>null,REPO_ARGS:['repo','view'],repositoryRead:(exec,args,_repo,options)=>exec('gh',args,options)}},
+      entry:'export {AgentLinks} from "./agent-links.js";'});
+    const links=p.agentLinks=new AgentLinks();
+    links.repositories.set(JSON.stringify([null,'/new-worktree']),{repo:'owner/repo',fingerprint:'old'});
+    // Isolate folder evidence from the live-target inventory; invalidation and
+    // the older in-flight repository lookup use the real AgentLinks methods.
+    links.cachedRepository=target=>links.repositories.get(JSON.stringify([target.on??null,target.cwd]))?.repo??null;
+    const forget=links.forgetRepository.bind(links);
+    links.forgetRepository=target=>{assert.equal(target.cwd,'/new-worktree');assert.equal(target.on,null);forgot++;forget(target);};
+    const obsolete=links.repository({on:null,cwd:'/new-worktree'});await tick();
+    linkCalls.shift().resolve({code:0,stdout:'changed config'});await tick();
+    const obsoleteIdentity=linkCalls.shift();assert.equal(obsoleteIdentity.cmd,'gh');
+    await enterWarm(h);await resolveRoot(h);h.render(()=>p.renderPanel(h.cx));await tick();
+    h.calls.shift().resolve({code:0,stdout:JSON.stringify({nameWithOwner:'owner/other',url:'https://github.com/owner/other'})});await tick();
+    h.calls.shift().resolve({code:0,stdout:JSON.stringify({data:{repository:{open:{totalCount:1},closed:{totalCount:0},pullRequests:{
+      nodes:[{number:7,title:'New repository row',state:'OPEN',url:'https://github.com/owner/other/pull/7',commits:{nodes:[]}}],
+      pageInfo:{endCursor:null,hasNextPage:false},
+    }}}})});await tick();
+    assert.equal(p.repo.name,'owner/other','canonical identity and page are accepted before rendering');
+    obsoleteIdentity.resolve({code:0,stdout:JSON.stringify({nameWithOwner:'owner/repo'})});
+    assert.equal(await obsolete,null,'superseded in-flight agent lookup cannot repopulate the old mapping');
+    for(let i=0;i<3;i++){
+      const tree=h.render(()=>p.renderPanel(h.cx));
+      assert.equal(p.repo.name,'owner/other','superseded agent mapping cannot reverse accepted identity');
+      assert.ok(find(tree,'pr-7'));assert.equal(find(tree,'pr-1'),undefined);
+    }
+    assert.equal(forgot,1,'superseded folder/agent mapping is explicitly invalidated');
+    assert.equal(p.aggregate.presentations.name('/new-worktree',null),'owner/other');
+    Object.assign(h.place,{cwd:'/repo',space:'worker-a',terminal:'a'});h.render(()=>p.renderPanel(h.cx));
+    Object.assign(h.place,{cwd:'/new-worktree',space:'worker-b',terminal:'b'});
+    const returned=h.render(()=>p.renderPanel(h.cx));
+    assert.equal(p.repo.name,'owner/other');assert.ok(find(returned,'pr-7'));assert.equal(find(returned,'pr-1'),undefined);
+    await tick();
+  }],
+  ['canonical-cache-repaint',async()=>{
+    const h=await cachedHarness(),p=h.panel;let notifications=0;
+    const notify=h.cx.notify;h.cx.notify=()=>{notifications++;notify();};
+    p.agentLinks.cachedRepository=()=>null;
+    Object.assign(h.place,{cwd:'/new-worktree',space:'worker-b',terminal:'b',app:'codex'});
+    h.render(()=>p.renderPanel(h.cx));await tick();await resolveRoot(h);
+    const cold=h.render(()=>p.renderPanel(h.cx));await tick();
+    assert.equal(find(cold,'pr-1'),undefined,'unmapped worktree is initially cold');
+    const before=notifications;
+    h.calls.shift().resolve({code:0,stdout:JSON.stringify({nameWithOwner:'owner/repo',url:'https://github.com/owner/repo'})});await tick();
+    assert.equal(p.pulls.open.length,1,'canonical identity adopts the already-cached repository');
+    assert.equal(h.calls.length,1,'page remains held');assert.equal(p.pullLoading,true);
+    assert.ok(notifications>before,'asynchronous cache adoption must schedule a repaint before the page completes');
+    const warm=h.render(()=>p.renderPanel(h.cx));
+    assert.ok(find(warm,'pr-1'));assert.equal(find(warm,'git-empty'),undefined);assert.deepEqual({...p.counts},{open:1,closed:0});
+    assert.equal(p.root,'/new-worktree','cache adoption retains the verified destination root');
+    assert.equal(find(warm,'active-pull'),undefined);assert.equal(p.pinMotion.current,null);
   }],
 ];
 for(const [name,run]of cases)if(!process.argv[2]||process.argv[2]===name){await run();console.log(`PASS ${name}`);}

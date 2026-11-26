@@ -321,6 +321,8 @@ export default class Changes extends View {
           const value = JSON.parse(r.stdout || '{}');
           if (!value?.nameWithOwner) throw new Error('No GitHub repository');
           if (!current()) return;
+          const mapped=this.agentLinks?.cachedRepository?.(location());
+          if(mapped && mapped.toLowerCase()!==value.nameWithOwner.toLowerCase())this.agentLinks?.forgetRepository?.(location());
           if(repo && repo.name.toLowerCase()!==value.nameWithOwner.toLowerCase()) {
             this.pulls={open:null,closed:null};this.counts=null;this.relatedPull=null;this.pinMotion?.cancel();
             this.pages={open:{cursor:null,hasMore:false},closed:{cursor:null,hasMore:false}};this.pullDepth={open:0,closed:0};
@@ -330,6 +332,7 @@ export default class Changes extends View {
           if(!this.repositoryPublication?.value)this.restoreRepository(location(),repo.name);
           repo=this.repo;this.root=root;this.entryVerify=false;
           this.aggregate?.presentations?.rememberFolder?.(location().cwd,on,repo.name);
+          cx.notify(); // Paint asynchronously adopted cache before awaiting the page.
         }
         repository=repo.name;
         const page = await readPullPage(exec,state,repository,after,{cwd:root,on,timeout:30000,current:()=>current()&&this.shown(),manual:this.manualRead});
@@ -1181,6 +1184,7 @@ export default class Changes extends View {
   renderPulls(t) {
     const state = this.view, list = this.repositoryPresentation().pulls[state], selection = this.pullSelection(),liveRows=selection.liveRows;
     const click=this.pinMotion?.current;
+    if(this.sectionEntry && !click && this.clickPin && this.clickPin.terminal===location().terminal && this.agentResolved===agentKey(location()) && this.clickPin.number!==selection.active?.number)this.clickPin=null;
     if(this.sectionEntry && click && click.target===location().terminal && this.agentResolved===agentKey(location()))this.clickPin=selection.active?.number===click.number?{terminal:location().terminal,number:selection.active.number}:null;
     const active=this.sectionEntry ? (this.clickPin && this.clickPin.terminal===location().terminal?liveRows.find(pr=>pr.number===this.clickPin.number):null):selection.active;
     const metrics=this.ordinaryScrollState(state), zoom=metrics.zoom, measurement=metrics.measurement;
