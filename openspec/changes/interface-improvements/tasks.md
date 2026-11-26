@@ -39,4 +39,9 @@ Implementation begins only after plan approval. Groups correspond one-for-one, i
 - [ ] 4.5 Exercise real pointer/keyboard parent folds, child selection, compact rail, expanded/folded block reorder and cancel in a disposable app with synthetic local/remote space models at 100%/130%; inspect screenshots, native errors and observed command targets, then stop all started apps/Cores/servers with positive shutdown receipts.
 - [x] 4.6 Update README and architecture/testing guidance for child presentation, coordinator-only Crew, local folds, truthful shortcut numbers, remote-group limits and unchanged identity/action safety; pass relevant fleet-reorder, Spaces-worktree, colour, refresh and shared-reorder coverage.
 - [x] 4.7 Synchronize the final implementation with current main without overwriting concurrent Trello/Crew work, inspect the combined diff and record known gaps explicitly; confirm the three delivered outcomes have inspected disposable-running-app evidence, the approved not-reproduced exception is explicit, and no started instance/server survives.
-- [ ] 4.8 Dispatch the existing tests workflow on the final feature branch head while keeping the PR draft; record exact head SHA and successful Windows/Ubuntu Node 24 matrix plus required check before writing an Implementation report, without marking ready, merging or weakening CI.
+- [x] 4.8 Dispatch the existing tests workflow for the draft implementation branch and update actual-completion outcome checkboxes. Keep the final-head CI receipt in the external handoff report so recording completion does not change the verified SHA.
+
+## Workflow follow-up
+
+- Before writing an Implementation report, require hosted Windows/Ubuntu Node 24 matrix and required-check success on the exact final PR head; record that SHA and run link in the external task report. Dispatch alone is not success.
+- Hand off the three delivered outcomes with the approved not-reproduced exception and physical-input limitation explicit. Do not mark ready, merge or weaken CI.
