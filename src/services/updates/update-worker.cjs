@@ -267,6 +267,9 @@ function inspect(home, { now = Date.now, isAlive = alive, isQuiescent = job => q
       unlock(p, job.token);
     }
   }
+  // finish() publishes before unlinking. A scanner can outlive unlink's retry
+  // budget too; a settled terminal owner must not leave a permanent stale lock.
+  if (job && ['complete', 'partial', 'failed'].includes(job.state) && ready) unlock(p, job.token);
   if (job?.state === 'running' && (now() > job.deadline || (job.phase !== 'starting' && !isAlive(job.pid)) || (job.phase === 'starting' && now() - job.started > 5000))) job = { ...job, state: 'unknown' };
   // A later ordinary CLI run has no Settings launch token/log. Do not attach
   // its result to a stale completed Settings job or that job's unrelated log.

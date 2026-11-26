@@ -39,5 +39,22 @@ try {
     }
     if (kind === 'remote-unknown') assert.equal(snapshot.peerUnknown, true);
   }
-  console.log('PASS: same-run terminal evidence, legacy final rename failure, precise outcomes, settlement, live owners and unchanged revision provenance.');
+  // Completion publication and lock removal are separate writes. A long scanner
+  // hold can exhaust unlink retries, but a later inspection must release only
+  // that dead, settled terminal owner's lock, not block future updates forever.
+  {
+    const f = fixture(), p = files(f.env.HERDR_APP_HOME);
+    atomic(p.status, { token: 'finished', state: 'complete', pid: 123456789, started: 0, deadline: 1 });
+    atomic(p.lock, { token: 'finished' });
+    const unlink = fs.unlinkSync;
+    fs.unlinkSync = file => { if (file === p.lock) throw Object.assign(Error('held completed lock'), { code: 'EPERM' }); return unlink(file); };
+    try { assert.throws(() => inspect(f.env.HERDR_APP_HOME, { isAlive: () => false }), /held completed lock/); }
+    finally { fs.unlinkSync = unlink; }
+    assert.equal(fs.existsSync(p.lock), true);
+    assert.equal(inspect(f.env.HERDR_APP_HOME, { isAlive: () => true }).locked, true, 'live terminal owner is not reclaimed');
+    assert.equal(inspect(f.env.HERDR_APP_HOME, { isAlive: () => false }).locked, false);
+    atomic(p.lock, { token: 'foreign' });
+    assert.equal(inspect(f.env.HERDR_APP_HOME, { isAlive: () => false }).locked, true, 'never release a different owner');
+  }
+  console.log('PASS: same-run terminal evidence, legacy final rename failure, precise outcomes, settlement, live owners, stale completed locks and unchanged revision provenance.');
 } finally { clean(); }
