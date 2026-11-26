@@ -19,9 +19,9 @@ These six groups match the draft PR's Implementation outcomes in the same order.
 
 ## 3. Self-sufficient installed CLI help
 
-- [ ] 3.1 Expand CLI help and offline setup/commands/errors/security/docs topics with bounded examples, access gates, exits, revocation and uncertain-write guidance; CLI contract tests assert each topic and no source-relative link.
-- [ ] 3.2 Package docs/TRELLO.md as owned installed lib/trello/TRELLO.txt with useful embedded fallback; installed fixtures check full build, source-unavailable lookup and missing-doc fallback without network access.
-- [ ] 3.3 Exercise installed Bash/CMD/PowerShell help in disposable bins/homes, retaining conflict/rollback/private-store protections; update installation/help guidance and confirm no hook or agent-discovery surface is added.
+- [x] 3.1 Expand CLI help and offline setup/commands/errors/security/docs topics with bounded examples, access gates, exits, revocation and uncertain-write guidance; CLI contract tests assert each topic and no source-relative link.
+- [x] 3.2 Package docs/TRELLO.md as owned installed lib/trello/TRELLO.txt with useful embedded fallback; installed fixtures check full build, source-unavailable lookup and missing-doc fallback without network access.
+- [x] 3.3 Exercise installed Bash/CMD/PowerShell help in disposable bins/homes, retaining conflict/rollback/private-store protections; update installation/help guidance and confirm no hook or agent-discovery surface is added.
 
 ## 4. Identity-bound SSH owner setup and explicit runtime installation
 

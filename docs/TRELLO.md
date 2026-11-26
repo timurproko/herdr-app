@@ -39,6 +39,16 @@ credentials. Every execution host needs its own explicit full deployment, plugin
 enablement, private credential setup and board/write policy. Merely mounting a
 remote agent on this desktop does not authorize its host.
 
+## Offline installed help
+
+`herdr-trello --help` is sufficient to start without this checkout or a browser.
+Use `herdr-trello help setup`, `help commands`, `help errors` or `help security`
+for focused guidance. `herdr-trello help docs` prints the packaged offline reference
+(`lib/trello/TRELLO.txt` beside the installed CLI), with embedded fallback guidance
+if that optional reference is missing. Help reads no private store and sends no
+network request. It covers safe input, explicit board/access gates, JSON/exits,
+uncertain writes, revocation and untrusted Trello text; it adds no agent hooks.
+
 ## Generate a user token for your API key
 
 Follow Trello's [official authorization guide](https://developer.atlassian.com/cloud/trello/guides/rest-api/authorization/):

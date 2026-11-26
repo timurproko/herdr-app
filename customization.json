@@ -112,6 +112,8 @@
     "lib/private-actions/vendor/ws/lib/websocket-server.js": "src/services/private-actions/vendor/ws/lib/websocket-server.js",
     "lib/private-actions/vendor/ws/lib/websocket.js": "src/services/private-actions/vendor/ws/lib/websocket.js",
     "lib/trello/cli.cjs": "src/plugins/trello/cli.cjs",
+    "lib/trello/help.cjs": "src/plugins/trello/help.cjs",
+    "lib/trello/TRELLO.txt": "docs/TRELLO.md",
     "lib/trello/client.cjs": "src/plugins/trello/client.cjs",
     "lib/trello/credentials.cjs": "src/plugins/trello/credentials.cjs",
     "lib/trello/errors.cjs": "src/plugins/trello/errors.cjs",
