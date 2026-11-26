@@ -17,7 +17,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-26-sidebar-alignment/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-26-sidebar-alignment/acceptance.md",
   "finalizedDate": "2026-11-26",
-  "specBaseSha": "e7387ec91a5b9aea4719f353ec56d3f0db165efd",
+  "specBaseSha": "bc309c0a8e507a18d17384a83235778b1291922e",
   "acceptanceScenarios": [
     "Spaces machine and coordinator disclosure controls share their column and 24px hover bounds while plain Crew and collapsed counts use Agents metadata rails.",
     "Space rename keeps tab action spacing and the chevron-aligned Cancel column on coordinator, child and ordinary rows without changing save or cancel behavior.",
