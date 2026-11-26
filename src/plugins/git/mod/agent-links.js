@@ -72,7 +72,13 @@ export class AgentLinks {
   cachedRepository(place) {
     const target=agentTargets().find(t=>t.address===place.terminal && t.cwd===place.cwd && (t.on??null)===(place.on??null));
     const entry=target && this.entries.get(target.address);
-    return entry?.key===target?.key ? entry.canonicalRepo??null : null;
+    const folder=target && this.repositories.get(JSON.stringify([target.on,target.cwd]));
+    return entry && target && entry.key===target.key && folder?.repo===entry.canonicalRepo ? entry.canonicalRepo??null : null;
+  }
+
+  forgetRepository(place) {
+    this.repositories.delete(JSON.stringify([place.on??null,place.cwd]));
+    for(const entry of this.entries.values())if(entry.cwd===place.cwd && (entry.on??null)===(place.on??null))entry.canonicalRepo=null;
   }
 
   displayName(address) {return displayName(agents().find(agent=>agent.address===address));}

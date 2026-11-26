@@ -33,8 +33,8 @@ function rememberMissing(entry) {
 }
 export class AggregatePulls {
   constructor({shown,onUpdate,presentationEpoch=()=>0,presentationAlive=()=>true}) {this.shown=shown;this.onUpdate=onUpdate;this.presentationEpoch=presentationEpoch;this.presentationAlive=presentationAlive;this.presentations=new PresentationMemory();this.publication=new Publication();this.entries=new Map();this.pending=new Map();this.diagnostics=new Map();this.serial=0;this.factOrder=new PullFactsOrder();}
-  currentContext({presentation = false} = {}) {
-    const context=sidebarPanelEnabled('changes') ? pluginPullContext(location().space,{presentation}) : null;
+  currentContext({presentation = false,space = location().space} = {}) {
+    const context=sidebarPanelEnabled('changes') ? pluginPullContext(space,{presentation}) : null;
     return !presentation && context?.stale ? null : context;
   }
   sync(cx) {
@@ -81,11 +81,11 @@ export class AggregatePulls {
     return true;
   }
   rememberPresentation() {
-    if(!this.context || !this.entries.size)return;
+    if(!this.context || !this.entries.size && this.published===null)return;
     this.rememberCounts();
     const entries=[...this.entries].map(([key,e])=>[key,{...e,link:{...e.link},dirty:true}]);
     this.presentations.delete(this.context.scope);
-    this.presentations.set(this.context.scope,{scope:this.context.scope,entries,published:this.published?[...this.published]:null,lastCounts:this.lastCounts?new Map(this.lastCounts):null,parent:this.context.parent,machine:this.context.machine});
+    this.presentations.set(this.context.scope,{scope:this.context.scope,providerGeneration:this.context.presentationGeneration??0,entries,published:this.published?[...this.published]:null,lastCounts:this.lastCounts?new Map(this.lastCounts):null,parent:this.context.parent,machine:this.context.machine});
   }
   stop() {this.presentations.clear();this.published=null;this.returning=false;this.lastCounts=null;this.serial++;this.factOrder.reset();this.context=null;this.entries.clear();this.pending.clear();this.diagnostics.clear();}
   get busy() {return this.pending.size>0 || Boolean(this.fallbackBusy);}

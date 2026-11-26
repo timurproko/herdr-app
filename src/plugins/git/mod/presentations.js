@@ -28,17 +28,18 @@ export class PresentationMemory extends Map {
     const key = this.folders.get(JSON.stringify([folder, on ?? null]));
     return key ? JSON.parse(key)[2] : null;
   }
-  repository(on, name) {
+  repository(on, name, validSource = () => true) {
     name = name?.toLowerCase(); if (!name) return null;
     const full = this.get(JSON.stringify(['repository', on ?? null, name]));
-    if (full) return full;
+    if (full && (!(full.seed || Object.values(full.seedTabs??{}).some(Boolean)) || validSource(full.source))) return full;
     for (const saved of [...this.values()].reverse()) {
-      if (saved.repository || (saved.machine ?? null) !== (on ?? null) || !saved.published) continue;
-      const pulls = {open:[], closed:[]};
-      for (const [,entry] of saved.published) {
-        if (entry.link.repo !== name || !entry.pr || entry.missing) continue;
+      if (saved.repository || (saved.machine ?? null) !== (on ?? null) || !saved.published || !validSource(saved)) continue;
+      const pulls = {open:[], closed:[]},admitted=new Map(saved.entries??saved.published);
+      for (const [id,entry] of saved.published) {
+        const current=admitted.get(id);
+        if (!current || current.missing || entry.link.repo !== name || !entry.pr || entry.missing) continue;
         const state = ['open','draft'].includes(entry.pr.state) ? 'open' : 'closed';
-        const live = entry.link.targets.some(t => !t.historical && t.terminal);
+        const live = current.link.targets.some(t => !t.historical && t.terminal);
         const age = Date.now() - entry.completedAt;
         if (state === 'closed' && !live && !(age >= 0 && age < 86400000)) continue;
         const {key, repo, ...facts} = entry.pr;
@@ -47,7 +48,7 @@ export class PresentationMemory extends Map {
       // An empty full task publication is not proof this repository is empty.
       if (!pulls.open.length && !pulls.closed.length) continue;
       return {repository:true, seed:true, on:on ?? null, repo:{name, url:`https://github.com/${name}`}, pulls,
-        counts:{open:pulls.open.length, closed:pulls.closed.length}, source:saved.scope};
+        counts:{open:pulls.open.length, closed:pulls.closed.length}, source:{scope:saved.scope,parent:saved.parent,machine:saved.machine,providerGeneration:saved.providerGeneration}};
     }
     return null;
   }

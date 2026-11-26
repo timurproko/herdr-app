@@ -470,6 +470,35 @@ metrics and passive 40px gradients, not copied approximations. Git retains its o
 padding and background; paired native content/frame geometry and changed-only
 size/input callbacks update edge hints without polling or render-time notifications.
 
+## Git repository entry presentation
+
+`plugins/git/mod/presentations.js` owns pure committed publication and the shared
+bounded entry memory used by the ordinary and coordinator adapters. The existing
+coordinator warm-entry policy is shared with worker entry: restore a compatible
+section before IO, keep the native header activity while refreshing, publish
+coherent replacement in place, and reserve body Loading for cold data/identity.
+The memory holds at most four retained contexts and 4096 admitted rows, plus 256
+folder mappings; eviction/generation clearing retires mappings. No callbacks,
+native handles, credentials or restart/portable PR inventory are stored.
+
+Identity is exact machine plus canonical repository and the existing inherited
+read route; folder/agent mappings require canonical lookup, not a task label or
+branch guess. Task-derived seeds retain owner/home/provider provenance and
+history eligibility. They show known values with incomplete repository-total
+metadata, never claim task totals are repository totals, and demand real pages
+for each tab independently. Git enable-generation changes clear cached inventory;
+source replacement/disablement invalidates dependent seeds. Confirmed absence
+retires folder identity; late replies are rejected by request/context/enable epoch.
+Ordinary reads and captured actions keep their own current authority. Hidden
+snapshots perform no IO.
+
+Direct entry restores section order without creating a pin, reordering or starting
+motion. Existing panel-origin chip/robot clicks keep their separate controller
+and selection acknowledgement. Repository name/count/folding live in the shared
+section header. The main header's repository label and repository-page popup
+(including keyboard actions) are removed; diagnostics remain on existing native
+activity/count feedback and PR row menus are unchanged.
+
 ## Right-sidebar tab pins
 
 `shared/panel-state.js` is the single owner of `custom.panel.tabs` (version 1):
