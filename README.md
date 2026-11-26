@@ -824,6 +824,14 @@ worktree**. Rows and popup height never change during an open menu; reopening pi
 up newer metadata. Worktree dialogs keep the clicked folder rather than a later
 selected terminal's folder.
 
+**Settings → Spaces → Separate space per project**, contributed by enabled Crew,
+stores one global preference: off/default combines Crew workers; on gives each
+project its own space for new work. It is independent of fleet attachment and the
+selected machine. Running agents stay where they are; reviews and replacements
+inherit their original placement. The switch displays saved intent, not a single
+home's observed mode. Machine-named status identifies incomplete application;
+unsupported Crew leaves the switch disabled rather than guessing support.
+
 **Settings → Spaces → Connect fleet space to coordinator** is off by default
 (`connectFleetToCoordinator`). Changes apply while Settings stays open: enabling
 restores the last verified host-local pair in the same render, before any read

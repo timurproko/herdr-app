@@ -10,6 +10,7 @@ import { hc, shared, setShared, panes, terminals, pluginMod } from '../api.js';
 import { refreshFleets, fleetContexts, fleetWitnessMachines, fleetPullContext, fleetColorAllowed, fleetLinks, invalidateFleet } from './fleet.js';
 import { fleetError } from './fleet-diagnostics.js';
 import { fleetStatusScript } from './fleet-command.js';
+import { workerSpaceRows, WORKER_SPACE_SETTING } from './worker-space-state.js';
 
 const winPath = path => String(path).replace(/\//g, '\\');
 const CHECK_TIMEOUT = 15, INSTALL_TIMEOUT = 300;
@@ -913,7 +914,9 @@ export default {
   icon: 'agent',
   description: 'Run a coordinator agent that hands work to worker agents, each in its own terminal and working copy.',
   defaultEnabled: false,
+  settingsRows: workerSpaceRows,
   settings: [
+    { key: WORKER_SPACE_SETTING, type: 'toggle', hidden: true, default: false },
     // Shown at the top of Requirements: it is where everything in that list is checked and installed.
     { key: 'machine', type: 'machine', place: 'requirements', default: null, label: 'Machine' },
     // A dropdown of the accounts saved on that machine (read each time the requirements are

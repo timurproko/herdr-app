@@ -90,6 +90,26 @@ export function setPluginSetting(plugin, key, value) {
   }
 }
 
+// Declarative settings contributions. Queries are pure; captured callbacks recheck
+// provider availability and typed preferences instead of trusting an old render.
+export function pluginSettingsRows(section) {
+  return PLUGINS.flatMap(plugin => {
+    if (!pluginEnabled(plugin) || !plugin.settingsRows) return [];
+    try {
+      return (plugin.settingsRows(section, pluginContext(plugin)) ?? []).filter(row =>
+        field(plugin, row.key)?.type === 'toggle' && typeof row.title === 'string' && typeof row.about === 'string')
+        .map(row => ({ ...row, id: `${plugin.id}-${row.key}`, value: pluginSetting(plugin, row.key),
+          change(value, cx) {
+            if (!pluginEnabled(plugin)) return;
+            const current = plugin.settingsRows(section, pluginContext(plugin))?.find(r => r.key === row.key);
+            if (current?.available !== true) return;
+            setPluginSetting(plugin, row.key, value);
+            cx?.notify();
+          } }));
+    } catch (error) { failed(plugin, 'settingsRows', error); return []; }
+  });
+}
+
 // Small tags enabled plugins add to a space's sidebar row: `spaceTags(space, cx)` returns
 // `[{ label, tooltip? }]`, synchronously, from live data only (it runs on every draw). A failing
 // plugin is reported once and adds none.

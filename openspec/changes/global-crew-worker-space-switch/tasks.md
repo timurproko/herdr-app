@@ -2,9 +2,9 @@
 
 ## 1. Global Crew switch and persistent intent
 
-- [ ] 1.1 Declare one hidden default-false Crew boolean using existing typed plugin preferences; verify default/off, on/off round trip and restart retention with isolated preference fixtures, excluding private target/status facts from export.
-- [ ] 1.2 Add the generic enabled-plugin Spaces-row contribution seam and Crew metadata; compose the row directly below Connect fleet using existing row/toggle/badge primitives and exact proposal wording, verified with production renderer fixtures for placement, accessibility, preserved global value, disabled callbacks and effect-free rendering.
-- [ ] 1.3 Document the generic contribution contract and global intent in docs/PLUGIN-UI.md and README; verify examples match the declaration and that the selected machine and fleet attachment do not scope the saved preference.
+- [x] 1.1 Declare one hidden default-false Crew boolean using existing typed plugin preferences; verify default/off, on/off round trip and restart retention with isolated preference fixtures, excluding private target/status facts from export.
+- [x] 1.2 Add the generic enabled-plugin Spaces-row contribution seam and Crew metadata; compose the row directly below Connect fleet using existing row/toggle/badge primitives and exact proposal wording, verified with production renderer fixtures for placement, accessibility, preserved global value, disabled callbacks and effect-free rendering.
+- [x] 1.3 Document the generic contribution contract and global intent in docs/PLUGIN-UI.md and README; verify examples match the declaration and that the selected machine and fleet attachment do not scope the saved preference.
 
 ## 2. Capability-gated application to every known home
 

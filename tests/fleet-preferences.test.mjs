@@ -7,7 +7,7 @@ const state = {}, context = vm.createContext({}), cache = new Map();
 const element = () => {const target={children:[]};let proxy;proxy=new Proxy(target,{get(o,k){if(k==='child')return x=>{o.children.push(x);return proxy;};return k in o?o[k]:(...args)=>{o[k+'Value']=args;return proxy;};}});return proxy;};
 async function load(name) {
   if(cache.has(name)) return cache.get(name);
-  const values = name === './host.js' ? {shared:k=>state[k],setShared:(k,v)=>state[k]=v} : name === './plugins.js' ? {pluginEvent(){}} : name === 'gpui-base' ? {v_flex:element} : null;
+  const values = name === './host.js' ? {shared:k=>state[k],setShared:(k,v)=>state[k]=v} : name === './plugins.js' ? {pluginEvent(){},pluginSettingsRows:()=>[]} : name === 'gpui-base' ? {v_flex:element,h_flex:element} : name === 'gpui-kit' ? {div:element} : name === './settings-kit.js' ? {badge:element} : null;
   const file = name === './spaces-ui.js' ? 'features/settings/spaces-ui.js' : name === './fleet-display.js' ? 'shared/fleet-display.js' : 'shared/space-preferences.js';
   const mod = values ? new vm.SyntheticModule(Object.keys(values),function(){for(const [k,v]of Object.entries(values))this.setExport(k,v);},{context}) : new vm.SourceTextModule(fs.readFileSync('src/'+file,'utf8'),{context});
   cache.set(name,mod);await mod.link(load);return mod;
