@@ -240,7 +240,7 @@ The command SHALL end with machine, action, source commit and printed backup ID 
 - **THEN** the command exits zero and preserves each deploy's printed backup ID
 
 ### Requirement: Single Custom customization update row
-Custom Settings Updates SHALL retain its native rows and add one herdr-app-custom row with a short verified installed revision when known, a short status and one action slot. Without a verified revision, its title SHALL be only herdr-app-custom. The slot SHALL show Check now, Update or transient busy/current feedback matching the native rows. It SHALL NOT add machine rows, news, settings or rollback controls. Checking and updating SHALL disable only that row's action.
+Custom Settings Updates SHALL retain its native rows and add one herdr-app-custom row with a short verified installed revision when known, a short status and one action slot. Without a verified revision, its title SHALL be only herdr-app-custom. The slot SHALL show Check now, Update, Retry update or transient busy/current feedback matching the native rows. It SHALL NOT add machine rows, news, settings or rollback controls. Checking and updating SHALL disable only that row's action.
 
 #### Scenario: Current or newer published main
 - **WHEN** a successful check compares the verified desktop installation with published main
@@ -263,7 +263,7 @@ Custom Settings Updates SHALL retain its native rows and add one herdr-app-custo
 - **WHEN** the published-main check fails or no trustworthy installed revision exists
 - **THEN** failure shows a short retry message rather than claiming current status
 - **AND** the revision is never inferred from a source checkout HEAD
-- **AND** failures and unknown outcomes do not show the current confirmation and retain their existing action and safety guards
+- **AND** failures and unknown outcomes do not show the current confirmation and retain their action and safety guards, with eligible unknowns using only the separately confirmed Retry update path
 
 #### Scenario: Title across all update states
 - **WHEN** the row is checking, update available, updating, failed or up to date
@@ -303,7 +303,7 @@ The row's explicit Update SHALL use only a managed desktop clone at ~/.local/sha
 - **AND** the maintainer's development checkout and crew worktrees remain untouched
 
 ### Requirement: Reload-independent bounded update result
-An update SHALL run independently of the mod it replaces, with a finite deadline and one latest durable status/result/log under the selected Herdr home. Reload, closing Settings or duplicate clicks SHALL NOT cancel or repeat it. A missing final result SHALL NOT imply success. No daemon, scheduler or job history SHALL be introduced. Replacement of an open Updates view SHALL preserve that section and reconcile truthful row feedback without exporting navigation state as preferences.
+An update SHALL run independently of the mod it replaces, with a finite deadline and one latest durable status/result/log under the selected Herdr home. Reload, closing Settings or duplicate clicks SHALL NOT cancel or repeat it. Missing results SHALL NOT imply success or automatic replay. No daemon, scheduler or job history SHALL be introduced. Replacement of an open Updates view SHALL preserve that section and reconcile truthful row feedback without exporting navigation state as preferences.
 
 #### Scenario: Page replaced during deploy
 - **WHEN** deployment replaces Settings or the user closes and reopens it
@@ -315,7 +315,7 @@ An update SHALL run independently of the mod it replaces, with a finite deadline
 - **WHEN** an update started from Updates replaces the still-open Settings view, while the runner is active or has just finished
 - **THEN** the dialog remains on Updates without requiring another navigation click
 - **AND** a pending or running update never flashes a stale actionable Update or Up to date result
-- **AND** completion reconciles the verified revision and published-main check, retaining existing failure, partial-outcome and unknown-result behavior
+- **AND** completion reconciles the verified revision and published-main check, retaining failure and partial-outcome feedback and the evidence-based unknown-result recovery rules
 
 #### Scenario: Navigation and dismissal remain deliberate
 - **WHEN** the person changes section or explicitly dismisses Settings before replacement
@@ -331,8 +331,8 @@ An update SHALL run independently of the mod it replaces, with a finite deadline
 
 #### Scenario: Deadline or lost completion
 - **WHEN** the update exceeds its deadline, crashes or leaves no final result
-- **THEN** the row reports outcome unknown with a log path and does not replay the update
-- **AND** another deployment remains blocked while the prior process or lock is unresolved
+- **THEN** the row reports outcome unknown with a log path unless matching settled terminal evidence proves a precise outcome
+- **AND** it never automatically replays; another deployment remains blocked while prior work is active or unresolved, except through the explicit quiescence-checked unknown-retry confirmation
 
 ### Requirement: Durable desktop revision and partial outcomes
 Real deploy:all runs SHALL record latest per-machine outcomes and successful desktop commit with installed ownership evidence, without changing the ownership manifest schema. Dry-run SHALL NOT write these records. Desktop success SHALL remain distinct from peer skips/failures; uncertain installation SHALL NOT claim a verified revision. Definite failures SHALL retain an actionable stage and cause through the result, runner and Settings row, including the App version for a host-check refusal.
@@ -680,3 +680,64 @@ Owned-palette migration SHALL stage the new entrypoint and binding before retiri
 - **AND** a successful rollback restores the previous Custom palette, including startup repair after a native frame reset, rather than silently returning to vanilla
 - **AND** later native edits refuse before recovery writes, personal shortcut rebindings remain untouched, and a skipped or failed guarded refresh reports failure with the opt-in retained
 - **AND** reinstalling through normal Update safely returns to the owned palette without changing feedback or running terminals
+
+### Requirement: Sharing-tolerant updater persistence
+Updater receipts, status, availability checks and lock helpers SHALL tolerate bounded transient file-sharing failures without losing complete final deployment content. Exhausted replacement retries SHALL use a safe fallback publication or retain complete content that the reader can accept. Exclusive ownership and unreadable-state refusal SHALL remain intact.
+
+#### Scenario: Final receipt target temporarily locked
+- **WHEN** a finished deployment encounters a transient sharing failure replacing its final receipt
+- **THEN** bounded retries publish a complete same-run receipt after the target becomes available
+- **AND** Settings reconciles completion rather than remaining permanently unknown
+
+#### Scenario: Replacement persistently refused
+- **WHEN** replacement remains refused throughout the retry budget but fallback storage is writable
+- **THEN** complete final content remains readable through fallback publication or validated recovery content
+- **AND** an intermediate incomplete receipt does not indefinitely mask that final content
+
+#### Scenario: State read overlaps publication
+- **WHEN** a read encounters a transient sharing failure or incomplete fallback publication
+- **THEN** bounded read-and-close retries tolerate the transient failure without retaining an open file
+- **AND** exhausted or malformed reads never authorize another update as though no lock or unknown job existed
+
+#### Scenario: Lock and non-receipt writes encounter contention
+- **WHEN** status, availability or lock IO encounters a sharing failure
+- **THEN** the same bounded fault policy applies without overwriting another exclusive lock
+- **AND** failed IO closes owned descriptors and retains conservative action guards
+
+#### Scenario: All persistence is unavailable
+- **WHEN** storage cannot accept either normal or fallback content
+- **THEN** the updater reports the persistence limitation without fabricating deployment failure or success
+- **AND** it retains any complete evidence already written instead of deleting it during error cleanup
+
+### Requirement: Evidence-based unknown outcome recovery
+Unknown runs SHALL settle only from attributable completion evidence after recorded processes are dead and a settle interval or deadline has passed. Proven deployment with an unsaved result SHALL be distinguished from genuine uncertainty. Genuine unknowns SHALL permit only a separately confirmed retry after quiescence checks; inspection, deadlines and availability checks SHALL NOT replay work.
+
+#### Scenario: Deployment finished but final receipt was not saved
+- **WHEN** a dead settled run has matching terminal deployment evidence and a final receipt-publication failure
+- **THEN** the row states that deployment completed but the result could not be saved and names its matching details
+- **AND** only that run's stale update lock is eligible for release, with installed revision still requiring matching ownership evidence
+
+#### Scenario: Genuine unknown becomes eligible for deliberate retry
+- **WHEN** recorded processes and known descendants are dead, the required settle/deadline boundary has passed, and a fresh main check succeeds without conclusive completion evidence
+- **THEN** the row offers Retry update with a one-line explanation that the previous update may have finished
+- **AND** no new update starts until the person confirms local and dispatched remote work has stopped and explicitly confirms retry
+
+#### Scenario: Remote or descendant work might still run
+- **WHEN** recorded local processes died but descendants are active, process facts are unreadable, or dispatched work lacks completion evidence
+- **THEN** local PID death alone never declares success or authorizes ordinary Update
+- **AND** unresolved dispatch waits through the original deadline and still requires explicit stopped-work confirmation before a retry
+
+#### Scenario: Canceled or obsolete confirmation
+- **WHEN** a person cancels, closes or reloads a retry confirmation, or a newer run or late complete receipt changes its captured identity
+- **THEN** the confirmation cannot start another update
+- **AND** competing confirmations and duplicate clicks can dispatch at most one guarded new run
+
+#### Scenario: Automatic triggers encounter an eligible unknown
+- **WHEN** status reads, Check now, startup, timer checks, focus catch-up or relay hints observe retry eligibility
+- **THEN** they do not clear uncertainty as authorization or dispatch another update
+- **AND** unknown diagnostics and evidence remain until conclusive settlement or an explicitly claimed retry
+
+#### Scenario: Legacy or foreign evidence is insufficient
+- **WHEN** an old or tokenless CLI unknown lacks attributable process/dispatch evidence, or a log or recovery receipt belongs to another run
+- **THEN** it remains unknown with investigation guidance rather than automatically becoming success or retryable
+- **AND** the documented manual recovery path remains available without bypassing deployment locks or ownership gates
