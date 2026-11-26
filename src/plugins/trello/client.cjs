@@ -45,7 +45,7 @@ function mergeCooldown(store, deadline) {
     try { store.write('cooldown', {version: 1, retryAt}, old); return retryAt; }
     catch (e) { if (e.code !== 'CONFLICT') throw e; }
   }
-  fail('STORE'); // Bounded local contention refusal, never an HTTP replay.
+  fail('STORE_BUSY'); // Bounded local contention refusal, never an HTTP replay.
 }
 class Client {
   constructor(store, gate, {transport = globalThis.fetch, now = nowMs, timeout = 20000, routeRules = routes} = {}) {
@@ -91,7 +91,7 @@ class Client {
         timer = setTimeout(() => { controller.abort(); reject(new TrelloError('TRANSPORT')); }, Math.min(this.timeout, 60000 - (this.now() - this.started)));
       })]);
     } catch (e) {
-      if (write && dispatched && (!(e instanceof TrelloError) || ['TRANSPORT', 'RESPONSE', 'STORE'].includes(e.code))) fail('UNKNOWN_WRITE');
+      if (write && dispatched && (!(e instanceof TrelloError) || (['TRANSPORT', 'RESPONSE', 'INTERNAL'].includes(e.code) || e.code.startsWith('STORE')))) fail('UNKNOWN_WRITE');
       if (e instanceof TrelloError) throw e; fail('TRANSPORT');
     }
     finally { clearTimeout(timer); controller.abort(); }
