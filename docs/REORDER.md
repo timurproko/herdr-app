@@ -61,6 +61,10 @@ only the coordinator shows the plain Crew label and no row has a chain.
 Coordinator drags capture the whole block in `sources`; child drags capture only
 the grabbed child there, plus stable parent/member/binding identity in metadata.
 Child targets stay inside the original siblings and a singleton cannot move.
+A captured child gesture always passes relationship validation, even if attachment
+is disabled or its final link disappears before the next render/release. It must
+cancel, never fall through to independent movement; a new detached gesture keeps
+ordinary native ordering.
 The same component supplies dimming, marker, preview and cancellation for both
 scopes; there is no second gesture implementation. Domain adapters still validate
 bindings and destination block edges. Spaces commits its finite public ordering

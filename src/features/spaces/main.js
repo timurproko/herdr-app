@@ -449,7 +449,7 @@ export default class Spaces extends View {
     // Space-only ordering follows the displayed pair, including remembered
     // identity. Operational actions still use the registry's fresh context.
     const links = displayLinks();
-    if (result.kind === 'drop' && (result.meta?.sources?.length > 1 || links.length)) {
+    if (result.kind === 'drop' && (result.meta?.parent || result.meta?.sources?.length > 1 || links.length)) {
       const captured = result.meta;
       const wanted = planBlockDrop(all, links, result.id, result.target, captured);
       this.blockCommit ??= new SpaceBlockCommit({read: spaces, links: displayLinks,

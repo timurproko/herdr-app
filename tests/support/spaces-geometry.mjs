@@ -15,7 +15,7 @@ export async function spacesGeometryHarness() {
       'space-rename.js':{beginSpaceRename:fail,cancelSpaceRename:fail,saveSpaceRename:fail,syncSpaceRename(){}},
       'directory.js':{displaySpace:s=>s,spaceDirectory:()=>({cwd:'/fixture'})},'space-color-state.js':{reconcileSpaceColors(){}},
       'plugins.js':{pluginEvent:fail,pluginSpaceTags:()=>[{plugin:'crew',label:'Crew'}],pluginWorkspaceLinks:()=>[]},
-      'workspace-links.js':{projectLinkedRows:rows=>rows,captureSpaceBlock(){},blockTarget(){},planBlockDrop(){},SpaceBlockCommit:class{}}},
+      'workspace-links.js':'src/shared/workspace-links.js'},
     entry:'export {default as Main} from "./main.js";'});
   const panel=new Main();panel.machines=[];panel.reconnecting={};panel.shown=new Set(spaces.map(s=>s.id));
   panel.ordered=()=>spaces.map((w,i)=>({w,i,linked:i===1,...(i<2?{block:['coordinator','fleet']}:{})}));

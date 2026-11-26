@@ -36,14 +36,14 @@ function b64(text){const abc='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwx
 let held;export const releaseFixture=()=>{held?.();held=null;};
 export async function hc(args){if(args[0]!=='exec')throw Error('Only fake Crew execution');const script=args.at(-1),machine=args.includes('--on')?'pc2':'local',home='C:/fixture/'+machine;let stdout,code=0;
 if(script.includes('--capabilities --json'))stdout=JSON.stringify({identity:'fixture-'+machine,code:0,stdout:JSON.stringify(cap)});
-else if(script.includes('status --json --view fleet'))stdout=JSON.stringify({home});
+else if(script.includes('status --json --view fleet')){if(native.shared('fixture.discoveryFail')===machine){code=2;stdout='';}else stdout=JSON.stringify({home});}
 else if(script.includes('--set-local')){if(native.shared('fixture.hold'))await new Promise(resolve=>held=resolve);const mode=script.includes(\"--set-local 'per-project'\")?'per-project':'combined';if(machine==='pc2'&&native.shared('fixture.refuse')){code=2;stdout=JSON.stringify({...cap,ok:false,home,mode:null,changed:false,error:{code:'invalid-registry',message:'synthetic refusal'}});}else{const modes=native.shared('fixture.modes');native.setShared('fixture.modes',{...modes,[machine]:mode});stdout=JSON.stringify({...cap,ok:true,home,mode,changed:modes[machine]!==mode});}}
 else if(script.includes('config worker-space'))stdout='worker-space: '+native.shared('fixture.modes')[machine];else throw Error('Unfaked command refused');
 return {code:0,stdout:JSON.stringify({code,stdout:b64(stdout),stderr:'',timed_out:false})};}
 `);
 put('mods/custom-settings/main.js',`import Settings from './settings-view.js';import {spacesPage} from './spaces-ui.js';import {pluginEvent} from './plugins.js';import {v_flex,h_flex} from 'gpui-base';import {div} from 'gpui-kit';import {theme,checking,readTextFile,shared,setShared,releaseFixture} from './host.js';
 export default class Fixture extends Settings {
-init(_p,cx){this.action=0;if(checking())return;cx.timer.every(250,cx=>{pluginEvent('workspace.settings.refresh',{owner:this,cx});cx.spawn(async view=>{const command=JSON.parse(await readTextFile(${JSON.stringify(control)}));if(!command.id||command.id===this.action)return;this.action=command.id;if(command.refuse!==undefined)setShared('fixture.refuse',command.refuse);if(command.hold!==undefined)setShared('fixture.hold',command.hold);if(command.release)releaseFixture();if(command.flip)this.flip({},view);setShared('fixture.ack',command.id);view.notify();});});}
+init(_p,cx){this.action=0;if(checking())return;cx.timer.every(250,cx=>{pluginEvent('workspace.settings.refresh',{owner:this,cx});cx.spawn(async view=>{const command=JSON.parse(await readTextFile(${JSON.stringify(control)}));if(!command.id||command.id===this.action)return;this.action=command.id;if(command.refuse!==undefined)setShared('fixture.refuse',command.refuse);if(command.discoveryFail!==undefined)setShared('fixture.discoveryFail',command.discoveryFail);if(command.hold!==undefined)setShared('fixture.hold',command.hold);if(command.release)releaseFixture();if(command.flip)this.flip({},view);setShared('fixture.ack',command.id);view.notify();});});}
 toggle(t,id,on,fn){if(id==='st-crew-separateProjectSpaces')this.flip=fn;return super.toggle(t,id,on,fn);}
 render(){const t=theme();return v_flex().size_full().bg(t.background).text_color(t.foreground).p(32).gap(24).child(div().text_size(20).font_medium().child('Settings')).child(h_flex().gap(32).child(v_flex().w(140).gap(18).text_color(t.muted).child('Look').child('Machines').child('Core').child(div().text_color(t.foreground).child('Spaces')).child('Profiles').child('Terminals').child('Plugins')).child(v_flex().flex_1().min_w(0).child(spacesPage(this,t)))).child(div().text_size(12).text_color(t.muted).child('Disposable synthetic Crew homes · no real configuration or coordinator changed'));}}
 `);
@@ -58,6 +58,8 @@ const capture=async name=>{await sleep(500);const file=path.join(root,name+'.png
 try {
  await wait(settled('combined'));await capture('off');await command({hold:true,flip:true});await wait(s=>s['custom.crew.worker-space']?.lock && s['custom.plugins'].crew.settings?.separateProjectSpaces===true);await capture('applying');await command({hold:false,release:true});await wait(settled('per-project'));await capture('on');
  await command({flip:true});await wait(settled('combined'));await command({refuse:true,flip:true});await wait(s=>s['custom.crew.worker-space']?.statuses?.some(x=>x.machine==='pc2'&&x.label==='Refused'));await capture('refused');
+ await command({refuse:false,discoveryFail:'pc2'});await wait(s=>s['custom.crew.worker-space']?.hosts?.['"pc2"']?.discoveryFailure===true);await capture('discovery-failed');
+ await command({discoveryFail:'',flip:true});await wait(settled('combined'));await capture('discovery-recovered');
  result.status=JSON.parse(app(['status']));assert.equal(result.status.zoom,zoom);result.board=state()['custom.crew.worker-space'];
 }finally {
  try{app(['do','app.quit']);}catch{}await sleep(700);if(child.exitCode===null){child.kill();await sleep(500);}result.stopped=child.exitCode!==null||child.signalCode!==null;

@@ -18,6 +18,7 @@ function save(change) {
   // authoritative machine unreachability belong on the plain Settings row.
   for(const h of hosts) if(!h.connected)add(h.machine,'failed','Not connected');
     else if(['unsupported','failed','refused'].includes(h.state))add(h.machine,h.state,h.reason);
+    else if(h.discoveryFailure)add(h.machine,'failed','Could not discover Crew home');
   for(const t of Object.values(b.targets))if(validMachine(t?.machine)&&absoluteHome(t?.home)) {
     const h=b.hosts[machineKey(t.machine)];
     if(!h?.connected)add(t.machine,'failed','Not connected');
@@ -51,7 +52,7 @@ export function refreshWorkerSpaces({cx,setting,knownHomes=()=>[]},ask) {
     if(!initialized) {
       initialized=true;
       save(b=>{b.intent=setting(WORKER_SPACE_SETTING)===true;
-        for(const [key,h]of Object.entries(b.hosts))b.hosts[key]={...h,state:'pending',at:0,cached:null};
+        for(const [key,h]of Object.entries(b.hosts))b.hosts[key]={...h,state:'pending',at:0,cached:null,discoveryFailure:false};
         for(const [key,t]of Object.entries(b.targets))b.targets[key]={...t,state:'pending',reason:null,code:null,at:0};return b;});
     }
     const at=Date.now(),intent=setting(WORKER_SPACE_SETTING)===true;
@@ -109,11 +110,13 @@ export function refreshWorkerSpaces({cx,setting,knownHomes=()=>[]},ask) {
         }
         const found=await request({kind:'discover'}),home=parse(found.stdout)?.home;
         if(found.code!==0 || !absoluteHome(home)) {
-          save(b=>{b.hosts[key]={...b.hosts[key],state:Object.values(b.targets).some(t=>t.machine===machine)?'ready':'pending',reason:'No Crew home available',cached:probe,at:Date.now()+CADENCE};return b;});return;
+          // Known roots can still reconcile with witnessed support. Keep this
+          // completed discovery failure visible independently of their success.
+          save(b=>{b.hosts[key]={...b.hosts[key],state:Object.values(b.targets).some(t=>t.machine===machine)?'ready':'failed',reason:'Could not discover Crew home',discoveryFailure:true,cached:probe,at:Date.now()+CADENCE};return b;});return;
         }
         observeWorkerHome(machine,home);
         if(h.cached?.identity!==probe.identity)save(b=>{for(const [id,t]of Object.entries(b.targets))if(t.machine===machine)b.targets[id]={...t,state:'pending',reason:null,code:null,at:0};return b;});
-        save(b=>{b.hosts[key]={...b.hosts[key],state:'ready',reason:null,cached:probe,at:Date.now()+CADENCE};return b;});
+        save(b=>{b.hosts[key]={...b.hosts[key],state:'ready',reason:null,discoveryFailure:false,cached:probe,at:Date.now()+CADENCE};return b;});
       } else {
         const [,t]=target,capability=await request({kind:'capability',cached:b.hosts[machineKey(machine)].cached}),probe=parse(capability.stdout);
         if(capability.code!==0 || !probe || typeof probe.identity!=='string' || typeof probe.stdout!=='string' || probe.code!==0 || !supportedCapability(parse(probe.stdout))) {

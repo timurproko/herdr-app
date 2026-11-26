@@ -1231,6 +1231,13 @@ a lost read continuation is replaced after its command lease and its late reply
 cannot write. No permanent stall is reproduced in these cases. No installed Crew,
 real registry, coordinator or credential is used.
 
+`node --experimental-vm-modules tests/crew-worker-discovery.test.mjs` reproduces
+completed discovery exit-2 refusals, invalid JSON, missing homes and relative
+paths over 120 simulated seconds. The actual registry row must show one plain
+machine-named failure, retry exactly on the existing cadence, and clear after
+recovery. Healthy peers and known custom roots continue reconciling; held
+in-flight discovery stays quiet. No real Crew or machine is used.
+
 `node --experimental-vm-modules tests/crew-worker-review.test.mjs` covers both
 blocking review findings through production plugin/lifecycle paths. Existing
 validated display roots and status observations must join a distinct default home
@@ -1252,7 +1259,8 @@ The opt-in `tests/features/worker-space-native.mjs --run --output <outside-check
 It checks release metadata/archive SHA-256, extracted executable byte equality and
 version, installs nothing, deploys only a disposable app home, and blocks all real
 Crew/Core control and unrelated subprocesses. It captures off, applying, on and machine-named
-refusal with the real plain Settings row/toggle, registry and policy, using synthetic
+refusal, completed discovery failure and recovery with the real plain Settings
+row/toggle, registry and policy, using synthetic
 in-memory home modes. A disposable controller invokes the production callback;
 these are native-rendering proofs, not physical pointer/keyboard or live SSH proof.
 Receipts include zoom, hashes, errors and desktop/Core stop acknowledgements. Every
@@ -1265,6 +1273,8 @@ singletons, parent-block moves, cross-parent/machine refusals, noncontiguous nat
 slots, selection/index/connector projection after model recreation, delayed and
 missing acknowledgements, changed membership and concurrent native ordering.
 The actual Spaces caller is covered by `tests/spaces-worktree-layout.test.mjs`
+(including relationship loss after capture but before another render/release,
+with no independent-move fallback, plus a new detached gesture that still works)
 and `tests/fleet-toggle-live.test.mjs`, including remembered-only parent movement.
 `tests/features/space-order-native.mjs --run --output <outside-checkout> --zoom 1|1.3`
 uses the supplied checksum-verified release for before/during/after child drags

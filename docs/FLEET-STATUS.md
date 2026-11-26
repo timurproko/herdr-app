@@ -24,6 +24,11 @@ remain independent of this quiet projection. Held capability, discovery, read an
 set fixtures resume on the existing lifecycle; abandoned reads recover after the
 18-second command allowance. These fixtures reproduce transitional Pending, not
 a permanent application stall or the duration/cause of the original screenshot.
+A completed home-discovery refusal or malformed home reply is a failure, not
+in-flight Pending: it shows one machine-named line even before any root is known.
+Known custom roots may still reconcile after a default-home discovery failure;
+the machine's discovery failure remains visible independently until discovery
+succeeds. The existing ten-second retry cadence applies without an extra click.
 
 The getter is `crew config worker-space` scoped through `CREW_HOME` to an already
 known root; it must return `worker-space: combined` or `worker-space: per-project`.

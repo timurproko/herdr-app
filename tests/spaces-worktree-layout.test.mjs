@@ -75,6 +75,18 @@ assert.equal(content(r,w.id).attrs.pl,undefined);const marker=find(r,'space-work
 view.rename={id:'other'};view.renameField=()=>element().child('editing');r=view.row({w,i:1,g:{linked:true}},t);assert.equal(find(r,'space-worktree-other'),undefined);assert.equal(nodes(r).some(n=>String(n.attrs.id?.[0]).startsWith('space-tag-')),false);view.rename=null;
 take={kind:'drop',id:'child',target:'other'};view.drop('other',cx);assert.deepEqual({...moves.pop()},{id:'child',index:2});
 all[2].machine='pc2';take={kind:'drop',id:'child',target:'other'};view.drop('other',cx);assert.equal(moves.length,0);
+// Relationship loss between the last rendered gesture and release must not
+// fall through to independent movement. No intervening render/reset is needed.
+for(const id of ['parent','child1']) {
+ all=['parent','child1','gap','child2','other-parent','foreign'].map(id=>({id,machine:null}));
+ links=['child1','child2'].map(child=>({parent:'parent',child,binding:'verified'}));
+ const before=all.map(s=>s.id),selected=selects.length;view.blockCommit=null;moves=[];
+ take={kind:'drop',id,target:'child2',meta:captureSpaceBlock(all,links,id)};
+ links=[];view.drop('child2',cx);
+ assert.equal(moves.length,0,'Retired parent/child capture never uses the independent fallback');assert.equal(selects.length,selected);assert.deepEqual(all.map(s=>s.id),before);
+}
+// A NEW independent gesture after detachment still uses ordinary native ordering.
+take={kind:'drop',id:'child1',target:'child2',meta:captureSpaceBlock(all,links,'child1')};view.drop('child2',cx);assert.deepEqual({...moves.pop()},{id:'child1',index:4});
 setSpaces();echoMoves=true;moves=[];view.blockCommit=null;
 view.connectedFolds().add(view.parentKey(record('parent')));
 take={kind:'drop',id:'parent',target:'other',meta:{sources:['parent','child'],binding:'exact-home-owner'}};

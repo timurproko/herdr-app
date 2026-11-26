@@ -6,8 +6,8 @@ import {loadMod} from '../tools/plugin-harness.mjs';
 import {deferredFleet} from './fixtures/deferred-fleet.mjs';
 const context={scope:'home',machine:null,links:[]};
 const jobs=[],timers=[],calls=[];let now=1000000,shown=true;
-const held=[];
-const h=await rowHarness({globals:{Date:class extends Date{static now(){return now;}}},host:{exec:async(_cmd,args,options)=>{
+const held=[],fixture=deferredFleet(now);
+const h=await rowHarness({globals:{Date:class extends Date{static now(){return now;}}},host:{spaces:()=>fixture.groups,exec:async(_cmd,args,options)=>{
   calls.push(args);
   return await new Promise(resolve=>held.push({args,options,resolve}));
 }},modules:{'aggregate.js':'src/plugins/git/mod/aggregate.js','plugins.js':{sidebarPanelEnabled:()=>true,pluginPullContext:()=>context,pluginEvent(){}},
@@ -65,7 +65,7 @@ console.log('PASS standard Loading, incomplete badges, folded/header/list contin
 // Real Crew verification/admission, aggregate, read queue and renderer; only
 // transport, clock and native builders are synthetic. Healthy replies complete
 // before the refusal so machine-shared cooldown does not prevent those replies.
-const fixture=deferredFleet(now),state={'custom.plugins':{crew:{enabled:true},git:{enabled:true}},'custom.spaces.preferences':{connectFleetToCoordinator:true}};
+const state={'custom.plugins':{crew:{enabled:true},git:{enabled:true}},'custom.spaces.preferences':{connectFleetToCoordinator:true}};
 const provider=await loadMod({host:{shared:k=>state[k],setShared:(k,v)=>state[k]=v,spaces:()=>fixture.groups,panes:()=>fixture.all,terminals:()=>fixture.list,machines:()=>[{name:null,layout:'ready'}],checking:()=>false},
   globals:{Date:class extends Date{static now(){return now;}}},modules:{'space-color-state.js':{currentSpaceColor:()=>null}},entry:'export {refreshFleets,fleetPullContext} from "./plugins/crew/fleet.js";'});
 provider.refreshFleets(cx,async()=>JSON.stringify(fixture.status));await Promise.all(jobs);
