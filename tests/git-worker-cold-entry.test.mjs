@@ -85,7 +85,7 @@ for(const failed of ['open','closed']) {
   assert.ok(!words(tree).join(' ').includes('Row unavailable'),'No error fallback may satisfy pin/count assertions');
   assert.equal(Boolean(pin),number!==null,`${via}: pin follows the resolved selected agent`);if(number)assert.ok(find(pin,'pr-'+number));assert.equal(p.pinMotion.current,null,'Direct selection never starts label-click motion');
   assert.equal(words(find(tree,'task-repo-count-owner/repo')).join(''),number?'3':'4','Header counts only its unpinned rows');
-  assert.ok(words(p.segment(t,'git-view-open','Open',p.counts.open,true,()=>{})).join('').includes('4'),'Open badge retains the full total');
+  assert.equal(words(p.segment(t,'git-view-open','Open',true,()=>{})).join(''),'Open','Tab stays label-only while internal counts retain the full total');
   if(number){p.foldedRepositories.add('owner/repo');const folded=p.renderPulls(t);assert.ok(find(folded,'active-pull'));assert.equal(words(find(folded,'task-repo-count-owner/repo')).join(''),'3');p.foldedRepositories.clear();}
  }
 }
