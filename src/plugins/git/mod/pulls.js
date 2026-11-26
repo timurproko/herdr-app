@@ -51,6 +51,18 @@ export class GitReads {
     // The sink is best-effort, and always runs outside the requesting turn.
     Promise.resolve().then(()=>{try{this.onDiagnostic({...value});}catch{}});
   }
+  retireObsolete() {
+    // A native-aborted owner may never settle its JS promise/finally. Retire
+    // only leases whose consumers have all lost authority, never live work,
+    // cached facts, rate state or generation ordering.
+    const obsolete=job=>{try{return Boolean(job.consumers?.every(current=>!current()));}catch{return false;}};
+    const surviving=new Map();
+    for(const [key,job]of this.pending)if(obsolete(job))this.pending.delete(key);else if(job.scope)surviving.set(job.scope,job);
+    for(const [scope,job]of this.tails)if(obsolete(job)) {
+      if(surviving.has(scope))this.tails.set(scope,surviving.get(scope));else this.tails.delete(scope);
+    }
+    for(const map of [this.lists,this.targets])for(const [key,job]of map)if(obsolete(job))map.delete(key);
+  }
   route(options={}) {return JSON.stringify([options.on??null,options.credentialScope??null]);}
   state(options) {const key=options?.on??'';if(!this.routes.has(key))this.routes.set(key,{until:0,episode:false});return this.routes.get(key);}
   refusal(result,repository,options={}) {
@@ -84,7 +96,7 @@ export class GitReads {
       if((state.version??0)===admitted && result?.code===0 && !result.signal && !result.timed_out && !result.timedOut) {state.until=0;state.episode=false;}
       return result;
     })();
-    job.consumers=consumers;this.pending.set(id,job);if(scope)this.tails.set(scope,job);
+    job.consumers=consumers;job.scope=scope;this.pending.set(id,job);if(scope)this.tails.set(scope,job);
     try{const result=await job;this.recordDiagnostic(diagnostic,result?.code===0?'success':'failure');return result;}
     catch(error){this.recordDiagnostic(diagnostic,error?.quietCause==='refusal'?'quiet-refusal':error?.quietCause==='cooldown'?'cooldown-skip':quietRead(error)?'obsolete':'failure',error);throw error;}
     finally{if(this.pending.get(id)===job)this.pending.delete(id);if(scope && this.tails.get(scope)===job)this.tails.delete(scope);}
@@ -421,9 +433,18 @@ export async function readTargetPulls(exec,numbers,repository,options={}) {
           const stderr=failures.map(e=>e.message).join('; ')||'Incomplete targeted PR response';
           errors.set(number,{code:1,stderr});continue;
         }
-        if(value.number!==number || value.url?.toLowerCase()!==`https://github.com/${repository.toLowerCase()}/pull/${number}`)throw Error('Pull request identity mismatch');
-        values.push({...value,checkSummary:summaryState(value.commits?.nodes?.[0]?.commit?.statusCheckRollup?.state),
-          statusCheckRollup:value.commits?.nodes?.[0]?.commit?.statusCheckRollup?.contexts?.nodes ?? value.statusCheckRollup});
+        if(value.number!==number || typeof value.url!=='string' || value.url.toLowerCase()!==`https://github.com/${repository.toLowerCase()}/pull/${number}`) {
+          errors.set(number,{code:1,stderr:'Pull request identity mismatch'});continue;
+        }
+        try {
+          const candidate={...value,checkSummary:summaryState(value.commits?.nodes?.[0]?.commit?.statusCheckRollup?.state),
+            statusCheckRollup:value.commits?.nodes?.[0]?.commit?.statusCheckRollup?.contexts?.nodes ?? value.statusCheckRollup};
+          // Validate normalization per alias before the shared detail pass. A
+          // malformed sibling gains no facts and cannot poison healthy entries.
+          if(!['OPEN','CLOSED','MERGED'].includes(candidate.state))throw Error('Unrecognized pull request state');
+          if(candidate.title!=null && typeof candidate.title!=='string')throw Error('Invalid pull request title');
+          pullRow(candidate,repository.split('/')[0]);values.push(candidate);
+        } catch(error) {errors.set(number,{code:1,stderr:'Invalid pull request entry: '+String(error?.message??error)});}
       }
       const rows=await completePulls(exec,values,repository,shared);
       return new Map(batch.map(number=>[number,errors.has(number)?{error:errors.get(number)}:{row:rows.find(row=>row.number===number)}]));
@@ -539,6 +560,17 @@ export const MANAGED_STAGES = Object.freeze([
 export function pullStage(labels) {
   const names=new Set((labels??[]).map(label=>label.name));
   return MANAGED_STAGES.find(role=>[role.name,...role.previousNames].some(name=>names.has(name)||names.has(`🤖 ${name}`)))?.stage??null;
+}
+
+// Presentation-only aliases: never rename assigned GitHub labels or fetch a manifest.
+export function stageLabels(pr) {
+  const labels=pr.labels??[],role=MANAGED_STAGES.find(role=>role.stage===pr.stage);
+  if(!role)return labels;
+  const assigned=labels.find(label=>pullStage([label])===pr.stage);
+  return [...labels.filter(label=>!pullStage([label])),{
+    ...assigned,name:`🤖 ${role.name}`,stage:role.stage,assignedName:assigned?.name??null,
+    assignedNames:labels.filter(label=>pullStage([label])).map(label=>label.name),
+  }];
 }
 
 // One row's facts from a gh JSON entry. `owner` is the repo owner's login.

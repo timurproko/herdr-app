@@ -33,8 +33,9 @@ let allAgents=[], allPanes=[], allSpaces=[], allTerminals=[], shown=true, connec
 const calls=[], actions=[], tasks=[], remotes=new Map(), screens=new Map(),configs=new Map();
 const place={cwd:'/repo',on:null,terminal:'shell',tab:'shell-tab'};
 let heldRemote=null;
+const nativeReads={},readNative=(key,value)=>{nativeReads[key]=(nativeReads[key]??0)+1;return value;};
 const host={
-  agents:()=>allAgents,panes:()=>allPanes,spaces:()=>allSpaces,terminals:()=>allTerminals,machines:()=>[{name:'pc2',layout:connected?'ready':'disconnected'}],
+  agents:()=>readNative('agents',allAgents),panes:()=>readNative('panes',allPanes),spaces:()=>readNative('spaces',allSpaces),terminals:()=>readNative('terminals',allTerminals),machines:()=>readNative('machines',[{name:'pc2',layout:connected?'ready':'disconnected'}]),
   focused:()=>null,home:()=>'/home/test',shared:()=>null,setShared(){},
   settings:()=>({zoom:currentZoom}),theme:()=>colors,window:()=>({platform:'linux'}),openOverlay(){},
   props:()=>null,closeOverlay(){},notify(){},nextCommand(){},
@@ -328,7 +329,7 @@ let chipOpened=null;view.openPull=row=>chipOpened=row;
 function chipRow(stage,extra={}) {const row={...ordinaryStage,stage,...extra};view.pulls.open=[row];return view.pullRow(colors,row);}
 for(const [stage,caption,color,address]of [['build','Build','yellow','builder'],['review','Review','purple','pc2/reviewer']]) {
   const row=chipRow(stage),chip=find(row,'pr-stage-1200');assert.ok(chip);
-  assert.equal(chip.kids[0],caption);assert.equal(chip.attrs.text_color[0],color);assert.equal(chip.attrs.opacity,undefined);assert.equal(chip.attrs.role[0],'button');
+  assert.equal(chip.kids[0].kids[0],`🤖 ${caption}`);assert.equal(chip.attrs.h[0],18);assert.equal(chip.attrs.opacity,undefined);assert.equal(chip.attrs.role[0],'button');
   assert.equal(chip.attrs.tooltip,undefined,'Missing metadata and unknown names add no repeat-only tooltip');
   const before=actions.length;let stopped=0;const eventCx={stop_propagation(){stopped++;}};
   chip.attrs.on_mouse_down[1]({},eventCx);chip.attrs.on_click[0]({},eventCx);
@@ -336,13 +337,13 @@ for(const [stage,caption,color,address]of [['build','Build','yellow','builder'],
   const ghost=view.pullRow(colors,{...ordinaryStage,stage},true),preview=find(ghost,'swap-pr-stage-1200');assert.ok(preview);assert.equal(preview.attrs.on_click,undefined);assert.equal(preview.attrs.role,undefined);
 }
 ship.labels['crew.round']='1';ship.labels['crew.finding']='fix the guard';ship.labels['crew.approved']='b'.repeat(40);
-let stageChip=find(chipRow('build'),'pr-stage-1200');assert.equal(stageChip.kids[0],'Build 2');assert.equal(stageChip.attrs.tooltip[0],'back from review 1: fix the guard');
-ship.labels['crew.round']='2';assert.equal(find(chipRow('build'),'pr-stage-1200').kids[0],'Build 3');
-delete ship.labels['crew.round'];stageChip=find(chipRow('build'),'pr-stage-1200');assert.equal(stageChip.kids[0],'Build');assert.equal(stageChip.attrs.tooltip,undefined);
+let stageChip=find(chipRow('build'),'pr-stage-1200');assert.equal(stageChip.kids[0].kids[0],'🤖 Build');assert.equal(stageChip.attrs.tooltip[0],'Build 2\nback from review 1: fix the guard');
+ship.labels['crew.round']='2';assert.equal(find(chipRow('build'),'pr-stage-1200').kids[0].kids[0],'🤖 Build');assert.match(find(chipRow('build'),'pr-stage-1200').attrs.tooltip[0],/Build 3/);
+delete ship.labels['crew.round'];stageChip=find(chipRow('build'),'pr-stage-1200');assert.equal(stageChip.kids[0].kids[0],'🤖 Build');assert.equal(stageChip.attrs.tooltip,undefined);
 for(const state of ['pending','success','failure']) {
   const row=chipRow('approved',{checks:{state,label:'1/2'}}),chip=find(row,'pr-stage-1200');
-  assert.equal(chip.kids[0],'Approved');assert.equal(chip.attrs.text_color[0],'green');assert.equal(chip.attrs.on_click,undefined);assert.equal(chip.attrs.role,undefined);assert.equal(chip.attrs.opacity,undefined);
-  const before=actions.length;row.attrs.on_click[0]();assert.equal(chipOpened.stage,'approved');assert.equal(actions.length,before,'Approved bubbles to the PR row, never an agent');
+  assert.equal(chip.kids[0].kids[0],'🤖 Approved');assert.ok(chip.attrs.on_click);assert.equal(chip.attrs.role[0],'button');assert.equal(chip.attrs.opacity,undefined);
+  const before=actions.length;chip.attrs.on_click[0]({},cx);assert.equal(chipOpened.stage,'approved');assert.equal(actions.length,before,'Approved bubbles to the PR row, never an agent');
   assert.ok(!descendants(row).some(n=>typeof n==='string'&&/CI running|Review.*CI/.test(n)));
 }
 chipOpened=null;
@@ -358,7 +359,7 @@ const missing=find(chipRow('review',{number:1209}),'pr-stage-1209');assert.equal
 // The coordinator renderer uses the same chip through its guarded aggregate.
 taskContext={scope:'role-home',tasks:[{id:'ship',terminal:'builder'},{id:'review',terminal:'pc2/reviewer'}],links:[{url:'https://github.com/owner/repo/pull/1200',terminal:'builder',task:'ship'}]};
 aggregate.context=taskContext;view.aggregate=aggregate;aggregate.entries.get(stagePr.key).pr={...stagePr,stage:'review'};
-const aggregateChip=find(view.pullRow(colors,{...stagePr,stage:'review'}),'pr-stage-owner/repo#1200');assert.equal(aggregateChip.kids[0],'Review');
+const aggregateChip=find(view.pullRow(colors,{...stagePr,stage:'review'}),'pr-stage-owner/repo#1200');assert.equal(aggregateChip.kids[0].kids[0],'🤖 Review');
 aggregateChip.attrs.on_click[0]({},cx);assert.equal(actions.at(-1)[1].terminal,'pc2/reviewer');
 aggregate.entries.get(stagePr.key).link.targets=[{terminal:null,historical:true}];
 assert.equal(aggregate.stageTarget(stagePr,'review',links),null,'Historical-only row gains no focus from a reviewer label');
@@ -436,7 +437,7 @@ for(const mode of ['ordinary','coordinator'])for(const state of ['open','closed'
   const chip=()=>{panel.pulls[state]=[row];return find(panel.pullRow(colors,row,ghost),`${ghost?'swap-':''}pr-stage-${row.key??number}`);};
   const nonAgentChecks=robot=>{
     const approved=find(panel.pullRow(colors,{...row,stage:'approved'},ghost),`${ghost?'swap-':''}pr-stage-${row.key??number}`);
-    assert.equal(approved.kids[0],'Approved');assert.equal(approved.attrs.tooltip,undefined);assert.equal(approved.attrs.opacity,undefined);assert.equal(approved.attrs.on_click,undefined);
+    assert.equal(approved.kids[0].kids[0],'🤖 Approved');assert.equal(approved.attrs.tooltip,undefined);assert.equal(approved.attrs.opacity,undefined);assert.equal(Boolean(approved.attrs.on_click),!ghost);
     const fallback=find(panel.pullRow(colors,{...row,stage:null},ghost),`${ghost?'swap-':''}pr-agent-${row.key??number}`);
     assert.equal(Boolean(fallback),robot);if(fallback&&ghost)assert.equal(fallback.attrs.on_click,undefined);
   };
@@ -468,12 +469,12 @@ for(const mode of ['ordinary','coordinator'])for(const state of ['open','closed'
     liveChip.attrs.on_click?.[0]({},cx);assert.equal(actions.length,focusCount);
   }
   taskContext=liveContext;group.context=liveContext;group.entries.get(row.key).link.targets=[{terminal:address}];model.refresh(cx,admit);await tick();reads=calls.length;
-  const restored=chip();assert.equal(restored.kids[0],role==='build'?'Build':'Review');assert.equal(restored.attrs.opacity,undefined);assert.equal(Boolean(restored.attrs.on_click),!ghost);assert.equal(Boolean(restored.attrs.role),!ghost);assert.equal(restored.attrs.tooltip,undefined);nonAgentChecks(true);assert.equal(calls.length,reads);
+  const restored=chip();assert.equal(restored.kids[0].kids[0],role==='build'?'🤖 Build':'🤖 Review');assert.equal(restored.attrs.opacity,undefined);assert.equal(Boolean(restored.attrs.on_click),!ghost);assert.equal(Boolean(restored.attrs.role),!ghost);assert.equal(restored.attrs.tooltip,undefined);nonAgentChecks(true);assert.equal(calls.length,reads);
   if(mode==='coordinator') {
     assert.ok(group.stagePresentations.size>0);group.presentationGeneration='retired';group.shown=()=>false;group.sync(cx);
     assert.equal(group.stagePresentations.size,0,'Enable/provider generation replacement clears remembered target explanations');assert.equal(calls.length,reads);
   }
-  console.log(`REASON_MATRIX ${mode}/${state}/${ghost?'ghost':'row'}/${remote?'pc2':'local'}/${variant}: ended=${ended}; disconnected=${remote?'on pc2, not connected':'not applicable to local machine'}; reconnected=${restored.kids[0]}`);
+  console.log(`REASON_MATRIX ${mode}/${state}/${ghost?'ghost':'row'}/${remote?'pc2':'local'}/${variant}: ended=${ended}; disconnected=${remote?'on pc2, not connected':'not applicable to local machine'}; reconnected=${restored.kids[0].kids[0]}`);
 }
 taskContext=null;
 // Real PinSwap end-to-end for both chips, source view types, tabs and machines.
@@ -511,8 +512,8 @@ for(const mode of ['ordinary','coordinator'])for(const role of ['build','review'
     find(source,'pulls-body').attrs.on_mouse_move[0]({bounds:{x:0,y:100*zoom,width:300*zoom,height:400*zoom}});
   }
   const timers=[],motionCx={...cx,timer:{after:(ms,fn)=>{const timer={ms,fn,cancel(){this.cancelled=true;}};timers.push(timer);return timer;}}};
-  const sourceId=mode==='coordinator'?`owner/repo#${number}`:number,kind=control==='chip'?'stage':'agent',button=find(source,`pr-${kind}-${sourceId}`),before=actions.length,offset=control==='chip'?6:4;
-  button.attrs.on_mouse_down[1]({position:{x:280*zoom,y:(100+from+10)*zoom},bounds:{x:(control==='chip'?213:269)*zoom,y:(100+from+offset)*zoom,width:(control==='chip'?80:24)*zoom,height:(control==='chip'?20:24)*zoom}},motionCx);button.attrs.on_click[0]({},motionCx);
+  const sourceId=mode==='coordinator'?`owner/repo#${number}`:number,kind=control==='chip'?'stage':'agent',button=find(source,`pr-${kind}-${sourceId}`),before=actions.length,offset=control==='chip'?50:4;
+  button.attrs.on_mouse_down[1]({position:{x:280*zoom,y:(100+from+10)*zoom},bounds:{x:(control==='chip'?213:269)*zoom,y:(100+from+offset)*zoom,width:(control==='chip'?80:24)*zoom,height:(control==='chip'?18:24)*zoom}},motionCx);button.attrs.on_click[0]({},motionCx);
   assert.equal(actions.length,before+1,'Chip focuses immediately, before animation');assert.equal(actions.at(-1)[1].terminal,address);
   const swap=panel.pinMotion.current;assert.ok(swap,`${mode}/${role}/${state}: pin motion armed`);assert.equal(swap.phase,'waiting');assert.equal(swap.target,address);
   assert.equal(Boolean(swap.snapshot.arrival),mode==='coordinator');assert.ok(Math.abs(swap.cards.find(c=>c.pr.number===number).from-from)<1e-6,'Chip starts at the measured row, not the robot glyph offset');
@@ -529,14 +530,43 @@ for(const mode of ['ordinary','coordinator'])for(const role of ['build','review'
   assert.ok(Math.abs(find(overlay,`pin-swap-${swap.id}-${number}`).attrs.top[0]-from)<1e-6);
   overlay.attrs.on_size_change[0]({},motionCx);assert.equal(timers.find(t=>t.ms===3000).cancelled,true);
   timers.find(t=>t.ms===16).fn(motionCx);moving=panel.renderPulls(colors);overlay=find(moving,`pin-swap-${swap.id}`);
-  assert.equal(find(overlay,`pin-swap-${swap.id}-${number}`).attrs.top[0],4,'The clicked row travels to the normal pinned slot');
+  assert.equal(find(overlay,`pin-swap-${swap.id}-${number}`).attrs.top[0],34,'The clicked row travels below its repository header');
   timers.find(t=>t.ms===352).fn(motionCx);const settled=panel.renderPulls(colors);
   assert.equal(panel.pinMotion.current,null);assert.ok(find(find(settled,'active-pull'),`pr-${number}`),'The destination commits the clicked pin after motion');assert.equal(actions.length,before+1,'Motion never delays or repeats focus');
-  console.log(`PIN_MATRIX ${mode}/${role}/${state}/${remote?'pc2':'local'}/${zoom}/${control}/${initiallyPinned?'pinned':'unpinned'}: immediate focus; ${from}->4; destination pin committed`);
+  console.log(`PIN_MATRIX ${mode}/${role}/${state}/${remote?'pc2':'local'}/${zoom}/${control}/${initiallyPinned?'pinned':'unpinned'}: immediate focus; ${from}->34; destination pin committed`);
   await tick();
 }
 Object.keys(place).forEach(key=>delete place[key]);Object.assign(place,savedPlace);taskContext=null;currentZoom=1;
 shown=false;const hiddenCalls=calls.length;view.render(cx);await tick();
 assert.equal(calls.length,hiddenCalls,'Hidden Git panels start no agent scans');
 await Promise.all(tasks);
-console.log('PASS: Separate white PR robot links, preserved PR state colors, standard hover/no tooltip, click isolation, remote/background agents, repository scoping, precedence, TTL and stale targets');
+// Actual row rendering shares native presentation collections for this frame,
+// but a click resolves live identity again rather than trusting the snapshot.
+{
+  shown=true;connected=true;
+  const number=4999,url=`https://github.com/owner/repo/pull/${number}`;
+  const reviewer=roleAgent('pc2/frame-review','review',url);
+  for(let i=0;i<120;i++)roleAgent(`noise-${i}`,'review','https://github.com/other/repo/pull/1');
+  const model=new AgentLinks(),panel=new main.namespace.default();panel.resetRepository();panel.agentLinks=model;panel.repo={name:'owner/repo'};panel.view='open';panel.context=JSON.stringify([place.cwd,place.on]);panel.shown=()=>true;
+  const rows=Array.from({length:30},(_,i)=>({...ordinaryStage,number:number+i,url:`https://github.com/owner/repo/pull/${number+i}`,stage:'review',labels:[{name:'🤖 Review',color:'840479'}]}));
+  let snapshot;const capture=model.presentationSnapshot.bind(model);model.presentationSnapshot=()=>snapshot=capture();
+  panel.renderPanel=()=>element().children(rows.map(pr=>panel.pullRow(colors,pr)));
+  for(const key of Object.keys(nativeReads))nativeReads[key]=0;
+  panel.render(cx);await tick();
+  for(const key of ['agents','panes','spaces','terminals','machines'])assert.equal(nativeReads[key],1,`30 rows read native ${key} once per frame`);
+  assert.equal(panel.agentPresentation,null,'Successful frames release their presentation snapshot');
+  assert.equal(model.related(rows[0],'owner/repo',null,'review',undefined,snapshot).address,'pc2/frame-review');
+  reviewer.labels['crew.pr']='https://github.com/owner/repo/pull/5000';
+  assert.equal(model.related(rows[0],'owner/repo',null,'review',undefined,snapshot).address,'pc2/frame-review','An old snapshot is presentation only');
+  assert.equal(model.related(rows[0],'owner/repo',null,'review'),null,'Action-time identity rejects the now-mismatched reviewer');
+  for(const key of ['agents','panes','spaces','terminals'])assert.equal(nativeReads[key],2,`Action re-reads ${key}`);
+  reviewer.labels['crew.pr']=url;
+  const group=new AggregatePulls({shown:()=>true}),context={scope:'frame',tasks:[{id:'review',terminal:'pc2/frame-review'}],links:[]};group.context=context;
+  let contextReads=0,verified=true;group.currentContext=()=>{contextReads++;return verified?context:null;};
+  const coordinated=rows.map(pr=>({...pr,key:`owner/repo#${pr.number}`,repo:'owner/repo'}));
+  for(const pr of coordinated)group.entries.set(pr.key,{pr,link:{targets:[{terminal:'pc2/frame-review'}]}});
+  const frame=model.presentationSnapshot();for(const pr of coordinated)group.stagePresentation(pr,'review',model,frame);
+  assert.equal(contextReads,2,'Provider verified/presentation contexts are each read at most once per frame');
+  verified=false;assert.equal(group.stageTarget(coordinated[0],'review',model),null,'Action rechecks provider verification outside the frame snapshot');assert.equal(contextReads,3);
+}
+console.log('PASS: Canonical role labels, isolated actions, metadata-line motion below repository headers, remote/background identity, freshness and one native presentation snapshot per frame');

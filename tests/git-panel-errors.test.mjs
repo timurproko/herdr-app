@@ -122,8 +122,9 @@ try{panel.notices.request(badCx,'notice',null,()=>{});}finally{rendering=false;}
 await drain();syncFailure=false;assert.equal(badNotify,false);
 // Inject at the actual row renderer; ancestors must not overwrite attribution.
 const buildRow=panel.renderPullRow;
-panel.renderPullRow=()=>{throw Error('row fixture exception');};
-assert.throws(render,/row fixture exception/);
+panel.renderPullRow=(t,pr,ghost)=>{if(pr.number===1)throw Error('row fixture exception');return buildRow.call(panel,t,pr,ghost);};
+const isolated=render();assert.ok(words(isolated).join(' ').includes('Row unavailable; refresh to retry'),'A caught row error has a local fallback, not a panel banner');
+assert.ok(find(isolated,'pr-timurproko/crew#3'),'Healthy rows still render beside the fallback');
 assert.equal(errors.filter(line=>line.includes('row fixture exception')).length,1);
 assert.ok(errors[0].includes('pull-row:timurproko/crew#1'));
 panel.renderPullRow=buildRow;

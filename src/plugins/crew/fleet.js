@@ -62,10 +62,12 @@ export function recordedSource(stdout) {
       Object.hasOwn(t,'project') && !text(t.project,128) ||
       !(text(t.terminal) || t.terminal===null && !['working','reported'].includes(t.state)))) throw Error('Invalid Crew status');
   // Missing/unknown versions are recorded-only, never confirmed none. A v1
-  // result must be complete: malformed discovery is a failed read, not absence.
+  // result must be complete. A malformed task PR fact is unavailable, never
+  // absence or authority, and cannot poison other tasks from a verified home.
   const supported=object(value.prDiscovery) && value.prDiscovery.version===1;
   const tasks=value.tasks.map(t=> {
-    const discovery=supported?discoveryResult(t.prDiscovery):null;
+    let discovery=null;
+    if(supported)try {discovery=discoveryResult(t.prDiscovery);}catch {discovery={status:'unavailable',url:null,source:null,reason:'invalid-discovery'};}
     return {id:t.id,terminal:t.terminal,state:t.state,...(typeof t.project==='string'?{project:t.project}:{}),pr:discovery?discovery.url:typeof t.pr==='string'?t.pr:null,
       ...(discovery?{discovery}: {})};
   });
@@ -127,8 +129,8 @@ export function bindFleet(status, machine, {groups, all, list}) {
   // Completed records belong to this freshly verified status home, not to a
   // former live terminal. Reported tasks can outlive their terminal indefinitely
   // before being closed. They contribute links only, never adoption or focus.
-  const liveTasks=new Set(workers.map(t=>t.id));
-  const history=status.tasks.filter(t=>(t.state==='closed' || t.state==='reported' && !liveTasks.has(t.id)) && typeof t.id==='string' && t.id.length>0 && t.id.length<=128 && (typeof t.pr==='string' && t.pr.length>0 || t.discovery))
+  const liveTerminals=new Set(list.filter(t=>t.state==='live').map(t=>t.address));
+  const history=status.tasks.filter(t=>(t.state==='closed' || t.state==='reported' && !liveTerminals.has(qualify(t.terminal,machine))) && typeof t.id==='string' && t.id.length>0 && t.id.length<=128 && (typeof t.pr==='string' && t.pr.length>0 || t.discovery))
     .map(t=>({id:t.id,state:t.state,pr:t.pr,terminal:null,historical:true,...(t.discovery?{discovery:t.discovery}:{})}));
   const tasks=[...workers,...history];
   return {parent:owner.space,child,...extra,machine,binding,pullScope,home:status.home,owner:owner.terminal.address,

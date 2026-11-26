@@ -1,5 +1,76 @@
 ## MODIFIED Requirements
 
+### Requirement: Validated task PR discovery results
+The app SHALL accept discovery only for top-level version 1 with valid per-task status, URL, source and reason combinations. Known results SHALL provide canonical HTTPS GitHub PR links. None SHALL mean no PR on that read; unavailable SHALL mean unknown. Malformed task PR facts SHALL become unavailable for that task without blocking healthy tasks, never evidence of absent tasks, ownership or PRs. Identity validation SHALL remain strict.
+
+#### Scenario: Known result before the first report
+- **WHEN** a valid v1 status has a working task with no recorded PR and a known canonical discovery URL from GitHub
+- **THEN** the sanitized task and generic pull links contain that URL
+- **AND** worker identity, home binding, deduplication and captured navigation rules are unchanged
+
+#### Scenario: Partial discovery budget
+- **WHEN** a v1 read returns known and none results alongside unavailable results with reason budget-exhausted
+- **THEN** known links remain usable and each none/unavailable distinction remains available in the generic pull context
+- **AND** unavailable tasks add no invented PR and no immediate follow-up lookup or retry loop
+
+#### Scenario: Strict discovery schema
+- **WHEN** a v1 task result omits a required field, has a wrong type or contradictory field combination, or supplies a noncanonical or unsafe known URL
+- **THEN** that task contributes unavailable PR knowledge with no guessed link while healthy task results can still publish
+- **AND** malformed owner or native task identity still refuses verification rather than granting another task or home authority
+
+### Requirement: Space entry preserves order without pin motion
+Entering an agent space SHALL restore its cached repository section immediately and place the selected agent's matching PR directly below its own repository header, without entry-driven motion. Remaining rows and coordinator returns SHALL retain their relative order. Panel-origin stage and fallback robot clicks SHALL retain the existing guarded animation and selection acknowledgement, ending below the destination repository header.
+
+#### Scenario: Direct agent-space entry
+- **WHEN** the user enters an agent space directly and its PR or branch matches a row in the cached section
+- **THEN** the section header retains its count and chevron, followed by the selected PR as its first row and then the remaining rows in their relative order
+- **AND** entry starts no pin animation, including for a selected Draft PR
+
+#### Scenario: Return to coordinator
+- **WHEN** the user returns from a worker space to the coordinator
+- **THEN** the coordinator's cached sections and ordering are restored directly with existing header refresh activity
+- **AND** no permanent coordinator pin or entry-driven pin motion appears
+
+#### Scenario: Existing chip and robot navigation
+- **WHEN** the user clicks another agent PR's live stage label or fallback robot inside the panel
+- **THEN** the existing click-origin navigation and move-to-top animation retain confirmation and cancellation rules and settle inside the destination section directly below its header
+- **AND** native selection acknowledgement neither starts a second animation nor cancels the first because cached entry ran
+- **AND** Approved opens the PR and unavailable targets retain their refusals
+
+#### Scenario: Empty or unverified coordinator seed
+- **WHEN** the destination worker has no seed, a zero-count empty seed or an unverified coordinator source
+- **THEN** it independently resolves its repository and requests its own selected page rather than treating seed counts as complete data
+- **AND** successful reads clear Loading and a selected matching Draft PR appears directly below its section header
+
+### Requirement: Diagnosable coordinator render failures
+Caught Git row failures SHALL log the actual error and failing component and show a fixed-height row-local fallback without blocking healthy rows. Other caught panel failures SHALL preserve native last-frame diagnostics. A native abort's surviving marker SHALL remain distinguishable from a caught exception. An incomplete frame SHALL receive at most one deferred retry; repeated failure SHALL NOT create a render loop or new read/focus authority.
+
+#### Scenario: Caught failure while rendering mixed history
+- **WHEN** Closed contains two repositories with mixed rows and notices and one row renderer throws
+- **THEN** the log identifies its actual error and innermost row component and that row has a safe 74px fallback while healthy rows still render
+- **AND** a non-row failure retains the host's last-good-frame fallback and actual diagnostic
+
+#### Scenario: Native interruption leaves a surviving marker
+- **WHEN** a native abort bypasses JavaScript catch/finally and a later render observes the prior component marker
+- **THEN** the log identifies an incomplete render rather than inventing an exception or row-removal cause
+- **AND** a deferred once-only retry can replace the stale frame after the interruption settles; repeated failure or view retirement cannot keep notifying
+
+#### Scenario: Synchronous notice transport refusal
+- **WHEN** the host begins a notice request inline during render and its transport fails synchronously
+- **THEN** request fallback and notification happen only after yielding out of render
+- **AND** healthy repository rows and section notices retain their ordinary presentation
+
+#### Scenario: Row removal during render or pin motion
+- **WHEN** accepted facts remove a merged PR from Open while a replacement is built or click-origin pin motion is waiting or moving
+- **THEN** the next coherent render excludes the removed row and cancels incompatible motion without replaying focus
+- **AND** surviving sections, rows, counts and geometry remain usable without an indefinitely stale frame
+
+#### Scenario: Abandoned native read task
+- **WHEN** a native read Task is definitively done but its root or page busy latch remains set because cleanup was interrupted
+- **THEN** the next existing lifecycle/render releases that obsolete latch and permits one guarded replacement read
+- **AND** a repeated interruption shows a truthful retry message with accessible manual Refresh even before root resolution, rather than looping
+- **AND** only all-obsolete shared read leases/tails may be retired; healthy consumers, cached facts, rate cooldowns and stale-reply ordering remain intact
+
 ### Requirement: Bounded finished-task pull request history
 Completed tasks from the verified coordinator's Crew home SHALL contribute validated Open/Draft PRs without live workers, including closed tasks and reported tasks whose terminals ended or disappeared. Historical-only Merged/Closed PRs SHALL appear only within 24 hours of GitHub completion. Live sources SHALL win deduplication and retain worker navigation. Completed nonlive records SHALL grant no worker action; fresh owner/status and bounded reads remain required.
 
@@ -149,3 +220,21 @@ Git SHALL read optional crew.round, crew.finding and crew.approved from matched 
 - **WHEN** a terminal publishes crew.approved while GitHub labels still show Review or Build
 - **THEN** the assigned managed label continues to determine the chip
 - **AND** no CI-dependent chip or extra agent action is inferred from that SHA
+
+## ADDED Requirements
+
+### Requirement: Isolated targeted pull facts
+Targeted reads SHALL refuse invalid per-alias PR identity or row shapes without publishing those facts or blocking healthy sibling aliases. Transport, rate and unscoped failures SHALL retain existing whole-read refusal rules.
+
+#### Scenario: Malformed alias beside healthy PR
+- **WHEN** one targeted alias has a mismatching number/URL, unknown state, invalid title or failing normalization beside a valid sibling
+- **THEN** that alias returns an entry-local error and contributes no new cached facts while the valid sibling publishes normally
+- **AND** a malformed owner/native envelope or whole-read rate/transport failure cannot gain authority from partial data
+
+### Requirement: Frame-local Git presentation snapshots
+Git MAY reuse native identity collections and verified/presentation provider contexts within one frame to bound repeated presentation work. Snapshots SHALL NOT grant read or focus authority after that frame.
+
+#### Scenario: Many rows and a changed captured target
+- **WHEN** several Git rows render against the same native collections and provider context
+- **THEN** presentation reuses those frame-local facts without per-row transport or repeated native collection reads
+- **AND** a subsequent click resolves current role, PR, membership and native identity again, refusing a stale or changed target

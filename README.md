@@ -397,8 +397,9 @@ coordinator restores its cached sections/order too. The same native header
 activity indicates background refresh in either direction; replacement updates in
 place, without clearing loaded rows or showing body Loading. Unknown directories
 must establish canonical identity before borrowing a cache; genuinely uncached
-repositories use ordinary Loading. Direct space entry creates no pin, row reorder
-or move-to-top animation. Cache memory is bounded and session-only; another
+repositories use ordinary Loading. Direct worker entry places its matching PR,
+including Draft, below its repository header without entry-driven animation.
+Other rows retain their relative order; coordinator returns have no permanent pin. Cache memory is bounded and session-only; another
 machine/repository and disable/re-enable generations cannot borrow it.
 Git shows only **Open** and **Closed** pull requests. Both load **10 PRs initially**
 and fetch the next 10 near the bottom of the scrolling list, using GitHub cursors
@@ -409,7 +410,7 @@ failed pages preserve existing rows, and the end of the list stops fetching.
 Expanded lists are retained across webhook refreshes; manual Refresh or a
 machine/folder change starts again at 10. Same-folder agent/tab/space switches
 retain repository metadata, counts, rows, pagination and in-flight GitHub requests;
-entry restores that section's order rather than pinning the selected agent's PR.
+entry restores that section with the selected agent's matching PR first below its header.
 When only a coordinator task subset is cached, its known Open/Closed values stay
 visible with incomplete-count metadata until full repository totals arrive; task
 counts are never asserted to be whole-repository totals. Existing click-origin
@@ -457,9 +458,9 @@ font unchanged. Titles always retain their full-title tooltip, including fitting
 titles, without width measurement or a resize gate. Every PR block uses the
 same three fixed lines: a 20px title, an
 18px number/author/time line and an 18px metadata line, for a 74px block including
-spacing. A shared 80px stage/robot reservation keeps titles' truncation boundaries identical
-with or without a managed stage or related agent. The fallback robot keeps its
-24px target right-aligned inside it. Stage reservations, label pills and repository headers'
+spacing. Managed stages occupy their existing bottom-right label pill, not title space.
+Only a live unlabelled agent reserves a 24px title-line robot target; absent agents
+reserve nothing. Label pills, live robot targets and repository headers'
 24px chevron slots retain their 3 logical pixel inset inside each row's highlight.
 This Git inset is independent of Spaces' plain Crew metadata label.
 Git and Spaces highlights both sit 8 logical pixels inside their panel/sidebar
@@ -523,8 +524,10 @@ navigation pins its PR above the scrollable rows with a
 divider underneath and a 2px theme-accent rail on the left, even when it is the only
 PR. The rail overlays the outer gutter without shifting content or the hover
 area. It is not duplicated below and has no special background; all PRs use the
-normal neutral hover. Direct space entry never creates that pin or reorders rows;
-without a click-origin pin, the complete repository section scrolls normally.
+normal neutral hover. The repository header stays above the selected row, never
+below it. Direct worker entry also selects its matching PR without motion; other
+rows keep their order. Empty, zero-count or unverified coordinator seeds never
+replace the worker's own canonical repository and page reads.
 For A1 and Claude Code, the panel
 reads the selected terminal's current footer PR badge through the read-only `hc read`
 API (no history, input injection or transcript-wide PR searches). Claude's `PR #…`
@@ -627,13 +630,14 @@ PR icon with a **red outlined circle and X**, using the same stroke style as PR 
 Unknown mergeability and failing/blocked checks are not conflicts. Closed/merged
 PRs keep their usual icons. Push events also refresh facts after base-branch changes.
 
-Managed review labels also supply a title-line stage: **Build**, **Review** or
-**Approved**, independently of CI and GitHub's separate review decision. The
+Managed review labels supply exactly one bottom-right emoji pill: **🤖 Build**,
+**🤖 Review** or **🤖 Approved**, independently of CI and GitHub's separate review decision. The
 compatibility snapshot follows MyWorkflows `labels/base.json`: stable role
 `review-changes-needed` accepts Build and previous names Rework / Changes needed;
 `under-review` accepts Review / Under review; `review-approved` accepts Approved.
 Each accepts the plain name or its `🤖 ` prefix. Unknown labels are not guessed
-from colour or substrings. Existing label pills retain their exact GitHub names.
+from colour or substrings. Managed aliases collapse to the canonical name without
+renaming GitHub labels; raw aliases remain in hover. Unrelated labels keep their names.
 Approved means the managed review label is assigned, not that CI passed; the
 existing checks item and GitHub's required checks communicate and gate CI.
 Build resolves `crew.kind=ship` or `fix` terminals through their full `crew.pr`
@@ -643,13 +647,11 @@ not the reviewer's base branch, footer or tab name. Coordinator actions addition
 require that exact terminal/task to remain in the freshly verified same-home
 membership; a review task need not have its own recorded PR. Ended, unavailable
 or disconnected targets grant no focus; a disconnected target identifies its
-machine. Optional `crew.round` is the completed review number: round 1 enriches
-Build as **Build 2**, and supplied `crew.finding` adds **back from review 1:**
-followed by the finding. Missing metadata stays plain Build, with no invented
-round or finding. `crew.approved` is read as metadata, never a fourth stage or
+machine. Optional `crew.round` and `crew.finding` enrich hover only; visible stage
+names remain Build, Review or Approved. Missing metadata invents no round or finding. `crew.approved` is read as metadata, never a fourth stage or
 permission to infer Approved from CI.
 
-The title-line **Build** chip focuses the build terminal; **Review** focuses the
+The bottom-right **🤖 Build** pill focuses the build terminal; **🤖 Review** focuses the
 reviewer. **Approved** has no agent action: clicking it opens the PR through the
 row, even while checks are pending or failed. There is no approved/CI-running
 stage or Review check CI chip. Build/Review chips dim when their exact target
@@ -658,8 +660,8 @@ clicking a dimmed chip does nothing. Coordinator rows retain their last verified
 same-home target only for explanations after membership becomes stale or a task
 finishes. That bounded runtime memory cannot focus an agent, start reads, cross
 homes or restore authority on reconnect; fresh live membership is required.
-The chips use the app palette's amber,
-purple and green tokens and keep the same bounded title reservation in every row.
+The pills keep their assigned GitHub colour and existing rounded label styling;
+there is no duplicate title chip or 80px reservation.
 Motion previews never navigate. The no-label robot retains its original 24px hit
 target and immediate pin-navigation behavior.
 
@@ -772,6 +774,8 @@ preserves the draft, cursor and selection; it does not select everything again.
 Sidebar Cancel uses the machine/coordinator chevron's column on parent, child and
 ordinary rows, replacing disclosure while editing. The 24px Confirm/Cancel tools
 retain tab rename's 2px gap and 4px input-to-tools gap, with an 8px sidebar gutter.
+Both editors use the same field shell, icons, hover/focus and shared geometry tokens.
+Rows keep their height; tabs expand only enough for the editable field and tools.
 
 ## Sidebar scroll hints
 
@@ -884,13 +888,11 @@ without changing the fleet's saved colour. Expanded attached fleets are indented
 children, using the same rounded connector, stroke and spacing as child agents.
 Neither row shows a chain, and only the coordinator shows Crew; unrelated plugin
 tags remain. Crew precedes the coordinator's far-right chevron, which folds its children.
-The chevron and its 24px hover target align with machine headers. Expanded Crew
-ends on the machine + column; collapsed Crew moves to Agents' machine-label rail
-and a connected-child-space count appears on Agents' right-aligned 32px time/count
-rail, before the chevron. The coordinator itself is not counted. Expanded rows
-show no count. The machine + target moves 10 logical pixels left; its right edge
-and expanded Crew end 41px from the sidebar edge, while chevrons stay centred
-20px from that edge. At 130% these offsets scale to 13px, 53.3px and 26px. Folds are local,
+The chevron and its 24px hover target align with machine headers. Crew stays fixed
+across disclosure; the connected-child-space count stays visible in both states.
+Counts, machine + and rename Confirm share one centred inner column; chevrons and
+rename Cancel share the outer column. The coordinator itself is not counted.
+Agents keeps its existing numeric rail. These logical axes scale together at 130%. Folds are local,
 identity-scoped and restored on reload, never portable preferences. Selecting a
 hidden child through native shortcuts/navigation discloses its parent without
 changing the native selection target. Explicit folding itself never selects the
@@ -1030,9 +1032,14 @@ Discovery is a bounded snapshot, not a completeness promise or a persistent PR
 record. Older Crew without discovery, or an unknown discovery version, keeps the
 recorded-only list and may omit PRs until tasks report. No generic incomplete-list
 notice is added.
-Stage chips focus the exact live same-home build/review task; without a managed
+Stage pills focus the exact live same-home build/review task; without a managed
 stage, robots keep the exact live worker action. Historical-only and stale rows
 gain no worker navigation from a stage label. PR menus retain their captured URL.
+Malformed task discovery or targeted PR entries cannot poison healthy siblings;
+owner/native identity and per-PR URL checks still fail closed. Caught row failures
+retain a safe 74px fallback and actual diagnostics. A native interrupted frame gets
+one deferred retry; repeated failure retains native last-good diagnostics rather
+than looping. The original screenshot's workload trigger is not established.
 The source is read-only `crew status --all --json --discover-prs`, with `tasks[].pr`
 compatibility for older Crew, not app-side transcript/branch inference. A narrowly
 recognized unsupported-flag refusal allows one bounded recorded-only fallback;

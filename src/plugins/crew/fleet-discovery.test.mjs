@@ -40,7 +40,10 @@ for(const version of [undefined,{},null,[],{version:2},{version:0},{version:'1'}
   assert.equal(bound.discovery,undefined);assert.equal(bound.incomplete,true,'Legacy working tasks remain internally uncertain');
   assert.equal(bound.tasks.length,3,'No-link legacy closed records do not add history');
 }
-const rejectResult=result=>{const value=copy(raw);value.tasks[0].prDiscovery=result;assert.throws(()=>source(value),/Invalid Crew PR discovery/);};
+const rejectResult=result=>{const value=copy(raw);value.tasks[0].prDiscovery=result;const parsed=source(value);
+ assert.equal(parsed.tasks[0].pr,null);assert.deepEqual(copy(parsed.tasks[0].discovery),unavailable('invalid-discovery'));
+ assert.equal(parsed.tasks[3].pr,url,'Invalid PR metadata is isolated; a healthy task is still admitted');
+ assert.equal(f.bindFleet(parsed,null,model()).tasks.length,6,'Identity remains strict and healthy same-home tasks remain bound');};
 for(const field of ['status','url','source','reason']) {
   for(const result of [known(),none(),unavailable()]) {delete result[field];rejectResult(result);}
 }
@@ -99,8 +102,11 @@ assert.deepEqual(copy(context.links[1]),{url,terminal:null,task:'closed-known',h
 const at=state[f.FLEET_KEY].entries.local.at;
 const malformed=copy(raw);delete malformed.tasks[0].prDiscovery.url;
 f.refreshFleets(cx,async()=>JSON.stringify(malformed),true);await Promise.all(jobs.splice(0));
-assert.equal(state[f.FLEET_KEY].entries.local.at,at,'Malformed v1 never publishes fresh absence or renews success age');
-assert.equal(r.pluginPullContext('coordinator').links[0].url,url);
+assert.ok(state[f.FLEET_KEY].entries.local.at>=at,'A valid identity envelope and healthy siblings renew the successful read');
+const isolated=r.pluginPullContext('coordinator');assert.equal(isolated.links[0].url,url);
+assert.ok(isolated.links.every(link=>link.task!=='known'),'Malformed task discovery never publishes a link');
+assert.equal(isolated.discovery.tasks.find(t=>t.task==='known').status,'unavailable');
+assert.equal(isolated.discovery.tasks.find(t=>t.task==='known').reason,'invalid-discovery');
 assert.ok(!JSON.stringify(state['custom.fleet.display']).includes('discovery'),'No discovery inventory in durable pair identity');
 
 // The same local IDs on a remote host still qualify exactly once.

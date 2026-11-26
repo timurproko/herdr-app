@@ -26,12 +26,15 @@ for(const machine of [null,'pc2']) {
  for(const k of ['border_l','border_b','border_color','rounded_bl'])assert.deepEqual(cb.attrs[k],reference.attrs[k]);
  for(const zoom of [.75,1,1.3,2]){const boxes=rowGeometry(c,268,zoom),b=boxes.get(badge(c));assert.equal(b.x,32*zoom,'Child badge aligns with coordinator name');assert.equal(b.width,16*zoom);assert.equal(boxes.get(cb).x,16*zoom,'Stem aligns with parent badge centre');}
  const button=find(p,'space-fold-parent');assert.equal(button.attrs.size[0],24);
- assert.equal(find(p,'space-count-parent'),undefined);assert.equal(fold(t,{id:'agents',open:false,count:3,onToggle(){}}).kids.at(-1),'3','Agents still shows collapsed counts');
+ assert.equal(find(p,'space-count-parent').kids[0].kids[0],'1','Expanded count stays visible');assert.equal(fold(t,{id:'agents',open:false,count:3,onToggle(){}}).kids.at(-1),'3','Agents still shows collapsed counts');
  for(const zoom of [1,1.3]) {
   const tree=element().flex().flex_col().children(view.grouped(t,false)),boxes=rowGeometry(tree,268,zoom);
   const right=n=>{const b=boxes.get(n);return b.x+b.width;},center=n=>{const b=boxes.get(n);return b.x+b.width/2;};
   near(center(find(tree,'space-fold-parent')),center(find(tree,`machine-fold-${machine??'local'}`)),'Chevron centres');
-  near(right(find(tree,'space-tag-parent-crew-0')),right(find(tree,`machine-add-${machine??'local'}`)),'Crew and plus right edges');
+  near(center(find(tree,'space-count-parent')),center(find(tree,`machine-add-${machine??'local'}`)),'Count and plus share the inner axis');
+  const crewEdge=right(find(tree,'space-tag-parent-crew-0'));view.connectedFolds().add(view.parentKey(record('parent')));
+  const folded=element().flex().flex_col().children(view.grouped(t,false)),foldedBoxes=rowGeometry(folded,268,zoom);
+  const crewBox=foldedBoxes.get(find(folded,'space-tag-parent-crew-0'));near(crewBox.x+crewBox.width,crewEdge,'Crew does not move on disclosure');view.connectedFolds().clear();
   near(right(find(tree,'space-fold-parent')),268*zoom,'24px hover ends on the row edge (outer gutter is supplied by scroller)');
  }
  button.attrs.on_click[0]({},cx);const collapsedTree=element().children(view.grouped(t,false));assert.equal(find(collapsedTree,'space-count-parent').kids[0].kids[0],'1','Collapsed count is connected spaces, excluding coordinator');
@@ -59,7 +62,9 @@ for(const machine of [null,'pc2'])for(const zoom of [1,1.3])for(const id of ['pa
  view.rename={id,input:{},handle:{}};const editing=row(id),boxes=rowGeometry(editing,268,zoom);
  const cancel=boxes.get(find(editing,`space-rename-cancel-${id}`)),apply=boxes.get(find(editing,`space-rename-apply-${id}`)),field=boxes.get(find(editing,`space-rename-field-${id}`));
  near(cancel.x+cancel.width/2,axis.x+axis.width/2,'Cancel replaces the chevron axis');
- near(cancel.width,24*zoom,'Native tab action width');near(cancel.x-apply.x-apply.width,2*zoom,'Native tab action gap');near(apply.x-field.x-field.width,4*zoom,'Native tab input gap');
+ const grouped=element().flex().flex_col().children(view.grouped(t,false)),header=rowGeometry(grouped,268,zoom).get(find(grouped,`machine-add-${machine??'local'}`));
+ near(apply.x+apply.width/2,header.x+header.width/2,'Rename approve shares plus/count axis');
+ near(cancel.width,24*zoom,'Shared action width');near(cancel.x-apply.x-apply.width,2*zoom,'Native tab action gap');near(apply.x-field.x-field.width,4*zoom,'Native tab input gap');
  assert.equal(find(editing,`space-fold-${id}`),undefined);assert.equal(find(editing,`space-tag-${id}-crew-0`),undefined);view.rename=null;
 }
 // Ordinary worktree metadata and same-machine reorder are still native-order based.
@@ -82,7 +87,7 @@ for(const count of [1,2,3])for(const zoom of [1,1.3]) {
  view.connectedFolds().add(view.parentKey(record('parent')));const collapsed=row('parent'),boxes=rowGeometry(collapsed,268,zoom);
  const right=n=>{const b=boxes.get(n);return b.x+b.width;};
  assert.equal(find(collapsed,'space-count-parent').kids[0].kids[0],String(count));
- near(right(find(collapsed,'space-count-parent')),235*zoom,'Count matches Agents numeric rail inside same row width');
+ near(right(find(collapsed,'space-count-parent'))-12*zoom,230*zoom,'Count is centred on plus/approve axis');
  near(right(find(collapsed,'space-tag-parent-crew-0')),197*zoom,'Collapsed Crew matches Agents machine-label rail');
  view.connectedFolds().clear();
  for(let i=0;i<count;i++) {
@@ -100,4 +105,26 @@ for(const count of [1,2,3])for(const zoom of [1,1.3]) {
   assert.deepEqual(all.map(s=>s.id),['other','parent',...original.slice(2).map(s=>s.id)]);all=original;
  }
 }
-console.log('PASS actual Spaces one/two/three-child geometry, names, all-child folding, native numbering/selection/compact membership and any-member acknowledged block reorder');
+// Shared centres remain fixed with long names, multiple digits and narrow sidebars.
+view.renameField=Main.prototype.renameField;
+for(const machine of [null,'pc2'])for(const width of [160,180,220,268,360])for(const zoom of [1,1.3])for(const count of [1,12,123]) {
+ setSpaces(machine);all=[all[0],all[1],...Array.from({length:count},(_,i)=>({id:`child${i}`,machine,name:'A long child space name',active:false}))];
+ all[0].name='A very long coordinator name that must truncate';view.shown=new Set(all.map(s=>s.id));links=all.slice(2).map(s=>({parent:'parent',child:s.id,binding:'verified'}));tags=[{plugin:'crew',label:'Crew'}];view.connectedFolds().clear();view.rename=null;
+ let anchor;
+ for(const folded of [false,true]) {
+  folded?view.connectedFolds().add(view.parentKey(record('parent'))):view.connectedFolds().clear();
+  const tree=element().flex().flex_col().children(view.grouped(t,false)),boxes=rowGeometry(tree,width,zoom),box=id=>boxes.get(find(tree,id));
+  const axis=id=>{const b=box(id);return b.x+b.width/2;},crew=box('space-tag-parent-crew-0');
+  anchor??=crew.x;near(crew.x,anchor,'Crew never moves');
+  assert.equal(find(tree,'space-count-parent').kids[0].kids[0],String(count));
+  near(axis('space-count-parent'),axis(`machine-add-${machine??'local'}`),'Count/plus inner centres at every width');
+  near(axis('space-fold-parent'),axis(`machine-fold-${machine??'local'}`),'Outer centres at every width');
+  for(const id of ['parent','child0','other']) {
+   view.rename={id,input:{},handle:{}};const editing=view.row(record(id),t),eb=rowGeometry(editing,width,zoom),apply=eb.get(find(editing,`space-rename-apply-${id}`)),cancel=eb.get(find(editing,`space-rename-cancel-${id}`)),field=eb.get(find(editing,`space-rename-field-${id}`));
+   near(apply.x+apply.width/2,axis('space-count-parent'),'Approve shares inner centre');near(cancel.x+cancel.width/2,axis('space-fold-parent'),'Cancel shares outer centre');
+   assert.ok(field.width>0);near(apply.x-field.x-field.width,4*zoom,'Narrow field has the shared gap, never overlap');view.rename=null;
+  }
+ }
+ tags=[];assert.equal(find(row('other'),'space-count-other'),undefined,'Nonparent without Crew has no count');assert.equal(find(row('parent'),'space-tag-parent-crew-0'),undefined,'No fabricated role label');
+}
+console.log('PASS actual Spaces folding/native identity plus fixed Crew and count/plus/approve/chevron/cancel columns at 160–360px, 100/130%, including multi-digit counts and narrow rename');

@@ -76,16 +76,16 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
       const id=row.key??row.number,block=find(tree,`${prefix}pr-${id}`),slot=find(block,`${prefix}pr-agent-slot-${id}`);
       const robot=geometry.get(slot),pill=geometry.get(find(block,`${prefix}pr-labels-${id}`).kids.at(-1));
       gitHighlight(geometry,block,width,zoom);
-      near(inset(geometry,block,slot),expectedInset,'Robot slot inset from its highlight equals actual Spaces Crew inset');
+      if(slot)near(inset(geometry,block,slot),expectedInset,'Live robot slot retains its highlight inset');
       near(right(geometry.get(block))-right(pill),expectedInset,'Actual label pill inset from its highlight equals actual Spaces Crew inset');
-      near(width*zoom-right(robot),11*zoom,'Git control ends 11px from the panel, matching Spaces');
+      if(robot)near(width*zoom-right(robot),11*zoom,'Git control ends 11px from the panel, matching Spaces');
       near(geometry.get(find(block,`${prefix}pr-state-slot-${id}`)).x-geometry.get(block).x,
         spacesMeasurements.get(`${width}/${zoom}`).leading,'Git state slot matches actual Spaces highlight-to-badge inset');
       const title=geometry.get(find(block,`${prefix}pr-title-${id}`)),titleKey=`${state}-${mode}-${id}`;
-      near(right(title),robot.x-4*zoom,'Title truncation ends before the reserved robot slot');
-      if(agent)near(right(title),titles.get(titleKey),'Agent presence never changes the title truncation boundary');
+      near(right(title),robot?robot.x-4*zoom:right(geometry.get(block))-3*zoom,'Title uses all width except a present fallback robot');
+      if(agent)near(right(title)+28*zoom,titles.get(titleKey),'Only the live robot and gap consume title width');
       else titles.set(titleKey,right(title));
-      near(robot.width,80*zoom,'Shared stage reservation remains 80px');near(geometry.get(block).height,74*zoom,'PR vertical geometry stays fixed');
+      if(robot)near(robot.width,24*zoom,'Fallback robot keeps its original target, not an 80px stage reservation');near(geometry.get(block).height,74*zoom,'PR vertical geometry stays fixed');
       near(geometry.get(find(block,`${prefix}pr-title-${id}`)).x,geometry.get(block).x+32*zoom,'Left inset is unchanged');
       for(const [kind,height,offset] of [['title-line',20,6],['byline',18,29],['meta',18,50]]) {
         const line=geometry.get(find(block,`${prefix}pr-${kind}-${id}`));
@@ -100,14 +100,14 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
         const glyph=nodes(button).find(node=>node.attrs.asset?.[0]==='icons/agent.svg');
         near(centre(geometry.get(glyph)),centre(box),'Robot glyph is centred in its 24px target at the trailing edge');
         near(geometry.get(glyph).width,16*zoom,'Robot glyph retains its existing size');
-      } else {assert.equal(slot.kids.length,0);assert.equal(slot.attrs.on_click,undefined);}
+      } else assert.equal(slot,undefined,'No absent-control title placeholder');
       comparisons++;
     }
     if(mode==='coordinator') {
       const header=find(tree,'task-repo-header-owner/repo'),slot=header.kids.at(-1),glyph=slot.kids[0],box=geometry.get(slot);
       gitHighlight(geometry,header,width,zoom);
       near(inset(geometry,header,slot),expectedInset,'Header chevron slot shares the Spaces highlight-relative inset');
-      near(right(box),right(geometry.get(find(tree,'pr-agent-slot-owner/repo#17'))),'Header chevron slot right edge equals robot and pill edges');
+      near(right(box),right(geometry.get(find(tree,'pr-labels-owner/repo#17').kids.at(-1))),'Header chevron slot right edge equals the actual pill edge');
       near(box.width,24*zoom,'Header chevron reserves 24px');near(box.height,24*zoom,'Header slot remains inside 28px header');
       near(geometry.get(header).height,28*zoom,'Header vertical geometry is unchanged');
       near(centre(geometry.get(glyph)),centre(box),'Chevron glyph is centred in the robot column');

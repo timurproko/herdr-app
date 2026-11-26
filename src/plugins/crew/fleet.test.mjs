@@ -46,7 +46,12 @@ f.refreshFleets(cx,()=>new Promise(r=>release=r));await Promise.resolve();await 
 // Same local IDs on a remote Core are qualified once and never borrow local members.
 groups=groups.map(s=>({...s,id:'pc2/'+s.id,machine:'pc2',tabs:s.tabs.map(t=>({id:'pc2/'+t.id}))}));all=all.map(p=>({...p,tab:'pc2/'+p.tab,terminal:'pc2/'+p.terminal}));list=list.map(t=>({...t,address:'pc2/'+t.address}));
 assert.equal(f.bindFleet(status,'pc2',model()).parent,'pc2/coordinator');assert.equal(f.bindFleet({...status,owner:{terminal:'other/t1',live:true}},'pc2',model()),null);
-list[1].state='finished';assert.equal(f.bindFleet(status,'pc2',model()).tasks.length,0);
+all.push({...all[1],pane:'second-pane'});
+assert.equal(f.bindFleet(status,'pc2',model()).tasks.length,0,'A live ambiguous reported terminal cannot become read-only history');all.pop();
+list[1].state='finished';const reportedHistory=f.bindFleet(status,'pc2',model());
+assert.equal(reportedHistory.tasks.length,1);assert.equal(reportedHistory.tasks[0].historical,true);
+assert.equal(reportedHistory.tasks[0].terminal,null);assert.equal(reportedHistory.child,null,'A finished reported worker attests no child');
+assert.equal(reportedHistory.parent,'pc2/coordinator','Read-only history retains qualified owner identity');
 assert.throws(()=>f.recordedSource('{bad'));assert.throws(()=>f.recordedSource(JSON.stringify({home:'x',tasks:{}})));
 assert.ok(!JSON.stringify(f.recordedSource(JSON.stringify(status))).includes('MUST NOT SHARE'));
 const declaration=r.pluginById('crew'),workspace=declaration.workspaceLinks,pulls=declaration.pullContext;

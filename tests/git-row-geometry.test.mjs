@@ -86,7 +86,7 @@ const cases=[
   ['missing author',{author:null}],['conflict',{mergeable:'CONFLICTING'}],
   ...Array.from({length:16},(_,mask)=>[`optional mask ${mask}`,{body:mask&1?'- [x] done':'',statusCheckRollup:mask&2?[{name:'CI',status:'COMPLETED',conclusion:'SUCCESS'}]:[],labels:mask&4?labels:[],reviewDecision:mask&8?'APPROVED':''}]),
 ];
-const anchors=['state-slot','title-line','title','agent-slot','byline','meta'];
+const anchors=['state-slot','title-line','title','byline','meta'];
 const plain=box=>Object.fromEntries(Object.entries(box).map(([k,v])=>[k,Number(v.toFixed(6))]));
 let comparisons=0;
 for(const mode of ['ordinary','pinned','scrolling','coordinator','ghost'])for(const state of ['OPEN','CLOSED','MERGED'])for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,2]){
@@ -118,25 +118,24 @@ for(const mode of ['ordinary','pinned','scrolling','coordinator','ghost'])for(co
     }));
     snapshot.row=plain(box);snapshot.next=plain(geometry.get(find(tree,`${prefix}pr-${pr.key?'owner/repo#18':18}`)));
     near(box.height,74*zoom,'Block height');near(snapshot['title-line'].height,20*zoom,'Title height');near(snapshot.byline.height,18*zoom,'Byline height');near(snapshot.meta.height,18*zoom,'Metadata height');
-    near(snapshot.title.x,(box.x/zoom+32)*zoom,'Title left reservation');near(snapshot.title.width,(box.width/zoom-119)*zoom,'Shared stage reservation keeps title boundary with 3px trailing padding');
-    near(snapshot['agent-slot'].width,80*zoom,'Stage/robot reservation');
+    near(snapshot.title.x,(box.x/zoom+32)*zoom,'Title left reservation');near(snapshot.title.width,(box.width/zoom-35-(agent&&!pr.stage?28:0))*zoom,'Only a live fallback robot reserves title width');
     const labelStrip=find(row,`${prefix}pr-labels-${id}`);
     if(labelStrip) {
-      const pill=geometry.get(labelStrip.kids.at(-1)),robot=geometry.get(find(row,`${prefix}pr-agent-slot-${id}`));
-      near(pill.x+pill.width,robot.x+robot.width,'Pills end at the robot control outer edge, not its inset glyph');
+      const pill=geometry.get(labelStrip.kids.at(-1));
+      near(pill.x+pill.width,box.x+box.width-3*zoom,'Pills retain the right content edge without a title placeholder');
     }
     const button=find(row,`${prefix}pr-agent-${id}`),slot=find(row,`${prefix}pr-agent-slot-${id}`);
     const chip=find(row,`${prefix}pr-stage-${id}`);
     assert.equal(Boolean(button),agent&&!pr.stage);assert.equal(Boolean(chip),Boolean(pr.stage));
-    if(!agent&&!pr.stage){assert.equal(slot.kids.length,0);assert.equal(slot.attrs.on_click,undefined);assert.equal(slot.attrs.role,undefined);}
-    if(chip){near(geometry.get(chip).width,80*zoom,'Bounded stage width');near(geometry.get(chip).height,20*zoom,'Stage stays on title line');assert.equal(chip.attrs.role,undefined,'Unknown stage targets do not become buttons');}
+    if(!agent||pr.stage)assert.equal(slot,undefined,'Absent title controls have no placeholder');
+    if(chip){near(geometry.get(chip).height,18*zoom,'Stage shares the metadata label line');assert.equal(chip.attrs.role,undefined,'Unknown stage targets do not become buttons');}
     if(button){assert.equal(geometry.get(button).height,24*zoom);assert.equal(Boolean(button.attrs.on_click),mode!=='ghost');}
     if(pr.checks){const icon=geometry.get(find(row,`${prefix}pr-check-icon-${id}`));assert.equal(icon.width,12*zoom);assert.equal(icon.height,12*zoom);}
     return snapshot;
   };
-  const baseline=build({},false);
+  const baseline=[build({},false),build({},true)];
   for(const [name,overrides] of cases)for(const agent of [false,true,false]){
-    assert.deepEqual(build(overrides,agent),baseline,`${mode}/${state} width=${width} zoom=${zoom} ${name} agent=${agent}`);comparisons++;
+    assert.deepEqual(build(overrides,agent),baseline[Number(agent&&!facts.pullStage(overrides.labels??[]))],`${mode}/${state} width=${width} zoom=${zoom} ${name} agent=${agent}`);comparisons++;
   }
 }
 // Screenshot-shaped content: at ~390 logical px, no forced compact forms,
@@ -201,9 +200,9 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
     const {tree,geometry}=h.settle(()=>panel.pullRow(t,pr),width,zoom);
     const meta=find(tree,'pr-meta-17'),strip=find(tree,'pr-labels-17');assert.ok(strip);
     assertNaturalRun(geometry,meta,zoom);assertChecksFit(geometry,tree);
-    const box=geometry.get(strip.kids[0]),robot=geometry.get(find(tree,'pr-agent-slot-17'));
+    const box=geometry.get(strip.kids[0]),rowBox=geometry.get(find(tree,'pr-17'));
     edge??=box.x+box.width;near(box.x+box.width,edge,'Pill edges are equal across changing facts and label names');
-    near(edge,robot.x+robot.width,'Shared edge matches the title robot control');
+    near(edge,rowBox.x+rowBox.width-3*zoom,'Stage pill retains the content right edge without a title placeholder');
     const probe=find(tree,'pr-meta-17-probe-labels-full');
     near(geometry.get(strip).width,geometry.get(probe).width,'Review/Rework/Approved retain whole words throughout the supported matrix');
     assert.equal(strip.attrs.tooltip,undefined,'A complete visible label has no repeat-only tooltip');
@@ -289,7 +288,7 @@ for(const coordinator of [false,true])for(const ghost of [false,true])for(const 
 // adding artificial fixed budgets or clipping the full checks count must fail.
 h.setZoom(1);h.setAgent(false);
 const sample=h.settle(()=>panel.pullRow(t,screenshot),390),row=sample.tree;
-const title=find(row,'pr-title-41'),before=sample.geometry.get(title);find(row,'pr-title-line-41').kids.pop();
+const title=find(row,'pr-title-41'),before=sample.geometry.get(title);find(row,'pr-title-line-41').child(element().w(80).h(20).flex_none());
 assert.notEqual(rowGeometry(row,390).get(title).width,before.width);
 const meta=find(row,'pr-meta-41'),tasks=find(row,'pr-tasks-41');tasks.flex_grow(1);
 assert.throws(()=>assertNaturalRun(rowGeometry(row,390),meta,1),/stretched|natural widths|undefined/);

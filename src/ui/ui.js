@@ -7,6 +7,20 @@ export const U = Object.freeze({
   icon: 16, smallIcon: 14, tinyIcon: 12, statusSize: 7,
   font: 13, meta: 12, radius: 6, dialogRadius: 8, gap: 8, gutter: 12, descriptionGap: 4,
 });
+const INLINE_RENAME_ACTION_GAP=2;
+export const INLINE_RENAME = Object.freeze({gap:4, actionGap:INLINE_RENAME_ACTION_GAP, minFieldWidth:120,
+  actionsWidth:2*U.insetControl+INLINE_RENAME_ACTION_GAP, labelGap:21});
+// One presentation for tab and sidebar editors; callers retain input ownership,
+// captured-target guards, focus scope and submit/cancel behavior.
+export function inlineRename(t,{id,target,input,inputLabel,applyId,cancelId,onApply,onCancel,enabled=true}) {
+  return div().id(`${id}-${target}`).flex().h(U.insetControl).min_w(0).gap(INLINE_RENAME.gap).items_center()
+    .child(div().id(`${id}-field-${target}`).flex().h(U.insetControl).flex_1().min_w(0).px(6).items_center()
+      .rounded(U.insetRadius).border_1().border_color(t.input).bg(t.background).text_color(t.foreground).cursor_text()
+      .child(Input.new(input).id(`${id}-input-${target}`).flex_1().min_w(0).h_full().text_size(U.font).accessibility_label(inputLabel)))
+    .child(div().id(`${id}-actions-${target}`).flex().gap(INLINE_RENAME.actionGap).items_center().flex_none()
+      .children([[applyId,'mods/custom-workspace-chrome/check.svg','Apply rename','Enter',onApply],[cancelId,'mods/custom-pane/close.svg','Cancel rename','Escape',onCancel]].map(([id,icon,label,key,onClick])=>
+        iconButton(t,{id,icon,label,tooltip:`${label} (${key})`,color:t.muted,enabled,onClick}).tab_index(0).focus(s=>s.bg(subtleActionFill(t))))));
+}
 // Working is a softly flashing bulb; finished uses the same-sized solid bulb.
 // Native opacity animation avoids rotating/raster-resampling a tiny icon.
 export function activity(color) {
@@ -329,10 +343,10 @@ export function sidebarParentFold(t,{id,open,count,color=t.dim,onToggle}) {
 }
 // Agents' number rail. Compensate differing surrounding gaps/chevron slots so
 // the painted number-to-chevron gap stays identical in repository headers.
-export function sidebarNumericSlot(t, id, value, { gap = 6, trailingSize = U.icon } = {}) {
-  return div().flex().id(id).w(32).h(20).flex_none().items_center().justify_end()
-    .mr(7 + 6 - gap + (U.icon - trailingSize) / 2)
-    .child(div().w_full().text_right().text_size(U.meta).text_color(t.dim).child(value));
+export function sidebarNumericSlot(t, id, value, { gap = 6, trailingSize = U.icon, centered = false } = {}) {
+  return div().flex().id(id).w(centered?U.insetControl:32).h(centered?U.insetControl:20).flex_none().items_center().justify_end()
+    .mr(centered?0:7 + 6 - gap + (U.icon - trailingSize) / 2)
+    .child(div().w_full().when(centered,e=>e.text_center()).when(!centered,e=>e.text_right()).text_size(U.meta).text_color(t.dim).child(value));
 }
 // Sidebar metadata reuses Agents' 32px number rail: text ends 29px before
 // the disclosure centre. 24px controls keep that centre on the 16px glyph slot.
@@ -344,9 +358,9 @@ export function sidebarDisclosure(t, { id, open, label, onClick, enabled = true 
 }
 // Machine and repository sections share the same shell and trailing chevron.
 // Callers own click/hover guards and persistence; compact machines retain their icon.
-export function sidebarSectionHeader(t, { id, label, open, compact = false, children = [], trailingSize = U.icon, trailingInset = 4, disclosure = null }) {
+export function sidebarSectionHeader(t, { id, label, open, compact = false, children = [], trailingSize = U.icon, trailingInset = 4, disclosure = null, gap = U.gap }) {
   return div().id(id).h(U.control).flex_none().flex().pl(compact ? 0 : 8).pr(compact ? 0 : trailingInset)
-    .gap(U.gap).items_center().rounded(U.radius).text_size(U.meta).text_color(t.muted)
+    .gap(gap).items_center().rounded(U.radius).text_size(U.meta).text_color(t.muted)
     .role('button').accessibility_label(`${open ? 'Collapse' : 'Expand'} ${label}`)
     .when(compact, el => el.w(U.control).self_center().justify_center())
     .children(children)

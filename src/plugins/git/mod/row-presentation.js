@@ -1,11 +1,14 @@
 // Pure facts only. Never store native elements, render closures or event handlers.
 export class RowPresentations {
   constructor(){this.rows=new WeakMap();this.styles=new Map();this.layouts=new Map();}
-  get(pr,limit,ghost=false){
-    const signature=[pr.key,pr.number,pr.title,pr.meta,pr.login,pr.when,pr.compactWhen,pr.review,pr.labels,pr.tasks?.done,pr.tasks?.total,pr.tasks?.label,pr.checks?.state,pr.checks?.label,pr.checks?.details,pr.state,pr.createdAt,pr.closedAt,pr.mergedAt,limit];
+  get(pr,limit,ghost=false,labelsFor=value=>value.labels??[]){
+    const signature=[pr.stage,pr.key,pr.number,pr.title,pr.meta,pr.login,pr.when,pr.compactWhen,pr.review,pr.labels,pr.tasks?.done,pr.tasks?.total,pr.tasks?.label,pr.checks?.state,pr.checks?.label,pr.checks?.details,pr.state,pr.createdAt,pr.closedAt,pr.mergedAt,limit];
     let entry=this.rows.get(pr);
     if(!entry||signature.some((value,i)=>value!==entry.signature[i])){
-      const all=pr.labels??[],labels=all.slice(0,limit),labelNames=all.map(label=>label.name).join('\n');
+      const all=labelsFor(pr),stage=all.find(label=>label.stage);
+      let labels=all.slice(0,limit);
+      if(stage&&!labels.includes(stage))labels=[...labels.slice(0,Math.max(0,limit-1)),stage];
+      const labelNames=(pr.labels??[]).map(label=>label.name).join('\n');
       entry={signature,labels,labelNames,labelKey:labels.map(label=>label.name).join('\0'),number:`#${pr.number}`,
         taskFraction:pr.tasks?`${pr.tasks.done}/${pr.tasks.total}`:'',review:pr.review?(pr.review==='approved'?'Approved':'Changes requested'):'',
         accessibility:`Open pull request #${pr.number} on GitHub`,ids:new Map()};

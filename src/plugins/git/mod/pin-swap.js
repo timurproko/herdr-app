@@ -33,8 +33,9 @@ export class PinSwap {
     const from = hoveredRow ? (pointer.bounds.y - bounds.y) / scale
       : (event.bounds.y - bounds.y) / scale - (binding.controlOffset??4);
     if(!Number.isFinite(from))return false;
+    const pinTop=binding.pinTop??4;
     if(snapshot.arrival) {
-      return this.wait({...snapshot,rows:[...rows],pinned:null},clicked,binding,[{pr:clicked,from,to:4}],cx);
+      return this.wait({...snapshot,rows:[...rows],pinned:null},clicked,binding,[{pr:clicked,from,to:pinTop}],cx);
     }
     const oldHeight = pinned?this.sizes.get(pinned.number)?.height:0, newHeight = this.sizes.get(clicked.number)?.height;
     const before = pinned?rows.filter(pr=>pr.number !== pinned.number):rows, after = rows.filter(pr=>pr.number !== clicked.number);
@@ -48,17 +49,17 @@ export class PinSwap {
       }
       return NaN;
     };
-    const origin=pinned?oldHeight+13:4;
+    const origin=pinned?oldHeight+pinTop+9:pinTop;
     const scroll = origin + prefix(before,clicked.number) - from;
-    const returned = pinned?newHeight + 13 + prefix(after,pinned.number) - scroll:null;
+    const returned = pinned?newHeight + pinTop+9 + prefix(after,pinned.number) - scroll:null;
     if ((pinned && !(oldHeight > 0)) || !(newHeight > 0) || !Number.isFinite(scroll) || (pinned && !Number.isFinite(returned))) return false;
-    const cards = [{pr:clicked,from,to:4},...(pinned?[{pr:pinned,from:4,to:returned}]:[])];
+    const cards = [{pr:clicked,from,to:pinTop},...(pinned?[{pr:pinned,from:pinTop,to:returned}]:[])];
     // Intermediate rows retain their identities too; deep-list clicks or
     // unequal card heights must not leave them jumping at the final commit.
     for (const pr of before) {
       if (pr.number === clicked.number) continue;
       const y = origin + prefix(before,pr.number) - scroll;
-      const to = newHeight + 13 + prefix(after,pr.number) - scroll;
+      const to = newHeight + pinTop+9 + prefix(after,pr.number) - scroll;
       if (Number.isFinite(y) && Number.isFinite(to) && Math.abs(y-to) > 0.5) cards.push({pr,from:y,to});
     }
     return this.wait({...snapshot,rows:[...rows]},clicked,binding,cards,cx);
@@ -72,6 +73,12 @@ export class PinSwap {
       this.cancel(); cx.notify();
     });
     return true;
+  }
+  rebasePinTop(top) {
+    const swap=this.current;if(!swap || !Number.isFinite(top))return;
+    const delta=top-(swap.pinTop??4);if(!delta)return;
+    for(const card of swap.cards)card.to+=delta;
+    swap.pinTop=top;
   }
   rebase(context) {
     if (this.current) { this.current.context = context; this.current.snapshot.context = context; }

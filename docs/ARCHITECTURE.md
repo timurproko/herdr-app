@@ -501,9 +501,18 @@ retires folder identity; late replies are rejected by request/context/enable epo
 Ordinary reads and captured actions keep their own current authority. Hidden
 snapshots perform no IO.
 
-Direct entry restores section order without creating a pin, reordering or starting
-motion. Existing panel-origin chip/robot clicks keep their separate controller
-and selection acknowledgement. Repository name/count/folding live in the shared
+Direct worker entry puts its selected matching PR, including Draft, below the
+repository header without entry motion; remaining rows keep relative order.
+Panel-origin stage/robot clicks keep their controller and selection acknowledgement,
+rebasing the destination below that header. Empty/unverified seeds never count as
+loaded pages: worker canonical/page reads remain independently due.
+
+Native done Tasks can release an abandoned root/page busy latch once under existing
+request/epoch guards; repeated interruption needs manual retry. Caught row failures
+keep actual diagnostics and a safe fixed-height fallback. Native aborts bypass catch:
+a surviving render marker gets one deferred 64ms retry, not a frame loop. Successful
+frames allocate no retry timer. Presentation collections/provider context may be
+shared within one frame only; every focus action resolves live identity again. Repository name/count/folding live in the shared
 section header. The main header's repository label and repository-page popup
 (including keyboard actions) are removed; diagnostics remain on existing native
 activity/count feedback and PR row menus are unchanged.

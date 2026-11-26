@@ -8,6 +8,8 @@ Coordinator Git currently stays on Loading with zero totals despite healthy Crew
 
 - First reproduce and fix coordinator Git's stuck Loading using sanitized fixtures matching both real Crew status payload shapes; investigate whether the earlier render interruption has the same cause, add a failing regression and push that fix independently before visual work.
 - Replace duplicate managed-stage indicators with one clickable bottom-right emoji label pill reading Build, Review or Approved; preserve the existing label colour/shape, role-aware navigation, pin motion and unavailable-target explanation. Remove the title-stage reservation; keep a robot only for a live agent without a managed label.
+- Place the selected worker PR, including Draft, directly below its own repository section header; keep the existing click-origin motion and leave coordinator views unpinned.
+- Isolate malformed task PR facts and caught row failures, retry an incomplete native frame once after yielding, and release definitively abandoned native read latches without weakening identity gates or creating a retry loop.
 - Keep Crew in the same horizontal position and show connected child counts in both expanded and collapsed coordinator rows.
 - Centre child counts, machine plus and space-rename approve on one inner column; centre disclosure chevrons and rename cancel on one outer column.
 - Share inline rename presentation between Tabs and Spaces, matching the sidebar's button/icon sizes, field/action gaps, vertical alignment, hover and focus treatment.
@@ -22,7 +24,7 @@ None.
 
 ### Modified Capabilities
 
-- `plugin-integrations`: one canonical managed-stage label control in the existing lower-right label style without a title-stage reservation, retaining role/navigation authority and review history in hover rather than adding stage names.
+- `plugin-integrations`: one canonical lower-right stage label, section-contained selected worker PRs, per-entry PR/row isolation and bounded native render/read recovery, retaining role/navigation authority and hover-only review history.
 - `workspace-experience`: replace collapsed-only coordinator counts and moving Crew placement with stable metadata columns, align rename approval with machine add/count, and share tab/sidebar rename presentation.
 
 ## Impact

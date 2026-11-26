@@ -106,7 +106,7 @@ const cases=[
       tree=h.render(()=>p.renderPulls(t));
       assert.equal(p.agentPull,1,'fresh destination footer independently identifies PR 1');
       assert.equal(p.pinMotion.current,null,`${control}: conflicting verified PR cancels motion for clicked PR 2`);
-      assert.equal(p.clickPin,null);assert.equal(find(tree,'active-pull'),undefined,'mismatch cannot create an entry pin');
+      assert.equal(p.clickPin,null);assert.ok(find(find(tree,'active-pull'),'pr-1'),'Footer mismatch cancels the clicked pin; only the independently resolved selected PR pins');
       assert.equal(h.focus.length,1,'cancellation does not undo navigation or focus again');
     }
   }],

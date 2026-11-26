@@ -213,15 +213,23 @@ export class AggregatePulls {
     if(!this.pending.size && ![...this.entries.values()].some(e=>e.dirty)){this.manualRead=null;this.returning=false;}
     this.rememberCounts();
   }
-  stageTarget(pr, role, agentLinks) {
-    const context=this.currentContext();
+  // A render may reuse read-only context, never action authority. Click/focus
+  // paths pass no snapshot and therefore resolve the current provider again.
+  frameContext(snapshot,presentation=false) {
+    if(!snapshot)return this.currentContext({presentation});
+    const contexts=snapshot.pullContexts??=new Map();
+    if(!contexts.has(presentation))contexts.set(presentation,this.currentContext({presentation}));
+    return contexts.get(presentation);
+  }
+  stageTarget(pr, role, agentLinks, snapshot) {
+    const context=this.frameContext(snapshot);
     const entry=this.entries.get(pr.key);
     if(!context || context.scope!==this.context?.scope || !entry || !liveLink(entry.link))return null;
     // Verified context includes no-PR tasks as well as admitted PR links. A
     // reviewer need not publish a task PR: its explicit crew.pr identifies the
     // row, but only this home's currently verified task membership permits focus.
     const members=(context.tasks??context.links).filter(t=>!t.historical && typeof t.terminal==='string' && t.terminal);
-    const agent=agentLinks?.related?.(pr,pr.repo,location().terminal,role,address=>members.some(t=>t.terminal===address));
+    const agent=agentLinks?.related?.(pr,pr.repo,location().terminal,role,address=>members.some(t=>t.terminal===address),snapshot);
     if(!agent)return null;
     const member=members.find(t=>t.terminal===agent.address);
     const target={terminal:agent.address,task:member.id??member.task,role,agent};
@@ -232,20 +240,20 @@ export class AggregatePulls {
     }
     return target;
   }
-  stagePresentation(pr,role,agentLinks) {
-    const fresh=this.stageTarget(pr,role,agentLinks);if(fresh)return fresh;
-    const context=this.currentContext({presentation:true});
+  stagePresentation(pr,role,agentLinks,snapshot) {
+    const fresh=this.stageTarget(pr,role,agentLinks,snapshot);if(fresh)return fresh;
+    const context=this.frameContext(snapshot,true);
     if(!context || context.scope!==this.context?.scope || !this.entries.has(pr.key))return null;
     const saved=this.stagePresentations.get(JSON.stringify([context.scope,pr.key,role]));if(!saved)return null;
     // Same-home last verified identity explains only this retained row. A live
     // or reconnected terminal without fresh membership remains unavailable;
     // neither this cache nor its returned descriptor may authorize focus.
-    const current=agentLinks?.related?.(pr,pr.repo,null,role,address=>address===saved.terminal);
+    const current=agentLinks?.related?.(pr,pr.repo,null,role,address=>address===saved.terminal,snapshot);
     const agent=current??saved.agent;
     return {...saved,agent:{...agent,availability:['ended','disconnected'].includes(current?.availability)?current.availability:'unavailable'}};
   }
-  target(pr) {
-    const context=this.currentContext();if(!context || context.scope!==this.context?.scope)return null;
+  target(pr,snapshot) {
+    const context=this.frameContext(snapshot);if(!context || context.scope!==this.context?.scope)return null;
     const matches=context.links.filter(l=>!l.historical && typeof l.terminal==='string' && l.terminal && taskPullLink(l.url)?.key===pr.key);
     return matches.find(l=>l.terminal===location().terminal)??matches[0]??null;
   }

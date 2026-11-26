@@ -10,7 +10,7 @@ export async function spacesGeometryHarness() {
     modules:{'main.js':'src/features/spaces/main.js','ui.js':'src/ui/ui.js','space-title.js':'src/ui/space-title.js',
       'sidebar-scroll.js':'src/ui/sidebar-scroll.js','scroll-fade.js':{topFade:element,bottomFade:element},
       'gpui-kit':{View:class{},div:element,svg},
-      'gpui-base':{h_flex:()=>element().flex(),v_flex:()=>element().flex().flex_col(),Popover:{},Input:{},ScrollHandle:{}},
+      'gpui-base':{h_flex:()=>element().flex(),v_flex:()=>element().flex().flex_col(),Popover:{},Input:{new:()=>element()},ScrollHandle:{}},
       'tab-arrival.js':{startTabArrivals(){},tabArrivalMotion:(_o,e)=>e},'reorder.js':{reorder:()=>drag},
       'space-rename.js':{beginSpaceRename:fail,cancelSpaceRename:fail,saveSpaceRename:fail,syncSpaceRename(){}},
       'directory.js':{displaySpace:s=>s,spaceDirectory:()=>({cwd:'/fixture'})},'space-color-state.js':{reconcileSpaceColors(){}},

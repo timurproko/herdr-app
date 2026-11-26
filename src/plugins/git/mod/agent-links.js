@@ -16,7 +16,7 @@ export function repositoryName(stdout) {
 }
 
 const machineOf=address=>address.includes('/')?address.split('/')[0]:null;
-const connected=on=>!on || Boolean(host.machines?.().some(m=>m.name===on && m.layout==='ready'));
+const connected=(on,snapshot)=>!on || Boolean((snapshot?.hosts??host.machines?.())?.some(m=>m.name===on && m.layout==='ready'));
 export function crewMetadata(labels={}) {
   labels??={};
   const text=value=>typeof value==='string'?value.replace(/[\x00-\x1f\x7f]/g,' ').trim().slice(0,512):'';
@@ -32,15 +32,15 @@ export function crewPull(url) {
   return match && !match[1].split('/').some(p=>p==='.'||p==='..') && Number.isSafeInteger(number)?{repo:repoKey(match[1]),number}:null;
 }
 
-export function agentTargets() {
-  const all = panes(), list = terminals(), groups = spaces();
-  return agents().flatMap(agent => {
+export function agentTargets(snapshot) {
+  const all = snapshot?.all??panes(), list = snapshot?.list??terminals(), groups = snapshot?.groups??spaces();
+  return (snapshot?.liveAgents??agents()).flatMap(agent => {
     const pane = all.find(p => p.terminal === agent.address && p.tab === agent.tab && !p.mod);
     const space = groups.find(s => s.id === agent.space);
     const tab = space?.tabs?.find(t => t.id === agent.tab);
     const {cwd} = paneDirectory(pane, list, null);
     const terminal=list.find(t=>t.address===agent.address);
-    if (!pane || !tab || !cwd || (terminal?.state && terminal.state!=='live') || !connected(machineOf(agent.address))) return [];
+    if (!pane || !tab || !cwd || (terminal?.state && terminal.state!=='live') || !connected(machineOf(agent.address),snapshot)) return [];
     const on = agent.address.includes('/') ? agent.address.split('/')[0] : null;
     const target = {address:agent.address, pane:pane.pane, space:agent.space, tab:agent.tab,
       app:agent.app, cwd, on, branch:pane.branch ?? null, number:namedPullNumber(tab),crewPr:crewPull(terminal?.labels?.['crew.pr'])};
@@ -50,6 +50,10 @@ export function agentTargets() {
 
 export class AgentLinks {
   constructor(enabled = () => true) { this.enabled = enabled; this.entries = new Map(); this.pending = new Map(); this.repositories=new Map(); this.branchPresentations=new Map(); }
+
+  presentationSnapshot() {
+    return {all:panes(),list:terminals(),groups:spaces(),liveAgents:agents(),hosts:host.machines?.()??[]};
+  }
 
   invalidate() {this.repositories.clear();for(const entry of this.entries.values())entry.at=0;}
   async repository(target, current=()=>true) {
@@ -83,7 +87,7 @@ export class AgentLinks {
     for(const entry of this.entries.values())if(entry.cwd===place.cwd && (entry.on??null)===(place.on??null))entry.canonicalRepo=null;
   }
 
-  displayName(address) {return displayName(agents().find(agent=>agent.address===address));}
+  displayName(address,snapshot) {return displayName((snapshot?.liveAgents??agents()).find(agent=>agent.address===address));}
 
   liveTarget(address) {return agentTargets().find(target=>target.address===address)??null;}
 
@@ -171,21 +175,22 @@ export class AgentLinks {
   // Role links use terminal labels directly, including an ended terminal's
   // labels for explanation only. No IO, history, saved IDs or inferred reviewer
   // branch/footer links. `admit` lets the verified aggregate constrain membership.
-  roleMatches(pr, repo, preferred, role, admit=()=>true) {
+  roleMatches(pr, repo, preferred, role, admit=()=>true, snapshot) {
     if(!this.enabled() || !['build','review'].includes(role))return [];
-    const all=panes(),groups=spaces(),liveAgents=agents(),list=terminals();let generic;
+    const all=snapshot?.all??panes(),groups=snapshot?.groups??spaces(),liveAgents=snapshot?.liveAgents??agents(),list=snapshot?.list??terminals();let generic;
     const matches=list.flatMap(terminal=>{
       if(!admit(terminal.address))return [];
-      const crew=crewMetadata(terminal.labels);
+      const crew=snapshot?(snapshot.crews??=new Map(list.map(t=>[t,crewMetadata(t.labels)]))).get(terminal):crewMetadata(terminal.labels);
       if(!(role==='review'?crew.kind==='review':['ship','fix'].includes(crew.kind)))return [];
+      const explicit=crew.pr!==null,link=crewPull(crew.pr),entry=this.entries.get(terminal.address);
+      const exact=Boolean(link && link.repo===repoKey(repo) && link.number===pr.number);
+      if(explicit&&!exact || role==='review'&&!explicit)return [];
       const agent=liveAgents.find(a=>a.address===terminal.address),pane=all.find(p=>p.terminal===terminal.address&&!p.mod&&(!agent||p.tab===agent.tab));
       const space=groups.find(s=>s.tabs?.some(t=>t.id===pane?.tab)),tab=space?.tabs?.find(t=>t.id===pane?.tab);
-      const explicit=crew.pr!==null,link=crewPull(crew.pr),entry=this.entries.get(terminal.address);
       // Explicit role links need no folder resolution or all-agent directory
       // scan. Only an unlabelled build branch needs the legacy repository cache.
-      const current=!explicit&&role==='build'?(generic??=new Map(agentTargets().map(t=>[t.address,t]))).get(terminal.address):null;
-      const exact=Boolean(link && link.repo===repoKey(repo) && link.number===pr.number);
-      const on=machineOf(terminal.address),availability=!connected(on)?'disconnected':terminal.state && terminal.state!=='live'?'ended':agent&&pane&&tab&&agent.space===space.id?'live':'unavailable';
+      const current=!explicit&&role==='build'?(generic??=(snapshot?(snapshot.targetMap??=new Map(agentTargets(snapshot).map(t=>[t.address,t]))):new Map(agentTargets().map(t=>[t.address,t])))).get(terminal.address):null;
+      const on=machineOf(terminal.address),availability=!connected(on,snapshot)?'disconnected':terminal.state && terminal.state!=='live'?'ended':agent&&pane&&tab&&agent.space===space.id?'live':'unavailable';
       const saved=this.branchPresentations.get(terminal.address);
       // Only an ended/offline terminal may borrow its verified old branch for
       // disabled presentation. A live/reconnected or moved target must earn a
@@ -203,9 +208,9 @@ export class AgentLinks {
     return matches;
   }
 
-  related(pr, repo, preferred = null, role = null, admit) {
-    if(role)return this.roleMatches(pr,repo,preferred,role,admit)[0]??null;
-    const matches = agentTargets().flatMap(target => {
+  related(pr, repo, preferred = null, role = null, admit, snapshot) {
+    if(role)return this.roleMatches(pr,repo,preferred,role,admit,snapshot)[0]??null;
+    const matches = (snapshot?(snapshot.targets??=agentTargets(snapshot)):agentTargets()).flatMap(target => {
       const entry = this.entries.get(target.address);
       if (!entry || entry.key !== target.key || !entry.repo || entry.repo !== repoKey(repo)) return [];
       // Explicit session/tab links outrank the parent shell's branch. A stale

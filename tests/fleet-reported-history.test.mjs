@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import {loadMod} from '../tools/plugin-harness.mjs';
 import {legacyTargetResponses} from './support/github-read.mjs';
 const plain=value=>JSON.parse(JSON.stringify(value));
-const url=n=>`https://github.com/fixture/repo/pull/${n}`;
+const repo=n=>n===4?'fixture/.xrbuild':'fixture/repo';
+const url=n=>`https://github.com/${repo(n)}/pull/${n}`;
 for(const machine of [null,'pc2'])for(const full of [false,true]) {
  const q=id=>machine?`${machine}/${id}`:id;
  const known=n=>({status:'known',url:url(n),source:'recorded',reason:null});
@@ -16,7 +17,7 @@ for(const machine of [null,'pc2'])for(const full of [false,true]) {
   {id:'reported-review',state:'reported',terminal:'t6',pr:null,prDiscovery:{status:'unavailable',url:null,source:null,reason:'not-requested'}},
   {id:'closed',state:'closed',terminal:null,pr:url(5),prDiscovery:known(5)},
  ];
- const status={home:'C:/fixture/.crew',owner:{terminal:'t1',live:true,...(full?{mine:false}:{})},prDiscovery:{version:1},tasks:tasks.map(t=>({...t,...(full?{project:'fixture',workflow:null}:{})})),...(full?{copiesToReturn:[]}:{view:'fleet'})};
+ const status={home:'C:/fixture/.crew',owner:{terminal:'t1',live:true,...(full?{mine:false}:{})},prDiscovery:{version:1},tasks:tasks.map(t=>({...t,...(full?{project:t.id==='reported-removed'?'crew:self':'fixture',workflow:null}:{})})),...(full?{copiesToReturn:[]}:{view:'fleet'})};
  const state={'custom.plugins':{crew:{enabled:true},git:{enabled:true}},'custom.spaces.preferences':{connectFleetToCoordinator:true}};
  const groups=[{id:q('coordinator'),machine,tabs:[{id:q('c')}]},{id:q('fm-crew-home'),machine,tabs:[{id:q('a')},{id:q('b')}]}];
  const all=[{terminal:q('t1'),tab:q('c'),pane:q('cp')},{terminal:q('t2'),tab:q('a'),pane:q('ap')},{terminal:q('t3'),tab:q('b'),pane:q('bp')}];
@@ -47,8 +48,12 @@ for(const machine of [null,'pc2'])for(const full of [false,true]) {
  const aggregate=new AggregatePulls({shown:()=>true});aggregate.sync(cx);await drain();
  assert.equal(aggregate.waiting,false);assert.equal(aggregate.hasPresentation,true);assert.equal(aggregate.counts().open,4);assert.equal(aggregate.counts().closed,1);
  assert.deepEqual([...reads].sort(),[1,2,3,4,5]);
- for(const n of [3,4,5])assert.equal(aggregate.target({key:`fixture/repo#${n}`}),null,'No focus target for reported/closed history');
+ for(const n of [3,4,5])assert.equal(aggregate.target({key:`${repo(n)}#${n}`}),null,'No focus target for reported/closed history');
  assert.deepEqual(Array.from(aggregate.rows('open'),p=>p.stage).sort(),['build','build','review','review']);
+ // One malformed task PR fact must not keep every healthy entry on Loading.
+ const discovery=status.tasks[3].prDiscovery;status.tasks[3].prDiscovery={status:'known',url:'https://evil.test/repo/pull/1'};
+ await refresh();aggregate.sync(cx);await drain();assert.equal(aggregate.hasPresentation,true);assert.equal(aggregate.waiting,false);assert.equal(aggregate.counts().open,3);assert.equal(aggregate.counts().closed,1);
+ assert.equal(r.pluginPullContext(q('coordinator')).links.length,4);status.tasks[3].prDiscovery=discovery;await refresh();
  // A Core-first exit of a still-working task remains uncertain, not history.
  list[1].state='finished';await refresh();assert.equal(r.pluginPullContext(q('coordinator')),null,'Working/finished disagreement still blocks fresh reads');
  list[1].state='live';await refresh();assert.ok(r.pluginPullContext(q('coordinator')));
