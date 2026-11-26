@@ -505,18 +505,21 @@ function selectionDropdown(view, t, plugin, item, { loading = false, only = null
 
 function requirements(view, t, plugin) {
   const check = view.pluginChecks[plugin.id],checking=groupState(check,'requirements');
+  const unavailable = setupUnavailable(view,plugin), checkBusy = unavailable ? Boolean(check?.loading) : Boolean(checking.loading);
   const items = (check?.items ?? plugin.prerequisites.map(p => ({ ...p, status: null }))).filter(item=>!item.section);
   const problems = items.filter(i => i.status && i.status !== 'ready');
   // Manual actions (fix.manual: e.g. opening a system settings page) need a person, so
   // Install all leaves them out.
   const fixable = checking.loading ? [] : items.filter(i => i.fix && !i.fix.manual && !i.fix.confirm && i.status && i.status !== 'ready');
-  const recheck = checkButton(t, `st-plugin-${plugin.id}-recheck`, Boolean(checking.loading),
+  const recheck = checkButton(t, `st-plugin-${plugin.id}-recheck`, checkBusy,
     (_e, cx) => {
-      if(view.pluginFixing||groupState(view.pluginChecks[plugin.id],'requirements').loading)return;
+      if(view.pluginFixing||(unavailable ? view.pluginChecks[plugin.id]?.loading : groupState(view.pluginChecks[plugin.id],'requirements').loading))return;
       for(const item of items)delete view.pluginFixError[`${plugin.id}:${item.id}`];
-      reloadPlugins(view, cx, plugin.id,'requirements', {reason:'manual'}); cx.notify();
-    }, !checking.loading&&!view.pluginFixing);
-  const unavailable = setupUnavailable(view,plugin);
+      // A whole-connection refusal can have been supplied by any group. Recheck
+      // all setup groups to retire it, without turning this into token verification.
+      // Ordinary Requirements Check remains independent and explicitly manual.
+      reloadPlugins(view, cx, plugin.id,unavailable ? null : 'requirements', {reason:unavailable ? 'automatic' : 'manual'}); cx.notify();
+    }, !checkBusy&&!view.pluginFixing);
   if (unavailable) return v_flex().id(`st-plugin-${plugin.id}-unavailable`).w_full().p(8).gap(8).rounded(U.radius).bg(t.hover)
     .child(h_flex().w_full().gap(10).items_center()
       .child(div().flex_1().text_size(U.font).text_color(t.foreground).child('Requirements'))

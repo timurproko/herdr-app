@@ -115,6 +115,8 @@ A check may return `unavailable: {detail}` for a fixed, whole-setup connection
 refusal. The renderer shows that detail once in an always-visible Requirements
 block with Check and Unavailable, without a numeric fix count, dependent rows,
 list sections or settings. Any independently completed group may supply it.
+Its Check refreshes all setup groups to retire a refusal supplied by any group,
+without provider token verification. Ordinary Requirements Check stays independent.
 Other failures keep ordinary row diagnostics; this does not invent a ready state
 or change registry status types. Machine/enable-session changes retire it and
 stale controls cannot dispatch. Do not use raw provider exceptions as detail.

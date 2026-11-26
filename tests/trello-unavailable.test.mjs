@@ -23,6 +23,9 @@ const assertElevated=()=>{
 await refresh();const stale=find(render(),'st-plugin-form-trello-local-setup-save');assert.ok(stale);
 for(const [r,s] of [['MACHINE_ELEVATED','MACHINE_ELEVATED'],['MACHINE_ELEVATED',null],[null,'MACHINE_ELEVATED']]){runtimeCode=r;statusCode=s;await refresh();assertElevated();}
 const before=calls.length;stale.attrs.on_click[0]({},cx);await flush();assert.equal(calls.length,before,'A pre-refusal Save node cannot dispatch');
+// The visible Check must recover a refusal published by Boards as well as Requirements.
+runtimeCode=statusCode='MACHINE_ELEVATED';await refresh();assertElevated();runtimeCode=statusCode=null;
+click('st-plugin-trello-recheck');await flush();assert.ok(!unavailable());assert.ok(find(render(),'st-plugin-form-trello-local-setup-save'));
 for(const code of ['MACHINE_UNSUPPORTED','MACHINE_IDENTITY']){runtimeCode=statusCode=code;await refresh();assert.ok(unavailable());assert.equal(words(unavailable()).filter(t=>/no credentials|cannot verify/.test(t)).length,1);}
 for(const code of ['SSH_UNAVAILABLE','STORE_PERMISSION_CHECK','CONFIG_UNKNOWN']){runtimeCode=statusCode=code;await refresh();assert.ok(!unavailable());assert.ok(!words(render()).some(t=>t.includes('administrator (elevated) SSH login')));assert.ok(!words(render()).includes('All ready'));}
 runtimeCode=statusCode=null;await refresh();assert.ok(find(render(),'st-plugin-form-trello-local-setup-save'));
