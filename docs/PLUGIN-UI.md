@@ -52,7 +52,9 @@ rebuild these parts. Add a part here when a second panel needs something a first
 
 ## The card
 
-Every plugin gets a card: icon, name, version, on/off switch and `description`. Below it,
+Every plugin gets a card: icon, name, version, on/off switch and `description`.
+Optional `descriptionLinks: [{label, url}]` appends fixed HTTPS text links using the
+existing inline-link styling. No URL is assembled from credentials or form values. Below it,
 in this order, as declared:
 
 | Declared | Drawn as |
@@ -114,7 +116,10 @@ unknown update evidence does not claim outdated, and optional tools remain Optio
 
 ## Transient action forms
 
-A prerequisite may declare `form: { fields, actions, enabled?, help? }`. This is an
+A prerequisite may declare `form: { fields, actions, when?, enabled?, help? }`.
+`when(result)` controls whether the form exists; unavailable forms show no dangling
+action buttons or hidden-input actions. Busy but available actions retain the normal
+disabled feedback. This is an
 explicit operational action, **not** a setting type. `fields` contain
 `{ key, type: 'text' | 'secret', label, placeholder?, maxLength? }`; secret fields
 use native `InputState.set_masked(true)` and start empty. `actions` contain
@@ -157,6 +162,15 @@ already accepted private-store write was undone; reconcile destination status
 explicitly before retrying. Runtime install is a separate explicit prerequisite
 fix, using only public deterministic runtime files.
 
+## Saved requirement rows
+
+A requirement may declare `saved: { row(result), confirm?(cx, result), remove(cx, result) }`.
+A non-null row `{label}` renders the same hover-Remove component as a list item,
+not a different account widget. Removal uses the existing fixed confirmation footer
+and fix lifecycle, binding the rendered revision, selected machine and view generation.
+A saved row can replace a `form.when`-controlled empty state. Labels/confirmations
+contain public names only; no stored credential is loaded into input fields.
+
 ## List sections
 
 A list of things added to the plugin (project folders, repositories): a scope row (what it
@@ -165,7 +179,8 @@ belongs to, then Add), the description, and one row per item with **Remove** on 
 ```js
 { id: 'projects', label: 'Projects', section: true, about: 'Git folders crew may work in on this machine.',
   list: {
-    scope:  { label: 'Machine', setting: 'machine' },   // a machine setting → machine dropdown
+    scope:  { label: 'Machine', setting: 'machine' },
+         // { header: true }                              // captured Settings header machine   // a machine setting → machine dropdown
          // { label: 'Account' }                          // or the check's `selection` → dropdown
     picker: { kind: 'folders', label: 'Add project' },   // the folder browser on the scope's machine
          // { kind: 'items', label: 'Add repo', search: 'Search repositories…' }
@@ -184,6 +199,10 @@ belongs to, then Add), the description, and one row per item with **Remove** on 
 - **items** picker: `candidates` runs only when the popup opens (listing can be slow). The
   popup has a search field (`search` is its placeholder), Loading bottom left, and Add.
   Candidates may return public `detail` for an incomplete-inventory explanation above the list.
+  `picker.tabs: [[value,label]]` adds the existing segmented choice control, retaining
+  the popup's height by reducing its list viewport. Candidate `tab` values select a
+  category, the first tab is the opening default, and search filters within that tab.
+  Selected IDs survive tab changes until Add or Cancel; changing tabs grants nothing.
 - `list.recheck: 'plugin'` refreshes all that plugin's prerequisite groups after a
   committed list action when the change also affects another requirement's readiness.
 - One change runs at a time; refusals become the section's detail. Folder-change failures

@@ -150,8 +150,10 @@ core privileges are **not** part of `npm test` and require separate approval.
 shell-capable agents. It is off and read-only by default. Reads and writes require
 an explicit machine-local board allowlist; writes additionally require local
 opt-in and public Read-write mode. The card can save and verify a masked API key/user
-token, show the account, replace/remove credentials, choose boards by name and set
-local Read-only / Read-write authorization. Inputs are transient, never saved plugin
+token, list the single account with hover Remove, list named boards with hover Remove,
+and choose Active/Inactive boards. Requirements Check verifies the account;
+opening reads saved names only. One global Read-only / Read-write setting is applied
+to account hosts explicitly, with Pending and Retry for unapplied/offline hosts. Inputs are transient, never saved plugin
 settings or portable preferences; only the Node worker writes the private store.
 The selected direct-SSH machine uses its own private store through identity-bound
 SSH stdin, never this computer's setup. Requirements offers explicit Trello-only

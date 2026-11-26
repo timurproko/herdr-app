@@ -3,7 +3,7 @@
 const messages = {
   INPUT: 'Invalid command or input. See herdr-trello --help.',
   STORE: 'Private Trello storage is missing, invalid or unsafe. Check local setup and permissions.',
-  STORE_MISSING: 'Private Trello setup is not saved on this machine.',
+  STORE_MISSING: 'A private Trello setup file is missing on this machine.',
   STORE_MALFORMED: 'Private Trello configuration has invalid JSON or an unsupported schema. It was not replaced.',
   STORE_PERMISSIONS: 'Private Trello storage has the wrong owner or allows another user access. Restrict it before continuing.',
   STORE_PERMISSION_CHECK: 'Private Trello storage permissions could not be verified. Check this machine’s ACL tooling; access remains refused.',

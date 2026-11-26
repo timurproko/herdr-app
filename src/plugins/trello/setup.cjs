@@ -29,12 +29,13 @@ function configure(store, action, value) {
   store.write('policy', next, old); return next;
 }
 function status(store) {
+  let credentialsSaved = false;
   try {
-    store.read('credentials'); const p = store.read('policy');
+    store.read('credentials'); credentialsSaved = true; const p = store.read('policy');
     return {configured: true, storage: 'ready', allowedBoards: p.boards.length, localWrites: p.allowWrites};
   } catch (e) {
     const problem = publicError(e);
-    if (problem.code === 'STORE_MISSING') return {configured: false, storage: 'missing', problem};
+    if (problem.code === 'STORE_MISSING') return {configured: credentialsSaved, storage: credentialsSaved ? 'incomplete' : 'missing', problem: {...problem, resource: credentialsSaved ? 'policy' : 'credentials'}};
     throw e; // A check that failed is not absent setup.
   }
 }

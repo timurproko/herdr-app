@@ -29,7 +29,7 @@ function validate(name, v) {
       (v.account === null || exact(v.account, ['id', 'username', 'name']) && id(v.account.id) && text(v.account.username, 256) && text(v.account.name, 256)) &&
       Array.isArray(v.boards) && v.boards.length <= 100 && v.boards.every(b => exact(b, ['id', 'label']) && id(b.id) && text(b.label, 1024)) && new Set(v.boards.map(b => b.id)).size === v.boards.length;
   }
-  const binding = b => exact(b, ['id', 'session', 'principal', 'home']) && typeof b.id === 'string' && typeof b.session === 'string' && [b.principal,b.home].every(s => /^[a-f0-9]{64}$/.test(s));
+  const binding = b => exact(b, ['id', 'session', 'principal', 'home']) && typeof b.id === 'string' && typeof b.session === 'string' && /^[a-zA-Z0-9._:-]{1,256}$/.test(b.id) && /^[a-zA-Z0-9_-]{1,64}$/.test(b.session) && [b.principal,b.home].every(s => /^[a-f0-9]{64}$/.test(s));
   if (name === 'control') ok = exact(v, ['version','controller','binding','enabled','access','intent']) && v.version === 1 && /^[a-f0-9]{64}$/.test(v.controller) && binding(v.binding) && typeof v.enabled === 'boolean' && ['read-only','read-write'].includes(v.access) && /^[a-f0-9]{64}$/.test(v.intent);
   if (name === 'controller') ok = exact(v, ['version','id','access','intent','hosts','pending']) && v.version === 1 && [v.id,v.intent].every(s => /^[a-f0-9]{64}$/.test(s)) && ['read-only','read-write'].includes(v.access) && Array.isArray(v.hosts) && v.hosts.length <= 256 && v.hosts.every(h => exact(h,['machine','binding','access','intent']) && (h.machine === null || typeof h.machine === 'string' && h.machine.length <= 256) && binding(h.binding) && ['read-only','read-write'].includes(h.access) && /^[a-f0-9]{64}$/.test(h.intent)) && Array.isArray(v.pending) && v.pending.length <= 256 && v.pending.every(s => typeof s === 'string' && s.length <= 256 && !/[\u0000-\u001f\u007f]/.test(s));
   if (!ok) fail('STORE_MALFORMED');
@@ -95,7 +95,7 @@ class Store {
       const s = stat(file);
       if (!s) { if (optional) return null; fail('STORE_MISSING'); }
       if (!s.isFile() || s.nlink !== 1) fail('STORE_UNSAFE_PATH');
-      const max = ['display','controller'].includes(name) ? 262144 : 32768;
+      const max = ['display','controller'].includes(name) ? 524288 : 32768;
       if (s.size > max) fail('STORE_MALFORMED');
       this.security(file);
       fd = fs.openSync(file, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0));
@@ -121,6 +121,7 @@ class Store {
   }
   write(name, value, expected = null) {
     validate(name, value);
+    if (Buffer.byteLength(JSON.stringify(value)) > (['display','controller'].includes(name) ? 524288 : 32768)) fail('STORE_MALFORMED');
     return this.withLock(() => {
       const file = this.file(name), current = this.read(name, true);
       if (JSON.stringify(current) !== JSON.stringify(expected)) fail('CONFLICT');

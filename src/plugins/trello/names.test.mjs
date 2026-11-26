@@ -28,5 +28,7 @@ try{
  const hintOnly=await run('status');assert.equal(hintOnly.data.namedBoards.length,0);assert.deepEqual(f.store.read('policy'),policy);
  f.store.write('credentials',{...f.store.read('credentials'),token:'FAKE_UNRELATED_TOKEN_987654321'},f.store.read('credentials'));
  assert.equal((await run('status')).data.account,undefined);
+ const displayNow=f.store.read('display'),largeNames=Array.from({length:100},(_,i)=>({id:i.toString(16).padStart(24,'0'),label:'界'.repeat(1024)}));
+ f.store.write('display',{...displayNow,boards:largeNames},displayNow);assert.ok(fs.statSync(f.store.file('display')).size>262144);assert.equal(f.store.read('display').boards.length,100,'Bounded UTF-8 names must round-trip, not create an unreadable metadata file');
  console.log('PASS: protected Unicode names survive reopen without requests, explicit legacy hydration, scoped hints, rotation/removal and malformed metadata refusal');
 }finally{f.cleanup();}

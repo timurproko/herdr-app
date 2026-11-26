@@ -87,17 +87,24 @@ If Requirements offers Trello runtime **Install/Update**, use that explicit acti
 first; it installs no credentials, grants or activation.
 Expand **Requirements**, enter your API key and user token in the protected input
 fields, then press **Save & verify**. The worker checks them with Trello before
-saving and shows the token’s account. The fields clear after submission; saved
-secrets are never loaded back into the card. **Verify saved** checks the existing
-copy. **Replace** verifies newly entered values after confirmation, then clears
-old board grants and local write authority. **Remove** confirms removal of this
-computer’s copy and permissions; it does not revoke the token at Trello.
-The card’s **How to generate a user token** opens official help without putting
-your key or token in its URL.
+saving. After submission the masked fields clear and disappear; the single saved
+account name is listed with **Remove** on hover, like Crew's project rows. Removing
+asks about the captured machine, clears that account's board/write grants and brings
+the empty inputs back. It does not revoke the token at Trello. To replace the account,
+remove it first, then save the new credentials. Saved secrets never return to the UI.
 
-Expand **Allowed boards → Add boards** to discover visible boards by name. Tick
+The **Check** button in the Requirements header verifies the saved account. Ordinary
+opening reads cached names/status only. With an account but no boards, the existing
+status badge says **Add boards**, not missing credentials. The short card description
+links directly to https://trello.com/apps/admin; there is no separate help button.
+
+Expand **Boards → Add boards** to discover visible boards by name. Tick
 only the boards agents may use and press **Add**; discovery, search and Cancel
-never grant scope. The main list’s **Remove** revokes one saved grant. Incomplete
+never grant scope. The list names its selected machine and uses an **N added** badge. The picker has
+**Active** (open, default) and **Inactive** (closed) tabs; search filters only the
+selected tab, without a redundant closed-board warning. Selections can span tabs
+but only explicit Add grants them. The main list's hover **Remove** revokes one
+saved grant. Incomplete
 discovery is labeled and never erases unseen grants. There is no all-boards option.
 Account and allowed-board names are saved as bounded non-secret hints beside the
 private setup. Reopening the card reads those names without contacting Trello.
@@ -124,7 +131,8 @@ still required, and a read-only token remains server-enforced read-only.
 Managed execution-host control is separate from board grants and credentials.
 Missing/invalid managed control denies access instead of falling back to legacy
 public state. Existing full installations keep their old gates until explicit
-owner adoption; local disabled state remains authoritative. Another controller
+owner adoption; local disabled state remains authoritative and the card says
+**Enable on host** rather than claiming effective readiness. Another controller
 cannot silently take over: remove the account explicitly first. Headless writes
 off can always reduce authority and writes on cannot bypass the global gate.
 No board grant, control receipt or private write permission is exported/imported
@@ -330,7 +338,7 @@ race or prevent another same-user process from using the token directly.
 | Code | Meaning / next action |
 |---|---|
 | INPUT | Unknown command/field, invalid ID/date/position or invalid/oversized JSON; use help and correct input |
-| STORE_MISSING | No private setup saved on this machine; add the account and boards |
+| STORE_MISSING | A private setup file is missing; status distinguishes absent credentials from incomplete policy without pretending the account vanished |
 | STORE_MALFORMED | Invalid private JSON/schema; inspect locally, never paste secrets into errors or chat; no automatic replacement |
 | STORE_PERMISSIONS | Wrong owner or another user has access; restrict storage before continuing |
 | STORE_PERMISSION_CHECK | Permission tooling could not verify storage; check ACL tooling, not credential setup |
@@ -360,8 +368,8 @@ causes an account switch, credential search, write retry or webhook setup.
 
 At `https://trello.com/u/YOUR_USERNAME/account`, open **Applications** and click
 **Revoke** beside this authorization. Trello then rejects that token (HTTP 401).
-To continue later, explicitly authorize a new token and use Replace in the local
-Settings card or run headless setup with `--rotate`.
+To continue later, explicitly authorize a new token, remove/add the account on the
+selected machine in Settings, or run headless setup with `--rotate`.
 To stop this client immediately, disable Trello, use `policy writes off`, and/or
 remove boards from local policy. Deleting the protected local credential file
 after use is stopped removes this copy only: it does **not** revoke the token at

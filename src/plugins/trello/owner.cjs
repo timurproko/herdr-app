@@ -150,6 +150,10 @@ async function execute(input, options = {}) {
     if (options.isCurrent?.() === false) fail('STALE');
     const previous = snapshot(store);
     const data = await operate(input, {...options, store});
+    if (data.configured) {
+      try { data.activation = require('./policy.cjs').state(store).enabled ? 'enabled' : 'disabled'; }
+      catch { data.activation = 'invalid'; }
+    }
     // Defense in depth: never forward an account/board name echoing submitted secrets.
     const result = {version: 1, ok: true, data}, encoded = JSON.stringify(result);
     for (const value of [input?.apiKey, input?.token, previous.credentials?.apiKey, previous.credentials?.token].filter(v => typeof v === 'string' && v)) if (encoded.includes(value)) fail('RESPONSE');

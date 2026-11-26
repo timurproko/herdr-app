@@ -41,6 +41,8 @@ try {
   assert.equal(status(absent).storage, 'missing');
   assert.equal((await owner.execute({action: 'status'}, {store: absent})).data.configured, false);
   assert.throws(() => protectedInput(path.join(f.root, 'absent-input')), {code: 'STORE_MISSING'});
+  const policyFile=f.store.file('policy'),policyBytes=fs.readFileSync(policyFile);fs.unlinkSync(policyFile);
+  assert.equal(status(f.store).configured,true,'Missing policy is not missing credentials');assert.equal(status(f.store).storage,'incomplete');assert.equal(status(f.store).problem.resource,'policy');fs.writeFileSync(policyFile,policyBytes);
   const lock = path.join(f.store.dir, 'config.lock'); fs.writeFileSync(lock, '');
   assert.throws(() => f.store.read('credentials'), {code: 'STORE_BUSY'}); fs.unlinkSync(lock);
   const file = f.store.file('credentials'), original = fs.readFileSync(file, 'utf8');

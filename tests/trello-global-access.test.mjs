@@ -51,6 +51,7 @@ try{
  const conflict=await owner.execute({action:'control',expected:s.data.revision,control:{...control,controller:'a'.repeat(64)}},{store:remote,binding:binding('pc2')});assert.equal(conflict.error.code,'CONTROL_CONFLICT');
  fs.unlinkSync(remote.file('control'));assert.equal((await write('pc2')).result.error.code,'PUBLIC_STATE_INVALID');fs.writeFileSync(remote.file('control'),JSON.stringify(control));
  await apply('read-write');fs.writeFileSync(path.join(remote.home,'shared.json'),JSON.stringify({'custom.plugins':{trello:{enabled:false,settings:{access:'read-write'}}}}));assert.equal((await write('pc2')).result.error.code,'DISABLED');
+ h.view.settingsMachine='pc2';h.ui.followSettingsMachine(h.view);h.ui.reloadPlugins(h.view,h.cx,'trello');await h.flush();assert.equal(h.view.pluginChecks.trello.items.find(i=>i.id==='local-setup').statusLabel,'Enable on host');
  assert.ok(sent>0);assert.ok(!JSON.stringify(applied).includes('FAKE_GLOBAL_TOKEN_NOT_REAL'));
  console.log('PASS: one explicit global consent, actual per-host CLI gates, imported-authority refusal, read-only new hosts, offline last-acknowledged rights, explicit retry and local disable precedence');
 }finally{fs.rmSync(root,{recursive:true,force:true});}

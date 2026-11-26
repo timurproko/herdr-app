@@ -23,7 +23,7 @@ function register(home,machine,binding,control,options){
 async function apply(home,input,{runtime,storeOptions,listMachines,dispatch,isCurrent=()=>true}){
  const {store,record}=read(home,{runtime,storeOptions});
  if(!['read-only','read-write'].includes(input.access)||typeof input.expected!=='string'||input.expected!==fingerprint(record))fail('CONFLICT');
- const current=record??fresh(),next={...current,access:input.access,intent:crypto.randomBytes(32).toString('hex'),pending:[]};
+ const current=record??fresh(),next={...current,access:input.access,intent:current.access===input.access?current.intent:crypto.randomBytes(32).toString('hex'),pending:[]};
  store.write('controller',next,record); // Explicit nonportable consent precedes all grants.
  const names=new Set([null,...current.hosts.map(h=>h.machine)]),pending=[];
  try {for(const m of await listMachines())if(typeof m.name==='string'&&m.name.length<=256)names.add(m.name);}catch{pending.push('Machines');}
@@ -36,6 +36,10 @@ async function apply(home,input,{runtime,storeOptions,listMachines,dispatch,isCu
   const binding=saved.data.destination;
   if(!binding)fail('MACHINE_CHANGED');
   if(read(home,{runtime,storeOptions}).record?.intent!==next.intent)fail('CONFLICT');
+  const acknowledged=saved.data.control;
+  if(acknowledged?.controller===next.id&&acknowledged.intent===next.intent&&acknowledged.enabled===true&&acknowledged.access===next.access&&['id','session','principal','home'].every(k=>acknowledged.binding?.[k]===binding[k])&&saved.data.localWrites===(next.access==='read-write')){
+   receipts.push({machine,binding,access:next.access,intent:next.intent});continue;
+  }
   const control={version:1,controller:next.id,binding,enabled:true,access:next.access,intent:next.intent};
   const result=await dispatch(home,{machine,binding},{action:'control',expected:saved.data.revision,control});
   if(result.ok)receipts.push({machine,binding,access:next.access,intent:next.intent});

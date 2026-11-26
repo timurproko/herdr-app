@@ -9,7 +9,7 @@ function hints(cx) {
 }
 function current(cx) {
   if (cx.machine != null && !hints(cx).destination) throw Error('Check this machine first.');
-  if (checking() || cx.isCurrent?.() === false || cx.enabled?.() === false) throw Error('Enable Trello on this computer and check setup before continuing.');
+  if (checking() || cx.isCurrent?.() === false || cx.enabled?.() === false) throw Error('Enable Trello and check setup first.');
 }
 const safeErrors = {
   INPUT: 'Enter a valid Trello API key and user token, then try again.',
@@ -17,7 +17,7 @@ const safeErrors = {
   FORBIDDEN: 'Trello refused this account’s access.',
   RATE_LIMIT: 'Trello rate limit. Wait for the cooldown before an explicit retry.',
   CONFLICT: 'Private Trello configuration changed. Check it again before applying this action.',
-  STORE: 'Private Trello storage is missing, invalid or unsafe. Check local setup and permissions.',
+  STORE: 'Private setup is unavailable. Check permissions.',
   STORE_MISSING: 'No account added',
   STORE_MALFORMED: 'Private setup is malformed. It was not replaced.',
   STORE_PERMISSIONS: 'Private setup permissions are unsafe.',
@@ -58,7 +58,7 @@ function data(result) {
     error.code = Object.hasOwn(safeErrors, result?.error?.code) ? result.error.code : 'INTERNAL'; throw error;
   }
   const d = result.data;
-  if (typeof d?.configured !== 'boolean' || !REV.test(d.revision) || typeof d.localWrites !== 'boolean' || !Number.isInteger(d.allowedBoards) || d.allowedBoards < 0 || d.allowedBoards > 100 || !Array.isArray(d.boards) || d.boards.length !== d.allowedBoards || d.boards.some(b => !ID.test(b)) || new Set(d.boards).size !== d.boards.length) throw Error('Private Trello status was invalid. Check the local installation.');
+  if (typeof d?.configured !== 'boolean' || !REV.test(d.revision) || typeof d.localWrites !== 'boolean' || !Number.isInteger(d.allowedBoards) || d.allowedBoards < 0 || d.allowedBoards > 100 || !Array.isArray(d.boards) || d.boards.length !== d.allowedBoards || d.boards.some(b => !ID.test(b)) || new Set(d.boards).size !== d.boards.length) throw Error('Invalid setup status. Check the runtime.');
   const clean = {configured: d.configured, revision: d.revision, localWrites: d.localWrites, allowedBoards: d.allowedBoards, boards: d.boards};
   if (d.account && ID.test(d.account.id) && [d.account.username, d.account.name].every(s => typeof s === 'string' && s.length > 0 && s.length <= 256 && !/[\u0000-\u001f\u007f]/.test(s))) clean.account = {id: d.account.id, username: d.account.username, name: d.account.name};
   if (d.namedBoards !== undefined) {
@@ -66,6 +66,7 @@ function data(result) {
     clean.namedBoards = d.namedBoards.map(b => ({id: b.id, label: b.label}));
   }
   clean.namesMissing = d.namesMissing === true;
+  if (['enabled','disabled','invalid'].includes(d.activation)) clean.activation=d.activation;
   if (d.destination) { clean.destination = destination(d.destination); if (!clean.destination) throw Error('Machine identity was invalid.'); }
   if (d.items !== undefined) {
     if (!Array.isArray(d.items) || d.items.length > 1000 || typeof d.complete !== 'boolean' || d.items.some(b => !ID.test(b?.id) || typeof b.label !== 'string' || b.label.length > 1024 || /[\u0000-\u001f\u007f]/.test(b.label) || typeof b.closed !== 'boolean')) throw Error('Trello board inventory was invalid.');
@@ -87,7 +88,7 @@ function remember(cx, d, reset = false) {
 async function invoke(cx, action, expected, extra = {}) {
   current(cx);
   const d = data(await privateAction('trello', {action, expected, ...extra}, {...cx, privateDestination: hints(cx).destination}));
-  if (cx.isCurrent?.() === false) throw Error('Settings changed before the result arrived. Check local status.');
+  if (cx.isCurrent?.() === false) throw Error('Settings changed. Check again.');
   // Own acknowledged policy edits preserve known board names/account hints.
   const h = hints(cx); if (h.revision === expected && !['save', 'replace', 'remove'].includes(action)) h.revision = d.revision;
   remember(cx, d, ['save', 'replace', 'remove'].includes(action));
@@ -118,36 +119,39 @@ export async function runtimeStatus(cx = {}) {
 }
 export async function localStatus(cx = {}) {
   if (checking()) return {status: 'recommended', detail: 'Private setup is checked only in the running app.', configured: null, usable: false};
+  let cached;
   try {
-    let d = data(await readStatus(cx));
+    let d = data(await readStatus(cx)); cached = d; remember(cx, d);
     const verified = d.configured && cx.checkReason === 'manual' && cx.enabled?.() !== false;
     if (verified) d = await invoke(cx, 'verify', d.revision);
     if (cx.isCurrent?.() === false) return {status: 'missing', detail: 'Settings changed. Check again.', usable: false};
-    const h = remember(cx, d), saved = h.account ? `Saved · ${h.account.name} (@${h.account.username})` : 'Credentials saved';
-    return {...d, refreshSections: verified, status: d.configured && d.allowedBoards ? 'ready' : 'missing', usable: d.configured,
-      detail: !d.configured ? 'Enter an API key and user token below, then choose allowed boards.' : `${saved} · ${d.allowedBoards} allowed boards · ${d.localWrites ? 'Local writes permitted' : 'Local read-only policy'}.`};
-  } catch (e) { return {status: 'error', detail: e instanceof SyntaxError ? 'Install the Trello runtime through normal full deployment.' : (Object.values(safeErrors).includes(e?.message) ? e.message : 'Local Trello status could not be read. Check Node.js and protected setup.'), configured: null, problem: e.code ?? 'INTERNAL', usable: false}; }
+    remember(cx, d);
+    const activationBlocked=d.configured && d.activation && d.activation!=='enabled';
+    return {...d, refreshSections: verified, status: d.configured && d.allowedBoards && !d.namesMissing && !activationBlocked ? 'ready' : 'missing', usable: d.configured,
+      statusLabel:!d.configured ? 'Add account' : d.namesMissing ? 'Check names' : !d.allowedBoards ? 'Add boards' : activationBlocked ? d.activation==='disabled'?'Enable on host':'Check activation' : 'Ready',
+      detail:activationBlocked ? `${cx.machine ?? 'This computer'} · ${d.activation==='disabled'?'Trello is disabled':'Activation check failed'}` : null};
+  } catch (e) { return {...cached, status: 'error', statusLabel:'Check failed', detail:Object.values(safeErrors).includes(e?.message) ? e.message : 'Setup check failed.', configured:cached?.configured ?? null, problem:e.code ?? 'INTERNAL', usable:cached?.configured === true}; }
 }
 export async function credentialAction(cx, values, item, action) {
   try {
     const d = await invoke(cx, action, item.revision, values);
-    if (action !== 'remove' && !d.account) throw Error('Trello did not return an account identity. Verify saved credentials again.');
-    return {detail: action === 'remove' ? 'Saved credentials removed; board scope and local writes cleared. This does not revoke the token at Trello.'
-      : `Saved · ${d.account?.name ?? 'Verified account'}${d.account ? ` (@${d.account.username})` : ''}${action === 'replace' ? ' · Board scope and local writes cleared' : ''}.`};
+    if (action !== 'remove' && !d.account) throw Error('Account check failed. Check again.');
+    return {detail:null};
   } catch (e) { return {detail: e.message}; } // Only our own sanitized errors, never provider/worker text.
 }
+export async function removeAccount(cx, item) { await invoke(cx, 'remove', item.revision); }
 export async function boardCheck(cx) {
   const d = await localStatus(cx), h = hints(cx);
-  return {...d, statusLabel: d.configured ? `${d.allowedBoards} allowed` : null,
+  return {...d, statusLabel: d.configured ? `${d.allowedBoards} added` : null,
     rows: (d.boards ?? []).map(id => ({id, label: h.names.get(id) ?? 'Check to load name'})),
-    detail: d.status === 'error' ? d.detail : d.configured ? 'Only these boards are available to agents. Add boards by name; Remove revokes that board’s local permission.' : 'Save credentials above before choosing boards.'};
+    detail: d.status === 'error' ? d.detail : d.configured ? null : 'Add an account first.'};
 }
 export async function boardCandidates(cx) {
   const saved = cx.result?.('boards');
   const d = await invoke(cx, 'discover', saved?.revision);
-  const allowed = new Set(d.boards), items = d.items.filter(b => !allowed.has(b.id)).map(b => ({id: b.id, label: b.label, ...(b.closed ? {detail: 'Closed board'} : {})}));
+  const allowed = new Set(d.boards), items = d.items.filter(b => !allowed.has(b.id)).map(b => ({id: b.id, label: b.label, tab:b.closed ? 'inactive' : 'active'}));
   const candidates = new Set(items.map(b => b.id));
-  return {items, detail: d.complete ? null : 'Board discovery reached its safety bound; this list is incomplete. Existing unseen permissions are retained.',
+  return {items, detail: d.complete ? null : 'List incomplete; existing boards are retained.',
     add: async (currentContext, ids) => {
       if (!Array.isArray(ids) || ids.some(id => !candidates.has(id))) throw Error('Invalid board selection.');
       await invoke(currentContext, 'policy', d.revision, {add: ids});

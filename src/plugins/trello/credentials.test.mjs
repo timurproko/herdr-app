@@ -55,6 +55,10 @@ try {
     const linkedHome = path.join(real.root, 'linked-home');fs.mkdirSync(path.join(linkedHome, '.customizations'), {recursive: true});
     fs.symlinkSync(real.store.dir, path.join(linkedHome, '.customizations/trello'), 'junction');
     assert.throws(() => new Store(linkedHome).read('credentials'), {code: 'STORE_UNSAFE_PATH'});
+    cp.execFileSync('icacls.exe',[real.store.file('credentials'),'/remove:g','*S-1-1-0'],{stdio:'ignore',windowsHide:true});
+    const ownerChange=cp.spawnSync('icacls.exe',[real.store.file('credentials'),'/setowner','*S-1-5-32-544'],{stdio:'ignore',windowsHide:true});
+    if(ownerChange.status===0)assert.throws(()=>real.store.read('credentials'),{code:'STORE_PERMISSIONS'});
+    else console.log('SKIP: fixture owner change unavailable without elevation; fixed owner-rejection unit remains mandatory');
   }
 } finally { real.cleanup(); }
 console.log('PASS: Trello private stores, real OS protection, rotation, local policy and stale authority');
