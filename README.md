@@ -698,6 +698,9 @@ inline editor opens, so typing immediately replaces it. This is consistent for
 menu/keyboard requests and double-click. Automatic names still open an empty
 field with their usual placeholder. Invoking rename again while already editing
 preserves the draft, cursor and selection; it does not select everything again.
+Sidebar Cancel uses the machine/coordinator chevron's column on parent, child and
+ordinary rows, replacing disclosure while editing. The 24px Confirm/Cancel tools
+retain tab rename's 2px gap and 4px input-to-tools gap, with an 8px sidebar gutter.
 
 ## Sidebar scroll hints
 

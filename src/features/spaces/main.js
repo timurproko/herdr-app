@@ -100,7 +100,7 @@ export default class Spaces extends View {
     const stop = (_e, cx) => cx.stop_propagation();
     const action = (name, asset, click) => iconButton(t, { id: `space-rename-${name}-${w.id}`, icon: asset, color: t.muted, onClick: click,
       label: name === 'apply' ? 'Apply space rename' : 'Cancel space rename', tooltip: name === 'apply' ? 'Apply rename (Enter)' : 'Cancel rename (Escape)' });
-    return h_flex().id(`space-rename-${w.id}`).h(U.insetControl).flex_1().min_w(0).gap(4).items_center()
+    return h_flex().id(`space-rename-${w.id}`).h(U.insetControl).flex_1().min_w(0).mr(-8).gap(4).items_center()
       .track_focus(edit.handle).key_context('CustomSpaceRename')
       .on_action('custom-space-rename.ignore', stop)
       .on_mouse_down('left', stop).on_mouse_down('right', stop).on_mouse_up('left', stop)

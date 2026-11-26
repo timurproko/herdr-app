@@ -8,8 +8,8 @@
 
 ## 2. Tab-spaced sidebar rename
 
-- [ ] 2.1 Put Cancel on the shared chevron axis for coordinator, child and ordinary space editors, using existing 24px icon buttons, 2px button gap and 4px input gap; assert measured production tab/space geometry and hidden nonediting controls.
-- [ ] 2.2 Extend rename-selection/space-rename regression cases for Enter, Escape, blur, repeated rename and captured remote targets; document the trailing-column contract in the existing rename guidance and verify no draft/selection behavior changes.
+- [x] 2.1 Put Cancel on the shared chevron axis for coordinator, child and ordinary space editors, using existing 24px icon buttons, 2px button gap and 4px input gap; assert measured production tab/space geometry and hidden nonediting controls.
+- [x] 2.2 Extend rename-selection/space-rename regression cases for Enter, Escape, blur, repeated rename and captured remote targets; document the trailing-column contract in the existing rename guidance and verify no draft/selection behavior changes.
 
 ## 3. One complete-lifecycle Git loading line
 
