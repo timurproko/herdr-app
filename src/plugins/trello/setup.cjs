@@ -1,6 +1,6 @@
 'use strict';
 const {validate, id, exact} = require('./credentials.cjs');
-const {fail} = require('./errors.cjs');
+const {fail, publicError} = require('./errors.cjs');
 const defaultPolicy = () => ({version: 1, boards: [], allowWrites: false});
 function setup(store, input, rotate = false) {
   if (!exact(input, ['apiKey', 'token'])) fail('INPUT');
@@ -26,7 +26,11 @@ function configure(store, action, value) {
 function status(store) {
   try {
     store.read('credentials'); const p = store.read('policy');
-    return {configured: true, allowedBoards: p.boards.length, localWrites: p.allowWrites};
-  } catch { return {configured: false}; }
+    return {configured: true, storage: 'ready', allowedBoards: p.boards.length, localWrites: p.allowWrites};
+  } catch (e) {
+    const problem = publicError(e);
+    if (problem.code === 'STORE_MISSING') return {configured: false, storage: 'missing', problem};
+    throw e; // A check that failed is not absent setup.
+  }
 }
 module.exports = {setup, configure, status};

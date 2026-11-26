@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const {Store, protectedInput, object} = require('./credentials.cjs');
 const {setup, configure, status} = require('./setup.cjs');
 const {run, definitions, writes} = require('./operations.cjs');
-const {fail, publicError} = require('./errors.cjs');
+const {fail, publicError, TrelloError} = require('./errors.cjs');
 const help = `herdr-trello: scoped Trello JSON CLI (Node 20+)\n\nLocal: status; setup [--rotate] [--input PRIVATE_FILE]; policy allow/remove BOARD; policy writes on/off\nReads: boards list; lists list; cards list/get; labels list; checklists list; checkitems list\nWrites: cards create/update/move/archive; comments add; cards label add/remove; checklists add/update; checkitems add/update\nEvery child operation needs --board BOARD and its explicit --card/--list/--checklist IDs.\nPaging: --limit 1..100 --before RETURNED_BOARD_CARD_OR_ACTION_ID; lists/cards: --filter open|closed|all\nJSON input: --input FILE or stdin (setup/mutations only). Never pass credentials in argv.\nGlobal: --home HERDR_HOME (direct Node entry; installed launchers already bind their home); --json (results are JSON by default). No arbitrary HTTP operations.\nSee docs/TRELLO.md for setup, write authorization, scope, errors and revocation.\n`;
 function parse(argv) {
   const words = [], flags = Object.create(null);
@@ -35,7 +35,8 @@ async function execute(argv, options = {}) {
     const readInput = async privateInput => {
       let text;
       if (!file && options.input === undefined && process.stdin.isTTY) fail('INPUT');
-      try { text = options.input !== undefined ? options.input : privateInput && file ? protectedInput(file) : await inputText(file); } catch { fail('INPUT'); }
+      try { text = options.input !== undefined ? options.input : privateInput && file ? protectedInput(file) : await inputText(file); }
+      catch (e) { if (e instanceof TrelloError) throw e; fail('INPUT'); }
       if (typeof text !== 'string' || Buffer.byteLength(text) > 262144) fail('INPUT');
       if (!privateInput && !text.trim()) return {};
       try { const v = JSON.parse(text); if (!object(v)) fail('INPUT'); return v; } catch { fail('INPUT'); }

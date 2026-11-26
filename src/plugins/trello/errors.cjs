@@ -3,6 +3,16 @@
 const messages = {
   INPUT: 'Invalid command or input. See herdr-trello --help.',
   STORE: 'Private Trello storage is missing, invalid or unsafe. Check local setup and permissions.',
+  STORE_MISSING: 'Private Trello setup is not saved on this machine.',
+  STORE_MALFORMED: 'Private Trello configuration has invalid JSON or an unsupported schema. It was not replaced.',
+  STORE_PERMISSIONS: 'Private Trello storage has the wrong owner or allows another user access. Restrict it before continuing.',
+  STORE_PERMISSION_CHECK: 'Private Trello storage permissions could not be verified. Check this machine’s ACL tooling; access remains refused.',
+  STORE_IN_CHECKOUT: 'Private Trello storage is inside a Git checkout. Use a private home outside the checkout.',
+  STORE_UNSAFE_PATH: 'Linked, non-regular or multiply linked private Trello storage is refused.',
+  STORE_BUSY: 'Private Trello configuration is locked. Check the active setup operation before retrying.',
+  STORE_IO: 'Private Trello storage could not be read or updated. Check filesystem access.',
+  PUBLIC_STATE_INVALID: 'This host’s Trello activation or Access configuration could not be validated. No access was granted.',
+  INTERNAL: 'Trello could not finish because of an internal error. No retry was started.',
   CONFLICT: 'Local Trello configuration changed or already exists; inspect it before retrying.',
   DISABLED: 'Enable Trello in Settings > Plugins before accessing boards.',
   SCOPE: 'The board or child identity is not verified in the local allowlist.',
@@ -24,8 +34,8 @@ class TrelloError extends Error {
 }
 const fail = code => { throw new TrelloError(code); };
 function publicError(error) {
-  const safe = error instanceof TrelloError ? error : new TrelloError('STORE');
+  const safe = error instanceof TrelloError ? error : new TrelloError('INTERNAL');
   return {code: safe.code, message: messages[safe.code], outcome: safe.code === 'UNKNOWN_WRITE' ? 'unknown' : safe.code === 'WRITE_CHANGED' ? 'applied' : 'refused',
     ...(Number.isSafeInteger(safe.retryAt) ? {retryAt: safe.retryAt} : {})};
 }
-module.exports = {TrelloError, fail, publicError};
+module.exports = {TrelloError, fail, publicError, messages};

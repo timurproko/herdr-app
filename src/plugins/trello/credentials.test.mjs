@@ -15,7 +15,7 @@ try {
   assert.throws(() => setup(f.store, credentials), {code: 'CONFLICT'});
   assert.throws(() => setup(f.store, {...credentials, secret: 'no'}), {code: 'INPUT'});
   assert.throws(() => configure(f.store, 'allow', '*'), {code: 'INPUT'});
-  assert.throws(() => validate('policy', {version: 1, boards: [A, A], allowWrites: false}), {code: 'STORE'});
+  assert.throws(() => validate('policy', {version: 1, boards: [A, A], allowWrites: false}), {code: 'STORE_MALFORMED'});
   assert.throws(() => authority(f.store, true, [A]), {code: 'READ_ONLY'});
   configure(f.store, 'writes', 'on');
   assert.throws(() => authority(f.store, true, [A]), {code: 'READ_ONLY'});
@@ -32,9 +32,9 @@ try {
   assert.equal(fs.readFileSync(path.join(f.home, 'shared.json'), 'utf8'), raw);
   assert.ok(!JSON.stringify(publicError(new Error(credentials.token))).includes(credentials.token));
   fs.writeFileSync(f.store.file('policy'), '{}');
-  assert.throws(() => setup(f.store, credentials, true), {code: 'STORE'});
+  assert.throws(() => setup(f.store, credentials, true), {code: 'STORE_MALFORMED'});
   const checkout = path.join(f.root, 'checkout'); fs.mkdirSync(path.join(checkout, '.git'), {recursive: true});
-  assert.throws(() => new Store(checkout).directory(true), {code: 'STORE'});
+  assert.throws(() => new Store(checkout).directory(true), {code: 'STORE_IN_CHECKOUT'});
   const unsafe = new Store(path.join(f.root, 'unsafe'), {security: () => { throw Error('unverifiable ACL'); }});
   assert.throws(() => unsafe.directory(true));
 } finally { f.cleanup(); }
@@ -45,16 +45,16 @@ try {
   if (process.platform !== 'win32') {
     assert.equal(fs.statSync(real.store.file('credentials')).mode & 0o777, 0o600);
     fs.chmodSync(real.store.file('credentials'), 0o644);
-    assert.throws(() => real.store.read('credentials'), {code: 'STORE'});
+    assert.throws(() => real.store.read('credentials'), {code: 'STORE_PERMISSIONS'});
     fs.unlinkSync(real.store.file('credentials'));
     fs.symlinkSync(path.join(real.root, 'missing'), real.store.file('credentials'));
-    assert.throws(() => real.store.read('credentials'), {code: 'STORE'});
+    assert.throws(() => real.store.read('credentials'), {code: 'STORE_UNSAFE_PATH'});
   } else {
     cp.execFileSync('icacls.exe', [real.store.file('credentials'), '/grant', '*S-1-1-0:R'], {stdio: 'ignore', windowsHide: true});
-    assert.throws(() => real.store.read('credentials'), {code: 'STORE'});
+    assert.throws(() => real.store.read('credentials'), {code: 'STORE_PERMISSIONS'});
     const linkedHome = path.join(real.root, 'linked-home');fs.mkdirSync(path.join(linkedHome, '.customizations'), {recursive: true});
     fs.symlinkSync(real.store.dir, path.join(linkedHome, '.customizations/trello'), 'junction');
-    assert.throws(() => new Store(linkedHome).read('credentials'), {code: 'STORE'});
+    assert.throws(() => new Store(linkedHome).read('credentials'), {code: 'STORE_UNSAFE_PATH'});
   }
 } finally { real.cleanup(); }
 console.log('PASS: Trello private stores, real OS protection, rotation, local policy and stale authority');

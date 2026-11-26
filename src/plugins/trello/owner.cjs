@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const crypto = require('node:crypto');
 const {Store, safePath, validate, exact, id} = require('./credentials.cjs');
 const {Client} = require('./client.cjs');
-const {fail, publicError} = require('./errors.cjs');
+const {fail, publicError, TrelloError} = require('./errors.cjs');
 const ownerRoutes = [
   ['GET', /^\/members\/me$/, ['fields']],
   ['GET', /^\/members\/me\/boards$/, ['fields', 'filter']],
@@ -20,7 +20,7 @@ function snapshot(store) {
   return {credentials, policy, revision};
 }
 function publicStatus(s) {
-  return {configured: s.credentials !== null, revision: s.revision,
+  return {configured: s.credentials !== null, storage: s.credentials === null ? 'missing' : 'ready', revision: s.revision,
     allowedBoards: s.policy?.boards.length ?? 0, localWrites: s.policy?.allowWrites ?? false,
     boards: s.policy?.boards ?? []};
 }
@@ -75,7 +75,7 @@ async function operate(input, {store, ...io}) {
     });
     return {...publicStatus(snapshot(store)), account};
   }
-  if (!s.credentials) fail('STORE');
+  if (!s.credentials) fail('STORE_MISSING');
   if (input.action === 'verify') {
     const account = await identity(client(store, s, s.credentials, io));
     return {...publicStatus(expected(store, s.revision)), account};
@@ -117,8 +117,8 @@ if (require.main === module) {
       try {
         for await (const chunk of process.stdin) { bytes += chunk.length; if (bytes > 262144) fail('INPUT'); input += chunk.toString('utf8'); }
         result = await execute(JSON.parse(input), {home: process.argv[2]});
-      } catch { result = {version: 1, ok: false, error: publicError({})}; }
-    } else result = {version: 1, ok: false, error: publicError({})};
+      } catch { result = {version: 1, ok: false, error: publicError(new TrelloError('INPUT'))}; }
+    } else result = {version: 1, ok: false, error: publicError(new TrelloError('INPUT'))};
     process.stdout.write(JSON.stringify(result) + '\n'); process.exitCode = result.ok ? 0 : 3;
   })();
 }

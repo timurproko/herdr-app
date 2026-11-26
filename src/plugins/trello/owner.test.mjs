@@ -28,7 +28,7 @@ try {
  const many=Array.from({length:1001},(_,i)=>({id:i.toString(16).padStart(24,'0'),name:'Board '+i,closed:false}));
  const partial=await run('discover',{}, {transport:async()=>Response.json(many)});assert.equal(partial.data.complete,false);assert.equal(partial.data.items.length,1000);assert.deepEqual(store.read('policy').boards,[A,B]);
  const manyAdds=Array.from({length:100},(_,i)=>i.toString(16).padStart(24,'0'));
- assert.equal((await run('policy',{add:manyAdds})).error.code,'STORE','More than 100 combined grants fails closed');
+ assert.equal((await run('policy',{add:manyAdds})).error.code,'STORE_MALFORMED','More than 100 combined grants fails closed');
  await run('replace',credentials);assert.deepEqual(store.read('policy'),{version:1,boards:[],allowWrites:false});
  // Concurrent private changes during a network read reject old credentials/policy.
  const stale=await run('verify',{}, {transport:async()=>{store.write('policy',{version:1,boards:[B],allowWrites:false},store.read('policy'));return Response.json({id:A,username:'fake-owner',fullName:'Fake Owner'});}});assert.equal(stale.error.code,'CONFLICT');await run('status');
@@ -36,12 +36,12 @@ try {
  await run('policy',{allowWrites:true});
  const write=store.write.bind(store),oldCredentials=store.read('credentials');
  store.write=(name,...args)=>{if(name==='credentials')throw Error('synthetic interruption');return write(name,...args);};
- assert.equal((await run('replace',credentials)).error.code,'STORE');store.write=write;
+ assert.equal((await run('replace',credentials)).error.code,'STORE_IO');store.write=write;
  assert.deepEqual(store.read('credentials'),oldCredentials);assert.deepEqual(store.read('policy'),{version:1,boards:[],allowWrites:false});assert.equal(fs.existsSync(path.join(store.dir,'config.lock')),false);await run('status');
  const removed=await run('remove');assert.equal(removed.data.configured,false);assert.equal(removed.data.removed,true);assert.equal(fs.existsSync(store.file('credentials')),false);assert.deepEqual(store.read('policy'),{version:1,boards:[],allowWrites:false});
- assert.equal((await run('verify')).error.code,'STORE');
+ assert.equal((await run('verify')).error.code,'STORE_MISSING');
  // Corrupt existing stores are not repaired, even by explicit Save.
- fs.writeFileSync(store.file('credentials'),'not-json');assert.equal((await run('status')).error.code,'STORE');assert.equal((await run('save',credentials)).error.code,'STORE');assert.equal(fs.readFileSync(store.file('credentials'),'utf8'),'not-json');fs.unlinkSync(store.file('credentials'));
+ fs.writeFileSync(store.file('credentials'),'not-json');assert.equal((await run('status')).error.code,'STORE_MALFORMED');assert.equal((await run('save',credentials)).error.code,'STORE_MALFORMED');assert.equal(fs.readFileSync(store.file('credentials'),'utf8'),'not-json');fs.unlinkSync(store.file('credentials'));
  await run('status');
  const rate=await run('save',credentials,{transport:async()=>new Response(null,{status:429,headers:{'Retry-After':'120'}})});assert.equal(rate.error.code,'RATE_LIMIT');let attempted=false;
  assert.equal((await run('save',credentials,{transport:async()=>{attempted=true;throw Error('no');}})).error.code,'RATE_LIMIT');assert.equal(attempted,false);assert.equal(fs.existsSync(store.file('credentials')),false);

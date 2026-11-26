@@ -279,7 +279,14 @@ race or prevent another same-user process from using the token directly.
 | Code | Meaning / next action |
 |---|---|
 | INPUT | Unknown command/field, invalid ID/date/position or invalid/oversized JSON; use help and correct input |
-| STORE | Missing, malformed, checkout-local, linked or insufficiently protected local store; inspect permissions/setup, never paste credentials into errors or chat |
+| STORE_MISSING | No private setup saved on this machine; add the account and boards |
+| STORE_MALFORMED | Invalid private JSON/schema; inspect locally, never paste secrets into errors or chat; no automatic replacement |
+| STORE_PERMISSIONS | Wrong owner or another user has access; restrict storage before continuing |
+| STORE_PERMISSION_CHECK | Permission tooling could not verify storage; check ACL tooling, not credential setup |
+| STORE_IN_CHECKOUT / STORE_UNSAFE_PATH | Checkout-local, linked, non-regular or multiply linked storage is refused |
+| STORE_BUSY / STORE_IO | Active setup lock or filesystem failure; inspect the operation/access before an explicit retry |
+| PUBLIC_STATE_INVALID | Host activation or Access could not be validated; no authority granted |
+| INTERNAL | Unclassified internal failure, with no raw exception or automatic retry |
 | CONFLICT | Existing credentials, concurrent local edit or unexpected rotation; inspect current local state and use explicit rotation only when intended |
 | DISABLED / STALE | Plugin disabled or authority changed; recheck Settings and local policy before a new command |
 | SCOPE | Board not allowed or child membership unverified within bounds; correct explicit IDs or allowlist, never bypass with an arbitrary URL |
@@ -290,8 +297,12 @@ race or prevent another same-user process from using the token directly.
 | LIMIT / RESPONSE / TRANSPORT / REMOTE | Request/time/response bound, malformed reply, connectivity failure or HTTP rejection; inspect/narrow the read and retry explicitly |
 | UNKNOWN_WRITE / WRITE_CHANGED | Unknown outcome / acknowledged write with changed authority; reconcile through reads before another explicit mutation |
 
-`status` and the Settings prerequisite inspect only local configuration; they do
-not contact Trello and cannot confirm that a token is still valid. No error
+`status` and automatic Settings checks inspect only local configuration; they do
+not contact Trello and cannot confirm that a token is still valid. Absent setup is
+distinct from a failed permission check or corrupt store; failed checks refuse access
+rather than pretending credentials are missing. On Windows, the ACL subprocess uses
+system Windows PowerShell with its own module path, even when launched from PowerShell 7;
+the caller environment and owner-only permission requirements stay unchanged. No error
 causes an account switch, credential search, write retry or webhook setup.
 
 ## Revocation and security limits

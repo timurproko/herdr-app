@@ -4,11 +4,11 @@ These six groups match the draft PR's Implementation outcomes in the same order.
 
 ## 1. Protected Windows storage and actionable diagnostics
 
-- [ ] 1.1 Sanitize only the ACL child's case-insensitive PSModulePath keys and select absolute system Windows PowerShell; injected executor tests assert child options and unchanged parent environment.
-- [ ] 1.2 Distinguish failed ACL tooling from wrong owner/overbroad permissions using fixed safe results; retain real fake-file ACL/link tests and add capability-gated PS7 CLI/owner reads plus unsafe-ACL refusal.
-- [ ] 1.3 Implement typed safe storage/public-state/internal codes through credentials, setup, owner, policy and CLI catches; fake fixtures cover each category, hostile secret sentinels and unchanged write-outcome semantics.
-- [ ] 1.4 Preserve configured compatibility with an explicit safe blocked/missing status, keep storage errors in board checks and suppress unusable Save state; targeted Settings tests distinguish absent setup from failed checks.
-- [ ] 1.5 Update the Trello error/recovery guide and contract fixtures; verify every documented code has a constant safe message and no raw path/provider/SSH diagnostic can escape.
+- [x] 1.1 Sanitize only the ACL child's case-insensitive PSModulePath keys and select absolute system Windows PowerShell; injected executor tests assert child options and unchanged parent environment.
+- [x] 1.2 Distinguish failed ACL tooling from wrong owner/overbroad permissions using fixed safe results; retain real fake-file ACL/link tests and add capability-gated PS7 CLI/owner reads plus unsafe-ACL refusal.
+- [x] 1.3 Implement typed safe storage/public-state/internal codes through credentials, setup, owner, policy and CLI catches; fake fixtures cover each category, hostile secret sentinels and unchanged write-outcome semantics.
+- [x] 1.4 Preserve configured compatibility with an explicit safe blocked/missing status, keep storage errors in board checks and suppress unusable Save state; targeted Settings tests distinguish absent setup from failed checks.
+- [x] 1.5 Update the Trello error/recovery guide and contract fixtures; verify every documented code has a constant safe message and no raw path/provider/SSH diagnostic can escape.
 
 ## 2. Durable account and board names without background requests
 

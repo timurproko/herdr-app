@@ -7,13 +7,14 @@ const {fail} = require('./errors.cjs');
 function state(store) {
   try {
     const file = path.join(store.home, 'shared.json'); safePath(file);
-    const s = fs.statSync(file); if (!s.isFile() || s.size > 16777216) fail('DISABLED');
+    const s = fs.statSync(file); if (!s.isFile() || s.size > 16777216) fail('PUBLIC_STATE_INVALID');
     const plugin = JSON.parse(fs.readFileSync(file, 'utf8'))['custom.plugins']?.trello;
-    if (!plugin || typeof plugin.enabled !== 'boolean') fail('DISABLED');
+    if (!plugin) return {enabled: false, access: 'read-only'};
+    if (typeof plugin.enabled !== 'boolean') fail('PUBLIC_STATE_INVALID');
     const access = plugin.settings?.access ?? 'read-only';
-    if (!['read-only', 'read-write'].includes(access)) fail('DISABLED');
+    if (!['read-only', 'read-write'].includes(access)) fail('PUBLIC_STATE_INVALID');
     return {enabled: plugin.enabled, access};
-  } catch { fail('DISABLED'); }
+  } catch { fail('PUBLIC_STATE_INVALID'); }
 }
 const fingerprint = value => crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
 function authority(store, write = false, boards = []) {
