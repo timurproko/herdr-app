@@ -14,7 +14,7 @@ import { terminalSpacingLabel, changeTerminalSpacing } from './terminal-spacing.
 import { spacesPage } from './spaces-ui.js';
 import { settingsSections } from './settings-sections.js';
 import { statusbarSection, sidebarLookPage, lookBackButton, LOOK_BACK_LABEL_INSET } from './sidebar-ui.js';
-import { initPlugins, reloadPlugins, pluginsPage, pluginConfirmation, pluginTextPage, pluginTextActions, pluginTextOpen, pluginTextChanged, closePluginTextPage, provideProfiles, followSettingsMachine, pluginsChecking, recheckAllPlugins, reloadRolePage, roleLinks as pluginRoleLinks, openRoleLink as openPluginRoleLink } from './plugins-ui.js';
+import { initPlugins, reloadPlugins, pluginsPage, pluginConfirmation, pluginTextPage, pluginTextActions, pluginTextOpen, pluginTextChanged, closePluginTextPage, clearPluginForms, provideProfiles, followSettingsMachine, pluginsChecking, recheckAllPlugins, reloadRolePage, roleLinks as pluginRoleLinks, openRoleLink as openPluginRoleLink } from './plugins-ui.js';
 import { closeBrowser } from './folder-browser.js';
 import { settingsBackButton, initSettingsPageScroll, settingsPageScroll } from './settings-back.js';
 import { initProfiles, reloadProfiles, profilesSurface, cancelProfileEdit, profileEditorActions } from './profiles-ui.js';
@@ -195,6 +195,7 @@ export default class Settings extends View {
 
   selectSection(section) {
     if (this.pluginClosed || !SECTIONS.some(s => s.id === section && sectionAvailable(s))) return;
+    if (section !== 'plugins') clearPluginForms(this);
     this.section = section;
     if (section !== 'updates') this.clearUpdateResume();
   }
@@ -208,6 +209,7 @@ export default class Settings extends View {
   // View.close is also called by host VM teardown; it must not dismiss the
   // overlay or erase the section before the replacement initializes.
   close() {
+    clearPluginForms(this);
     this.pluginClosed=true;this.pluginConfirm=null;
     this.customUpdateClosed = true;
   }

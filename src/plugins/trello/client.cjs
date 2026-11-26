@@ -48,12 +48,12 @@ function mergeCooldown(store, deadline) {
   fail('STORE'); // Bounded local contention refusal, never an HTTP replay.
 }
 class Client {
-  constructor(store, gate, {transport = globalThis.fetch, now = nowMs, timeout = 20000} = {}) {
+  constructor(store, gate, {transport = globalThis.fetch, now = nowMs, timeout = 20000, routeRules = routes} = {}) {
     this.store = store; this.gate = gate; this.transport = transport; this.now = now; this.timeout = timeout;
-    this.started = now(); this.count = 0; this.writes = 0;
+    this.started = now(); this.count = 0; this.writes = 0; this.routes = routeRules;
   }
   async request(method, route, query = {}) {
-    const rule = routes.find(([m, re]) => method === m && re.test(route));
+    const rule = this.routes.find(([m, re]) => method === m && re.test(route));
     if (!rule || Object.keys(query).some(k => !rule[2].includes(k))) fail('INPUT');
     this.gate.check();
     const cooldown = this.store.read('cooldown', true);

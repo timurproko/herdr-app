@@ -112,6 +112,14 @@ export function fieldRow(t, { label, about, widget, id = null }) {
       .when(Boolean(about), el => el.child(description(t, about))))
     .child(div().flex_none().child(widget));
 }
+// Transient action inputs deliberately have no preference binding or blur/submit handler.
+export function actionInput(t, { id, label, widget, enabled = true }) {
+  return v_flex().w_full().gap(4)
+    .child(div().text_size(U.meta).text_color(t.muted).child(label))
+    .child(control(t, h_flex()).id(id).w_full().px(U.gutter).disabled(!enabled)
+      .child(widget.flex_1().min_w(0).h_full().disabled(!enabled).accessibility_label(label)));
+}
+
 // A section's top row: what it is scoped to (Machine, Account), its dropdown, then the
 // section's action in the same column as Check above and each row's Remove below.
 export function scopeRow(t, { id, label, dropdown: picker, action }) {
