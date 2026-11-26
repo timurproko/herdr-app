@@ -34,8 +34,14 @@ Crew PR #22 keeps `crew.home` as the home tag and publishes versioned placement
 labels on new workers. This adapter accepts legacy/combined `fm-crew-<home>`,
 per-project `fm-crew-<home>-project-<registered-name>` and internal repair
 `fm-crew-<home>-self`, including mixed populations. New placement labels require
-`crew.space.version=1`, `crew.space.mode=combined|per-project` and a project matching
-the status task. Per-project `crew.space.name` equals the exact registered name,
+`crew.space.version=1` and `crew.space.mode=combined|per-project`. A supplied task
+project must match the placement project. Crew's minimal fleet view currently omits
+`tasks[].project`: combined identity is project-independent, so an omitted task
+project permits a valid combined worker alongside legacy workers in the same space.
+A present malformed or contradictory project still refuses; per-project placement
+always requires authoritative matching task project evidence. No full-status retry,
+label repair or worker restart is needed for combined fleets.
+Per-project `crew.space.name` equals the exact registered name,
 or `crew` for internal `crew:self`; a repair bound to registered `crew` retains
 that documented exception. Combined omits a requested name. Unknown versions,
 partial/mismatching labels and nonmatching adoption IDs fail closed.
@@ -48,6 +54,10 @@ and whole-block reorder, without tab/terminal movement. Changed home adoption
 replaces the old children; uncertain or structurally invalid display evidence
 retains prior identity rather than publishing absence. Discovery cannot change
 a verified task project or placement identity.
+
+Combined spaces have no requested project name. Unless explicitly renamed, their
+shown title follows the current/active/remembered worker directory, so `crew` and
+`xrbuild` can alternate without any identity change. Titles never decide binding.
 
 ## Recorded-first reader contract
 

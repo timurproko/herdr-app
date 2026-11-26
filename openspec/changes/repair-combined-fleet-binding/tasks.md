@@ -2,10 +2,10 @@
 
 ## 1. Combined placement accepts minimal fleet status safely
 
-- [ ] 1.1 Add a regression using the real packaged provider and reduced fleet reply with no task projects, mixed legacy/v1-combined workers in one native child, multiple worker projects and finished PRs; show the pre-fix failure on local and pc2-qualified models.
-- [ ] 1.2 Separate combined project-independent placement from per-project evidence requirements, preserving explicit project presence/type and contradictory-evidence refusals; pass all-legacy, all-v1 and mixed combined cases in both worker orders through normalization, binding, display and registry task links.
-- [ ] 1.3 Cover unsupported/partial placement, contradictory supplied project, wrong home/task/native membership, duplicate panes, cross-machine joins and discovery identity changes with targeted tests retaining each refusal.
-- [ ] 1.4 Document the fleet-view producer omission, combined-only compatibility and directory-derived title behavior in the applicable development/testing guidance; check that no Crew edits, relabeling or live operations are proposed as prerequisites.
+- [x] 1.1 Add a regression using the real packaged provider and reduced fleet reply with no task projects, mixed legacy/v1-combined workers in one native child, multiple worker projects and finished PRs; show the pre-fix failure on local and pc2-qualified models.
+- [x] 1.2 Separate combined project-independent placement from per-project evidence requirements, preserving explicit project presence/type and contradictory-evidence refusals; pass all-legacy, all-v1 and mixed combined cases in both worker orders through normalization, binding, display and registry task links.
+- [x] 1.3 Cover unsupported/partial placement, contradictory supplied project, wrong home/task/native membership, duplicate panes, cross-machine joins and discovery identity changes with targeted tests retaining each refusal.
+- [x] 1.4 Document the fleet-view producer omission, combined-only compatibility and directory-derived title behavior in the applicable development/testing guidance; check that no Crew edits, relabeling or live operations are proposed as prerequisites.
 
 ## 2. Runtime off/on refreshes sidebar and coordinator Git through the stable lifecycle
 

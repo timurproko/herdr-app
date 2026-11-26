@@ -48,6 +48,14 @@ user renames, durable registry links and colour authority. `fleet-command.test.m
 checks actual PowerShell project projection; set `FLEET_TEST_ROOT` to an existing
 outside-checkout scratch directory for local disposable output.
 
+`fleet-combined-spaces.test.mjs` adds the minimal fleet-view shape (no task projects)
+with legacy and v1-combined workers inside one native child, both worker orders,
+multiple projects, live/finished PR links and local/qualified remote identities.
+It checks that explicit malformed/contradictory projects, unsupported/partial
+placement, wrong home/task/space, duplicate membership and foreign machines still
+refuse; omitted project does not authorize per-project placement. Its pre-fix failure
+is the whole combined binding becoming null, not a workspace drawing defect.
+
 `spaces-worktree-layout.test.mjs` and `fleet-reorder.test.mjs` cover one/two/three
 children, shared stem/last corner, native numbering, hidden-child selection,
 compact membership, any-member block reorder, ambiguity/cycles and changed captured
