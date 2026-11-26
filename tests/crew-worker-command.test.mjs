@@ -11,7 +11,8 @@ const launchObservation=workerSpaceScript([],{kind:'discover',cwd:"C:/fixture/it
 assert.ok(launchObservation.includes("Set-Location -LiteralPath 'C:/fixture/it''s/coordinator'"));
 assert.ok(!launchObservation.includes('--ensure')&&!launchObservation.includes('--set-local'),'Launch observation only reads Crew status');
 if(process.platform==='win32') {
- const dir=fs.mkdtempSync(path.resolve('.artifacts/worker-command-')),main=path.join(dir,'fake-crew.cjs'),home=dir.replace(/\\/g,'/');
+ const output=path.resolve(process.env.HERDR_TEST_OUTPUT??'.artifacts');fs.mkdirSync(output,{recursive:true});
+ const dir=fs.mkdtempSync(path.join(output,'worker-command-')),main=path.join(dir,'fake-crew.cjs'),home=dir.replace(/\\/g,'/');
  fs.writeFileSync(main,`const a=process.argv.slice(2),cap=${JSON.stringify(capability)};if(a.includes('--capabilities'))console.log(JSON.stringify(cap));else if(a[0]==='status')console.log(JSON.stringify({home:process.env.USERPROFILE}));else if(a.includes('--set-local'))console.log(JSON.stringify({...cap,ok:true,home:a[a.indexOf('--home')+1],mode:a[a.indexOf('--set-local')+1],changed:true}));else console.log('worker-space: combined');`);
  const quote=s=>"'"+s.replace(/'/g,"''")+"'";
  const run=request=>{const r=spawnSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',workerSpaceScript([`$main=${quote(main)}`],request)],{cwd:dir,encoding:'utf8',timeout:15000,env:{...process.env,USERPROFILE:dir,HOME:dir,CREW_HOME:dir}});assert.equal(r.status,0,r.stderr);return r.stdout.trim();};

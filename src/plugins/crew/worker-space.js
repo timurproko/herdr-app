@@ -11,21 +11,23 @@ const enabled=()=>shared('custom.plugins')?.crew?.enabled===true;
 let initialized=false;
 function save(change) {
   const previous=read(),b=change({...previous,hosts:{...previous.hosts},targets:{...previous.targets}});
-  const desired=b.intent ? 'per-project':'combined', unresolved=new Map(), weight={failed:5,refused:4,unsupported:3,pending:2};
+  const unresolved=new Map(), weight={failed:5,refused:4,unsupported:3,pending:2};
   const add=(machine,status,detail)=>{const key=machineKey(machine),prior=unresolved.get(key);if(!prior || weight[status]>weight[prior.kind])unresolved.set(key,{machine:machine??'This computer',kind:status,detail});};
   const hosts=Object.values(b.hosts).filter(h=>validMachine(h?.machine));
-  for(const h of hosts) if(!h.connected)add(h.machine,'pending','Waiting for connection');
-    else if(h.state!=='ready')add(h.machine,h.state??'pending',h.reason??'Checking Crew support');
+  // Pending is internal work, not an error. Only completed failures or
+  // authoritative machine unreachability belong on the plain Settings row.
+  for(const h of hosts) if(!h.connected)add(h.machine,'failed','Not connected');
+    else if(['unsupported','failed','refused'].includes(h.state))add(h.machine,h.state,h.reason);
+    else if(h.discoveryFailure)add(h.machine,'failed','Could not discover Crew home');
   for(const t of Object.values(b.targets))if(validMachine(t?.machine)&&absoluteHome(t?.home)) {
     const h=b.hosts[machineKey(t.machine)];
-    if(!h?.connected)add(t.machine,'pending','Waiting for connection');
-    else if(h.state==='ready' && (t.state!=='ready' || t.mode!==desired))add(t.machine,t.state==='ready'?'pending':t.state??'pending',t.reason??'Applying current choice');
+    if(!h?.connected)add(t.machine,'failed','Not connected');
+    else if(h.state==='ready' && (['failed','refused','unsupported'].includes(t.state) || t.code==='registry-busy'))add(t.machine,t.state==='pending'?'failed':t.state,t.reason);
   }
   if(b.overflow)add(null,'failed','More Crew homes than can be tracked');
   const names={pending:'Pending',unsupported:'Unsupported',refused:'Refused',failed:'Failed'};
   b.statuses=[...unresolved.values()].map(s=>({machine:s.machine,label:names[s.kind]??'Pending',status:s.kind==='pending'?'recommended':'error',detail:s.detail}));
   b.available=hosts.some(h=>h.state==='ready'&&h.connected) && !hosts.some(h=>h.connected&&h.state==='unsupported') && !b.overflow;
-  if(!hosts.length)b.statuses=[{machine:'',label:'Checking',status:'recommended',detail:'Checking Crew support'}];
   if(JSON.stringify(previous)!==JSON.stringify(b))setShared(WORKER_SPACE_KEY,b);return b;
 }
 export function observeWorkerHome(machine,home) {
@@ -36,7 +38,7 @@ export function observeWorkerHome(machine,home) {
 }
 export function invalidateWorkerSpaces() {
   save(b=>{b.epoch=(b.epoch??0)+1;b.intent=shared('custom.plugins')?.crew?.settings?.[WORKER_SPACE_SETTING]===true;
-    for(const [key,t]of Object.entries(b.targets))b.targets[key]={...t,state:'pending',at:0};return b;});
+    for(const [key,t]of Object.entries(b.targets))b.targets[key]={...t,state:'pending',reason:null,code:null,at:0};return b;});
 }
 const parse=text=>{try{return JSON.parse(text);}catch{return null;}};
 // Only the mounted recurring owner calls this. A distinct generic moment on the
@@ -50,8 +52,8 @@ export function refreshWorkerSpaces({cx,setting,knownHomes=()=>[]},ask) {
     if(!initialized) {
       initialized=true;
       save(b=>{b.intent=setting(WORKER_SPACE_SETTING)===true;
-        for(const [key,h]of Object.entries(b.hosts))b.hosts[key]={...h,state:'pending',at:0,cached:null};
-        for(const [key,t]of Object.entries(b.targets))b.targets[key]={...t,state:'pending',at:0};return b;});
+        for(const [key,h]of Object.entries(b.hosts))b.hosts[key]={...h,state:'pending',at:0,cached:null,discoveryFailure:false};
+        for(const [key,t]of Object.entries(b.targets))b.targets[key]={...t,state:'pending',reason:null,code:null,at:0};return b;});
     }
     const at=Date.now(),intent=setting(WORKER_SPACE_SETTING)===true;
     // A timed-out/retired setter may still be executing until its transport bound.
@@ -66,7 +68,7 @@ export function refreshWorkerSpaces({cx,setting,knownHomes=()=>[]},ask) {
         if(!prior && Object.keys(b.hosts).length>=LIMIT){b.overflow=true;continue;}
         const connected=host.name===null || host.connected!==false && (typeof host.state==='string' ? host.state==='connected' : host.layout==='ready');
         b.hosts[key]={...prior,machine:host.name,connected,state:prior?.state??'pending',at:prior?.connected===false&&connected?0:prior?.at??0};
-        if(prior?.connected===false&&connected)for(const [id,t]of Object.entries(b.targets))if(t.machine===host.name)b.targets[id]={...t,state:'pending',at:0};
+        if(prior?.connected===false&&connected)for(const [id,t]of Object.entries(b.targets))if(t.machine===host.name)b.targets[id]={...t,state:'pending',reason:null,code:null,at:0};
       }
       return b;
     });
@@ -108,11 +110,13 @@ export function refreshWorkerSpaces({cx,setting,knownHomes=()=>[]},ask) {
         }
         const found=await request({kind:'discover'}),home=parse(found.stdout)?.home;
         if(found.code!==0 || !absoluteHome(home)) {
-          save(b=>{b.hosts[key]={...b.hosts[key],state:Object.values(b.targets).some(t=>t.machine===machine)?'ready':'pending',reason:'No Crew home available',cached:probe,at:Date.now()+CADENCE};return b;});return;
+          // Known roots can still reconcile with witnessed support. Keep this
+          // completed discovery failure visible independently of their success.
+          save(b=>{b.hosts[key]={...b.hosts[key],state:Object.values(b.targets).some(t=>t.machine===machine)?'ready':'failed',reason:'Could not discover Crew home',discoveryFailure:true,cached:probe,at:Date.now()+CADENCE};return b;});return;
         }
         observeWorkerHome(machine,home);
-        if(h.cached?.identity!==probe.identity)save(b=>{for(const [id,t]of Object.entries(b.targets))if(t.machine===machine)b.targets[id]={...t,state:'pending',at:0};return b;});
-        save(b=>{b.hosts[key]={...b.hosts[key],state:'ready',reason:null,cached:probe,at:Date.now()+CADENCE};return b;});
+        if(h.cached?.identity!==probe.identity)save(b=>{for(const [id,t]of Object.entries(b.targets))if(t.machine===machine)b.targets[id]={...t,state:'pending',reason:null,code:null,at:0};return b;});
+        save(b=>{b.hosts[key]={...b.hosts[key],state:'ready',reason:null,discoveryFailure:false,cached:probe,at:Date.now()+CADENCE};return b;});
       } else {
         const [,t]=target,capability=await request({kind:'capability',cached:b.hosts[machineKey(machine)].cached}),probe=parse(capability.stdout);
         if(capability.code!==0 || !probe || typeof probe.identity!=='string' || typeof probe.stdout!=='string' || probe.code!==0 || !supportedCapability(parse(probe.stdout))) {
@@ -131,12 +135,12 @@ export function refreshWorkerSpaces({cx,setting,knownHomes=()=>[]},ask) {
           observed=await readMode();
         }
         if(observed!==mode)throw Error('readback-mismatch');
-        save(b=>{b.targets[target[0]]={...b.targets[target[0]],mode:observed,state:'ready',reason:null,failures:0,at:Date.now()+CADENCE};return b;});
+        save(b=>{b.targets[target[0]]={...b.targets[target[0]],mode:observed,state:'ready',reason:null,code:null,failures:0,at:Date.now()+CADENCE};return b;});
       }
     } catch(error) {
       if(current()) {
         if(target)failTarget('failed',uncertain?'Waiting to recheck Crew':'Could not confirm Crew');
-        else save(b=>{b.hosts[host[0]]={...b.hosts[host[0]],state:error.message==='unsupported-platform'?'unsupported':'pending',reason:error.message==='unsupported-platform'?'Execution unavailable':'Could not check Crew',at:Date.now()+CADENCE};return b;});
+        else save(b=>{b.hosts[host[0]]={...b.hosts[host[0]],state:error.message==='unsupported-platform'?'unsupported':'failed',reason:error.message==='unsupported-platform'?'Execution unavailable':'Could not check Crew',at:Date.now()+CADENCE};return b;});
       }
     } finally {
       if(read().lock?.token===token && !uncertain)save(b=>({...b,lock:null}));

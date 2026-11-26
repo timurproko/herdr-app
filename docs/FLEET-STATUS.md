@@ -17,6 +17,18 @@ The installed tool on each machine must answer
 path/mtime/size identity controls reuse of that exact probe, rechecked before
 application. Help/version age cannot authorize it. Unsupported Crew disables the
 row with a short machine-named reason; no install/update is performed.
+The row stays a plain switch during normal checking, application and success;
+only finished failures/refusals or confirmed unreachable machines add one short
+line per machine, without a Pending/progress badge. Internal pending/lease facts
+remain independent of this quiet projection. Held capability, discovery, read and
+set fixtures resume on the existing lifecycle; abandoned reads recover after the
+18-second command allowance. These fixtures reproduce transitional Pending, not
+a permanent application stall or the duration/cause of the original screenshot.
+A completed home-discovery refusal or malformed home reply is a failure, not
+in-flight Pending: it shows one machine-named line even before any root is known.
+Known custom roots may still reconcile after a default-home discovery failure;
+the machine's discovery failure remains visible independently until discovery
+succeeds. The existing ten-second retry cadence applies without an extra click.
 
 The getter is `crew config worker-space` scoped through `CREW_HOME` to an already
 known root; it must return `worker-space: combined` or `worker-space: per-project`.
@@ -77,9 +89,13 @@ evidence atomically clears/replaces memory. Missing-space memory is ignored imme
 and pruned outside render only once that machine's layout is authoritative; a loading
 remote snapshot cannot erase it.
 
-Dragging either displayed member can reorder the native spaces as one same-machine
-block before fresh verification. Capture, target edges and every native acknowledgement
-revalidate the displayed pair. This exception is **space ordering only**, not moving tabs
+Dragging the displayed coordinator reorders its whole same-machine block before
+fresh verification; dragging a child reorders only that sibling within its parent.
+Child targets clamp to their own sibling edges, never another coordinator/machine.
+Native saved order is the only order store, so shortcuts, compact badges and final
+connector placement follow acknowledgements. Parent fold keys normalize membership
+rather than sibling order, including older saved keys. Capture, target edges and
+every native acknowledgement revalidate the displayed relationship. This exception is **space ordering only**, not moving tabs
 or terminals. Coordinator colour writes, new consolidated Git inventory reads, worker
 navigation and operational actions still require current witnessed verification. Off/on
 never restores old inventory; remembered-only coordinator Git uses the standard Loading
@@ -87,6 +103,24 @@ bulb until verified. An already-shown same-context list remains visible without 
 text; the existing native working bulb pulses in the Git header during updates.
 Cold first reads use top-left Loading below Open/Closed and withhold partial successes.
 Actionable repository notices remain visible, and retained display grants no reads/actions.
+
+## Coordinator repository section order
+
+The generic verified task-PR contribution includes the live task's exact native
+child-space ID. Git associates canonical task PR repositories with those IDs in
+the current machine/home scope; it never guesses from project labels, titles or
+shell paths. A child whose live task links name exactly one distinct repository
+can rank that repository. Multi-repository combined children cannot. The earliest
+matching native child wins when several children share a repository. Unmatched
+sections, including finished-only repositories with no remaining child, follow in
+the existing baseline relative order (currently alphabetical). Both tabs and the
+enrollment inventory use this same projection; PR-row order is unchanged.
+
+Acknowledged sibling changes reproject the section order from native model facts
+without a GitHub read, scope reset or new timer. Compatible warm/stale in-memory
+facts retain associations solely for presentation; absent native children cannot
+rank a section. Another machine/home/provider generation cannot borrow them, and
+ordering grants no reads, navigation or persisted inventory.
 
 ## Project-space placement v1
 

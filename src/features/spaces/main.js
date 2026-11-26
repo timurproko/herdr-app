@@ -16,7 +16,7 @@ import { beginSpaceRename, cancelSpaceRename, saveSpaceRename, syncSpaceRename }
 import { displaySpace, spaceDirectory } from './directory.js';
 import { reconcileSpaceColors } from './space-color-state.js';
 import { pluginEvent, pluginSpaceTags, pluginWorkspaceLinks } from './plugins.js';
-import { projectLinkedRows, captureSpaceBlock, blockTarget, planBlockDrop, SpaceBlockCommit } from './workspace-links.js';
+import { projectLinkedRows, captureSpaceBlock, blockTarget, planBlockDrop, SpaceBlockCommit, spaceBlockKey } from './workspace-links.js';
 import { spaces, machines, panes, run, openOverlay, exec, hc, theme, shared, setShared, props, watchFolder, window, layout, settings, notify } from "./host.js";
 
 // What the sidebar shows, chosen in the Spaces header's ⋯ menu. Kept in shared state like the
@@ -311,10 +311,10 @@ export default class Spaces extends View {
 
   connectedFolds() {
     if(!this.parentFolds){let saved=[];try{saved=JSON.parse(localStorage.getItem('custom.spaces.parents.folded')??'[]');}catch{}
-      this.parentFolds=new Set(Array.isArray(saved)?saved.filter(key=>typeof key==='string').slice(-256):[]);}
+      this.parentFolds=new Set(Array.isArray(saved)?saved.filter(key=>typeof key==='string').slice(-256).map(key=>{try{const [machine,ids,binding]=JSON.parse(key);if(Array.isArray(ids)&&ids.every(id=>typeof id==='string'))return spaceBlockKey(machine,ids,binding);}catch{}return key;}):[]);}
     return this.parentFolds;
   }
-  parentKey(row) {return JSON.stringify([row.w.machine??null,row.block,row.binding??null]);}
+  parentKey(row) {return spaceBlockKey(row.w.machine,row.block,row.binding);}
   saveConnectedFolds() {
     this.parentFolds=new Set([...this.connectedFolds()].slice(-256));
     try{localStorage.setItem('custom.spaces.parents.folded',JSON.stringify([...this.parentFolds]));}catch{}
@@ -449,7 +449,7 @@ export default class Spaces extends View {
     // Space-only ordering follows the displayed pair, including remembered
     // identity. Operational actions still use the registry's fresh context.
     const links = displayLinks();
-    if (result.kind === 'drop' && (result.meta?.sources?.length > 1 || links.length)) {
+    if (result.kind === 'drop' && (result.meta?.parent || result.meta?.sources?.length > 1 || links.length)) {
       const captured = result.meta;
       const wanted = planBlockDrop(all, links, result.id, result.target, captured);
       this.blockCommit ??= new SpaceBlockCommit({read: spaces, links: displayLinks,
@@ -465,7 +465,8 @@ export default class Spaces extends View {
   dragPreview(t) {
     const all = spaces(), d = this.drag.view, block = d?.meta?.sources;
     if (!all.some(s => s.id === d?.id) || block?.some(id => !all.some(s => s.id === id))) return null;
-    // Movement stays coordinator-first; the chip retains the original pressed row.
+    // Coordinator moves carry the block; child moves carry one sibling.
+    // In either case the chip retains the originally pressed row.
     const ps = panes();
     const row = projectLinkedRows(all.map((s, i) => ({w: displaySpace(s, ps), i})), displayLinks())
       .find(r => r.w.id === d.id);

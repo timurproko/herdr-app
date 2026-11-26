@@ -17,15 +17,18 @@ let tree=draw(), toggle=find(tree,'st-crew-separateProjectSpaces');
 assert.ok(words(tree).join(' ').includes('Give each project its own space'));
 assert.deepEqual(tree.kids.slice(1).map(n=>n.attrs.id[0]),['Confirm before closing the last tab','Close space when the last tab closes','Connect fleet space to coordinator','Separate space per project']);
 assert.deepEqual(toggle.attrs.disabled,[true]);toggle.attrs.on_click[0](null,{notify(){}});assert.equal(api.r.pluginSetting(crew,setting),false);
-state[key]={available:true,statuses:[]};tree=draw();toggle=find(tree,'st-crew-separateProjectSpaces');
+state[key]={available:true,statuses:[{machine:'pc2',label:'Pending',status:'recommended',detail:'Applying current choice'}]};
+assert.ok(!words(draw()).join(' ').includes('Applying current choice'),'legacy persisted progress stays hidden');
+state[key].statuses=[];tree=draw();toggle=find(tree,'st-crew-separateProjectSpaces');
 assert.deepEqual(toggle.attrs.accessibility_label,['Separate space per project']);
 toggle.attrs.on_click[0](null,{notify(){}});assert.equal(api.r.pluginSetting(crew,setting),true);
 // A stale enabled control cannot save after support or plugin enablement changes.
 state[key].available=false;toggle.attrs.on_click[0](null,{notify(){}});assert.equal(api.r.pluginSetting(crew,setting),true);
-state[key].statuses=[{machine:'pc2',detail:'Crew refused this home',label:'Refused',status:'error'}];assert.ok(words(draw()).join(' ').includes('pc2 · Crew refused this home'));
+state[key].statuses=[{machine:'pc2',detail:'Crew refused this home',label:'Refused',status:'error'}];assert.ok(words(draw()).join(' ').includes('pc2 · Crew refused this home'));assert.ok(!words(draw()).includes('Refused'),'failure is one plain line without a badge');
 api.r.setPluginSetting(crew,'machine','pc2');assert.equal(api.r.pluginSetting(crew,setting),true,'Checklist selection never scopes global intent');
 state[key].available=true;api=await load();crew=api.r.pluginById('crew');assert.equal(api.r.pluginSetting(crew,setting),true);
-const home=fs.mkdtempSync(path.resolve('.artifacts/worker-space-prefs-'));
+const output=path.resolve(process.env.HERDR_TEST_OUTPUT??'.artifacts');fs.mkdirSync(output,{recursive:true});
+const home=fs.mkdtempSync(path.join(output,'worker-space-prefs-'));
 try {
  fs.writeFileSync(path.join(home,'shared.json'),JSON.stringify(state));syncPreferences('export',home,{hostname:'fixture'});
  const snapshot=JSON.parse(fs.readFileSync(path.join(home,'preferences/fixture.json')));
