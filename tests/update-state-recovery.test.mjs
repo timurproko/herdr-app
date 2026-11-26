@@ -57,6 +57,7 @@ try {
     assert.equal(canceled.clearRecovery.eligible, true); assert.equal(worker.stateRecords(h.p).status?.raw, before.status?.raw);
     const recovered = await recoverUpdate(h.home, { identity: snapshot.clearRecovery.identity, confirmedStopped: true }, h.options);
     assert.equal(recovered.recovered, true, kind);
+    if (process.platform !== 'win32') assert.equal(fs.statSync(recovered.recoveryDirectory).mode & 0o777, 0o700);
     assert.equal(h.settledWait(), kind === 'future-file-time' ? worker.SETTLE : 0, kind);
     for (const [name, raw] of Object.entries(originals)) assert.equal(fs.readFileSync(path.join(recovered.recoveryDirectory, name), 'utf8'), raw, `${kind}/${name}`);
     for (const key of ['status', 'result', 'check', 'checkLock', 'retryLock', 'lock', 'deployLock']) assert.equal(fs.existsSync(h.p[key]), false, `${kind}/${key}`);
@@ -94,6 +95,17 @@ try {
     const snapshot = inspect(h.home, { ...h.options, isAlive: pid => pid === process.pid });
     assert.equal(snapshot.clearRecovery.eligible, false); assert.equal(snapshot.recovery.retryable, false);
     assert.equal(snapshot.job.pid, process.pid);
+  }
+  // Recovery cannot follow a redirected archive root or touch its contents.
+  {
+    const h = setup('installer'), target = path.join(h.f.base, 'unowned-archive'); fs.mkdirSync(target);
+    fs.writeFileSync(path.join(target, 'marker'), 'untouched');
+    fs.symlinkSync(target, path.join(h.p.dir, 'recovery'), process.platform === 'win32' ? 'junction' : 'dir');
+    const snapshot = worker.inspect(h.home, h.options); assert.equal(snapshot.clearRecovery.eligible, false);
+    assert.throws(() => worker.reapRetryClaim(h.p, h.now), /Linked updater state/);
+    await worker.recoverUpdate(h.home, { confirmedStopped: true, identity: snapshot.clearRecovery.identity }, h.options);
+    assert.equal(fs.existsSync(h.p.deployLock), true); assert.deepEqual(fs.readdirSync(target), ['marker']);
+    assert.equal(fs.readFileSync(path.join(target, 'marker'), 'utf8'), 'untouched');
   }
   // A recovery claim prevents an ordinary CLI from publishing a new result or dispatching.
   {

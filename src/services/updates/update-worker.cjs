@@ -74,11 +74,12 @@ const terminalState = job => ['complete', 'partial', 'failed'].includes(job?.sta
 const supersedesTerminal = (job, result) => terminalState(job) && result && runIdentity(result) !== job.token
   && (result.at >= job.started || (result.complete === false && result.owner));
 function reapRetryClaim(p, now, isAlive = alive) {
+  assertStatePaths(p);
   const held = read(p.retryLock);
   if (held?.token && Number.isInteger(held.pid) && held.pid > 0 && Number.isFinite(held.until)
       && held.until <= now && !isAlive(held.pid) && read(p.retryLock)?.token === held.token) {
     const archive = path.join(p.dir, 'recovery', `expired-claim-${randomUUID()}`);
-    fs.mkdirSync(archive, { recursive: true });
+    fs.mkdirSync(archive, { recursive: true, mode: 0o700 });
     retryIO(() => fs.renameSync(p.retryLock, path.join(archive, 'update-retry.lock')));
   }
 }
@@ -265,7 +266,7 @@ function recoveryState(p, job, result, check, unknown, now, isQuiescent) {
 const RECOVERY_CONFIRMATION = 'No recorded owner or local updater is running. Clear stale locks, status and results only after confirming all local and remote update work has stopped. This does not retry the update.';
 const recoveryKeys = ['check', 'lock', 'retryLock', 'checkLock', 'deployLock', 'status', 'result'];
 function assertStatePaths(p) {
-  for (const file of [p.dir, path.dirname(p.dir), p.log, p.runner, ...recoveryKeys.map(key => p[key])])
+  for (const file of [p.dir, path.dirname(p.dir), path.join(p.dir, 'recovery'), p.log, p.runner, ...recoveryKeys.map(key => p[key])])
     if (fs.existsSync(file) && fs.lstatSync(file).isSymbolicLink()) throw Error('Linked updater state is unsafe; recovery refused');
 }
 function stateRecords(p) {
@@ -656,7 +657,7 @@ async function recoverUpdate(home, { identity, confirmedStopped } = {}, options 
   // directly before clearing, still requiring the full stopped-work proof.
   if (offer.needsSettle) (options.sleep || pause)(SETTLE);
   if (stateIdentity(stateRecords(p)) !== offer.physicalIdentity) return inspect(home, options);
-  fs.mkdirSync(archive, { recursive: true });
+  fs.mkdirSync(archive, { recursive: true, mode: 0o700 });
   const claim = randomUUID();
   let owned = false;
   try {
@@ -704,7 +705,7 @@ async function retryUpdate(home, { identity, confirmedStopped } = {}, options = 
     // Copy, don't move, before claiming: an archive failure leaves live state
     // untouched. No journals, deployment locks or unrelated files are removed.
     const archive = path.join(p.dir, 'recovery', `update-retry-${claim}`);
-    fs.mkdirSync(archive, { recursive: true });
+    fs.mkdirSync(archive, { recursive: true, mode: 0o700 });
     for (const file of [p.status, p.result, p.log, p.lock]) {
       if (fs.existsSync(file)) retryIO(() => fs.copyFileSync(file, path.join(archive, path.basename(file)), fs.constants.COPYFILE_EXCL));
     }
