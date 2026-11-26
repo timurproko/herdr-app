@@ -5,7 +5,8 @@ Verdict: accepted only when an authorized human directly merges the containing e
 The maintainer integration decision accepts these scenarios:
 - Final deployment content survives transient Windows sharing errors and persistent rename refusal, with complete recovery evidence retained when destination publication also fails.
 - Matching settled terminal evidence distinguishes a deployed-but-unsaved result from genuine uncertainty without manufacturing installed revision provenance.
-- Unknown recovery requires explicit stopped-work confirmation, current run identity, a fresh main check and process, deadline and exclusive-lock revalidation.
+- Retrying an unknown run requires explicit stopped-work confirmation, current run identity, a fresh main check and process, deadline and exclusive-lock revalidation.
+- Stopped-state recovery requires dead recorded owners and complete process proof, archives stale locks/status/results, preserves journals and ownership, logs consent and returns to Check now without deployment.
 - Cancel, reload, status reads, availability checks and relay hints never authorize replay; competing confirmations dispatch at most one new guarded run.
 - The Windows supervision fixture separates slow bootstrap expiry from a post-dispatch timeout instead of racing a one-second wall clock or retrying assertions.
 
@@ -18,17 +19,18 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-26-recover-unknown-customization-updates/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-26-recover-unknown-customization-updates/acceptance.md",
   "finalizedDate": "2026-11-26",
-  "specBaseSha": "5b62e79d9ee1b69cf7120cb18423836911603f1c",
+  "specBaseSha": "cccc23950be60f0be736fdb5778cf2069632a3ac",
   "acceptanceScenarios": [
     "Final deployment content survives transient Windows sharing errors and persistent rename refusal, with complete recovery evidence retained when destination publication also fails.",
     "Matching settled terminal evidence distinguishes a deployed-but-unsaved result from genuine uncertainty without manufacturing installed revision provenance.",
-    "Unknown recovery requires explicit stopped-work confirmation, current run identity, a fresh main check and process, deadline and exclusive-lock revalidation.",
+    "Retrying an unknown run requires explicit stopped-work confirmation, current run identity, a fresh main check and process, deadline and exclusive-lock revalidation.",
+    "Stopped-state recovery requires dead recorded owners and complete process proof, archives stale locks/status/results, preserves journals and ownership, logs consent and returns to Check now without deployment.",
     "Cancel, reload, status reads, availability checks and relay hints never authorize replay; competing confirmations dispatch at most one new guarded run.",
     "The Windows supervision fixture separates slow bootstrap expiry from a post-dispatch timeout instead of racing a one-second wall clock or retrying assertions."
   ],
-  "archiveDigest": "c56355a755660cd8599e3e3e7893d295f66f7063b5e5420a78df69fe2b577aad",
-  "specDigest": "825effc0fdd64db446228a94d57f3561abfe15008864dd919f2524a1e382c5ff",
-  "tasksDigest": "d0e391c33c40801f9047dc3f1ee9a26fd8574d19417c6037c7a40898b8c72f7d",
+  "archiveDigest": "3a18a5dd17cd7e652daa5e9d02daaf562197722cad679dc221ce5f171f3a3238",
+  "specDigest": "4b17fe70394ad85bf7f41f459a7c3204dedd8f047180bdaf5e851eb85af902c6",
+  "tasksDigest": "99d5609944c82c2b41112803c039a1d61224fe773f29507bf860d238b954269f",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []
 }
