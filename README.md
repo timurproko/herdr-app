@@ -929,8 +929,12 @@ registered project name unless explicitly renamed. All child badges align with t
 coordinator's name; one stem follows the parent badge centre, with intermediate
 branches and a rounded corner only on the last child. Collapse hides every child,
 while native shortcuts and compact rail keep each child's own selection number.
-Dragging the parent or any child moves the entire same-machine block in stable
-native child order, with captured-membership and acknowledgement guards. Crew's
+Dragging the coordinator moves its whole same-machine block in saved child order.
+Dragging a child moves only that child up or down among its own siblings; it cannot
+leave its coordinator or join another. The existing native space order persists
+this choice across restarts; shortcut numbers, compact badges and the last-child
+connector follow it without changing selection. A single child has no sibling move.
+Both scopes retain captured-membership and acknowledgement guards. Crew's
 `crew.space.version/mode/project/name` labels are validated against its supplied task
 project, home tag and exact native terminal/pane/tab/space membership; names alone
 never link. Minimal Crew fleet replies omit task projects: combined placement accepts
@@ -960,8 +964,8 @@ spaces/tabs/panes on either machine cannot detach it. App restart, mod reload an
 layout changes restore the attached first frame while verification runs in the
 background. Only completed contradictory evidence, disabling the feature or
 missing native spaces clears it; transport failures alone do not.
-Retained visuals are not action permission: pair moves and Git/worker actions
-still require fresh exact live identity. An unverified coordinator Git panel keeps
+Retained visuals are not operational permission: Git/worker actions
+still require fresh exact live identity; space-only ordering uses the captured displayed relationship. An unverified coordinator Git panel keeps
 its loaded rows and folds with the moving line below the header during pending work, or shows the standard **Loading** text and static dot
 without special header text on cold start. After off/on, a slow or failed first
 read shows **Loading**, not **Not a git repository**, for the current coordinator
@@ -971,12 +975,13 @@ to ordinary folder Git; a previous owner's result cannot suppress Loading. No ne
 reads or worker navigation are allowed until verification succeeds.
 Only sanitized pair identity is persisted for restoration, not task/PR inventory,
 reports or credentials; it is never exported as a portable preference.
-Dragging either expanded row, or a collapsed coordinator, moves the whole pair
-(including its hidden child), with visible source rows dimmed and exactly one
-chip showing the grabbed row's own number and name: **2 crew** when grabbed there,
-or **1 coordinator** when grabbed on the coordinator. Its badge uses the shared
+Dragging an expanded or collapsed coordinator moves its whole block, including
+hidden children, with visible source rows dimmed. A child drag dims only that child
+and keeps its insertion line within its sibling group. Both show exactly one chip
+with the grabbed row's own number and name, such as **2 crew** or **1 coordinator**. Its badge uses the shared
 coordinator colour in either case, including return/fade; no chain or second row
-appears in the preview. The insertion indicator still treats the pair as one block. Public ordering commands wait for acknowledgements; the two-space move is
+appears in the preview. Coordinator/ordinary-space insertion treats other connected blocks as indivisible.
+Public ordering commands wait for acknowledgements; a multi-space move is
 not atomic and an uncertain result is never replayed. The compact rail remains
 selection-only and shows each space's own numbered badge with the shared coordinator
 colour, no chain or tags, and its usual name/directory tooltip. They remain separate selectable native

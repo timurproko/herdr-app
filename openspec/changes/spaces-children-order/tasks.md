@@ -8,9 +8,9 @@
 
 ## 2. Persisted sibling-only child reordering
 
-- [ ] 2.1 Add coordinator/block versus child/sibling drag scope to the existing Spaces domain adapter; cover both child directions, singleton no-op, same-parent clamping, cross-parent/machine refusal, mixed/combined children and ordinary-space/block destination preservation in targeted fleet-reorder/project tests.
-- [ ] 2.2 Extend acknowledged native-order commit guards to accept only expected own permutations while rejecting changed membership/bindings, external reorder, missing acknowledgement and obsolete gestures; assert unchanged native selection, truthful shortcut indices, compact order, last-child connector and restart restoration without a second order store.
-- [ ] 2.3 Update README and reorder/fleet/testing guidance for child-only versus coordinator-block dragging; capture synthetic expanded Spaces before/during/after upward and downward child drags, coordinator whole-block dragging and compact rail at 100% and 130% with the supplied verified release, recording disposable shutdown.
+- [x] 2.1 Add coordinator/block versus child/sibling drag scope to the existing Spaces domain adapter; cover both child directions, singleton no-op, same-parent clamping, cross-parent/machine refusal, mixed/combined children and ordinary-space/block destination preservation in targeted fleet-reorder/project tests.
+- [x] 2.2 Extend acknowledged native-order commit guards to accept only expected own permutations while rejecting changed membership/bindings, external reorder, missing acknowledgement and obsolete gestures; assert unchanged native selection, truthful shortcut indices, compact order, last-child connector and restart restoration without a second order store.
+- [x] 2.3 Update README and reorder/fleet/testing guidance for child-only versus coordinator-block dragging; capture synthetic expanded Spaces before/during/after upward and downward child drags, coordinator whole-block dragging and compact rail at 100% and 130% with the supplied verified release, recording disposable shutdown.
 
 ## 3. Coordinator Git sections follow children
 

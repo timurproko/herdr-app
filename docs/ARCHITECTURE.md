@@ -304,7 +304,11 @@ matching authoritative task project evidence. Legacy/combined `fm-crew-<home>`,
 unchanged. The transport keeps task project, not reports or placement authority.
 Durable display identity may contain multiple child placement records, never PRs.
 Projected child order follows native order; explicit user names override project
-metadata. Captured whole-block membership guards every acknowledged reorder.
+metadata. Parent drags move the whole block; child drags permute only their own
+sibling native slots. Canonical membership/binding guards remain stable across
+expected sibling permutations, while exact native before/expected snapshots reject
+concurrent changes. Parent fold identity normalizes member order, including legacy
+stored keys. No separate sibling-order persistence or shortcut remapping exists.
 
 Spaces presents accepted same-machine blocks using Agents' shared child branch
 and parent disclosure primitives, with a shared vertical stem and final-child corner. The child retains its native index and badge

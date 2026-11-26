@@ -1,6 +1,7 @@
 // Actual packaged Spaces + shared Agents decorations. Synthetic native model only.
 import assert from 'node:assert/strict';
 import {loadMod} from '../tools/plugin-harness.mjs';
+import {captureSpaceBlock,planBlockDrop} from '../src/shared/workspace-links.js';
 import {element,svg,find,nodes,t,rowGeometry} from './support/git-row.mjs';
 let all=[],links=[],tags=[],moves=[],selects=[],take=null,echoMoves=false;
 const store=new Map(),storage=new Map();
@@ -99,11 +100,19 @@ for(const count of [1,2,3])for(const zoom of [1,1.3]) {
   assert.equal(view.compact(rec,t).kids.length,1);assert.equal(badge(view.compact(rec,t)).kids[0],String(i+3));
  }
  for(const id of ['parent',...all.slice(2).map(s=>s.id)]) {
-  const original=[...all],block=record(id);view.blockCommit=null;view.connectedFolds().clear();
-  take={kind:'drop',id,target:'other',meta:{sources:[...block.block],binding:block.binding}};
-  view.drop('other',cx);for(let n=0;n<10;n++)view.blockCommit?.observe();
-  assert.deepEqual(all.map(s=>s.id),['other','parent',...original.slice(2).map(s=>s.id)]);all=original;
+  const original=[...all],key=view.parentKey(record('parent'));view.blockCommit=null;view.connectedFolds().clear();
+  const target=id==='parent'?'other':id==='child0'?`child${count-1}`:'child0',meta=captureSpaceBlock(all,links,id),expected=planBlockDrop(all,links,id,target,meta)??all.map(s=>s.id);
+  take={kind:'drop',id,target,meta};
+  view.drop(target,cx);for(let n=0;n<10;n++)view.blockCommit?.observe();
+  assert.deepEqual(all.map(s=>s.id),expected);assert.equal(view.parentKey(record('parent')),key,'Sibling order does not invalidate parent fold identity');all=original;
  }
+}
+// Legacy fold keys survive canonicalization, including old order-sensitive bindings.
+{
+ const binding=JSON.stringify([['child-b','verified'],['child-a','verified']]);
+ storage.set('custom.spaces.parents.folded',JSON.stringify([JSON.stringify([null,['parent','child-b','child-a'],binding])]));
+ const restored=new Main(),key=restored.parentKey({w:{machine:null},block:['parent','child-a','child-b'],binding:JSON.stringify([['child-a','verified'],['child-b','verified']])});
+ assert.ok(restored.connectedFolds().has(key));
 }
 // Shared centres remain fixed with long names, multiple digits and narrow sidebars.
 view.renameField=Main.prototype.renameField;

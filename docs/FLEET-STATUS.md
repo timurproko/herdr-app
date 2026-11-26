@@ -84,9 +84,13 @@ evidence atomically clears/replaces memory. Missing-space memory is ignored imme
 and pruned outside render only once that machine's layout is authoritative; a loading
 remote snapshot cannot erase it.
 
-Dragging either displayed member can reorder the native spaces as one same-machine
-block before fresh verification. Capture, target edges and every native acknowledgement
-revalidate the displayed pair. This exception is **space ordering only**, not moving tabs
+Dragging the displayed coordinator reorders its whole same-machine block before
+fresh verification; dragging a child reorders only that sibling within its parent.
+Child targets clamp to their own sibling edges, never another coordinator/machine.
+Native saved order is the only order store, so shortcuts, compact badges and final
+connector placement follow acknowledgements. Parent fold keys normalize membership
+rather than sibling order, including older saved keys. Capture, target edges and
+every native acknowledgement revalidate the displayed relationship. This exception is **space ordering only**, not moving tabs
 or terminals. Coordinator colour writes, new consolidated Git inventory reads, worker
 navigation and operational actions still require current witnessed verification. Off/on
 never restores old inventory; remembered-only coordinator Git uses the standard Loading

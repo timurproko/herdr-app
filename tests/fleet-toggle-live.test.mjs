@@ -391,10 +391,11 @@ for(const source of ['coordinator','fm-crew-home']) {
  x.setMode('defer');x.flip('fleet');x.frame(true);await x.tick();
  assert.equal(x.sidebar.api.r.pluginWorkspaceLinks().length,0);
  const links=x.sidebar.api.r.pluginWorkspaceLinks({presentation:true});
- const meta=captureSpaceBlock(x.groups,links,source);assert.equal(meta.sources.length,2);
+ const meta=captureSpaceBlock(x.groups,links,source);assert.equal(meta.sources.length,source==='coordinator'?2:1);
  x.allowOrder();x.sidebar.view.drag.take=()=>({kind:'drop',id:source,target:'other',meta});
- x.sidebar.view.drop('other',x.sidebar.cx);assert.ok(x.order.length,'Remembered-only pair can reorder through the production caller');
- assert.equal(x.order[0].id,'other');assert.equal(x.order[0].index,1);
+ x.sidebar.view.drop('other',x.sidebar.cx);
+ if(source==='coordinator') {assert.ok(x.order.length,'Remembered coordinator can move its block through the production caller');assert.equal(x.order[0].id,'other');assert.equal(x.order[0].index,1);}
+ else assert.equal(x.order.length,0,'Single child cannot drag the block out of its coordinator');
  x.release();await x.drain();
 }
 console.log('PASS mounted Settings/Spaces local/remote toggles and timer-only startup/timeout recovery: recorded reasons, 2/5/10 backoff capped at the former healthy cadence, reload/abandoned leases, no new scheduler or user action');

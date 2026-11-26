@@ -1260,6 +1260,20 @@ started disposable instance is stopped in finally; no real setting is changed.
 
 ## Connected fleet fixtures
 
+`node tests/fleet-reorder.test.mjs` covers sibling-only moves in both directions,
+singletons, parent-block moves, cross-parent/machine refusals, noncontiguous native
+slots, selection/index/connector projection after model recreation, delayed and
+missing acknowledgements, changed membership and concurrent native ordering.
+The actual Spaces caller is covered by `tests/spaces-worktree-layout.test.mjs`
+and `tests/fleet-toggle-live.test.mjs`, including remembered-only parent movement.
+`tests/features/space-order-native.mjs --run --output <outside-checkout> --zoom 1|1.3`
+uses the supplied checksum-verified release for before/during/after child drags
+in both directions, collapsed coordinator dragging and compact rail screenshots.
+Its production drag/commit controller operates a synthetic acknowledged model,
+not live terminals or real native-space persistence; receipts assert desktop/Core
+shutdown. Native persistence relies on the existing public space.move contract.
+
+
 `tests/fleet-diagnostics.test.mjs` loads the packaged Crew provider/transport and
 uses disposable supported read/CAS log IO. It distinguishes transport, timeout,
 status exit, malformed status, layout/membership uncertainty, authoritative absence
