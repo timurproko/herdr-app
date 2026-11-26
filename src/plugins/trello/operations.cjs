@@ -3,11 +3,13 @@ const {id, exact, object} = require('./credentials.cjs');
 const {authority} = require('./policy.cjs');
 const {Client} = require('./client.cjs');
 const {fail} = require('./errors.cjs');
+const {listAttachments} = require('./attachments.cjs');
 const fields = 'name,desc,idBoard,idList,closed,due,start,dueComplete,pos,labels,url';
 const cardFields = ['name', 'desc', 'due', 'start', 'dueComplete', 'pos'];
 const definitions = {
   'boards.list': ['before'], 'lists.list': ['board', 'filter'], 'cards.list': ['board', 'list', 'filter', 'limit', 'before'],
   'cards.get': ['board', 'card', 'limit', 'before'], 'labels.list': ['board', 'card'],
+  'attachments.list': ['board', 'card'],
   'checklists.list': ['board', 'card'], 'checkitems.list': ['board', 'card', 'checklist'],
   'cards.create': ['board', 'list', ...cardFields], 'cards.update': ['board', 'card', ...cardFields],
   'cards.move': ['board', 'card', 'list', 'destinationBoard', 'pos'], 'cards.archive': ['board', 'card'],
@@ -22,7 +24,7 @@ function validateArgs(op, args) {
   if (!allowed || !exact(args, allowed)) fail('INPUT');
   if (op !== 'boards.list' && !id(args.board)) fail('INPUT');
   for (const key of ['card', 'list', 'checklist', 'before', 'item', 'label', 'destinationBoard']) if (key in args && !id(args[key])) fail('INPUT');
-  if (['cards.get', 'checklists.list', 'checkitems.list'].includes(op) && !id(args.card)) fail('INPUT');
+  if (['cards.get', 'checklists.list', 'checkitems.list', 'attachments.list'].includes(op) && !id(args.card)) fail('INPUT');
   if (op === 'checkitems.list' && !id(args.checklist)) fail('INPUT');
   if ('limit' in args && (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > 100)) fail('INPUT');
   if ('filter' in args && !['open', 'closed', 'all'].includes(args.filter)) fail('INPUT');
@@ -121,6 +123,7 @@ async function readOperation(client, scope, op, a, gate) {
     if (rows.some(r => r.idBoard !== a.board)) fail('SCOPE');
     return page(rows.map(r => pick(r, ['name', 'color'])), 100, false);
   }
+  if (op === 'attachments.list') return listAttachments(client, scope, a.board, a.card);
   if (op === 'cards.get') {
     await scope.card(a.board, a.card);
     const row = card(await client.get(`/cards/${a.card}`, {fields, attachments: false, members: false, checklists: 'none', actions: 'none', pluginData: false, stickers: false}), a.board);
@@ -130,7 +133,9 @@ async function readOperation(client, scope, op, a, gate) {
       return {...pick(r, ['date']), text: r.data.text};
     });
     const checklists = await scope.checklists(a.board, a.card);
-    return {card: row, comments: page(comments, limit), checklists: page(checklists, 100, false)};
+    const attachments = await listAttachments(client, scope, a.board, a.card);
+    return {card: {...row, attachmentIds: attachments.items.map(r => r.id), attachmentCount: attachments.count, attachmentCountExact: attachments.countExact},
+      comments: page(comments, limit), checklists: page(checklists, 100, false), attachments};
   }
   const rows = await scope.checklists(a.board, a.card);
   if (op === 'checklists.list') return page(rows, 100, false);

@@ -10,6 +10,8 @@ const routes = [
   ['GET', new RegExp(`^/lists/${ID}/cards$`), ['fields', 'filter', 'sort', 'limit', 'before']],
   ['GET', new RegExp(`^/cards/${ID}$`), ['fields', 'attachments', 'members', 'checklists', 'actions', 'pluginData', 'stickers']],
   ['GET', new RegExp(`^/cards/${ID}/actions$`), ['filter', 'limit', 'before']],
+  ['GET', new RegExp(`^/cards/${ID}/attachments$`), ['fields', 'filter']],
+  ['GET', new RegExp(`^/cards/${ID}/attachments/${ID}$`), ['fields']],
   ['GET', new RegExp(`^/cards/${ID}/checklists$`), ['checkItems', 'filter', 'fields', 'checkItem_fields']],
   ['POST', /^\/cards$/, ['idList', 'name', 'desc', 'due', 'start', 'dueComplete', 'pos']],
   ['PUT', new RegExp(`^/cards/${ID}$`), ['name', 'desc', 'due', 'start', 'dueComplete', 'pos', 'idList', 'idBoard', 'closed']],

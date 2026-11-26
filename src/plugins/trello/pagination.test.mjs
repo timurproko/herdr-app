@@ -24,7 +24,7 @@ for (const order of ['ascending', 'permuted']) {
     if (options.method === 'POST' && route.endsWith('/actions/comments')) return Response.json({id: ITEM, data: {card: {id: target.id}, board: {id: A}}});
     if (options.method !== 'GET') throw Error('Unfaked mutation');
     if (route === `/cards/${target.id}`) return Response.json(target);
-    if (route.endsWith('/actions') || route.endsWith('/checklists')) return Response.json([]);
+    if (route.endsWith('/actions') || route.endsWith('/checklists') || route.endsWith('/attachments')) return Response.json([]);
     throw Error('Unfaked card route');
   });
   try {

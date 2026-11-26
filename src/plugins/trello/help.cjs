@@ -30,8 +30,10 @@ const commands = `COMMANDS (JSON results unless help is requested)
   herdr-trello lists list --board aaaaaaaaaaaaaaaaaaaaaaaa
   herdr-trello cards list --board aaaaaaaaaaaaaaaaaaaaaaaa --limit 50
   herdr-trello cards get cccccccccccccccccccccccc --board aaaaaaaaaaaaaaaaaaaaaaaa
+  herdr-trello attachments list --board aaaaaaaaaaaaaaaaaaaaaaaa --card cccccccccccccccccccccccc
 Reads: boards list; lists list; cards list/get; labels list; checklists list;
-checkitems list. Child reads need an allowed --board and the appropriate --card,
+checkitems list; attachments list. Card detail includes attachment IDs/counts;
+attachmentCountExact:false means only a lower bound, not an exact total. Child reads need an allowed --board and the appropriate --card,
 --list, --checklist identifiers. No account-wide agent board discovery.
 Paging: --limit 1..100 --before RETURNED_ID; cards: --filter open|closed|all.
 Honor complete:false/truncated:true; nextBefore is not a complete inventory.
@@ -45,7 +47,7 @@ optional destinationBoard; both boards must be allowed. Archive takes no body.
 Labels require --label. Checklist input: name/pos. Check-item input: name/checked
 or state (complete|incomplete)/pos, with --checklist and --item for updates.
 Input comes from --input FILE or stdin, never arbitrary URL/method flags.
-No permanent deletion, bulk operations, board administration or attachments.
+No permanent deletion, bulk operations, board administration or attachment mutations.
 Installed launchers bind their home. Direct Node use may pass --home HERDR_HOME;
 otherwise HERDR_APP_HOME or ~/.config/herdr-app is used. Do not pass --home twice.
 `;

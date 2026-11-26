@@ -4,10 +4,10 @@ All tasks remain unstarted until plan approval. Groups match the four PR Impleme
 
 ## 1. Allowed-board card reads expose bounded attachment metadata, counts and IDs
 
-- [ ] 1.1 Add exact attachment-list arguments, fixed GET routes and parent-scoped metadata normalization; verify disallowed boards and forged parents refuse before unrelated attachment IO using fake transport tests.
-- [ ] 1.2 Include attachment IDs, metadata and explicit count/completeness in card detail; verify empty, uploaded/link, malformed, singleton-array and 100-plus-entry cases without invented totals/cursors.
-- [ ] 1.3 Add the loopback fake Trello server fixture with injected production-URL mapping and no live-fetch fallback; verify fake-only header/query capture, server teardown and preserved 2 MiB/request/deadline/cooldown bounds.
-- [ ] 1.4 Document metadata commands, optional fields and provider schema discrepancies in Trello guidance/help; verify command catalog and offline help contracts against the new read routes.
+- [x] 1.1 Add exact attachment-list arguments, fixed GET routes and parent-scoped metadata normalization; verify disallowed boards and forged parents refuse before unrelated attachment IO using fake transport tests.
+- [x] 1.2 Include attachment IDs, metadata and explicit count/completeness in card detail; verify empty, uploaded/link, malformed, singleton-array and 100-plus-entry cases without invented totals/cursors.
+- [x] 1.3 Add the loopback fake Trello server fixture with injected production-URL mapping and no live-fetch fallback; verify fake-only header/query capture, server teardown and preserved 2 MiB/request/deadline/cooldown bounds.
+- [x] 1.4 Document metadata commands, optional fields and provider schema discrepancies in Trello guidance/help; verify command catalog and offline help contracts against the new read routes.
 
 ## 2. Read-only attachment downloads enforce private output, size/type limits and Trello-only header authentication with installed screenshot guidance
 
