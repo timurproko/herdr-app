@@ -40,21 +40,22 @@ const {panel}=h;panel.context='tasks:home';panel.shown=()=>shown;panel.aggregate
 panel.notices={sync(){},presentation(){}};panel.enrollmentPicker={render(){},stop(){}};panel.syncChecksFallback=()=>{};
 aggregate.entries.set('owner/loading#1',entry('owner/loading',1));
 const render=()=>{const tree=h.render(()=>panel.renderAggregate(cx,t));assertTaskSections(tree,panel);return tree;};
-let tree=render();assert.equal(words(find(tree,'task-loading-owner/loading')).join(' '),'Loading');
+let tree=render();assert.equal(words(find(tree,'git-task-empty')).join(' '),'Loading');assert.equal(find(tree,'task-repo-header-owner/loading'),undefined);
 for(const state of ['open','closed'])assert.match(find(tree,`git-view-${state}`).attrs.accessibility_label[0],/0 \(loading\)/);
 const headerId='task-repo-header-owner/loading',listId=panel.selectedTaskWindow.key;
-panel.foldedRepositories.add('owner/loading');tree=render();assert.ok(find(tree,headerId));assert.equal(find(tree,'task-loading-owner/loading'),undefined);
+panel.foldedRepositories.add('owner/loading');tree=render();assert.equal(find(tree,headerId),undefined);assert.ok(find(tree,'git-task-waiting'));assert.equal(find(tree,'task-loading-owner/loading'),undefined);
 panel.foldedRepositories.clear();tree=render();
 const e=aggregate.entries.get('owner/loading#1');e.pr={...h.facts.pullRow({number:1,title:'Arrived',state:'OPEN'},'fixture'),repo:'owner/loading',key:'owner/loading#1'};
 tree=render();assert.ok(find(tree,headerId));assert.ok(find(tree,'pr-owner/loading#1'));assert.equal(find(tree,'task-loading-owner/loading'),undefined);assert.equal(panel.selectedTaskWindow.key,listId);
-const reveal=new TaskReveal(),sections=Array.from({length:80},(_,i)=>({repo:`owner/r${i}`,rows:[],loading:true}));
+const unknown=new TaskReveal();unknown.project([{repo:'owner/unknown',rows:[],loading:true}],new Set(),28,2,'130');assert.equal(unknown.items.length,0,'Unknown-only headers do not flash');
+const reveal=new TaskReveal(),sections=Array.from({length:80},(_,i)=>({repo:`owner/r${i}`,rows:[],error:'Read failed'}));
 reveal.project(sections,new Set(),28,2,'130');
 while(reveal.revealMore()){}
 assert.equal(reveal.range().items.length,100);assert.equal(reveal.range().revealedRows.length,0);assert.equal(reveal.atCap,true);
-for(let i=0;i<reveal.range().items.length;i+=2){assert.ok(reveal.range().items[i].header);assert.ok(reveal.range().items[i+1].loading);}
-const boundary=new TaskReveal();boundary.project([{repo:'owner/a',rows:Array.from({length:8},(_,i)=>({key:`owner/a#${i}`}))},{repo:'owner/b',rows:[],loading:true}],new Set(),28,2,'130');
-assert.equal(boundary.range().items.length,9,'Boundary header waits for Loading body');boundary.revealMore();assert.equal(boundary.range().items.at(-1).loading,true);
-const anchor=new TaskReveal();const loaded=[{repo:'owner/a',rows:[{key:'owner/a#1'}]},{repo:'owner/b',rows:[],loading:true},{repo:'owner/c',rows:[{key:'owner/c#1'}]}];
+for(let i=0;i<reveal.range().items.length;i+=2){assert.ok(reveal.range().items[i].header);assert.ok(reveal.range().items[i+1].error);}
+const boundary=new TaskReveal();boundary.project([{repo:'owner/a',rows:Array.from({length:8},(_,i)=>({key:`owner/a#${i}`}))},{repo:'owner/b',rows:[],error:'Read failed'}],new Set(),28,2,'130');
+assert.equal(boundary.range().items.length,9,'Boundary header waits for notice body');boundary.revealMore();assert.equal(boundary.range().items.at(-1).error,'Read failed');
+const anchor=new TaskReveal();const loaded=[{repo:'owner/a',rows:[{key:'owner/a#1'}]},{repo:'owner/b',rows:[],error:'Read failed'},{repo:'owner/c',rows:[{key:'owner/c#1'}]}];
 anchor.project(loaded,new Set(),28,2,'130');anchor.observe(200,100);const prior=anchor.offset;
 loaded[1]={repo:'owner/b',rows:[{key:'owner/b#1'},{key:'owner/b#2'}]};anchor.project(loaded,new Set(),28,2,'130');
 assert.ok(anchor.offset>prior);assert.ok(anchor.correction,'Arrival preserves the surviving lower repository anchor');
@@ -76,11 +77,11 @@ const healthy=repository=>({code:0,stdout:JSON.stringify({data:{repository:Objec
 respond('timurproko/crew',healthy('timurproko/crew'));respond('timurproko/myworkflows',healthy('timurproko/myworkflows'));await flush();
 respond('timurproko/herdr-app',{code:1,stderr:'You have exceeded a secondary rate limit'});await flush();
 const allVisible=()=>{let out=render();while(panel.selectedTaskWindow.revealMore())out=render();return out;};
-tree=allVisible();assert.ok(find(tree,'task-repo-header-timurproko/herdr-app'));assert.ok(find(tree,'task-loading-timurproko/herdr-app'));
+tree=allVisible();assert.equal(find(tree,'task-repo-header-timurproko/herdr-app'),undefined);assert.ok(find(tree,'git-task-loading'));assert.equal(find(tree,'task-loading-timurproko/herdr-app'),undefined);
 assert.equal(aggregate.rows('open').length,2);assert.equal(aggregate.rows('closed').length,5);
 assert.deepEqual({...aggregate.counts()},{open:null,closed:null});assert.doesNotMatch(words(tree).join(' '),/rate limit|Could not read|Stale/);
 for(const tab of ['open','closed']){assert.equal(words(find(tree,`git-view-${tab}-count`)).join(''),'0');assert.match(find(tree,`git-view-${tab}-count`).attrs.tooltip[0],/Count loading; showing 0/);}
-panel.view='closed';tree=allVisible();assert.ok(find(tree,'task-loading-timurproko/herdr-app'));assert.equal(aggregate.rows('closed').length,5);
+panel.view='closed';tree=allVisible();assert.ok(find(tree,'git-task-loading'));assert.equal(find(tree,'task-repo-header-timurproko/herdr-app'),undefined);assert.equal(aggregate.rows('closed').length,5);
 panel.view='open';tree=allVisible();const selectedWindow=panel.selectedTaskWindow,readsBefore=calls.length;
 const due=aggregate.readWake.due;now=due-1;aggregate.pump(cx);await flush();assert.equal(calls.length,readsBefore,'No automatic read before cooldown ends');
 now=due;timers.find(w=>w.at===due).fn(cx);await flush();assert.equal(held.length,1,'Cold aggregate retries without another event');

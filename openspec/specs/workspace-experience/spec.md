@@ -115,73 +115,70 @@ On supported Windows hosts, Custom SHALL observe terminal selections once window
 - **AND** a held drag or unrelated clipboard activity can still be mistaken for a completed copy
 
 ### Requirement: Optional coordinator fleet attachment
-Settings → Spaces SHALL expose **Connect fleet space to coordinator**, defaulting off and portable as a boolean. When enabled with Crew, a verified same-machine fleet SHALL appear below its coordinator with its own numbered badge using the coordinator's badge colour. Both expanded attached rows SHALL show a muted outline chain immediately before their Crew tags. Fleet names SHALL align with ordinary names and use ordinary selected and inactive text states.
+Settings → Spaces SHALL expose **Connect fleet space to coordinator**, defaulting off and portable as a boolean. Enabled verified same-machine fleets SHALL appear as indented numbered children using the Agents child-row connector pattern and the coordinator's badge colour. Neither row SHALL show a chain; only the coordinator SHALL show Crew within an attached block. Independent native identities and ordinary selected/inactive text states SHALL remain.
 
 #### Scenario: First use and disabled setting
 - **WHEN** the preference is absent or false
-- **THEN** spaces retain their existing independent numbering, Crew tags, ordering and selection behavior
+- **THEN** spaces retain independent numbering, ordinary Crew tag rules, ordering and selection behavior
 - **AND** no attachment-specific discovery is started
 
 #### Scenario: Connected fleet
-- **WHEN** the preference is true, Crew is enabled and live ownership identifies one coordinator and one fleet on the same machine
-- **THEN** the fleet is displayed directly below the coordinator with its own ordinary list-number badge, using the same 16px box, rounded shape and vertical centre as other numbered badges
-- **AND** the fleet badge uses the coordinator's resolved colour without changing the fleet's saved colour, and no chain appears inside either badge or as an elbow or connector line
-- **AND** the fleet name begins at the same left edge as the coordinator and ordinary space names, without indentation, and uses muted text only while inactive
-- **AND** both expanded rows have a small muted outline chain immediately before their Crew tags, with the same size, slot, gap and vertical alignment as a worktree marker and no filled badge background
-- **AND** both chains align in one column to the left of the right-aligned Crew pills, after any ahead/behind counts and worktree marker, and unrelated plugin tags remain
-- **AND** a worktree marker without plugin tags retains its existing right-edge alignment with the machine chevron
+- **WHEN** attachment and Crew are enabled and live ownership identifies one coordinator and one fleet on the same machine
+- **THEN** the fleet appears directly below the coordinator as an indented child with the same connector shape, stroke, colour and spacing as an Agents child row
+- **AND** the fleet retains its own native-selection number in the ordinary 16px rounded badge, using the coordinator's resolved colour without changing the fleet's saved colour
+- **AND** neither row has a chain icon, the coordinator alone has the attached block's Crew pill, and unrelated plugin tags remain
+- **AND** inactive child names use ordinary muted styling and selected names retain ordinary selected foreground and weight
+- **AND** worktree markers and ahead/behind counts remain available without displacing the numbered child badge or connector
 
 #### Scenario: Compact rail attachment
-- **WHEN** the verified pair is shown in the compact rail
-- **THEN** both rows retain their own ordinary numbered badges and use the coordinator's resolved badge colour, with the same box size and centering as other numbered badges
-- **AND** no chain, elbow or connector lines are drawn
-- **AND** the fleet remains separately selectable with its existing name or directory tooltip and ordinary hover/selection behaviour
-- **AND** the rail remains badge-only without added Crew pills or names
+- **WHEN** a verified pair is shown in the compact rail
+- **THEN** both spaces retain separately selectable numbered badges in the existing size and position, using the coordinator's colour
+- **AND** the rail remains badge-only without chain icons, connector lines, Crew pills or names
+- **AND** expanded-mode parent folding does not hide compact badges, and ordinary hover and name/directory tooltips remain
 
 #### Scenario: Coordinator recolouring
-- **WHEN** the coordinator's space colour changes while an attached pair is displayed
-- **THEN** both numbered badges use that same resolved colour in expanded and compact views and in either member's drag chip
-- **AND** the fleet's own saved colour and Automatic setting remain unchanged and do not override the attached display colour
+- **WHEN** the coordinator's colour changes while attached
+- **THEN** both badges and either member's drag chip use that colour in expanded and compact views
+- **AND** the fleet's saved colour and Automatic setting remain untouched
 
 #### Scenario: Colour chosen from the attached fleet
-- **WHEN** the user opens the attached fleet's colour menu and chooses a colour or Automatic while the captured pair remains freshly verified
-- **THEN** the palette reflects and changes the captured coordinator's colour, keeping both attached badges and either drag chip synchronized
-- **AND** mouse and keyboard selection have the same result without overwriting the fleet's saved colour or Automatic setting
-- **AND** other menu actions remain bound to the clicked fleet space, without changing selection, names, tabs or terminals
+- **WHEN** the fleet's colour menu captures a freshly verified unchanged pair and the user chooses a colour or Automatic
+- **THEN** the palette reflects and changes the captured coordinator's colour and synchronizes both badges and either drag chip
+- **AND** mouse and keyboard choices leave the fleet's saved colour and Automatic flag unchanged
+- **AND** other menu actions target the clicked fleet without moving focus, names, tabs or terminals
 
 #### Scenario: Pair changes while its colour menu is open
-- **WHEN** the captured pair changes, a member disappears, attachment is disabled or fresh action verification is unavailable before a colour choice
-- **THEN** no colour is written through that stale pair action and it does not silently retarget another coordinator or fall back to changing the fleet's independent colour
-- **AND** reopening after confirmed detachment uses the fleet's ordinary independent colour controls
+- **WHEN** the captured pair changes, a member disappears, attachment is disabled or fresh action verification becomes unavailable
+- **THEN** no stale colour write occurs and the action does not silently retarget another coordinator or the fleet's independent colour
+- **AND** reopening after detachment uses the fleet's independent colour controls
 
 #### Scenario: Independent navigation
-- **WHEN** the user clicks the attached fleet rather than dragging it
-- **THEN** the fleet space itself is selected without selecting the coordinator or moving its terminals
-- **AND** clicking the coordinator continues to select that space itself
+- **WHEN** the user clicks a visible child rather than dragging it
+- **THEN** that native fleet is selected, not the coordinator, without moving terminals
+- **AND** clicking the coordinator selects the coordinator, while its separate fold control changes only disclosure
 
 #### Scenario: Fleet name selection and hover
-- **WHEN** an attached fleet is displayed in active, inactive or hovered states
-- **THEN** its active name has exactly the same selected text colour and normal weight as an ordinary selected space, and its inactive name retains ordinary muted styling
-- **AND** ordinary selected backgrounds, hover treatment, tooltip and drag-time interaction suppression apply without an attached-only text override
-- **AND** compact rail selection/hover matches ordinary numbered-space controls without adding a name label
+- **WHEN** an attached child is selected, inactive or hovered
+- **THEN** its text, selected background, hover and drag-time interaction suppression match ordinary space behavior while retaining its child indentation
+- **AND** compact selection and hover remain ordinary numbered-space controls without names
 
 #### Scenario: Unverified or broken relationship
 - **WHEN** no prior verified attachment exists, or completed evidence establishes an absent, ambiguous, cross-machine or changed relationship
-- **THEN** the app does not attach unrelated spaces or infer a relationship from their names
-- **AND** affected spaces use ordinary presentation without changing focus or sessions
-- **AND** transport uncertainty during refresh is handled by bounded last-verified presentation rather than an intermediate detached frame
+- **THEN** unrelated spaces are not attached by name and remain ordinary spaces in their original machine groups without changing focus or sessions
+- **AND** no connector crosses machine headers and no cross-machine reorder or parent fold is introduced
+- **AND** uncertain refreshes retain valid remembered presentation rather than briefly detaching it
 
 #### Scenario: Disable or preference round trip
-- **WHEN** the user disables attachment or disables Crew
-- **THEN** linked presentation and both chains are removed without closing or relocating either space or replaying an earlier order
-- **AND** the fleet's numbered badge shows its own saved colour and Automatic behaviour again, as it does after confirmed unlinking
-- **AND** exporting and importing the preference preserves only its boolean, not homes, task records, terminal IDs or pair bindings
+- **WHEN** attachment or Crew is disabled
+- **THEN** nesting, attached parent disclosure and inherited child colour disappear without closing or moving either space or replaying an earlier order
+- **AND** independent Crew tag rules and the fleet's saved colour and Automatic setting return, as on confirmed unlinking
+- **AND** only the preference boolean is exported, not fold identities, homes, tasks, terminals or pair bindings
 
 #### Scenario: Numbered badges identify native selection targets
 - **WHEN** attachment projects a fleet ahead of an unrelated space without changing native order
-- **THEN** expanded rows, compact badges and drag chips retain the numbers that select those native spaces through the host's numeric selection command and shortcuts
-- **AND** native order coordinator, unrelated space, fleet displays attached as coordinator 1, fleet 3, unrelated 2, then returns to native row order when detached
-- **AND** attachment does not silently reorder native spaces or remap shortcuts to make projected digits consecutive
+- **THEN** expanded rows, compact badges and drag chips retain native selection-command and shortcut numbers
+- **AND** native order coordinator, unrelated space, fleet displays as coordinator 1, child fleet 3, unrelated 2, and detachment restores native row order
+- **AND** attachment never silently reorders native spaces or remaps shortcuts to make displayed digits consecutive
 
 ### Requirement: Linked spaces reorder as one block
 Dragging either member of a displayed coordinator/fleet pair SHALL reorder both as one same-machine block, with the coordinator before the fleet. A remembered last-verified pair SHALL suffice for space-only ordering without fresh Crew status. The drag SHALL NOT split another linked block, cross machines, select a space, move tabs or restart terminals. Cancellation or changed captured pair identities SHALL NOT commit an order change. Unlinked spaces SHALL retain ordinary reordering.
@@ -230,144 +227,140 @@ Dragging either member of a displayed coordinator/fleet pair SHALL reorder both 
 - **AND** this permission covers only native space ordering, not tab or terminal movement, worker navigation, messaging or coordinator colour writes
 
 ### Requirement: Aligned space worktree markers
-In the expanded Spaces sidebar, plugin tags SHALL occupy the existing tag-only right edge, after any ahead/behind counts, worktree marker and attached-row chain. Worktree markers on rows without tags SHALL retain their existing alignment with the machine header's fold chevron. Worktree-icon visibility and rename behavior SHALL remain unchanged.
+Expanded Spaces SHALL retain plugin tags at the existing trailing tag edge after ahead/behind counts and worktree markers. Untagged worktree markers SHALL retain the machine-header chevron axis. Nested child indentation and parent disclosure SHALL NOT remove metadata or add chain icons. Worktree visibility and rename behavior SHALL remain unchanged.
 
 #### Scenario: Ordinary and attached worktree rows
-- **WHEN** a local or remote machine group shows ordinary worktree spaces or an attached fleet with its worktree marker enabled and no plugin tags
-- **THEN** every visible worktree marker is centred on the header chevron's vertical axis with the same right inset
-- **AND** the fleet's left-aligned name and ordinary numbered badge do not move the marker away from that axis
+- **WHEN** local or remote machine groups show ordinary worktree spaces or a connected child with a worktree marker and no plugin tags
+- **THEN** worktree markers stay on the machine-chevron axis at the existing right inset
+- **AND** the child badge and connector remain at their nested left position without moving trailing markers
 
 #### Scenario: Worktree marker beside plugin tags
-- **WHEN** a worktree space also displays a Crew tag or another plugin tag
-- **THEN** the row's order is name, any ahead/behind counts, worktree marker, attached-row chain if present, then plugin tags
-- **AND** on both attached rows the chain is immediately before Crew, with matching worktree icon size, muted outline colour, gap and vertical alignment and no filled background
-- **AND** when multiple plugin tags exist, unrelated tag content, tooltips and relative order remain while the chain and Crew pill stay adjacent at the trailing edge
-- **AND** the final tag shares the same right edge as a tag-only row instead of being displaced by the markers
-- **AND** ordinary rows retain their existing order with attachment off
+- **WHEN** a worktree row has Crew or unrelated plugin tags
+- **THEN** metadata order remains name, ahead/behind counts, worktree marker and tags, with no chain slot
+- **AND** only the connected block's coordinator shows Crew, unrelated tags keep their tooltips and relative order, and a child's unrelated tags remain
+- **AND** the final tag retains the ordinary tag-only right edge, while attachment-off rows retain their independent order
 
 #### Scenario: Hidden marker and renaming
-- **WHEN** worktree icons are switched off or a space is being renamed
-- **THEN** that row shows no worktree marker, preserving the existing visibility and editing behavior
-- **AND** the worktree visibility switch does not hide either attached row's independent chain marker, but renaming hides both markers and tags on the edited row
-- **AND** visible plugin tags retain their trailing edge when the worktree marker is hidden, and renaming still hides the tags
+- **WHEN** worktree icons are switched off or a row is renamed
+- **THEN** its worktree marker is hidden under existing rules
+- **AND** the worktree switch does not hide the child connector or numbered badge, while editing suppresses that row's ordinary tags and nonediting controls
+- **AND** visible tags retain their trailing edge and rename still captures the clicked native space
 
 ### Requirement: Stable verified fleet presentation during refresh
 Fleet presentation SHALL use a bounded host-local last-verified pair record independently of fresh action authority. With attachment enabled, exact remembered native space identities SHALL restore the first render before verification completes. Disablement SHALL hide but preserve memory. Failed, slow or abandoned reads SHALL retain it. Completed contradictory evidence or confirmed missing spaces SHALL clear or replace memory. Remembered presentation SHALL NOT grant fresh operational authority.
 
 #### Scenario: Successful refresh cycle
-- **WHEN** an attached fleet undergoes a delayed Crew status refresh from Git or Spaces and the completed result verifies the same pair
-- **THEN** every intermediate sidebar projection retains the same coordinator/fleet block, own numbered badges with shared coordinator colour, matching chains and visible Crew pills on both expanded rows
-- **AND** no intermediate frame reverts the fleet to its independent colour or position, removes either chain or loses an attached-row Crew pill
+- **WHEN** delayed status refresh from Git or Spaces verifies the same pair
+- **THEN** every intermediate expanded projection retains the nested block, truthful numbered badges and coordinator colour, coordinator-only Crew pill and current parent fold state
+- **AND** there is no intermediate independent-colour, detached-position, chain-icon or duplicate-Crew frame
 
 #### Scenario: Unrelated model and focus changes
-- **WHEN** spaces, tabs or panes unrelated to the pair are added, removed, renamed, reordered or selected on this or another machine, or focus/relay/Git refresh events occur
-- **THEN** none of those changes emits even one detached projection of the verified pair
-- **AND** only the two spaces' identities, coordinator home/owner and fleet adoption facts participate in binding-dependent invalidation
-- **AND** a pending or subsequent successful same-binding refresh emits no detached sidebar projection
+- **WHEN** unrelated spaces, tabs or panes are added, removed, renamed, reordered or selected on either machine, or focus/relay/Git refresh occurs
+- **THEN** no detached projection of the verified pair appears
+- **AND** binding invalidation depends on pair identities, coordinator home/owner and adoption facts, not unrelated topology
+- **AND** pending or successful same-binding refreshes preserve child nesting and fold state
 
 #### Scenario: Failed or timed-out refresh
-- **WHEN** a previously verified pair's next status read fails, is malformed, times out or expires without completing
-- **THEN** its remembered presentation remains while its two native spaces exist, until a completed read disproves it or the setting/plugin is turned off
-- **AND** elapsed time alone does not detach an unchanged pair, including long outages beyond the former 60-second window
-- **AND** retention is bounded to the exact machine/space/home identities with at most one verified pair per known machine, never fresh action authorization
+- **WHEN** a previously verified pair's read fails, is malformed, times out or expires without completion
+- **THEN** remembered presentation remains while both native spaces exist until completed contradictory evidence or feature disablement
+- **AND** elapsed time alone does not detach the pair, including long outages
+- **AND** memory remains bounded to exact machine/space/home identities with at most one verified pair per known machine, never action authorization
 
 #### Scenario: Completed relationship change
-- **WHEN** a successful completed read establishes that the fleet or coordinator is gone or ownership identifies a different valid pair
-- **THEN** the prior attachment and remembered identity are removed or replaced atomically without a temporary unknown publication
-- **AND** a late result from an older read cannot resurrect it
+- **WHEN** a completed successful read establishes missing ownership or a different valid pair
+- **THEN** the prior attachment and invalid remembered identity are removed or replaced atomically without a temporary unknown publication
+- **AND** late older results cannot resurrect it or apply its fold state to a different pair
 
 #### Scenario: No verified history
-- **WHEN** the first read is pending, fails or produces ambiguous evidence and no previously verified pair exists in memory or durable local identity facts
-- **THEN** the sidebar remains unattached rather than creating a relationship from names, role hints or an unverified snapshot
+- **WHEN** first verification is pending, fails or is ambiguous with no valid memory
+- **THEN** no pairing is inferred from names, role hints or an unverified snapshot
 
 #### Scenario: Restart, mod reload or layout switch
-- **WHEN** a previously verified pair's two native spaces still exist after app restart, mod hot reload, update or a layout switch with attachment enabled
-- **THEN** the first available native-space frame restores its attached block, own numbered badges with shared coordinator colour, chains and Crew pills on both expanded rows from persisted sanitized identity facts before a status read completes
-- **AND** background verification can update or disprove that pair without an intermediate detached frame
-- **AND** persisted facts contain no reports, task records, PR inventory, credentials or transcripts and are not exported as portable preferences
+- **WHEN** both remembered native spaces still exist after restart, reload, update or layout change with attachment enabled
+- **THEN** the first available space frame restores their nested block, numbered badges with coordinator colour, coordinator-only Crew pill and saved parent disclosure before verification completes
+- **AND** background verification can replace or disprove the pair without an intermediate detached frame
+- **AND** persisted identity contains no reports, task records, PR inventory, credentials or transcripts and is not portable
 
 #### Scenario: Relevant identity changes during a read
-- **WHEN** the pair's owner/home or adoption evidence changes while verification is pending
-- **THEN** fresh operational actions lose eligibility immediately but the remembered display remains until the new read completes
-- **AND** missing native space identities or explicit disablement detach immediately rather than leaving ghost rows
+- **WHEN** owner/home or adoption evidence changes while verification is pending
+- **THEN** fresh actions lose eligibility immediately but remembered presentation remains until completion
+- **AND** missing native space identities or explicit disablement detach immediately rather than leaving ghost children
 
 #### Scenario: Disable and restore remembered pairing
-- **WHEN** attachment or Crew is switched off and later enabled with both remembered native space identities still present
-- **THEN** off hides the link immediately without erasing its last verified pair record and on restores the picture in the same render with zero reads completed
-- **AND** background verification refreshes authority independently of the restored picture
+- **WHEN** attachment or Crew is switched off and on while both remembered spaces exist
+- **THEN** off hides nesting immediately without erasing pair memory, and on restores the nested picture and its local fold state before any read completes
+- **AND** verification refreshes authority independently of that picture
 
 #### Scenario: Remembered space is absent
-- **WHEN** either exact remembered space identity is missing from the current native space snapshot
-- **THEN** that record contributes no attached rows and cannot be matched by another space's name
-- **AND** authoritative ready-layout absence clears the stale record outside render; an unready remote snapshot alone does not erase memory
+- **WHEN** an exact remembered native space is missing from the current snapshot
+- **THEN** no attached ghost row or name-based substitute appears
+- **AND** authoritative ready-layout absence clears invalid memory outside render, while an unready remote snapshot alone does not erase it
 
 ### Requirement: Independent attached-space identity and tags
-Attached coordinator and fleet rows SHALL remain independently selectable native spaces with distinct tabs and terminals. Both expanded rows SHALL display the existing Crew pill with matching styling and a common trailing tag edge after counts and worktree markers. Both attached rows SHALL show a muted outline chain immediately before their Crew tags, aligned in one column. Unrelated plugin tags SHALL remain.
+Attached coordinator and fleet SHALL remain independently selectable native spaces with distinct tabs and terminals. Expanded connected blocks SHALL show Crew only on the coordinator, retain unrelated plugin tags, and show no chain icons. Child presentation and folding SHALL NOT grant native operations or replace captured space targets.
 
 #### Scenario: Attached row selection and tags
 - **WHEN** a verified coordinator and fleet are attached in Spaces
-- **THEN** clicking either row selects that native space without relocating tabs or terminals
-- **AND** the active fleet name uses ordinary selected-space text colour and normal weight, while inactive fleet text remains muted and names retain their aligned left edge
-- **AND** both expanded rows display their Crew pill and unrelated plugin tags remain
-- **AND** when Crew is their only tag, both pills share the same right edge and both chains share the column immediately to their left, even if either row has a worktree marker and ahead/behind counts
-- **AND** the coordinator retains its coordinator tooltip and the fleet uses its worker tooltip
+- **THEN** selecting either targets its own native space without moving tabs or terminals
+- **AND** child indentation and connectors coexist with ordinary selected/inactive name treatment
+- **AND** the coordinator's Crew pill retains existing styling, tooltip and trailing tag edge, while the child has no Crew pill or chain icon
+- **AND** unrelated plugin tags remain on both rows with existing metadata order and tooltips
 
 #### Scenario: Attachment removed
-- **WHEN** the relationship is confirmed broken or attachment is disabled
-- **THEN** the rows retain their separate native identities and ordinary plugin tag rules without either attachment chain or inherited fleet colour
-- **AND** disabling Crew still hides Crew tags without closing or relocating either space
+- **WHEN** attachment is disabled or a relationship is authoritatively broken
+- **THEN** separate native identities and ordinary plugin tag rules remain without inherited child colour, connectors, chains or parent disclosure
+- **AND** disabling Crew hides its tags without closing or moving either space
 
 ### Requirement: Live fleet attachment preference propagation
 Changes to the fleet attachment switch SHALL propagate in the next render while Settings remains open. Enablement SHALL immediately show a valid remembered pair and start background verification; without memory it SHALL attach only after successful first verification. Disablement SHALL immediately hide attachment without erasing remembered identity. Local and ready remote groups SHALL obey the same rule without granting unverified operational authority.
 
 #### Scenario: Enable while Settings remains open
-- **WHEN** the user enables attachment with Settings open and both spaces of a remembered same-machine pair still exist
-- **THEN** the next render shows the fleet below the coordinator, truthful native shortcut numbers, matching chains before both Crew pills and the coordinator's colour on both badges before any read completes
-- **AND** background verification starts without waiting for dialog close or another lifecycle interaction
-- **AND** Settings remains open and native space order, focus, tabs and terminals are unchanged
+- **WHEN** attachment is enabled with Settings open and both spaces of a remembered same-machine pair exist
+- **THEN** the next render shows the coordinator and its indented child, subject to saved disclosure, with truthful numbers, coordinator colour and coordinator-only Crew before a read completes
+- **AND** background verification starts without waiting for close or another interaction
+- **AND** Settings, native order, focus, tabs and terminals remain unchanged
 
 #### Scenario: Disable while Settings remains open
-- **WHEN** the user disables attachment while Settings is open and an attached pair is visible
-- **THEN** the sidebar immediately returns to independent row order, retains each row's native shortcut number, removes both chains and restores the fleet's saved badge colour
-- **AND** no close event or further interaction is needed and remembered pair identity remains available for later enablement
+- **WHEN** attachment is disabled with Settings open and an attached pair visible
+- **THEN** independent order returns immediately with native numbers, independent tag rules and the fleet's own saved badge colour
+- **AND** nesting and parent disclosure disappear without another event and pair memory remains available
 
 #### Scenario: Verification still pending or unavailable
-- **WHEN** enabling requires verification and no valid previously verified display identity is available
-- **THEN** no relationship, inherited badge colour or attachment chain is fabricated before the read succeeds
-- **AND** a failed or ambiguous read leaves the spaces independent rather than attaching an unverified pair
+- **WHEN** enablement has no valid previously verified identity
+- **THEN** no relationship, inherited colour or child connector is fabricated before success
+- **AND** failed or ambiguous verification leaves independent rows
 
 #### Scenario: Disable before verification completes
-- **WHEN** the user enables and then disables attachment while Settings stays open and the enable-time read is pending
-- **THEN** the sidebar remains independent after disabling and the superseded reply cannot restore attachment or overwrite remembered identity
-- **AND** a later explicit enable can restore valid memory and start current verification without closing Settings
+- **WHEN** attachment is enabled and disabled while its verification is pending
+- **THEN** the superseded reply cannot reattach or overwrite remembered identity after disabling
+- **AND** a later enable can restore valid memory and initiate current verification with Settings still open
 
 #### Scenario: Repeated verified off/on cycles
-- **WHEN** a verified attached pair is switched off and on repeatedly with Settings open, with immediate, one-second or fifteen-second off intervals
-- **THEN** each off transition immediately restores independent presentation and each on transition restores the still-valid remembered pair in the same render and initiates background verification
-- **AND** no freshness, attempt, command latency or abandoned-reader wait delays that remembered picture
-- **AND** ready remote machines restore their own remembered pairs independently rather than waiting for another machine
+- **WHEN** a verified pair is repeatedly toggled with immediate, one-second or fifteen-second off intervals
+- **THEN** off immediately restores independent presentation and on restores valid nesting and local disclosure in the same render while verifying
+- **AND** no freshness, transport latency or abandoned-reader wait delays memory restoration
+- **AND** ready remote groups restore their own same-machine pairs independently
 
 #### Scenario: Older reply after a newer toggle
-- **WHEN** a reply initiated before the last off/on sequence arrives before or after the current sequence's successful reply
-- **THEN** the older reply cannot replace current binding, presentation, verification age, remembered identity or retry state
-- **AND** rejecting it cannot discard or delay the current sequence's valid reply
+- **WHEN** a pre-toggle reply arrives before or after the current successful reply
+- **THEN** it cannot replace binding, presentation, verification age, remembered identity or retry state
+- **AND** discarding it cannot delay or erase the current result
 
 #### Scenario: Large verification response and interrupted processing
-- **WHEN** a valid supported status response of up to one MiB arrives during enablement
-- **THEN** bounded response processing publishes its verified pair without a watchdog interruption or dependence on closing Settings
-- **AND** if response processing is nevertheless abandoned, the existing lifecycle replaces its read within the next two-second recovery interval rather than waiting for the transport lease
-- **AND** transport commands retain their bounded execution allowance and superseded replies remain unable to publish
-- **AND** interruption never removes an already remembered presentation
+- **WHEN** a valid supported response of up to one MiB arrives during enablement
+- **THEN** bounded processing publishes its pair without watchdog interruption or dependence on closing Settings
+- **AND** abandoned processing is replaced by the existing lifecycle within the next two-second recovery interval rather than the transport lease
+- **AND** commands remain bounded, superseded replies cannot publish, and interruption never erases remembered presentation
 
 #### Scenario: Pretty-printed large legacy status
-- **WHEN** legacy status emits a supported reply up to one MiB and 4096 tasks over tens of thousands of JSON lines
-- **THEN** transport collection and field projection complete within the ordinary command allowance without a format-induced timeout
-- **AND** their cost grows with input bytes, lines and task count rather than repeatedly recopying accumulated output
+- **WHEN** legacy status emits a supported response up to one MiB and 4096 tasks over tens of thousands of lines
+- **THEN** collection and field projection complete within the normal allowance without a format-induced timeout
+- **AND** cost grows with input bytes, lines and task count rather than repeatedly copying accumulated output
 
 #### Scenario: Other Spaces switches
-- **WHEN** the user changes either last-tab switch with Settings still open
-- **THEN** the new preference is available to subsequent close actions and normal empty-space reconciliation without requiring Settings to close
-- **AND** their existing confirmation, process-exit and automatic-space exceptions remain unchanged
+- **WHEN** either last-tab preference changes with Settings open
+- **THEN** subsequent close actions and empty-space reconciliation see it without waiting for dialog close
+- **AND** confirmation, process-exit and automatic-space exceptions remain unchanged
 
 ### Requirement: Quiet Core apply footer
 Custom Settings → Core SHALL keep its pre-Apply hint unchanged while applying and restarting, without duplicating runtime progress in the footer. The Status row SHALL retain runtime progress and failures SHALL remain visible in the existing page error area. The footer SHALL retain its geometry through completion, with an empty hint and disabled Discard/Apply when no changes remain.
@@ -415,3 +408,26 @@ After apply, Core Settings SHALL restore eligible runtime controls as soon as fr
 - **WHEN** the user changes machines during completion or verification fails
 - **THEN** completion cannot enable another machine's controls or grant permission from cached facts
 - **AND** existing error and offline behavior is preserved
+
+### Requirement: Connected space parent disclosure
+Expanded connected coordinators SHALL use the Agents parent-row chevron to show or hide their children, default expanded, with a child count beside the chevron only while collapsed. Disclosure SHALL be local, identity-scoped and nonportable. It SHALL NOT change native space selection, shortcut numbering, paired reorder semantics or compact-rail membership.
+
+#### Scenario: Parent toggle and collapsed count
+- **WHEN** the user activates the coordinator's fold control
+- **THEN** only that parent's child rows toggle without starting drag, selecting a different space or making discovery reads
+- **AND** chevron, count placement, type, hit target and hover match the Agents parent fold control, with no child count when expanded
+
+#### Scenario: Keyboard navigation to a hidden child
+- **WHEN** native keyboard or external navigation selects a child hidden by a collapsed parent
+- **THEN** its parent is disclosed so the selected row is visible without changing the native target or shortcut mapping
+- **AND** explicit folding does not itself select the parent, and disclosure controls remain separate from row selection and reorder
+
+#### Scenario: Reorder a collapsed connected block
+- **WHEN** the user drags the collapsed parent within its machine group
+- **THEN** the hidden child moves with the parent through the existing acknowledged same-machine block operation
+- **AND** expanding restores the same child identity and truthful number, while cancellation or changed pair identity commits no stale move
+
+#### Scenario: Remote pair and invalid cross-machine link
+- **WHEN** ready remote groups contain valid same-machine pairs or a candidate points across machines
+- **THEN** valid pairs nest and fold independently inside their own machine group
+- **AND** a cross-machine candidate stays independent under its own machine header without a cross-group connector, fold or move

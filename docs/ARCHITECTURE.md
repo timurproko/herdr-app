@@ -290,6 +290,17 @@ Core-first worker exit cannot silently remove its PR before Crew publishes the
 closed record. A working/finished mismatch remains unverified rather than renewing
 action freshness, while existing same-home rows stay explicitly stale.
 
+Spaces presents accepted same-machine blocks using Agents' shared child branch
+and parent disclosure primitives. The child retains its native index and badge
+colour inheritance, but is indented; neither row has a chain and only the parent
+shows Crew. Unrelated tags and worktree metadata keep their ordinary trailing
+edge. A separate local `custom.spaces.parents.folded` set is bounded to 256 exact
+machine/block/binding keys and is never exported. Full block order remains the
+reorder authority; only drawing/drop geometry filters hidden children. A folded
+parent moves its hidden child too, and native selection transitions disclose a
+hidden selected child on the existing lifecycle. Compact rail membership and
+native shortcuts are unchanged. Cross-machine candidates remain independent.
+
 Colour is a separate binding-scoped action, not live-worker navigation. The generic
 `pluginAllows('spaces.color', {pair})` guard accepts the exact displayed pair only
 after a successful status read in the calling mod (or a witnessed shared read).
@@ -329,8 +340,11 @@ still cannot be inferred by the app from transcripts or branches.
 
 `ui/ui.js` owns `sidebarSectionHeader`, the common machine/repository header shell
 and right-edge chevron; Spaces retains its own actions and guarded folding.
-Aggregate repository headers start expanded and show only canonical owner/name
-plus the shared chevron, never repository Open/Closed counts. The flexible name
+Aggregate repository headers start expanded and show canonical owner/name,
+the selected-tab eligible task PR count and the shared chevron. The count uses
+Agents' shared numeric rail, compensating surrounding gap and chevron-slot width
+without moving Git's existing trailing rail; it counts full task inventory rather
+than mounted rows or GitHub repository totals. The flexible name
 uses all remaining width; a clipped invisible natural-width probe and the label's
 available width enable its full-name tooltip only on actual overflow. Geometry is
 local, scope-keyed and updated after layout with changed-only notifications, not
@@ -341,22 +355,28 @@ Explicit toggles are UI-only: no preference export or Crew/host-document writes,
 and no new fetch or cancellation. Fold state survives tab/context changes and
 panel recreation. Scoped rows/errors and repository-specific diagnostics fold with
 the body; global setup stays visible. Counts and webhook-driven facts continue
-updating while folded. Rendering derives selected-tab sections from eligible rows,
-an applicable `readNotice`, or unresolved admitted first-read work, before applying
-folds. Unknown-state queued/in-flight/quiet-deferred repositories retain a standard
-bulb/Loading body in either tab, without inventing PR membership. Warm-only refreshes
-add no Loading. An applicable actionable failure retains its notice; confirmed
+updating while folded. One shared projection derives selected-tab sections from known eligible rows
+or an applicable `readNotice` before applying folds. Unknown-state queued,
+in-flight and quiet-deferred first reads share one panel bulb/Loading outside
+repository bodies, above enrollment; they create no unknown-only header.
+Warm-only refreshes add no Loading. An applicable actionable failure retains its notice; confirmed
 missing and known ineligible history do not leave Loading behind. Empty settled sections have no header,
 but disappearing sections retain saved fold keys. A settled tab with no qualifying
 sections uses ordinary Git's **No open pull requests** / **No closed pull requests**;
 notice-only and folded eligible sections are not empty. Pending/unverified feedback
 is unchanged. The selected presentation reveals ten items initially, including headers,
 notices and rows, then appends ten near the scroll bottom without inventory IO.
-An unfolded header at a reveal boundary waits for its first row, visible notice or Loading body;
-no transition may leave an unfolded header alone. Sections without selected-tab
-content or unresolved first-read work are omitted even if their saved fold key remains.
-Loading is one keyed 32px presentation item, not a PR row or safety target, and folds
-with the body. It obeys the 100-item cap and stable section/scroll identities.
+An unfolded header at a reveal boundary waits for its first row or visible notice;
+no transition may leave it alone. Sections without selected-tab content or a
+notice are omitted even if a saved fold key remains. Panel Loading is not a PR,
+repository body, reveal item or safety target; it remains visible through folds.
+Same-home returns restore pure runtime presentation from at most four snapshots
+and 4096 admitted identities, with no native handles or callback-bearing trees.
+Exact scope and provider/Git enable generations reject stale cache/read results;
+Git/Crew/attachment off-on and restart cannot restore old inventory. Fresh
+membership reconciles restored facts before actions; hidden snapshots do no work.
+Per-tab reveal/anchor facts use separately bounded pure snapshots and new native
+measurement identities on re-entry.
 Global counts remain unknown (visible 0 with existing loading metadata) while any
 admitted identity lacks authoritative facts or confirmed absence. Compatible last-good
 same-scope totals survive new unread membership with loading metadata; removals and
