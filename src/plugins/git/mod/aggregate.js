@@ -47,10 +47,10 @@ export class AggregatePulls {
     if(context?.scope!==previous?.scope || !compatible) {
       if(previous && compatible && sidebarPanelEnabled('changes') && (context || location().space!==previous.parent))this.rememberPresentation();
       else if(previous && !context)this.presentations.delete(previous.scope);
-      this.readWake=null;this.manualRead=null;this.serial++;this.factOrder.reset();this.entries.clear();this.pending.clear();this.diagnostics.clear();this.lastCounts=null;
+      this.readWake=null;this.manualRead=null;this.serial++;this.factOrder.reset();this.entries.clear();this.pending.clear();this.diagnostics.clear();this.lastCounts=null;this.returning=false;
       if(context && !context.stale && context.parent)for(const [scope,saved]of this.presentations)if(scope!==context.scope && saved.parent===context.parent && saved.machine===context.machine)this.presentations.delete(scope);
       const saved=context && this.presentations.get(context.scope);
-      if(saved){this.entries=new Map(saved.entries.map(([key,e])=>[key,{...e,link:{...e.link},dirty:true}]));this.lastCounts=saved.lastCounts;this.presentations.delete(context.scope);}
+      if(saved){this.returning=true;this.entries=new Map(saved.entries.map(([key,e])=>[key,{...e,link:{...e.link},dirty:true}]));this.lastCounts=saved.lastCounts;this.presentations.delete(context.scope);}
     }
     if(!sidebarPanelEnabled('changes'))this.presentations.clear();
     this.context=context;
@@ -86,12 +86,12 @@ export class AggregatePulls {
     this.presentations.set(this.context.scope,{entries,lastCounts:this.lastCounts?new Map(this.lastCounts):null,parent:this.context.parent,machine:this.context.machine});
     while(this.presentations.size>4 || [...this.presentations.values()].reduce((sum,s)=>sum+s.entries.length,0)>4096)this.presentations.delete(this.presentations.keys().next().value);
   }
-  stop() {this.presentations.clear();this.lastCounts=null;this.serial++;this.factOrder.reset();this.context=null;this.entries.clear();this.pending.clear();this.diagnostics.clear();}
+  stop() {this.presentations.clear();this.returning=false;this.lastCounts=null;this.serial++;this.factOrder.reset();this.context=null;this.entries.clear();this.pending.clear();this.diagnostics.clear();}
   get busy() {return this.pending.size>0 || Boolean(this.fallbackBusy);}
   unresolved(entry) {return !entry.pr && !entry.missing;}
   get countsLoading() {return [...this.entries.values()].some(e=>this.unresolved(e)) || Boolean(this.context?.stale && !this.entries.size);}
   loading(repository) {return [...this.entries.values()].some(e=>e.link.repo===repository && this.unresolved(e) && !e.error);}
-  get waiting() {return [...this.entries.values()].some(e=>this.unresolved(e) && !e.error);}
+  get waiting() {return Boolean(this.returning) || [...this.entries.values()].some(e=>this.unresolved(e) && !e.error);}
   eligible(entry, now = Date.now()) {
     if(!entry.pr)return false;
     if(['open','draft'].includes(entry.pr.state) || entry.link.targets.some(t=>!t.historical && typeof t.terminal==='string' && t.terminal))return true;
@@ -186,13 +186,13 @@ export class AggregatePulls {
         finally {
           for(const entry of batch)if(this.pending.get(entry.link.key)===token)this.pending.delete(entry.link.key);
           if(this.serial===serial && this.shown())this.pump(view);
-          if(!this.pending.size && ![...this.entries.values()].some(e=>e.dirty)) {this.diagnostics.clear();this.manualRead=null;}
+          if(!this.pending.size && ![...this.entries.values()].some(e=>e.dirty)) {this.diagnostics.clear();this.manualRead=null;this.returning=false;}
           this.rememberCounts();view.notify();
         }
         if(updated && current())this.onUpdate?.(view);
       });
     }
-    if(!this.pending.size && ![...this.entries.values()].some(e=>e.dirty))this.manualRead=null;
+    if(!this.pending.size && ![...this.entries.values()].some(e=>e.dirty)){this.manualRead=null;this.returning=false;}
   }
   target(pr) {
     const context=this.currentContext();if(context?.scope!==this.context?.scope)return null;
