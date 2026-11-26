@@ -288,19 +288,19 @@ Git SHALL share natural-width metadata across all row variants, without Owner ba
 - **AND** clipping stays within the fixed-height line with no overlap or lone ellipsis; full task progress, labels and review values remain available in tooltips
 
 ### Requirement: GitHub label presentation
-Unmanaged labels SHALL retain exact names/emoji and rounded 18px GitHub-colour pills: dark palettes use 18% tint, readable text and 30% text-colour border; light palettes use solid fill and contrast text. Managed aliases SHALL instead use one bottom-right plain stage chip with palette text, subtle raised fill, 2px side padding and no emoji/outline. The group SHALL stay ordered, bounded and right-aligned with informative hover and no extra row height.
+Unmanaged labels SHALL retain exact names/emoji and rounded 18px GitHub-colour pills: dark palettes use 18% tint, readable text and 30% text-colour border; light palettes use solid fill and contrast text. Managed aliases SHALL instead use one bottom-right plain stage chip with palette text, subtle raised fill, 6px side padding and no emoji/outline or tooltip. The group SHALL stay ordered, bounded and right-aligned with informative unmanaged-label hover and no extra row height.
 
 #### Scenario: Under review label
 - **WHEN** a PR has the label named `🤖 Under review` with GitHub colour `840479`
 - **THEN** the row displays one plain `Review` chip at the bottom-right content edge, without an emoji, outline or separator dot before the group
-- **AND** the assigned alias remains available in informative hover and no duplicate title-line stage appears
-- **AND** it uses the stage's palette purple text and existing subtle raised fill with tight 2px side padding rather than a GitHub-colour pill
+- **AND** no duplicate title-line stage or stage tooltip appears
+- **AND** it uses the stage's palette purple text and existing subtle raised fill with 6px side padding rather than a GitHub-colour pill
 
 #### Scenario: Several labels in a narrow panel
 - **WHEN** assigned labels do not all fit beside the preceding metadata
 - **THEN** they remain one right-aligned group in their existing relative order, except duplicate managed aliases collapse to one stage, within a bounded single-height strip rather than expanding the panel or row height
 - **AND** pill words remain whole while task compaction and secondary review-text reduction can make room; only remaining overflow clips the label group without overlap or a lone ellipsis
-- **AND** tooltips expose complete assigned names, including clipped names and managed aliases
+- **AND** tooltips expose complete clipped or omitted unmanaged names without reintroducing managed-stage aliases, findings or agent-action tooltips
 
 #### Scenario: Different hues and extreme colours on dark palettes
 - **WHEN** green, amber, purple, red, blue, near-black or near-white labels appear on a dark panel palette
@@ -1445,17 +1445,17 @@ A combined fleet SHALL accept legacy and supported placement-v1 workers in the s
 - **AND** renaming does not substitute for any missing identity proof
 
 ### Requirement: Three managed pull request stages
-Git SHALL derive Build, Review or Approved from assigned managed label names and their previous names using existing reads. A managed stage SHALL appear exactly once as a tight plain-text chip on the bottom-right checks line, using existing stage-coloured text and subtle raised fill, without emoji, outline, title-line stage or reserved title width. Stage SHALL remain independent of CI and GitHub's review decision. Rows without managed labels SHALL retain only a live linked robot fallback.
+Git SHALL derive Build, Review or Approved from assigned managed labels and aliases using existing reads. Without a managed label, an Open/Draft PR with a verified live ship/fix target SHALL show Build instead of a robot. Each stage SHALL appear once on the bottom-right checks line with existing stage colours and raised fill, no emoji, outline, title reservation or tooltip. Assigned managed labels SHALL win; CI and GitHub review decisions SHALL NOT determine stage.
 
 #### Scenario: Current and historical label names
 - **WHEN** an ordinary or coordinator PR has a managed Build, Review or Approved label, with or without the managed robot prefix
 - **THEN** its single bottom-right plain chip shows Build, Review or Approved, with the supplied next build round when present, and no robot emoji
 - **AND** Rework and Changes needed map to Build, and Under review maps to Review, including their robot-prefixed previous names
-- **AND** unrelated label names remain unchanged and raw assigned managed names remain available as additional hover information without duplicate visible stage pills
+- **AND** unrelated label names remain unchanged and managed aliases collapse without duplicate visible stage pills or stage tooltips
 
 #### Scenario: Existing label reads and refresh
 - **WHEN** a list, targeted older-active or coordinator PR read returns label arrays or a label connection, including null or empty labels
-- **THEN** stage uses the same normalized assigned labels without another per-row request
+- **THEN** stage uses the same normalized assigned labels plus existing verified live build-target evidence without another per-row request
 - **AND** existing webhook/manual refresh and stale-reply guards apply to stage updates and removal
 
 #### Scenario: Approved while checks are pending or failed
@@ -1465,15 +1465,21 @@ Git SHALL derive Build, Review or Approved from assigned managed label names and
 - **AND** GitHub's required checks remain the merge gate; the app does not promote or merge the PR
 
 #### Scenario: No managed label
-- **WHEN** a PR has no managed stage label and a live linked agent exists
-- **THEN** its existing robot action, known-agent tooltip and focus behavior remain available
-- **AND** a row with neither managed stage nor live related agent has no stage control or unnecessary title-stage reservation
+- **WHEN** an Open/Draft PR has no managed stage label and a verified live ship/fix target exists
+- **THEN** one bottom-right Build chip replaces its title-line robot and retains the guarded build-agent focus action
+- **AND** missing or invalid round metadata produces Build, not Build 1 or no stage
+- **AND** a row with neither managed stage nor verified live build target does not invent a build stage; existing non-build fallback agent navigation remains unchanged
+
+#### Scenario: Planning-only build owner
+- **WHEN** a live ship/fix task has only planned its linked PR, including a draft plan awaiting approval
+- **THEN** it uses the same Build caption and build-owner focus action as an initial implementation task without review history
+- **AND** Build does not assert implementation approval or completion, and a task with no PR contributes no row or chip
 
 #### Scenario: Multiple labels and unavailable agents
 - **WHEN** several managed aliases coexist or the chosen stage has no live connected role target
 - **THEN** the existing deterministic precedence produces one bottom-right plain stage chip without a separate robot or top chip
 - **AND** the stage remains represented in the bounded coordinator label group even when unrelated labels precede it
-- **AND** unavailable Build or Review retains its dimmed explanatory tooltip and cannot focus an agent or fall through to opening the PR
+- **AND** unavailable assigned Build or Review stays dimmed without a tooltip and cannot focus an agent or fall through to opening the PR
 
 ### Requirement: Role-aware stage navigation
 Build SHALL target ship or fix terminals by a validated full crew.pr identity or matching repository/head branch. Review SHALL target only crew.kind=review terminals whose crew.pr matches the PR, never by branch. Live connected targets SHALL focus their existing machine-qualified terminal without opening GitHub. Approved SHALL have no agent action and SHALL allow the row's PR action.
@@ -1504,11 +1510,11 @@ Build SHALL target ship or fix terminals by a validated full crew.pr identity or
 - **AND** Build and Review focus actions do not also activate that row action
 
 ### Requirement: Optional build review history
-Git SHALL read optional crew.round, crew.finding and crew.approved from matched terminal labels without inventing history or deriving stage from approval metadata. Visible stage names SHALL be Build, Review or Approved, with Build n+1 when completed review round n is supplied. Informative hover SHALL expose any supplied finding as back from review n: finding. Missing or invalid metadata SHALL add no invented round or finding.
+Git SHALL read optional crew.round, crew.finding and crew.approved from matched terminal labels without inventing history or deriving stage from approval metadata. Visible stage names SHALL be Build, Review or Approved, with Build n+1 when completed review round n is supplied. Stage controls SHALL have no tooltip, including finding or round hover. Missing or invalid metadata SHALL add no invented round or finding.
 
 #### Scenario: First return from review
 - **WHEN** the Build terminal reports completed review round 1 and a finding
-- **THEN** its plain chip reads `Build 2` and its tooltip includes back from review 1: followed by that finding
+- **THEN** its plain chip reads `Build 2` without a finding tooltip
 - **AND** later completed rounds advance the same chip's build number without adding another visible stage
 
 #### Scenario: Older Crew has no review metadata
@@ -1522,36 +1528,36 @@ Git SHALL read optional crew.round, crew.finding and crew.approved from matched 
 - **AND** no CI-dependent chip or extra agent action is inferred from that SHA
 
 ### Requirement: Unavailable stage targets are inert
-Build and Review chips SHALL be dimmed and non-clickable when their target has ended, is absent or is on a disconnected machine. Their tooltip SHALL explain the known reason without inventing a live target or verdict. Availability SHALL be rechecked before focus. Ended-target metadata SHALL grant no navigation authority and SHALL NOT be persisted as portable preferences.
+Build and Review chips SHALL be dimmed and non-clickable when their target has ended, is absent or is on a disconnected machine. Stage chips SHALL have no hover tooltip; accessible semantics SHALL identify known unavailability without inventing a target or verdict. Availability SHALL be rechecked before focus. Ended-target metadata SHALL grant no navigation authority and SHALL NOT be persisted as portable preferences.
 
 #### Scenario: Ended build target
 - **WHEN** the PR remains Build after its build terminal ends
-- **THEN** its dimmed chip explains that the build agent ended, with the existing known CI state if available
+- **THEN** its dimmed chip has accessible ended-build semantics, with the existing known CI state if available, and no tooltip
 - **AND** the chip does not focus an agent or activate the row
 
 #### Scenario: Ended reviewer
 - **WHEN** the PR remains Review after its reviewer ends without a new verdict label
-- **THEN** its dimmed chip explains reviewer ended without a verdict
+- **THEN** its dimmed chip has accessible reviewer-ended semantics and no tooltip
 - **AND** no branch-matched worker is substituted as the reviewer
 
 #### Scenario: Disconnected remote machine
 - **WHEN** a known target belongs to a machine that is not connected
-- **THEN** its chip is dimmed with on machine, not connected using that machine's name
+- **THEN** its chip is dimmed with accessible disconnected-machine semantics naming that machine, without a tooltip
 - **AND** reconnecting with a valid live identity restores focus using its machine-qualified address
 
 #### Scenario: No target observed
 - **WHEN** no role-matched terminal is available and no prior terminal identity is known
-- **THEN** the managed stage is still shown dimmed with an unavailable-target explanation
+- **THEN** the assigned managed stage is still shown dimmed with accessible unavailable-target semantics and no tooltip
 - **AND** the app does not claim to know that an unobserved terminal ended
 
 #### Scenario: Retained coordinator target loses live membership
 - **WHEN** a previously verified coordinator target ends or its machine disconnects while its PR remains displayed, including historical-only rows
-- **THEN** the same-home remembered identity supplies the known ended or disconnected explanation without requiring current live task membership for presentation
+- **THEN** the same-home remembered identity supplies known ended or disconnected accessible semantics without requiring current live task membership for presentation
 - **AND** stale membership and remembered identity authorize no focus or reads, and another home cannot borrow that identity
 
 #### Scenario: Coordinator target reconnects before verification
 - **WHEN** the target becomes live again but its coordinator membership is still unverified
-- **THEN** the chip stays dimmed and explains that the role target is unavailable
+- **THEN** the chip stays dimmed with accessible unavailable-target semantics and no tooltip
 - **AND** only a fresh verified exact live task binding restores its focus action
 
 ### Requirement: Agent navigation shares pin motion
@@ -1804,17 +1810,18 @@ Open and Closed SHALL retain their own actionable page errors. A failure in one 
 - **AND** returning to the failed tab restores its own error rather than inventing a successful load
 
 ### Requirement: Tight bottom-right plain stage projection
-The one managed stage control SHALL use plain Build, Review or Approved text on the bottom-right checks line, stage-palette colour, subtle raised fill and tight 2px side padding, without robot emoji or outline. Supplied completed round n SHALL show Build n+1; supplied findings SHALL remain informative hover. Titles SHALL occupy the entire row content width except a live unlabelled-agent fallback robot. Probes SHALL measure the same caption/style without navigation handlers.
+The one stage control SHALL use plain Build, Review or Approved text on the bottom-right checks line, stage-palette colour, subtle raised fill and 6px side padding, without robot emoji, outline or tooltip. Supplied completed round n SHALL show Build n+1. Titles SHALL occupy the entire row content width except an unrelated live fallback robot. Probes SHALL measure the same caption/style without navigation handlers.
 
 #### Scenario: Full-width title and supplied round
-- **WHEN** normal or narrow rows show any managed stage, including supplied Build rounds
+- **WHEN** normal or narrow rows show any managed or initial-build stage, including supplied Build rounds
 - **THEN** the title truncates only at the right content edge with no stage reservation
-- **AND** exactly one tight bottom-right chip is visible, and changing the round invalidates its measured caption
+- **AND** exactly one bottom-right chip is visible, and changing the round invalidates its measured caption
+- **AND** side padding is 6px, row height remains 74px and the metadata-line height and trailing anchor are unchanged
 
 #### Scenario: Preserved role actions
 - **WHEN** the visible stage is activated
 - **THEN** fresh guarded Build/Review targets focus their role agent and Approved opens the PR
-- **AND** unavailable targets remain dimmed/inert with explanation, while probes and ghosts cannot navigate
+- **AND** unavailable targets remain dimmed/inert with accessible semantics, while probes and ghosts cannot navigate
 
 ### Requirement: Selected-agent pin and remaining-section projection
 The resolved currently selected agent PR SHALL own the pin independently of clickPin state. Direct tab/sidebar/keyboard selection SHALL pin without animation; existing row-control clicks alone SHALL retain move-to-top motion. The pin SHALL appear above its section and remain visible when collapsed. A header SHALL count only unpinned rows beneath it and SHALL disappear for a lone pin; tab totals SHALL remain full.
@@ -1859,3 +1866,16 @@ Ordinary and coordinator Git panels SHALL never show repository section headers 
 - **WHEN** a compatible previously published list or authoritative empty result refreshes
 - **THEN** that presentation remains without body Loading, and only the under-header line animates while work is active
 - **AND** visible failures, pins, folds, paging and scroll behavior retain their existing policy
+
+### Requirement: Stage hover suppression includes parent label groups
+Stage hover SHALL show no tooltip, including assigned aliases, round/finding details or agent-action text inherited from label-strip or metadata parents. Unrelated labels and metadata SHALL retain their existing informative tooltips, and PR titles SHALL retain full-title hover. This policy SHALL use existing fit facts without adding measurement work or reads.
+
+#### Scenario: Hover any stage
+- **WHEN** Build, Build 2, Build 3, Review, legacy Rework projected as Build or Approved is hovered in any row variant
+- **THEN** the control has no stage tooltip, whether enabled, unavailable, ghost or clipped
+- **AND** its existing click, keyboard and accessibility behavior remains available as appropriate
+
+#### Scenario: Mixed label strip
+- **WHEN** an unrelated label is clipped beside a managed stage
+- **THEN** the existing label-group tooltip can expose the unrelated label's complete name
+- **AND** stage aliases, agent names, findings and stage-only text are not reintroduced through that parent tooltip
