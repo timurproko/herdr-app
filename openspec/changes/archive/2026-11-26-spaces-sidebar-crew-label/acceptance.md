@@ -19,7 +19,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-26-spaces-sidebar-crew-label/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-26-spaces-sidebar-crew-label/acceptance.md",
   "finalizedDate": "2026-11-26",
-  "specBaseSha": "0fc8d993f739715230866fb40b0a42a71bb95c22",
+  "specBaseSha": "2fedc079658a7510eb6eda50fa6f7c82a188ff93",
   "acceptanceScenarios": [
     "Completed nonlive reports retain read-only history, while live ambiguous membership cannot gain historical or worker authority.",
     "Workers independently read canonical repository and page data despite absent, empty or unverified coordinator seeds, with selected drafts below their headers.",
@@ -29,7 +29,7 @@ The maintainer integration decision accepts these scenarios:
     "Tab and space editors share field and action presentation while preserving captured targets, selection, cancellation and row heights."
   ],
   "archiveDigest": "a8bb2ef376629489aae58b6fd1786ebcc99776795e6b112309a530890f9d1be5",
-  "specDigest": "29b043c916fe2c1373e5226c8121626cac6ef1b7a57c2fcf64a342e22323ad26",
+  "specDigest": "799e583c15949db43e9a039696368ca4b1fc2b7da75be999cb3275ba5b02bb54",
   "tasksDigest": "9eae285a0a45df6d7ef6fac08f292db8f84cdb188ba483af86d7ba952a392373",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []

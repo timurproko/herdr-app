@@ -512,19 +512,6 @@ Inline space rename SHALL retain 24px action buttons, a 2px inter-button gap and
 - **AND** Confirm is 2px to its left on the machine-plus and child-count axis, the input ends 4px before Confirm, and ordinary tags/count/disclosure are suppressed while editing
 - **AND** Enter saves only the captured space, Escape or blur cancels unchanged, and repeated rename does not reset an existing draft or selection
 
-### Requirement: Consistent workspace inline rename presentation
-Tab and space inline rename SHALL share field and action presentation: button and icon sizes, field-to-action and inter-action gaps, vertical centring, hover and focus treatment. Entering rename SHALL preserve row height and limit tab width growth to the editable field and required actions. Visual unification SHALL NOT change captured targets, native input ownership or save/cancel behavior.
-
-#### Scenario: Default and narrow rename layouts
-- **WHEN** a tab or space enters inline rename at default or narrow widths
-- **THEN** both editors show the same-sized field, check and cancel controls with identical icons, gaps, vertical alignment, hover and focus styling
-- **AND** fields shrink or tabs use their existing scrolling/expansion behavior without overlapping or clipping the action controls, changing row height or adding unnecessary tab-width growth
-
-#### Scenario: Rename completion and cancellation
-- **WHEN** the user submits, cancels, presses Escape or blurs a tab or space inline editor
-- **THEN** the original owner-bound save, cancel and focus-restoration rules still apply without terminal input or unintended drag
-- **AND** sidebar agent rows retain their existing behavior without gaining a new rename feature
-
 ### Requirement: Global project-space switch in Spaces settings
 Enabled Crew SHALL contribute one standard Spaces row immediately below Connect fleet space to coordinator, titled Separate space per project. Its switch SHALL show global Herdr intent: absent/off means combined; on means per-project. Title and description SHALL have no per-machine wording. Existing row, toggle and badge presentation SHALL be reused.
 
@@ -569,3 +556,16 @@ Crew without the required desktop-setting capability SHALL leave the row disable
 - **WHEN** synthetic native fixtures render off, on and pending or refused states at 100% and 130%
 - **THEN** title, description, standard switch and existing-style machine status remain legible without overlap or overflow
 - **AND** the fixtures do not alter real Crew configuration or running coordinators
+
+### Requirement: Consistent workspace inline rename presentation
+Tab and space inline rename SHALL share field and action presentation: button and icon sizes, field-to-action and inter-action gaps, vertical centring, hover and focus treatment. Entering rename SHALL preserve row height and limit tab width growth to the editable field and required actions. Visual unification SHALL NOT change captured targets, native input ownership or save/cancel behavior.
+
+#### Scenario: Default and narrow rename layouts
+- **WHEN** a tab or space enters inline rename at default or narrow widths
+- **THEN** both editors show the same-sized field, check and cancel controls with identical icons, gaps, vertical alignment, hover and focus styling
+- **AND** fields shrink or tabs use their existing scrolling/expansion behavior without overlapping or clipping the action controls, changing row height or adding unnecessary tab-width growth
+
+#### Scenario: Rename completion and cancellation
+- **WHEN** the user submits, cancels, presses Escape or blurs a tab or space inline editor
+- **THEN** the original owner-bound save, cancel and focus-restoration rules still apply without terminal input or unintended drag
+- **AND** sidebar agent rows retain their existing behavior without gaining a new rename feature
