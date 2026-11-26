@@ -397,8 +397,8 @@ export default class Spaces extends View {
             {hover: s => s.text_color(t.foreground), tooltip: repair?.error || 'This machine was rebuilt or replaced. Click to connect to the new one.'})
             .on_click(this.drag.guard((_e, cx) => { cx.stop_propagation(); this.reconnect(machine, cx); }))
             .child(repair?.busy ? "Connecting…" : "Connect"))] : []),
-        // The status dot, then +, then the shared fold chevron. Preserve the
-        // plus button's visual midpoint without moving the dot or chevron.
+        // The status dot, then +, then the shared fold chevron. The plus
+        // target ends on the same right edge as expanded Crew / Agents numbers.
         h_flex().id(`machine-actions-${m ?? "local"}`).flex_none().gap(3).items_center()
           .when(shows("spaces.show.machineStatus"), el => el.child(status()))
           .when(connected, el => el.child(iconButton(t, { id: `machine-add-${m ?? "local"}`, icon: "mods/custom-workspace-chrome/plus.svg", label: "New space", color: t.muted,
