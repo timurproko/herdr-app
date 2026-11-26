@@ -217,6 +217,13 @@ belongs to, then Add), the description, and one row per item with **Remove** on 
   available; project changes add no new log. Other plugins keep the default wording with
   their declared name. Batch changes retain successes and refresh the authoritative list
   after reporting failures. Lists start collapsed.
+- Crew names a project after its folder: 1–40 lowercase ASCII letters, digits, dashes and
+  dots, starting with a letter, digit or one dot followed by one, with no consecutive or
+  trailing dots. Safe dots stay, and a folder starting with a dot keeps one leading dot, so
+  `D:\Git\xrbuild\.xrbuild` is added as `.xrbuild`, separate from `xrbuild`. An older Crew
+  that refuses the name gets one request and the update message, never a retry under
+  another name. A folder the last list already shows, under any name, is not sent again:
+  Add says **Could not add D:\Git\xrbuild\.xrbuild: it is already added as xrbuild-private.**
 - A deep link `{ section, search }` (Settings props `pluginSection`, `pluginSearch`) opens
   an items picker filtered to that search.
 
