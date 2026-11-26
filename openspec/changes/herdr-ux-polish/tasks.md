@@ -8,7 +8,7 @@ Approved by the person: multi-child support and warm header-only activity, with 
 
 ## 2. Connected disclosure without a child count
 
-- [ ] 2.1 Omit Spaces counts in both states while preserving Agents defaults and all-child folding; verify focused disclosure/selection tests and document no-count behavior.
+- [x] 2.1 Omit Spaces counts in both states while preserving Agents defaults and all-child folding; verify focused disclosure/selection tests and document no-count behavior.
 
 ## 3. Multi-child connected block alignment and reorder
 

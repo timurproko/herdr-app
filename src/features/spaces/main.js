@@ -334,7 +334,7 @@ export default class Spaces extends View {
   }
   parentDisclosure(row,t) {
     const key=this.parentKey(row),open=!this.connectedFolds().has(key);
-    return this.drag.control(sidebarParentFold(t,{id:`space-fold-${row.w.id}`,open,count:row.block.length-1,onToggle:this.drag.guard(cx=>this.toggleConnected(row,cx))}))
+    return this.drag.control(sidebarParentFold(t,{id:`space-fold-${row.w.id}`,open,onToggle:this.drag.guard(cx=>this.toggleConnected(row,cx))}))
       .on_mouse_down('left',(_e,cx)=>cx.stop_propagation());
   }
   toggleConnected(row,cx) {

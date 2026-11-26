@@ -26,7 +26,8 @@ for(const machine of [null,'pc2']) {
  for(const zoom of [.75,1,1.3,2]){const boxes=rowGeometry(c,268,zoom),b=boxes.get(badge(c));assert.equal(b.x,53*zoom,'Agents child icon column');assert.equal(b.width,16*zoom);}
  const button=find(p,'space-fold-parent'),ref=fold(t,{id:'ref',open:true,count:1,onToggle(){}});
  for(const k of ['h','px','gap','rounded','text_size'])assert.deepEqual(button.attrs[k],ref.attrs[k]);
- button.attrs.on_click[0]({},cx);assert.equal(find(element().children(view.grouped(t,false)),'space-fold-parent').kids.at(-1),'1');
+ assert.equal(button.kids.length,1);assert.equal(fold(t,{id:'agents',open:false,count:3,onToggle(){}}).kids.at(-1),'3','Agents still shows collapsed counts');
+ button.attrs.on_click[0]({},cx);assert.equal(find(element().children(view.grouped(t,false)),'space-fold-parent').kids.length,1,'Collapsed Spaces shows only its chevron');
  assert.deepEqual(Array.from(view.visibleRows(false),r=>r.w.id),['parent','other']);assert.deepEqual(Array.from(view.visibleRows(true),r=>r.w.id),['parent','child','other']);
  assert.equal(selects.length,0);assert.equal(moves.length,0,'Folding cannot select or reorder');
  const reloaded=new Main();assert.deepEqual([...reloaded.connectedFolds()],[...view.connectedFolds()]);
