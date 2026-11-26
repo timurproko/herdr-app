@@ -17,16 +17,16 @@ export { FLEET_DISPLAY_KEY, fleetDisplayChangeAllowed, updateFleetDisplay } from
 // calls this supported native transport; fixtures inject a connection factory.
 export const connectWebSocket = url => WebSocket.connect(url);
 
-// Explicit, local-only private action. The installed bridge accepts an allowlisted
+// Explicit private action through a local capability bridge. The installed bridge accepts an allowlisted
 // target, receives the payload in memory, then pipes it to its worker's stdin.
 // Never put payload, an authenticated URL or a credential in exec arguments.
 export async function privateAction(target, payload, context = {}) {
-  if (checking() || context.machine != null || context.isCurrent?.() === false) throw Error('Private action unavailable');
+  if (checking() || context.isCurrent?.() === false) throw Error('Private action unavailable');
   let socket, cancelled = false;
   context.onCancel?.(() => { cancelled = true; if (socket) Promise.resolve(socket.close()).catch(() => {}); });
   const current = () => !cancelled && context.isCurrent?.() !== false;
   try {
-    const result = await exec('node', [`${appHome()}/.customizations/runtime/lib/private-actions/bridge.cjs`, '--start', appHome(), target], { timeout: 10000 });
+    const result = await exec('node', [`${appHome()}/.customizations/runtime/lib/private-actions/bridge.cjs`, '--start', appHome(), target, JSON.stringify({machine: context.machine ?? null, ...(context.privateDestination ? {binding: context.privateDestination} : {})})], { timeout: 10000 });
     if (!current() || result.code !== 0) throw Error('Private action unavailable');
     const address = JSON.parse(result.stdout);
     if (!Number.isInteger(address.port) || address.port < 1 || address.port > 65535 || !/^[a-f0-9]{64}$/.test(address.session) || !(address.expires > Date.now() && address.expires <= Date.now() + 60000)) throw Error('Private action unavailable');
@@ -36,7 +36,7 @@ export async function privateAction(target, payload, context = {}) {
     const text = await socket.read();
     if (!current() || typeof text !== 'string' || text.length > 2097152) throw Error('Private action unavailable');
     return JSON.parse(text);
-  } catch { throw Error('Private setup did not finish. Check the local installation and try again.'); }
+  } catch { throw Error('Private setup did not finish. Check the selected machine before trying again.'); }
   finally { if (socket) await Promise.resolve(socket.close()).catch(() => {}); }
 }
 
