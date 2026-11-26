@@ -175,7 +175,8 @@ export default class Changes extends View {
   }
 
   syncAggregate(cx) {
-    this.aggregate ??= new AggregatePulls({shown:()=>this.shown(),onUpdate:view=>this.startCISweep(view),presentationEpoch:()=>host.shared('custom.git.presentation-generation')??0});
+    this.aggregate ??= new AggregatePulls({shown:()=>this.shown(),onUpdate:view=>this.startCISweep(view),presentationEpoch:()=>host.shared('custom.git.presentation-generation')??0,
+      presentationAlive:saved=>!saved.parent || host.spaces().some(space=>space.id===saved.parent && (space.machine??null)===(saved.machine??null))});
     if(!this.aggregate.sync(cx)) return false;
     const scope=`tasks:${this.aggregate.context.scope}`;
     if(this.context!==scope) {
@@ -1183,6 +1184,7 @@ export default class Changes extends View {
     if(!window) {
       window=new TaskReveal();
       if(this.aggregate.entries?.size)Object.assign(window,this.taskPresentations.get(key)??{});
+      if(window.offset>0)window.restoreOffset=window.offset;
       window.key=key;window.metrics=new SidebarScrollState();
       window.measurement=this.taskMeasureSequence=(this.taskMeasureSequence??0)+1;
       this.taskWindows.set(key,window);
@@ -1191,6 +1193,7 @@ export default class Changes extends View {
       this.selectedTaskWindow=window;this.taskSelectionEpoch=(this.taskSelectionEpoch??0)+1;
       window.correction=null;window.anchorMarker=null;window.scheduledCorrection=null;
     }
+    if(window.restoreOffset){window.correction={from:0,to:window.restoreOffset};delete window.restoreOffset;}
     const zoom=settings().zoom||1;
     if(window.zoom && window.zoom!==zoom) {
       window.metrics.awaitZoom=true;

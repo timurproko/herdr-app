@@ -796,18 +796,20 @@ native reorder, which this presentation-only switch does not perform.
 See the [Herdr 0.1.17 shipped shortcuts](https://github.com/herdrdev/herdr-app/blob/v0.1.17/defaults/keys.json)
 and [native index-selection implementation](https://github.com/herdrdev/herdr-app/blob/v0.1.17/src/window.rs#L3194-L3202).
 The fleet badge's fill uses the coordinator's actual colour and follows recolouring
-without changing the fleet's saved colour. Both expanded attached rows show a small
-muted outline chain immediately before their Crew pills, matching the worktree
-marker's size and alignment, not a filled badge. The two chains line up in one
-column just left of the right-aligned Crew pills. Metadata order is counts, worktree, chain, then tags; with multiple
-tags, the chain/Crew group stays last and unrelated tags retain their relative order.
-No elbow or connector lines remain. The fleet name starts at the ordinary left edge;
-only inactive names are muted. Selected fleet names use the same foreground and normal
-weight as other selected spaces, with ordinary hover and selection backgrounds.
-Both expanded rows show the same Crew pill at the right; the pills share the same
-right edge. Renaming hides markers and tags; the Worktree icon switch hides only
-worktree markers, not either row's independent chain. Both chains disappear on
-detachment; neither the compact rail nor a drag chip shows a chain.
+without changing the fleet's saved colour. Expanded attached fleets are indented
+children, using the same rounded connector, stroke and spacing as child agents.
+Neither row shows a chain, and only the coordinator shows Crew; unrelated plugin
+tags remain. The coordinator's separate Agents-style chevron folds its children,
+showing their count beside the chevron only while collapsed. Folds are local,
+identity-scoped and restored on reload, never portable preferences. Selecting a
+hidden child through native shortcuts/navigation discloses its parent without
+changing the native selection target. Explicit folding itself never selects the
+parent. The compact rail ignores these folds and keeps both numbered badges.
+Only inactive names are muted; selected child names keep ordinary foreground,
+weight, hover and selected backgrounds. Counts/worktree metadata stays before
+trailing tags; renaming hides markers/tags, and Worktree visibility does not hide
+the child connector. Each remote machine can have its own same-machine pair;
+cross-machine candidates stay independent under their original machine headers.
 Choosing a colour or Automatic from either attached row edits the coordinator's
 colour; the fleet's saved colour and Automatic flag stay untouched. Its palette and
 mouse/keyboard choices use that same captured coordinator. Colour permission follows
@@ -823,7 +825,7 @@ worker navigation, coordinator colour writes or messages. Disabling
 attachment or confirmed unlinking restores that independent fleet colour.
 Unrelated plugin tags remain; the compact rail stays badge-only. Refreshing Git or
 Crew, relay events, focus changes and unrelated pane changes do not temporarily remove
-either attached-row chain, shared badge colour or attached row order. The pair is a persisted property of its exact native
+child nesting, shared badge colour or attached row order. The pair is a persisted property of its exact native
 space IDs and verified coordinator home/owner/adoption identity, not a temporary
 mode with a display timeout. Adding, renaming, removing or reordering unrelated
 spaces/tabs/panes on either machine cannot detach it. App restart, mod reload and
@@ -841,7 +843,8 @@ to ordinary folder Git; a previous owner's result cannot suppress Loading. No ne
 reads or worker navigation are allowed until verification succeeds.
 Only sanitized pair identity is persisted for restoration, not task/PR inventory,
 reports or credentials; it is never exported as a portable preference.
-Dragging either expanded row moves the pair, with both rows dimmed and exactly one
+Dragging either expanded row, or a collapsed coordinator, moves the whole pair
+(including its hidden child), with visible source rows dimmed and exactly one
 chip showing the grabbed row's own number and name: **2 crew** when grabbed there,
 or **1 coordinator** when grabbed on the coordinator. Its badge uses the shared
 coordinator colour in either case, including return/fade; no chain or second row

@@ -290,6 +290,17 @@ Core-first worker exit cannot silently remove its PR before Crew publishes the
 closed record. A working/finished mismatch remains unverified rather than renewing
 action freshness, while existing same-home rows stay explicitly stale.
 
+Spaces presents accepted same-machine blocks using Agents' shared child branch
+and parent disclosure primitives. The child retains its native index and badge
+colour inheritance, but is indented; neither row has a chain and only the parent
+shows Crew. Unrelated tags and worktree metadata keep their ordinary trailing
+edge. A separate local `custom.spaces.parents.folded` set is bounded to 256 exact
+machine/block/binding keys and is never exported. Full block order remains the
+reorder authority; only drawing/drop geometry filters hidden children. A folded
+parent moves its hidden child too, and native selection transitions disclose a
+hidden selected child on the existing lifecycle. Compact rail membership and
+native shortcuts are unchanged. Cross-machine candidates remain independent.
+
 Colour is a separate binding-scoped action, not live-worker navigation. The generic
 `pluginAllows('spaces.color', {pair})` guard accepts the exact displayed pair only
 after a successful status read in the calling mod (or a witnessed shared read).

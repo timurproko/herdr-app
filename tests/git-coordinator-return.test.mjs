@@ -17,4 +17,9 @@ a.entries.set('unknown',{link:{repo:'fixture/unknown',targets:[{terminal:'worker
 const {panel}=h;panel.context='tasks:loading';panel.aggregate=a;panel.shown=()=>true;panel.notices={sync(){},presentation(){}};panel.enrollmentPicker={render(){}};panel.syncChecksFallback=()=>{};
 let tree=h.render(()=>panel.renderAggregate(h.cx,t));assert.equal(find(tree,'task-repo-header-fixture/unknown'),undefined);assert.ok(find(tree,'git-task-waiting'));assert.ok(find(tree,'git-task-empty'));
 a.entries.get('unknown').error={kind:'read',message:'Read failed'};tree=h.render(()=>panel.renderAggregate(h.cx,t));assert.ok(find(tree,'task-repo-header-fixture/unknown'));assert.ok(find(tree,'task-error-fixture/unknown'));assert.equal(find(tree,'git-task-loading'),undefined);
+// Re-entry gets a new native window/measurement owner but retains pure reveal/anchor facts.
+const sections=[{repo:'fixture/repo',rows:Array.from({length:30},(_,i)=>({key:`fixture/repo#${i}`}))}];
+let w=panel.taskSections(sections,'scroll-a').window;while(w.revealMore()){}w.observe(700,400);const depth=w.limit;
+panel.taskSections(sections,'scroll-b');w=panel.taskSections(sections,'scroll-a').window;
+assert.equal(w.offset,700);assert.equal(w.limit,depth);assert.equal(w.correction.to,700,'New native handle must receive the saved anchor, not start at zero');assert.equal(w.handle,undefined);
 console.log('PASS bounded same-home return, stale action refusal, Git/provider generation invalidation, one panel Loading and visible actionable cold failure');

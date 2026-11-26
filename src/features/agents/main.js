@@ -4,7 +4,7 @@
 
 import { View, div, image, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { U, slot, itemHover, statusBulb, menuSurface, chevron, menuHeading, emptyState, sidebarNumericSlot } from "./ui.js";
+import { U, slot, itemHover, statusBulb, menuSurface, chevron, menuHeading, emptyState, sidebarNumericSlot, sidebarChildBranch, sidebarParentFold } from "./ui.js";
 import { programIcon } from './program-icon.js';
 import { sidebarScroll } from './sidebar-scroll.js';
 import { paneDirectory } from './directory.js';
@@ -206,9 +206,7 @@ export default class Agents extends View {
       .hover((s) => s.bg(itemHover(t, on)))
       .on_click(() => this.peek(k.address))
       .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.menu({ address: k.address }); })
-      .children(s.lines.map(l => div().self_start().mt(-4).w(9).h(17).mr(4).flex_none()
-        .when(Boolean(l), el => el.border_l(1.5).border_color(t.input))
-        .when(l === "└" || l === "├", el => el.border_b(1.5).rounded_bl(6))))
+      .children(s.lines.map(l => sidebarChildBranch(t,l)))
       .child(pic.mr(U.gap))
       .child(div().flex_1().truncate().text_color(labelColor).child(k.name || k.template || k.program?.name || k.address))
       .child(this.statusSlot(t, { status: st }, compact));
@@ -305,25 +303,9 @@ export default class Agents extends View {
       const sts = subs.map((s) => kidStatus(s.t, this.listed));
       const top = sts.reduce((m, s) => ((RANK[s] ?? 0) > (RANK[m] ?? 0) ? s : m), null);
       const open = !this.folded.has(a.address);
-      return div()
-        .id(`fold-${a.address}`)
-        .h(20)
-        .px(4)
-        .gap(4)
-        .flex()
-        .items_center()
-        .rounded(4)
-        .text_size(11)
-        .text_color(open ? t.dim : (t[top] ?? t.dim))
-        .cursor_pointer()
-        .hover((s) => s.bg(t.hover).text_color(t.foreground))
-        .on_click((_e, cx) => {
-          cx.stop_propagation();
-          open ? this.folded.add(a.address) : this.folded.delete(a.address);
-          cx.notify();
-        })
-        .child(chevron(t, open))
-        .when(!open, (el) => el.child(String(subs.length)));
+      return sidebarParentFold(t,{id:`fold-${a.address}`,open,count:subs.length,color:open?t.dim:(t[top]??t.dim),onToggle:cx=>{
+        open ? this.folded.add(a.address) : this.folded.delete(a.address);cx.notify();
+      }});
     };
 
     // Rows show only the session title, in priority, pinned and grouped views.

@@ -31,7 +31,7 @@ function rememberMissing(entry) {
   }
 }
 export class AggregatePulls {
-  constructor({shown,onUpdate,presentationEpoch=()=>0}) {this.shown=shown;this.onUpdate=onUpdate;this.presentationEpoch=presentationEpoch;this.presentations=new Map();this.entries=new Map();this.pending=new Map();this.diagnostics=new Map();this.serial=0;this.factOrder=new PullFactsOrder();}
+  constructor({shown,onUpdate,presentationEpoch=()=>0,presentationAlive=()=>true}) {this.shown=shown;this.onUpdate=onUpdate;this.presentationEpoch=presentationEpoch;this.presentationAlive=presentationAlive;this.presentations=new Map();this.entries=new Map();this.pending=new Map();this.diagnostics=new Map();this.serial=0;this.factOrder=new PullFactsOrder();}
   currentContext({presentation = false} = {}) {
     const context=sidebarPanelEnabled('changes') ? pluginPullContext(location().space,{presentation}) : null;
     return !presentation && context?.stale ? null : context;
@@ -41,10 +41,12 @@ export class AggregatePulls {
     const context=this.currentContext({presentation:true}), previous=this.context;
     const generation=JSON.stringify([this.presentationEpoch(),context?.presentationGeneration??this.providerGeneration??0]);
     if(this.presentationGeneration!==undefined && generation!==this.presentationGeneration)this.presentations.clear();
+    for(const [scope,saved]of this.presentations)if(!this.presentationAlive(saved))this.presentations.delete(scope);
     const compatible=this.presentationGeneration===generation;
     this.presentationGeneration=generation;if(context)this.providerGeneration=context.presentationGeneration??0;
     if(context?.scope!==previous?.scope || !compatible) {
-      if(previous && compatible && sidebarPanelEnabled('changes'))this.rememberPresentation();
+      if(previous && compatible && sidebarPanelEnabled('changes') && (context || location().space!==previous.parent))this.rememberPresentation();
+      else if(previous && !context)this.presentations.delete(previous.scope);
       this.readWake=null;this.manualRead=null;this.serial++;this.factOrder.reset();this.entries.clear();this.pending.clear();this.diagnostics.clear();this.lastCounts=null;
       if(context && !context.stale && context.parent)for(const [scope,saved]of this.presentations)if(scope!==context.scope && saved.parent===context.parent && saved.machine===context.machine)this.presentations.delete(scope);
       const saved=context && this.presentations.get(context.scope);

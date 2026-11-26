@@ -314,6 +314,19 @@ export function itemHover(t, selected) {
 export function chevron(t, open) {
   return svg(`mods/custom-workspace-chrome/chevron-${open ? "down" : "right"}.svg`).size(U.smallIcon).flex_none().text_color(t.dim);
 }
+// Agents' child branch and parent disclosure are also used by connected spaces.
+export function sidebarChildBranch(t, line) {
+  return div().self_start().mt(-4).w(9).h(17).mr(4).flex_none()
+    .when(Boolean(line),el=>el.border_l(1.5).border_color(t.input))
+    .when(line==='└'||line==='├',el=>el.border_b(1.5).rounded_bl(6));
+}
+export function sidebarParentFold(t,{id,open,count,color=t.dim,onToggle}) {
+  return div().id(id).h(20).px(4).gap(4).flex().items_center().rounded(4)
+    .text_size(11).text_color(color).cursor_pointer()
+    .hover(s=>s.bg(t.hover).text_color(t.foreground))
+    .on_click((_e,cx)=>{cx.stop_propagation();onToggle(cx);})
+    .child(chevron(t,open)).when(!open,el=>el.child(String(count)));
+}
 // Agents' number rail. Compensate differing surrounding gaps/chevron slots so
 // the painted number-to-chevron gap stays identical in repository headers.
 export function sidebarNumericSlot(t, id, value, { gap = 6, trailingSize = U.icon } = {}) {
