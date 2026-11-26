@@ -100,6 +100,9 @@ export default class Changes extends View {
   readEpoch() {try{return host.shared('custom.git.presentation-generation')??0;}catch{return 0;}}
   repositoryOnline() {if(!this.on)return true;try{return host.machines().some(m=>m.name===this.on && m.layout==='ready');}catch{return false;}}
 
+  // A restored root belongs to the cached presentation, not this destination.
+  entryRootPending() {return this.entryVerify && (this.loading || !this.entryRootReady);}
+
   rememberRepository() {
     const memory=this.aggregate?.presentations;
     if(!memory || !this.repo || !this.root || this.context?.startsWith('tasks:') || this.repositoryGeneration!==this.aggregate.presentationGeneration)return;
@@ -295,11 +298,11 @@ export default class Changes extends View {
   }
 
   pullsDue(state) {
-    return Boolean(!(this.readWake?.due>Date.now()) && this.root && !this.pullLoading && !(this.entryVerify && this.loading) && (this.entryRefreshing && !this.entryAttempted || this.pulls[state] === null && !this.pullsAt[state]));
+    return Boolean(!(this.readWake?.due>Date.now()) && this.root && !this.pullLoading && !this.entryRootPending() && (this.entryRefreshing && !this.entryAttempted || this.pulls[state] === null && !this.pullsAt[state]));
   }
 
   loadPulls(state, cx, force = false, notify = true, append = false) {
-    if (!this.shown() || !this.repositoryOnline() || this.entryVerify && this.loading || !VIEWS.includes(state) || !this.root || this.pullLoading || key() !== this.context || (!force && !this.pullsDue(state))) return;
+    if (!this.shown() || !this.repositoryOnline() || this.entryRootPending() || !VIEWS.includes(state) || !this.root || this.pullLoading || key() !== this.context || (!force && !this.pullsDue(state))) return;
     const after = append ? this.pages[state].cursor : null;
     if (append && (!this.pages[state].hasMore || !after || state !== this.view || !this.shown())) return;
     const root = this.root, on = this.on, context = this.context;
@@ -411,7 +414,7 @@ export default class Changes extends View {
     const number = this.agentPull ?? location().pullNumber;
     // Related reads use the same lease as list, event and fallback snapshots.
     // Do not cache a selection that has not actually acquired the queue.
-    if (!this.repo || !number || !this.shown() || this.pullLoading) return;
+    if (!this.repo || !number || !this.shown() || this.entryRootPending() || this.pullLoading) return;
     const scope = JSON.stringify([this.context,this.repo.name,number]);
     if (this.relatedKey === scope || (this.relatedRetry?.scope===scope && this.relatedRetry.until>Date.now())) return;
     this.relatedKey = scope; this.relatedRequest = null;
@@ -1178,13 +1181,13 @@ export default class Changes extends View {
   renderPulls(t) {
     const state = this.view, list = this.repositoryPresentation().pulls[state], selection = this.pullSelection(),liveRows=selection.liveRows;
     const click=this.pinMotion?.current;
-    if(this.sectionEntry && click && click.target===location().terminal && this.agentResolved===agentKey(location()))this.clickPin={terminal:location().terminal,number:click.number};
+    if(this.sectionEntry && click && click.target===location().terminal && this.agentResolved===agentKey(location()))this.clickPin=selection.active?.number===click.number?{terminal:location().terminal,number:selection.active.number}:null;
     const active=this.sectionEntry ? (this.clickPin && this.clickPin.terminal===location().terminal?liveRows.find(pr=>pr.number===this.clickPin.number):null):selection.active;
     const metrics=this.ordinaryScrollState(state), zoom=metrics.zoom, measurement=metrics.measurement;
     this.sampleNativeScroll(metrics,metrics.handle,zoom);
     this.pinMotion?.rebaseZoom?.(zoom);
     this.pinMotion?.active(this.context,state);
-    this.pinMotion?.resolve(location().terminal,active?.number,this.agentResolved === agentKey(location()));
+    this.pinMotion?.resolve(location().terminal,selection.active?.number,this.agentResolved === agentKey(location()));
     const retained = this.pinMotion?.current;
     const rows = retained?.snapshot.rows ?? liveRows, pinned = retained ? retained.snapshot.pinned : active;
     this.pullPresentation = {context:this.context,state,rows,pinned};
@@ -1594,7 +1597,7 @@ export default class Changes extends View {
     this.enrollmentPicker?.stop();
     const mappedRepository=this.agentLinks?.cachedRepository?.(location());
     if(this.repositoryGeneration!==undefined && this.repositoryGeneration!==this.aggregate?.presentationGeneration || (this.entrySeed || Object.values(this.seedTabs??{}).some(Boolean)) && !this.sourceCurrent(this.entrySource)
-      || this.repo && mappedRepository && this.repo.name.toLowerCase()!==mappedRepository.toLowerCase()) {
+      || key()===this.context && this.repo && mappedRepository && this.repo.name.toLowerCase()!==mappedRepository.toLowerCase()) {
       this.resetRepository();this.rootRequest=null;this.loading=false;this.context=null;
     }
     if (key() !== this.context || this.entryRefreshing && !this.entryAttempted && !this.entryRootReady && !this.error && !this.loading && this.shown()) this.refresh(cx, false);
@@ -1628,6 +1631,8 @@ export default class Changes extends View {
               if (!this.root || this.loading || this.pullLoading) return;
               this.webhooks?.retryNow();this.notices?.retryNow();
               this.manualRead={remaining:1,expires:Date.now()+30000};this.readWake=null;this.agentLinks?.invalidate?.();
+              // Keep demand queued while root verification blocks the read.
+              if(this.entryVerify){this.entryRefreshing=true;this.entryAttempted=false;}
               this.refresh(cx); this.loadPulls(this.view, cx, true);
             } })))
           .child(panelPin(t,{id:'git-pin',enabled:this.headerHovered}))
