@@ -1562,10 +1562,33 @@ needed. Other peer skips, failures and inventory errors retain the successful
 desktop revision and show one short matching-details warning (`update.log` for Settings runs,
 `deploy-all-result.json` for ordinary CLI runs without a captured log); desktop
 failure names the cause and documented
-manual rollback. Missing results/deadlines say outcome unknown and block replay
-while the prior process/lock is unresolved. Ordinary CLI failures also retain
+manual rollback. Missing results/deadlines never imply success or automatic replay.
+After recorded processes are dead and evidence settles, matching final receipts or
+conclusive same-run terminal logs can resolve the outcome. A completed deployment
+whose final receipt could not be saved says **Deployed, but the result could not be
+saved.**, with its log pointer; incomplete/foreign evidence stays unknown. Installed
+revision still requires the matching ownership digest, never log text or checkout HEAD. Ordinary CLI failures also retain
 their cause/recovery/details line after checking; a CLI installer timeout's
-durable result blocks another Settings update even without a Settings lock. There is no per-machine UI, news,
+durable result blocks ordinary Update even without a Settings lock.
+For a genuinely unknown run, **Retry update** is a separate deliberate action:
+a fresh successful check, dead recorded processes/known descendants, settled evidence
+and the original deadline (when dispatch remains uncertain) are required. Confirm
+that local and remote update work has stopped before pressing **Retry update** again;
+Cancel does nothing. Check now, reload, startup, timers and relay hints never replay.
+A changed run or late receipt invalidates confirmation; original evidence is preserved
+privately before a claimed retry. A stale terminal Settings record never supplies
+another CLI run's PID or deadline. Expired dead-owner retry claims are archived even
+after completion, without authorizing unknown replay.
+
+For a dead installer's lock, an orphan launch, or malformed legacy state,
+**Recover update** is a separate action: recorded owners must be dead, local process
+discovery must succeed and find no updater, and the person must confirm local and
+remote work has stopped. It moves stale locks/status/results into private recovery,
+logs the action, preserves ownership and rollback journals, and returns to **Check
+now**. It never retries or deploys. `deploy.lock` is never automatically removed;
+only that explicit stopped-state action may move it. The same guarded operation has
+a documented command. Active owners, unsafe paths or unavailable process/file facts
+still refuse recovery; they are not permission to force an update. There is no per-machine UI, news,
 rollback button, automatic rollback, daemon, scheduler or job history. See
 [first installation and real-app checks](docs/COMMANDS.md#trying-the-row-after-merge).
 The label is defined once in `src/shared/customization-update-model.js`.
