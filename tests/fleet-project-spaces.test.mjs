@@ -26,6 +26,7 @@ for(const machine of [null,'pc2'])for(const modes of [['combined'],['herdr-app',
  f.invalidateFleet();f.refreshFleets(cx,async()=>JSON.stringify(status),true);await Promise.all(jobs.splice(0));
  assert.equal(r.pluginWorkspaceLinks({presentation:true}).length,modes.length);assert.equal(r.pluginWorkspaceLinks().length,modes.length);
  assert.equal(r.pluginPullContext(q('owner')).links.length,modes.length);
+ for(const source of r.pluginPullContext(q('owner')).links)assert.equal(source.space,bound.tasks.find(t=>t.id===source.task).space,'Generic PR ordering carries exact verified native child membership');
  for(const link of r.pluginWorkspaceLinks({presentation:true}))assert.equal(f.fleetColorAllowed(link),true);
  const before=copy(list);
  for(const mutate of [t=>t.labels['crew.home']='other',t=>t.labels['crew.task']='wrong',t=>t.labels['herdr.space']='wrong',t=>t.address='other/t1',...(modes[0]==='combined'?[]:[t=>t.labels['crew.space.version']='2',t=>t.labels['crew.space.project']='wrong',t=>t.labels['crew.space.name']='wrong'])]) {

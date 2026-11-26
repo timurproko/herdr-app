@@ -304,7 +304,11 @@ matching authoritative task project evidence. Legacy/combined `fm-crew-<home>`,
 unchanged. The transport keeps task project, not reports or placement authority.
 Durable display identity may contain multiple child placement records, never PRs.
 Projected child order follows native order; explicit user names override project
-metadata. Captured whole-block membership guards every acknowledged reorder.
+metadata. Parent drags move the whole block; child drags permute only their own
+sibling native slots. Canonical membership/binding guards remain stable across
+expected sibling permutations, while exact native before/expected snapshots reject
+concurrent changes. Parent fold identity normalizes member order, including legacy
+stored keys. No separate sibling-order persistence or shortcut remapping exists.
 
 Spaces presents accepted same-machine blocks using Agents' shared child branch
 and parent disclosure primitives, with a shared vertical stem and final-child corner. The child retains its native index and badge
@@ -332,7 +336,13 @@ reads, worker navigation or exports. Opening an attached menu emits the generic
 refresh lifecycle; it yields before reads and joins the shared lease when possible.
 
 `plugins/git/mod/aggregate.js` consumes the registry's explicit task context only
-for the selected coordinator. It reads exact validated task PR URLs on that machine with
+for the selected coordinator. Live generic PR links carry their verified native
+child-space ID. The pure repository inventory projection ranks a repository by
+its earliest same-machine connected child representing exactly one repository;
+combined multi-repository children and finished-only unmatched sections retain
+the baseline tail order. Native sibling acknowledgements update this projection
+without scope/cache reset, IO or changing rows, counts, folds or loading. Retained
+same-scope associations remain presentation-only and expire with their inventory. It reads exact validated task PR URLs on that machine with
 three bounded concurrent requests, keys rows by repository plus PR number, and
 never probes the coordinator's directory. Working/reported live terminals are
 eligible. Same-home closed-task records and reported tasks whose terminals have

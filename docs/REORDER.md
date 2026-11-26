@@ -57,8 +57,16 @@ ordinary chip with the same pointer/return motion. Spaces represents the grabbed
 row's own numbered badge and name: `2 crew` from the fleet or `1 coordinator` from
 the coordinator. Attached badges share the coordinator's resolved colour without
 overwriting the fleet's saved colour. No chain or second row appears in the chip;
-both attached rows' small trailing chains stay in the expanded sidebar metadata,
-immediately before their Crew pills. Domain adapters still validate
+only the coordinator shows the plain Crew label and no row has a chain.
+Coordinator drags capture the whole block in `sources`; child drags capture only
+the grabbed child there, plus stable parent/member/binding identity in metadata.
+Child targets stay inside the original siblings and a singleton cannot move.
+A captured child gesture always passes relationship validation, even if attachment
+is disabled or its final link disappears before the next render/release. It must
+cancel, never fall through to independent movement; a new detached gesture keeps
+ordinary native ordering.
+The same component supplies dimming, marker, preview and cancellation for both
+scopes; there is no second gesture implementation. Domain adapters still validate
 bindings and destination block edges. Spaces commits its finite public ordering
 sequence only after each prior move is acknowledged; no native transaction is
 claimed and an uncertain result is not replayed. The compact Spaces rail retains

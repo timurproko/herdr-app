@@ -97,7 +97,7 @@ f.refreshFleets(cx,async()=>JSON.stringify(raw));await Promise.all(jobs.splice(0
 const context=r.pluginPullContext('coordinator');
 assert.deepEqual(copy(context.discovery),copy(bound.discovery));
 assert.equal(context.taskMembershipVerified,true);assert.equal(context.links.length,2,'Known live/history links only; aggregate deduplicates them');
-assert.deepEqual(copy(context.links[0]),{url,terminal:'t-known',task:'known',historical:false});
+assert.deepEqual(copy(context.links[0]),{url,terminal:'t-known',task:'known',historical:false,space:'fm-crew-home1'});
 assert.deepEqual(copy(context.links[1]),{url,terminal:null,task:'closed-known',historical:true});
 const at=state[f.FLEET_KEY].entries.local.at;
 const malformed=copy(raw);delete malformed.tasks[0].prDiscovery.url;
