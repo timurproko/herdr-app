@@ -118,16 +118,18 @@ for(const mode of ['ordinary','pinned','scrolling','coordinator','ghost'])for(co
     }));
     snapshot.row=plain(box);snapshot.next=plain(geometry.get(find(tree,`${prefix}pr-${pr.key?'owner/repo#18':18}`)));
     near(box.height,74*zoom,'Block height');near(snapshot['title-line'].height,20*zoom,'Title height');near(snapshot.byline.height,18*zoom,'Byline height');near(snapshot.meta.height,18*zoom,'Metadata height');
-    near(snapshot.title.x,(box.x/zoom+32)*zoom,'Title left reservation');near(snapshot.title.width,(box.width/zoom-63)*zoom,'Empty robot keeps title boundary with 3px trailing padding');
-    near(snapshot['agent-slot'].width,24*zoom,'Robot reservation');
+    near(snapshot.title.x,(box.x/zoom+32)*zoom,'Title left reservation');near(snapshot.title.width,(box.width/zoom-119)*zoom,'Shared stage reservation keeps title boundary with 3px trailing padding');
+    near(snapshot['agent-slot'].width,80*zoom,'Stage/robot reservation');
     const labelStrip=find(row,`${prefix}pr-labels-${id}`);
     if(labelStrip) {
       const pill=geometry.get(labelStrip.kids.at(-1)),robot=geometry.get(find(row,`${prefix}pr-agent-slot-${id}`));
       near(pill.x+pill.width,robot.x+robot.width,'Pills end at the robot control outer edge, not its inset glyph');
     }
     const button=find(row,`${prefix}pr-agent-${id}`),slot=find(row,`${prefix}pr-agent-slot-${id}`);
-    assert.equal(Boolean(button),agent);
-    if(!agent){assert.equal(slot.kids.length,0);assert.equal(slot.attrs.on_click,undefined);assert.equal(slot.attrs.role,undefined);}
+    const chip=find(row,`${prefix}pr-stage-${id}`);
+    assert.equal(Boolean(button),agent&&!pr.stage);assert.equal(Boolean(chip),Boolean(pr.stage));
+    if(!agent&&!pr.stage){assert.equal(slot.kids.length,0);assert.equal(slot.attrs.on_click,undefined);assert.equal(slot.attrs.role,undefined);}
+    if(chip){near(geometry.get(chip).width,80*zoom,'Bounded stage width');near(geometry.get(chip).height,20*zoom,'Stage stays on title line');assert.equal(chip.attrs.role,undefined,'Unknown stage targets do not become buttons');}
     if(button){assert.equal(geometry.get(button).height,24*zoom);assert.equal(Boolean(button.attrs.on_click),mode!=='ghost');}
     if(pr.checks){const icon=geometry.get(find(row,`${prefix}pr-check-icon-${id}`));assert.equal(icon.width,12*zoom);assert.equal(icon.height,12*zoom);}
     return snapshot;
