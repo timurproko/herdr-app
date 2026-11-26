@@ -92,6 +92,7 @@ async function harness(feature, pluginOn = true) {
     if (specifier === './ui.js') return new vm.SourceTextModule(fs.readFileSync(path.join(root, 'src/ui/ui.js'), 'utf8'), {context});
     if (specifier === './panel-kit.js') return new vm.SourceTextModule(fs.readFileSync(path.join(root, 'src/ui/panel-kit.js'), 'utf8'), {context});
     if (specifier === './settings-dialog.js') return new vm.SourceTextModule(fs.readFileSync(path.join(root, 'src/ui/settings-dialog.js'), 'utf8'), {context});
+    if (specifier === './presentations.js') return new vm.SourceTextModule(fs.readFileSync(path.join(root, 'src/plugins/git/mod/presentations.js'), 'utf8'), {context});
     if (specifier === './aggregate.js') return new vm.SourceTextModule(fs.readFileSync(path.join(root, 'src/plugins/git/mod/aggregate.js'), 'utf8'), {context});
     if (exports[specifier]) return new vm.SyntheticModule(Object.keys(exports[specifier]), function () {
       for (const [key, value] of Object.entries(exports[specifier])) this.setExport(key, value);
@@ -271,6 +272,9 @@ assert.ok(!noTasks.some(node => node?.asset?.endsWith('checklist.svg')));
 // similarly named PR, PR number in the agent title, or a missing branch.
 const selectionColors = {selected:'selected',hover:'hover',accent:'accent',border:'border'};
 const selection = taskPanel.view;
+// Exercise the existing pin renderer explicitly; actual space entry now uses
+// unpinned section projection (git-entry-cache / git-entry-motion regressions).
+selection.sectionEntry=false;
 selection.pulls = {open:[{number:907,headRefName:'fix/907'}, {number:906,headRefName:'fix/906'}, {number:908}],closed:[{number:900,headRefName:'fix/907'}]};
 for (const state of ['open','closed']) {
   selection.view = state;

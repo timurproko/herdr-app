@@ -1178,8 +1178,8 @@ export default class Changes extends View {
   renderPulls(t) {
     const state = this.view, list = this.repositoryPresentation().pulls[state], selection = this.pullSelection(),liveRows=selection.liveRows;
     const click=this.pinMotion?.current;
-    if(this.sectionEntry && click?.target===location().terminal && this.agentResolved===agentKey(location()))this.clickPin={terminal:location().terminal,number:click.number};
-    const active=this.sectionEntry ? (this.clickPin?.terminal===location().terminal?liveRows.find(pr=>pr.number===this.clickPin.number):null):selection.active;
+    if(this.sectionEntry && click && click.target===location().terminal && this.agentResolved===agentKey(location()))this.clickPin={terminal:location().terminal,number:click.number};
+    const active=this.sectionEntry ? (this.clickPin && this.clickPin.terminal===location().terminal?liveRows.find(pr=>pr.number===this.clickPin.number):null):selection.active;
     const metrics=this.ordinaryScrollState(state), zoom=metrics.zoom, measurement=metrics.measurement;
     this.sampleNativeScroll(metrics,metrics.handle,zoom);
     this.pinMotion?.rebaseZoom?.(zoom);
@@ -1287,7 +1287,7 @@ export default class Changes extends View {
     ]}).cursor_pointer().hover(s=>s.bg(t.selected)).on_click((_e,cx)=>{
       cx.stop_propagation();if(!this.repositoryScopeCurrent(repo,scope))return;
       this.taskSelectionEpoch=(this.taskSelectionEpoch??0)+1;
-      folded?this.foldedRepositories.delete(repo):this.foldedRepositories.add(repo);
+      this.foldedRepositories.has(repo)?this.foldedRepositories.delete(repo):this.foldedRepositories.add(repo);
       try {localStorage.setItem(FOLDED_REPOS_KEY,JSON.stringify([...this.foldedRepositories]));}catch{}
       cx.notify();
     });

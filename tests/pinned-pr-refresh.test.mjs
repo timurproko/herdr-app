@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import {kitModule,withKitUi} from './support/panel-kit.mjs';
 import vm from 'node:vm';
 import * as labelColors from '../src/plugins/git/mod/label-colors.js';
+import {Publication} from '../src/plugins/git/mod/presentations.js';
 import {PinSwap,PIN_SWAP_MS} from '../src/plugins/git/mod/pin-swap.js';
 import {loadMod} from '../tools/plugin-harness.mjs';
 const pulls=await loadMod({host:{},modules:{'pulls.js':'src/plugins/git/mod/pulls.js'},entry:"export * from './pulls.js';"});
@@ -23,9 +24,10 @@ async function harness() {
   const context=vm.createContext({localStorage:{getItem:()=>null,setItem(){}}});
   const host={layout:()=>({id:'panel',hidden:!shown,children:[{id:'panel-body',active:'changes'}]}),
     exec:(cmd,args,options)=>{({command:cmd,args,options}=githubInvocation(cmd,args,options));return new Promise(resolve=>pending.push({cmd,args,options,resolve}));},
-    settings:()=>({zoom:1}),theme:()=>({dim:'dim'}),run(){},openOverlay:spec=>opened.push(spec),closeOverlay(){},props(){},notify(){},nextCommand(){},window(){},hc:async()=>({code:1})};
+    machines:()=>[{name:'pc2',layout:'ready'}],settings:()=>({zoom:1}),theme:()=>({dim:'dim'}),run(){},openOverlay:spec=>opened.push(spec),closeOverlay(){},props(){},notify(){},nextCommand(){},window(){},hc:async()=>({code:1})};
   const modules={
     './enrollment-picker.js':{EnrollmentPicker:class{}},
+    './presentations.js':{Publication},
     './label-colors.js':labelColors,
     './aggregate.js':{AggregatePulls:class {sync(){return false;}stop(){}}},
     'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{},Background},'gpui-base':{h_flex:element,v_flex:element},
