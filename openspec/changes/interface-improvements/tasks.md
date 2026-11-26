@@ -15,11 +15,11 @@ Implementation begins only after plan approval. Groups correspond one-for-one, i
 
 ## 2. Repository headers show selected-tab task counts with Agents group styling and spacing
 
-- [ ] 2.1 Reuse or extract the existing Agents numeric rail into shared UI without changing Agents output; package any helper and pass actual-caller parity assertions for text, alignment, slot size and number-to-chevron glyph gap.
-- [ ] 2.2 Derive selected-tab repository counts from the full deduplicated eligible task inventory, not mounted rows or repository totals; pass Open/Closed, folded/unfolded, shared-link, unrevealed/history-expiry and incomplete-notice count cases with no extra IO.
-- [ ] 2.3 Add the number before the existing Git chevron while preserving its trailing alignment, hit target and actual-overflow name tooltip; pass 1/10/100 counts and long-name geometry across 75–200% zoom including 100%/130% and narrow panel widths.
+- [x] 2.1 Reuse or extract the existing Agents numeric rail into shared UI without changing Agents output; package any helper and pass actual-caller parity assertions for text, alignment, slot size and number-to-chevron glyph gap.
+- [x] 2.2 Derive selected-tab repository counts from the full deduplicated eligible task inventory, not mounted rows or repository totals; pass Open/Closed, folded/unfolded, shared-link, unrevealed/history-expiry and incomplete-notice count cases with no extra IO.
+- [x] 2.3 Add the number before the existing Git chevron while preserving its trailing alignment, hit target and actual-overflow name tooltip; pass 1/10/100 counts and long-name geometry across 75–200% zoom including 100%/130% and narrow panel widths.
 - [ ] 2.4 Capture and inspect actual Agents/Git header counts together in the disposable app at 100%/130%, both tabs and fold states; record native status, synthetic-fact scope and complete shutdown evidence.
-- [ ] 2.5 Update README and applicable architecture/testing guidance to replace count-free header claims with selected-tab task-count and incomplete-count semantics; keep unaffected Agents and PR-row regressions passing.
+- [x] 2.5 Update README and applicable architecture/testing guidance to replace count-free header claims with selected-tab task-count and incomplete-count semantics; keep unaffected Agents and PR-row regressions passing.
 
 ## 3. Coordinator returns retain known sections with one panel Loading indication and visible failures
 

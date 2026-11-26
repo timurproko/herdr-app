@@ -4,7 +4,7 @@
 
 import { View, div, image, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { U, slot, itemHover, statusBulb, menuSurface, chevron, menuHeading, emptyState } from "./ui.js";
+import { U, slot, itemHover, statusBulb, menuSurface, chevron, menuHeading, emptyState, sidebarNumericSlot } from "./ui.js";
 import { programIcon } from './program-icon.js';
 import { sidebarScroll } from './sidebar-scroll.js';
 import { paneDirectory } from './directory.js';
@@ -226,8 +226,7 @@ export default class Agents extends View {
   // Times and counts end under the Spaces rows' + (one column down the sidebar); the
   // status dot and chevron after them keep their column.
   numericSlot(t, id, value) {
-    return h_flex().id(id).w(32).h(20).flex_none().items_center().justify_end().mr(7)
-      .child(div().w_full().text_right().text_size(U.meta).text_color(t.dim).child(value));
+    return sidebarNumericSlot(t, id, value);
   }
 
   statusSlot(t, a, compact) {

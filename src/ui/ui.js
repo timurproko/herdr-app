@@ -314,6 +314,13 @@ export function itemHover(t, selected) {
 export function chevron(t, open) {
   return svg(`mods/custom-workspace-chrome/chevron-${open ? "down" : "right"}.svg`).size(U.smallIcon).flex_none().text_color(t.dim);
 }
+// Agents' number rail. Compensate differing surrounding gaps/chevron slots so
+// the painted number-to-chevron gap stays identical in repository headers.
+export function sidebarNumericSlot(t, id, value, { gap = 6, trailingSize = U.icon } = {}) {
+  return div().flex().id(id).w(32).h(20).flex_none().items_center().justify_end()
+    .mr(7 + 6 - gap + (U.icon - trailingSize) / 2)
+    .child(div().w_full().text_right().text_size(U.meta).text_color(t.dim).child(value));
+}
 // Machine and repository sections share the same shell and trailing chevron.
 // Callers own click/hover guards and persistence; compact machines retain their icon.
 export function sidebarSectionHeader(t, { id, label, open, compact = false, children = [], trailingSize = U.icon, trailingInset = 4 }) {

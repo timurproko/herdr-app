@@ -876,7 +876,9 @@ or a generic incomplete-list notice. PR rows are grouped under repository header
 using the same fold chevron and row style as Spaces machine headers. Click a
 header to fold just that repository; sections start expanded and remember their
 state locally, including panel reopen/reload. Expanded and folded headers show
-only the canonical repository name and chevron, without per-repository counts.
+the canonical repository name, selected-tab task PR count and chevron. The number
+uses Agents' muted right-aligned group count and the same number-to-chevron gap;
+it includes eligible unrevealed rows, not all PRs in that GitHub repository.
 Long coordinator lists reveal **10 presentation items** (headers, notices and PRs)
 initially and append ten more automatically near the scroll bottom. An unfolded
 repository header is revealed only with its first row or visible notice; a header

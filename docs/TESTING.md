@@ -556,6 +556,12 @@ each paired sample and median must stay within main +2ms. These are build-only
 JS/native-element timings, not GPU paint or real input latency. The disposable
 checker never contacts the live app/Core; see GIT-RENDER-BUDGET.md for results.
 
+`tests/git-repository-counts.test.mjs` checks the actual aggregate/header renderer
+for full-inventory 1/10/100 counts in both tabs and fold states, including unrevealed
+rows. Agents keeps its shared 32px numeric rail; Git compensates the larger 24px
+chevron slot and 8px surrounding gap to retain the same painted number-to-glyph
+gap. The existing Agents column suite protects its unchanged time/count geometry.
+
 ## Closed-section fold exploration
 
 `node --experimental-vm-modules tests/git-closed-folds.test.mjs` exercises the
@@ -1080,7 +1086,7 @@ links, webhook burst coalescing, no membership-triggered GitHub reads, hide/show
 stale completions. It loads the real shared UI header and covers machine-style
 chevron geometry, default expansion, independent repository folds, localStorage
 restore after panel recreation, temporary repository absence, tab/refresh changes,
-count-free expanded/collapsed headers, unchanged top-level totals while folded,
+selected-tab counted expanded/collapsed headers, unchanged top-level totals while folded,
 hidden/restored scoped body errors, fixed enrollment visibility, stale toggle
 guards, no fold-triggered reads and no false empty state when all sections fold.
 Open/Closed switches omit other-tab-only headers, restore saved folds on reappearance,

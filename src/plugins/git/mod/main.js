@@ -6,7 +6,7 @@ import { TaskReveal } from './task-reveal.js';
 import { RowPresentations } from './row-presentation.js';
 import { SidebarScrollState } from './sidebar-scroll.js';
 import { topFade, bottomFade } from './scroll-fade.js';
-import { U, headerTools, reveal, subtleActionFill, refreshButton, sidebarSectionHeader } from './ui.js';
+import { U, headerTools, reveal, subtleActionFill, refreshButton, sidebarSectionHeader, sidebarNumericSlot } from './ui.js';
 import { exec, hc, theme, run, layout, openOverlay, closeOverlay, props, notify, nextCommand, window, settings } from './host.js';
 import { location } from './location.js';
 import { AgentLinks } from './agent-links.js';
@@ -1135,6 +1135,9 @@ export default class Changes extends View {
     return v_flex().id(`task-repo-${repo}`).w_full().flex_none()
       .when(Boolean(header),section=>section.child(div().flex_none().h(header.height+header.gap).child(sidebarSectionHeader(t, {id:`task-repo-header-${repo}`, label:repo, open:!folded, trailingSize:U.insetControl, trailingInset:3, children:[
         this.repositoryNameLabel(repo,scope),
+        sidebarNumericSlot(t,`task-repo-count-${repo}`,String(window.repositoryCounts.get(repo).value),{gap:U.gap,trailingSize:U.insetControl})
+          .accessibility_label(`${window.repositoryCounts.get(repo).value} ${this.view} pull requests${window.repositoryCounts.get(repo).loading?' (loading)':''}`)
+          .when(window.repositoryCounts.get(repo).loading,el=>el.tooltip(`Count loading; showing ${window.repositoryCounts.get(repo).value}`)),
       ]}).cursor_pointer().hover(s => s.bg(t.selected))
         .on_click((_e, cx) => {
           cx.stop_propagation();
@@ -1185,6 +1188,7 @@ export default class Changes extends View {
     }
     window.zoom=zoom;
     if(this.sampleNativeScroll(window.metrics,window.handle,zoom))window.observe(window.metrics.offset/zoom,window.metrics.viewport/zoom,true);
+    window.repositoryCounts=new Map(sections.map(section=>[section.repo,{value:section.rows.length,loading:Boolean(this.aggregate.loading?.(section.repo) || [...(this.aggregate.entries?.values()??[])].some(e=>e.link.repo===section.repo && !e.pr && !e.missing))}]));
     window.project(sections,this.foldedRepositories,U.control,U.rowGap,`${zoom}:${window.width??0}`);
     const range=window.range(),visible=[];
     for(const item of range.items) {

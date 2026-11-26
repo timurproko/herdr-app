@@ -329,8 +329,11 @@ still cannot be inferred by the app from transcripts or branches.
 
 `ui/ui.js` owns `sidebarSectionHeader`, the common machine/repository header shell
 and right-edge chevron; Spaces retains its own actions and guarded folding.
-Aggregate repository headers start expanded and show only canonical owner/name
-plus the shared chevron, never repository Open/Closed counts. The flexible name
+Aggregate repository headers start expanded and show canonical owner/name,
+the selected-tab eligible task PR count and the shared chevron. The count uses
+Agents' shared numeric rail, compensating surrounding gap and chevron-slot width
+without moving Git's existing trailing rail; it counts full task inventory rather
+than mounted rows or GitHub repository totals. The flexible name
 uses all remaining width; a clipped invisible natural-width probe and the label's
 available width enable its full-name tooltip only on actual overflow. Geometry is
 local, scope-keyed and updated after layout with changed-only notifications, not
