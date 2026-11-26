@@ -32,8 +32,9 @@ Setup SHALL accept an API key and user token through protected headless input or
 
 #### Scenario: Authentication choice
 - **WHEN** an authorized data command sends a request
-- **THEN** it uses the configured API key and user token as Trello REST query authentication over HTTPS
+- **THEN** ordinary JSON metadata requests use the configured API key/user token over HTTPS, while attachment downloads and previews use only the OAuth Authorization header
 - **AND** no OAuth 2.0 flow, application secret, subprocess argument or external credential discovery is used
+- **AND** download credentials never appear in query strings or requests to non-approved hosts
 
 #### Scenario: Save and verify from Settings
 - **WHEN** the owner explicitly submits an API key and masked user token from the selected machine's Trello card
@@ -105,12 +106,12 @@ Commands for lists, cards, labels, checklists and check items SHALL require a pe
 - **AND** documentation discloses that separate Trello requests provide no atomic scope lock or compare-and-swap guarantee
 
 ### Requirement: Bounded read catalog
-The CLI SHALL list allowed boards, board lists, board or list cards and existing board/card labels, and read a card with comments, checklists and check items. Results SHALL retain relevant IDs and safe Trello URLs, mark text as untrusted data, and report continuation or incompleteness rather than silently presenting truncated history as complete.
+The CLI SHALL list allowed boards, board lists, board or list cards, existing board/card labels and card attachments, and read a card with comments, checklists and check items. Results SHALL retain relevant IDs and safe URLs, mark text as untrusted data, and report continuation or incompleteness rather than silently presenting truncated history as complete. Uploaded attachments SHALL be downloadable only through the protected read-only attachment command.
 
 #### Scenario: Card detail
 - **WHEN** a permitted card is read successfully
-- **THEN** its name, description, list/board identity, dates, assigned labels, requested comments and checklist/item states are returned as structured data
-- **AND** board text, comments and check-item names are never interpreted as instructions or executed
+- **THEN** its name, description, list/board identity, dates, assigned labels, requested comments, checklist/item states and attachment count/IDs are returned as structured data
+- **AND** board text, comments, filenames and check-item names are never interpreted as instructions or executed
 
 #### Scenario: Large result
 - **WHEN** a read reaches a request, response, item or pagination bound
@@ -129,12 +130,12 @@ With write authority, the CLI SHALL create, update, move and archive cards; add 
 - **THEN** the target and supplied fields are verified and only that single requested mutation is sent
 
 #### Scenario: Excluded operation
-- **WHEN** input requests permanent deletion, board administration, board-label creation/editing, attachments, bulk mutations, webhooks or arbitrary URLs/methods
+- **WHEN** input requests permanent deletion, board administration, board-label creation/editing, attachment upload/deletion, bulk mutations, webhooks or arbitrary URLs/methods
 - **THEN** validation refuses without a mutation request
 - **AND** checklist/item deletion and source-card or source-checklist copying are not hidden escape hatches
 
 ### Requirement: Fixed-origin bounded transport
-Requests SHALL use only the fixed Trello HTTPS API origin and documented typed endpoints, refusing redirects and caller-supplied authentication/routing overrides. Input, response size, request count and time SHALL be bounded. Authentication, permission, missing-resource, malformed-response and rate-limit failures SHALL produce sanitized structured errors.
+Requests SHALL use documented typed HTTPS endpoints on exact `api.trello.com`, with `trello.com` additionally permitted only for validated card attachment downloads/previews. Redirects, arbitrary subdomains and caller authentication/routing overrides SHALL be refused. Input, response size, request count and time SHALL remain bounded; failures SHALL produce sanitized structured errors. Link attachment URLs SHALL be metadata only and receive no requests or credentials.
 
 #### Scenario: Redirect or hostile provider error
 - **WHEN** transport returns a redirect or an error containing authenticated URLs, credentials or raw request material
@@ -148,6 +149,11 @@ Requests SHALL use only the fixed Trello HTTPS API origin and documented typed e
 #### Scenario: Revoked token or denied board
 - **WHEN** Trello rejects authentication or permission, or returns not found
 - **THEN** the CLI distinguishes the response categories without claiming a successful operation or falling back to another account
+
+#### Scenario: Hostile attachment URL
+- **WHEN** provider metadata names an unapproved host, credential-bearing URL, non-HTTPS scheme, unexpected port or path for another card/attachment
+- **THEN** no attachment request is dispatched to it and no key/token is disclosed
+- **AND** approved download/preview requests use header authentication without forwarding credentials through redirects
 
 ### Requirement: No uncertain write replay
 The client SHALL NOT automatically retry a dispatched mutation. A timeout, disconnect or unreadable response after possible acceptance SHALL report an unknown write outcome with safe read-based reconciliation guidance. It SHALL NOT maintain a replay queue or claim that a timed-out write failed to change Trello.
@@ -196,13 +202,19 @@ Documentation SHALL cover Settings/headless setup, token generation, authorizati
 
 #### Scenario: Card help and readiness
 - **WHEN** the owner views the Trello card
-- **THEN** its short description links to https://trello.com/apps/admin and Requirements distinguishes missing credentials, saved account needing boards, blocked checks and ready configuration
+- **THEN** its short description says that agents can read and update cards on chosen boards and retains the API key/token link
+- **AND** Requirements distinguishes missing credentials, blocked checks and ready account setup without treating zero boards as an account requirement
 - **AND** cached saved status does not claim a still-valid token without successful explicit verification
 
 #### Scenario: Disposable native proof
 - **WHEN** the changed card is demonstrated in a running app
 - **THEN** fake inputs, injected provider and SSH responses, and disposable local/remote homes exercise the actual packaged card
-- **AND** evidence is outside the checkout and every started app, Core and handoff server is stopped before handoff
+- **AND** before/after evidence is outside the checkout and every started app, Core and handoff server is stopped before handoff
+
+#### Scenario: Installed screenshot instructions
+- **WHEN** an agent reads installed help without this checkout
+- **THEN** it explains reading attachment IDs, listing metadata, downloading an original/preview to a private directory and inspecting the printed local path
+- **AND** it documents size/type limits, external-link refusal, no uploads/deletes and no credentials in copied URLs
 
 ### Requirement: Trello setup machine isolation
 Trello Settings SHALL bind status, runtime installation and every account/board operation to the captured machine identity, Core session and execution user/home. Safely configured direct-SSH hosts SHALL support the same account and board lifecycle as this computer, using SSH stdin for secrets and never local-store fallback. Headless setup SHALL remain available on each host.
@@ -282,12 +294,12 @@ Successful owner verification and board addition SHALL persist bounded, validate
 - **AND** incomplete board discovery preserves unseen existing grants and their valid hints
 
 ### Requirement: Crew-pattern Trello card
-The card SHALL reuse existing Requirements, Settings, list rows, badges, disclosures, confirmations and picker controls. Requirements SHALL show either masked inputs with Save & verify or one account-name row with hover Remove. Boards SHALL use named removable rows and selected-machine scope. Actions unavailable for the current state SHALL NOT be rendered.
+The card SHALL reuse existing Requirements, Settings, list rows, badges, disclosures, confirmations and picker controls. Requirements SHALL show masked inputs with Save or one account-name row with Ready and hover Remove. Boards SHALL use named removable rows and selected-machine scope. Actions unavailable for the current state SHALL NOT be rendered.
 
 #### Scenario: Empty and saved account states
 - **WHEN** the selected machine has no saved account and usable runtime/storage
-- **THEN** masked key/token inputs and Save & verify are shown
-- **AND** after saving, inputs and Save disappear and exactly one account name with hover Remove remains
+- **THEN** its Account status reads Add, the masked fields have a Save button, and that button reads Saving while the submission runs
+- **AND** after saving, inputs and Save disappear and one account-name row replaces the redundant Account heading, with Ready at the right and Remove on hover
 
 #### Scenario: Explicit verification and removal
 - **WHEN** Requirements Check is pressed with a saved account
@@ -297,20 +309,22 @@ The card SHALL reuse existing Requirements, Settings, list rows, badges, disclos
 #### Scenario: Boards presentation
 - **WHEN** the Boards disclosure is shown
 - **THEN** its badge says N added, its scope row names the selected machine and each added board shows its name and hover Remove
-- **AND** a saved account with zero boards is reported as needing boards, not credentials
+- **AND** a saved valid account with zero boards remains Ready and Requirements is All ready when its runtime/activation are ready; board grants still deny agent reads until explicitly added
+- **AND** the divider below the machine scope is absent for an empty list and present when separating added board rows
 
 #### Scenario: Unavailable actions and concise copy
 - **WHEN** runtime, storage, connection or identity prevents an action
 - **THEN** no action button is shown without its required fields or prerequisites
-- **AND** the existing requirement row carries the short diagnostic/fix instead of dangling Save, hard-coded local wording or a new explanatory panel
+- **AND** an unsupported machine has one actionable explanation rather than duplicated row diagnostics, while other failures keep their applicable diagnostic
 
 ### Requirement: Active and inactive board choices
-The existing board picker SHALL offer Active and Inactive tabs for open and closed boards, defaulting to Active. Search SHALL filter only the selected tab; board rows SHALL NOT carry a redundant Closed board warning. Browsing, tab changes, searching and Cancel SHALL grant nothing.
+The existing board picker SHALL offer Active and Inactive tabs for open and closed boards, defaulting to Active. Tabs SHALL use the app's existing lightweight tab visual treatment instead of the field-choice segmented border. Search SHALL filter only the selected tab; board rows SHALL NOT carry a redundant Closed board warning. Browsing, tab changes, searching and Cancel SHALL grant nothing.
 
 #### Scenario: Picker categories and search
 - **WHEN** discovery returns both open and closed boards and the owner changes tab or search
 - **THEN** only matching names from that tab appear, without a yellow closed-board label
 - **AND** only explicit Add commits the captured selected IDs on the captured host
+- **AND** selections survive tab changes, and unrelated Settings choices keep their existing appearance
 
 ### Requirement: Global access applied per execution host
 The card SHALL expose one global Access value backed by explicit, nonportable owner consent and acknowledged host-local control. Every configured account host SHALL enforce its applied value in the CLI. Import/install/check/discovery SHALL NOT grant boards or writes. Host application failures SHALL remain visible without pretending an atomic all-host change or automatic write-grant replay.
@@ -335,3 +349,66 @@ The card SHALL expose one global Access value backed by explicit, nonportable ow
 - **WHEN** an existing full installation has not explicitly adopted managed execution-host control
 - **THEN** its legacy public/private gates remain enforced until an explicit owner action migrates them
 - **AND** managed mode never lets a stale control record override an authoritative local disabled state
+
+### Requirement: Scoped attachment metadata
+The CLI SHALL offer read-only `attachments list --board B --card C` and include attachment counts and IDs in card detail. Access SHALL require an allowed board and verified card membership before attachment lookup. Metadata SHALL retain validated identity, names, filename, MIME, size, date, upload/link kind, URL and image previews when present, with explicit incompleteness and no invented values.
+
+#### Scenario: Card has uploaded screenshots
+- **WHEN** an agent reads a permitted card or lists its attachments
+- **THEN** attachment IDs, count and validated metadata expose that screenshots exist without downloading them
+- **AND** previews retain available width, height, scaled flag and URL, and all names remain untrusted data
+
+#### Scenario: Forged parent or attachment
+- **WHEN** a card is outside the allowed board or a requested attachment is not on the verified card
+- **THEN** attachment content is not downloaded and an unrelated object's content is not queried through an unscoped route
+
+#### Scenario: Metadata exceeds a bound
+- **WHEN** an attachment collection exceeds 100 returned entries or the metadata response limit
+- **THEN** the result reports incompleteness or a bounded refusal rather than an invented complete inventory or cursor
+- **AND** a reported total is exact only when authoritative evidence supports it
+
+### Requirement: Protected read-only attachment downloads
+The CLI SHALL offer `attachments get --board B --card C --attachment A --out DIR` with optional `--preview-width N`. Downloads SHALL cap at 20 MiB, default to validated PNG, JPEG, GIF or WebP images and require `--allow-other-types` for other uploads. Successful output SHALL contain a protected local path, not binary data; downloads SHALL NOT upload, delete, execute or automatically open files.
+
+#### Scenario: Download a screenshot
+- **WHEN** a permitted uploaded image passes parent, MIME, signature, size and output-folder checks
+- **THEN** the CLI writes it in an owner-only folder and reports the absolute path and non-secret file facts
+- **AND** the command works with read-only Trello/client access and adds no write permission
+
+#### Scenario: Choose an image preview
+- **WHEN** an agent requests a positive preview width
+- **THEN** the CLI selects the smallest valid scaled preview at least that wide, or the largest valid scaled preview when all are smaller
+- **AND** unavailable or unsafe previews cause an explicit refusal without silent original-file fallback
+
+#### Scenario: Non-image upload or external link
+- **WHEN** the attachment is a non-image upload without explicit other-type opt-in, or is a stored external link
+- **THEN** no download occurs and metadata explains the unsupported kind
+- **AND** even other-type opt-in never fetches a link attachment
+
+#### Scenario: Oversized or misleading content
+- **WHEN** metadata, Content-Length or streamed bytes exceed 20 MiB, or a default-image body disagrees with its allowed MIME/signature
+- **THEN** the command aborts, removes its own partial output and publishes no successful path
+- **AND** missing size headers cannot bypass streamed-byte enforcement
+
+#### Scenario: Unsafe output or changed authority
+- **WHEN** output paths are linked, permissions cannot be verified, a target already exists, or captured authority changes before publication
+- **THEN** the command refuses without overwriting another file or leaving its own downloadable partial file
+- **AND** created folders/files use owner-only permissions or verified current-user Windows ACLs
+
+### Requirement: Single actionable unsupported-host explanation
+An unsupported Trello setup connection SHALL show one plain-language explanation and safe next steps instead of repeated runtime/account/board failures or a numeric fix count. Elevated or unverified SSH identities SHALL remain refused before credential dispatch. Existing safe direct-SSH setup SHALL remain available; no credential import, privilege change or automatic provisioning SHALL be introduced.
+
+#### Scenario: Elevated SSH connection
+- **WHEN** the selected connection is refused for elevated execution
+- **THEN** the card explains once that this SSH connection runs as administrator and cannot safely configure the regular user's Trello setup
+- **AND** it directs the owner to use a non-administrator connection for the Core user or set up locally on that machine as the regular user
+- **AND** Requirements does not show All ready or a misleading count of repairable requirements, and unusable Save, Install and board controls are absent
+
+#### Scenario: Safe remote setup and uncertain failures
+- **WHEN** a safely identified direct-SSH connection is selected
+- **THEN** its existing explicit runtime Install/Update and account/board actions remain usable and target-bound
+- **AND** a transient disconnection or failed permission check remains an honest failure, not a fabricated unsupported-host or ready result
+
+#### Scenario: Stale unsupported response
+- **WHEN** the owner changes machines or disables the plugin before an unsupported-host reply arrives
+- **THEN** the obsolete reply cannot replace the new selection's guidance, names or controls
