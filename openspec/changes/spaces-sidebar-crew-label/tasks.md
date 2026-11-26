@@ -2,10 +2,10 @@
 
 ## 1. Coordinator Git loading and render recovery
 
-- [ ] 1.1 Compare current main and PR #90 head d965828 using sanitized fixtures matching both captured real Crew payload shapes; trace parsing, native binding, aggregate publication and stage/agent paths, record the exact fault and whether #90 fixes, preserves or changes it, then base Git edits on main after #90 merges.
-- [ ] 1.2 Fix only the demonstrated failure and add a baseline-failing regression covering healthy local/pc2 coordinator publication, missing/ended/disconnected agents, legacy/emoji labels and applicable history; run only the regression and directly affected fleet/Git tests and preserve identity/freshness gates.
-- [ ] 1.3 Establish whether the earlier interrupted-render banner is the same failure; use a disposable native reproduction if required, preserve actual diagnostic evidence and state any unproven link explicitly. Record the cause and relevant test results in testing guidance without committing private status payloads.
-- [ ] 1.4 Push the recovery fix as its own first implementation commit, tick this outcome and report immediately with the exact commit and PR for review before starting the visual outcomes; stop any app/Core/server started for proof before that report.
+- [x] 1.1 Compare current main and PR #90 head d965828 using sanitized fixtures matching both captured real Crew payload shapes; trace parsing, native binding, aggregate publication and stage/agent paths, record the exact fault and whether #90 fixes, preserves or changes it, then base Git edits on main after #90 merges.
+- [x] 1.2 Fix only the demonstrated failure and add a baseline-failing regression covering healthy local/pc2 coordinator publication, missing/ended/disconnected agents, legacy/emoji labels and applicable history; run only the regression and directly affected fleet/Git tests and preserve identity/freshness gates.
+- [x] 1.3 Establish whether the earlier interrupted-render banner is the same failure; use a disposable native reproduction if required, preserve actual diagnostic evidence and state any unproven link explicitly. Record the cause and relevant test results in testing guidance without committing private status payloads.
+- [x] 1.4 Push the recovery fix as its own first implementation commit, tick this outcome and report immediately with the exact commit and PR for review before starting the visual outcomes; stop any app/Core/server started for proof before that report.
 
 ## 2. One clickable lower-right Git stage label
 
