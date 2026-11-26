@@ -2,10 +2,10 @@
 
 ## 1. Cold Loading is aligned, pulsing and exclusive of section headers
 
-- [ ] 1.1 Reuse the shared animated Loading message in ordinary and coordinator Git, match the ordinary 4px top inset, and gate the moving line with the same cold-presentation decision; cover cold, cooldown, active, completion and retired-context cases in git-loading-line tests.
-- [ ] 1.2 Withhold repository headers/counts during cold Loading in both views, including known ordinary identity with an unread page and mixed coordinator partial success/failure; keep scoped failures immediately visible without headers or saved-fold suppression, verified by inventory-presentation and worker-cold-entry regressions.
-- [ ] 1.3 Preserve compatible warm rows and authoritative empty results, pagination, pins and visible failures; run targeted entry-cache, coordinator-return and repository-count guards and update relevant README/architecture/testing loading guidance.
-- [ ] 1.4 Verify the supplied release 0.1.18 executable/archive checksums, use synthetic isolated app/Core fixtures, and capture ordinary/coordinator cold, warm/background and failure states at 100% and 130%, including two animation phases; inspect relative Loading positions and save screenshots plus cleanup receipts outside the checkout in the crew task folder.
+- [x] 1.1 Reuse the shared animated Loading message in ordinary and coordinator Git, match the ordinary 4px top inset, and gate the moving line with the same cold-presentation decision; cover cold, cooldown, active, completion and retired-context cases in git-loading-line tests.
+- [x] 1.2 Withhold repository headers/counts during cold Loading in both views, including known ordinary identity with an unread page and mixed coordinator partial success/failure; keep scoped failures immediately visible without headers or saved-fold suppression, verified by inventory-presentation and worker-cold-entry regressions.
+- [x] 1.3 Preserve compatible warm rows and authoritative empty results, pagination, pins and visible failures; run targeted entry-cache, coordinator-return and repository-count guards and update relevant README/architecture/testing loading guidance.
+- [x] 1.4 Verify the supplied release 0.1.18 executable/archive checksums, use synthetic isolated app/Core fixtures, and capture ordinary/coordinator cold, warm/background and failure states at 100% and 130%, including two animation phases; inspect relative Loading positions and save screenshots plus cleanup receipts outside the checkout in the crew task folder.
 
 ## 2. Open and Closed tabs have labels only and repository counts remain
 

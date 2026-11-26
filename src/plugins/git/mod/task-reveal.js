@@ -12,7 +12,7 @@ export class TaskReveal {
     return end>this.start&&last?.header&&!last.folded?end-1:end;
   }
   get length(){return Math.max(0,this.end-this.start);}
-  get leading(){return this.items[this.start]&&!this.items[this.start].header?this.headerHeight+this.gap:0;}
+  get leading(){return !this.noticesOnly&&this.items[this.start]&&!this.items[this.start].header?this.headerHeight+this.gap:0;}
   position(i){return (this.starts[i]??0)-(this.starts[this.start]??0)+this.leading;}
   get height(){return this.position(this.end);}
   get contentHeight(){return this.height+8+(this.canTurn?28:0);}
@@ -21,13 +21,14 @@ export class TaskReveal {
   get more(){return this.end<this.items.length||this.pendingNew>0;}
   get canTurn(){return this.atCap||(this.start>0&&!this.more);}
   index(y){let lo=this.start,hi=this.end;while(lo<hi){const mid=(lo+hi)>>>1;if(this.position(mid+1)<=y)lo=mid+1;else hi=mid;}return lo;}
-  project(sections,folded,headerHeight,gap,geometryKey){
-    let items=[];this.headerHeight=headerHeight;this.gap=gap;
+  project(sections,folded,headerHeight,gap,geometryKey,noticesOnly=false){
+    let items=[];this.headerHeight=headerHeight;this.gap=gap;this.noticesOnly=noticesOnly;
     for(const section of sections){
       if(!section.rows.length&&!section.error)continue;
-      const group=[{key:`header:${section.repo}`,repo:section.repo,header:true,folded:folded.has(section.repo),height:headerHeight}];
-      if(!folded.has(section.repo)){
-        for(const row of section.rows)group.push({key:row.key,repo:section.repo,row,height:74});
+      // Cold failures share the bounded reveal, but have no folding header.
+      const group=noticesOnly?[]:[{key:`header:${section.repo}`,repo:section.repo,header:true,folded:folded.has(section.repo),height:headerHeight}];
+      if(noticesOnly||!folded.has(section.repo)){
+        for(const row of (noticesOnly?[]:section.rows))group.push({key:row.key,repo:section.repo,row,height:74});
         if(section.error){const measureKey=`${geometryKey}\0${section.repo}\0${section.error}`;group.push({key:`notice:${section.repo}`,repo:section.repo,error:section.error,measureKey,height:this.noticeHeights.get(measureKey)??24.5});}
       }
       group.forEach((item,i)=>{item.gap=i<group.length-1?gap:0;items.push(item);});
@@ -67,7 +68,7 @@ export class TaskReveal {
   }
   range(){
     const items=this.items.slice(this.start,this.end);
-    if(items[0]&&!items[0].header)items.unshift({key:`header:${items[0].repo}`,repo:items[0].repo,header:true,height:this.headerHeight,gap:this.gap});
+    if(!this.noticesOnly&&items[0]&&!items[0].header)items.unshift({key:`header:${items[0].repo}`,repo:items[0].repo,header:true,height:this.headerHeight,gap:this.gap});
     const revealedRows=items.filter(item=>item.row).map(item=>item.row),selection=revealedRows.map(row=>row.key).join('\0');
     // Layout/height changes invalidate layout checks, not held safety reads.
     // Only changed PR identities advance this selection generation; explicit

@@ -174,11 +174,11 @@ share one captured coordinator binding; changed membership, conflicting parents 
 bindings, duplicates, missing/cross-machine endpoints and expired proof still refuse.
 Every child's saved colour and Automatic flag stays unchanged.
 
-`git-loading-line.test.mjs` checks one native moving line across ordinary and
-coordinator cold/warm/background/verification/safety work, overlap, completion,
-failure cooldown and retired measurement callbacks. Git cold Loading uses the
-shared message geometry with a static dot; Refresh is static even during its
-600ms disabled feedback. Files, tabs and shared activity remain animated as before.
+`git-loading-line.test.mjs` checks the shared pulsing dot for cold ordinary/coordinator
+Loading, equal message placement at 100%/130%, no simultaneous repository headers
+or moving line, warm/background/verification/safety line activity, overlap,
+completion, cooldown and retired callbacks. Folded cold failures stay visible.
+Refresh remains static during its 600ms disabled feedback; other panels are unchanged.
 `fleet-history.test.mjs` checks provider work evidence: a live exact-owner read
 sets presentation-only loading; failed verification awaiting retry stops the line.
 
@@ -194,7 +194,7 @@ fixtures/documented proofs using header bulbs or CI-only one-shot sweeps describ
 historical presentation, not the current loading contract.
 
 `git-inventory-presentation.test.mjs` covers cold whole-inventory admission,
-immediate actionable notices, no partial-return leak, staged warm replacements,
+immediate actionable notices without section headers during cold Loading, no partial-return leak, staged warm replacements,
 under-header native line activity, no warm body Loading and quiet cooldown behavior.
 Healthy activity says Updating pull requests while worker actions remain available;
 only unverified activity carries the paused-action warning and sanitized diagnostics.

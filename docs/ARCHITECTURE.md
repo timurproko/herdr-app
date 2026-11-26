@@ -276,7 +276,7 @@ remembered link, revalidating exact captured pair identity and native acknowledg
 at commit. This exception reorders spaces only; it never permits terminal/tab moves,
 worker navigation, messages or coordinator colour writes from remembered identity. Git requests presentation context
 only to retain already-loaded same-home rows/counts/folds with the under-header moving line during pending work, or
-standard Loading text/static dot with no extra header label or restored inventory on cold start.
+standard Loading text/pulsing dot with no moving line, repository header/count, extra header label or restored inventory on cold start.
 There is no cross-toggle identity/inventory cache. Off or a scope change clears
 the aggregate's entries; on shows Loading until fresh verification and facts arrive.
 Same-context outages retain presentation only, never fresh action permission or Stale text.
@@ -382,7 +382,7 @@ create no unknown-only headers. Published same-home return/background lists stay
 mounted without body Loading; the single native moving line below the Git header
 covers active updates and stops on completion or failure. Quiet warm cooldowns are not active
 requests. Bounded pure published snapshots are distinct from collected facts, so
-leaving an unfinished cold load cannot turn partial successes into a warm list. An applicable actionable failure retains its notice; confirmed
+leaving an unfinished cold load cannot turn partial successes into a warm list. An applicable actionable failure retains its notice, without its section header or fold suppression while cold Loading is shown; confirmed
 missing and known ineligible history do not leave Loading behind. Empty settled sections have no header,
 but disappearing sections retain saved fold keys. A settled tab with no qualifying
 sections uses ordinary Git's **No open pull requests** / **No closed pull requests**;
