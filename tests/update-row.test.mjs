@@ -497,6 +497,46 @@ api.initCustomizationUpdates(recoveryChrome, cx, 'custom-workspace-chrome', { ch
 api.invalidateCustomizationUpdates(recoveryChrome, cx); clock += 15000; timers.at(-1).callback(cx); await flush();
 assert.ok(calls.slice(beforeRecovery + 1).every(call => call.action === 'check'), 'startup, timers and hints never confirm retry');
 recoveryChrome.customUpdateClosed = true; respond = null;
+// Clearing stopped state is a different confirmation, never launch intent.
+const clearable = { ...retryable, recovery: null, clearRecovery: { identity: 'stopped-state', eligible: true, until: clock + 30000 } };
+state.set(api.CUSTOMIZATION_UPDATE_KEY, clearable);
+const clearing = fixture(); clearing.view.customUpdateClosed = false;
+const beforeClear = calls.length;
+assert.equal(render(api, clearing).button.label, 'Recover update');
+render(api, clearing).button.callback(null, clearing.cx);
+let clearRow = render(api, clearing);
+assert.match(clearRow.description, /No recorded owner or local updater is running.*Clear stale locks, status and results.*local and remote.*does not retry/);
+assert.equal(clearRow.button.label, 'Clear stopped state'); assert.equal(calls.length, beforeClear);
+clearing.view.buttonCalls.findLast(button => button.label === 'Cancel').callback(null, clearing.cx);
+assert.equal(calls.length, beforeClear);
+render(api, clearing).button.callback(null, clearing.cx); const oldClear = render(api, clearing).button;
+state.set(api.CUSTOMIZATION_UPDATE_KEY, { ...clearable, clearRecovery: { ...clearable.clearRecovery, identity: 'new-state' } });
+oldClear.callback(null, clearing.cx); await clearing.settle(); assert.equal(calls.length, beforeClear, 'new evidence invalidates recovery consent');
+state.set(api.CUSTOMIZATION_UPDATE_KEY, { ...clearable, launch: { ticket: 1, started: clock - 1800000 + 1000, deadline: clock - 1, previousToken: 'uncertain-run' }, resume: { opening: 'stale' } }); clearing.view.customUpdateRetry = null;
+render(api, clearing).button.callback(null, clearing.cx); const clearConfirm = render(api, clearing).button, clearingReceipt = deferred();
+respond = request => { assert.equal(request.action, 'recover'); assert.equal(request.identity, 'stopped-state'); assert.equal(request.confirmedStopped, true); assert.ok(request.expiredLaunch); return clearingReceipt.promise; };
+clearConfirm.callback(null, clearing.cx); clearConfirm.callback(null, clearing.cx);
+assert.equal(calls.length, beforeClear + 1, 'duplicate recovery confirmation dispatches once');
+const laterReader = fixture(); respond = () => reply(clearable); api.refreshCustomizationUpdates(laterReader.view, laterReader.cx, 'status'); await laterReader.settle();
+assert.ok(api.customizationUpdateSnapshot().launch, 'an ordinary read retains the expired intent until explicit recovery settles');
+clearingReceipt.resolve(reply({ job: null, result: null, check: null, locked: false, recovered: true, clearedTokens: ['uncertain-run'] })); await clearing.settle();
+assert.equal(render(api, clearing).button.label, 'Check now');
+assert.equal(api.customizationUpdateSnapshot().launch, null, 'recovery clears old intent and never creates another');
+assert.equal(api.customizationUpdateSnapshot().resume, null); retire(laterReader);
+retire(clearing);
+for (const newer of [{ launch: { ticket: 99, deadline: clock + 30000 }, request: 99 },
+  { job: { token: 'different-live-run', state: 'running', deadline: clock + 30000 }, observed: 99 }]) {
+  state.set(api.CUSTOMIZATION_UPDATE_KEY, clearable); const repair = fixture(), receipt = deferred(); respond = () => receipt.promise;
+  render(api, repair).button.callback(null, repair.cx); render(api, repair).button.callback(null, repair.cx);
+  const facts = { ...clearable, ...newer }; state.set(api.CUSTOMIZATION_UPDATE_KEY, facts);
+  receipt.resolve(reply({ job: null, result: null, check: null, locked: false, recovered: true, clearedTokens: ['uncertain-run'] })); await repair.settle();
+  assert.equal(api.customizationUpdateSnapshot(), facts, 'late recovery cannot replace a newer launch or a different run'); retire(repair);
+}
+const clearChrome = {}, automaticClearStart = calls.length; respond = () => reply(clearable);
+api.initCustomizationUpdates(clearChrome, cx, 'custom-workspace-chrome', { chrome: true }); await flush();
+api.invalidateCustomizationUpdates(clearChrome, cx); clock += 15000; timers.at(-1).callback(cx); await flush();
+assert.ok(calls.slice(automaticClearStart).every(call => call.action === 'check'), 'startup and relay timers never confirm state recovery');
+clearChrome.customUpdateClosed = true; respond = null;
 const settings = fs.readFileSync('src/features/settings/main.js', 'utf8'), chromeSource = fs.readFileSync('src/features/workspace-chrome/main.js', 'utf8');
 assert.match(settings, /u\.app\.ready \|\| \(u\.core\.ready && !u\.core\.managed\) \|\| customizationUpdateAvailable\(\)/);
 assert.equal((chromeSource.match(/updates\(\)\.app\.ready \|\| customizationUpdateAvailable\(\)/g) || []).length, 2, 'expanded Settings and compact More preserve native predicates');

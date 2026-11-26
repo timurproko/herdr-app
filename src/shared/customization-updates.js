@@ -5,7 +5,11 @@ const BUSY_CHECK_RETRY = 30000;
 export const customizationUpdateSnapshot = () => shared(CUSTOMIZATION_UPDATE_KEY) || null;
 export const customizationUpdateAvailable = () => updateAvailable(customizationUpdateSnapshot());
 async function request(owner, action, force = false, invalidate = false, authorization = null) {
-  const reply = await exec('node', [`${appHome()}/mods/${owner.customUpdateMod}/update-worker.cjs`, JSON.stringify({ action, home: appHome(), force, invalidate, ...(action === 'retry' ? authorization : {}) })], { on: null, timeout: 22000 });
+  const pending = customizationUpdateSnapshot()?.launch;
+  const expiredLaunch = pending && Number.isFinite(pending.deadline) && pending.deadline < Date.now()
+    ? { started: pending.started, deadline: pending.deadline, ticket: pending.ticket, previousToken: pending.previousToken } : null;
+  const reply = await exec('node', [`${appHome()}/mods/${owner.customUpdateMod}/update-worker.cjs`, JSON.stringify({ action, home: appHome(), force, invalidate,
+    ...(expiredLaunch ? { expiredLaunch } : {}), ...(['retry', 'recover'].includes(action) ? authorization : {}) })], { on: null, timeout: 22000 });
   let value;
   try { value = JSON.parse(reply.stdout); } catch { throw Error('Update status unavailable. Check now.'); }
   if (reply.code !== 0 || value.error) throw Error(value.error || 'Update status unavailable. Check now.');
@@ -29,9 +33,12 @@ export function refreshCustomizationUpdates(owner, cx, action = 'status', force 
   // A launch receipt may still settle its intent after a newer empty status read.
   const publish = snapshot => {
     const current = customizationUpdateSnapshot();
-    if (owner.customUpdateClosed || ticket < (current?.launch?.ticket || 0) ||
-        (ticket < (current?.observed || 0) && !(launching && current?.launch?.ticket === ticket)) ||
-        (launch && !launching && !current?.launch && !observesLaunch(snapshot, launch))) return false;
+    const cleared = action === 'recover' && authorization?.confirmedStopped && (snapshot.recovered === true ||
+      (snapshot.locked === false && !snapshot.job && !snapshot.result && !snapshot.clearRecovery && !snapshot.stateError));
+    const settlesRecovery = cleared && (!current?.job?.token || current.job.token === before?.job?.token || snapshot.clearedTokens?.includes(current.job.token));
+    if (owner.customUpdateClosed || (cleared && !settlesRecovery) || ticket < (current?.launch?.ticket || 0) ||
+        (ticket < (current?.observed || 0) && !(launching && current?.launch?.ticket === ticket) && !settlesRecovery) ||
+        (launch && !launching && !current?.launch && !observesLaunch(snapshot, launch) && !settlesRecovery)) return false;
     const pending = current?.launch;
     const job = snapshot?.job;
     const prior = pending && observesLaunch(snapshot, pending) ? pending.progress
@@ -39,8 +46,8 @@ export function refreshCustomizationUpdates(owner, cx, action = 'status', force 
     const progress = job?.state === 'running' ? { token: job.token, started: job.started,
       target: updateTarget(snapshot) || prior?.target || null, peerRevision: prior?.peerRevision || null } : null;
     setShared(CUSTOMIZATION_UPDATE_KEY, { ...updateProjection(snapshot), progress, request: current?.request,
-      resume: current?.resume || null, observed: Math.max(ticket, current?.observed || 0),
-      ...(pending && !launching && !observesLaunch(snapshot, pending) ? { launch: pending } : {}) });
+      resume: cleared ? null : current?.resume || null, observed: Math.max(ticket, current?.observed || 0),
+      ...(cleared ? { launch: null } : pending && !launching && !observesLaunch(snapshot, pending) ? { launch: pending } : {}) });
     return true;
   };
   cx.notify();

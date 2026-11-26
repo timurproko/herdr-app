@@ -83,7 +83,7 @@ try {
     assert.equal(fs.existsSync(h.p.retryLock), false);
     assert.equal(read(h.p.result).complete, false);
   }
-  for (const [processes, expected] of [[[], true], [[{ ProcessId: 999, ParentProcessId: 12345 }], false], [[{ ProcessId: 12345, ParentProcessId: 1 }], false]]) {
+  for (const [processes, expected] of [[[{ ProcessId: 1, ParentProcessId: 0 }], true], [[], false], [[{ ProcessId: 999, ParentProcessId: 12345 }], false], [[{ ProcessId: 12345, ParentProcessId: 1 }], false]]) {
     assert.equal(updater.quiescent({ pid: 12345 }, { platform: 'win32', isAlive: () => false, run: () => ({ code: 0, stdout: JSON.stringify(processes) }) }), expected);
   }
   assert.equal(updater.quiescent({ pid: 12345 }, { platform: 'win32', isAlive: () => false, run: () => ({ code: 1 }) }), false);

@@ -115,6 +115,15 @@ export function resultRecorder(env = process.env, dryRun = false, ioOptions = {}
   };
 }
 export function deployAll(args = [], { root = project, log = console.log, hostname = os.hostname(), ...options } = {}) {
+  const env = options.env || process.env;
+  if (!args.includes('--dry-run')) {
+    const p = updater.files(env.HERDR_APP_HOME || path.join(os.homedir(), '.config/herdr-app'));
+    updater.reapRetryClaim(p, Date.now());
+    // A confirmed state recovery surveys live CLIs before moving evidence. A
+    // newly started ordinary CLI must not cross that recovery claim boundary.
+    if (fs.existsSync(p.retryLock) && (!env.HERDR_UPDATE_RUN_ID || updater.read(p.lock)?.token !== env.HERDR_UPDATE_RUN_ID))
+      throw Error('Updater recovery/launch claim is active; no deployment started');
+  }
   const record = resultRecorder(options.env || process.env, args.includes('--dry-run'), { log });
   let selection;
   try { selection = parseOptions(args); }

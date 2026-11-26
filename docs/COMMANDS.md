@@ -265,11 +265,66 @@ invalidates stale confirmations. At most one new run starts, with all normal man
 source/ownership gates. Check now, startup, reload, timers and relay hints cannot
 confirm it. Prior files are copied privately under `.customizations/recovery/` before
 an accepted retry replaces them. This is not portable state or a browsable job history.
-New CLI results record an owner/run identity for this path; older unidentifiable CLI
-results remain investigation-only and use the manual procedure below.
+New CLI results record an owner/run identity for this path; an older completed
+Settings status never supplies the PID/deadline for a newer incomplete CLI result.
+Expired retry claims with a dead owner are archived during ordinary inspection,
+including after a completed update; that housekeeping never authorizes unknown replay.
+Older unidentifiable CLI results and orphan/malformed metadata use the separate
+stopped-state recovery below after investigation, not an automatic retry.
 
-For older installations (including a recurrence before this fix ships), or evidence
-that cannot identify a safe retry, an unresolved `update.lock` blocks ordinary Update
+### Explicit stopped-state recovery
+
+**Recover update** appears only when interrupted installer/orphaned or malformed
+updater metadata can be safely cleared. All recorded PIDs must be dead, process
+and descendant discovery must succeed, and no local updater/installer/rollback CLI
+may be running. Unknown writes and orphan launch metadata wait through a 30-minute
+settle/deadline bound; malformed check/retry leases also wait their 20/30-second
+bounds. Malformed far-future times cannot impose an unlimited lease: recovery
+uses bounded fallback age or directly observes stable bytes for five seconds when
+the filesystem clock itself is unusable. Neither supplies success or replay permission.
+An expired UI-only launch with no saved receipt waits the deployment bound and uses
+the same stopped-process proof and confirmation in Settings, then clears its old
+runtime intent. A missing PID is not evidence of success: the complete process survey and
+the person's confirmation of **all local and remote work stopped** are still required.
+A live owner, unavailable process facts, unreadable files or redirected paths refuse
+recovery. There is no force flag.
+
+One confirmation explains that stale locks/status/results will be cleared, why
+recorded owners are stopped, and that this **does not retry the update**. Cancel,
+Check now and background checks do nothing destructive. Confirming moves only
+`update.lock`, `update-retry.lock`, `update-check.lock`, `deploy.lock`,
+`update-status.json`, `deploy-all-result.json` and `update-check.json` that exist into
+a new private `.customizations/recovery/stopped-update-*` directory. The old log is
+preserved, a recovery record is written, and `update.log` records the explicit action.
+Ownership, installed payload, preferences and backup/rollback journals stay intact.
+A changed identity or another claim invalidates consent. Newly started ordinary
+all-machine CLIs refuse an active recovery claim before publishing or deploying.
+
+After success the row offers **Check now**, not Update or Retry update. Check again,
+inspect any uncertain writes and use the existing guarded rollback if needed, then
+choose a separate explicit Update. Deployment still takes its normal exclusive lock
+and refuses ownership conflicts. `deploy.lock` is **never removed automatically**;
+only this confirmed stopped-state action can move a dead installer's stale lock.
+Do not manually delete it to force a deployment.
+
+The same operation is available from the installed worker (PowerShell; select the
+actual absolute home first). The first command previews the confirmation/proof;
+only adding the explicit flag permits archival, never deployment:
+
+```powershell
+$worker = Join-Path $env:HERDR_APP_HOME 'mods/custom-settings/update-worker.cjs'
+node $worker --recover $env:HERDR_APP_HOME
+node $worker --recover $env:HERDR_APP_HOME --confirm-stopped
+```
+
+The command handles saved state; use Settings for an orphaned runtime-only launch,
+whose live cross-mod context is not accessible to a standalone command.
+
+From a current source checkout the equivalent entrypoint is
+`node src/services/updates/update-worker.cjs --recover <absolute-home>` with the
+same optional confirmation flag. Do not run it on the real home as a test.
+
+For older installations (including a recurrence before this fix ships), an unresolved `update.lock` blocks ordinary Update
 even after a crash. Inspect its
 matching `update-status.json`, PID/childPid, log, result and any dispatched machine;
 wait for active work, and use normal rollback recovery for uncertain writes.

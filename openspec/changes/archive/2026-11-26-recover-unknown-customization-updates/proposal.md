@@ -9,6 +9,8 @@ A transient Windows sharing error can discard the final deployment receipt after
 - Retry updater rename/read/write sharing failures with bounded backoff; retain complete final content even when replacement cannot succeed, without weakening exclusive locks.
 - Reconcile dead, settled runs from same-run receipts and conclusive log tails, distinguishing deployed-but-result-unsaved from genuinely unknown outcomes without inventing installed provenance.
 - Offer a token-bound Retry update confirmation for eligible unknown runs; never automatically replay, and retain protection while local descendants or dispatched remote work may still run.
+- Offer a separate confirmed stopped-state recovery in Settings and the updater command for dead installer/orphan/malformed metadata. Archive evidence, preserve journal/ownership gates and return to Check now without deploying.
+- Bind recovery to current run ownership and archive expired dead-owner retry claims independently of the deployment outcome.
 - Cover write faults, recovery, action guards and duplicate/stale confirmations with isolated fixtures, and revise README and command recovery guidance.
 - Record the safe pre-release manual workaround in the design; this task itself never edits the person's desktop or pc2 runtime state.
 

@@ -240,7 +240,7 @@ The command SHALL end with machine, action, source commit and printed backup ID 
 - **THEN** the command exits zero and preserves each deploy's printed backup ID
 
 ### Requirement: Single Custom customization update row
-Custom Settings Updates SHALL retain its native rows and add one herdr-app-custom row with a short verified installed revision when known, a short status and one action slot. Without a verified revision, its title SHALL be only herdr-app-custom. The slot SHALL show Check now, Update, Retry update or transient busy/current feedback matching the native rows. It SHALL NOT add machine rows, news, settings or rollback controls. Checking and updating SHALL disable only that row's action.
+Custom Settings Updates SHALL retain its native rows and add one herdr-app-custom row with a short verified installed revision when known, a short status and one action slot. Without a verified revision, its title SHALL be only herdr-app-custom. The slot SHALL show Check now, Update, Retry update, Recover update or busy/current feedback matching the native rows. It SHALL NOT add machine rows, news, settings or rollback controls. Checking and updating SHALL disable only that row's action.
 
 #### Scenario: Current or newer published main
 - **WHEN** a successful check compares the verified desktop installation with published main
@@ -709,6 +709,46 @@ Updater receipts, status, availability checks and lock helpers SHALL tolerate bo
 - **THEN** the updater reports the persistence limitation without fabricating deployment failure or success
 - **AND** it retains any complete evidence already written instead of deleting it during error cleanup
 
+### Requirement: Explicit stopped-state recovery
+Settings and the updater command SHALL offer explicit stopped-state recovery for dead installer locks, orphaned launches and malformed legacy state. It SHALL require dead recorded owners, complete local process proof, settled bounds and confirmation that local/remote work stopped; archive stale files and log consent while preserving payload, ownership and journals. Recovery SHALL NOT deploy, retry or force active, unreadable or redirected state.
+
+#### Scenario: Dead installer or orphaned launch
+- **WHEN** an interrupted installer or launch leaves stale metadata and every recorded owner is dead with settled evidence and no local updater process
+- **THEN** the row offers Recover update with one explanation of what is cleared and why stopped-work proof is required
+- **AND** the person must confirm all local and remote work has stopped before clearing anything
+
+#### Scenario: Malformed legacy check and claim files
+- **WHEN** malformed legacy state or a lock created before status publication prevents ordinary checking or updating
+- **THEN** expired lease/deadline bounds, recorded-owner death and a complete local process survey permit the separate confirmed recovery action
+- **AND** malformed bytes are preserved as evidence, not treated as a successful deployment or permission to replay
+
+#### Scenario: Evidence-preserving clear without deployment
+- **WHEN** the person confirms stopped-state recovery against the unchanged captured identity
+- **THEN** stale updater locks, status, result and cache files move to private recovery, the previous log is preserved and consent is logged
+- **AND** installed payload, ownership, preferences and rollback journals remain unchanged
+- **AND** the row returns to Check now without starting a deployment, retry or rollback
+
+#### Scenario: Lost runtime intent without a receipt
+- **WHEN** an expired launch intent has no saved job or receipt after the deployment bound
+- **THEN** Settings can offer explicit recovery only after complete stopped-process proof and local/remote stopped-work confirmation
+- **AND** successful recovery clears the old intent/resume despite a later stale read, without replacing a newer launch or a different run
+- **AND** normal empty homes never offer recovery merely because no update has run
+
+#### Scenario: Documented command and cancellation
+- **WHEN** the updater command previews recovery, or the person cancels or supplies obsolete confirmation
+- **THEN** no deployment or authoritative-state recovery is dispatched
+- **AND** the documented explicit confirmation flag uses the same stopped-work and preservation gates as Settings
+
+#### Scenario: Active or unavailable process evidence
+- **WHEN** any recorded owner is alive, local process discovery is incomplete, a lease remains unsettled, or state cannot safely be read
+- **THEN** recovery is refused without a force option or silent installer-lock deletion
+- **AND** newly launched ordinary all-machine CLIs refuse an active recovery claim before writing receipts or dispatching
+
+#### Scenario: Abandoned retry claim after completion
+- **WHEN** a retry request dies leaving an expired claim after its detached update completes
+- **THEN** ordinary inspection archives only that dead owner's claim and another explicit Update can proceed
+- **AND** the same housekeeping never clears an unknown deployment outcome or automatically replays work
+
 ### Requirement: Evidence-based unknown outcome recovery
 Unknown runs SHALL settle only from attributable completion evidence after recorded processes are dead and a settle interval or deadline has passed. Proven deployment with an unsaved result SHALL be distinguished from genuine uncertainty. Genuine unknowns SHALL permit only a separately confirmed retry after quiescence checks; inspection, deadlines and availability checks SHALL NOT replay work.
 
@@ -736,6 +776,11 @@ Unknown runs SHALL settle only from attributable completion evidence after recor
 - **WHEN** status reads, Check now, startup, timer checks, focus catch-up or relay hints observe retry eligibility
 - **THEN** they do not clear uncertainty as authorization or dispatch another update
 - **AND** unknown diagnostics and evidence remain until conclusive settlement or an explicitly claimed retry
+
+#### Scenario: Newer CLI remains authoritative
+- **WHEN** an old terminal Settings job coexists with a newer incomplete CLI receipt, including a timed-out peer while other peer work continues
+- **THEN** recovery uses the current receipt's matching run owner and deadline, not the old Settings PID or log
+- **AND** a live current CLI blocks ordinary Update, Retry update and stopped-state recovery
 
 #### Scenario: Legacy or foreign evidence is insufficient
 - **WHEN** an old or tokenless CLI unknown lacks attributable process/dispatch evidence, or a log or recovery receipt belongs to another run

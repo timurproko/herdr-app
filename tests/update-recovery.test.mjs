@@ -49,8 +49,12 @@ try {
     atomic(p.lock, { token: 'finished' });
     const unlink = fs.unlinkSync;
     fs.unlinkSync = file => { if (file === p.lock) throw Object.assign(Error('held completed lock'), { code: 'EPERM' }); return unlink(file); };
-    try { assert.throws(() => inspect(f.env.HERDR_APP_HOME, { isAlive: () => false }), /held completed lock/); }
-    finally { fs.unlinkSync = unlink; }
+    try {
+      const blocked = inspect(f.env.HERDR_APP_HOME, { isAlive: () => false });
+      assert.equal(blocked.stateError, true); assert.equal(blocked.locked, true);
+      assert.match(blocked.job.error, /held completed lock/);
+      assert.equal(customizationRowState(updateProjection(blocked)).canUpdate, false);
+    } finally { fs.unlinkSync = unlink; }
     assert.equal(fs.existsSync(p.lock), true);
     assert.equal(inspect(f.env.HERDR_APP_HOME, { isAlive: () => true }).locked, true, 'live terminal owner is not reclaimed');
     assert.equal(inspect(f.env.HERDR_APP_HOME, { isAlive: () => false }).locked, false);
