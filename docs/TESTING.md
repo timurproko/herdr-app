@@ -170,8 +170,9 @@ home and the real Trello-only installer; no real remote/Core routing is attempte
 Test-only exports invoke the same handlers as the controls; this is native pixels
 and handler composition, not a mouse-hit-test or live Trello/SSH acceptance claim.
 
-The driver captures empty/masked inputs, the single saved account with hover Remove,
-zero-board readiness, Active/Inactive/search picker states, added-board hover Remove,
+The driver captures empty/masked inputs, Saving, the single saved account at rest
+and with hover Remove, zero-board readiness, Active/Inactive/search picker states,
+added-board hover Remove, an injected elevated-SSH whole-card refusal,
 global Access, a remote runtime Install prerequisite, remote account/board lifecycle,
 read-only new-host and explicitly applied global write states, captured-machine
 removal confirmation and an injected permission-check error without Save. Its receipt
@@ -197,6 +198,11 @@ and before any installation write.
 row kit, header-machine scope without a stray selection dropdown, fixed description
 links and category-local search/selection. These fixtures start no real SSH or Trello
 request and do not read private user setup.
+`tests/trello-card-polish.test.mjs` covers opt-in replacement/status hover, light
+tabs and empty separators while unrelated field choices/defaults stay unchanged.
+`tests/trello-unavailable.test.mjs` covers one actionable elevated-SSH explanation,
+no repair count or dependent controls, independent group completion, safe retry,
+stale machine replies and disable-session retirement without secret dispatch.
 
 ## Supported hosted subset
 

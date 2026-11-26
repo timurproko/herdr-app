@@ -161,7 +161,22 @@ headroom below CMD's 8,191-character limit even with captured identity bindings;
 all actions and credentials still travel only through stdin after READY.
 
 Temporary/custom-via connections, unprovable or elevated execution identities,
-changed Core sessions and unsupported shell arrangements are refused. Existing
+changed Core sessions and unsupported shell arrangements are refused.
+
+An administrator/elevated SSH login is refused **before credentials are sent**.
+The card says this once for the whole setup, with Requirements **Unavailable**
+instead of counting runtime/account/board failures as items to fix. It directs
+you to connect as the normal user running Herdr Core, or set up the plugin on
+that machine directly as that user. Dependent forms, board controls and settings
+are hidden until this connection can be used safely; Check can re-evaluate it.
+This does not mean Trello cannot run locally for that regular user. Importing
+this computer's account would not fix the SSH execution identity: the same
+pre-secret refusal would still apply, and bypassing it could save credentials
+under the administrator rather than the intended user. No credential-copy or
+SSH/UAC reconfiguration action is added. Safe direct-SSH runtime/account/board
+setup remains supported; transient connectivity/storage failures stay distinct.
+
+ Existing
 SSH host trust, key authentication, Node 20+ and the selected user's Core session
 are prerequisites; the feature never accepts a new host key, prompts for a password
 or installs Node/changes PATH. A missing Trello runtime gets the normal Requirements

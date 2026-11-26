@@ -71,6 +71,7 @@ export default class Fixture extends Settings {
  if(command&&command!==this.command&&!busy()){this.command=command;this.phase='working';
  if(command==='entered'||command==='remote-entered'){const s=this.pluginForms['trello:local-setup'];s.fields.apiKey.set_value(command==='entered'?'FAKE_NATIVE_KEY_NOT_REAL':'FAKE_NATIVE_REMOTE_KEY_NOT_REAL');s.fields.token.set_value(command==='entered'?'FAKE_NATIVE_TOKEN_NOT_REAL':'FAKE_NATIVE_REMOTE_TOKEN_NOT_REAL');this.phase=command;}
  if(command==='saving'||command==='saved'||command==='remote-saved'){const i=item('local-setup');if(!i?.configured)submitActionForm(this,cx,plugin,i,i.form.actions.find(a=>a.id==='save'));}
+ if(command==='saved-rest'){this.pluginRowHover=null;this.phase=command;}
  if(command==='picker-active'||command==='remote-picker')openListPicker(this,cx,plugin,item('boards'));
  if(command==='picker-inactive'){this.listPicker.tab='inactive';this.phase=command;}
  if(command==='picker-search'){this.pluginSearches['trello:boards'].set_value('Engineering');this.phase=command;}
@@ -102,7 +103,7 @@ const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms)),app=args=>execFileS
 const result={home,remoteHome,session,pid:child.pid,version,synthetic:true,interaction:'Production native controls/handlers; injected provider, SSH and inventory; not a mouse hit-test or real remote acceptance',pictures:[]};
 const wait=async phase=>{for(let i=0;i<480;i++){await sleep(250);assert.equal(child.exitCode,null,'Disposable app exited');try{const data=JSON.parse(fs.readFileSync(path.join(home,'shared.json'),'utf8'))['proof.snapshot'];if(data?.phase===phase)return data;}catch{}}throw Error('Timed out waiting for '+phase);};
 try{
- for(const phase of ['missing','entered','saving','saved','picker-active','picker-inactive','picker-search','allowed','writable','remote-missing','remote-installed','remote-entered','remote-saved','remote-picker','remote-allowed','remote-writable','remove-confirm','elevated','storage-error']){
+ for(const phase of ['missing','entered','saving','saved','saved-rest','picker-active','picker-inactive','picker-search','allowed','writable','remote-missing','remote-installed','remote-entered','remote-saved','remote-picker','remote-allowed','remote-writable','remove-confirm','elevated','storage-error']){
   if(phase!=='missing')fs.writeFileSync(control,phase);const state=await wait(phase);await sleep(500);const picture=path.join(output,phase+'.png');app(['shot',picture]);result.pictures.push({phase,picture,state});const status=JSON.parse(app(['status']));assert.deepEqual(status.errors,[],JSON.stringify(status.errors));
  }
  result.status=JSON.parse(app(['status']));

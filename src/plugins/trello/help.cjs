@@ -23,6 +23,10 @@ plus a write-capable Trello token. Imported preferences cannot grant scope or wr
 Headless policy writes on cannot bypass the Settings gate. No wildcard board grant.
 Use Requirements Check once to learn names for older headless setup; opening the
 card only reads saved names/status and does not verify a token over the network.
+An administrator/elevated SSH login is refused before credentials are sent.
+Connect as the normal user running Herdr Core, or set up the plugin on that machine
+directly as that user. Importing another account cannot repair that unsafe login;
+no credential-copy or SSH/UAC change is provided. Safe direct SSH setup is supported.
 `;
 const commands = `COMMANDS (JSON results unless help is requested)
   herdr-trello status --json

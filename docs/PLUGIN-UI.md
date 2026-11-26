@@ -111,6 +111,14 @@ unknown update evidence does not claim outdated, and optional tools remain Optio
 - `fix: { label, busyLabel?, statusLabel?, primary?, manual?, requiresEnabled?, confirm?, run(cx) }`:
   the row's button. `manual` fixes are left out of Install all; `confirm: { title, detail, label }`
   asks first.
+A check may return `unavailable: {detail}` for a fixed, whole-setup connection
+refusal. The renderer shows that detail once in an always-visible Requirements
+block with Check and Unavailable, without a numeric fix count, dependent rows,
+list sections or settings. Any independently completed group may supply it.
+Other failures keep ordinary row diagnostics; this does not invent a ready state
+or change registry status types. Machine/enable-session changes retire it and
+stale controls cannot dispatch. Do not use raw provider exceptions as detail.
+
 - `selection: { key, label?, options: [[value, label]], value }`: a dropdown in the row,
   saved into setting `key` (e.g. which Cloudflare account). Changing it re-checks the plugin.
 

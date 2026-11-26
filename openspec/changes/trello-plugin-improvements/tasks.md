@@ -27,11 +27,11 @@ All tasks remain unstarted until plan approval. Groups match the four PR Impleme
 
 ## 4. Unsupported Trello setup connections show one actionable explanation without duplicate failures or misleading fix counts
 
-- [ ] 4.1 Preserve refusal codes and add generic unavailable/applicability presentation for dependent setup rows; verify injected elevated/unsupported identities produce one explanation and no numeric fix count, All ready claim or unusable controls.
-- [ ] 4.2 Explain administrator SSH versus the regular Core user and offer non-elevated/local setup guidance without credential import or privilege changes; verify safe direct-SSH install/save/board actions and pre-READY credential guards remain intact in remote fixtures.
-- [ ] 4.3 Cover independent Requirements/Boards completion, machine switch/disable stale replies, transient SSH failures, permission errors and unknown outcomes; verify no duplicate/old-machine guidance or false unsupported/ready projection.
-- [ ] 4.4 Update remote security/help guidance and capture the injected unsupported-machine before/after state in the disposable native fixture; verify one actionable message, no credential transfer, and all started processes/servers stopped before the report.
-- [ ] 4.5 Recheck current base/collisions, run focused cross-feature and installed-help checks, and record actual results plus remaining gaps with the private screenshot paths; verify no edits in the protected Git/update/deploy-all paths and no real Trello account/board in tests.
+- [x] 4.1 Preserve refusal codes and add generic unavailable/applicability presentation for dependent setup rows; verify injected elevated/unsupported identities produce one explanation and no numeric fix count, All ready claim or unusable controls.
+- [x] 4.2 Explain administrator SSH versus the regular Core user and offer non-elevated/local setup guidance without credential import or privilege changes; verify safe direct-SSH install/save/board actions and pre-READY credential guards remain intact in remote fixtures.
+- [x] 4.3 Cover independent Requirements/Boards completion, machine switch/disable stale replies, transient SSH failures, permission errors and unknown outcomes; verify no duplicate/old-machine guidance or false unsupported/ready projection.
+- [x] 4.4 Update remote security/help guidance and capture the injected unsupported-machine before/after state in the disposable native fixture; verify one actionable message, no credential transfer, and all started processes/servers stopped before the report.
+- [x] 4.5 Recheck current base/collisions, run focused cross-feature and installed-help checks, and record actual results plus remaining gaps with the private screenshot paths; verify no edits in the protected Git/update/deploy-all paths and no real Trello account/board in tests.
 
 ## Workflow follow-up
 
