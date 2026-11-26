@@ -456,6 +456,47 @@ assert.equal(calls.length, beforeTimeout, 'expired provisional feedback does not
 lost.resolve(reply(current)); await abandoned.settle();
 assert.ok(timeoutApi.customizationUpdateSnapshot().launch, 'discarded generations cannot publish a late success');
 retire(timeout); respond = null;
+// Deliberate recovery is distinct from Update and from all background triggers.
+const retryable = { ...available, locked: true, job: { token: 'uncertain-run', state: 'unknown', started: clock - 1800001 },
+  recovery: { identity: 'captured-unknown', retryable: true, until: clock + 120000 } };
+state.set(api.CUSTOMIZATION_UPDATE_KEY, retryable);
+for (const override of [{}, { recovery: null }, { recovery: { ...retryable.recovery, until: clock } }, { check: { error: 'offline' } }, { checking: true }]) {
+  const row = api.customizationRowState({ ...retryable, ...override }, { now: clock });
+  assert.equal(row.canUpdate, false);
+  if (!Object.keys(override).length) { assert.equal(row.canRetry, true); assert.equal(row.action, 'retry'); }
+  else if (!override.checking) assert.equal(row.canRetry, false);
+}
+const recoveryView = fixture(); recoveryView.view.customUpdateClosed = false;
+const beforeRecovery = calls.length;
+render(api, recoveryView).button.callback(null, recoveryView.cx);
+assert.equal(calls.length, beforeRecovery, 'Retry update initially opens only confirmation');
+assert.match(render(api, recoveryView).description, /may have finished.*local and remote update work has stopped/);
+const cancel = recoveryView.view.buttonCalls.findLast(button => button.label === 'Cancel');
+cancel.callback(null, recoveryView.cx); await recoveryView.settle();
+assert.equal(calls.length, beforeRecovery, 'Cancel dispatches nothing');
+render(api, recoveryView).button.callback(null, recoveryView.cx);
+const staleConfirm = render(api, recoveryView).button;
+state.set(api.CUSTOMIZATION_UPDATE_KEY, { ...retryable, recovery: { ...retryable.recovery, identity: 'new-evidence' } });
+staleConfirm.callback(null, recoveryView.cx); await recoveryView.settle();
+assert.equal(calls.length, beforeRecovery, 'changed evidence invalidates a retained confirmation');
+state.set(api.CUSTOMIZATION_UPDATE_KEY, retryable);
+recoveryView.view.customUpdateRetry = null;
+render(api, recoveryView).button.callback(null, recoveryView.cx);
+const closedConfirm = render(api, recoveryView).button;
+retire(recoveryView); closedConfirm.callback(null, recoveryView.cx); await recoveryView.settle();
+assert.equal(calls.length, beforeRecovery, 'closed views cannot confirm');
+const confirming = fixture(); confirming.view.customUpdateClosed = false;
+render(api, confirming).button.callback(null, confirming.cx);
+const confirm = render(api, confirming).button;
+respond = request => { assert.equal(request.action, 'retry'); assert.equal(request.identity, retryable.recovery.identity); assert.equal(request.confirmedStopped, true); return reply(running); };
+confirm.callback(null, confirming.cx); confirm.callback(null, confirming.cx); await confirming.settle();
+assert.equal(calls.length, beforeRecovery + 1, 'two confirmation presses dispatch only one request');
+assert.equal(render(api, confirming).button.label, 'Updating…'); retire(confirming);
+const recoveryChrome = {}; respond = () => reply(retryable);
+api.initCustomizationUpdates(recoveryChrome, cx, 'custom-workspace-chrome', { chrome: true }); await flush();
+api.invalidateCustomizationUpdates(recoveryChrome, cx); clock += 15000; timers.at(-1).callback(cx); await flush();
+assert.ok(calls.slice(beforeRecovery + 1).every(call => call.action === 'check'), 'startup, timers and hints never confirm retry');
+recoveryChrome.customUpdateClosed = true; respond = null;
 const settings = fs.readFileSync('src/features/settings/main.js', 'utf8'), chromeSource = fs.readFileSync('src/features/workspace-chrome/main.js', 'utf8');
 assert.match(settings, /u\.app\.ready \|\| \(u\.core\.ready && !u\.core\.managed\) \|\| customizationUpdateAvailable\(\)/);
 assert.equal((chromeSource.match(/updates\(\)\.app\.ready \|\| customizationUpdateAvailable\(\)/g) || []).length, 2, 'expanded Settings and compact More preserve native predicates');

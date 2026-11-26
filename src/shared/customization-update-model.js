@@ -13,6 +13,7 @@ export function updateProjection(snapshot) {
     revision: snapshot?.revision || null, check: snapshot?.check || null,
     checking: snapshot?.checking === true, locked: snapshot?.locked === true,
     peerPending: snapshot?.peerPending === true, peerUnknown: snapshot?.peerUnknown === true,
+    recovery: snapshot?.recovery || null,
     log: snapshot?.log || '', details: snapshot?.details || null, job: snapshot?.job || snapshot?.lastRun || null,
     partial: Boolean(result?.complete && ok(result.results?.find(row => row.machine === 'local')) && result.results.some(row => row.machine !== 'local' && !ok(row) && !peerSkipKind(row))),
   };
@@ -39,14 +40,15 @@ export function customizationRowState(snapshot, { busy = null, error = null, now
   const log = details ? ` ${details.kind === 'log' ? 'Log' : 'Details'}: ${details.path}.` : '';
   const launch = snapshot?.launch;
   const unknown = (launch && launch.deadline < now) || job?.state === 'unknown' || (job?.state === 'running' && job.deadline < now);
-  const running = busy === 'launch' || ((launch || job?.state === 'running') && !unknown);
+  const running = busy === 'launch' || busy === 'retry' || ((launch || job?.state === 'running') && !unknown);
   const checking = busy === 'check' || snapshot?.checking;
   const freshAfterFailure = !job?.finished || (check?.attempted || 0) > job.finished;
   const catchUp = snapshot?.peerPending && check?.checked && check.available === false && (!job?.finished || check.attempted >= job.finished);
   const canUpdate = !unknown && !running && !snapshot?.locked && !snapshot?.peerUnknown && !check?.error && (updateAvailable(snapshot) || catchUp) && (job?.state !== 'failed' || freshAfterFailure);
+  const canRetry = (unknown || snapshot?.peerUnknown) && !running && snapshot?.recovery?.retryable === true && snapshot.recovery.until > now && check?.checked && !check.error;
   let description, current = false;
   if (running) {
-    const progress = launch?.progress || (busy === 'launch' ? updateLaunchProgress(snapshot)
+    const progress = launch?.progress || (busy === 'launch' || busy === 'retry' ? updateLaunchProgress(snapshot)
       : sameUpdateRun(snapshot?.progress, job) ? snapshot.progress : null);
     const target = updateTarget(snapshot) || commit(progress?.target);
     const peerRevision = commit(progress?.peerRevision);
@@ -70,5 +72,5 @@ export function customizationRowState(snapshot, { busy = null, error = null, now
     current = check.available === false && !snapshot?.locked && !snapshot?.peerPending && !snapshot?.peerUnknown;
   }
   else description = 'Not checked.';
-  return { title, description, current, action: canUpdate ? 'launch' : 'check', label: running ? 'Updating…' : checking ? 'Checking…' : canUpdate ? 'Update' : 'Check now', enabled: !busy && !running && !checking };
+  return { title, description, current, canUpdate: Boolean(canUpdate), canRetry: Boolean(canRetry), action: canRetry ? 'retry' : canUpdate ? 'launch' : 'check', label: running ? 'Updating…' : checking ? 'Checking…' : canRetry ? 'Retry update' : canUpdate ? 'Update' : 'Check now', enabled: !busy && !running && !checking };
 }

@@ -34,14 +34,17 @@ function deferredPeers(result) {
 }
 const sharing = error => ['EPERM', 'EBUSY', 'EACCES'].includes(error?.code);
 const pause = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+// Public one-shot requests reserve a second for JSON/transport completion. The
+// detached 30-minute supervisor and imported CLI have their own existing bounds.
+let requestDeadline = Infinity;
 function retryIO(operation, { budget = 3000, sleep = pause } = {}) {
   // Bounded attempt count even with a clock jump; only one-shot Node workers.
   let waited = 0, delay = 25;
   for (;;) {
     try { return operation(); }
     catch (error) {
-      if (!sharing(error) || waited >= budget) throw error;
-      const wait = Math.min(delay, budget - waited);
+      if (!sharing(error) || waited >= budget || Date.now() >= requestDeadline) throw error;
+      const wait = Math.min(delay, budget - waited, requestDeadline - Date.now());
       sleep(wait); waited += wait; delay = Math.min(200, delay * 2);
     }
   }
@@ -68,7 +71,7 @@ function acquire(file, value, options = {}) {
 const remove = file => retryIO(() => fs.unlinkSync(file));
 function files(home) {
   const dir = path.join(path.resolve(home), '.customizations');
-  return Object.fromEntries(Object.entries({ dir: '', status: 'update-status.json', lock: 'update.lock', log: 'update.log', runner: 'update-runner.cjs', result: 'deploy-all-result.json', check: 'update-check.json', checkLock: 'update-check.lock', manifest: 'manifest.json' }).map(([key, name]) => [key, path.join(dir, name)]));
+  return Object.fromEntries(Object.entries({ dir: '', status: 'update-status.json', lock: 'update.lock', log: 'update.log', runner: 'update-runner.cjs', result: 'deploy-all-result.json', check: 'update-check.json', checkLock: 'update-check.lock', retryLock: 'update-retry.lock', deployLock: 'deploy.lock', manifest: 'manifest.json' }).map(([key, name]) => [key, path.join(dir, name)]));
 }
 function atomic(file, value, options = {}) {
   const io = options.io || fs, policy = { ...options, budget: options.budget ?? 2500 };
@@ -90,7 +93,7 @@ function atomic(file, value, options = {}) {
   return { recovery: null };
 }
 function readResult(p, job, options = {}) {
-  for (const dir of [p.dir, path.dirname(p.dir)]) {
+  for (const dir of [p.result, p.dir, path.dirname(p.dir)]) {
     if (fs.existsSync(dir) && fs.lstatSync(dir).isSymbolicLink()) throw Error('Update state path is redirected; inspect it manually');
   }
   let primary, unreadable;
@@ -116,7 +119,10 @@ function readResult(p, job, options = {}) {
 }
 const shortError = error => String(error?.message || error || 'Update failed').replace(/[\x00-\x1f\x7f]/g, ' ').slice(0, 160);
 function command(program, args, options = {}) {
-  const value = cp.spawnSync(program, args, { encoding: 'utf8', windowsHide: true, timeout: 15000, maxBuffer: 8 * 1024 * 1024, ...options });
+  const remaining = requestDeadline - Date.now();
+  if (remaining <= 0) return { code: 1, stdout: '', stderr: 'Update request budget exceeded' };
+  const value = cp.spawnSync(program, args, { encoding: 'utf8', windowsHide: true, maxBuffer: 8 * 1024 * 1024, ...options,
+    timeout: Math.max(1, Math.min(options.timeout || 15000, remaining)) });
   return { code: value.status, stdout: value.stdout || '', stderr: value.stderr || '', error: value.error };
 }
 function alive(pid) {
@@ -130,7 +136,7 @@ function installedRevision(p, result) {
   const desktop = result?.desktop;
   if (!desktop?.verified || !/^[a-f0-9]{40,64}$/i.test(desktop.commit || '') || !desktop.manifest) return null;
   try {
-    const bytes = fs.readFileSync(p.manifest), manifest = JSON.parse(bytes);
+    const bytes = retryIO(() => fs.readFileSync(p.manifest), { budget: 150 }), manifest = JSON.parse(bytes);
     if (manifest.version !== 2 || manifest.id !== 'custom' || !manifest.files) return null;
     return createHash('sha256').update(bytes).digest('hex') === desktop.manifest ? desktop.commit : null;
   } catch { return null; }
@@ -191,9 +197,48 @@ function terminalEvidence(p, job, result) {
       || destination !== p.result.replaceAll('\\', '/').toLowerCase()) return null;
   return { ...result, complete: true };
 }
-function inspect(home, { now = Date.now, isAlive = alive } = {}) {
+function quiescent(job, { isAlive = alive, run = command, platform = process.platform } = {}) {
+  if (!Number.isInteger(job?.pid) || job.pid < 1 || isAlive(job.pid) || isAlive(job.childPid)) return false;
+  // Windows retains parent PIDs after exit. On POSIX a detached CLI's process
+  // group remains detectable even when its leader exits and children reparent.
+  if (platform !== 'win32' && Number.isInteger(job.childPid)) {
+    try { process.kill(-job.childPid, 0); return false; } catch (error) { if (error.code !== 'ESRCH') return false; }
+  }
+  const reply = platform === 'win32'
+    ? run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', 'ConvertTo-Json -Compress -InputObject @(Get-CimInstance Win32_Process -ErrorAction Stop | Select-Object ProcessId,ParentProcessId)'], { timeout: 5000 })
+    : run('ps', ['-eo', 'pid=,ppid='], { timeout: 5000 });
+  if (reply.code !== 0) return false;
+  let processes;
+  try {
+    processes = platform === 'win32' ? JSON.parse(reply.stdout).map(p => [p.ProcessId, p.ParentProcessId])
+      : reply.stdout.trim().split('\n').map(line => line.trim().split(/\s+/).map(Number));
+    if (!Array.isArray(processes) || processes.some(p => p.length !== 2 || p.some(n => !Number.isInteger(n)))) return false;
+  } catch { return false; }
+  const roots = new Set([job.pid, job.childPid, ...(job.descendantPids || [])].filter(Number.isInteger));
+  return !processes.some(([pid, parent]) => roots.has(pid) || roots.has(parent));
+}
+function recoveryState(p, job, result, check, unknown, now, isQuiescent) {
+  if (!unknown) return null;
+  // Additive CLI owner metadata makes future tokenless runs identifiable. Old
+  // receipts without it remain investigation-only, never guessed from time.
+  const owner = job || (result?.owner && { ...result.owner, token: result.runId, finished: result.at });
+  if (!owner?.token || !Number.isFinite(owner.started) || !Number.isFinite(owner.deadline)) return null;
+  const identity = createHash('sha256').update(JSON.stringify({ job: owner, result })).digest('hex');
+  const fresh = check?.checked && !check.error && check.attempted > (owner.finished || owner.started)
+    && now >= check.checked && now - check.checked < CHECK_MAX;
+  const evidence = result?.complete === true ? result : terminalEvidence(p, owner, result);
+  const terminal = evidence && (evidence.token === owner.token || evidence.runId === owner.token)
+    && !evidence.results?.some(row => row.outcome === 'unknown' || /\boutcome unknown\b/i.test(row.reason || ''));
+  const quietTime = settled(p, owner, now) && (terminal || now >= owner.deadline);
+  const lock = read(p.lock);
+  const matchingLock = !lock || (job && lock.token === job.token);
+  const retryable = Boolean(fresh && quietTime && matchingLock && !fs.existsSync(p.deployLock) && isQuiescent(owner));
+  return { identity, retryable, until: check?.checked ? check.checked + CHECK_MAX : 0 };
+}
+function inspect(home, { now = Date.now, isAlive = alive, isQuiescent = job => quiescent(job, { isAlive }) } = {}) {
   const p = files(home);
   let job = read(p.status);
+  read(p.lock); // unreadable lock contents never authorize launch or recovery
   let result = readResult(p, job);
   const dead = job && !isAlive(job.pid) && !isAlive(job.childPid);
   const ready = dead && settled(p, job, now());
@@ -208,9 +253,12 @@ function inspect(home, { now = Date.now, isAlive = alive } = {}) {
   // result or remove an uncertain lock just because a PID no longer exists.
   if (job && ['running', 'unknown'].includes(job.state) && ready
       && result?.complete === true && result.token === job.token) {
-    job = { ...job, ...outcome(result), finished: now() };
-    atomic(p.status, job);
-    if (job.state !== 'unknown') unlock(p, job.token);
+    const final = outcome(result);
+    if (final.state !== 'unknown') {
+      job = { ...job, ...final, finished: now() };
+      atomic(p.status, job);
+      unlock(p, job.token);
+    }
   }
   if (job?.state === 'running' && (now() > job.deadline || (job.phase !== 'starting' && !isAlive(job.pid)) || (job.phase === 'starting' && now() - job.started > 5000))) job = { ...job, state: 'unknown' };
   // A later ordinary CLI run has no Settings launch token/log. Do not attach
@@ -238,7 +286,8 @@ function inspect(home, { now = Date.now, isAlive = alive } = {}) {
   if (check?.target) check = { ...check, available: revision !== check.target && (!check.error || check.available === true) };
   const peerPending = deferredPeers(result).length > 0;
   const peerUnknown = Boolean(result?.results?.some(row => row.machine !== 'local' && (row.outcome === 'unknown' || /\boutcome unknown\b/i.test(row.reason || ''))));
-  return { job, lastRun, result, peerPending, peerUnknown, check, checking: (read(p.checkLock)?.until || 0) > now(), revision, locked: fs.existsSync(p.lock), details, log: details?.kind === 'log' ? details.path : '' };
+  const recovery = recoveryState(p, job, result, check, job?.state === 'unknown' || lastRun?.state === 'unknown' || peerUnknown, now(), isQuiescent);
+  return { job, lastRun, result, peerPending, peerUnknown, recovery, check, checking: (read(p.checkLock)?.until || 0) > now(), revision, locked: fs.existsSync(p.lock), details, log: details?.kind === 'log' ? details.path : '' };
 }
 function checkMain(home, { force = false, invalidate = false, now = Date.now, random = Math.random, run = command, env = process.env } = {}) {
   const p = files(home), snapshot = inspect(home, { now });
@@ -258,7 +307,7 @@ function checkMain(home, { force = false, invalidate = false, now = Date.now, ra
     return now() < nextAttempt(check, now()) ? value : null;
   };
   const reused = cached(snapshot); if (reused) return reused;
-  fs.mkdirSync(p.dir, { recursive: true });
+  retryIO(() => fs.mkdirSync(p.dir, { recursive: true }));
   const held = read(p.checkLock);
   if (held && held.until <= now() && read(p.checkLock)?.token === held.token) remove(p.checkLock);
   const token = randomUUID();
@@ -344,9 +393,11 @@ async function runUpdate(home, token, { userHome, run = command, spawn = cp.spaw
   if (job?.token !== token || read(p.lock)?.token !== token || job.state !== 'running') throw Error('Update launch identity changed');
   job = { ...job, pid: process.pid, phase: 'preparing', deadline: job.started + deadlineMs };
   atomic(p.status, job);
-  const log = text => { if (text) fs.appendFileSync(p.log, text.endsWith('\n') ? text : text + '\n'); };
+  const log = text => { if (text) retryIO(() => fs.appendFileSync(p.log, text.endsWith('\n') ? text : text + '\n')); };
   const finish = (state, error, release = state !== 'unknown') => {
-    job = { ...job, target: deploymentTarget(job, read(p.result)) || job.target, state, error: error ? shortError(error) : null, finished: now() };
+    let target;
+    try { target = deploymentTarget(job, readResult(p, job)); } catch {}
+    job = { ...job, target: target || job.target, state, error: error ? shortError(error) : null, finished: now() };
     atomic(p.status, job);
     if (release) unlock(p, token);
     return job;
@@ -362,9 +413,10 @@ async function runUpdate(home, token, { userHome, run = command, spawn = cp.spaw
       let child, timer, settled = false;
       const done = (state, error, release = state !== 'unknown') => {
         if (settled) return; settled = true; clearTimer(timer);
-        resolve(finish(state, error, release));
+        try { resolve(finish(state, error, release)); }
+        catch (persistenceError) { resolve({ ...job, state: 'unknown', error: `Update status could not be saved: ${shortError(persistenceError)}` }); }
       };
-      const fd = fs.openSync(p.log, 'a');
+      const fd = retryIO(() => fs.openSync(p.log, 'a'));
       try {
         child = spawn(process.execPath, [path.join(root, 'tools/deploy-all.mjs')], {
           cwd: root, env: { ...process.env, HERDR_APP_HOME: path.resolve(home), HERDR_UPDATE_RUN_ID: token },
@@ -376,11 +428,13 @@ async function runUpdate(home, token, { userHome, run = command, spawn = cp.spaw
       job = { ...job, childPid: child.pid }; atomic(p.status, job);
       child.once('error', error => done('failed', error));
       child.once('exit', code => {
-        const result = readResult(p, job);
-        if (result?.token !== token || result.complete !== true) return done('unknown', 'No final deployment result; inspect log', false);
-        const final = outcome(result);
-        if (code !== 0 && final.state === 'complete') return done('unknown', 'Deployment exit disagrees with result; inspect log', false);
-        done(final.state, final.error);
+        try {
+          const result = readResult(p, job);
+          if (result?.token !== token || result.complete !== true) return done('unknown', 'No final deployment result; inspect log', false);
+          const final = outcome(result);
+          if (code !== 0 && final.state === 'complete') return done('unknown', 'Deployment exit disagrees with result; inspect log', false);
+          done(final.state, final.error);
+        } catch (error) { done('unknown', `Deployment result unreadable: ${shortError(error)}`, false); }
       });
       timer = setTimer(() => {
         log('Update deadline exceeded; dispatched remote outcomes may be unknown. No automatic retry.');
@@ -389,20 +443,34 @@ async function runUpdate(home, token, { userHome, run = command, spawn = cp.spaw
     });
   } catch (error) { log(shortError(error)); return finish('failed', error); }
 }
-async function launch(home, { spawn = cp.spawn, source = fs.readFileSync(__filename, 'utf8'), now = Date.now, sleep = ms => new Promise(resolve => setTimeout(resolve, ms)) } = {}) {
-  const p = files(home), current = inspect(home);
+async function launch(home, { spawn = cp.spawn, source = fs.readFileSync(__filename, 'utf8'), now = Date.now, sleep = ms => new Promise(resolve => setTimeout(resolve, ms)), retryClaim = null, inspectOptions = {} } = {}) {
+  const p = files(home), current = inspect(home, { ...inspectOptions, now });
   // Enforce this at the process boundary too: a stale UI or absent Settings lock
   // cannot replay a tokenless CLI timeout whose descendants may still be alive.
-  if (current.job?.state === 'unknown' || current.lastRun?.state === 'unknown' || current.peerUnknown) return current;
-  fs.mkdirSync(p.dir, { recursive: true });
+  const authorizedRetry = retryClaim && current.recovery?.identity === retryClaim && current.recovery.retryable;
+  if (retryClaim && !authorizedRetry) return current;
+  if (!authorizedRetry && (fs.existsSync(p.retryLock) || current.job?.state === 'unknown' || current.lastRun?.state === 'unknown' || current.peerUnknown)) return current;
+  retryIO(() => fs.mkdirSync(p.dir, { recursive: true }));
   const token = randomUUID();
   try { acquire(p.lock, { token }); }
   catch (error) { if (error.code === 'EEXIST') return inspect(home); throw error; }
+  if (authorizedRetry) {
+    const claimed = inspect(home, { ...inspectOptions, now });
+    if (claimed.recovery?.identity !== retryClaim) {
+      unlock(p, token);
+      return inspect(home, { ...inspectOptions, now });
+    }
+  }
   let job = { token, state: 'running', phase: 'starting', started: now(), deadline: now() + DEADLINE, log: p.log };
   let dispatched = false;
   try {
-    atomic(p.runner, source); fs.writeFileSync(p.log, 'Starting customization update.\n'); atomic(p.status, job);
-    const logFd = fs.openSync(p.log, 'a');
+    if (authorizedRetry) {
+      // New identity becomes durable before overwriting the old log/result.
+      atomic(p.status, job);
+      atomic(p.result, { version: 1, token, at: now(), complete: false, desktop: current.result?.desktop || null, results: [] });
+    }
+    atomic(p.runner, source); retryIO(() => fs.writeFileSync(p.log, 'Starting customization update.\n')); atomic(p.status, job);
+    const logFd = retryIO(() => fs.openSync(p.log, 'a'));
     let child, failure;
     try { child = spawn(process.execPath, [p.runner, '--run', path.resolve(home), token], { detached: true, windowsHide: true, stdio: ['ignore', logFd, logFd] }); }
     finally { fs.closeSync(logFd); }
@@ -426,14 +494,43 @@ async function launch(home, { spawn = cp.spawn, source = fs.readFileSync(__filen
     return inspect(home);
   }
 }
-module.exports = { SETTLE, TERMINAL, summaryLines, terminalEvidence, settled, retryIO, acquire, remove, readResult, REPOSITORY, DEADLINE, CHECK_MIN, CHECK_MAX, RETRY_MAX, INVALIDATE_MIN, BUSY_CHECK_RETRY, nextAttempt, checkDelay, files, read, atomic, command, installedRevision, inspect, checkMain, prepareClone, peerSkipKind, deferredPeers, outcome, launch, runUpdate };
+async function retryUpdate(home, { identity, confirmedStopped } = {}, options = {}) {
+  const p = files(home), now = options.now || Date.now, inspectOptions = { ...options.inspectOptions, now };
+  let current = inspect(home, inspectOptions);
+  if (confirmedStopped !== true || !identity || current.recovery?.identity !== identity || !current.recovery.retryable) return current;
+  const held = read(p.retryLock);
+  if (held && held.until < now() && !alive(held.pid) && read(p.retryLock)?.token === held.token) remove(p.retryLock);
+  const claim = randomUUID();
+  try { acquire(p.retryLock, { token: claim, pid: process.pid, until: now() + 30000 }); }
+  catch (error) { if (error.code === 'EEXIST') return current; throw error; }
+  try {
+    current = inspect(home, inspectOptions);
+    if (current.recovery?.identity !== identity || !current.recovery.retryable) return current;
+    const lock = read(p.lock);
+    if (lock && lock.token !== current.job?.token) return current;
+    // Copy, don't move, before claiming: an archive failure leaves live state
+    // untouched. No journals, deployment locks or unrelated files are removed.
+    const archive = path.join(p.dir, 'recovery', `update-retry-${claim}`);
+    fs.mkdirSync(archive, { recursive: true });
+    for (const file of [p.status, p.result, p.log, p.lock]) {
+      if (fs.existsSync(file)) retryIO(() => fs.copyFileSync(file, path.join(archive, path.basename(file)), fs.constants.COPYFILE_EXCL));
+    }
+    const fresh = inspect(home, inspectOptions);
+    if (fresh.recovery?.identity !== identity || !fresh.recovery.retryable) return fresh;
+    if (lock && read(p.lock)?.token === lock.token) remove(p.lock);
+    return await launch(home, { ...options, retryClaim: identity });
+  } finally { if (read(p.retryLock)?.token === claim) remove(p.retryLock); }
+}
+module.exports = { retryUpdate, recoveryState, quiescent, SETTLE, TERMINAL, summaryLines, terminalEvidence, settled, retryIO, acquire, remove, readResult, REPOSITORY, DEADLINE, CHECK_MIN, CHECK_MAX, RETRY_MAX, INVALIDATE_MIN, BUSY_CHECK_RETRY, nextAttempt, checkDelay, files, read, atomic, command, installedRevision, inspect, checkMain, prepareClone, peerSkipKind, deferredPeers, outcome, launch, runUpdate };
 if (require.main === module) {
   if (process.argv[2] === '--run') runUpdate(process.argv[3], process.argv[4]).catch(error => { console.error(shortError(error)); process.exitCode = 1; });
   else {
     Promise.resolve().then(() => {
+      requestDeadline = Date.now() + 21000;
       const request = JSON.parse(process.argv[2]);
       if (!request.home || !path.isAbsolute(request.home)) throw Error('An absolute Herdr home is required');
       if (request.action === 'launch') return launch(request.home);
+      if (request.action === 'retry') return retryUpdate(request.home, request);
       if (request.action === 'status') return inspect(request.home);
       if (request.action === 'check') return checkMain(request.home, { force: request.force === true, invalidate: request.invalidate === true });
       throw Error('Unknown update action');

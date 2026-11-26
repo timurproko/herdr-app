@@ -54,6 +54,17 @@ Expand runner/model/row tests for exact-token late completion, terminal receipt-
 
 All fixture homes are explicitly selected with HERDR_APP_HOME, fake transports cannot fall through to real hc, and scratch/proof output for this crew task goes outside the worktree into its task folder. Update README's missing-result paragraph and every contradictory `docs/COMMANDS.md` unknown/replay passage, including ordinary CLI timeouts, deferred peer work and manual recovery. No real state on this desktop or pc2 is read or changed by tests.
 
+### Related Windows timeout fixture flake
+
+The first-attempt PR 85 Windows failure is at the `killed` assertion (line 214 of
+head 313d7a9), not the subsequent mocked availability assertion. Its one-second
+post-dispatch timeout also included synchronous Git bootstrap measured from the
+pending job's start. Under load Windows could exhaust that deadline before any
+child existed, producing unknown correctly but never invoking kill. The fixture
+now injects the post-dispatch timer and separately covers bootstrap expiry with
+an assertion that neither spawn nor kill is called. It does not retry assertions
+or assume an unproven file-sharing cause.
+
 ## Risks / Trade-offs
 
 - [No filesystem can promise persistence under permanent permission/disk failure] -> Retain and consume complete recovery content where possible; never claim deployment failed solely because publication failed, or claim success without evidence.

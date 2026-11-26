@@ -1487,7 +1487,15 @@ whose final receipt could not be saved says **Deployed, but the result could not
 saved.**, with its log pointer; incomplete/foreign evidence stays unknown. Installed
 revision still requires the matching ownership digest, never log text or checkout HEAD. Ordinary CLI failures also retain
 their cause/recovery/details line after checking; a CLI installer timeout's
-durable result blocks another Settings update even without a Settings lock. There is no per-machine UI, news,
+durable result blocks ordinary Update even without a Settings lock.
+For a genuinely unknown run, **Retry update** is a separate deliberate action:
+a fresh successful check, dead recorded processes/known descendants, settled evidence
+and the original deadline (when dispatch remains uncertain) are required. Confirm
+that local and remote update work has stopped before pressing **Retry update** again;
+Cancel does nothing. Check now, reload, startup, timers and relay hints never replay.
+A changed run or late receipt invalidates confirmation; original evidence is preserved
+privately before a claimed retry. Older CLI records lacking process/run identity need
+the documented manual recovery, not guessed safety. There is no per-machine UI, news,
 rollback button, automatic rollback, daemon, scheduler or job history. See
 [first installation and real-app checks](docs/COMMANDS.md#trying-the-row-after-merge).
 The label is defined once in `src/shared/customization-update-model.js`.

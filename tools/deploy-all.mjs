@@ -82,6 +82,7 @@ export function resultRecorder(env = process.env, dryRun = false, ioOptions = {}
   let previous = null, localRecorded = false;
   try { previous = updater.read(file); } catch {}
   const runId = env.HERDR_UPDATE_RUN_ID || randomUUID();
+  const started = Date.now(), owner = { pid: process.pid, started, deadline: started + updater.DEADLINE };
   let desktop = previous?.desktop ?? null, target = null;
   const peerName = name => typeof name === 'string' && name !== 'local' && !name.startsWith('(') && name.length <= 200 && name.trim() === name && name.length > 0 && !/[\x00-\x1f\x7f]/.test(name);
   const offline = row => row?.action === 'skipped' && row.outcome !== 'unknown' && /^offline \((?:offline|unreachable|disconnected)\)$/.test(row.reason);
@@ -106,7 +107,7 @@ export function resultRecorder(env = process.env, dryRun = false, ioOptions = {}
     } else if (local?.action === 'failed' || error) {
       desktop = desktop ? { ...desktop, verified: false } : null;
     }
-    const value = { version: 1, runId, token: env.HERDR_UPDATE_RUN_ID || null, at: Date.now(), complete, target, desktop, deferredPeers: [...deferred].sort(), results, error };
+    const value = { version: 1, runId, owner, token: env.HERDR_UPDATE_RUN_ID || null, at: Date.now(), complete, target, desktop, deferredPeers: [...deferred].sort(), results, error };
     // Publish terminal evidence before the final filesystem replacement. A
     // receipt-publication error must never erase what deployment already did.
     if (complete && ioOptions.log) ioOptions.log(updater.TERMINAL + JSON.stringify(value));

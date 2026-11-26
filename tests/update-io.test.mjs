@@ -19,6 +19,10 @@ try {
     assert.equal(updater.read(p.result).complete, true);
     assert.equal(updater.read(p.result).token, 'publication');
     assert.ok(slept > 0 && slept <= 6000); assert.equal(fallback > 0, persistent);
+    updater.atomic(p.status, { token: 'publication', pid: 123456789, state: 'unknown', started: 0, deadline: 1 });
+    updater.atomic(p.lock, { token: 'publication' });
+    assert.equal(updater.inspect(f.env.HERDR_APP_HOME, { isAlive: () => false }).job.state, 'complete', 'a locked final target still settles complete');
+    assert.equal(fs.existsSync(p.lock), false);
   }
   // If neither destination operation succeeds, the closed complete temp survives.
   const record = resultRecorder({ ...f.env, HERDR_UPDATE_RUN_ID: 'recovery' }); record(rows);

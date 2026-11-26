@@ -8,6 +8,8 @@
 - [x] 1.4 Update synthetic checkout dependencies and packaging assertions for shared helpers; targeted deployment/runner checks prove no deployed worker imports its source checkout and no fixture falls through to real hc.
 - [x] 1.5 Document publication/fallback behavior and permanent-storage limits in docs/COMMANDS.md; inspect the delivered command text against the fault cases and add a real locked-target disposable Windows fixture where the runner supports it.
 
+- [x] 1.6 Separate pre-dispatch deadline expiry from post-dispatch timeout in the Windows supervision fixture; injected timer tests deterministically assert no pre-dispatch kill and exactly one post-dispatch kill without assertion retries.
+
 ## 2. Precise settlement of dead unknown runs
 
 - [x] 2.1 Emit run-qualified terminal completion evidence before final receipt publication and reconcile it only after process death and settle/deadline checks; runner tests distinguish success, partial, failure, publication failure and explicit remote/installer uncertainty.
@@ -17,8 +19,8 @@
 
 ## 3. Deliberate unknown-outcome retry in the existing row
 
-- [ ] 3.1 Add separate recovery eligibility and a token-bound retry worker action with process/descendant, settle/deadline, fresh-check and exclusive-claim revalidation; fixtures prove unknown work never becomes ordinary canUpdate and cannot bypass deploy.lock or source gates.
-- [ ] 3.2 Add inline Retry update explanation, Cancel and explicit stopped-local/remote-work confirmation through the model, shared transport and Settings row; matrix tests cover current/available/failed/running/unknown, locks, remote uncertainty and missing/failed/fresh checks.
-- [ ] 3.3 Preserve prior unknown evidence before a claimed retry and reject late receipts, changed tokens, retained nodes and competing confirmations; isolated concurrency/row tests prove at most one new launch and no evidence loss on claim failure.
-- [ ] 3.4 Keep status, Check now, reload, startup, timers, focus and relay hints strictly non-dispatching; scheduler and runner tests prove zero replay until explicit confirmation and no replay on Cancel or close.
-- [ ] 3.5 Revise every conflicting README/docs/COMMANDS.md retry, CLI timeout and deferred-peer passage, retaining manual recovery for legacy records lacking identity; targeted updater suites and a disposable-home row exercise demonstrate the documented rule without touching desktop or pc2 state.
+- [x] 3.1 Add separate recovery eligibility and a token-bound retry worker action with process/descendant, settle/deadline, fresh-check and exclusive-claim revalidation; fixtures prove unknown work never becomes ordinary canUpdate and cannot bypass deploy.lock or source gates.
+- [x] 3.2 Add inline Retry update explanation, Cancel and explicit stopped-local/remote-work confirmation through the model, shared transport and Settings row; matrix tests cover current/available/failed/running/unknown, locks, remote uncertainty and missing/failed/fresh checks.
+- [x] 3.3 Preserve prior unknown evidence before a claimed retry and reject late receipts, changed tokens, retained nodes and competing confirmations; isolated concurrency/row tests prove at most one new launch and no evidence loss on claim failure.
+- [x] 3.4 Keep status, Check now, reload, startup, timers, focus and relay hints strictly non-dispatching; scheduler and runner tests prove zero replay until explicit confirmation and no replay on Cancel or close.
+- [x] 3.5 Revise every conflicting README/docs/COMMANDS.md retry, CLI timeout and deferred-peer passage, retaining manual recovery for legacy records lacking identity; targeted updater suites and a disposable-home row exercise demonstrate the documented rule without touching desktop or pc2 state.
