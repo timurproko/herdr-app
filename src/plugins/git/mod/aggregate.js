@@ -248,13 +248,14 @@ export class AggregatePulls {
     return matches.find(l=>l.terminal===location().terminal)??matches[0]??null;
   }
   focus(pr,target,scope,agentLinks,beforeFocus=()=>{}) {
-    if(!this.shown() || !target?.terminal || target.historical || this.currentContext()?.scope!==scope)return;
+    const context=this.currentContext();
+    if(!this.shown() || !context || !target?.terminal || target.historical || context.scope!==scope)return;
     if(target.role) {
       if(this.entries.get(pr.key)?.pr?.stage!==pr.stage)return;
       const current=this.stageTarget(pr,target.role,agentLinks);
       if(current?.terminal===target.terminal && current.task===target.task && current.agent.key===target.agent.key && current.agent.availability==='live') {beforeFocus(current);run('agent.focus',{terminal:target.terminal});}
       return;
     }
-    if(this.currentContext().links.some(l=>!l.historical && l.terminal===target.terminal && l.task===target.task && taskPullLink(l.url)?.key===pr.key)) {beforeFocus(target);run('agent.focus',{terminal:target.terminal});}
+    if(context.links.some(l=>!l.historical && l.terminal===target.terminal && l.task===target.task && taskPullLink(l.url)?.key===pr.key)) {beforeFocus(target);run('agent.focus',{terminal:target.terminal});}
   }
 }

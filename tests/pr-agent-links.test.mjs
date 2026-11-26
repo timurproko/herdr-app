@@ -317,6 +317,8 @@ const beforeScoped=actions.length;aggregate.focus(stagePr,scoped,taskContext.sco
 taskContext.tasks.pop();aggregate.focus(stagePr,scoped,taskContext.scope,links);assert.equal(actions.length,beforeScoped+1,'Lost home membership refuses captured stage focus');assert.equal(aggregate.stageTarget(stagePr,'review',links),null);
 taskContext.tasks.push({id:'review',terminal:'pc2/reviewer'});taskContext={...taskContext,stale:true};aggregate.focus(stagePr,scoped,'role-home',links);assert.equal(actions.length,beforeScoped+1,'Stale coordinator has no role-focus authority');
 taskContext=null;
+const noContextFocus=actions.length;aggregate.focus(stagePr,{terminal:'pc2/reviewer',task:'review'},undefined);
+assert.equal(actions.length,noContextFocus,'An absent aggregate context cannot authorize a fallback robot focus');
 // Actual managed chips, their isolated clicks, and existing row/ghost actions.
 ship.labels['crew.pr']='https://github.com/owner/repo/pull/1200';
 const ordinaryStage={...stagePr,key:undefined};
