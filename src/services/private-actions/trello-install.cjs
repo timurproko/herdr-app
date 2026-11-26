@@ -1,5 +1,5 @@
 'use strict';
-// Fixed Trello-only installer. Payload comes from installed desktop files, never UI.
+// Fixed installer; only installed desktop payloads.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const hash=bytes=>bytes===null?null:crypto.createHash('sha256').update(bytes).digest('hex');
 const reject=code=>{throw Object.assign(Error(code),{code});};
@@ -23,7 +23,7 @@ function probe(runtime,expected){
  catch{return {runtime:'blocked'};}
 }
 async function launcherModule(p){
- // Reuse the canonical installer/ownership implementation without staging any code.
+ // Reuse owned installer without staging.
  const url=source=>'data:text/javascript;base64,'+Buffer.from(source).toString('base64');
  const files=url(Buffer.from(p.files['scripts/files.mjs'],'base64').toString());
  const source=Buffer.from(p.files['scripts/trello-launchers.mjs'],'base64').toString().replace("'./files.mjs'",JSON.stringify(files));
