@@ -13,6 +13,12 @@ The person explicitly approved this combined CI/review fix and the subsequent st
 - Fix CI adapters rather than weakening assertions: expose stageLabels in the menu mock, supply shared rename tokens to source-evaluated Spaces, and await actual root/page tasks instead of unrelated render guards in refresh tests. Supply a valid GraphQL success page.
 - Rename the copied native-check facade to selection-base-host.js, preserving any existing wrapper and native-host.js chain.
 
+## Review-3 correction
+
+Missing footer text is not a no-PR verdict: retain footer precedence, then explicit PR-tab identity, then matching current branch, and clear an old pin only when these sources yield none. Remove the agentNoPull veto. Selection fixtures must supply the inert related() contract and reject caught row-error fallbacks. The complete agent-link matrix retains its action/availability checks but expects plain stage text in both Approved and reconnected Build/Review assertions.
+
+Delivery's completed check at head 1c72761 rejected the superseded original archive as an unexpected PR-diff path. Preserve its seven files unchanged beneath the linked archive's evidence/previous-finalization directory rather than keeping two top-level PR archives. Only the bot updates the current acceptance digests; canonical specs already contain the approved consolidated contract and require no manual rewrite.
+
 ## Validation and Limits
 
 Add regressions for branch-stage abandonment, repeated post-manual abandonment, expired/fresh rate credit, symmetric tab errors, all selection paths, counts/collapse/lone headers, plain styles and full-width titles at normal/narrow widths. Existing review findings and earlier native watchdog recovery evidence remain valid checkpoints, not a run of this final head. Per the latest instruction, no local test files or new native probes run; CI and delta review validate this push. Build is customization-only; no live runtime or terminal is touched. Historical natural watchdog workload remains unproven.

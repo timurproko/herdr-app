@@ -76,14 +76,28 @@ for(const failed of ['open','closed']) {
 }
 // Tab, sidebar and keyboard selection all resolve the same selected-agent pin.
 {
- const h=await rowHarness(),p=h.panel;p.sectionEntry=true;p.branch=null;p.agentLinks={pullNumber:terminal=>({first:94,second:95}[terminal]??null)};
+ const h=await rowHarness(),p=h.panel;p.sectionEntry=true;p.branch=null;p.agentLinks={pullNumber:terminal=>({first:94,second:95}[terminal]??null),related:()=>null};
  p.pulls.open=[94,95,96,97].map(number=>h.facts.pullRow({number,title:'Selected '+number,state:'OPEN',headRefName:'head-'+number}));p.counts={open:4,closed:0};p.branch='head-94';
  for(const [via,terminal,number]of [['tab','first',94],['sidebar','second',95],['keyboard','first',94],['tab','no-pr',null]]){
-  Object.assign(h.place,{terminal,app:number?'codex':'bash',tab:'tab-'+terminal,pullNumber:number??94});p.syncAgent(h.cx);const tree=p.renderPulls(t);const pin=find(tree,'active-pull');
+  p.branch=number?'head-94':null;
+  Object.assign(h.place,{terminal,app:number?'codex':'bash',tab:'tab-'+terminal,pullNumber:number});p.syncAgent(h.cx);const tree=p.renderPulls(t);const pin=find(tree,'active-pull');
+  assert.equal(p.reportedRenderError??null,null,'Selection fixtures must render real PR rows, not caught row errors');
+  assert.ok(!words(tree).join(' ').includes('Row unavailable'),'No error fallback may satisfy pin/count assertions');
   assert.equal(Boolean(pin),number!==null,`${via}: pin follows the resolved selected agent`);if(number)assert.ok(find(pin,'pr-'+number));assert.equal(p.pinMotion.current,null,'Direct selection never starts label-click motion');
   assert.equal(words(find(tree,'task-repo-count-owner/repo')).join(''),number?'3':'4','Header counts only its unpinned rows');
   assert.ok(words(p.segment(t,'git-view-open','Open',p.counts.open,true,()=>{})).join('').includes('4'),'Open badge retains the full total');
   if(number){p.foldedRepositories.add('owner/repo');const folded=p.renderPulls(t);assert.ok(find(folded,'active-pull'));assert.equal(words(find(folded,'task-repo-count-owner/repo')).join(''),'3');p.foldedRepositories.clear();}
  }
 }
-console.log('PASS independent worker reads, bounded branch/manual root recovery, tab-local errors, selection-owned pins above sections, lone-pin header suppression and collapse survival');
+// Missing footer evidence keeps supported explicit-tab and branch fallbacks.
+for(const app of ['bash','a1','claude-code','codex'])for(const source of ['branch','named-tab']) {
+ const h=await rowHarness({host:{hc:async()=>({code:0,stdout:JSON.stringify({how:'screen',complete:true,text:'/repo\n13.1%/500k'})})}}),p=h.panel;
+ Object.assign(h.place,{app,terminal:'selected',pullNumber:source==='named-tab'?94:null});
+ p.agentLinks={pullNumber:()=>null,related:()=>null};p.branch=source==='branch'?'fix/94':'fix/95';
+ p.pulls.open=[94,95].map(number=>h.facts.pullRow({number,title:'Fallback '+number,state:'OPEN',headRefName:'fix/'+number}));
+ p.syncAgent(h.cx);await tick();assert.equal(p.pullSelection().active?.number,94,`${app}/${source}: explicit tab precedes branch and missing footer vetoes neither`);
+ assert.ok(find(find(p.renderPulls(t),'active-pull'),'pr-94'));assert.equal(p.reportedRenderError??null,null);
+ Object.assign(h.place,{terminal:'replacement',pullNumber:null});p.branch='unrelated';p.syncAgent(h.cx);await tick();
+ assert.equal(p.pullSelection().active,undefined,'Clear the old pin only when footer, explicit tab and branch yield no PR');
+}
+console.log('PASS independent worker reads, bounded branch/manual root recovery, tab-local errors, selected pin fallback precedence, healthy actual rows, counts and collapse survival');

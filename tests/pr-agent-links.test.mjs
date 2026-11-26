@@ -437,7 +437,7 @@ for(const mode of ['ordinary','coordinator'])for(const state of ['open','closed'
   const chip=()=>{panel.pulls[state]=[row];return find(panel.pullRow(colors,row,ghost),`${ghost?'swap-':''}pr-stage-${row.key??number}`);};
   const nonAgentChecks=robot=>{
     const approved=find(panel.pullRow(colors,{...row,stage:'approved'},ghost),`${ghost?'swap-':''}pr-stage-${row.key??number}`);
-    assert.equal(approved.kids[0].kids[0],'🤖 Approved');assert.equal(approved.attrs.tooltip,undefined);assert.equal(approved.attrs.opacity,undefined);assert.equal(Boolean(approved.attrs.on_click),!ghost);
+    assert.equal(approved.kids[0].kids[0],'Approved');assert.equal(approved.attrs.tooltip,undefined);assert.equal(approved.attrs.opacity,undefined);assert.equal(Boolean(approved.attrs.on_click),!ghost);
     const fallback=find(panel.pullRow(colors,{...row,stage:null},ghost),`${ghost?'swap-':''}pr-agent-${row.key??number}`);
     assert.equal(Boolean(fallback),robot);if(fallback&&ghost)assert.equal(fallback.attrs.on_click,undefined);
   };
@@ -469,7 +469,7 @@ for(const mode of ['ordinary','coordinator'])for(const state of ['open','closed'
     liveChip.attrs.on_click?.[0]({},cx);assert.equal(actions.length,focusCount);
   }
   taskContext=liveContext;group.context=liveContext;group.entries.get(row.key).link.targets=[{terminal:address}];model.refresh(cx,admit);await tick();reads=calls.length;
-  const restored=chip();assert.equal(restored.kids[0].kids[0],role==='build'?'🤖 Build':'🤖 Review');assert.equal(restored.attrs.opacity,undefined);assert.equal(Boolean(restored.attrs.on_click),!ghost);assert.equal(Boolean(restored.attrs.role),!ghost);assert.equal(restored.attrs.tooltip,undefined);nonAgentChecks(true);assert.equal(calls.length,reads);
+  const restored=chip();assert.equal(restored.kids[0].kids[0],role==='build'?'Build':'Review');assert.equal(restored.attrs.opacity,undefined);assert.equal(Boolean(restored.attrs.on_click),!ghost);assert.equal(Boolean(restored.attrs.role),!ghost);assert.equal(restored.attrs.tooltip,undefined);nonAgentChecks(true);assert.equal(calls.length,reads);
   if(mode==='coordinator') {
     assert.ok(group.stagePresentations.size>0);group.presentationGeneration='retired';group.shown=()=>false;group.sync(cx);
     assert.equal(group.stagePresentations.size,0,'Enable/provider generation replacement clears remembered target explanations');assert.equal(calls.length,reads);

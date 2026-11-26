@@ -154,7 +154,7 @@ export default class Changes extends View {
     this.pinMotion ??= new PinSwap(); this.pinMotion.cancel();
     this.pullPresentation = null; this.agentPress = null;
     this.repositoryPublication=new Publication();this.entrySeed=false;this.seedTabs={open:false,closed:false};this.entrySource=null;this.entryRefreshing=false;this.entryAttempted=false;this.entryRootReady=false;this.entryVerify=false;
-    this.root = null; this.repo = null; this.counts = null; this.branch = null; this.agentPull = null;this.agentNoPull=false;
+    this.root = null; this.repo = null; this.counts = null; this.branch = null; this.agentPull = null;
     this.pulls = { open: null, closed: null }; this.pullsAt = { open: 0, closed: 0 };this.pullDepth={open:0,closed:0};
     this.pages = {open:{cursor:null,hasMore:false,expanded:false},closed:{cursor:null,hasMore:false,expanded:false}};
     this.pageError = null; this.loadingState = null; this.appending = false; this.scrollMotion = null;
@@ -278,12 +278,12 @@ export default class Changes extends View {
     if (!this.root || key() !== context || (!force && selection === this.selection)) return;
     // A periodic read of the same agent must not invalidate its resolved pin
     // or discard the targeted refresh that the same timer just started.
-    if (selection !== this.selection) {this.agentResolved = null;this.agentNoPull=false;}
+    if (selection !== this.selection) this.agentResolved = null;
     this.selection = selection;
     const labelled=this.agentLinks?.pullNumber?.(target.terminal,this.repo?.name);
-    if(labelled!=null) {this.agentRequest=null;this.agentNoPull=false;this.agentPull=labelled;this.agentResolved=selection;return;}
+    if(labelled!=null) {this.agentRequest=null;this.agentPull=labelled;this.agentResolved=selection;return;}
     const request = this.agentRequest = {};
-    if (!['a1','claude-code'].includes(target.app) || !target.terminal) { this.agentNoPull=!['codex','amp'].includes(target.app);this.agentPull = null; this.agentResolved = selection; return; }
+    if (!['a1','claude-code'].includes(target.app) || !target.terminal) { this.agentPull = null; this.agentResolved = selection; return; }
     // Keep the existing pin until the new footer resolves: identical PRs must
     // not briefly drop into the list and jump back up on every agent switch.
     cx.spawn(async cx => {
@@ -291,7 +291,6 @@ export default class Changes extends View {
         const screen = await Promise.resolve().then(()=>hc(['read', target.terminal, '--json', '--lines', '0'])).catch(() => null);
         if (!sidebarPanelEnabled('changes') || this.agentRequest !== request || this.context !== context || key() !== context || agentKey(location()) !== selection) return;
         this.agentPull = screen?.code === 0 ? agentPullNumber(screen.stdout, target.app) : null;
-        this.agentNoPull=screen?.code===0 && this.agentPull==null;
         this.agentResolved = selection;
       } finally { cx.notify(); }
     });
@@ -1154,11 +1153,12 @@ export default class Changes extends View {
   }
 
   pullSelection() {
-    const state = this.view, list = this.repositoryPresentation().pulls[state], noPull=this.agentNoPull&&this.agentPull==null, pullNumber = noPull?null:this.agentPull ?? location().pullNumber;
+    // Missing footer evidence does not veto the explicit-tab or branch fallback.
+    const state = this.view, list = this.repositoryPresentation().pulls[state], pullNumber = this.agentPull ?? location().pullNumber;
     const related = this.relatedPull && this.relatedPull.number === pullNumber && (state === 'open'
       ? ['open','draft'].includes(this.relatedPull.state) : ['closed','merged'].includes(this.relatedPull.state)) ? this.relatedPull : null;
     const liveRows = related && !list?.some(pr => pr.number === related.number) ? [...(list??[]),related] : list ?? [];
-    const active = noPull?undefined:liveRows.find(pr => pullNumber != null
+    const active = liveRows.find(pr => pullNumber != null
       ? pr.number === pullNumber : Boolean(this.branch && pr.headRefName === this.branch));
     return {liveRows,active};
   }

@@ -3,6 +3,8 @@
 - [x] 1.1 Retain ended-report history, qualified remote history tests and ambiguous-live membership refusal; merge current main and retain both independent spec additions.
 - [x] 1.2 Correct the failed finalization baseline: consolidate the full approved Git/workspace deltas, restore canonical input to main and preserve prior archive/digest provenance for bot-owned finalization.
 
+- [x] 1.3 Keep the PR diff within one linked delivery archive by preserving the superseded original archive byte-for-byte as historical evidence beneath it; leave digest refresh to the bot.
+
 ## 2. Single bottom-right stage control
 
 - [x] 2.1 Apply the approved tight plain-text chip with stage colours/raised fill, no emoji/outline and supplied Build rounds plus finding hover.
@@ -12,6 +14,8 @@
 
 - [x] 3.1 Remove clickPin ownership and follow resolved tab/sidebar/keyboard selection without entry animation, including switching agents and no-PR clearing.
 - [x] 3.2 Preserve click-only motion to the top inset, keep pins visible through collapse, omit lone-pin headers, and count only unpinned rows while keeping full tab totals; update expanded/collapsed/count/motion regressions.
+
+- [x] 3.3 Restore footer, explicit PR-tab and current-branch precedence without a missing-footer veto; cover shell/A1/Claude/Codex fallbacks, genuine no-PR clearing and real non-fallback rows. Correct both stale emoji matrix captions while retaining availability/action assertions.
 
 ## 4. Bounded read/render recovery
 
