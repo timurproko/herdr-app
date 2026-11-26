@@ -1867,19 +1867,6 @@ Ordinary and coordinator Git panels SHALL never show repository section headers 
 - **THEN** that presentation remains without body Loading, and only the under-header line animates while work is active
 - **AND** visible failures, pins, folds, paging and scroll behavior retain their existing policy
 
-### Requirement: Stage hover suppression includes parent label groups
-Stage hover SHALL show no tooltip, including assigned aliases, round/finding details or agent-action text inherited from label-strip or metadata parents. Unrelated labels and metadata SHALL retain their existing informative tooltips, and PR titles SHALL retain full-title hover. This policy SHALL use existing fit facts without adding measurement work or reads.
-
-#### Scenario: Hover any stage
-- **WHEN** Build, Build 2, Build 3, Review, legacy Rework projected as Build or Approved is hovered in any row variant
-- **THEN** the control has no stage tooltip, whether enabled, unavailable, ghost or clipped
-- **AND** its existing click, keyboard and accessibility behavior remains available as appropriate
-
-#### Scenario: Mixed label strip
-- **WHEN** an unrelated label is clipped beside a managed stage
-- **THEN** the existing label-group tooltip can expose the unrelated label's complete name
-- **AND** stage aliases, agent names, findings and stage-only text are not reintroduced through that parent tooltip
-
 ### Requirement: Coordinator repository sections follow connected children
 Coordinator Git repository sections SHALL follow matching connected child-space order. Matching SHALL use verified same-home live task PR repository identity and exact same-machine native membership, never names or guessed folders. A child representing several repositories SHALL supply no unique match. Unmatched sections SHALL follow matched sections in their existing relative order. Ordering SHALL grant no read or navigation authority.
 
@@ -1914,3 +1901,16 @@ Coordinator Git repository sections SHALL follow matching connected child-space 
 - **THEN** presentation-only ordering can retain compatible already-verified associations but cannot establish new authority or borrow another scope's matches
 - **AND** existing cold/warm loading, counters, row labels, disclosure, reveal limits, cache eligibility and worker actions retain their own behavior
 - **AND** section reordering changes no Crew record, native tab/terminal placement or portable preference
+
+### Requirement: Stage hover suppression includes parent label groups
+Stage hover SHALL show no tooltip, including assigned aliases, round/finding details or agent-action text inherited from label-strip or metadata parents. Unrelated labels and metadata SHALL retain their existing informative tooltips, and PR titles SHALL retain full-title hover. This policy SHALL use existing fit facts without adding measurement work or reads.
+
+#### Scenario: Hover any stage
+- **WHEN** Build, Build 2, Build 3, Review, legacy Rework projected as Build or Approved is hovered in any row variant
+- **THEN** the control has no stage tooltip, whether enabled, unavailable, ghost or clipped
+- **AND** its existing click, keyboard and accessibility behavior remains available as appropriate
+
+#### Scenario: Mixed label strip
+- **WHEN** an unrelated label is clipped beside a managed stage
+- **THEN** the existing label-group tooltip can expose the unrelated label's complete name
+- **AND** stage aliases, agent names, findings and stage-only text are not reintroduced through that parent tooltip
