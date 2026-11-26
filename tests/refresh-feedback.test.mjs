@@ -47,11 +47,11 @@ click(button());advance(300);assert.equal(button().attrs.disabled[0],true,'The o
 advance(300);assert.equal(button().attrs.disabled[0],false);
 
 // Rendering background activity and disabled controls never schedules feedback.
-const count=timers.length,before=calls;busy=true;button();busy=false;
+const count=timers.length,before=calls;busy=true;button();assert.equal(spinning(button({animate:false})),undefined,'Git can keep disabled busy feedback without a second animation');busy=false;
 click(button({enabled:false}));assert.equal(timers.length,count);assert.equal(calls,before);
 assert.equal(button({enabled:false}).attrs.disabled[0],true);
 // A fresh section entry restarts the visual minimum even during an older hold.
-startRefreshFeedback(owner,'refresh',scope,cx);advance(400);
+startRefreshFeedback(owner,'refresh',scope,cx);assert.equal(spinning(button({animate:false})),undefined,'Static option also covers the minimum-feedback interval');advance(400);
 startRefreshFeedback(owner,'refresh',scope,cx,true);advance(200);
 assert.equal(button().attrs.disabled[0],true,'Returning to a section gets a fresh 600ms, not the old remaining 200ms');
 advance(399);assert.equal(button().attrs.disabled[0],true);advance(1);assert.equal(button().attrs.disabled[0],false);

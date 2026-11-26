@@ -406,12 +406,19 @@ export function fleetPullContext(space, options = {}) {
   const context=pullContext(space,options);
   return context ? {...context,presentationGeneration:fleetGeneration()} : null;
 }
+// Presentation-only work evidence. An unverified identity or retry deadline is
+// not an active read, and this boolean grants no read/worker authority.
+function fleetLoading(identity) {
+  const read=shared(READS)?.[identity.machine??'local'];
+  return Boolean(read && read.generation===fleetGeneration() && read.until>Date.now()
+    && read.subject?.parent===identity.parent && read.subject?.owner===identity.owner);
+}
 function pullContext(space, {presentation = false} = {}) {
   const context=fleetContexts().find(c=>c.parent===space && c.taskMembershipVerified);
   if(context) {
     const display=fleetContexts({presentation:true}).find(d=>d.parent===space && d.pullScope===context.pullScope);
     if(!context.child && !display && !context.tasks.some(t=>canonicalPull(t.pr)))return null;
-    return {...context,kind:'tasks',scope:context.pullScope,stale:false,links:context.tasks.filter(t=>t.pr).map(t=>({url:t.pr,terminal:t.terminal,task:t.id,historical:t.historical===true}))};
+    return {...context,kind:'tasks',scope:context.pullScope,stale:false,loading:fleetLoading(context),links:context.tasks.filter(t=>t.pr).map(t=>({url:t.pr,terminal:t.terminal,task:t.id,historical:t.historical===true}))};
   }
   if(!presentation || !enabled())return null;
   let identity=fleetContexts({presentation:true}).find(c=>c.parent===space);
@@ -428,10 +435,10 @@ function pullContext(space, {presentation = false} = {}) {
   if(identity) {
     const snapshot=model(),candidate=coordinatorCandidate(identity.machine,snapshot),owner=bindFleet({home:identity.home,owner:{terminal:identity.owner,live:true},tasks:[]},identity.machine,snapshot);
     const sameCandidate=!candidate || ['parent','owner','ownerTab','ownerPane'].every(k=>candidate[k]===identity[k]);
-    if(sameCandidate && owner?.pullScope===identity.pullScope)return {...identity,kind:'tasks',scope:identity.pullScope,stale:true,links:[],verification:fleetVerification(identity.machine,identity)};
+    if(sameCandidate && owner?.pullScope===identity.pullScope)return {...identity,kind:'tasks',scope:identity.pullScope,stale:true,loading:fleetLoading(identity),links:[],verification:fleetVerification(identity.machine,identity)};
     // Remembered rows can precede live owner facts. Keep an EMPTY Loading scope,
     // not ordinary folder Git or the former owner's retained PR inventory.
-    return {...identity,kind:'tasks',scope:JSON.stringify(['remembered-wait',identity.machine,identity.parent,fleetGeneration(),candidate?.owner??null]),stale:true,links:[],verification:candidate?fleetVerification(identity.machine,candidate):null};
+    return {...identity,kind:'tasks',scope:JSON.stringify(['remembered-wait',identity.machine,identity.parent,fleetGeneration(),candidate?.owner??null]),stale:true,loading:fleetLoading(candidate?{...candidate,machine:identity.machine}:identity),links:[],verification:candidate?fleetVerification(identity.machine,candidate):null};
   }
   const snapshot=model(), group=snapshot.groups.find(s=>s.id===space);
   if(!group)return null;
@@ -444,5 +451,5 @@ function pullContext(space, {presentation = false} = {}) {
   if(negative)return null;
   const fact=fleetVerification(machine,candidate);
   const verification=fact && !['no-owner','identity-mismatch','no-fleet'].includes(fact.reason)?fact:null;
-  return {...candidate,machine,kind:'tasks',scope:JSON.stringify(['fleet-waiting',machine,candidate.parent,candidate.owner,candidate.ownerTab,candidate.ownerPane]),stale:true,links:[],verification};
+  return {...candidate,machine,kind:'tasks',scope:JSON.stringify(['fleet-waiting',machine,candidate.parent,candidate.owner,candidate.ownerTab,candidate.ownerPane]),stale:true,loading:fleetLoading({...candidate,machine}),links:[],verification};
 }

@@ -60,7 +60,7 @@ export function startRefreshFeedback(owner, id, scope, cx, restart = false) {
 }
 // Refresh actions share one busy treatment, including compact panel headers.
 export function refreshButton(t, { id, icon, label = 'Refresh', busy = false, spinning = busy, enabled = true, onClick, owner, scope,
-  size = U.control, iconSize = U.smallIcon, radius = U.radius, color = t.muted, hover = t.hover }) {
+  size = U.control, iconSize = U.smallIcon, radius = U.radius, color = t.muted, hover = t.hover, animate = true }) {
   const feedback = Boolean(owner && refreshFeedbackActive(owner, id, scope));
   const active = enabled && !busy && !feedback;
   return div().id(id).size(size).flex_none().flex().items_center().justify_center().rounded(radius).text_color(color)
@@ -73,7 +73,7 @@ export function refreshButton(t, { id, icon, label = 'Refresh', busy = false, sp
       if (!active || (owner && !startRefreshFeedback(owner, id, scope, cx))) return;
       onClick(e, cx);
     })
-    .child(svg(icon).size(iconSize).when(Boolean((busy && spinning) || feedback), e => e.spin(900)));
+    .child(svg(icon).size(iconSize).when(Boolean(animate && ((busy && spinning) || feedback)), e => e.spin(900)));
 }
 // Pane and panel tools share exact anchors, glyph geometry and hover motion.
 export function headerTools(element = div()) {

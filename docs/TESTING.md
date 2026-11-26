@@ -97,9 +97,28 @@ share one captured coordinator binding; changed membership, conflicting parents 
 bindings, duplicates, missing/cross-machine endpoints and expired proof still refuse.
 Every child's saved colour and Automatic flag stays unchanged.
 
+`git-loading-line.test.mjs` checks one native moving line across ordinary and
+coordinator cold/warm/background/verification/safety work, overlap, completion,
+failure cooldown and retired measurement callbacks. Git cold Loading uses the
+shared message geometry with a static dot; Refresh is static even during its
+600ms disabled feedback. Files, tabs and shared activity remain animated as before.
+`fleet-history.test.mjs` checks provider work evidence: a live exact-owner read
+sets presentation-only loading; failed verification awaiting retry stops the line.
+
+`tests/features/sidebar-alignment-native.mjs --run --output <outside> --zoom 1|1.3
+--children 1|3 [--baseline <revision>]` verifies the supplied 0.1.18 archive and
+executable, mounts actual Spaces/Agents/Git with synthetic local/remote data and
+captures before/after rows and machine + (10 logical pixels left), collapsed
+counts, parent/child/ordinary rename, long names, compact/selection, cold/warm/
+background/ordinary line phases, completion and failures. Hover-only pointer
+movement targets its own disposable window; no clicks/keys, terminals or live
+SSH. Receipts check render errors and stop its desktop/Core in finally. Earlier
+fixtures/documented proofs using header bulbs or CI-only one-shot sweeps describe
+historical presentation, not the current loading contract.
+
 `git-inventory-presentation.test.mjs` covers cold whole-inventory admission,
 immediate actionable notices, no partial-return leak, staged warm replacements,
-header-only native activity, no warm body Loading and quiet cooldown behavior.
+under-header native line activity, no warm body Loading and quiet cooldown behavior.
 Healthy activity says Updating pull requests while worker actions remain available;
 only unverified activity carries the paused-action warning and sanitized diagnostics.
 `git-deferred-repositories.test.mjs` retains the exact-deadline no-event recovery
