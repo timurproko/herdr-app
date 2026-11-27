@@ -2,6 +2,18 @@
 
 ## ADDED Requirements
 
+### Requirement: Verdict labels navigate to the build owner
+Git verdict labels, including Approved and Changes requested, SHALL use Build's guarded build-owner navigation with identical pointer, cursor, hover, focus and keyboard behavior and no tooltip. Missing, ended or disconnected targets SHALL be dim and inert like Build, without opening the PR. Review stage SHALL retain reviewer navigation. Verdict captions and colors SHALL remain independent of target availability.
+
+#### Scenario: Verdict activation
+- **WHEN** a verdict label is clicked or activated with Enter or Space in ordinary or coordinator Git
+- **THEN** the exact currently eligible PR build owner is focused using the same navigation and pin-motion controller as Build, without opening GitHub
+- **AND** captured stale targets, preview/probe labels and unavailable terminals cannot navigate or fall through to the row link
+
+#### Scenario: Verdict appearance
+- **WHEN** a verdict is live, unavailable, focused or hovered
+- **THEN** its native caption and color remain, interaction styling matches Build and no tooltip appears, including from parent groups
+
 ### Requirement: Header-position Git body feedback
 Ordinary and coordinator Git SHALL place list-replacing empty, informational and error text at the first repository header text's left edge and vertical position, with the same single-line row height at the current zoom. Multiline errors SHALL retain that first-line anchor and remain readable. Shared feedback in other panels SHALL remain unchanged.
 

@@ -12,6 +12,7 @@ Git's empty and error messages use PR-row feedback geometry rather than reposito
 - Render the Spaces coordinator role label as lowercase `crew` locally, leaving the plugin's shared `Crew` label and terminal-pane badge unchanged.
 - Preserve PR 97's cold Loading/header exclusion and PR 98's verified child-derived repository ordering. Replace only Git's moving warm-loading line with a stationary accent line breathing smoothly by opacity over 2–2.5 seconds; match the cold dot rhythm, retain existing work-only visibility and use static dim feedback for reduced motion.
 - Trace first-build numbering through Crew's publisher and Git's renderer. Treat the published current round correctly: spawn, plan report, approval and first implementation show `Build`; only actual review-requested rework shows `Build 2` onward. Record exact upstream field/value evidence and do not mask incorrect upstream data.
+- Make verdict labels such as Approved and Changes requested use the same guarded build-agent navigation, hover/focus/keyboard behavior and no-tooltip policy as Build, including dim inert unavailable targets.
 - After approval, capture before/after synthetic-native pictures and pixel measurements at 100% and 130%, outside the checkout, without accessing the person's running app or real Crew homes.
 
 ## Capabilities

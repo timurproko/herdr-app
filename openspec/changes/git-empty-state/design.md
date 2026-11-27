@@ -45,7 +45,11 @@ Read-only evidence from this task's terminal t19r after plan report and approval
 
 Replace Git's positional sweep with a full-width 1px accent line whose opacity loops over 2400ms ease-in-out between nonzero dim and softly bright bounds. Use the same rhythm for Git's cold dot only, without changing other panels' shared activity helper. Reduced-motion feedback is static dim with no loop. Keep the existing cold/warm/work/retirement admission conditions and prove equal horizontal bounds with differing brightness in two native frames; test no positional animation and no loop in reduced-motion mode.
 
-### 6. Targeted regression and isolated native proof
+### 6. Verdict labels reuse guarded build-agent navigation
+
+Approved and the GitHub review-decision labels navigate to the verified ship/fix owner using the same captured action, pointer/keyboard/focus styling and unavailable semantics as Build. Review stage continues to target the reviewer. Do not use arbitrary unmanaged label names as navigation authority. Verdict navigation grants no permission without current exact PR/repository/membership verification, never falls through to the PR link, and adds no tooltip. Preserve the visible verdict caption/color and native row geometry.
+
+### 7. Targeted regression and isolated native proof
 
 After approval, extend existing loading, repository-count, section-reveal, error, worker-entry and Spaces layout regressions as relevant; retain the terminal-role regression. Add real-renderer geometry assertions at zoom 1 and 1.3. Cover Open/Closed, all-empty, mixed-empty, notice-only, folded, lone-pin, cold pending and warm retained states, plus connected-child ordering.
 
@@ -62,4 +66,4 @@ Adapt the existing checksum-verified disposable native loading fixture for befor
 
 ## Migration Plan
 
-No data migration or live deployment is part of this task. After the recorded approval, deliver five outcomes (including current-round caption correction and stationary loading feedback) with targeted tests in the existing draft PR, tick outcomes individually, push through origin and dispatch CI on the final branch head because draft PR suites are skipped. Report immediately without waiting for CI. Rollback is a source revert; local fold keys and shared tag data do not change.
+No data migration or live deployment is part of this task. After the recorded approval, deliver six outcomes (including current-round caption correction, stationary loading feedback and verdict navigation) with targeted tests in the existing draft PR, tick outcomes individually, push through origin and dispatch CI on the final branch head because draft PR suites are skipped. Report immediately without waiting for CI. Rollback is a source revert; local fold keys and shared tag data do not change.

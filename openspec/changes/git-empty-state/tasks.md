@@ -27,9 +27,14 @@
 - [ ] 5.1 Replace the moving warm line with a stationary thin accent line using only a nonzero-opacity 2400ms ease-in-out loop; match Git's cold dot rhythm, honor reduced motion with static dim feedback and retain work-only show/hide conditions in targeted loading regressions.
 - [ ] 5.2 Capture two synthetic native frames with identical line bounds and different brightness, check no positional animation or stepping and static reduced-motion trees, update the relevant README/docs/spec contracts and record shutdown receipts.
 
+## 6. Verdict labels navigate like Build
+
+- [ ] 6.1 Reuse guarded Build-owner navigation for Approved and review-decision labels, retaining Review's reviewer role, verdict caption/color, pointer/keyboard/focus behavior, no tooltip and dim inert missing/disconnected targets; add targeted ordinary/coordinator, stale-action, ghost and unavailable regressions.
+- [ ] 6.2 Update README, architecture and affected spec contracts for verdict navigation and run the targeted stage/agent-link/tooltip tests without the full suite.
+
 ## Workflow follow-up
 
-- Implementation was approved, including the fourth and fifth outcomes, in the coordinator's follow-up messages.
-- Deliver the five outcomes in this order, with tests/docs in each outcome and PR ticks as each lands; do not mark ready or merge.
+- Implementation was approved, including the fourth, fifth and sixth outcomes, in the coordinator's follow-up messages.
+- Deliver the six outcomes in this order, with tests/docs in each outcome and PR ticks as each lands; do not mark ready or merge.
 - Use only targeted local commands, push the final implementation head and dispatch CI on that branch because draft PR suites are skipped; report immediately without waiting for or polling CI.
 - Keep proof pictures and scratch under C:/Users/tprokopiev/.crew/tasks/git-empty-state and stop every disposable app/Core/server before writing the implementation report and running crew done git-empty-state.
