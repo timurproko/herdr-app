@@ -180,6 +180,11 @@ share one captured coordinator binding; changed membership, conflicting parents 
 bindings, duplicates, missing/cross-machine endpoints and expired proof still refuse.
 Every child's saved colour and Automatic flag stays unchanged.
 
+`git-raced-read.test.mjs` races detail head, state and draft status at 100%/130%,
+asserting no notice, no partial publication or row-y change, no immediate loop
+and exactly one existing 10-second retry that can publish a coherent result.
+Adjacent request/fact retirement paths share this structured quiet classification.
+
 `git-agent-entry-layout.test.mjs` records every actual renderer layout during
 known-label entry before root, different pins, reverse no-PR entry, held footer
 reads and stale replies at 100%/130%. Each target-content sequence has one layout

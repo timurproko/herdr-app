@@ -39,8 +39,8 @@
 
 ## 8. Self-healing raced reads produce no visible notice
 
-- [ ] 8.1 Structurally classify changed-during-detail snapshots as quiet discarded reads, retain existing rows and bounded retry cadence, and audit adjacent stale/superseded paths; add held-response tests proving no notice, partial publication or row shift.
-- [ ] 8.2 Update read/notice documentation and run only targeted list/detail/refresh regressions, retaining real actionable errors.
+- [x] 8.1 Structurally classify changed-during-detail snapshots as quiet discarded reads, retain existing rows and bounded retry cadence, and audit adjacent stale/superseded paths; add held-response tests proving no notice, partial publication or row shift.
+- [x] 8.2 Update read/notice documentation and run only targeted list/detail/refresh regressions, retaining real actionable errors.
 
 ## 9. Missing numbered navigation targets are silent
 

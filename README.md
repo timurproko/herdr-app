@@ -273,7 +273,11 @@ errors are applied immediately, and longer requests spin until completion.
 The visual minimum is scoped to the clicked control and its machine/folder or
 Settings section, so switching context does not inherit another refresh.
 Refresh controls and the Usage settings gear have no hover tooltips;
-accessibility labels remain available. Git keeps loaded rows, counts, pagination and
+accessibility labels remain available. Git silently discards a PR snapshot that changes during its detail read, and
+obsolete/superseded refreshes, retaining last-good rows without a transient
+notice or layout change. One existing bounded retry is scheduled after 10 seconds;
+persistent actionable failures retain their normal feedback.
+Git keeps loaded rows, counts, pagination and
 pin measurements while a same-context refresh runs or a Git-root/branch probe
 fails inconclusively. An older active PR also stays pinned during its targeted
 reread after page-one refresh. Only an authoritative replacement, proven

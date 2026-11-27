@@ -495,6 +495,14 @@ metrics and passive 40px gradients, not copied approximations. Git retains its o
 padding and background; paired native content/frame geometry and changed-only
 size/input callbacks update edge hints without polling or render-time notifications.
 
+Page/detail head, state or draft races throw a structured quiet obsolete-read
+result before any new facts enter the cache. Retired requests and facts use the
+same classification. Ordinary, targeted and aggregate consumers preserve their
+last-good rows and use the existing 10-second bounded retry path, with no notice
+or immediate retry loop. Invalid payloads and actionable transport/access failures
+are not hidden by text matching. The audit found adjacent superseded-request and
+facts-retirement paths already quiet; they now share the explicit constructor.
+
 Git's loading line is a stationary full-width 1px accent surface. It and the cold
 Loading dot use only native opacity loops, 0.25–0.65 over 2400ms ease-in-out;
 reduced motion is static 0.35. Existing work admission/retirement remains intact.

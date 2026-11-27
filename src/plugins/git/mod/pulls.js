@@ -15,6 +15,9 @@ process.exitCode=r.status??1;`;
 // persisted shared state. Both ordinary and coordinator readers use this boundary.
 const readers = new WeakMap();
 export const quietRead = error => error?.quiet === true;
+// Obsolete snapshots are concurrency control, not actionable failures.
+// Reuse bounded scheduling and never publish their partial facts.
+export const obsoleteRead = (cause,now=Date.now()) => Object.assign(new Error('GitHub snapshot superseded'),{quiet:true,quietCause:'obsolete',cause,retryAt:now+10000});
 export function retryRead(owner, cx, error, run) {
   if(!quietRead(error))return false;
   const due=error.retryAt??Date.now()+900000;
@@ -71,7 +74,7 @@ export class GitReads {
     return Object.assign(new Error('GitHub read deferred'),{kind:'rate',quiet:true,quietCause:'refusal',retryAt:state.until});
   }
   async read(key,repository,options,run) {
-    if(options.current && !options.current())throw Object.assign(new Error('Obsolete GitHub read'),{quiet:true,retryAt:this.now()+10000});
+    if(options.current && !options.current())throw obsoleteRead('request-retired',this.now());
     const state=this.state(options),id=JSON.stringify([this.route(options),repository?.toLowerCase()??[options.cwd??'',++this.generation],key,...(options.fresh?[++this.generation]:[])]);
     const bypass=options.manual?.remaining>0 && (options.manual.expires==null || options.manual.expires>=this.now());
     if(bypass)options.manual.remaining--; // An earlier healthy click is not a future bypass credit.
@@ -88,7 +91,7 @@ export class GitReads {
     const job=(async()=>{
       if(previous)await previous.catch(()=>{});
       if(state.until>this.now() && !bypass)throw Object.assign(new Error('GitHub read deferred'),{kind:'rate',quiet:true,quietCause:'cooldown',retryAt:state.until});
-      if(!current())throw Object.assign(new Error('Obsolete GitHub read'),{quiet:true,retryAt:this.now()+10000});
+      if(!current())throw obsoleteRead('request-retired',this.now());
       this.recordDiagnostic(diagnostic,'reading');
       const admitted=state.version??0;let result;
       try{result=await run();}catch(error){if(rateRefusal(error))throw this.refusal(error,repository,options);throw error;}
@@ -367,11 +370,11 @@ export async function completePulls(exec,values,repository,options={}) {
     const details=parsePendingChecks(successful(await repositoryRead(exec,pendingChecksArgs(batch,repository),repository,options)),batch);
     for(const number of batch) {
       const row=rows.find(row=>row.number===number),value=details.get(number);
-      if((value.headRefOid??null)!==row.headRefOid || value.state.toLowerCase()!==(row.state==='draft'?'open':row.state) || value.isDraft!==(values.find(pr=>pr.number===number)?.isDraft===true))throw Error('Pull request changed during detail read');
+      if((value.headRefOid??null)!==row.headRefOid || value.state.toLowerCase()!==(row.state==='draft'?'open':row.state) || value.isDraft!==(values.find(pr=>pr.number===number)?.isDraft===true))throw obsoleteRead('changed-during-detail');
       row.checks=value.checks;row.checksKnown=true;row.checksReadAt=value.checksReadAt;
     }
   }
-  if(options.current && !options.current())throw Object.assign(new Error('Obsolete facts'),{quiet:true,retryAt:Date.now()+10000});
+  if(options.current && !options.current())throw obsoleteRead('facts-retired');
   return rows.map(row=>rememberPull(exec,repository,row,options));
 }
 export async function readPullPage(exec,state,repository,after=null,options={}) {
