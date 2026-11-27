@@ -3,7 +3,8 @@
 // (features/settings/plugins-ui.js) builds it from these parts, so every plugin looks and
 // behaves the same and a new plugin needs no UI code at all.
 import { div, svg } from 'gpui-kit';
-import { h_flex, v_flex } from 'gpui-base';
+import { h_flex, v_flex, HoverCard, Popup } from 'gpui-base';
+import { hintTable } from './panel-kit.js';
 import { settings } from './host.js';
 import { U, button, control, spinner, itemHover, description, dropdown, menuSurface, menuRow, collapsible } from './ui.js';
 
@@ -15,6 +16,21 @@ export const KIT = Object.freeze({
   dropdown: 150,    // scope dropdowns (machine, account)
   picker: Object.freeze({ width: 320, height: 350, header: U.field + 2 * U.gutter, footerButton: 26 }),
 });
+
+// Informational, not a link: same inline accent placement, dashed underline.
+// The same HoverCard/table as the sidebar Usage footer supports aligned columns.
+export function descriptionHint(t, id, hint, focus) {
+  const trigger = div().id(id).relative().track_focus(focus).tab_index(0)
+    .text_size(U.meta).text_color(t.accent).whitespace_nowrap().accessibility_label(hint.label)
+    .child(div().absolute().inset_0().border_b_1().border_dashed().border_color(t.accent))
+    .child(hint.label);
+  const body = () => hintTable(t, [hint.columns, ...hint.rows]);
+  // HoverCard itself is hover-only. Popup supplies the identical passive body
+  // for native keyboard focus without a click-to-open Popover or focus trap.
+  if (focus?.is_focused?.()) return Popup.new(`${id}-focus-hint`, trigger).anchor('top_left').content(body());
+  return HoverCard.new(`${id}-hint`).anchor('top_left').open_delay(400).close_delay(100)
+    .trigger(trigger).content(body());
+}
 
 const STATUS = { ready: 'Ready', missing: 'Missing', recommended: 'Optional', error: 'Error' };
 export function badge(t, status, label = STATUS[status] ?? status) {

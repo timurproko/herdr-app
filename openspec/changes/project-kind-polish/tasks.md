@@ -9,9 +9,9 @@
 
 ## 2. Declarative delivery-kind explanation
 
-- [ ] 2.1 Declare the exact three-kind explanation in Crew and render a generic inline list-description hint after the existing sentence, with Trello-style accent placement and a dashed underline; verify the declarative plugin UI contract.
-- [ ] 2.2 Reuse the Usage HoverCard/hintTable visual treatment for the aligned Kind, Plan first, Who reviews, Who opens the pull request table; fake hover/focus tests must verify all cells, no click action or reads, no Projects header and no option tooltips.
-- [ ] 2.3 Document the hint declaration and packaging in docs/PLUGIN-UI.md and add targeted helper/declaration coverage; record any hover-only solid-underlined Settings text without modifying it, and report whether fallback was needed.
+- [x] 2.1 Declare the exact three-kind explanation in Crew and render a generic inline list-description hint after the existing sentence, with Trello-style accent placement and a dashed underline; verify the declarative plugin UI contract.
+- [x] 2.2 Reuse the Usage HoverCard/hintTable visual treatment for the aligned Kind, Plan first, Who reviews, Who opens the pull request table; fake hover/focus tests must verify all cells, no click action or reads, no Projects header and no option tooltips.
+- [x] 2.3 Document the hint declaration and packaging in docs/PLUGIN-UI.md and add targeted helper/declaration coverage; record any hover-only solid-underlined Settings text without modifying it, and report whether fallback was needed.
 
 ## 3. Queued and batched Settings checks
 
@@ -33,9 +33,14 @@
 - [ ] 5.2 Extend targeted Git geometry/interaction regressions for ordinary, coordinator, pinned, probe and ghost variants at 100%/130%, preserving the right rail, hit boxes, no-tooltip policy, long-title truncation and 74px row height.
 - [ ] 5.3 Capture before/after fake/disposable pictures at both zooms outside the checkout, stop disposable processes, and document the measured width, widest caption and local verification commands/results.
 
+## 6. Coordinator-first Agents groups
+
+- [ ] 6.1 Stably place all coordinator-containing Agents groups first using actual metadata; a regression must cover the reported interleaving, several coordinators/machines, no coordinator, and unchanged relative order/group identity.
+- [ ] 6.2 Preserve selection, fold keys, counts and drag behavior and update current documentation, verified by focused Agents grouping/interaction fixtures.
+
 ## Workflow follow-up
 
-- All five outcomes and these artifact revisions are approved for implementation, including the two-digit shared-width and longer-round per-label growth policy.
+- All six outcomes and these artifact revisions are approved for implementation, including the two-digit shared-width and longer-round per-label growth policy.
 - After approved implementation, run targeted fake-only checks, push through the publication path and ensure CI is dispatched on the final head if draft checks skip application suites. Report immediately without waiting for or polling CI.
 - Keep proof pictures and scratch under C:/Users/tprokopiev/.crew/tasks/project-kind-polish and stop every disposable process before reporting and crew done.
 - Never mark ready or merge; finalization and review are outside this task's permission.

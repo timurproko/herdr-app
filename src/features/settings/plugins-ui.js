@@ -5,7 +5,7 @@
 import { div, svg, image } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, Checkbox, TextareaState, Textarea } from "gpui-base";
 import { U, slot, description, button, control, chevron, emptyState, dropdown, menuSurface, searchField, settingsRow, iconButton, chevronSlot } from "./ui.js";
-import { KIT, badge, statusText, workingStatus, statusRail, actionButton, actionTrigger, checkButton, choice, pickerTabs, optionDropdown, skeleton,
+import { KIT, descriptionHint, badge, statusText, workingStatus, statusRail, actionButton, actionTrigger, checkButton, choice, pickerTabs, optionDropdown, skeleton,
   disclosure, fieldRow, scopeRow, removableRow, pickerHeader, pickerListHeight, pickerFooter, changeCount, changeLabel, actionInput } from './settings-kit.js';
 import { PLUGINS, pluginEnabled, setPluginEnabled, pluginSetting, setPluginSetting, checkPlugin, pluginContext, pluginOptions, orderedPlugins, setPluginOrder } from './plugins.js';
 import { reorder } from './reorder.js';
@@ -98,6 +98,7 @@ export function initPlugins(view, cx, requested = null, options = {}) {
     view.pluginFocus[`${plugin.id}-${p.id}-pick`] = cx.focus_handle();
     view.pluginFocus[`${plugin.id}-${p.id}-scope`] = cx.focus_handle();
     view.pluginFocus[`${plugin.id}-${p.id}-dismiss`] = cx.focus_handle();
+    if (p.list.descriptionHint) view.pluginFocus[`${plugin.id}-${p.id}-hint`] = cx.focus_handle();
     if (p.list.picker?.kind === 'items') {
       const input = InputState.new({ placeholder: p.list.picker.search ?? 'Search…', value: p === section ? search : '' });
       input.on('change', (_e, cx) => cx.notify());
@@ -817,7 +818,9 @@ function listSection(view, t, plugin, item, loading) {
   const enabled = !locked;
   return v_flex().w_full().gap(8)
     .child(scopeRow(t, { id, label: def ? machineName(pluginSetting(plugin, def.key)) : spec.scope?.header === true ? machineName(view.settingsMachine ?? null) : spec.scope?.label ?? 'Machine', dropdown: scope, action: add, separator: spec.scope?.divider === 'items' ? rows.length > 0 : true }))
-    .when(Boolean(detail), el => el.child(description(t, detail)))
+    .when(Boolean(detail), el => el.child(h_flex().flex_wrap().gap(4).items_center()
+      .child(description(t, detail))
+      .when(Boolean(spec.descriptionHint), e => e.child(descriptionHint(t, `${id}-about`, spec.descriptionHint, view.pluginFocus[`${plugin.id}-${item.id}-hint`])))))
     // A row's note (an incomplete webhook) follows its name: one line per item.
     .when(rows.length > 0, el => el.child(v_flex().id(id).track_focus(view.pluginFocus[`${plugin.id}-${item.id}-dismiss`]).w_full().gap(U.rowGap)
       .children(rows.map((row, index) => listRow(view, t, plugin, item, row, index, enabled)))));

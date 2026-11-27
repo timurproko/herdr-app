@@ -14,6 +14,8 @@ Crew Projects' delivery-kind control has inconsistent alignment, a truncated lab
 - Report existing Settings hover-only text with solid link underlines without changing it. Update current docs and specs, not historical archives.
 - Give Git stage and verdict controls one measured minimum width covering every fixed caption and two-digit Build round, equal height/padding and centred text. Longer round captions grow only their own box. Preserve the right rail, title truncation and tooltip-free targets; add geometry regressions and before/after pictures at 100% and 130% zoom.
 
+- Put all coordinator-containing Agents groups first, preserving relative order within coordinator and other groups, with selection, folds, counts and drag behavior unchanged. The coordinator explicitly requested this sixth outcome in the same PR.
+
 ## Capabilities
 
 ### New Capabilities
@@ -29,4 +31,4 @@ None.
 - Shared Settings renderer/kit (`src/features/settings/plugins-ui.js`, `src/ui/settings-kit.js`), plugin execution boundary/API and registry as needed, and Crew's provider, kind labels and setter.
 - Targeted fake-only regressions for row lifecycle, declarations, transport scheduling, batched checks and supported/legacy set-kind replies; README and plugin UI documentation.
 - No native binary/source changes, cap increase, deployment, real Crew home access, coordinator interaction, SSH execution, portable kind preference or automatic write replay. Native cap provenance is to be documented from read-only source evidence, not reproduced against the running app.
-- Git row stage/verdict builders and their shared measurements, probes and geometry fixtures. The coordinator explicitly grouped this small cross-panel polish into the same PR and approved all five outcomes for implementation.
+- Git row stage/verdict builders and their shared measurements, probes and geometry fixtures. The coordinator explicitly grouped this small cross-panel polish into the same PR and approved all six outcomes for implementation.

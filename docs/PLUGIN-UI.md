@@ -247,6 +247,16 @@ belongs to, then Add), the description, and one row per item with **Remove** on 
 - A deep link `{ section, search }` (Settings props `pluginSection`, `pluginSearch`) opens
   an items picker filtered to that search.
 
+### Inline informational hints
+
+A list can declare `descriptionHint: {label, columns: [...], rows: [[...], ...]}`.
+The common renderer appends its accent-coloured label after the description with a
+dashed underline, not a solid link underline. It has no click action. Hover uses
+Usage's 400ms/100ms HoverCard and shared `panel-kit.js` hintTable; keyboard focus
+shows the same passive table through Popup, without a focus trap. Settings packages
+the shared panel kit explicitly. Column headings appear only inside this tooltip.
+Crew uses this for Delivery kinds. Existing descriptionLinks remain clickable links.
+
 ### Optional list-row choice
 
 A list may declare `rowChoice: { label, options: [[value, label]], set(cx, row, value) }`.

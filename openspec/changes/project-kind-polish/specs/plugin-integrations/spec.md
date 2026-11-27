@@ -77,6 +77,18 @@ Kind edits SHALL target the captured machine, home and existing registration thr
 
 ## ADDED Requirements
 
+### Requirement: Coordinator-first Agents groups
+The grouped Agents panel SHALL place all coordinator-containing groups before all other groups. Coordinator groups SHALL retain their current relative order, and non-coordinator groups SHALL retain theirs. Existing membership, selection, collapse state, counts and drag behavior SHALL remain unchanged. Displayed names alone SHALL NOT identify a coordinator.
+
+#### Scenario: Interleaved groups and multiple machines
+- **WHEN** project and coordinator groups arrive interleaved, including coordinators on several machines
+- **THEN** all coordinator groups appear first in their existing order, followed by other groups in their existing order
+- **AND** the same group ids, members, folds, counts, selection and drag operations remain
+
+#### Scenario: No coordinator
+- **WHEN** there is no coordinator group
+- **THEN** the existing group order remains unchanged
+
 ### Requirement: Consistent Git stage and verdict boxes
 Git stage and verdict controls SHALL share one measured minimum width covering all fixed captions and two-digit Build rounds, equal height and padding, and centred text. Longer round captions SHALL grow only their own box. Interaction bounds SHALL match that box. Existing right alignment, title truncation, row height, guarded actions and tooltip suppression SHALL remain unchanged.
 

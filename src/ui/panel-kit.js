@@ -11,7 +11,7 @@ export { tag } from './ui.js';
 export function hintTable(t, rows) {
   const columns = (rows[0] ?? []).map((_cell, index) => v_flex().flex_none().gap(2).text_color(index % 2 ? t.dim : t.foreground)
     .children(rows.map(row => div().h(18).flex().items_center().whitespace_nowrap().child(row[index] ?? ''))));
-  return menuSurface(t).px(10).py(6).flex().gap(6).text_size(U.meta).children(columns);
+  return menuSurface(t, div()).px(10).py(6).flex().gap(6).text_size(U.meta).children(columns);
 }
 
 // A panel header's icon button: ui.js's iconButton, inert until the header is hovered.

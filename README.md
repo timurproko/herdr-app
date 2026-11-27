@@ -183,7 +183,9 @@ folder list, Add and Remove, with no inferred kind. A task's recorded delivery k
 is not used as a project setting; re-adding a project is never a kind-edit workaround.
 Kind captions share a fixed left-aligned column without truncation. Hover or
 keyboard-focus a supported row to reveal the standard kind dropdown beside Remove;
-its choices are Plain, Delivery, Gate. Pointer-origin menu dismissal releases the row
+its choices are Plain, Delivery, Gate. The dashed **Delivery kinds** text after the
+Projects description explains planning, review and PR ownership on hover or keyboard
+focus; it opens nothing when clicked. Pointer-origin menu dismissal releases the row
 unless the pointer remains there; keyboard editing retains its Tab target. Changing it applies only to that captured machine/home/project through Crew,
 not to portable plugin preferences or existing tasks. The label changes only after
 Crew confirms its stored value. Refusals appear as one short line beneath the row;

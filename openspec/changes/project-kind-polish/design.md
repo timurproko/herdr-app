@@ -57,6 +57,10 @@ Keep version-1 capability gating, the existing exact set-kind arguments, matchin
 
 Use one common minimum outer width equal to the native-measured widest fixed stage/verdict caption or Build round from 2 through 99, plus the existing 6px horizontal padding. Keep 18px height, centre text horizontally/vertically, and apply size to the actual hover/focus/click element. A longer round grows only its own box; do not enlarge the common width from it or restrict existing round support. Visible, probe and ghost variants share sizing and measurement facts. Keep today's right rail, 74px block, title truncation and no-tooltip policy. Extend targeted geometry fixtures and capture paired fake/disposable pictures at 100% and 130% zoom outside the checkout. This exception to one-panel scope is explicitly requested and approved by the coordinator.
 
+### 8. Stable coordinator-first Agents groups
+
+After existing groups are constructed, apply a stable partition using actual coordinator metadata from their members, never the displayed group name. All coordinator-containing groups precede the rest; both partitions keep existing relative order. Preserve group objects/ids/members, selection, fold keys, counts and drag handlers. Existing priority ordering remains unchanged where there are no project groups.
+
 ## Risks / Trade-offs
 
 - [Other mods/native clients can occupy all execution slots] → Admission plus exact pre-start refusal retry, not a claimed global semaphore over callers the app cannot control.
