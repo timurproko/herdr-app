@@ -83,8 +83,9 @@ const json = text => { try { return JSON.parse(String(text ?? '').trim()); } cat
 
 // Runs one program on the chosen machine (null: this computer) without a terminal.
 // { code, stdout, stderr, missing } — missing: the program is not on that machine's PATH.
-export async function on(machine, argv, { timeout = 60, received = () => {}, decode = decodeBase64 } = {}) {
-  const r = await hc(['exec', ...(machine ? ['--on', machine] : []), '--timeout', String(timeout), '--json', '--', ...argv]);
+export async function on(machine, argv, { timeout = 60, received = () => {}, decode = decodeBase64, request } = {}) {
+  const args = ['exec', ...(machine ? ['--on', machine] : []), '--timeout', String(timeout), '--json', '--', ...argv];
+  const r = await (request ? request(()=>hc(args), {timeout:(timeout+2)*1000}) : hc(args));
   // A native watchdog interrupt is uncatchable. Publish receipt before ANY
   // synchronous JSON/Base64 work, so lifecycle recovery does not need finally.
   received();
@@ -129,8 +130,9 @@ const tail = text => { const t = String(text ?? '').trim(); return t.length > 30
 
 const rounds = new WeakMap();
 function once(cx, key, fn) {
-  let memo = rounds.get(cx);
-  if (!memo) rounds.set(cx, memo = new Map());
+  const owner=cx.checkMemo??cx;
+  let memo = rounds.get(owner);
+  if (!memo) rounds.set(owner, memo = new Map());
   if (!memo.has(key)) memo.set(key, fn());
   return memo.get(key);
 }
@@ -150,6 +152,7 @@ const connected = cx => once(cx, 'machine', () => machineState(cx).catch(() => (
 
 // { windows, arch } of the chosen machine; non-Windows when PowerShell is absent.
 const platform = cx => once(cx, 'platform', async () => {
+  if (cx.request) return (await toolInventory(cx)).platform;
   const r = await on(machineOf(cx), ['powershell', '-NoProfile', '-NonInteractive', '-Command', '$env:PROCESSOR_ARCHITECTURE'], { timeout: CHECK_TIMEOUT });
   return r.missing ? { windows: false, arch: null } : { windows: true, arch: firstLine(r.stdout).toUpperCase() };
 });
@@ -172,7 +175,7 @@ async function mustSucceed(r, what) {
   if (r.code !== 0) throw new Error(tail(r.stderr || r.stdout) || `${what} failed (exit ${r.code}).`);
 }
 
-const ps = (cx, script, timeout = CHECK_TIMEOUT) => on(machineOf(cx), ['powershell', '-NoProfile', '-NonInteractive', '-Command', script], { timeout });
+const ps = (cx, script, timeout = CHECK_TIMEOUT) => on(machineOf(cx), ['powershell', '-NoProfile', '-NonInteractive', '-Command', script], { timeout, request:cx.request });
 const DISCONNECTED = { status: 'missing', detail: 'Machine not connected.', fix: null };
 // Every requirement is checked on the chosen machine, so it waits until that is reachable.
 const reachable = check => async cx => (await connected(cx)).ready ? check(cx) : DISCONNECTED;
@@ -270,7 +273,7 @@ const RESTART_CORE = 'Restart herdr-core (Settings › Core) so programs find it
 // missing. If its folder is on the saved PATH, only a core restart is left to do; if not,
 // Fix PATH puts it there (no new download).
 async function pinnedOffPath(cx, id, min) {
-  const r = await on(machineOf(cx), ['powershell', '-NoProfile', '-NonInteractive', '-Command', pinnedLocateScript(id)], { timeout: CHECK_TIMEOUT });
+  const r = await on(machineOf(cx), ['powershell', '-NoProfile', '-NonInteractive', '-Command', pinnedLocateScript(id)], { timeout: CHECK_TIMEOUT, request:cx.request });
   const field = name => (String(r.stdout ?? '').split(/\r?\n/).find(l => l.startsWith(`${name}=`)) ?? '').slice(name.length + 1).trim();
   if (r.code !== 0 || field('present') !== '1') return null;
   const version = field('version'), old = min && compareVersions(version, min) !== null && compareVersions(version, min) < 0;
@@ -286,29 +289,81 @@ async function pinnedOffPath(cx, id, min) {
 function pinned(id, use, min = null) {
   const p = PINNED[id];
   return {
-    id, label: id, about: `${use} ${id} ${p.version}, a single exe placed in %USERPROFILE%\\.local\\bin.`,
+    id, versionTool:id, label: id, about: `${use} ${id} ${p.version}, a single exe placed in %USERPROFILE%\\.local\\bin.`,
     check: reachable(async cx => {
-      const r = await on(machineOf(cx), [id, '--version'], { timeout: CHECK_TIMEOUT });
+      const r = await checkedTool(cx, id);
       const offPath = (r.missing || r.code === NOT_INSTALLED) && (await platform(cx)).windows ? await pinnedOffPath(cx, id, min) : null;
       return offPath ?? windowsOnly(cx, toolStatus(r, { min, optional: true }), 'amd64');
     }),
     fix: { label: 'Install', statusLabel: 'Installing', async run(cx) {
-      await mustSucceed(await on(machineOf(cx), ['powershell', '-NoProfile', '-NonInteractive', '-Command', pinnedInstallScript(id)], { timeout: INSTALL_TIMEOUT }), `Installing ${id}`);
+      await mustSucceed(await on(machineOf(cx), ['powershell', '-NoProfile', '-NonInteractive', '-Command', pinnedInstallScript(id)], { timeout: INSTALL_TIMEOUT, request:cx.request }), `Installing ${id}`);
     } },
   };
 }
 
+// One bounded Settings read supplies versions, platform and hook membership for
+// the whole tool list. Other consumers retain their existing individual reads.
+export function toolInventoryScript() {
+  // Derive optional tools from their actual requirements, never a second list.
+  const tools=['git','node','hc',...FIRSTMATE_TOOLS.filter(pre=>pre.versionTool).map(pre=>pre.versionTool)];
+  return [
+    "$ErrorActionPreference = 'Stop'",
+    '$tools = @{}',
+    `foreach ($name in @(${tools.map(psQuote).join(',')})) {`,
+    "  $cmd = Get-Command $name -ErrorAction SilentlyContinue | Select-Object -First 1",
+    "  if (-not $cmd) { $tools[$name] = @{code=127;stdout='';stderr='';missing=$true}; continue }",
+    "  try { $global:LASTEXITCODE=0; $out=(& $cmd --version 2>&1 | Out-String); $tools[$name]=@{code=[int]$LASTEXITCODE;stdout=$out;stderr='';missing=$false} }",
+    "  catch { $tools[$name]=@{code=1;stdout='';stderr='Could not read tool version.';missing=$false} }",
+    '}',
+    '$hooks=@(); $hooksIssue=$null',
+    'try {',
+    "  $p=Join-Path $env:USERPROFILE '.claude\\settings.json'",
+    "  if (Test-Path -LiteralPath $p -ErrorAction Stop) {",
+    '    $s=Get-Content -LiteralPath $p -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop; $commands=@()',
+    '    if ($s -is [pscustomobject] -and $s.hooks -is [pscustomobject] -and $s.hooks.SessionStart -is [array]) {',
+    '      foreach ($group in $s.hooks.SessionStart) { if ($group -is [pscustomobject] -and $group.hooks -is [array]) {',
+    '        foreach ($hook in $group.hooks) { if ($hook -is [pscustomobject] -and $hook.command -is [string]) { $commands += $hook.command } }',
+    '      } }',
+    '    }',
+    `    foreach ($name in @(${HOOK_TOOLS.map(psQuote).join(',')})) { if (@($commands | Where-Object { $_.Contains($name) }).Count) { $hooks += $name } }`,
+    '  }',
+    "} catch { $hooks=@(); $hooksIssue='Could not read Claude Code hook settings. Check that file and retry.' }",
+    "@{platform=@{windows=$true;arch=$env:PROCESSOR_ARCHITECTURE};tools=$tools;hooks=@($hooks);hooksIssue=$hooksIssue} | ConvertTo-Json -Depth 6 -Compress",
+    'exit 0',
+  ].join('\n');
+}
+const toolInventory = cx => once(cx,'tool-inventory',async()=>{
+  const r=await ps(cx,toolInventoryScript(),60);
+  if(r.missing)return {platform:{windows:false,arch:null},tools:null};
+  if(r.code!==0)throw new Error('Could not check installed tools. Refresh to try again.');
+  const result=json(r.stdout);
+  if(result?.platform?.windows!==true)throw new Error('Invalid tool inventory. Refresh to try again.');
+  // Optional result fields cannot invalidate authoritative platform facts. A
+  // missing/malformed individual version result gets one independent probe.
+  const tools=result.tools&&typeof result.tools==='object'&&!Array.isArray(result.tools)?result.tools:null;
+  const hooksValid=Array.isArray(result.hooks)&&result.hooks.every(id=>typeof id==='string'&&HOOK_TOOLS.includes(id));
+  return {...result,tools,hooks:hooksValid?result.hooks:[],hooksIssue:result.hooksIssue!=null||!hooksValid?'Could not read Claude Code hook settings. Check that file and retry.':null};
+});
+const checkedTool = (cx,id)=>once(cx,`checked-tool:${id}`,async()=>{
+  if(cx.request){
+    const facts=await toolInventory(cx),r=facts.tools?.[id];
+    if(r&&Number.isInteger(r.code)&&typeof r.stdout==='string'&&typeof r.stderr==='string'&&typeof r.missing==='boolean')return r;
+    if(facts.platform.windows)return psTool(machineOf(cx),id,['--version'],{timeout:CHECK_TIMEOUT,request:cx.request});
+  }
+  return on(machineOf(cx),[id,'--version'],{timeout:CHECK_TIMEOUT,request:cx.request});
+});
+
 // The npm tools whose `<tool> setup hooks` adds a SessionStart hook for each agent.
 export const HOOK_TOOLS = Object.freeze(['gh-axi', 'chrome-devtools-axi', 'lavish-axi']);
 // `<tool> --version` on the chosen machine, asked once per round (its row and Agent hooks share it).
-const toolVersion = (cx, id) => once(cx, `tool:${id}`, () => psTool(machineOf(cx), id, ['--version'], { timeout: CHECK_TIMEOUT }));
+const toolVersion = (cx, id) => once(cx, `tool:${id}`, () => cx.request ? checkedTool(cx,id) : psTool(machineOf(cx), id, ['--version'], { timeout: CHECK_TIMEOUT }));
 
 function npmTool(id, use, { min = null } = {}) {
   return {
-    id, label: id, about: `${use} npm package ${id}, installed globally (latest).`,
+    id, versionTool:id, label: id, about: `${use} npm package ${id}, installed globally (latest).`,
     check: reachable(async cx => windowsOnly(cx, toolStatus(await toolVersion(cx, id), { min, optional: true }), 'windows')),
     fix: { label: 'Install', statusLabel: 'Installing', async run(cx) {
-      await mustSucceed(await powershell(machineOf(cx), `npm install -g ${psQuote(id)}`, { timeout: INSTALL_TIMEOUT }), `Installing ${id}`);
+      await mustSucceed(await powershell(machineOf(cx), `npm install -g ${psQuote(id)}`, { timeout: INSTALL_TIMEOUT, request:cx.request }), `Installing ${id}`);
     } },
   };
 }
@@ -338,11 +393,15 @@ export function hookedTools(text) {
 async function hookState(cx) {
   const versions = await Promise.all(HOOK_TOOLS.map(id => toolVersion(cx, id)));
   const installed = HOOK_TOOLS.filter((id, i) => versions[i].code === 0 && !versions[i].missing);
-  const r = await ps(cx, claudeSettingsScript());
-  if (r.code !== 0) throw new Error(tail(r.stderr) || `Exited with ${r.code}.`);
-  const [state, ...rest] = r.stdout.split(/\r?\n/);
-  const hooked = state.trim() === 'present' ? hookedTools(rest.join('\n')) : new Set();
-  return { installed, missing: installed.filter(id => !hooked.has(id)) };
+  let hooked,issue=null;
+  if(cx.request && (await toolInventory(cx)).platform.windows) {const facts=await toolInventory(cx);hooked=new Set(facts.hooks);issue=facts.hooksIssue;}
+  else {
+    const r = await ps(cx, claudeSettingsScript());
+    if (r.code !== 0) throw new Error(tail(r.stderr) || `Exited with ${r.code}.`);
+    const [state, ...rest] = r.stdout.split(/\r?\n/);
+    hooked = state.trim() === 'present' ? hookedTools(rest.join('\n')) : new Set();
+  }
+  return { installed, missing: installed.filter(id => !hooked.has(id)), issue };
 }
 
 const agentHooks = {
@@ -350,7 +409,8 @@ const agentHooks = {
   about: 'Runs `setup hooks` for each installed axi tool, so agents get its context when a session starts (Claude Code, Codex, OpenCode).',
   check: reachable(async cx => {
     if (!(await platform(cx)).windows) return { status: 'recommended', fix: null, detail: 'Run `<tool> setup hooks` there by hand (automatic checks support Windows machines)' };
-    const { installed, missing } = await hookState(cx);
+    const { installed, missing, issue } = await hookState(cx);
+    if (issue) return { status:'recommended', fix:null, detail:issue };
     if (!installed.length) return { status: 'recommended', fix: null, detail: 'Install gh-axi, chrome-devtools-axi or lavish-axi first' };
     if (!missing.length) return { status: 'ready', detail: 'Set up for Claude Code' };
     return { status: 'recommended', detail: `Not set up for: ${missing.join(', ')}` };
@@ -359,14 +419,14 @@ const agentHooks = {
   fix: { label: 'Set up', statusLabel: 'Setting up', async run(cx) {
     const { missing } = await hookState(cx);
     for (const id of missing)
-      await mustSucceed(await psTool(machineOf(cx), id, ['setup', 'hooks'], { timeout: 60 }), `Setting up ${id} hooks`);
+      await mustSucceed(await psTool(machineOf(cx), id, ['setup', 'hooks'], { timeout: 60, request:cx.request }), `Setting up ${id} hooks`);
   } },
 };
 
 const githubCli = {
   id: 'gh', label: 'GitHub CLI, signed in', about: '`crew land` opens pull requests with `gh`, signed in to GitHub on that machine.',
   check: reachable(async cx => {
-    const r = await on(machineOf(cx), ['gh', 'auth', 'status'], { timeout: CHECK_TIMEOUT });
+    const r = await on(machineOf(cx), ['gh', 'auth', 'status'], { timeout: CHECK_TIMEOUT, request:cx.request });
     if (r.missing) return { status: 'recommended', detail: 'Install the GitHub CLI.' };
     if (r.code !== 0) return { status: 'recommended', detail: 'Run `gh auth login` on that machine.' };
     const signed = `${r.stdout}\n${r.stderr}`.split(/\r?\n/).map(l => l.replace(/^[\s✓✔-]+/, '').trim()).find(l => /logged in/i.test(l));
@@ -728,13 +788,19 @@ const PROJECTS = Object.freeze({
   list: Object.freeze({
     scope: Object.freeze({ label: 'Machine', setting: 'machine' }),
     picker: Object.freeze({ kind: 'folders', label: 'Add project' }),
+    descriptionHint: Object.freeze({ label: 'Delivery kinds',
+      columns: ['Kind', 'Plan first', 'Who reviews', 'Who opens the pull request'],
+      rows: [['Plain', 'no', 'a crew reviewer', 'crew after review'],
+        ['Delivery', 'yes', 'a crew reviewer', 'the worker as a draft at the start'],
+        ['Gate', 'no', 'the gate tool', 'the gate tool']],
+    }),
     rowChoice: Object.freeze({ label: 'Delivery kind', options: PROJECT_KINDS,
       async set(cx, row, value) {
         const machine = machineOf(cx), result = cx.result?.('projects');
         const current = () => (!cx.isCurrent || cx.isCurrent()) && machineOf(cx) === machine &&
           result?.kindSupported === true && result.usable === true && result.rows?.includes(row) && listedProjects.get(machine)?.includes(row);
         if (!current()) throw new Error('The project changed. Refresh before trying again.');
-        try { return await setProjectKind(args => on(machine, ['powershell', '-NoProfile', '-NonInteractive', '-Command', crewProjectScript(args)], { timeout: 30 }), row.kindTarget, value, current); }
+        try { return await setProjectKind(args => on(machine, ['powershell', '-NoProfile', '-NonInteractive', '-Command', crewProjectScript(args)], { timeout: 30, request:cx.request }), row.kindTarget, value, current); }
         catch (error) { if (error.uncertain && current()) listedProjects.delete(machine); throw error; }
       },
     }),
@@ -757,15 +823,15 @@ const PROJECTS = Object.freeze({
     cx = { ...cx, setting: key => key === 'machine' ? machine : original.setting?.(key) };
     const retained = () => ({ rows: cx.result?.('projects')?.rows ?? [], usable: false });
     const current = () => !cx.isCurrent || cx.isCurrent();
-    if (!(await connected(cx)).ready) return { ...DISCONNECTED, statusLabel: null, ...retained() };
-    if (!current()) return { status: 'error', rows: [], usable: false };
-    const p = await crewProbe(cx, false);
-    if (!current()) return { status: 'error', rows: [], usable: false };
-    if (p.unsupported) return { status: 'recommended', statusLabel: null, detail: UNSUPPORTED, rows: [] };
-    if (p.error) return { status: 'error', statusLabel: null, detail: 'Could not read Crew projects. Refresh to try again.', ...retained() };
-    if (!p.tool) return { status: 'missing', statusLabel: null, detail: 'Install the crew tool first (Requirements).', rows: [] };
-    if (!p.home) return { status: 'missing', statusLabel: null, detail: 'Create the crew home first (Requirements).', rows: [] };
     try {
+      if (!(await connected(cx)).ready) return { ...DISCONNECTED, statusLabel: null, ...retained() };
+      if (!current()) return { status: 'error', rows: [], usable: false };
+      const p = await crewProbe(cx, false);
+      if (!current()) return { status: 'error', rows: [], usable: false };
+      if (p.unsupported) return { status: 'recommended', statusLabel: null, detail: UNSUPPORTED, ...retained() };
+      if (p.error) return { status: 'error', statusLabel: null, detail: 'Could not read Crew projects. Refresh to try again.', ...retained() };
+      if (!p.tool) return { status: 'missing', statusLabel: null, detail: 'Install the crew tool first (Requirements).', ...retained() };
+      if (!p.home) return { status: 'missing', statusLabel: null, detail: 'Create the crew home first (Requirements).', ...retained() };
       const facts = await readProjectKinds(args => {
         if (!current()) throw new Error('This check is no longer current.');
         return ps(cx, crewProjectScript(args), CHECK_TIMEOUT);
@@ -977,18 +1043,18 @@ export default {
       } },
   ],
   prerequisites: [
-    { id: 'git', label: 'Git', about: 'git on the core’s PATH.',
+    { id: 'git', versionTool:'git', label: 'Git', about: 'git on the core’s PATH.',
       check: reachable(async cx => {
-        const r = await on(machineOf(cx), ['git', '--version'], { timeout: CHECK_TIMEOUT });
+        const r = await checkedTool(cx, 'git');
         return r.missing ? { status: 'missing', detail: 'Install Git for Windows.' } : toolStatus(r);
       }) },
-    { id: 'node', label: 'Node.js', about: 'node on the core’s PATH; the crew tool is a Node program.',
+    { id: 'node', versionTool:'node', label: 'Node.js', about: 'node on the core’s PATH; the crew tool is a Node program.',
       check: reachable(async cx => {
-        const r = await on(machineOf(cx), ['node', '--version'], { timeout: CHECK_TIMEOUT });
+        const r = await checkedTool(cx, 'node');
         return r.missing ? { status: 'missing', detail: 'Install Node.js 20 or newer.' } : toolStatus(r, { min: '20.0.0' });
       }) },
-    { id: 'hc', label: 'herdr-core', about: '`hc` 0.1.14 or newer on that machine.',
-      check: reachable(async cx => toolStatus(await on(machineOf(cx), ['hc', '--version'], { timeout: CHECK_TIMEOUT }), { min: '0.1.14' })) },
+    { id: 'hc', versionTool:'hc', label: 'herdr-core', about: '`hc` 0.1.14 or newer on that machine.',
+      check: reachable(async cx => toolStatus(await checkedTool(cx, 'hc'), { min: '0.1.14' })) },
     { id: 'crew', label: 'Crew tool', about: `A clone of ${CREW_SOURCE.url} in ~/.crew/core on that machine.`,
       check: reachable(async cx => {
         const p = await crewProbe(cx, true);
@@ -1029,6 +1095,13 @@ export default {
   guards: { 'spaces.color': ({pair}) => fleetColorAllowed(pair) },
   pullContext: ({space,presentation = false}) => fleetPullContext(space,{presentation}),
   onEnabledChange: () => { invalidateFleet(); invalidateWorkerSpaces(); },
+  // Metadata-only grouping of already-running coordinators. No reads or action
+  // authority; disabled Crew does not end or unlabel existing sessions.
+  agentGroupFirst(group, {terminals:list=[]} = {}) {
+    const members=new Set(group.members.map(agent=>agent.address));
+    return list.some(terminal=>members.has(terminal.address)&&terminal.state==='live'&&terminal.labels?.[ROLE_LABEL.home]==='1');
+  },
+
   // The Spaces sidebar's tag for a space the coordinator or crew workers run in.
   spaceTags: space => {
     const display = fleetContexts({presentation:true});

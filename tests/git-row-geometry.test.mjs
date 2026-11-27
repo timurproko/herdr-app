@@ -227,8 +227,8 @@ for(const [kind,shortKind,textKind] of [['meta','tasks','tasks'],['byline','time
   const retainedKind=kind==='meta'?'labels':'author';
   near(narrow.geometry.get(find(narrow.tree,`pr-${retainedKind}-41`)).width,wide.geometry.get(find(wide.tree,`pr-${retainedKind}-41`)).width,'Shorten before clipping neighboring content');
 }
-// Secondary review-decision text loses width before label words do, after
-// compaction. Only further overflow clips labels, without sacrificing checks.
+// Fixed-size secondary verdict controls yield as a whole before labels after
+// compaction; they never become a narrower, inconsistent hit box. Only further overflow clips labels, without sacrificing checks.
 {
   const pr=facts.pullRow({...source,body:'- [x] one\n- [x] two',labels:[{name:'🤖 Approved',color:'1a7f37'}],reviewDecision:'CHANGES_REQUESTED',statusCheckRollup:[{name:'CI',status:'COMPLETED',conclusion:'SUCCESS'}]},'owner',now);
   const wide=h.settle(()=>panel.pullRow(t,pr),480),measure=kind=>wide.geometry.get(find(wide.tree,`pr-meta-17-probe-${kind}-full`)).width;
@@ -238,7 +238,7 @@ for(const [kind,shortKind,textKind] of [['meta','tasks','tasks'],['byline','time
   const reduced=h.settle(()=>panel.pullRow(t,pr),inset+compactNeeded-1);
   assert.equal(words(find(reduced.tree,'pr-tasks-17')).join(''),'2/2');
   near(reduced.geometry.get(find(reduced.tree,'pr-labels-17')).width,measure('labels'),'Pill remains whole while review text can yield');
-  near(reduced.geometry.get(find(reduced.tree,'pr-review-17')).width,measure('review')-1,'Separate review text yields first');
+  assert.equal(find(reduced.tree,'pr-review-17'),undefined,'Fixed-width verdict yields whole before labels rather than shrinking');
   const clipped=h.settle(()=>panel.pullRow(t,pr),inset+compact+measure('checks')+15+6+measure('labels')-10);
   assert.equal(find(clipped.tree,'pr-review-17'),undefined,'No empty review group or orphan separator');
   assert.ok(clipped.geometry.get(find(clipped.tree,'pr-labels-17')).width<measure('labels'));

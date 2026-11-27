@@ -16,7 +16,11 @@ export const env = { ...process.env, GIT_CONFIG_GLOBAL: empty, GIT_CONFIG_NOSYST
   GIT_COMMITTER_NAME: 'Fixture', GIT_COMMITTER_EMAIL: 'fixture@example.invalid',
 };
 export function git(root, ...args) {
-  const r = cp.spawnSync('git', ['-C', root, ...args], { env, encoding: 'utf8', timeout: 15000 });
+  // Pooled Windows paths are much deeper than hosted D:/a checkouts. Persist
+  // long-path support in fixture clones, including the Update worker's clone;
+  // never depend on or modify the person's excluded global Git configuration.
+  if (process.platform === 'win32' && args[0] === 'clone') args.splice(1, 0, '-c', 'core.longpaths=true');
+  const r = cp.spawnSync('git', ['-c', 'core.longpaths=true', '-C', root, ...args], { env, encoding: 'utf8', timeout: 15000 });
   assert.equal(r.status, 0, `${args.join(' ')}: ${r.stderr}`); return r.stdout.trim();
 }
 let sequence = 0;

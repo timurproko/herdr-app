@@ -124,6 +124,35 @@ stale controls cannot dispatch. Do not use raw provider exceptions as detail.
 - `selection: { key, label?, options: [[value, label]], value }`: a dropdown in the row,
   saved into setting `key` (e.g. which Cloudflare account). Changing it re-checks the plugin.
 
+## Settings execution capacity
+
+Settings admits at most two check groups and four Crew command transports at once.
+Compatible Requirements/section checks share only benign same-round probe facts,
+not publication authority; manual Requirements Check remains independent. Crew's
+Windows tool/platform/hook inventory answers twelve requirement rows in one command
+(eleven version checks and Agent hooks). Its tool list derives from the actual version
+requirements, including tasks-axi and quota-axi. An omitted or malformed version entry
+gets one coalesced queued probe of that tool instead of an invented Error/missing result.
+Optional Claude settings read/parse/schema failures cannot invalidate platform or tool
+facts: only Agent hooks shows a neutral Optional notice, without a speculative fix.
+Projects retains last-good rows even when platform, transport, home or list probes fail.
+Confirmed badges, fix counts and list rows remain while refreshes wait (actions stay
+locked); cold checks stay pending. Check/Refresh supplies activity separately.
+
+The reported **16 execs are running already** limit is native Core, not an app-side
+preference: [herdr-core v0.1.22 exec.rs](https://github.com/herdrdev/herdr-core/blob/v0.1.22/crates/herdr-core/src/exec.rs)
+lines 22 and 40–47 hardcode `MAX_RUNNING = 16`; `run` acquires its slot before process
+creation. There is no public setting to raise that constant in this customization.
+No native file or cap is changed. Other native callers can occupy slots, so Settings
+retries only the exact outer RPC `unavailable` refusal with 100ms exponential delays
+capped at 2 seconds, rejoining the admission tail. Child stderr, thrown transport
+errors, timeouts and uncertain submitted writes never authorize replay.
+
+The view-task clock and captured generation guard every wait/dispatch; completed
+native Tasks release abandoned ownership, and command leases cannot outlive their
+bounded execution allowance. Closing/changing context retires queued work. This is
+Settings-scoped admission, not a global semaphore or a change to fleet/Git lifecycles.
+
 ## Transient action forms
 
 A prerequisite may declare `form: { fields, actions, when?, enabled?, help? }`.
@@ -247,6 +276,16 @@ belongs to, then Add), the description, and one row per item with **Remove** on 
 - A deep link `{ section, search }` (Settings props `pluginSection`, `pluginSearch`) opens
   an items picker filtered to that search.
 
+### Inline informational hints
+
+A list can declare `descriptionHint: {label, columns: [...], rows: [[...], ...]}`.
+The common renderer appends its accent-coloured label after the description with a
+dashed underline, not a solid link underline. It has no click action. Hover uses
+Usage's 400ms/100ms HoverCard and shared `panel-kit.js` hintTable; keyboard focus
+shows the same passive table through Popup, without a focus trap. Settings packages
+the shared panel kit explicitly. Column headings appear only inside this tooltip.
+Crew uses this for Delivery kinds. Existing descriptionLinks remain clickable links.
+
 ### Optional list-row choice
 
 A list may declare `rowChoice: { label, options: [[value, label]], set(cx, row, value) }`.
@@ -255,11 +294,14 @@ the confirmed resource/value. Optional `identity` is the stable registration ide
 (independent of value), retaining focus handles when only the stored value changes.
 Without it, focus reuse falls back to `revision`. Every reread still invalidates old
 callbacks. No choice means the existing row is unchanged.
-The common renderer keeps a quiet right-aligned label and reveals `optionDropdown`
+The common renderer keeps a quiet left-aligned, untruncated label and reveals `optionDropdown`
 on hover, trigger/Remove keyboard focus or an open menu. Tab reaches the persistent
 trigger and Remove; Enter/Space opens, arrows navigate, Enter selects and Escape
 closes without applying. Focus handles are allocated when check results arrive,
-never while rendering. The choice owns 150px before the separate 80px Remove rail;
+never while rendering. Pointer-origin dismissal (selection, Escape or outside) moves focus to the list,
+so only current hover or intentional keyboard focus reveals a closed row. Keyboard-origin
+editing restores its persistent trigger. Quiet and revealed text share their left edge.
+The choice owns 150px before the separate 80px Remove rail;
 only the folder/label column shrinks. An open menu survives pointer departure.
 The renderer captures row, machine and view-session identity; obsolete callbacks
 cannot apply to replacement rows or machines. Setters are explicit list operations,
@@ -280,7 +322,10 @@ explicit `crew project --capabilities --json` probe. Its JSON list owns the home
 registered name, folder and kind; `set-kind` receives that captured home/name and
 `--expected-path`, never `project add` or a configuration-file write. It rechecks
 capability before dispatch and validates the full stored-value acknowledgement.
-Home ownership and unavailable kinds remain Crew refusals, with no bypass.
+A valid stored-value success is accepted even while a coordinator owns the home,
+without an app-side owner gate. Older Crew's `home-owned` setter refusal says only
+**Delivery kind was not changed. Refresh and try again.** Other refusals remain Crew's
+policy, with no bypass. Add/Remove ownership wording is unchanged.
 
 ## Settings section rows
 
@@ -300,6 +345,17 @@ state stays outside portable plugin settings.
 in the Spaces sidebar (Crew: the space running its coordinator), drawn like a pane header's
 role pill. Synchronous and cheap: it runs on every draw, from live data only (`panes()`,
 `terminals()` through the plugin API). Only enabled plugins are asked; at most 3 tags each.
+
+## Existing-session group priority
+
+`agentGroupFirst(group, {terminals})` is a pure metadata contribution for the grouped
+Agents panel. The registry asks declarations, including disabled ones because turning
+a plugin off does not end existing sessions. Providers must use only the supplied
+snapshot: no reads, writes or action authority. Agents stably partitions complete group
+objects, promoting marked groups without changing member order, ids, folds, counts,
+selection or drag handlers. Crew marks groups containing a live terminal whose exact
+address matches a member and whose coordinator-launch metadata is present. Group names
+never establish a role. Priority mode retains its existing ordering.
 
 ## A page of its own
 

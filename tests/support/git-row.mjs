@@ -31,8 +31,8 @@ export async function rowHarness({host={},modules={},globals={}}={}) {
     // Native post-layout callbacks, not render-time heuristics. Include hidden
     // intrinsic probes; visible text assertions below exclude their paint.
     for(let pass=0;pass<8;pass++) {
-      const tree=render(build),geometry=rowGeometry(tree,width,zoom,height);let changed=false;
-      for(const node of nodes(tree))if(/pr-(?:byline|meta)-/.test(node.attrs?.id?.[0]??'')) {
+      const tree=render(()=>build().child(panel.stageBoxProbe())),geometry=rowGeometry(tree,width,zoom,height);let changed=false;
+      for(const node of nodes(tree))if(/pr-(?:(?:byline|meta)-|stage-box-measure-)/.test(node.attrs?.id?.[0]??'')) {
         const callback=node.attrs.on_size_change?.[0];if(callback){
           const size=geometry.get(node),id=node.attrs.id[0],before=nativeSizes.get(id);
           nativeSizes.set(id,{width:size.width,height:size.height});
@@ -63,7 +63,7 @@ export function rowGeometry(root,width,zoom=1,height) {
   const attrs=n=>typeof n==='object'&&n?n.attrs:{};
   const children=n=>typeof n==='object'&&n?(n.kids??[]).filter(c=>c!=null):[];
   const absolute=n=>Boolean(attrs(n).absolute);
-  const style=(n,parent={font:13,line:1.5})=>({font:v(attrs(n),'text_size',parent.font),line:v(attrs(n),'line_height',parent.line)});
+  const style=(n,parent={font:13,line:1.5})=>({font:v(attrs(n),'text_size',parent.font),line:v(attrs(n),'line_height',parent.line),align:attrs(n).text_center?'center':attrs(n).text_right?'right':parent.align});
   const pad=a=>{const b=a.border_1?1:0;return {l:v(a,'pl',v(a,'px',v(a,'p')))+b,r:v(a,'pr',v(a,'px',v(a,'p')))+b,t:v(a,'pt',v(a,'py',v(a,'p')))+b,b:v(a,'pb',v(a,'py',v(a,'p')))+b};};
   const intrinsic=(n,parent)=>{
     const s=style(n,parent),a=attrs(n);
@@ -72,7 +72,7 @@ export function rowGeometry(root,width,zoom=1,height) {
       const size=intrinsic(c,s),m=attrs(c);
       return {w:size.w+v(m,'ml')+v(m,'mr'),h:size.h+v(m,'mt')+v(m,'mb')};
     }),gap=v(a,'gap');
-    return {w:v(a,'w',v(a,'size',p.l+p.r+(row?kids.reduce((sum,k)=>sum+k.w,Math.max(0,kids.length-1)*gap):Math.max(0,...kids.map(k=>k.w))))),
+    return {w:Math.max(v(a,'min_w'),v(a,'w',v(a,'size',p.l+p.r+(row?kids.reduce((sum,k)=>sum+k.w,Math.max(0,kids.length-1)*gap):Math.max(0,...kids.map(k=>k.w)))))),
       h:v(a,'h',v(a,'size',p.t+p.b+(row?Math.max(0,...kids.map(k=>k.h)):kids.reduce((sum,k)=>sum+k.h,Math.max(0,kids.length-1)*gap))))};
   };
   const limit=(x,min=0,max=Infinity)=>Math.max(min,Math.min(max,x));
@@ -84,7 +84,7 @@ export function rowGeometry(root,width,zoom=1,height) {
     boxes.set(n,{x:x*zoom,y:paintY*zoom,width:w*zoom,height:h*zoom});
     boxes.naturalWidths.set(n,natural.w*zoom);
     if(typeof n==='string') {
-      if(n)boxes.textLines.push({text:n,x:x*zoom,naturalWidth:natural.w*zoom,lineHeight:lineHeightPixels(s.line,s.font)*zoom,fontSize:s.font*zoom,ancestors});
+      if(n)boxes.textLines.push({text:n,x:(x+(s.align==='center'?(w-natural.w)/2:s.align==='right'?w-natural.w:0))*zoom,naturalWidth:natural.w*zoom,lineHeight:lineHeightPixels(s.line,s.font)*zoom,fontSize:s.font*zoom,ancestors});
       return;
     }
     const row=Boolean(a.flex&&!a.flex_col),kids=children(n).filter(c=>!absolute(c)),innerW=Math.max(0,w-p.l-p.r),innerH=Math.max(0,h-p.t-p.b),gap=v(a,'gap');

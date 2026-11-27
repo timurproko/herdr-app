@@ -176,17 +176,26 @@ client's allowlist/read-only policy is not a security sandbox.
 
 ## Crew project delivery kinds
 
-**Settings → Plugins → Crew → Projects** shows **Delivery workflow**, **Plain** or
+**Settings → Plugins → Crew → Projects** shows **Delivery**, **Plain** or
 **Gate** only when the selected machine's Crew advertises the version-1
 `project-kinds` JSON listing and safe kind-only setter. Older Crew keeps its normal
-folder list, Add and Remove, with no inferred kind. A task's recorded delivery kind
+folder list, Add and Remove, with no inferred kind. Settings queues checks and batches
+tool discovery within native execution capacity; pending refreshes keep confirmed
+projects and requirement badges rather than reporting capacity contention as broken
+setup. A task's recorded delivery kind
 is not used as a project setting; re-adding a project is never a kind-edit workaround.
-Hover or keyboard-focus a supported row to reveal the standard kind dropdown beside
-Remove. Changing it applies only to that captured machine/home/project through Crew,
+Kind captions share a fixed left-aligned column without truncation. Hover or
+keyboard-focus a supported row to reveal the standard kind dropdown beside Remove;
+its choices are Plain, Delivery, Gate. The dashed **Delivery kinds** text after the
+Projects description explains planning, review and PR ownership on hover or keyboard
+focus; it opens nothing when clicked. Pointer-origin menu dismissal releases the row
+unless the pointer remains there; keyboard editing retains its Tab target. Changing it applies only to that captured machine/home/project through Crew,
 not to portable plugin preferences or existing tasks. The label changes only after
 Crew confirms its stored value. Refusals appear as one short line beneath the row;
 an uncertain result needs a successful fresh list read before another edit, never an
-automatic write replay. A later read can confirm an already-accepted timed-out write.
+automatic write replay. A later read can confirm an already-accepted timed-out write. Supported Crew may
+apply a kind while a coordinator owns the home; an older ownership refusal stays a
+short neutral inline message, without redirecting the person to another session.
 
 ## Optional sidebar plugins
 
@@ -665,7 +674,10 @@ PRs keep their usual icons. Push events also refresh facts after base-branch cha
 Managed review labels supply one tight bottom-right plain chip: **Build**,
 **Review** or **Approved**, independently of CI and GitHub's separate review decision.
 It uses stage-coloured text on the existing subtle raised background, 6px side
-padding, no emoji, outline or hover tooltip, and leaves the entire title content width free. The
+padding, no emoji, outline or hover tooltip, and leaves the entire title content width free.
+Stages and verdicts share an 18px-high, centred box whose common minimum width is
+native-measured from all fixed captions and two-digit Build rounds. A longer round
+grows only its own box; the right rail and title truncation remain unchanged. The
 compatibility snapshot follows MyWorkflows `labels/base.json`: stable role
 `review-changes-needed` accepts Build and previous names Rework / Changes needed;
 `under-review` accepts Review / Under review; `review-approved` accepts Approved.
@@ -1230,7 +1242,11 @@ An actual directory change moves that agent's row; selecting another tab does no
 rename its siblings' headings. Missing directory data falls back to the native
 space name. This is presentation only: native spaces, tabs, titles and running
 sessions are untouched; the upper Spaces list and tab strip are unchanged.
-Groups retain their first-seen position; keyboard navigation follows the combined
+Coordinator-containing groups always come first, preserving their existing relative
+order, including across machines. Every other group keeps its existing relative order.
+Classification uses live coordinator metadata, never the displayed name; disabling
+Crew does not relabel or end an already-running coordinator. Fold keys, counts,
+selection and drag behavior are unchanged; keyboard navigation follows the combined
 list. Remote rows still show their machine, pinned agents stay separate, and
 Priority sorting is unchanged. The sort icon has no hover tooltip; its accessible
 label and sort menu remain available. Group counts are right-aligned in a fixed

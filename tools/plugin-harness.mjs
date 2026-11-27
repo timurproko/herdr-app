@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { project } from './build.mjs';
+import { withKitUi } from '../tests/support/panel-kit.mjs';
 import { pluginLayout, indexSource, whereSource } from './plugins.mjs';
 
 // host: the fake ./host.js exports. modules: other mod files, { 'name.js': exportsObject
@@ -14,7 +15,7 @@ export async function loadMod({ host, modules = {}, entry, mod = 'custom-setting
   const { ids, files, modFiles } = pluginLayout(root, config);
   const context = vm.createContext({ console, ...globals });
   const prefix = `mods/${mod}/`;
-  const sources = new Map([...files.map(f => [f.rel, f.source]),
+  const sources = new Map([...Object.entries(config.files ?? {}).filter(([dest])=>dest.startsWith(prefix)).map(([dest,source])=>[dest.slice(prefix.length),source]), ...files.map(f => [f.rel, f.source]),
     ...modFiles.filter(f=>f.dest.startsWith(prefix)).map(f=>[f.dest.slice(prefix.length),f.source])]
     .map(([rel,source])=>[rel,fs.readFileSync(path.join(root,source),'utf8')]));
   sources.set('plugins/index.js', indexSource(ids));
@@ -37,6 +38,8 @@ export async function loadMod({ host, modules = {}, entry, mod = 'custom-setting
         value={Background:{linear_gradient:()=>({color_space(){return this;}})},...value,
           PathBuilder:{fill:()=>pathBuilder,...value.PathBuilder}};
       }
+      if(name==='ui.js') value=withKitUi(value,modules['gpui-kit']?.div);
+      if(name==='gpui-base' && value.h_flex) value={HoverCard:{new:id=>value.h_flex().id(id)},Popup:{new:(id,trigger)=>value.h_flex().id(id).child(trigger)},...value};
       cache.set(name, synthetic(value));
     }
   }

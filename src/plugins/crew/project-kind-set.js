@@ -1,6 +1,6 @@
 import { absoluteProjectPath, isProjectKind, projectKindJson, projectKindCapability, projectKindEnvelope, validKindProject, sameProjectPath } from './project-kinds.js';
 const messages = Object.freeze({
-  'home-owned': 'another session owns the Crew home; change its projects from that session.',
+  'home-owned': 'Delivery kind was not changed. Refresh and try again.',
   'home-missing': 'the Crew home no longer exists; refresh the list.',
   'project-missing': 'Crew no longer has this project; refresh the list.',
   'project-changed': 'the registered folder changed; refresh the list.',
@@ -31,7 +31,7 @@ export async function setProjectKind(ask, target, value, current = () => true) {
   if (!projectKindEnvelope(reply) || !sameProjectPath(reply.home, target.home)) throw unknown();
   if (r.code !== 0 && reply.ok === false) {
     const reason = Object.hasOwn(messages, reply.error?.code ?? '') ? messages[reply.error.code] : null;
-    throw failure(reason ? `Could not change delivery kind: ${reason}` : 'Could not change delivery kind.');
+    throw failure(reply.error?.code === 'home-owned' ? messages['home-owned'] : reason ? `Could not change delivery kind: ${reason}` : 'Could not change delivery kind.');
   }
   if (r.code !== 0 || reply.ok !== true || typeof reply.changed !== 'boolean' || !validKindProject(reply.project) ||
     reply.project.name !== target.name || !sameProjectPath(reply.project.path, target.path) || reply.project.kind !== value) throw unknown();

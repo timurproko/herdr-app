@@ -448,9 +448,9 @@ crew.latest = '';
   await assert.rejects(section.list.remove(cx(), 'fork'), /^Error: Could not remove fork: Crew no longer has this project; refresh the list\./);
   s = await statuses(); same(s.projects.rows.map(row => row.id), ['my-app']);
   projects.clear(); s = await statuses(); same([s.projects.status, s.projects.statusLabel, s.projects.rows, s.projects.usable], ['ready', '0 added', [], true], 'An empty list is ready to be added to');
-  // Without the tool or its home there is no list to show or change.
+  // Without the tool or its home there is no write authority; prior rows, if any, stay visible.
   const had = { tool: crew.tool, home: crew.home }; ran2.length = 0;
-  crew.home = false; s = await statuses(); same([s.projects.status, s.projects.detail, s.projects.usable, s.projects.rows], ['missing', 'Create the crew home first (Requirements).', undefined, []]);
+  crew.home = false; s = await statuses(); same([s.projects.status, s.projects.detail, s.projects.usable, s.projects.rows], ['missing', 'Create the crew home first (Requirements).', false, []]);
   crew.tool = ''; s = await statuses(); same([s.projects.status, s.projects.detail], ['missing', 'Install the crew tool first (Requirements).']);
   assert.ok(!ran2.some(call => call.startsWith('project')), 'Nothing is asked of a tool that is not there');
   Object.assign(crew, had); crew.latest = ''; psRules.splice(psRules.indexOf(rule), 1);

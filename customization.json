@@ -245,6 +245,8 @@
     "mods/custom-settings/sidebar-ui.js": "src/features/settings/sidebar-ui.js",
     "mods/custom-settings/settings-back.js": "src/ui/settings-back.js",
     "mods/custom-settings/settings-kit.js": "src/ui/settings-kit.js",
+    "mods/custom-settings/settings-requests.js": "src/shared/settings-requests.js",
+    "mods/custom-settings/panel-kit.js": "src/ui/panel-kit.js",
     "mods/custom-settings/directory.js": "src/ui/directory.js",
     "mods/custom-menu/sidebar-footer.js": "src/ui/sidebar-footer.js",
     "lib/space-rename.js": "src/ui/space-rename.js",

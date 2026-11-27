@@ -13,7 +13,7 @@ const {Main}=await loadMod({mod:'custom-agents',
     'gpui-kit':{View:class{},div:element,image:element,svg},
     'gpui-base':{h_flex:()=>element().flex(),v_flex:()=>element().flex().flex_col(),Popover:{},Input:{}},
     'program-icon.js':{programIcon:()=>element().size(16).flex_none()},
-    'directory.js':{paneDirectory:()=>({})},'plugins.js':{pluginMenuItems:()=>[]},
+    'directory.js':{paneDirectory:()=>({})},'plugins.js':{pluginAgentGroupFirst:()=>false,pluginMenuItems:()=>[]},
     'sidebar-scroll.js':{sidebarScroll:(_view,id,_t,rows)=>element().id(id).flex().flex_col().children(rows)}},
   entry:'export {default as Main} from "./main.js";'});
 const panel=new Main(),cx={notify:fail};panel.changed={};panel.pendingPins=[];panel.migratingPins=new Set();

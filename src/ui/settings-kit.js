@@ -3,7 +3,8 @@
 // (features/settings/plugins-ui.js) builds it from these parts, so every plugin looks and
 // behaves the same and a new plugin needs no UI code at all.
 import { div, svg } from 'gpui-kit';
-import { h_flex, v_flex } from 'gpui-base';
+import { h_flex, v_flex, HoverCard, Popup } from 'gpui-base';
+import { hintTable } from './panel-kit.js';
 import { settings } from './host.js';
 import { U, button, control, spinner, itemHover, description, dropdown, menuSurface, menuRow, collapsible } from './ui.js';
 
@@ -15,6 +16,21 @@ export const KIT = Object.freeze({
   dropdown: 150,    // scope dropdowns (machine, account)
   picker: Object.freeze({ width: 320, height: 350, header: U.field + 2 * U.gutter, footerButton: 26 }),
 });
+
+// Informational, not a link: same inline accent placement, dashed underline.
+// The same HoverCard/table as the sidebar Usage footer supports aligned columns.
+export function descriptionHint(t, id, hint, focus) {
+  const trigger = div().id(id).relative().track_focus(focus).tab_index(0)
+    .text_size(U.meta).text_color(t.accent).whitespace_nowrap().accessibility_label(hint.label)
+    .child(div().absolute().inset_0().border_b_1().border_dashed().border_color(t.accent))
+    .child(hint.label);
+  const body = () => hintTable(t, [hint.columns, ...hint.rows]);
+  // HoverCard itself is hover-only. Popup supplies the identical passive body
+  // for native keyboard focus without a click-to-open Popover or focus trap.
+  if (focus?.is_focused?.()) return Popup.new(`${id}-focus-hint`, trigger).anchor('top_left').content(body());
+  return HoverCard.new(`${id}-hint`).anchor('top_left').open_delay(400).close_delay(100)
+    .trigger(trigger).content(body());
+}
 
 const STATUS = { ready: 'Ready', missing: 'Missing', recommended: 'Optional', error: 'Error' };
 export function badge(t, status, label = STATUS[status] ?? status) {
@@ -90,22 +106,21 @@ export function optionDropdown(t, { id, label = 'Choose', value = '', options = 
   const trigger = control(t, h_flex()).id(id).w(KIT.dropdown).px(10).gap(6).items_center().role('button')
     .accessibility_label(label).disabled(off)
     .when(!off, e => e.cursor_pointer()).when(off && !loading, e => e.opacity(0.4))
-    .child(div().flex_1().min_w(0).truncate().text_color(known && !row?.quiet ? t.foreground : t.muted)
-      .when(Boolean(row), el => el.text_right())
+    .child(div().flex_1().min_w(0).when(!row, el => el.truncate()).whitespace_nowrap().text_color(known && !row?.quiet ? t.foreground : t.muted)
       .child(loading ? skeleton(t, `${id}-loading`, 80).accessibility_label(`Loading ${label}`) : known?.[1] ?? (options.length ? 'Choose' : 'None')))
     .child(svg('mods/custom-workspace-chrome/chevron-down.svg').size(U.smallIcon).text_color(t.muted).when(Boolean(row?.quiet), el => el.opacity(0)));
   if (row) trigger.h(U.control).track_focus(row.trigger).tab_index(0)
     .when(row.quiet, e => e.bg('#00000000').border_color('#00000000').text_color(t.muted))
     .on_key_down((e, cx) => {
-      if (!off && ['enter', 'space', ' ', 'down', 'up'].includes(e.key)) { cx.stop_propagation(); onOpen(true, cx); }
+      if (!off && ['enter', 'space', ' ', 'down', 'up'].includes(e.key)) { cx.stop_propagation(); onOpen(true, cx, true); }
     });
   // Same trigger and focus target at rest; only its chrome changes.
   if (off) return trigger;
   const list = menuSurface(t, v_flex()).w(200).track_focus(focus)
     .when(Boolean(row), el => el.id(`${id}-options`).on_key_down((e, cx) => {
       if (e.key === 'down' || e.key === 'up') row.move(e.key === 'down' ? 1 : -1, cx);
-      else if (e.key === 'enter' || e.key === 'space' || e.key === ' ') onSelect(options[row.index]?.[0], cx);
-      else if (e.key === 'escape') { onOpen(false, cx); row.trigger.focus(); }
+      else if (e.key === 'enter' || e.key === 'space' || e.key === ' ') onSelect(options[row.index]?.[0], cx, true);
+      else if (e.key === 'escape') onOpen(false, cx, true);
       else return;
       cx.stop_propagation(); cx.notify();
     }))
