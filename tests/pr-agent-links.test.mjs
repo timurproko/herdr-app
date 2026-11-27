@@ -337,8 +337,8 @@ for(const [stage,caption,color,address]of [['build','Build','yellow','builder'],
   const ghost=view.pullRow(colors,{...ordinaryStage,stage},true),preview=find(ghost,'swap-pr-stage-1200');assert.ok(preview);assert.equal(preview.attrs.on_click,undefined);assert.equal(preview.attrs.role,undefined);
 }
 ship.labels['crew.round']='1';ship.labels['crew.finding']='fix the guard';ship.labels['crew.approved']='b'.repeat(40);
-let stageChip=find(chipRow('build'),'pr-stage-1200');assert.equal(stageChip.kids[0].kids[0],'Build 2');assert.equal(stageChip.attrs.tooltip,undefined,'Supplied round/finding adds no hover popup');
-ship.labels['crew.round']='2';assert.equal(find(chipRow('build'),'pr-stage-1200').kids[0].kids[0],'Build 3');assert.equal(find(chipRow('build'),'pr-stage-1200').attrs.tooltip,undefined);
+let stageChip=find(chipRow('build'),'pr-stage-1200');assert.equal(stageChip.kids[0].kids[0],'Build');assert.equal(stageChip.attrs.tooltip,undefined,'Supplied round/finding adds no hover popup');
+ship.labels['crew.round']='2';assert.equal(find(chipRow('build'),'pr-stage-1200').kids[0].kids[0],'Build 2');assert.equal(find(chipRow('build'),'pr-stage-1200').attrs.tooltip,undefined);
 delete ship.labels['crew.round'];stageChip=find(chipRow('build'),'pr-stage-1200');assert.equal(stageChip.kids[0].kids[0],'Build');assert.equal(stageChip.attrs.tooltip,undefined);
 for(const state of ['pending','success','failure']) {
   const row=chipRow('approved',{checks:{state,label:'1/2'}}),chip=find(row,'pr-stage-1200');
@@ -380,7 +380,7 @@ for(const mode of ['ordinary','coordinator'])for(const state of ['open','draft']
  taskContext=context;group.context=context;group.entries.set(raw.key,{pr:raw,link:{targets:[{terminal:address}]}});panel.pulls.open=[raw];
  const id=`pr-stage-${raw.key??number}`,render=()=>panel.pullRow(colors,raw),build=()=>find(render(),id);
  const reads=calls.length;
- for(const [round,caption]of [[undefined,'Build'],['0','Build'],['invalid','Build'],['1','Build 2'],['2','Build 3']]) {
+ for(const [round,caption]of [[undefined,'Build'],['0','Build'],['invalid','Build'],['1','Build'],['2','Build 2']]) {
   if(round===undefined)delete terminal.labels['crew.round'];else terminal.labels['crew.round']=round;
   const row=render(),chip=find(row,id);assert.ok(chip);assert.equal(chip.kids[0].kids[0],caption);assert.equal(chip.attrs.tooltip,undefined);
   assert.equal(find(row,`pr-agent-${raw.key??number}`),undefined);assert.equal(raw.stage,null);assert.deepEqual(raw.labels,[]);

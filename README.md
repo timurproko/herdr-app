@@ -648,8 +648,11 @@ not the reviewer's base branch, footer or tab name. Coordinator actions addition
 require that exact terminal/task to remain in the freshly verified same-home
 membership; a review task need not have its own recorded PR. Ended, unavailable
 or disconnected targets grant no focus; a disconnected target identifies its
-machine. Optional `crew.round` advances the Build caption (completed round 1
-shows **Build 2**); `crew.finding` remains source metadata, not hover text. Missing metadata
+machine. Optional `crew.round` is the **current** round: absent or 1 shows
+**Build**, 2 shows **Build 2**, and later values use that same number. Spawn,
+plan reports, approval and first implementation do not advance the caption;
+only real requested-changes rework advances Crew's current round. The app must
+not add one again. `crew.finding` remains source metadata, not hover text. Missing metadata
 invents no round or finding. `crew.approved` is read as metadata, never a fourth stage or
 permission to infer Approved from CI.
 
@@ -671,8 +674,8 @@ Without a managed stage, an Open/Draft PR with a verified live `crew.kind=ship`
 or `fix` target shows **Build** in that same bottom-right slot, not a title robot.
 This includes a planning-only task with its linked PR: Build identifies its build
 owner, not permission to implement or a claim of progress. No linked PR means no
-row. Missing/invalid `crew.round` keeps **Build**; completed rounds 1 and 2 produce
-**Build 2** and **Build 3**. The earlier first-build robot came from requiring an
+row. Missing/invalid or first-round `crew.round` keeps **Build**; current rounds 2 and 3
+produce **Build 2** and **Build 3**. The earlier first-build robot came from requiring an
 assigned managed GitHub label before resolving a stage, not from missing round
 data. Assigned Review/Approved still takes precedence; historical-only or
 unlabelled Closed/Merged rows invent no Build. Existing exact live role/membership

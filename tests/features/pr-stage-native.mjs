@@ -44,8 +44,8 @@ export const place={cwd:'/fixture',on:null,terminal:'selection',space:'space',ta
 export const specs=[
  {n:1,title:'Initial build without a managed label',labels:[],kind:'ship'},
  {n:2,title:'Plan only, awaiting approval',labels:[],kind:'ship',draft:true},
- {n:3,title:'Return from first review',labels:['Rework'],kind:'fix',round:'1'},
- {n:4,title:'Return from second review',labels:['Build'],kind:'fix',round:'2'},
+ {n:3,title:'Return from first review',labels:['Rework'],kind:'fix',round:'2'},
+ {n:4,title:'Return from second review',labels:['Build'],kind:'fix',round:'3'},
  {n:5,title:'Reviewer stays on the base branch',labels:['🤖 Review'],kind:'review'},
  {n:6,title:'Approved while checks are pending',labels:['Approved'],kind:'ship'},
  {n:7,title:'Ended build cannot navigate',labels:['Build'],kind:'ship',ended:true},

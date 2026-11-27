@@ -19,8 +19,8 @@
 
 ## 4. First builds use Crew's current round without incrementing it
 
-- [ ] 4.1 Trace the installed Crew publisher and read this task's terminal labels only; record exact crew.round evidence, distinguish current round from completed reviews and add spawn → plan report → approval → implementation → requested rework regression coverage.
-- [ ] 4.2 Correct only the app's current-round caption mapping, retaining missing/invalid metadata fallback and role authority; run targeted stage and agent-link tests, update README/architecture and the relevant spec wording, and report any upstream fault without silently masking it.
+- [x] 4.1 Trace the installed Crew publisher and read this task's terminal labels only; record exact crew.round evidence, distinguish current round from completed reviews and add spawn → plan report → approval → implementation → requested rework regression coverage.
+- [x] 4.2 Correct only the app's current-round caption mapping, retaining missing/invalid metadata fallback and role authority; run targeted stage and agent-link tests, update README/architecture and the relevant spec wording, and report any upstream fault without silently masking it.
 
 ## 5. Git loading feedback breathes without travelling
 

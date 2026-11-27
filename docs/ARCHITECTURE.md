@@ -495,6 +495,12 @@ metrics and passive 40px gradients, not copied approximations. Git retains its o
 padding and background; paired native content/frame geometry and changed-only
 size/input callbacks update edge hints without polling or render-time notifications.
 
+Git's optional `crew.round` is Crew's current work/review round, initialized to
+1 and incremented on actual requested-changes reviews. The stage caption uses
+`Build` for missing/invalid/1 and `Build n` for n >= 2, not n+1. Plan reports and
+approval do not imply rework. Regression fixtures cover spawn, plan report,
+approval, first implementation and the first requested-changes transition.
+
 ## Git repository entry presentation
 
 `plugins/git/mod/presentations.js` owns pure committed publication and the shared

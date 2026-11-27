@@ -855,7 +855,8 @@ export default class Changes extends View {
     const round=role==='build'?agent?.crew?.round:null;
     const label=stageLabels({...pr,stage}).find(label=>label.stage);
     if(!label)return null;
-    const caption=role==='build'&&round?`Build ${round+1}`:label.name;
+    // Crew publishes the current round (starts at 1), not completed reviews.
+    const caption=stage==='build'&&round>1?`Build ${round}`:label.name;
     return {stage,role,repo,context,scope,target,agent,available,round,label:{...label,name:caption}};
   }
 
