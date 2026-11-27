@@ -29,9 +29,9 @@
 
 ## 5. Equal-size Git stage and verdict labels
 
-- [ ] 5.1 Measure all fixed stage/verdict words and two-digit Build captions with the native interface font; share their maximum outer width, 18px height, 6px side padding and centred text while longer rounds grow only themselves, verified by geometry fixtures.
-- [ ] 5.2 Extend targeted Git geometry/interaction regressions for ordinary, coordinator, pinned, probe and ghost variants at 100%/130%, preserving the right rail, hit boxes, no-tooltip policy, long-title truncation and 74px row height.
-- [ ] 5.3 Capture before/after fake/disposable pictures at both zooms outside the checkout, stop disposable processes, and document the measured width, widest caption and local verification commands/results.
+- [x] 5.1 Measure all fixed stage/verdict words and two-digit Build captions with the native interface font; share their maximum outer width, 18px height, 6px side padding and centred text while longer rounds grow only themselves, verified by geometry fixtures.
+- [x] 5.2 Extend targeted Git geometry/interaction regressions for ordinary, coordinator, pinned, probe and ghost variants at 100%/130%, preserving the right rail, hit boxes, no-tooltip policy, long-title truncation and 74px row height.
+- [x] 5.3 Capture before/after fake/disposable pictures at both zooms outside the checkout, stop disposable processes, and document the measured width, widest caption and local verification commands/results.
 
 ## 6. Coordinator-first Agents groups
 

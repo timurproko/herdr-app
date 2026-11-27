@@ -36,7 +36,7 @@ export class RowPresentations {
     const total=()=>{let left=0,right=false,sum=0;items.forEach((item,i)=>{if(widths[i]>0){if(item.trailing)right=true;else left++;}sum+=widths[i];});return sum+Math.max(0,left-1)*15+(left&&right?6:0);};
     if(ready){
       for(const [i,item]of items.entries()){if(total()<=sizes.available+0.01)break;if(item.compact&&Number.isFinite(sizes[`${item.kind}-compact`])){compact.add(item.kind);widths[i]=sizes[`${item.kind}-compact`];}}
-      for(const kind of clipOrder){const i=items.findIndex(item=>item.kind===kind);if(i>=0&&total()>sizes.available+0.01)widths[i]=Math.max(0,widths[i]-(total()-sizes.available));}
+      for(const kind of clipOrder){const i=items.findIndex(item=>item.kind===kind);if(i>=0&&total()>sizes.available+0.01)widths[i]=kind==='review'?0:Math.max(0,widths[i]-(total()-sizes.available));}
     }
     const value={widths,ready,compact,visible:items.map((_,i)=>i).filter(i=>!ready||widths[i]>0)};
     this.layouts.set(id,{signature,value});if(this.layouts.size>512)this.layouts.delete(this.layouts.keys().next().value);return value;

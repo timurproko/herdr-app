@@ -1,5 +1,33 @@
 # Testing the repository split
 
+## Project-kind polish and Git stage sizing
+
+Targeted fake checks: `tests/plugin-row-dismissal.test.mjs`,
+`tests/plugin-description-hint.test.mjs`, `tests/settings-request-queue.test.mjs`,
+`tests/settings-queue-presentation.test.mjs`, Crew's `tool-inventory.test.mjs` and
+`project-kind-set.test.mjs`. They exercise dismissal/focus, declarative information,
+capacity admission/retry, retained facts, batching and captured kind acknowledgements.
+
+`node --experimental-vm-modules tests/git-stage-box-geometry.test.mjs` checks
+ordinary/coordinator and visible/ghost/probe geometry at 100%/130%, all rounds 2–99,
+long-round local growth, centred captions and unchanged title/right-rail/row geometry.
+The existing full row geometry and stage interaction fixtures remain independent.
+Fixed verdict boxes yield whole before labels on real overflow, rather than shrinking
+their hit target. One clipped invisible column supplies the native maximum width;
+it is measured once per panel/zoom and reused by all captions and natural probes.
+
+Disposable pixel proof (explicit opt-in, output outside the checkout):
+`HERDR_APP_BIN=<verified-exe> node tests/features/pr-stage-native.mjs --run --sizing --zoom 1 --output <outside>`;
+repeat with `--zoom 1.3` and add `--baseline <before-commit>` for paired pictures.
+The existing fixture still supports its original non-sizing pointer scenarios.
+The sizing mode uses synthetic agents/PRs, including a long title, Build 10/99,
+Changes requested and a rare long round. Native 0.1.18 measured Changes requested
+as widest: 121×18 at 100%, 158×23.5 at 130% (native rounding); a long round was
+145×18 / 189×23.5 without enlarging other rows. Receipts record geometry, screenshots,
+checksum provenance and confirmed disposable App/Core shutdown. Failed exploratory
+frames are not accepted proof; use the successful sizing receipts and matching pictures.
+
+
 The split retained imported suites, apart from neutral status-reveal labels
 and the architecture assertion's moved-guidance path. Preference-home regression
 coverage was subsequently added as described below. The directory-loader fixture

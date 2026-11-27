@@ -31,8 +31,8 @@ export async function rowHarness({host={},modules={},globals={}}={}) {
     // Native post-layout callbacks, not render-time heuristics. Include hidden
     // intrinsic probes; visible text assertions below exclude their paint.
     for(let pass=0;pass<8;pass++) {
-      const tree=render(build),geometry=rowGeometry(tree,width,zoom,height);let changed=false;
-      for(const node of nodes(tree))if(/pr-(?:byline|meta)-/.test(node.attrs?.id?.[0]??'')) {
+      const tree=render(()=>build().child(panel.stageBoxProbe())),geometry=rowGeometry(tree,width,zoom,height);let changed=false;
+      for(const node of nodes(tree))if(/pr-(?:(?:byline|meta)-|stage-box-measure-)/.test(node.attrs?.id?.[0]??'')) {
         const callback=node.attrs.on_size_change?.[0];if(callback){
           const size=geometry.get(node),id=node.attrs.id[0],before=nativeSizes.get(id);
           nativeSizes.set(id,{width:size.width,height:size.height});
@@ -72,7 +72,7 @@ export function rowGeometry(root,width,zoom=1,height) {
       const size=intrinsic(c,s),m=attrs(c);
       return {w:size.w+v(m,'ml')+v(m,'mr'),h:size.h+v(m,'mt')+v(m,'mb')};
     }),gap=v(a,'gap');
-    return {w:v(a,'w',v(a,'size',p.l+p.r+(row?kids.reduce((sum,k)=>sum+k.w,Math.max(0,kids.length-1)*gap):Math.max(0,...kids.map(k=>k.w))))),
+    return {w:Math.max(v(a,'min_w'),v(a,'w',v(a,'size',p.l+p.r+(row?kids.reduce((sum,k)=>sum+k.w,Math.max(0,kids.length-1)*gap):Math.max(0,...kids.map(k=>k.w)))))),
       h:v(a,'h',v(a,'size',p.t+p.b+(row?Math.max(0,...kids.map(k=>k.h)):kids.reduce((sum,k)=>sum+k.h,Math.max(0,kids.length-1)*gap))))};
   };
   const limit=(x,min=0,max=Infinity)=>Math.max(min,Math.min(max,x));
