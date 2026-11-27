@@ -8,9 +8,9 @@
 
 ## 2. Empty selected-tab repositories have no header or zero count
 
-- [ ] 2.1 Gate ordinary headers on remaining PRs and coordinator reveal/continuation headers on selected-tab PR eligibility, retaining headerless actionable notices outside fold suppression; cover all-empty, mixed-empty and notice-only cases in targeted repository-count/section-reveal regressions.
-- [ ] 2.2 Cover fold disappearance/reappearance, lone pins, read failure recovery, reveal/cap boundaries and saved notice folds while preserving PR 98 connected-child ordering; run only the relevant section, inventory, worker-entry and error regressions, updating README and architecture/testing guidance for the removed notice-only header exception.
-- [ ] 2.3 Capture native all-empty and mixed-empty Open/Closed states at both zooms, including failure-only notices and restored nonempty content; record no zero headers or recreated continuation headers, stable feedback geometry and verified disposable app/Core shutdown.
+- [x] 2.1 Gate ordinary headers on remaining PRs and coordinator reveal/continuation headers on selected-tab PR eligibility, retaining headerless actionable notices outside fold suppression; cover all-empty, mixed-empty and notice-only cases in targeted repository-count/section-reveal regressions.
+- [x] 2.2 Cover fold disappearance/reappearance, lone pins, read failure recovery, reveal/cap boundaries and saved notice folds while preserving PR 98 connected-child ordering; run only the relevant section, inventory, worker-entry and error regressions, updating README and architecture/testing guidance for the removed notice-only header exception.
+- [x] 2.3 Capture native all-empty and mixed-empty Open/Closed states at both zooms, including failure-only notices and restored nonempty content; record no zero headers or recreated continuation headers, stable feedback geometry and verified disposable app/Core shutdown.
 
 ## 3. Spaces uses lowercase crew without changing terminal Crew
 

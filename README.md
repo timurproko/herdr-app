@@ -374,8 +374,12 @@ layout commands.
 Git's list-replacing empty, informational and error feedback uses the repository
 header's 28px row and text anchor, not PR-title padding. Open/Closed empty text
 and initial failures therefore replace header text without a vertical jump;
-long errors may grow below that first-line anchor. Cold Loading retains its
-existing dot/text placement.
+long errors may grow below that first-line anchor. Repositories with no PRs in
+the selected tab have no header, zero count or chevron. Applicable failures stay
+visible without a header and cannot be hidden by a saved fold; a settled tab
+without rows or failures shows one empty message, not one per repository.
+Nonempty sections retain their existing folds and connected-child order.
+Cold Loading retains its existing dot/text placement.
 
 The main Git header contains only **Git**, its title chevron, existing refresh/status
 feedback and **Refresh · Pin · Close**. Repository identity lives in the list's

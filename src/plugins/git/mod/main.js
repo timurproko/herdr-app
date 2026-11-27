@@ -1389,7 +1389,7 @@ export default class Changes extends View {
   }
 
   repositorySection(t, {repo, items}, scope, window) {
-    const folded = !this.aggregateCold() && this.foldedRepositories.has(repo);
+    const folded = !this.aggregateCold() && window.repositoryCounts.get(repo).value>0 && this.foldedRepositories.has(repo);
     const header=items.find(item=>item.header), body=items.filter(item=>!item.header);
     return v_flex().id(`task-repo-${repo}`).w_full().flex_none()
       .when(Boolean(header),section=>section.child(div().flex_none().h(header.height+header.gap)

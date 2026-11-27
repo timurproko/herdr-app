@@ -1233,7 +1233,8 @@ cache ownership inventory and unchanged paths checked.
 
 `tests/git-section-reveal.test.mjs` checks the actual rendered-section invariant
 after every reveal and state transition, including the tenth-item header boundary,
-notice-only sections, tab moves, history expiry, missing rows, notice resolution,
+headerless notice-only sections (including 140 settled failures across the 100-item
+cap and saved folds), tab moves, history expiry, missing rows, notice resolution,
 folds, refreshes and 200-row capped batch cycles. The same invariant wraps every
 real renderer frame in `fleet-read-notices`, including authoritative 404s and
 mixed failure/recovery transitions. Intentionally folded eligible headers are

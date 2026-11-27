@@ -12,7 +12,7 @@ export class TaskReveal {
     return end>this.start&&last?.header&&!last.folded?end-1:end;
   }
   get length(){return Math.max(0,this.end-this.start);}
-  get leading(){return !this.noticesOnly&&this.items[this.start]&&!this.items[this.start].header?this.headerHeight+this.gap:0;}
+  get leading(){return !this.noticesOnly&&this.items[this.start]&&!this.items[this.start].header&&!this.items[this.start].headerless?this.headerHeight+this.gap:0;}
   position(i){return (this.starts[i]??0)-(this.starts[this.start]??0)+this.leading;}
   get height(){return this.position(this.end);}
   get contentHeight(){return this.height+8+(this.canTurn?28:0);}
@@ -25,13 +25,15 @@ export class TaskReveal {
     let items=[];this.headerHeight=headerHeight;this.gap=gap;this.noticesOnly=noticesOnly;
     for(const section of sections){
       if(!section.rows.length&&!section.error)continue;
-      // Cold failures share the bounded reveal, but have no folding header.
-      const group=noticesOnly?[]:[{key:`header:${section.repo}`,repo:section.repo,header:true,folded:folded.has(section.repo),height:headerHeight}];
-      if(noticesOnly||!folded.has(section.repo)){
+      // A notice is not evidence of PRs. Zero-row failures never acquire a
+      // header or fold suppression, including in a continued mounted batch.
+      const headerless=noticesOnly||!section.rows.length;
+      const group=headerless?[]:[{key:`header:${section.repo}`,repo:section.repo,header:true,folded:folded.has(section.repo),height:headerHeight}];
+      if(headerless||!folded.has(section.repo)){
         for(const row of (noticesOnly?[]:section.rows))group.push({key:row.key,repo:section.repo,row,height:74});
         if(section.error){const measureKey=`${geometryKey}\0${section.repo}\0${section.error}`;group.push({key:`notice:${section.repo}`,repo:section.repo,error:section.error,measureKey,height:this.noticeHeights.get(measureKey)??28});}
       }
-      group.forEach((item,i)=>{item.gap=i<group.length-1?gap:0;items.push(item);});
+      group.forEach((item,i)=>{item.headerless=headerless;item.gap=i<group.length-1?gap:0;items.push(item);});
     }
     const rawKeys=new Map(items.map((item,i)=>[item.key,i])),prior=this.items.slice(this.start,this.end);
     const switched=this.projectionChunk!=null&&this.projectionChunk!==this.chunk;
@@ -41,7 +43,7 @@ export class TaskReveal {
     if(this.projectionChunk===this.chunk&&this.foldKey===foldKey&&tail){
       const from=startKey?rawKeys.get(startKey):0,to=rawKeys.get(tail),span=items.slice(from,to+1);
       let overflow=Math.max(0,span.filter(item=>item.row).length-this.maxRows);
-      let excessItems=this.maxRows===Infinity?0:Math.max(0,span.length+(span[0]&&!span[0].header?1:0)-MAX_MOUNTED_ITEMS);
+      let excessItems=this.maxRows===Infinity?0:Math.max(0,span.length+(span[0]&&!span[0].header&&!span[0].headerless?1:0)-MAX_MOUNTED_ITEMS);
       if(overflow||excessItems){
         const known=new Set(prior.map(item=>item.key)),deferred=new Set();
         for(const item of span)if(!known.has(item.key)&&((item.row&&(overflow>0||excessItems>0))||((item.error||item.folded)&&excessItems>0))){
@@ -56,7 +58,7 @@ export class TaskReveal {
     // A full batch never evicts an already revealed PR to insert a new one.
     // Deferred arrivals enter on a freed slot or the next explicit batch cycle.
     this.projectionChunk=this.chunk;this.foldKey=foldKey;
-    const changed=items.length!==this.items.length||items.some((item,i)=>{const old=this.items[i];return item.key!==old?.key||item.height!==old.height||item.gap!==old.gap||item.error!==old.error||item.folded!==old.folded;});
+    const changed=items.length!==this.items.length||items.some((item,i)=>{const old=this.items[i];return item.key!==old?.key||item.height!==old.height||item.gap!==old.gap||item.error!==old.error||item.folded!==old.folded||item.headerless!==old.headerless;});
     const anchorIndex=this.index(Math.max(0,this.offset-4)),anchor=this.items[anchorIndex],inset=this.offset-this.position(anchorIndex);
     this.items=items;if(!changed)return;
     if(this.start){const at=items.findIndex(item=>item.key===startKey);this.start=at>=0?at:0;}
@@ -68,7 +70,7 @@ export class TaskReveal {
   }
   range(){
     const items=this.items.slice(this.start,this.end);
-    if(!this.noticesOnly&&items[0]&&!items[0].header)items.unshift({key:`header:${items[0].repo}`,repo:items[0].repo,header:true,height:this.headerHeight,gap:this.gap});
+    if(!this.noticesOnly&&items[0]&&!items[0].header&&!items[0].headerless)items.unshift({key:`header:${items[0].repo}`,repo:items[0].repo,header:true,height:this.headerHeight,gap:this.gap});
     const revealedRows=items.filter(item=>item.row).map(item=>item.row),selection=revealedRows.map(row=>row.key).join('\0');
     // Layout/height changes invalidate layout checks, not held safety reads.
     // Only changed PR identities advance this selection generation; explicit

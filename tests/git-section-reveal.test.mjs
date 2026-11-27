@@ -58,5 +58,17 @@ for(let n=0;n<50;n++)add(`owner/single-${String(n).padStart(2,'0')}`,n);
 tree=render();revealAll();const itemCapped=taskWindow(panel).range().revealedRows.map(row=>row.key);assert.equal(itemCapped.length,50);assert.equal(taskWindow(panel).range().items.length,100);
 add('aaa/header-heavy-arrival',1000);tree=render();assert.equal(find(tree,'task-repo-aaa/header-heavy-arrival'),undefined);
 assert.deepEqual(taskWindow(panel).range().revealedRows.map(row=>row.key),itemCapped);assert.ok(taskWindow(panel).canTurn);
+// Settled notice-only repositories remain visible and headerless through the
+// 100-item cap, continuation batches, saved folds and recovery to real rows.
+panel.aggregate.entries.clear();panel.aggregate.published=null;panel.view='closed';context.scope='settled-notices';panel.context='tasks:settled-notices';
+for(let n=0;n<140;n++) {const repo=`notice/repo-${String(n).padStart(3,'0')}`,e=add(repo,n);e.pr=null;e.error={kind:'read',message:`${repo}: Refresh to retry`};panel.foldedRepositories.add(repo);}
+tree=render();revealAll();let window=taskWindow(panel);
+assert.equal(window.range().items.length,100);assert.equal(window.leading,0);
+assert.ok(window.range().items.every(item=>!item.header));assert.ok(find(tree,'task-error-notice/repo-000'));
+panel.nextTaskChunk(window,context.scope,cx);tree=render();revealAll();window=taskWindow(panel);
+assert.equal(window.range().items.length,40);assert.ok(window.range().items.every(item=>!item.header));assert.equal(window.leading,0);
+const recovered=add('notice/repo-139',139,'CLOSED');tree=render();
+assert.ok(find(tree,'task-repo-header-notice/repo-139'),'Nonempty recovered repository restores its saved fold');
+assert.equal(find(tree,'task-repo-body-notice/repo-139'),undefined);
 await Promise.all(jobs);
 console.log('PASS unfolded-section invariant after every reveal, refresh, tab move, expiry, absence, notice resolution, fold and capped batch cycle');

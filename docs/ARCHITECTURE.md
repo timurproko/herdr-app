@@ -385,7 +385,9 @@ and no new fetch or cancellation. Fold state survives tab/context changes and
 panel recreation. Scoped rows/errors and repository-specific diagnostics fold with
 the body; global setup stays visible. Counts and webhook-driven facts continue
 updating while folded. One shared projection derives selected-tab sections from known eligible rows
-or an applicable `readNotice` before applying folds. Unknown-state queued,
+or an applicable `readNotice` before applying folds. Header eligibility separately
+requires selected-tab PRs: notice-only sections have neither count nor chevron,
+ignore saved folds and never acquire synthetic continuation headers. Unknown-state queued,
 in-flight and quiet-deferred first reads share one cold panel bulb/Loading directly
 below Open/Closed, above the scroller; cold partial successes remain staged and
 create no unknown-only headers. Published same-home return/background lists stay
@@ -396,7 +398,9 @@ leaving an unfinished cold load cannot turn partial successes into a warm list. 
 missing and known ineligible history do not leave Loading behind. Empty settled sections have no header,
 but disappearing sections retain saved fold keys. A settled tab with no qualifying
 sections uses ordinary Git's **No open pull requests** / **No closed pull requests**;
-notice-only and folded eligible sections are not empty. Pending/unverified feedback
+notice-only and folded eligible sections are not empty. Notice-only feedback
+uses the same 28px first-line text anchor as repository headers; native wrapping
+can grow it below that anchor and its measured height remains reveal-owned. Pending/unverified feedback
 is unchanged. The selected presentation reveals ten items initially, including headers,
 notices and rows, then appends ten near the scroll bottom without inventory IO.
 An unfolded header at a reveal boundary waits for its first row or visible notice;
