@@ -14,6 +14,7 @@ import { editorActionButton } from './modal-layout.js';
 import { folderBrowser, openBrowser, closeBrowser } from './folder-browser.js';
 import {spaces,panes,terminals,focused,settings} from './host.js';
 import {spaceDirectory} from './directory.js';
+import {settingsGroups, settingsCommands} from './settings-requests.js';
 
 // The app's launch profiles, handed in by Settings (main.js) so this renderer stays free of
 // the profile model: `{ list(machine) -> Promise<profile[]>, setRole(machine, key, role, on),
@@ -389,10 +390,11 @@ export function prerequisiteContext(plugin, alive = () => true, machine = null) 
   };
 }
 
-function viewContext(view, plugin, alive = () => !view.pluginClosed, machine = view.settingsMachine ?? null) {
+function viewContext(view, plugin, alive = () => !view.pluginClosed, machine = view.settingsMachine ?? null, taskContext = null, done = null) {
   const session = view.pluginSessions?.[plugin.id];
   const current = () => alive() && (view.settingsMachine ?? null) === machine && view.pluginSessions?.[plugin.id] === session;
   return { ...prerequisiteContext(plugin, current, machine), session,
+    ...(taskContext ? {request: (work, options={}) => settingsCommands(work, {current, done, sleep: ms=>taskContext.sleep(ms), retry:true, ...options})} : {}),
     result: id => current() ? view.pluginChecks?.[plugin.id]?.items?.find(item => item.id === id) ?? null : null };
 }
 
@@ -415,6 +417,7 @@ export function reloadPlugins(view, cx, only = null, checkingTarget = null, {rea
   if(view.pluginClosed)return;
   for (const plugin of PLUGINS) {
     if (!plugin.prerequisites?.length || (only && plugin.id !== only)) continue;
+    const checkMemo={};
     const targets=checkingTarget===null?[...new Set(plugin.prerequisites.map(pre=>pre.section?pre.id:'requirements'))]:[checkGroup(plugin,checkingTarget)];
     for(const group of targets){
       const selected=plugin.prerequisites.filter(pre=>(pre.section?pre.id:'requirements')===group);
@@ -424,12 +427,16 @@ export function reloadPlugins(view, cx, only = null, checkingTarget = null, {rea
       const groups={...previous?.groups,[group]:round};
       view.pluginChecks[plugin.id]={...previous,loading:true,serial:(previous?.serial??0)+1,groups,
         items:previous?.items??plugin.prerequisites.map(pre=>({...pre,status:null}))};
-      cx.spawn(async cx=>{
+      let task;
+      task=cx.spawn(async cx=>{
         const alive=()=>!view.pluginClosed&&(view.settingsMachine??null)===machine&&view.pluginSessions?.[plugin.id]===session&&view.pluginChecks[plugin.id]?.groups?.[group]===round;
         if(!alive())return;
-        const context={...viewContext(view,plugin,alive,machine),checkReason:reason};
+        const done=()=>Boolean(task?.is_done?.());
+        await settingsGroups(async()=>{
+        if(!alive())return;
+        const context={...viewContext(view,plugin,alive,machine,cx,done),checkReason:reason,checkMemo};
         // Keep the registry's checking/error boundary, but run only this group.
-        // Context/memoized workers and completion tokens never span groups.
+        // Benign same-round probe facts may coalesce; completion tokens stay group-local.
         const items=await checkPlugin({...plugin,prerequisites:selected.map(pre=>({...pre,check:()=>pre.check(context)}))});
         if(!alive())return;
         for(const pre of selected)delete view.pluginSettling?.[`${plugin.id}:${pre.id}`];
@@ -448,6 +455,7 @@ export function reloadPlugins(view, cx, only = null, checkingTarget = null, {rea
         if (group === 'requirements' && items.some(item => item.refreshSections === true))
           for (const pre of plugin.prerequisites.filter(pre => pre.section)) reloadPlugins(view, cx, plugin.id, pre.id);
         cx.notify();
+        },{current:alive,done,sleep:ms=>cx.sleep(ms)}).catch(error=>{if(alive()&&!error.obsolete)throw error;});
       });
     }
   }
@@ -472,7 +480,7 @@ function runFixes(view, cx, plugin, items, confirmed = false) {
       (view.pluginSettling ??= {})[key] = true;
       try {
         if (!current()) break;
-        await item.fix.run(viewContext(view,plugin,()=>current()&&view.pluginFixing===key,machine));
+        await item.fix.run(viewContext(view,plugin,()=>current()&&view.pluginFixing===key,machine,cx));
       } catch (e) { if (current()) view.pluginFixError[key] = String(e?.message ?? e).slice(0, 300); break; }
     }
     if (view.pluginFixOperation !== operation) return;
@@ -544,7 +552,7 @@ function requirements(view, t, plugin) {
   // it). Install all sits beside it; without such a row it stays on the header.
   const where = (plugin.settings ?? []).filter(d => d.type === 'machine' && d.place === 'requirements' && !d.hidden);
   const tools = installAll && !where.length ? h_flex().gap(6).items_center().child(installAll).child(recheck) : recheck;
-  const summary = checking.loading&&checking.target==='requirements' ? workingStatus(t)
+  const summary = checking.loading&&checking.target==='requirements'&&!items.every(item=>item.status) ? workingStatus(t)
     : !items.every(item=>item.status) ? null : problems.length ? (problems.some(p => p.status !== 'recommended') ? badge(t, 'missing', `${problems.filter(p => p.status !== 'recommended').length} to fix`) : badge(t, 'recommended', `${problems.length} optional`))
     : badge(t, 'ready', 'All ready');
   // Closed until the person opens it: its header already says what needs fixing.
@@ -573,7 +581,7 @@ function requirements(view, t, plugin) {
         // its width when a row has none, so buttons and badges each line up.
         // While a row's own action runs, its spinner carries the action's word ("Updating")
         // when the plugin names one; a re-check keeps the bare spinner.
-        .child(statusRail(fixing||(checking.loading&&checking.target===item.id)?workingStatus(t,fixing&&typeof item.fix?.statusLabel==='string'?item.fix.statusLabel:null):item.status ? badge(t, item.status, item.statusLabel ?? undefined).w_full().justify_center() : null,
+        .child(statusRail(fixing||(checking.loading&&checking.target===item.id&&!item.status)?workingStatus(t,fixing&&typeof item.fix?.statusLabel==='string'?item.fix.statusLabel:null):item.status ? badge(t, item.status, item.statusLabel ?? undefined).w_full().justify_center() : null,
           div().flex_none().w(KIT.action).flex().justify_end().when(Boolean(fix), el => el.child(fix)),`st-plugin-${plugin.id}-${item.id}-status-rail`));
       const saved = item.saved?.row?.(item), savedContext = viewContext(view,plugin);
       const replace = Boolean(saved) && pluginEnabled(plugin) && item.saved.replace === true;
@@ -604,7 +612,7 @@ function runListAction(view, cx, plugin, item, action, everything = false, rowSt
   view.pluginFixError[key] = null; view.pluginFixing = key; view.pluginListOperation = operation;
   if (rowState) { rowState.error = null; rowState.uncertain = false; }
   cx.spawn(async (cx) => {
-    try { if (current()) await action(viewContext(view, plugin, () => current() && view.pluginFixing === key, machine)); }
+    try { if (current()) await action(viewContext(view, plugin, () => current() && view.pluginFixing === key, machine, cx)); }
     catch (e) { if (current()) {
       if (rowState) { rowState.error = String(e?.message ?? 'Could not apply the change.').split(/[\r\n]/)[0].slice(0, 300); rowState.uncertain = e?.uncertain === true; }
       else view.pluginFixError[key] = String(e?.message ?? e).slice(0, 600);
@@ -658,7 +666,7 @@ function openListPicker(view, cx, plugin, item, { keepSearch = false } = {}) {
   cx.spawn(async (cx) => {
     const alive = () => view.listPicker === picker && !view.pluginClosed && (view.settingsMachine??null)===machine;
     try {
-      const found = await item.list.candidates(viewContext(view, plugin, alive, machine));
+      const found = await item.list.candidates(viewContext(view, plugin, alive, machine, cx));
       if (!alive()) return;
       Object.assign(picker, { loading: false, notice: found?.detail ?? null, items: Array.isArray(found?.items) ? found.items : [], add: found?.add ?? item.list.add ?? null });
     } catch (e) {
@@ -812,8 +820,7 @@ function listSection(view, t, plugin, item, loading) {
     : spec.picker?.kind === 'folders' ? foldersAdd(view, t, plugin, item, canAdd, loading) : itemsAdd(view, t, plugin, item, canAdd);
   // Applying already has header feedback. Keep the last confirmed body, including
   // through its authoritative re-check, rather than collapsing and restoring it.
-  const hasRowChoices = Boolean(spec.rowChoice && item.rows?.some(row => row.choice));
-  const rows = loading && !applying && !hasRowChoices ? [] : item.rows ?? [];
+  const rows = item.rows ?? []; // Pending work is not an authoritative empty list.
   const detail = view.pluginFixError[key] ?? item.detail ?? item.about;
   const enabled = !locked;
   return v_flex().w_full().gap(8)
@@ -831,7 +838,7 @@ function prerequisiteSections(view,t,plugin) {
   const check=view.pluginChecks[plugin.id];
   return (check?.items??plugin.prerequisites??[]).filter(item=>item.section&&item.list).map(item=>{
     const key=sectionKey(plugin,item),busy=view.pluginFixing===key||view.pluginSettling?.[key]===true,checking=itemState(view,plugin,item.id);
-    const summary=busy?workingStatus(t,'Applying'):checking.loading?workingStatus(t):item.status&&item.statusLabel!==null?badge(t,item.status,item.statusLabel):null;
+    const summary=busy?workingStatus(t,'Applying'):item.status&&item.statusLabel!==null?badge(t,item.status,item.statusLabel):checking.loading?workingStatus(t):null;
     const tools=checkButton(t,`st-plugin-refresh-${plugin.id}-${item.id}`,Boolean(checking.loading),(_e,cx)=>{
       if(!view.pluginFixing&&!itemState(view,plugin,item.id).loading){delete view.pluginFixError[key];reloadPlugins(view,cx,plugin.id,item.id);cx.notify();}
     },!checking.loading&&!view.pluginFixing);

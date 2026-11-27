@@ -15,11 +15,11 @@
 
 ## 3. Queued and batched Settings checks
 
-- [ ] 3.1 Trace the exact execution-capacity refusal to pinned public App/Core source without live saturation, and record source/version, limit and public configurability in docs/PLUGIN-UI.md or a focused repository note.
-- [ ] 3.2 Bound Settings check-group/transport admission and retry only proven pre-start capacity refusals with capped delays and captured liveness; fake scheduler tests must assert peak concurrency, eventual recovery, fairness, context retirement and no slot leaks on abandoned tasks.
-- [ ] 3.3 Batch Crew's read-only tool inventory and share compatible round probe facts without coupling slow list completion to Requirements; fake transport tests must assert reduced command count and truthful per-tool results.
-- [ ] 3.4 Preserve last-good Projects rows, confirmed requirement badges and genuine fix counts through queue waits/refusals; targeted renderer/registry fixtures must cover warm and cold checks, repeated saturation, recovery and actual non-capacity failures.
-- [ ] 3.5 Document queue scope, native cap limits, batching and safe-retry boundaries; targeted tests must reject arbitrary stderr as a safe retry and forbid ambiguous submitted-write replay or stale-machine follow-ups.
+- [x] 3.1 Trace the exact execution-capacity refusal to pinned public App/Core source without live saturation, and record source/version, limit and public configurability in docs/PLUGIN-UI.md or a focused repository note.
+- [x] 3.2 Bound Settings check-group/transport admission and retry only proven pre-start capacity refusals with capped delays and captured liveness; fake scheduler tests must assert peak concurrency, eventual recovery, fairness, context retirement and no slot leaks on abandoned tasks.
+- [x] 3.3 Batch Crew's read-only tool inventory and share compatible round probe facts without coupling slow list completion to Requirements; fake transport tests must assert reduced command count and truthful per-tool results.
+- [x] 3.4 Preserve last-good Projects rows, confirmed requirement badges and genuine fix counts through queue waits/refusals; targeted renderer/registry fixtures must cover warm and cold checks, repeated saturation, recovery and actual non-capacity failures.
+- [x] 3.5 Document queue scope, native cap limits, batching and safe-retry boundaries; targeted tests must reject arbitrary stderr as a safe retry and forbid ambiguous submitted-write replay or stale-machine follow-ups.
 
 ## 4. Acknowledged coordinator-owned kind application
 

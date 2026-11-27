@@ -179,7 +179,10 @@ client's allowlist/read-only policy is not a security sandbox.
 **Settings → Plugins → Crew → Projects** shows **Delivery**, **Plain** or
 **Gate** only when the selected machine's Crew advertises the version-1
 `project-kinds` JSON listing and safe kind-only setter. Older Crew keeps its normal
-folder list, Add and Remove, with no inferred kind. A task's recorded delivery kind
+folder list, Add and Remove, with no inferred kind. Settings queues checks and batches
+tool discovery within native execution capacity; pending refreshes keep confirmed
+projects and requirement badges rather than reporting capacity contention as broken
+setup. A task's recorded delivery kind
 is not used as a project setting; re-adding a project is never a kind-edit workaround.
 Kind captions share a fixed left-aligned column without truncation. Hover or
 keyboard-focus a supported row to reveal the standard kind dropdown beside Remove;

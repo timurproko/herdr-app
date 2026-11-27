@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {loadMod} from '../../../tools/plugin-harness.mjs';
+const ids=['git','node','hc','jq','treehouse','no-mistakes','gh-axi','chrome-devtools-axi','lavish-axi'];
+let calls=0;
+const facts={platform:{windows:true,arch:'AMD64'},tools:Object.fromEntries(ids.map(id=>[id,{code:0,stdout:'v100.0.0',stderr:'',missing:false}])),hooks:['gh-axi','chrome-devtools-axi','lavish-axi']};
+const {plugin,script}=await loadMod({host:{hc:async args=>{calls++;assert.ok(args.at(-1).includes('$tools = @{}'));return {code:0,stdout:JSON.stringify({code:0,stdout:Buffer.from(JSON.stringify(facts)).toString('base64'),stderr:''})};}},entry:"export {default as plugin,toolInventoryScript as script} from './plugins/crew/plugin.js';"});
+let admitted=0;const cx={setting:()=>null,request:async fn=>{admitted++;return fn();}};
+const checks=plugin.prerequisites.filter(p=>[...ids,'agent-hooks'].includes(p.id));
+assert.equal(checks.length,10);
+const results=await Promise.all(checks.map(p=>p.check(cx)));assert.ok(results.every(r=>r.status==='ready'),JSON.stringify(results));
+assert.equal(calls,1);assert.equal(admitted,1,'One queued transport answers all ten requirement rows');
+assert.match(script(),/ConvertTo-Json -Depth 6 -Compress/);
+console.log('PASS Crew batched versions, platform and hook membership: ten checks use one admitted command');

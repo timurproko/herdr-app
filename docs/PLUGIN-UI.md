@@ -124,6 +124,29 @@ stale controls cannot dispatch. Do not use raw provider exceptions as detail.
 - `selection: { key, label?, options: [[value, label]], value }`: a dropdown in the row,
   saved into setting `key` (e.g. which Cloudflare account). Changing it re-checks the plugin.
 
+## Settings execution capacity
+
+Settings admits at most two check groups and four Crew command transports at once.
+Compatible Requirements/section checks share only benign same-round probe facts,
+not publication authority; manual Requirements Check remains independent. Crew's
+Windows tool/platform/hook inventory answers ten requirement rows in one command.
+Confirmed badges, fix counts and list rows remain while refreshes wait (actions stay
+locked); cold checks stay pending. Check/Refresh supplies activity separately.
+
+The reported **16 execs are running already** limit is native Core, not an app-side
+preference: [herdr-core v0.1.22 exec.rs](https://github.com/herdrdev/herdr-core/blob/v0.1.22/crates/herdr-core/src/exec.rs)
+lines 22 and 40–47 hardcode `MAX_RUNNING = 16`; `run` acquires its slot before process
+creation. There is no public setting to raise that constant in this customization.
+No native file or cap is changed. Other native callers can occupy slots, so Settings
+retries only the exact outer RPC `unavailable` refusal with 100ms exponential delays
+capped at 2 seconds, rejoining the admission tail. Child stderr, thrown transport
+errors, timeouts and uncertain submitted writes never authorize replay.
+
+The view-task clock and captured generation guard every wait/dispatch; completed
+native Tasks release abandoned ownership, and command leases cannot outlive their
+bounded execution allowance. Closing/changing context retires queued work. This is
+Settings-scoped admission, not a global semaphore or a change to fleet/Git lifecycles.
+
 ## Transient action forms
 
 A prerequisite may declare `form: { fields, actions, when?, enabled?, help? }`.

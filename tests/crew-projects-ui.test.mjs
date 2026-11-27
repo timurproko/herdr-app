@@ -205,10 +205,10 @@ assert.equal(find(tree,`${P}-empty`),undefined);
 assert.ok(words(find(tree,'st-plugin-crew-projects-body')).includes('Install the crew tool first (Requirements).'));
 find(tree,`${P}-add-popup`).attrs.on_open_change[0](true,cx);assert.equal(opened.length,0,'A disabled Add does not open the browser');
 
-// While the section is being checked its rows are not shown or acted on, and its text stays as it is.
+// Pending execution retains last-good rows but grants no action authority.
 seed();view.pluginChecks.crew.groups.projects={loading:true,target:'projects'};tree=render();
 assert.ok(!words(find(tree,'st-plugin-crew-projects-body')).some(w=>/will appear here/.test(w)),'No placeholder line flashes during a check');
-assert.equal(find(tree,`${P}-row-0`),undefined);assert.equal(find(tree,`${P}-add`).attrs.disabled[0],true);
+assert.ok(find(tree,`${P}-row-0`));assert.equal(find(tree,`${P}-remove-0`).attrs.disabled[0],true);assert.equal(find(tree,`${P}-add`).attrs.disabled[0],true);
 
 // A dropdown fed by the check (Claude account) shows a loading bar inside until the first
 // check has finished; only then can it say there is nothing to choose.

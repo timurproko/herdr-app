@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+import {requestQueue,executionCapacityRefusal} from '../src/shared/settings-requests.js';
+const refusal={code:1,stdout:JSON.stringify({error:{kind:'unavailable',message:'16 execs are running already'}})};
+const tick=()=>new Promise(r=>setImmediate(r));
+assert.equal(executionCapacityRefusal(refusal),true);
+for(const r of [{code:1,stderr:'16 execs are running already'},{stdout:JSON.stringify({error:{kind:'permission',message:'16 execs are running already'}})},{stdout:JSON.stringify({code:1,stderr:Buffer.from('16 execs are running already').toString('base64')})}])assert.equal(executionCapacityRefusal(r),false);
+let active=0,peak=0;const starts=[],queue=requestQueue(2);
+await Promise.all(Array.from({length:10},(_,i)=>queue(async()=>{starts.push(i);peak=Math.max(peak,++active);await tick();active--;return i;},{sleep:tick})));
+assert.equal(peak,2);assert.deepEqual(starts,[0,1,2,3,4,5,6,7,8,9],'FIFO admission');
+let tries=0;const delays=[];
+assert.deepEqual(await queue(async()=>++tries<8?refusal:{ok:true},{retry:true,sleep:async ms=>delays.push(ms)}),{ok:true});
+assert.equal(tries,8);assert.ok(Math.max(...delays)<=2000);assert.equal(delays.at(-1),2000);
+let current=true,writes=0;
+await assert.rejects(queue(async()=>{writes++;return refusal;},{retry:true,current:()=>current,sleep:async()=>{current=false;}}),/Obsolete/);assert.equal(writes,1,'Retirement stops retry');
+let submitted=0;
+await assert.rejects(queue(async()=>{submitted++;throw Error('Lost acknowledgement');},{retry:true,sleep:tick}),/Lost acknowledgement/);assert.equal(submitted,1,'Uncertain writes are never replayed');
+let ended=false;const abandoned=requestQueue(1);void abandoned(()=>new Promise(()=>{}),{done:()=>ended,sleep:tick});await tick();ended=true;
+assert.equal(await abandoned(async()=>42,{sleep:tick}),42,'Done native Task cannot leak a slot when finally was abandoned');
+// Obsolete queued work cannot dispatch; a real child error remains a real result.
+const q=requestQueue(1);let release;const first=q(()=>new Promise(r=>release=r),{sleep:tick});let valid=true,calls=0;
+const second=q(async()=>{calls++;},{sleep:tick,current:()=>valid});valid=false;release('done');await first;await assert.rejects(second,/Obsolete/);assert.equal(calls,0);
+const child={code:1,stderr:'Permission denied'};assert.equal(await q(async()=>child,{retry:true,sleep:tick}),child);
+console.log('PASS Settings FIFO bounds, capped pre-start retries, cancellation, abandoned Task recovery and no uncertain-write replay');
