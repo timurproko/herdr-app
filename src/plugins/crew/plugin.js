@@ -1075,6 +1075,13 @@ export default {
   guards: { 'spaces.color': ({pair}) => fleetColorAllowed(pair) },
   pullContext: ({space,presentation = false}) => fleetPullContext(space,{presentation}),
   onEnabledChange: () => { invalidateFleet(); invalidateWorkerSpaces(); },
+  // Metadata-only grouping of already-running coordinators. No reads or action
+  // authority; disabled Crew does not end or unlabel existing sessions.
+  agentGroupFirst(group, {terminals:list=[]} = {}) {
+    const members=new Set(group.members.map(agent=>agent.address));
+    return list.some(terminal=>members.has(terminal.address)&&terminal.state==='live'&&terminal.labels?.[ROLE_LABEL.home]==='1');
+  },
+
   // The Spaces sidebar's tag for a space the coordinator or crew workers run in.
   spaceTags: space => {
     const display = fleetContexts({presentation:true});

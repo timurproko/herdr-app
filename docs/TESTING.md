@@ -12,6 +12,9 @@ capacity admission/retry, retained facts, batching and captured kind acknowledge
 ordinary/coordinator and visible/ghost/probe geometry at 100%/130%, all rounds 2–99,
 long-round local growth, centred captions and unchanged title/right-rail/row geometry.
 The existing full row geometry and stage interaction fixtures remain independent.
+`tests/agents-grouping.test.mjs` additionally exercises the real Crew/registry
+metadata contribution with interleaved coordinator groups on several machines,
+no-coordinator and misleading-name cases, and unchanged folds/counts/focus/pins.
 Fixed verdict boxes yield whole before labels on real overflow, rather than shrinking
 their hit target. One clipped invisible column supplies the native maximum width;
 it is measured once per panel/zoom and reused by all captions and natural probes.

@@ -431,7 +431,7 @@ export function reloadPlugins(view, cx, only = null, checkingTarget = null, {rea
       task=cx.spawn(async cx=>{
         const alive=()=>!view.pluginClosed&&(view.settingsMachine??null)===machine&&view.pluginSessions?.[plugin.id]===session&&view.pluginChecks[plugin.id]?.groups?.[group]===round;
         if(!alive())return;
-        const done=()=>Boolean(task?.is_done?.());
+        const done=()=>{try{return Boolean(task?.is_done?.());}catch{return true;}};
         await settingsGroups(async()=>{
         if(!alive())return;
         const context={...viewContext(view,plugin,alive,machine,cx,done),checkReason:reason,checkMemo};

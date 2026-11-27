@@ -35,8 +35,8 @@
 
 ## 6. Coordinator-first Agents groups
 
-- [ ] 6.1 Stably place all coordinator-containing Agents groups first using actual metadata; a regression must cover the reported interleaving, several coordinators/machines, no coordinator, and unchanged relative order/group identity.
-- [ ] 6.2 Preserve selection, fold keys, counts and drag behavior and update current documentation, verified by focused Agents grouping/interaction fixtures.
+- [x] 6.1 Stably place all coordinator-containing Agents groups first using actual metadata; a regression must cover the reported interleaving, several coordinators/machines, no coordinator, and unchanged relative order/group identity.
+- [x] 6.2 Preserve selection, fold keys, counts and drag behavior and update current documentation, verified by focused Agents grouping/interaction fixtures.
 
 ## Workflow follow-up
 

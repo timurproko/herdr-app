@@ -24,11 +24,11 @@ None.
 
 ### Modified Capabilities
 
-- `plugin-integrations`: authoritative Crew kind captions, shared row geometry/reveal, explanatory inline help, concurrency-safe Settings checks neutral legacy setter refusals, and consistent Git stage/verdict geometry.
+- `plugin-integrations`: authoritative Crew kind captions, shared row geometry/reveal, explanatory inline help, concurrency-safe Settings checks neutral legacy setter refusals, consistent Git stage/verdict geometry and coordinator-first Agents groups.
 
 ## Impact
 
 - Shared Settings renderer/kit (`src/features/settings/plugins-ui.js`, `src/ui/settings-kit.js`), plugin execution boundary/API and registry as needed, and Crew's provider, kind labels and setter.
 - Targeted fake-only regressions for row lifecycle, declarations, transport scheduling, batched checks and supported/legacy set-kind replies; README and plugin UI documentation.
 - No native binary/source changes, cap increase, deployment, real Crew home access, coordinator interaction, SSH execution, portable kind preference or automatic write replay. Native cap provenance is to be documented from read-only source evidence, not reproduced against the running app.
-- Git row stage/verdict builders and their shared measurements, probes and geometry fixtures. The coordinator explicitly grouped this small cross-panel polish into the same PR and approved all six outcomes for implementation.
+- Git row stage/verdict builders and their shared measurements, probes and geometry fixtures; Agents grouping and the pure existing-session metadata contribution. The coordinator explicitly grouped this small cross-panel polish into the same PR and approved all six outcomes for implementation.

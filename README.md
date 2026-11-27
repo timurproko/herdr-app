@@ -1242,7 +1242,11 @@ An actual directory change moves that agent's row; selecting another tab does no
 rename its siblings' headings. Missing directory data falls back to the native
 space name. This is presentation only: native spaces, tabs, titles and running
 sessions are untouched; the upper Spaces list and tab strip are unchanged.
-Groups retain their first-seen position; keyboard navigation follows the combined
+Coordinator-containing groups always come first, preserving their existing relative
+order, including across machines. Every other group keeps its existing relative order.
+Classification uses live coordinator metadata, never the displayed name; disabling
+Crew does not relabel or end an already-running coordinator. Fold keys, counts,
+selection and drag behavior are unchanged; keyboard navigation follows the combined
 list. Remote rows still show their machine, pinned agents stay separate, and
 Priority sorting is unchanged. The sort icon has no hover tooltip; its accessible
 label and sort menu remain available. Group counts are right-aligned in a fixed

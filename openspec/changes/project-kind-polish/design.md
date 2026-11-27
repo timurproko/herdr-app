@@ -39,7 +39,7 @@ Add a generic optional list-description hint declaration carrying label, column 
 
 Add a bounded Settings request admission path at the shared plugin transport boundary, with a conservative active limit and captured liveness checks before dispatch and after waits. Settings groups also need bounded start fan-out so expensive probes do not all begin together. Avoid globally serializing unrelated Git/fleet work or changing their established lifecycle contracts.
 
-Trace the exact refusal in public pinned Herdr App/Core source during implementation, recording source/version and whether a configurable public cap exists. No runtime saturation experiment is allowed. If native, leave its cap unchanged and report that it cannot be raised within this customization boundary. App-side admission must still tolerate unrelated native callers consuming slots: recognize only the confirmed structured pre-start refusal (and an exact legacy form if required), delay with capped backoff and recheck liveness before retry. Do not classify arbitrary process stderr mentioning concurrency as a safe retry.
+Source inspection resolved the refusal: herdr-core v0.1.22 `crates/herdr-core/src/exec.rs` hardcodes MAX_RUNNING=16; Slot::take returns `unavailable` before process creation. No public cap setting exists. The source/version record is in docs/PLUGIN-UI.md. No runtime saturation experiment is allowed. If native, leave its cap unchanged and report that it cannot be raised within this customization boundary. App-side admission must still tolerate unrelated native callers consuming slots: recognize only the confirmed structured pre-start refusal (and an exact legacy form if required), delay with capped backoff and recheck liveness before retry. Do not classify arbitrary process stderr mentioning concurrency as a safe retry.
 
 Known read checks may wait/retry while retaining presentation. Command deadlines start on actual admission; repeated contention retains pending state with capped retry delay and terminates on context retirement. Limit each native attempt with existing timeouts and avoid a tight loop. Never replay an ambiguous submitted mutation; the setter's uncertainty/reconciliation contract stays intact.
 
@@ -74,6 +74,6 @@ After existing groups are constructed, apply a stable partition using actual coo
 
 No persisted-state or wire-contract migration. Update current README/plugin UI guidance with implementation, leave archived specs untouched. Rollback is reverting the source change; no home, task, coordinator or deployment state is changed by this work. Local verification uses targeted fakes only; any disposable output belongs in the crew task folder. Stop disposable processes before reporting. Push through the repository's publication path and dispatch CI on the final draft head if application tests would otherwise skip, then report without waiting or polling.
 
-## Open Questions
+## Resolved implementation evidence
 
-- Exact native cap provenance and availability of a public configuration knob remain unconfirmed from source. Resolving this only changes the diagnostic report and conservative admission value, not the chosen queuing/batching or no-native-edit approach.
+Core's 16-slot native cap is unchanged. Shared Git box measurement in disposable App 0.1.18 selected Changes requested, not Approved: 121×18 at 100%, 158×23.5 at 130% with native rounding. A rare longer Build caption grew to 145×18 / 189×23.5 without widening the common minimum. Aligned information columns were supported; no fallback was needed.

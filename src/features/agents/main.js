@@ -8,7 +8,7 @@ import { U, slot, itemHover, statusBulb, menuSurface, chevron, menuHeading, empt
 import { programIcon } from './program-icon.js';
 import { sidebarScroll } from './sidebar-scroll.js';
 import { paneDirectory } from './directory.js';
-import { pluginMenuItems } from './plugins.js';
+import { pluginMenuItems, pluginAgentGroupFirst } from './plugins.js';
 import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout } from "./host.js";
 
 function find(node, id) {
@@ -270,7 +270,7 @@ export default class Agents extends View {
     const rest = list.filter((a) => !a.pinned);
     // Headings with the same shown name are one group, whatever space, folder or
     // machine they come from (rows show the machine). Preserve first-seen order.
-    const groups = pinned.length ? [{ id: "pinned", label: "Pinned", status: null, members: pinned }] : [];
+    let groups = pinned.length ? [{ id: "pinned", label: "Pinned", status: null, members: pinned }] : [];
     const byGroup = new Map(), folderNames = new Map();
     for (const a of rest) {
       const r = rankOf(a) || RANK.idle;
@@ -287,6 +287,12 @@ export default class Agents extends View {
         groups.push(group);
       }
       group.members.push(a);
+    }
+    if (!byPriority) {
+      // Stable partition only: keep native group ids, members, folds and row
+      // handlers, and never infer a coordinator from its displayed name.
+      const first = new Set(groups.filter(group=>pluginAgentGroupFirst(group,{terminals:all})));
+      groups = [...groups.filter(group=>first.has(group)), ...groups.filter(group=>!first.has(group))];
     }
     list = groups.flatMap((g) => g.members);
     setAgentOrder(list.map((a) => a.address));

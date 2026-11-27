@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {realUi} from './support/panel-kit.mjs';
+import {loadMod} from '../tools/plugin-harness.mjs';
+const {pluginAgentGroupFirst}=await loadMod({host:{},entry:"export {pluginAgentGroupFirst} from './plugins.js';"});
 
 function element() {
   const node = { attrs: {}, kids: [] }; let proxy;
@@ -48,7 +50,7 @@ const dependencies = {
   'gpui-base': { v_flex: element, h_flex: element },
   './ui.js': { ...realUi(element), U: {}, emptyState: element, slot: element, itemHover() {}, statusBulb: element, menuSurface: (_t, el) => el, chevron: element, menuHeading: element },
   './program-icon.js': { programIcon: element },
-  './plugins.js': { pluginMenuItems:(name) => {
+  './plugins.js': { pluginAgentGroupFirst, pluginMenuItems:(name) => {
     assert.equal(name, 'agents.context');
     return [{id:'other',run(){throw Error('Agent clicks must not run plugin menu actions');}}];
   } },
@@ -182,4 +184,20 @@ assert.deepEqual(headingText(view), ['Custom title', 'firstmate'], 'A manually n
 assert.deepEqual(order, ['t1', 't2', 't3', 't4', 'pc2/t5']);
 selection = { space: 's', tab: 'tab1', pane: 'p1', terminal: 't1', cwd: 'D:/Git/firstmate' };
 assert.deepEqual(headingText(render()), ['Custom title', 'firstmate'], 'Switching tabs never splits a named space');
+// Reported interleaving, multiple machines and role metadata (not group names).
+const names=['xrbuild','coordinator','.xrbuild','herdr-app','crew','another coordinator'];
+list.splice(0,list.length,...names.map((name,i)=>({address:i===5?'pc2/t6':`t${i+1}`,pane:`p${i+1}`,space:`s${i+1}`,space_name:name,title:`Task ${i}`,status:'idle',seq:i})));
+spaceList=list.map((a,i)=>({id:a.space,name:names[i],named:true}));paneList=[];
+terminalList=list.map((a,i)=>({address:a.address,state:'live',labels:i===1||i===5?{'custom.crew.home':'1'}:{}}));
+selection={pane:'p4',terminal:'t4'};agents.folded=new Set(['sp-.xrbuild']);sort='grouped';width=268;
+const expectedGroups=['coordinator','another coordinator','xrbuild','.xrbuild','herdr-app','crew'];
+view=render();assert.deepEqual(headingText(view),expectedGroups);
+assert.deepEqual(order,['t2','pc2/t6','t1','t3','t4','t5'],'Stable partition preserves both relative orders and full membership');
+assert.ok(agents.folded.has('sp-.xrbuild'));assert.ok(!view.byId('ag-t3'),'Collapse state stays on the same group id');
+assert.equal(view.byId('agent-count-sp-.xrbuild').kids[0].kids[0],'1','Folded count is unchanged');
+const before=calls.length;view.byId('ag-t4').attrs.on_click[0]({},cx);assert.equal(calls.length,before+1);assert.deepEqual(structuredClone(calls.at(-1)),['pane.focus',{pane:'p4'}]);
+// A non-coordinator Pinned group retains its relative place among other groups.
+list[0].pinned=true;view=render();assert.deepEqual(view.all.map(n=>n.attrs.id?.[0]).filter(id=>id==='pinned'||id?.startsWith('sp-')),['sp-coordinator','sp-another coordinator','pinned','sp-.xrbuild','sp-herdr-app','sp-crew']);list[0].pinned=false;
+terminalList.forEach(t=>t.labels={});assert.deepEqual(headingText(render()),names,'Names alone never promote a group; no-coordinator order is identical');
+console.log('PASS coordinator-first stable partition across machines, metadata-only classification, unchanged folds/counts/focus/pins and no-coordinator order');
 console.log('PASS: named spaces group as one; agent-owned folder grouping, focus-stable headings, same-name merging across folders and machines, folds/counts/navigation, pins and priority');
