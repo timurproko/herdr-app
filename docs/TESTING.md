@@ -180,6 +180,12 @@ share one captured coordinator binding; changed membership, conflicting parents 
 bindings, duplicates, missing/cross-machine endpoints and expired proof still refuse.
 Every child's saved colour and Automatic flag stays unchanged.
 
+`git-agent-entry-layout.test.mjs` records every actual renderer layout during
+known-label entry before root, different pins, reverse no-PR entry, held footer
+reads and stale replies at 100%/130%. Each target-content sequence has one layout
+and identical row y after its first frame. `GIT_ENTRY_MEASUREMENTS=<outside.json>`
+exports deterministic renderer bounds; these are not native paint-latency claims.
+
 `pr-agent-links.test.mjs`, `git-stage-chips.test.mjs` and the row geometry/tooltip
 fixtures cover Approved and separate Approved/Changes requested verdict controls:
 Build-owner pointer and Enter/Space focus, same-home coordinator guards,

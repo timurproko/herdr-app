@@ -87,7 +87,7 @@ export default class Changes extends View {
   }
 
   close() {
-    this.renderClosed=true;this.renderAttempt=null;this.agentPresentation=null;
+    this.renderClosed=true;this.renderAttempt=null;this.agentPresentation=null;this.agentAssociations?.clear();
     this.checksFallback?.stop();this.factOrder?.reset();
     this.enrollmentPicker?.stop();this.aggregate?.stop();this.webhooks?.stop();this.notices?.stop();
     this.rootRequest=null;this.pullRequest=null;this.relatedRequest=null;
@@ -157,7 +157,7 @@ export default class Changes extends View {
     this.pulls = { open: null, closed: null }; this.pullsAt = { open: 0, closed: 0 };this.pullDepth={open:0,closed:0};
     this.pages = {open:{cursor:null,hasMore:false,expanded:false},closed:{cursor:null,hasMore:false,expanded:false}};
     this.pageError = null; this.loadingState = null; this.appending = false; this.scrollMotion = null;
-    this.selection = null; this.agentRequest = null; this.agentResolved = null;
+    this.selection = null; this.agentRequest = null; this.agentResolved = null;this.agentPending=null;this.relatedAbsent=null;
     this.pinKey = null; this.pinRevealed = true;
     this.relatedKey = null; this.relatedPull = null; this.relatedRequest = null;this.relatedRetry=null;
     this.webhooks?.stop(); this.webhookDirty = false;
@@ -274,24 +274,41 @@ export default class Changes extends View {
   syncAgent(cx, force = false) {
     if (!sidebarPanelEnabled('changes')) return;
     const target = location(), selection = agentKey(target), context = this.context;
-    if (!this.root || key() !== context || (!force && selection === this.selection)) return;
+    if (key() !== context || (!force && selection === this.selection && this.agentResolved===selection)) return;
     // A periodic read of the same agent must not invalidate its resolved pin
     // or discard the targeted refresh that the same timer just started.
     if (selection !== this.selection) this.agentResolved = null;
     this.selection = selection;
-    const labelled=this.agentLinks?.pullNumber?.(target.terminal,this.repo?.name);
-    if(labelled!=null) {this.agentRequest=null;this.agentPull=labelled;this.agentResolved=selection;return;}
-    const request = this.agentRequest = {};
-    if (!['a1','claude-code'].includes(target.app) || !target.terminal) { this.agentPull = null; this.agentResolved = selection; return; }
-    // Keep the existing pin until the new footer resolves: identical PRs must
-    // not briefly drop into the list and jump back up on every agent switch.
+    // Canonical restored identity is enough for a known terminal PR label;
+    // waiting for the worktree root used to paint its unpinned list first.
+    if(!this.repo){this.agentPending=null;return;}
+    const labelled=this.agentLinks?.pullNumber?.(target.terminal,this.repo.name);
+    const resolve=number=>{this.agentRequest=null;this.agentPull=number;this.agentResolved=selection;this.agentPending=null;};
+    if(labelled!=null) {resolve(labelled);return;}
+    const cached=this.agentLinks?.cachedAssociation?.(target,this.repo.name);
+    if(!force&&cached){this.branch=cached.branch;resolve(cached.number);return;}
+    const footer=['a1','claude-code'].includes(target.app)&&target.terminal;
+    const associationKey=JSON.stringify([selection,this.repo?.name?.toLowerCase()]);
+    const saved=this.agentAssociations?.get(associationKey);
+    if(!force && saved && Date.now()-saved.at<LOCAL_CONTEXT_TTL){resolve(saved.number);return;}
+    if(selection!==this.agentResolved)this.agentPending=selection;
+    // Branch fallback is not known until this destination's root/branch read
+    // finishes. Unknown must not mean an authoritative unpinned layout.
+    if(!this.root || this.entryRootPending() || this.loading)return;
+    if(!footer){resolve(null);return;}
+    if(this.agentRequest?.selection===selection || this.agentRetry?.selection===selection&&this.agentRetry.until>Date.now())return;
+    const request = this.agentRequest = {selection};
     cx.spawn(async cx => {
       try {
         const screen = await Promise.resolve().then(()=>hc(['read', target.terminal, '--json', '--lines', '0'])).catch(() => null);
         if (!sidebarPanelEnabled('changes') || this.agentRequest !== request || this.context !== context || key() !== context || agentKey(location()) !== selection) return;
-        this.agentPull = screen?.code === 0 ? agentPullNumber(screen.stdout, target.app) : null;
-        this.agentResolved = selection;
-      } finally { cx.notify(); }
+        if(screen?.code!==0){this.agentRetry={selection,until:Date.now()+LOCAL_CONTEXT_TTL};return;}
+        this.agentRetry=null;
+        const number=agentPullNumber(screen.stdout, target.app);
+        resolve(number);
+        this.agentAssociations??=new Map();this.agentAssociations.delete(associationKey);this.agentAssociations.set(associationKey,{number,at:Date.now()});
+        while(this.agentAssociations.size>256)this.agentAssociations.delete(this.agentAssociations.keys().next().value);
+      } finally {if(this.agentRequest===request)this.agentRequest=null;cx.notify();}
     });
   }
 
@@ -461,7 +478,9 @@ export default class Changes extends View {
         await Promise.resolve();if(!current())return;
         cx.notify();
         const result = (await readTargetPulls(exec,[number],repo.name,{cwd:root,on,timeout:30000,current,manual:this.manualRead})).get(number);
-        if (!current() || result.error) return;
+        if (!current())return;
+        if(result.error){if(result.error.kind==='notfound')this.relatedAbsent=scope;return;}
+        this.relatedAbsent=null;
         const pr = result.row;
         if (pr.number === number) {
           const published=this.publishPull(pr,read,repo.name);accepted=published.accepted;
@@ -1235,7 +1254,17 @@ export default class Changes extends View {
     const metrics=this.ordinaryScroll?.get(this.view);if(metrics){this.ordinaryHandle(metrics,cx);metrics.measure('viewport',size,cx);}
   }
 
+  associationPending() {
+    if(this.pinMotion?.current)return false;
+    if(this.agentPending===agentKey(location()))return true;
+    const number=this.agentPull??location().pullNumber;
+    if(this.agentResolved!==agentKey(location()) || number==null || !this.repo)return false;
+    const known=[...(this.pulls.open??[]),...(this.pulls.closed??[]),this.relatedPull].some(pr=>pr?.number===number);
+    return !known && this.relatedAbsent!==JSON.stringify([this.context,this.repo.name,number]);
+  }
+
   pullFeedback(rows = this.pinMotion?.current?.snapshot.rows ?? this.pullSelection().liveRows) {
+    if(this.associationPending())return {text:'Loading…',cold:true};
     const list=this.repositoryPresentation().pulls[this.view];
     const text=this.error || this.pullError || (!this.root ? (this.loading || location().cwd ? 'Loading…' : 'No folder')
       : list === null ? 'Loading…' : `No ${this.view} pull requests`);
@@ -1252,6 +1281,8 @@ export default class Changes extends View {
   }
 
   renderPulls(t) {
+    if(this.associationPending())return v_flex().id('git-association-pending').flex_1().min_h(0).pt(4).px(LIST_INSET)
+      .child(this.loadingMessage(t,'git-agent-loading'));
     const state = this.view, selection = this.pullSelection(),liveRows=selection.liveRows;
     // Every selection path uses the resolved selected-agent PR, never click state.
     const active=selection.active;
@@ -1708,7 +1739,7 @@ export default class Changes extends View {
     this.syncMotionPreference(cx);
     if (!sidebarPanelEnabled('changes')) {
       this.enrollmentPicker?.stop();this.webhooks?.stop();this.notices?.stop();this.aggregate?.stop();
-      this.resetRepository(); this.rootRequest = null; this.loading = false; this.context = null;
+      this.agentAssociations?.clear();this.resetRepository(); this.rootRequest = null; this.loading = false; this.context = null;
       return div();
     }
     if (this.pullMenu) return this.renderPullMenu(theme());

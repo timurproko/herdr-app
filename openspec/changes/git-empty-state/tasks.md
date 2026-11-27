@@ -34,8 +34,8 @@
 
 ## 7. Agent switches choose the final pin/list layout before content paint
 
-- [ ] 7.1 Resolve known terminal PR associations before cached page presentation, withholding target content while genuinely unresolved; add render-history regressions for list-to-pin, pin-to-list and different-pin switches, obsolete replies and unchanged row y after the first content paint.
-- [ ] 7.2 Document the coherent entry policy and run targeted entry/pin/agent-link regressions; record measured row bounds at both zooms without interacting with real agents.
+- [x] 7.1 Resolve known terminal PR associations before cached page presentation, withholding target content while genuinely unresolved; add render-history regressions for list-to-pin, pin-to-list and different-pin switches, obsolete replies and unchanged row y after the first content paint.
+- [x] 7.2 Document the coherent entry policy and run targeted entry/pin/agent-link regressions; record measured row bounds at both zooms without interacting with real agents.
 
 ## 8. Self-healing raced reads produce no visible notice
 

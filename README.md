@@ -395,8 +395,12 @@ coordinator restores its cached sections/order too. The same native header
 activity indicates background refresh in either direction; replacement updates in
 place, without clearing loaded rows or showing body Loading. Unknown directories
 must establish canonical identity before borrowing a cache; genuinely uncached
-repositories use ordinary Loading. Direct worker entry places its matching PR,
-including Draft, above its repository header without entry-driven animation.
+repositories use ordinary Loading. Direct worker entry resolves its pin/list association before content paint.
+Known terminal PR labels or a fresh compatible agent cache select the matching
+PR, including Draft, above its repository header without entry-driven animation.
+If a footer or destination branch is genuinely unresolved, calm Loading holds
+until the final layout is known; cached rows never flash as a list then jump into
+the pin. Reverse and different-pin switches use the same coherent publication.
 Other rows retain their relative order; coordinator returns have no permanent pin. Cache memory is bounded and session-only; another
 machine/repository and disable/re-enable generations cannot borrow it.
 Git shows only **Open** and **Closed** pull requests. Both load **10 PRs initially**

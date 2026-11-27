@@ -526,6 +526,15 @@ The memory holds at most four retained contexts and 4096 admitted rows, plus 256
 folder mappings; eviction/generation clearing retires mappings. No callbacks,
 native handles, credentials or restart/portable PR inventory are stored.
 
+Agent association is admitted before restored target rows paint. Live terminal
+PR labels resolve synchronously even while the destination root is pending.
+Fresh identity-qualified AgentLinks facts or a bounded 256-entry/10-second footer
+cache can restore pin/no-pin plus branch knowledge. Otherwise the body holds calm
+Loading until footer/branch resolution (or an older targeted PR lookup) settles.
+Footer transport failure remains unknown with existing 10-second retry bounds;
+obsolete replies cannot resolve another selection. No click-motion controller is
+introduced, and known direct-entry content has one final layout from first paint.
+
 Identity is exact machine plus canonical repository and the existing inherited
 read route; folder/agent mappings require canonical lookup, not a task label or
 branch guess. Task-derived seeds retain owner/home/provider provenance and
