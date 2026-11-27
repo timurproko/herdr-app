@@ -343,10 +343,18 @@ delete ship.labels['crew.round'];stageChip=find(chipRow('build'),'pr-stage-1200'
 for(const state of ['pending','success','failure']) {
   const row=chipRow('approved',{checks:{state,label:'1/2'}}),chip=find(row,'pr-stage-1200');
   assert.equal(chip.kids[0].kids[0],'Approved');assert.ok(chip.attrs.on_click);assert.equal(chip.attrs.role[0],'button');assert.equal(chip.attrs.opacity,undefined);
-  const before=actions.length;chip.attrs.on_click[0]({},cx);assert.equal(chipOpened.stage,'approved');assert.equal(actions.length,before,'Approved bubbles to the PR row, never an agent');
+  const before=actions.length;chip.attrs.on_click[0]({},cx);assert.equal(chipOpened,null);assert.equal(actions.length,before+1,'Approved navigates like Build, never opens GitHub');assert.equal(actions.at(-1)[1].terminal,'builder');
   assert.ok(!descendants(row).some(n=>typeof n==='string'&&/CI running|Review.*CI/.test(n)));
 }
 chipOpened=null;
+for(const review of ['approved','changes'])for(const ghost of [false,true]) {
+ const row=chipRow('build',{review}),id=`${ghost?'swap-':''}pr-review-1200`,chip=find(ghost?view.pullRow(colors,{...ordinaryStage,stage:'build',review},true):row,id);
+ assert.equal(chip.kids[0],review==='approved'?'Approved':'Changes requested');assert.equal(chip.attrs.tooltip,undefined);
+ if(ghost){assert.equal(chip.attrs.on_click,undefined);continue;}
+ assert.ok(chip.attrs.hover);assert.ok(chip.attrs.focus);assert.ok(chip.attrs.cursor_pointer);assert.equal(chip.attrs.tab_index[0],0);
+ for(const key of ['enter','space']){const before=actions.length;chip.attrs.on_key_down[0]({key},cx);assert.equal(actions.length,before+1);assert.equal(actions.at(-1)[1].terminal,'builder');assert.equal(chipOpened,null);}
+ ship.state='finished';const ended=find(chipRow('build',{review}),id);assert.equal(ended.attrs.opacity[0],0.45);const before=actions.length;ended.attrs.on_click[0]({},cx);assert.equal(actions.length,before);assert.equal(chipOpened,null);ship.state='live';
+}
 for(const [stage,terminal,reason]of [['build',ship,'build agent ended - CI failure'],['review',reviewer,'reviewer ended without a verdict']]) {
   terminal.state='finished';const chip=find(chipRow(stage,{checks:{state:'failure',label:'0/1'}}),'pr-stage-1200');
   assert.equal(chip.attrs.opacity[0],0.45);assert.equal(chip.attrs.tooltip,undefined);assert.equal(chip.attrs.accessibility_label[0],reason);assert.equal(chip.attrs.role,undefined);assert.equal(chip.attrs.cursor_pointer,undefined);
@@ -361,6 +369,15 @@ taskContext={scope:'role-home',tasks:[{id:'ship',terminal:'builder'},{id:'review
 aggregate.context=taskContext;view.aggregate=aggregate;aggregate.entries.get(stagePr.key).pr={...stagePr,stage:'review'};
 const aggregateChip=find(view.pullRow(colors,{...stagePr,stage:'review'}),'pr-stage-owner/repo#1200');assert.equal(aggregateChip.kids[0].kids[0],'Review');
 aggregateChip.attrs.on_click[0]({},cx);assert.equal(actions.at(-1)[1].terminal,'pc2/reviewer');
+for(const review of ['approved','changes']) {
+ const pr={...stagePr,stage:'approved',review};aggregate.entries.get(pr.key).pr=pr;
+ for(const id of ['pr-stage-owner/repo#1200','pr-review-owner/repo#1200']) {
+  const chip=find(view.pullRow(colors,pr),id),before=actions.length;assert.equal(chip.attrs.tooltip,undefined);
+  chip.attrs.on_key_down[0]({key:'enter'},cx);assert.equal(actions.length,before+1);assert.equal(actions.at(-1)[1].terminal,'builder');
+  taskContext={...taskContext,stale:true};chip.attrs.on_click[0]({},cx);assert.equal(actions.length,before+1,'Stale verdict cannot focus');taskContext={...taskContext,stale:false};
+ }
+}
+aggregate.entries.get(stagePr.key).pr={...stagePr,stage:'review'};
 aggregate.entries.get(stagePr.key).link.targets=[{terminal:null,historical:true}];
 assert.equal(aggregate.stageTarget(stagePr,'review',links),null,'Historical-only row gains no focus from a reviewer label');
 aggregate.entries.get(stagePr.key).link.targets=[{terminal:'builder'}];
@@ -474,7 +491,7 @@ for(const mode of ['ordinary','coordinator'])for(const state of ['open','closed'
   const chip=()=>{panel.pulls[state]=[row];return find(panel.pullRow(colors,row,ghost),`${ghost?'swap-':''}pr-stage-${row.key??number}`);};
   const nonAgentChecks=robot=>{
     const approved=find(panel.pullRow(colors,{...row,stage:'approved'},ghost),`${ghost?'swap-':''}pr-stage-${row.key??number}`);
-    assert.equal(approved.kids[0].kids[0],'Approved');assert.equal(approved.attrs.tooltip,undefined);assert.equal(approved.attrs.opacity,undefined);assert.equal(Boolean(approved.attrs.on_click),!ghost);
+    assert.equal(approved.kids[0].kids[0],'Approved');assert.equal(approved.attrs.tooltip,undefined);assert.equal(approved.attrs.opacity?.[0],model.related(row,'owner/repo',null,'build')?.availability==='live'?undefined:0.45);assert.equal(Boolean(approved.attrs.on_click),!ghost);
     const fallback=find(panel.pullRow(colors,{...row,stage:null},ghost),`${ghost?'swap-':''}pr-agent-${row.key??number}`);
     const initialBuild=robot&&state==='open'&&role==='build';
     assert.equal(Boolean(fallback),robot&&!initialBuild);

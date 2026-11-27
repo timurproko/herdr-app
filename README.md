@@ -663,9 +663,10 @@ invents no round or finding. `crew.approved` is read as metadata, never a fourth
 permission to infer Approved from CI.
 
 The bottom-right **Build** chip focuses the build terminal; **Review** focuses the
-reviewer. **Approved** has no agent action: clicking it opens the PR through the
-row, even while checks are pending or failed. There is no approved/CI-running
-stage or Review check CI chip. Build/Review chips dim when their exact target
+reviewer. **Approved**, **Changes requested** and other review-verdict text use
+the same guarded build-owner action as Build, including Enter/Space, hover,
+focus, pointer cursor and no tooltip; they never fall through to the PR link. There is no approved/CI-running
+stage or Review check CI chip. Stage and verdict labels dim when their exact target
 ends, is unavailable, or its machine is disconnected, and expose why through accessibility labels;
 clicking a dimmed chip does nothing. Coordinator rows retain their last verified
 same-home target only for explanations after membership becomes stale or a task

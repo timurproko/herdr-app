@@ -180,6 +180,12 @@ share one captured coordinator binding; changed membership, conflicting parents 
 bindings, duplicates, missing/cross-machine endpoints and expired proof still refuse.
 Every child's saved colour and Automatic flag stays unchanged.
 
+`pr-agent-links.test.mjs`, `git-stage-chips.test.mjs` and the row geometry/tooltip
+fixtures cover Approved and separate Approved/Changes requested verdict controls:
+Build-owner pointer and Enter/Space focus, same-home coordinator guards,
+ended/disconnected/stale refusals, inert ghosts/probes and no ancestor tooltip.
+The verdict retains its single native element and fixed metadata-line height.
+
 `node --experimental-vm-modules tests/git-empty-state.test.mjs` compares actual
 Git feedback/header text anchors and 28px rows at 100%/130%, with ordinary empty
 Open/Closed and folded initial failures. `tests/features/git-loading-native.mjs

@@ -503,6 +503,12 @@ accessibility on show outside render (no timer), defaults static on refusal,
 and rechecks after hide/show. Explicit host reduced_motion/reducedMotion booleans
 win. No selected-machine request or JavaScript animation scheduler is used.
 
+Build, Approved and separate GitHub verdict text share the same guarded ship/fix
+owner action; Review targets the reviewer. Common interaction decoration provides
+hover, focus, Enter/Space and pointer handling without verdict tooltips or PR-link
+fallback. Missing/ended/disconnected targets are dim and inert. The original
+single-element verdict projection keeps its row element count and fixed height.
+
 Git's optional `crew.round` is Crew's current work/review round, initialized to
 1 and incremented on actual requested-changes reviews. The stage caption uses
 `Build` for missing/invalid/1 and `Build n` for n >= 2, not n+1. Plan reports and

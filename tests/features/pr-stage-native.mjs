@@ -97,7 +97,7 @@ try {
    assert.equal(snapshot()['fixture.stage.hover.'+mode]?.number,number,'Pointer is over the intended synthetic stage');
    const before=snapshot();invoke('click');await sleep(250);
    if(number>=7){assert.deepEqual(snapshot()['fixture.stage.click.'+mode],before['fixture.stage.click.'+mode]);assert.equal(snapshot()['fixture.stage.open.'+mode],before['fixture.stage.open.'+mode],'Disabled stage consumes the click without opening the PR');}
-   else if(number===6)assert.equal(snapshot()['fixture.stage.open.'+mode],6);else assert.equal(snapshot()['fixture.stage.click.'+mode]?.args.terminal,'worker-'+number);
+   else assert.equal(snapshot()['fixture.stage.click.'+mode]?.args.terminal,'worker-'+number);
    receipt.clicks??=[];receipt.clicks.push({mode,number,focus:snapshot()['fixture.stage.click.'+mode],opened:snapshot()['fixture.stage.open.'+mode]});
   }
   fs.writeFileSync(control,'mixed');await sleep(650);

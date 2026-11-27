@@ -29,8 +29,8 @@
 
 ## 6. Verdict labels navigate like Build
 
-- [ ] 6.1 Reuse guarded Build-owner navigation for Approved and review-decision labels, retaining Review's reviewer role, verdict caption/color, pointer/keyboard/focus behavior, no tooltip and dim inert missing/disconnected targets; add targeted ordinary/coordinator, stale-action, ghost and unavailable regressions.
-- [ ] 6.2 Update README, architecture and affected spec contracts for verdict navigation and run the targeted stage/agent-link/tooltip tests without the full suite.
+- [x] 6.1 Reuse guarded Build-owner navigation for Approved and review-decision labels, retaining Review's reviewer role, verdict caption/color, pointer/keyboard/focus behavior, no tooltip and dim inert missing/disconnected targets; add targeted ordinary/coordinator, stale-action, ghost and unavailable regressions.
+- [x] 6.2 Update README, architecture and affected spec contracts for verdict navigation and run the targeted stage/agent-link/tooltip tests without the full suite.
 
 ## 7. Agent switches choose the final pin/list layout before content paint
 

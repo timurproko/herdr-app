@@ -73,6 +73,85 @@ Ordinary and coordinator Git SHALL omit a repository's header, count and chevron
 
 ## MODIFIED Requirements
 
+### Requirement: Three managed pull request stages
+Git SHALL derive Build, Review or Approved from assigned managed labels and aliases using existing reads. Without a managed label, an Open/Draft PR with a verified live ship/fix target SHALL show Build instead of a robot. Each stage SHALL appear once on the bottom-right checks line with existing stage colours and raised fill, no emoji, outline, title reservation or tooltip. Assigned labels SHALL win; CI and GitHub review decisions SHALL NOT determine stage.
+
+#### Scenario: Current and historical label names
+- **WHEN** an ordinary or coordinator PR has a managed Build, Review or Approved label, with or without the managed robot prefix
+- **THEN** its single bottom-right plain chip shows Build, Review or Approved, using the published current round for Build
+- **AND** Rework and Changes needed map to Build, and Under review maps to Review, including previous robot-prefixed names
+- **AND** unrelated labels remain unchanged and managed aliases collapse without duplicate stage pills or tooltips
+
+#### Scenario: Existing label reads and refresh
+- **WHEN** a list, targeted older-active or coordinator PR read returns label arrays or a connection, including null or empty labels
+- **THEN** stage uses the same normalized labels plus existing verified live build-target evidence without another request
+- **AND** existing refresh and stale-reply guards apply to stage updates and removal
+
+#### Scenario: Approved while checks are pending or failed
+- **WHEN** the assigned managed label is Approved and checks are pending, failed or successful
+- **THEN** Approved retains its green caption and uses the same guarded build-owner navigation as Build, dim and inert if unavailable
+- **AND** CI remains exclusively in the checks item, with no approved-CI-running or Review check CI chip
+- **AND** required GitHub checks remain the merge gate; the app does not promote or merge the PR
+
+#### Scenario: No managed label
+- **WHEN** an Open/Draft PR has no managed stage label and a verified live ship/fix target exists
+- **THEN** one bottom-right Build chip replaces its title-line robot and retains guarded build-agent focus
+- **AND** missing, invalid or first-round metadata produces Build, not Build 1 or Build 2
+- **AND** a row without a managed stage or verified live build target invents no stage; other fallback navigation remains unchanged
+
+#### Scenario: Planning-only build owner
+- **WHEN** a live ship/fix task has only planned its linked PR, including an unapproved draft plan
+- **THEN** it uses the same first-round Build caption and build-owner action as initial implementation
+- **AND** Build asserts neither implementation approval nor completion, and a task without a PR contributes no row or chip
+
+#### Scenario: Multiple labels and unavailable agents
+- **WHEN** several managed aliases coexist or the selected stage has no live connected role target
+- **THEN** existing deterministic precedence produces one bottom-right plain chip with no separate robot or top chip
+- **AND** stage remains in the bounded coordinator group even when unrelated labels precede it
+- **AND** unavailable Build, Review and Approved remain dim and inert without a tooltip or fallback PR action
+
+### Requirement: Role-aware stage navigation
+Build and Approved SHALL target ship or fix terminals by validated full crew.pr identity or matching repository/head branch. Review SHALL target only crew.kind=review terminals whose crew.pr matches the PR, never by branch. Live connected targets SHALL focus their existing machine-qualified terminal without opening GitHub. Separate review-verdict text SHALL use the same guarded build-owner action.
+
+#### Scenario: Worker and reviewer share a PR
+- **WHEN** ship and review terminals share the same full crew.pr URL while the reviewer sits on the base branch
+- **THEN** Build, Approved and review-verdict text focus the ship terminal and Review focuses the reviewer
+- **AND** an identically numbered PR in another repository never matches
+
+#### Scenario: Branch fallback is build-only
+- **WHEN** a ship or fix terminal lacks crew.pr but has the verified repository and PR head branch
+- **THEN** it can be the build-owner target for Build or a verdict
+- **AND** a review terminal without matching crew.pr cannot become a target through branch, footer or tab-name inference
+
+#### Scenario: Exact identity outranks branch
+- **WHEN** a ship terminal explicitly links another PR but its branch matches this PR, or a review terminal links another repository's same PR number
+- **THEN** that terminal is not a stage target for this PR
+- **AND** multiple eligible matches prefer exact PR identity, then the selected terminal, then stable model order
+
+#### Scenario: Captured action becomes stale
+- **WHEN** a target ends, moves, changes role or PR, disconnects, or the panel's captured context or verdict becomes invalid before a click
+- **THEN** the click does not focus a replacement terminal or open GitHub accidentally
+- **AND** coordinator navigation still requires fresh verified same-home membership and exact captured task identity
+
+#### Scenario: Preview and row actions
+- **WHEN** a stage or verdict is rendered in a motion preview or activated in an ordinary row
+- **THEN** previews remain noninteractive and live labels use their guarded agent action without also activating the row
+- **AND** unavailable stage and verdict targets remain dim and inert without tooltips
+
+### Requirement: Tight bottom-right plain stage projection
+The one stage control SHALL use plain Build, Review or Approved text on the bottom-right checks line, stage-palette colour, subtle raised fill and 6px side padding, without robot emoji, outline or tooltip. Published current round 1 SHALL show Build; current n >= 2 SHALL show Build n. Titles SHALL occupy the entire row content width except an unrelated live fallback robot. Probes SHALL measure the same caption/style without navigation handlers.
+
+#### Scenario: Full-width title and supplied round
+- **WHEN** normal or narrow rows show any managed or initial-build stage, including supplied current Build rounds
+- **THEN** the title truncates only at the right content edge with no stage reservation
+- **AND** exactly one bottom-right chip is visible, and changing the round invalidates its measured caption
+- **AND** side padding is 6px, row height remains 74px and the metadata-line height and trailing anchor are unchanged
+
+#### Scenario: Preserved role actions
+- **WHEN** the visible stage is activated
+- **THEN** fresh guarded Build/Approved targets focus their build owner and Review focuses its reviewer
+- **AND** unavailable targets remain dimmed/inert with accessible semantics, while probes and ghosts cannot navigate
+
 ### Requirement: One complete-lifecycle Git loading animation
 Ordinary and coordinator Git SHALL show one loading animation at a time: a cold Loading dot or a stationary full-width 1px accent line immediately below the header for warm pending work. Both SHALL breathe by opacity only with a 2400ms ease-in-out cycle and a nonzero minimum opacity. Reduced motion SHALL use static dim feedback. Existing work-only visibility and retirement conditions SHALL remain; other panels SHALL remain unchanged.
 

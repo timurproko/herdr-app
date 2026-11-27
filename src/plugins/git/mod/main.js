@@ -845,7 +845,7 @@ export default class Changes extends View {
     // build-owner action without writing an inferred stage into cached facts.
     if(!pr.stage && !['open','draft'].includes(pr.state))return null;
     const stage=pr.stage??'build';
-    const role=stage==='approved'?null:stage,repo=pr.repo??this.repo?.name,context=this.context;
+    const role=stage==='review'?'review':'build',repo=pr.repo??this.repo?.name,context=this.context;
     const scope=this.aggregate?.context?.scope;
     const target=role && pr.key?(pr.stage&&this.aggregate?.stagePresentation?this.aggregate.stagePresentation(pr,role,this.agentLinks,this.agentPresentation):this.aggregate?.stageTarget?.(pr,role,this.agentLinks,this.agentPresentation)):null;
     const agent=role?(pr.key?target?.agent:this.agentLinks?.related?.(pr,repo,location().terminal,role,undefined,this.agentPresentation)):null;
@@ -859,9 +859,9 @@ export default class Changes extends View {
     return {stage,role,repo,context,scope,target,agent,available,round,label:{...label,name:caption}};
   }
 
-  stageChip(t, pr, interactive = true, probe = false, descriptor = this.stageDescriptor(pr)) {
-    if(!descriptor)return null;
-    const {role,repo,context,scope,target,agent,available,label}=descriptor;
+  stageInteraction(element,t,pr,interactive,probe,descriptor) {
+    if(!descriptor)return element;
+    const {role,repo,context,scope,target,agent,available}=descriptor;
     const reason=!role||available?null:agent?.availability==='disconnected'?`on ${agent.on}, not connected`
       :agent?.availability==='ended'?(role==='review'?'reviewer ended without a verdict':`build agent ended${pr.checks?.state?` - CI ${pr.checks.state}`:''}`)
       :role==='review'?'reviewer unavailable':'build agent unavailable';
@@ -872,6 +872,7 @@ export default class Changes extends View {
       if(!available)return;
       if(pr.key) {
         const latest=this.aggregate?.entries?.get(pr.key)?.pr;
+        if(descriptor.verdict && latest?.review!==descriptor.verdict)return;
         if(!pr.stage && (!latest || !['open','draft'].includes(latest.state)))return;
         this.aggregate?.focus(pr,target,scope,this.agentLinks,current=>this.beginAgentMotion(pr,press,current.agent,cx,STAGE_CONTROL_OFFSET));return;
       }
@@ -880,16 +881,11 @@ export default class Changes extends View {
       if(current?.key!==agent.key || current.availability!=='live')return;
       const latest=[...(this.pulls?.open??[]),...(this.pulls?.closed??[]),this.relatedPull].find(row=>row?.number===pr.number);
       if(!pr.stage && (!latest || !['open','draft'].includes(latest.state)))return;
-      if(latest && latest.stage!==pr.stage)return;
+      if(latest && (latest.stage!==pr.stage || descriptor.verdict && latest.review!==descriptor.verdict))return;
       this.beginAgentMotion(pr,press,current,cx,STAGE_CONTROL_OFFSET);
       run('agent.focus',{terminal:current.address});
     };
-    const color=pr.stage==='approved'?t.ansi2:role==='review'?t.ansi5:t.ansi3;
-    return div().id(`${probe?'probe-':interactive?'':'swap-'}pr-stage-${pr.key??pr.number}`)
-      .h(18).min_w(0).max_w_full().px(6).flex_none().flex().items_center().rounded(U.insetRadius)
-      .bg(t.raised).text_color(color).text_size(U.meta).overflow_hidden()
-      .child(div().h(18).min_w(0).overflow_hidden().whitespace_nowrap().child(label.name))
-      .when(Boolean(!probe&&role&&!available),el=>el.opacity(0.45).cursor_default().accessibility_label(reason))
+    return element.when(Boolean(!probe&&role&&!available),el=>el.opacity(0.45).cursor_default().accessibility_label(reason))
       .when(interactive,el=>el
         .on_mouse_down('left',(event,cx)=>{
           cx.stop_propagation();
@@ -899,6 +895,23 @@ export default class Changes extends View {
         .accessibility_label(role?`Open ${role==='review'?'reviewer':'build agent'} for ${repo} #${pr.number}`:`Open pull request #${pr.number}`)
         .on_key_down((event,cx)=>{if(['enter','space',' '].includes(event.key)){this.agentPress=null;activate(event,cx);}})
         .cursor_pointer().hover(s=>s.bg(subtleActionFill(t))).focus(s=>s.bg(subtleActionFill(t))));
+  }
+
+  stageChip(t,pr,interactive=true,probe=false,descriptor=this.stageDescriptor(pr)) {
+    if(!descriptor)return null;
+    const color=pr.stage==='approved'?t.ansi2:descriptor.role==='review'?t.ansi5:t.ansi3;
+    const element=div().id(`${probe?'probe-':interactive?'':'swap-'}pr-stage-${pr.key??pr.number}`)
+      .h(18).min_w(0).max_w_full().px(6).flex_none().flex().items_center().rounded(U.insetRadius)
+      .bg(t.raised).text_color(color).text_size(U.meta).overflow_hidden()
+      .child(div().h(18).min_w(0).overflow_hidden().whitespace_nowrap().child(descriptor.label.name));
+    return this.stageInteraction(element,t,pr,interactive,probe,descriptor);
+  }
+
+  verdictChip(t,pr,id,caption,interactive,probe) {
+    const descriptor=this.stageDescriptor({...pr,stage:'approved'});
+    const element=div().id(id).min_w(0).h(18).px(6).rounded(U.insetRadius).bg(t.raised)
+      .overflow_hidden().whitespace_nowrap().text_color(pr.review==='approved'?t.ansi2:t.ansi1).child(caption);
+    return this.stageInteraction(element,t,pr,interactive,probe,{...descriptor,verdict:pr.review});
   }
 
   agentButton(t, pr, interactive = true) {
@@ -1121,7 +1134,7 @@ export default class Changes extends View {
           .child(div().id(groupId('check-icon', probe)).size(U.tinyIcon).flex_none().relative().top(1).flex().items_center().justify_center().child(icon.flex_none()))
           .child(div().flex_none().whitespace_nowrap().underline().child(pr.checks.label));
       }}] : []),
-      ...(pr.review ? [{kind:'review', measureKey:pr.review, tooltip:presentation.review, render:(_short, probe) => text('review', presentation.review, probe).text_color(pr.review === 'approved' ? t.ansi2 : t.ansi1)}] : []),
+      ...(pr.review ? [{kind:'review', measureKey:pr.review, scopedTooltip:true, render:(_short, probe) => this.verdictChip(t,pr,groupId('review',probe),presentation.review,!ghost&&!probe,probe)}] : []),
       ...(labels.length ? [{kind:'labels', trailing:true, scopedTooltip:Boolean(stage), tooltip:labelNames, omitted:presentation.omittedLabels, measureKey:presentation.labelKey, render:(_short, probe, tooltip) => h_flex().id(groupId('labels', probe)).min_w(0).h(18).gap(4).items_center().justify_end().overflow_hidden()
         .children(labels.map((label,index)=>label.stage?this.stageChip(t,pr,!ghost&&!probe,probe,stage):this.labelPill(t,label,`${groupId('label',probe)}-${index}`)
           .when(Boolean(stage&&!probe&&tooltip),el=>el.tooltip(tooltip))))}] : []),
