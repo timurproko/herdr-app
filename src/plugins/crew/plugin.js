@@ -13,6 +13,8 @@ import { fleetStatusScript } from './fleet-command.js';
 import { workerSpaceRows, WORKER_SPACE_SETTING } from './worker-space-state.js';
 import { refreshWorkerSpaces, invalidateWorkerSpaces, observeWorkerHome } from './worker-space.js';
 import { workerSpaceScript } from './worker-space-command.js';
+import { PROJECT_KINDS, readProjectKinds } from './project-kinds.js';
+import { setProjectKind } from './project-kind-set.js';
 
 const winPath = path => String(path).replace(/\//g, '\\');
 const CHECK_TIMEOUT = 15, INSTALL_TIMEOUT = 300;
@@ -498,6 +500,7 @@ const lastLine = text => String(text ?? '').split(/\r?\n/).map(l => l.trim()).fi
 const projectToolFacts = new Map();
 const crewProbe = (cx, remote) => once(cx, `crew:${remote ? 'remote' : 'local'}`, async () => {
   if (!(await platform(cx)).windows) return { unsupported: true };
+  if (cx.isCurrent && !cx.isCurrent()) return { error: 'This check is no longer current.' };
   const r = await ps(cx, crewProbeScript({ remote }), remote ? 30 : CHECK_TIMEOUT);
   if (r.code !== 0) return { error: tail(r.stderr) || `Exited with ${r.code}.` };
   const probe = parseCrewProbe(r.stdout), key = machineOf(cx);
@@ -725,6 +728,16 @@ const PROJECTS = Object.freeze({
   list: Object.freeze({
     scope: Object.freeze({ label: 'Machine', setting: 'machine' }),
     picker: Object.freeze({ kind: 'folders', label: 'Add project' }),
+    rowChoice: Object.freeze({ label: 'Delivery kind', options: PROJECT_KINDS,
+      async set(cx, row, value) {
+        const machine = machineOf(cx), result = cx.result?.('projects');
+        const current = () => (!cx.isCurrent || cx.isCurrent()) && machineOf(cx) === machine &&
+          result?.kindSupported === true && result.usable === true && result.rows?.includes(row) && listedProjects.get(machine)?.includes(row);
+        if (!current()) throw new Error('The project changed. Refresh before trying again.');
+        try { return await setProjectKind(args => on(machine, ['powershell', '-NoProfile', '-NonInteractive', '-Command', crewProjectScript(args)], { timeout: 30 }), row.kindTarget, value, current); }
+        catch (error) { if (error.uncertain && current()) listedProjects.delete(machine); throw error; }
+      },
+    }),
     async add(cx, folder) {
       const name = projectName(folder);
       if (!name) throw projectFailure('That folder’s name cannot be used as a project name (1–40 lowercase ASCII letters, digits, dashes and dots; start with a letter, digit or one dot followed by one; no consecutive or trailing dots).', { operation: 'add', name, folder });
@@ -740,20 +753,34 @@ const PROJECTS = Object.freeze({
     },
   }),
   check: async cx => {
-    if (!(await connected(cx)).ready) return { ...DISCONNECTED, statusLabel: null, rows: [] };
+    const machine = machineOf(cx), original = cx;
+    cx = { ...cx, setting: key => key === 'machine' ? machine : original.setting?.(key) };
+    const retained = () => ({ rows: cx.result?.('projects')?.rows ?? [], usable: false });
+    const current = () => !cx.isCurrent || cx.isCurrent();
+    if (!(await connected(cx)).ready) return { ...DISCONNECTED, statusLabel: null, ...retained() };
+    if (!current()) return { status: 'error', rows: [], usable: false };
     const p = await crewProbe(cx, false);
+    if (!current()) return { status: 'error', rows: [], usable: false };
     if (p.unsupported) return { status: 'recommended', statusLabel: null, detail: UNSUPPORTED, rows: [] };
-    if (p.error) return { status: 'error', statusLabel: null, detail: p.error, rows: [] };
+    if (p.error) return { status: 'error', statusLabel: null, detail: 'Could not read Crew projects. Refresh to try again.', ...retained() };
     if (!p.tool) return { status: 'missing', statusLabel: null, detail: 'Install the crew tool first (Requirements).', rows: [] };
     if (!p.home) return { status: 'missing', statusLabel: null, detail: 'Create the crew home first (Requirements).', rows: [] };
-    const r = await ps(cx, crewProjectScript(['list']), CHECK_TIMEOUT);
-    if (r.code !== 0) {
+    try {
+      const facts = await readProjectKinds(args => {
+        if (!current()) throw new Error('This check is no longer current.');
+        return ps(cx, crewProjectScript(args), CHECK_TIMEOUT);
+      }, parseProjects);
+      if (cx.isCurrent && !cx.isCurrent()) return { status: 'error', rows: [], usable: false };
+      listedProjects.set(machineOf(cx), facts.rows);
+      return { status: 'ready', statusLabel: `${facts.rows.length} added`, ...facts, usable: true };
+    } catch {
+      if (!current()) return { status: 'error', rows: [], usable: false };
+      // Retain confirmed rows, never turn uncertainty into an authoritative empty list.
+      // The current view/machine owns result(); legacy callers have no retained UI facts.
+      const rows = cx.result?.('projects')?.rows ?? [];
       listedProjects.delete(machineOf(cx));
-      return { status: 'error', statusLabel: null, detail: crewSaid(r), rows: [] };
+      return { status: 'error', statusLabel: null, detail: 'Could not read Crew projects. Refresh to try again.', rows, usable: false };
     }
-    const rows = parseProjects(r.stdout);
-    listedProjects.set(machineOf(cx), rows);
-    return { status: 'ready', statusLabel: `${rows.length} added`, rows, usable: true };
   },
 });
 

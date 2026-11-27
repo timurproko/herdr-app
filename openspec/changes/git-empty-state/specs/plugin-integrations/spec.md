@@ -248,7 +248,7 @@ Each nonempty coordinator repository section SHALL default expanded with indepen
 - **AND** a repository with only an applicable initial failure notice has no header or count
 
 ### Requirement: Selected-tab coordinator repository visibility
-Coordinator Git SHALL withhold cold partial successes until first reads settle, using pulsing top-left Loading below Open/Closed without repository headers/counts or the warm loading line. Warm return/refresh SHALL retain the list with the under-header line, no body Loading and in-place completion. Actionable notices SHALL appear immediately, without headers when no selected-tab PRs exist. Eligibility SHALL precede folding; enrollment SHALL use full eligible inventory independently of section visibility.
+Coordinator Git SHALL withhold cold partial successes until first reads settle, with top-left pulsing Loading below Open/Closed and no headers, counts or warm line. Warm return/refresh SHALL retain the list with the under-header line, no body Loading and in-place completion. Actionable notices SHALL appear immediately, without headers for zero-PR selected-tab sections. Eligibility SHALL precede folding; enrollment SHALL use full eligible inventory independently of section visibility.
 
 #### Scenario: Open and Closed contain different repositories
 - **WHEN** one repository has only Open or Draft task PRs and another has only eligible Merged or Closed task PRs, with no unresolved task PRs

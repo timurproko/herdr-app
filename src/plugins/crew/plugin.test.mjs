@@ -357,6 +357,7 @@ crew.latest = '';
   const olderRefusal = 'Invalid project name: agentnumberone.dev. Use lowercase letters, digits and dashes.';
   const rule = [/& node \$main project /, text => {
     const args = [.../& node \$main project (.*)/.exec(text)[1].matchAll(/'((?:[^']|'')*)'/g)].map(m => m[1].replaceAll("''", "'"));
+    if (args[0] === '--capabilities') return ran('Usage: crew project add | remove | list');
     ran2.push(`project ${args.join(' ')}`);
     if (args[0] === 'list') return ran([...projects].map(([name, rest]) => `${name}\t${rest}`).join('\r\n') + '\r\n');
     if (owned) return ran('', 3, 'crew: Read-only: this home is owned by terminal t9. Only that session may change its projects.\n');
@@ -458,7 +459,7 @@ crew.latest = '';
 machines = [{ name: 'pc2', target: 'pc2', state: 'unreachable' }]; ran2.length = 0;
 s = await statuses();
 for (const id of ['git', 'node', 'hc', 'crew', 'home']) same([s[id].status, s[id].detail, s[id].fix], ['missing', 'Machine not connected.', null], id);
-same([s.projects.status, s.projects.detail, s.projects.rows, s.projects.usable], ['missing', 'Machine not connected.', [], undefined], 'Projects of an unreachable machine are not listed or changed');
+same([s.projects.status, s.projects.detail, s.projects.rows, s.projects.usable], ['missing', 'Machine not connected.', [], false], 'Projects of an unreachable machine have no write authority');
 assert.equal(ran2.length, 0);
 machines = [{ name: 'pc2', target: 'pc2', state: 'connected', version: '0.1.19' }];
 // A machine without PowerShell: setup is not offered rather than attempted.

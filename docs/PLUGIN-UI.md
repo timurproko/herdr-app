@@ -247,6 +247,41 @@ belongs to, then Add), the description, and one row per item with **Remove** on 
 - A deep link `{ section, search }` (Settings props `pluginSection`, `pluginSearch`) opens
   an items picker filtered to that search.
 
+### Optional list-row choice
+
+A list may declare `rowChoice: { label, options: [[value, label]], set(cx, row, value) }`.
+Checked rows opt in with `choice: { value, revision, identity? }`; `revision` identifies
+the confirmed resource/value. Optional `identity` is the stable registration identity
+(independent of value), retaining focus handles when only the stored value changes.
+Without it, focus reuse falls back to `revision`. Every reread still invalidates old
+callbacks. No choice means the existing row is unchanged.
+The common renderer keeps a quiet right-aligned label and reveals `optionDropdown`
+on hover, trigger/Remove keyboard focus or an open menu. Tab reaches the persistent
+trigger and Remove; Enter/Space opens, arrows navigate, Enter selects and Escape
+closes without applying. Focus handles are allocated when check results arrive,
+never while rendering. The choice owns 150px before the separate 80px Remove rail;
+only the folder/label column shrinks. An open menu survives pointer departure.
+The renderer captures row, machine and view-session identity; obsolete callbacks
+cannot apply to replacement rows or machines. Setters are explicit list operations,
+not saved plugin settings, and selecting the confirmed value is a no-op.
+The setter returns `{ value }` only after its owner confirms the stored selection;
+the pending menu choice never changes the label. Application is single-flight, then
+rechecks the authoritative section while retaining the confirmed body. A failure is
+one short row-local line, not a duplicate section error. An error with `uncertain:
+true` blocks that row until a successful fresh check; it never replays the setter.
+Failed checks must return retained confirmed rows with `usable: false` rather than
+inventing empty results. Machine/session/registration replacement retires errors and
+menus, and a retired completion cannot clear a newer operation's busy state.
+Completed list work releases its ownership token; setup cleanup checks its own owner,
+so a later machine switch cannot mistake a setup action for earlier list work.
+
+Crew supplies this declaration only for valid `project-kinds` v1 rows after its
+explicit `crew project --capabilities --json` probe. Its JSON list owns the home,
+registered name, folder and kind; `set-kind` receives that captured home/name and
+`--expected-path`, never `project add` or a configuration-file write. It rechecks
+capability before dispatch and validates the full stored-value acknowledgement.
+Home ownership and unavailable kinds remain Crew refusals, with no bypass.
+
 ## Settings section rows
 
 An enabled plugin can declare `settingsRows(section, context)` returning toggle rows

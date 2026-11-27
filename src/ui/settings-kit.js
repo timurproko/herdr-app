@@ -84,18 +84,33 @@ export function pickerTabs(t, id, options, value, onPick, enabled = true) {
 
 // One value from a list: an account, say. While `loading` it keeps its place with a
 // placeholder inside, so whatever sits beside it never moves.
-export function optionDropdown(t, { id, label = 'Choose', value = '', options = [], loading = false, disabled = false, open = false, focus, onOpen, onSelect }) {
+export function optionDropdown(t, { id, label = 'Choose', value = '', options = [], loading = false, disabled = false, open = false, focus, onOpen, onSelect, row = null }) {
   const known = options.find(([v]) => v.toLowerCase() === String(value ?? '').toLowerCase());
   const off = disabled || loading || !options.length;
   const trigger = control(t, h_flex()).id(id).w(KIT.dropdown).px(10).gap(6).items_center().role('button')
     .accessibility_label(label).disabled(off)
     .when(!off, e => e.cursor_pointer()).when(off && !loading, e => e.opacity(0.4))
-    .child(div().flex_1().min_w(0).truncate().text_color(known ? t.foreground : t.muted)
+    .child(div().flex_1().min_w(0).truncate().text_color(known && !row?.quiet ? t.foreground : t.muted)
+      .when(Boolean(row), el => el.text_right())
       .child(loading ? skeleton(t, `${id}-loading`, 80).accessibility_label(`Loading ${label}`) : known?.[1] ?? (options.length ? 'Choose' : 'None')))
-    .child(svg('mods/custom-workspace-chrome/chevron-down.svg').size(U.smallIcon).text_color(t.muted));
+    .child(svg('mods/custom-workspace-chrome/chevron-down.svg').size(U.smallIcon).text_color(t.muted).when(Boolean(row?.quiet), el => el.opacity(0)));
+  if (row) trigger.h(U.control).track_focus(row.trigger).tab_index(0)
+    .when(row.quiet, e => e.bg('#00000000').border_color('#00000000').text_color(t.muted))
+    .on_key_down((e, cx) => {
+      if (!off && ['enter', 'space', ' ', 'down', 'up'].includes(e.key)) { cx.stop_propagation(); onOpen(true, cx); }
+    });
+  // Same trigger and focus target at rest; only its chrome changes.
   if (off) return trigger;
   const list = menuSurface(t, v_flex()).w(200).track_focus(focus)
-    .children(options.map(([v, text]) => menuRow(t, { id: `${id}-${v}`, label: text, onClick: (_e, cx) => onSelect(v, cx),
+    .when(Boolean(row), el => el.id(`${id}-options`).on_key_down((e, cx) => {
+      if (e.key === 'down' || e.key === 'up') row.move(e.key === 'down' ? 1 : -1, cx);
+      else if (e.key === 'enter' || e.key === 'space' || e.key === ' ') onSelect(options[row.index]?.[0], cx);
+      else if (e.key === 'escape') { onOpen(false, cx); row.trigger.focus(); }
+      else return;
+      cx.stop_propagation(); cx.notify();
+    }))
+    .children(options.map(([v, text], index) => menuRow(t, { id: `${id}-${v}`, label: text, onClick: (_e, cx) => onSelect(v, cx),
+      highlighted: Boolean(row && row.index === index),
       trailing: v === known?.[0] ? svg('mods/custom-workspace-chrome/check.svg').size(U.smallIcon).text_color(t.muted) : null })));
   return dropdown(`${id}-popup`, trigger, list, { open, focus, onOpen });
 }
@@ -145,8 +160,8 @@ export function scopeRow(t, { id, label, dropdown: picker, action, separator = t
 // Remove shown only then. Remove keeps its place while hidden, so nothing moves.
 // No w_full: stretched, the negative margins widen the row for the hover fill while
 // Remove stays in the Check/Add column.
-export function removableRow(state, t, rid, label, onRemove, enabled, resting = null) {
-  const shown = state.pluginRowHover === rid;
+export function removableRow(state, t, rid, label, onRemove, enabled, resting = null, rowChoice = null) {
+  const shown = state.pluginRowHover === rid || Boolean(rowChoice?.revealed);
   return h_flex().id(rid).h(U.control).mx(-8).px(8).gap(10).items_center().rounded(U.radius)
     .when(shown, el => el.bg(t.hover))
     .on_hover((hovered, cx) => {
@@ -154,9 +169,13 @@ export function removableRow(state, t, rid, label, onRemove, enabled, resting = 
       cx.notify();
     })
     .child(div().flex_1().min_w(0).pr(8).truncate().text_size(U.font).text_color(t.foreground).tooltip(label).child(label))
+    .when(Boolean(rowChoice), el => el.child(div().id(`${rid}-choice-slot`).flex_none().w(KIT.dropdown).child(rowChoice.widget)))
     // Remove ends at the right edge, under the Add button above it.
-    .child(div().id(`${rid}-rail`).flex_none().w(KIT.action).flex().justify_end().child(shown
+    .child(div().id(`${rid}-rail`).flex_none().w(KIT.action).flex().justify_end().child(rowChoice
       ? actionButton(t, rid.replace(/-row-(\d+)$/, '-remove-$1'), 'Remove', onRemove, { enabled })
+        .track_focus(rowChoice.remove).tab_index(0).opacity(shown ? 1 : 0)
+        .on_key_down((e, cx) => { if (enabled && ['enter', 'space', ' '].includes(e.key)) { cx.stop_propagation(); onRemove(e, cx); } })
+      : shown ? actionButton(t, rid.replace(/-row-(\d+)$/, '-remove-$1'), 'Remove', onRemove, { enabled })
       : resting ?? div().id(`${rid}-remove-slot`).h(KIT.actionHeight).w(KIT.action)));
 }
 
