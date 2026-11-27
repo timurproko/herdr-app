@@ -11,6 +11,7 @@ Git's empty and error messages use PR-row feedback geometry rather than reposito
 - Show a single tab-specific empty message when all repositories are authoritatively empty; omit only empty sections when other repositories have rows.
 - Render the Spaces coordinator role label as lowercase `crew` locally, leaving the plugin's shared `Crew` label and terminal-pane badge unchanged.
 - Preserve PR 97's pulsing cold Loading with no repository headers and PR 98's verified child-derived repository ordering.
+- Trace first-build numbering through Crew's publisher and Git's renderer. Treat the published current round correctly: spawn, plan report, approval and first implementation show `Build`; only actual review-requested rework shows `Build 2` onward. Record exact upstream field/value evidence and do not mask incorrect upstream data.
 - After approval, capture before/after synthetic-native pictures and pixel measurements at 100% and 130%, outside the checkout, without accessing the person's running app or real Crew homes.
 
 ## Capabilities
@@ -21,7 +22,7 @@ None.
 
 ### Modified Capabilities
 
-- `plugin-integrations`: Header-position Git body feedback and header suppression for zero-row sections, reconciling existing notice-only header exceptions while preserving loading and ordering.
+- `plugin-integrations`: Header-position Git body feedback and header suppression for zero-row sections, reconciling existing notice-only header exceptions while preserving loading and ordering; correct current-round stage captions.
 - `workspace-experience`: Lowercase Spaces-only coordinator role text, with existing sidebar rails and terminal-pane badge unchanged.
 
 ## Impact

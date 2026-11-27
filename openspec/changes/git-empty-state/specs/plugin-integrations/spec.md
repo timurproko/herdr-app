@@ -45,6 +45,29 @@ Ordinary and coordinator Git SHALL omit a repository's header, count and chevron
 
 ## MODIFIED Requirements
 
+### Requirement: Optional build review history
+Git SHALL interpret published crew.round as the current build/review round, not a completed-review count. Missing, invalid or first-round metadata SHALL show Build; current round 2 and later SHALL show Build n. Plan reporting and approval SHALL NOT advance the caption. crew.finding and crew.approved SHALL NOT determine stage, invent history or create tooltips.
+
+#### Scenario: First return from review
+- **WHEN** the Build terminal reports current round 2 after its first actual requested-changes review
+- **THEN** its plain chip reads Build 2 without a finding tooltip
+- **AND** later current rounds advance the same chip's build number without adding another visible stage
+
+#### Scenario: Older Crew has no review metadata
+- **WHEN** terminal labels omit round, finding and approval metadata
+- **THEN** the stage remains usable with canonical Build and no round or finding tooltip text
+- **AND** absent findings are not replaced with invented text
+
+#### Scenario: Approval metadata is not a fourth stage
+- **WHEN** a terminal publishes crew.approved while GitHub labels still show Review or Build
+- **THEN** the assigned managed label continues to determine the chip
+- **AND** no CI-dependent chip or extra agent action is inferred from that SHA
+
+#### Scenario: Spawn plan approval and implementation
+- **WHEN** a ship task is spawned with current round 1, reports its plan, receives approval and begins implementation without any requested-changes review
+- **THEN** each lifecycle step shows Build with no number, whether or not a managed Build label is already assigned
+- **AND** only a real requested-changes review advancing the published current round to 2 produces Build 2
+
 ### Requirement: Collapsible coordinator repository sections
 Each nonempty coordinator repository section SHALL default expanded with independent locally persisted folding. Headers SHALL show canonical repository name, selected-tab eligible task PR count and chevron, using existing section styling and Agents group number styling and number-to-chevron spacing. Names SHALL truncate only on overflow with a full-name tooltip then. Folding SHALL preserve top-level totals without starting reads. Notice-only sections SHALL have no header.
 

@@ -37,7 +37,11 @@ Reject dropping actionable notices along with empty headers: read failures are n
 
 Render `crew` for the Crew plugin's role label in Spaces. Preserve contribution identity, tooltip, font, rails and detached/attached behavior. Do not modify shared provider labels or the terminal-pane renderer; an explicit regression must retain its `Crew` badge.
 
-### 4. Targeted regression and isolated native proof
+### 4. Current Crew round is not completed review count
+
+Read-only evidence from this task's terminal t19r after plan report and approval shows `crew.round="1"`. Installed Crew 0.12.1 initializes `reviewRound: 1`, `taskReviewContext()` defaults to 1 and `publishTaskTerminal()` publishes that value unchanged. `recordReviewContext()` increments it only once per accepted CHANGES NEEDED review, excluding plan-stage reports. Git incorrectly adds another one when creating its caption. Use current round 1 (or missing) as `Build`, 2 as `Build 2`, and so on, without using plan events or findings as a heuristic. Preserve older missing-metadata behavior and update the regression's synthetic lifecycle sequence. No Crew code or real task records are changed.
+
+### 5. Targeted regression and isolated native proof
 
 After approval, extend existing loading, repository-count, section-reveal, error, worker-entry and Spaces layout regressions as relevant; retain the terminal-role regression. Add real-renderer geometry assertions at zoom 1 and 1.3. Cover Open/Closed, all-empty, mixed-empty, notice-only, folded, lone-pin, cold pending and warm retained states, plus connected-child ordering.
 
@@ -54,4 +58,4 @@ Adapt the existing checksum-verified disposable native loading fixture for befor
 
 ## Migration Plan
 
-No data migration or live deployment is part of this task. After approval, deliver source and targeted tests in the existing draft PR, tick outcomes individually, push through origin and dispatch CI on the final branch head because draft PR suites are skipped. Report immediately without waiting for CI. Rollback is a source revert; local fold keys and shared tag data do not change.
+No data migration or live deployment is part of this task. After the recorded approval, deliver four outcomes (including current-round caption correction) with targeted tests in the existing draft PR, tick outcomes individually, push through origin and dispatch CI on the final branch head because draft PR suites are skipped. Report immediately without waiting for CI. Rollback is a source revert; local fold keys and shared tag data do not change.

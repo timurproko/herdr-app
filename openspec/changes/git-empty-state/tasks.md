@@ -17,9 +17,14 @@
 - [ ] 3.1 Lowercase the Crew role label only in the Spaces renderer; extend Spaces layout assertions for attached/detached, local/remote, expanded/folded and unrelated-tag cases at 100% and 130%, and run the targeted Spaces and terminal-role regressions to retain the terminal-pane Crew badge.
 - [ ] 3.2 Update the visible-label wording in README and relevant owner docs; capture synthetic native sidebar crew beside unchanged terminal Crew proof and finish the before/after picture index, pixel table and cleanup receipts outside the checkout.
 
+## 4. First builds use Crew's current round without incrementing it
+
+- [ ] 4.1 Trace the installed Crew publisher and read this task's terminal labels only; record exact crew.round evidence, distinguish current round from completed reviews and add spawn → plan report → approval → implementation → requested rework regression coverage.
+- [ ] 4.2 Correct only the app's current-round caption mapping, retaining missing/invalid metadata fallback and role authority; run targeted stage and agent-link tests, update README/architecture and the relevant spec wording, and report any upstream fault without silently masking it.
+
 ## Workflow follow-up
 
-- Stop at the draft plan until the maintainer approves implementation.
-- Deliver the three outcomes in this order, with tests/docs in each outcome and PR ticks as each lands; do not mark ready or merge.
+- Implementation was approved, including the fourth outcome, in the coordinator's follow-up message.
+- Deliver the four outcomes in this order, with tests/docs in each outcome and PR ticks as each lands; do not mark ready or merge.
 - Use only targeted local commands, push the final implementation head and dispatch CI on that branch because draft PR suites are skipped; report immediately without waiting for or polling CI.
 - Keep proof pictures and scratch under C:/Users/tprokopiev/.crew/tasks/git-empty-state and stop every disposable app/Core/server before writing the implementation report and running crew done git-empty-state.
