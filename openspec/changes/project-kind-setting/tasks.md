@@ -8,10 +8,10 @@
 
 ## 2. Shared Settings rows reveal kind choices without moving Remove
 
-- [ ] 2.1 Add the optional generic list row-choice declaration and reserved choice slot using the existing Settings dropdown and removable-row kit; renderer tests cover quiet labels, all three choices and unchanged non-choice/saved rows.
-- [ ] 2.2 Add hover, keyboard-focus-within and popup-open reveal with retained focus handles, accessible names and Escape dismissal; fake event tests cover pointer departure, Tab, Enter/Space, selection, blur and stale popup callbacks.
-- [ ] 2.3 Keep the choice and Remove in separate stable columns with path truncation; extend targeted geometry tests for long paths, three labels, narrow supported widths and zoom without overlap or horizontal jumps.
-- [ ] 2.4 Document the generic declaration and lifecycle in docs/PLUGIN-UI.md; run targeted renderer, geometry, saved-row and plugin UI contract tests for this outcome.
+- [x] 2.1 Add the optional generic list row-choice declaration and reserved choice slot using the existing Settings dropdown and removable-row kit; renderer tests cover quiet labels, all three choices and unchanged non-choice/saved rows.
+- [x] 2.2 Add hover, keyboard-focus-within and popup-open reveal with retained focus handles, accessible names and Escape dismissal; fake event tests cover pointer departure, Tab, Enter/Space, selection, blur and stale popup callbacks.
+- [x] 2.3 Keep the choice and Remove in separate stable columns with path truncation; extend targeted geometry tests for long paths, three labels, narrow supported widths and zoom without overlap or horizontal jumps.
+- [x] 2.4 Document the generic declaration and lifecycle in docs/PLUGIN-UI.md; run targeted renderer, geometry, saved-row and plugin UI contract tests for this outcome.
 
 ## 3. Kind edits confirm the captured machine's stored value or show an inline refusal
 

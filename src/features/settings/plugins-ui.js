@@ -40,6 +40,7 @@ export function followSettingsMachine(view) {
   if (view.pluginMachine !== machine) {
     clearPluginForms(view);
     view.listPicker = null; view.pluginConfirm = null; view.pluginFixError = {};
+    view.pluginRowChoices = new Map();
     view.pluginSessions = Object.fromEntries(PLUGINS.map(p => [p.id, {}]));
     view.pluginMachine = machine;
     for (const plugin of PLUGINS) if (plugin.machineScoped) {
@@ -86,6 +87,7 @@ export function initPlugins(view, cx, requested = null, options = {}) {
   view.folderBrowser = null; // the open folder browser (one at a time)
   view.listPicker = null; // the open item picker of a list section (one at a time)
   view.pluginRowHover = null; // the added item under the pointer, which shows its Remove
+  view.pluginRowChoices = new Map(); // checked row identities and retained native focus handles
   for (const plugin of PLUGINS) for (const p of plugin.prerequisites ?? []) {
     view.pluginFocus[`${plugin.id}-${p.id}-selection`] = cx.focus_handle();
     if (p.form) view.pluginForms[sectionKey(plugin, p)] = newActionForm(p.form);
@@ -428,6 +430,7 @@ export function reloadPlugins(view, cx, only = null, checkingTarget = null, {rea
         for(const pre of selected)delete view.pluginSettling?.[`${plugin.id}:${pre.id}`];
         if (group === 'requirements') for (const key of Object.keys(view.pluginSettling ?? {}))
           if (key.startsWith(`${plugin.id}:live-`)) delete view.pluginSettling[key];
+        for (const item of items) prepareRowChoices(view, cx, plugin, item);
         const current=view.pluginChecks[plugin.id],byId=new Map([...current.items,...items].map(item=>[item.id,item]));
         const groups={...current.groups,[group]:{...round,loading:false,checked:true}};
         view.pluginChecks[plugin.id]={...current,groups,loading:Object.values(groups).some(state=>state.loading),
@@ -708,6 +711,60 @@ function itemsAdd(view, t, plugin, item, canAdd) {
     onOpen: (open, cx) => { if (open && canAdd) openListPicker(view, cx, plugin, item); else close(cx); } });
 }
 
+const rowChoiceKey = (plugin, item, row) => JSON.stringify([plugin.id, item.id, row.id]);
+// Called only from a completed check task, never render: handles belong to the view.
+function prepareRowChoices(view, cx, plugin, item) {
+  if (!item.list?.rowChoice) return;
+  const prefix = JSON.stringify([plugin.id, item.id]).slice(0, -1) + ',';
+  const entries = view.pluginRowChoices ??= new Map(), present = new Set();
+  for (const row of item.rows ?? []) {
+    if (!row.choice || !item.list.rowChoice.options.some(([value]) => value === row.choice.value)) continue;
+    const key = rowChoiceKey(plugin, item, row); present.add(key);
+    const old = entries.get(key), session = view.pluginSessions?.[plugin.id], machine = view.settingsMachine ?? null;
+    const state = old?.row.choice.revision === row.choice.revision && old.session === session && old.machine === machine ? old
+      : { trigger: cx.focus_handle(), menu: cx.focus_handle(), remove: cx.focus_handle(), index: 0, session, machine };
+    state.row = row; state.open = false; entries.set(key, state);
+  }
+  for (const key of entries.keys()) if (key.startsWith(prefix) && !present.has(key)) entries.delete(key);
+}
+function listRow(view, t, plugin, item, row, index, enabled) {
+  const rid = `${listId(plugin, item)}-row-${index}`, key = rowChoiceKey(plugin, item, row);
+  const state = view.pluginRowChoices?.get(key), spec = item.list.rowChoice;
+  const current = () => !view.pluginClosed && pluginEnabled(plugin) && !setupUnavailable(view, plugin) &&
+    (view.settingsMachine ?? null) === state?.machine && view.pluginSessions?.[plugin.id] === state?.session &&
+    view.pluginRowChoices?.get(key) === state && state?.row === row &&
+    view.pluginChecks[plugin.id]?.items?.find(p => p.id === item.id)?.rows?.includes(row);
+  const available = () => enabled && current() && !view.pluginFixing && !itemState(view, plugin, item.id).loading && item.usable === true;
+  const remove = (_e, cx) => {
+    if (spec && !available()) return;
+    runListAction(view, cx, plugin, item, async context => {
+      try { await item.list.remove(context, row.id); }
+      catch (e) { if (item.list.picker?.kind !== 'folders') throw e; throw new Error(folderRefusal(plugin, 'remove', row.path ?? row.label, e)); }
+    });
+  };
+  let rowChoice = null;
+  if (state && spec && current()) {
+    const revealed = state.open || view.pluginRowHover === rid || [state.trigger, state.menu, state.remove].some(f => f.is_focused?.());
+    const open = (value, cx) => {
+      if (!available()) return;
+      state.open = value;
+      if (value) { state.index = Math.max(0, spec.options.findIndex(([v]) => v === row.choice.value)); state.menu.focus(); }
+      cx.notify();
+    };
+    rowChoice = { revealed, remove: state.remove, widget: optionDropdown(t, { id: `${rid}-choice`, label: spec.label,
+      value: row.choice.value, options: spec.options, disabled: !available(), open: state.open, focus: state.menu, onOpen: open,
+      row: { quiet: !revealed, trigger: state.trigger, index: state.index, move: (delta, cx) => {
+        if (!available() || !state.open) return; state.index = (state.index + delta + spec.options.length) % spec.options.length; cx.notify();
+      } },
+      onSelect: (value, cx) => {
+        if (!available() || !state.open || !spec.options.some(([v]) => v === value)) return;
+        state.open = false; state.trigger.focus(); cx.notify();
+        if (value !== row.choice.value) runListAction(view, cx, plugin, item, context => current() ? spec.set(context, row, value) : undefined);
+      } }) };
+  }
+  return removableRow(view, t, rid, row.detail ? `${row.label} · ${row.detail}` : row.label, remove, enabled, null, rowChoice);
+}
+
 function listSection(view, t, plugin, item, loading) {
   const spec = item.list, id = listId(plugin, item), key = sectionKey(plugin, item);
   const applying = view.pluginFixing === key || view.pluginSettling?.[key] === true;
@@ -729,14 +786,7 @@ function listSection(view, t, plugin, item, loading) {
     .when(Boolean(detail), el => el.child(description(t, detail)))
     // A row's note (an incomplete webhook) follows its name: one line per item.
     .when(rows.length > 0, el => el.child(v_flex().id(id).w_full().gap(U.rowGap)
-      .children(rows.map((row, index) => removableRow(view, t, `${id}-row-${index}`, row.detail ? `${row.label} · ${row.detail}` : row.label,
-        (_e, cx) => runListAction(view, cx, plugin, item, async context => {
-          try { await spec.remove(context, row.id); }
-          catch (e) {
-            if (spec.picker?.kind !== 'folders') throw e;
-            throw new Error(folderRefusal(plugin, 'remove', row.path ?? row.label, e));
-          }
-        }), enabled)))));
+      .children(rows.map((row, index) => listRow(view, t, plugin, item, row, index, enabled)))));
 }
 
 function prerequisiteSections(view,t,plugin) {
