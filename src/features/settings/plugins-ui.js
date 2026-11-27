@@ -802,7 +802,8 @@ function listSection(view, t, plugin, item, loading) {
     : spec.picker?.kind === 'folders' ? foldersAdd(view, t, plugin, item, canAdd, loading) : itemsAdd(view, t, plugin, item, canAdd);
   // Applying already has header feedback. Keep the last confirmed body, including
   // through its authoritative re-check, rather than collapsing and restoring it.
-  const rows = loading && !applying && !spec.rowChoice ? [] : item.rows ?? [];
+  const hasRowChoices = Boolean(spec.rowChoice && item.rows?.some(row => row.choice));
+  const rows = loading && !applying && !hasRowChoices ? [] : item.rows ?? [];
   const detail = view.pluginFixError[key] ?? item.detail ?? item.about;
   const enabled = !locked;
   return v_flex().w_full().gap(8)

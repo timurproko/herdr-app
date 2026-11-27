@@ -58,6 +58,15 @@ for(const retire of ['registration','away-back','close','disable']){
  assert.ok(words(h.render()).includes('Delivery workflow'),'A replaced row cannot receive an old stored-value acknowledgement');
  assert.equal(h.view.pluginFixing,null);
 }
+// Supported choices retain confirmed facts during an explicit refresh, unlike
+// legacy rows covered by crew-projects-ui.test.mjs (which have no row.choice).
+{
+ const h=await fixture();h.ui.reloadPlugins(h.view,h.cx,h.plugin.id,'items');
+ assert.ok(find(h.render(),h.rid),'An actual row choice retains its confirmed row during a check');
+ assert.ok(words(h.render()).includes('Delivery workflow'));
+ assert.equal(find(h.render(),h.id).attrs.disabled[0],true,'Retained facts grant no editing authority while checking');
+ await h.flush();assert.equal(find(h.render(),h.id).attrs.disabled[0],false);
+}
 // Finishing a list and reread must not leave ownership over a later setup fix.
 {
  const h=await fixture();h.choose('plain');const edit=h.jobs.shift()(h.cx);h.operation.resolve({value:'plain'});await edit;await h.flush();
