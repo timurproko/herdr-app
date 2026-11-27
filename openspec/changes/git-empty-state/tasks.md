@@ -22,9 +22,14 @@
 - [ ] 4.1 Trace the installed Crew publisher and read this task's terminal labels only; record exact crew.round evidence, distinguish current round from completed reviews and add spawn → plan report → approval → implementation → requested rework regression coverage.
 - [ ] 4.2 Correct only the app's current-round caption mapping, retaining missing/invalid metadata fallback and role authority; run targeted stage and agent-link tests, update README/architecture and the relevant spec wording, and report any upstream fault without silently masking it.
 
+## 5. Git loading feedback breathes without travelling
+
+- [ ] 5.1 Replace the moving warm line with a stationary thin accent line using only a nonzero-opacity 2400ms ease-in-out loop; match Git's cold dot rhythm, honor reduced motion with static dim feedback and retain work-only show/hide conditions in targeted loading regressions.
+- [ ] 5.2 Capture two synthetic native frames with identical line bounds and different brightness, check no positional animation or stepping and static reduced-motion trees, update the relevant README/docs/spec contracts and record shutdown receipts.
+
 ## Workflow follow-up
 
-- Implementation was approved, including the fourth outcome, in the coordinator's follow-up message.
-- Deliver the four outcomes in this order, with tests/docs in each outcome and PR ticks as each lands; do not mark ready or merge.
+- Implementation was approved, including the fourth and fifth outcomes, in the coordinator's follow-up messages.
+- Deliver the five outcomes in this order, with tests/docs in each outcome and PR ticks as each lands; do not mark ready or merge.
 - Use only targeted local commands, push the final implementation head and dispatch CI on that branch because draft PR suites are skipped; report immediately without waiting for or polling CI.
 - Keep proof pictures and scratch under C:/Users/tprokopiev/.crew/tasks/git-empty-state and stop every disposable app/Core/server before writing the implementation report and running crew done git-empty-state.

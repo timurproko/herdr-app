@@ -17,7 +17,7 @@ Ordinary and coordinator Git SHALL place list-replacing empty, informational and
 
 #### Scenario: Existing loading presentation
 - **WHEN** unresolved cold data shows pulsing Loading or a warm list refreshes
-- **THEN** the existing cold pulsing dot, text placement and lack of repository headers remain unchanged, and warm work retains its list with only the under-header moving line
+- **THEN** the existing cold dot/text placement and lack of repository headers remain unchanged, and warm work retains its list with only the stationary under-header breathing line
 - **AND** no global change moves Files or another panel's messages
 
 ### Requirement: Zero-row repository header suppression
@@ -44,6 +44,29 @@ Ordinary and coordinator Git SHALL omit a repository's header, count and chevron
 - **AND** omitted empty sections retain their saved fold keys for later reappearance
 
 ## MODIFIED Requirements
+
+### Requirement: One complete-lifecycle Git loading animation
+Ordinary and coordinator Git SHALL show one loading animation at a time: a cold Loading dot or a stationary full-width 1px accent line immediately below the header for warm pending work. Both SHALL breathe by opacity only with a 2400ms ease-in-out cycle and a nonzero minimum opacity. Reduced motion SHALL use static dim feedback. Existing work-only visibility and retirement conditions SHALL remain; other panels SHALL remain unchanged.
+
+#### Scenario: Cold ordinary and coordinator work
+- **WHEN** enabled shown Git begins work without compatible previously shown content
+- **THEN** cold Loading retains its 7px dot, 6px gap, blue 12px text and placement, with the shared Git breathing rhythm and no moving line or repository headers
+- **AND** actionable failures, coherent inventory publication and count uncertainty remain unchanged
+
+#### Scenario: Warm background and manual work
+- **WHEN** shown Git performs warm return, verification, manual, webhook or safety work
+- **THEN** one full-width thin accent line breathes without positional motion, stepping or vanishing, while the existing list remains mounted without body Loading or Stale text
+- **AND** overlapping work retains the line until the last pending operation finishes and Refresh stays static with its existing disabled feedback
+
+#### Scenario: Idle failure cooldown and retired callbacks
+- **WHEN** work completes, fails, awaits a dormant retry, or the panel hides, disables or changes context
+- **THEN** obsolete work cannot retain or clear a newer context's loading feedback
+- **AND** dormant cooldowns and uncertain totals do not assert active warm work; unresolved cold inventory may retain Loading
+
+#### Scenario: Reduced motion
+- **WHEN** reduced motion is requested
+- **THEN** Git uses a static dim line or dot with the same geometry and admission conditions, without an animation loop
+- **AND** other panels' loading feedback is unchanged
 
 ### Requirement: Optional build review history
 Git SHALL interpret published crew.round as the current build/review round, not a completed-review count. Missing, invalid or first-round metadata SHALL show Build; current round 2 and later SHALL show Build n. Plan reporting and approval SHALL NOT advance the caption. crew.finding and crew.approved SHALL NOT determine stage, invent history or create tooltips.
@@ -108,7 +131,7 @@ Each nonempty coordinator repository section SHALL default expanded with indepen
 - **AND** a repository with only an applicable initial failure notice has no header or count
 
 ### Requirement: Selected-tab coordinator repository visibility
-Coordinator Git SHALL withhold cold partial successes until first reads settle, using pulsing top-left Loading below Open/Closed without repository headers/counts or the moving line. Warm return/refresh SHALL retain the list with the under-header line, no body Loading and in-place completion. Actionable notices SHALL appear immediately, without headers when no selected-tab PRs exist. Eligibility SHALL precede folding; enrollment SHALL use full eligible inventory independently of section visibility.
+Coordinator Git SHALL withhold cold partial successes until first reads settle, using pulsing top-left Loading below Open/Closed without repository headers/counts or the warm loading line. Warm return/refresh SHALL retain the list with the under-header line, no body Loading and in-place completion. Actionable notices SHALL appear immediately, without headers when no selected-tab PRs exist. Eligibility SHALL precede folding; enrollment SHALL use full eligible inventory independently of section visibility.
 
 #### Scenario: Open and Closed contain different repositories
 - **WHEN** one repository has only Open or Draft task PRs and another has only eligible Merged or Closed task PRs, with no unresolved task PRs
@@ -157,7 +180,7 @@ Coordinator Git SHALL withhold cold partial successes until first reads settle, 
 #### Scenario: Return to a previously visited coordinator
 - **WHEN** the user returns to the same coordinator machine, owner, home and enable generation during the same runtime
 - **THEN** the last compatible previously shown selected-tab sections, rows, counts and folds are shown immediately while current verification or membership reconciliation runs
-- **AND** pending reconciliation uses only the under-header moving line, with no header bulb, body Loading or Stale label, and completion stops the line and updates the list in place
+- **AND** pending reconciliation uses only the stationary under-header breathing line, with no header bulb, body Loading or Stale label, and completion stops the line and updates the list in place
 - **AND** newly loading partial success sections are withheld until first reads settle, while actionable notices appear immediately
 - **AND** authoritative removals, state transitions and expiry reconcile without restoring incompatible facts or granting stale worker actions
 

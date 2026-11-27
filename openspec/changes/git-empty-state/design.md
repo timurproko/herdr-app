@@ -21,7 +21,7 @@ Observed source:
 
 ### 1. Header-based Git feedback, not global PR-row padding
 
-Use a Git-specific feedback presentation or an explicit opt-in to shared geometry so list-replacing text matches the real repository label's inner x, y and row height. Preserve colors and accessible semantics. A long error keeps the same first-line anchor and can grow for readability. Keep PR 97's pulsing Loading layout and header exclusion unchanged; its dot/text footprint is a separate preserved loading contract.
+Use a Git-specific feedback presentation or an explicit opt-in to shared geometry so list-replacing text matches the real repository label's inner x, y and row height. Preserve colors and accessible semantics. A long error keeps the same first-line anchor and can grow for readability. Keep PR 97's Loading layout and header exclusion unchanged; its dot/text footprint is a separate preserved loading contract. The additional approved animation outcome changes only Git's dot rhythm, matching the stationary line.
 
 Reject changing `panelMessage` defaults: Files and other consumers still use their existing first-row alignment. Reject arbitrary extra spacer rows: they conceal rather than eliminate the mismatch and jump.
 
@@ -41,7 +41,11 @@ Render `crew` for the Crew plugin's role label in Spaces. Preserve contribution 
 
 Read-only evidence from this task's terminal t19r after plan report and approval shows `crew.round="1"`. Installed Crew 0.12.1 initializes `reviewRound: 1`, `taskReviewContext()` defaults to 1 and `publishTaskTerminal()` publishes that value unchanged. `recordReviewContext()` increments it only once per accepted CHANGES NEEDED review, excluding plan-stage reports. Git incorrectly adds another one when creating its caption. Use current round 1 (or missing) as `Build`, 2 as `Build 2`, and so on, without using plan events or findings as a heuristic. Preserve older missing-metadata behavior and update the regression's synthetic lifecycle sequence. No Crew code or real task records are changed.
 
-### 5. Targeted regression and isolated native proof
+### 5. Stationary compositor-friendly breathing feedback
+
+Replace Git's positional sweep with a full-width 1px accent line whose opacity loops over 2400ms ease-in-out between nonzero dim and softly bright bounds. Use the same rhythm for Git's cold dot only, without changing other panels' shared activity helper. Reduced-motion feedback is static dim with no loop. Keep the existing cold/warm/work/retirement admission conditions and prove equal horizontal bounds with differing brightness in two native frames; test no positional animation and no loop in reduced-motion mode.
+
+### 6. Targeted regression and isolated native proof
 
 After approval, extend existing loading, repository-count, section-reveal, error, worker-entry and Spaces layout regressions as relevant; retain the terminal-role regression. Add real-renderer geometry assertions at zoom 1 and 1.3. Cover Open/Closed, all-empty, mixed-empty, notice-only, folded, lone-pin, cold pending and warm retained states, plus connected-child ordering.
 
@@ -58,4 +62,4 @@ Adapt the existing checksum-verified disposable native loading fixture for befor
 
 ## Migration Plan
 
-No data migration or live deployment is part of this task. After the recorded approval, deliver four outcomes (including current-round caption correction) with targeted tests in the existing draft PR, tick outcomes individually, push through origin and dispatch CI on the final branch head because draft PR suites are skipped. Report immediately without waiting for CI. Rollback is a source revert; local fold keys and shared tag data do not change.
+No data migration or live deployment is part of this task. After the recorded approval, deliver five outcomes (including current-round caption correction and stationary loading feedback) with targeted tests in the existing draft PR, tick outcomes individually, push through origin and dispatch CI on the final branch head because draft PR suites are skipped. Report immediately without waiting for CI. Rollback is a source revert; local fold keys and shared tag data do not change.
