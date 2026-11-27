@@ -2,9 +2,9 @@
 
 ## 1. Capability-gated Crew project facts preserve older installations
 
-- [ ] 1.1 Add strict project-kinds v1 capability and JSON-list decoding to the Crew provider, retaining canonical home/name/path/kind facts; fake tests cover all kinds, empty lists, dotted names, duplicates, invalid shapes and unknown versions.
-- [ ] 1.2 Keep unsupported installations on existing names/paths-only listing without interpreting human kind text; fake tests cover help output, ignored flags, missing support, failed transport and unchanged Add/Remove and duplicate-folder guards.
-- [ ] 1.3 Document labels and the Crew capability dependency in README; run targeted Crew provider and project-error regressions, recording commands/results without touching real homes.
+- [x] 1.1 Add strict project-kinds v1 capability and JSON-list decoding to the Crew provider, retaining canonical home/name/path/kind facts; fake tests cover all kinds, empty lists, dotted names, duplicates, invalid shapes and unknown versions.
+- [x] 1.2 Keep unsupported installations on existing names/paths-only listing without interpreting human kind text; fake tests cover help output, ignored flags, missing support, failed transport and unchanged Add/Remove and duplicate-folder guards.
+- [x] 1.3 Document labels and the Crew capability dependency in README; run targeted Crew provider and project-error regressions, recording commands/results without touching real homes.
 
 ## 2. Shared Settings rows reveal kind choices without moving Remove
 

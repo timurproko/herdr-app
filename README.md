@@ -174,6 +174,14 @@ There is no MCP adapter, board panel, permanent deletion or automatic write repl
 An agent running as the same OS user can read the private credential file; this
 client's allowlist/read-only policy is not a security sandbox.
 
+## Crew project delivery kinds
+
+**Settings → Plugins → Crew → Projects** shows **Delivery workflow**, **Plain** or
+**Gate** only when the selected machine's Crew advertises the version-1
+`project-kinds` JSON listing and safe kind-only setter. Older Crew keeps its normal
+folder list, Add and Remove, with no inferred kind. A task's recorded delivery kind
+is not used as a project setting; re-adding a project is never a kind-edit workaround.
+
 ## Optional sidebar plugins
 
 Plugins declare their Settings UI (requirements, settings, list sections, pages) and one

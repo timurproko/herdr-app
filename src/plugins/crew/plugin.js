@@ -13,6 +13,7 @@ import { fleetStatusScript } from './fleet-command.js';
 import { workerSpaceRows, WORKER_SPACE_SETTING } from './worker-space-state.js';
 import { refreshWorkerSpaces, invalidateWorkerSpaces, observeWorkerHome } from './worker-space.js';
 import { workerSpaceScript } from './worker-space-command.js';
+import { readProjectKinds } from './project-kinds.js';
 
 const winPath = path => String(path).replace(/\//g, '\\');
 const CHECK_TIMEOUT = 15, INSTALL_TIMEOUT = 300;
@@ -746,14 +747,18 @@ const PROJECTS = Object.freeze({
     if (p.error) return { status: 'error', statusLabel: null, detail: p.error, rows: [] };
     if (!p.tool) return { status: 'missing', statusLabel: null, detail: 'Install the crew tool first (Requirements).', rows: [] };
     if (!p.home) return { status: 'missing', statusLabel: null, detail: 'Create the crew home first (Requirements).', rows: [] };
-    const r = await ps(cx, crewProjectScript(['list']), CHECK_TIMEOUT);
-    if (r.code !== 0) {
+    try {
+      const facts = await readProjectKinds(args => ps(cx, crewProjectScript(args), CHECK_TIMEOUT), parseProjects);
+      if (cx.isCurrent && !cx.isCurrent()) return { status: 'error', rows: [], usable: false };
+      listedProjects.set(machineOf(cx), facts.rows);
+      return { status: 'ready', statusLabel: `${facts.rows.length} added`, ...facts, usable: true };
+    } catch {
+      // Retain confirmed rows, never turn uncertainty into an authoritative empty list.
+      // The current view/machine owns result(); legacy callers have no retained UI facts.
+      const rows = cx.result?.('projects')?.rows ?? [];
       listedProjects.delete(machineOf(cx));
-      return { status: 'error', statusLabel: null, detail: crewSaid(r), rows: [] };
+      return { status: 'error', statusLabel: null, detail: 'Could not read Crew projects. Refresh to try again.', rows, usable: false };
     }
-    const rows = parseProjects(r.stdout);
-    listedProjects.set(machineOf(cx), rows);
-    return { status: 'ready', statusLabel: `${rows.length} added`, rows, usable: true };
   },
 });
 

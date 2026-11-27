@@ -357,6 +357,7 @@ crew.latest = '';
   const olderRefusal = 'Invalid project name: agentnumberone.dev. Use lowercase letters, digits and dashes.';
   const rule = [/& node \$main project /, text => {
     const args = [.../& node \$main project (.*)/.exec(text)[1].matchAll(/'((?:[^']|'')*)'/g)].map(m => m[1].replaceAll("''", "'"));
+    if (args[0] === '--capabilities') return ran('Usage: crew project add | remove | list');
     ran2.push(`project ${args.join(' ')}`);
     if (args[0] === 'list') return ran([...projects].map(([name, rest]) => `${name}\t${rest}`).join('\r\n') + '\r\n');
     if (owned) return ran('', 3, 'crew: Read-only: this home is owned by terminal t9. Only that session may change its projects.\n');
