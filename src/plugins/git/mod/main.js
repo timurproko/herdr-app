@@ -516,11 +516,14 @@ export default class Changes extends View {
         else {
           this.relatedDeferred=null;
           const failure=pullFailure(error),text=String(error.stderr??error.message??'');
-          const absent=failure.kind==='notfound'&&(new RegExp(`Could not resolve to a PullRequest with the number of ${number}\\b`,'i').test(text)||/\bHTTP 404\b/i.test(text)&&!/could not resolve to a Repository/i.test(text));
+          const exactResource404=/\bHTTP 404\b/i.test(text)&&[...text.matchAll(/https:\/\/api\.github\.com\/repos\/([\w.-]+\/[\w.-]+)\/pulls\/([1-9]\d*)\/?(?=[?#\s)]|$)/gi)]
+            .some(match=>match[1].toLowerCase()===repo.name.toLowerCase()&&Number(match[2])===number);
+          const absent=failure.kind==='notfound'&&(new RegExp(`Could not resolve to a PullRequest with the number of ${number}\\b`,'i').test(text)||exactResource404);
           if(absent){this.relatedAbsent=scope;this.relatedFailure=null;this.relatedRetry={scope,until:Date.now()+300000};}
           else {
             const failure=await repositoryFailure(exec,error,repo.name,{cwd:root,on,current});
-            if(current())this.relatedFailure={scope,message:/retry/i.test(failure.message)?failure.message:`${failure.message}; refresh to retry`};
+            const message=failure.kind==='notfound'&&!/could not resolve to a Repository/i.test(text)?'Could not read linked pull request; refresh to retry':failure.message;
+            if(current())this.relatedFailure={scope,message:/retry/i.test(message)?message:`${message}; refresh to retry`};
           }
         }
       } finally {
@@ -1227,11 +1230,19 @@ export default class Changes extends View {
     const state = this.view, list = this.repositoryPresentation().pulls[state], pullNumber = this.agentPull ?? location().pullNumber;
     const related = this.relatedPull && this.relatedPull.number === pullNumber && (state === 'open'
       ? ['open','draft'].includes(this.relatedPull.state) : ['closed','merged'].includes(this.relatedPull.state)) ? this.relatedPull : null;
-    const liveRows = related && !list?.some(pr => pr.number === related.number) ? [...(list??[]),related] : list ?? [];
+    let liveRows = related && !list?.some(pr => pr.number === related.number) ? [...(list??[]),related] : list ?? [];
     const scope=JSON.stringify([this.context,this.repo?.name,pullNumber]),selection=agentKey(location());
     const uncertain=this.agentPending===selection || this.agentFailure?.selection===selection || this.relatedFailure?.scope===scope || this.relatedDeferred===scope;
-    const hold=(uncertain || pullNumber!=null&&!liveRows.some(pr=>pr.number===pullNumber))&&Boolean(this.error||this.pullError||this.associationError()||this.relatedDeferred===scope);
-    const previous=this.pullPresentation&&this.pullPresentation.context===this.context&&this.pullPresentation.state===state?this.pullPresentation:null;
+    const hold=this.relatedAbsent!==scope&&(uncertain || pullNumber!=null&&!liveRows.some(pr=>pr.number===pullNumber))&&Boolean(this.error||this.pullError||this.associationError()||this.relatedDeferred===scope);
+    const previous=this.pullPresentation&&this.pullPresentation.context===this.context&&this.pullPresentation.state===state&&this.pullPresentation.repo===this.repo?.name?this.pullPresentation:null;
+    // A targeted-only old pin is not in page one, and loadRelatedPull retires
+    // that slot before looking up the new association. Keep its compatible
+    // presentation on failure/defer, not after replacement or proven absence.
+    const prior=hold&&previous?.pinned;
+    if(prior&&!liveRows.some(pr=>pr.number===prior.number)&&this.relatedAbsent!==JSON.stringify([this.context,this.repo?.name,prior.number])){
+      const current=[...(this.pulls.open??[]),...(this.pulls.closed??[])].find(pr=>pr.number===prior.number)??prior;
+      if((state==='open'?['open','draft']:['closed','merged']).includes(current.state))liveRows=[...liveRows,current];
+    }
     const active = hold ? liveRows.find(pr=>pr.number===previous?.pinned?.number) : liveRows.find(pr => pullNumber != null
       ? pr.number === pullNumber : Boolean(this.branch && pr.headRefName === this.branch));
     return {liveRows,active};
@@ -1340,7 +1351,7 @@ export default class Changes extends View {
     const retained = this.pinMotion?.current;
     if(retained?.arrived)this.pinMotion.rebasePinTop?.(4);
     const rows = retained?.snapshot.rows ?? liveRows, pinned = retained ? retained.snapshot.pinned : active;
-    this.pullPresentation = {context:this.context,state,rows,pinned};
+    this.pullPresentation = {context:this.context,repo:this.repo?.name,state,rows,pinned};
     const swap = retained && retained.phase !== 'waiting' ? retained : null;
     const settled = this.pinMotion?.settled(this.context,state,pinned?.number);
     const pinKey = JSON.stringify([this.context,state,pinned?.number ?? null]);
