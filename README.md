@@ -265,7 +265,7 @@ session account switching remains independent of optional Usage statistics.
 ## Refresh feedback and Git
 
 Refresh icons dim/disable and rotate while their request runs, except Git:
-Git keeps Refresh static and uses only its under-header moving line for loading. Manual clicks
+Git keeps Refresh static and uses its stationary under-header breathing line for warm loading. Manual clicks
 and Settings loads in Core, Profiles and Terminals stay visibly busy for at
 least **600 ms** to avoid a flash, including returning to an already-cached
 section. Each new section entry restarts that minimum. Refreshed data and
@@ -616,10 +616,16 @@ open Add repo, select the repository and confirm Add yourself. The header **‹ 
 to the full catalog. Transport backoff and local agent discovery are
 separate from CI checking.
 
-Cold ordinary and coordinator Git show only their shared pulsing **Loading** message, not the moving line. Warm returns and background updates retain their list and use one subtle 1px moving line **immediately below the header**, above
-Open/Closed, whether or not a loaded PR has pending CI. Native motion moves it
-across and back (2.4 seconds each direction), without JavaScript frame or phase
-timers. It stays present through pending work and disappears on completion,
+Cold ordinary and coordinator Git show only their pulsing **Loading** message.
+Warm returns and background updates retain their list and use one stationary,
+full-width 1px accent line **immediately below the header**, above Open/Closed.
+The line and Git's cold dot share a native opacity-only 2.4-second ease-in-out
+cycle, from 25% to 65% opacity, never travelling or vanishing. Reduced motion
+uses static 35% opacity. Git reads this local accessibility preference once on
+show (Windows client-area animations, macOS reduceMotion, Linux GNOME animations),
+outside render, with a static fallback on refusal; hide/show rechecks it. An
+explicit boolean `reduced_motion`/`reducedMotion` host setting takes precedence.
+Other panels' dots keep their existing rhythm. There are no JavaScript frame timers. It stays present through pending work and disappears on completion,
 failure, hide or context retirement; dormant retry cooldowns and unknown totals
 alone do not animate. The pinned block and its bottom divider stay still.
 

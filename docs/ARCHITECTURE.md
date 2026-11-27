@@ -495,6 +495,14 @@ metrics and passive 40px gradients, not copied approximations. Git retains its o
 padding and background; paired native content/frame geometry and changed-only
 size/input callbacks update edge hints without polling or render-time notifications.
 
+Git's loading line is a stationary full-width 1px accent surface. It and the cold
+Loading dot use only native opacity loops, 0.25–0.65 over 2400ms ease-in-out;
+reduced motion is static 0.35. Existing work admission/retirement remains intact.
+Because the SDK exposes no OS reduced-motion fact, the panel reads local OS
+accessibility on show outside render (no timer), defaults static on refusal,
+and rechecks after hide/show. Explicit host reduced_motion/reducedMotion booleans
+win. No selected-machine request or JavaScript animation scheduler is used.
+
 Git's optional `crew.round` is Crew's current work/review round, initialized to
 1 and incremented on actual requested-changes reviews. The stage caption uses
 `Build` for missing/invalid/1 and `Build n` for n >= 2, not n+1. Plan reports and

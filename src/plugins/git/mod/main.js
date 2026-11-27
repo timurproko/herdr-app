@@ -20,7 +20,7 @@ import { labelColors } from './label-colors.js';
 import { PinSwap, PIN_SWAP_MS } from './pin-swap.js';
 import { panelPin } from './panel-pin.js';
 import { openSettings } from './settings-dialog.js';
-import { headerTool, contextMenu, panelMessage } from './panel-kit.js';
+import { headerTool, contextMenu } from './panel-kit.js';
 import { changePanel } from './panel-state.js';
 import { sidebarPanelEnabled } from './plugins.js';
 import { sidebarTitle } from './sidebar-title.js';
@@ -30,8 +30,7 @@ const VIEWS = ['open', 'closed'];
 const VIEW_KEY = 'custom.git.view';
 const FOLDED_REPOS_KEY = 'custom.git.task-repositories.folded';
 const LOCAL_CONTEXT_TTL = 10000; // shell branch/footer only, never a GitHub poll
-const CI_SWEEP_MS = 2400;
-const CI_SWEEP_WIDTH = 96;
+const BREATHE_MS = 2400;
 // The panel's 1px border plus this padding matches Spaces' 8px outer gutter.
 const LIST_INSET = 7;
 const TEXT_CACHE_LIMIT = 512;
@@ -1307,7 +1306,7 @@ export default class Changes extends View {
             .children(remaining.map(pr => this.pullRow(t, pr)
               .when(Boolean(swap?.cards.some(card => card.pr.number === pr.number)), el => el.invisible())))
             .when(!rows.length && (!folded || cold || Boolean(this.error || this.pullError)), el => el.child(cold
-              ? panelMessage(t, 'git-empty', { text: empty, loading: true, rowInset: 2 })
+              ? this.loadingMessage(t,'git-empty')
               : this.bodyMessage(t,'git-empty',empty,{error:Boolean(this.error||this.pullError)})))
             .when(!folded && Boolean(rows.length) && Boolean(this.error || this.pullError), el => el.child(div().id('git-read-error').px(8).py(4).text_size(11).text_color(t.ansi1).child(this.error || this.pullError)))
             .when(!folded && this.pageError?.state === state, el => el.child(div().px(8).py(4).text_size(11).text_color(t.ansi1).child(this.pageError.message)))
@@ -1321,16 +1320,46 @@ export default class Changes extends View {
       .when(Boolean(swap), el => el.child(this.swapOverlay(t,swap)));
   }
 
+  syncMotionPreference(cx) {
+    const explicit=settings().reduced_motion??settings().reducedMotion;
+    if(typeof explicit==='boolean'){this.motionReduced=explicit;return;}
+    if(!this.shown()){this.motionObserved=false;return;}
+    if(this.motionObserved)return;
+    this.motionObserved=true;
+    let platform;try{platform=window()?.platform;}catch{}
+    if(!platform){this.motionReduced=false;return;}
+    // The SDK has no OS accessibility-preference API. Read locally on show,
+    // outside render; unknown/unavailable preferences fail calm (static).
+    this.motionReduced=true;
+    cx.spawn(async view=>{
+      await Promise.resolve();if(this.renderClosed||!this.shown())return;
+      const command=platform==='windows'?'powershell.exe':platform==='macos'?'defaults':'gsettings';
+      const args=platform==='windows'?['-NoProfile','-NonInteractive','-Command',
+        `Add-Type '[System.Runtime.InteropServices.DllImport("user32.dll")]public static extern bool SystemParametersInfo(uint a,uint b,out int c,uint d);' -Name GitMotion -Namespace Native;$enabled=0;if(![Native.GitMotion]::SystemParametersInfo(0x1042,0,[ref]$enabled,0)){exit 1};if($enabled -eq 0){'true'}else{'false'}`]
+        :platform==='macos'?['read','com.apple.universalaccess','reduceMotion']:['get','org.gnome.desktop.interface','enable-animations'];
+      try {
+        const result=await exec(command,args,{timeout:5000});
+        if(this.renderClosed||!this.shown()||!this.motionObserved)return;
+        const value=result?.stdout?.trim();
+        if(result?.code===0&&['true','false','0','1'].includes(value))this.motionReduced=platform==='linux'?value==='false':['true','1'].includes(value);
+      }catch{}finally{if(!this.renderClosed&&this.shown())view.notify();}
+    });
+  }
+
+  breathe(element) {
+    return element.opacity(0.35).when(!this.motionReduced,el=>el.loop('opacity',{from:0.25,to:0.65,period:BREATHE_MS,easing:'ease-in-out'}));
+  }
+
+  loadingMessage(t,id,animated=true) {
+    return h_flex().id(id).px(8).py(2).min_h(U.row+4).items_center().gap(6)
+      .child(animated?this.breathe(div().size(U.statusSize).flex_none().rounded_full().bg(t.working)):div().size(U.statusSize).flex_none().rounded_full().bg(t.working))
+      .child(div().text_size(U.meta).text_color(t.working).child('Loading'));
+  }
+
   loadingLine(t) {
-    const context=this.context;
     return div().id('git-loading-track').absolute().left(0).right(0).top(0).h(1).overflow_hidden()
       .role('status').accessibility_label('Loading Git')
-      .on_size_change((size,cx)=>{
-        if(this.context!==context || !this.shown() || !(size.width>0) || this.loadingLineWidth===size.width)return;
-        this.loadingLineWidth=size.width;cx.notify();
-      })
-      .child(div().id('git-ci-line').absolute().top(0).h(1).w(CI_SWEEP_WIDTH).rounded_full().bg(t.accent).opacity(0.75)
-        .loop('left',{from:-CI_SWEEP_WIDTH,to:this.loadingLineWidth??320,period:2*CI_SWEEP_MS,easing:'ease-in-out'}));
+      .child(this.breathe(div().id('git-ci-line').size_full().bg(t.accent)));
   }
 
   enrollmentPresentation() {
@@ -1397,7 +1426,7 @@ export default class Changes extends View {
         .child(this.repositoryHeader(t,repo,scope,window.repositoryCounts.get(repo).value,window.repositoryCounts.get(repo).loading))))
       .when(!folded && body.length>0, el => el.child(v_flex().id(`task-repo-body-${repo}`).flex_none()
         .children(body.map(item=>div().id(`task-item-${item.key}`).flex_none().h(item.height+item.gap)
-          .child(item.row ? this.pullRow(t,item.row) : item.loading ? panelMessage(t,`task-loading-${repo}`,{text:'Loading',loading:true,rowInset:2,animated:false}) : this.renderPart(`repository-notice:${repo}`,()=>div().id(`task-error-${repo}`).flex_none().w_full()
+          .child(item.row ? this.pullRow(t,item.row) : item.loading ? this.loadingMessage(t,`task-loading-${repo}`,false) : this.renderPart(`repository-notice:${repo}`,()=>div().id(`task-error-${repo}`).flex_none().w_full()
             .child(this.bodyMessage(t,`task-notice-measure-${window.measurement}-${encodeURIComponent(item.measureKey)}`,item.error,{error:true})
             .on_size_change((size,cx)=>{
               if(!this.taskWindowCurrent(window,scope) || !window.items.some(current=>current.measureKey===item.measureKey) || !Number.isFinite(size.height))return;
@@ -1584,7 +1613,7 @@ export default class Changes extends View {
         .child(this.segment(t,'git-view-open','Open',this.view==='open',view=>this.setView('open',view)))
         .child(this.segment(t,'git-view-closed','Closed',this.view==='closed',view=>this.setView('closed',view))))
       .when(cold,el=>el.child(div().id('git-task-waiting').flex_none().pt(4).px(LIST_INSET)
-        .child(panelMessage(t,sections.length?'git-task-loading':'git-task-empty',{text:'Loading',loading:true,rowInset:2})
+        .child(this.loadingMessage(t,sections.length?'git-task-loading':'git-task-empty')
           .when(aggregate.context.stale,message=>message.tooltip(verificationHint)))))
       .child(v_flex().id('task-pulls-scroll').relative().flex_1().min_h(0).overflow_hidden()
         .child(v_flex().id(`task-pulls-frame-${scope}-${this.view}-${taskWindow.measurement}`).relative().flex_1().min_h(0).overflow_hidden()
@@ -1663,6 +1692,7 @@ export default class Changes extends View {
 
   renderPanel(cx) {
     this.recoverReadTasks();
+    this.syncMotionPreference(cx);
     if (!sidebarPanelEnabled('changes')) {
       this.enrollmentPicker?.stop();this.webhooks?.stop();this.notices?.stop();this.aggregate?.stop();
       this.resetRepository(); this.rootRequest = null; this.loading = false; this.context = null;

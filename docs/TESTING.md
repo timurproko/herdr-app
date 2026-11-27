@@ -191,7 +191,11 @@ compare same-text oracle frames for identical text anchors, and native size
 callbacks for row height. All app/Core homes and pictures stay in the supplied
 outside folder, and finally verifies both processes stop.
 
-`git-loading-line.test.mjs` checks the shared pulsing dot for cold ordinary/coordinator
+`git-motion-preference.test.mjs` fakes Windows/macOS/Linux accessibility reads,
+checking local routing, static unknown/refused defaults and no per-frame reads.
+`git-loading-line.test.mjs` checks matching 2400ms opacity-only line/dot loops,
+nonzero bounds, static reduced-motion feedback and unchanged work admission,
+plus the cold ordinary/coordinator
 Loading, equal message placement at 100%/130%, no simultaneous repository headers
 or moving line, warm/background/verification/safety line activity, overlap,
 completion, cooldown and retired callbacks. Folded cold failures stay visible.

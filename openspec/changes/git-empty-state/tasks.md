@@ -24,8 +24,8 @@
 
 ## 5. Git loading feedback breathes without travelling
 
-- [ ] 5.1 Replace the moving warm line with a stationary thin accent line using only a nonzero-opacity 2400ms ease-in-out loop; match Git's cold dot rhythm, honor reduced motion with static dim feedback and retain work-only show/hide conditions in targeted loading regressions.
-- [ ] 5.2 Capture two synthetic native frames with identical line bounds and different brightness, check no positional animation or stepping and static reduced-motion trees, update the relevant README/docs/spec contracts and record shutdown receipts.
+- [x] 5.1 Replace the moving warm line with a stationary thin accent line using only a nonzero-opacity 2400ms ease-in-out loop; match Git's cold dot rhythm, honor reduced motion with static dim feedback and retain work-only show/hide conditions in targeted loading regressions.
+- [x] 5.2 Capture two synthetic native frames with identical line bounds and different brightness, check no positional animation or stepping and static reduced-motion trees, update the relevant README/docs/spec contracts and record shutdown receipts.
 
 ## 6. Verdict labels navigate like Build
 
