@@ -18,7 +18,7 @@ for(const zoom of [1,1.3])for(const coordinator of [false,true])for(const ghost 
   const {tree,geometry}=h.settle(()=>panel.pullRow(t,pr,ghost),700,zoom);
   const chip=find(tree,`${prefix}pr-${name==='verdict'?'review':'stage'}-${id}`),box=geometry.get(chip);
   assert.ok(chip);reference??=box.width;near(box.width,reference,'All fixed/two-digit captions share one width');near(box.height,18*zoom,'Shared height');
-  assert.equal(chip.attrs.px[0],6);assert.ok(chip.attrs.justify_center&&chip.attrs.items_center);assert.equal(chip.attrs.tooltip,undefined);
+  assert.equal(chip.attrs.px[0],6);assert.ok(chip.attrs.text_center||chip.attrs.justify_center&&chip.attrs.items_center);assert.equal(chip.attrs.tooltip,undefined);
   const line=geometry.visibleTextLines.find(l=>l.ancestors.includes(chip));near(line.x+line.naturalWidth/2,box.x+box.width/2,'Caption is centred in the actual interaction box');
   if(name!=='verdict'){edge??=box.x+box.width;near(box.x+box.width,edge,'Right rail unchanged across stages');}
   const title=geometry.get(find(tree,`${prefix}pr-title-${id}`));titleBox??=title;near(title.x,titleBox.x,'Title anchor');near(title.width,titleBox.width,'Long-title truncation reservation stays unchanged');

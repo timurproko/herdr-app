@@ -983,9 +983,8 @@ export default class Changes extends View {
 
   verdictChip(t,pr,id,caption,interactive,probe) {
     const descriptor=this.stageDescriptor({...pr,stage:'approved'});
-    const element=div().id(id).min_w(this.stageBoxWidth()).h(18).px(6).flex_none().flex().items_center().justify_center().rounded(U.insetRadius).bg(t.raised)
-      .overflow_hidden().whitespace_nowrap().text_size(U.meta).text_color(pr.review==='approved'?t.ansi2:t.ansi1)
-      .child(div().h(18).whitespace_nowrap().child(caption));
+    const element=div().id(id).min_w(this.stageBoxWidth()).h(18).px(6).rounded(U.insetRadius).bg(t.raised)
+      .whitespace_nowrap().text_size(U.meta).text_center().text_color(pr.review==='approved'?t.ansi2:t.ansi1).child(caption);
     return this.stageInteraction(element,t,pr,interactive,probe,{...descriptor,verdict:pr.review});
   }
 

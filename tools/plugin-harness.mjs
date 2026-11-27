@@ -39,7 +39,7 @@ export async function loadMod({ host, modules = {}, entry, mod = 'custom-setting
           PathBuilder:{fill:()=>pathBuilder,...value.PathBuilder}};
       }
       if(name==='ui.js') value=withKitUi(value,modules['gpui-kit']?.div);
-      if(name==='gpui-base' && value.h_flex) value={HoverCard:{new:id=>value.h_flex().id(id)},...value};
+      if(name==='gpui-base' && value.h_flex) value={HoverCard:{new:id=>value.h_flex().id(id)},Popup:{new:(id,trigger)=>value.h_flex().id(id).child(trigger)},...value};
       cache.set(name, synthetic(value));
     }
   }

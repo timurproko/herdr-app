@@ -129,7 +129,13 @@ stale controls cannot dispatch. Do not use raw provider exceptions as detail.
 Settings admits at most two check groups and four Crew command transports at once.
 Compatible Requirements/section checks share only benign same-round probe facts,
 not publication authority; manual Requirements Check remains independent. Crew's
-Windows tool/platform/hook inventory answers ten requirement rows in one command.
+Windows tool/platform/hook inventory answers twelve requirement rows in one command
+(eleven version checks and Agent hooks). Its tool list derives from the actual version
+requirements, including tasks-axi and quota-axi. An omitted or malformed version entry
+gets one coalesced queued probe of that tool instead of an invented Error/missing result.
+Optional Claude settings read/parse/schema failures cannot invalidate platform or tool
+facts: only Agent hooks shows a neutral Optional notice, without a speculative fix.
+Projects retains last-good rows even when platform, transport, home or list probes fail.
 Confirmed badges, fix counts and list rows remain while refreshes wait (actions stay
 locked); cold checks stay pending. Check/Refresh supplies activity separately.
 

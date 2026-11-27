@@ -1,5 +1,23 @@
 # Testing the repository split
 
+## PR 101 combined review and hosted correction
+
+Crew's `tool-inventory.test.mjs` now checks all sixteen actual prerequisites, not a
+subset derived from the batch's own list: eleven version requirements include
+tasks-axi and quota-axi. It covers every absent/malformed entry and whole-tool-object
+fallback, malformed optional hook facts, independent account/pool inputs and retained
+Projects rows across the real registry boundary after any upstream failure.
+`tool-inventory-script.test.mjs` additionally executes the generated PowerShell with
+fake tools in a disposable home: malformed/unreadable/absent/empty/null/scalar/array
+hook settings, invalid nested schema and a genuinely missing optional tool all retain
+platform/version output. Raw optional-file errors never reach row text.
+
+Ubuntu run 46009169272 also exposed three fixture/render contracts: settings mocks
+need passive Popup, verdict captions retain their original single-element structure,
+and common sizing must fit the existing mounted-row builder budget. The correction
+adds the missing mock and centres verdict text without extra elements or excess
+builders. Original render-budget and agent-link assertions remain unchanged.
+
 ## Project-kind polish and Git stage sizing
 
 Targeted fake checks: `tests/plugin-row-dismissal.test.mjs`,
