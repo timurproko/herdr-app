@@ -29,7 +29,7 @@ export class TaskReveal {
       const group=noticesOnly?[]:[{key:`header:${section.repo}`,repo:section.repo,header:true,folded:folded.has(section.repo),height:headerHeight}];
       if(noticesOnly||!folded.has(section.repo)){
         for(const row of (noticesOnly?[]:section.rows))group.push({key:row.key,repo:section.repo,row,height:74});
-        if(section.error){const measureKey=`${geometryKey}\0${section.repo}\0${section.error}`;group.push({key:`notice:${section.repo}`,repo:section.repo,error:section.error,measureKey,height:this.noticeHeights.get(measureKey)??24.5});}
+        if(section.error){const measureKey=`${geometryKey}\0${section.repo}\0${section.error}`;group.push({key:`notice:${section.repo}`,repo:section.repo,error:section.error,measureKey,height:this.noticeHeights.get(measureKey)??28});}
       }
       group.forEach((item,i)=>{item.gap=i<group.length-1?gap:0;items.push(item);});
     }

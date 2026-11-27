@@ -8,7 +8,7 @@ import {build,project} from '../../tools/build.mjs';
 import {deploy} from '../../tools/deploy.mjs';
 assert.ok(process.platform==='win32'&&process.argv.includes('--run'));
 const arg=(key,fallback)=>process.argv.includes(key)?process.argv[process.argv.indexOf(key)+1]:fallback;
-const output=path.resolve(arg('--output')),zoom=Number(arg('--zoom','1')),stress=process.argv.includes('--stress');
+const output=path.resolve(arg('--output')),zoom=Number(arg('--zoom','1')),stress=process.argv.includes('--stress'),feedback=process.argv.includes('--feedback');
 assert.ok(path.relative(project,output).startsWith('..'));assert.ok([1,1.3].includes(zoom));
 const appBin=path.resolve(process.env.HERDR_APP_BIN),core=path.join(process.env.LOCALAPPDATA,'Programs/herdr-core/herdr-core.exe');
 const archive=path.resolve(appBin,'../../app.tar.gz'),sha=x=>createHash('sha256').update(x).digest('hex'),expected='e6e78e1bec1f47bd0d94dbc872a5670f4ac9c8f6740210b62365ab8b28f897c1';
@@ -27,6 +27,8 @@ put('layouts/GitLoadingFixture.json',{id:'root',type:'row',theme:'Custom',titleb
 put('mods/custom-proof-note/mod.json',{place:'none'});
 put('mods/custom-proof-note/main.js',`import {View,div} from 'gpui-kit';export default class Note extends View{init(p,cx){this.n=0;cx.timer.every(33,cx=>{this.n++;cx.notify();});}render(){return div().p(24).text_size(14).child('Synthetic Git proof · ${zoom*100}% · sibling updates '+this.n+' · no agents or network');}}`);
 for(const file of ['host.js','plugins.js','main.js'])fs.renameSync(path.join(home,'mods/custom-changes',file),path.join(home,'mods/custom-changes','native-'+file));
+// Optional inert baseline source for paired proof, never another live checkout.
+for(const [key,file]of [['GIT_FEEDBACK_MAIN','native-main.js'],['GIT_FEEDBACK_REVEAL','task-reveal.js']])if(process.env[key])fs.copyFileSync(process.env[key],path.join(home,'mods/custom-changes',file));
 put('mods/custom-changes/host.js',`export * from './native-host.js';export const spaces=()=>[],panes=()=>[],terminals=()=>[],agents=()=>[],machines=()=>[];export const exec=()=>{throw Error('No live IO');};export const hc=exec;export const run=exec;`);
 put('mods/custom-changes/location.js',`export const location=()=>({cwd:'/fixture',on:null,terminal:'fixture'});export const namedPullNumber=()=>null;`);
 put('mods/custom-changes/plugins.js',`export * from './native-plugins.js';export const pluginPullContext=()=>({scope:'fixture',parent:'owner',stale:false,links:[]});export const pluginEvent=()=>{};`);
@@ -40,7 +42,16 @@ setPhase(phase){this.phase=phase;this.view=phase.endsWith('closed')?'closed':'op
 if(phase.includes('cold')){if(phase.startsWith('ordinary')){this.pulls.open=null;this.pullLoading=true;this.foldedRepositories.add('fixture/a');}else{a.published=null;a.lastCounts=null;for(const e of a.entries.values()){e.pr=null;e.dirty=true;}a.context={...a.context,loading:true};if(phase.includes('failure')){a.entries.get('fixture/c#4').error={kind:'read',message:'fixture/c: Synthetic read failed; refresh to retry'};this.foldedRepositories.add('fixture/c');}}}
 if(phase.includes('warm')||phase.includes('background')){if(phase.startsWith('ordinary'))this.pullLoading=true;else a.fallbackBusy=true;}
 if(phase==='ordinary-failure')this.pullError='fixture/a: Synthetic read failed; refresh to retry';
+if(phase.includes('empty')){this.pulls[this.view]=[];a.entries.clear();a.lastCounts=null;}
+if(phase.includes('notice-only')){a.entries.clear();a.entries.set('fixture/a#1',{link:{repo:'fixture/a',number:1,targets:[{terminal:'fixture'}]},pr:null,error:{kind:'read',message:'fixture/a: Synthetic read failed; refresh to retry'}});this.pulls[this.view]=[];this.pullError='fixture/a: Synthetic read failed; refresh to retry';}
+if(phase==='ordinary-long-error'){this.pulls.open=[];this.pullError='fixture/a: Synthetic read failed; refresh to retry. This deliberately long diagnostic must wrap safely below the first line without shifting its anchor.';}
+if(phase==='ordinary-oracle'){this.pulls.open=[];this.pullError='fixture/a';}
+if(phase==='ordinary-info'){this.root=null;this.repo=null;this.pulls.open=[];this.error='Not a git repository';}
+if(phase.includes('mixed')){for(const e of a.entries.values())if(e.pr.repo!=='fixture/a')e.pr={...e.pr,state:this.view==='open'?'MERGED':'OPEN',merged:this.view==='open',closedAt:new Date().toISOString()};}
+if(phase.includes('folded-notice'))this.foldedRepositories.add('fixture/a');
 }
+repositoryNameLabel(repo,scope){return super.repositoryNameLabel(repo,scope).on_size_change(size=>console.log('GIT_FEEDBACK_BOX '+JSON.stringify({phase:this.phase,kind:'header-text',...size})));}
+bodyMessage(t,id,text,options){return super.bodyMessage(t,id,text,options).on_size_change(size=>console.log('GIT_FEEDBACK_BOX '+JSON.stringify({phase:this.phase,kind:id,...size})));}
 render(cx){const start=Date.now(),tree=super.render(cx);console.log('GIT_LOADING_BUILD '+JSON.stringify({phase:this.phase,updates:this.updates,ms:Date.now()-start}));return tree;}}
 `);
 fs.writeFileSync(control,'coordinator-cold');const logfile=path.join(root,'app.log'),fd=fs.openSync(logfile,'w'),child=spawn(appBin,[],{env,stdio:['ignore',fd,fd]});
@@ -50,7 +61,7 @@ const snapshot=()=>{try{return JSON.parse(fs.readFileSync(path.join(home,'shared
 const capture=name=>{const file=path.join(root,name+'.png');app(['shot',file]);receipt.frames.push({name,file});};
 try{
  for(let i=0;i<150;i++){await sleep(100);assert.equal(child.exitCode,null);if(snapshot())break;}assert.ok(snapshot());
- for(const phase of ['coordinator-cold','ordinary-cold','coordinator-cold-failure','coordinator-open','coordinator-closed','coordinator-warm','coordinator-background','ordinary-open','ordinary-closed','ordinary-warm','ordinary-background','ordinary-failure']){
+ for(const phase of feedback?['ordinary-open','ordinary-oracle','ordinary-long-error','ordinary-empty-open','ordinary-empty-closed','ordinary-notice-only','ordinary-info','coordinator-open','coordinator-empty-open','coordinator-empty-closed','coordinator-notice-only','coordinator-notice-only-folded-notice','coordinator-mixed-open','coordinator-mixed-closed','coordinator-cold','ordinary-cold','coordinator-background']:['coordinator-cold','ordinary-cold','coordinator-cold-failure','coordinator-open','coordinator-closed','coordinator-warm','coordinator-background','ordinary-open','ordinary-closed','ordinary-warm','ordinary-background','ordinary-failure']){
  fs.writeFileSync(control,phase);for(let i=0;i<100&&snapshot()?.phase!==phase;i++)await sleep(50);assert.equal(snapshot()?.phase,phase);await sleep(200);capture(phase);
  if(phase.includes('cold')||phase.includes('background')){await sleep(350);capture(phase+'-phase2');}
  }

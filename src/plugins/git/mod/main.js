@@ -1229,6 +1229,15 @@ export default class Changes extends View {
     return {text,cold:!rows.length && text==='Loading…'};
   }
 
+  // Feedback replaces a repository header, not a PR title. Keep the same
+  // 28px row and 8px inner inset; wrapping adds height below its first line.
+  bodyMessage(t,id,text,{error=false}={}) {
+    const lineHeight=U.font*1.5;
+    return div().id(id).flex_none().w_full().px(8).py((U.control-lineHeight)/2).min_h(U.control)
+      .text_size(U.meta).line_height(`${lineHeight}px`).text_color(error?t.ansi1:t.dim)
+      .child(div().min_w(0).child(text));
+  }
+
   renderPulls(t) {
     const state = this.view, selection = this.pullSelection(),liveRows=selection.liveRows;
     // Every selection path uses the resolved selected-agent PR, never click state.
@@ -1293,10 +1302,12 @@ export default class Changes extends View {
             })
             .on_scroll_wheel(event => {this.contentMotion(event, 'wheel', state);metrics.contentMotion(event,'wheel');})
             .on_mouse_move(event => {this.contentMotion(event, 'move', state);metrics.contentMotion(event,'move');})
-            .when(Boolean(!cold&&sectionRepo&&(!pinned||rows.length>1)),el=>el.child(this.repositoryHeader(t,sectionRepo,this.context,rows.length-(pinned?1:0),Boolean(this.entrySeed || this.seedTabs?.[this.view]))))
+            .when(Boolean(!cold&&sectionRepo&&rows.length>(pinned?1:0)),el=>el.child(this.repositoryHeader(t,sectionRepo,this.context,rows.length-(pinned?1:0),Boolean(this.entrySeed || this.seedTabs?.[this.view]))))
             .children(remaining.map(pr => this.pullRow(t, pr)
               .when(Boolean(swap?.cards.some(card => card.pr.number === pr.number)), el => el.invisible())))
-            .when(!rows.length && (!folded || cold || Boolean(this.error || this.pullError)), el => el.child(panelMessage(t, 'git-empty', { text: empty, loading: cold, rowInset: 2 })))
+            .when(!rows.length && (!folded || cold || Boolean(this.error || this.pullError)), el => el.child(cold
+              ? panelMessage(t, 'git-empty', { text: empty, loading: true, rowInset: 2 })
+              : this.bodyMessage(t,'git-empty',empty,{error:Boolean(this.error||this.pullError)})))
             .when(!folded && Boolean(rows.length) && Boolean(this.error || this.pullError), el => el.child(div().id('git-read-error').px(8).py(4).text_size(11).text_color(t.ansi1).child(this.error || this.pullError)))
             .when(!folded && this.pageError?.state === state, el => el.child(div().px(8).py(4).text_size(11).text_color(t.ansi1).child(this.pageError.message)))
             .when(!folded && Boolean(this.pages[state]?.hasMore), el => el.child(div().id('pulls-more').p(8).text_size(11).text_color(t.dim)
@@ -1368,7 +1379,7 @@ export default class Changes extends View {
     };
     // A non-shrinking invisible flex child measures the same text's natural width.
     // Its absolute clipped parent cannot reserve width or add a line to the header.
-    return div().id(id).flex_1().min_w(0).relative().overflow_hidden()
+    return div().id(id).flex_1().min_w(0).relative().overflow_hidden().line_height(`${U.font*1.5}px`)
       .when(overflowing(),el=>el.tooltip(repo))
       .child(div().id(`${id}-available-${sizes.measurement}`).w_full().truncate().child(repo)
         .on_size_change((size,cx)=>measure('available',size,cx)))
@@ -1386,7 +1397,7 @@ export default class Changes extends View {
       .when(!folded && body.length>0, el => el.child(v_flex().id(`task-repo-body-${repo}`).flex_none()
         .children(body.map(item=>div().id(`task-item-${item.key}`).flex_none().h(item.height+item.gap)
           .child(item.row ? this.pullRow(t,item.row) : item.loading ? panelMessage(t,`task-loading-${repo}`,{text:'Loading',loading:true,rowInset:2,animated:false}) : this.renderPart(`repository-notice:${repo}`,()=>div().id(`task-error-${repo}`).flex_none().w_full()
-            .child(div().id(`task-notice-measure-${window.measurement}-${encodeURIComponent(item.measureKey)}`).flex_none().w_full().px(8).py(4).text_size(U.meta).text_color(t.ansi1).child(item.error)
+            .child(this.bodyMessage(t,`task-notice-measure-${window.measurement}-${encodeURIComponent(item.measureKey)}`,item.error,{error:true})
             .on_size_change((size,cx)=>{
               if(!this.taskWindowCurrent(window,scope) || !window.items.some(current=>current.measureKey===item.measureKey) || !Number.isFinite(size.height))return;
               const height=size.height/window.zoom;
@@ -1590,7 +1601,7 @@ export default class Changes extends View {
                 .accessibility_label(taskWindow.more?'Show more task pull requests':'Show first task pull requests again')
                 .tooltip(taskWindow.more?'Show the next mounted batch':'Return to the first mounted batch')
                 .on_click((_event,cx)=>this.nextTaskChunk(taskWindow,scope,cx)).child('Show more')))
-              .when(!sections.length && (!waiting || warm),el=>el.child(panelMessage(t,'git-task-empty',{text:`No ${this.view} pull requests`,rowInset:2}))))
+              .when(!sections.length && (!waiting || warm),el=>el.child(this.bodyMessage(t,'git-task-empty',`No ${this.view} pull requests`))))
             .when(Boolean(anchor),el=>el.child(div().id('task-pulls-anchor').absolute().left(0).w(1).h(1)
               .top(anchor.to+(anchor.to>anchor.from?taskWindow.viewport-1:0)))))
           .when(taskWindow.metrics.moreAbove,el=>el.child(topFade(taskWindow.metrics,'task-pulls-list',t.background,{left:LIST_INSET,right:LIST_INSET})))

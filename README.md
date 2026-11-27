@@ -371,6 +371,12 @@ preferences; no Core document, terminal or agent is changed. Reconciliation yiel
 out of render and waits for native acknowledgements rather than polling/replaying
 layout commands.
 
+Git's list-replacing empty, informational and error feedback uses the repository
+header's 28px row and text anchor, not PR-title padding. Open/Closed empty text
+and initial failures therefore replace header text without a vertical jump;
+long errors may grow below that first-line anchor. Cold Loading retains its
+existing dot/text placement.
+
 The main Git header contains only **Git**, its title chevron, existing refresh/status
 feedback and **Refresh · Pin · Close**. Repository identity lives in the list's
 canonical **owner/repository · count · chevron** section header, not beside the

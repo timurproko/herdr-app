@@ -174,6 +174,17 @@ share one captured coordinator binding; changed membership, conflicting parents 
 bindings, duplicates, missing/cross-machine endpoints and expired proof still refuse.
 Every child's saved colour and Automatic flag stays unchanged.
 
+`node --experimental-vm-modules tests/git-empty-state.test.mjs` compares actual
+Git feedback/header text anchors and 28px rows at 100%/130%, with ordinary empty
+Open/Closed and folded initial failures. `tests/features/git-loading-native.mjs
+--run --feedback --zoom 1|1.3 --output <outside>` captures isolated native loaded,
+empty, information, error, mixed-tab and cold/warm states. Optional
+`GIT_FEEDBACK_MAIN`/`GIT_FEEDBACK_REVEAL` supply inert baseline sources for paired
+proof, never a live checkout. Pixel glyph bounds differ by the letters rendered;
+compare same-text oracle frames for identical text anchors, and native size
+callbacks for row height. All app/Core homes and pictures stay in the supplied
+outside folder, and finally verifies both processes stop.
+
 `git-loading-line.test.mjs` checks the shared pulsing dot for cold ordinary/coordinator
 Loading, equal message placement at 100%/130%, no simultaneous repository headers
 or moving line, warm/background/verification/safety line activity, overlap,

@@ -2,9 +2,9 @@
 
 ## 1. Git body feedback shares the repository header text position
 
-- [ ] 1.1 Add Git-specific header-position empty, information and error feedback, preserving PR 97 Loading; assert matching text x/y and single-line row height against actual repository headers at zoom 1 and 1.3 in targeted real-renderer regressions.
-- [ ] 1.2 Cover ordinary/coordinator Open/Closed empty text, non-repository information, initial actionable read failures and multiline error readability; run the relevant Git loading/error tests only and document the changed feedback contract in README and applicable owner docs.
-- [ ] 1.3 Extend the isolated native fixture and capture baseline bbd4674 versus outcome-one screenshots and measured header/message pixel bounds at 100% and 130% under the task folder; verify cold pulses/header exclusion, warm retained rows and disposable process termination in recorded receipts.
+- [x] 1.1 Add Git-specific header-position empty, information and error feedback, preserving PR 97 Loading; assert matching text x/y and single-line row height against actual repository headers at zoom 1 and 1.3 in targeted real-renderer regressions.
+- [x] 1.2 Cover ordinary/coordinator Open/Closed empty text, non-repository information, initial actionable read failures and multiline error readability; run the relevant Git loading/error tests only and document the changed feedback contract in README and applicable owner docs.
+- [x] 1.3 Extend the isolated native fixture and capture baseline bbd4674 versus outcome-one screenshots and measured header/message pixel bounds at 100% and 130% under the task folder; verify cold pulses/header exclusion, warm retained rows and disposable process termination in recorded receipts.
 
 ## 2. Empty selected-tab repositories have no header or zero count
 
