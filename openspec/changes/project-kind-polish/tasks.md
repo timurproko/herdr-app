@@ -2,10 +2,10 @@
 
 ## 1. Stable kind labels and dismissal
 
-- [ ] 1.1 Keep kind wire values unchanged while publishing Plain, Delivery, Gate in that order; update caption expectations and verify the targeted Crew project-kinds fixture.
-- [ ] 1.2 Left-align quiet/revealed kind text in the existing fixed rail without caption truncation, a new column header or hover movement; verify shared-row geometry at normal/narrow widths and 100%/130% zoom using fake UI fixtures.
-- [ ] 1.3 Retire pointer-origin restored popup focus on select, Escape and outside dismissal while preserving Tab/Enter/Space navigation; extend row-choice and lifecycle regressions for open-close-move, pointer still present, and no stale double reveal.
-- [ ] 1.4 Update README and docs/PLUGIN-UI.md for current captions, order and reveal behavior; verify unrelated legacy rows and captured-machine guards with targeted row-choice fixtures.
+- [x] 1.1 Keep kind wire values unchanged while publishing Plain, Delivery, Gate in that order; update caption expectations and verify the targeted Crew project-kinds fixture.
+- [x] 1.2 Left-align quiet/revealed kind text in the existing fixed rail without caption truncation, a new column header or hover movement; verify shared-row geometry at normal/narrow widths and 100%/130% zoom using fake UI fixtures.
+- [x] 1.3 Retire pointer-origin restored popup focus on select, Escape and outside dismissal while preserving Tab/Enter/Space navigation; extend row-choice and lifecycle regressions for open-close-move, pointer still present, and no stale double reveal.
+- [x] 1.4 Update README and docs/PLUGIN-UI.md for current captions, order and reveal behavior; verify unrelated legacy rows and captured-machine guards with targeted row-choice fixtures.
 
 ## 2. Declarative delivery-kind explanation
 

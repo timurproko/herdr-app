@@ -255,11 +255,14 @@ the confirmed resource/value. Optional `identity` is the stable registration ide
 (independent of value), retaining focus handles when only the stored value changes.
 Without it, focus reuse falls back to `revision`. Every reread still invalidates old
 callbacks. No choice means the existing row is unchanged.
-The common renderer keeps a quiet right-aligned label and reveals `optionDropdown`
+The common renderer keeps a quiet left-aligned, untruncated label and reveals `optionDropdown`
 on hover, trigger/Remove keyboard focus or an open menu. Tab reaches the persistent
 trigger and Remove; Enter/Space opens, arrows navigate, Enter selects and Escape
 closes without applying. Focus handles are allocated when check results arrive,
-never while rendering. The choice owns 150px before the separate 80px Remove rail;
+never while rendering. Pointer-origin dismissal (selection, Escape or outside) moves focus to the list,
+so only current hover or intentional keyboard focus reveals a closed row. Keyboard-origin
+editing restores its persistent trigger. Quiet and revealed text share their left edge.
+The choice owns 150px before the separate 80px Remove rail;
 only the folder/label column shrinks. An open menu survives pointer departure.
 The renderer captures row, machine and view-session identity; obsolete callbacks
 cannot apply to replacement rows or machines. Setters are explicit list operations,

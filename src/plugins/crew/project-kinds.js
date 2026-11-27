@@ -1,5 +1,5 @@
 // Crew owns delivery selection. Human project output is never a source of kinds.
-export const PROJECT_KINDS = Object.freeze([['workflow', 'Delivery workflow'], ['plain', 'Plain'], ['gate', 'Gate']].map(Object.freeze));
+export const PROJECT_KINDS = Object.freeze([['plain', 'Plain'], ['workflow', 'Delivery'], ['gate', 'Gate']].map(Object.freeze));
 const object = v => v !== null && typeof v === 'object' && !Array.isArray(v);
 const text = v => typeof v === 'string' && v.length > 0 && v.length <= 4096 && !/[\u0000-\u001f\u007f]/.test(v);
 export const absoluteProjectPath = v => text(v) && !/(?:^|[\\/])\.{1,2}(?:[\\/]|$)/.test(v) &&

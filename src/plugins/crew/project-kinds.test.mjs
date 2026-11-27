@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
-import { projectKindCapability, projectKindRows, readProjectKinds } from './project-kinds.js';
+import { PROJECT_KINDS, projectKindCapability, projectKindRows, readProjectKinds } from './project-kinds.js';
 const capability = {capability:'project-kinds',version:1,listJson:true,setKind:true,explicitHome:true,expectedPath:true,kinds:['workflow','plain','gate']};
 const home = 'C:/Users/fixture/.crew';
 const listing = {capability:'project-kinds',version:1,ok:true,home,projects:['workflow','plain','gate'].map((kind,i)=>({name:['myworkflows','site.dev','.hidden'][i],path:`D:/Git/project-${i}`,kind}))};
+assert.deepEqual(PROJECT_KINDS,[['plain','Plain'],['workflow','Delivery'],['gate','Gate']]);
 assert.ok(projectKindCapability(capability));
 for (const value of [null,[],{},'help',{...capability,version:2},{...capability,expectedPath:false},{...capability,kinds:['plain']}]) assert.equal(projectKindCapability(value),false);
 const rows = projectKindRows(listing);

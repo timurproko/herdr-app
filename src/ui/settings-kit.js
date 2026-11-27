@@ -90,22 +90,21 @@ export function optionDropdown(t, { id, label = 'Choose', value = '', options = 
   const trigger = control(t, h_flex()).id(id).w(KIT.dropdown).px(10).gap(6).items_center().role('button')
     .accessibility_label(label).disabled(off)
     .when(!off, e => e.cursor_pointer()).when(off && !loading, e => e.opacity(0.4))
-    .child(div().flex_1().min_w(0).truncate().text_color(known && !row?.quiet ? t.foreground : t.muted)
-      .when(Boolean(row), el => el.text_right())
+    .child(div().flex_1().min_w(0).when(!row, el => el.truncate()).whitespace_nowrap().text_color(known && !row?.quiet ? t.foreground : t.muted)
       .child(loading ? skeleton(t, `${id}-loading`, 80).accessibility_label(`Loading ${label}`) : known?.[1] ?? (options.length ? 'Choose' : 'None')))
     .child(svg('mods/custom-workspace-chrome/chevron-down.svg').size(U.smallIcon).text_color(t.muted).when(Boolean(row?.quiet), el => el.opacity(0)));
   if (row) trigger.h(U.control).track_focus(row.trigger).tab_index(0)
     .when(row.quiet, e => e.bg('#00000000').border_color('#00000000').text_color(t.muted))
     .on_key_down((e, cx) => {
-      if (!off && ['enter', 'space', ' ', 'down', 'up'].includes(e.key)) { cx.stop_propagation(); onOpen(true, cx); }
+      if (!off && ['enter', 'space', ' ', 'down', 'up'].includes(e.key)) { cx.stop_propagation(); onOpen(true, cx, true); }
     });
   // Same trigger and focus target at rest; only its chrome changes.
   if (off) return trigger;
   const list = menuSurface(t, v_flex()).w(200).track_focus(focus)
     .when(Boolean(row), el => el.id(`${id}-options`).on_key_down((e, cx) => {
       if (e.key === 'down' || e.key === 'up') row.move(e.key === 'down' ? 1 : -1, cx);
-      else if (e.key === 'enter' || e.key === 'space' || e.key === ' ') onSelect(options[row.index]?.[0], cx);
-      else if (e.key === 'escape') { onOpen(false, cx); row.trigger.focus(); }
+      else if (e.key === 'enter' || e.key === 'space' || e.key === ' ') onSelect(options[row.index]?.[0], cx, true);
+      else if (e.key === 'escape') onOpen(false, cx, true);
       else return;
       cx.stop_propagation(); cx.notify();
     }))

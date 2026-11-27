@@ -97,6 +97,7 @@ export function initPlugins(view, cx, requested = null, options = {}) {
     if (!p.list) continue;
     view.pluginFocus[`${plugin.id}-${p.id}-pick`] = cx.focus_handle();
     view.pluginFocus[`${plugin.id}-${p.id}-scope`] = cx.focus_handle();
+    view.pluginFocus[`${plugin.id}-${p.id}-dismiss`] = cx.focus_handle();
     if (p.list.picker?.kind === 'items') {
       const input = InputState.new({ placeholder: p.list.picker.search ?? 'Search…', value: p === section ? search : '' });
       input.on('change', (_e, cx) => cx.notify());
@@ -760,10 +761,18 @@ function listRow(view, t, plugin, item, row, index, enabled) {
   let rowChoice = null;
   if (state && spec && current()) {
     const revealed = state.open || view.pluginRowHover === rid || [state.trigger, state.menu, state.remove].some(f => f.is_focused?.());
-    const open = (value, cx) => {
+    const close = (cx, keyboard) => {
+      state.open = false;
+      // Pointer dismissal must not leave restored popup focus on a closed row.
+      // Keyboard dismissal returns to its persistent Tab target instead.
+      (keyboard && state.keyboard ? state.trigger : view.pluginFocus[`${plugin.id}-${item.id}-dismiss`])?.focus();
+      cx.notify();
+    };
+    const open = (value, cx, keyboard = false) => {
       if (!available()) return;
-      state.open = value;
-      if (value) { state.index = Math.max(0, spec.options.findIndex(([v]) => v === row.choice.value)); state.menu.focus(); }
+      if (!value) { close(cx, keyboard); return; }
+      state.open = true; state.keyboard = keyboard;
+      state.index = Math.max(0, spec.options.findIndex(([v]) => v === row.choice.value)); state.menu.focus();
       cx.notify();
     };
     rowChoice = { revealed, remove: state.remove, widget: optionDropdown(t, { id: `${rid}-choice`, label: spec.label,
@@ -771,9 +780,9 @@ function listRow(view, t, plugin, item, row, index, enabled) {
       row: { quiet: !revealed, trigger: state.trigger, index: state.index, move: (delta, cx) => {
         if (!available() || !state.open) return; state.index = (state.index + delta + spec.options.length) % spec.options.length; cx.notify();
       } },
-      onSelect: (value, cx) => {
+      onSelect: (value, cx, keyboard = false) => {
         if (!available() || !state.open || !spec.options.some(([v]) => v === value)) return;
-        state.open = false; state.trigger.focus(); cx.notify();
+        close(cx, keyboard);
         if (value !== row.choice.value) runListAction(view, cx, plugin, item, async context => {
           if (!current()) return;
           const confirmed = await spec.set(context, row, value);
@@ -810,7 +819,7 @@ function listSection(view, t, plugin, item, loading) {
     .child(scopeRow(t, { id, label: def ? machineName(pluginSetting(plugin, def.key)) : spec.scope?.header === true ? machineName(view.settingsMachine ?? null) : spec.scope?.label ?? 'Machine', dropdown: scope, action: add, separator: spec.scope?.divider === 'items' ? rows.length > 0 : true }))
     .when(Boolean(detail), el => el.child(description(t, detail)))
     // A row's note (an incomplete webhook) follows its name: one line per item.
-    .when(rows.length > 0, el => el.child(v_flex().id(id).w_full().gap(U.rowGap)
+    .when(rows.length > 0, el => el.child(v_flex().id(id).track_focus(view.pluginFocus[`${plugin.id}-${item.id}-dismiss`]).w_full().gap(U.rowGap)
       .children(rows.map((row, index) => listRow(view, t, plugin, item, row, index, enabled)))));
 }
 
