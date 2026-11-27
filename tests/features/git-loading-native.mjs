@@ -53,12 +53,12 @@ if(phase.includes('mixed')){for(const e of a.entries.values())if(e.pr.repo!=='fi
 if(phase.includes('folded-notice'))this.foldedRepositories.add('fixture/a');
 }
 repositoryNameLabel(repo,scope){return super.repositoryNameLabel(repo,scope).on_size_change(size=>console.log('GIT_FEEDBACK_BOX '+JSON.stringify({phase:this.phase,kind:'header-text',...size})));}
-bodyMessage(t,id,text,options){return super.bodyMessage(t,id,text,options).on_size_change(size=>console.log('GIT_FEEDBACK_BOX '+JSON.stringify({phase:this.phase,kind:id,...size})));}
+bodyMessage(t,id,text,options){return super.bodyMessage(t,id,text,this.phase==='ordinary-oracle'?{...options,error:false}:options).on_size_change(size=>console.log('GIT_FEEDBACK_BOX '+JSON.stringify({phase:this.phase,kind:id,...size})));}
 render(cx){const start=Date.now(),tree=super.render(cx);console.log('GIT_LOADING_BUILD '+JSON.stringify({phase:this.phase,updates:this.updates,ms:Date.now()-start}));return tree;}}
 `);
 fs.writeFileSync(control,'coordinator-cold');const logfile=path.join(root,'app.log'),fd=fs.openSync(logfile,'w'),child=spawn(appBin,[],{env,stdio:['ignore',fd,fd]});
 const sleep=ms=>new Promise(r=>setTimeout(r,ms)),app=args=>execFileSync(appBin,args,{env,encoding:'utf8',timeout:20000});
-const receipt={version,zoom,home,pid:child.pid,session:env.HC_SESSION,archiveSha256:expected,executableSha256:sha(original),synthetic:true,frames:[]};
+const receipt={version,zoom,home,pid:child.pid,session:env.HC_SESSION,archiveSha256:expected,executableSha256:sha(original),sourceHead:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),mainSha256:sha(fs.readFileSync(path.join(home,'mods/custom-changes/native-main.js'))),revealSha256:sha(fs.readFileSync(path.join(home,'mods/custom-changes/task-reveal.js'))),synthetic:true,frames:[]};
 const snapshot=()=>{try{return JSON.parse(fs.readFileSync(path.join(home,'shared.json')))['fixture.loading'];}catch{return null;}};
 const capture=name=>{const file=path.join(root,name+'.png');app(['shot',file]);receipt.frames.push({name,file});};
 try{
