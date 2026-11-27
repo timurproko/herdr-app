@@ -15,11 +15,11 @@
 
 ## 3. Kind edits confirm the captured machine's stored value or show an inline refusal
 
-- [ ] 3.1 Bind Crew's row-choice setter to the proposed kind-only API with captured machine/home/name/path, expected-path protection and existing quoted local/SSH transport; fake command tests cover both machines and prohibit re-add/config-file workarounds.
-- [ ] 3.2 Validate matching stored-value acknowledgements before replacing labels and refresh the authoritative section; fake deferred tests cover success, same-value no-op, duplicate suppression and retention while pending/settling.
-- [ ] 3.3 Add one sanitized row-local failure sentence and unknown-outcome read-before-write handling; fake tests cover owner refusal, missing/changed project, unavailable kind, malformed success, timeout, disconnection and no automatic replay.
-- [ ] 3.4 Retire captured menus, callbacks and publications on machine/session/registration changes, close or disable; fake lifecycle tests cover changes away and back and prevent stale follow-up work or cross-machine writes.
-- [ ] 3.5 Document acknowledged persistence, concise failure and refresh recovery in README and docs/PLUGIN-UI.md; run only the targeted provider/renderer/lifecycle regressions and validate this OpenSpec change strictly.
+- [x] 3.1 Bind Crew's row-choice setter to the proposed kind-only API with captured machine/home/name/path, expected-path protection and existing quoted local/SSH transport; fake command tests cover both machines and prohibit re-add/config-file workarounds.
+- [x] 3.2 Validate matching stored-value acknowledgements before replacing labels and refresh the authoritative section; fake deferred tests cover success, same-value no-op, duplicate suppression and retention while pending/settling.
+- [x] 3.3 Add one sanitized row-local failure sentence and unknown-outcome read-before-write handling; fake tests cover owner refusal, missing/changed project, unavailable kind, malformed success, timeout, disconnection and no automatic replay.
+- [x] 3.4 Retire captured menus, callbacks and publications on machine/session/registration changes, close or disable; fake lifecycle tests cover changes away and back and prevent stale follow-up work or cross-machine writes.
+- [x] 3.5 Document acknowledged persistence, concise failure and refresh recovery in README and docs/PLUGIN-UI.md; run only the targeted provider/renderer/lifecycle regressions and validate this OpenSpec change strictly.
 
 ## Workflow follow-up
 

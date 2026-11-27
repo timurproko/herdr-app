@@ -2,19 +2,27 @@
 export const PROJECT_KINDS = Object.freeze([['workflow', 'Delivery workflow'], ['plain', 'Plain'], ['gate', 'Gate']].map(Object.freeze));
 const object = v => v !== null && typeof v === 'object' && !Array.isArray(v);
 const text = v => typeof v === 'string' && v.length > 0 && v.length <= 4096 && !/[\u0000-\u001f\u007f]/.test(v);
-const absolute = v => text(v) && (/^[a-z]:[\\/]/i.test(v) || /^\\\\[^\\]+\\[^\\]+/.test(v) || v.startsWith('/'));
+export const absoluteProjectPath = v => text(v) && !/(?:^|[\\/])\.{1,2}(?:[\\/]|$)/.test(v) &&
+  (/^[a-z]:[\\/]/i.test(v) || /^\\\\[^\\]+\\[^\\]+/.test(v) || v.startsWith('/'));
 const name = v => typeof v === 'string' && /^(?=.{1,40}$)(?!.*\.\.)(?!.*\.$)\.?[a-z0-9][a-z0-9.-]*$/.test(v);
 export const isProjectKind = v => PROJECT_KINDS.some(([kind]) => kind === v);
 export const projectKindJson = text => { try { return JSON.parse(text); } catch { return null; } };
 export const projectKindEnvelope = v => object(v) && v.capability === 'project-kinds' && v.version === 1;
 export const projectKindCapability = v => projectKindEnvelope(v) && v.listJson === true && v.setKind === true &&
   v.explicitHome === true && v.expectedPath === true && Array.isArray(v.kinds) && PROJECT_KINDS.every(([kind]) => v.kinds.includes(kind));
-export const sameProjectPath = (a, b) => absolute(a) && absolute(b) && a.replace(/\\/g, '/').replace(/\/$/, '').toLowerCase() === b.replace(/\\/g, '/').replace(/\/$/, '').toLowerCase();
-export const validKindProject = p => object(p) && name(p.name) && absolute(p.path) && isProjectKind(p.kind);
+const pathKey = path => {
+  const normalized = path.replace(/\\/g, '/').replace(/\/$/, '');
+  return /^[a-z]:\//i.test(normalized) || normalized.startsWith('//') ? normalized.toLowerCase() : normalized;
+};
+export const sameProjectPath = (a, b) => absoluteProjectPath(a) && absoluteProjectPath(b) && pathKey(a) === pathKey(b);
+export const validKindProject = p => object(p) && name(p.name) && absoluteProjectPath(p.path) && isProjectKind(p.kind);
 export function projectKindRows(v) {
-  if (!projectKindEnvelope(v) || v.ok !== true || !absolute(v.home) || !Array.isArray(v.projects) || v.projects.length > 10000) return null;
+  if (!projectKindEnvelope(v) || v.ok !== true || !absoluteProjectPath(v.home) || !Array.isArray(v.projects) || v.projects.length > 10000) return null;
   const names = new Set();
-  if (v.projects.some(p => !validKindProject(p) || names.has(p.name) || !names.add(p.name))) return null;
+  for (const p of v.projects) {
+    if (!validKindProject(p) || names.has(p.name)) return null;
+    names.add(p.name);
+  }
   return v.projects.map(p => {
     const path = p.path.replace(/\//g, '\\');
     return { id: p.name, label: path, path,

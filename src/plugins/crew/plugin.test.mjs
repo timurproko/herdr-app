@@ -459,7 +459,7 @@ crew.latest = '';
 machines = [{ name: 'pc2', target: 'pc2', state: 'unreachable' }]; ran2.length = 0;
 s = await statuses();
 for (const id of ['git', 'node', 'hc', 'crew', 'home']) same([s[id].status, s[id].detail, s[id].fix], ['missing', 'Machine not connected.', null], id);
-same([s.projects.status, s.projects.detail, s.projects.rows, s.projects.usable], ['missing', 'Machine not connected.', [], undefined], 'Projects of an unreachable machine are not listed or changed');
+same([s.projects.status, s.projects.detail, s.projects.rows, s.projects.usable], ['missing', 'Machine not connected.', [], false], 'Projects of an unreachable machine have no write authority');
 assert.equal(ran2.length, 0);
 machines = [{ name: 'pc2', target: 'pc2', state: 'connected', version: '0.1.19' }];
 // A machine without PowerShell: setup is not offered rather than attempted.

@@ -11,7 +11,7 @@ assert.equal(rows[0].path,'D:\\Git\\project-0');assert.equal(rows[0].kindTarget.
 assert.deepEqual(projectKindRows({...listing,projects:[]}),[]);
 for (const value of [null,[],{...listing,home:'relative'},{...listing,version:2},{...listing,projects:{}},
  {...listing,projects:[listing.projects[0],listing.projects[0]]},
- ...[{kind:'unknown'},{name:'bad..name'},{name:'Bad'},{path:'relative'},{path:'D:/bad\npath'}].map(bad=>({...listing,projects:[{...listing.projects[0],...bad}]}))]) assert.equal(projectKindRows(value),null,JSON.stringify(value));
+ ...[{kind:'unknown'},{name:'bad..name'},{name:'Bad'},{path:'relative'},{path:'D:/bad\npath'},{path:'D:/Git/../other'}].map(bad=>({...listing,projects:[{...listing.projects[0],...bad}]}))]) assert.equal(projectKindRows(value),null,JSON.stringify(value));
 const reply = (v,code=0,stderr='')=>({code,stdout:typeof v==='string'?v:JSON.stringify(v),stderr});
 for (const probe of [reply('Usage: crew project list'),reply('{}'),reply({...capability,version:99}),reply('',2,'unknown option: --capabilities')]) {
  const calls=[];const facts=await readProjectKinds(async args=>{calls.push(args);return args[0]==='list'?reply('old\tD:/Git/old\tworkflow delivery'):probe;},s=>s.split('\n').map(line=>({id:line.split('\t')[0],path:line.split('\t')[1]})));

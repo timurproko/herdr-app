@@ -5,7 +5,7 @@ let value = 'workflow', removed = 0, writes = [];
 const row = () => ({id:'fixture.project',label:'D:\\Git\\a-very-long-folder-name-that-must-truncate',choice:{value,revision:value}});
 const plugin = {id:'fixture-choice',name:'Fixture',version:'1',icon:'code',defaultEnabled:true,settings:[],prerequisites:[
  {id:'items',label:'Items',section:true,list:{scope:{header:true},picker:{kind:'items'},remove:async()=>removed++,candidates:async()=>({items:[]}),
- rowChoice:{label:'Item mode',options,set:async(cx,r,v)=>{writes.push([cx.machine,r.id,v]);value=v;}}},
+ rowChoice:{label:'Item mode',options,set:async(cx,r,v)=>{writes.push([cx.machine,r.id,v]);value=v;return {value:v};}}},
  check:async()=>({status:'ready',usable:true,rows:[row(),{id:'ordinary',label:'Ordinary'}]})}]};
 const h=await formsHarness({},[plugin]),{view,cx,ui,render,click,flush}=h;
 let focused;const handles=[];cx.focus_handle=()=>{const f={focus(){focused=f;},is_focused:()=>focused===f};handles.push(f);return f;};

@@ -261,6 +261,21 @@ only the folder/label column shrinks. An open menu survives pointer departure.
 The renderer captures row, machine and view-session identity; obsolete callbacks
 cannot apply to replacement rows or machines. Setters are explicit list operations,
 not saved plugin settings, and selecting the confirmed value is a no-op.
+The setter returns `{ value }` only after its owner confirms the stored selection;
+the pending menu choice never changes the label. Application is single-flight, then
+rechecks the authoritative section while retaining the confirmed body. A failure is
+one short row-local line, not a duplicate section error. An error with `uncertain:
+true` blocks that row until a successful fresh check; it never replays the setter.
+Failed checks must return retained confirmed rows with `usable: false` rather than
+inventing empty results. Machine/session/registration replacement retires errors and
+menus, and a retired completion cannot clear a newer operation's busy state.
+
+Crew supplies this declaration only for valid `project-kinds` v1 rows after its
+explicit `crew project --capabilities --json` probe. Its JSON list owns the home,
+registered name, folder and kind; `set-kind` receives that captured home/name and
+`--expected-path`, never `project add` or a configuration-file write. It rechecks
+capability before dispatch and validates the full stored-value acknowledgement.
+Home ownership and unavailable kinds remain Crew refusals, with no bypass.
 
 ## Settings section rows
 
