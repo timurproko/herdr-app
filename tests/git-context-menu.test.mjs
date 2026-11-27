@@ -4,6 +4,8 @@ import {kitModule,withKitUi} from './support/panel-kit.mjs';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import * as labelColors from '../src/plugins/git/mod/label-colors.js';
+import {loadMod} from '../tools/plugin-harness.mjs';
+const pullHelpers=await loadMod({mod:'custom-changes',modules:{'pulls.js':'src/plugins/git/mod/pulls.js'},entry:'export * from "./pulls.js";'});
 import {Publication} from '../src/plugins/git/mod/presentations.js';
 const U={row:28,gap:8,radius:6,smallIcon:14};
 
@@ -44,8 +46,13 @@ const modules={
   './plugins.js':{sidebarPanelEnabled:()=>true},'./sidebar-title.js':{sidebarTitle:element},
   './agent-links.js':{AgentLinks:class{}},'./pin-swap.js':{PinSwap:class{},PIN_SWAP_MS:320},
   './panel-pin.js':{panelPin:(_t,{id})=>element().id(id)},'./panel-state.js':{changePanel(){}},
-  './pulls.js':{stageLabels:pr=>pr.labels??[],...Object.fromEntries(['pullListArgs','REPO_ARGS','countArgs','parseCounts','parsePullPage','agentPullNumber','pullRow','pullError','PR_FIELDS','PR_PAGE_SIZE','repositoryRead','repositoryFailure','quietRead','retryRead','readPullPage','readTargetPulls','rememberPull','retimePull','pendingChecksArgs','parsePendingChecks','refreshPullFacts','pullStateArgs','parsePullStates','pullPayload','pullRetryAfter','STATE_BATCH_SIZE','ChecksFallback','PullFactsOrder','CHECKS_BATCH_SIZE','stateBatches','needsChecks'].map(key=>[key,()=>{}])),gitReads(){diagnosticReads++;return {};}},
+  // Link the real pure helper namespace, not a stale hand-maintained export
+  // list. Keep the diagnostic trap: popup actions must never initialize reads.
+  './pulls.js':{...pullHelpers,gitReads(){diagnosticReads++;return {};}},
+
 };
+assert.equal(typeof pullHelpers.pullFailure,'function','The production helper really exports the newly imported classifier');
+assert.equal(pullHelpers.pullFailure({code:1,stderr:'HTTP 503 Service Unavailable'}).kind,'response');
 const context=vm.createContext({});
 const main=new vm.SourceTextModule(fs.readFileSync(new URL('../src/plugins/git/mod/main.js',import.meta.url),'utf8'),{context});
 const panelKit=kitModule(context);withKitUi(modules['./ui.js'],element);

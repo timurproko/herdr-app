@@ -44,8 +44,8 @@ change({'owner/a':false,'owner/b':false,'owner/c':false});await drain();open();
 assert.deepEqual([...panel.enrollmentPicker.opening.choices],['owner/c','owner/a','owner/b'],'Deduplicated exact rendered section order');
 const footer=find(tree,'git-enrollment-footer'),scroll=find(tree,'task-pulls-scroll');assert.ok(footer.attrs.flex_none);assert.ok(scroll.attrs.flex_1);assert.ok(scroll.attrs.min_h);assert.ok(scroll.attrs.overflow_hidden);assert.ok(walk(scroll).some(node=>node.attrs.overflow_y_scrollbar));
 assert.ok(tree.kids.indexOf(footer)>tree.kids.indexOf(scroll));assert.ok(new Set(walk(scroll).filter(e=>/^pr-owner\//.test(e.attrs.id?.[0]??'')).map(e=>e.attrs.id[0])).size<=10,'Long PR inventory builds only the bounded window in the scroll sibling');assert.equal(text(find(tree,'git-view-open')),'Open','Revealing does not add a tab counter');assert.equal(panel.aggregate.counts().open,80);assert.equal(find(tree,'task-pulls-more'),undefined);
-assert.equal(find(scroll,'git-enrollment-footer'),undefined);assert.ok(find(tree,'task-error-owner/c'));
-for(const repo of repositories)panel.foldedRepositories.add(repo);render();assert.ok(find(tree,'git-enrollment-footer'));assert.equal(find(tree,'task-error-owner/c'),undefined);assert.equal(find(tree,'task-repo-body-owner/a'),undefined);assert.equal(find(tree,'git-task-empty'),undefined);
+assert.equal(find(scroll,'git-enrollment-footer'),undefined);assert.ok(find(tree,'task-error-owner/c'));assert.equal(find(tree,'task-repo-header-owner/c'),undefined,'An error-only repository has no zero-count header');
+for(const repo of repositories)panel.foldedRepositories.add(repo);render();assert.ok(find(tree,'git-enrollment-footer'));assert.match(text(find(tree,'task-error-owner/c')),/Scoped repository read failed/,'Saved folds cannot hide headerless failures');assert.equal(find(tree,'task-repo-header-owner/c'),undefined);assert.equal(find(tree,'task-repo-body-owner/a'),undefined);assert.equal(find(tree,'git-task-empty'),undefined);
 key('up');assert.equal(panel.enrollmentPicker.index,2);key('down');assert.equal(panel.enrollmentPicker.index,0);key('down');assert.equal(find(tree,'git-enrollment-choice-1').attrs.bg[0],t.hover);key('enter');assert.equal(settings.at(-1).pluginSearch,'owner/a');
 open();find(tree,'git-enrollment-choice-2').attrs.on_hover[0](true,cx);render();assert.equal(panel.enrollmentPicker.index,2);assert.equal(find(tree,'git-enrollment-choice-2').attrs.bg[0],t.hover);key('escape');assert.equal(panel.enrollmentPicker.opening,null);
 open();const count=settings.length;popup().attrs.on_open_change[0](false,cx);render();assert.equal(panel.enrollmentPicker.opening,null);assert.equal(settings.length,count,'Backdrop dismisses without Settings');
@@ -71,7 +71,8 @@ panel.view='closed';render();assert.ok(find(tree,'task-repo-owner/b'));assert.eq
 for(const entry of entries.values())if(entry.pr)entry.pr.state='open';panel.view='open';render();assert.ok(find(tree,'task-repo-owner/a'));assert.ok(find(tree,'task-repo-owner/b'));
 raw='';render();assert.ok(find(tree,'git-live-ci-footer'));assert.equal(find(tree,'git-enrollment-footer'),undefined,'Global missing setup takes precedence');
 // Header name uses the count-strip width; tooltips require measured real overflow.
-const longRepo='owner/a-very-long-canonical-repository-name';repositories=[longRepo];entries.set(`${longRepo}#1`,{link:{repo:longRepo},pr:null,error:'Scoped repository read failed'});render();
+const longRepo='owner/a-very-long-canonical-repository-name';repositories=[longRepo];entries.clear();panel.aggregate.counts=()=>({open:1,closed:0});
+entries.set(`${longRepo}#1`,{link:{repo:longRepo},pr:{key:`${longRepo}#1`,repo:longRepo,number:1,title:'Eligible header fixture',state:'open',url:`https://github.com/${longRepo}/pull/1`,labels:[]},error:'Scoped repository read failed'});render();
 const label=()=>find(tree,`task-repo-name-${context.scope}-${longRepo}`);
 const probe=()=>label().kids[1].kids[0];
 assert.equal(find(tree,`task-repo-header-${longRepo}`).kids.length,3);assert.ok(find(tree,`task-repo-count-${longRepo}`));assert.ok(label().attrs.flex_1);assert.equal(label().attrs.min_w[0],0);assert.ok(label().kids[0].attrs.truncate);assert.ok(label().attrs.overflow_hidden);
@@ -84,6 +85,6 @@ for(const zoom of [0.75,1,1.25,1.5,2]){
  label().kids[0].attrs.on_size_change[0]({width:320*zoom},cx);render();assert.equal(label().attrs.tooltip,undefined,'Widening removes unnecessary tooltip even when folded');panel.foldedRepositories.delete(longRepo);
 }
 const staleMeasure=label().kids[0].attrs.on_size_change[0],notified=notifications;context={...context,scope:'replacement'};panel.aggregate.context=context;render();staleMeasure({width:1},cx);assert.equal(notifications,notified,'Old-scope geometry cannot affect another coordinator');assert.equal(label().attrs.tooltip,undefined);
-assert.equal(text(find(tree,'git-view-open')),'Open');assert.equal(text(find(tree,'git-view-closed')),'Closed');assert.deepEqual({...panel.aggregate.counts()},{open:80,closed:0});
+assert.equal(text(find(tree,'git-view-open')),'Open');assert.equal(text(find(tree,'git-view-closed')),'Closed');assert.deepEqual({...panel.aggregate.counts()},{open:1,closed:0});
 assert.equal(handles.length,1,'Repeated render, open/close and context changes never allocate another handle');
 console.log('PASS real coordinator footer, zero/one/many choices, ordered dedup, fold/scroll, keyboard/dismissal, cached reads and stale Settings guards');

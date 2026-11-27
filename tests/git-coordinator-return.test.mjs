@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {rowHarness,find,t} from './support/git-row.mjs';
+import {rowHarness,find,words,t} from './support/git-row.mjs';
 let context={scope:'a',parent:'space-a',machine:null,presentationGeneration:0,links:[]},epoch=0;
 const h=await rowHarness({modules:{'panel-kit.js':'src/ui/panel-kit.js','aggregate.js':'src/plugins/git/mod/aggregate.js','plugins.js':{sidebarPanelEnabled:()=>true,pluginPullContext:()=>context,pluginEvent(){}}}});
 const a=new h.AggregatePulls({shown:()=>true,presentationEpoch:()=>epoch});a.fallbackBusy=true;
@@ -16,7 +16,8 @@ context={scope:'loading',links:[]};a.context=context;
 a.entries.set('unknown',{link:{repo:'fixture/unknown',targets:[{terminal:'worker'}]},pr:null});
 const {panel}=h;panel.context='tasks:loading';panel.aggregate=a;panel.shown=()=>true;panel.notices={sync(){},presentation(){}};panel.enrollmentPicker={render(){}};panel.syncChecksFallback=()=>{};
 let tree=h.render(()=>panel.renderAggregate(h.cx,t));assert.equal(find(tree,'task-repo-header-fixture/unknown'),undefined);assert.ok(find(tree,'git-task-waiting'));assert.ok(find(tree,'git-task-empty'));
-a.entries.get('unknown').error={kind:'read',message:'Read failed'};tree=h.render(()=>panel.renderAggregate(h.cx,t));assert.ok(find(tree,'task-repo-header-fixture/unknown'));assert.ok(find(tree,'task-error-fixture/unknown'));assert.equal(find(tree,'git-task-loading'),undefined);
+a.entries.get('unknown').error={kind:'read',message:'Read failed'};tree=h.render(()=>panel.renderAggregate(h.cx,t));assert.equal(find(tree,'task-repo-header-fixture/unknown'),undefined,'A failure is not evidence of selected-tab PRs');assert.equal(find(tree,'task-repo-count-fixture/unknown'),undefined);assert.equal(words(find(tree,'task-error-fixture/unknown')).join(' '),'Read failed');assert.equal(find(tree,'git-task-loading'),undefined);
+panel.foldedRepositories.add('fixture/unknown');tree=h.render(()=>panel.renderAggregate(h.cx,t));assert.equal(words(find(tree,'task-error-fixture/unknown')).join(' '),'Read failed','Saved folds cannot hide a headerless actionable failure');
 // Re-entry gets a new native window/measurement owner but retains pure reveal/anchor facts.
 const sections=[{repo:'fixture/repo',rows:Array.from({length:30},(_,i)=>({key:`fixture/repo#${i}`}))}];
 let w=panel.taskSections(sections,'scroll-a').window;while(w.revealMore()){}w.observe(700,400);const depth=w.limit;

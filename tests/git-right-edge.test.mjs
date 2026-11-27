@@ -247,9 +247,17 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
   aggregate.context.stale=false;aggregate.repositories=()=>['owner/repo'];aggregate.readNotice=()=> 'Repository read failed';
   {
     const {tree,geometry}=render();check(tree,geometry,'task-error-owner/repo',{leading:true});
-    check(tree,geometry,'task-repo-header-owner/repo',{radius:true});
+    assert.equal(find(tree,'task-repo-header-owner/repo'),undefined,'Failure-only repositories omit headers in both tabs at every width/zoom');
+    assert.equal(find(tree,'task-repo-count-owner/repo'),undefined);
   }
-  aggregate.readNotice=()=>null;panel.enrollmentPresentation=()=>({choices:['owner/repo'],key:'fixture'});
+  // Keep the complete header radius/gutter oracle, but give its repository
+  // an actual selected-tab PR. A notice alone no longer makes a header.
+  aggregate.rows=()=>[{...pr,repo:'owner/repo',key:`owner/repo#${pr.number}`}];
+  {
+    const {tree,geometry}=render();check(tree,geometry,'task-repo-header-owner/repo',{radius:true});
+    check(tree,geometry,'task-error-owner/repo',{leading:true});
+  }
+  aggregate.rows=()=>[];aggregate.readNotice=()=>null;panel.enrollmentPresentation=()=>({choices:['owner/repo'],key:'fixture'});
   {
     const {tree,geometry}=render();check(tree,geometry,'git-enrollment-info',{leading:true,radius:true});
     assert.ok(!nodes(find(tree,'task-pulls-scroll')).includes(find(tree,'git-enrollment-footer')),'Enrollment remains outside scrolling');
