@@ -381,7 +381,8 @@ and initial failures therefore replace header text without a vertical jump;
 long errors may grow below that first-line anchor. Repositories with no PRs in
 the selected tab have no header, zero count or chevron. Applicable failures stay
 visible without a header and cannot be hidden by a saved fold; a settled tab
-without rows or failures shows one empty message, not one per repository.
+without rows or failures shows one empty message, not one per repository, even
+when a fold was saved or the final PR just left that tab.
 Nonempty sections retain their existing folds and connected-child order.
 Cold Loading retains its existing dot/text placement.
 
@@ -405,6 +406,11 @@ PR, including Draft, above its repository header without entry-driven animation.
 If a footer or destination branch is genuinely unresolved, calm Loading holds
 until the final layout is known; cached rows never flash as a list then jump into
 the pin. Reverse and different-pin switches use the same coherent publication.
+A missing linked PR releases that hold to the ordinary list. Failed or timed-out
+root/footer/targeted reads show last-good content with an actionable Refresh
+error instead of perpetual Loading. Footer reads have a 15-second deadline;
+periodic/manual root completion consumes queued association refreshes so a
+same-terminal footer can replace or clear its pin.
 Other rows retain their relative order; coordinator returns have no permanent pin. Cache memory is bounded and session-only; another
 machine/repository and disable/re-enable generations cannot borrow it.
 Git shows only **Open** and **Closed** pull requests. Both load **10 PRs initially**

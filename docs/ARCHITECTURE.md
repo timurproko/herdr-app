@@ -539,8 +539,16 @@ PR labels resolve synchronously even while the destination root is pending.
 Fresh identity-qualified AgentLinks facts or a bounded 256-entry/10-second footer
 cache can restore pin/no-pin plus branch knowledge. Otherwise the body holds calm
 Loading until footer/branch resolution (or an older targeted PR lookup) settles.
-Footer transport failure remains unknown with existing 10-second retry bounds;
-obsolete replies cannot resolve another selection. No click-motion controller is
+Raw targeted alias failures are normalized before exact-PR absence detection;
+authoritative absence releases the hold to the final list. Other targeted/root/
+footer failures retain last-good layout plus actionable retry feedback; they are
+not indefinitely active Loading. No-folder contexts keep their ordinary explanation;
+unavailable remote machines retain compatible content with reconnect/retry feedback.
+Footer requests have a 15-second deadline and
+10-second retry bounds. Abandoned targeted Tasks release their admission latch.
+Forced footer demand runs after root loading clears (or after an older pending
+footer), including same-terminal replacement/removal. Obsolete replies cannot
+resolve another selection. No click-motion controller is
 introduced, and known direct-entry content has one final layout from first paint.
 
 Identity is exact machine plus canonical repository and the existing inherited

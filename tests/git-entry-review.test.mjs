@@ -123,6 +123,20 @@ const cases=[
     const tree=h.render(()=>p.renderPanel(h.cx));assert.ok(find(tree,'pr-1'));assert.deepEqual({...p.counts},{open:1,closed:0});
     assert.ok(find(tree,'git-read-error'),'failed root retains cached presentation and actionable error');
   }],
+  ['warm-root-failure-unknown-association',async()=>{
+    for(const failure of [{code:0,timed_out:true,stdout:''},{code:1,stderr:'failed'}])for(const savedRoot of ['/repo',null]){
+      const h=await cachedHarness(),p=h.panel;delete p.agentLinks.cachedAssociation;
+      const saved=p.repositorySnapshot();saved.root=savedRoot;p.root=savedRoot;
+      p.aggregate.presentations.set(JSON.stringify(['repository',null,'owner/repo']),saved);
+      Object.assign(h.place,{cwd:'/new-worktree',space:'worker-b',terminal:'unknown',app:'claude-code'});
+      let tree=h.render(()=>p.renderPanel(h.cx));assert.ok(find(tree,'git-association-pending'));await tick();
+      h.calls.shift().resolve(failure);await tick();p.headerHovered=true;
+      tree=h.render(()=>p.renderPanel(h.cx));assert.ok(find(tree,'pr-1'),'Failed verification retains cached rows without known association');
+      assert.ok(find(tree,'git-read-error'));assert.equal(find(tree,'git-association-pending'),undefined);assert.equal(p.associationPending(),false);
+      const refresh=find(tree,'git-refresh');assert.ok(refresh);assert.equal(refresh.attrs.disabled[0],false,'Root failure remains manually retryable even without a cached root');
+      const before=h.calls.length;for(let i=0;i<3;i++)h.render(()=>p.renderPanel(h.cx));await tick();assert.equal(h.calls.length,before,'Failed verification cannot hot-loop');
+    }
+  }],
   ['canonical-identity-replacement',async()=>{
     const h=await cachedHarness(),p=h.panel,linkCalls=[];let forgot=0;
     const {AgentLinks}=await loadMod({host:{agents:()=>[],panes:()=>[],spaces:()=>[],terminals:()=>[],

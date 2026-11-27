@@ -1,18 +1,5 @@
 # Spec Delta
 
-## ADDED Requirements
-
-### Requirement: Quiet missing keyboard navigation targets
-Missing keyboard-navigation targets SHALL be silent no-ops, without a toast, error entry or other visible feedback. Ctrl+number for an absent tab and Alt+number for an absent space SHALL obey this rule explicitly. Real command failures unrelated to target absence SHALL retain existing error feedback.
-
-#### Scenario: Missing numbered tab
-- **WHEN** Ctrl+number selects a tab index that does not exist, including repeated presses
-- **THEN** selection remains unchanged and no toast or error entry is produced
-
-#### Scenario: Missing numbered space
-- **WHEN** Alt+number selects a space index that does not exist, including repeated presses
-- **THEN** selection remains unchanged and no toast or error entry is produced
-
 ## MODIFIED Requirements
 
 ### Requirement: Shared sidebar trailing grid

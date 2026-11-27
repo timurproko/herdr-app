@@ -180,6 +180,21 @@ share one captured coordinator binding; changed membership, conflicting parents 
 bindings, duplicates, missing/cross-machine endpoints and expired proof still refuse.
 Every child's saved colour and Automatic flag stays unchanged.
 
+`git-association-recovery.test.mjs` exercises raw GraphQL missing aliases,
+503/timeout/spawn/repository failures, quiet deferrals, abandoned targeted Tasks,
+failed/hung footer deadlines and forced same-terminal replacement/removal. It
+asserts final layout or retained row positions with actionable errors, no stuck
+Loading and no render-driven reread loop. `git-entry-review` includes failed warm
+root verification without a known association, both with and without a cached
+root. `git-empty-state` covers saved-fold emptiness and last-row departure.
+
+The three hosted regression fixtures remain enforced: `git-location` routes the
+local accessibility read separately from Git/GitHub calls; `fleet-read-notices`
+asserts rendered text through its intentional wrapper; `git-row-render-budget`
+retains the original operation/element/probe limits and mutation controls.
+Conditional stage interaction calls skip inert native builder operations, rather
+than increasing the budget.
+
 `git-raced-read.test.mjs` races detail head, state and draft status at 100%/130%,
 asserting no notice, no partial publication or row-y change, no immediate loop
 and exactly one existing 10-second retry that can publish a coherent result.

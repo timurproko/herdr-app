@@ -3,7 +3,7 @@
 ## 1. Git body feedback shares the repository header text position
 
 - [x] 1.1 Add Git-specific header-position empty, information and error feedback, preserving PR 97 Loading; assert matching text x/y and single-line row height against actual repository headers at zoom 1 and 1.3 in targeted real-renderer regressions.
-- [x] 1.2 Cover ordinary/coordinator Open/Closed empty text, non-repository information, initial actionable read failures and multiline error readability; run the relevant Git loading/error tests only and document the changed feedback contract in README and applicable owner docs.
+- [x] 1.2 Cover ordinary/coordinator Open/Closed empty text, saved-fold emptiness and last-row departure, non-repository information, initial actionable read failures and multiline error readability; run the relevant Git loading/error tests only and document the changed feedback contract in README and applicable owner docs.
 - [x] 1.3 Extend the isolated native fixture and capture baseline bbd4674 versus outcome-one screenshots and measured header/message pixel bounds at 100% and 130% under the task folder; verify cold pulses/header exclusion, warm retained rows and disposable process termination in recorded receipts.
 
 ## 2. Empty selected-tab repositories have no header or zero count
@@ -34,17 +34,13 @@
 
 ## 7. Agent switches choose the final pin/list layout before content paint
 
-- [x] 7.1 Resolve known terminal PR associations before cached page presentation, withholding target content while genuinely unresolved; add render-history regressions for list-to-pin, pin-to-list and different-pin switches, obsolete replies and unchanged row y after the first content paint.
+- [x] 7.1 Resolve known terminal PR associations before cached page presentation, withholding target content while genuinely unresolved; cover normalized absent/failed targets, warm-root failures without known associations, bounded failed/hung footer recovery and queued forced refreshes. Add render-history regressions for list-to-pin, pin-to-list and different-pin switches, obsolete replies and unchanged row y after the first content paint.
 - [x] 7.2 Document the coherent entry policy and run targeted entry/pin/agent-link regressions; record measured row bounds at both zooms without interacting with real agents.
 
 ## 8. Self-healing raced reads produce no visible notice
 
 - [x] 8.1 Structurally classify changed-during-detail snapshots as quiet discarded reads, retain existing rows and bounded retry cadence, and audit adjacent stale/superseded paths; add held-response tests proving no notice, partial publication or row shift.
 - [x] 8.2 Update read/notice documentation and run only targeted list/detail/refresh regressions, retaining real actionable errors.
-
-## 9. Missing numbered navigation targets are silent
-
-- [ ] 9.1 At a supported pre-dispatch boundary, make Ctrl+number absent tabs and Alt+number absent spaces silent no-ops with no error entry; add explicit regressions for both and preserve real failures. Blocked if native dispatcher/keymap ownership is required: no new native patch or live key rewrite is authorized.
 
 ## Workflow follow-up
 

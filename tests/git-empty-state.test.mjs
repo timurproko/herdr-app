@@ -13,8 +13,8 @@ for(const zoom of [1,1.3]) {
   near(line.x,labelBox.x,'same text left edge');near(line.y,labelBox.y,'same text top');near(g.get(message).height,hg.get(header).height,'same row height');
   assert.equal(message.attrs.text_color[0],text.startsWith('Synthetic')?t.ansi1:t.dim);
  }
- for(const view of ['open','closed']) {
-  p.view=view;p.pulls[view]=[];
+ for(const view of ['open','closed'])for(const folded of [false,true]) {
+  p.view=view;p.pulls[view]=[];p.foldedRepositories=folded?new Set(['owner/repo']):new Set();
   const tree=h.render(()=>p.renderPulls(t));assert.ok(words(tree).includes(`No ${view} pull requests`));
   assert.equal(find(tree,'task-repo-header-owner/repo'),undefined,'Empty ordinary section has no header/count/chevron');
   const g=rowGeometry(tree,390,zoom,600),line=g.get(`No ${view} pull requests`);
@@ -24,5 +24,10 @@ for(const zoom of [1,1.3]) {
   near(fg.get(p.pullError).y,(4+(28-19.5)/2)*zoom,'Headerless failure ignores saved fold');assert.equal(find(failure,'task-repo-header-owner/repo'),undefined);
   p.pullError=null;p.foldedRepositories.clear();
  }
+ p.view='open';p.foldedRepositories.add('owner/repo');p.pulls.open=[h.facts.pullRow({number:1,title:'Last row',state:'OPEN'})];
+ assert.ok(find(p.renderPulls(t),'task-repo-header-owner/repo'));
+ p.pulls.open=[];const departed=p.renderPulls(t);
+ assert.ok(words(departed).includes('No open pull requests'),'Last row leaving a folded tab cannot leave a blank body');
+ assert.equal(find(departed,'task-repo-header-owner/repo'),undefined);assert.ok(p.foldedRepositories.has('owner/repo'),'Fold is retained for future rows');p.foldedRepositories.clear();
 }
 console.log('PASS Git header-position feedback at 100/130%, empty Open/Closed and folded initial failures');

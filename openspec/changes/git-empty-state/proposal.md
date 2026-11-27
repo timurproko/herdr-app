@@ -15,7 +15,6 @@ Git's empty and error messages use PR-row feedback geometry rather than reposito
 - Make verdict labels such as Approved and Changes requested use the same guarded build-agent navigation, hover/focus/keyboard behavior and no-tooltip policy as Build, including dim inert unavailable targets.
 - Resolve the target agent's pin/list association before its first content paint, reusing known links/cache and retaining calm feedback while genuinely unresolved; no list-to-pin intermediate frame.
 - Quietly discard changed-during-detail and equivalent obsolete/raced reads, retaining last-good rows without transient notices and retrying through bounded existing scheduling.
-- Make absent numbered keyboard navigation targets silent no-ops, explicitly Ctrl+number missing tabs and Alt+number missing spaces, without suppressing real command failures. This requires confirming a supported native-dispatch interception boundary; no new native patch or global keymap rewrite is implicitly authorized.
 - After approval, capture before/after synthetic-native pictures and pixel measurements at 100% and 130%, outside the checkout, without accessing the person's running app or real Crew homes.
 
 ## Capabilities
@@ -31,4 +30,4 @@ None.
 
 ## Impact
 
-Target `src/plugins/git/mod/main.js`, the coordinator selected-tab/reveal projection as needed, and `src/features/spaces/main.js`. Reuse repository-header geometry without globally changing Files or other `panelMessage` consumers. Extend targeted Git loading, section/reveal, error and Spaces/terminal-role regressions plus the isolated native fixture. No new dependency, GitHub read, persistent setting, deployment, host patch or real-session operation is needed. Implementation and proof capture await plan approval.
+Target `src/plugins/git/mod/main.js`, the coordinator selected-tab/reveal projection as needed, and `src/features/spaces/main.js`. Reuse repository-header geometry without globally changing Files or other `panelMessage` consumers. Extend targeted Git loading, section/reveal, error and Spaces/terminal-role regressions plus the isolated native fixture. No new dependency, persistent setting, live deployment, host patch or real-session operation is needed. Approved scope includes bounded read-failure recovery so association admission cannot hide last-good rows or actionable errors.

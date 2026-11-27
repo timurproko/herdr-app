@@ -10,6 +10,16 @@ Git SHALL resolve known PR association before the first target-content paint on 
 - **THEN** the target content uses exactly one layout and its PR row vertical positions do not change after its first content paint
 - **AND** pending association resolution does not briefly expose a different pin/list layout
 
+#### Scenario: Association read cannot resolve successfully
+- **WHEN** the linked PR is authoritatively absent or a root, footer or targeted read fails, times out or is abandoned
+- **THEN** absence releases admission to the final list; other failures expose actionable retry feedback and last-good content rather than perpetual Loading or a blank body
+- **AND** raw alias errors are classified before absence decisions, pending footer reads have a finite deadline and obsolete replies cannot overwrite recovery
+
+#### Scenario: Same-terminal footer changes
+- **WHEN** periodic or manual root verification succeeds while the selected terminal stays the same and its footer PR changes or disappears
+- **THEN** forced association demand runs after root loading clears, retaining the prior pin until the replacement resolves
+- **AND** forced demand received during loading is not discarded
+
 ### Requirement: Quiet discarded read snapshots
 A PR changing during a detail read or an obsolete/superseded refresh SHALL be discarded quietly, retaining last-good row content without a notice, error flash or layout shift. Retry SHALL be bounded through existing refresh scheduling. Actual actionable read failures SHALL retain their notices; stale snapshots SHALL NOT count as successful fresh reads.
 
@@ -59,7 +69,7 @@ Ordinary and coordinator Git SHALL omit a repository's header, count and chevron
 #### Scenario: All repositories are empty
 - **WHEN** all selected-tab repository reads settle authoritatively without qualifying PRs or actionable notices
 - **THEN** the body shows only one No open pull requests or No closed pull requests message at the first header position
-- **AND** no repository header, zero count or chevron remains
+- **AND** no repository header, zero count or chevron remains, even if its fold was saved or its final PR just left the selected tab
 
 #### Scenario: Failure without rows
 - **WHEN** a repository has an applicable actionable read failure but no qualifying selected-tab PRs
