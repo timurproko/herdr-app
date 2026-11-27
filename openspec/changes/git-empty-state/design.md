@@ -49,7 +49,19 @@ Replace Git's positional sweep with a full-width 1px accent line whose opacity l
 
 Approved and the GitHub review-decision labels navigate to the verified ship/fix owner using the same captured action, pointer/keyboard/focus styling and unavailable semantics as Build. Review stage continues to target the reviewer. Do not use arbitrary unmanaged label names as navigation authority. Verdict navigation grants no permission without current exact PR/repository/membership verification, never falls through to the PR link, and adds no tooltip. Preserve the visible verdict caption/color and native row geometry.
 
-### 7. Targeted regression and isolated native proof
+### 7. Publish agent association and target layout coherently
+
+Resolve known terminal PR labels or compatible cached per-agent association synchronously before using a restored repository page. When a footer association is genuinely unresolved, hold calm Loading rather than exposing an unpinned target list. Keep previous same-context content stable where safe. Unknown is not authoritative no-PR; stale footer replies must not publish into a newer selection. Record every render through pin-to-list, list-to-pin and different-pin switches, comparing row y after the first target-content frame.
+
+### 8. Internal read races are quiet, not actionable errors
+
+Classify a changed-during-detail result structurally as an obsolete snapshot, not by matching rendered strings. Reuse quiet discard/backoff machinery and last-good rows, rejecting partial snapshots and using bounded existing cadence for retry. Audit adjacent stale/superseded exits for the same policy. Real transport/auth/data failures keep existing actionable semantics; no unbounded immediate retry loop or invented successful read.
+
+### 9. Missing numbered native navigation targets
+
+The requested Ctrl+number and Alt+number behavior must happen before native command dispatch emits its error, not by hiding a toast afterward. Generated disposable SDK and keys show native `tab.select:N`/`space.select:N` bindings, `keys()` read-only and no command-registration/error-interception API. The repository does not own the native dispatcher or source keymap. Do not add an unreviewed native patch, rewrite the person's keys or suppress all command failures. If no supported mod boundary exists, leave this outcome incomplete and report the native-host blocker for separate authorization/upstream work; do not invent a passing regression for unimplemented behavior.
+
+### 10. Targeted regression and isolated native proof
 
 After approval, extend existing loading, repository-count, section-reveal, error, worker-entry and Spaces layout regressions as relevant; retain the terminal-role regression. Add real-renderer geometry assertions at zoom 1 and 1.3. Cover Open/Closed, all-empty, mixed-empty, notice-only, folded, lone-pin, cold pending and warm retained states, plus connected-child ordering.
 
@@ -66,4 +78,4 @@ Adapt the existing checksum-verified disposable native loading fixture for befor
 
 ## Migration Plan
 
-No data migration or live deployment is part of this task. After the recorded approval, deliver six outcomes (including current-round caption correction, stationary loading feedback and verdict navigation) with targeted tests in the existing draft PR, tick outcomes individually, push through origin and dispatch CI on the final branch head because draft PR suites are skipped. Report immediately without waiting for CI. Rollback is a source revert; local fold keys and shared tag data do not change.
+No data migration or live deployment is part of this task. After the recorded approval, deliver the approved outcomes (including current-round captions, stationary loading feedback, verdict navigation, atomic agent-entry presentation, quiet raced reads and the separately identified native-shortcut boundary) with targeted tests in the existing draft PR, tick outcomes individually, push through origin and dispatch CI on the final branch head because draft PR suites are skipped. Report immediately without waiting for CI. Rollback is a source revert; local fold keys and shared tag data do not change.

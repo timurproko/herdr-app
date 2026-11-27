@@ -2,6 +2,22 @@
 
 ## ADDED Requirements
 
+### Requirement: Coherent agent entry layout
+Git SHALL resolve known PR association before the first target-content paint on an agent or space switch, directly rendering the final pinned or ordinary layout. Genuinely unresolved associations SHALL retain compatible stable content or calm Loading, never an intermediate unpinned target list. Different-pin and reverse switches SHALL obey the same rule. Stale association replies SHALL NOT affect a later selection.
+
+#### Scenario: Agent switches
+- **WHEN** entry changes from a no-PR agent to a known PR agent, to another PR agent or back to a no-PR agent
+- **THEN** the target content uses exactly one layout and its PR row vertical positions do not change after its first content paint
+- **AND** pending association resolution does not briefly expose a different pin/list layout
+
+### Requirement: Quiet discarded read snapshots
+A PR changing during a detail read or an obsolete/superseded refresh SHALL be discarded quietly, retaining last-good row content without a notice, error flash or layout shift. Retry SHALL be bounded through existing refresh scheduling. Actual actionable read failures SHALL retain their notices; stale snapshots SHALL NOT count as successful fresh reads.
+
+#### Scenario: Head or state changes during detail read
+- **WHEN** a detail response no longer matches the initial page's PR head, state or draft status
+- **THEN** no partial result or changed-during-read notice is published and the existing row stays in the same position
+- **AND** an eligible bounded later retry can publish a coherent replacement without a new immediate retry loop
+
 ### Requirement: Verdict labels navigate to the build owner
 Git verdict labels, including Approved and Changes requested, SHALL use Build's guarded build-owner navigation with identical pointer, cursor, hover, focus and keyboard behavior and no tooltip. Missing, ended or disconnected targets SHALL be dim and inert like Build, without opening the PR. Review stage SHALL retain reviewer navigation. Verdict captions and colors SHALL remain independent of target availability.
 

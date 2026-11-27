@@ -32,9 +32,23 @@
 - [ ] 6.1 Reuse guarded Build-owner navigation for Approved and review-decision labels, retaining Review's reviewer role, verdict caption/color, pointer/keyboard/focus behavior, no tooltip and dim inert missing/disconnected targets; add targeted ordinary/coordinator, stale-action, ghost and unavailable regressions.
 - [ ] 6.2 Update README, architecture and affected spec contracts for verdict navigation and run the targeted stage/agent-link/tooltip tests without the full suite.
 
+## 7. Agent switches choose the final pin/list layout before content paint
+
+- [ ] 7.1 Resolve known terminal PR associations before cached page presentation, withholding target content while genuinely unresolved; add render-history regressions for list-to-pin, pin-to-list and different-pin switches, obsolete replies and unchanged row y after the first content paint.
+- [ ] 7.2 Document the coherent entry policy and run targeted entry/pin/agent-link regressions; record measured row bounds at both zooms without interacting with real agents.
+
+## 8. Self-healing raced reads produce no visible notice
+
+- [ ] 8.1 Structurally classify changed-during-detail snapshots as quiet discarded reads, retain existing rows and bounded retry cadence, and audit adjacent stale/superseded paths; add held-response tests proving no notice, partial publication or row shift.
+- [ ] 8.2 Update read/notice documentation and run only targeted list/detail/refresh regressions, retaining real actionable errors.
+
+## 9. Missing numbered navigation targets are silent
+
+- [ ] 9.1 At a supported pre-dispatch boundary, make Ctrl+number absent tabs and Alt+number absent spaces silent no-ops with no error entry; add explicit regressions for both and preserve real failures. Blocked if native dispatcher/keymap ownership is required: no new native patch or live key rewrite is authorized.
+
 ## Workflow follow-up
 
-- Implementation was approved, including the fourth, fifth and sixth outcomes, in the coordinator's follow-up messages.
-- Deliver the six outcomes in this order, with tests/docs in each outcome and PR ticks as each lands; do not mark ready or merge.
+- Implementation was approved, including the added outcomes, in the coordinator's follow-up messages.
+- Deliver the approved outcomes in this order, with tests/docs in each outcome and PR ticks as each lands; do not mark ready or merge.
 - Use only targeted local commands, push the final implementation head and dispatch CI on that branch because draft PR suites are skipped; report immediately without waiting for or polling CI.
 - Keep proof pictures and scratch under C:/Users/tprokopiev/.crew/tasks/git-empty-state and stop every disposable app/Core/server before writing the implementation report and running crew done git-empty-state.
