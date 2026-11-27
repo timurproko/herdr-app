@@ -562,7 +562,7 @@ export default class Spaces extends View {
           .when(!edit && (tags.some(tag=>tag.plugin==='crew') || attached && !linked),el=>{
             const parent=attached&&!linked;
             return el.child(h_flex().id(`space-meta-${w.id}`).flex_none().items_center().gap(INLINE_RENAME.actionGap).mr(-8)
-              .children(tags.filter(tag=>tag.plugin==='crew').map(tag=>sidebarMachineLabel(t,tag.label)
+              .children(tags.filter(tag=>tag.plugin==='crew').map(tag=>sidebarMachineLabel(t,tag.label==='Crew'?'crew':tag.label)
                 .id(`space-tag-${w.id}-${tag.plugin}-${tag.index}`).mr((parent?INLINE_RENAME.labelGap:9)-INLINE_RENAME.actionGap)
                 .when(Boolean(tag.tooltip),e=>e.tooltip(tag.tooltip))))
               .when(parent,e=>e.child(sidebarNumericSlot(t,`space-count-${w.id}`,String(block.length-1),{centered:true})))

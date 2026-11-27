@@ -914,7 +914,8 @@ and [native index-selection implementation](https://github.com/herdrdev/herdr-ap
 The fleet badge's fill uses the coordinator's actual colour and follows recolouring
 without changing the fleet's saved colour. Expanded attached fleets are indented
 children, using the same rounded connector, stroke and spacing as child agents.
-Neither row shows a chain, and only the coordinator shows Crew; unrelated plugin
+Neither row shows a chain, and only the coordinator shows lowercase `crew` in
+Spaces; the terminal-pane header still shows its unchanged `Crew` badge. Unrelated plugin
 tags remain. Crew precedes the coordinator's far-right chevron, which folds its children.
 The chevron and its 24px hover target align with machine headers. Crew stays fixed
 across disclosure; the connected-child-space count stays visible in both states.

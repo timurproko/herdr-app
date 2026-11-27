@@ -10,6 +10,7 @@ import {deploy} from '../../tools/deploy.mjs';
 import {checkRenameSelection} from './rename-selection-native.mjs';
 assert.ok(process.platform==='win32'&&process.argv.includes('--run'),'Explicit Windows --run required');
 const arg=(key,fallback)=>{const i=process.argv.indexOf(key);return i<0?fallback:process.argv[i+1];};
+const labelsOnly=process.argv.includes('--labels-only');
 const output=path.resolve(arg('--output')),zoom=Number(arg('--zoom','1')),children=Number(arg('--children','3')),baseline=arg('--baseline',null),width=Number(arg('--width','300'));assert.ok([180,300].includes(width));
 assert.ok(path.relative(project,output).startsWith('..'));assert.ok([1,1.3].includes(zoom));assert.ok([1,3].includes(children));
 const appBin=path.resolve(process.env.HERDR_APP_BIN),coreBin=path.join(process.env.LOCALAPPDATA,'Programs/herdr-core/herdr-core.exe');
@@ -57,16 +58,25 @@ put('mods/custom-tabs/host.js',`export * from './native-host.js';import * as nat
 put('mods/custom-tabs/profile-launches.js','export const startProfileLaunches=()=>{};');put('mods/custom-tabs/panel-state.js','export const syncPanelState=()=>{};export const changePanel=()=>{};');
 fs.renameSync(path.join(home,'mods/custom-tabs/main.js'),path.join(home,'mods/custom-tabs/tabs-view.js'));
 put('mods/custom-tabs/main.js',`import Tabs from './tabs-view.js';import {readTextFile} from './host.js';import {beginTabRename,cancelTabRename} from './tab-rename.js';export default class Fixture extends Tabs{init(p,cx){this.rename=null;this.renameChromeWidth=58;cx.timer.every(100,cx=>cx.spawn(async view=>{const phase=await readTextFile(${JSON.stringify(control)});if(this.phase===phase)return;this.phase=phase;cancelTabRename(this,view);if(phase.startsWith('rename-'))beginTabRename(this,'tabs-name',view);view.notify();}));}}`);
+if(labelsOnly){
+ const layout=JSON.parse(fs.readFileSync(path.join(home,'layouts/SidebarFixture.json')));
+ layout.children.find(child=>child.id==='centre').children.unshift({id:'terminal-header',type:'block',size:{px:32},content:{mod:'custom-pane'}});put('layouts/SidebarFixture.json',layout);
+ fs.renameSync(path.join(home,'mods/custom-pane/host.js'),path.join(home,'mods/custom-pane/native-host.js'));
+ fs.renameSync(path.join(home,'mods/custom-pane/main.js'),path.join(home,'mods/custom-pane/pane-view.js'));
+ put('mods/custom-pane/host.js',`export * from './native-host.js';export const props=()=>({pane:'synthetic-pane'}),panes=()=>[{pane:'synthetic-pane',tab:'synthetic-tab',terminal:'synthetic-owner',title:'Synthetic coordinator',program:{name:'A1',agent:true},focused:true}],terminals=()=>[{address:'synthetic-owner',state:'live',cwd:'/fixture',labels:{'custom.crew.home':'1'}}],spaces=()=>[];export const run=()=>{throw Error('No live commands');};export const hc=run;`);
+ put('mods/custom-pane/main.js',`import Pane from './pane-view.js';export default class Fixture extends Pane{init(){this.hovered=false;}}`);
+}
 const app=args=>execFileSync(appBin,args,{env,encoding:'utf8',timeout:20000}),sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const log=fs.openSync(path.join(root,'app.log'),'w'),child=spawn(appBin,[],{env,stdio:['ignore',log,log]});
 const receipt={version,zoom,width,children,baseline,home,pid:child.pid,session:env.HC_SESSION,archiveSha256:expected,executableSha256:digest(archived),frames:[],synthetic:true,interaction:'Production controller callbacks and native pixels, not OS pointer/keyboard or live SSH'};
 try{
  for(let n=0;n<150;n++){await sleep(200);assert.equal(child.exitCode,null);try{const s=JSON.parse(fs.readFileSync(path.join(home,'shared.json')));if(s['fixture.spaces']&&s['fixture.git'])break;}catch{}}
- for(const phase of ['expanded','collapsed','worker-pinned','rename-parent','rename-child','rename-ordinary','long','selected-child','compact','cold','warm','background','ordinary-loading','ordinary-complete','failure','complete']){
+ for(const phase of labelsOnly?['expanded','collapsed','long']:['expanded','collapsed','worker-pinned','rename-parent','rename-child','rename-ordinary','long','selected-child','compact','cold','warm','background','ordinary-loading','ordinary-complete','failure','complete']){
   fs.writeFileSync(control,phase);await sleep(650);
   const file=path.join(root,phase+'.png');app(['shot',file]);receipt.frames.push(file);
   if(['cold','warm','background','ordinary-loading'].includes(phase)){await sleep(650);const next=path.join(root,phase+'-phase2.png');app(['shot',next]);receipt.frames.push(next);}
  }
+ if(!labelsOnly){
  // Hover only inside this disposable process window; no clicks or key input.
  fs.writeFileSync(control,'expanded');await sleep(650);
  const hoverScript=path.join(root,'hover.ps1');fs.writeFileSync(hoverScript,`param([int]$AppPid,[double]$X,[double]$Y,[string]$Shot)\nAdd-Type @'\nusing System;using System.Runtime.InteropServices;public class SidebarPointer{[DllImport("user32.dll")]public static extern bool SetProcessDPIAware();[StructLayout(LayoutKind.Sequential)]public struct R{public int L,T,Rt,B;}[StructLayout(LayoutKind.Sequential)]public struct P{public int X,Y;}[DllImport("user32.dll")]public static extern bool GetWindowRect(IntPtr h,out R r);[DllImport("user32.dll")]public static extern uint GetDpiForWindow(IntPtr h);[DllImport("user32.dll")]public static extern bool SetForegroundWindow(IntPtr h);[DllImport("user32.dll")]public static extern bool SetCursorPos(int x,int y);[DllImport("user32.dll")]public static extern bool GetCursorPos(out P p);}\n'@\n[void][SidebarPointer]::SetProcessDPIAware();Add-Type -AssemblyName System.Drawing;$image=[System.Drawing.Image]::FromFile($Shot);$w=(Get-Process -Id $AppPid).MainWindowHandle;if(!$w){throw 'Disposable window unavailable'};$r=New-Object SidebarPointer+R;$p=New-Object SidebarPointer+P;[void][SidebarPointer]::GetWindowRect($w,[ref]$r);[void][SidebarPointer]::GetCursorPos([ref]$p);$tx=$r.L+[int]($X*2*($r.Rt-$r.L)/$image.Width);$ty=$r.T+[int]($Y*2*($r.B-$r.T)/$image.Height);$image.Dispose();[void][SidebarPointer]::SetForegroundWindow($w);[void][SidebarPointer]::SetCursorPos($tx,$ty);@{x=$p.X;y=$p.Y;targetX=$tx;targetY=$ty;left=$r.L;top=$r.T;width=$r.Rt-$r.L;height=$r.B-$r.T;dpi=[SidebarPointer]::GetDpiForWindow($w)}|ConvertTo-Json -Compress`);
@@ -76,6 +86,7 @@ try{
   execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',`Add-Type '[System.Runtime.InteropServices.DllImport("user32.dll")]public static extern bool SetCursorPos(int x,int y);[System.Runtime.InteropServices.DllImport("user32.dll")]public static extern bool SetProcessDPIAware();' -Name RestoreSidebarPointer -Namespace Native;[void][Native.RestoreSidebarPointer]::SetProcessDPIAware();[void][Native.RestoreSidebarPointer]::SetCursorPos(${original.x},${original.y})`],{encoding:'utf8'});
  }
  receipt.renameSelectionChecks=checkRenameSelection(home,args=>app(args));
+ }
  receipt.status=JSON.parse(app(['status']));assert.deepEqual(receipt.status.errors,[]);assert.doesNotMatch(fs.readFileSync(path.join(root,'app.log'),'utf8'),/FIXTURE_RENDER_ERROR/,'No caught native renderer failures');
 }finally{
  try{app(['do','app.quit']);}catch{}await sleep(600);if(child.exitCode===null){child.kill();await sleep(500);}receipt.stopped=child.exitCode!==null||child.signalCode!==null;

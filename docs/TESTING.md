@@ -67,6 +67,12 @@ No local test files or native probes were rerun in this round, as instructed;
 CI and delta review must validate the final push. Earlier screenshots describe
 checkpoint presentation, not this later style/placement decision.
 
+`sidebar-alignment-native.mjs --run --labels-only --zoom 1|1.3 --output <outside>`
+mounts the actual Spaces and terminal-pane renderers with synthetic metadata.
+Expanded/collapsed pictures show lowercase sidebar `crew` and unchanged terminal
+`Crew`; `--baseline <revision>` supplies paired original source. It starts no
+terminal, uses no real Crew home and verifies disposable app/Core shutdown.
+
 ## Connected project Spaces and coherent coordinator inventory
 
 `spaces-worktree-layout.test.mjs` covers the fixed metadata grid: Crew and child

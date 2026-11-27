@@ -14,8 +14,8 @@
 
 ## 3. Spaces uses lowercase crew without changing terminal Crew
 
-- [ ] 3.1 Lowercase the Crew role label only in the Spaces renderer; extend Spaces layout assertions for attached/detached, local/remote, expanded/folded and unrelated-tag cases at 100% and 130%, and run the targeted Spaces and terminal-role regressions to retain the terminal-pane Crew badge.
-- [ ] 3.2 Update the visible-label wording in README and relevant owner docs; capture synthetic native sidebar crew beside unchanged terminal Crew proof and finish the before/after picture index, pixel table and cleanup receipts outside the checkout.
+- [x] 3.1 Lowercase the Crew role label only in the Spaces renderer; extend Spaces layout assertions for attached/detached, local/remote, expanded/folded and unrelated-tag cases at 100% and 130%, and run the targeted Spaces and terminal-role regressions to retain the terminal-pane Crew badge.
+- [x] 3.2 Update the visible-label wording in README and relevant owner docs; capture synthetic native sidebar crew beside unchanged terminal Crew proof and finish the before/after picture index, pixel table and cleanup receipts outside the checkout.
 
 ## 4. First builds use Crew's current round without incrementing it
 

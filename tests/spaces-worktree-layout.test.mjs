@@ -18,7 +18,7 @@ for(const machine of [null,'pc2']) {
  const p=row('parent'),c=row('child');
  assert.equal(find(p,'space-link-parent'),undefined);assert.equal(find(c,'space-link-child'),undefined);
  const crew=find(p,'space-tag-parent-crew-0'),parentContent=content(p,'parent');
- assert.ok(crew);assert.equal(find(p,'space-meta-parent').kids.at(-1),find(p,'space-fold-parent'),'Disclosure is after Crew at the far right');
+ assert.ok(crew);assert.equal(crew.kids[0],'crew','Only Spaces lowercases the coordinator label');assert.equal(tags[0].label,'Crew','Shared provider label is not rewritten');assert.equal(crew.attrs.tooltip[0],'Crew role');assert.equal(find(p,'space-meta-parent').kids.at(-1),find(p,'space-fold-parent'),'Disclosure is after Crew at the far right');
  assert.equal(crew.attrs.text_size[0],12);assert.equal(crew.attrs.text_color[0],t.dim);assert.equal(crew.attrs.bg,undefined,'Crew is plain metadata, not a pill');
  assert.equal(nodes(c).some(n=>String(n.attrs.id?.[0]).includes('-crew-')),false);
  assert.ok(nodes(c).some(n=>String(n.attrs.id?.[0]).includes('-other-')),'Unrelated child tags remain');
@@ -54,7 +54,7 @@ for(const machine of [null,'pc2']) {
  // Detached and invalid cross-machine candidates use independent native order.
  links=[{parent:'parent',child:'child',binding:'cross'}];all[2].machine=machine===null?'pc2':null;
  assert.deepEqual(Array.from(view.ordered(),r=>r.w.id),['parent','other','child']);assert.equal(record('child').linked,false);
- links=[];assert.ok(nodes(row('child')).some(n=>String(n.attrs.id?.[0]).includes('-crew-')),'Detached ordinary Crew tag rules return');
+ links=[];assert.ok(nodes(row('child')).some(n=>String(n.attrs.id?.[0]).includes('-crew-')&&n.kids[0]==='crew'),'Detached ordinary Crew tag rules return with sidebar-only casing');
 }
 // Every rename kind uses the same trailing column, even indented children.
 for(const machine of [null,'pc2'])for(const zoom of [1,1.3])for(const id of ['parent','child','other']) {

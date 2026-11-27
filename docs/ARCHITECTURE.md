@@ -313,7 +313,9 @@ stored keys. No separate sibling-order persistence or shortcut remapping exists.
 Spaces presents accepted same-machine blocks using Agents' shared child branch
 and parent disclosure primitives, with a shared vertical stem and final-child corner. The child retains its native index and badge
 colour inheritance, but is indented; neither row has a chain and only the parent
-shows Crew. Unrelated tags and worktree metadata keep their ordinary trailing
+shows lowercase `crew`. Casing is changed only at the Spaces rendering boundary;
+the shared plugin contribution and terminal-pane `Crew` badge remain unchanged.
+Unrelated tags and worktree metadata keep their ordinary trailing
 edge. A separate local `custom.spaces.parents.folded` set is bounded to 256 exact
 machine/block/binding keys and is never exported. Full block order remains the
 reorder authority; only drawing/drop geometry filters hidden children. A folded
