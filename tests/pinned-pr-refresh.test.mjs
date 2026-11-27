@@ -78,11 +78,11 @@ async function harness() {
   assert.ok(find(find(tree,'git-panel-body'),'git-loading-track'));
   assert.equal(find(find(tree,'active-pull'),'git-ci-line'),undefined);
   assert.equal(track.attrs.top[0],0);assert.equal(track.attrs.h[0],1);
-  const line=find(track,'git-ci-line');assert.equal(line.attrs.loop[0],'left');
-  assert.equal(line.attrs.loop[1].period,4800);assert.equal(line.attrs.transition,undefined);
-  track.attrs.on_size_change[0]({width:400},h.cx);track.attrs.on_size_change[0]({width:400},h.cx);
+  const line=find(track,'git-ci-line');assert.equal(line.attrs.loop[0],'opacity');
+  assert.equal(line.attrs.loop[1].period,2400);assert.equal(line.attrs.transition,undefined);
+  assert.equal(track.attrs.on_size_change,undefined,'Stationary full-width line has no width/position scheduling');
   assert.equal(h.phases.length,0,'Native loop has no JavaScript phase/frame timers');
-  assert.equal(find(h.render(),'git-ci-line').attrs.loop[1].to,400);
+  assert.equal(find(h.render(),'git-ci-line').attrs.loop[1].to,0.65);
   await h.reply(page([raw(1),raw(2,{title:'Unpinned CI completed'})]));
   await h.reply(JSON.stringify({data:{repository:{open:{totalCount:2},closed:{totalCount:0}}}}));
   assert.equal(v.pulls.open[1].title,'Unpinned CI completed');

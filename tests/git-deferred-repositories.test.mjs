@@ -48,13 +48,18 @@ panel.foldedRepositories.clear();tree=render();
 const e=aggregate.entries.get('owner/loading#1');e.pr={...h.facts.pullRow({number:1,title:'Arrived',state:'OPEN'},'fixture'),repo:'owner/loading',key:'owner/loading#1'};
 tree=render();assert.ok(find(tree,headerId));assert.ok(find(tree,'pr-owner/loading#1'));assert.equal(find(tree,'task-loading-owner/loading'),undefined);assert.equal(panel.selectedTaskWindow.key,listId);
 const unknown=new TaskReveal();unknown.project([{repo:'owner/unknown',rows:[],loading:true}],new Set(),28,2,'130');assert.equal(unknown.items.length,0,'Unknown-only headers do not flash');
-const reveal=new TaskReveal(),sections=Array.from({length:80},(_,i)=>({repo:`owner/r${i}`,rows:[],error:'Read failed'}));
-reveal.project(sections,new Set(),28,2,'130');
-while(reveal.revealMore()){}
-assert.equal(reveal.range().items.length,100);assert.equal(reveal.range().revealedRows.length,0);assert.equal(reveal.atCap,true);
-for(let i=0;i<reveal.range().items.length;i+=2){assert.ok(reveal.range().items[i].header);assert.ok(reveal.range().items[i+1].error);}
-const boundary=new TaskReveal();boundary.project([{repo:'owner/a',rows:Array.from({length:8},(_,i)=>({key:`owner/a#${i}`}))},{repo:'owner/b',rows:[],error:'Read failed'}],new Set(),28,2,'130');
-assert.equal(boundary.range().items.length,9,'Boundary header waits for notice body');boundary.revealMore();assert.equal(boundary.range().items.at(-1).error,'Read failed');
+for(const count of [80,120]){
+ const reveal=new TaskReveal(),sections=Array.from({length:count},(_,i)=>({repo:`owner/r${i}`,rows:[],error:'Read failed'}));
+ reveal.project(sections,new Set(sections.map(s=>s.repo)),28,2,'130');
+ while(reveal.revealMore()){}
+ assert.equal(reveal.range().items.length,Math.min(count,100));assert.equal(reveal.range().revealedRows.length,0);assert.equal(reveal.atCap,count>100);
+ for(const item of reveal.range().items){assert.equal(item.header,undefined);assert.equal(item.headerless,true);assert.equal(item.error,'Read failed');}
+ if(count>100){const first=new Set(reveal.range().items.map(item=>item.repo));reveal.nextChunk();while(reveal.revealMore()){}assert.equal(reveal.range().items.length,20);assert.ok(reveal.range().items.every(item=>item.headerless&&!first.has(item.repo)),'Continuation never synthesizes a header for an error-only repository');}
+}
+const boundary=new TaskReveal();boundary.project([{repo:'owner/a',rows:Array.from({length:8},(_,i)=>({key:`owner/a#${i}`}))},{repo:'owner/b',rows:[{key:'owner/b#1'}],error:'Read failed'}],new Set(),28,2,'130');
+assert.equal(boundary.range().items.length,9,'Boundary header waits for its first PR');boundary.revealMore();assert.equal(boundary.range().items.at(-1).error,'Read failed');
+const noticeBoundary=new TaskReveal();noticeBoundary.project([{repo:'owner/a',rows:Array.from({length:8},(_,i)=>({key:`owner/a#${i}`}))},{repo:'owner/b',rows:[],error:'Read failed'}],new Set(),28,2,'130');
+assert.equal(noticeBoundary.range().items.length,10,'A headerless failure fits the last slot without an orphan header');assert.equal(noticeBoundary.range().items.at(-1).error,'Read failed');
 const anchor=new TaskReveal();const loaded=[{repo:'owner/a',rows:[{key:'owner/a#1'}]},{repo:'owner/b',rows:[],error:'Read failed'},{repo:'owner/c',rows:[{key:'owner/c#1'}]}];
 anchor.project(loaded,new Set(),28,2,'130');anchor.observe(200,100);const prior=anchor.offset;
 loaded[1]={repo:'owner/b',rows:[{key:'owner/b#1'},{key:'owner/b#2'}]};anchor.project(loaded,new Set(),28,2,'130');

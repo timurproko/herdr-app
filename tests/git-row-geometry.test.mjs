@@ -244,7 +244,7 @@ for(const [kind,shortKind,textKind] of [['meta','tasks','tasks'],['byline','time
   assert.ok(clipped.geometry.get(find(clipped.tree,'pr-labels-17')).width<measure('labels'));
   assertNaturalRun(clipped.geometry,find(clipped.tree,'pr-meta-17'),1);assertChecksFit(clipped.geometry,clipped.tree);
   assert.equal(find(clipped.tree,'pr-meta-17').attrs.tooltip,undefined,'The shared metadata parent cannot cover the stage with a tooltip');
-  assert.ok(find(clipped.tree,'pr-tasks-17').attrs.tooltip[0].includes('Changes requested'),'Clipped values remain recoverable on a surviving non-stage item');
+  assert.doesNotMatch(find(clipped.tree,'pr-tasks-17').attrs.tooltip?.[0]??'',/Changes requested/,'Verdict controls never leak tooltip text through another item');
 }
 // Measurement lifetime follows native IDs, not PR-data resets. Unchanged
 // dimensions must not loop or notify; obsolete-context callbacks cannot publish.

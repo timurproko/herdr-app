@@ -7,7 +7,7 @@ p.aggregate.stageTarget=()=>({terminal:'worker',task:'task',agent});
 let count=0;
 for(const width of [280,320,360,390,480])for(const zoom of [.75,1,1.25,1.3,1.5,2])for(const mode of ['ordinary','pinned','scrolling','coordinator','ghost'])for(const state of ['OPEN','CLOSED','MERGED']) {
  h.setZoom(zoom);p.view=state==='OPEN'?'open':'closed';let baseline;
- for(const [stage,caption]of [['Rework','Build 2'],['🤖 Under review','Review'],['Approved','Approved'],[null,null]]) {
+ for(const [stage,caption]of [['Rework','Build'],['🤖 Under review','Review'],['Approved','Approved'],[null,null]]) {
   const pr=h.facts.pullRow({number:9,state,title:'A long title '.repeat(30),url:'https://github.com/owner/repo/pull/9',labels:stage?[{name:stage,color:'840479'}]:[],author:{login:'fixture'},statusCheckRollup:[]});
   if(mode==='coordinator')Object.assign(pr,{key:'owner/repo#9',repo:'owner/repo'});
   const prefix=mode==='ghost'?'swap-':'',id=pr.key??9;
@@ -44,7 +44,7 @@ let pr=h.facts.pullRow({number:10,title:'Fallback',labels:[]});
 let row=p.pullRow(t,pr);assert.equal(find(row,'pr-agent-slot-10').attrs.w[0],24);assert.ok(find(row,'pr-agent-10'));
 p.context='tasks:home';pr={...pr,key:'owner/repo#10',repo:'owner/repo',stage:'build',labels:[...Array.from({length:5},(_,i)=>({name:'Other '+i,color:'#123456'})),{name:'🤖 Rework',color:'#9a6700'},{name:'Review',color:'#840479'}]};
 row=p.pullRow(t,pr);assert.equal(find(row,'pr-agent-slot-owner/repo#10'),undefined);assert.equal(nodes(row).filter(n=>String(n.attrs?.id?.[0]).startsWith('pr-stage-')).length,1);
-assert.equal(words(find(row,'pr-stage-owner/repo#10')).join(''),'Build 2','Stage survives bounded labels and conflicting managed aliases without duplication');
+assert.equal(words(find(row,'pr-stage-owner/repo#10')).join(''),'Build','Stage survives bounded labels and conflicting managed aliases without duplication');
 assert.equal(find(row,'pr-stage-owner/repo#10').attrs.tooltip,undefined);
 assert.ok(nodes(row).every(node=>!(node.attrs?.tooltip?.[0]??'').match(/🤖 Rework|Open agent|back from review|^Review$/)),'Stage-only text never leaks through strip or metadata hover');
 for(const width of [280,390])for(const zoom of [1,1.3]) {
@@ -62,11 +62,19 @@ for(const zoom of [1,1.3])for(const width of [280,390])for(const state of ['open
  const id=raw.key??raw.number,prefix=ghost?'swap-':'';
  const {tree,geometry}=h.settle(()=>p.pullRow(t,raw,ghost),width,zoom),chip=find(tree,`${prefix}pr-stage-${id}`);
  assert.ok(chip,'Live build owner without managed labels has a bottom stage');
- assert.equal(words(chip).join(''),round?`Build ${round+1}`:'Build');
+ assert.equal(words(chip).join(''),round>1?`Build ${round}`:'Build');
  assert.equal(find(tree,`${prefix}pr-agent-slot-${id}`),undefined);
  assert.equal(geometry.get(find(tree,`${prefix}pr-${id}`)).height,74*zoom);
  assert.equal(chip.attrs.tooltip,undefined);assert.equal(raw.stage,null);assert.deepEqual(raw.labels,[],'Projection never mutates GitHub facts');
  if(ghost)assert.equal(chip.attrs.on_click,undefined);else assert.ok(chip.attrs.on_click);
  agent.availability='ended';assert.equal(find(p.pullRow(t,raw),`pr-stage-${id}`),undefined,'No inferred Build from an ended owner');agent.availability='live';
+}
+// Exact ship lifecycle: planning is not a review round. The producer's current
+// round is 1 at spawn and stays 1 until an actual requested-changes review.
+for(const managed of [false,true])for(const phase of ['spawn','plan report','approval','implementation','requested rework']) {
+ agent.crew.round=phase==='requested rework'?2:1;agent.crew.kind='ship';
+ const pr=h.facts.pullRow({number:99,title:phase,state:'OPEN',isDraft:phase!=='requested rework',labels:managed?[{name:'Build'}]:[]});
+ p.context='ordinary';const chip=find(p.pullRow(t,pr),'pr-stage-99');
+ assert.equal(words(chip).join(''),phase==='requested rework'?'Build 2':'Build',phase);
 }
 console.log(`PASS ${count} bottom-stage geometry cases: plain tight stage styling, dynamic build rounds, restored title width, unchanged 74px rows, keyboard/pointer/ghost/probe policy and bounded deduplication`);

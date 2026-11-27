@@ -313,7 +313,9 @@ stored keys. No separate sibling-order persistence or shortcut remapping exists.
 Spaces presents accepted same-machine blocks using Agents' shared child branch
 and parent disclosure primitives, with a shared vertical stem and final-child corner. The child retains its native index and badge
 colour inheritance, but is indented; neither row has a chain and only the parent
-shows Crew. Unrelated tags and worktree metadata keep their ordinary trailing
+shows lowercase `crew`. Casing is changed only at the Spaces rendering boundary;
+the shared plugin contribution and terminal-pane `Crew` badge remain unchanged.
+Unrelated tags and worktree metadata keep their ordinary trailing
 edge. A separate local `custom.spaces.parents.folded` set is bounded to 256 exact
 machine/block/binding keys and is never exported. Full block order remains the
 reorder authority; only drawing/drop geometry filters hidden children. A folded
@@ -385,7 +387,9 @@ and no new fetch or cancellation. Fold state survives tab/context changes and
 panel recreation. Scoped rows/errors and repository-specific diagnostics fold with
 the body; global setup stays visible. Counts and webhook-driven facts continue
 updating while folded. One shared projection derives selected-tab sections from known eligible rows
-or an applicable `readNotice` before applying folds. Unknown-state queued,
+or an applicable `readNotice` before applying folds. Header eligibility separately
+requires selected-tab PRs: notice-only sections have neither count nor chevron,
+ignore saved folds and never acquire synthetic continuation headers. Unknown-state queued,
 in-flight and quiet-deferred first reads share one cold panel bulb/Loading directly
 below Open/Closed, above the scroller; cold partial successes remain staged and
 create no unknown-only headers. Published same-home return/background lists stay
@@ -396,7 +400,9 @@ leaving an unfinished cold load cannot turn partial successes into a warm list. 
 missing and known ineligible history do not leave Loading behind. Empty settled sections have no header,
 but disappearing sections retain saved fold keys. A settled tab with no qualifying
 sections uses ordinary Git's **No open pull requests** / **No closed pull requests**;
-notice-only and folded eligible sections are not empty. Pending/unverified feedback
+notice-only and folded eligible sections are not empty. Notice-only feedback
+uses the same 28px first-line text anchor as repository headers; native wrapping
+can grow it below that anchor and its measured height remains reveal-owned. Pending/unverified feedback
 is unchanged. The selected presentation reveals ten items initially, including headers,
 notices and rows, then appends ten near the scroll bottom without inventory IO.
 An unfolded header at a reveal boundary waits for its first row or visible notice;
@@ -489,6 +495,34 @@ metrics and passive 40px gradients, not copied approximations. Git retains its o
 padding and background; paired native content/frame geometry and changed-only
 size/input callbacks update edge hints without polling or render-time notifications.
 
+Page/detail head, state or draft races throw a structured quiet obsolete-read
+result before any new facts enter the cache. Retired requests and facts use the
+same classification. Ordinary, targeted and aggregate consumers preserve their
+last-good rows and use the existing 10-second bounded retry path, with no notice
+or immediate retry loop. Invalid payloads and actionable transport/access failures
+are not hidden by text matching. The audit found adjacent superseded-request and
+facts-retirement paths already quiet; they now share the explicit constructor.
+
+Git's loading line is a stationary full-width 1px accent surface. It and the cold
+Loading dot use only native opacity loops, 0.25–0.65 over 2400ms ease-in-out;
+reduced motion is static 0.35. Existing work admission/retirement remains intact.
+Because the SDK exposes no OS reduced-motion fact, the panel reads local OS
+accessibility on show outside render (no timer), defaults static on refusal,
+and rechecks after hide/show. Explicit host reduced_motion/reducedMotion booleans
+win. No selected-machine request or JavaScript animation scheduler is used.
+
+Build, Approved and separate GitHub verdict text share the same guarded ship/fix
+owner action; Review targets the reviewer. Common interaction decoration provides
+hover, focus, Enter/Space and pointer handling without verdict tooltips or PR-link
+fallback. Missing/ended/disconnected targets are dim and inert. The original
+single-element verdict projection keeps its row element count and fixed height.
+
+Git's optional `crew.round` is Crew's current work/review round, initialized to
+1 and incremented on actual requested-changes reviews. The stage caption uses
+`Build` for missing/invalid/1 and `Build n` for n >= 2, not n+1. Plan reports and
+approval do not imply rework. Regression fixtures cover spawn, plan report,
+approval, first implementation and the first requested-changes transition.
+
 ## Git repository entry presentation
 
 `plugins/git/mod/presentations.js` owns pure committed publication and the shared
@@ -499,6 +533,23 @@ coherent replacement in place, and reserve body Loading for cold data/identity.
 The memory holds at most four retained contexts and 4096 admitted rows, plus 256
 folder mappings; eviction/generation clearing retires mappings. No callbacks,
 native handles, credentials or restart/portable PR inventory are stored.
+
+Agent association is admitted before restored target rows paint. Live terminal
+PR labels resolve synchronously even while the destination root is pending.
+Fresh identity-qualified AgentLinks facts or a bounded 256-entry/10-second footer
+cache can restore pin/no-pin plus branch knowledge. Otherwise the body holds calm
+Loading until footer/branch resolution (or an older targeted PR lookup) settles.
+Raw targeted alias failures are normalized before exact-PR absence detection;
+authoritative absence releases the hold to the final list. Other targeted/root/
+footer failures retain last-good layout plus actionable retry feedback; they are
+not indefinitely active Loading. No-folder contexts keep their ordinary explanation;
+unavailable remote machines retain compatible content with reconnect/retry feedback.
+Footer requests have a 15-second deadline and
+10-second retry bounds. Abandoned targeted Tasks release their admission latch.
+Forced footer demand runs after root loading clears (or after an older pending
+footer), including same-terminal replacement/removal. Obsolete replies cannot
+resolve another selection. No click-motion controller is
+introduced, and known direct-entry content has one final layout from first paint.
 
 Identity is exact machine plus canonical repository and the existing inherited
 read route; folder/agent mappings require canonical lookup, not a task label or

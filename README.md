@@ -279,7 +279,7 @@ session account switching remains independent of optional Usage statistics.
 ## Refresh feedback and Git
 
 Refresh icons dim/disable and rotate while their request runs, except Git:
-Git keeps Refresh static and uses only its under-header moving line for loading. Manual clicks
+Git keeps Refresh static and uses its stationary under-header breathing line for warm loading. Manual clicks
 and Settings loads in Core, Profiles and Terminals stay visibly busy for at
 least **600 ms** to avoid a flash, including returning to an already-cached
 section. Each new section entry restarts that minimum. Refreshed data and
@@ -287,7 +287,11 @@ errors are applied immediately, and longer requests spin until completion.
 The visual minimum is scoped to the clicked control and its machine/folder or
 Settings section, so switching context does not inherit another refresh.
 Refresh controls and the Usage settings gear have no hover tooltips;
-accessibility labels remain available. Git keeps loaded rows, counts, pagination and
+accessibility labels remain available. Git silently discards a PR snapshot that changes during its detail read, and
+obsolete/superseded refreshes, retaining last-good rows without a transient
+notice or layout change. One existing bounded retry is scheduled after 10 seconds;
+persistent actionable failures retain their normal feedback.
+Git keeps loaded rows, counts, pagination and
 pin measurements while a same-context refresh runs or a Git-root/branch probe
 fails inconclusively. An older active PR also stays pinned during its targeted
 reread after page-one refresh. Only an authoritative replacement, proven
@@ -385,6 +389,17 @@ preferences; no Core document, terminal or agent is changed. Reconciliation yiel
 out of render and waits for native acknowledgements rather than polling/replaying
 layout commands.
 
+Git's list-replacing empty, informational and error feedback uses the repository
+header's 28px row and text anchor, not PR-title padding. Open/Closed empty text
+and initial failures therefore replace header text without a vertical jump;
+long errors may grow below that first-line anchor. Repositories with no PRs in
+the selected tab have no header, zero count or chevron. Applicable failures stay
+visible without a header and cannot be hidden by a saved fold; a settled tab
+without rows or failures shows one empty message, not one per repository, even
+when a fold was saved or the final PR just left that tab.
+Nonempty sections retain their existing folds and connected-child order.
+Cold Loading retains its existing dot/text placement.
+
 The main Git header contains only **Git**, its title chevron, existing refresh/status
 feedback and **Refresh · Pin · Close**. Repository identity lives in the list's
 canonical **owner/repository · count · chevron** section header, not beside the
@@ -399,8 +414,17 @@ coordinator restores its cached sections/order too. The same native header
 activity indicates background refresh in either direction; replacement updates in
 place, without clearing loaded rows or showing body Loading. Unknown directories
 must establish canonical identity before borrowing a cache; genuinely uncached
-repositories use ordinary Loading. Direct worker entry places its matching PR,
-including Draft, above its repository header without entry-driven animation.
+repositories use ordinary Loading. Direct worker entry resolves its pin/list association before content paint.
+Known terminal PR labels or a fresh compatible agent cache select the matching
+PR, including Draft, above its repository header without entry-driven animation.
+If a footer or destination branch is genuinely unresolved, calm Loading holds
+until the final layout is known; cached rows never flash as a list then jump into
+the pin. Reverse and different-pin switches use the same coherent publication.
+A missing linked PR releases that hold to the ordinary list. Failed or timed-out
+root/footer/targeted reads show last-good content with an actionable Refresh
+error instead of perpetual Loading. Footer reads have a 15-second deadline;
+periodic/manual root completion consumes queued association refreshes so a
+same-terminal footer can replace or clear its pin.
 Other rows retain their relative order; coordinator returns have no permanent pin. Cache memory is bounded and session-only; another
 machine/repository and disable/re-enable generations cannot borrow it.
 Git shows only **Open** and **Closed** pull requests. Both load **10 PRs initially**
@@ -620,10 +644,16 @@ open Add repo, select the repository and confirm Add yourself. The header **‹ 
 to the full catalog. Transport backoff and local agent discovery are
 separate from CI checking.
 
-Cold ordinary and coordinator Git show only their shared pulsing **Loading** message, not the moving line. Warm returns and background updates retain their list and use one subtle 1px moving line **immediately below the header**, above
-Open/Closed, whether or not a loaded PR has pending CI. Native motion moves it
-across and back (2.4 seconds each direction), without JavaScript frame or phase
-timers. It stays present through pending work and disappears on completion,
+Cold ordinary and coordinator Git show only their pulsing **Loading** message.
+Warm returns and background updates retain their list and use one stationary,
+full-width 1px accent line **immediately below the header**, above Open/Closed.
+The line and Git's cold dot share a native opacity-only 2.4-second ease-in-out
+cycle, from 25% to 65% opacity, never travelling or vanishing. Reduced motion
+uses static 35% opacity. Git reads this local accessibility preference once on
+show (Windows client-area animations, macOS reduceMotion, Linux GNOME animations),
+outside render, with a static fallback on refusal; hide/show rechecks it. An
+explicit boolean `reduced_motion`/`reducedMotion` host setting takes precedence.
+Other panels' dots keep their existing rhythm. There are no JavaScript frame timers. It stays present through pending work and disappears on completion,
 failure, hide or context retirement; dormant retry cooldowns and unknown totals
 alone do not animate. The pinned block and its bottom divider stay still.
 
@@ -652,15 +682,19 @@ not the reviewer's base branch, footer or tab name. Coordinator actions addition
 require that exact terminal/task to remain in the freshly verified same-home
 membership; a review task need not have its own recorded PR. Ended, unavailable
 or disconnected targets grant no focus; a disconnected target identifies its
-machine. Optional `crew.round` advances the Build caption (completed round 1
-shows **Build 2**); `crew.finding` remains source metadata, not hover text. Missing metadata
+machine. Optional `crew.round` is the **current** round: absent or 1 shows
+**Build**, 2 shows **Build 2**, and later values use that same number. Spawn,
+plan reports, approval and first implementation do not advance the caption;
+only real requested-changes rework advances Crew's current round. The app must
+not add one again. `crew.finding` remains source metadata, not hover text. Missing metadata
 invents no round or finding. `crew.approved` is read as metadata, never a fourth stage or
 permission to infer Approved from CI.
 
 The bottom-right **Build** chip focuses the build terminal; **Review** focuses the
-reviewer. **Approved** has no agent action: clicking it opens the PR through the
-row, even while checks are pending or failed. There is no approved/CI-running
-stage or Review check CI chip. Build/Review chips dim when their exact target
+reviewer. **Approved**, **Changes requested** and other review-verdict text use
+the same guarded build-owner action as Build, including Enter/Space, hover,
+focus, pointer cursor and no tooltip; they never fall through to the PR link. There is no approved/CI-running
+stage or Review check CI chip. Stage and verdict labels dim when their exact target
 ends, is unavailable, or its machine is disconnected, and expose why through accessibility labels;
 clicking a dimmed chip does nothing. Coordinator rows retain their last verified
 same-home target only for explanations after membership becomes stale or a task
@@ -675,8 +709,8 @@ Without a managed stage, an Open/Draft PR with a verified live `crew.kind=ship`
 or `fix` target shows **Build** in that same bottom-right slot, not a title robot.
 This includes a planning-only task with its linked PR: Build identifies its build
 owner, not permission to implement or a claim of progress. No linked PR means no
-row. Missing/invalid `crew.round` keeps **Build**; completed rounds 1 and 2 produce
-**Build 2** and **Build 3**. The earlier first-build robot came from requiring an
+row. Missing/invalid or first-round `crew.round` keeps **Build**; current rounds 2 and 3
+produce **Build 2** and **Build 3**. The earlier first-build robot came from requiring an
 assigned managed GitHub label before resolving a stage, not from missing round
 data. Assigned Review/Approved still takes precedence; historical-only or
 unlabelled Closed/Merged rows invent no Build. Existing exact live role/membership
@@ -918,7 +952,8 @@ and [native index-selection implementation](https://github.com/herdrdev/herdr-ap
 The fleet badge's fill uses the coordinator's actual colour and follows recolouring
 without changing the fleet's saved colour. Expanded attached fleets are indented
 children, using the same rounded connector, stroke and spacing as child agents.
-Neither row shows a chain, and only the coordinator shows Crew; unrelated plugin
+Neither row shows a chain, and only the coordinator shows lowercase `crew` in
+Spaces; the terminal-pane header still shows its unchanged `Crew` badge. Unrelated plugin
 tags remain. Crew precedes the coordinator's far-right chevron, which folds its children.
 The chevron and its 24px hover target align with machine headers. Crew stays fixed
 across disclosure; the connected-child-space count stays visible in both states.

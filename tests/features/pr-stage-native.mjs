@@ -44,8 +44,8 @@ export const place={cwd:'/fixture',on:null,terminal:'selection',space:'space',ta
 export const specs=[
  {n:1,title:'Initial build without a managed label',labels:[],kind:'ship'},
  {n:2,title:'Plan only, awaiting approval',labels:[],kind:'ship',draft:true},
- {n:3,title:'Return from first review',labels:['Rework'],kind:'fix',round:'1'},
- {n:4,title:'Return from second review',labels:['Build'],kind:'fix',round:'2'},
+ {n:3,title:'Return from first review',labels:['Rework'],kind:'fix',round:'2'},
+ {n:4,title:'Return from second review',labels:['Build'],kind:'fix',round:'3'},
  {n:5,title:'Reviewer stays on the base branch',labels:['🤖 Review'],kind:'review'},
  {n:6,title:'Approved while checks are pending',labels:['Approved'],kind:'ship'},
  {n:7,title:'Ended build cannot navigate',labels:['Build'],kind:'ship',ended:true},
@@ -97,7 +97,7 @@ try {
    assert.equal(snapshot()['fixture.stage.hover.'+mode]?.number,number,'Pointer is over the intended synthetic stage');
    const before=snapshot();invoke('click');await sleep(250);
    if(number>=7){assert.deepEqual(snapshot()['fixture.stage.click.'+mode],before['fixture.stage.click.'+mode]);assert.equal(snapshot()['fixture.stage.open.'+mode],before['fixture.stage.open.'+mode],'Disabled stage consumes the click without opening the PR');}
-   else if(number===6)assert.equal(snapshot()['fixture.stage.open.'+mode],6);else assert.equal(snapshot()['fixture.stage.click.'+mode]?.args.terminal,'worker-'+number);
+   else assert.equal(snapshot()['fixture.stage.click.'+mode]?.args.terminal,'worker-'+number);
    receipt.clicks??=[];receipt.clicks.push({mode,number,focus:snapshot()['fixture.stage.click.'+mode],opened:snapshot()['fixture.stage.open.'+mode]});
   }
   fs.writeFileSync(control,'mixed');await sleep(650);

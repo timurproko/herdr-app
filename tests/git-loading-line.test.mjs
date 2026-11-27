@@ -16,7 +16,9 @@ p.pulls.open=[];
 for(const flag of ['loading','pullLoading','relatedRequest','fallbackRequest']) {
  p[flag]=true;let tree=h.render(()=>p.render(h.cx));assert.ok(track(tree),flag);noBulbs(tree);
  assert.equal(animations(tree).length,1,`${flag}: line is the only warm animation`);
- assert.equal(animations(tree)[0].attrs.loop[0],'left');
+ assert.equal(animations(tree)[0].attrs.loop[0],'opacity');
+ assert.equal(animations(tree)[0].attrs.loop[1].period,2400);assert.ok(animations(tree)[0].attrs.loop[1].from>0);
+ assert.equal(find(tree,'git-ci-line').attrs.left,undefined);assert.equal(find(tree,'git-ci-line').attrs.w,undefined);
  for(let n=0;n<4;n++)assert.ok(track(h.render(()=>p.render(h.cx))));
  p[flag]=false;assert.equal(track(h.render(()=>p.render(h.cx))),undefined,`${flag}: completion stops motion`);
 }
@@ -51,5 +53,7 @@ assert.equal(p.panelLoading(),false,'Stale failed verification awaiting retry is
 a.context={...context,stale:false};a.returning=true;a.readWake={due:Date.now()+60000};assert.equal(p.panelLoading(),false,'Dormant cooldown does not animate the line');
 a.readWake=null;assert.equal(p.panelLoading(),true,'Queued warm reconciliation animates');a.returning=false;
 a.published=null;a.entries.set('fixture/unknown#2',{link:{repo:'fixture/unknown',targets:[]},pr:null,error:null});a.readWake={due:Date.now()+60000};pulse(h.render(()=>p.renderAggregate(h.cx,t)));
-let notifications=0;const oldTrack=p.loadingLine(t);p.context='tasks:two';oldTrack.attrs.on_size_change[0]({width:999},{notify(){notifications++;}});assert.equal(notifications,0,'Retired measurement cannot update another context');
+const oldTrack=p.loadingLine(t);assert.equal(oldTrack.attrs.on_size_change,undefined,'Stationary line needs no geometry callback');
+p.motionReduced=true;assert.equal(animations(p.loadingLine(t)).length,0);assert.equal(animations(p.loadingMessage(t,'reduced')).length,0);
+p.motionReduced=false;const dot=animations(p.loadingMessage(t,'normal'))[0],line=animations(p.loadingLine(t))[0];assert.deepEqual(dot.attrs.loop,line.attrs.loop,'Cold dot and warm line share rhythm');
 console.log('PASS pulsing aligned cold Git feedback without headers/line; warm line, failures, cooldown and retirement');

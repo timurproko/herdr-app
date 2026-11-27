@@ -67,6 +67,12 @@ No local test files or native probes were rerun in this round, as instructed;
 CI and delta review must validate the final push. Earlier screenshots describe
 checkpoint presentation, not this later style/placement decision.
 
+`sidebar-alignment-native.mjs --run --labels-only --zoom 1|1.3 --output <outside>`
+mounts the actual Spaces and terminal-pane renderers with synthetic metadata.
+Expanded/collapsed pictures show lowercase sidebar `crew` and unchanged terminal
+`Crew`; `--baseline <revision>` supplies paired original source. It starts no
+terminal, uses no real Crew home and verifies disposable app/Core shutdown.
+
 ## Connected project Spaces and coherent coordinator inventory
 
 `spaces-worktree-layout.test.mjs` covers the fixed metadata grid: Crew and child
@@ -174,7 +180,54 @@ share one captured coordinator binding; changed membership, conflicting parents 
 bindings, duplicates, missing/cross-machine endpoints and expired proof still refuse.
 Every child's saved colour and Automatic flag stays unchanged.
 
-`git-loading-line.test.mjs` checks the shared pulsing dot for cold ordinary/coordinator
+`git-association-recovery.test.mjs` exercises raw GraphQL missing aliases,
+503/timeout/spawn/repository failures, quiet deferrals, abandoned targeted Tasks,
+failed/hung footer deadlines and forced same-terminal replacement/removal. It
+asserts final layout or retained row positions with actionable errors, no stuck
+Loading and no render-driven reread loop. `git-entry-review` includes failed warm
+root verification without a known association, both with and without a cached
+root. `git-empty-state` covers saved-fold emptiness and last-row departure.
+
+The three hosted regression fixtures remain enforced: `git-location` routes the
+local accessibility read separately from Git/GitHub calls; `fleet-read-notices`
+asserts rendered text through its intentional wrapper; `git-row-render-budget`
+retains the original operation/element/probe limits and mutation controls.
+Conditional stage interaction calls skip inert native builder operations, rather
+than increasing the budget.
+
+`git-raced-read.test.mjs` races detail head, state and draft status at 100%/130%,
+asserting no notice, no partial publication or row-y change, no immediate loop
+and exactly one existing 10-second retry that can publish a coherent result.
+Adjacent request/fact retirement paths share this structured quiet classification.
+
+`git-agent-entry-layout.test.mjs` records every actual renderer layout during
+known-label entry before root, different pins, reverse no-PR entry, held footer
+reads and stale replies at 100%/130%. Each target-content sequence has one layout
+and identical row y after its first frame. `GIT_ENTRY_MEASUREMENTS=<outside.json>`
+exports deterministic renderer bounds; these are not native paint-latency claims.
+
+`pr-agent-links.test.mjs`, `git-stage-chips.test.mjs` and the row geometry/tooltip
+fixtures cover Approved and separate Approved/Changes requested verdict controls:
+Build-owner pointer and Enter/Space focus, same-home coordinator guards,
+ended/disconnected/stale refusals, inert ghosts/probes and no ancestor tooltip.
+The verdict retains its single native element and fixed metadata-line height.
+
+`node --experimental-vm-modules tests/git-empty-state.test.mjs` compares actual
+Git feedback/header text anchors and 28px rows at 100%/130%, with ordinary empty
+Open/Closed and folded initial failures. `tests/features/git-loading-native.mjs
+--run --feedback --zoom 1|1.3 --output <outside>` captures isolated native loaded,
+empty, information, error, mixed-tab and cold/warm states. Optional
+`GIT_FEEDBACK_MAIN`/`GIT_FEEDBACK_REVEAL` supply inert baseline sources for paired
+proof, never a live checkout. Pixel glyph bounds differ by the letters rendered;
+compare same-text oracle frames for identical text anchors, and native size
+callbacks for row height. All app/Core homes and pictures stay in the supplied
+outside folder, and finally verifies both processes stop.
+
+`git-motion-preference.test.mjs` fakes Windows/macOS/Linux accessibility reads,
+checking local routing, static unknown/refused defaults and no per-frame reads.
+`git-loading-line.test.mjs` checks matching 2400ms opacity-only line/dot loops,
+nonzero bounds, static reduced-motion feedback and unchanged work admission,
+plus the cold ordinary/coordinator
 Loading, equal message placement at 100%/130%, no simultaneous repository headers
 or moving line, warm/background/verification/safety line activity, overlap,
 completion, cooldown and retired callbacks. Folded cold failures stay visible.
@@ -1222,7 +1275,8 @@ cache ownership inventory and unchanged paths checked.
 
 `tests/git-section-reveal.test.mjs` checks the actual rendered-section invariant
 after every reveal and state transition, including the tenth-item header boundary,
-notice-only sections, tab moves, history expiry, missing rows, notice resolution,
+headerless notice-only sections (including 140 settled failures across the 100-item
+cap and saved folds), tab moves, history expiry, missing rows, notice resolution,
 folds, refreshes and 200-row capped batch cycles. The same invariant wraps every
 real renderer frame in `fleet-read-notices`, including authoritative 404s and
 mixed failure/recovery transitions. Intentionally folded eligible headers are

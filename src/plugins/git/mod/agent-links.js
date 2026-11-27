@@ -81,6 +81,13 @@ export class AgentLinks {
     return entry && target && entry.key===target.key && folder?.repo===entry.canonicalRepo ? entry.canonicalRepo??null : null;
   }
 
+  cachedAssociation(place,repo) {
+    if(this.cachedRepository(place)!==repoKey(repo))return null;
+    const target=agentTargets().find(t=>t.address===place.terminal&&t.cwd===place.cwd&&(t.on??null)===(place.on??null));
+    const entry=target&&this.entries.get(target.address);
+    return entry&&target&&entry.key===target.key&&Date.now()-entry.at<TTL?{number:entry.number??null,branch:entry.branch??null}:null;
+  }
+
   forgetRepository(place) {
     // Replace the slot so an older in-flight lookup cannot repopulate it.
     this.repositories.set(JSON.stringify([place.on??null,place.cwd]),{});

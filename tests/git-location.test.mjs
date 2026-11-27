@@ -37,6 +37,11 @@ const native = {
   hc:args=> { screenCalls.push(args); return Promise.resolve(screenReply); },
   exec:(cmd,args,options)=> {
     ({command:cmd,args,options}=githubInvocation(cmd,args,options));
+    if(cmd==='powershell.exe'){
+      assert.equal(rendering,false,'Local accessibility reads yield out of render');
+      assert.equal(options.on,undefined,'Accessibility is local, not routed to the selected remote terminal');
+      return Promise.resolve({code:0,stdout:'false'});
+    }
     if(args[0]==='api'&&args[1]==='user')return Promise.resolve({code:0,stdout:'fixture-user'});
     if (cmd === 'git' && args[0] === 'rev-parse') assert.equal(rendering,false,'Root probes yield even when spawn starts inline in render');
     if (cmd === 'git' && args[0] === 'symbolic-ref') {

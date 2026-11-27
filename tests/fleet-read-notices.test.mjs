@@ -57,7 +57,7 @@ for(const tab of ['open','closed']) {
 assert.ok(find(tree,`task-repo-${repo}`),'A genuine notice alone keeps its section');assert.equal(find(tree,'git-task-empty'),undefined,'Notice-only is not empty');
 // Cold historical failures belong only to Closed, without phantom Open headers.
 const live=context.links.shift();gitReads(host.exec).facts.clear();panel.aggregate.stop();tree=render('open');await drain();tree=render('open');
-assert.equal(find(tree,`task-repo-${repo}`),undefined);assert.equal(find(tree,'git-task-empty').kids[0],'No open pull requests');
+assert.equal(find(tree,`task-repo-${repo}`),undefined);assert.equal(text(find(tree,'git-task-empty')),'No open pull requests');
 tree=render('closed');assert.ok(find(tree,`task-error-${repo}`));assert.equal(find(tree,'git-task-empty'),undefined);
 context.links.unshift(live);failures.clear();await refresh();panel.render(cx);await drain();checkCounts();
 // Separate repository: same PR number, independent Open failure; healthy rows
@@ -69,7 +69,7 @@ tree=render('closed');assert.equal(errors(tree).length,1);assert.ok(find(tree,`t
 const beforeFold=calls.length;find(tree,`task-repo-header-${repo}`).attrs.on_click[0]({},cx);tree=panel.render(cx);assert.equal(errors(tree).length,0);assert.ok(find(tree,'git-enrollment-footer'),'Folding hides the read notice, not enrollment');assert.equal(calls.length,beforeFold);assert.equal(panel.aggregate.counts().closed,3);
 find(tree,`task-repo-header-${repo}`).attrs.on_click[0]({},cx);tree=panel.render(cx);assert.equal(errors(tree).length,1);
 // Expiration removes old historical rows AND their failures/empty headers.
-const beforeAge=calls.length;now+=DAY;tree=panel.render(cx);assert.equal(panel.aggregate.counts().closed,0);assert.equal(find(tree,`task-repo-${repo}`),undefined,'Live Open rows cannot keep an empty Closed header');assert.equal(find(tree,`task-repo-${other}`),undefined);assert.equal(find(tree,'git-task-empty').kids[0],'No closed pull requests');assert.equal(find(tree,`task-error-${repo}`),undefined);assert.equal(calls.length,beforeAge);
+const beforeAge=calls.length;now+=DAY;tree=panel.render(cx);assert.equal(panel.aggregate.counts().closed,0);assert.equal(find(tree,`task-repo-${repo}`),undefined,'Live Open rows cannot keep an empty Closed header');assert.equal(find(tree,`task-repo-${other}`),undefined);assert.equal(text(find(tree,'git-task-empty')),'No closed pull requests');assert.equal(find(tree,`task-error-${repo}`),undefined);assert.equal(calls.length,beforeAge);
 tree=render('open');assert.ok(find(tree,`task-repo-${repo}`),'Eligible live Open row retains its own tab section');
 context.links=context.links.filter(l=>l.url!==url(8));tree=panel.render(cx);assert.equal(find(tree,`task-repo-${repo}`),undefined,'Expired-only repository has no stale error header');
 // Existing refresh path, not a new timer/retry storm; hidden/stale/disabled
@@ -87,7 +87,7 @@ await refresh();tree=render('closed');assert.equal(errors(tree).length,0);checkR
 // Drop the last found history row and the live row. No neutral hint/tooltip or
 // synthetic row replaces them, and no repository enrollment card is left over.
 for(const n of [7,8])failures.set(key(n),{code:1,stderr:'HTTP 404: Not Found'});await refresh();
-for(const tab of ['open','closed']){tree=render(tab);assert.equal(errors(tree).length,0);assert.equal(find(tree,`task-repo-${repo}`),undefined);assert.equal(find(tree,'git-enrollment-footer'),undefined);assert.equal(find(tree,'git-task-empty').kids[0],`No ${tab} pull requests`);assert.doesNotMatch(text(tree),/not found|Task PR history|check the recorded/);}
+for(const tab of ['open','closed']){tree=render(tab);assert.equal(errors(tree).length,0);assert.equal(find(tree,`task-repo-${repo}`),undefined);assert.equal(find(tree,'git-enrollment-footer'),undefined);assert.equal(text(find(tree,'git-task-empty')),`No ${tab} pull requests`);assert.doesNotMatch(text(tree),/not found|Task PR history|check the recorded/);}
 const missingReads=calls.length;for(let i=0;i<3;i++){await refresh();panel.render(cx);}assert.equal(calls.length,missingReads,'No repeated missing history or live reads during the cooldown');
 panel.aggregate.stop();panel.render(cx);await drain();assert.equal(calls.length,missingReads,'Stop/recreation retains missing results for the module session');
 console.log('PASS rendered real read notices and silent missing live/history PRs, mixed rows, no empty sections, cache reuse and guarded lifecycle');

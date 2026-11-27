@@ -178,7 +178,7 @@ noticeModes['example/b']='repository';panel.setView('open',cx);tree=panel.render
 panel.setView('closed',cx);tree=panel.render(cx);assert.ok(find(tree,'task-error-example/b'));assert.ok(find(tree,'git-enrollment-footer'));
 toggle('b');assert.equal(find(tree,'task-error-example/b'),undefined);assert.ok(find(tree,'git-enrollment-footer'),'Folding cannot hide enrollment');nameOnly('b');
 failRepo=null;bClosed=false;panel.aggregate.refresh(cx);await drain();tree=panel.render(cx);
-assert.equal(header('b'),undefined,'Reopened PR no longer leaves an empty Closed header');assert.ok(find(tree,'git-enrollment-footer'),'Hidden section still contributes enrollment');assert.equal(find(tree,'git-task-empty').kids[0],'No closed pull requests');
+assert.equal(header('b'),undefined,'Reopened PR no longer leaves an empty Closed header');assert.ok(find(tree,'git-enrollment-footer'),'Hidden section still contributes enrollment');assert.equal(text(find(tree,'git-task-empty')),'No closed pull requests','Header-position feedback retains the complete empty-tab text');
 assert.equal(text(find(tree,'git-view-open')),'Open','Tabs stay label-only while folded');assert.equal(panel.aggregate.counts().open,2);assert.equal(find(tree,'task-repo-body-example/b'),undefined);
 bClosed=true;panel.aggregate.refresh(cx);await drain();tree=panel.render(cx);toggle('b');assert.ok(find(tree,'git-enrollment-footer'),'Reopening keeps the one footer');delete noticeModes['example/b'];
 assert.equal(A.taskPullLink('https://github.com/example/a/pull/12').key,'example/a#12');for(const bad of ['https://evil.test/a/b/pull/12','https://github.com/a/b/pull/0','https://github.com/a/b/pull/1?x=1'])assert.equal(A.taskPullLink(bad),null);

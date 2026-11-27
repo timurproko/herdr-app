@@ -79,7 +79,7 @@ if(selected('notice')) {
  let notice=first(tree,'task-notice-measure-');assert.ok(size(notice,{width:382,height:41},cx));tree=render();
  const w=taskWindow(panel),total=w.height,oldId=notice.attrs.id[0],stale=notice.attrs.on_size_change[0];assert.equal(w.items.at(-1).height,41);
  c.notice('Task history: owner/repo #37 could not be read');tree=render();notice=first(tree,'task-notice-measure-');
- assert.notEqual(notice.attrs.id[0],oldId);assert.equal(w.items.at(-1).height,24.5);
+ assert.notEqual(notice.attrs.id[0],oldId);assert.equal(w.items.at(-1).height,28,'Unmeasured replacement reserves one header-height feedback row');
  assert.ok(size(notice,{width:382,height:41},cx),'A fresh native ID emits the same dimensions again');tree=render();
  assert.equal(w.items.at(-1).height,41);assert.equal(w.height,total,'Measured wrapper retains the multiline height');
  assert.equal(first(tree,'task-item-notice:').attrs.h[0],41);assert.equal(size(first(tree,'task-notice-measure-'),{width:382,height:41},cx),false);

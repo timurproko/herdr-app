@@ -22,7 +22,7 @@ for(const coordinator of [false,true])for(const ghost of [false,true])for(const 
   assert.equal(tip(long.get('tasks')),long.pr.tasks.label);assert.ok(tip(long.get('time')).includes('2026-11-20T10:00:00.000Z'));
   assert.ok((tip(long.get('labels'))??tip(long.get('meta')))?.includes(long.pr.labels[0].name));
   const omitted=fixture({labels:Array.from({length:5},(_,i)=>({name:`label ${i}`,color:'ff0000'}))},480,zoom,true,ghost);
-  assert.ok(tip(omitted.get('labels')).includes('label 4'));assert.ok(tip(omitted.get('meta')).includes('label 4'));
+  assert.ok(tip(omitted.get('labels')).includes('label 4'));assert.equal(tip(omitted.get('meta')),undefined,'Verdict controls have no tooltip-bearing metadata ancestor');
   const checks=fixture({statusCheckRollup:[{name:'tests',status:'COMPLETED',conclusion:'FAILURE'},{name:'lint',status:'IN_PROGRESS'}]},480,zoom,coordinator,ghost);
   assert.equal(tip(checks.get('checks')),'0/2\nFailed: tests\nPending: lint');assert.equal(tip(checks.get('meta')),undefined);
   assert.ok(nodes(tree).filter(n=>n.attrs.invisible).every(n=>nodes(n).every(p=>!tip(p))));comparisons++;

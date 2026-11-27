@@ -496,14 +496,14 @@ One coordinator SHALL support multiple validated same-machine project children t
 - **AND** compact Spaces retains the coordinator and every independently selectable child badge in saved sibling order without connector, Crew label, parent disclosure or new dragging
 
 ### Requirement: Shared sidebar trailing grid
-Spaces and Agents SHALL share trailing label and disclosure/status rails, with existing native row semantics. Spaces Crew SHALL retain plain Agents machine-label styling and its tooltip without moving on disclosure. Spaces child counts, machine plus and rename approve SHALL share one centred inner axis; chevrons and rename cancel SHALL share one centred outer axis.
+Spaces and Agents SHALL share trailing label and disclosure/status rails, with existing native row semantics. Spaces' coordinator role label SHALL read lowercase `crew`, retaining plain Agents machine-label styling and its tooltip without moving on disclosure. Spaces child counts, machine plus and rename approve SHALL share one centred inner axis; chevrons and rename cancel SHALL share one centred outer axis. The terminal-pane Crew badge SHALL remain unchanged.
 
 #### Scenario: Expanded and collapsed coordinator metadata
 - **WHEN** a coordinator is shown expanded or collapsed in a local or remote group
-- **THEN** Crew stays on the same label rail and the child count stays visible on the same inner column before the chevron
+- **THEN** its role text reads `crew` on the same label rail and the child count stays visible on the same inner column before the chevron
 - **AND** machine-header plus, connected child count and space-rename approve are centred on the same inner axis, while all Spaces chevrons and rename cancel share the outer axis
 - **AND** labels are regular 12px dim text without fill, border or pill padding; unrelated tags retain their existing styling and metadata order
-- **AND** previous Spaces references to Crew pills describe the Crew role label, whose presentation remains this plain-label contract
+- **AND** previous Spaces references to Crew pills describe the Crew role label, whose presentation remains this plain-label contract with lowercase visible text
 
 #### Scenario: Long names and zoom
 - **WHEN** long space or machine names are shown at default or narrow expanded-sidebar widths at 100% or 130% zoom with one or several connected children
@@ -511,9 +511,14 @@ Spaces and Agents SHALL share trailing label and disclosure/status rails, with e
 - **AND** row height, selection, hover, compact rail, native shortcuts and captured whole-block reorder remain unchanged
 
 #### Scenario: Missing role or children
-- **WHEN** a space has no Crew label or no connected children
-- **THEN** no Crew label or child count is fabricated and ordinary tag, worktree, hover, selection and truncation behavior remains unchanged
+- **WHEN** a space has no Crew role label or no connected children
+- **THEN** no role label or child count is fabricated and ordinary tag, worktree, hover, selection and truncation behavior remains unchanged
 - **AND** Agents retains its existing numeric rail and collapsed-count behavior
+
+#### Scenario: Sidebar-only casing
+- **WHEN** the same coordinator is represented in Spaces and a terminal-pane header
+- **THEN** its Spaces role text is `crew` while the terminal-pane badge remains `Crew`
+- **AND** the sidebar casing does not rename plugin identity, alter role authority, change unrelated labels or rewrite shared tag contributions
 
 ### Requirement: Space rename trailing alignment
 Inline space rename SHALL retain 24px action buttons, a 2px inter-button gap and a 4px input-to-actions gap, shared with tab rename. Cancel SHALL occupy the machine-chevron axis on every space row, replacing coordinator disclosure while editing. Confirm SHALL share the machine-plus and child-count axis immediately to its left. Editing SHALL retain its captured target, full initial selection and existing Enter, Escape and blur behavior.

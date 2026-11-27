@@ -11,7 +11,7 @@ async function cachedHarness() {
   const p=h.panel;h.cx.timer={after:()=>({cancel(){}})};
   p.aggregate=new h.AggregatePulls({shown:()=>p.shown()});
   p.aggregate.presentationGeneration=JSON.stringify([0,0]);p.repositoryGeneration=p.aggregate.presentationGeneration;
-  p.agentLinks={cachedRepository:()=> 'owner/repo',related:()=>null,refresh(){},invalidate(){}};
+  p.agentLinks={cachedRepository:()=> 'owner/repo',cachedAssociation:()=>({number:null,branch:null}),related:()=>null,refresh(){},invalidate(){}};
   p.notices={sync(){},stop(){},retryNow(){}};p.webhooks={sync(){},stop(){},retryNow(){}};
   p.syncChecksFallback=()=>{};p.enrollmentPicker={stop(){}};p.on=null;
   p.pulls={open:[h.facts.pullRow({number:1,title:'Cached A',state:'OPEN',url:'https://github.com/owner/repo/pull/1'},'owner')],closed:[]};
@@ -119,8 +119,23 @@ const cases=[
     assert.equal(p.entryRootReady,false);assert.equal(p.entryVerify,true);assert.equal(p.pullsDue('open'),false);
     p.loadPulls('open',h.cx,true);p.agentPull=99;p.loadRelatedPull(h.cx);await tick();
     assert.equal(h.calls.length,0,'forced list and related reads cannot bypass destination-root verification');
+    p.agentPull=null; // Restore this fixture's known no-PR association after the forced-read probe.
     const tree=h.render(()=>p.renderPanel(h.cx));assert.ok(find(tree,'pr-1'));assert.deepEqual({...p.counts},{open:1,closed:0});
     assert.ok(find(tree,'git-read-error'),'failed root retains cached presentation and actionable error');
+  }],
+  ['warm-root-failure-unknown-association',async()=>{
+    for(const failure of [{code:0,timed_out:true,stdout:''},{code:1,stderr:'failed'}])for(const savedRoot of ['/repo',null]){
+      const h=await cachedHarness(),p=h.panel;delete p.agentLinks.cachedAssociation;
+      const saved=p.repositorySnapshot();saved.root=savedRoot;p.root=savedRoot;
+      p.aggregate.presentations.set(JSON.stringify(['repository',null,'owner/repo']),saved);
+      Object.assign(h.place,{cwd:'/new-worktree',space:'worker-b',terminal:'unknown',app:'claude-code'});
+      let tree=h.render(()=>p.renderPanel(h.cx));assert.ok(find(tree,'git-association-pending'));await tick();
+      h.calls.shift().resolve(failure);await tick();p.headerHovered=true;
+      tree=h.render(()=>p.renderPanel(h.cx));assert.ok(find(tree,'pr-1'),'Failed verification retains cached rows without known association');
+      assert.ok(find(tree,'git-read-error'));assert.equal(find(tree,'git-association-pending'),undefined);assert.equal(p.associationPending(),false);
+      const refresh=find(tree,'git-refresh');assert.ok(refresh);assert.equal(refresh.attrs.disabled[0],false,'Root failure remains manually retryable even without a cached root');
+      const before=h.calls.length;for(let i=0;i<3;i++)h.render(()=>p.renderPanel(h.cx));await tick();assert.equal(h.calls.length,before,'Failed verification cannot hot-loop');
+    }
   }],
   ['canonical-identity-replacement',async()=>{
     const h=await cachedHarness(),p=h.panel,linkCalls=[];let forgot=0;
@@ -134,6 +149,7 @@ const cases=[
     // Isolate folder evidence from the live-target inventory; invalidation and
     // the older in-flight repository lookup use the real AgentLinks methods.
     links.cachedRepository=target=>links.repositories.get(JSON.stringify([target.on??null,target.cwd]))?.repo??null;
+    links.cachedAssociation=()=>({number:null,branch:null}); // This identity-only fixture has a known unpinned selection.
     const forget=links.forgetRepository.bind(links);
     links.forgetRepository=target=>{assert.equal(target.cwd,'/new-worktree');assert.equal(target.on,null);forgot++;forget(target);};
     const obsolete=links.repository({on:null,cwd:'/new-worktree'});await tick();

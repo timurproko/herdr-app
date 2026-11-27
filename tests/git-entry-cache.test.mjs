@@ -28,7 +28,7 @@ p.aggregate=new h.AggregatePulls({shown:()=>p.shown(),presentationEpoch:()=>epoc
 p.aggregate.context=context;p.aggregate.presentationGeneration=JSON.stringify([0,0]);p.aggregate.providerGeneration=0;
 for(let n=1;n<=2;n++){const value=e(n);value.pr={...h.facts.pullRow({number:n,title:`Cached ${n}`,state:'OPEN',url:row(n).url},'fixture'),repo:'fixture/repo',key:value.link.key};p.aggregate.entries.set(value.link.key,value);}
 p.aggregate.rememberCounts();p.context='tasks:home';p.aggregateGeneration=p.aggregate.presentationGeneration;
-p.agentLinks={cachedRepository:()=> 'fixture/repo',related:()=>null,refresh(){}};p.notices={sync(){},presentation(){},stop(){}};p.enrollmentPicker={render(){},stop(){}};p.syncChecksFallback=()=>{};
+p.agentLinks={cachedRepository:()=> 'fixture/repo',pullNumber:()=>place.pullNumber,related:()=>null,refresh(){}};p.notices={sync(){},presentation(){},stop(){}};p.enrollmentPicker={render(){},stop(){}};p.syncChecksFallback=()=>{};
 Object.assign(place,{cwd:'/worktree-a',space:'worker-space-a',terminal:'worker-1',app:'a1',pullNumber:1});context=null;
 let tree=h.render(()=>p.renderPanel(cx));validNativeChildren(tree);
 assert.ok(find(tree,'task-repo-header-fixture/repo'),'first destination frame has section');
