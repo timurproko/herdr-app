@@ -23,9 +23,9 @@
 
 ## 4. Acknowledged coordinator-owned kind application
 
-- [ ] 4.1 Preserve capability checks and exact captured set-kind targeting; fake setter tests must accept a valid matching stored acknowledgement while a coordinator owns the home without warning or a separate ownership gate.
-- [ ] 4.2 Replace the legacy home-owned setter explanation with one short neutral inline line; targeted setter/row lifecycle fixtures must retain the stored value on refusal and never show the old instruction to use another session.
-- [ ] 4.3 Update current project-kind documentation and retain uncertainty, stale-callback and no-replay guards; targeted tests must cover legacy capability absence, matching success, malformed acknowledgement, timeout and successful fresh-read reconciliation.
+- [x] 4.1 Preserve capability checks and exact captured set-kind targeting; fake setter tests must accept a valid matching stored acknowledgement while a coordinator owns the home without warning or a separate ownership gate.
+- [x] 4.2 Replace the legacy home-owned setter explanation with one short neutral inline line; targeted setter/row lifecycle fixtures must retain the stored value on refusal and never show the old instruction to use another session.
+- [x] 4.3 Update current project-kind documentation and retain uncertainty, stale-callback and no-replay guards; targeted tests must cover legacy capability absence, matching success, malformed acknowledgement, timeout and successful fresh-read reconciliation.
 
 ## 5. Equal-size Git stage and verdict labels
 

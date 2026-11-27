@@ -10,6 +10,8 @@ assert.ok(sameProjectPath('D:\\Git\\Site','d:/git/site'));assert.equal(sameProje
 let calls=[];const ask=async args=>{calls.push(args);return reply(args[0]==='set-kind'?success:cap);};
 assert.deepEqual(await setProjectKind(ask,target,'plain'),{value:'plain'});
 assert.deepEqual(calls,[['--capabilities','--json'],['set-kind',target.name,'--kind','plain','--home',target.home,'--expected-path',target.path,'--json']]);
+assert.deepEqual(await setProjectKind(async args=>reply(args[0]==='set-kind'?{...success,owner:'coordinator'}:cap),target,'plain'),{value:'plain'},'A matching success on a coordinator-owned home is normal success');
+await assert.rejects(setProjectKind(async args=>reply(args[0]==='set-kind'?{...success,ok:false,error:{code:'home-owned'}}:cap,args[0]==='set-kind'?3:0),target,'plain'),{message:'Delivery kind was not changed. Refresh and try again.'});
 calls=[];await setProjectKind(ask,target,'workflow');assert.equal(calls.length,0);
 for (const bad of [{...success,version:2},{...success,home:'C:/foreign'},{...success,changed:'yes'},
  ...[{name:'other'},{path:'D:/other'},{kind:'gate'}].map(p=>({...success,project:{...success.project,...p}}))])
@@ -44,7 +46,7 @@ for(const machine of [null,'fixture-ssh']) {
  const other=value==='workflow'?'plain':'workflow';assert.deepEqual(JSON.parse(JSON.stringify(await section.list.rowChoice.set(context(),row,other))),{value:other});
  assert.equal(programs.at(-1).machine,machine);
  current=await section.check(context());row=current.rows[0];owned=true;
- await assert.rejects(section.list.rowChoice.set(context(),row,'gate'),/another session owns/);owned=false;
+ await assert.rejects(section.list.rowChoice.set(context(),row,'gate'),/Delivery kind was not changed/);owned=false;
  fail=true;await assert.rejects(section.list.rowChoice.set(context(),row,'gate'),e=>e.uncertain);fail=false;
  const before=programs.length;await assert.rejects(section.list.rowChoice.set(context(),row,'gate'),/Refresh/);assert.equal(programs.length,before,'Unknown outcome revokes write authority until a fresh list');
  current=await section.check(context());await section.list.rowChoice.set(context(),current.rows[0],'gate');

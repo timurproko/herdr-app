@@ -316,7 +316,10 @@ explicit `crew project --capabilities --json` probe. Its JSON list owns the home
 registered name, folder and kind; `set-kind` receives that captured home/name and
 `--expected-path`, never `project add` or a configuration-file write. It rechecks
 capability before dispatch and validates the full stored-value acknowledgement.
-Home ownership and unavailable kinds remain Crew refusals, with no bypass.
+A valid stored-value success is accepted even while a coordinator owns the home,
+without an app-side owner gate. Older Crew's `home-owned` setter refusal says only
+**Delivery kind was not changed. Refresh and try again.** Other refusals remain Crew's
+policy, with no bypass. Add/Remove ownership wording is unchanged.
 
 ## Settings section rows
 

@@ -193,7 +193,9 @@ unless the pointer remains there; keyboard editing retains its Tab target. Chang
 not to portable plugin preferences or existing tasks. The label changes only after
 Crew confirms its stored value. Refusals appear as one short line beneath the row;
 an uncertain result needs a successful fresh list read before another edit, never an
-automatic write replay. A later read can confirm an already-accepted timed-out write.
+automatic write replay. A later read can confirm an already-accepted timed-out write. Supported Crew may
+apply a kind while a coordinator owns the home; an older ownership refusal stays a
+short neutral inline message, without redirecting the person to another session.
 
 ## Optional sidebar plugins
 
