@@ -77,6 +77,24 @@ Kind edits SHALL target the captured machine, home and existing registration thr
 
 ## ADDED Requirements
 
+### Requirement: Consistent Git stage and verdict boxes
+Git stage and verdict controls SHALL share one measured minimum width covering all fixed captions and two-digit Build rounds, equal height and padding, and centred text. Longer round captions SHALL grow only their own box. Interaction bounds SHALL match that box. Existing right alignment, title truncation, row height, guarded actions and tooltip suppression SHALL remain unchanged.
+
+#### Scenario: Common geometry across captions
+- **WHEN** ordinary or coordinator rows show Build, Build 2 through Build 99, Review, Approved or another fixed verdict such as Changes requested at 100% or 130% zoom
+- **THEN** each control has the same outer width and height, padding and centred caption, sized from native text measurements rather than assuming Approved is widest
+- **AND** hover, focus and click share that box without tooltip or a changed right rail, title reservation or block height
+
+#### Scenario: Rare longer round
+- **WHEN** a supported Build caption contains more than two round digits and exceeds the common width
+- **THEN** only that control grows to fit it while keeping its right anchor
+- **AND** ordinary two-digit and fixed-caption controls retain the common width
+
+#### Scenario: Long title and retained presentations
+- **WHEN** long-title rows appear in ordinary, coordinator, pinned, scrolling, probe or ghost presentations at either zoom
+- **THEN** the existing title truncation and full-title hover remain intact and the stage/verdict does not gain a title-line reservation
+
+
 ### Requirement: Non-actionable delivery kind explanation
 The Projects description SHALL append Delivery kinds in inline accent styling with a dashed underline. Hover or keyboard focus SHALL show the sidebar Usage tooltip's visual treatment with aligned columns Kind, Plan first, Who reviews and Who opens the pull request. Clicking SHALL do nothing. If aligned columns cannot be rendered, equivalent dotted rows SHALL preserve all content and the limitation SHALL be reported.
 

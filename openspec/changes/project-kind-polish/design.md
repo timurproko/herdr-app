@@ -53,6 +53,10 @@ While checks queue or retry proven contention, retain same-context confirmed lis
 
 Keep version-1 capability gating, the existing exact set-kind arguments, matching stored-value validation and authoritative reread. A supported success while a coordinator owns the home is just success; do not run ownership checks or display a warning. Map older `home-owned` replies to a short neutral line such as **Delivery kind was not changed. Refresh and try again.** without the forbidden direction to use another session. Preserve other refusals and uncertainty handling. No fallback to Add, configuration edits or automatic write replay.
 
+### 7. One measured Git stage/verdict box
+
+Use one common minimum outer width equal to the native-measured widest fixed stage/verdict caption or Build round from 2 through 99, plus the existing 6px horizontal padding. Keep 18px height, centre text horizontally/vertically, and apply size to the actual hover/focus/click element. A longer round grows only its own box; do not enlarge the common width from it or restrict existing round support. Visible, probe and ghost variants share sizing and measurement facts. Keep today's right rail, 74px block, title truncation and no-tooltip policy. Extend targeted geometry fixtures and capture paired fake/disposable pictures at 100% and 130% zoom outside the checkout. This exception to one-panel scope is explicitly requested and approved by the coordinator.
+
 ## Risks / Trade-offs
 
 - [Other mods/native clients can occupy all execution slots] → Admission plus exact pre-start refusal retry, not a claimed global semaphore over callers the app cannot control.

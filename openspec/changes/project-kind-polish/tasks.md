@@ -27,9 +27,15 @@
 - [ ] 4.2 Replace the legacy home-owned setter explanation with one short neutral inline line; targeted setter/row lifecycle fixtures must retain the stored value on refusal and never show the old instruction to use another session.
 - [ ] 4.3 Update current project-kind documentation and retain uncertainty, stale-callback and no-replay guards; targeted tests must cover legacy capability absence, matching success, malformed acknowledgement, timeout and successful fresh-read reconciliation.
 
+## 5. Equal-size Git stage and verdict labels
+
+- [ ] 5.1 Measure all fixed stage/verdict words and two-digit Build captions with the native interface font; share their maximum outer width, 18px height, 6px side padding and centred text while longer rounds grow only themselves, verified by geometry fixtures.
+- [ ] 5.2 Extend targeted Git geometry/interaction regressions for ordinary, coordinator, pinned, probe and ghost variants at 100%/130%, preserving the right rail, hit boxes, no-tooltip policy, long-title truncation and 74px row height.
+- [ ] 5.3 Capture before/after fake/disposable pictures at both zooms outside the checkout, stop disposable processes, and document the measured width, widest caption and local verification commands/results.
+
 ## Workflow follow-up
 
-- Plan-only handoff: open one draft PR and stop until approval; all implementation tasks remain unchecked.
+- All five outcomes and these artifact revisions are approved for implementation, including the two-digit shared-width and longer-round per-label growth policy.
 - After approved implementation, run targeted fake-only checks, push through the publication path and ensure CI is dispatched on the final head if draft checks skip application suites. Report immediately without waiting for or polling CI.
 - Keep proof pictures and scratch under C:/Users/tprokopiev/.crew/tasks/project-kind-polish and stop every disposable process before reporting and crew done.
 - Never mark ready or merge; finalization and review are outside this task's permission.
