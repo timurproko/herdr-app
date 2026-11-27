@@ -9,6 +9,11 @@ const rows = projectKindRows(listing);
 assert.deepEqual(rows.map(r=>[r.id,r.choice.value]),[['myworkflows','workflow'],['site.dev','plain'],['.hidden','gate']]);
 assert.equal(rows[0].path,'D:\\Git\\project-0');assert.equal(rows[0].kindTarget.home,home);
 assert.deepEqual(projectKindRows({...listing,projects:[]}),[]);
+const changedKind=projectKindRows({...listing,projects:[{...listing.projects[0],kind:'plain'}]})[0];
+assert.equal(changedKind.choice.identity,rows[0].choice.identity,'Kind changes retain registration identity for focus');
+assert.notEqual(changedKind.choice.revision,rows[0].choice.revision,'Kind changes still invalidate value revisions');
+for(const changed of [{...listing,home:'C:/another-home'},...['name','path'].map(key=>({...listing,projects:[{...listing.projects[0],[key]:key==='name'?'other':'D:/other'}]}))])
+ assert.notEqual(projectKindRows(changed)[0].choice.identity,rows[0].choice.identity,'Home, name and folder remain separate focus identities');
 for (const value of [null,[],{...listing,home:'relative'},{...listing,version:2},{...listing,projects:{}},
  {...listing,projects:[listing.projects[0],listing.projects[0]]},
  ...[{kind:'unknown'},{name:'bad..name'},{name:'Bad'},{path:'relative'},{path:'D:/bad\npath'},{path:'D:/Git/../other'}].map(bad=>({...listing,projects:[{...listing.projects[0],...bad}]}))]) assert.equal(projectKindRows(value),null,JSON.stringify(value));

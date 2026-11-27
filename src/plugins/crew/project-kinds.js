@@ -26,7 +26,7 @@ export function projectKindRows(v) {
   return v.projects.map(p => {
     const path = p.path.replace(/\//g, '\\');
     return { id: p.name, label: path, path,
-      choice: { value: p.kind, revision: JSON.stringify([v.home, p.name, p.path, p.kind]) },
+      choice: { value: p.kind, identity: JSON.stringify([v.home, p.name, p.path]), revision: JSON.stringify([v.home, p.name, p.path, p.kind]) },
       kindTarget: { home: v.home, name: p.name, path: p.path, kind: p.kind } };
   });
 }

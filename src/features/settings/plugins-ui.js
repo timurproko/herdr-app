@@ -70,6 +70,7 @@ export function initPlugins(view, cx, requested = null, options = {}) {
   view.pluginChecks = {}; // id -> merged items and independently versioned check groups
   view.pluginFixing = null; // `${plugin}:${prerequisite}` while a fix or a list change runs
   view.pluginListOperation = null;
+  view.pluginFixOperation = null;
   view.pluginFixError = {};
   // `${plugin}:${prerequisite}` -> true from the end of its action until the re-check that
   // follows has answered, so the row goes straight from "Updating" to its new status
@@ -452,16 +453,17 @@ export function reloadPlugins(view, cx, only = null, checkingTarget = null, {rea
 
 // Runs fixes one at a time (stopping at the first failure), then re-checks the plugin.
 function runFixes(view, cx, plugin, items, confirmed = false) {
-  const machine = view.settingsMachine ?? null, session = view.pluginSessions?.[plugin.id];
-  const current = () => !view.pluginClosed && !setupUnavailable(view,plugin) && (view.settingsMachine ?? null) === machine && view.pluginSessions?.[plugin.id] === session;
+  const machine = view.settingsMachine ?? null, session = view.pluginSessions?.[plugin.id], operation = {};
+  const current = () => !view.pluginClosed && !setupUnavailable(view,plugin) && (view.settingsMachine ?? null) === machine && view.pluginSessions?.[plugin.id] === session && view.pluginFixOperation === operation;
   if (view.pluginClosed || setupUnavailable(view,plugin) || view.pluginFixing || !items.length || items.some(item=>view.pluginSettling?.[`${plugin.id}:${item.id}`]) || (items.some(item=>item.fix.confirm||item.fix.requiresEnabled)&&!pluginEnabled(plugin))) return;
   if(!confirmed && items.length===1 && items[0].fix.confirm) {
     view.pluginConfirm={plugin:plugin.id,item:items[0]};cx.notify();return;
   }
   for (const item of items) view.pluginFixError[`${plugin.id}:${item.id}`] = null;
-  view.pluginFixing = `${plugin.id}:${items[0].id}`;
+  view.pluginFixing = `${plugin.id}:${items[0].id}`; view.pluginFixOperation = operation;
   cx.spawn(async (cx) => {
     for (const item of items) {
+      if (!current()) break;
       const key = `${plugin.id}:${item.id}`;
       view.pluginFixing = key; cx.notify();
       if((item.fix.confirm||item.fix.requiresEnabled)&&!pluginEnabled(plugin))break;
@@ -471,8 +473,10 @@ function runFixes(view, cx, plugin, items, confirmed = false) {
         await item.fix.run(viewContext(view,plugin,()=>current()&&view.pluginFixing===key,machine));
       } catch (e) { if (current()) view.pluginFixError[key] = String(e?.message ?? e).slice(0, 300); break; }
     }
-    view.pluginFixing = null;
-    if (!current()) {
+    if (view.pluginFixOperation !== operation) return;
+    const active = current();
+    view.pluginFixOperation = null; view.pluginFixing = null;
+    if (!active) {
       for (const item of items) delete view.pluginSettling?.[`${plugin.id}:${item.id}`];
       if (!view.pluginClosed) cx.notify(); return;
     }
@@ -604,7 +608,7 @@ function runListAction(view, cx, plugin, item, action, everything = false, rowSt
       else view.pluginFixError[key] = String(e?.message ?? e).slice(0, 600);
     } }
     if (view.pluginListOperation !== operation) return;
-    view.pluginFixing = null;
+    view.pluginListOperation = null; view.pluginFixing = null;
     if (!current()) { if (!view.pluginClosed) cx.notify(); return; }
     (view.pluginSettling ??= {})[key] = true;
     reloadPlugins(view, cx, plugin.id, everything || item.list?.recheck === 'plugin' ? null : item.id); cx.notify();
@@ -728,8 +732,11 @@ function prepareRowChoices(view, cx, plugin, item) {
     if (!row.choice || !item.list.rowChoice.options.some(([value]) => value === row.choice.value)) continue;
     const key = rowChoiceKey(plugin, item, row); present.add(key);
     const old = entries.get(key), session = view.pluginSessions?.[plugin.id], machine = view.settingsMachine ?? null;
-    const state = old?.row.choice.revision === row.choice.revision && old.session === session && old.machine === machine ? old
+    // Registration identity owns focus; value revision/generation only owns callbacks.
+    const identity = row.choice.identity ?? row.choice.revision;
+    const state = old && (old.row.choice.identity ?? old.row.choice.revision) === identity && old.session === session && old.machine === machine ? old
       : { trigger: cx.focus_handle(), menu: cx.focus_handle(), remove: cx.focus_handle(), index: 0, session, machine };
+    if (old?.row.choice.revision !== row.choice.revision) { state.error = null; state.uncertain = false; }
     if (state.uncertain && item.status === 'ready' && item.usable === true) { state.uncertain = false; state.error = null; }
     state.row = row; state.open = false; state.generation = {}; entries.set(key, state);
   }
