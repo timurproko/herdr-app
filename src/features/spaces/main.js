@@ -563,9 +563,9 @@ export default class Spaces extends View {
             const parent=attached&&!linked;
             return el.child(h_flex().id(`space-meta-${w.id}`).flex_none().items_center().gap(INLINE_RENAME.actionGap).mr(-8)
               .children(tags.filter(tag=>tag.plugin==='crew').map(tag=>sidebarMachineLabel(t,tag.label==='Crew'?'crew':tag.label)
-                .id(`space-tag-${w.id}-${tag.plugin}-${tag.index}`).mr((parent?INLINE_RENAME.labelGap:9)-INLINE_RENAME.actionGap)
+                .id(`space-tag-${w.id}-${tag.plugin}-${tag.index}`).mr(INLINE_RENAME.labelGap-INLINE_RENAME.actionGap)
                 .when(Boolean(tag.tooltip),e=>e.tooltip(tag.tooltip))))
-              .when(parent,e=>e.child(sidebarNumericSlot(t,`space-count-${w.id}`,String(block.length-1),{centered:true})))
+              .child(parent?sidebarNumericSlot(t,`space-count-${w.id}`,String(block.length-1),{centered:true}):div().size(U.insetControl).flex_none())
               .child(parent?this.parentDisclosure({w,block,binding},t):div().size(U.insetControl).flex_none()));
           }),
       );

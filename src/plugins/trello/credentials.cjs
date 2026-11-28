@@ -53,7 +53,8 @@ function safePath(file) {
 function aclEnvironment(env, file) {
   return {...Object.fromEntries(Object.entries(env).filter(([k]) => k.toLowerCase() !== 'psmodulepath' && k.toLowerCase() !== 'trello_private_path')), TRELLO_PRIVATE_PATH: file};
 }
-function windowsSecurity(file, create, directory, {execute = cp.execFileSync, env = process.env} = {}) {
+function windowsSecurity(file, create, directory, {execute = cp.execFileSync, env = process.env, budget} = {}) {
+  budget?.check();
   const script = `try { $ErrorActionPreference='Stop'; $p=$env:TRELLO_PRIVATE_PATH; $sid=[System.Security.Principal.WindowsIdentity]::GetCurrent().User; ` +
     (create ? `$a=New-Object System.Security.AccessControl.${directory ? 'DirectorySecurity' : 'FileSecurity'}; $a.SetOwner($sid); $a.SetAccessRuleProtection($true,$false); $r=New-Object System.Security.AccessControl.FileSystemAccessRule($sid,'FullControl',${directory ? "'ContainerInherit,ObjectInherit','None'," : ''}'Allow'); $a.AddAccessRule($r); Set-Acl -LiteralPath $p -AclObject $a; ` : '') +
     `$a=Get-Acl -LiteralPath $p; $owner=$a.GetOwner([System.Security.Principal.SecurityIdentifier]).Value; if($owner -ne $sid.Value){exit 21}; $ok=@($sid.Value,'S-1-5-18','S-1-5-32-544'); foreach($r in $a.Access){if($r.AccessControlType -eq 'Allow' -and $r.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]).Value -notin $ok){exit 21}}; exit 0 } catch { exit 22 }`;
@@ -61,29 +62,39 @@ function windowsSecurity(file, create, directory, {execute = cp.execFileSync, en
   if (!systemRoot || !path.win32.isAbsolute(systemRoot)) fail('STORE_PERMISSION_CHECK');
   try {
     execute(path.win32.join(systemRoot, 'System32/WindowsPowerShell/v1.0/powershell.exe'), ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')],
-      {env: aclEnvironment(env, file), stdio: 'ignore', timeout: 10000, windowsHide: true});
-  } catch (e) { fail(e?.status === 21 ? 'STORE_PERMISSIONS' : 'STORE_PERMISSION_CHECK'); }
+      {env: aclEnvironment(env, file), stdio: 'ignore', timeout: budget ? budget.timeout(10000) : 10000, killSignal: 'SIGKILL', windowsHide: true});
+    budget?.check();
+  } catch (e) { budget?.check(); if (e instanceof TrelloError) throw e; fail(e?.status === 21 ? 'STORE_PERMISSIONS' : 'STORE_PERMISSION_CHECK'); }
 }
-function security(file, create = false, directory = false) {
-  if (process.platform === 'win32') return windowsSecurity(file, create, directory);
+function security(file, create = false, directory = false, {budget} = {}) {
+  budget?.check();
+  if (process.platform === 'win32') return windowsSecurity(file, create, directory, {budget});
   try {
     if (create) fs.chmodSync(file, directory ? 0o700 : 0o600);
     const s = fs.lstatSync(file);
     if (s.uid !== process.getuid() || (s.mode & 0o077) !== 0) fail('STORE_PERMISSIONS');
+    budget?.check();
   } catch (e) { if (e instanceof TrelloError) throw e; fail('STORE_PERMISSION_CHECK'); }
 }
 class Store {
   constructor(home, options = {}) { this.home = homePath(home); this.dir = path.join(this.home, '.customizations', 'trello'); this.security = options.security || security; this.beforeCommit = options.beforeCommit || (() => {}); }
-  file(name) { if (!['credentials', 'policy', 'cooldown', 'display', 'control', 'controller'].includes(name)) fail('INPUT'); return path.join(this.dir, name + '.json'); }
+  // A per-invocation view avoids changing a caller's store or caching authority.
+  withBudget(budget) { return Object.assign(Object.create(this), {budget}); }
+  secure(file, create = false, directory = false) {
+    this.budget?.check();
+    this.security(file, create, directory, {budget: this.budget});
+    this.budget?.check();
+  }
+  file(name) { this.budget?.check(); if (!['credentials', 'policy', 'cooldown', 'display', 'control', 'controller'].includes(name)) fail('INPUT'); return path.join(this.dir, name + '.json'); }
   directory(create = false) {
     try {
-      safePath(this.dir);
+      this.budget?.check(); safePath(this.dir);
       if (!stat(this.dir)) {
         if (!create) fail('STORE_MISSING');
-        fs.mkdirSync(this.dir, {recursive: true, mode: 0o700}); this.security(this.dir, true, true);
+        fs.mkdirSync(this.dir, {recursive: true, mode: 0o700}); this.secure(this.dir, true, true);
       }
       if (!stat(this.dir)?.isDirectory()) fail('STORE_UNSAFE_PATH');
-      this.security(this.dir, false, true);
+      this.secure(this.dir, false, true);
     } catch (e) { storageError(e); }
   }
   read(name, optional = false) {
@@ -97,13 +108,13 @@ class Store {
       if (!s.isFile() || s.nlink !== 1) fail('STORE_UNSAFE_PATH');
       const max = ['display','controller'].includes(name) ? 524288 : 32768;
       if (s.size > max) fail('STORE_MALFORMED');
-      this.security(file);
+      this.secure(file);
       fd = fs.openSync(file, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0));
       const opened = fs.fstatSync(fd);
       if (!opened.isFile() || opened.nlink !== 1 || opened.dev !== s.dev || opened.ino !== s.ino) fail('STORE_UNSAFE_PATH');
       if (opened.size > max) fail('STORE_MALFORMED');
       let value; try { value = JSON.parse(fs.readFileSync(fd, 'utf8')); } catch (e) { if (e instanceof SyntaxError) fail('STORE_MALFORMED'); throw e; }
-      return validate(name, value);
+      this.budget?.check(); return validate(name, value);
     } catch (e) { storageError(e); } finally { if (fd !== undefined) fs.closeSync(fd); }
   }
   // Locks cover local transitions, never provider/network work.
@@ -114,7 +125,7 @@ class Store {
     let fd;
     try {
       try { fd = fs.openSync(lock, 'wx', 0o600); } catch (e) { if (e.code === 'EEXIST') fail('STORE_BUSY'); throw e; }
-      this.lockHeld = true; this.security(lock, true);
+      this.lockHeld = true; this.secure(lock, true);
       return action();
     } catch (e) { storageError(e); }
     finally { if (fd !== undefined) { this.lockHeld = false; fs.closeSync(fd); fs.unlinkSync(lock); } }
@@ -128,9 +139,9 @@ class Store {
       let temp = path.join(this.dir, `.write-${crypto.randomBytes(12).toString('hex')}`);
       try {
         const out = fs.openSync(temp, 'wx', 0o600);
-        try { this.security(temp, true); this.beforeCommit(); fs.writeFileSync(out, JSON.stringify(value) + '\n'); fs.fsyncSync(out); } finally { fs.closeSync(out); }
+        try { this.secure(temp, true); this.budget?.check(); this.beforeCommit(); fs.writeFileSync(out, JSON.stringify(value) + '\n'); fs.fsyncSync(out); } finally { fs.closeSync(out); }
         safePath(file);
-        this.beforeCommit(); fs.renameSync(temp, file); temp = null; this.security(file);
+        this.budget?.check(); this.beforeCommit(); fs.renameSync(temp, file); temp = null; this.secure(file);
       } finally { if (temp && stat(temp)) fs.unlinkSync(temp); }
     });
   }
@@ -138,7 +149,7 @@ class Store {
     return this.withLock(() => {
       const current = this.read(name, true);
       if (JSON.stringify(current) !== JSON.stringify(expected)) fail('CONFLICT');
-      if (current !== null) { const file = this.file(name); safePath(file); this.beforeCommit(); fs.unlinkSync(file); }
+      if (current !== null) { const file = this.file(name); safePath(file); this.budget?.check(); this.beforeCommit(); fs.unlinkSync(file); }
     });
   }
 }

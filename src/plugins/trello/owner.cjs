@@ -108,8 +108,12 @@ async function operate(input, {store, ...io}) {
   }
   if (input.action === 'verify') {
     const c = client(store, s, s.credentials, io), account = await identity(c);
-    // Only explicit verification hydrates missing legacy board names.
-    const items = publicStatus(s).namesMissing && s.policy?.boards.length ? (await inventory(c)).items : [];
+    // Refresh existing hints too: a name is presentation, never board identity.
+    // Board-read failure must not discard saved names or invalidate this account check.
+    let items = [];
+    if (s.policy?.boards.length) {
+      try { items = (await inventory(c)).items; } catch { /* Keep last-known board names. */ }
+    }
     store.withLock(() => { expected(store, s.revision); writeDisplay(store, s, s.credentials, s.policy ?? defaults(), account, items); });
     return publicStatus(snapshot(store));
   }

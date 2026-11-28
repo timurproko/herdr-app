@@ -34,13 +34,53 @@ const messages = {
   WRITE_CHANGED: 'Trello acknowledged the write, but local authority changed. No result content or follow-up is available; inspect the board before another action.',
   UNKNOWN_WRITE: 'Write outcome unknown. Read the card and its comments/checklists before any explicit retry; this command will not replay it.',
 };
+// Provider material is matched, never echoed. Unknown text/statusText is ignored.
+const {STATUS_CODES} = require('node:http');
+const reasons = new Map([
+  ['invalid key', 'Invalid API key'], ['invalid token', 'Invalid token'],
+  ['invalid id', 'Invalid resource ID'], ['permission denied', 'Permission denied'],
+  ['access denied', 'Access denied'], ['unauthorized permission requested', 'Permission denied'],
+  ['unauthorized card permission requested', 'Card access denied'],
+  ['card not found', 'Card not found'], ['board not found', 'Board not found'],
+  ...['filter', 'fields', 'attachments', 'actions', 'checklists', 'members', 'pluginData', 'stickers'].map(k => [`invalid value for ${k}`, `Invalid value for ${k}`]),
+]);
+function httpDetails(status, reason) {
+  if (!Number.isInteger(status) || status < 100 || status > 599) return {};
+  const phrase = STATUS_CODES[status] || 'HTTP rejection';
+  return {httpStatus: status, httpReason: phrase + ([...reasons.values()].includes(reason) ? `: ${reason}` : '')};
+}
+function providerReason(text, credentials) {
+  if (typeof text !== 'string' || [credentials?.apiKey, credentials?.token].some(s => s && text.includes(s))) return;
+  let value = text.trim();
+  try { const json = JSON.parse(value); value = typeof json === 'string' ? json : json?.message ?? json?.error; } catch {}
+  return reasons.get(value);
+}
 class TrelloError extends Error {
   constructor(code, extra = {}) { super(messages[code] || messages.RESPONSE); this.code = code in messages ? code : 'RESPONSE'; Object.assign(this, extra); }
 }
 const fail = code => { throw new TrelloError(code); };
+// Wall-clock time is reserved for persisted rate limits. Execution budgets use a
+// monotonic clock, and children can never outlive the command which owns them.
+class Deadline {
+  constructor(duration = 60000, clock = () => performance.now(), parent = null, code = 'LIMIT') {
+    this.clock = clock; this.parent = parent; this.code = code;
+    this.end = clock() + Math.max(1, Math.min(duration, 60000));
+  }
+  remaining() {
+    const parent = this.parent ? this.parent.remaining() : Infinity;
+    const left = Math.min(parent, this.end - this.clock());
+    if (left <= 0) fail(this.code);
+    return left;
+  }
+  check() { this.remaining(); }
+  timeout(max = 10000) { return Math.max(1, Math.ceil(Math.min(max, this.remaining()))); }
+  expire() { this.end = -Infinity; }
+}
 function publicError(error, {configurationUnknown = false} = {}) {
   const safe = error instanceof TrelloError ? error : new TrelloError('INTERNAL');
-  return {code: safe.code, message: messages[safe.code] + (configurationUnknown ? ' Setup may have changed; check status before retrying.' : ''), outcome: configurationUnknown || safe.code === 'UNKNOWN_WRITE' ? 'unknown' : safe.code === 'WRITE_CHANGED' ? 'applied' : 'refused',
+  // Reconstruct the phrase at the public boundary; even forged extras cannot leak.
+  const details = httpDetails(safe.httpStatus, safe.providerReason);
+  return {code: safe.code, ...details, message: messages[safe.code] + (details.httpStatus ? ` HTTP ${details.httpStatus} ${details.httpReason}.` : '') + (configurationUnknown ? ' Setup may have changed; check status before retrying.' : ''), outcome: configurationUnknown || safe.code === 'UNKNOWN_WRITE' ? 'unknown' : safe.code === 'WRITE_CHANGED' ? 'applied' : 'refused',
     ...(Number.isSafeInteger(safe.retryAt) ? {retryAt: safe.retryAt} : {})};
 }
-module.exports = {TrelloError, fail, publicError, messages};
+module.exports = {TrelloError, fail, publicError, messages, httpDetails, providerReason, Deadline};

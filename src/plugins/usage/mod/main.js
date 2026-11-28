@@ -7,7 +7,7 @@ import { machinePicker } from './machine-picker.js';
 import { tag, inlineDropdown, hintTable } from './panel-kit.js';
 import { liveTheme as theme } from './look.js';
 import { preferences, updatePreferences, cache, refresh, signIn, claimReset, openPrivate } from './store.js';
-import { percentage, summaryWindows, windowKey, togglePin, resetInfo, sidebarUsageVisible, reportDisplayable, providerBlock, loginRequired, fetchedInfo, REFRESH_INTERVAL, orderKey, orderReports } from './model.js';
+import { percentage, summaryWindows, windowKey, togglePin, resetInfo, sidebarUsageVisible, reportDisplayable, providerBlock, loginRequired, fetchedInfo, REFRESH_INTERVAL, REFRESH_TIMEOUT, orderKey, orderReports } from './model.js';
 import { reorder } from './reorder.js';
 import { pluginIsEnabled } from './plugins.js';
 import { claudeSelection, selectClaude, usageOpeningContext, claudeContext, claudeView } from './accounts.js';
@@ -195,7 +195,7 @@ export default class Usage extends View {
     const date=iso=>{const d=new Date(iso);if(!Number.isFinite(d.getTime()))return '';const year=d.getFullYear()!==new Date().getFullYear()?`, ${d.getFullYear()}`:'';return `${month[d.getMonth()]} ${d.getDate()}${year}`;};
     // Closing drops any row hover: the pointer never "leaves" a row that shrinks away.
     const toggle=(_e,cx)=>{cx.stop_propagation();open?this.resetsOpen.delete(entry.id):this.resetsOpen.add(entry.id);this.resetHover=null;this.resetConfirm=null;cx.notify();};
-    const outcome=this.resetOutcome?.id===entry.id?this.resetOutcome.text:null;
+    const outcome=this.resetOutcome?.id===entry.id&&this.resetOutcome.machine===this.machine?this.resetOutcome.text:null;
     // The count links to the provider's page (a fallback); the rest of the row, chevron
     // included, expands the list. Rows are U.control tall, so the list's height is known
     // and it slides open (ui.js collapsible).
@@ -253,13 +253,17 @@ export default class Usage extends View {
     this.claiming=key;this.resetConfirm=null;this.resetOutcome=null;cx.notify();
     cx.spawn(async cx=>{
       const r=await claimReset(machine,{provider:this.providerIcon(entry),accountId:entry.account?.id,organizationId:entry.account?.organizationId,grantId:g.grantId});
+      if(r.obsolete){this.claiming=null;cx.notify();return;}
       const text=r.error??(r.result==='reset'?null:({already_used:'That reset was already used.',not_limited:'Nothing to reset yet: use it once you hit a limit.',
         cooldown:'Resets are cooling down. Try again later.',ineligible:'This account can’t use that reset.',unavailable:'That reset isn’t available right now.',
         rate_limited:'Too many requests. Try again shortly.'}[r.result]??'The reset did not finish.'));
-      this.resetOutcome=text?{id:entry.id,text}:null;cx.notify();
+      this.resetOutcome=text?{id:entry.id,machine,text}:null;cx.notify();
       if(r.result){
-        for(let i=0;i<120&&refresh(machine,cx,{force:true,reportId:entry.id,signedIn:true})===false;i++)await cx.sleep(500);
-        for(let i=0;i<240&&cache(machine).loading;i++)await cx.sleep(500);
+        // A pre-reset collector may own the full loading lease. Do not drop the
+        // forced read after 60s while that older request is still allowed to run.
+        const attempts=Math.ceil(REFRESH_TIMEOUT/500),options={force:true,reportId:entry.id,signedIn:true,accountOnly:true,epoch:r.epoch};
+        for(let i=0;i<=attempts&&refresh(machine,cx,options)===false;i++)await cx.sleep(500);
+        for(let i=0;i<=attempts&&cache(machine).loading&&(cache(machine).generation??0)===r.epoch;i++)await cx.sleep(500);
       }
       this.claiming=null;cx.notify();
     });
