@@ -5,7 +5,7 @@ import { v_flex, h_flex, Editor, EditorState } from "gpui-base";
 import { U, slot, headerTools, reveal, subtleActionFill, refreshButton } from "./ui.js";
 import { spaces, panes, terminals, focused, home, exec, readTextFile, writeTextFile, notify, theme, window, run, props, openOverlay, closeOverlay, nextCommand, layout } from "./host.js";
 import { fileIconAsset } from './file-icons.js';
-import { fullFilePath, fileHeader, publishFileHeader, fileReloadStamp, finishFileReload } from './file-header.js';
+import { fullFilePath, fileHeader, publishFileHeader, fileViewerRoute, publishFileViewerRoute, fileReloadStamp, finishFileReload } from './file-header.js';
 import { previewFont } from './preview-font.js';
 import { location } from './location.js';
 import { runPluginHook, sidebarPanelEnabled } from './plugins.js';
@@ -490,15 +490,15 @@ export default class Files extends View {
     const destination = spaces().find(s => s.active), space = destination?.id;
     if (!space) return;
     const fullPath = fullFilePath(this.root, path), identity = filePathKey(fullPath);
-    // A held remote tree may be used from a space on another machine. Public
-    // pane metadata cannot prove an existing viewer there has this source route.
-    const allPanes = panes(), tabs = (destination.machine ?? null) === (this.on ?? null) ? destination.tabs ?? [] : [];
+    const allPanes = panes(), tabs = destination.tabs ?? [];
     const matches = tabs.flatMap(tab => {
       if (filePathKey(fileHeader(tab.id, tab.name)) !== identity) return [];
       const viewers = allPanes.filter(p => p.tab === tab.id && p.mod === 'custom-files');
       // Public pane metadata does not expose individual viewer props. A tab
       // with several file panes is ambiguous; never focus the wrong file.
-      return viewers.length === 1 ? [{tab,pane:viewers[0]}] : [];
+      if (viewers.length !== 1) return [];
+      const route = fileViewerRoute(viewers[0].pane);
+      return route && route.machine === (this.on ?? null) && filePathKey(route.path) === identity ? [{tab,pane:viewers[0]}] : [];
     });
     const existing = matches.find(match => match.tab.active) ?? matches[0];
     const pendingKey = JSON.stringify([space,this.on ?? null,identity]);
@@ -516,10 +516,19 @@ export default class Files extends View {
     // an open, and permits an explicit retry if creation did not succeed.
     if (this.openingFiles.has(pendingKey)) return;
     this.openingFiles.set(pendingKey, Date.now() + 3000);
+    const before = new Set(tabs.map(tab => tab.id));
     try {
       run('tab.new', { name: fullPath, space, folder: this.root,
         mod: 'custom-files', props: { fileViewer: true, fileRoot: this.root,
           fileRelative: path, fileMachine: this.on ?? null, fileSpace: space } });
+      // Public run() normally applies structural commands before returning. Bind
+      // only a unique new native tab/pane acknowledged in that same event. A
+      // delayed/ambiguous acknowledgement remains unknown, never a route guess.
+      const created = (spaces().find(s=>s.id===space)?.tabs ?? []).filter(tab=>!before.has(tab.id) && filePathKey(tab.name)===identity);
+      if (created.length === 1) {
+        const viewers = panes().filter(p=>p.tab===created[0].id && p.mod==='custom-files');
+        if (viewers.length === 1) publishFileViewerRoute(viewers[0].pane,fullPath,this.on ?? null);
+      }
     } catch (e) { this.openingFiles.delete(pendingKey); throw e; }
   }
 

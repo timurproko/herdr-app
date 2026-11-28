@@ -356,6 +356,9 @@ existing editor and scroll position are retained; it does not reload the file.
 Windows paths ignore case and slash direction; POSIX paths remain case-sensitive.
 Legacy basename or renamed viewers can use their known in-memory full path.
 Same-named files in other folders/spaces or on other machines are not reused.
+Reuse requires a proven viewer-machine route recorded for its acknowledged native
+pane, not the current space's machine. Unknown or delayed viewer identities open
+a new viewer rather than risk displaying another machine's same-path file.
 Tabs with several file panes are ambiguous in the public host API and open a new
 viewer rather than risk focusing the wrong file. New files still open in native
 read-only tabs; rapid repeated clicks are suppressed while creation is pending,
@@ -409,7 +412,9 @@ While the header pin is pressed, Git keeps that source agent's repository and PR
 association, or that coordinator's task-repository overview, even when another
 space or machine is selected. Live checks and Refresh still update the held
 content. Coordinator reads/actions still require fresh verified identity; a
-missing or offline source never substitutes the current agent. Stage/robot
+missing or offline source never substitutes the current agent. The hold also fixes
+folder/coordinator mode and exact coordinator provider, owner and home identity:
+a replacement coordinator in the same space cannot take over its overview. Stage/robot
 navigation may select an agent without moving the held sidebar into its context.
 The following agent-entry and selected-PR behavior applies when the header is unpinned.
 

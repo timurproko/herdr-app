@@ -2,7 +2,9 @@
 import { focused, panes, spaces, terminals } from './host.js';
 import { paneDirectory } from './directory.js';
 import { panelSource } from './panel-state.js';
-import { registerPanelSource, namedPullNumber } from './panel-context.js';
+import { registerPanelSource, registerPanelPullContext, namedPullNumber } from './panel-context.js';
+import { pluginPullContext } from './plugins.js';
+registerPanelPullContext(space => pluginPullContext(space,{presentation:true}));
 let last;
 export function location(previous) {
   const held = panelSource();

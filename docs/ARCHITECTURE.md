@@ -605,11 +605,17 @@ native/global. No Core or layout-document writes or new polling are involved.
 Files/Git `location.js` adapters expose that held source without changing Git's
 render or animation path. Files retains an explorer behind its file-viewer tab;
 file opens still target the current native space with the held machine in viewer
-props. Cross-machine same-path viewers are not reused without route evidence.
-Git's ordinary PR association and coordinator provider lookup use the held
-terminal/space; live facts continue refreshing and fresh provider/action checks
-remain independent. Native stage/robot navigation cannot settle the held source
-into its destination. Missing/offline source identity never selects a substitute.
+props. Reuse requires an exact pane's proven path and read-machine record from
+acknowledged creation, in the session-only file-header bridge; space machine and
+filename never prove a viewer route. Unknown/ambiguous/delayed identities open a
+new viewer rather than focusing a potentially different machine's file.
+Git's ordinary PR association uses the held terminal. Capture also fixes folder
+versus coordinator mode and the registry's provider ID plus exact scope, owner,
+home, parent, machine and owner tab/pane scalars. `AggregatePulls.currentContext`
+rejects replacement identities even at the same parent. Unavailable held scope
+retains only existing stale/last-good presentation, never new inventory or action
+authority. Live facts and independent fresh provider/action checks remain.
+Native stage/robot navigation cannot settle the hold into its destination.
 
 Files/Git headers share `ui/panel-pin.js`. Their Close actions, the tab-bar toggle
 and the panel switcher all use `changePanel`, recording the source tab before

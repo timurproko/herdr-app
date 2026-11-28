@@ -5,6 +5,18 @@ export function fullFilePath(root, relative) {
   return root.replace(/[\\/]+$/, '') + separator + relative.replace(/[\\/]/g, separator);
 }
 const headerKey = tab => `custom.file.header:${tab}`;
+const routeKey = pane => `custom.file.viewer-route:${pane}`;
+// Only acknowledged creation binds a native pane to its immutable read route.
+// A space's machine, tab name or path alone cannot prove a viewer's machine.
+export function fileViewerRoute(pane) {
+  try {
+    const value = JSON.parse(sessionStorage.getItem(routeKey(pane)) ?? 'null');
+    return typeof value?.path === 'string' && (value.machine === null || typeof value.machine === 'string') ? value : null;
+  } catch { return null; }
+}
+export function publishFileViewerRoute(pane,path,machine) {
+  try { sessionStorage.setItem(routeKey(pane),JSON.stringify({path,machine:machine ?? null})); return true; } catch { return false; }
+}
 const reloadKey = (space, path) => `custom.file.reload:${JSON.stringify([space, path])}`;
 export function fileHeader(tab, fallback) {
   return sessionStorage.getItem(headerKey(tab)) || fallback;
