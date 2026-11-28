@@ -5,6 +5,7 @@
     "arrow-up-right.svg": "src/shared/arrow-up-right.svg",
     "directory.js": "src/ui/directory.js",
     "panel-state.js": "src/shared/panel-state.js",
+    "panel-context.js": "src/shared/panel-context.js",
     "panel-pin.js": "src/ui/panel-pin.js",
     "sidebar-title.js": "src/ui/sidebar-title.js",
     "refresh.svg": "src/shared/refresh.svg",

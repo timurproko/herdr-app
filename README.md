@@ -356,6 +356,10 @@ existing editor and scroll position are retained; it does not reload the file.
 Windows paths ignore case and slash direction; POSIX paths remain case-sensitive.
 Legacy basename or renamed viewers can use their known in-memory full path.
 Same-named files in other folders/spaces or on other machines are not reused.
+Reuse requires a proven viewer-machine route, not the current space's machine.
+Queued opens retain their captured route until a later native snapshot acknowledges
+the new pane; the next file click reuses it even after the retry lease expires.
+Unknown or ambiguous viewer identities never substitute another machine's file.
 Tabs with several file panes are ambiguous in the public host API and open a new
 viewer rather than risk focusing the wrong file. New files still open in native
 read-only tabs; rapid repeated clicks are suppressed while creation is pending,
@@ -390,18 +394,32 @@ foreground-tinted hover through one component, without caller opt-ins. Title
 padding and inline widths stay unchanged. A lone enabled sidebar panel keeps a
 static title without hover; existing static agent/program titles stay static.
 The pin's persistent pressed treatment stays pin-specific. No native header patch
-is involved; see the [header ownership inventory](docs/HEADER-TITLES.md). Pin remembers **Files or
-Git and open/closed state for the current tab**, separate from the shared sidebar
-choice used by unpinned tabs. Returning through tab clicks, keys or agent navigation
-restores that tab's choice. While pinned, switching the panel or opening/closing it
-updates only that tab; other tabs keep their normal shared choice. Unpin returns
-to the shared choice. The pin is **unpressed by default** and uses the exact same
+is involved; see the [header ownership inventory](docs/HEADER-TITLES.md). Pin holds **the current machine, folder and agent context**, plus **Files or
+Git and open/closed state**, across agent, tab and space navigation. Changing
+Files/Git by hand keeps that same source pinned; closing and reopening keeps the
+hold too. The held folder does not follow later cwd changes. Refresh continues
+updating that source: this is not a static screenshot. Unpin returns to the shared
+view/visibility choice and follows the agent that is current now. File actions
+still use the held machine and folder; file viewers open in the current space. The pin is **unpressed by default** and uses the exact same
 angled icon as Usage in both states. When pinned, it has Usage's pressed fill,
 border and foreground treatment, rather than switching to a crossed-out icon.
-Width remains native/global. Pins are client-local, qualified-tab runtime state, not portable
-preferences; no Core document, terminal or agent is changed. Reconciliation yields
+Width remains native/global. The hold is client-local app-session memory, not a
+durable or portable preference: restart starts unpinned and follows the current
+agent. Old per-tab pins become unpinned, preserving their shared default; no Core document, terminal or agent is changed. Reconciliation yields
 out of render and waits for native acknowledgements rather than polling/replaying
 layout commands.
+
+While the header pin is pressed, Git keeps that source agent's repository and PR
+association, or that coordinator's task-repository overview, even when another
+space or machine is selected. Live checks and Refresh still update the held
+content. Coordinator reads/actions still require fresh verified identity; a
+missing or offline source never substitutes the current agent. The hold also fixes
+folder/coordinator mode and exact coordinator provider, owner and home identity:
+a replacement coordinator in the same space cannot take over its overview.
+While coordinator identity is still being verified, Pin remains unpressed; once
+verification finishes, an explicit press can hold its established scope. Stage/robot
+navigation may select an agent without moving the held sidebar into its context.
+The following agent-entry and selected-PR behavior applies when the header is unpinned.
 
 Git's list-replacing empty, informational and error feedback uses the repository
 header's 28px row and text anchor, not PR-title padding. Open/Closed empty text

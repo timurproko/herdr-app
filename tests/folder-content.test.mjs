@@ -30,7 +30,7 @@ const imports = {
   './delete-entry.js': { deleteEntry() { throw Error('No deletion during folder listings'); } },
   './host.js': { spaces: () => [], panes: () => [], terminals: () => [], focused: () => null, home: () => '', exec, readTextFile: () => '', writeTextFile: async () => null, notify: () => {}, watchFolder: () => {}, layout: () => ({}), theme: () => ({}), window: () => ({ platform }), run: () => {}, props: () => ({}), openOverlay: () => {}, closeOverlay: () => {}, nextCommand: () => new Promise(() => {}) },
   './file-icons.js': { fileIconAsset: name => `file:${name}` },
-  './file-header.js': { fullFilePath: () => '', fileHeader: (_tab, fallback) => fallback, publishFileHeader: () => {}, fileReloadStamp: () => '', finishFileReload: () => {} },
+  './file-header.js': { fullFilePath: () => '', fileHeader: (_tab, fallback) => fallback, publishFileHeader: () => {}, fileViewerRoute: () => null, beginFileViewerOpen: () => null, cancelFileViewerOpen: () => {}, acknowledgeFileViewers: () => {}, fileReloadStamp: () => '', finishFileReload: () => {} },
   './preview-font.js': { previewFont: () => ({}) },
   './location.js': { location: () => ({}) },
   './plugins.js': { runPluginHook: async () => false, sidebarPanelEnabled: () => true },

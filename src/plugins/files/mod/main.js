@@ -5,7 +5,7 @@ import { v_flex, h_flex, Editor, EditorState } from "gpui-base";
 import { U, slot, headerTools, reveal, subtleActionFill, refreshButton } from "./ui.js";
 import { spaces, panes, terminals, focused, home, exec, readTextFile, writeTextFile, notify, theme, window, run, props, openOverlay, closeOverlay, nextCommand, layout } from "./host.js";
 import { fileIconAsset } from './file-icons.js';
-import { fullFilePath, fileHeader, publishFileHeader, fileReloadStamp, finishFileReload } from './file-header.js';
+import { fullFilePath, fileHeader, publishFileHeader, fileViewerRoute, beginFileViewerOpen, cancelFileViewerOpen, acknowledgeFileViewers, fileReloadStamp, finishFileReload } from './file-header.js';
 import { previewFont } from './preview-font.js';
 import { location } from './location.js';
 import { runPluginHook, sidebarPanelEnabled } from './plugins.js';
@@ -487,16 +487,19 @@ export default class Files extends View {
 
   openFile(path) {
     if (!this.root || !this.current(this.context)) return;
-    const space = location(this.context).space;
+    const destination = spaces().find(s => s.active), space = destination?.id;
     if (!space) return;
     const fullPath = fullFilePath(this.root, path), identity = filePathKey(fullPath);
-    const allPanes = panes(), tabs = spaces().find(s => s.id === space)?.tabs ?? [];
+    const allPanes = panes(), tabs = destination.tabs ?? [];
+    acknowledgeFileViewers(spaces(),allPanes,filePathKey);
     const matches = tabs.flatMap(tab => {
       if (filePathKey(fileHeader(tab.id, tab.name)) !== identity) return [];
       const viewers = allPanes.filter(p => p.tab === tab.id && p.mod === 'custom-files');
       // Public pane metadata does not expose individual viewer props. A tab
       // with several file panes is ambiguous; never focus the wrong file.
-      return viewers.length === 1 ? [{tab,pane:viewers[0]}] : [];
+      if (viewers.length !== 1) return [];
+      const route = fileViewerRoute(viewers[0].pane);
+      return route && route.machine === (this.on ?? null) && filePathKey(route.path) === identity ? [{tab,pane:viewers[0]}] : [];
     });
     const existing = matches.find(match => match.tab.active) ?? matches[0];
     const pendingKey = JSON.stringify([space,this.on ?? null,identity]);
@@ -514,11 +517,15 @@ export default class Files extends View {
     // an open, and permits an explicit retry if creation did not succeed.
     if (this.openingFiles.has(pendingKey)) return;
     this.openingFiles.set(pendingKey, Date.now() + 3000);
+    const request = beginFileViewerOpen(space,fullPath,this.on ?? null,tabs);
     try {
       run('tab.new', { name: fullPath, space, folder: this.root,
         mod: 'custom-files', props: { fileViewer: true, fileRoot: this.root,
           fileRelative: path, fileMachine: this.on ?? null, fileSpace: space } });
-    } catch (e) { this.openingFiles.delete(pendingKey); throw e; }
+      // Normally still pending: run() queues while readers retain their snapshot.
+      // The next file-open event acknowledges it before attempting viewer reuse.
+      acknowledgeFileViewers(spaces(),panes(),filePathKey);
+    } catch (e) { cancelFileViewerOpen(request);this.openingFiles.delete(pendingKey);throw e; }
   }
 
   renderViewer(t, cx) {

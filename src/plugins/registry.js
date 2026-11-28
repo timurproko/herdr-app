@@ -137,7 +137,7 @@ export function pluginPullContext(space, {presentation = false} = {}) {
   const found=[];
   for(const plugin of PLUGINS) {
     if(!pluginEnabled(plugin) || !plugin.pullContext) continue;
-    try { const value=plugin.pullContext({space,presentation,...pluginContext(plugin)});if(value?.kind==='tasks' && typeof value.scope==='string' && Array.isArray(value.links)) found.push(value); }
+    try { const value=plugin.pullContext({space,presentation,...pluginContext(plugin)});if(value?.kind==='tasks' && typeof value.scope==='string' && Array.isArray(value.links)) found.push({...value,provider:plugin.id}); }
     catch(e) { failed(plugin,'pullContext',e); }
   }
   return found.length===1 ? found[0] : null;
