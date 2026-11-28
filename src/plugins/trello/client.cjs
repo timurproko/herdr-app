@@ -1,5 +1,5 @@
 'use strict';
-const {TrelloError, fail} = require('./errors.cjs');
+const {TrelloError, fail, providerReason} = require('./errors.cjs');
 const ID = '[a-f0-9]{24}';
 // Transport is private to typed operations. No request/URL command is exposed.
 const routes = [
@@ -31,6 +31,33 @@ async function jsonResponse(response) {
     size += chunk.byteLength; if (size > 2097152) fail('RESPONSE'); chunks.push(Buffer.from(chunk));
   }
   try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { fail('RESPONSE'); }
+}
+function cancelBody(body) {
+  // Cleanup is best effort; cancellation itself must never hold the command open.
+  try { Promise.resolve(body?.cancel()).catch(() => {}); } catch {}
+}
+async function rejectionReason(response, credentials) {
+  if (!response.body?.getReader) return;
+  const reader = response.body.getReader(); let timer;
+  const read = async () => {
+    const chunks = []; let size = 0;
+    for (;;) {
+      const {done, value} = await reader.read();
+      if (done) return providerReason(Buffer.concat(chunks).toString('utf8'), credentials);
+      size += value.byteLength;
+      if (size > 4096) return; // Never interpret a truncated body as a complete reason.
+      chunks.push(Buffer.from(value));
+    }
+  };
+  try {
+    // Diagnostics get a small sub-budget, not a fresh remote-read timeout.
+    return await Promise.race([read(), new Promise(resolve => { timer = setTimeout(resolve, 200); })]);
+  } catch { return; }
+  finally {
+    clearTimeout(timer);
+    try { Promise.resolve(reader.cancel()).catch(() => {}); } catch {}
+    try { reader.releaseLock(); } catch {}
+  }
 }
 function retryTime(headers, now) {
   const retry = headers.get('retry-after');
@@ -80,23 +107,21 @@ class Client {
     if (++this.count > 20) fail('LIMIT');
     const write = method !== 'GET';
     if (write && ++this.writes !== 1) fail('INPUT');
-    const controller = new AbortController(); let timer, dispatched = false;
+    const controller = new AbortController(); let timer, dispatched = false, rejection;
     const work = async () => {
       // Last authority check immediately precedes the only dispatch.
       this.gate.check();
       if (this.now() - this.started >= 60000) fail('LIMIT');
       dispatched = true;
       const response = await this.transport(url, {method, redirect: 'manual', signal: controller.signal, headers});
-      if (response.status === 429) {
-        const deadline = retryTime(response.headers, this.now());
-        if (response.body) await response.body.cancel().catch(() => {});
-        const retryAt = mergeCooldown(this.store, deadline);
-        throw new TrelloError('RATE_LIMIT', {retryAt});
-      }
       if (response.status < 200 || response.status >= 300) {
-        if (response.body) await response.body.cancel().catch(() => {});
-        if (write && (response.status >= 500 || response.status < 400)) fail('UNKNOWN_WRITE');
-        throw new TrelloError(({401: 'AUTH', 403: 'FORBIDDEN', 404: 'NOT_FOUND'})[response.status] || 'REMOTE');
+        const code = response.status === 429 ? 'RATE_LIMIT' : write && (response.status >= 500 || response.status < 400) ? 'UNKNOWN_WRITE' : ({401: 'AUTH', 403: 'FORBIDDEN', 404: 'NOT_FOUND'})[response.status] || 'REMOTE';
+        rejection = new TrelloError(code, {httpStatus: response.status});
+        // Persist rate refusal before optional diagnostic parsing.
+        if (response.status === 429) rejection.retryAt = mergeCooldown(this.store, retryTime(response.headers, this.now()));
+        rejection.providerReason = await rejectionReason(response, this.gate.credentials);
+        cancelBody(response.body);
+        throw rejection;
       }
       const value = await consume(response, controller.signal);
       if (controller.signal.aborted) fail('TRANSPORT');
@@ -105,7 +130,7 @@ class Client {
     };
     try {
       return await Promise.race([work(), new Promise((_, reject) => {
-        timer = setTimeout(() => { controller.abort(); reject(new TrelloError('TRANSPORT')); }, Math.min(this.timeout, 60000 - (this.now() - this.started)));
+        timer = setTimeout(() => { controller.abort(); reject(rejection || new TrelloError('TRANSPORT')); }, Math.min(this.timeout, 60000 - (this.now() - this.started)));
       })]);
     } catch (e) {
       if (write && dispatched && (!(e instanceof TrelloError) || (['TRANSPORT', 'RESPONSE', 'INTERNAL'].includes(e.code) || e.code.startsWith('STORE')))) fail('UNKNOWN_WRITE');

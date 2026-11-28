@@ -86,6 +86,12 @@ const errors = () => `RESULTS AND ERRORS
 Success: {"version":1,"ok":true,"data":...}
 Failure: {"version":1,"ok":false,"error":{"code":...,"message":...,"outcome":...}}
 Exits: 0 success; 2 invalid input; 3 refusal/read failure; 4 unknown write outcome.
+HTTP rejections include httpStatus and a short safe httpReason in JSON and message.
+Known Trello reasons (for example Invalid value for filter) are mapped, not echoed;
+unknown/hostile text uses a standard HTTP phrase. HTTP 400 is a bad request;
+401/403 indicate auth/access refusal, not proof of a specific token-scope cause.
+Error inspection caps at 4 KiB/200 ms inside the request budget; no raw errors,
+API keys, tokens or authenticated URLs are printed.
 RATE_LIMIT may include retryAt (Unix milliseconds); wait, then retry explicitly.
 Missing setup is not the same as a failed ACL check or malformed private store.
 ${Object.entries(messages).filter(([k])=>k!=='STORE').map(([k,v])=>`${k}: ${v}`).join('\n')}

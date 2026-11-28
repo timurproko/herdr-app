@@ -299,7 +299,14 @@ external HTTP(S) links are untrusted metadata, never automatically fetched. Trel
 Results are one `{version:1,ok:true,data:...}` JSON object. Errors use
 `{version:1,ok:false,error:{code,message,outcome,retryAt?}}`. Help alone is text.
 Exit codes: 0 success, 2 invalid command/input, 3 refusal/read failure, 4 unknown
-write outcome. No raw provider errors or authenticated URLs are printed.
+write outcome. HTTP rejections additionally include `httpStatus` and `httpReason`,
+and the message names that status and short reason. For example, HTTP 400 Bad
+Request can include the recognized reason `Invalid value for filter`; 401/403
+remain authentication/access refusals, not proof of a particular token-scope cause.
+Unknown or hostile provider text falls back to a standard HTTP phrase. Error-body
+inspection caps at 4 KiB and 200 ms within the existing request deadline; stalled
+or malformed bodies cannot hide an already observed HTTP status. No raw provider
+errors, API keys, tokens or authenticated URLs are printed.
 
 Card/comment pages default to 50, maximum 100. Board/list card reads and membership
 scans explicitly request `sort=-id` (newest creation first), not board/list position

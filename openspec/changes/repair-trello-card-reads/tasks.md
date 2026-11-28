@@ -9,9 +9,9 @@
 
 ## 2. Remote read errors expose safe HTTP status and short rejection reasons
 
-- [ ] 2.1 Add validated httpStatus/httpReason fields and a status-bearing message at the shared transport/public-error boundary, using fixed phrases and recognized provider categories; targeted CLI tests must distinguish 400/401/403/404/429/5xx without changing codes, cooldown or uncertain-write outcomes.
-- [ ] 2.2 Bound rejection-body inspection and map unknown/oversized/malformed/hostile content to a safe status fallback; targeted tests must show no fake key, token, authenticated URL, control character or raw provider material in output.
-- [ ] 2.3 Document the additive diagnostic fields and honest scope-versus-request recovery guidance in installed help and docs/TRELLO.md; run affected help/contract/diagnostic tests and shared write tests only if their paths change.
+- [x] 2.1 Add validated httpStatus/httpReason fields and a status-bearing message at the shared transport/public-error boundary, using fixed phrases and recognized provider categories; targeted CLI tests must distinguish 400/401/403/404/429/5xx without changing codes, cooldown or uncertain-write outcomes.
+- [x] 2.2 Bound rejection-body inspection and map unknown/oversized/malformed/hostile content to a safe status fallback; targeted tests must show no fake key, token, authenticated URL, control character or raw provider material in output.
+- [x] 2.3 Document the additive diagnostic fields and honest scope-versus-request recovery guidance in installed help and docs/TRELLO.md; run affected help/contract/diagnostic tests and shared write tests only if their paths change.
 
 ## 3. Card and attachment failures remain bounded without weakening authority checks
 
