@@ -32,7 +32,7 @@ export async function rowBudgetHarness({main='src/plugins/git/mod/main.js',prese
     p.resetRepository();p.context=coordinator?'tasks:fixture':'ordinary';p.root='/fixture';p.view=state;p.agentPull=-1;
     p.aggregate={context:{scope:'fixture'},entries:new Map(rows.map(pr=>[pr.key,{pr}])),
       counts:()=>({open:state==='open'?count:0,closed:state==='closed'?count:0}),repositories:()=>['owner/a','owner/b'],
-      rows:()=>rows,sections:()=>['owner/a','owner/b'].map(repo=>({repo,rows:rows.filter(pr=>pr.repo===repo)})),currentContext:()=>({scope:'fixture'}),readNotice:()=>null,target:()=>null};
+      rows:()=>rows,sections:()=>['owner/a','owner/b'].map(repo=>({repo,rows:rows.filter(pr=>pr.repo===repo)})),currentContext:()=>({scope:'fixture'}),frameContext:()=>({scope:'fixture'}),readNotice:()=>null,target:()=>null};
     p.agentLinks={related:()=>null};p.pulls[state]=rows;
     p.notices={sync(){},presentation(){}};p.enrollmentPicker={render(){}};p.syncChecksFallback=()=>{};
     p.taskWindows=new Map();p.rowPresentations=null;

@@ -29,6 +29,8 @@ for(const initial of ['files','changes']) {
  focus={space:destination.id,tab:'local-tab',terminal:'local-agent'};all[0].cwd='D:/original-moved';
  const aggregate=new api.AggregatePulls({shown:()=>true,onUpdate(){}});
  assert.equal(aggregate.currentContext().scope,'verified-home','Coordinator scope follows the held space, not the selected worker');
+ const destinationFrame={place:{space:destination.id,terminal:'local-agent'}};
+ assert.equal(aggregate.frameContext(destinationFrame).scope,'verified-home','Main\'s frame reuse must retain the held coordinator scope');
  for(const view of ['files','changes','files']) {
    api.changePanel({view});assert.deepEqual(plain(api.git()),held);assert.deepEqual(plain(api.files()),held);
  }

@@ -81,12 +81,33 @@ async function harness() {
   const line=find(track,'git-ci-line');assert.equal(line.attrs.loop[0],'opacity');
   assert.equal(line.attrs.loop[1].period,2400);assert.equal(line.attrs.transition,undefined);
   assert.equal(track.attrs.on_size_change,undefined,'Stationary full-width line has no width/position scheduling');
-  assert.equal(h.phases.length,0,'Native loop has no JavaScript phase/frame timers');
-  assert.equal(find(h.render(),'git-ci-line').attrs.loop[1].to,0.65);
+  assert.equal(track.attrs.opacity[0],0,'First frame is transparent, without a native default-opacity flash');
+  assert.equal(track.attrs.transition,undefined,'Initial hiding must not transition from native default opacity');
+  assert.deepEqual(h.phases.map(p=>p.ms),[16],'Only the finite entrance arming callback is queued');
+  for(let i=0;i<10;i++)h.render();assert.equal(h.phases.length,1,'Rerenders do not duplicate arming');
+  h.phases.shift().fn(h.cx);tree=h.render();
+  assert.equal(find(tree,'git-loading-track').attrs.opacity[0],0,'Transition arms while still transparent');
+  assert.equal(find(tree,'git-loading-track').attrs.transition[0],'opacity');
+  assert.deepEqual(h.phases.map(p=>p.ms),[16]);
+  h.phases.shift().fn(h.cx);tree=h.render();
+  assert.equal(find(tree,'git-loading-track').attrs.opacity[0],1,'Native envelope reveals only after arming');
+  assert.equal(find(tree,'git-ci-line').attrs.loop[1].from,0.65);
+  assert.equal(find(tree,'git-ci-line').attrs.loop[1].to,0,'Native pulse starts at its transparent endpoint');
+  for(let i=0;i<20;i++)h.render();
+  assert.equal(h.phases.length,0,'Sustained breathing has no JavaScript phase/frame timers');
+  assert.equal(h.pending.length,1,'Animation never starts additional GitHub reads');
   await h.reply(page([raw(1),raw(2,{title:'Unpinned CI completed'})]));
   await h.reply(JSON.stringify({data:{repository:{open:{totalCount:2},closed:{totalCount:0}}}}));
   assert.equal(v.pulls.open[1].title,'Unpinned CI completed');
-  assert.equal(find(h.render(),'git-ci-line'),undefined,'Line stops on read completion, not a fixed timeout');
+  tree=h.render();const exiting=find(tree,'git-loading-track');
+  assert.ok(find(exiting,'git-ci-line'),'Completed work retains only the native exit presentation');
+  assert.equal(exiting.attrs.opacity[0],0);assert.equal(exiting.attrs.role,undefined,'Exit does not assert active work');
+  assert.equal(exiting.attrs.transition[1].duration,140);
+  assert.deepEqual(h.phases.map(p=>p.ms),[140],'Completion starts one bounded exit, not a fixed busy timeout');
+  for(let i=0;i<10;i++)h.render();assert.equal(h.phases.length,1,'Rerenders do not duplicate exit cleanup');
+  h.phases.shift().fn(h.cx);
+  assert.equal(find(h.render(),'git-ci-line'),undefined,'Line retires after the native exit fade');
+  assert.equal(h.phases.length,0,'Exit cleanup does not restart an animation scheduler');
   assert.equal(h.pending.length,0);assert.equal(h.timers.length,0,'No periodic GitHub or animation timers');
 }
 {

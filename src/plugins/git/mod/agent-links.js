@@ -32,9 +32,10 @@ export function crewPull(url) {
   return match && !match[1].split('/').some(p=>p==='.'||p==='..') && Number.isSafeInteger(number)?{repo:repoKey(match[1]),number}:null;
 }
 
-export function agentTargets(snapshot) {
+export function agentTargets(snapshot,select=()=>true) {
   const all = snapshot?.all??panes(), list = snapshot?.list??terminals(), groups = snapshot?.groups??spaces();
   return (snapshot?.liveAgents??agents()).flatMap(agent => {
+    if(!select(agent.address))return [];
     const pane = all.find(p => p.terminal === agent.address && p.tab === agent.tab && !p.mod);
     const space = groups.find(s => s.id === agent.space);
     const tab = space?.tabs?.find(t => t.id === agent.tab);
@@ -75,7 +76,7 @@ export class AgentLinks {
   // A full task URL identifies a PR, not the terminal's current directory.
   // Only an exact live target with a canonical folder lookup can seed entry.
   cachedRepository(place) {
-    const target=agentTargets().find(t=>t.address===place.terminal && t.cwd===place.cwd && (t.on??null)===(place.on??null));
+    const target=agentTargets(undefined,address=>address===place.terminal).find(t=>t.cwd===place.cwd && (t.on??null)===(place.on??null));
     const entry=target && this.entries.get(target.address);
     const folder=target && this.repositories.get(JSON.stringify([target.on,target.cwd]));
     return entry && target && entry.key===target.key && folder?.repo===entry.canonicalRepo ? entry.canonicalRepo??null : null;
@@ -83,7 +84,7 @@ export class AgentLinks {
 
   cachedAssociation(place,repo) {
     if(this.cachedRepository(place)!==repoKey(repo))return null;
-    const target=agentTargets().find(t=>t.address===place.terminal&&t.cwd===place.cwd&&(t.on??null)===(place.on??null));
+    const target=agentTargets(undefined,address=>address===place.terminal).find(t=>t.cwd===place.cwd&&(t.on??null)===(place.on??null));
     const entry=target&&this.entries.get(target.address);
     return entry&&target&&entry.key===target.key&&Date.now()-entry.at<TTL?{number:entry.number??null,branch:entry.branch??null}:null;
   }
@@ -96,7 +97,7 @@ export class AgentLinks {
 
   displayName(address,snapshot) {return displayName((snapshot?.liveAgents??agents()).find(agent=>agent.address===address));}
 
-  liveTarget(address) {return agentTargets().find(target=>target.address===address)??null;}
+  liveTarget(address) {return agentTargets(undefined,value=>value===address)[0]??null;}
 
   pullNumber(address,repo) {
     const terminal=terminals().find(t=>t.address===address),crew=crewMetadata(terminal?.labels),link=crewPull(crew.pr);
@@ -104,8 +105,8 @@ export class AgentLinks {
       && link?.repo===repoKey(repo)?link.number:null;
   }
 
-  rememberBranch(entry) {
-    const crew=crewMetadata(terminals().find(t=>t.address===entry.address)?.labels);
+  rememberBranch(entry,snapshot) {
+    const crew=crewMetadata((snapshot?.list??terminals()).find(t=>t.address===entry.address)?.labels);
     if(!entry.repo || !entry.branch || crew.pr!==null || !['ship','fix'].includes(crew.kind))return;
     // Bounded session-only explanation, never a replacement for live entries.
     this.branchPresentations.delete(entry.address);
@@ -114,11 +115,13 @@ export class AgentLinks {
     while(this.branchPresentations.size>256)this.branchPresentations.delete(this.branchPresentations.keys().next().value);
   }
 
-  refresh(cx, admit=()=>true) {
+  refresh(cx, admit=()=>true, {snapshot, select=admit}={}) {
     if (!this.enabled()) return;
-    const targets = agentTargets().filter(t=>admit(t.address)), keys = new Map(targets.map(t => [t.address,t.key]));
+    // Enumeration may use this frame's pure membership projection. Every
+    // continuation still calls fresh `admit` after yielding, never `select`.
+    const targets = agentTargets(snapshot,select), keys = new Map(targets.map(t => [t.address,t.key]));
     for (const [address, entry] of this.entries) {
-      if(keys.get(address)===entry.key)this.rememberBranch(entry);
+      if(keys.get(address)===entry.key)this.rememberBranch(entry,snapshot);
       else this.entries.delete(address);
     }
     for (const [address, request] of this.pending) if (keys.get(address) !== request.key) this.pending.delete(address);
@@ -130,6 +133,7 @@ export class AgentLinks {
     // machine/folder; footer reads remain session-specific, never history.
     const folders = new Map();
     for (const target of due) {
+      const liveTarget=()=>agentTargets(undefined,address=>address===target.address).some(t=>t.key===target.key);
       const request = {key:target.key};
       this.pending.set(target.address,request);
       cx.spawn(async cx => {
@@ -137,21 +141,21 @@ export class AgentLinks {
           await Promise.resolve();
           if(!this.enabled() || !admit(target.address))return;
           if(target.crewPr) {
-            const canonicalRepo=await this.repository(target,()=>admit(target.address)&&agentTargets().some(t=>t.key===target.key)).catch(()=>null);
-            if(this.enabled() && admit(target.address) && this.pending.get(target.address)===request && agentTargets().some(t=>t.key===target.key))this.entries.set(target.address,{...target,repo:target.crewPr.repo,canonicalRepo,number:target.crewPr.number,at:Date.now()});
+            const canonicalRepo=await this.repository(target,()=>admit(target.address)&&liveTarget()).catch(()=>null);
+            if(this.enabled() && admit(target.address) && this.pending.get(target.address)===request && liveTarget())this.entries.set(target.address,{...target,repo:target.crewPr.repo,canonicalRepo,number:target.crewPr.number,at:Date.now()});
             return;
           }
           const folder = JSON.stringify([target.on,target.cwd]);
           if (!folders.has(folder)) folders.set(folder,
-            this.repository(target,()=>admit(target.address)&&agentTargets().some(t=>t.key===target.key)).catch(() => null));
+            this.repository(target,()=>admit(target.address)&&liveTarget()).catch(() => null));
           const repo = await folders.get(folder);
-          if (!this.enabled() || !admit(target.address) || !agentTargets().some(t=>t.key===target.key)) return;
+          if (!this.enabled() || !admit(target.address) || !liveTarget()) return;
           let number = target.number;
           if (repo && ['a1','claude-code'].includes(target.app)) {
             const screen = await hc(['read',target.address,'--json','--lines','0']).catch(() => null);
             number = (screen?.code === 0 ? agentPullNumber(screen.stdout, target.app) : null) ?? number;
           }
-          if (!this.enabled() || !admit(target.address) || this.pending.get(target.address) !== request || !agentTargets().some(t => t.key === target.key)) return;
+          if (!this.enabled() || !admit(target.address) || this.pending.get(target.address) !== request || !liveTarget()) return;
           const entry={...target,repo,canonicalRepo:repo,number,at:Date.now()};
           this.entries.set(target.address,entry);this.rememberBranch(entry);
         } finally {
@@ -165,7 +169,7 @@ export class AgentLinks {
   // Fresh action-time verification. Matching stays identical to the robot link,
   // including non-A1 agents linked through explicit tab names or live branches.
   async confirm(target, pr, repo, current = () => true) {
-    const live=()=>this.enabled()&&current()&&agentTargets().some(t=>t.key===target.key);
+    const live=()=>this.enabled()&&current()&&agentTargets(undefined,address=>address===target.address).some(t=>t.key===target.key);
     if(!live())return false;
     const result=await repositoryRead(exec,REPO_ARGS,null,{cwd:target.cwd,on:target.on,timeout:15000,current:live}).catch(()=>null);
     if(!live()||!result||result.code!==0||repositoryName(result.stdout)!==repoKey(repo))return false;
@@ -185,7 +189,21 @@ export class AgentLinks {
   roleMatches(pr, repo, preferred, role, admit=()=>true, snapshot) {
     if(!this.enabled() || !['build','review'].includes(role))return [];
     const all=snapshot?.all??panes(),groups=snapshot?.groups??spaces(),liveAgents=snapshot?.liveAgents??agents(),list=snapshot?.list??terminals();let generic;
-    const matches=list.flatMap(terminal=>{
+    if(snapshot && !snapshot.roles) {
+      snapshot.crews??=new Map();
+      const exact=new Map(),unlinked=[];
+      for(const terminal of list) {
+        const value=terminal.labels?.['crew.kind'],kind=value==='review'?'review':['ship','fix'].includes(value)?'build':null;
+        if(!kind)continue;
+        const crew=crewMetadata(terminal.labels);snapshot.crews.set(terminal,crew);
+        const link=crewPull(crew.pr);
+        if(link) {const key=`${kind}:${link.repo}#${link.number}`,bucket=exact.get(key)??[];bucket.push(terminal);exact.set(key,bucket);}
+        else if(kind==='build' && crew.pr===null)unlinked.push(terminal);
+      }
+      snapshot.roles={exact,unlinked};
+    }
+    const candidates=snapshot?[...(snapshot.roles.exact.get(`${role}:${repoKey(repo)}#${pr.number}`)??[]),...(role==='build'?snapshot.roles.unlinked:[])]:list;
+    const matches=candidates.flatMap(terminal=>{
       if(!admit(terminal.address))return [];
       const crew=snapshot?(snapshot.crews??=new Map(list.map(t=>[t,crewMetadata(t.labels)]))).get(terminal):crewMetadata(terminal.labels);
       if(!(role==='review'?crew.kind==='review':['ship','fix'].includes(crew.kind)))return [];

@@ -21,6 +21,7 @@ let screenReply = {code:1,stdout:''};
 let rendering = false;
 const allSpaces=[space],allPanes=[pane],allTerminals=[terminal],sharedValues=new Map(),session=new Map();
 let pinLayout=null;
+const locationReads={spaces:0,panes:0,terminals:0,focused:0};
 function element(asset) {
   const node = {asset, attrs:{}, kids:[]}; let proxy;
   proxy = new Proxy(node, {get(target,key) {
@@ -34,7 +35,7 @@ function element(asset) {
 }
 const native = {
   shared:key=>sharedValues.get(key)??null, setShared:(key,value)=>sharedValues.set(key,value), settings:()=>({zoom:1}), machines:()=>[{name:'pc2',layout:'ready'}],
-  agents:()=>[], spaces:()=>allSpaces, panes:()=>allPanes, terminals:()=>allTerminals, focused:()=>focus,
+  agents:()=>[], spaces:()=>{locationReads.spaces++;return allSpaces;}, panes:()=>{locationReads.panes++;return allPanes;}, terminals:()=>{locationReads.terminals++;return allTerminals;}, focused:()=>{locationReads.focused++;return focus;},
   home:()=>home, theme:()=>({dim:'dim',hover:'hover',foreground:'foreground'}), layout:()=>pinLayout, window:()=>({platform:'windows'}), run(){}, openOverlay(){}, props:()=>null, closeOverlay(){}, notify(){}, nextCommand(){},
   hc:args=> { screenCalls.push(args); return Promise.resolve(screenReply); },
   exec:(cmd,args,options)=> {
@@ -136,6 +137,19 @@ assert.equal(location().cwd,null,'A mod pane cannot borrow the space launch fold
 assert.equal(location().pullNumber,null,'A mod pane cannot borrow the tab PR');
 delete pane.mod; pane.terminal = correctFocus.terminal; focus = correctFocus;
 selectedTab.named = false;
+
+// Whole-frame selection uses captured collections, not a native collection
+// walk for every stage and robot control. Event/read callers remain live.
+const frame={groups:[space],all:[pane],list:[terminal]},beforeReads={...locationReads};
+const framePlace=location(frame);
+for(let i=0;i<28;i++)assert.equal(location(frame),framePlace);
+for(const key of ['spaces','panes','terminals'])assert.equal(locationReads[key],beforeReads[key]);
+assert.equal(locationReads.focused-beforeReads.focused,1);
+terminal.labels['custom.cwd']='D:/worktrees/fresh-after-frame';
+assert.equal(location(frame).cwd,home,'The frame is a stable pure projection');
+assert.equal(location().cwd,'D:/worktrees/fresh-after-frame','A read/action without a frame resolves live identity');
+for(const key of ['spaces','panes','terminals'])assert.equal(locationReads[key]-beforeReads[key],1);
+terminal.labels['custom.cwd']=home;
 
 const view = new main.namespace.default();
 const cx = {focus_handle(){assert.equal(rendering,false,'No focus allocation from render');return {};},spawn:fn=>tasks.push(fn(cx)),notify:()=>assert.equal(rendering,false,'No synchronous notify from render'),timer:{every(){},after(){return {cancel(){}};}}};
@@ -435,6 +449,8 @@ allTerminals.push({address:'local-agent',foreground:{name:'bash',cwd:'/another-r
 focus={space:nextSpace.id,tab:'next-tab',pane:'next-pane',terminal:'local-agent'};
 terminal.labels['custom.cwd']='D:/original-agent-moved';const requests=pending.length;render();
 assert.equal(JSON.stringify(location()),heldLocation);assert.equal(view.pulls,heldRows);assert.equal(view.pages,heldPages);
+const destinationFrame={groups:[nextSpace],all:[allPanes.at(-1)],list:[allTerminals.at(-1)],place:{space:nextSpace.id,terminal:'local-agent',cwd:'/another-repo',on:null}};
+assert.equal(JSON.stringify(location(destinationFrame)),heldLocation,'The hold wins over main\'s cached destination-frame location');
 assert.equal(pending.length,requests,'Held navigation starts no new destination Git reads');
 assert.equal(view.agentPull ?? location().pullNumber,109,'The original named PR association remains the effective agent');
 view.refresh(cx);const pinnedRead=await take('git');assert.equal(pinnedRead.options.cwd,repo);assert.equal(pinnedRead.options.on,'pc2');
@@ -453,6 +469,8 @@ view.refresh(cx);const obsolete=await take('git');assert.equal(panelState.toggle
 assert.equal(released.options.cwd,'/another-repo');assert.equal(released.options.on,null);
 await reply(obsolete,'D:/obsolete');assert.equal(view.root,null,'A held reply cannot restore the released context');
 await reply(released,'',128);assert.equal(location().terminal,'local-agent');assert.equal(location().pullNumber,110);
+const releasedFrame={groups:allSpaces,all:allPanes,list:allTerminals};
+assert.equal(location(releasedFrame).terminal,'local-agent','A new frame follows native selection after Unpin');
 await Promise.all(tasks);
 assert.equal(pending.length,0);
 console.log('PASS: Git live shell cwd, selected tab/machine, non-repo clearing, pending git/GitHub replies and A-B-A race protection');

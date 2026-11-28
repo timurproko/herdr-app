@@ -160,6 +160,100 @@ The mounted-row budget retains its frozen PR/probe baseline and caps; only the
 six removed coordinator tab-badge chrome nodes are deducted from its element
 expectation. Ordinary budget measurements render the list body without tabs.
 
+## Reproduced provider fan-out during coordinator refresh
+
+`tests/features/git-refresh-native.mjs --run --zoom 1|1.3 --workers 4
+--unrelated 120 --cycles 120 --output <outside>` exercises the production Git
+controller, Crew provider and AgentLinks rather than the earlier four-row
+renderer-only stress. Four PRs load first; unrelated synthetic agents/spaces
+appear after tick 10. No infinite loop or watchdog override is injected.
+
+Before the fix, `AgentLinks.refresh` called its admission predicate for every
+candidate. The coordinator predicate rebuilt verified Crew context, including
+native topology and `bindFleet`, for every unrelated agent during render. The
+real 50ms watchdog interrupted those frames: paired 100%/130% runs retained the
+last-good update-9 list beneath the actual interrupted-render banner (42/44
+incomplete markers). The screenshot stack also identifies `fleetContexts` /
+`bindFleet`; the preceding completed component was coordinator-context.
+
+Enumeration now uses one frame-local verified membership set and the existing
+native presentation snapshot. The separate admission callback still resolves
+fresh provider context after every asynchronous yield; stale membership cannot
+start IO or publish an association. Action-time navigation remains uncached.
+No render diagnostics, retries, row caps or watchdog settings were changed.
+
+The paired corrected runs completed 120 update ticks, 169/176 render builds,
+with zero native errors or incomplete markers. Final build ranges were 2–28ms / 2–29ms
+at 100%/130%, including first load and provider/controller work, not later paint
+or live-network latency. All owned App/Core instances stopped. Pictures, source
+hashes and receipts are in the crew task's external `gr-*` evidence folders.
+The failed exploratory cold run is not a successful loaded-list proof; the
+paired warm replays above are. `pr-agent-links.test.mjs` independently bounds
+provider/native collection reads during enumeration and revokes verification
+before queued continuations to prove fresh read authority remains required.
+
+## Complete-controller review correction
+
+The four-worker result above was insufficient. Review reproduced interruptions
+while one Crew child grew from four to fourteen alternating ship/review workers,
+with three PR repositories. The row/section abort marker identifies where the
+budget ran out, not where the preceding time was spent.
+
+The complete-controller profile found repeated work ahead of and inside the rows:
+five provider binds per frame, enumeration resolving unrelated agent directories
+before filtering, repeated terminal reads while retaining branch explanations,
+per-row scans of the entire role population, and about 120 settings reads for a
+fourteen-row frame. A further blind spot was the fixture's stubbed `location()`:
+stage and agent controls actually repeated complete native collection/directory
+walks per row. The fixture now runs the production helper. On the exact old
+source, a buffered, fully mounted fourteen-row / 120-unrelated profile reproduced
+40 interruption markers and 24 aborted profiles; complete samples measured 45ms
+median / 52ms p95 / 55ms maximum. Batched read continuations also rebound provider
+identity several times per alias.
+
+The correction uses one strict provider context for the synchronous frame and its
+presentation, one native settings snapshot, early candidate selection and a pure
+frame-local role index. `location(snapshot)` shares pure selection/directory facts
+from those same frame collections; callers outside render omit the snapshot and
+remain fresh. A live bound Crew child no longer triggers an unused
+second remembered-display/native-model lookup. The provider refresh hint's
+witness/proof work yields out of rendering. Repository ordering and safety-job
+scheduling reuse frame collections, but no timer, read or action retains that
+frame as authority. A completed read obtains fresh membership once for its
+synchronous alias commit and renews it after any awaited error path; native
+identity, generation, pending-token and entry checks remain. No native element,
+callback tree, watchdog setting, row cap or diagnostic is cached or suppressed.
+
+After preserving the published branch's natural-caption sizing change and
+re-finalization, buffered profiles of 4-to-14 growth at 130% measured 8ms median /
+11ms p95 with 20 unrelated agents and 10ms / 14ms with 120. Each
+explicit frame provider bind, settings read and selected-location/focus resolution
+is exactly one. The old completed fourteen-row frame made 39/33/47 space/pane/
+terminal collection reads, versus 3/2/2 now (including provider work). The native
+fixture buffers samples and flushes one per existing controller tick, outside
+render: synchronous tracing IO in the old per-component probe could itself
+consume the measured deadline. Production failure diagnostics remain unchanged.
+
+The final combined revision passed all twelve native growth replays: three at
+each zoom and each 20/120-unrelated population. Every replay fully mounted fourteen
+rows, completed, and had zero interruptions or continuation errors. Maximum full
+builds were 25/22/27ms at 100% and 22/22/15ms at 130% with 20 unrelated agents;
+with 120 they were 15/17/16ms and 17/21/30ms. All passed the unchanged new 35ms
+margin guard below the native 50ms deadline. Two earlier pre-integration runs had
+36/40ms samples and failed that guard; those receipts remain in the task report,
+not silently replaced or accepted. No native watchdog, frozen row budget or
+diagnostic was weakened. These are bounded synthetic native samples, not a
+universal latency guarantee.
+
+`git-refresh-frame.test.mjs` proves one same-frame bind, deferred proof hints,
+fresh post-yield dispatch, a bounded fourteen-alias commit, and revocation after
+both a held read and an awaited error diagnosis. `pr-agent-links.test.mjs` rejects
+unrelated directory resolution and repeated native settings/terminal reads while
+retaining its existing fresh action-time identity matrix. `git-location.test.mjs`
+proves repeated frame projections do not reread collections/focus, while an
+unframed call immediately observes changed live cwd. The frozen mounted-row
+budget still passes without new PR elements or intrinsic probes.
+
 ## Measurement lifetime audit
 
 - Notice measurement IDs include text/width/zoom and owner identity; equal-height

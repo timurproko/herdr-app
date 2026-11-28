@@ -21,6 +21,7 @@ const observesLaunch = (snapshot, launch) => Boolean(snapshot?.job &&
 export function refreshCustomizationUpdates(owner, cx, action = 'status', force = false, invalidate = false, authorization = null) {
   if (checking() || owner.customUpdateClosed || owner.customUpdatePending) return;
   owner.customUpdatePending = action; owner.customUpdateError = null;
+  if (action === 'check') owner.customUpdateOnCheck?.(cx);
   const before = customizationUpdateSnapshot(), ticket = (before?.request || 0) + 1;
   const launching = action === 'launch' || action === 'retry';
   // Launch intent must survive before exec returns: deployment can replace this
@@ -143,8 +144,9 @@ export function observeCustomizationUpdates(owner, cx) {
     cx.spawn(async cx => { await Promise.resolve(); invalidateCustomizationUpdates(owner, cx); });
   }
 }
-export function initCustomizationUpdates(owner, cx, mod, { chrome = false } = {}) {
+export function initCustomizationUpdates(owner, cx, mod, { chrome = false, onCheck = null } = {}) {
   owner.customUpdateMod = mod;
+  owner.customUpdateOnCheck = onCheck;
   if (checking()) return;
   owner.customUpdateChrome = chrome;
   if (chrome) observeCustomizationUpdates(owner, cx);

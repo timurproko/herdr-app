@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {formsHarness, find, words} from './support/plugin-forms.mjs';
 let checks = [], ordinary = 0, holdLocal, releaseLocal;
 const plugin = {id:'refresh-fixture', name:'Example', version:'1', icon:'code', defaultEnabled:true, machineScoped:true, prerequisites:[
-  {id:'account', label:'Account', check:async cx => ({status:'ready', refreshSections:cx.checkReason === 'manual'})},
+  {id:'account', updates:true, label:'Account', check:async cx => ({status:'ready', update:false, refreshSections:cx.checkReason === 'manual'})},
   {id:'items', label:'Items', section:true, list:{refreshOnOpen:true, scope:{header:true}, picker:{kind:'items'}}, check:async cx => {
     checks.push(cx.refreshList);
     if (holdLocal && !cx.refreshList) await new Promise(resolve => {releaseLocal = resolve;});
@@ -15,6 +15,8 @@ const plugin = {id:'refresh-fixture', name:'Example', version:'1', icon:'code', 
 const h = await formsHarness({}, [plugin]), {view, ui, cx, click, flush, render} = h;
 ui.initPlugins(view, cx, plugin.id); ui.reloadPlugins(view, cx, plugin.id); await flush();
 assert.deepEqual(checks, [false]); assert.equal(ordinary, 1);
+assert.equal(typeof view.pluginChecks[plugin.id].items.find(item=>item.id==='account').updateRead, 'string', 'The merged check path retains update read tickets');
+assert.equal(h.shared['custom.plugin-updates'].rows.find(row=>row.plugin===plugin.id).pending, false, 'Update facts publish alongside ordinary list checks');
 click('st-plugin-refresh-fixture-items-toggle'); await flush();
 assert.deepEqual(checks, [false,true]); assert.ok(words(render()).includes('Cached name'));
 click('st-plugin-refresh-fixture-items-toggle'); await flush();
