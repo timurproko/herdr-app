@@ -463,12 +463,28 @@ One coordinator SHALL support multiple validated same-machine project children t
 - **WHEN** validated contributions identify one, two or three children under one coordinator
 - **THEN** all appear under that coordinator with shared connector anchors, independently selectable native numbers, and one parent fold hiding all children with the child-space count visible in both expanded and collapsed states
 - **AND** selecting any hidden child discloses the parent without selecting another child or remapping shortcuts
-- **AND** validated project children show the supplied registered project name rather than a worktree basename, while explicit user-renamed space titles take precedence
+- **AND** validated project children show the supplied safe repository display name rather than a task worktree basename or placement project key, while explicit user-renamed space titles take precedence
 
 #### Scenario: Combined and project populations
 - **WHEN** legacy combined workers, placement-v1 project workers or both coexist for the same verified home
 - **THEN** every exact same-machine native space is connected after validating task identity and placement labels, without changing crew.home or inferring links from names
-- **AND** unsupported placement versions, mismatching project/name labels, wrong adoption IDs and cross-machine members do not establish a link
+- **AND** unsupported placement versions, mismatching authoritative projects or automatic IDs, conflicting same-child names, unsafe display names, wrong adoption IDs and cross-machine members do not establish a link
+
+#### Scenario: Repository display name differs from project identity
+- **WHEN** exact task, home, owner and native membership validate a per-project child whose safe repository display name differs from its authoritative placement project key
+- **THEN** the name is accepted as display metadata without changing the project-derived automatic space ID or granting identity from the name
+- **AND** legacy registered-name captions and directory-cased or dot-prefixed repository captions remain supported
+
+#### Scenario: Internal repair named core beside an application project
+- **WHEN** a verified home contains an application project child and an internal repair with task project crew:self, placement project crew:self, canonical self space ID and safe display name core
+- **THEN** both children remain connected to their coordinator with count two and one parent disclosure
+- **AND** the coordinator retains its verified recorded task-PR context rather than probing its non-repository working directory
+- **AND** the legacy internal caption crew and a validated repair sharing placement project crew remain compatible
+
+#### Scenario: Restored repository-named children
+- **WHEN** verified repository-named child identities are restored after a mod reload or a preference off/on cycle
+- **THEN** their safe display metadata survives validation and remembered nesting returns under the existing presentation rules
+- **AND** remembered names do not grant fresh Git, worker navigation or colour authority before current verification
 
 #### Scenario: Mixed generations within one combined space
 - **WHEN** a valid same-home combined native space contains legacy workers and placement-v1 combined workers, including when the fleet view omits task projects
