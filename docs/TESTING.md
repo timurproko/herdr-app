@@ -58,6 +58,28 @@ selection: it includes installed Core/private-profile assumptions and Windows
 recycle operations. Do not run the broad command on a working installation just
 to reproduce hosted CI.
 
+## Crew Projects tooltip and slow-list regressions
+
+`node --experimental-vm-modules tests/plugin-description-hint.test.mjs` checks the
+three bold-name explanations, wrapping/spacing, identical passive hover/focus content,
+no reads and retained support for other declarative table hints.
+`node --experimental-vm-modules tests/crew-project-list-wait.test.mjs` drives the real
+Crew provider and Settings renderer with synthetic transport time: cold and warm
+20-second JSON/legacy reads remain pending past 15 seconds, confirmed rows stay mounted,
+and success replaces them coherently. It covers the list-only 60-second deadline,
+62-second admission lease, unchanged 15-second capability probes, genuine failure,
+no timeout replay and late-response rejection after machine/close/disable/new-refresh
+retirement. No real Crew home, SSH machine or wall-clock delay is used.
+
+`tests/features/crew-projects-native.mjs --run --output OUTSIDE_CHECKOUT --zoom 1`
+(and `--zoom 1.3`) supplies opt-in Windows native proof with synthetic project rows.
+`--before` uses the plan-head tooltip sources at `647129c`, not a live installation.
+Set `HERDR_APP_BIN` to a reviewed existing executable. It uses production Settings
+and the passive keyboard-focus Popup, not a browser reconstruction or pointer hit-test.
+Screenshots, logs, executable hash and App/Core shutdown receipts stay outside the
+checkout; no real Crew command, terminal or remote request is allowed. The loading
+regression is fake-clock proof, not a claim of live slow-machine end-to-end timing.
+
 ## CI trigger and required-check regressions
 
 `node --test scripts/ci-required.test.mjs` checks the workflow event matrix and

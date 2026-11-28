@@ -278,13 +278,15 @@ belongs to, then Add), the description, and one row per item with **Remove** on 
 
 ### Inline informational hints
 
-A list can declare `descriptionHint: {label, columns: [...], rows: [[...], ...]}`.
+A list can declare `descriptionHint: {label, entries: [[name, sentence], ...]}`.
 The common renderer appends its accent-coloured label after the description with a
 dashed underline, not a solid link underline. It has no click action. Hover uses
-Usage's 400ms/100ms HoverCard and shared `panel-kit.js` hintTable; keyboard focus
-shows the same passive table through Popup, without a focus trap. Settings packages
-the shared panel kit explicitly. Column headings appear only inside this tooltip.
-Crew uses this for Delivery kinds. Existing descriptionLinks remain clickable links.
+Usage's 400ms/100ms HoverCard; keyboard focus shows the same passive body through
+Popup, without a focus trap. Entries use bold names followed by wrapping sentences,
+a 440px body, 18px line height and 8px spacing, with the existing menu surface.
+Crew uses three short entries for Delivery kinds, without column headers. The older
+`{label, columns: [...], rows: [[...], ...]}` format still uses shared `panel-kit.js`
+hintTable; Usage is unchanged. Existing descriptionLinks remain clickable links.
 
 ### Optional list-row choice
 

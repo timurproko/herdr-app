@@ -182,13 +182,16 @@ client's allowlist/read-only policy is not a security sandbox.
 folder list, Add and Remove, with no inferred kind. Settings queues checks and batches
 tool discovery within native execution capacity; pending refreshes keep confirmed
 projects and requirement badges rather than reporting capacity contention as broken
-setup. A task's recorded delivery kind
+setup. Project-list commands may take up to 60 seconds; the existing loading state
+and last-confirmed rows remain during that wait, so a 20-second read needs no repeated
+refreshes. Real failures still offer Refresh. A task's recorded delivery kind
 is not used as a project setting; re-adding a project is never a kind-edit workaround.
 Kind captions share a fixed left-aligned column without truncation. Hover or
 keyboard-focus a supported row to reveal the standard kind dropdown beside Remove;
 its choices are Plain, Delivery, Gate. The dashed **Delivery kinds** text after the
-Projects description explains planning, review and PR ownership on hover or keyboard
-focus; it opens nothing when clicked. Pointer-origin menu dismissal releases the row
+Projects description explains planning, review and PR ownership in three short,
+wrapped sentences with bold kind names on hover or keyboard focus; it opens nothing
+when clicked. Pointer-origin menu dismissal releases the row
 unless the pointer remains there; keyboard editing retains its Tab target. Changing it applies only to that captured machine/home/project through Crew,
 not to portable plugin preferences or existing tasks. The label changes only after
 Crew confirms its stored value. Refusals appear as one short line beneath the row;

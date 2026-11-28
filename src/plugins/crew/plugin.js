@@ -18,6 +18,8 @@ import { setProjectKind } from './project-kind-set.js';
 
 const winPath = path => String(path).replace(/\//g, '\\');
 const CHECK_TIMEOUT = 15, INSTALL_TIMEOUT = 300;
+// Listing can inspect several published repositories; keep ordinary probes short.
+const PROJECT_LIST_TIMEOUT = 60;
 const NOT_INSTALLED = 127; // what a PowerShell wrapper exits with when the command is absent
 const psQuote = text => "'" + String(text).replace(/['‘’‚‛]/g, "$&$&") + "'";
 
@@ -789,10 +791,11 @@ const PROJECTS = Object.freeze({
     scope: Object.freeze({ label: 'Machine', setting: 'machine' }),
     picker: Object.freeze({ kind: 'folders', label: 'Add project' }),
     descriptionHint: Object.freeze({ label: 'Delivery kinds',
-      columns: ['Kind', 'Plan first', 'Who reviews', 'Who opens the pull request'],
-      rows: [['Plain', 'no', 'a crew reviewer', 'crew after review'],
-        ['Delivery', 'yes', 'a crew reviewer', 'the worker as a draft at the start'],
-        ['Gate', 'no', 'the gate tool', 'the gate tool']],
+      entries: [
+        ['Plain', 'The worker codes right away; Crew opens the pull request and reviews it.'],
+        ['Delivery', 'The worker plans in a draft pull request and codes after approval; Crew reviews.'],
+        ['Gate', 'The gate tool reviews, tests and opens the pull request.'],
+      ],
     }),
     rowChoice: Object.freeze({ label: 'Delivery kind', options: PROJECT_KINDS,
       async set(cx, row, value) {
@@ -834,7 +837,7 @@ const PROJECTS = Object.freeze({
       if (!p.home) return { status: 'missing', statusLabel: null, detail: 'Create the crew home first (Requirements).', ...retained() };
       const facts = await readProjectKinds(args => {
         if (!current()) throw new Error('This check is no longer current.');
-        return ps(cx, crewProjectScript(args), CHECK_TIMEOUT);
+        return ps(cx, crewProjectScript(args), args[0] === 'list' ? PROJECT_LIST_TIMEOUT : CHECK_TIMEOUT);
       }, parseProjects);
       if (cx.isCurrent && !cx.isCurrent()) return { status: 'error', rows: [], usable: false };
       listedProjects.set(machineOf(cx), facts.rows);

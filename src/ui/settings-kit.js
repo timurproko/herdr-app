@@ -18,13 +18,19 @@ export const KIT = Object.freeze({
 });
 
 // Informational, not a link: same inline accent placement, dashed underline.
-// The same HoverCard/table as the sidebar Usage footer supports aligned columns.
+// Reuse Usage's HoverCard treatment for prose entries or the existing table format.
 export function descriptionHint(t, id, hint, focus) {
   const trigger = div().id(id).relative().track_focus(focus).tab_index(0)
     .text_size(U.meta).text_color(t.accent).whitespace_nowrap().accessibility_label(hint.label)
     .child(div().absolute().inset_0().border_b_1().border_dashed().border_color(t.accent))
     .child(hint.label);
-  const body = () => hintTable(t, [hint.columns, ...hint.rows]);
+  const body = () => hint.entries
+    ? menuSurface(t, v_flex()).w(440).max_w(440).px(10).py(8).gap(8)
+      .text_size(U.meta).line_height('18px').text_color(t.foreground)
+      .children(hint.entries.map(([name, sentence]) => h_flex().items_start().gap(4)
+        .child(div().flex_none().font_bold().child(`${name} —`))
+        .child(div().flex_1().min_w(0).whitespace_normal().child(sentence))))
+    : hintTable(t, [hint.columns, ...hint.rows]);
   // HoverCard itself is hover-only. Popup supplies the identical passive body
   // for native keyboard focus without a click-to-open Popover or focus trap.
   if (focus?.is_focused?.()) return Popup.new(`${id}-focus-hint`, trigger).anchor('top_left').content(body());
