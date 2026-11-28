@@ -11,13 +11,16 @@ const preferences={enabled:true,summary:true,remaining:true,claudeAutomatic:fals
 state.set('custom.usage.local.preferences',structuredClone(preferences));
 state.set('custom.usage.remote:pc2.preferences',structuredClone(preferences));
 const widget={id:'sidebar-usage',content:{mod:'custom-usage',props:{summary:true}}};
-const host={shared:key=>state.get(key),setShared:(key,value)=>state.set(key,structuredClone(value)),
+const host={checking:()=>false,shared:key=>state.get(key),setShared:(key,value)=>state.set(key,structuredClone(value)),
   layout:()=>({id:'sidebar',children:[widget]}),spaces:()=>[{active:true,machine:null}],machines:()=>[{name:'pc2'}],
   window:()=>({active:true,platform:'windows'}),panes:()=>[],home:()=>null,settings:()=>({zoom:1}),props:()=>props,focused:()=>null,terminals:()=>[],appHome:()=>'/fixture',
   run:(name,args)=>{commands.push([name,args]);widget.hidden=name==='layout.hide';},notify(){},
   closeOverlay:id=>closed.push(id),openOverlay(){throw Error('Disabled Usage must not open anything');},
   readTextFile:()=>new Promise(resolve=>reads.push(resolve)),
-  exec:(...args)=>new Promise(resolve=>executions.push({args,resolve})),
+  exec:(...args)=>{
+    if(args[1]?.[0]?.endsWith('reset-journal.cjs'))return Promise.resolve({code:0,stdout:JSON.stringify({requestId:'herdr-fixture',observed:true,finished:true})});
+    return new Promise(resolve=>executions.push({args,resolve}));},
+  pluginFile:(id,name)=>`/fixture/plugins/${id}/${name}`,
 };
 const {r}=await loadMod({host,modules:{'space-color-state.js':{currentSpaceColor(){}}},entry:'import * as r from "./plugins.js";export {r};'});
 const plugin=r.pluginById('usage');assert.equal(r.pluginEnabled(plugin),true,'Usage preserves the enabled default');
@@ -34,7 +37,7 @@ function moduleFor(file){if(!cache.has(file))cache.set(file,new vm.SourceTextMod
 async function load(file){const mod=moduleFor(file);if(mod.status==='unlinked')await mod.link((name,from)=>{
  if(name==='gpui-kit')return synthetic({View:class{},div:element,svg:element,image:element});
  if(name==='gpui-base')return synthetic({h_flex:element,v_flex:element,Textarea:{new:element},TextareaState:{new:o=>{let value=o?.value??'';return {on(){},value:()=>value,set_value:v=>{value=v;}};}},Toggle:{new:element},Popover:{new:element},Popup:{new:element},HoverCard:{new:element},InputState:{new:()=>({on(){},value:()=>'',set_value(){}})},Input:{new:element},Checkbox:{new:element},Scrollbar:{vertical:element},ScrollHandle:{new:()=>({scroll_to_item(){}})}});
- if(name==='./host.js')return synthetic(host);if(name==='./plugins.js')return synthetic(r);
+ if(name==='./host.js'||name==='../api.js')return synthetic(host);if(name==='./plugins.js')return synthetic(r);
  if(name==='./ui.js')return synthetic(ui);if(name==='./look.js')return synthetic({liveTheme:()=>({})});
  if(name==='./machine-picker.js')return synthetic({machinePicker:element});
  return moduleFor(path.resolve(path.dirname(from.identifier),name));

@@ -36,6 +36,25 @@ export function resetChoiceGroups(reports) {
     return accounts.length?[{id:provider,label:provider==='claude'?'Claude':'Codex',groups:accounts}]:[];
   });
 }
+export function resetWindows(entry) {
+  return (entry?.report?.windows??[]).map(w=>({id:w.id,remaining:percentage(w,true),end:Number.isFinite(Date.parse(w.resetsAt))?Date.parse(w.resetsAt):null}));
+}
+export function automaticCandidate(entry,preferences,now=Date.now()) {
+  if(!preferences?.automaticReset||!preferences.enabled||entry?.report?.status!=='available')return null;
+  if(entry.sourceId==='codex'&&!(entry.report.resetCredits?.applicable>0))return null;
+  const windows=resetWindows(entry),candidates=[];
+  for(const type of resetTypes(entry)) {
+    if(!preferences.resetSelections.includes(type.key))continue;
+    for(const grant of type.grants) {
+      if(grant.usable!==true||!(grant.left>0)||!grant.grantId||!grant.covers?.length||
+        (grant.endsAt&&!(Date.parse(grant.endsAt)>now))||(grant.cooldownUntil&&!(Date.parse(grant.cooldownUntil)<=now)))continue;
+      if(!windows.some(w=>grant.covers.includes(w.id)&&typeof w.remaining==='number'&&w.remaining>=0&&w.remaining<=1&&(w.end===null||w.end>now)))continue;
+      candidates.push({type,grant});
+    }
+  }
+  return candidates.sort((a,b)=>a.grant.covers.length-b.grant.covers.length||
+    (Date.parse(a.grant.endsAt)||Infinity)-(Date.parse(b.grant.endsAt)||Infinity)||a.type.id.localeCompare(b.type.id)||a.grant.grantId.localeCompare(b.grant.grantId))[0]??null;
+}
 // A card's place in the user's order: one per provider, so Claude keeps its
 // spot whichever saved account the card shows.
 export const orderKey = entry => String(entry?.sourceId ?? entry?.id ?? '');

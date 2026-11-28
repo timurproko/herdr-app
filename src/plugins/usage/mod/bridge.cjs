@@ -304,17 +304,16 @@ function claudeReport(body,plan) {
 }
 // These tokens are Claude Code's; its usage read is the one that reports limit resets.
 const CLAUDE_USER_AGENT='claude-cli/2.1.328 (external, cli)';
-// Limit resets the account holds (read only; claiming one is a separate request never made
-// here). Grouped like claude.ai: a full reset, model resets by model. Null when ineligible.
+// Read-only inventory. Claims are separate actions.
 function claudeResets(value) {
   if(!value||typeof value!=='object'||value.eligible!==true||!Array.isArray(value.grants))return null;
   const groups=new Map(),stamp=value=>{const at=Date.parse(value);return Number.isFinite(at)?new Date(at).toISOString():null;};
   for(const g of value.grants.slice(0,32)) {
     const left=number(g?.resets_left);if(!left||left<1||g.paused===true||!RESET_ID.test(g.id??''))continue;
     const clears=Array.isArray(g.clears)?g.clears:[],label=text(g.label,200)??'';
-    const model=/\bfable\b/i.test(label)?'Fable':null;
+    const field=clears.find(f=>/^seven_day_[a-z0-9_-]+$/.test(f));
+    const model=field?field.slice(10).replace(/^./,c=>c.toUpperCase()):/\bfable\b/i.test(label)?'Fable':null;
     const name=clears.includes('seven_day')&&!g.gives_back_weekly?'Full reset':model?`${model} reset`:'Limit reset';
-    // Scope comes from cleared quota fields, never from the friendly model name.
     const mapped=clears.map(field=>field==='five_hour'?'session':field==='seven_day'?'weekly':/^seven_day_[a-z0-9_-]+$/.test(field)?`model:${field.slice(10)}`:null);
     const covers=mapped.length&&mapped.every(Boolean)&&g.gives_back_weekly!==true?[...new Set(mapped)].sort():[];
     const typeId=covers.length?JSON.stringify(covers):`unknown:${name.toLowerCase()}`;
@@ -323,7 +322,6 @@ function claudeResets(value) {
     group.grants.push({name,typeId,covers,grantId:g.id,left,endsAt:ends,usable:g.usable_now===true&&!(Array.isArray(g.blocking)&&g.blocking.length),needsLimit:g.use_requires_limit===true,cooldownUntil:stamp(g.cooldown_until??value.cooldown_until)});
     group.left+=left;
     if(ends&&(group.endsAt===null||ends<group.endsAt))group.endsAt=ends;
-    // The button claims the grant that expires first among those usable now (as claude.ai does).
     const usable=g.usable_now===true&&!(Array.isArray(g.blocking)&&g.blocking.length);
     const better=!group.grantId||(usable&&!group.usable)||(usable===group.usable&&ends&&(!group.grantEnds||ends<group.grantEnds));
     if(better)Object.assign(group,{grantId:g.id,grantEnds:ends,usable,needsLimit:g.use_requires_limit===true,
@@ -456,20 +454,19 @@ async function login(request={},options={}) {
   if(answer?.state!=='logged-in')return {error:text(answer?.error,200)??'Sign-in did not finish.'};
   return {login:{email:text(answer.email,320),...(answer.requested?{requested:text(answer.requested,320)}:{})}};
 }
-// Claim one Claude limit reset for exactly one account (its id and organization, as the
-// card showed them). request_id makes a retry of the same click idempotent server side.
+// Exact-account claims; request IDs provide provider idempotency.
 const RESET_RESULTS=['reset','already_used','not_limited','cooldown','ineligible','unavailable'];
 async function claudeReset(request={},options={}) {
   const accountId=text(request.accountId,80),organizationId=text(request.organizationId,80),grantId=text(request.grantId,64),requestId=text(request.requestId,64);
   if(!accountId||!ORGANIZATION.test(organizationId??'')||!RESET_ID.test(grantId??'')||!REQUEST_ID.test(requestId??''))return {error:'Invalid reset request.'};
   const now=options.now??Date.now(),get=options.requestJson??requestJson;
   const logins=(await discover(options)).filter(c=>c.provider==='claude'&&c.accountId===accountId&&c.organizationId===organizationId&&c.token);
-  // Prefer the saved account (its helper owns token rotation), then any other login of it.
   logins.sort((a,b)=>(b.harness==='account-switcher')-(a.harness==='account-switcher'));
   let c=logins[0];
   if(!c)return {error:'This Claude account is not signed in on this machine.'};
   try{if(c.expires!==undefined&&c.expires<=now+60000)c=await renewClaude(c,options);}
   catch{return {error:'Login required. Sign in again, then reset.'};}
+  if(request.automatic&&!await revalidateReset(request,'claude',options))return {result:'unavailable'};
   let response;
   try{response=await get(`https://api.anthropic.com/api/organizations/${organizationId.toLowerCase()}/reset_rate_limits`,
     {Authorization:`Bearer ${c.token}`,Accept:'application/json','anthropic-beta':'oauth-2025-04-20','User-Agent':CLAUDE_USER_AGENT},
@@ -481,7 +478,6 @@ async function claudeReset(request={},options={}) {
   const body=response.body??{},result=RESET_RESULTS.includes(body.result)?body.result:'unavailable';
   return {result,resetsLeft:number(body.resets_left)??null,cleared:Array.isArray(body.cleared)?body.cleared.map(x=>text(x,40)).filter(Boolean):[]};
 }
-// Codex's limit resets, one line per credit (as chatgpt.com lists them). Null on any doubt.
 const codexHeaders=c=>({Authorization:`Bearer ${c.token}`,Accept:'application/json','User-Agent':'Mozilla/5.0',...(c.accountId?{'ChatGPT-Account-Id':c.accountId}:{})});
 async function codexResetList(c,get) {
   let response;try{response=await get(ENDPOINTS.codexResets,codexHeaders(c));}catch{return null;}
@@ -491,7 +487,6 @@ async function codexResetList(c,get) {
     if(!CREDIT_ID.test(credit?.id??'')||credit.status!=='available')continue;
     const ends=Date.parse(credit.expires_at);
     const name=text(credit.title,40)??'Reset';
-    // Full reset is the known Codex base rate-limit reset, not extra/model quotas.
     const covers=name==='Full reset'?['session','weekly']:[];
     groups.push({name,typeId:covers.length?'full':`unknown:${name.toLowerCase()}`,covers,left:1,endsAt:Number.isFinite(ends)?new Date(ends).toISOString():null,grantId:credit.id,
       usable:credit.is_supported_by_plan!==false,needsLimit:false,cooldownUntil:null,reason:credit.is_supported_by_plan===false?'plan':null});
@@ -499,7 +494,6 @@ async function codexResetList(c,get) {
   groups.sort((a,b)=>(a.endsAt??'9')<(b.endsAt??'9')?-1:1);
   return groups.length?{available:groups.length,groups}:null;
 }
-// Use one Codex reset for exactly one account, as Codex does (redeem_request_id: one click).
 async function codexReset(request={},options={}) {
   const accountId=text(request.accountId,80),creditId=text(request.grantId,100),requestId=text(request.requestId,64);
   if(!accountId||!CREDIT_ID.test(creditId??'')||!REQUEST_ID.test(requestId??''))return {error:'Invalid reset request.'};
@@ -507,6 +501,7 @@ async function codexReset(request={},options={}) {
   const c=(await discover(options)).find(x=>x.provider==='codex'&&x.accountId===accountId&&x.token);
   if(!c)return {error:'This Codex account is not signed in on this machine.'};
   if(c.expires!==undefined&&c.expires<=now)return {error:'Login required. Sign in to Codex again, then reset.'};
+  if(request.automatic&&!await revalidateReset(request,'codex',options))return {result:'unavailable'};
   let response;
   try{response=await get(CODEX_CONSUME,{...codexHeaders(c),'Content-Type':'application/json','x-openai-codex-luna-reserve':'1'},
     {method:'POST',body:{credit_id:creditId,redeem_request_id:requestId},timeout:25000});}
@@ -517,7 +512,22 @@ async function codexReset(request={},options={}) {
   if(response.status<200||response.status>=300){const why=text(response.body?.detail??response.body?.error?.message??response.body?.message,160);return {error:why?`Codex: ${why}`:`Codex answered HTTP ${response.status}. Nothing was reset.`};}
   return {result:'reset'};
 }
-module.exports={codexReset,codexResetList,claudeReset,login,discover,discoverExecutables,collect,codexReport,claudeReport,copilotReport,duration,ENDPOINTS,requestJson,renewClaude,CLAUDE_CLIENT_ID,copilotBillingUrl,isBillingUrl,copilotPremiumReport};
+// Fresh target-machine authority before automatic POST.
+async function revalidateReset(request,provider,options) {
+  const identity=`${provider}:${request.accountId}${request.organizationId?':'+request.organizationId:''}`;
+  const {reports}=await collect({reportId:`${provider}:${hash(identity)}`},options);
+  const entry=reports.find(e=>e.sourceId===provider&&e.account?.id===request.accountId&&
+    (e.account.organizationId??null)===(request.organizationId??null));
+  if(entry?.report?.status!=='available'||(provider==='codex'&&!(entry.report.resetCredits?.applicable>0)))return false;
+  const group=entry.report[provider==='claude'?'claudeResets':'codexResets']?.groups?.find(g=>g.typeId===request.automatic.typeId&&
+    (g.grants??[g]).some(grant=>grant.grantId===request.grantId));
+  const grant=(group?.grants??(group?[group]:[])).find(g=>g.grantId===request.grantId),now=options.now??Date.now();
+  if(!grant||grant.usable!==true||!(grant.left>0)||!grant.covers?.length||JSON.stringify(grant.covers)!==JSON.stringify(request.automatic.covers)||
+    (grant.endsAt&&!(Date.parse(grant.endsAt)>now))||(grant.cooldownUntil&&!(Date.parse(grant.cooldownUntil)<=now)))return false;
+  return entry.report.windows.some(w=>grant.covers.includes(w.id)&&typeof w.remainingPct==='number'&&Number.isFinite(w.remainingPct)&&w.remainingPct>=0&&w.remainingPct<=1&&
+    (!w.resetsAt||Date.parse(w.resetsAt)>now));
+}
+module.exports={revalidateReset,codexReset,codexResetList,claudeReset,login,discover,discoverExecutables,collect,codexReport,claudeReport,copilotReport,duration,ENDPOINTS,requestJson,renewClaude,CLAUDE_CLIENT_ID,copilotBillingUrl,isBillingUrl,copilotPremiumReport};
 if(require.main===module || process.argv[1]?.startsWith('{')) {
   let request={};try{request=JSON.parse(process.argv.at(-1));}catch{}
   (request.action==='executables'?discoverExecutables().then(executables=>({executables})):request.action==='login'?login(request):request.action==='claude-reset'?claudeReset(request):request.action==='codex-reset'?codexReset(request):collect(request)).then(value=>console.log(JSON.stringify(value))).catch(()=>console.log(JSON.stringify({error:'Usage collection failed. Check that the CLI login stores are readable.'})));

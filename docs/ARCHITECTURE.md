@@ -1139,6 +1139,34 @@ from this machine as well as peers, so one expiring account does not re-query he
 siblings. Manual refresh still bypasses reuse; Retry-After and generation/single-flight
 guards remain unchanged.
 
+Automatic reset adds a Usage-owned collection coordinator on the same mounted
+header lifecycle. It yields before work and uses the existing minute cadence,
+ten-minute TTL and shared machine collection lease; a hidden/absent summary is
+not its owner. Only the active-space machine is eligible, while the desktop is
+active, Usage/Check usage are enabled and that machine's Automatic reset is on.
+No closed-app worker or hidden-machine scan exists. Settings Refresh for another
+machine remains a display read, not automatic spend permission.
+
+The canonical controller is `plugins/usage/store.js`; each panel's `store.js` is
+a packaging adapter. New successful real readings carry request, machine, enable
+epoch and local receipt provenance; reused and retained reports are display-only.
+Consent keys bind provider/account/organization and semantic reset scope. The
+collector preserves explicit cleared-window scope and per-grant eligibility;
+unknown coverage has no automatic authority. The target worker rechecks that
+exact account, scope and grant immediately before an automatic consume action.
+
+`plugins/usage/reset-journal.cjs` is a Node-builtins-only local admission worker.
+It uses exclusive process-owned locks, atomic synced writes and bounded hashed
+account records under the desktop home's `.customizations/usage/`. It reserves
+before submission and shares arbitration with manual claims. An account's episode
+spans selected machines and reset types, preventing cascading grants. Unknown
+outcomes, restarts and toggle changes cannot clear an episode. Later authoritative
+recovery of all recorded low quotas, or a proven new natural period after the
+old period actually ends, rearms it; a changed reset timestamp alone does not.
+No unresolved record is evicted to make space. A dead process lock can be
+reclaimed, never its spend receipt. This journal and account consent are excluded
+from portable preferences and contain no credentials or raw provider responses.
+
 The collector discovers the default A1 Codex OAuth store (`~/.a1/agent/auth.json`)
 even when the desktop/SSH environment lacks `PI_CODING_AGENT_DIR`. Login candidates
 remain grouped by account identity, so a fresh A1 copy can replace expired CLI copies
