@@ -2239,6 +2239,50 @@ Files and Git source-selection requirements SHALL use the sidebar's held source 
 - **THEN** refresh updates only the held source under existing lifecycle rules, and obsolete replies cannot populate a newer effective context
 - **AND** hidden or disabled plugins start no new work and the pin persists no file tree, PR inventory, callbacks or credentials
 
+### Requirement: Global Git repository disclosure control
+Ordinary and coordinator Git SHALL show exactly one icon-only bulk disclosure button at the right end of the Open/Closed strip using existing button styling. The icon SHALL reflect the chosen global expanded or collapsed default and its accessible action SHALL name the opposite choice. Activation SHALL invert that default and reset all individual exceptions, including hidden repositories. No other controls, messages or options SHALL be added.
+
+#### Scenario: Collapse globally and visit another agent
+- **WHEN** the default is expanded and the person activates Collapse all repository sections, then selects another agent or space
+- **THEN** every repository section without a subsequent individual exception is collapsed, including a previously unseen repository
+- **AND** the icon reflects the collapsed default and offers Expand all repository sections
+- **AND** the selected agent's pinned PR remains visible above its collapsed section, and a lone pin still has no empty header
+
+#### Scenario: Expand globally across both views and tabs
+- **WHEN** the default is collapsed and the person activates Expand all repository sections
+- **THEN** every eligible section uses expanded disclosure in ordinary and coordinator Git and both Open/Closed tabs
+- **AND** sections encountered later follow the expanded default, subject to existing reveal limits and pagination rather than automatic mounting or fetching of every PR
+
+#### Scenario: Individual exception and next bulk action
+- **WHEN** the global default is collapsed and the person opens one repository by its chevron
+- **THEN** only that canonical repository opens, and the global icon remains collapsed with Expand all as its next action
+- **AND** other repositories remain collapsed; returning to that repository restores the exception in either Git view
+- **AND** the next bulk action expands all and clears every individual exception, including exceptions outside the current view
+- **AND** the symmetric behavior applies to closing one repository under the expanded default
+
+#### Scenario: Disclosure changes presentation only
+- **WHEN** a bulk or individual fold changes
+- **THEN** it changes no PR facts, counts, selected tab, repository order or agent selection and starts no Git, GitHub, filesystem or Crew request
+- **AND** existing pending-read and safety-selection guards still reject obsolete work, without cancelling unrelated reads
+- **AND** cold Loading, headerless actionable failures, enrollment, remaining-row counts and pin behavior retain their existing policies
+
+### Requirement: Durable client-local Git disclosure choice
+The global disclosure default and canonical repository exceptions SHALL survive panel recreation, agent/space changes, Git disable/re-enable and app restart on the same client. Without saved new-format state, existing saved folded repositories SHALL become collapsed exceptions to an expanded default. The first bulk action SHALL replace that legacy choice. This presentation state SHALL NOT be exported as portable preferences or written to native/Core or Crew documents.
+
+#### Scenario: Upgrade preserves individual folds
+- **WHEN** the client has a valid legacy saved folded-repository set and no new-format disclosure state
+- **THEN** those repositories stay collapsed and other repositories default expanded until an individual or bulk action changes them
+- **AND** after the first bulk action, a restart cannot reintroduce the legacy folds over the new global default
+
+#### Scenario: Restart and disabled panel
+- **WHEN** the person chooses a global default, creates one individual exception, then restarts the app or disables and re-enables Git
+- **THEN** the saved default, icon and individual exception are restored before eligible repository sections paint
+- **AND** restoring disclosure grants no PR-cache, worker-navigation or read authority and causes no new hidden-panel work
+
+#### Scenario: Missing or invalid saved data
+- **WHEN** saved disclosure data is missing, malformed or of an unsupported version
+- **THEN** Git remains renderable using expanded disclosure and valid legacy folds when available, without a new message or overwriting unsupported-version data merely by rendering
+
 ### Requirement: Machine-scoped automatic reset selection
 Settings Usage SHALL offer an Automatic reset toggle, off by default. Turning it on SHALL reveal an expandable Resets-style area with simple unchecked checkboxes grouped by provider and account, one per reported reset type. Selection SHALL be machine-local and bound to exact account and reset scope. Newly discovered types SHALL remain unchecked. The UI SHALL reuse existing components without extra explanatory messages, buttons or options.
 
@@ -2318,47 +2362,3 @@ A confirmed automatic reset SHALL use the existing success-notification pattern 
 - **WHEN** a confirmed reset's follow-up read fails or becomes obsolete
 - **THEN** the app does not invent refilled quotas or retry spending
 - **AND** existing failure and last-known-value treatment remains, and any notification asserts only the confirmed spend rather than successful quota refresh
-
-### Requirement: Global Git repository disclosure control
-Ordinary and coordinator Git SHALL show exactly one icon-only bulk disclosure button at the right end of the Open/Closed strip using existing button styling. The icon SHALL reflect the chosen global expanded or collapsed default and its accessible action SHALL name the opposite choice. Activation SHALL invert that default and reset all individual exceptions, including hidden repositories. No other controls, messages or options SHALL be added.
-
-#### Scenario: Collapse globally and visit another agent
-- **WHEN** the default is expanded and the person activates Collapse all repository sections, then selects another agent or space
-- **THEN** every repository section without a subsequent individual exception is collapsed, including a previously unseen repository
-- **AND** the icon reflects the collapsed default and offers Expand all repository sections
-- **AND** the selected agent's pinned PR remains visible above its collapsed section, and a lone pin still has no empty header
-
-#### Scenario: Expand globally across both views and tabs
-- **WHEN** the default is collapsed and the person activates Expand all repository sections
-- **THEN** every eligible section uses expanded disclosure in ordinary and coordinator Git and both Open/Closed tabs
-- **AND** sections encountered later follow the expanded default, subject to existing reveal limits and pagination rather than automatic mounting or fetching of every PR
-
-#### Scenario: Individual exception and next bulk action
-- **WHEN** the global default is collapsed and the person opens one repository by its chevron
-- **THEN** only that canonical repository opens, and the global icon remains collapsed with Expand all as its next action
-- **AND** other repositories remain collapsed; returning to that repository restores the exception in either Git view
-- **AND** the next bulk action expands all and clears every individual exception, including exceptions outside the current view
-- **AND** the symmetric behavior applies to closing one repository under the expanded default
-
-#### Scenario: Disclosure changes presentation only
-- **WHEN** a bulk or individual fold changes
-- **THEN** it changes no PR facts, counts, selected tab, repository order or agent selection and starts no Git, GitHub, filesystem or Crew request
-- **AND** existing pending-read and safety-selection guards still reject obsolete work, without cancelling unrelated reads
-- **AND** cold Loading, headerless actionable failures, enrollment, remaining-row counts and pin behavior retain their existing policies
-
-### Requirement: Durable client-local Git disclosure choice
-The global disclosure default and canonical repository exceptions SHALL survive panel recreation, agent/space changes, Git disable/re-enable and app restart on the same client. Without saved new-format state, existing saved folded repositories SHALL become collapsed exceptions to an expanded default. The first bulk action SHALL replace that legacy choice. This presentation state SHALL NOT be exported as portable preferences or written to native/Core or Crew documents.
-
-#### Scenario: Upgrade preserves individual folds
-- **WHEN** the client has a valid legacy saved folded-repository set and no new-format disclosure state
-- **THEN** those repositories stay collapsed and other repositories default expanded until an individual or bulk action changes them
-- **AND** after the first bulk action, a restart cannot reintroduce the legacy folds over the new global default
-
-#### Scenario: Restart and disabled panel
-- **WHEN** the person chooses a global default, creates one individual exception, then restarts the app or disables and re-enables Git
-- **THEN** the saved default, icon and individual exception are restored before eligible repository sections paint
-- **AND** restoring disclosure grants no PR-cache, worker-navigation or read authority and causes no new hidden-panel work
-
-#### Scenario: Missing or invalid saved data
-- **WHEN** saved disclosure data is missing, malformed or of an unsupported version
-- **THEN** Git remains renderable using expanded disclosure and valid legacy folds when available, without a new message or overwriting unsupported-version data merely by rendering

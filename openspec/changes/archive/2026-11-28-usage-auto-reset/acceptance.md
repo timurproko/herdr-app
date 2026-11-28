@@ -20,7 +20,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-28-usage-auto-reset/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-28-usage-auto-reset/acceptance.md",
   "finalizedDate": "2026-11-28",
-  "specBaseSha": "971941d01749393996ababf31f547653170e1c99",
+  "specBaseSha": "3721cfe6da18d917ba0eb40c3b097fe325cdbe6c",
   "acceptanceScenarios": [
     "Automatic reset is off by default per machine, with no reset types selected and no inherited consent for newly discovered types.",
     "Only explicitly checked usable types with proven scope and a fresh exact-machine account reading at 1 percent remaining or less can spend.",
@@ -31,7 +31,7 @@ The maintainer integration decision accepts these scenarios:
     "Failed validation preserves provider Retry-After, and failed or obsolete follow-ups cannot fabricate a refill or revive disabled collection."
   ],
   "archiveDigest": "41af0b70419d247fa7870e5d6112ba44004c2316ffb49489274a1913714a5c32",
-  "specDigest": "e7ef96fcb8a0506945050111aeab2cc50d07349ea2e2374575378f22b2d9214b",
+  "specDigest": "e61bb9c9e44f97f1b8e9e93bf0b4db4c8582b7ac561202d7e250d444c47743df",
   "tasksDigest": "40de13d819ec35a30f3caa95f31b39cb1c148a54fbfd58dca62587611a833c8e",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []
