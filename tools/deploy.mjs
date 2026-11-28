@@ -17,13 +17,26 @@ export function reconcilePalette(home){
 // run clears before exiting busy (75). Both are transient: wait for the lock
 // within a bounded time instead of failing the whole install.
 export const STARTUP_FRAMES_BUSY=75;
+// Prefer a worker's typed {error|reason} line, then a thrown Error line, then
+// the first plain line; never the child command line Node puts in message.
 export function stepFailure(error){
-  const lines=[error?.stderr,error?.stdout].map(text=>String(text??'').trim()).filter(Boolean).flatMap(text=>text.split(/\r?\n/)).map(line=>line.trim()).filter(Boolean);
-  const detail=lines.find(line=>!/^\s*at\s/.test(line));
   if(error?.code==='ETIMEDOUT'||error?.signal==='SIGTERM')return 'timed out';
-  if(detail)return detail;
+  const lines=[error?.stderr,error?.stdout].map(text=>String(text??'').trim()).filter(Boolean).flatMap(text=>text.split(/\r?\n/)).map(line=>line.trim()).filter(line=>line&&!/^at\s/.test(line)&&!/^\^+$/.test(line)&&!/^Node\.js v\d/.test(line));
+  for(const line of lines){if(!line.startsWith('{'))continue;try{const value=JSON.parse(line),detail=value?.error??value?.reason??value?.deploymentFailure?.reason;if(typeof detail==='string'&&detail.trim())return detail.trim();}catch{}}
+  const thrown=lines.find(line=>/^(?:[A-Z]\w*)?Error(?: \[\w+\])?: /.test(line));
+  if(thrown)return thrown.replace(/^(?:[A-Z]\w*)?Error(?: \[\w+\])?: /,'');
+  if(lines[0])return lines[0];
   return typeof error?.status==='number'?`exited with code ${error.status}`:String(error?.message||error||'failed').split(/\r?\n/)[0];
 }
+// child_process sync errors carry status/signal and captured output; spawnargs
+// is absent on execFileSync failures, so identify the step from Node's message.
+export const childFailure=error=>Boolean(error)&&(typeof error.status==='number'||typeof error.signal==='string'||error.code==='ETIMEDOUT')&&('stderr' in error||'stdout' in error);
+export function stepName(error){
+  const args=Array.isArray(error?.spawnargs)?error.spawnargs:String(error?.message??'').split(/\r?\n/)[0].replace(/^Command failed:\s*/,'').split(/\s+/);
+  const script=args.map(arg=>path.basename(arg)).find(arg=>/\.[cm]?js$/.test(arg));
+  return script??'child step';
+}
+export const installFailure=error=>childFailure(error)?`${stepName(error)} failed: ${stepFailure(error)}`:String(error?.message??error);
 const pause=ms=>Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,ms);
 export function runStartupFrames(worker,home,{budget=45000,interval=500,exec=cp.execFileSync,now=Date.now,sleep=pause}={}){
   const deadline=now()+budget;
@@ -241,5 +254,5 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1]
   else if(action==='remove')result=remove(home);
   else throw Error('Use deploy, deploy-shell, doctor, check, enable, disable or remove.');
   console.log(typeof result==='string'?result:JSON.stringify(result,null,2));if(result?.ok===false||result?.patches?.ok===false)process.exitCode=1;
- }catch(e){console.error(JSON.stringify({deploymentFailure:{stage:'install',reason:Array.isArray(e.spawnargs)?`${path.basename(e.spawnargs.find(arg=>/\.[cm]?js$/.test(arg))??e.spawnargs[0]??'step')} failed: ${stepFailure(e)}`:e.message}}));process.exitCode=1;}
+ }catch(e){console.error(JSON.stringify({deploymentFailure:{stage:'install',reason:installFailure(e)}}));process.exitCode=1;}
 }
