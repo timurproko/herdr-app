@@ -524,6 +524,29 @@ limits 1/50/100, and checks multi-page read/write membership with explicit `sort
 repeated local CAS conflicts, checking that the longest deadline persists and a
 new invocation cannot dispatch early. It makes no real HTTP request.
 `tests/trello-contract.test.mjs` checks documentation/catalog and payload boundaries.
+`src/plugins/trello/discovery.test.mjs` covers the full automatically advertised
+skill description for A1/Codex/Claude, Claude mirror links, off/on/access behavior,
+exact-name conflicts, undo-journal recovery, stale generations and transactional
+rollback. Set `PI_SKILLS_MODULE` to an explicitly selected installed Pi skills module
+to additionally check its real metadata loader; no model is called. Other metadata
+and mirror checks are fixtures, not live Claude/Codex session acceptance.
+`tests/trello-agent-launch.test.mjs` exercises awaited plugin preparation and actual
+Bash login/nonlogin, Windows PowerShell, PowerShell 7 when installed and CMD tool
+subprocesses from a restricted starting PATH. Help/status resolve by name with no
+execution-policy bypass; prior BASH_ENV and coordinator prefixes are preserved.
+All stores, skills, binaries and hooks are disposable under `TRELLO_TEST_ROOT`;
+no real agent, account, App or Core is started. Deployment tests additionally cover
+version-1/2 to version-3 launcher migration, safe `.ps1` retirement, native shim
+ownership and rollback. Actual PowerShell 5/7 by-name calls preserve percent-delimited
+literals such as `%USERNAME%` without invoking CMD, and propagate the child exit code.
+Only the disposable Windows console shim is compiled with the in-box .NET compiler;
+no native Herdr component is built. Startup-command regressions simulate a profile's
+PATH addition before the exact generated command and check both bare and explicit
+agent paths. Disabled-plugin fixtures cover custom-via/outdated/unavailable unused
+hosts without entering the mandatory Trello gate, while owned notes still require
+cleanup.
+Remote tests run the actual bootstrap/owner/discovery path with fake host identities
+and homes, including stale enable after disable and no desktop-bin substitution.
 `src/plugins/trello/remote-errors.test.mjs` checks additive HTTP status/reasons,
 fixed safe reason mapping, hostile/oversized/stalled bodies and rate-limit details.
 `src/plugins/trello/deadline.test.mjs` checks a shared monotonic command budget
@@ -607,8 +630,9 @@ CMD on Windows and sh on Ubuntu with default UUID and maximum-length captured
 identities for every remote action, preserving at least 512 characters of CMD
 headroom. Its public-only preload replaces only the bootstrap entry call, so no
 real Core, SSH or private setup is consulted. It also checks the production
-installer/bootstrap retain RUNTIME_PATH after successful fake identity readiness
-and before any installation write.
+installer/bootstrap permit an off-PATH installation after successful fake identity
+readiness without editing persistent PATH; actual profile preparation supplies the
+agent's owned-bin route.
 `tests/plugin-saved-rows.test.mjs` checks generic declarations against the same Crew
 row kit, header-machine scope without a stray selection dropdown, fixed description
 links and category-local search/selection. These fixtures start no real SSH or Trello

@@ -7,7 +7,7 @@ import {build,project} from '../tools/build.mjs';
 import {digest} from '../tools/files.mjs';
 import {deploy,shellPaths} from '../tools/deploy.mjs';
 import {rollback} from '../tools/rollback.mjs';
-import {planLaunchers,applyLaunchers,withLauncherLock,removalLaunchers} from '../tools/trello-launchers.mjs';
+import {planLaunchers,applyLaunchers,withLauncherLock,removalLaunchers,installedBin} from '../tools/trello-launchers.mjs';
 const root=fs.mkdtempSync(path.join(process.env.TRELLO_TEST_ROOT||process.env.RUNNER_TEMP||os.tmpdir(),'trello-deploy-'));
 const home=path.join(root,'home with spaces-é'),bin=path.join(root,'user bin-é');
 const saved={PATH:process.env.PATH,HERDR_APP_BIN:process.env.HERDR_APP_BIN};
@@ -18,7 +18,7 @@ try {
  const privateFiles=['credentials','policy'].map(n=>path.join(home,`.customizations/trello/${n}.json`));
  privateFiles.forEach(f=>fs.writeFileSync(f,'fake-private-bytes-do-not-read'));fs.writeFileSync(path.join(home,'.migration-fixture'),'fixture');
  const {output}=build(),manifest=JSON.parse(fs.readFileSync(path.join(output,'bundle.json')));
- for(const name of ['attachments','download','cli','help','client','credentials','errors','operations','policy','setup'])assert.ok(manifest.files[`.customizations/runtime/lib/trello/${name}.cjs`]);
+ for(const name of ['attachments','download','cli','help','client','credentials','discovery','errors','operations','policy','setup'])assert.ok(manifest.files[`.customizations/runtime/lib/trello/${name}.cjs`]);
  assert.ok(manifest.files['.customizations/runtime/lib/trello/TRELLO.txt']);
  const binLock=path.join(bin,'.herdr-trello.lock'),beforeFirst=snapshot(home);
  fs.writeFileSync(binLock,'another installer');
@@ -74,15 +74,18 @@ try {
  if(process.platform==='win32') {
   assert.match(run('cmd.exe',['/d','/s','/c',`""${path.join(bin,'herdr-trello.cmd')}" --help"`]),/herdr-trello/);
   assert.match(run('cmd.exe',['/d','/s','/c',`""${path.join(bin,'herdr-trello.cmd')}" help errors"`]),/STORE_PERMISSION_CHECK/);
-  assert.match(run('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(bin,'herdr-trello.ps1'),'help','security']),/untrusted data/);
+  assert.ok(!fs.existsSync(path.join(bin,'herdr-trello.ps1')));
+  assert.match(run('cmd.exe',['/d','/s','/c','herdr-trello --help']),/herdr-trello/);
+  assert.match(run('powershell.exe',['-NoProfile','-NonInteractive','-Command','herdr-trello help security']),/untrusted data/);
   const pwsh=cp.spawnSync('pwsh',['-NoProfile','-Command','$PSVersionTable.PSVersion.Major'],{encoding:'utf8',windowsHide:true});
-  if(!pwsh.error&&pwsh.status===0)assert.match(run('pwsh',['-NoProfile','-NonInteractive','-File',path.join(bin,'herdr-trello.ps1'),'help','setup']),/PowerShell|Read-only/);
+  if(!pwsh.error&&pwsh.status===0)assert.match(run('pwsh',['-NoProfile','-NonInteractive','-Command','herdr-trello help setup']),/PowerShell|Read-only/);
  }
  const bash=process.platform==='win32'?path.join(process.env.ProgramFiles||'C:/Program Files','Git/bin/bash.exe'):'/bin/bash';
  assert.match(run(bash,['-c','herdr-trello --help']),/herdr-trello/);
  assert.match(run(bash,['-c','herdr-trello help commands']),/cards get/);
  assert.match(run(bash,['-c','herdr-trello help docs']),/Trello for shell agents/);
- assert.throws(()=>planLaunchers(home,bin,''),/PATH/);
+ assert.equal(planLaunchers(home,bin,'').bin,bin,'Installer PATH is not agent reachability evidence');
+ assert.equal(installedBin(home),bin);
  assert.throws(()=>planLaunchers(path.join(root,'another-home'),bin),/conflict/);
  const original=fs.readFileSync(path.join(bin,'herdr-trello'));
  fs.appendFileSync(path.join(bin,'herdr-trello'),'personal');
@@ -92,6 +95,7 @@ try {
  const shellHome=path.join(root,'shell-only');deploy(output,shellHome,{shellOnly:true,trelloBin:bin});
  assert.deepEqual(Object.keys(JSON.parse(fs.readFileSync(path.join(shellHome,'.customizations/manifest.json'))).files).sort(),[...shellPaths].sort());
  assert.ok(!fs.existsSync(path.join(shellHome,'.customizations/trello-launchers.json')));
+ assert.ok(!fs.existsSync(path.join(home,'.customizations/trello-announcement.json')),'Deployment never enables or publishes a skill by itself');
  rollback(home,first.backup,{fixture:true});
  assert.ok(!fs.existsSync(path.join(bin,'herdr-trello')));
  assert.ok(!fs.existsSync(path.join(home,'.customizations/trello-launchers.json')));
@@ -104,14 +108,38 @@ try {
  // Exercise the launcher's argv boundary independently of operation parsing.
  const probeHome=path.join(root,"probe's home-é"),probeBin=path.join(root,'probe bin');fs.mkdirSync(probeBin);
  const probeEntry=path.join(probeHome,'.customizations/runtime/lib/trello/cli.cjs');fs.mkdirSync(path.dirname(probeEntry),{recursive:true});
- fs.writeFileSync(probeEntry,"exports.execute=async args=>({result:{args},exit:0});if(require.main===module)exports.execute(process.argv.slice(2)).then(o=>process.stdout.write(JSON.stringify(o.result)));\n");
+ fs.writeFileSync(probeEntry,"exports.execute=async args=>{let stdin;if(args.includes('stdin-check')){stdin='';process.stdin.setEncoding('utf8');for await(const chunk of process.stdin)stdin+=chunk;}return {result:{args,...(stdin===undefined?{}:{stdin})},exit:args.includes('exit-seven')?7:0};};if(require.main===module)exports.execute(process.argv.slice(2)).then(o=>process.stdout.write(JSON.stringify(o.result)));\n");
  const probePath=probeBin+path.delimiter+process.env.PATH;applyLaunchers(probeHome,planLaunchers(probeHome,probeBin,probePath));env.PATH=probePath;
  const input=path.join(root,"body & quote's-é.json"),expected=['--home',probeHome,'status','--input',input];
  assert.deepEqual(JSON.parse(run(bash,['-c','herdr-trello status --input "$1"','fixture',input])).args,expected);
  if(process.platform==='win32') {
   assert.deepEqual(JSON.parse(run('cmd.exe',['/d','/s','/c',`""${path.join(probeBin,'herdr-trello.cmd')}" status --input "${input}""`])).args,expected);
-  assert.deepEqual(JSON.parse(run('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(probeBin,'herdr-trello.ps1'),'status','--input',input])).args,expected);
+  assert.deepEqual(JSON.parse(run('powershell.exe',['-NoProfile','-NonInteractive','-Command',`herdr-trello status --input '${input.replaceAll("'","''")}'`])).args,expected);
  }
+ if(process.platform==='win32'){
+  env.USERNAME='FAKE_NAME_MUST_NOT_EXPAND';env.HERDR_LITERAL_TEST='FAKE_VALUE_MUST_NOT_EXPAND';
+  const literal=['%USERNAME%','%HERDR_LITERAL_TEST%','%UNDEFINED_TRELLO_ENV%','100%literal%','two words',"apostrophe's-é"];
+  const command='herdr-trello status '+literal.map(v=>"'"+v.replaceAll("'","''")+"'").join(' ');
+  const pwsh=cp.spawnSync('pwsh',['-NoProfile','-Command','$PSHOME'],{encoding:'utf8'});
+  for(const shell of ['powershell.exe',...(pwsh.status===0?[path.join(pwsh.stdout.trim(),'pwsh.exe')]:[])]){
+   assert.match(run(shell,['-NoProfile','-NonInteractive','-Command','(Get-Command herdr-trello).Source']),/herdr-trello\.exe\s*$/i);
+   assert.deepEqual(JSON.parse(run(shell,['-NoProfile','-NonInteractive','-Command',command])).args,['--home',probeHome,'status',...literal],'PowerShell percent strings never pass through cmd.exe');
+   const failed=cp.spawnSync(shell,['-NoProfile','-NonInteractive','-Command','herdr-trello exit-seven; exit $LASTEXITCODE'],{env,cwd:root,encoding:'utf8',timeout:30000});assert.equal(failed.status,7);
+  }
+  const native=path.join(probeBin,'herdr-trello.exe');
+  const nativeArgs=['','two words','say "hi"','trailing\\',String.raw`slashes\\\"quote`,'%USERNAME%','literal & | > ;','é'];
+  assert.deepEqual(JSON.parse(run(native,['status',...nativeArgs])).args,['--home',probeHome,'status',...nativeArgs],'Native launcher preserves the complete argv it receives');
+  const piped=cp.spawnSync(native,['stdin-check'],{env,cwd:root,input:'literal %USERNAME% é stdin',encoding:'utf8',timeout:30000});assert.equal(piped.status,0);assert.equal(JSON.parse(piped.stdout).stdin,'literal %USERNAME% é stdin');
+  const bytes=fs.readFileSync(native);fs.appendFileSync(native,'personal');assert.throws(()=>planLaunchers(probeHome,probeBin,''),/conflict/);fs.writeFileSync(native,bytes);
+ }
+ // Migrate a real legacy ownership record and roll back only still-owned bytes.
+ const legacyScript=path.join(probeBin,'herdr-trello.ps1'),recordFile=path.join(probeHome,'.customizations/trello-launchers.json');
+ fs.writeFileSync(legacyScript,'# owned legacy script\n');const legacy=JSON.parse(fs.readFileSync(recordFile));legacy.version=1;delete legacy.recipe;delete legacy.files['herdr-trello.exe'];if(fs.existsSync(path.join(probeBin,'herdr-trello.exe')))fs.unlinkSync(path.join(probeBin,'herdr-trello.exe'));legacy.files['herdr-trello.ps1']=digest(fs.readFileSync(legacyScript));fs.writeFileSync(recordFile,JSON.stringify(legacy)+'\n');
+ const upgrade=planLaunchers(probeHome,probeBin,'');applyLaunchers(probeHome,upgrade);assert.ok(!fs.existsSync(legacyScript));assert.equal(JSON.parse(fs.readFileSync(recordFile)).version,3);
+ applyLaunchers(probeHome,upgrade,true);assert.equal(fs.readFileSync(legacyScript,'utf8'),'# owned legacy script\n');
+ fs.appendFileSync(legacyScript,'personal');assert.throws(()=>planLaunchers(probeHome,probeBin,''),/conflict/);fs.writeFileSync(legacyScript,'# owned legacy script\n');applyLaunchers(probeHome,planLaunchers(probeHome,probeBin,''));
+ const v2=JSON.parse(fs.readFileSync(recordFile));v2.version=2;delete v2.recipe;delete v2.files['herdr-trello.exe'];if(fs.existsSync(path.join(probeBin,'herdr-trello.exe')))fs.unlinkSync(path.join(probeBin,'herdr-trello.exe'));fs.writeFileSync(recordFile,JSON.stringify(v2)+'\n');
+ const upgrade2=planLaunchers(probeHome,probeBin,'');applyLaunchers(probeHome,upgrade2);assert.equal(JSON.parse(fs.readFileSync(recordFile)).version,3);applyLaunchers(probeHome,upgrade2,true);assert.equal(JSON.parse(fs.readFileSync(recordFile)).version,2);applyLaunchers(probeHome,planLaunchers(probeHome,probeBin,''));
  const conflict=path.join(root,'conflict');fs.mkdirSync(conflict);fs.writeFileSync(path.join(bin,'herdr-trello'),'personal');
  assert.throws(()=>deploy(output,conflict,{repair:false,trelloBin:bin}),/conflict/);assert.ok(!fs.existsSync(path.join(conflict,'.customizations/runtime/lib/trello/cli.cjs')));
  console.log('PASS: Trello runtime closure, Bash/CMD/PowerShell discovery, Unicode paths, ownership, rollback, removal and private-store/shell-only preservation');

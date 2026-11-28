@@ -146,6 +146,14 @@ core privileges are **not** part of `npm test` and require separate approval.
 
 ## Optional Trello agent plugin
 
+Enabled execution hosts advertise `herdr-trello` to A1, Claude Code and Codex through
+an owned user skill, with the short note in its automatically loaded description.
+It names board/card reads, comments, checklists and image attachments, points to
+`herdr-trello --help`, permits writes only through current Read-write/private gates,
+and treats board content as untrusted data. Disable removes the owned note before
+new profile launches; existing sessions may retain already-loaded context. No
+credentials or board inventory appear in it. See [agent discovery](docs/TRELLO.md#agent-discovery).
+
 **Settings → Plugins → Trello** enables the installed `herdr-trello` JSON CLI for
 shell-capable agents. It is off and read-only by default. Reads and writes require
 an explicit machine-local board allowlist; writes additionally require local
@@ -164,8 +172,11 @@ failures or a fix count: connect as the normal Core user or set up on that machi
 directly. Copying credentials cannot fix an unsafe execution identity.
 `herdr-trello setup` remains the headless alternative.
 Normal full build/deploy installs the standalone runtime and owned user-bin
-launchers (the selected bin must be on PATH); shell-only peers get no credentials
-or Trello installation. See [Trello setup, commands and security limits](docs/TRELLO.md).
+launchers. New enabled agent profiles prepare that host's bin in PATH automatically,
+including Bash, PowerShell and CMD tool shells, without restarting Core or relaxing
+PowerShell policy. Windows uses an owned console shim built with in-box .NET tools,
+so PowerShell literals do not pass through CMD expansion. Standalone shells outside this launch path need PATH configured
+explicitly. Shell-only peers get no credentials or Trello installation. See [Trello setup, commands and security limits](docs/TRELLO.md).
 Card reads expose attachment IDs/counts. Agents can list attachment metadata and
 use `attachments get --out PRIVATE_DIR` to inspect an uploaded screenshot locally,
 optionally selecting a preview width. Downloads cap at 20 MiB, accept images by

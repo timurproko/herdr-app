@@ -1,7 +1,7 @@
 // Profile popups are short-lived; the mounted tab bar owns their startup jobs.
 import { shared, setShared, spaces, machines, exec, readTextFile, appHome, run, notify } from './host.js';
 
-import { pluginTransform, pluginGate } from './plugins.js';
+import { pluginTransform, pluginGate, pluginPrepareProfile } from './plugins.js';
 
 // What a role gate may hand to the launch worker: the home as startup cwd, a few
 // namespaced labels and a scoped environment (PATH, CREW_* and FM_* only, so the
@@ -46,6 +46,7 @@ export function startProfileLaunches(owner, cx) {
           if (!gate.ok) throw Error(gate.reason);
           role = roleLaunch(gate.value);
         }
+        const preparations=(await pluginPrepareProfile({machine:job.machine,profile:job.profile,argv:job.argv,role:job.role??null})).filter(v=>v.launch).map(v=>v.launch);
         const source = await readTextFile(`${appHome()}/mods/custom-new-menu/profile-launch.cjs`);
         if (!source) throw Error('Profile startup is unavailable.');
         // Plugins may adjust how the agent starts (A1 colors adds its space's color).
@@ -54,6 +55,7 @@ export function startProfileLaunches(owner, cx) {
         const local = id => job.machine && id?.startsWith(`${job.machine}/`) ? id.slice(job.machine.length + 1) : id;
         const result = await exec('node', ['--input-type=commonjs', '-e', source, '--', JSON.stringify({
           stage: 'launch-profile', profile: job.profile, space: local(job.space), shell: job.shell, argv, cwd: role ? role.cwd : job.cwd,
+          ...(preparations.length?{preparations}:{}),
           ...(role ? { role: job.role, labels: role.labels, env: role.env } : {}),
         })], { on: job.machine, timeout: 45000 });
         const reply = result.code === 0 ? JSON.parse(result.stdout) : null;

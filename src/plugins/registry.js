@@ -237,6 +237,21 @@ export async function pluginTransform(name, value, context = {}) {
   return current;
 }
 
+// Awaited startup preparation is not a best-effort transform. Disabled providers
+// participate too so they can remove previously advertised owned instructions.
+export async function pluginPrepareProfile(context = {}) {
+  const prepared=[];
+  const signature=()=>JSON.stringify(PLUGINS.map(p=>[p.id,pluginEnabled(p),object(stored(p.id).settings)]));
+  const captured=signature(),isCurrent=()=>signature()===captured&&context.isCurrent?.()!==false;
+  for(const plugin of PLUGINS) {
+    if(!plugin.prepareProfile)continue;
+    const value=await plugin.prepareProfile({...context,...pluginContext(plugin),enabled:pluginEnabled(plugin),isCurrent});
+    if(!isCurrent())throw Error('Plugin settings changed. Reopen the profile menu.');
+    if(value)prepared.push(value);
+  }
+  return prepared;
+}
+
 // A gate is a REQUIRED moment: exactly one enabled plugin must claim it and return a
 // prepared object, or the feature refuses. Unlike hooks/transforms nothing is swallowed
 // here and there is no "carry on without it": a disabled, missing, duplicated, throwing or

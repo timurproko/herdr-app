@@ -820,6 +820,11 @@ src/plugins/
     returns a new one or `undefined`. Transforms: `profile.launch` (the argv a profile
     starts with; `{ space, machine, profile }`).
   A throwing plugin is reported once per moment and skipped; the feature carries on.
+  `pluginPrepareProfile(context)` is separate awaited startup preparation: disabled
+  providers participate to retire owned instructions, and failures stop that launch
+  rather than silently falling back. It captures plugin settings through completion;
+  validated path/hook contributions become scoped target-machine launch environment,
+  never arbitrary plugin environment keys or a replacement for a role gate.
   Moment names avoid Herdr's command namespaces (`agent.`, `tab.` …), which the
   host-API audit treats as native commands.
   - `pluginGate(name, context)` is the one **required** moment: exactly one enabled plugin
