@@ -172,19 +172,17 @@ export function pluginMenuItems(name, context = {}) {
   return PLUGINS.flatMap(plugin => {
     if (!pluginEnabled(plugin) || !plugin.menus?.[name]) return [];
     try {
-      return plugin.menus[name]({ ...context, ...pluginContext(plugin) }).map(item => ({ ...item,
-        run(cx) { if (pluginEnabled(plugin)) return item.run(cx); },
-      }));
+      return plugin.menus[name]({ ...context, ...pluginContext(plugin) }).flatMap(item => {
+        const toggle=typeof item.setting==='string' && field(plugin,item.setting)?.type==='toggle';
+        if(item.setting!=null&&!toggle)return [];
+        return [{...item,...(toggle?{checked:pluginSetting(plugin,item.setting)}:{}),
+          run(cx) {
+            if(!pluginEnabled(plugin))return;
+            if(toggle){setPluginSetting(plugin,item.setting,!pluginSetting(plugin,item.setting));cx?.notify();}
+            else return item.run(cx);
+          }}];
+      });
     } catch (error) { failed(plugin, name, error); return []; }
-  });
-}
-
-// Pure metadata for existing sessions, not plugin work or action permission.
-// Kept even when a plugin is off: turning it off does not end its coordinator.
-export function pluginAgentGroupFirst(group, context = {}) {
-  return PLUGINS.some(plugin=>{
-    try {return plugin.agentGroupFirst?.(group,context)===true;}
-    catch(error){failed(plugin,'agentGroupFirst',error);return false;}
   });
 }
 

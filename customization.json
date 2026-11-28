@@ -266,6 +266,7 @@
     "lib/ui.js": "src/ui/ui.js",
     "mods/custom-agents/directory.js": "src/ui/directory.js",
     "mods/custom-agents/main.js": "src/features/agents/main.js",
+    "mods/custom-agents/workspace-links.js": "src/shared/workspace-links.js",
     "mods/custom-agents/mod.json": "src/features/agents/mod.json",
     "mods/custom-agents/program-icon.js": "src/ui/program-icon.js",
     "mods/custom-agents/sidebar-scroll.js": "src/ui/sidebar-scroll.js",

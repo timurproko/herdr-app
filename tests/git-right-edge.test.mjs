@@ -17,18 +17,14 @@ function spacesInset(width,zoom) {
     near(metrics.leading,8*zoom,'Spaces badge starts 8px inside its highlight');
     near(metrics.trailing,3*zoom,'Git preserves its independent 3px inset after Crew is restyled');
     near(metrics.radius,6,'Spaces radius remains 6 logical pixels');
-    near(width*zoom-right(geometry.get(pill)),79*zoom,'Spaces Crew retains its count-and-chevron-present column');
-    near(right(geometry.get(pill)),right(geometry.get(find(tree,'space-tag-coordinator-crew-0'))),'Childless and connected Crew labels share one column');
+    const disclosure=find(tree,'space-fold-coordinator'),glyph=disclosure.kids[0];
+    near(right(geometry.get(pill)),right(geometry.get(glyph)),'Childless Crew right edge aligns with the machine chevron');
+    near(width*zoom-right(geometry.get(find(tree,'space-tag-coordinator-crew-0'))),79*zoom,'Connected Crew retains its inner label/count/disclosure grid');
     const metadata=find(tree,`space-meta-${id}`);
-    assert.equal(metadata.kids.length,3,'Childless Crew reserves both trailing rails');
-    for(const slot of metadata.kids.slice(1)) {
-      near(geometry.get(slot).width,24*zoom,'Absent controls retain their existing rail widths');
-      assert.equal(slot.kids.length,0,'No visible placeholder count or chevron');
-      for(const key of ['on_click','tab_index','role','tooltip'])assert.equal(slot.attrs[key],undefined,'Empty rail stays inert');
-    }
+    assert.equal(metadata.kids.length,1,'Childless Crew reserves no empty control rails');
     return metrics;
   });
-  assert.equal(find(tree,'space-tag-fleet-crew-0'),undefined,'Connected children have no Crew labels; parent and childless Crew use the same fixed column');
+  assert.equal(find(tree,'space-tag-fleet-crew-0'),undefined,'Connected children have no Crew labels; parent and childless labels retain their contextual alignment');
   assert.ok(find(tree,'space-branch-fleet'),'The child has its own indented connector instead');
   const parentContent=find(tree,'space-content-coordinator');assert.equal(find(parentContent,'space-meta-coordinator').kids.at(-1),find(tree,'space-fold-coordinator'),'The connected parent now reserves its far-right edge for disclosure, after Crew');
   spacesMeasurements.set(`${width}/${zoom}`,measurements[0]);

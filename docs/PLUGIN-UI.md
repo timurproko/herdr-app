@@ -381,16 +381,17 @@ in the Spaces sidebar (Crew: the space running its coordinator), drawn like a pa
 role pill. Synchronous and cheap: it runs on every draw, from live data only (`panes()`,
 `terminals()` through the plugin API). Only enabled plugins are asked; at most 3 tags each.
 
-## Existing-session group priority
+## Agents Space-mode ordering
 
-`agentGroupFirst(group, {terminals})` is a pure metadata contribution for the grouped
-Agents panel. The registry asks declarations, including disabled ones because turning
-a plugin off does not end existing sessions. Providers must use only the supplied
-snapshot: no reads, writes or action authority. Agents stably partitions complete group
-objects, promoting marked groups without changing member order, ids, folds, counts,
-selection or drag handlers. Crew marks groups containing a live terminal whose exact
-address matches a member and whose coordinator-launch metadata is present. Group names
-never establish a role. Priority mode retains its existing ordering.
+Group agents by: Space follows the displayed Spaces order, machine by machine,
+without a coordinator-priority contribution. Agents reuses the pure connected-space
+projection and existing `pluginWorkspaceLinks({presentation:true})` facts, without
+starting provider work or granting native action authority. Pinned agents keep their
+separate leading section. Same-name groups can combine within one machine, anchored
+to their earliest represented space, but never across machine blocks. Native reorders
+update the projection while group folds/counts/navigation remain independently owned.
+Group agents by: Priority retains its exact existing ordering and does not request
+attachment presentation facts. The former `agentGroupFirst` contribution is removed.
 
 ## A page of its own
 

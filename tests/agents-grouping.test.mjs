@@ -2,8 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {realUi} from './support/panel-kit.mjs';
-import {loadMod} from '../tools/plugin-harness.mjs';
-const {pluginAgentGroupFirst}=await loadMod({host:{},entry:"export {pluginAgentGroupFirst} from './plugins.js';"});
+import {projectLinkedRows} from '../src/shared/workspace-links.js';
 
 function element() {
   const node = { attrs: {}, kids: [] }; let proxy;
@@ -32,7 +31,8 @@ const list = [
 ].map((agent, seq) => ({ ...agent, pane: `p-${agent.address}`, title: `Task ${seq}`, seq }));
 let sort = 'grouped', width = 268, order;
 let paneList = [], terminalList = [], selection = null;
-let spaceList = [{ id: 'pc2/s1', name: 'a1' }];
+let spaceList = list.map(a=>({id:a.space,name:a.address.includes('/')?'a1':a.space_name,machine:a.address.includes('/')?'pc2':null}));
+let links=[],linkQueries=0;
 const calls = [], overlays = [], storage = new Map();
 const host = {
   agents: () => list, terminals: () => terminalList, panes: () => paneList, focused: () => selection,
@@ -50,7 +50,8 @@ const dependencies = {
   'gpui-base': { v_flex: element, h_flex: element },
   './ui.js': { ...realUi(element), U: {}, emptyState: element, slot: element, itemHover() {}, statusBulb: element, menuSurface: (_t, el) => el, chevron: element, menuHeading: element },
   './program-icon.js': { programIcon: element },
-  './plugins.js': { pluginAgentGroupFirst, pluginMenuItems:(name) => {
+  './workspace-links.js': {projectLinkedRows},
+  './plugins.js': { pluginWorkspaceLinks:context=>{assert.equal(context.presentation,true);linkQueries++;return links;}, pluginMenuItems:(name) => {
     assert.equal(name, 'agents.context');
     return [{id:'other',run(){throw Error('Agent clicks must not run plugin menu actions');}}];
   } },
@@ -83,12 +84,12 @@ function render() {
     rows: all.map(node => node.attrs.id?.[0]).filter(id => id?.startsWith('ag-') && !['ag-sort', 'ag-header'].includes(id)),
   };
 }
-const expected = ['t0', 't1', 'pc2/t3', 't4', 't2', 't5', 't6'];
+const expected = ['t0', 't1', 't4', 't2', 't5', 't6', 'pc2/t3'];
 let view = render();
-assert.deepEqual(view.all.filter(node => node.attrs.id?.[0]?.startsWith('sp-')).map(node => node.kids[0].kids[0]), ['a1', 'Other', 'A1', 'Pinned']);
+assert.deepEqual(view.all.filter(node => node.attrs.id?.[0]?.startsWith('sp-')).map(node => node.kids[0].kids[0]), ['a1', 'Other', 'A1', 'Pinned', 'a1']);
 assert.deepEqual(order, expected);
 assert.deepEqual(view.rows, expected.map(address => `ag-${address}`));
-assert.equal(view.byId('agent-count-sp-a1').kids[0].kids[0], '3');
+assert.equal(view.byId('agent-count-sp-a1').kids[0].kids[0], '2');
 assert.ok(nodes(view.byId('ag-pc2/t3')).some(node => node.kids.includes('pc2')));
 view.byId('ag-pc2/t3').attrs.on_click[0]();
 assert.deepEqual(structuredClone(calls.at(-1)), ['pane.focus', { pane: 'p-pc2/t3' }]);
@@ -119,10 +120,18 @@ assert.equal(overlays.length, overlayCount, 'Agent clicks never open a rename mo
 view = render();
 view.byId('sp-a1').attrs.on_click[0]({}, cx);
 view = render();
-assert.deepEqual(view.rows, ['ag-t0', 'ag-t2', 'ag-t5', 'ag-t6']);
+assert.deepEqual(view.rows, ['ag-t0', 'ag-t2', 'ag-t5', 'ag-t6', 'ag-pc2/t3']);
 assert.deepEqual(order, expected, 'Folding does not change agent navigation membership');
 view.byId('sp-a1').attrs.on_click[0]({}, cx);
 assert.deepEqual(render().rows, expected.map(address => `ag-${address}`));
+let stopped=0,notified=0;const foldCx={stop_propagation(){stopped++;},notify(){notified++;}};
+const beforeFoldActions=calls.length;
+render().byId('agent-group-fold-sp-a1').attrs.on_click[0]({},foldCx);
+assert.equal(stopped,1,'Chevron stops the parent header click');assert.equal(notified,1,'One click folds exactly once');
+assert.ok(agents.folded.has('sp-a1'));assert.deepEqual(order,expected);
+render().byId('agent-group-fold-sp-a1').attrs.on_key_down[0]({key:'enter'},foldCx);
+assert.ok(!agents.folded.has('sp-a1'),'Keyboard disclosure reopens only its group');
+assert.equal(calls.length,beforeFoldActions,'Folding does not navigate');
 width = 44; view = render();
 assert.deepEqual(view.rows, expected.map(address => `ag-${address}`));
 assert.deepEqual(order, expected); assert.equal(view.byId('sp-a1'), undefined);
@@ -157,20 +166,20 @@ const headings = view => view.all.filter(node => node.attrs.id?.[0]?.startsWith(
 const headingText = view => headings(view).map(node => node.kids[0].kids[0]);
 selection = { space: 's', tab: 'tab1', pane: 'p1', terminal: 't1', cwd: 'D:/Git/firstmate' };
 view = render();
-assert.deepEqual(headingText(view), ['firstmate', 'Git']);
-assert.deepEqual(order, ['t1', 't3', 't4', 'pc2/t5', 't2'], 'Equal shown names combine across tabs, folders and machines');
+assert.deepEqual(headingText(view), ['firstmate', 'Git', 'firstmate']);
+assert.deepEqual(order, ['t1', 't3', 't4', 't2', 'pc2/t5'], 'Equal names combine across same-machine spaces/folders, never across machines');
 const groupIds = headings(view).map(node => node.attrs.id[0]);
 selection = { space: 's', tab: 'tab2', pane: 'p2', terminal: 't2', cwd: 'D:/Git' };
 spaceList[0].name = 'Git';
 view = render();
-assert.deepEqual(headingText(view), ['firstmate', 'Git']);
+assert.deepEqual(headingText(view), ['firstmate', 'Git', 'firstmate']);
 assert.deepEqual(headings(view).map(node => node.attrs.id[0]), groupIds, 'Selection and native space naming never change folder group identities');
 headings(view)[0].attrs.on_click[0]({}, cx);
-assert.deepEqual(render().rows, ['ag-t2'], 'Folding a heading folds every agent shown under that name');
+assert.deepEqual(render().rows, ['ag-t2','ag-pc2/t5'], 'Folding one machine group does not fold the same name on another machine');
 headings(render())[0].attrs.on_click[0]({}, cx);
 terminalList[1].labels['custom.cwd'] = 'D:/Git/firstmate';
 view = render();
-assert.deepEqual(headingText(view), ['firstmate'], 'An actual cwd change moves only that agent into its new folder group');
+assert.deepEqual(headingText(view), ['firstmate','firstmate'], 'Cwd changes merge only the same-machine folder groups');
 assert.deepEqual(order, ['t1', 't2', 't3', 't4', 'pc2/t5']);
 list[1].pinned = true;
 view = render();
@@ -184,20 +193,47 @@ assert.deepEqual(headingText(view), ['Custom title', 'firstmate'], 'A manually n
 assert.deepEqual(order, ['t1', 't2', 't3', 't4', 'pc2/t5']);
 selection = { space: 's', tab: 'tab1', pane: 'p1', terminal: 't1', cwd: 'D:/Git/firstmate' };
 assert.deepEqual(headingText(render()), ['Custom title', 'firstmate'], 'Switching tabs never splits a named space');
-// Reported interleaving, multiple machines and role metadata (not group names).
-const names=['xrbuild','coordinator','.xrbuild','herdr-app','crew','another coordinator'];
-list.splice(0,list.length,...names.map((name,i)=>({address:i===5?'pc2/t6':`t${i+1}`,pane:`p${i+1}`,space:`s${i+1}`,space_name:name,title:`Task ${i}`,status:'idle',seq:i})));
-spaceList=list.map((a,i)=>({id:a.space,name:names[i],named:true}));paneList=[];
-terminalList=list.map((a,i)=>({address:a.address,state:'live',labels:i===1||i===5?{'custom.crew.home':'1'}:{}}));
-selection={pane:'p4',terminal:'t4'};agents.folded=new Set(['sp-.xrbuild']);sort='grouped';width=268;
-const expectedGroups=['coordinator','another coordinator','xrbuild','.xrbuild','herdr-app','crew'];
-view=render();assert.deepEqual(headingText(view),expectedGroups);
-assert.deepEqual(order,['t2','pc2/t6','t1','t3','t4','t5'],'Stable partition preserves both relative orders and full membership');
-assert.ok(agents.folded.has('sp-.xrbuild'));assert.ok(!view.byId('ag-t3'),'Collapse state stays on the same group id');
-assert.equal(view.byId('agent-count-sp-.xrbuild').kids[0].kids[0],'1','Folded count is unchanged');
-const before=calls.length;view.byId('ag-t4').attrs.on_click[0]({},cx);assert.equal(calls.length,before+1);assert.deepEqual(structuredClone(calls.at(-1)),['pane.focus',{pane:'p4'}]);
-// A non-coordinator Pinned group retains its relative place among other groups.
-list[0].pinned=true;view=render();assert.deepEqual(view.all.map(n=>n.attrs.id?.[0]).filter(id=>id==='pinned'||id?.startsWith('sp-')),['sp-coordinator','sp-another coordinator','pinned','sp-.xrbuild','sp-herdr-app','sp-crew']);list[0].pinned=false;
-terminalList.forEach(t=>t.labels={});assert.deepEqual(headingText(render()),names,'Names alone never promote a group; no-coordinator order is identical');
-console.log('PASS coordinator-first stable partition across machines, metadata-only classification, unchanged folds/counts/focus/pins and no-coordinator order');
-console.log('PASS: named spaces group as one; agent-owned folder grouping, focus-stable headings, same-name merging across folders and machines, folds/counts/navigation, pins and priority');
+// Deliberately interleave native machines and agent rows. Spaces displays local
+// first, then alphabetic remote machines, with connected children at their parent.
+spaceList=[
+ {id:'pc2/child2',machine:'pc2',name:'core'},
+ {id:'local-x',machine:null,name:'xrbuild'},
+ {id:'pc2/parent',machine:'pc2',name:'coordinator'},
+ {id:'local-c',machine:null,name:'coordinator'},
+ {id:'pc2/gap',machine:'pc2',name:'other'},
+ {id:'aa/x',machine:'aa',name:'xrbuild'},
+ {id:'pc2/child1',machine:'pc2',name:'herdr-app'},
+].map(s=>({...s,named:true}));
+const records=[['pc2/t-gap','pc2/gap','idle'],['t-coord','local-c','working'],['pc2/t-one','pc2/child1','done'],['aa/t-x','aa/x','idle'],['t-x','local-x','idle'],['pc2/t-parent','pc2/parent','blocked'],['pc2/t-two','pc2/child2','working'],['t-x2','local-x','idle']];
+list.splice(0,list.length,...records.map(([address,space,status],seq)=>({address,space,status,seq,pane:`p-${address}`,space_name:spaceList.find(s=>s.id===space).name,title:`Task ${seq}`})));
+paneList=[];selection=null;agents.folded=new Set(['sp-coordinator']);width=268;sort='grouped';
+terminalList=list.map(a=>({address:a.address,state:'live',labels:a.address==='t-coord'||a.address==='pc2/t-parent'?{'custom.crew.home':'1'}:{}}));
+links=['pc2/child2','pc2/child1'].map(child=>({parent:'pc2/parent',child,binding:'verified'}));
+view=render();assert.deepEqual(headingText(view),['xrbuild','coordinator','xrbuild','coordinator','core','herdr-app','other']);
+const ordered=['t-x','t-x2','t-coord','aa/t-x','pc2/t-parent','pc2/t-two','pc2/t-one','pc2/t-gap'];
+assert.deepEqual(order,ordered,'Group order follows Spaces machine blocks, not agent arrival or coordinator metadata');
+assert.equal(view.byId('agent-count-sp-xrbuild').kids[0].kids[0],'2');
+assert.ok(!view.byId('ag-t-coord'),'Local saved fold remains');assert.ok(view.byId('ag-pc2/t-parent'),'Same-named remote group is independent');
+const keys=headings(view).map(n=>n.attrs.id[0]),actions=calls.length;
+view.byId('ag-pc2/t-one').attrs.on_click[0]({},cx);assert.equal(calls.length,actions+1);assert.deepEqual(structuredClone(calls.at(-1)),['pane.focus',{pane:'p-pc2/t-one'}]);
+// Priority is its exact original urgency/time/sequence order, without querying
+// presentation links, even after native space reorder or coordinator-label edits.
+const priority=['pc2/t-parent','pc2/t-one','pc2/t-two','t-coord','t-x2','t-x','aa/t-x','pc2/t-gap'];
+sort='priority';const queried=linkQueries;view=render();assert.deepEqual(order,priority);assert.equal(linkQueries,queried);
+assert.deepEqual(view.all.map(n=>n.attrs.id?.[0]).filter(id=>id?.startsWith('sec-')),['sec-4','sec-3','sec-2','sec-1']);
+// Reorder local rows and reverse connected siblings through the native snapshot.
+[spaceList[1],spaceList[3]]=[spaceList[3],spaceList[1]];
+[spaceList[0],spaceList[6]]=[spaceList[6],spaceList[0]];
+terminalList.forEach(t=>t.labels={});view=render();assert.deepEqual(order,priority);assert.equal(linkQueries,queried,'Priority starts no attachment contribution query');
+sort='grouped';view=render();assert.deepEqual(headingText(view),['coordinator','xrbuild','xrbuild','coordinator','herdr-app','core','other']);
+assert.deepEqual([...headings(view).map(n=>n.attrs.id[0])].sort(),[...keys].sort(),'Order changes preserve group identities/folds');
+assert.deepEqual(order,['t-coord','t-x','t-x2','aa/t-x','pc2/t-parent','pc2/t-one','pc2/t-two','pc2/t-gap']);
+// Detachment follows native sibling placement, while pinned rows remain the
+// separate leading section and missing spaces stay visible at their machine tail.
+links=[];list[4].pinned=true;view=render();assert.equal(order[0],'t-x');assert.equal(view.all.find(n=>n.attrs.id?.[0]==='pinned').kids[0].kids[0],'Pinned');
+assert.deepEqual(headingText(view),['coordinator','xrbuild','xrbuild','herdr-app','coordinator','other','core']);list[4].pinned=false;
+list.push({address:'pc2/missing',pane:'p-missing',space:'pc2/unavailable',space_name:'Missing',status:'idle',seq:8,title:'Still running'});
+view=render();assert.equal(headingText(view).at(-1),'Missing');assert.equal(order.at(-1),'pc2/missing');
+assert.equal(calls.length,actions+1,'Ordering starts no native action');
+console.log('PASS Spaces-projected Agents ordering machine by machine, linked-child/live reorder, independent equal names/folds, pins/missing spaces and exact unchanged Priority');
+console.log('PASS named-space and same-machine folder grouping, focus stability, counts, fold-once controls and navigation');
