@@ -37,8 +37,8 @@ const impl = {
 };
 const host = { ...impl, hc: (...a) => impl.hc(...a), exec: (...a) => impl.exec(...a) };
 // Loaded as packaged: registry, plugin API and every plugin folder.
-const { r, f } = await loadMod({ host, modules: { 'space-color-state.js': 'src/shared/space-color-state.js' },
-  entry: 'import * as r from "./plugins.js"; import * as f from "./plugins/crew/plugin.js"; export {r,f};' });
+const { r, f, operations } = await loadMod({ host, modules: { 'space-color-state.js': 'src/shared/space-color-state.js' },
+  entry: 'import * as r from "./plugins.js"; import * as f from "./plugins/crew/plugin.js"; import * as operations from "./plugins-operations.js"; export {r,f,operations};' });
 const plugin = r.pluginById('crew');
 assert.ok(plugin, 'Registered');
 assert.equal(r.pluginEnabled(plugin), false, 'Off by default');
@@ -314,6 +314,19 @@ const failedProbe = [/'root=' \+ \$root/, () => ran('', 1, 'Inspection failed')]
 psRules.unshift(failedProbe);
 same([(await statuses()).crew.status, (await statuses()).crew.statusLabel], ['error', undefined], 'Probe failure is an inspection error, not an update claim');
 psRules.shift();
+{
+  const pre = plugin.prerequisites.find(pre => pre.id === 'crew');
+  const context = operations.pluginMachineContext(plugin, { machine: 'peer', task: { sleep: async () => {} } });
+  hcCalls.length = 0;
+  const result = await operations.checkPluginUpdate(plugin, pre, context, { sleep: async () => {} });
+  assert.equal(result.update, true);
+  assert.equal(result.fix.run, s.crew.fix.run, 'Updates gets the identical existing Update callback');
+  assert.equal(r.pluginSetting(plugin, 'machine'), 'pc2', 'Captured checks do not select the Settings machine');
+  const commands = hcCalls.filter(args => args[0] === 'exec');
+  assert.ok(commands.every(args => args[1] === '--on' && args[2] === 'peer'));
+  assert.equal(commands.length, 2, 'Update-only read probes platform and Crew, not tool inventory, accounts, projects or pool settings');
+  assert.ok(commands.every(args => !/session-dir|pool --json|project list/.test(args.at(-1))));
+}
 ran2.length = 0; await s.crew.fix.run(r.pluginContext(plugin)); same(ran2, ['install'], 'Update runs the same clone-or-fast-forward script');
 crew.latest = 'bbbbbbbbbbbb';
 crew.latest = ''; assert.equal((await statuses()).crew.status, 'ready', 'An unreadable remote is not an update');

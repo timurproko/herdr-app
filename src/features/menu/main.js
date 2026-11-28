@@ -12,7 +12,7 @@ import { openSettings } from './settings-dialog.js';
 import { inspectTabMove, tabMoveDestinations, requestTabMove } from './tab-moves.js';
 import { footerItems } from './sidebar-footer.js';
 import { customizationUpdateAvailable } from './customization-updates.js';
-import { pluginUpdateAvailable } from './plugin-updates.js';
+import { pluginUpdateAvailable } from './plugins-updates.js';
 import { divider, dividerHeight } from './modal-layout.js';
 import { spaceColorPicker, setSpaceColor, selectedColorIndex, colorAt as colorValueAt, COLOR_COUNT } from './space-colors.js';
 import { requestInlineTabRename } from './tab-rename.js';

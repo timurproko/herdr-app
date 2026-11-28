@@ -113,9 +113,21 @@ discovery. Its same check receives `updateCheck: true` (skip unrelated setup/lis
 and returns `update: true` only for a confirmed pending update, `false` for confirmed
 current/absent tools, or `null`/omitted for unknown evidence. A pending result retains
 its existing `fix.run` update action; missing-tool installation is never a pending update.
-Discovery captures machine context without changing saved machine settings and runs
+Crew's tool and Trello's runtime declare this capability; Trello retains its existing
+enabled-plugin and identity-bound runtime-install restrictions. Discovery captures
+machine context without changing saved machine settings and runs
 read-only checks through bounded execution admission. Unknown reads preserve confirmed
 pending facts; disconnected machines do not contribute notification dots.
+
+The ordinary requirement Update and Updates' batch share `plugins-operations.js`:
+check, captured context, fix callback, settling recheck and update-action ownership.
+`plugins-updates.js` owns discovery/connected-machine projection and batch ordering;
+the Settings section uses existing row/heading/button components. Check tickets
+reject older result publications across entrypoints. Runtime availability, read tickets,
+progress and uncertain-action guards use `custom.plugin-updates`,
+`custom.plugin-update-reads` and `custom.plugin-update-actions`, outside portable
+preferences. A successful command still needs a fresh authoritative check to clear
+pending state; no check, reconnect or abandoned Task automatically replays a write.
 
 - `fix: { label, busyLabel?, statusLabel?, primary?, manual?, requiresEnabled?, confirm?, run(cx) }`:
   the row's button. `manual` fixes are left out of Install all; `confirm: { title, detail, label }`

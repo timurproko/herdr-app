@@ -27,7 +27,8 @@ import { initPermissions, reloadPermissions, corePage, coreEditorActions } from 
 
 import { M, sectionAction, sectionRow, modalFooter } from './modal-layout.js';
 import { initCustomizationUpdates, refreshCustomizationUpdates, customizationUpdateAvailable, customizationUpdateSnapshot } from './customization-updates.js';
-import { refreshPluginUpdates, pluginUpdateAvailable } from './plugin-updates.js';
+import { refreshPluginUpdates, pluginUpdateAvailable } from './plugins-updates.js';
+import { pluginUpdateSection } from './plugins-update-section.js';
 import { customizationUpdateRow } from './customization-update-row.js';
 import { CUSTOMIZATION_UPDATE_KEY, updateSentence } from './customization-update-model.js';
 import { initUpdateCheckFeedback, updateCheckSlot } from './update-check-feedback.js';
@@ -918,7 +919,8 @@ export default class Settings extends View {
         .when(Boolean(app[1]), (el) => el.child(app[1]))))
       .child(this.row(t, `herdr-core ${c.version ?? ""}`, core[0], core[1] ?? div()))
       .child(customizationUpdateRow(this, t))
-      .child(div().pt(12).text_size(12.5).line_height("18px").text_color(t.dim).child("Herdr looks for both every hour and tells you in the corner. herdr-core runs your terminals, so they keep running through its updates."));
+      .child(div().pt(12).text_size(12.5).line_height("18px").text_color(t.dim).child("Herdr looks for both every hour and tells you in the corner. herdr-core runs your terminals, so they keep running through its updates."))
+      .child(pluginUpdateSection(this, t));
   }
 
 

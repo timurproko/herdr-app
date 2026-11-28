@@ -109,11 +109,16 @@ seed();const staleConfigure=find(render(),'st-plugin-fix-git-relay');registry.se
 {
   view.pluginSettling={};jobs.length=0;
   const real=git.prerequisites.find(pre=>!pre.section),id=real.id,key=`git:${id}`;
-  const update={...real,status:'missing',statusLabel:'Outdated',fix:{label:'Update',statusLabel:'Updating',run:async()=>actions.push('update')}};
+  const update={...real,updates:true,status:'missing',statusLabel:'Outdated',fix:{label:'Update',statusLabel:'Updating',run:async context=>{
+    assert.equal(context.machine,view.settingsMachine??null,'The original Plugins button uses captured context');
+    assert.ok(state['custom.plugin-update-actions']?.[JSON.stringify([context.machine,git.id,id])],'The original button claims the shared update executor');
+    actions.push('update');
+  }}};
   view.pluginChecks.git={loading:false,items:[update]};
   const text=node=>JSON.stringify(node),rail=()=>text(find(render(),`st-plugin-git-${id}-status-rail`)??{});
   click(`st-plugin-fix-git-${id}`);assert.ok(rail().includes('Updating'),'Running: Updating');
   await jobs.shift()(cx);assert.equal(view.pluginFixing,null);assert.equal(view.pluginSettling[key],true,'The ended action waits for its re-check');
+  assert.deepEqual(Object.keys(state['custom.plugin-update-actions']),[],'Known completion releases only its shared action claim');
   assert.ok(jobs.length>=1,'The fix queued a re-check');
   assert.ok(rail().includes('Updating')&&rail().includes('Update…'),'Between the action and the re-check the row still reads Updating, with the busy button');
   const before=jobs.length;find(render(),`st-plugin-fix-git-${id}`)?.attrs.on_click?.[0]({},cx);assert.equal(jobs.length,before,'The button cannot be pressed again meanwhile');

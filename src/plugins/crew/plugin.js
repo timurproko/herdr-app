@@ -87,7 +87,9 @@ const json = text => { try { return JSON.parse(String(text ?? '').trim()); } cat
 // { code, stdout, stderr, missing } — missing: the program is not on that machine's PATH.
 export async function on(machine, argv, { timeout = 60, received = () => {}, decode = decodeBase64, request } = {}) {
   const args = ['exec', ...(machine ? ['--on', machine] : []), '--timeout', String(timeout), '--json', '--', ...argv];
-  const r = await (request ? request(()=>hc(args), {timeout:(timeout+2)*1000}) : hc(args));
+  let r;
+  try { r = await (request ? request(()=>hc(args), {timeout:(timeout+2)*1000}) : hc(args)); }
+  catch (error) { throw Object.assign(new Error(String(error?.message ?? error)), { uncertain: true }); }
   // A native watchdog interrupt is uncatchable. Publish receipt before ANY
   // synchronous JSON/Base64 work, so lifecycle recovery does not need finally.
   received();
@@ -95,9 +97,9 @@ export async function on(machine, argv, { timeout = 60, received = () => {}, dec
   const out = json(r?.stdout) ?? json(r?.stderr);
   if (out?.error) {
     if (out.error.kind === 'spawn_failed') return { code: null, stdout: '', stderr: String(out.error.message ?? ''), missing: true };
-    throw new Error(String(out.error.message || out.error.kind || 'hc exec failed'));
+    throw Object.assign(new Error(String(out.error.message || out.error.kind || 'hc exec failed')), { uncertain: true });
   }
-  if (!out || typeof out.code !== 'number' && !out.timed_out) throw new Error(String(r?.stderr || r?.stdout || 'hc exec failed').trim().slice(0, 300));
+  if (!out || typeof out.code !== 'number' && !out.timed_out) throw Object.assign(new Error(String(r?.stderr || r?.stdout || 'hc exec failed').trim().slice(0, 300)), { uncertain: true });
   const stdout = await decode(out.stdout), stderr = await decode(out.stderr);
   if (out.timed_out) return { code: null, stdout, stderr: stderr || `Timed out after ${timeout} s.`, missing: false, timedOut: true };
   return { code: out.code, stdout, stderr, missing: false };
@@ -174,7 +176,7 @@ function toolStatus(r, { min = null, optional = false, label = '' } = {}) {
 
 async function mustSucceed(r, what) {
   if (r.missing) throw new Error(`${what}: PowerShell is not available on that machine.`);
-  if (r.code !== 0) throw new Error(tail(r.stderr || r.stdout) || `${what} failed (exit ${r.code}).`);
+  if (r.code !== 0) throw Object.assign(new Error(tail(r.stderr || r.stdout) || `${what} failed (exit ${r.code}).`), { uncertain: Boolean(r.timedOut) });
 }
 
 const ps = (cx, script, timeout = CHECK_TIMEOUT) => on(machineOf(cx), ['powershell', '-NoProfile', '-NonInteractive', '-Command', script], { timeout, request:cx.request });

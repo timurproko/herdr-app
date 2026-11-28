@@ -10,7 +10,7 @@ import { initPalettePolicy } from './palette-startup.js';
 import { pluginEvent } from './plugins.js';
 import { reorder, groupedInsertion } from './reorder.js';
 import { initCustomizationUpdates, customizationUpdateAvailable, observeCustomizationUpdates, invalidateCustomizationUpdates } from './customization-updates.js';
-import { refreshPluginUpdates, pluginUpdateAvailable } from './plugin-updates.js';
+import { refreshPluginUpdates, pluginUpdateAvailable } from './plugins-updates.js';
 import { theme, run, props, window, shared, setShared, updates, layout, openOverlay, closeOverlay } from "./host.js";
 
 function find(node, id) {

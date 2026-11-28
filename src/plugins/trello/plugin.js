@@ -10,7 +10,7 @@ export default {
       live: {state: accessState, set: setAccess}, about: 'All configured machines'},
   ],
   prerequisites: [
-    {id: 'runtime', label: 'Trello runtime', check: runtimeStatus},
+    {id: 'runtime', updates: true, label: 'Trello runtime', check: runtimeStatus},
     {id: 'local-setup', label: 'Account', check: localStatus,
       saved: {
         replace: true,

@@ -43,8 +43,9 @@ const realFiles = {
   './settings-back.js': 'src/ui/settings-back.js',
   './settings-dialog.js': 'src/ui/settings-dialog.js',
   './customization-updates.js': 'src/shared/customization-updates.js',
-  './plugin-updates.js': 'src/shared/plugin-updates.js',
-  './plugin-operations.js': 'src/shared/plugin-operations.js',
+  './plugins-updates.js': 'src/shared/plugins-updates.js',
+  './plugins-update-section.js': 'src/features/settings/plugins-update-section.js',
+  './plugins-operations.js': 'src/shared/plugins-operations.js',
   './settings-requests.js': 'src/shared/settings-requests.js',
   './customization-update-model.js': 'src/shared/customization-update-model.js',
   './customization-update-row.js': 'src/features/settings/customization-update-row.js',
@@ -77,7 +78,7 @@ async function mount(kind, props) {
     Input: {}, InputState: { new: () => ({ on() {}, value: () => '' }) }, Popover: {}, Scrollbar: { vertical: element }, ScrollHandle: { new: () => ({ scroll_to_item() {} }) },
     Popup: { new: (id, trigger) => element().id(id).child(trigger) } };
   const values = { liveTheme: host.theme, pluginIsEnabled: () => true, pluginTextOpen: () => false,
-    PLUGINS: [updatePlugin], pluginEnabled: () => true, pluginContext: () => ({ setting: () => null }),
+    PLUGINS: [updatePlugin], pluginEnabled: () => true, pluginSetting: () => null, pluginContext: () => ({ setting: () => null }),
     checkPlugin: async (plugin, context) => Promise.all(plugin.prerequisites.map(async pre => ({ ...pre, ...await pre.check(context) }))),
     pluginEvent(name,context){if(name==='updates.watch')subscription.watchUpdates({...context,enabled:true,setting:()=> 'https://relay.test'});},
     M: { bodyInset: 16 }, sectionRow: (_t, el) => el, sectionStack: (_t, el) => el, divider: () => element(), dividerHeight: () => 1 };
@@ -116,7 +117,7 @@ async function mount(kind, props) {
     copy.view.init({}, copy.cx);
   } else copy.view.init({}, copy.cx);
   copy.api = cache.get('./customization-updates.js')?.namespace;
-  copy.pluginApi = cache.get('./plugin-updates.js')?.namespace;
+  copy.pluginApi = cache.get('./plugins-updates.js')?.namespace;
   copy.render(); return copy;
 }
 async function settle() {
@@ -138,6 +139,10 @@ await settle();
 // Different live layout widths for the two footer roots, as two windows could use.
 compact.render = () => duringRender(() => { const before = width; width = 44; compact.tree = compact.view.render(compact.cx); compact.renders++; width = before; });
 compact.render();
+const updateBody = duringRender(() => settings.view.updates(theme));
+assert.equal(updateBody.kids.at(-1).attrs.id[0], 'st-plugin-updates', 'Plugins follows the complete Herdr block');
+assert.ok(updateBody.kids.at(-2).kids.includes('Herdr looks for both every hour and tells you in the corner. herdr-core runs your terminals, so they keep running through its updates.'), 'native explanation remains immediately below its three rows');
+assert.equal(find(updateBody, 'st-update-plugins'), undefined, 'no Update action when nothing is pending');
 const settingsEntry = () => {
   const index = menu.view.list().findIndex(it => it[7] === 'settings');
   return find(menu.tree, `mi-${index}`);
