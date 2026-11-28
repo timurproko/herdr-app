@@ -6,13 +6,13 @@ Git stage and verdict controls SHALL share a tight width equal to the longest su
 #### Scenario: Common geometry across captions
 - **WHEN** ordinary or coordinator rows show Build, Build 2 through Build 99, Review, Approved or another fixed verdict such as Changes requested at 100% or 130% zoom
 - **THEN** all stage and verdict controls use the same width, with the longest supported caption retaining exactly 6 logical pixels on either side and shorter captions centred
-- **AND** the baseline accounts for supported captions even when the longest fixed caption is not currently displayed, without restoring an extra-wide arbitrary minimum
+- **AND** the baseline accounts for every supported fixed caption and every accepted Build round length even when absent, without extra width beyond the longest natural caption and its padding
 - **AND** hover, focus and click share that box without tooltip or a changed right rail, title reservation or block height
 
 #### Scenario: Rare longer round
 - **WHEN** a supported Build caption contains more than two round digits
-- **THEN** the common sizing accommodates its full caption with normal side padding while keeping every stage and verdict right anchored and equally wide in that presentation
-- **AND** sizing does not reserve speculative extra round digits or change the accepted round metadata or visible wording
+- **THEN** the common width already accommodates the longest accepted safe-integer round caption with normal side padding, and every stage and verdict stays equally wide and right anchored
+- **AND** switching between statuses, missing round data and any accepted round never changes that width or the accepted round metadata and wording
 
 #### Scenario: Long title and retained presentations
 - **WHEN** long-title rows appear in ordinary, coordinator, pinned, scrolling, probe or ghost presentations at either zoom

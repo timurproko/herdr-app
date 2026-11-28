@@ -50,7 +50,7 @@ export const specs=${process.argv.includes('--sizing')}?[
  {n:5,title:'Reviewer stays on the base branch',labels:['🤖 Review'],kind:'review'},
  {n:6,title:'Approved while checks are pending',labels:['Approved'],kind:'ship'},
  {n:7,title:'Changes requested verdict',labels:[],kind:'ship',ended:true,verdict:'CHANGES_REQUESTED',state:'CLOSED'},
- {n:8,title:'Rare longer round grows only its own box',labels:['Build'],kind:'ship',round:'88888888888888'}
+ {n:8,title:'Longest supported round keeps every button the same width',labels:['Build'],kind:'ship',round:'8888888888888888'}
 ]:[
  {n:1,title:'Initial build without a managed label',labels:[],kind:'ship'},
  {n:2,title:'Plan only, awaiting approval',labels:[],kind:'ship',draft:true},
@@ -83,7 +83,7 @@ export default class Fixture extends Changes {
  stageChip(t,pr,...args){const node=super.stageChip(t,pr,...args);return node?.on_size_change(size=>setShared('fixture.box.'+mode+'.'+pr.number,{...size,caption:this.stageDescriptor(pr)?.label.name})).on_mouse_move(event=>setShared('fixture.stage.hover.'+mode,{number:pr.number,bounds:event.bounds}));}
  verdictChip(t,pr,...args){return super.verdictChip(t,pr,...args).on_size_change(size=>setShared('fixture.box.'+mode+'.verdict',{...size,caption:'Changes requested'}));}
  openPull(pr){setShared('fixture.stage.open.'+mode,pr.number);}
- render(cx){const t=theme();return div().size_full().bg(t.background).flex().flex_col().child(div().h(38).px(8).text_size(13).child((mode==='coordinator'?'Coordinator':'Ordinary / '+(this.phase??'ordinary'))+' · synthetic PR stage proof · ${zoom*100}%')).child(div().flex_1().min_h(0).flex().flex_col().overflow_y_scrollbar().when(this.phase==='mixed',el=>el.w(390)).child(mode==='ordinary'?this.renderPulls(t):this.repositorySection(t,this.taskSections([{repo:'fixture/repo',rows:this.visibleRows??this.rows}],'synthetic-home').sections[0],'synthetic-home',this.selectedTaskWindow)));}
+ render(cx){const t=theme();return div().size_full().bg(t.background).flex().flex_col().child(div().h(38).px(8).text_size(13).child((mode==='coordinator'?'Coordinator':'Ordinary / '+(this.phase??'ordinary'))+' · synthetic PR stage proof · ${zoom*100}%')).child(div().flex_1().min_h(0).flex().flex_col().overflow_y_scrollbar().when(this.phase==='mixed',el=>el.w(390)).child(mode==='ordinary'?this.renderPulls(t):this.repositorySection(t,this.taskSections([{repo:'fixture/repo',rows:this.visibleRows??this.rows}],'synthetic-home').sections[0],'synthetic-home',this.selectedTaskWindow))).child(this.stageBoxProbe?.());}
 }`);
 }
 const app=args=>execFileSync(appBin,args,{env,encoding:'utf8',timeout:20000}),sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -128,10 +128,7 @@ try {
   for(const mode of ['ordinary','coordinator']){
    const box=n=>receipt.geometry['fixture.box.'+mode+'.'+n];
    for(const n of [1,2,3,4,5,6,'verdict',8])assert.ok(Math.abs(box(n).height-18*zoom)<=1);
-   assert.ok(box(1).width<box(5).width,'Build fits more tightly than Review');
-   assert.ok(box(5).width<box(6).width,'Review fits more tightly than Approved');
-   assert.ok(box(6).width<box('verdict').width,'Approved does not inherit the longer verdict width');
-   assert.ok(box(8).width>box(4).width,'Longer round grows only itself');
+   for(const n of [1,2,3,4,5,6,'verdict'])assert.ok(Math.abs(box(n).width-box(8).width)<=1,'Every caption shares the longest supported round/verdict width');
   }
  }
 }finally {

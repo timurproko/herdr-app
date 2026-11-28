@@ -950,11 +950,36 @@ export default class Changes extends View {
     return element;
   }
 
+  stageBoxWidth() {
+    return this.stageBoxWidths?.get(settings().zoom>0?settings().zoom:1)??0;
+  }
+
+  stageBoxProbe() {
+    const zoom=settings().zoom>0?settings().zoom:1;
+    this.stageBoxWidths??=new Map();
+    if(this.stageBoxWidths.has(zoom))return null;
+    // crew.round accepts safe integers below MAX_SAFE_INTEGER: at most 16
+    // digits. Use a valid widest-digit round, not the currently visible round.
+    // Measure intrinsic text only: an allocated/stretch width made the old
+    // common boxes too wide. No extra minimum beyond the existing 6px padding.
+    const captions=['Build 8888888888888888','Review','Approved','Changes requested'];
+    return h_flex().id(`pr-stage-box-probes-${zoom}`).absolute().left(0).top(0).w(0).h(0).overflow_hidden().invisible()
+      .child(v_flex().id(`pr-stage-box-measure-${zoom}`).flex_none().items_start().text_size(U.meta).line_height('18px')
+        .children(captions.map(caption=>div().h(18).px(6).flex_none().whitespace_nowrap().child(caption)))
+        .on_size_change((size,cx)=>{
+          if(!(size.width>0)||(settings().zoom>0?settings().zoom:1)!==zoom||!this.shown())return;
+          if(this.stageBoxWidths.get(zoom)===size.width/zoom)return;
+          this.stageBoxWidths.set(zoom,size.width/zoom);
+          if(this.stageBoxWidths.size>8)this.stageBoxWidths.delete(this.stageBoxWidths.keys().next().value);
+          cx.notify();
+        }));
+  }
+
   stageChip(t,pr,interactive=true,probe=false,descriptor=this.stageDescriptor(pr)) {
     if(!descriptor)return null;
     const color=pr.stage==='approved'?t.ansi2:descriptor.role==='review'?t.ansi5:t.ansi3;
     const element=div().id(`${probe?'probe-':interactive?'':'swap-'}pr-stage-${pr.key??pr.number}`)
-      .h(18).px(6).flex_none().flex().items_center().justify_center().rounded(U.insetRadius)
+      .h(18).min_w(this.stageBoxWidth()).px(6).flex_none().flex().items_center().justify_center().rounded(U.insetRadius)
       .bg(t.raised).text_color(color).text_size(U.meta).overflow_hidden()
       .child(div().h(18).min_w(0).overflow_hidden().whitespace_nowrap().child(descriptor.label.name));
     return this.stageInteraction(element,t,pr,interactive,probe,descriptor);
@@ -962,7 +987,7 @@ export default class Changes extends View {
 
   verdictChip(t,pr,id,caption,interactive,probe) {
     const descriptor=this.stageDescriptor({...pr,stage:'approved'});
-    const element=div().id(id).h(18).px(6).rounded(U.insetRadius).bg(t.raised)
+    const element=div().id(id).h(18).min_w(this.stageBoxWidth()).px(6).rounded(U.insetRadius).bg(t.raised)
       .whitespace_nowrap().text_size(U.meta).text_center().text_color(pr.review==='approved'?t.ansi2:t.ansi1).child(caption);
     return this.stageInteraction(element,t,pr,interactive,probe,{...descriptor,verdict:pr.review});
   }
@@ -1187,8 +1212,8 @@ export default class Changes extends View {
           .child(div().id(groupId('check-icon', probe)).size(U.tinyIcon).flex_none().relative().top(1).flex().items_center().justify_center().child(icon.flex_none()))
           .child(div().flex_none().whitespace_nowrap().underline().child(pr.checks.label));
       }}] : []),
-      ...(pr.review ? [{kind:'review', measureKey:pr.review,  scopedTooltip:true, render:(_short, probe) => this.verdictChip(t,pr,groupId('review',probe),presentation.review,!ghost&&!probe,probe)}] : []),
-      ...(labels.length ? [{kind:'labels', trailing:true, scopedTooltip:Boolean(stage), tooltip:labelNames, omitted:presentation.omittedLabels, measureKey:presentation.labelKey,  render:(_short, probe, tooltip) => h_flex().id(groupId('labels', probe)).min_w(0).h(18).gap(4).items_center().justify_end().overflow_hidden()
+      ...(pr.review ? [{kind:'review', measureKey:`${pr.review}\0${this.stageBoxWidth()}`,  scopedTooltip:true, render:(_short, probe) => this.verdictChip(t,pr,groupId('review',probe),presentation.review,!ghost&&!probe,probe)}] : []),
+      ...(labels.length ? [{kind:'labels', trailing:true, scopedTooltip:Boolean(stage), tooltip:labelNames, omitted:presentation.omittedLabels, measureKey:`${presentation.labelKey}\0${this.stageBoxWidth()}`,  render:(_short, probe, tooltip) => h_flex().id(groupId('labels', probe)).min_w(0).h(18).gap(4).items_center().justify_end().overflow_hidden()
         .children(labels.map((label,index)=>label.stage?this.stageChip(t,pr,!ghost&&!probe,probe,stage):this.labelPill(t,label,`${groupId('label',probe)}-${index}`)
           .when(Boolean(stage&&!probe&&tooltip),el=>el.tooltip(tooltip))))}] : []),
     ], ['review', 'labels']);
@@ -1786,6 +1811,7 @@ export default class Changes extends View {
       // always re-query without this frame-local snapshot before granting focus.
       this.agentPresentation=this.shown()?this.agentLinks?.presentationSnapshot?.():null;
       const tree=this.renderPart('panel',()=>this.renderPanel(cx));
+      if(this.shown()){const probe=this.stageBoxProbe();if(probe)tree.child(probe);}
       this.renderAttempt=null;this.agentPresentation=null;
       return tree;
     } catch(error) { this.renderAttempt=null;this.agentPresentation=null;throw error; }

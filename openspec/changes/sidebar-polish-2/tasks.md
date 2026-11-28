@@ -8,13 +8,14 @@
 
 ## 2. Git stage and verdict buttons share tight longest-caption sizing
 
-- [ ] 2.1 Introduce common caption-derived sizing in Git's stage/verdict controls only, preserving existing measurement guards and single-element verdict structure; verify the longest caption has exactly 6px side padding and shorter captions are centred in tests/git-stage-box-geometry.test.mjs.
-- [ ] 2.2 Cover fixed captions, Build rounds 2–99 and supplied longer rounds across ordinary/coordinator, visible/probe/ghost presentations at 100%/130%; run the focused geometry, stage interaction and mounted render-budget fixtures without relaxing existing row or builder limits.
-- [ ] 2.3 Update the native sizing fixture and README, docs/ARCHITECTURE.md and docs/TESTING.md descriptions that promise own-caption widths; confirm Git headers, reads, cache/reveal and pin motion remain outside the diff.
+- [x] 2.1 Introduce common caption-derived sizing in Git's stage/verdict controls only, preserving existing measurement guards and single-element verdict structure; verify the longest caption has exactly 6px side padding and shorter captions are centred in tests/git-stage-box-geometry.test.mjs.
+- [x] 2.2 Cover fixed captions, Build rounds 2–99 and supplied longer rounds across ordinary/coordinator, visible/probe/ghost presentations at 100%/130%; run the focused geometry, stage interaction and mounted render-budget fixtures without relaxing existing row or builder limits.
+- [x] 2.3 Update the native sizing fixture and README, docs/ARCHITECTURE.md and docs/TESTING.md descriptions that promise own-caption widths; confirm Git headers, reads, cache/reveal and pin motion remain outside the diff.
 
-## 3. Crew contributes a default-on Spaces label toggle
+## 3. Crew contributes a default-on Spaces label toggle with contextual alignment
 
 - [ ] 3.1 Declare Crew's hidden default-true label-visibility setting and generic Show icons menu contribution; verify enabled-only checked rows, setting persistence and disabled callback refusal in focused registry/Crew fixtures.
 - [ ] 3.2 Compose plugin entries through Spaces' existing checked menu rows and include them in popup height; verify row order, check updates, menu staying open and unchanged Machine status/Worktree icon toggles.
 - [ ] 3.3 Scope Crew tag suppression to Spaces queries without removing attachment/count/disclosure or terminal-pane Crew badges; cover local/remote, connected/independent and plugin off/on cases in focused Spaces/tag fixtures.
-- [ ] 3.4 Update README and plugin contribution documentation for the new menu entry and its presentation-only scope; run only directly affected Spaces, Crew and plugin-boundary tests and record any remaining native pixel-validation gap.
+- [ ] 3.4 Remove blank count/disclosure rails on childless Crew rows and align label right edges with the machine-chevron column; update PR 103 assertions in Spaces layout and Git right-edge tests at 100%/130%, retaining the existing parent grid when children exist.
+- [ ] 3.5 Update README and plugin contribution documentation for the new menu entry and its presentation-only scope; run only directly affected Spaces, Crew and plugin-boundary tests and record any remaining native pixel-validation gap.

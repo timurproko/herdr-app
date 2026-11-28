@@ -9,7 +9,8 @@ Agents group headers lack the small chevron hover used by Spaces, Git stage/verd
 - Give Agents group chevrons Spaces' small square hover/focus treatment while preserving header folding, counts, status and group order.
 - Give Git stage/verdict controls one tight common width derived from the longest supported caption plus the existing 6px side padding, with shorter captions centred; change sizing only.
 - Let the enabled Crew plugin contribute a checked-by-default Crew label entry to Spaces' existing Show icons menu, hiding only its space-row label when unchecked.
-- Replace the caption-sized Git box requirement introduced by PR 103; preserve the separate ongoing Git work in PRs 104 and 110.
+- Place a childless space's Crew label at the machine-chevron column without empty count/disclosure reservations; retain the inner grid when children exist, as additionally approved during implementation.
+- Replace PR 103's caption-sized Git boxes and fixed childless Crew-label column; preserve the separate ongoing Git work in PRs 104 and 110. Common Git width covers every supported caption and accepted round length, not current statuses.
 
 ## Capabilities
 

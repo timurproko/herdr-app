@@ -28,24 +28,25 @@ capacity admission/retry, retained facts, batching and captured kind acknowledge
 
 `node --experimental-vm-modules tests/git-stage-box-geometry.test.mjs` checks
 ordinary/coordinator and visible/ghost/probe geometry at 100%/130%, all rounds 2–99,
-long-round local growth, centred captions and unchanged title/right-rail/row geometry.
+stable longest-supported-caption width, centred captions and unchanged title/right-rail/row geometry.
 The existing full row geometry and stage interaction fixtures remain independent.
 `tests/agents-grouping.test.mjs` additionally exercises the real Crew/registry
 metadata contribution with interleaved coordinator groups on several machines,
 no-coordinator and misleading-name cases, and unchanged folds/counts/focus/pins.
 Verdict boxes yield whole before labels on real overflow, rather than shrinking
-their hit target. Stage and verdict boxes fit each caption plus 6px side padding;
-there is no shared maximum-width probe or cache.
+their hit target. Stage and verdict boxes share the longest supported caption's width plus 6px
+side padding, including all accepted round lengths independently of current rows.
+A bounded panel-level intrinsic probe keeps per-row elements and builder limits unchanged.
 
 Disposable pixel proof (explicit opt-in, output outside the checkout):
 `HERDR_APP_BIN=<verified-exe> node tests/features/pr-stage-native.mjs --run --sizing --zoom 1 --output <outside>`;
 repeat with `--zoom 1.3` and add `--baseline <before-commit>` for paired pictures.
 The existing fixture still supports its original non-sizing pointer scenarios.
 The sizing mode uses synthetic agents/PRs, including a long title, Build 10/99,
-Changes requested and a rare long round. Sizing assertions now require Build,
-Review, Approved and Changes requested to have their own increasing widths while
-retaining 18px height (with native zoom rounding); a long round grows independently.
-Older common-width receipts describe the superseded presentation, not current proof.
+Changes requested and the longest supported round. Sizing assertions require Build,
+Review, Approved, Changes requested and every supported round length to share one
+tight common width while retaining 18px height (with native zoom rounding).
+Older caption-sized or extra-wide common-width receipts are not current proof.
 Receipts record geometry, screenshots, checksum provenance and confirmed disposable
 App/Core shutdown. Failed exploratory frames are not accepted proof.
 

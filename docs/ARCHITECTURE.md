@@ -516,8 +516,11 @@ owner action; Review targets the reviewer. Common interaction decoration provide
 hover, focus, Enter/Space and pointer handling without verdict tooltips or PR-link
 fallback. Missing/ended/disconnected targets are dim and inert. The original
 single-element verdict projection keeps its row element count and fixed height.
-Stage and verdict boxes fit their own captions with 6px side padding and 18px
-height; there is no shared widest-caption minimum or width-probe cache.
+Stage and verdict boxes share a tight caption-derived width with 6px side padding
+and 18px height. One intrinsic panel-level probe per zoom measures the supported
+fixed captions and the widest 16-digit safe-integer Build round; it never derives
+width from displayed statuses or a stretched container. The bounded zoom cache
+adds no per-row probe elements, verdict wrappers or animation scheduler.
 
 Git's optional `crew.round` is Crew's current work/review round, initialized to
 1 and incremented on actual requested-changes reviews. The stage caption uses
