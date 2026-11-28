@@ -339,7 +339,7 @@ export default class Agents extends View {
           .hover((s) => s.bg(itemHover(t, a.focused)))
           .on_click(() => run("pane.focus", { pane: a.pane }))
           .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.menu(a); })
-          .child(div().w(i >= 9 ? 12 : 8).flex_none().whitespace_nowrap().text_center().text_size(i >= 9 ? 10 : U.font).text_color(labelColor).child(String(i + 1)))
+          .child(div().w(i >= 9 ? 12 : 8).flex_none().whitespace_nowrap().text_center().text_size(10).text_color(labelColor).child(String(i + 1)))
           .child(h_flex().w(14).flex_none().items_center().justify_center().child(this.status(t, a, true)));
       }
       const when = this.since(a);

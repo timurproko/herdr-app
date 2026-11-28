@@ -1775,6 +1775,11 @@ including 130%. Mixed Working/Done states and 1/10/100 counts share a dot column
 9/10 and 99/100 transitions retain it. Expanded counts keep the same right-aligned
 32px slot; time and chevron rails stay unchanged. Resolving Done's horizontal
 margins is essential: the regression fails on the original mixed-state renderer.
+Compact Agents indices 1–12 additionally use one 10px text size at 100%/130%,
+with the existing 8px/12px number slots, 2px gap and 14px status rail unchanged in
+both sorting modes and 44px/76px sidebars. `spaces-worktree-layout.test.mjs` checks
+actual compact Spaces badges 1/9/10/11/12: they already share a fixed 10px font and
+16px centred badge, so that renderer needs no change.
 These are synthetic box assertions, not native pixels.
 
 The explicitly opt-in Windows command

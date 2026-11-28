@@ -1280,7 +1280,10 @@ Priority sorting is unchanged. The sort icon has no hover tooltip; its accessibl
 label and sort menu remain available. Group counts are right-aligned in a fixed
 three-digit slot, even when expanded. Collapsed group status dots share one column
 across Working and Done states; agent-row dots keep their separate rightmost rail
-(shared with the group chevrons), without moving the time text.
+(shared with the group chevrons), without moving the time text. In the compact
+sidebar, every agent index uses the same 10px text size, including 1–9; number-slot
+widths and status-dot placement are unchanged. Spaces badges already use 10px for
+all numbers and retain their existing size and position.
 
 ## A1 session names
 
