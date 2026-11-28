@@ -16,13 +16,18 @@ export function checkPanelPinStates(home,app) {
 export const spaces=()=>[{id:'fixture-space',active:true,machine:null,tabs:[{id:'fixture-tab',active:true}]}];
 export const panes=()=>[];export const terminals=()=>[];export const focused=()=>null;
 export const props=()=>null;
-export const shared=key=>key==='layout'?'Custom':key==='custom.panel.tabs'?{version:1,default:{open:true,view:'files'},pins:globalThis.fixturePinned?{'fixture-tab':{space:'fixture-space',open:true,view:'${feature}'}}:{}}:null;
+export const shared=key=>key==='layout'?'Custom':key==='custom.panel.tabs'?{version:2,default:{open:true,view:'files'}}:null;
 export const layout=()=>({id:'panel',children:[{id:'panel-body',active:'${feature}'}]});
 export const run=()=>{throw Error('Fixture cannot change real layout');};
 export const setShared=()=>{throw Error('Fixture cannot save real state');};
 export const exec=()=>{throw Error('Fixture cannot run processes');};
 export const hc=()=>{throw Error('Fixture cannot read agents');};
 `);
+      // Visual states only: do not read or write the session's actual held source.
+      fs.writeFileSync(path.join(dir,'panel-state.js'),`export const panelTab=()=>({id:'fixture-tab',space:'fixture-space'});
+export const panelPinned=()=>globalThis.fixturePinned;export const panelSource=()=>null;
+export const togglePanelPin=()=>{throw Error('Fixture cannot change pin state');};
+export const changePanel=()=>{throw Error('Fixture cannot change panel state');};`);
       for(const pinned of [false,true]) {
         fs.writeFileSync(path.join(dir,'main.js'),`import Feature from './feature-view.js';
 export default class Fixture extends Feature {
