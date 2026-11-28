@@ -151,8 +151,9 @@ shell-capable agents. It is off and read-only by default. Reads and writes requi
 an explicit machine-local board allowlist; writes additionally require local
 opt-in and public Read-write mode. The card can save and verify a masked API key/user
 token, list the single account with hover Remove, list named boards with hover Remove,
-and choose Active/Inactive boards. Requirements Check verifies the account;
-opening reads saved names only. One global Read-only / Read-write setting is applied
+and choose Active/Inactive boards. Opening Boards and either Check refresh board
+names by ID, silently retaining last-known names when Trello is unavailable.
+Requirements Check also verifies the account; ordinary account status stays local. One global Read-only / Read-write setting is applied
 to account hosts explicitly, with Pending and Retry for unapplied/offline hosts. Inputs are transient, never saved plugin
 settings or portable preferences; only the Node worker writes the private store.
 The selected direct-SSH machine uses its own private store through identity-bound

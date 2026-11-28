@@ -496,6 +496,11 @@ checks. `tests/trello-installed-setup.test.mjs` uses actual installed owner/brid
 subprocesses, real fake-store permissions, injected fetch with no live fallback,
 Unicode board names, agent allowlisted listing, actual preference export/import
 and credential removal. No fixture reads a real token or account.
+`tests/trello-saved-names.test.mjs` exercises ID-keyed renames on Boards opening,
+already-open entry and both Check paths; cached names stay visible while pending
+or offline, partial discovery preserves unseen grants, and obsolete target/account
+results cannot replace the current view. `tests/plugin-list-refresh.test.mjs` covers
+the opt-in disclosure hook, cached publication and unchanged ordinary-list behavior.
 
 The opt-in Windows `tests/features/trello-settings-native.mjs --run --output
 <outside-checkout-directory>` uses an explicitly supplied `HERDR_APP_BIN`, a

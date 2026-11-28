@@ -94,7 +94,7 @@ the empty inputs back. It does not revoke the token at Trello. To replace the ac
 remove it first, then save the new credentials. Saved secrets never return to the UI.
 
 The **Check** button in the Requirements header verifies the saved account. Ordinary
-opening reads cached names/status only. A saved account appears once by name, with **Ready** at the right and **Remove**
+opening reads cached account names/status without verifying the token. A saved account appears once by name, with **Ready** at the right and **Remove**
 on hover, without a redundant Account heading. With ready runtime/activation and a
 named account, Requirements says **All ready** even with no boards. The empty
 account state says **Add**; adding board grants belongs only in Boards. The short card description
@@ -109,10 +109,13 @@ but only explicit Add grants them. The main list's hover **Remove** revokes one
 saved grant. Incomplete
 discovery is labeled and never erases unseen grants. There is no all-boards option.
 Account and allowed-board names are saved as bounded non-secret hints beside the
-private setup. Reopening the card reads those names without contacting Trello.
-Legacy/headless setup without names needs one explicit **Requirements → Check**;
-it verifies the account and hydrates missing allowed-board names. Incomplete results
-never erase unseen grants. Hints are not portable preferences or authorization.
+private setup. Opening **Boards**, including returning to an already-open section,
+and either existing **Check** refresh added-board names from Trello by canonical ID,
+even when a saved name already exists. Renaming a board needs no remove/re-add.
+Saved names remain visible while refreshing; failed or incomplete reads silently keep
+last-known names and never erase unseen grants. Ordinary closed-card status stays local.
+Legacy/headless setup without names can hydrate board names by opening Boards;
+**Requirements → Check** also verifies and saves the account name. Hints are not portable preferences or authorization.
 Account readiness does not depend on board grants or board names. An empty board
 allowlist still denies agent data access; local Ready does not claim an unverified
 token is still valid. The machine scope has no divider while its board list is
