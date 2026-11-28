@@ -1,7 +1,7 @@
 import { div } from 'gpui-kit';
 import { machines } from './host.js';
 import { pluginUpdateSnapshot, refreshPluginUpdates, updatePlugins } from './plugins-updates.js';
-import { pluginUpdateRowState } from './plugin-update-model.js';
+import { pluginUpdateRowState } from './plugins-update-model.js';
 import { recentlyAsked, updateCheckSlot } from './update-check-feedback.js';
 
 export function pluginUpdateRow(owner, theme) {

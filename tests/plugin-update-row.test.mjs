@@ -20,7 +20,7 @@ const { pluginUpdateRow, pluginUpdateRowState, initUpdateCheckFeedback } = await
     refreshPluginUpdates: (_owner, _cx, options) => { assert.equal(options.force, true); checks++; snapshot.scan = { expires: clock + 90000 }; },
     updatePlugins: () => { updates++; snapshot.batch = { running: true }; },
   },
-}, entry: "export { pluginUpdateRow } from './plugins-update-row.js'; export { pluginUpdateRowState } from './plugin-update-model.js'; export { initUpdateCheckFeedback } from './update-check-feedback.js';" });
+}, entry: "export { pluginUpdateRow } from './plugins-update-row.js'; export { pluginUpdateRowState } from './plugins-update-model.js'; export { initUpdateCheckFeedback } from './update-check-feedback.js';" });
 const drawn = [], owner = {
   heading() { throw Error('Plugins must not add a heading'); },
   button: (_t, id, label, click, options) => element().id(id).child(label).on_click(click).options(options),

@@ -45,7 +45,7 @@ const realFiles = {
   './customization-updates.js': 'src/shared/customization-updates.js',
   './plugins-updates.js': 'src/shared/plugins-updates.js',
   './plugins-update-row.js': 'src/features/settings/plugins-update-row.js',
-  './plugin-update-model.js': 'src/shared/plugin-update-model.js',
+  './plugins-update-model.js': 'src/shared/plugins-update-model.js',
   './plugins-operations.js': 'src/shared/plugins-operations.js',
   './settings-requests.js': 'src/shared/settings-requests.js',
   './customization-update-model.js': 'src/shared/customization-update-model.js',
