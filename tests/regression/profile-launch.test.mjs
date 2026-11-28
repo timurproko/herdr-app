@@ -56,7 +56,7 @@ f=fixture({runError:true});reply=await launchProfile(f.target,f.rpc);assert.equa
 
 // Mounted-controller ownership, one-shot claims, target-machine IDs and focus.
 let state,world,execs,notifications,runs,jobs,away;
-const api={pluginTransform:async(_name,argv)=>argv,shared:k=>state.get(k),setShared:(k,v)=>state.set(k,v),panes:()=>[],spaces:()=>world,machines:()=>[{name:'pc2',layout:'ready'}],readTextFile:async()=> 'fixture source',appHome:()=> 'C:/app',run:(...x)=>runs.push(x),notify:x=>notifications.push(x),exec:async(...x)=>{execs.push(x);world[0].tabs.push({id:'pc2/new-tab',active:false});if(away){world[0].tabs[0].active=false;world[0].tabs.push({id:'pc2/user-choice',active:true});}return{code:0,stdout:JSON.stringify({ok:true,address:'new',space:'space',tab:'new-tab'})};}};
+const api={pluginPrepareProfile:async()=>[],pluginTransform:async(_name,argv)=>argv,shared:k=>state.get(k),setShared:(k,v)=>state.set(k,v),panes:()=>[],spaces:()=>world,machines:()=>[{name:'pc2',layout:'ready'}],readTextFile:async()=> 'fixture source',appHome:()=> 'C:/app',run:(...x)=>runs.push(x),notify:x=>notifications.push(x),exec:async(...x)=>{execs.push(x);world[0].tabs.push({id:'pc2/new-tab',active:false});if(away){world[0].tabs[0].active=false;world[0].tabs.push({id:'pc2/user-choice',active:true});}return{code:0,stdout:JSON.stringify({ok:true,address:'new',space:'space',tab:'new-tab'})};}};
 const context=vm.createContext(api),source=fs.readFileSync(new URL('../mods/custom-tabs/profile-launches.js',import.meta.url),'utf8').replace(/^import .*;\r?\n/gm,'').replace(/export /g,'');
 vm.runInContext(source+'\nglobalThis.start=startProfileLaunches;',context);
 const cx={spawn:fn=>jobs.push(fn),sleep:async()=>{}};

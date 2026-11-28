@@ -4,11 +4,12 @@
 
 import { View, div, image, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { U, slot, itemHover, statusBulb, menuSurface, chevron, menuHeading, emptyState, sidebarNumericSlot, sidebarMachineLabel, sidebarChildBranch, sidebarParentFold } from "./ui.js";
+import { U, slot, itemHover, statusBulb, menuSurface, chevron, menuHeading, emptyState, sidebarNumericSlot, sidebarMachineLabel, sidebarChildBranch, sidebarParentFold, sidebarDisclosure, subtleActionFill } from "./ui.js";
 import { programIcon } from './program-icon.js';
 import { sidebarScroll } from './sidebar-scroll.js';
 import { paneDirectory } from './directory.js';
-import { pluginMenuItems, pluginAgentGroupFirst } from './plugins.js';
+import { pluginMenuItems, pluginWorkspaceLinks } from './plugins.js';
+import { projectLinkedRows } from './workspace-links.js';
 import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout } from "./host.js";
 
 function find(node, id) {
@@ -239,7 +240,8 @@ export default class Agents extends View {
     const collapsed = narrow();
     const sort = sortOf();
     const directoryPanes = panes(), all = terminals(), selection = focused();
-    const directorySpaces = new Map(spaces().map(s => [s.id, s]));
+    const nativeSpaces = spaces();
+    const directorySpaces = new Map(nativeSpaces.map(s => [s.id, s]));
     const byPane = new Map(directoryPanes.map(p => [p.pane, p]));
     const byTerminal = new Map(directoryPanes.map(p => [p.terminal, p]));
     let list = agents().map(a => {
@@ -248,13 +250,13 @@ export default class Agents extends View {
       const space = directorySpaces.get(a.space);
       // A space someone named keeps all its agents under that name, whatever
       // folder each tab is in; only auto-named spaces group by folder.
-      if (space?.named === true && space.name) return { ...a, group_name: space.name };
-      const directory = paneDirectory(byPane.get(a.pane) ?? byTerminal.get(a.address), all, selection);
       const machine = space?.machine ?? (a.address.split('/').slice(0, -1).join('/') || null);
+      if (space?.named === true && space.name) return { ...a, group_name: space.name, group_machine: machine };
+      const directory = paneDirectory(byPane.get(a.pane) ?? byTerminal.get(a.address), all, selection);
       const path = directory.cwd;
       // One folder, spelled in different cases on Windows, keeps one heading.
       const folder = path ? JSON.stringify([machine, /^[A-Za-z]:|^\/\//.test(path) ? path.toLowerCase().replace(/[\\/]+$/, '').replace(/\\/g, '/') : path]) : null;
-      return { ...a, group_name: directory.name || space?.name || a.space_name, group_folder: folder };
+      return { ...a, group_name: directory.name || space?.name || a.space_name, group_folder: folder, group_machine: machine };
     });
     this.listed = new Map(list.map((a) => [a.address, a.status]));
     this.migratePins(all);
@@ -268,8 +270,8 @@ export default class Agents extends View {
     if (byPriority) list = [...list].sort((x, y) => rankOf(y) - rankOf(x) || this.since(y) - this.since(x) || y.seq - x.seq);
     const pinned = list.filter((a) => a.pinned);
     const rest = list.filter((a) => !a.pinned);
-    // Headings with the same shown name are one group, whatever space, folder or
-    // machine they come from (rows show the machine). Preserve first-seen order.
+    // Same-name headings still combine within a machine. Separate machines so
+    // Space mode can follow contiguous machine blocks like the Spaces sidebar.
     let groups = pinned.length ? [{ id: "pinned", label: "Pinned", status: null, members: pinned }] : [];
     const byGroup = new Map(), folderNames = new Map();
     for (const a of rest) {
@@ -279,20 +281,26 @@ export default class Agents extends View {
         if (folderNames.has(a.group_folder)) name = folderNames.get(a.group_folder);
         else folderNames.set(a.group_folder, name);
       }
-      const id = byPriority ? `sec-${r}` : `sp-${name}`;
+      const id = byPriority ? `sec-${r}` : a.group_machine ? `sp-${JSON.stringify([a.group_machine,name])}` : `sp-${name}`;
       let group = byGroup.get(id);
       if (!group) {
-        group = { id, label: byPriority ? SECTION[r] : name, status: byPriority ? SECTION_STATUS[r] : null, members: [] };
+        group = { id, label: byPriority ? SECTION[r] : name, status: byPriority ? SECTION_STATUS[r] : null, machine:a.group_machine, members: [] };
         byGroup.set(id, group);
         groups.push(group);
       }
       group.members.push(a);
     }
     if (!byPriority) {
-      // Stable partition only: keep native group ids, members, folds and row
-      // handlers, and never infer a coordinator from its displayed name.
-      const first = new Set(groups.filter(group=>pluginAgentGroupFirst(group,{terminals:all})));
-      groups = [...groups.filter(group=>first.has(group)), ...groups.filter(group=>!first.has(group))];
+      // Match Spaces' full displayed order, including attached children even
+      // when folded there. Presentation links grant no native action authority.
+      const rows=projectLinkedRows(nativeSpaces.map(w=>({w})),pluginWorkspaceLinks({presentation:true}));
+      const machines=[...new Set([...nativeSpaces.map(s=>s.machine),...rest.map(a=>a.group_machine)].filter(Boolean))].sort();
+      const machineRank=new Map([null,...machines].map((machine,i)=>[machine,i]));
+      const spaceRank=new Map(rows.map((row,i)=>[row.w.id,i]));
+      const rank=group=>Math.min(...group.members.map(a=>spaceRank.get(a.space)??Infinity));
+      const ranks=new Map(groups.map(group=>[group,rank(group)]));
+      groups.sort((a,b)=>Number(b.id==='pinned')-Number(a.id==='pinned') ||
+        (machineRank.get(a.machine??null)-machineRank.get(b.machine??null)) || ranks.get(a)-ranks.get(b));
     }
     list = groups.flatMap((g) => g.members);
     setAgentOrder(list.map((a) => a.address));
@@ -377,9 +385,13 @@ export default class Agents extends View {
     const header = (g) => {
       const open = !this.folded.has(g.id);
       const top = g.members.reduce((m, a) => ((RANK[a.status] ?? 0) > (RANK[m] ?? 0) ? a.status : m), null);
+      const toggle = (_e, cx) => {
+        this.folded.has(g.id) ? this.folded.delete(g.id) : this.folded.add(g.id);
+        cx.notify();
+      };
       return h_flex()
         .id(g.id)
-        .w_full().pl(8).pr(4)
+        .w_full().pl(8).pr(0)
         .rounded(U.radius)
         .h(U.row)
         .flex_none()
@@ -388,17 +400,16 @@ export default class Agents extends View {
         .text_size(U.meta)
         .cursor_pointer()
         .hover((s) => s.bg(t.hover).text_color(t.foreground))
-        .on_click((_e, cx) => {
-          open ? this.folded.add(g.id) : this.folded.delete(g.id);
-          cx.notify();
-        })
+        .on_click(toggle)
         .child(div().flex_1().min_w(0).truncate().text_color(t.muted).child(g.label))
         .child(h_flex().id(`agent-group-meta-${g.id}`).flex_none().gap(6).items_center()
           // Status styles have different margins (Done versus Working). Centre
           // them in one fixed rail before the three-digit count slot.
           .when(!open && !byPriority && top && top !== "idle", el => el.child(this.statusSlot(t, { status: top }, true).id(`agent-group-status-${g.id}`)))
-          .child(this.numericSlot(t, `agent-count-${g.id}`, String(g.members.length)))
-          .child(slot(chevron(t, open))));
+          .child(sidebarNumericSlot(t, `agent-count-${g.id}`, String(g.members.length), {trailingSize:24}))
+          .child(sidebarDisclosure(t, {id:`agent-group-fold-${g.id}`,open,label:`${open?'Collapse':'Expand'} ${g.label}`,onClick:toggle})
+            .tab_index(0).focus(s=>s.bg(subtleActionFill(t)))
+            .on_key_down((event,cx)=>{if(['enter','space',' '].includes(event.key)){cx.stop_propagation();toggle(event,cx);}})));
     };
     const rows = collapsed
       ? list.flatMap(withKids)

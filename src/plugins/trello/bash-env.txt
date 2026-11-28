@@ -1,0 +1,40 @@
+# Owned agent-only BASH_ENV, not a user profile. Preserve the previous hook once
+# per shell; do not export the guard (each child shell runs its own hook).
+if [ "${__herdr_agent_env_loaded:-}" != 1 ]; then
+    __herdr_agent_env_loaded=1
+    if [ -n "${HERDR_AGENT_PREVIOUS_BASH_ENV:-}" ] && [ "$HERDR_AGENT_PREVIOUS_BASH_ENV" != "${BASH_ENV:-}" ]; then
+        __herdr_previous=$HERDR_AGENT_PREVIOUS_BASH_ENV
+        if [ -n "${BASH_VERSION:-}" ]; then
+            # An unquoted here-document has BASH_ENV's expansion rules without
+            # turning literal quotes/spaces into shell operators. Only existing
+            # user startup code is expanded, never Trello/provider input.
+            __herdr_delimiter=__HERDR_BASH_ENV_${BASHPID}_
+            while :; do
+                case "$__herdr_previous" in
+                    *"$__herdr_delimiter"*) __herdr_delimiter=${__herdr_delimiter}_ ;;
+                    *) break ;;
+                esac
+            done
+            eval "IFS= read -r -d '' __herdr_previous <<$__herdr_delimiter
+$__herdr_previous
+$__herdr_delimiter
+" || :
+            __herdr_previous=${__herdr_previous%$'\n'}
+            unset __herdr_delimiter
+        fi
+        . "$__herdr_previous"
+        unset __herdr_previous
+    fi
+fi
+if [ -n "${HERDR_AGENT_PATH:-}" ]; then
+    __herdr_agent_path=$HERDR_AGENT_PATH
+    if command -v cygpath >/dev/null 2>&1; then
+        __herdr_agent_path=$(cygpath -p "$__herdr_agent_path")
+    fi
+    case "$PATH" in
+        "$__herdr_agent_path"|"$__herdr_agent_path":*) ;;
+        *) PATH="$__herdr_agent_path:$PATH" ;;
+    esac
+    export PATH
+    unset __herdr_agent_path
+fi

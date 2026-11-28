@@ -346,11 +346,11 @@ PR metadata separators SHALL use one visibly larger but muted dot treatment with
 - **AND** ordinary and coordinator views show the same separator treatment
 
 ### Requirement: Collapsible coordinator repository sections
-Each nonempty coordinator repository section SHALL default expanded with independent locally persisted folding. Headers SHALL show canonical repository name, selected-tab eligible task PR count and chevron, using existing section styling and Agents group number styling and number-to-chevron spacing. Names SHALL truncate only on overflow with a full-name tooltip then. Folding SHALL preserve top-level totals without starting reads. Notice-only sections SHALL have no header.
+Nonempty coordinator sections SHALL inherit the initially expanded global default with locally persisted exceptions. Headers SHALL show canonical repository, selected-tab eligible task PR count and chevron, using existing section styling and Agents number styling and number-to-chevron spacing. Names SHALL truncate only on overflow, with a full-name tooltip then. Folding SHALL preserve totals without reads. Notice-only sections SHALL have no header.
 
 #### Scenario: First display
-- **WHEN** a repository has selected-tab PRs, no saved folded state and appears in the coordinator overview
-- **THEN** its section is expanded with the existing section header and expanded chevron
+- **WHEN** a repository has selected-tab PRs, no saved individual exception and appears in the coordinator overview
+- **THEN** its section follows the saved global disclosure default, or starts expanded when no global choice exists, with the corresponding section chevron
 - **AND** its header shows canonical repository name and selected-tab count immediately before the chevron, with the same number style and number-to-chevron gap as an Agents group header
 
 #### Scenario: Collapse and expand one repository
@@ -361,7 +361,7 @@ Each nonempty coordinator repository section SHALL default expanded with indepen
 - **AND** the single enrollment footer remains visible independently of section folding
 
 #### Scenario: Fold state survives panel changes
-- **WHEN** a repository is collapsed and the user changes Open/Closed tabs, refreshes, changes coordinator selection, or closes and reopens the panel
+- **WHEN** a repository is collapsed and the user changes Open/Closed tabs, refreshes, changes coordinator selection, or closes and reopens the panel without a later bulk toggle
 - **THEN** it retains its local folded state independently of other repositories
 - **AND** panel recreation restores saved state through the same local persistence mechanism as Spaces machine folding
 - **AND** this UI state is not exported as a portable preference or written to Crew records
@@ -2096,34 +2096,24 @@ Ordinary and coordinator Git SHALL omit a repository's header, count and chevron
 - **THEN** folding alone does not make the section empty and existing remaining-row counts and lone-pin header suppression remain intact
 - **AND** omitted empty sections retain their saved fold keys for later reappearance
 
-### Requirement: Coordinator-first Agents groups
-The grouped Agents panel SHALL place all coordinator-containing groups before all other groups. Coordinator groups SHALL retain their current relative order, and non-coordinator groups SHALL retain theirs. Existing membership, selection, collapse state, counts and drag behavior SHALL remain unchanged. Displayed names alone SHALL NOT identify a coordinator.
-
-#### Scenario: Interleaved groups and multiple machines
-- **WHEN** project and coordinator groups arrive interleaved, including coordinators on several machines
-- **THEN** all coordinator groups appear first in their existing order, followed by other groups in their existing order
-- **AND** the same group ids, members, folds, counts, selection and drag operations remain
-
-#### Scenario: No coordinator
-- **WHEN** there is no coordinator group
-- **THEN** the existing group order remains unchanged
-
 ### Requirement: Consistent Git stage and verdict boxes
-Git stage and verdict controls SHALL size to their own caption with 6px side padding, equal 18px height and centred text, without a minimum width shared across captions. Interaction bounds SHALL match each visible box. Existing right alignment, title truncation, row height, guarded actions and tooltip suppression SHALL remain unchanged.
+Git stage and verdict controls SHALL share a tight width equal to the longest supported caption's natural text width plus 6px side padding on each side, with equal 18px height and centred text. There SHALL be no additional common-width allowance. Interaction bounds SHALL match the visible boxes. Existing right alignment, title truncation, row height, guarded actions and tooltip suppression SHALL remain unchanged.
 
 #### Scenario: Common geometry across captions
 - **WHEN** ordinary or coordinator rows show Build, Build 2 through Build 99, Review, Approved or another fixed verdict such as Changes requested at 100% or 130% zoom
-- **THEN** each control fits its own natural caption width plus 6 logical pixels on either side, rather than inheriting the widest caption's width
+- **THEN** all stage and verdict controls use the same width, with the longest supported caption retaining exactly 6 logical pixels on either side and shorter captions centred
+- **AND** the baseline accounts for every supported fixed caption and every accepted Build round length even when absent, without extra width beyond the longest natural caption and its padding
 - **AND** hover, focus and click share that box without tooltip or a changed right rail, title reservation or block height
 
 #### Scenario: Rare longer round
 - **WHEN** a supported Build caption contains more than two round digits
-- **THEN** only that control grows to fit its caption and normal side padding while keeping its right anchor
-- **AND** other controls retain their own caption-sized widths
+- **THEN** the common width already accommodates the longest accepted safe-integer round caption with normal side padding, and every stage and verdict stays equally wide and right anchored
+- **AND** switching between statuses, missing round data and any accepted round never changes that width or the accepted round metadata and wording
 
 #### Scenario: Long title and retained presentations
 - **WHEN** long-title rows appear in ordinary, coordinator, pinned, scrolling, probe or ghost presentations at either zoom
 - **THEN** the existing title truncation and full-title hover remain intact and the stage/verdict does not gain a title-line reservation
+- **AND** visible, probe and ghost boxes use identical sizing, while probes and ghosts retain their noninteractive behavior
 
 ### Requirement: Non-actionable delivery kind explanation
 The Projects description SHALL append Delivery kinds in inline accent styling with a dashed underline. Hover or keyboard focus SHALL show three two-column explanations: regular-weight foreground kind names on the left and muted descriptions on the right. All descriptions and their wrapped lines SHALL share one left edge, with no separating dashes or column headers. Clicking SHALL do nothing, using the existing tooltip treatment.
@@ -2238,3 +2228,83 @@ Files and Git source-selection requirements SHALL use the sidebar's held source 
 - **WHEN** manual or existing automatic refresh runs while pinned, or a reply arrives after unpinning or recapturing a different source
 - **THEN** refresh updates only the held source under existing lifecycle rules, and obsolete replies cannot populate a newer effective context
 - **AND** hidden or disabled plugins start no new work and the pin persists no file tree, PR inventory, callbacks or credentials
+
+### Requirement: Global Git repository disclosure control
+Ordinary and coordinator Git SHALL show exactly one icon-only bulk disclosure button at the right end of the Open/Closed strip using existing button styling. The icon SHALL reflect the chosen global expanded or collapsed default and its accessible action SHALL name the opposite choice. Activation SHALL invert that default and reset all individual exceptions, including hidden repositories. No other controls, messages or options SHALL be added.
+
+#### Scenario: Collapse globally and visit another agent
+- **WHEN** the default is expanded and the person activates Collapse all repository sections, then selects another agent or space
+- **THEN** every repository section without a subsequent individual exception is collapsed, including a previously unseen repository
+- **AND** the icon reflects the collapsed default and offers Expand all repository sections
+- **AND** the selected agent's pinned PR remains visible above its collapsed section, and a lone pin still has no empty header
+
+#### Scenario: Expand globally across both views and tabs
+- **WHEN** the default is collapsed and the person activates Expand all repository sections
+- **THEN** every eligible section uses expanded disclosure in ordinary and coordinator Git and both Open/Closed tabs
+- **AND** sections encountered later follow the expanded default, subject to existing reveal limits and pagination rather than automatic mounting or fetching of every PR
+
+#### Scenario: Individual exception and next bulk action
+- **WHEN** the global default is collapsed and the person opens one repository by its chevron
+- **THEN** only that canonical repository opens, and the global icon remains collapsed with Expand all as its next action
+- **AND** other repositories remain collapsed; returning to that repository restores the exception in either Git view
+- **AND** the next bulk action expands all and clears every individual exception, including exceptions outside the current view
+- **AND** the symmetric behavior applies to closing one repository under the expanded default
+
+#### Scenario: Disclosure changes presentation only
+- **WHEN** a bulk or individual fold changes
+- **THEN** it changes no PR facts, counts, selected tab, repository order or agent selection and starts no Git, GitHub, filesystem or Crew request
+- **AND** existing pending-read and safety-selection guards still reject obsolete work, without cancelling unrelated reads
+- **AND** cold Loading, headerless actionable failures, enrollment, remaining-row counts and pin behavior retain their existing policies
+
+### Requirement: Durable client-local Git disclosure choice
+The global disclosure default and canonical repository exceptions SHALL survive panel recreation, agent/space changes, Git disable/re-enable and app restart on the same client. Without saved new-format state, existing saved folded repositories SHALL become collapsed exceptions to an expanded default. The first bulk action SHALL replace that legacy choice. This presentation state SHALL NOT be exported as portable preferences or written to native/Core or Crew documents.
+
+#### Scenario: Upgrade preserves individual folds
+- **WHEN** the client has a valid legacy saved folded-repository set and no new-format disclosure state
+- **THEN** those repositories stay collapsed and other repositories default expanded until an individual or bulk action changes them
+- **AND** after the first bulk action, a restart cannot reintroduce the legacy folds over the new global default
+
+#### Scenario: Restart and disabled panel
+- **WHEN** the person chooses a global default, creates one individual exception, then restarts the app or disables and re-enables Git
+- **THEN** the saved default, icon and individual exception are restored before eligible repository sections paint
+- **AND** restoring disclosure grants no PR-cache, worker-navigation or read authority and causes no new hidden-panel work
+
+#### Scenario: Missing or invalid saved data
+- **WHEN** saved disclosure data is missing, malformed or of an unsupported version
+- **THEN** Git remains renderable using expanded disclosure and valid legacy folds when available, without a new message or overwriting unsupported-version data merely by rendering
+
+### Requirement: Space-mode Agents groups follow Spaces order
+The Agents menu's Space mode SHALL follow displayed Spaces order, local machine first then remote machines in Spaces order, including connected children. No role SHALL promote a group. Equal names on different machines SHALL remain separate; same-machine groups spanning spaces SHALL use the earliest represented row. Pinned agents SHALL retain their leading section. Priority mode SHALL remain unchanged.
+
+#### Scenario: Interleaved agent groups and machines
+- **WHEN** agents arrive in a different order from Spaces, with coordinators on multiple machines
+- **THEN** their Space-mode groups follow the Spaces machine blocks and row order, not agent arrival or coordinator-first promotion
+- **AND** equal names across machines remain independent groups with their own counts and folds
+
+#### Scenario: Native reorder and attached children
+- **WHEN** a native space or connected sibling changes position
+- **THEN** Space-mode groups follow the updated full Spaces projection, with attached children under their coordinator even if folded in Spaces
+- **AND** group order changes no space, terminal, tab or fleet identity and starts no discovery work
+
+#### Scenario: Shared group or unavailable space
+- **WHEN** one same-machine group represents several spaces or its native space is temporarily unavailable
+- **THEN** a shared group uses its earliest represented Spaces position, while unavailable groups remain in stable order at their machine's tail
+- **AND** existing same-machine grouping, fold identities, counts and full navigation membership remain intact
+
+#### Scenario: Pinned rows and Priority mode
+- **WHEN** agents are pinned or the person selects Group agents by: Priority
+- **THEN** pinned agents retain their separate leading section and Priority retains its existing urgency, time and sequence ordering
+- **AND** native space reorder and coordinator metadata changes do not alter Priority or start attachment presentation queries there
+
+### Requirement: Crew owns its Spaces label visibility contribution
+The enabled Crew plugin SHALL contribute its own Crew label toggle to Spaces through the generic plugin boundary. The choice SHALL default true, survive plugin disablement and affect only its Spaces tag presentation. Disabled-plugin or obsolete popup callbacks SHALL NOT change it. Opening or toggling the entry SHALL start no plugin work or external operation.
+
+#### Scenario: Enabled-only checked menu contribution
+- **WHEN** Spaces opens Show icons with Crew enabled
+- **THEN** Crew contributes its existing-style toggle using its saved value or the true default, without a Crew-specific feature import
+- **AND** popup sizing includes the contributed row and existing built-in entries retain their styling, order and values
+
+#### Scenario: Disable while the menu is open
+- **WHEN** Crew becomes disabled after its menu entry was built
+- **THEN** a retained callback cannot change the hidden plugin's setting
+- **AND** the current menu projection omits its entry and re-enabling restores the last saved choice without replaying an action

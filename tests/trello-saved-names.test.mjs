@@ -25,6 +25,7 @@ const transport = async url => {
 const status = () => execute({action:'status'}, {store, transport});
 async function open({expanded = false, settled = true} = {}) {
   const h = await formsHarness({checking:() => false, appHome:() => store.home, exec:async (_p, args) => {
+    if(args.includes('--discovery-all'))return {code:0,stdout:JSON.stringify({ok:true,data:{pending:[]}})};
     const result = args.includes('--status') ? await status() : args.includes('--probe')
       ? {ok:true, data:{runtime:'ready', destination:binding}}
       : {port:12345, session:'f'.repeat(64), expires:Date.now()+59000};

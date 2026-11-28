@@ -321,7 +321,9 @@ colour inheritance, but is indented; neither row has a chain and only the parent
 shows lowercase `crew`. Casing is changed only at the Spaces rendering boundary;
 the shared plugin contribution and terminal-pane `Crew` badge remain unchanged.
 Unrelated tags and worktree metadata keep their ordinary trailing
-edge. A separate local `custom.spaces.parents.folded` set is bounded to 256 exact
+edge. Childless Crew labels end at the machine-chevron glyph's right edge with
+no empty count/disclosure rails; connected parents retain their label/count/chevron
+grid across folding. A separate local `custom.spaces.parents.folded` set is bounded to 256 exact
 machine/block/binding keys and is never exported. Full block order remains the
 reorder authority; only drawing/drop geometry filters hidden children. A folded
 parent moves its hidden child too, and native selection transitions disclose a
@@ -376,7 +378,8 @@ still cannot be inferred by the app from transcripts or branches.
 
 `ui/ui.js` owns `sidebarSectionHeader`, the common machine/repository header shell
 and right-edge chevron; Spaces retains its own actions and guarded folding.
-Aggregate repository headers start expanded and show canonical owner/name,
+Aggregate repository headers inherit Git's disclosure default (initially expanded)
+and individual exceptions, and show canonical owner/name,
 the selected-tab eligible task PR count and the shared chevron. The count uses
 Agents' shared numeric rail, compensating surrounding gap and chevron-slot width
 without moving Git's existing trailing rail; it counts full task inventory rather
@@ -385,8 +388,19 @@ uses all remaining width; a clipped invisible natural-width probe and the label'
 available width enable its full-name tooltip only on actual overflow. Geometry is
 local, scope-keyed and updated after layout with changed-only notifications, not
 render-time effects. Internal task totals still include folded repositories; Open/Closed controls show labels only, without badge subtrees or reservations.
-Sections persist a canonical repository-key set in localStorage
-(`custom.git.task-repositories.folded`), like Spaces' `machines.folded` set.
+Git's `repository-disclosure.js` owns a version-1 localStorage record
+(`custom.git.repositories.disclosure`) with a global collapsed default and
+canonical repository exceptions. Initially expanded, it imports the previous
+`custom.git.task-repositories.folded` set as collapsed exceptions until an explicit
+new-format save; the old key remains rollback data. Individual chevrons toggle
+only that repository's exception; the strip's bulk toggle inverts the default and
+clears all exceptions, including hidden repositories. Its icon reflects the
+chosen default, even when individual exceptions differ. The policy survives
+agent/space/tab changes, panel recreation, disable/re-enable and app restart on
+this client, separately from PR snapshots and without portable preference export.
+An unchanged or refused store preserves unsaved in-memory choices; restart
+persistence requires working localStorage. Unsupported data is not rewritten by
+restoration. Retained views reconcile saved disclosure before section publication.
 Explicit toggles are UI-only: no preference export or Crew/host-document writes,
 and no new fetch or cancellation. Fold state survives tab/context changes and
 panel recreation. Scoped rows/errors and repository-specific diagnostics fold with
@@ -533,8 +547,11 @@ owner action; Review targets the reviewer. Common interaction decoration provide
 hover, focus, Enter/Space and pointer handling without verdict tooltips or PR-link
 fallback. Missing/ended/disconnected targets are dim and inert. The original
 single-element verdict projection keeps its row element count and fixed height.
-Stage and verdict boxes fit their own captions with 6px side padding and 18px
-height; there is no shared widest-caption minimum or width-probe cache.
+Stage and verdict boxes share a tight caption-derived width with 6px side padding
+and 18px height. One intrinsic panel-level probe per zoom measures the supported
+fixed captions and the widest 16-digit safe-integer Build round; it never derives
+width from displayed statuses or a stretched container. The bounded zoom cache
+adds no per-row probe elements, verdict wrappers or animation scheduler.
 
 Git's optional `crew.round` is Crew's current work/review round, initialized to
 1 and incremented on actual requested-changes reviews. The stage caption uses
@@ -810,6 +827,11 @@ src/plugins/
     returns a new one or `undefined`. Transforms: `profile.launch` (the argv a profile
     starts with; `{ space, machine, profile }`).
   A throwing plugin is reported once per moment and skipped; the feature carries on.
+  `pluginPrepareProfile(context)` is separate awaited startup preparation: disabled
+  providers participate to retire owned instructions, and failures stop that launch
+  rather than silently falling back. It captures plugin settings through completion;
+  validated path/hook contributions become scoped target-machine launch environment,
+  never arbitrary plugin environment keys or a replacement for a role gate.
   Moment names avoid Herdr's command namespaces (`agent.`, `tab.` …), which the
   host-API audit treats as native commands.
   - `pluginGate(name, context)` is the one **required** moment: exactly one enabled plugin
@@ -821,6 +843,19 @@ src/plugins/
 - Add a hook only where a feature can fall back cleanly. Integration plugins keep
   their hooks free of UI; Settings draws their controls from their declaration
   (`features/settings/plugins-ui.js`).
+
+### Plugin-owned Spaces label visibility
+
+Spaces composes `pluginMenuItems('spaces.icons')` after its two built-in Show icons
+entries using the same checked menu row and contribution-aware popup height.
+A menu contribution can name one declared toggle with `setting`; the registry
+derives `checked` and rechecks plugin enablement before flipping the current typed
+value. Ordinary `run` menu contributions keep their existing behavior. Crew owns
+one hidden, default-true `showSpaceLabel` setting and the Crew label entry; no second
+Settings switch or feature-to-Crew import is needed. Spaces supplies
+`{surface:'spaces'}` to the existing tag query, so Crew can suppress only that
+surface's tag. Default/unscoped queries keep terminal-pane Crew badges unchanged.
+The choice never invalidates fleet identity, counts or disclosure and starts no IO.
 
 ### Plugin-owned agent context actions
 
