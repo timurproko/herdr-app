@@ -15,6 +15,6 @@
 
 ## 3. Card and attachment failures remain bounded without weakening authority checks
 
-- [ ] 3.1 Establish a monotonic command deadline before authority acquisition and bound remote dispatch, body consumption and cancellation by remaining request time; targeted stalled-header/JSON/error/image/cancellation tests must fail promptly without follow-ups or owned partial output.
-- [ ] 3.2 Measure injected slow private-store/ACL checks and propagate remaining deadlines into blocking checks where required; focused permission and deadline tests must preserve fail-closed behavior and prevent repeated subprocess timeouts from exceeding the command budget.
-- [ ] 3.3 Add command-budget exhaustion and expired-work publication regressions, update timeout guidance, and run only affected read/download/permission tests; report actual timings and any remaining live-host limitation without claiming unreproduced live success.
+- [x] 3.1 Establish a monotonic command deadline before authority acquisition and bound remote dispatch, body consumption and cancellation by remaining request time; targeted stalled-header/JSON/error/image/cancellation tests must fail promptly without follow-ups or owned partial output.
+- [x] 3.2 Measure injected slow private-store/ACL checks and propagate remaining deadlines into blocking checks where required; focused permission and deadline tests must preserve fail-closed behavior and prevent repeated subprocess timeouts from exceeding the command budget.
+- [x] 3.3 Add command-budget exhaustion and expired-work publication regressions, update timeout guidance, and run only affected read/download/permission tests; report actual timings and any remaining live-host limitation without claiming unreproduced live success.

@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const {Store, protectedInput, object} = require('./credentials.cjs');
 const {setup, configure, status} = require('./setup.cjs');
 const {run, definitions, writes} = require('./operations.cjs');
-const {fail, publicError, TrelloError} = require('./errors.cjs');
+const {fail, publicError, TrelloError, Deadline} = require('./errors.cjs');
 const {help, helpTopic} = require('./help.cjs');
 function parse(argv) {
   const words = [], flags = Object.create(null);
@@ -25,6 +25,7 @@ async function inputText(file) {
   return Buffer.concat(chunks).toString('utf8');
 }
 async function execute(argv, options = {}) {
+  const budget = options.budget || new Deadline(options.commandTimeout ?? 60000, options.clock);
   try {
     if (argv.length === 1 && argv[0] === '--help') return {help, exit: 0};
     const {words, flags} = parse(argv);
@@ -66,7 +67,7 @@ async function execute(argv, options = {}) {
         if (Object.keys(body).some(k => Object.hasOwn(flags, k))) fail('INPUT');
         Object.assign(flags, body);
       } else if (file) fail('INPUT');
-      data = await run(store, op, flags, options);
+      data = await run(store, op, flags, {...options, budget});
     }
     return {result: {version: 1, ok: true, data}, exit: 0};
   } catch (e) {
@@ -75,6 +76,8 @@ async function execute(argv, options = {}) {
   }
 }
 if (require.main === module) execute(process.argv.slice(2)).then(out => {
-  process.stdout.write(out.help || JSON.stringify(out.result) + '\n'); process.exitCode = out.exit;
-}).catch(() => { process.stdout.write(JSON.stringify({version: 1, ok: false, error: publicError(null)}) + '\n'); process.exitCode = 3; });
+  // The one-shot CLI owns no background work. Flush its sole result, then exit
+  // even if an aborted provider socket/cancellation retains an event-loop handle.
+  process.stdout.write(out.help || JSON.stringify(out.result) + '\n', () => process.exit(out.exit));
+}).catch(() => { process.stdout.write(JSON.stringify({version: 1, ok: false, error: publicError(null)}) + '\n', () => process.exit(3)); });
 module.exports = {execute, parse, inputText, help};

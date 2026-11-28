@@ -81,7 +81,7 @@ try {
   f.store.write('cooldown', {version:1,retryAt:0}, f.store.read('cooldown')); mode = 'normal';
   const client = new Client(f.store, authority(f.store), api); client.count=20;
   await assert.rejects(client.download(original.url,C,ITEM,()=>{}),{code:'LIMIT'});
-  client.count=0; client.started-=60001; await assert.rejects(client.download(original.url,C,ITEM,()=>{}),{code:'LIMIT'});
+  client.count=0; client.budget.expire(); await assert.rejects(client.download(original.url,C,ITEM,()=>{}),{code:'LIMIT'});
   const before = files().length;
   for (const when of [2,3,4]) {
     let n=0; assert.throws(()=>outputFile(f.root,'partial.png',png,()=>{if(++n===when)throw new TrelloError('STALE');}),{code:'STALE'});

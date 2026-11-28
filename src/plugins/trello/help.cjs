@@ -92,6 +92,11 @@ unknown/hostile text uses a standard HTTP phrase. HTTP 400 is a bad request;
 401/403 indicate auth/access refusal, not proof of a specific token-scope cause.
 Error inspection caps at 4 KiB/200 ms inside the request budget; no raw errors,
 API keys, tokens or authenticated URLs are printed.
+Data reads share a 60-second monotonic command budget starting before private-store
+checks; each request gets at most 20 seconds including preflight/body/cancellation.
+Windows ACL children get at most 10 seconds or the remaining budget and fail closed.
+LIMIT/TRANSPORT stop follow-ups and leave no partial image; the one-shot CLI flushes
+its result and exits after abort rather than waiting for lingering provider handles.
 RATE_LIMIT may include retryAt (Unix milliseconds); wait, then retry explicitly.
 Missing setup is not the same as a failed ACL check or malformed private store.
 ${Object.entries(messages).filter(([k])=>k!=='STORE').map(([k,v])=>`${k}: ${v}`).join('\n')}

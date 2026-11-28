@@ -1,5 +1,5 @@
 'use strict';
-const {TrelloError, fail, providerReason} = require('./errors.cjs');
+const {TrelloError, fail, providerReason, Deadline} = require('./errors.cjs');
 const ID = '[a-f0-9]{24}';
 // Transport is private to typed operations. No request/URL command is exposed.
 const routes = [
@@ -36,9 +36,10 @@ function cancelBody(body) {
   // Cleanup is best effort; cancellation itself must never hold the command open.
   try { Promise.resolve(body?.cancel()).catch(() => {}); } catch {}
 }
-async function rejectionReason(response, credentials) {
-  if (!response.body?.getReader) return;
-  const reader = response.body.getReader(); let timer;
+async function rejectionReason(response, credentials, signal) {
+  if (!response.body?.getReader || signal.aborted) return;
+  let reader, timer, aborted;
+  try { reader = response.body.getReader(); } catch { return; }
   const read = async () => {
     const chunks = []; let size = 0;
     for (;;) {
@@ -51,10 +52,13 @@ async function rejectionReason(response, credentials) {
   };
   try {
     // Diagnostics get a small sub-budget, not a fresh remote-read timeout.
-    return await Promise.race([read(), new Promise(resolve => { timer = setTimeout(resolve, 200); })]);
+    return await Promise.race([read(), new Promise(resolve => {
+      timer = setTimeout(resolve, 200); aborted = resolve;
+      signal.addEventListener('abort', aborted, {once: true});
+    })]);
   } catch { return; }
   finally {
-    clearTimeout(timer);
+    clearTimeout(timer); signal.removeEventListener('abort', aborted);
     try { Promise.resolve(reader.cancel()).catch(() => {}); } catch {}
     try { reader.releaseLock(); } catch {}
   }
@@ -77,9 +81,11 @@ function mergeCooldown(store, deadline) {
   fail('STORE_BUSY'); // Bounded local contention refusal, never an HTTP replay.
 }
 class Client {
-  constructor(store, gate, {transport = globalThis.fetch, now = nowMs, timeout = 20000, routeRules = routes} = {}) {
-    this.store = store; this.gate = gate; this.transport = transport; this.now = now; this.timeout = timeout;
-    this.started = now(); this.count = 0; this.writes = 0; this.routes = routeRules;
+  constructor(store, gate, {transport = globalThis.fetch, now = nowMs, timeout = 20000, routeRules = routes, budget, clock, commandTimeout} = {}) {
+    this.budget = budget || new Deadline(commandTimeout ?? 60000, clock);
+    this.store = store.withBudget ? store.withBudget(this.budget) : store;
+    this.gate = gate; this.transport = transport; this.now = now; this.timeout = Math.min(timeout, 20000);
+    this.count = 0; this.writes = 0; this.routes = routeRules;
   }
   async request(method, route, query = {}) {
     const rule = this.routes.find(([m, re]) => method === m && re.test(route));
@@ -89,9 +95,8 @@ class Client {
     url.searchParams.set('key', this.gate.credentials.apiKey); url.searchParams.set('token', this.gate.credentials.token);
     return this.exchange(method, url, jsonResponse, {Accept: 'application/json'});
   }
-  check() {
-    this.gate.check();
-    if (this.now() - this.started >= 60000) fail('LIMIT');
+  check(budget = this.budget) {
+    budget.check(); this.gate.check(budget); budget.check();
   }
   async download(url, card, attachment, consume) {
     // This method is private to the typed attachment command, never a CLI URL flag.
@@ -101,42 +106,57 @@ class Client {
     return this.exchange('GET', new URL(url), consume, {Authorization: `OAuth oauth_consumer_key="${encodeURIComponent(apiKey)}", oauth_token="${encodeURIComponent(token)}"`});
   }
   async exchange(method, url, consume, headers) {
-    this.check();
-    const cooldown = this.store.read('cooldown', true);
-    if (cooldown?.retryAt > this.now()) throw new TrelloError('RATE_LIMIT', {retryAt: cooldown.retryAt});
-    if (++this.count > 20) fail('LIMIT');
+    const budget = new Deadline(this.timeout, this.budget.clock, this.budget, 'TRANSPORT');
+    const store = this.store.withBudget ? this.store.withBudget(budget) : this.store;
     const write = method !== 'GET';
-    if (write && ++this.writes !== 1) fail('INPUT');
-    const controller = new AbortController(); let timer, dispatched = false, rejection;
+    const controller = new AbortController(); let timer, dispatched = false, rejection, response;
     const work = async () => {
-      // Last authority check immediately precedes the only dispatch.
-      this.gate.check();
-      if (this.now() - this.started >= 60000) fail('LIMIT');
+      this.check(budget);
+      const cooldown = store.read('cooldown', true);
+      if (cooldown?.retryAt > this.now()) throw new TrelloError('RATE_LIMIT', {retryAt: cooldown.retryAt});
+      if (++this.count > 20) fail('LIMIT');
+      if (write && ++this.writes !== 1) fail('INPUT');
+      // All blocking preflight checks consume this request's remaining budget.
+      this.check(budget);
       dispatched = true;
-      const response = await this.transport(url, {method, redirect: 'manual', signal: controller.signal, headers});
+      response = await this.transport(url, {method, redirect: 'manual', signal: controller.signal, headers});
+      if (controller.signal.aborted) { cancelBody(response.body); fail('TRANSPORT'); }
+      budget.check();
       if (response.status < 200 || response.status >= 300) {
         const code = response.status === 429 ? 'RATE_LIMIT' : write && (response.status >= 500 || response.status < 400) ? 'UNKNOWN_WRITE' : ({401: 'AUTH', 403: 'FORBIDDEN', 404: 'NOT_FOUND'})[response.status] || 'REMOTE';
         rejection = new TrelloError(code, {httpStatus: response.status});
-        // Persist rate refusal before optional diagnostic parsing.
-        if (response.status === 429) rejection.retryAt = mergeCooldown(this.store, retryTime(response.headers, this.now()));
-        rejection.providerReason = await rejectionReason(response, this.gate.credentials);
+        // Begin rate-response cleanup before the atomic cooldown merge, without
+        // awaiting cancellation (which may never settle). Other invocations can
+        // race here; mergeCooldown must still retain the longest persisted wait.
+        if (response.status === 429) {
+          cancelBody(response.body);
+          rejection.retryAt = mergeCooldown(store, retryTime(response.headers, this.now()));
+        }
+        rejection.providerReason = await rejectionReason(response, this.gate.credentials, controller.signal);
         cancelBody(response.body);
         throw rejection;
       }
       const value = await consume(response, controller.signal);
       if (controller.signal.aborted) fail('TRANSPORT');
-      try { this.check(); } catch (e) { if (write) fail('WRITE_CHANGED'); throw e; }
+      try { this.check(budget); } catch (e) { if (write) fail('WRITE_CHANGED'); throw e; }
       return value;
     };
     try {
-      return await Promise.race([work(), new Promise((_, reject) => {
-        timer = setTimeout(() => { controller.abort(); reject(rejection || new TrelloError('TRANSPORT')); }, Math.min(this.timeout, 60000 - (this.now() - this.started)));
-      })]);
+      // Arm before invoking work(): a synchronous ACL check must not get a
+      // fresh network timer after spending most of the request/command budget.
+      const timeout = new Promise((_, reject) => {
+        timer = setTimeout(() => { controller.abort(); reject(rejection || new TrelloError(this.budget.end <= this.budget.clock() ? 'LIMIT' : 'TRANSPORT')); }, budget.timeout(20000));
+      });
+      return await Promise.race([work(), timeout]);
     } catch (e) {
-      if (write && dispatched && (!(e instanceof TrelloError) || (['TRANSPORT', 'RESPONSE', 'INTERNAL'].includes(e.code) || e.code.startsWith('STORE')))) fail('UNKNOWN_WRITE');
-      if (e instanceof TrelloError) throw e; fail('TRANSPORT');
+      if (write && dispatched && (!(e instanceof TrelloError) || (['TRANSPORT', 'RESPONSE', 'INTERNAL', 'LIMIT'].includes(e.code) || e.code.startsWith('STORE')))) throw new TrelloError('UNKNOWN_WRITE', {httpStatus: rejection?.httpStatus});
+      if (e instanceof TrelloError) {
+        if (rejection) e.httpStatus = rejection.httpStatus;
+        throw e;
+      }
+      fail('TRANSPORT');
     }
-    finally { clearTimeout(timer); controller.abort(); }
+    finally { clearTimeout(timer); budget.expire(); controller.abort(); cancelBody(response?.body); }
   }
   get(route, query) { return this.request('GET', route, query); }
 }

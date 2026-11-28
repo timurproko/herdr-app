@@ -2,7 +2,7 @@
 
 ## Context
 
-See `proposal.md` for motivation and the investigation limitation. This is a source-present, planning-only change; the installed runtime and credentials named in the brief are absent from this environment's default locations.
+See `proposal.md` for motivation and the investigation limitation. The source is present, but pc2 has no Trello setup and cannot reach the main machine; implementation and acceptance here use only fakes, as explicitly approved.
 
 `operations.cjs` first proves card membership through board-scoped card pages, then requests card facts, comments, checklists and attachments. `attachments.cjs` uses `fields=all&filter=all`; the public Cards schema documents attachment filter default `false` and special value `cover`. `download.cjs` instead reads singular attachment metadata and downloads the validated Trello URL with an OAuth header. Fixing the listing query alone cannot be assumed to repair that separate path.
 
@@ -48,7 +48,7 @@ Only targeted files run locally; no broad suite or CI polling. Per the approval 
 
 ## Risks / Trade-offs
 
-- [Live environment absent] → Report the explicit blocker; no claim that live root cause or token scope is proved. Obtain the intended execution host/home instead of searching for credentials.
+- [Live environment absent] → Report that live root cause/token scope remain unproved; the person will verify on the main machine after merge. Do not search for credentials or launchers on pc2.
 - [Public schema lacks strict attachment-filter enum] → Treat `filter=all` as a suspect until a real rejection or accepted minimal comparison confirms it.
 - [Provider error formats evolve] → Unknown reasons retain numeric status and a standard phrase; never widen the raw-text surface.
 - [Synchronous ACL work delays timers] → Bound each subprocess by remaining budget and check the clock at each boundary, without relaxing fail-closed permission requirements.

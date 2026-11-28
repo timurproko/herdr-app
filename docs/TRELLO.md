@@ -322,9 +322,19 @@ Membership proof is bounded too; an unverified ID refuses rather than
 falling back to a global lookup. Returned `itemsComplete`/`itemsTruncated` on each
 checklist describe its check-item collection independently.
 
-Each command has a 256 KiB input limit, 2 MiB response limit, 20-second per-request
+Data commands have a 256 KiB input limit, 2 MiB response limit, 20-second per-request
 and 60-second overall deadline, at most 20 network requests, and no automatic
-read retries. Reads are sequential. HTTP 429 persists only a non-secret cooldown
+read retries. Reads are sequential. The monotonic command budget begins before
+initial authority acquisition, not after setup/ACL reads. Request budgets include
+preflight, headers, body/error inspection and cancellation; every follow-up and
+protected output publication checks the remaining command time. Windows ACL
+subprocesses receive at most 10 seconds or the remaining request/command time,
+whichever is shorter, and are killed on timeout; verification is never skipped.
+Budget exhaustion refuses with LIMIT or TRANSPORT and publishes no partial image.
+The one-shot CLI aborts pending work, flushes its JSON result and exits instead of
+waiting for an aborted provider socket to drain. These are execution budgets,
+subject to OS scheduling and completion of synchronous filesystem operations,
+not a hard real-time guarantee. HTTP 429 persists only a non-secret cooldown
 deadline; concurrent refusals atomically merge the longest deadline, re-reading
 after local compare-and-swap conflicts rather than discarding a longer refusal.
 Local merge retries never replay an HTTP request. Another invocation cannot

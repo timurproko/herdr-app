@@ -53,7 +53,7 @@ try {
   await assert.rejects(run(f.store, 'comments.add', cases[4][1], stale), {code: 'STALE'}); assert.ok(stale.calls.every(c => c.method === 'GET')); f.state(true, 'read-write');
   for (const failure of [() => { throw Error(credentials.token); }, () => new Response('bad JSON'), () => new Response('x'.repeat(2097153)), () => new Response('error', {status: 503}), () => new Promise(() => {})]) {
     const fake = fakeTransport((r, o) => o.method !== 'GET' ? failure() : undefined);
-    const out = await execute(['comments', 'add', '--board', A, '--card', C], {store: f.store, ...fake, input: '{"text":"hello"}', timeout: 10});
+    const out = await execute(['comments', 'add', '--board', A, '--card', C], {store: f.store, ...fake, input: '{"text":"hello"}', timeout: 10, clock: () => 0}); // Isolate post-dispatch failure from preflight filesystem timing.
     assert.equal(out.result.error.code, 'UNKNOWN_WRITE'); assert.equal(out.result.error.outcome, 'unknown'); assert.equal(out.exit, 4);
     assert.equal(fake.calls.filter(c => c.method !== 'GET').length, 1); assert.ok(!JSON.stringify(out).includes(credentials.token));
   }

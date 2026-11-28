@@ -59,6 +59,23 @@ class TrelloError extends Error {
   constructor(code, extra = {}) { super(messages[code] || messages.RESPONSE); this.code = code in messages ? code : 'RESPONSE'; Object.assign(this, extra); }
 }
 const fail = code => { throw new TrelloError(code); };
+// Wall-clock time is reserved for persisted rate limits. Execution budgets use a
+// monotonic clock, and children can never outlive the command which owns them.
+class Deadline {
+  constructor(duration = 60000, clock = () => performance.now(), parent = null, code = 'LIMIT') {
+    this.clock = clock; this.parent = parent; this.code = code;
+    this.end = clock() + Math.max(1, Math.min(duration, 60000));
+  }
+  remaining() {
+    const parent = this.parent ? this.parent.remaining() : Infinity;
+    const left = Math.min(parent, this.end - this.clock());
+    if (left <= 0) fail(this.code);
+    return left;
+  }
+  check() { this.remaining(); }
+  timeout(max = 10000) { return Math.max(1, Math.ceil(Math.min(max, this.remaining()))); }
+  expire() { this.end = -Infinity; }
+}
 function publicError(error, {configurationUnknown = false} = {}) {
   const safe = error instanceof TrelloError ? error : new TrelloError('INTERNAL');
   // Reconstruct the phrase at the public boundary; even forged extras cannot leak.
@@ -66,4 +83,4 @@ function publicError(error, {configurationUnknown = false} = {}) {
   return {code: safe.code, ...details, message: messages[safe.code] + (details.httpStatus ? ` HTTP ${details.httpStatus} ${details.httpReason}.` : '') + (configurationUnknown ? ' Setup may have changed; check status before retrying.' : ''), outcome: configurationUnknown || safe.code === 'UNKNOWN_WRITE' ? 'unknown' : safe.code === 'WRITE_CHANGED' ? 'applied' : 'refused',
     ...(Number.isSafeInteger(safe.retryAt) ? {retryAt: safe.retryAt} : {})};
 }
-module.exports = {TrelloError, fail, publicError, messages, httpDetails, providerReason};
+module.exports = {TrelloError, fail, publicError, messages, httpDetails, providerReason, Deadline};
