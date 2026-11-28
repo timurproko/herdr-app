@@ -38,6 +38,12 @@ their hit target. Stage and verdict boxes share the longest supported caption's 
 side padding, including all accepted round lengths independently of current rows.
 A bounded panel-level intrinsic probe keeps per-row elements and builder limits unchanged.
 
+`node --experimental-vm-modules tests/pr-stage-native-contract.test.mjs` evaluates
+the exact generated native fixture renderer with the production width callback.
+Both views at 100%/130% cover cold measurement, repeated cached renders and a
+pre-change baseline without the probe helper; mutation guards reject null and
+undefined native children. This call-contract check starts no app or server.
+
 Disposable pixel proof (explicit opt-in, output outside the checkout):
 `HERDR_APP_BIN=<verified-exe> node tests/features/pr-stage-native.mjs --run --sizing --zoom 1 --output <outside>`;
 repeat with `--zoom 1.3` and add `--baseline <before-commit>` for paired pictures.
