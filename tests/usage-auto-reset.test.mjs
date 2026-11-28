@@ -41,10 +41,10 @@ try {
  await sleep(410);assert.ok((await transact({...period,startedAt:Date.now(),windows:[{id:'weekly',remaining:0,end:period.windows[0].end+60000}]})).requestId,'A proven new natural period can rearm');
  const uuid='12345678-abcd-1234-abcd-123456789abc';assert.ok((await transact({...admission,accountId:uuid})).requestId);
  assert.equal((await transact({...admission,accountId:uuid.toUpperCase()})).blocked,true,'UUID spelling cannot bypass account admission');
- const portable=path.join(root,'portable');fs.mkdirSync(portable);fs.writeFileSync(path.join(portable,'shared.json'),JSON.stringify({'custom.usage.local.preferences':consent,'custom.usage.reset-journal-active':true}));
+ const portable=path.join(root,'portable');fs.mkdirSync(portable);fs.writeFileSync(path.join(portable,'shared.json'),JSON.stringify({'custom.usage.local.preferences':consent,'custom.usage.reset-journal-active':true,'custom.usage.manual-reset-fences':{version:1,accounts:{fixture:{id:'private-attempt'}}}}));
  syncPreferences('export',portable,{hostname:'fixture'});
  const exported=JSON.parse(fs.readFileSync(path.join(portable,'preferences/fixture.json'))).shared;
- assert.equal(exported['custom.usage.local.preferences'].automaticReset,undefined);assert.equal(exported['custom.usage.local.preferences'].resetSelections,undefined);assert.equal(exported['custom.usage.reset-journal-active'],undefined);
+ assert.equal(exported['custom.usage.local.preferences'].automaticReset,undefined);assert.equal(exported['custom.usage.local.preferences'].resetSelections,undefined);assert.equal(exported['custom.usage.reset-journal-active'],undefined);assert.equal(exported['custom.usage.manual-reset-fences'],undefined);
  const corrupt=path.join(root,'corrupt');fs.mkdirSync(path.join(corrupt,'.customizations/usage'),{recursive:true});fs.writeFileSync(path.join(corrupt,'.customizations/usage/admission.json'),'broken');
  await assert.rejects(transact({...admission,root:corrupt}));
  const capacity=path.join(root,'capacity');fs.mkdirSync(path.join(capacity,'.customizations/usage'),{recursive:true});

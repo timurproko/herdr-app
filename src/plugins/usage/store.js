@@ -23,11 +23,47 @@ const selectedMachine=()=>spaces().find(s=>s.active)?.machine??null;
 const ready=machine=>machine==null||machines().some(m=>m.name===machine&&!m.temporary&&(m.layout==='ready'||m.state==='connected'));
 async function resetJournal(request) {
   try {const reply=await exec('node',[pluginFile('usage','reset-journal.cjs'),JSON.stringify({...request,root:appHome()})],{timeout:10000});
-    return reply.code===0?JSON.parse(reply.stdout):{blocked:true};}catch{return {blocked:true};}
+    if(reply.code!==0)return {unhealthy:true};
+    const result=JSON.parse(reply.stdout);
+    if(result?.requestId!==undefined&&(typeof result.requestId!=='string'||!/^[A-Za-z0-9_-]{1,64}$/.test(result.requestId)))return {unhealthy:true};
+    return result&&(result.requestId||result.blocked===true||result.unhealthy===true||result.observed||result.finished)?result:{unhealthy:true};
+  }catch{return {unhealthy:true};}
+}
+const MANUAL_FENCES='custom.usage.manual-reset-fences';
+const resetAccount=(provider,id,organization)=>JSON.stringify([provider,id,organization??null].map(v=>typeof v==='string'&&/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(v)?v.toLowerCase():v));
+function manualFences() {
+  const value=shared(MANUAL_FENCES);
+  if(value==null)return {version:1,accounts:{}};
+  return value.version===1&&value.accounts&&typeof value.accounts==='object'&&!Array.isArray(value.accounts)&&Object.keys(value.accounts).length<=256&&
+    Object.values(value.accounts).every(f=>f&&typeof f.id==='string'&&Number.isFinite(f.until)&&(f.finishedAt===undefined||Number.isFinite(f.finishedAt))&&
+      Array.isArray(f.windows)&&f.windows.length<=64&&f.windows.every(w=>typeof w.id==='string'&&(w.end===null||Number.isFinite(w.end))))?value:null;
+}
+function manualFence(provider,id,organization) {
+  const state=manualFences();return !state||state.blocked?true:state.accounts[resetAccount(provider,id,organization)];
+}
+function beginManualFence(machine,admission,id) {
+  const state=manualFences();if(!state)return; // Unknown state already denies automatic claims.
+  const account=resetAccount(admission.provider,admission.accountId,admission.organizationId),old=state.accounts[account];
+  if(!old&&Object.keys(state.accounts).length>=256){setShared(MANUAL_FENCES,{...state,blocked:true});return;}
+  const windows=new Map((old?.windows??[]).map(w=>[w.id,w]));
+  for(const w of admission.windows)if(w.remaining!==null&&w.remaining>=0&&w.remaining<=1)windows.set(w.id,w);
+  setShared(MANUAL_FENCES,{...state,accounts:{...state.accounts,[account]:{id,machine,at:Date.now(),until:Date.now()+300000,windows:[...windows.values()]}}});
+}
+function finishManualFence(admission,id) {
+  const state=manualFences(),account=resetAccount(admission.provider,admission.accountId,admission.organizationId),fence=state?.accounts[account];
+  if(fence?.id===id)setShared(MANUAL_FENCES,{...state,accounts:{...state.accounts,[account]:{...fence,finishedAt:Date.now()}}});
+}
+function observeManualFence(machine,entry) {
+  const state=manualFences(),account=resetAccount(entry.sourceId,entry.account.id,entry.account.organizationId),fence=state?.accounts[account],read=entry.actionRead;
+  if(!fence||fence.machine!==machine||!read||read.machine!==machine||!(read.startedAt>(fence.finishedAt??fence.until)))return;
+  const windows=resetWindows(entry),healthy=w=>w&&typeof w.remaining==='number'&&w.remaining>1&&w.remaining<=100;
+  const recovered=fence.windows.length?fence.windows.every(old=>{const current=windows.find(w=>w.id===old.id);return healthy(current)||
+    (current&&old.end!==null&&old.end<=read.startedAt&&current.end!==null&&current.end>old.end);}):windows.length>0&&windows.every(healthy);
+  if(recovered){const accounts={...state.accounts};delete accounts[account];setShared(MANUAL_FENCES,{...state,accounts});}
 }
 function automaticCurrent(machine,entry,epoch,automatic) {
   const data=cache(machine),live=(data.reports??[]).find(e=>e.id===entry?.id),read=entry?.actionRead;
-  if(checking()||!usageEnabled()||generation()!==epoch||!appWindow()?.active||selectedMachine()!==machine||!ready(machine)||data.error||!read||
+  if(manualFence(entry?.sourceId,entry?.account?.id,entry?.account?.organizationId)||checking()||!usageEnabled()||generation()!==epoch||!appWindow()?.active||selectedMachine()!==machine||!ready(machine)||data.error||!read||
     read.machine!==machine||read.epoch!==epoch||read.receivedAt>Date.now()||Date.now()-read.receivedAt>=TTL||live?.actionRead?.request!==read.request)return false;
   const candidate=automaticCandidate(live,preferences(machine));
   return candidate?.type.id===automatic.typeId&&candidate?.grant.grantId===automatic.grantId;
@@ -36,6 +72,7 @@ async function evaluateAutomatic(machine,cx,fetched,epoch) {
   for(const entry of fetched) {
     if(!usageEnabled()||generation()!==epoch||!preferences(machine).enabled)return;
     if(!['claude','codex'].includes(entry.sourceId)||!entry.account?.id||!entry.actionRead)continue;
+    observeManualFence(machine,entry);
     if(shared('custom.usage.reset-journal-active')||preferences(machine).automaticReset)await resetJournal({action:'observe',provider:entry.sourceId,accountId:entry.account.id,organizationId:entry.account.organizationId,windows:resetWindows(entry),startedAt:entry.actionRead.startedAt});
     const candidate=automaticCandidate(entry,preferences(machine));if(!candidate)continue;
     const automatic={typeId:candidate.type.id,covers:candidate.grant.covers,grantId:candidate.grant.grantId,label:candidate.type.label};
@@ -106,16 +143,28 @@ export async function claimReset(machine,{provider,accountId,organizationId,gran
     if(!current())return {obsolete:true};
     const target=entry??(cache(machine).reports??[]).find(e=>e.sourceId===provider&&e.account?.id===accountId&&(e.account?.organizationId??null)===(organizationId??null));
     const admission={provider,accountId,organizationId,windows:resetWindows(target)};
+    const activeKey=`custom.usage.reset-active.${resetAccount(provider,accountId,organizationId)}`;
+    const fence=manualFence(provider,accountId,organizationId);
+    const pending=()=>({error:'A reset is already pending. Refresh usage before trying again.'});
+    if(shared(activeKey)?.until>Date.now()||(fence!==true&&!fence?.finishedAt&&fence?.until>Date.now()))return pending();
     const reservation=await resetJournal({...admission,action:'reserve',automatic:Boolean(automatic),startedAt:target?.actionRead?.startedAt});
-    if(!reservation.requestId)return {error:'A reset is already pending. Refresh usage before trying again.'};
-    setShared('custom.usage.reset-journal-active',true);
-    const requestId=reservation.requestId;
-    if(!current()) {await resetJournal({...admission,action:'finish',requestId});return {obsolete:true};}
+    if(!reservation.requestId&&(automatic||reservation.blocked===true||reservation.unhealthy!==true))return pending();
+    const journalled=Boolean(reservation.requestId),requestId=reservation.requestId??`herdr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,14)}`;
+    if(journalled)setShared('custom.usage.reset-journal-active',true);
+    if(!current()) {if(journalled)await resetJournal({...admission,action:'finish',requestId});return {obsolete:true};}
+    // A confirmed manual click must not depend on local journal health. Its
+    // persisted fence still forbids automatic use until a later real recovery.
+    if(!journalled)beginManualFence(machine,admission,requestId);
+    setShared(activeKey,{id:requestId,until:Date.now()+300000});
     let result;
     try {
       const reply=await exec('node',['--input-type=commonjs','-e',source,'--',JSON.stringify({action:provider==='codex'?'codex-reset':'claude-reset',accountId,organizationId,grantId,requestId,automatic})],{on:machine??null,timeout:120000});
       result=reply.code===0?JSON.parse(reply.stdout):{error:'The reset did not finish. Check usage before trying again.'};
-    } finally {await resetJournal({...admission,action:'finish',requestId,outcome:result?.result==='reset'?'reset':'unknown'});}
+    } finally {
+      if(journalled)await resetJournal({...admission,action:'finish',requestId,outcome:result?.result==='reset'?'reset':'unknown'});
+      else finishManualFence(admission,requestId);
+      if(shared(activeKey)?.id===requestId)setShared(activeKey,null);
+    }
     // Report the confirmed irreversible fact even if consent changed after dispatch.
     // The one admitted request owns this notification; obsolete results still cannot refresh.
     if(automatic&&result?.result==='reset')try{notify({title:'Automatic reset used',

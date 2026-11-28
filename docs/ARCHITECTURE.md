@@ -1247,8 +1247,15 @@ exact account, scope and grant immediately before an automatic consume action.
 
 `plugins/usage/reset-journal.cjs` is a Node-builtins-only local admission worker.
 It uses exclusive process-owned locks, atomic synced writes and bounded hashed
-account records under the desktop home's `.customizations/usage/`. It reserves
-before submission and shares arbitration with manual claims. An account's episode
+account records under the desktop home's `.customizations/usage/`. Acquisition
+prepares and syncs a uniquely named owner record in a private temporary directory,
+then atomically renames the complete nonempty directory to `admission.lock`.
+A writer killed before publication owns no lock. Legacy missing, empty or malformed
+owner records are reclaimable after the journal's ten-second exec budget; a known
+live PID is never reclaimed on age alone. Cleanup uses the captured unique owner
+name so racing recovery cannot remove a newly published owner. No spend receipt
+is deleted or expired by lock recovery. It reserves before submission and shares
+healthy-journal arbitration with manual claims. An account's episode
 spans selected machines and reset types, preventing cascading grants. Unknown
 outcomes, restarts and toggle changes cannot clear an episode. Later authoritative
 recovery of all recorded low quotas, or a proven new natural period after the
@@ -1260,6 +1267,19 @@ conservative five-minute transport bound it can settle only from a later fresh
 recovery or proven natural-period read, never from timeout alone. This journal
 and account consent are excluded
 from portable preferences and contain no credentials or raw provider responses.
+
+An unhealthy/unavailable journal is distinct from a healthy pending owner: the
+former denies automatic claims but cannot remove the person's already-confirmed
+manual Reset action. That manual fallback uses the existing target-machine action
+and request ID, without requiring local Node/journal success. It first writes a
+bounded account/machine recovery fence to runtime-only
+`custom.usage.manual-reset-fences`; current active claims still exclude a racing
+manual fallback. The fence survives module replacement and journal repair and
+cannot rearm from another low reading, cached data, restart or timeout alone.
+A later real target-machine recovery/new-natural-period read clears it; an
+unfinished fallback also requires the existing five-minute transport bound.
+Unknown/full fence state keeps automation fail-closed without deleting records.
+These fences are not settings or portable preferences and add no UI controls.
 
 Both reset origins use `refreshAfterReset()` in the canonical controller, retaining
 PR #107's full collector-lease wait, captured enable epoch and account-only scope.

@@ -18,6 +18,8 @@ const host={checking:()=>false,shared:key=>state.get(key),setShared:(key,value)=
   closeOverlay:id=>closed.push(id),openOverlay(){throw Error('Disabled Usage must not open anything');},
   readTextFile:()=>new Promise(resolve=>reads.push(resolve)),
   exec:(...args)=>{
+    // Main's independent Trello cleanup lifecycle is outside this Usage fixture.
+    if(args[1]?.[0]?.endsWith('trello-transport.cjs'))return Promise.resolve({code:0,stdout:JSON.stringify({ok:true,data:{announced:[],cleaned:[],pending:[]}})});
     if(args[1]?.[0]?.endsWith('reset-journal.cjs'))return Promise.resolve({code:0,stdout:JSON.stringify({requestId:'herdr-fixture',observed:true,finished:true})});
     return new Promise(resolve=>executions.push({args,resolve}));},
   pluginFile:(id,name)=>`/fixture/plugins/${id}/${name}`,

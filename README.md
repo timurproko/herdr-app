@@ -1446,8 +1446,12 @@ account across windows and selected machines. The receipt survives reloads,
 restarts and toggle cycling. A refusal, timeout or uncertain spend is not retried
 automatically, and a still-low follow-up cannot consume another reset. Only a
 later authoritative recovery or a proven new natural quota period permits a new
-depletion. Storage failures fail closed. These receipts are neither synced nor
-exported, and do not coordinate independent clients outside this installation.
+depletion. Storage failures fail closed for automation, but do not disable the
+confirmed manual Reset action on the target machine. A manual reset made while
+the journal is unavailable still inhibits automatic spending for that account
+until a fresh reading proves recovery. These receipts and recovery fences are
+neither synced nor exported, and do not coordinate independent clients outside
+this installation.
 
 A confirmed automatic spend shows one existing-style **Automatic reset used**
 success toast naming the machine, provider, account and reset type. It then uses
