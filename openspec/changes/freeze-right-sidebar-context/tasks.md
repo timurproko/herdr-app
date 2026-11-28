@@ -10,10 +10,10 @@
 
 ## 2. Files uses the held directory and machine across agent and space switches, including view changes and release to the current agent
 
-- [ ] 2.1 Integrate the shared held context into Files' location adapter and packaging without changing file-viewer ownership; Files-location fixtures cover local/remote routes, shown/peek terminals and capture of an already-retained explorer behind a file viewer.
-- [ ] 2.2 Keep the captured folder across cwd, agent, tab, pane and space changes and preserve normal same-folder tree reuse; focused Files fixtures assert stable source/tree context through navigation and immediate current-selection resolution after unpin.
-- [ ] 2.3 Preserve captured file-read/open/recycle targets and existing current-space viewer rules without borrowing the selected machine; targeted stale-context fixtures cover unpin/recapture, source disappearance and disconnected remote sources without new UI or terminal actions.
-- [ ] 2.4 Update README.md's Files/sidebar description with held-folder behavior, explicit view changes and release semantics; the examples agree with tested source capture rather than promising a frozen filesystem snapshot.
+- [x] 2.1 Integrate the shared held context into Files' location adapter and packaging without changing file-viewer ownership; Files-location fixtures cover local/remote routes, shown/peek terminals and capture of an already-retained explorer behind a file viewer.
+- [x] 2.2 Keep the captured folder across cwd, agent, tab, pane and space changes and preserve normal same-folder tree reuse; focused Files fixtures assert stable source/tree context through navigation and immediate current-selection resolution after unpin.
+- [x] 2.3 Preserve captured file-read/open/recycle targets and existing current-space viewer rules without borrowing the selected machine; targeted stale-context fixtures cover unpin/recapture, source disappearance and disconnected remote sources without new UI or terminal actions.
+- [x] 2.4 Update README.md's Files/sidebar description with held-folder behavior, explicit view changes and release semantics; the examples agree with tested source capture rather than promising a frozen filesystem snapshot.
 
 ## 3. Git uses the held agent or coordinator context without changes to its render path, preserving plugin availability and stale-context guards
 

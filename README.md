@@ -388,16 +388,18 @@ foreground-tinted hover through one component, without caller opt-ins. Title
 padding and inline widths stay unchanged. A lone enabled sidebar panel keeps a
 static title without hover; existing static agent/program titles stay static.
 The pin's persistent pressed treatment stays pin-specific. No native header patch
-is involved; see the [header ownership inventory](docs/HEADER-TITLES.md). Pin remembers **Files or
-Git and open/closed state for the current tab**, separate from the shared sidebar
-choice used by unpinned tabs. Returning through tab clicks, keys or agent navigation
-restores that tab's choice. While pinned, switching the panel or opening/closing it
-updates only that tab; other tabs keep their normal shared choice. Unpin returns
-to the shared choice. The pin is **unpressed by default** and uses the exact same
+is involved; see the [header ownership inventory](docs/HEADER-TITLES.md). Pin holds **the current machine, folder and agent context**, plus **Files or
+Git and open/closed state**, across agent, tab and space navigation. Changing
+Files/Git by hand keeps that same source pinned; closing and reopening keeps the
+hold too. The held folder does not follow later cwd changes. Refresh continues
+updating that source: this is not a static screenshot. Unpin returns to the shared
+view/visibility choice and follows the agent that is current now. File actions
+still use the held machine and folder; file viewers open in the current space. The pin is **unpressed by default** and uses the exact same
 angled icon as Usage in both states. When pinned, it has Usage's pressed fill,
 border and foreground treatment, rather than switching to a crossed-out icon.
-Width remains native/global. Pins are client-local, qualified-tab runtime state, not portable
-preferences; no Core document, terminal or agent is changed. Reconciliation yields
+Width remains native/global. The hold is client-local app-session memory, not a
+durable or portable preference: restart starts unpinned and follows the current
+agent. Old per-tab pins become unpinned, preserving their shared default; no Core document, terminal or agent is changed. Reconciliation yields
 out of render and waits for native acknowledgements rather than polling/replaying
 layout commands.
 

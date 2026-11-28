@@ -487,10 +487,12 @@ export default class Files extends View {
 
   openFile(path) {
     if (!this.root || !this.current(this.context)) return;
-    const space = location(this.context).space;
+    const destination = spaces().find(s => s.active), space = destination?.id;
     if (!space) return;
     const fullPath = fullFilePath(this.root, path), identity = filePathKey(fullPath);
-    const allPanes = panes(), tabs = spaces().find(s => s.id === space)?.tabs ?? [];
+    // A held remote tree may be used from a space on another machine. Public
+    // pane metadata cannot prove an existing viewer there has this source route.
+    const allPanes = panes(), tabs = (destination.machine ?? null) === (this.on ?? null) ? destination.tabs ?? [] : [];
     const matches = tabs.flatMap(tab => {
       if (filePathKey(fileHeader(tab.id, tab.name)) !== identity) return [];
       const viewers = allPanes.filter(p => p.tab === tab.id && p.mod === 'custom-files');

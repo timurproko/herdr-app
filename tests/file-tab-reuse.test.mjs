@@ -70,6 +70,14 @@ for(const active of [false,true]) {
   assert.equal(h.calls[1][0],'pane.focus','Renaming a viewer does not change its known file identity');
 }
 
+{
+  const h=await harness();h.spaces[0].active=false;
+  const destination={id:'local-space',active:true,machine:null,tabs:[]};h.spaces.push(destination);
+  h.addFile('D:/project/src/main.ts',{space:destination});h.view.openFile('src/main.ts');
+  assert.equal(h.calls[0][0],'tab.new','A held remote source cannot reuse an unverified same-path local viewer');
+  assert.equal(h.calls[0][1].space,destination.id);assert.equal(h.calls[0][1].props.fileMachine,'pc2');
+}
+
 for(const mismatch of ['directory','basename-only','other-space','other-machine','terminal','missing-pane','multiple-viewers']) {
   const h=await harness();
   if(mismatch==='other-space'||mismatch==='other-machine')h.spaces.push({id:'elsewhere',machine:mismatch==='other-machine'?'pc3':'pc2',tabs:[]});
