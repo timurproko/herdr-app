@@ -10,7 +10,7 @@ const {Main:Spaces}=await loadMod({mod:'custom-spaces',host:{...host,openOverlay
  globals:{localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v)}},modules:{
   'main.js':'src/features/spaces/main.js','space-title.js':'src/ui/space-title.js','workspace-links.js':'src/shared/workspace-links.js','ui.js':'src/ui/ui.js',
   'gpui-kit':{View:class{},div:element,svg},'gpui-base':{h_flex:element,v_flex:element,Input:{},Popover:{},ScrollHandle:{}},
-  'plugins.js':{pluginWorkspaceLinks:r.pluginWorkspaceLinks,pluginSpaceTags:r.pluginSpaceTags,pluginEvent(){}},'reorder.js':{reorder:()=>drag},
+  'plugins.js':{pluginWorkspaceLinks:r.pluginWorkspaceLinks,pluginSpaceTags:r.pluginSpaceTags,pluginMenuItems:r.pluginMenuItems,pluginEvent(){}},'reorder.js':{reorder:()=>drag},
   'space-rename.js':{beginSpaceRename(){},cancelSpaceRename(){},saveSpaceRename(){},syncSpaceRename(){}},'sidebar-scroll.js':{sidebarScroll(){}},
   'directory.js':{displaySpace:s=>s,spaceDirectory:()=>({cwd:'/fixture'})},'space-color-state.js':{reconcileSpaceColors(){}},'tab-arrival.js':{startTabArrivals(){},tabArrivalMotion:(_v,e)=>e},
  },entry:'export {default as Main} from "./main.js";'});

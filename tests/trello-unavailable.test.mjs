@@ -4,6 +4,7 @@ const hash='a'.repeat(64),binding={id:'fake-core',session:'fake',principal:hash,
 const setup={configured:false,revision:hash,localWrites:false,allowedBoards:0,boards:[],namesMissing:false,destination:binding};
 let runtimeCode=null,statusCode=null,hold=false,release;const calls=[];
 const h=await formsHarness({checking:()=>false,appHome:()=>'/fake-owned-home',exec:async(program,args)=>{
+  if(args.includes('--discovery-all'))return {code:0,stdout:JSON.stringify({ok:true,data:{pending:[]}})};
   assert.equal(program,'node');calls.push(args);assert.ok(args.includes('--probe')||args.includes('--status'),'No private action or secret dispatch is allowed');
   const code=args.includes('--probe')?runtimeCode:statusCode;
   const result=code?{version:1,ok:false,error:{code,...(code==='CONFIG_UNKNOWN'?{outcome:'unknown'}:{})}}:{version:1,ok:true,data:args.includes('--probe')?{runtime:'ready',destination:binding}:setup};

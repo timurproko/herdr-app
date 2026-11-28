@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {formsHarness, find, words} from './support/plugin-forms.mjs';
 for (const code of ['STORE_MALFORMED','STORE_PERMISSIONS','STORE_PERMISSION_CHECK','STORE_IN_CHECKOUT','STORE_UNSAFE_PATH','STORE_BUSY','STORE_IO','PUBLIC_STATE_INVALID','INTERNAL']) {
-  const h = await formsHarness({checking:()=>false, appHome:()=>'/fake', exec:async()=>({code:3,stdout:JSON.stringify({version:1,ok:false,error:{code,message:'HOSTILE_FAKE_SECRET'}})})});
+  const h = await formsHarness({checking:()=>false, appHome:()=>'/fake', exec:async(_p,args)=>args.includes('--discovery-all')?{code:0,stdout:JSON.stringify({ok:true,data:{pending:[]}})}:({code:3,stdout:JSON.stringify({version:1,ok:false,error:{code,message:'HOSTILE_FAKE_SECRET'}})})});
   const plugin=h.registry.pluginById('trello');h.registry.setPluginEnabled(plugin,true);
   h.ui.initPlugins(h.view,h.cx,'trello');h.view.pluginOpen['trello-requirements']=true;h.view.pluginOpen['trello-boards']=true;
   h.ui.reloadPlugins(h.view,h.cx,'trello');await h.flush();

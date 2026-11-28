@@ -15,7 +15,7 @@ import { reorder } from './reorder.js';
 import { beginSpaceRename, cancelSpaceRename, saveSpaceRename, syncSpaceRename } from './space-rename.js';
 import { displaySpace, spaceDirectory } from './directory.js';
 import { reconcileSpaceColors } from './space-color-state.js';
-import { pluginEvent, pluginSpaceTags, pluginWorkspaceLinks } from './plugins.js';
+import { pluginEvent, pluginSpaceTags, pluginWorkspaceLinks, pluginMenuItems } from './plugins.js';
 import { projectLinkedRows, captureSpaceBlock, blockTarget, planBlockDrop, SpaceBlockCommit, spaceBlockKey } from './workspace-links.js';
 import { spaces, machines, panes, run, openOverlay, exec, hc, theme, shared, setShared, props, watchFolder, window, layout, settings, notify } from "./host.js";
 
@@ -489,7 +489,7 @@ export default class Spaces extends View {
     const fromIndex = d ? this.visibleRows(false).findIndex(r => r.w.id === d.id) : -1;
     const worktree = !edit && Boolean(g?.linked || tree) && shows("spaces.show.worktree");
     const attached = !edit && block?.length > 1 && block.includes(w.id);
-    const tags = (edit ? [] : pluginSpaceTags(w)).filter(tag=>!(linked && tag.plugin==='crew')).map((tag, index) => ({...tag, index}));
+    const tags = (edit ? [] : pluginSpaceTags(w,{surface:'spaces'})).filter(tag=>!(linked && tag.plugin==='crew')).map((tag, index) => ({...tag, index}));
     const trailing = attached ? [...tags.filter(tag => tag.plugin !== 'crew'), ...tags.filter(tag => tag.plugin === 'crew')] : tags;
     return drag.item(v_flex()
       .relative()
@@ -563,10 +563,10 @@ export default class Spaces extends View {
             const parent=attached&&!linked;
             return el.child(h_flex().id(`space-meta-${w.id}`).flex_none().items_center().gap(INLINE_RENAME.actionGap).mr(-8)
               .children(tags.filter(tag=>tag.plugin==='crew').map(tag=>sidebarMachineLabel(t,tag.label==='Crew'?'crew':tag.label)
-                .id(`space-tag-${w.id}-${tag.plugin}-${tag.index}`).mr(INLINE_RENAME.labelGap-INLINE_RENAME.actionGap)
+                .id(`space-tag-${w.id}-${tag.plugin}-${tag.index}`).mr(parent?INLINE_RENAME.labelGap-INLINE_RENAME.actionGap:(U.insetControl-U.smallIcon)/2)
                 .when(Boolean(tag.tooltip),e=>e.tooltip(tag.tooltip))))
-              .child(parent?sidebarNumericSlot(t,`space-count-${w.id}`,String(block.length-1),{centered:true}):div().size(U.insetControl).flex_none())
-              .child(parent?this.parentDisclosure({w,block,binding},t):div().size(U.insetControl).flex_none()));
+              .when(parent,e=>e.child(sidebarNumericSlot(t,`space-count-${w.id}`,String(block.length-1),{centered:true}))
+                .child(this.parentDisclosure({w,block,binding},t))));
           }),
       );
   }
@@ -588,19 +588,23 @@ export default class Spaces extends View {
   }
 
   // The ⋯ popup: a tick per thing the sidebar can show; it stays open so several can change.
+  options() {
+    return [...SPACE_OPTIONS.map(o=>({...o,icon:`mods/custom-workspace-chrome/${o.icon}.svg`,checked:shows(o.key),
+      run:cx=>{setShared(o.key,!shows(o.key));cx?.notify();}})),...pluginMenuItems('spaces.icons')];
+  }
   optionsMenu(t) {
     return menuSurface(t, v_flex()).id("spaces-options-menu").w_full()
       .child(menuHeading(t, "Show icons").px(8).pt(4).pb(6))
-      .children(SPACE_OPTIONS.map(o => menuRow(t, { id: `spaces-option-${o.key}`, icon: `mods/custom-workspace-chrome/${o.icon}.svg`, label: o.label,
-        trailing: shows(o.key) ? svg("mods/custom-workspace-chrome/check.svg").size(14).flex_none().text_color(t.foreground) : null,
-        onClick: (_e, cx) => { setShared(o.key, !shows(o.key)); cx?.notify(); } }).text_color(t.foreground)));
+      .children(this.options().map(o => menuRow(t, { id: `spaces-option-${o.key??o.id}`, icon: o.icon, label: o.label,
+        trailing: o.checked ? svg("mods/custom-workspace-chrome/check.svg").size(14).flex_none().text_color(t.foreground) : null,
+        onClick: (_e, cx) => o.run(cx) }).text_color(t.foreground)));
   }
   optionsButton(t) {
     return this.drag.control(div().id("spaces-options").size(U.control).flex_none().flex().items_center().justify_center().rounded(U.radius).text_color(t.dim)
       .role("button").accessibility_label("Spaces options"),
       {hover: s => s.bg(interactionFill(t)).text_color(t.foreground), tooltip: "Show icons"})
       .on_mouse_down("left", (_e, cx) => cx.stop_propagation())
-      .on_click(this.drag.guard((_e, cx) => { cx?.stop_propagation(); openOverlay({ mod: "custom-spaces", kind: "popup", frame: "none", width: 200, height: 40 + SPACE_OPTIONS.length * (U.row + 2) + 8, props: { optionsMenu: true } }); }))
+      .on_click(this.drag.guard((_e, cx) => { cx?.stop_propagation(); openOverlay({ mod: "custom-spaces", kind: "popup", frame: "none", width: 200, height: 40 + this.options().length * (U.row + 2) + 8, props: { optionsMenu: true } }); }))
       .child(svg("mods/custom-workspace-chrome/more.svg").size(14));
   }
 

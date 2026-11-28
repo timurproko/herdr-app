@@ -146,6 +146,14 @@ core privileges are **not** part of `npm test` and require separate approval.
 
 ## Optional Trello agent plugin
 
+Enabled execution hosts advertise `herdr-trello` to A1, Claude Code and Codex through
+an owned user skill, with the short note in its automatically loaded description.
+It names board/card reads, comments, checklists and image attachments, points to
+`herdr-trello --help`, permits writes only through current Read-write/private gates,
+and treats board content as untrusted data. Disable removes the owned note before
+new profile launches; existing sessions may retain already-loaded context. No
+credentials or board inventory appear in it. See [agent discovery](docs/TRELLO.md#agent-discovery).
+
 **Settings → Plugins → Trello** enables the installed `herdr-trello` JSON CLI for
 shell-capable agents. It is off and read-only by default. Reads and writes require
 an explicit machine-local board allowlist; writes additionally require local
@@ -164,8 +172,11 @@ failures or a fix count: connect as the normal Core user or set up on that machi
 directly. Copying credentials cannot fix an unsafe execution identity.
 `herdr-trello setup` remains the headless alternative.
 Normal full build/deploy installs the standalone runtime and owned user-bin
-launchers (the selected bin must be on PATH); shell-only peers get no credentials
-or Trello installation. See [Trello setup, commands and security limits](docs/TRELLO.md).
+launchers. New enabled agent profiles prepare that host's bin in PATH automatically,
+including Bash, PowerShell and CMD tool shells, without restarting Core or relaxing
+PowerShell policy. Windows uses an owned console shim built with in-box .NET tools,
+so PowerShell literals do not pass through CMD expansion. Standalone shells outside this launch path need PATH configured
+explicitly. Shell-only peers get no credentials or Trello installation. See [Trello setup, commands and security limits](docs/TRELLO.md).
 Card reads expose attachment IDs/counts. Agents can list attachment metadata and
 use `attachments get --out PRIVATE_DIR` to inspect an uploaded screenshot locally,
 optionally selecting a preview width. Downloads cap at 20 MiB, accept images by
@@ -711,9 +722,10 @@ Managed review labels supply one tight bottom-right plain chip: **Build**,
 **Review** or **Approved**, independently of CI and GitHub's separate review decision.
 It uses stage-coloured text on the existing subtle raised background, 6px side
 padding, no emoji, outline or hover tooltip, and leaves the entire title content width free.
-Stages and verdicts use 18px-high, centred boxes sized to each caption with 6px
-side padding, without a shared minimum width. Longer captions grow only their own
-box; the right rail and title truncation remain unchanged. The
+Stages and verdicts share 18px-high boxes sized to the longest supported caption
+with 6px side padding, with shorter captions centred. The common width covers
+all supported round lengths even when absent, so changing statuses or rounds
+never resizes the buttons; the right rail and title truncation remain unchanged. The
 compatibility snapshot follows MyWorkflows `labels/base.json`: stable role
 `review-changes-needed` accepts Build and previous names Rework / Changes needed;
 `under-review` accepts Review / Under review; `review-approved` accepts Approved.
@@ -914,7 +926,11 @@ motion are implemented once, not copied into each feature. See
 Worktree spaces keep normal avatar/title alignment. Rows with plugin tags show
 name, ahead/behind counts, worktree icon, then tags. Crew uses the same plain,
 regular 12px dim label as Agents' machine text, not a filled pill; unrelated tags
-keep their existing styling and tooltips. Untagged worktree icons
+keep their existing styling and tooltips. **Spaces → … → Show icons → Crew label**
+is checked by default and appears only while Crew is enabled. It hides only the
+sidebar's crew text, preserving its saved choice, child counts, disclosure,
+fleet behavior and terminal-pane Crew badges; the menu stays open like the other
+toggles. Untagged worktree icons
 keep the machine-header chevron's right inset and centre line. Drag them like other spaces within their machine: repository discovery
 never regroups them or overrides the saved order. This is Spaces presentation and
 works independently of the Git plugin.
@@ -1004,8 +1020,9 @@ Neither row shows a chain, and only the coordinator shows lowercase `crew` in
 Spaces; the terminal-pane header still shows its unchanged `Crew` badge. Unrelated plugin
 tags remain. Crew precedes the coordinator's far-right chevron, which folds its children.
 The chevron and its 24px hover target align with machine headers. Crew stays fixed
-across disclosure, without children and with combined view off; absent count and
-chevron slots stay empty rather than moving the label. The connected-child-space
+before the count and chevron across disclosure when children exist. Without both
+controls, including with combined view off, the label moves right to the machine
+chevron's right edge and reserves no empty count/disclosure slots. The connected-child-space
 count stays visible in both disclosure states.
 Counts, machine + and rename Confirm share one centred inner column; chevrons and
 rename Cancel share the outer column. The coordinator itself is not counted.
@@ -1274,23 +1291,28 @@ When Agents is set to **Grouped by space**, Custom visually groups agents by
 **each agent's own live folder**, not the containing space's selected tab. Tabs in
 `firstmate` and `Git` therefore have separate, focus-stable headings even inside
 one native space. Agents in the same full folder on the same machine share a
-heading across tabs/spaces; different paths or machines stay separate even when
-their folder names match. Windows slash/case variants count as the same folder.
+heading across tabs/spaces on that machine; different machines keep separate
+groups even when their names match. Windows slash/case variants count as the same folder.
 An actual directory change moves that agent's row; selecting another tab does not
 rename its siblings' headings. Missing directory data falls back to the native
 space name. This is presentation only: native spaces, tabs, titles and running
 sessions are untouched; the upper Spaces list and tab strip are unchanged.
-Coordinator-containing groups always come first, preserving their existing relative
-order, including across machines. Every other group keeps its existing relative order.
-Classification uses live coordinator metadata, never the displayed name; disabling
-Crew does not relabel or end an already-running coordinator. Fold keys, counts,
-selection and drag behavior are unchanged; keyboard navigation follows the combined
-list. Remote rows still show their machine, pinned agents stay separate, and
+With **Group agents by: Space**, groups follow the Spaces list top to bottom,
+machine by machine: this computer first, then remote machines in the same order
+as Spaces. Attached fleet children keep their projected positions under their
+coordinator. There is no coordinator-first rule. Same-machine shared-name groups
+use their earliest represented space; unavailable spaces stay at their machine's
+tail. Native space/sibling reorders update the order without moving sessions.
+Same-name groups on different machines have independent counts and folds; local
+fold keys and same-machine grouping are retained. Keyboard navigation follows
+the displayed groups, including folded members. Remote rows still show their machine, pinned agents stay separate, and
 Priority sorting is unchanged. The sort icon has no hover tooltip; its accessible
 label and sort menu remain available. Group counts are right-aligned in a fixed
 three-digit slot, even when expanded. Collapsed group status dots share one column
 across Working and Done states; agent-row dots keep their separate rightmost rail
-(shared with the group chevrons), without moving the time text.
+(shared with the group chevrons), without moving the time text. Group chevrons
+use Spaces' 24px square inset hover/focus treatment; either the header or its
+chevron folds that group, without selecting an agent.
 
 ## A1 session names
 

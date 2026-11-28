@@ -156,6 +156,7 @@ async function load(file, deps, context) {
 {
   let state, world, execs, notifications, gateCalls, gateResult;
   const api = {
+    pluginPrepareProfile: async () => [],
     pluginTransform: async (_n, argv) => [argv[0], '--session-color', 'cyan', ...argv.slice(1)],
     pluginGate: async (name, context) => { gateCalls.push([name, context]); return gateResult; },
     shared: k => state.get(k), setShared: (k, v) => state.set(k, v), spaces: () => world, machines: () => [{ name: 'pc2', layout: 'ready' }],

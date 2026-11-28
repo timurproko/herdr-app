@@ -14,7 +14,7 @@ export async function spacesGeometryHarness() {
       'tab-arrival.js':{startTabArrivals(){},tabArrivalMotion:(_o,e)=>e},'reorder.js':{reorder:()=>drag},
       'space-rename.js':{beginSpaceRename:fail,cancelSpaceRename:fail,saveSpaceRename:fail,syncSpaceRename(){}},
       'directory.js':{displaySpace:s=>s,spaceDirectory:()=>({cwd:'/fixture'})},'space-color-state.js':{reconcileSpaceColors(){}},
-      'plugins.js':{pluginEvent:fail,pluginSpaceTags:()=>[{plugin:'crew',label:'Crew'}],pluginWorkspaceLinks:()=>[]},
+      'plugins.js':{pluginMenuItems:()=>[],pluginEvent:fail,pluginSpaceTags:()=>[{plugin:'crew',label:'Crew'}],pluginWorkspaceLinks:()=>[]},
       'workspace-links.js':'src/shared/workspace-links.js'},
     entry:'export {default as Main} from "./main.js";'});
   const panel=new Main();panel.machines=[];panel.reconnecting={};panel.shown=new Set(spaces.map(s=>s.id));

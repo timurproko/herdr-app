@@ -28,24 +28,33 @@ capacity admission/retry, retained facts, batching and captured kind acknowledge
 
 `node --experimental-vm-modules tests/git-stage-box-geometry.test.mjs` checks
 ordinary/coordinator and visible/ghost/probe geometry at 100%/130%, all rounds 2–99,
-long-round local growth, centred captions and unchanged title/right-rail/row geometry.
+stable longest-supported-caption width, centred captions and unchanged title/right-rail/row geometry.
 The existing full row geometry and stage interaction fixtures remain independent.
-`tests/agents-grouping.test.mjs` additionally exercises the real Crew/registry
-metadata contribution with interleaved coordinator groups on several machines,
-no-coordinator and misleading-name cases, and unchanged folds/counts/focus/pins.
+`tests/agents-grouping.test.mjs` exercises the actual Agents renderer and shared
+Spaces block projection with interleaved local/remote snapshots, live native and
+attached-child reorder, independent equal-name machine groups, stable local folds,
+counts/focus/pins and missing-space fallback. It asserts the original exact Priority
+order across native reorder and role-label changes, with no attachment query there.
 Verdict boxes yield whole before labels on real overflow, rather than shrinking
-their hit target. Stage and verdict boxes fit each caption plus 6px side padding;
-there is no shared maximum-width probe or cache.
+their hit target. Stage and verdict boxes share the longest supported caption's width plus 6px
+side padding, including all accepted round lengths independently of current rows.
+A bounded panel-level intrinsic probe keeps per-row elements and builder limits unchanged.
+
+`node --experimental-vm-modules tests/pr-stage-native-contract.test.mjs` evaluates
+the exact generated native fixture renderer with the production width callback.
+Both views at 100%/130% cover cold measurement, repeated cached renders and a
+pre-change baseline without the probe helper; mutation guards reject null and
+undefined native children. This call-contract check starts no app or server.
 
 Disposable pixel proof (explicit opt-in, output outside the checkout):
 `HERDR_APP_BIN=<verified-exe> node tests/features/pr-stage-native.mjs --run --sizing --zoom 1 --output <outside>`;
 repeat with `--zoom 1.3` and add `--baseline <before-commit>` for paired pictures.
 The existing fixture still supports its original non-sizing pointer scenarios.
 The sizing mode uses synthetic agents/PRs, including a long title, Build 10/99,
-Changes requested and a rare long round. Sizing assertions now require Build,
-Review, Approved and Changes requested to have their own increasing widths while
-retaining 18px height (with native zoom rounding); a long round grows independently.
-Older common-width receipts describe the superseded presentation, not current proof.
+Changes requested and the longest supported round. Sizing assertions require Build,
+Review, Approved, Changes requested and every supported round length to share one
+tight common width while retaining 18px height (with native zoom rounding).
+Older caption-sized or extra-wide common-width receipts are not current proof.
 Receipts record geometry, screenshots, checksum provenance and confirmed disposable
 App/Core shutdown. Failed exploratory frames are not accepted proof.
 
@@ -149,19 +158,26 @@ terminal, uses no real Crew home and verifies disposable app/Core shutdown.
 ## Connected project Spaces and coherent coordinator inventory
 
 `spaces-worktree-layout.test.mjs` covers the fixed metadata grid: Crew and child
-count stay in place through disclosure; crew also retains that column without
-children or with combined view off, using inert empty count/disclosure slots.
+count stay in place through disclosure when children exist. Without children or
+with combined view off, Crew ends on the machine-chevron glyph's right edge
+without reserving empty count/disclosure slots.
 Count, machine + and rename Confirm share
 a centred inner axis; chevron and Cancel share the outer axis, including 1/12/123
 children, 160–360px, local/pc2 and 100%/130%. Agents' numeric defaults are unchanged.
 Machine/coordinator chevrons share a centre and a 24px target, including hover.
 `agents-dot-column.test.mjs` protects existing numeric/status geometry; unrelated
 tags, native selection/numbering, connectors and captured block reorder stay intact.
-`git-right-edge.test.mjs` also checks that connected and childless crew labels end
-79 logical pixels from the panel edge, with two inert 24px trailing slots when
-controls are absent. Its Git 3px inner-inset oracle remains independent. CI run
-46144727979 exposed the old childless-label 41px expectation on both platforms;
-the updated oracle preserves the requested fixed-column behavior, not the old drift.
+`git-right-edge.test.mjs` retains the connected label's 79px panel inset and checks
+childless Crew against the chevron glyph's actual right edge with no empty rails.
+Its Git 3px inner-inset oracle remains independent. These assertions supersede
+PR 103's fixed-childless-column expectations.
+
+`tests/spaces-crew-label.test.mjs` mounts the real Spaces, Crew and registry code
+with synthetic local/remote spaces. It checks the default-on Crew label entry,
+typed persistence, enablement guards, checkmarks, menu staying open, contribution-aware
+popup height, independent built-in toggles, connected/independent row labels,
+unchanged count/disclosure geometry, unrelated tags and unscoped terminal badges.
+Any external operation or navigation fails the fixture.
 
 `tests/fleet-project-spaces.test.mjs` uses the Crew PR #22 placement-v1 contract
 with combined-only, project-only and mixed populations on local/qualified remote
@@ -524,6 +540,29 @@ limits 1/50/100, and checks multi-page read/write membership with explicit `sort
 repeated local CAS conflicts, checking that the longest deadline persists and a
 new invocation cannot dispatch early. It makes no real HTTP request.
 `tests/trello-contract.test.mjs` checks documentation/catalog and payload boundaries.
+`src/plugins/trello/discovery.test.mjs` covers the full automatically advertised
+skill description for A1/Codex/Claude, Claude mirror links, off/on/access behavior,
+exact-name conflicts, undo-journal recovery, stale generations and transactional
+rollback. Set `PI_SKILLS_MODULE` to an explicitly selected installed Pi skills module
+to additionally check its real metadata loader; no model is called. Other metadata
+and mirror checks are fixtures, not live Claude/Codex session acceptance.
+`tests/trello-agent-launch.test.mjs` exercises awaited plugin preparation and actual
+Bash login/nonlogin, Windows PowerShell, PowerShell 7 when installed and CMD tool
+subprocesses from a restricted starting PATH. Help/status resolve by name with no
+execution-policy bypass; prior BASH_ENV and coordinator prefixes are preserved.
+All stores, skills, binaries and hooks are disposable under `TRELLO_TEST_ROOT`;
+no real agent, account, App or Core is started. Deployment tests additionally cover
+version-1/2 to version-3 launcher migration, safe `.ps1` retirement, native shim
+ownership and rollback. Actual PowerShell 5/7 by-name calls preserve percent-delimited
+literals such as `%USERNAME%` without invoking CMD, and propagate the child exit code.
+Only the disposable Windows console shim is compiled with the in-box .NET compiler;
+no native Herdr component is built. Startup-command regressions simulate a profile's
+PATH addition before the exact generated command and check both bare and explicit
+agent paths. Disabled-plugin fixtures cover custom-via/outdated/unavailable unused
+hosts without entering the mandatory Trello gate, while owned notes still require
+cleanup.
+Remote tests run the actual bootstrap/owner/discovery path with fake host identities
+and homes, including stale enable after disable and no desktop-bin substitution.
 `src/plugins/trello/remote-errors.test.mjs` checks additive HTTP status/reasons,
 fixed safe reason mapping, hostile/oversized/stalled bodies and rate-limit details.
 `src/plugins/trello/deadline.test.mjs` checks a shared monotonic command budget
@@ -607,8 +646,9 @@ CMD on Windows and sh on Ubuntu with default UUID and maximum-length captured
 identities for every remote action, preserving at least 512 characters of CMD
 headroom. Its public-only preload replaces only the bootstrap entry call, so no
 real Core, SSH or private setup is consulted. It also checks the production
-installer/bootstrap retain RUNTIME_PATH after successful fake identity readiness
-and before any installation write.
+installer/bootstrap permit an off-PATH installation after successful fake identity
+readiness without editing persistent PATH; actual profile preparation supplies the
+agent's owned-bin route.
 `tests/plugin-saved-rows.test.mjs` checks generic declarations against the same Crew
 row kit, header-machine scope without a stray selection dropdown, fixed description
 links and category-local search/selection. These fixtures start no real SSH or Trello
@@ -1166,8 +1206,11 @@ hand-linked menu, pinned-refresh and sidebar-refresh VMs load the real disclosur
 helper through `git-scroll-modules.mjs`. Pinned refresh checks the finite native
 line entrance/exit lifecycle rather than the retired instantaneous-line contract.
 The mounted-row budget accounts separately for exactly three fixed disclosure
-chrome elements (spacer/button/SVG), retaining the frozen row/probe limits and
-operation ceiling; mutation checks reject extra row, chrome or probe subtrees.
+chrome elements (spacer/button/SVG), 29 subtree builder operations and two strip
+attachment calls. These costs stay constant across row counts, tabs and zoom.
+The frozen row/probe baseline and two-decoration-operations-per-row ceiling are
+unchanged; mutation checks reject extra row/chrome/probe subtrees and additional
+row or chrome builder operations.
 
 Use `delivery openspec validate <change> --type change --strict --no-interactive`
 for the workflow-pinned validator, rather than a potentially older global CLI;

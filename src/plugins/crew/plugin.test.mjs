@@ -242,7 +242,8 @@ same(plugin.prerequisites.map(p => p.id), ['git', 'node', 'hc', 'crew', 'home',
   assert.ok(hcCalls.filter(a => a[0] === 'exec').every(a => a[1] === '--on' && a[2] === 'pc2'), 'Checks run on the chosen machine');
   ({ table, psRules } = saved);
 }
-same(plugin.settings.map(s => [s.key, s.type, s.place ?? 'settings']), [['separateProjectSpaces', 'toggle', 'settings'], ['machine', 'machine', 'requirements'], ['profiles', 'profiles', 'settings'], ['claudeAccount', 'select', 'settings'], ['pooledCopies', 'toggle', 'settings']], 'Complete declaration includes global project-space intent and the unchanged machine-scoped controls');
+same(plugin.settings.map(s => [s.key, s.type, s.place ?? 'settings']), [['showSpaceLabel', 'toggle', 'settings'], ['separateProjectSpaces', 'toggle', 'settings'], ['machine', 'machine', 'requirements'], ['profiles', 'profiles', 'settings'], ['claudeAccount', 'select', 'settings'], ['pooledCopies', 'toggle', 'settings']], 'Complete declaration includes global project-space intent and the unchanged machine-scoped controls');
+const labelSetting=plugin.settings.find(s=>s.key==='showSpaceLabel');assert.equal(labelSetting.hidden,true);assert.equal(labelSetting.default,true);
 const projectSpacesSetting = plugin.settings.find(s => s.key === 'separateProjectSpaces');
 same([projectSpacesSetting.hidden, projectSpacesSetting.default], [true, false], 'Global intent defaults off and is contributed to Spaces, not duplicated in the Plugins card');
 same(plugin.settings.filter(s => !s.hidden).map(s => s.key), ['machine', 'profiles', 'claudeAccount', 'pooledCopies'], 'Visible Crew card settings remain unchanged');
