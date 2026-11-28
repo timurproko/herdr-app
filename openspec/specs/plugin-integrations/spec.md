@@ -2088,21 +2088,23 @@ The grouped Agents panel SHALL place all coordinator-containing groups before al
 - **THEN** the existing group order remains unchanged
 
 ### Requirement: Consistent Git stage and verdict boxes
-Git stage and verdict controls SHALL size to their own caption with 6px side padding, equal 18px height and centred text, without a minimum width shared across captions. Interaction bounds SHALL match each visible box. Existing right alignment, title truncation, row height, guarded actions and tooltip suppression SHALL remain unchanged.
+Git stage and verdict controls SHALL share a tight width equal to the longest supported caption's natural text width plus 6px side padding on each side, with equal 18px height and centred text. There SHALL be no additional common-width allowance. Interaction bounds SHALL match the visible boxes. Existing right alignment, title truncation, row height, guarded actions and tooltip suppression SHALL remain unchanged.
 
 #### Scenario: Common geometry across captions
 - **WHEN** ordinary or coordinator rows show Build, Build 2 through Build 99, Review, Approved or another fixed verdict such as Changes requested at 100% or 130% zoom
-- **THEN** each control fits its own natural caption width plus 6 logical pixels on either side, rather than inheriting the widest caption's width
+- **THEN** all stage and verdict controls use the same width, with the longest supported caption retaining exactly 6 logical pixels on either side and shorter captions centred
+- **AND** the baseline accounts for every supported fixed caption and every accepted Build round length even when absent, without extra width beyond the longest natural caption and its padding
 - **AND** hover, focus and click share that box without tooltip or a changed right rail, title reservation or block height
 
 #### Scenario: Rare longer round
 - **WHEN** a supported Build caption contains more than two round digits
-- **THEN** only that control grows to fit its caption and normal side padding while keeping its right anchor
-- **AND** other controls retain their own caption-sized widths
+- **THEN** the common width already accommodates the longest accepted safe-integer round caption with normal side padding, and every stage and verdict stays equally wide and right anchored
+- **AND** switching between statuses, missing round data and any accepted round never changes that width or the accepted round metadata and wording
 
 #### Scenario: Long title and retained presentations
 - **WHEN** long-title rows appear in ordinary, coordinator, pinned, scrolling, probe or ghost presentations at either zoom
 - **THEN** the existing title truncation and full-title hover remain intact and the stage/verdict does not gain a title-line reservation
+- **AND** visible, probe and ghost boxes use identical sizing, while probes and ghosts retain their noninteractive behavior
 
 ### Requirement: Non-actionable delivery kind explanation
 The Projects description SHALL append Delivery kinds in inline accent styling with a dashed underline. Hover or keyboard focus SHALL show three two-column explanations: regular-weight foreground kind names on the left and muted descriptions on the right. All descriptions and their wrapped lines SHALL share one left edge, with no separating dashes or column headers. Clicking SHALL do nothing, using the existing tooltip treatment.
@@ -2182,3 +2184,16 @@ After a successful explicit quota reset and its authoritative usage read, the Us
 - **WHEN** a reset is refused, its follow-up usage read fails, or its enable or request generation becomes obsolete
 - **THEN** the app preserves its existing failure and last-known-value handling without inventing a successful refill
 - **AND** obsolete completions cannot replace a newer target's quota values or start disabled follow-up collection
+
+### Requirement: Crew owns its Spaces label visibility contribution
+The enabled Crew plugin SHALL contribute its own Crew label toggle to Spaces through the generic plugin boundary. The choice SHALL default true, survive plugin disablement and affect only its Spaces tag presentation. Disabled-plugin or obsolete popup callbacks SHALL NOT change it. Opening or toggling the entry SHALL start no plugin work or external operation.
+
+#### Scenario: Enabled-only checked menu contribution
+- **WHEN** Spaces opens Show icons with Crew enabled
+- **THEN** Crew contributes its existing-style toggle using its saved value or the true default, without a Crew-specific feature import
+- **AND** popup sizing includes the contributed row and existing built-in entries retain their styling, order and values
+
+#### Scenario: Disable while the menu is open
+- **WHEN** Crew becomes disabled after its menu entry was built
+- **THEN** a retained callback cannot change the hidden plugin's setting
+- **AND** the current menu projection omits its entry and re-enabling restores the last saved choice without replaying an action
