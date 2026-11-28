@@ -2,9 +2,9 @@
 
 ## 1. Persistent global disclosure with individual repository exceptions
 
-- [ ] 1.1 Add a Git-local versioned disclosure-state helper with an expanded initial default, canonical per-repository exceptions, effective lookup, individual toggle and bulk inversion that clears all overrides; cover these transitions in a focused `tests/git-header-disclosure.test.mjs` fixture.
-- [ ] 1.2 Preserve the existing `custom.git.task-repositories.folded` memory as collapsed exceptions until new-format state becomes authoritative; cover legacy migration, malformed/unknown-version data, storage refusal, reload and restart using isolated fake localStorage in the same targeted fixture.
-- [ ] 1.3 Document the helper's local persistence, migration and nonportable boundary in `docs/ARCHITECTURE.md`; check that the documented default/override rules match the tested transition matrix.
+- [x] 1.1 Add a Git-local versioned disclosure-state helper with an expanded initial default, canonical per-repository exceptions, effective lookup, individual toggle and bulk inversion that clears all overrides; cover these transitions in a focused `tests/git-header-disclosure.test.mjs` fixture.
+- [x] 1.2 Preserve the existing `custom.git.task-repositories.folded` memory as collapsed exceptions until new-format state becomes authoritative; cover legacy migration, malformed/unknown-version data, storage refusal, reload and restart using isolated fake localStorage in the same targeted fixture.
+- [x] 1.3 Document the helper's local persistence, migration and nonportable boundary in `docs/ARCHITECTURE.md`; check that the documented default/override rules match the tested transition matrix.
 
 ## 2. One strip button controls ordinary and coordinator repository sections
 

@@ -380,8 +380,19 @@ uses all remaining width; a clipped invisible natural-width probe and the label'
 available width enable its full-name tooltip only on actual overflow. Geometry is
 local, scope-keyed and updated after layout with changed-only notifications, not
 render-time effects. Internal task totals still include folded repositories; Open/Closed controls show labels only, without badge subtrees or reservations.
-Sections persist a canonical repository-key set in localStorage
-(`custom.git.task-repositories.folded`), like Spaces' `machines.folded` set.
+Git's `repository-disclosure.js` owns a version-1 localStorage record
+(`custom.git.repositories.disclosure`) with a global collapsed default and
+canonical repository exceptions. Initially expanded, it imports the previous
+`custom.git.task-repositories.folded` set as collapsed exceptions until an explicit
+new-format save; the old key remains rollback data. Individual chevrons toggle
+only that repository's exception; the strip's bulk toggle inverts the default and
+clears all exceptions, including hidden repositories. Its icon reflects the
+chosen default, even when individual exceptions differ. The policy survives
+agent/space/tab changes, panel recreation, disable/re-enable and app restart on
+this client, separately from PR snapshots and without portable preference export.
+An unchanged or refused store preserves unsaved in-memory choices; restart
+persistence requires working localStorage. Unsupported data is not rewritten by
+restoration. Retained views reconcile saved disclosure before section publication.
 Explicit toggles are UI-only: no preference export or Crew/host-document writes,
 and no new fetch or cancellation. Fold state survives tab/context changes and
 panel recreation. Scoped rows/errors and repository-specific diagnostics fold with
