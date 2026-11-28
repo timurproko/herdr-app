@@ -2,10 +2,10 @@
 
 ## 1. Ordinary collapsed groups are quiet while the selected PR pin stays live
 
-- [ ] 1.1 Gate ordinary first-page, append, manual, webhook/reconnect, count-only, safety and detail follow-up admission by canonical disclosure while preserving deferred demand; verify zero group PR operations under each trigger in the focused fake-transport fixture.
-- [ ] 1.2 Route collapsed ordinary refresh through only the resolved effective agent's targeted PR and pin-only safety selection, preserving held source and older-PR handling without sibling transitions or group count updates; verify updated checks/checklist/stage/state, frozen header counts, no-pin and pin-replacement cases in that fixture.
-- [ ] 1.3 Add collapse/expand generations to ordinary asynchronous guards and preserve rows/cursors on quiet deferral; verify held metadata cannot start details/diagnosis or publish after collapse, including collapse-expand and obsolete agent/context cases.
-- [ ] 1.4 Update README and ordinary request-budget guidance with quiet-group, live-pin and branch-only cold-entry limits; verify the documented behavior against the new fixture and targeted ordinary scheduling/count tests.
+- [x] 1.1 Gate ordinary first-page, append, manual, webhook/reconnect, count-only, safety and detail follow-up admission by canonical disclosure while preserving deferred demand; verify zero group PR operations under each trigger in the focused fake-transport fixture.
+- [x] 1.2 Route collapsed ordinary refresh through only the resolved effective agent's targeted PR and pin-only safety selection, preserving held source and older-PR handling without sibling transitions or group count updates; verify updated checks/checklist/stage/state, frozen header counts, no-pin and pin-replacement cases in that fixture.
+- [x] 1.3 Add collapse/expand generations to ordinary asynchronous guards and preserve rows/cursors on quiet deferral; verify held metadata cannot start details/diagnosis or publish after collapse, including collapse-expand and obsolete agent/context cases.
+- [x] 1.4 Update README and ordinary request-budget guidance with quiet-group, live-pin and branch-only cold-entry limits; verify the documented behavior against the new fixture and targeted ordinary scheduling/count tests.
 
 ## 2. Coordinator collapsed repositories defer PR work without blocking expanded siblings
 

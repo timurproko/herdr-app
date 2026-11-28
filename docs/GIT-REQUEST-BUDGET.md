@@ -119,6 +119,18 @@ GraphQL cannot condition contexts on a summary returned in that same response.
 The documented measured aggregate and steady-state savings are the target, not
 an assertion that every isolated first page uses fewer operations.
 
+## Collapsed ordinary repositories
+
+Saved disclosure gates ordinary panel PR admission, not just row rendering.
+Manual, webhook/reconnect, page/append, retry and safety demand start no group
+list, sibling PR, detail or count-only request while collapsed. Already-started
+requests may finish but cannot launch retired follow-ups or replace the folded
+snapshot. The resolved selected-agent pin alone keeps targeted mutable facts and
+its existing safety cadence; those reads never refresh group counts. An explicit
+older link remains targeted, and a known cached branch match remains usable. A
+cold branch-only association waits for expansion rather than listing a quiet group.
+Local root/branch/footer identity and independent integrations are not disabled.
+
 ## Complete request inventory
 
 | Reader / trigger | Before | Current policy |

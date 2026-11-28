@@ -399,13 +399,17 @@ export function targetPullArgs(numbers,repository) {
 // identity; every consumer must independently validate its current membership.
 export async function readTargetPulls(exec,numbers,repository,options={}) {
   const session=gitReads(exec),result=new Map(),waiting=[],fresh=[];
-  const list=options.skipList?null:session.lists.get(JSON.stringify([session.route(options),repository.toLowerCase()]));
+  // Do not revive a retired group batch by subscribing a newly expanded
+  // group or the independent pin. Other live consumers still share normally.
+  const live=job=>job?.consumers?.some(current=>current());
+  const pendingList=options.skipList?null:session.lists.get(JSON.stringify([session.route(options),repository.toLowerCase()]));
+  const list=live(pendingList)?pendingList:null;
   let covered=new Set();
   if(list) {list.consumers?.push(options.current??(()=>true));const page=await list;covered=new Set(page.rows.map(pr=>pr.number));}
   for(const number of numbers) {
     const key=factKey(session,repository,number,options),known=session.facts.get(key);
     if(known && (finalPull(known)||covered.has(number)))result.set(number,{row:known});
-    else if(session.targets.has(key)) {const pending=session.targets.get(key);pending.consumers?.push(options.current??(()=>true));waiting.push([number,pending]);}
+    else if(live(session.targets.get(key))) {const pending=session.targets.get(key);pending.consumers?.push(options.current??(()=>true));waiting.push([number,pending]);}
     else fresh.push(number);
   }
   for(let at=0;at<fresh.length;at+=20) {
