@@ -25,7 +25,7 @@ function state(store, policy) {
   if (native?.enabled === false) return native; // Stale managed control never bypasses local disable.
   if (policy === undefined && fs.existsSync(store.dir)) policy = store.read('policy', true);
   if (policy?.authority === 'managed') {
-    let control;try { control = store.read('control'); } catch { fail('PUBLIC_STATE_INVALID'); }
+    let control;try { control = store.read('control'); } catch (e) { if (['LIMIT', 'TRANSPORT'].includes(e.code)) throw e; fail('PUBLIC_STATE_INVALID'); }
     const user = os.userInfo();
     if (control.binding.home !== fingerprint(path.resolve(store.home)) || control.binding.principal !== fingerprint([user.username,user.uid,os.homedir()])) fail('PUBLIC_STATE_INVALID');
     return {enabled:control.enabled,access:control.access,controller:control.controller,intent:control.intent};
@@ -35,17 +35,20 @@ function state(store, policy) {
   return native;
 }
 function authority(store, write = false, boards = []) {
-  const current = () => {
-    const publicState = state(store); if (!publicState.enabled) fail('DISABLED');
-    const policy = store.read('policy');
+  const current = budget => {
+    budget?.check();
+    const checked = budget && store.withBudget ? store.withBudget(budget) : store;
+    const publicState = state(checked); if (!publicState.enabled) fail('DISABLED');
+    const policy = checked.read('policy');
     if (boards.some(board => !id(board) || !policy.boards.includes(board))) fail('SCOPE');
     if (write && (!policy.allowWrites || publicState.access !== 'read-write')) fail('READ_ONLY');
-    const credentials = store.read('credentials');
+    const credentials = checked.read('credentials');
+    budget?.check();
     return {publicState, policy, credentials};
   };
   const initial = current(), key = fingerprint(initial);
-  return {...initial, check() {
-    let next; try { next = current(); } catch { fail('STALE'); }
+  return {...initial, check(budget) {
+    let next; try { next = current(budget); } catch (e) { if (['LIMIT', 'TRANSPORT'].includes(e.code)) throw e; fail('STALE'); }
     if (fingerprint(next) !== key) fail('STALE');
   }};
 }

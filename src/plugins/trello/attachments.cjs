@@ -41,7 +41,9 @@ async function listAttachments(client, scope, board, card, verifiedCard) {
   // Reuse only that invocation's proof; standalone attachment reads still scan.
   if (verifiedCard === undefined) await scope.card(board, card);
   else if (!object(verifiedCard) || verifiedCard.id !== card || verifiedCard.idBoard !== board || !id(verifiedCard.idList)) fail('SCOPE');
-  const rows = await client.get(`/cards/${card}/attachments`, {fields: 'all', filter: 'all'});
+  // Unlike checklist filters, attachment filter defaults to false (all
+  // attachments); the documented alternative is cover, not all.
+  const rows = await client.get(`/cards/${card}/attachments`, {fields: 'all'});
   if (!Array.isArray(rows)) fail('RESPONSE');
   const items = rows.slice(0, 100).map(attachment), complete = rows.length < 100;
   if (new Set(items.map(r => r.id)).size !== items.length) fail('RESPONSE');

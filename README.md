@@ -151,8 +151,9 @@ shell-capable agents. It is off and read-only by default. Reads and writes requi
 an explicit machine-local board allowlist; writes additionally require local
 opt-in and public Read-write mode. The card can save and verify a masked API key/user
 token, list the single account with hover Remove, list named boards with hover Remove,
-and choose Active/Inactive boards. Requirements Check verifies the account;
-opening reads saved names only. One global Read-only / Read-write setting is applied
+and choose Active/Inactive boards. Opening Boards and either Check refresh board
+names by ID, silently retaining last-known names when Trello is unavailable.
+Requirements Check also verifies the account; ordinary account status stays local. One global Read-only / Read-write setting is applied
 to account hosts explicitly, with Pending and Retry for unapplied/offline hosts. Inputs are transient, never saved plugin
 settings or portable preferences; only the Node worker writes the private store.
 The selected direct-SSH machine uses its own private store through identity-bound
@@ -189,8 +190,9 @@ is not used as a project setting; re-adding a project is never a kind-edit worka
 Kind captions share a fixed left-aligned column without truncation. Hover or
 keyboard-focus a supported row to reveal the standard kind dropdown beside Remove;
 its choices are Plain, Delivery, Gate. The dashed **Delivery kinds** text after the
-Projects description explains planning, review and PR ownership in three short,
-wrapped sentences with bold kind names on hover or keyboard focus; it opens nothing
+Projects description explains planning, review and PR ownership in two columns:
+regular-weight kind names and grey descriptions whose wrapped lines share one left
+edge, with no separating dashes. It appears on hover or keyboard focus and opens nothing
 when clicked. Pointer-origin menu dismissal releases the row
 unless the pointer remains there; keyboard editing retains its Tab target. Changing it applies only to that captured machine/home/project through Crew,
 not to portable plugin preferences or existing tasks. The label changes only after
@@ -691,9 +693,9 @@ Managed review labels supply one tight bottom-right plain chip: **Build**,
 **Review** or **Approved**, independently of CI and GitHub's separate review decision.
 It uses stage-coloured text on the existing subtle raised background, 6px side
 padding, no emoji, outline or hover tooltip, and leaves the entire title content width free.
-Stages and verdicts share an 18px-high, centred box whose common minimum width is
-native-measured from all fixed captions and two-digit Build rounds. A longer round
-grows only its own box; the right rail and title truncation remain unchanged. The
+Stages and verdicts use 18px-high, centred boxes sized to each caption with 6px
+side padding, without a shared minimum width. Longer captions grow only their own
+box; the right rail and title truncation remain unchanged. The
 compatibility snapshot follows MyWorkflows `labels/base.json`: stable role
 `review-changes-needed` accepts Build and previous names Rework / Changes needed;
 `under-review` accepts Review / Under review; `review-approved` accepts Approved.
@@ -984,7 +986,9 @@ Neither row shows a chain, and only the coordinator shows lowercase `crew` in
 Spaces; the terminal-pane header still shows its unchanged `Crew` badge. Unrelated plugin
 tags remain. Crew precedes the coordinator's far-right chevron, which folds its children.
 The chevron and its 24px hover target align with machine headers. Crew stays fixed
-across disclosure; the connected-child-space count stays visible in both states.
+across disclosure, without children and with combined view off; absent count and
+chevron slots stay empty rather than moving the label. The connected-child-space
+count stays visible in both disclosure states.
 Counts, machine + and rename Confirm share one centred inner column; chevrons and
 rename Cancel share the outer column. The coordinator itself is not counted.
 Agents keeps its existing numeric rail. These logical axes scale together at 130%. Folds are local,

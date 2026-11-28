@@ -146,6 +146,18 @@ for(const machine of [null,'pc2'])for(const width of [160,180,220,268,360])for(c
    assert.ok(field.width>0);near(apply.x-field.x-field.width,4*zoom,'Narrow field has the shared gap, never overlap');view.rename=null;
   }
  }
+ // Removing attachments models combined view off; removing children models an empty fleet.
+ const attached=row('parent'),attachedBoxes=rowGeometry(attached,width,zoom),crewAnchor=attachedBoxes.get(find(attached,'space-tag-parent-crew-0'));
+ const savedLinks=links,savedSpaces=all;
+ for(const mode of ['combined-off','childless']) {
+  links=[];all=mode==='childless'?savedSpaces.slice(0,2):savedSpaces;
+  const detached=row('parent'),boxes=rowGeometry(detached,width,zoom),crew=boxes.get(find(detached,'space-tag-parent-crew-0'));
+  near(crew.x,crewAnchor.x,'Crew left edge survives '+mode);near(crew.width,crewAnchor.width,'Crew width survives '+mode);
+  assert.equal(find(detached,'space-count-parent'),undefined,'No fabricated count');assert.equal(find(detached,'space-fold-parent'),undefined,'No fabricated disclosure');
+  const meta=find(detached,'space-meta-parent');assert.equal(meta.kids.length,3,'Reserve both absent rails');
+  for(const slot of meta.kids.slice(1)){near(boxes.get(slot).width,24*zoom,'Empty rail uses existing control width');assert.equal(slot.kids.length,0);for(const key of ['on_click','tab_index','role','tooltip'])assert.equal(slot.attrs[key],undefined,'Blank rail is inert');}
+ }
+ links=savedLinks;all=savedSpaces;
  tags=[];assert.equal(find(row('other'),'space-count-other'),undefined,'Nonparent without Crew has no count');assert.equal(find(row('parent'),'space-tag-parent-crew-0'),undefined,'No fabricated role label');
 }
 console.log('PASS actual Spaces folding/native identity plus fixed Crew and count/plus/approve/chevron/cancel columns at 160–360px, 100/130%, including multi-digit counts and narrow rename');

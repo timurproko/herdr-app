@@ -2,7 +2,7 @@
 const {id, exact, object} = require('./credentials.cjs');
 const {authority} = require('./policy.cjs');
 const {Client} = require('./client.cjs');
-const {fail} = require('./errors.cjs');
+const {fail, Deadline} = require('./errors.cjs');
 const {listAttachments} = require('./attachments.cjs');
 const fields = 'name,desc,idBoard,idList,closed,due,start,dueComplete,pos,labels,url';
 const cardFields = ['name', 'desc', 'due', 'start', 'dueComplete', 'pos'];
@@ -131,7 +131,8 @@ async function readOperation(client, scope, op, a, gate) {
   if (op === 'attachments.get') return require('./download.cjs').downloadAttachment(client, scope, a);
   if (op === 'cards.get') {
     await scope.card(a.board, a.card);
-    const row = card(await client.get(`/cards/${a.card}`, {fields, attachments: false, members: false, checklists: 'none', actions: 'none', pluginData: false, stickers: false}), a.board);
+    // Nested resources default off; fetch each through its scoped typed route.
+    const row = card(await client.get(`/cards/${a.card}`, {fields}), a.board);
     if (row.id !== a.card) fail('SCOPE');
     const comments = array(await client.get(`/cards/${a.card}/actions`, {filter: 'commentCard', ...paging})).map(r => {
       if (r.type !== 'commentCard' || r.data?.card?.id !== a.card || !id(r.data?.board?.id) || typeof r.data.text !== 'string') fail('SCOPE');
@@ -203,13 +204,16 @@ function redact(value, credentials) {
   return JSON.parse(JSON.stringify(value, (_, x) => typeof x === 'string' ? [credentials.apiKey, credentials.token].reduce((s, secret) => s.split(secret).join('[redacted]'), x) : x));
 }
 async function run(store, op, args = {}, options = {}) {
+  const budget = options.budget || new Deadline(options.commandTimeout ?? 60000, options.clock);
+  budget.check();
+  if (store.withBudget) store = store.withBudget(budget);
   validateArgs(op, args);
   const write = writes.has(op), boards = args.board ? [...new Set([args.board, ...(args.destinationBoard ? [args.destinationBoard] : [])])] : [];
-  const gate = authority(store, write, boards), client = new Client(store, gate, options);
+  const gate = authority(store, write, boards), client = new Client(store, gate, {...options, budget});
   const data = write ? await writeOperation(client, new Scope(client), op, args) : await readOperation(client, new Scope(client), op, args, gate);
   // Attachment publication already performs its final check inside protected output;
   // no asynchronous step or second authority read may orphan its successful file.
-  try { if (op !== 'attachments.get') gate.check(); } catch (e) { if (write) fail('WRITE_CHANGED'); throw e; }
+  try { if (op !== 'attachments.get') client.check(); } catch (e) { if (write) fail('WRITE_CHANGED'); throw e; }
   return redact({untrusted: true, ...data}, gate.credentials);
 }
 module.exports = {run, definitions, writes, validateArgs, Scope, pick, array, card, page, redact};

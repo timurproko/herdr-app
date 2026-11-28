@@ -1,0 +1,20 @@
+# Tasks
+
+## 1. Scoped card details and uploaded image reads work with accepted Trello queries
+
+- [x] 1.1 Record the coordinator-confirmed environment boundary: pc2 has no Trello setup and cannot reach the main machine; implementation uses schema-backed fakes only, with live card/image verification explicitly deferred to the person after merge.
+- [x] 1.2 Align card/nested/attachment requests with the public schema without widening scope; strict fake-provider assertions must accept card detail and attachment list/get while refusing the old undocumented attachment filter, without claiming a live root cause.
+- [x] 1.3 Exercise structured card facts, attachment identity and protected original-image output under read-only authority; run the affected reads, attachments and download regression files with scratch in the crew task folder and leave live verification to the person on the main machine.
+- [x] 1.4 Update attachment/card guidance in docs/TRELLO.md only where behavior or the confirmed diagnosis requires it; verify documented commands still match CLI parsing and no authenticated URLs appear in examples or evidence.
+
+## 2. Remote read errors expose safe HTTP status and short rejection reasons
+
+- [x] 2.1 Add validated httpStatus/httpReason fields and a status-bearing message at the shared transport/public-error boundary, using fixed phrases and recognized provider categories; targeted CLI tests must distinguish 400/401/403/404/429/5xx without changing codes, cooldown or uncertain-write outcomes.
+- [x] 2.2 Bound rejection-body inspection and map unknown/oversized/malformed/hostile content to a safe status fallback; targeted tests must show no fake key, token, authenticated URL, control character or raw provider material in output.
+- [x] 2.3 Document the additive diagnostic fields and honest scope-versus-request recovery guidance in installed help and docs/TRELLO.md; run affected help/contract/diagnostic tests and shared write tests only if their paths change.
+
+## 3. Card and attachment failures remain bounded without weakening authority checks
+
+- [x] 3.1 Establish a monotonic command deadline before authority acquisition and bound remote dispatch, body consumption and cancellation by remaining request time; targeted stalled-header/JSON/error/image/cancellation tests must fail promptly without follow-ups or owned partial output.
+- [x] 3.2 Measure injected slow private-store/ACL checks and propagate remaining deadlines into blocking checks where required; focused permission and deadline tests must preserve fail-closed behavior and prevent repeated subprocess timeouts from exceeding the command budget.
+- [x] 3.3 Add command-budget exhaustion and expired-work publication regressions, update timeout guidance, and run only affected read/download/permission tests; report actual timings and any remaining live-host limitation without claiming unreproduced live success.

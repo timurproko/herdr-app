@@ -14,10 +14,15 @@ const api = await trelloServer((url, request, response) => {
   assert.equal(url.searchParams.get('key'), credentials.apiKey); assert.equal(url.searchParams.get('token'), credentials.token);
   if (mode === 'rate') return json(response, {}, 429, {'Retry-After': '120'});
   if (url.pathname === `/1/boards/${A}/cards`) return json(response, [{id: C, idBoard: A, idList: L}]);
-  if (url.pathname === `/1/cards/${C}`) return json(response, {id: C, idBoard: A, idList: L});
+  if (url.pathname === `/1/cards/${C}`) {
+    assert.deepEqual([...url.searchParams.keys()].sort(), ['fields', 'key', 'token']);
+    return json(response, {id: C, idBoard: A, idList: L});
+  }
   if (url.pathname === `/1/cards/${C}/actions` || url.pathname === `/1/cards/${C}/checklists`) return json(response, []);
   assert.equal(url.pathname, `/1/cards/${C}/attachments`);
-  assert.equal(url.searchParams.get('fields'), 'all'); assert.equal(url.searchParams.get('filter'), 'all');
+  assert.equal(url.searchParams.get('fields'), 'all');
+  // Contract fixture deliberately rejects the old undocumented filter=all.
+  if (url.searchParams.has('filter')) return json(response, {message: 'invalid value for filter'}, 400);
   if (mode === 'oversize') { response.end('x'.repeat(2097153)); return; }
   if (mode === 'disable') f.state(false);
   json(response, rows);
