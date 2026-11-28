@@ -55,7 +55,7 @@ const native = {
     return new Promise((resolve,reject)=>pending.push({cmd,args,options,resolve,reject}));
   },
 };
-const context = vm.createContext({localStorage:{getItem:()=>null,setItem(){}},sessionStorage:{getItem:key=>session.get(key)??null,setItem:(key,value)=>session.set(key,value),removeItem:key=>session.delete(key)}});
+const context = vm.createContext({window:{paint_path:(shape,background)=>element('paint-path').native_path(shape).background(background)},localStorage:{getItem:()=>null,setItem(){}},sessionStorage:{getItem:key=>session.get(key)??null,setItem:(key,value)=>session.set(key,value),removeItem:key=>session.delete(key)}});
 const cache = new Map();
 function synthetic(exports) {
   return new vm.SyntheticModule(Object.keys(exports), function() {
@@ -73,7 +73,7 @@ await main.link((specifier,referencing) => {
   if (specifier === './webhooks.js') return synthetic({GitWebhooks:class {sync(){} stop(){}}});
   if (specifier === './host.js') return synthetic(native);
   if (specifier === './plugins.js') return synthetic({pluginPullContext:()=>null,pluginEvent(){},sidebarPanelEnabled:()=>true,sidebarPanels:()=>[{id:'files',name:'Files',icon:'files.svg'},{id:'changes',name:'Git',icon:'git.svg'}]});
-  if (specifier === 'gpui-kit') return synthetic({View:class{},div:element,svg:element,PathBuilder:{},Background});
+  if (specifier === 'gpui-kit') return synthetic({View:class{},div:element,svg:element,PathBuilder:{fill:()=>element('path')},Background});
   if (specifier === 'gpui-base') return synthetic({h_flex:element,v_flex:element,Toggle:{new:id=>element('toggle').id(id)}});
   if (specifier === './ui.js') return synthetic(withKitUi({U:{control:28,radius:6,icon:16,insetControl:24,insetRadius:4,smallIcon:14},panelTitle:element,headerTools:x=>x,reveal:(x,visible)=>x.opacity(visible?1:0),subtleActionFill:()=>'',itemHover:()=>'',refreshButton:element,emptyState:element,menuSurface:(_t,el)=>el,menuHeading:(_t,text)=>element().child(text),slot:el=>el},element));
   return moduleFor(path.resolve(path.dirname(referencing.identifier),specifier));
@@ -398,7 +398,10 @@ assert.equal(view.pinMotion.start({context:view.context,state:'open',rows:previo
   {bounds:{x:268,y:177,width:24,height:24}},
   {source:pane.terminal,target:'pc2/t2',folder:JSON.stringify([worktree,'pc2']),repo:'example/xrbuild'}),true);
 pane.terminal='pc2/t2';terminal.address='pc2/t2';focus={...focus,terminal:'pc2/t2'};
-terminal.labels['custom.cwd']=worktree;render();
+terminal.labels['custom.cwd']=worktree;const warmTree=render();
+const glow=findId(warmTree,'git-ci-line');assert.ok(glow,'Retained worktree navigation renders the warm loading glow');
+assert.equal(glow.kids.length,2,'Both native gradient halves render without changing navigation admission');
+for(const half of glow.kids){assert.equal(half.asset,'paint-path');assert.ok(half.attrs.native_path,'Native path geometry is passed to the paint primitive');}
 assert.equal(view.pulls.open,previousRows,'Verified worktree navigation retains rows during Git root discovery');
 assert.equal(view.pages,previousPages);assert.equal(view.repo.name,'example/xrbuild');
 assert.equal(view.pinMotion.current.phase,'waiting');

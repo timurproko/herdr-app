@@ -22,12 +22,13 @@ function element(kind='div') {
 function nodes(n,out=[]){if(n&&typeof n==='object'){out.push(n);for(const kid of n.kids??[])nodes(kid,out);}return out;}
 const byId=(v,id)=>nodes(v).find(n=>n.style?.id?.[0]===id);
 const text=v=>nodes(v).flatMap(n=>(n.kids??[]).filter(k=>typeof k==='string')).join('\n');
-const timers=[],scrollCalls=[],calls=[],closed=[],storage=new Map();let notices=0,skin=true;
+const timers=[],scrollCalls=[],calls=[],closed=[],storage=new Map();let notices=0,skin=true,scrollY=0;
 const cx={notify(){assert.equal(inLayout,false,'No notify from native layout');notices++;},stop_propagation(){},focus_handle:()=>({}),timer:{after(){},every(ms,fn){const timer={ms,fn,cancelled:false};timers.push(timer);return{cancel(){timer.cancelled=true;}};}}};
 function state(options={}){let value=options.value??'';const events={};return{options,events,value:()=>value,set_value:v=>{value=v;},focus(){},on:(n,fn)=>{events[n]=fn;}};}
-const kit={View:class{},div:()=>element(),svg:p=>element('svg').asset(p)};
+const kit={View:class{},div:()=>element(),svg:p=>element('svg').asset(p),PathBuilder:{fill:()=>element('shape')},
+  Background:{linear_gradient:(angle,from,to)=>({angle,from,to,color_space(space){this.space=space;return this;}})}};
 const base={h_flex:()=>element('hflex'),v_flex:()=>element('vflex'),InputState:{new:state},Input:{new:()=>element('input')},Popover:{},
-  VirtualListScrollHandle:{new:()=>({scroll_to_item:(...args)=>scrollCalls.push(args),scroll_to_bottom(){},release(){}})},
+  VirtualListScrollHandle:{new:()=>({offset:()=>({x:0,y:scrollY}),scroll_to_item:(...args)=>{scrollCalls.push(args);if(args[0]===0)scrollY=0;},scroll_to_bottom(){},release(){}})},
   Scrollbar:{vertical:id=>element('scrollbar').target(id)},
   v_virtual_list:(id,count,sizes,key,render)=>{
     const list=element('list').id(id);list.count=count;list.sizes=sizes;list.key=key;
@@ -37,7 +38,7 @@ const base={h_flex:()=>element('hflex'),v_flex:()=>element('vflex'),InputState:{
 };
 const t={foreground:'#fafafa',muted:'#aaa',dim:'#888',border:'#333',raised:'#252525',popover:'#202020',hover:'#303030',selected:'#444',accent:'#55aaff',input:'#555'};
 const api={commands:()=>[],layouts:()=>['main'],themes:()=>[],settings:()=>({dark:true}),keys:()=>[],theme:()=>t,shared:k=>k==='layout'?(skin?'Custom':'main'):null,setShared(){},checking:()=>true,exec(){throw Error('No exec in checks');},appHome:()=>'/fixture',readTextFile:async()=>null,window:()=>({platform:'windows'}),props:()=>({overlay:'owned-test'}),run:(...args)=>calls.push(args),closeOverlay:id=>closed.push(id),openOverlay:spec=>calls.push(['overlay',spec])};
-const context=vm.createContext({console,localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v)}}),cache=new Map();
+const context=vm.createContext({console,window:{paint_path:(shape,background)=>element('paint-path').background(background)},localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v)}}),cache=new Map();
 const synthetic=(name,values)=>new vm.SyntheticModule(Object.keys(values),function(){for(const[k,v]of Object.entries(values))this.setExport(k,v);},{context,identifier:name});
 async function load(file){if(cache.has(file))return cache.get(file);const mod=new vm.SourceTextModule(fs.readFileSync(file,'utf8'),{context,identifier:file});cache.set(file,mod);await mod.link((name,ref)=>{
   if(name==='gpui-kit')return synthetic(name,kit);if(name==='gpui-base')return synthetic(name,base);if(name==='./host.js')return synthetic(name,api);
@@ -46,7 +47,7 @@ async function load(file){if(cache.has(file))return cache.get(file);const mod=ne
   if(name==='./model.js')return load(path.join(root,'mods/custom-palette/model.js'));
   if(name==='./plugins.js')return synthetic(name,{pluginIsEnabled:()=>true});
   if(name==='./settings-dialog.js')return load(path.join(root,'mods/custom-palette/settings-dialog.js'));
-  if(name==='./scroll-fade.js')return synthetic(name,{bottomFade:(_state,id,color,options)=>element('fade').id(`${id}-more-below`).color(color).insets(options)});
+  if(name==='./scroll-fade.js')return load(path.join(root,'mods/custom-palette/scroll-fade.js'));
   throw Error(`Unexpected import ${name} in ${ref.identifier}`);
 });return mod;}
 const mod=await load(path.join(root,'mods/custom-palette/main.js'));await mod.evaluate();
@@ -63,6 +64,7 @@ let view=palette.render();railOnTop(view);
 assert.equal(byId(view,'palette-list-frame').style.top[0]+byId(view,'palette-list-frame').style.my[0],65);assert.equal(byId(view,'palette-list-frame').style.ml[0],8);assert.equal(byId(view,'palette-list-frame').style.mr[0],0);assert.equal(byId(view,'palette-search-header').style.top[0],0);
 assert.equal(byId(view,'palette-list-frame').style.mb[0],0,'The list/fade reaches the bottom edge instead of clipping at an inset.');
 assert.equal(byId(view,'palette-list-more-below'),undefined,'Fitting lists never show a continuation fade.');
+assert.equal(byId(view,'palette-list-more-above'),undefined,'Fitting lists never show a top fade.');
 assert.equal(text(byId(view,'palette-pinned-heading')),'Tab');assert.equal(byId(view,'palette-pinned-heading').style.top[0],0);assert.equal(byId(view,'palette-pinned-heading').style.right[0],8);
 let list=byId(view,'palette-native-rows');assert.equal(list.count,8);assert.equal(list.sizes[3],34);assert.ok(nodes(view).some(n=>n.kind==='scrollbar'&&n.style.target[0]==='palette-native-rows'));
 const entryRow=list.layout({start:1,end:2})[0];assert.equal(entryRow.style.mr[0],8,'Every modal list reserves the same scrollbar gutter');assert.equal(entryRow.style.px[0],8);assert.equal(entryRow.style.ml,undefined);
@@ -76,13 +78,24 @@ list=byId(view,'palette-native-rows');list.layout({start:7,end:8});timers[0].fn(
 let results=Array.from({length:12},(_,i)=>row(`result-${i}`,i%2?'App':'Window'));
 palette.rows=()=>results;palette.input.set_value('match');palette.input.events.change({},cx);view=palette.render();list=byId(view,'palette-native-rows');
 railOnTop(view);
-const fade=byId(view,'palette-list-more-below');assert.ok(fade,'Overflow has the same passive bottom fade as Jump/sidebar');assert.equal(fade.style.color[0],t.popover);assert.equal(fade.style.insets[0].right,8,'The fade leaves the rail clear');
+const fade=byId(view,'palette-list-more-below');assert.ok(fade,'Overflow has the same passive bottom fade as Jump/sidebar');assert.equal(fade.kids[0].style.background[0].to,t.popover);assert.equal(fade.style.right[0],8,'The fade leaves the rail clear');
+assert.equal(byId(view,'palette-list-more-above'),undefined,'The top of an overflowing list has no top fade');
+list.layout({start:0,end:8});scrollY=7;timers[0].fn(cx);view=palette.render();
+const top=byId(view,'palette-list-more-above');assert.ok(top,'A partial first row is enough even while range.start is zero');
+assert.equal(top.style.top[0],26,'The fade starts directly BELOW the pinned heading');assert.equal(top.style.h[0],40,'The shared sidebar fade retains its strength and height');
+assert.equal(top.style.left[0],0);assert.equal(top.style.right[0],8);assert.equal(top.kids[0].style.background[0].from,t.popover);assert.equal(top.kids[0].style.background[0].to,`${t.popover}00`);
+assert.equal(top.kids[0].style.background[0].space,'srgb');assert.ok(nodes(top).every(n=>!Object.keys(n.events).length),'Fade paths never intercept rows or scrolling');
+railOnTop(view);assert.equal(byId(view,'palette-pinned-heading').style.top[0],0);assert.equal(byId(view,'palette-pinned-heading').style.h[0],26);
+const middle=notices;scrollY=12;timers[0].fn(cx);assert.equal(notices,middle,'Scrolling inside the same edge state needs no redraw');
+scrollY=0;timers[0].fn(cx);view=palette.render();assert.equal(byId(view,'palette-list-more-above'),undefined,'Returning to the start clears only the top fade');
+assert.ok(byId(view,'palette-list-more-below'));
 const rail=nodes(view).find(n=>n.kind==='scrollbar');assert.equal(rail.style.scroll_size[1],list.sizes.reduce((a,b)=>a+b,0));assert.ok(rail.style.viewport_from_layout);
 assert.equal(text(byId(view,'palette-pinned-heading')),'12 items');assert.equal(list.count,13);assert.equal(list.key(0),'head:results');assert.equal(list.sizes[0],26);assert.equal(list.key(1),'result-0');
-list.layout({start:8,end:13});timers[0].fn(cx);view=palette.render();assert.equal(text(byId(view,'palette-pinned-heading')),'12 items');
+scrollY=120;list.layout({start:8,end:13});timers[0].fn(cx);view=palette.render();assert.ok(byId(view,'palette-list-more-above'),'The top fade remains at the bottom');assert.equal(text(byId(view,'palette-pinned-heading')),'12 items');
 assert.equal(byId(view,'palette-list-more-below'),undefined,'The last visible rows clear the hint without notifying during layout.');
 list.layout({start:2,end:8});timers[0].fn(cx);view=palette.render();assert.ok(byId(view,'palette-list-more-below'),'Scrolling back up restores the fade even when the pinned heading is unchanged');
 const stable=notices;timers[0].fn(cx);assert.equal(notices,stable,'Unchanged heading/fade does not redraw');
+const offset=palette.listScroll.offset;delete palette.listScroll.offset;timers[0].fn(cx);view=palette.render();assert.ok(byId(view,'palette-list-more-above'),'Older handles safely use the observed visible range');palette.listScroll.offset=offset;
 list.events.on_item_click('head:results',cx);assert.equal(calls.length,0);
 results=[row('only')];palette.input.events.change({},cx);view=palette.render();assert.equal(text(byId(view,'palette-pinned-heading')),'1 item');
 list.events.on_item_click('result-11',cx);assert.equal(calls.length,0,'Queued stale command keys are ignored after filtering');
@@ -90,7 +103,7 @@ list.events.on_item_click('result-11',cx);assert.equal(calls.length,0,'Queued st
 results=[];palette.input.events.change({},cx);view=palette.render();assert.equal(text(byId(view,'palette-empty')),'No results');assert.equal(byId(view,'palette-pinned-heading'),undefined);
 for(const key of ['up','down','pageup','pagedown'])view.events.on_key_down({key},cx);assert.equal(palette.at,0,'Empty keyboard navigation never produces -1/NaN');
 // Clear returns to grouped entries and resets both native scrolling and header state.
-palette.rows=()=>fixture;view=palette.render();byId(view,'palette-search-clear').events.on_click({},cx);view=palette.render();assert.equal(palette.query,'');assert.equal(text(byId(view,'palette-pinned-heading')),'Tab');assert.equal(scrollCalls.at(-1)[0],0);
+palette.rows=()=>fixture;view=palette.render();byId(view,'palette-search-clear').events.on_click({},cx);view=palette.render();assert.equal(palette.query,'');assert.equal(text(byId(view,'palette-pinned-heading')),'Tab');assert.equal(scrollCalls.at(-1)[0],0);assert.equal(byId(view,'palette-list-more-above'),undefined,'Clear retires the old top edge');
 // Normal non-Custom openers remain native; this mod is never registered as app.palette.
 const metadata=JSON.parse(fs.readFileSync(path.join(root,'mods/custom-palette/mod.json')));
 assert.deepEqual(metadata.overlay,{kind:'popup',at:'top',offset:60,width:620,height:0.85});

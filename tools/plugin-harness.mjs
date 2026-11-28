@@ -13,7 +13,7 @@ import { pluginLayout, indexSource, whereSource } from './plugins.mjs';
 export async function loadMod({ host, modules = {}, entry, mod = 'custom-settings', globals = {}, root = project }) {
   const config = JSON.parse(fs.readFileSync(path.join(root, 'customization.json'), 'utf8'));
   const { ids, files, modFiles } = pluginLayout(root, config);
-  const context = vm.createContext({ console, ...globals });
+  const context = vm.createContext({ console, window:{paint_path:(shape,background)=>modules['gpui-kit'].div().native_path(shape).background(background)}, ...globals });
   const prefix = `mods/${mod}/`;
   const sources = new Map([...Object.entries(config.files ?? {}).filter(([dest])=>dest.startsWith(prefix)).map(([dest,source])=>[dest.slice(prefix.length),source]), ...files.map(f => [f.rel, f.source]),
     ...modFiles.filter(f=>f.dest.startsWith(prefix)).map(f=>[f.dest.slice(prefix.length),f.source])]
@@ -35,7 +35,7 @@ export async function loadMod({ host, modules = {}, entry, mod = 'custom-setting
       // fixtures can override them when asserting native gradient/path details.
       if(name==='gpui-kit') {
         let pathBuilder;pathBuilder=new Proxy({},{get:(_o,key)=>key==='build'?()=>({}):()=>pathBuilder});
-        value={Background:{linear_gradient:()=>({color_space(){return this;}})},...value,
+        value={Background:{linear_gradient:(angle,from,to)=>({angle,from,to,color_space(space){this.space=space;return this;}})},...value,
           PathBuilder:{fill:()=>pathBuilder,...value.PathBuilder}};
       }
       if(name==='ui.js') value=withKitUi(value,modules['gpui-kit']?.div);

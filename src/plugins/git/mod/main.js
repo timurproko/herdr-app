@@ -1,5 +1,5 @@
 // Custom: GitHub pull requests for the repository under the focused folder.
-import { View, div, svg, PathBuilder } from 'gpui-kit';
+import { View, div, svg, PathBuilder, Background } from 'gpui-kit';
 import { v_flex, h_flex } from 'gpui-base';
 import * as base from 'gpui-base';
 import { TaskReveal } from './task-reveal.js';
@@ -1545,13 +1545,23 @@ export default class Changes extends View {
 
   loadingLine(t,cx) {
     const line=this.loadingLineState,reduced=this.motionReduced;
+    this.loadingLineShape??=PathBuilder.fill().move_to(0,0).line_to('100%',0)
+      .line_to('100%','100%').line_to(0,'100%').close().build();
+    if(!this.loadingLineBackgrounds || this.loadingLineColor!==t.accent) {
+      const transparent=/^#[0-9a-f]{6}$/i.test(t.accent??'')?`${t.accent}00`:'#00000000';
+      // Native gradients have two stops: mirrored halves meet at full accent.
+      this.loadingLineBackgrounds=[Background.linear_gradient(90,transparent,t.accent).color_space('srgb'),
+        Background.linear_gradient(90,t.accent,transparent).color_space('srgb')];
+      this.loadingLineColor=t.accent;
+    }
     const element=div().id('git-loading-track').absolute().left(0).right(0).top(0).h(1).overflow_hidden()
       .opacity(reduced?0.35:line?.phase==='visible'&&!line.exit?1:0)
       .when(!reduced && line?.phase!=='hidden',el=>el.transition('opacity',{duration:LINE_FADE_MS,easing:'ease-in-out'}))
       .when(!line?.exit,el=>el.role('status').accessibility_label('Loading Git'))
-      .child(div().id('git-ci-line').size_full().bg(t.accent).opacity(reduced?1:0)
+      .child(h_flex().id('git-ci-line').size_full().opacity(reduced?1:0)
         // Native loops begin at the `to` endpoint, not the static opacity.
-        .when(!reduced,el=>el.loop('opacity',{from:0.65,to:0,period:BREATHE_MS,easing:'ease-in-out'})));
+        .when(!reduced,el=>el.loop('opacity',{from:0.65,to:0,period:BREATHE_MS,easing:'ease-in-out'}))
+        .children(this.loadingLineBackgrounds.map(background=>globalThis.window.paint_path(this.loadingLineShape,background).w(0).flex_1().min_w(0).h_full())));
     // An elapsed timer cannot prove an armed tree was built. Queue reveal only
     // after constructing that zero-opacity tree, even when redraws coalesce.
     if(!reduced && line?.phase==='armed' && !line.revealQueued && cx?.timer) {

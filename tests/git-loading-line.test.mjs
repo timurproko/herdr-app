@@ -54,6 +54,18 @@ a.context={...context,stale:false};a.returning=true;a.readWake={due:Date.now()+6
 a.readWake=null;assert.equal(p.panelLoading(),true,'Queued warm reconciliation animates');a.returning=false;
 a.published=null;a.entries.set('fixture/unknown#2',{link:{repo:'fixture/unknown',targets:[]},pr:null,error:null});a.readWake={due:Date.now()+60000};pulse(h.render(()=>p.renderAggregate(h.cx,t)));
 const oldTrack=p.loadingLine(t);assert.equal(oldTrack.attrs.on_size_change,undefined,'Stationary line needs no geometry callback');
+const glow=find(oldTrack,'git-ci-line');assert.equal(oldTrack.attrs.h[0],1);assert.equal(glow.attrs.bg,undefined,'No uniform rule beneath the glow');
+assert.equal(glow.kids.length,2,'Two native two-stop gradients meet at the centre');
+for(const [i,half]of glow.kids.entries()) {
+ const background=half.attrs.background[0];assert.equal(background.angle,90);assert.equal(background.space,'srgb');
+ assert.equal(background.from,i===0?`${t.accent}00`:t.accent);assert.equal(background.to,i===0?t.accent:`${t.accent}00`);
+ assert.equal(half.attrs.w[0],0);assert.ok(half.attrs.flex_1);assert.ok(half.attrs.h_full);
+ assert.equal(half.attrs.on_size_change,undefined,'The glow needs no width measurements or callbacks');
+}
+const paint=p.loadingLineBackgrounds; p.loadingLine(t);assert.equal(p.loadingLineBackgrounds,paint,'Unchanged accent reuses native paint values');
+const changed=p.loadingLine({...t,accent:'#bbaa44'});assert.notEqual(p.loadingLineBackgrounds,paint,'Live accent changes rebuild the gradients');
+assert.equal(find(changed,'git-ci-line').kids[0].attrs.background[0].to,'#bbaa44');
+p.loadingLine(t);
 p.motionReduced=true;assert.equal(animations(p.loadingLine(t)).length,0);assert.equal(animations(p.loadingMessage(t,'reduced')).length,0);
 p.motionReduced=false;const dot=animations(p.loadingMessage(t,'normal'))[0],line=animations(p.loadingLine(t))[0];assert.equal(dot.attrs.loop[1].period,line.attrs.loop[1].period,'Cold dot and warm line retain the same cadence');assert.equal(dot.attrs.loop[1].from,0.25);assert.equal(line.attrs.loop[1].to,0,'Native loop starts at its to endpoint');
 // Finite lifecycle callbacks, never a JavaScript animation frame loop. Native

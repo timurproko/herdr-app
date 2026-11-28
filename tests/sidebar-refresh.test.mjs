@@ -42,7 +42,7 @@ function state(node, busy, spinning = busy) {
   assert.equal(Boolean(node.attrs.hover), !busy);
 }
 async function harness(feature, pluginOn = true) {
-  const context = vm.createContext({localStorage: {getItem: () => 'changes', setItem() {}}});
+  const context = vm.createContext({window:{paint_path:()=>element()},localStorage: {getItem: () => 'changes', setItem() {}}});
   const tasks = [], calls = [], timers = [];
   let notify = 0, gate, rendering = false,gitShown=false;
   const place = {cwd: '/repo', on: null, space: 'space'};
@@ -64,7 +64,7 @@ async function harness(feature, pluginOn = true) {
   };
   const exports = {
     './label-colors.js':labelColors,
-    'gpui-kit': {View: class {}, div: () => element(), svg: asset => element(asset), image: asset => element(asset), PathBuilder: {}, Background},
+    'gpui-kit': {View: class {}, div: () => element(), svg: asset => element(asset), image: asset => element(asset), PathBuilder: {fill:()=>element()}, Background},
     'gpui-base': {v_flex: () => element(), h_flex: () => element(), Editor: {}, EditorState: {},
       InputState: {new: () => ({on() {}, set_value() {}})}, Input: {new: () => element()},
       Scrollbar: {vertical: () => element()}, v_virtual_list: () => element(), Popover: {}},

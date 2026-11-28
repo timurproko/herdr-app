@@ -330,7 +330,9 @@ outside folder, and finally verifies both processes stop.
 checking local routing, static unknown/refused defaults and no per-frame reads.
 `git-loading-line.test.mjs` checks 2400ms opacity-only line/dot cadence,
 zero-based line breathing, unchanged nonzero cold-dot bounds, static reduced-motion
-feedback and unchanged work admission. Fake one-shot timers cover initial hiding,
+feedback and unchanged work admission. It also checks the two mirrored horizontal
+native gradients (transparent ends, full accent centre), equal flex halves, cached
+paint values, live-accent updates and absence of width measurements. Fake one-shot timers cover initial hiding,
 zero-target transition arming, reveal, 140ms exit, overlap/resumption, short work,
 context/hide/disable/close retirement and no per-render pulse reset. It also checks
 plus the cold ordinary/coordinator
@@ -1837,6 +1839,19 @@ Recorded links deliberately do not guarantee pre-report PR discovery. Native pix
 actual drag motion and real remote execution remain unverified without separate
 authorization; fixture success is not deployment evidence.
 
+## Compact Spaces machine creation
+
+`node --experimental-vm-modules tests/spaces-new-hover.test.mjs` covers local-only
+and remote populated/empty/folded/loading/disconnected/rebuilt groups. Connected
+machines each retain one plus immediately below their icon, with a 12px glyph,
+28px target, dim foreground, machine-specific tooltip and explicit creation route.
+Disconnected availability matches the expanded header. The global plus/header is
+absent, empty groups do not duplicate creation and drag guards suppress actions.
+Drag-scroll spans contain only shown space rows, excluding added plus/loading rows.
+`spaces-worktree-layout.test.mjs` and `tab-arrival.test.mjs` retain badge geometry,
+connected-space actions and folded-machine feedback coverage. These are targeted
+synthetic tests, not live space creation.
+
 ## Agents group dot columns
 
 `node --experimental-vm-modules tests/agents-dot-column.test.mjs` resolves the real
@@ -1845,6 +1860,11 @@ including 130%. Mixed Working/Done states and 1/10/100 counts share a dot column
 9/10 and 99/100 transitions retain it. Expanded counts keep the same right-aligned
 32px slot; time and chevron rails stay unchanged. Resolving Done's horizontal
 margins is essential: the regression fails on the original mixed-state renderer.
+Compact Agents indices 1–12 additionally use one 10px text size at 100%/130%,
+with the existing 8px/12px number slots, 2px gap and 14px status rail unchanged in
+both sorting modes and 44px/76px sidebars. `spaces-worktree-layout.test.mjs` checks
+actual compact Spaces badges 1/9/10/11/12: they already share a fixed 10px font and
+16px centred badge, so that renderer needs no change.
 These are synthetic box assertions, not native pixels.
 
 The explicitly opt-in Windows command

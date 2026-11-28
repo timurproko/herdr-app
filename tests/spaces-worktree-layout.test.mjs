@@ -12,6 +12,14 @@ const cx={stop_propagation(){},notify(){}};
 const near=(a,b,message)=>assert.ok(Math.abs(a-b)<1e-6,`${message}: ${a} != ${b}`);
 const setSpaces=(machine=null)=>{all=['parent','other','child'].map((id,i)=>({id,name:id,machine,folder:'/fixture/'+id,active:i===0}));view.shown=new Set(all.map(s=>s.id));links=[{parent:'parent',child:'child',binding:'exact-home-owner'}];};
 const record=id=>view.ordered().find(r=>r.w.id===id),row=id=>view.row(record(id),t),content=(r,id)=>find(r,`space-content-${id}`),badge=r=>nodes(r).find(n=>n.attrs.size?.[0]===16 && n.attrs.rounded?.[0]===4);
+// Compact Spaces already uses the same fixed 10px badge font for all digits.
+// Guard that finding without changing the Spaces renderer or shared badge helper.
+for(const zoom of [1,1.3])for(const index of [1,9,10,11,12]) {
+ const compact=view.compact({w:{id:`compact-${index}`,name:'Fixture'},i:index-1},t),number=badge(compact);
+ assert.equal(number.kids[0],String(index));assert.equal(number.attrs.text_size[0],10);
+ assert.equal(number.attrs.size[0],16);const boxes=rowGeometry(compact,28,zoom),box=boxes.get(number);
+ near(box.x+box.width/2,14*zoom,'Spaces badge keeps its centred column across digit counts');
+}
 for(const machine of [null,'pc2']) {
  setSpaces(machine);tags=[{plugin:'crew',label:'Crew',tooltip:'Crew role'},{plugin:'other',label:'Other',tooltip:'Other role'}];
  assert.deepEqual([...view.ordered()].map(r=>r.w.id),['parent','child','other']);assert.deepEqual([...view.ordered()].map(r=>r.i),[0,2,1]);

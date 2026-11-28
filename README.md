@@ -701,6 +701,7 @@ separate from CI checking.
 Cold ordinary and coordinator Git show only their pulsing **Loading** message.
 Warm returns and background updates retain their list and use one stationary,
 full-width 1px accent line **immediately below the header**, above Open/Closed.
+Its horizontal glow fades to transparent at both ends and is strongest in the middle.
 The line eases in from transparent, breathes between 0% and 65% opacity on a
 native 2.4-second ease-in-out cycle, and eases back to transparent on completion.
 It never travels or shifts the list. Git's cold dot keeps its 25%–65% pulse.
@@ -1312,7 +1313,17 @@ three-digit slot, even when expanded. Collapsed group status dots share one colu
 across Working and Done states; agent-row dots keep their separate rightmost rail
 (shared with the group chevrons), without moving the time text. Group chevrons
 use Spaces' 24px square inset hover/focus treatment; either the header or its
-chevron folds that group, without selecting an agent.
+chevron folds that group, without selecting an agent. In the compact sidebar,
+every agent index uses the same 10px text size, including 1–9; number-slot widths
+and status-dot placement are unchanged. Spaces badges already use 10px for all
+numbers and retain their existing size and position.
+
+Compact Spaces has no global plus. Each connected machine has one **New space**
+plus directly below its device icon, even when populated, empty, loading or folded;
+local-only mode keeps that same machine grouping. The 12px glyph uses the existing
+28px compact row and a machine-specific tooltip. Creation explicitly targets that
+machine, as in the expanded header; disconnected machines have no create control.
+The old empty-machine plus is reused rather than duplicated.
 
 ## A1 session names
 

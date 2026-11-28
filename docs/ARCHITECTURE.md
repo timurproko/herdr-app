@@ -522,8 +522,10 @@ or immediate retry loop. Invalid payloads and actionable transport/access failur
 are not hidden by text matching. The audit found adjacent superseded-request and
 facts-retirement paths already quiet; they now share the explicit constructor.
 
-Git's loading line is a stationary full-width 1px accent surface with a native
-0–0.65 opacity pulse over 2400ms ease-in-out. The cold dot retains 0.25–0.65;
+Git's loading line is a stationary full-width 1px accent glow with a native
+0–0.65 opacity pulse over 2400ms ease-in-out. Two mirrored native two-stop horizontal
+path gradients fade from transparent ends to the full accent at the centre; their
+paint values follow the live accent and require no width measurement. The cold dot retains 0.25–0.65;
 reduced motion is static 0.35 without entrance/exit animation. A separate 140ms
 native opacity envelope first hides without a transition, then arms at zero,
 then reveals, following StatusReveal's native-default guard. The reveal callback
