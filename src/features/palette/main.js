@@ -4,7 +4,7 @@ import {v_flex,h_flex,InputState,v_virtual_list,VirtualListScrollHandle,Scrollba
 import {commands,layouts,keys,run,themes,settings,props,closeOverlay,openOverlay,shared,setShared,window as win,exec,appHome,readTextFile,checking} from './host.js';
 import {searchHeader,hotkey,menuHeading,dialogSurface,emptyState,dialogScrollFrame,dialogScrollbar,dialogScrollRow} from './ui.js';
 import {liveTheme,ensureNativeSelection} from './look.js';
-import {bottomFade} from './scroll-fade.js';
+import {topFade,bottomFade} from './scroll-fade.js';
 import {openSettings} from './settings-dialog.js';
 import {pluginIsEnabled} from './plugins.js';
 import {entries,rows as catalogRows,keyOf,activation,HISTORY_KEY,recentIds,remember} from './model.js';
@@ -27,8 +27,9 @@ export default class Palette extends View{
     cx.timer.after(600,()=>{if(!this.closed)this.input.focus();});this.handle=cx.focus_handle();
     this.headingSync=cx.timer.every(32,cx=>{
       if(this.closed||this.pendingHead===null)return;const more=this.pendingMore??this.moreBelow;
-      if(this.pendingHead===this.pinnedHead&&more===this.moreBelow)return;
-      this.pinnedHead=this.pendingHead;this.moreBelow=more;cx.notify();
+      const above=(this.listScroll.offset?.()?.y??(this.visibleRange?.start>0?1:0))>0.5;
+      if(this.pendingHead===this.pinnedHead&&more===this.moreBelow&&above===this.moreAbove)return;
+      this.pinnedHead=this.pendingHead;this.moreBelow=more;this.moreAbove=above;cx.notify();
     });
     if(!checking())cx.spawn(async cx=>{
       await cx.sleep(0);if(this.closed)return;
@@ -49,7 +50,7 @@ export default class Palette extends View{
       if(!this.closed)cx.notify();
     });
   }
-  resetScroll(){this.visibleRange=null;this.pinnedHead=null;this.pendingHead=null;this.moreBelow=true;this.pendingMore=null;}
+  resetScroll(){this.visibleRange=null;this.pinnedHead=null;this.pendingHead=null;this.moreAbove=false;this.moreBelow=true;this.pendingMore=null;}
   close(){this.closed=true;this.headingSync?.cancel();closeOverlay(props().overlay);}
   go(e){
     if(!e)return;this.recent=remember(shared(HISTORY_KEY)??this.recent,e.id);setShared(HISTORY_KEY,this.recent);this.close();
@@ -98,6 +99,7 @@ export default class Palette extends View{
         }).size_full().track_scroll(this.listScroll).on_item_click(id=>{const entry=this.rows().find(r=>r.e.id===id)?.e;if(entry)this.go(entry);}))
           .child(menuHeading(t,heading,h_flex()).id('palette-pinned-heading').absolute().top(0).left(0).right(8).h(HEAD_H).px(8).pb(4).items_end().bg(t.popover).text_color(t.foreground)
             .on_mouse_down('left',(_e,cx)=>cx.stop_propagation()).on_click((_e,cx)=>cx.stop_propagation()))
+          .when(overflow&&this.moreAbove,frame=>frame.child(topFade(this,'palette-list',t.popover,{left:0,right:8}).top(HEAD_H)))
           .when(overflow&&this.moreBelow,frame=>frame.child(bottomFade(this,'palette-list',t.popover,{left:0,right:8})))
           .child(dialogScrollbar(Scrollbar.vertical('palette-native-rows').scroll_size(0,total).viewport_from_layout()))));
   }

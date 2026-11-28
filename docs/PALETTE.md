@@ -24,8 +24,14 @@ The owned `mod.json` uses the host's popup metadata (top anchor, 60px offset,
 620px width, 85% window height cap). `mod.open` gives one toggled overlay; its
 input takes focus. The 408px shared skin retains the old Custom virtual-list,
 pinned heading/result count, fades, scrollbar ordering and clear behavior.
+The shared passive 40px top fade starts below the crisp pinned heading only when
+content is scrolled above; its state shares the existing heading synchronization,
+with no additional timer. The bottom fade and scrollbar lane remain unchanged.
 `tests/owned-palette-ui.test.mjs` exercises the packaged view with both reviewed
-host-shaped fixtures. These are synthetic event/layout passes, not live screenshots.
+host-shaped fixtures. It covers start/middle/end top-fade visibility, a partially
+scrolled first row, shared gradient height/colour, crisp heading placement, passive
+input behavior, scrollbar ordering and filter/clear reset. These are synthetic
+event/layout passes, not live screenshots.
 The status-bar opener uses the same mod and advertises the Custom-scoped binding.
 
 ## Persistence and diagnostics

@@ -314,7 +314,9 @@ outside folder, and finally verifies both processes stop.
 checking local routing, static unknown/refused defaults and no per-frame reads.
 `git-loading-line.test.mjs` checks 2400ms opacity-only line/dot cadence,
 zero-based line breathing, unchanged nonzero cold-dot bounds, static reduced-motion
-feedback and unchanged work admission. Fake one-shot timers cover initial hiding,
+feedback and unchanged work admission. It also checks the two mirrored horizontal
+native gradients (transparent ends, full accent centre), equal flex halves, cached
+paint values, live-accent updates and absence of width measurements. Fake one-shot timers cover initial hiding,
 zero-target transition arming, reveal, 140ms exit, overlap/resumption, short work,
 context/hide/disable/close retirement and no per-render pulse reset. It also checks
 plus the cold ordinary/coordinator
