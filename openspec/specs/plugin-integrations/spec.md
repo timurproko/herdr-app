@@ -2096,24 +2096,34 @@ Ordinary and coordinator Git SHALL omit a repository's header, count and chevron
 - **THEN** folding alone does not make the section empty and existing remaining-row counts and lone-pin header suppression remain intact
 - **AND** omitted empty sections retain their saved fold keys for later reappearance
 
+### Requirement: Coordinator-first Agents groups
+The grouped Agents panel SHALL place all coordinator-containing groups before all other groups. Coordinator groups SHALL retain their current relative order, and non-coordinator groups SHALL retain theirs. Existing membership, selection, collapse state, counts and drag behavior SHALL remain unchanged. Displayed names alone SHALL NOT identify a coordinator.
+
+#### Scenario: Interleaved groups and multiple machines
+- **WHEN** project and coordinator groups arrive interleaved, including coordinators on several machines
+- **THEN** all coordinator groups appear first in their existing order, followed by other groups in their existing order
+- **AND** the same group ids, members, folds, counts, selection and drag operations remain
+
+#### Scenario: No coordinator
+- **WHEN** there is no coordinator group
+- **THEN** the existing group order remains unchanged
+
 ### Requirement: Consistent Git stage and verdict boxes
-Git stage and verdict controls SHALL share a tight width equal to the longest supported caption's natural text width plus 6px side padding on each side, with equal 18px height and centred text. There SHALL be no additional common-width allowance. Interaction bounds SHALL match the visible boxes. Existing right alignment, title truncation, row height, guarded actions and tooltip suppression SHALL remain unchanged.
+Git stage and verdict controls SHALL size to their own caption with 6px side padding, equal 18px height and centred text, without a minimum width shared across captions. Interaction bounds SHALL match each visible box. Existing right alignment, title truncation, row height, guarded actions and tooltip suppression SHALL remain unchanged.
 
 #### Scenario: Common geometry across captions
 - **WHEN** ordinary or coordinator rows show Build, Build 2 through Build 99, Review, Approved or another fixed verdict such as Changes requested at 100% or 130% zoom
-- **THEN** all stage and verdict controls use the same width, with the longest supported caption retaining exactly 6 logical pixels on either side and shorter captions centred
-- **AND** the baseline accounts for every supported fixed caption and every accepted Build round length even when absent, without extra width beyond the longest natural caption and its padding
+- **THEN** each control fits its own natural caption width plus 6 logical pixels on either side, rather than inheriting the widest caption's width
 - **AND** hover, focus and click share that box without tooltip or a changed right rail, title reservation or block height
 
 #### Scenario: Rare longer round
 - **WHEN** a supported Build caption contains more than two round digits
-- **THEN** the common width already accommodates the longest accepted safe-integer round caption with normal side padding, and every stage and verdict stays equally wide and right anchored
-- **AND** switching between statuses, missing round data and any accepted round never changes that width or the accepted round metadata and wording
+- **THEN** only that control grows to fit its caption and normal side padding while keeping its right anchor
+- **AND** other controls retain their own caption-sized widths
 
 #### Scenario: Long title and retained presentations
 - **WHEN** long-title rows appear in ordinary, coordinator, pinned, scrolling, probe or ghost presentations at either zoom
 - **THEN** the existing title truncation and full-title hover remain intact and the stage/verdict does not gain a title-line reservation
-- **AND** visible, probe and ghost boxes use identical sizing, while probes and ghosts retain their noninteractive behavior
 
 ### Requirement: Non-actionable delivery kind explanation
 The Projects description SHALL append Delivery kinds in inline accent styling with a dashed underline. Hover or keyboard focus SHALL show three two-column explanations: regular-weight foreground kind names on the left and muted descriptions on the right. All descriptions and their wrapped lines SHALL share one left edge, with no separating dashes or column headers. Clicking SHALL do nothing, using the existing tooltip treatment.
@@ -2228,39 +2238,3 @@ Files and Git source-selection requirements SHALL use the sidebar's held source 
 - **WHEN** manual or existing automatic refresh runs while pinned, or a reply arrives after unpinning or recapturing a different source
 - **THEN** refresh updates only the held source under existing lifecycle rules, and obsolete replies cannot populate a newer effective context
 - **AND** hidden or disabled plugins start no new work and the pin persists no file tree, PR inventory, callbacks or credentials
-
-### Requirement: Space-mode Agents groups follow Spaces order
-The Agents menu's Space mode SHALL follow displayed Spaces order, local machine first then remote machines in Spaces order, including connected children. No role SHALL promote a group. Equal names on different machines SHALL remain separate; same-machine groups spanning spaces SHALL use the earliest represented row. Pinned agents SHALL retain their leading section. Priority mode SHALL remain unchanged.
-
-#### Scenario: Interleaved agent groups and machines
-- **WHEN** agents arrive in a different order from Spaces, with coordinators on multiple machines
-- **THEN** their Space-mode groups follow the Spaces machine blocks and row order, not agent arrival or coordinator-first promotion
-- **AND** equal names across machines remain independent groups with their own counts and folds
-
-#### Scenario: Native reorder and attached children
-- **WHEN** a native space or connected sibling changes position
-- **THEN** Space-mode groups follow the updated full Spaces projection, with attached children under their coordinator even if folded in Spaces
-- **AND** group order changes no space, terminal, tab or fleet identity and starts no discovery work
-
-#### Scenario: Shared group or unavailable space
-- **WHEN** one same-machine group represents several spaces or its native space is temporarily unavailable
-- **THEN** a shared group uses its earliest represented Spaces position, while unavailable groups remain in stable order at their machine's tail
-- **AND** existing same-machine grouping, fold identities, counts and full navigation membership remain intact
-
-#### Scenario: Pinned rows and Priority mode
-- **WHEN** agents are pinned or the person selects Group agents by: Priority
-- **THEN** pinned agents retain their separate leading section and Priority retains its existing urgency, time and sequence ordering
-- **AND** native space reorder and coordinator metadata changes do not alter Priority or start attachment presentation queries there
-
-### Requirement: Crew owns its Spaces label visibility contribution
-The enabled Crew plugin SHALL contribute its own Crew label toggle to Spaces through the generic plugin boundary. The choice SHALL default true, survive plugin disablement and affect only its Spaces tag presentation. Disabled-plugin or obsolete popup callbacks SHALL NOT change it. Opening or toggling the entry SHALL start no plugin work or external operation.
-
-#### Scenario: Enabled-only checked menu contribution
-- **WHEN** Spaces opens Show icons with Crew enabled
-- **THEN** Crew contributes its existing-style toggle using its saved value or the true default, without a Crew-specific feature import
-- **AND** popup sizing includes the contributed row and existing built-in entries retain their styling, order and values
-
-#### Scenario: Disable while the menu is open
-- **WHEN** Crew becomes disabled after its menu entry was built
-- **THEN** a retained callback cannot change the hidden plugin's setting
-- **AND** the current menu projection omits its entry and re-enabling restores the last saved choice without replaying an action
