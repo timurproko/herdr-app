@@ -1067,6 +1067,29 @@ rows. Agents keeps its shared 32px numeric rail; Git compensates the larger 24px
 chevron slot and 8px surrounding gap to retain the same painted number-to-glyph
 gap. The existing Agents column suite protects its unchanged time/count geometry.
 
+## Global Git repository disclosure
+
+`node --experimental-vm-modules tests/git-header-disclosure.test.mjs` checks the
+versioned local disclosure policy with fake localStorage: legacy fold migration,
+initial expanded default, canonical individual exceptions, bulk reset including
+hidden/unseen repositories, malformed/unknown versions, storage refusal, retained
+writers and restart. It also drives the actual ordinary/coordinator button and
+chevron callbacks with synthetic PRs, proving Enter/Space behavior, unchanged
+pins/counts/cursors, fold-selection epochs, incompatible motion cancellation,
+coordinator reveal/caps, headerless failures and cold feedback. Retained/recreated
+views and disable/re-enable adopt saved disclosure before target content paints.
+At 100%/130% and 280/390/480px, the geometry fixture checks one right-aligned 24px
+control in the unchanged 40px strip with existing 8px tab-label padding and no
+count badges, repeat tooltip or extra messages. There is no real transport,
+installed preference read, worker navigation or live app interaction. These are
+deterministic render-tree/geometry assertions, not native pixel or hit-test proof.
+Existing Closed-fold, section-reveal, entry-cache, safety-paging, label-only-tab
+and loading-line fixtures guard their respective unchanged contracts.
+
+Use `delivery openspec validate <change> --type change --strict --no-interactive`
+for the workflow-pinned validator, rather than a potentially older global CLI;
+strict CI also checks the length of modified requirement paragraphs.
+
 ## Closed-section fold exploration
 
 `node --experimental-vm-modules tests/git-closed-folds.test.mjs` exercises the

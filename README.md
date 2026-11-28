@@ -420,6 +420,17 @@ menu are removed. **Code... / Pull requests... / Actions...** shortcuts are gone
 from this panel, not relocated; individual PR **Open... / Copy path** menus remain.
 Verification diagnostics stay on the existing activity indicator, never a Stale label.
 
+The icon at the far right of **Open / Closed** toggles all repository sections
+between collapsed and expanded. Its chosen default follows you across agents,
+spaces and both Git views, including repositories first visited later. Individual
+chevrons still open or close one repository as a remembered exception; they do not
+change the global icon. The next bulk toggle flips that default and clears all
+exceptions, even for hidden repositories. Both the default and exceptions survive
+app restart on this client, without portable preference export. Existing saved
+folds are preserved on upgrade until a bulk toggle replaces them. Collapsing keeps
+the current agent's pinned PR visible above its header; expanding respects existing
+pagination and reveal limits rather than fetching or mounting every PR.
+
 Entering a worker space immediately reuses its exact machine/repository's cached
 section, including data already loaded by the coordinator. Returning to the
 coordinator restores its cached sections/order too. The same native header

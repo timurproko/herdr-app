@@ -44,11 +44,18 @@ export class RepositoryDisclosure {
   // current sections. '*' cannot be a canonical owner/repository identity.
   *[Symbol.iterator]() { if (this.collapsed) yield '*'; yield* this.exceptions; }
 
-  toggle(repo) {
-    this.sync();
+  // Set-compatible effective-fold mutations keep the existing section handler.
+  add(repo) { this.set(repo, true); return this; }
+  delete(repo) { const before = this.has(repo); this.set(repo, false); return before; }
+  set(repo, collapsed) {
     const name = canonical(repo);
     if (!name) return;
-    this.exceptions.has(name) ? this.exceptions.delete(name) : this.exceptions.add(name);
+    collapsed === this.collapsed ? this.exceptions.delete(name) : this.exceptions.add(name);
+  }
+
+  toggle(repo) {
+    this.sync();
+    this.set(repo, !this.has(repo));
     this.save();
   }
 

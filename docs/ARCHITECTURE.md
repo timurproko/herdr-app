@@ -371,7 +371,8 @@ still cannot be inferred by the app from transcripts or branches.
 
 `ui/ui.js` owns `sidebarSectionHeader`, the common machine/repository header shell
 and right-edge chevron; Spaces retains its own actions and guarded folding.
-Aggregate repository headers start expanded and show canonical owner/name,
+Aggregate repository headers inherit Git's disclosure default (initially expanded)
+and individual exceptions, and show canonical owner/name,
 the selected-tab eligible task PR count and the shared chevron. The count uses
 Agents' shared numeric rail, compensating surrounding gap and chevron-slot width
 without moving Git's existing trailing rail; it counts full task inventory rather
