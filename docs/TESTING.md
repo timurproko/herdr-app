@@ -306,6 +306,12 @@ Loading, equal message placement at 100%/130%, no simultaneous repository header
 or moving line, warm/background/verification/safety line activity, overlap,
 completion, cooldown and retired callbacks. Folded cold failures stay visible.
 Refresh remains static during its 600ms disabled feedback; other panels are unchanged.
+`pinned-pr-refresh.test.mjs` additionally exercises that lifecycle through an actual
+webhook refresh: exactly two 16ms entrance callbacks, no callbacks during sustained
+native breathing, then one 140ms exit callback after the read completes. CI run
+46146489908 exposed its obsolete zero-total-timer and bright-endpoint expectations;
+the updated assertions retain the no-polling/no-frame-loop guards and check the
+transparent/armed/visible/exiting states rather than skipping timer validation.
 `tests/features/git-loading-native.mjs --run --zoom 1|1.3 --output <outside>`
 uses a checksum-verified release 0.1.18 executable, synthetic data and isolated
 app/Core homes. It captures ordinary/coordinator cold Loading (two pulse phases),
