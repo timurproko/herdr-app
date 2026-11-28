@@ -136,6 +136,7 @@ const modules = {
   './space-colors.js': {spaceColorPicker: element,setSpaceColor(){},selectedColorIndex:()=>0,colorAt:()=>0,COLOR_COUNT:6},
   './plugins.js': {pluginAllows:()=>false,pluginEvent(){},pluginMenuItems:()=>menuActions,pluginWorkspaceLinks:()=>[]},
   './customization-updates.js': {customizationUpdateAvailable:()=>false},
+  './plugins-updates.js': {pluginUpdateAvailable:()=>false},
   './agent-rename.js': {requestInlineAgentRename:()=>true},
   './tab-rename.js': {requestInlineTabRename:()=>true}, './space-rename.js': {requestInlineSpaceRename:()=>true}, './close-space.js': {closeWithConfirmation(...args){legacyActions.push(args);}},
   './tab-moves.js': {inspectTabMove:target=>menuInspect(target),tabMoveDestinations:()=>menuSpaces.filter(s=>s.id!=='s1'),requestTabMove:(...args)=>{selected.push(args);return integratedMenu ? api.requestTabMove(...args) : true;}},

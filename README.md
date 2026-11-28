@@ -661,15 +661,17 @@ separate from CI checking.
 Cold ordinary and coordinator Git show only their pulsing **Loading** message.
 Warm returns and background updates retain their list and use one stationary,
 full-width 1px accent line **immediately below the header**, above Open/Closed.
-The line and Git's cold dot share a native opacity-only 2.4-second ease-in-out
-cycle, from 25% to 65% opacity, never travelling or vanishing. Reduced motion
-uses static 35% opacity. Git reads this local accessibility preference once on
+The line eases in from transparent, breathes between 0% and 65% opacity on a
+native 2.4-second ease-in-out cycle, and eases back to transparent on completion.
+It never travels or shifts the list. Git's cold dot keeps its 25%–65% pulse.
+Reduced motion uses static 35% opacity without entry/exit animation. Git reads this local accessibility preference once on
 show (Windows client-area animations, macOS reduceMotion, Linux GNOME animations),
 outside render, with a static fallback on refusal; hide/show rechecks it. An
 explicit boolean `reduced_motion`/`reducedMotion` host setting takes precedence.
-Other panels' dots keep their existing rhythm. There are no JavaScript frame timers. It stays present through pending work and disappears on completion,
-failure, hide or context retirement; dormant retry cooldowns and unknown totals
-alone do not animate. The pinned block and its bottom divider stay still.
+Other panels' dots keep their existing rhythm. There are no JavaScript frame timers.
+The line's native exit takes 140ms after completion or failure; overlapping work
+continues the same presentation, while hide or context retirement removes it
+immediately. Dormant retry cooldowns and unknown totals alone do not animate. The pinned block and its bottom divider stay still.
 
 An open PR with GitHub's explicit `CONFLICTING` mergeability replaces its normal
 PR icon with a **red outlined circle and X**, using the same stroke style as PR icons. Hover that icon for **Merge conflicts**.
@@ -1686,6 +1688,17 @@ the cache under the same single-flight lease. No public network-return event is
 assumed: timer retry and supported activation signals are the fallback.
 The native Herdr and herdr-core rows retain their hourly update checks; that
 schedule does not apply to Custom.
+
+Below Herdr, **Settings → Updates → Plugins** lists confirmed plugin-tool updates
+on this computer and connected peers, such as an outdated Crew tool. These share
+the existing Settings/Updates dots. One **Update** applies the existing plugin actions
+sequentially: this computer first, then peers in the all-machine inventory order.
+Progress and machine-specific failures stay in that section; a failure does not
+stop other machines. Separate read-only plugin checks run on mounted update-check
+opportunities and on entering Updates; they do not install missing tools or change
+the Plugins machine selection. A timed-out submitted update is never automatically
+replayed: check that machine's actual tool state before retrying. Existing Plugins
+Update buttons remain available and use the same action path.
 
 For near-immediate discovery, the updater independently subscribes to the shared
 Git relay while Git is enabled: only `timurproko/herdr-app` main pushes or closed,

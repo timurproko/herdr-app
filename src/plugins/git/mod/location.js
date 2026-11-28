@@ -8,8 +8,11 @@ export function namedPullNumber(tab) {
   return Number.isSafeInteger(number) ? number : null;
 }
 
-export function location() {
-  const space = spaces().find(s => s.active), f = focused(), all = panes();
+// A frame may reuse pure selection/directory facts, never read or action
+// authority. All non-render callers omit the snapshot and resolve live state.
+export function location(snapshot) {
+  if(snapshot?.place)return snapshot.place;
+  const space = (snapshot?.groups??spaces()).find(s => s.active), f = focused(), all = snapshot?.all??panes();
   const selectedTab = space?.tabs?.find(t => t.active), tab = selectedTab?.id;
   const mine = all.filter(p => p.tab === tab);
   const matchingFocus = f && (!f.space || f.space === space?.id) && (!f.tab || f.tab === tab);
@@ -22,7 +25,7 @@ export function location() {
   pane ??= mine.find(p => p.focused) ?? mine[0];
   const terminal = pane?.mod ? null : pane?.terminal ?? null;
   const on = terminal ? (terminal.includes('/') ? terminal.split('/')[0] : null) : space?.machine ?? null;
-  const list = terminals();
+  const list = snapshot?.list??terminals();
   const {cwd} = paneDirectory(pane, list, matchingFocus ? f : null);
   const app = pane?.app ?? list.find(t => t.address === terminal)?.report?.app ?? null;
   // Agents can switch worktrees internally while their parent shell stays on develop.
@@ -30,5 +33,7 @@ export function location() {
   // Never interpret Herdr's automatic positional tab names as PR numbers, or
   // inherit the underlying tab's link when showing a different/peek terminal.
   const pullNumber = terminal && pane?.tab === tab ? namedPullNumber(selectedTab) : null;
-  return {cwd, on, terminal, space:space?.id, tab, pullNumber, app};
+  const place={cwd, on, terminal, space:space?.id, tab, pullNumber, app};
+  if(snapshot)snapshot.place=place;
+  return place;
 }

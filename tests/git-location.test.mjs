@@ -19,6 +19,7 @@ let branch = 'fix/active-agent', heldBranch = null;
 const branchCalls = [], screenCalls = [];
 let screenReply = {code:1,stdout:''};
 let rendering = false;
+const locationReads={spaces:0,panes:0,terminals:0,focused:0};
 function element(asset) {
   const node = {asset, attrs:{}, kids:[]}; let proxy;
   proxy = new Proxy(node, {get(target,key) {
@@ -32,7 +33,7 @@ function element(asset) {
 }
 const native = {
   shared:()=>null, setShared(){}, settings:()=>({zoom:1}), machines:()=>[{name:'pc2',layout:'ready'}],
-  agents:()=>[], spaces:()=>[space], panes:()=>[pane], terminals:()=>[terminal], focused:()=>focus,
+  agents:()=>[], spaces:()=>{locationReads.spaces++;return [space];}, panes:()=>{locationReads.panes++;return [pane];}, terminals:()=>{locationReads.terminals++;return [terminal];}, focused:()=>{locationReads.focused++;return focus;},
   home:()=>home, theme:()=>({dim:'dim',hover:'hover',foreground:'foreground'}), layout:()=>null, window:()=>({platform:'windows'}), run(){}, openOverlay(){}, props:()=>null, closeOverlay(){}, notify(){}, nextCommand(){},
   hc:args=> { screenCalls.push(args); return Promise.resolve(screenReply); },
   exec:(cmd,args,options)=> {
@@ -134,6 +135,19 @@ assert.equal(location().cwd,null,'A mod pane cannot borrow the space launch fold
 assert.equal(location().pullNumber,null,'A mod pane cannot borrow the tab PR');
 delete pane.mod; pane.terminal = correctFocus.terminal; focus = correctFocus;
 selectedTab.named = false;
+
+// Whole-frame selection uses captured collections, not a native collection
+// walk for every stage and robot control. Event/read callers remain live.
+const frame={groups:[space],all:[pane],list:[terminal]},beforeReads={...locationReads};
+const framePlace=location(frame);
+for(let i=0;i<28;i++)assert.equal(location(frame),framePlace);
+for(const key of ['spaces','panes','terminals'])assert.equal(locationReads[key],beforeReads[key]);
+assert.equal(locationReads.focused-beforeReads.focused,1);
+terminal.labels['custom.cwd']='D:/worktrees/fresh-after-frame';
+assert.equal(location(frame).cwd,home,'The frame is a stable pure projection');
+assert.equal(location().cwd,'D:/worktrees/fresh-after-frame','A read/action without a frame resolves live identity');
+for(const key of ['spaces','panes','terminals'])assert.equal(locationReads[key]-beforeReads[key],1);
+terminal.labels['custom.cwd']=home;
 
 const view = new main.namespace.default();
 const cx = {focus_handle(){assert.equal(rendering,false,'No focus allocation from render');return {};},spawn:fn=>tasks.push(fn(cx)),notify:()=>assert.equal(rendering,false,'No synchronous notify from render'),timer:{every(){},after(){return {cancel(){}};}}};

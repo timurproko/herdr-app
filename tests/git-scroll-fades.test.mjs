@@ -12,7 +12,7 @@ for(const coordinator of [false,true])for(const zoom of [0.75,1,1.3,2]) {
  const h=await rowHarness();h.setZoom(zoom);const {panel,cx}=h;
  const rows=Array.from({length:30},(_,i)=>Object.assign(h.facts.pullRow({number:i+1,title:`PR ${i+1}`,state:'OPEN',author:{login:'fixture'}},'owner'),coordinator?{key:`owner/repo#${i+1}`,repo:'owner/repo'}:{}));
  if(coordinator){
-  panel.context='tasks:home';panel.aggregate={context:{scope:'home'},entries:new Map(rows.map(pr=>[pr.key,{pr,link:{repo:pr.repo}}])),currentContext:()=>({scope:'home'}),repositories:()=>['owner/repo'],rows:()=>rows,readNotice:()=>null,counts:()=>({open:30,closed:0}),target:()=>null};
+  panel.context='tasks:home';panel.aggregate={context:{scope:'home'},entries:new Map(rows.map(pr=>[pr.key,{pr,link:{repo:pr.repo}}])),currentContext:()=>({scope:'home'}),frameContext(){return this.currentContext();},repositories:()=>['owner/repo'],rows:()=>rows,readNotice:()=>null,counts:()=>({open:30,closed:0}),target:()=>null};
   panel.notices={sync(){return null;},presentation(){return null;}};panel.enrollmentPicker={render(){return null;}};panel.syncChecksFallback=()=>{};
  }else panel.pulls.open=rows;
  panel.shown=()=>true;

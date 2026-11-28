@@ -27,7 +27,7 @@ panel.view='open';panel.foldedRepositories=new Set();panel.context='tasks:fixtur
 const entries=new Map();
 for(let i=0;i<80;i++){const repo=i%2?'owner/a':'owner/b',key=`${repo}#${i+1}`;entries.set(key,{link:{repo,key},pr:{key,repo,number:i+1,title:`Fixture ${i}`,state:'open',url:`https://github.com/${repo}/pull/${i+1}`,labels:[]},error:null});}
 entries.set('owner/c#1',{link:{repo:'owner/c',key:'owner/c#1'},pr:null,error:'Scoped repository read failed'});
-panel.aggregate={context,entries,readNotice:repo=>entries.get(`${repo}#1`)?.error??null,currentContext:()=>context,repositories:()=>repositories,rows:state=>[...entries.values()].flatMap(e=>e.pr && (state==='open'?['open','draft']:['closed','merged']).includes(e.pr.state)?[e.pr]:[]),counts:()=>({open:80,closed:0}),target:()=>null,refresh(){},busy:false};
+panel.aggregate={context,entries,readNotice:repo=>entries.get(`${repo}#1`)?.error??null,currentContext:()=>context,frameContext(){return this.currentContext();},repositories:()=>repositories,rows:state=>[...entries.values()].flatMap(e=>e.pr && (state==='open'?['open','draft']:['closed','merged']).includes(e.pr.state)?[e.pr]:[]),counts:()=>({open:80,closed:0}),target:()=>null,refresh(){},busy:false};
 let tree;const render=()=>{rendering=true;try{return tree=panel.renderAggregate(cx,t);}finally{rendering=false;}};
 render();await drain();render();assert.equal(find(tree,'git-enrollment-footer'),undefined,'Zero confirmed choices');
 const change=members=>{snapshot={...snapshot,revision:snapshot.revision+1,members};render();};

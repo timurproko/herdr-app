@@ -7,7 +7,7 @@ import { v_flex, h_flex, InputState, Input, Checkbox, TextareaState, Textarea } 
 import { U, slot, description, button, control, chevron, emptyState, dropdown, menuSurface, searchField, settingsRow, iconButton, chevronSlot, collapsible } from "./ui.js";
 import { KIT, descriptionHint, badge, statusText, workingStatus, statusRail, actionButton, actionTrigger, checkButton, choice, pickerTabs, optionDropdown, skeleton,
   disclosure, fieldRow, scopeRow, removableRow, pickerHeader, pickerListHeight, pickerFooter, changeCount, changeLabel, actionInput } from './settings-kit.js';
-import { PLUGINS, pluginEnabled, setPluginEnabled, pluginSetting, setPluginSetting, checkPlugin, pluginContext, pluginOptions, orderedPlugins, setPluginOrder } from './plugins.js';
+import { PLUGINS, pluginEnabled, setPluginEnabled, pluginSetting, setPluginSetting, checkPlugin, pluginOptions, orderedPlugins, setPluginOrder } from './plugins.js';
 import { reorder } from './reorder.js';
 import { machinePicker } from './machine-picker.js';
 import { editorActionButton } from './modal-layout.js';
@@ -15,6 +15,8 @@ import { folderBrowser, openBrowser, closeBrowser } from './folder-browser.js';
 import {spaces,panes,terminals,focused,settings} from './host.js';
 import {spaceDirectory} from './directory.js';
 import {settingsGroups, settingsCommands} from './settings-requests.js';
+import { pluginMachineContext, runPluginFixes, beginPluginUpdateCheck } from './plugins-operations.js';
+import { recordPluginUpdate } from './plugins-updates.js';
 
 // The app's launch profiles, handed in by Settings (main.js) so this renderer stays free of
 // the profile model: `{ list(machine) -> Promise<profile[]>, setRole(machine, key, role, on),
@@ -374,8 +376,9 @@ function actionForm(view, t, plugin, item) {
 }
 
 export function prerequisiteContext(plugin, alive = () => true, machine = null) {
-  return {...pluginContext(plugin), machine, isCurrent: alive,
-    enabled:()=>pluginEnabled(plugin),
+  // Existing list scopes (including a folder picked on another machine) retain
+  // their plugin-owned setting; update discovery/batches explicitly pin theirs.
+  return {...pluginMachineContext(plugin, { machine, current: alive, captureMachine: false }),
     directory() {
       const space=spaces().find(s=>s.active);if(!space)return null;
       const all=panes(),list=terminals(),focus=focused(),tab=space.tabs?.find(t=>t.active)?.id;
@@ -438,7 +441,9 @@ export function reloadPlugins(view, cx, only = null, checkingTarget = null, {rea
         const context={...viewContext(view,plugin,alive,machine,cx,done),checkReason:reason,checkMemo,refreshList:round.refreshList};
         // Keep the registry's checking/error boundary, but run only this group.
         // Benign same-round probe facts may coalesce; completion tokens stay group-local.
-        const items=await checkPlugin({...plugin,prerequisites:selected.map(pre=>({...pre,check:()=>pre.check(pre.list?.refreshOnOpen === true ? {...context,
+        const items=await checkPlugin({...plugin,prerequisites:selected.map(pre=>({...pre,
+          ...(pre.updates ? {updateRead:beginPluginUpdateCheck(machine,plugin,pre)} : {}),
+          check:()=>pre.check(pre.list?.refreshOnOpen === true ? {...context,
           // A refreshing list can publish its local snapshot first. Controls remain
           // locked by the group until the bounded provider read settles.
           publish: result => {
@@ -450,6 +455,7 @@ export function reloadPlugins(view, cx, only = null, checkingTarget = null, {rea
           }} : context)}))});
         if(!alive())return;
         for(const pre of selected)delete view.pluginSettling?.[`${plugin.id}:${pre.id}`];
+        for(const item of items)if(item.updates)recordPluginUpdate(machine,plugin,item);
         if (group === 'requirements') for (const key of Object.keys(view.pluginSettling ?? {}))
           if (key.startsWith(`${plugin.id}:live-`)) delete view.pluginSettling[key];
         for (const item of items) prepareRowChoices(view, cx, plugin, item);
@@ -484,17 +490,16 @@ function runFixes(view, cx, plugin, items, confirmed = false) {
   for (const item of items) view.pluginFixError[`${plugin.id}:${item.id}`] = null;
   view.pluginFixing = `${plugin.id}:${items[0].id}`; view.pluginFixOperation = operation;
   cx.spawn(async (cx) => {
-    for (const item of items) {
-      if (!current()) break;
-      const key = `${plugin.id}:${item.id}`;
-      view.pluginFixing = key; cx.notify();
-      if((item.fix.confirm||item.fix.requiresEnabled)&&!pluginEnabled(plugin))break;
-      (view.pluginSettling ??= {})[key] = true;
-      try {
-        if (!current()) break;
-        await item.fix.run(viewContext(view,plugin,()=>current()&&view.pluginFixing===key,machine,cx));
-      } catch (e) { if (current()) view.pluginFixError[key] = String(e?.message ?? e).slice(0, 300); break; }
-    }
+    try {
+      await runPluginFixes(plugin, items, viewContext(view, plugin, current, machine, cx), {
+        confirmed,
+        onItem: item => {
+          view.pluginFixing = `${plugin.id}:${item.id}`;
+          (view.pluginSettling ??= {})[view.pluginFixing] = true; cx.notify();
+        },
+        recheck: () => reloadPlugins(view, cx, plugin.id),
+      });
+    } catch (e) { if (current()) view.pluginFixError[view.pluginFixing] = String(e?.message ?? e).slice(0, 300); }
     if (view.pluginFixOperation !== operation) return;
     const active = current();
     view.pluginFixOperation = null; view.pluginFixing = null;
@@ -505,7 +510,7 @@ function runFixes(view, cx, plugin, items, confirmed = false) {
     for(const def of plugin.settings??[])if(def.type==='text'){
       const input=view.pluginInputs[`${plugin.id}-${def.key}`];if(input&&!input.focused)input.state.set_value(pluginSetting(plugin,def.key));
     }
-    reloadPlugins(view, cx, plugin.id); cx.notify();
+    cx.notify();
   });
   cx.notify();
 }

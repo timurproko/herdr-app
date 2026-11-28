@@ -441,7 +441,10 @@ function fleetLoading(identity) {
 function pullContext(space, {presentation = false} = {}) {
   const context=fleetContexts().find(c=>c.parent===space && c.taskMembershipVerified);
   if(context) {
-    const display=fleetContexts({presentation:true}).find(d=>d.parent===space && d.pullScope===context.pullScope);
+    // A freshly bound live child already proves this scope exists. Only the
+    // childless history case needs remembered-display lookup; rebuilding the
+    // native model again for every live Git frame adds no identity evidence.
+    const display=context.child?null:fleetContexts({presentation:true}).find(d=>d.parent===space && d.pullScope===context.pullScope);
     if(!context.child && !display && !context.tasks.some(t=>canonicalPull(t.pr)))return null;
     return {...context,kind:'tasks',scope:context.pullScope,stale:false,loading:fleetLoading(context),links:context.tasks.filter(t=>t.pr).map(t=>({url:t.pr,terminal:t.terminal,task:t.id,historical:t.historical===true,...(t.space?{space:t.space}:{})}))};
   }
