@@ -30,9 +30,11 @@ capacity admission/retry, retained facts, batching and captured kind acknowledge
 ordinary/coordinator and visible/ghost/probe geometry at 100%/130%, all rounds 2–99,
 stable longest-supported-caption width, centred captions and unchanged title/right-rail/row geometry.
 The existing full row geometry and stage interaction fixtures remain independent.
-`tests/agents-grouping.test.mjs` additionally exercises the real Crew/registry
-metadata contribution with interleaved coordinator groups on several machines,
-no-coordinator and misleading-name cases, and unchanged folds/counts/focus/pins.
+`tests/agents-grouping.test.mjs` exercises the actual Agents renderer and shared
+Spaces block projection with interleaved local/remote snapshots, live native and
+attached-child reorder, independent equal-name machine groups, stable local folds,
+counts/focus/pins and missing-space fallback. It asserts the original exact Priority
+order across native reorder and role-label changes, with no attachment query there.
 Verdict boxes yield whole before labels on real overflow, rather than shrinking
 their hit target. Stage and verdict boxes share the longest supported caption's width plus 6px
 side padding, including all accepted round lengths independently of current rows.

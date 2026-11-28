@@ -186,15 +186,6 @@ export function pluginMenuItems(name, context = {}) {
   });
 }
 
-// Pure metadata for existing sessions, not plugin work or action permission.
-// Kept even when a plugin is off: turning it off does not end its coordinator.
-export function pluginAgentGroupFirst(group, context = {}) {
-  return PLUGINS.some(plugin=>{
-    try {return plugin.agentGroupFirst?.(group,context)===true;}
-    catch(error){failed(plugin,'agentGroupFirst',error);return false;}
-  });
-}
-
 // What a prerequisite's check() and fix.run() receive: the plugin's settings.
 // One object per round of checks, so a plugin can share work between its checks.
 export const pluginContext = plugin => ({ setting: key => pluginSetting(plugin, key) });

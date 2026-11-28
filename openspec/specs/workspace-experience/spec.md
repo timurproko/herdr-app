@@ -657,7 +657,7 @@ The held sidebar context SHALL exist only in the running app session, excluded f
 - **AND** existing unavailable, last-good or empty behavior applies without new pin-specific messages, and Unpin remains available
 
 ### Requirement: Agents group chevrons match Spaces
-Agents group-header chevrons SHALL use the same small square hover and focus treatment as Spaces disclosure controls. Existing header folding, group order, counts, status indicators and row geometry SHALL remain. Hovering a chevron SHALL NOT activate or select an agent.
+Agents group-header chevrons SHALL use the same small square hover and focus treatment as Spaces disclosure controls. Existing header folding, counts, status indicators and row geometry SHALL remain. Hovering a chevron SHALL NOT activate or select an agent.
 
 #### Scenario: Chevron hover and activation
 - **WHEN** an expanded or folded Agents group chevron is hovered at 100% or 130% zoom

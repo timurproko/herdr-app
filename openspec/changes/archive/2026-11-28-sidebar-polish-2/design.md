@@ -26,6 +26,10 @@ Spaces currently has two fixed SPACE_OPTIONS entries and derives popup height fr
 
 5. **Targeted regression coverage only.** Extend the existing Agents grouping/dot-rail tests for hover, fold-once and count geometry. Revise Git stage-box geometry expectations and run the directly related stage interaction and row-budget fixtures at 100%/130%; native sizing fixtures should reflect the new common boxes. Add Spaces menu/registry/Crew fixtures for default-on, persistence, plugin off/on, stale callbacks, popup height, local/remote rows, connected/independent presentation and unchanged terminal badges. Update README and architecture/testing descriptions that currently promise own-caption boxes. No full local test suite.
 
+## Approved Space-mode order correction
+
+The coordinator clarified that Group agents by: Space follows the displayed Spaces list, machine by machine, with no coordinator-first rule; Priority is unchanged. Reuse Spaces' pure connected-block projection with presentation-only plugin links, then its local-first and sorted-remote machine ordering. No new lifecycle, reads or native order writes are introduced. Existing same-name/folder grouping remains within each machine; equal names on different machines must be separate to keep machine blocks contiguous. A group spanning several same-machine spaces takes the earliest represented Spaces row; groups with unavailable native spaces retain stable trailing order in their machine. Pinned agents remain their existing separate leading section. Local fold IDs remain stable; remote group IDs are machine-qualified. Group folds never suppress navigation membership. Remove the obsolete coordinator-first contribution and cover local/remote ordering, live reorders, attached children, missing spaces, same names, folds and pinned rows. Assert Priority's exact existing order independently of Spaces changes.
+
 ## Risks / Trade-offs
 
 - A wider chevron target can move Agents' numeric rail → assert count and glyph centres against existing geometry at both zoom levels.

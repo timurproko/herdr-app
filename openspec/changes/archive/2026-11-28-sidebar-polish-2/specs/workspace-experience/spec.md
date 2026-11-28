@@ -33,7 +33,7 @@ Spaces and Agents SHALL share trailing label and disclosure/status rails without
 ## ADDED Requirements
 
 ### Requirement: Agents group chevrons match Spaces
-Agents group-header chevrons SHALL use the same small square hover and focus treatment as Spaces disclosure controls. Existing header folding, group order, counts, status indicators and row geometry SHALL remain. Hovering a chevron SHALL NOT activate or select an agent.
+Agents group-header chevrons SHALL use the same small square hover and focus treatment as Spaces disclosure controls. Existing header folding, counts, status indicators and row geometry SHALL remain. Hovering a chevron SHALL NOT activate or select an agent.
 
 #### Scenario: Chevron hover and activation
 - **WHEN** an expanded or folded Agents group chevron is hovered at 100% or 130% zoom

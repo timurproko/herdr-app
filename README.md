@@ -1269,18 +1269,21 @@ When Agents is set to **Grouped by space**, Custom visually groups agents by
 **each agent's own live folder**, not the containing space's selected tab. Tabs in
 `firstmate` and `Git` therefore have separate, focus-stable headings even inside
 one native space. Agents in the same full folder on the same machine share a
-heading across tabs/spaces; different paths or machines stay separate even when
-their folder names match. Windows slash/case variants count as the same folder.
+heading across tabs/spaces on that machine; different machines keep separate
+groups even when their names match. Windows slash/case variants count as the same folder.
 An actual directory change moves that agent's row; selecting another tab does not
 rename its siblings' headings. Missing directory data falls back to the native
 space name. This is presentation only: native spaces, tabs, titles and running
 sessions are untouched; the upper Spaces list and tab strip are unchanged.
-Coordinator-containing groups always come first, preserving their existing relative
-order, including across machines. Every other group keeps its existing relative order.
-Classification uses live coordinator metadata, never the displayed name; disabling
-Crew does not relabel or end an already-running coordinator. Fold keys, counts,
-selection and drag behavior are unchanged; keyboard navigation follows the combined
-list. Remote rows still show their machine, pinned agents stay separate, and
+With **Group agents by: Space**, groups follow the Spaces list top to bottom,
+machine by machine: this computer first, then remote machines in the same order
+as Spaces. Attached fleet children keep their projected positions under their
+coordinator. There is no coordinator-first rule. Same-machine shared-name groups
+use their earliest represented space; unavailable spaces stay at their machine's
+tail. Native space/sibling reorders update the order without moving sessions.
+Same-name groups on different machines have independent counts and folds; local
+fold keys and same-machine grouping are retained. Keyboard navigation follows
+the displayed groups, including folded members. Remote rows still show their machine, pinned agents stay separate, and
 Priority sorting is unchanged. The sort icon has no hover tooltip; its accessible
 label and sort menu remain available. Group counts are right-aligned in a fixed
 three-digit slot, even when expanded. Collapsed group status dots share one column
