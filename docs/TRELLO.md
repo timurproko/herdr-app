@@ -285,6 +285,11 @@ herdr-trello checkitems list --board aaaaaaaaaaaaaaaaaaaaaaaa --card ccccccccccc
 IDs in examples are fake. Every child access needs an allowed board context;
 unknown IDs are not looked up globally. `boards list` reads only locally listed
 boards, never the account-wide board inventory. Card reads include comments, checklist/item state and attachment metadata/IDs.
+Card facts request only explicit fields, leaving nested resources at Trello's defaults;
+comments, checklists and attachments use their separate scoped routes. Attachment
+listing omits `filter` (documented default `false`, meaning all attachments); `all`
+is not the documented attachment filter. Singular metadata requests use `fields=all`;
+original/preview downloads retain the validated Trello path and OAuth header.
 `card.attachmentCount` is exact only when `attachmentCountExact:true`; otherwise
 it is the returned lower bound. Attachment lists cap at 100 and report
 incompleteness without inventing a cursor. Metadata includes uploaded/link kind,

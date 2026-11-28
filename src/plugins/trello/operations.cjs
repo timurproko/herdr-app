@@ -131,7 +131,8 @@ async function readOperation(client, scope, op, a, gate) {
   if (op === 'attachments.get') return require('./download.cjs').downloadAttachment(client, scope, a);
   if (op === 'cards.get') {
     await scope.card(a.board, a.card);
-    const row = card(await client.get(`/cards/${a.card}`, {fields, attachments: false, members: false, checklists: 'none', actions: 'none', pluginData: false, stickers: false}), a.board);
+    // Nested resources default off; fetch each through its scoped typed route.
+    const row = card(await client.get(`/cards/${a.card}`, {fields}), a.board);
     if (row.id !== a.card) fail('SCOPE');
     const comments = array(await client.get(`/cards/${a.card}/actions`, {filter: 'commentCard', ...paging})).map(r => {
       if (r.type !== 'commentCard' || r.data?.card?.id !== a.card || !id(r.data?.board?.id) || typeof r.data.text !== 'string') fail('SCOPE');

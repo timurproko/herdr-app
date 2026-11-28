@@ -28,7 +28,9 @@ const api = await trelloServer((url, request, response) => {
   }
   assert.equal(url.searchParams.get('key'), credentials.apiKey); assert.equal(url.searchParams.get('token'), credentials.token); assert.equal(request.headers.authorization, undefined);
   if (url.pathname === `/1/boards/${A}/cards`) return json(response, [{id: C, idBoard: A, idList: L}]);
-  assert.equal(url.pathname, `/1/cards/${C}/attachments/${ITEM}`); assert.equal(url.searchParams.get('fields'), 'all'); json(response, row);
+  assert.equal(url.pathname, `/1/cards/${C}/attachments/${ITEM}`);
+  assert.deepEqual([...url.searchParams.keys()].sort(), ['fields', 'key', 'token']);
+  assert.equal(url.searchParams.get('fields'), 'all'); json(response, row);
 });
 const args = {board: A, card: C, attachment: ITEM, out: f.root};
 const download = extra => run(f.store, 'attachments.get', {...args, ...extra}, api);

@@ -18,7 +18,7 @@ See `proposal.md` for motivation and the investigation limitation. This is a sou
 
 ### 1. Diagnose the existing execution host before changing authorization
 
-After plan approval, obtain the intended machine or explicit installed home from the coordinator because default locations are absent. Reproduce only the board/card from the brief using existing protected setup. Capture method, typed route and non-auth query keys separately from authentication; never print request URLs or secrets. Record the first failing HTTP status and recognized short reason for card detail, attachment collection and singular/download paths. Compare a minimal documented card request against the current nested options only when needed to isolate a rejection.
+Approval clarification: the coordinator confirmed that pc2 has no Trello setup, cannot reach the main machine and must not search for credentials or launchers. Implement with schema-backed fakes only. The person will check the supplied card and image on the main machine after merge; the added status/reason will diagnose any remaining failure. No live root cause or token-scope conclusion is claimed.
 
 Use strict fake-provider fixtures to pin the observed accepted query contract. Prefer omitting unnecessary nested options and the collection attachment filter rather than guessing alternate values. Preserve `fields`, returned identities, parent proof and structured result shapes. Do not request write/account scope merely because a read failed. A real permission refusal remains a refusal, with owner guidance rather than automatic reauthorization.
 
@@ -44,7 +44,7 @@ Measure slow private-store checks with injected timing/permission adapters. Prop
 
 Use existing fake-store/transport facilities and loopback provider fixtures with `TRELLO_TEST_ROOT` set to the crew task folder. Cover accepted card/attachment queries, original-image retrieval, 400/401/403/404/429/5xx details, hostile reason/body material, stalled headers and bodies, never-finishing cancellation, shared command-budget exhaustion and slow permission checks. Exercise CLI JSON serialization as well as the client, and retain read-only scope, signature, origin and no-partial-output checks. Update installed help and `docs/TRELLO.md` for safe fields and timeout behavior.
 
-Only targeted files run locally; no broad suite or CI polling. The brief's manual card/image proof can run only once the intended installed host is available, without modifying its credential/policy stores or installing outside the allowed checkout.
+Only targeted files run locally; no broad suite or CI polling. Per the approval clarification, live card/image proof belongs to the person on the main machine after merge; no installation or private-store change is performed by this task.
 
 ## Risks / Trade-offs
 

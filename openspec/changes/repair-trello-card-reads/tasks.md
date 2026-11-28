@@ -2,10 +2,10 @@
 
 ## 1. Scoped card details and uploaded image reads work with accepted Trello queries
 
-- [ ] 1.1 Resolve the missing installed execution host/home with the coordinator and reproduce only the supplied board/card failures using existing protected setup; completion is a secret-free record of the first failing route, status and recognized reason for each read, or an explicit unresolved environment blocker.
-- [ ] 1.2 Isolate the current card/nested/attachment query rejection and repair only the offending typed requests without widening scope; strict fake-provider assertions must accept card detail and attachment list/get while refusing the reproduced bad query.
-- [ ] 1.3 Exercise structured card facts, attachment identity and protected original-image output under read-only authority; run the affected reads, attachments and download regression files with scratch in the crew task folder and keep the brief's authorized live check separate from offline tests.
-- [ ] 1.4 Update attachment/card guidance in docs/TRELLO.md only where behavior or the confirmed diagnosis requires it; verify documented commands still match CLI parsing and no authenticated URLs appear in examples or evidence.
+- [x] 1.1 Record the coordinator-confirmed environment boundary: pc2 has no Trello setup and cannot reach the main machine; implementation uses schema-backed fakes only, with live card/image verification explicitly deferred to the person after merge.
+- [x] 1.2 Align card/nested/attachment requests with the public schema without widening scope; strict fake-provider assertions must accept card detail and attachment list/get while refusing the old undocumented attachment filter, without claiming a live root cause.
+- [x] 1.3 Exercise structured card facts, attachment identity and protected original-image output under read-only authority; run the affected reads, attachments and download regression files with scratch in the crew task folder and leave live verification to the person on the main machine.
+- [x] 1.4 Update attachment/card guidance in docs/TRELLO.md only where behavior or the confirmed diagnosis requires it; verify documented commands still match CLI parsing and no authenticated URLs appear in examples or evidence.
 
 ## 2. Remote read errors expose safe HTTP status and short rejection reasons
 
