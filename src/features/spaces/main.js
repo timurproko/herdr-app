@@ -357,7 +357,7 @@ export default class Spaces extends View {
     // Each machine's space rows, as [first, last] indexes into the result:
     // how far drag auto-scroll may go (spaces don't change machine).
     this.spans = {};
-    if (!remote.length) {
+    if (!remote.length && !collapsed) {
       if (rows.length) this.spans.null = [0, rows.length - 1];
       return loading(null) && !rows.length ? [loadingRow(null)] : rows.map(draw);
     }
@@ -365,7 +365,8 @@ export default class Spaces extends View {
     let at = 0;
     return machineNames.flatMap((m) => {
       const out = this.groupRows(m, rows, collapsed, t, draw, loading, loadingRow);
-      if (out.length > 1 && rows.some(r => (r.w.machine ?? null) === m)) this.spans[m] = [at + 1, at + out.length - 1];
+      const shownCount=this.folded.has(m)?0:rows.filter(r => (r.w.machine ?? null) === m).length;
+      if (shownCount && out.length > shownCount) this.spans[m] = [at + out.length - shownCount, at + out.length - 1];
       at += out.length;
       return out;
     });
@@ -414,10 +415,12 @@ export default class Spaces extends View {
         }));
       const empty = this.drag.control(h_flex().id(`machine-new-${m ?? "local"}`).h(28).flex_none().px(collapsed ? 0 : 8).gap(7).items_center().rounded(U.radius)
         .when(collapsed, el => el.w(U.control).self_center().justify_center())
-        .text_size(12).text_color(t.dim), {hover: s => s.bg(t.hover)})
+        .text_size(12).text_color(t.dim), {hover: s => s.bg(t.hover), tooltip: collapsed ? `New space on ${m ?? 'this computer'}` : null})
+        .role('button').accessibility_label(`New space on ${m ?? 'this computer'}`)
         .on_click(this.drag.guard(() => run("space.new", { machine: m ?? "" })))
         .child(svg("mods/custom-workspace-chrome/plus.svg").size(12)).when(!collapsed, el => el.child("New space"));
-      if (!collapsed && rebuilt) return [head];
+      if (collapsed) return [head, ...(connected ? [empty] : []), ...(folded ? [] : mine.length ? mine.map(draw) : loading(m) ? [loadingRow(m)] : [])];
+      if (rebuilt) return [head];
       return [head, ...(folded ? [] : mine.length ? mine.map(draw) : [loading(m) ? loadingRow(m) : empty])];
   }
 
@@ -616,16 +619,8 @@ export default class Spaces extends View {
     const preview = this.dragPreview(t);
     return this.drag.surface(v_flex().id("spaces-panel").relative().size_full().min_h(0).bg(t.chrome).text_size(U.font),
       {release: (id, cx) => this.drop(id, cx), enabled: () => !this.rename, scrollOffset: () => this.sidebarScroll?.offset ?? 0})
-      .child(h_flex().id("spaces-header").h(U.section).flex_none().pl(collapsed ? 0 : 16).pr(collapsed ? 0 : 6).items_center().text_size(U.font).font_semibold().text_color(t.foreground)
-        .when(collapsed, el => el.justify_center())
-        .when(!collapsed, el => el.justify_between())
-        .when(!collapsed, el => el.child("Spaces"))
-        // Expanded: the ⋯ options; each machine has its own + below. The narrow rail has no
-        // machine +, so it keeps this one.
-        .when(!collapsed, el => el.child(this.optionsButton(t)))
-        .when(collapsed, el => el.child(this.drag.control(div().id("space-new").size(U.control).flex_none().flex().items_center().justify_center().rounded(U.radius).text_color(t.dim),
-          {hover: s => s.bg(interactionFill(t))})
-          .on_click(this.drag.guard(() => run("space.new"))).child(svg("mods/custom-workspace-chrome/plus.svg").size(14)))))
+      .when(!collapsed, el => el.child(h_flex().id("spaces-header").h(U.section).flex_none().pl(16).pr(6).items_center().justify_between()
+        .text_size(U.font).font_semibold().text_color(t.foreground).child("Spaces").child(this.optionsButton(t))))
       .child(sidebarScroll(this, 'spaces-list', t, this.grouped(t, collapsed), {
         bottomPadding: 12,
         onMouseUp: (_e, cx) => this.drop(null, cx),

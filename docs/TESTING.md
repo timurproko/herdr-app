@@ -1767,6 +1767,19 @@ Recorded links deliberately do not guarantee pre-report PR discovery. Native pix
 actual drag motion and real remote execution remain unverified without separate
 authorization; fixture success is not deployment evidence.
 
+## Compact Spaces machine creation
+
+`node --experimental-vm-modules tests/spaces-new-hover.test.mjs` covers local-only
+and remote populated/empty/folded/loading/disconnected/rebuilt groups. Connected
+machines each retain one plus immediately below their icon, with a 12px glyph,
+28px target, dim foreground, machine-specific tooltip and explicit creation route.
+Disconnected availability matches the expanded header. The global plus/header is
+absent, empty groups do not duplicate creation and drag guards suppress actions.
+Drag-scroll spans contain only shown space rows, excluding added plus/loading rows.
+`spaces-worktree-layout.test.mjs` and `tab-arrival.test.mjs` retain badge geometry,
+connected-space actions and folded-machine feedback coverage. These are targeted
+synthetic tests, not live space creation.
+
 ## Agents group dot columns
 
 `node --experimental-vm-modules tests/agents-dot-column.test.mjs` resolves the real

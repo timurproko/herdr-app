@@ -1285,6 +1285,13 @@ sidebar, every agent index uses the same 10px text size, including 1–9; number
 widths and status-dot placement are unchanged. Spaces badges already use 10px for
 all numbers and retain their existing size and position.
 
+Compact Spaces has no global plus. Each connected machine has one **New space**
+plus directly below its device icon, even when populated, empty, loading or folded;
+local-only mode keeps that same machine grouping. The 12px glyph uses the existing
+28px compact row and a machine-specific tooltip. Creation explicitly targets that
+machine, as in the expanded header; disconnected machines have no create control.
+The old empty-machine plus is reused rather than duplicated.
+
 ## A1 session names
 
 The Agents sidebar no longer offers Rename, an inline editor or a Sidebar rename

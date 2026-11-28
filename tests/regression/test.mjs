@@ -177,7 +177,7 @@ for (const scenario of ['priority','grouped','rail','empty']) {
     if(listIds[name]) {assert.ok(byId(listIds[name]), `${name}/${scenario}: scroll list exists`);assert.equal(byId(listIds[name]).style.gap[0],2);assertions++;}
     if(name==='custom-spaces' && scenario!=='empty') {
       selectedRow(byId('space-sp1'));
-      assert.equal(byId('space-new').style.text_color[0],theme.dim,'Space plus matches the sort-icon tone');assertions++;
+      assert.equal(byId('space-new'),undefined,'Creation is machine-bound, never a global plus');assertions++;
       if(scenario!=='rail') {
         instance.machines=[{name:'test-remote',state:'connected'}];view=instance.render(cx);
         const add=byId('machine-add-local');assert.equal(add.style.size[0],24);assert.equal(add.style.rounded[0],4);
@@ -581,7 +581,8 @@ for (const scenario of ['priority','grouped','rail','empty']) {
       if(name==='custom-spaces') {
         const bubble=byId('space-badge-sp1');assert.equal(bubble.style.size[0],16);assert.equal(bubble.style.rounded[0],4);
         assert.equal(byId('space-status-sp1'),undefined,'Spaces have no status bulbs in either mode');assertions++;
-        const header=byId('spaces-header');assert.equal(header.style.pl[0],0);assert.equal(header.style.pr[0],0);assert.ok(header.style.justify_center);assertions++;
+        assert.equal(byId('spaces-header'),undefined,'Compact rail has no former global-plus header');
+        assert.equal(byId('machine-new-local').style.text_color[0],theme.dim,'Per-machine plus keeps the compact icon tone');assertions++;
         assert.equal(byId('machine-status-remote'),undefined,'Rail headers use device icons, not connection bulbs');
         assert.equal(byId('machine-status-local'),undefined);
         assert.ok(nodes(byId('machine-local')).some(n=>n.style?.asset?.[0]?.endsWith('/monitor.svg')));
