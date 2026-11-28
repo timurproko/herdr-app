@@ -1824,10 +1824,16 @@ export default class Changes extends View {
     if (this.pullMenu) return this.renderPullMenu(theme());
     if (this.renderPart('coordinator-context',()=>this.syncAggregate(cx))) {
       const scope=this.aggregate?.context?.scope;
-      if(this.shown())this.agentLinks?.refresh?.(cx,address=>{
-        const context=this.aggregate?.currentContext?.();
-        return Boolean(context && context.scope===scope && (context.tasks??context.links).some(task=>!task.historical && task.terminal===address));
-      });
+      if(this.shown()) {
+        // Candidate enumeration is presentation work, not read authority. Do
+        // not rebuild the full Crew/native binding once per unrelated agent.
+        const context=this.aggregate?.frameContext?this.aggregate.frameContext(this.agentPresentation):this.aggregate?.currentContext?.();
+        const members=new Set(context?.scope===scope?(context.tasks??context.links??[]).filter(task=>!task.historical).map(task=>task.terminal):[]);
+        this.agentLinks?.refresh?.(cx,address=>{
+          const current=this.aggregate?.currentContext?.();
+          return Boolean(current && current.scope===scope && (current.tasks??current.links).some(task=>!task.historical && task.terminal===address));
+        },{snapshot:this.agentPresentation,select:address=>members.has(address)});
+      }
       return this.renderPart('coordinator',()=>this.renderAggregate(cx,theme()));
     }
     this.enrollmentPicker?.stop();
@@ -1846,7 +1852,7 @@ export default class Changes extends View {
     if (this.shown() && this.pullsDue(this.view)) this.loadPulls(this.view, cx, false, false);
     this.loadRelatedPull(cx);
     this.syncWebhooks(cx);
-    if (this.repo && this.shown()) this.agentLinks?.refresh(cx);
+    if (this.repo && this.shown()) this.agentLinks?.refresh(cx,undefined,{snapshot:this.agentPresentation});
     if (!this.shown()) this.pinMotion?.cancel();
     this.notices??=new GitNotices();
     const notice=this.notices.sync(cx,{enabled:this.shown(),repository:this.repo?.name,

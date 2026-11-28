@@ -114,9 +114,11 @@ export class AgentLinks {
     while(this.branchPresentations.size>256)this.branchPresentations.delete(this.branchPresentations.keys().next().value);
   }
 
-  refresh(cx, admit=()=>true) {
+  refresh(cx, admit=()=>true, {snapshot, select=admit}={}) {
     if (!this.enabled()) return;
-    const targets = agentTargets().filter(t=>admit(t.address)), keys = new Map(targets.map(t => [t.address,t.key]));
+    // Enumeration may use this frame's pure membership projection. Every
+    // continuation still calls fresh `admit` after yielding, never `select`.
+    const targets = agentTargets(snapshot).filter(t=>select(t.address)), keys = new Map(targets.map(t => [t.address,t.key]));
     for (const [address, entry] of this.entries) {
       if(keys.get(address)===entry.key)this.rememberBranch(entry);
       else this.entries.delete(address);

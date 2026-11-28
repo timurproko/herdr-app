@@ -2,10 +2,10 @@
 
 ## 1. Routine Git refreshes retain the list without interrupted renders
 
-- [ ] 1.1 Extend the disposable native refresh harness with production controller transitions, realistic synthetic native topology and bounded phase evidence; obtain a natural pre-fix interruption replay and record exact host/source provenance outside the checkout, or report the specific reproduction blocker.
-- [ ] 1.2 Fix the evidenced customization-level trigger without hiding diagnostics, changing the host deadline or adding retry loops; add a failing-before/passing-after regression for that path and retain coherent rows, pins, folds, cursor depth and scroll.
-- [ ] 1.3 Run only implicated render-recovery/background/publication tests and the existing mounted row/probe budget guard; document the established cause, command results and measured limits in the relevant Git render guidance.
-- [ ] 1.4 Replay the natural trigger against before/after sources in a disposable supported native host at 100%/130%; inspect pixels and logs for fallback frames, save receipts in the crew task folder and verify every owned app/Core/server stopped.
+- [x] 1.1 Extend the disposable native refresh harness with production controller transitions, realistic synthetic native topology and bounded phase evidence; obtain a natural pre-fix interruption replay and record exact host/source provenance outside the checkout, or report the specific reproduction blocker.
+- [x] 1.2 Fix the evidenced customization-level trigger without hiding diagnostics, changing the host deadline or adding retry loops; add a failing-before/passing-after regression for that path and retain coherent rows, pins, folds, cursor depth and scroll.
+- [x] 1.3 Run only implicated render-recovery/background/publication tests and the existing mounted row/probe budget guard; document the established cause, command results and measured limits in the relevant Git render guidance.
+- [x] 1.4 Replay the natural trigger against before/after sources in a disposable supported native host at 100%/130%; inspect pixels and logs for fallback frames, save receipts in the crew task folder and verify every owned app/Core/server stopped.
 
 ## 2. Git activity line eases from and back to transparency without flashing
 

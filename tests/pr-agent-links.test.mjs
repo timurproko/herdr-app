@@ -627,4 +627,28 @@ await Promise.all(tasks);
   assert.equal(contextReads,2,'Provider verified/presentation contexts are each read at most once per frame');
   verified=false;assert.equal(group.stageTarget(coordinated[0],'review',model),null,'Action rechecks provider verification outside the frame snapshot');assert.equal(contextReads,3);
 }
-console.log('PASS: Canonical role labels, isolated actions, metadata-line motion above repository headers, remote/background identity, freshness and one native presentation snapshot per frame');
+// The production coordinator scan used to revalidate Crew once per candidate,
+// including every unrelated terminal, before any row could render. Its async
+// admission must remain fresh even when enumeration uses a frame snapshot.
+{
+  shown=true;connected=true;
+  const model=new AgentLinks(),panel=new main.namespace.default();panel.resetRepository();panel.agentLinks=model;panel.view='open';panel.shown=()=>true;
+  const group=panel.aggregate=new AggregatePulls({shown:()=>true}),member='pc2/frame-review';
+  const context={scope:'scan-frame',tasks:[{id:'review',terminal:member}],links:[]};group.context=context;panel.context='tasks:scan-frame';
+  let reads=0,verified=true;group.currentContext=()=>{reads++;return verified?context:null;};
+  panel.syncAggregate=()=>true;panel.syncMotionPreference=()=>{};panel.renderAggregate=()=>element();
+  const jobs=[],scanCx={...cx,spawn:fn=>{jobs.push(fn);}};
+  for(const key of Object.keys(nativeReads))nativeReads[key]=0;
+  panel.render(scanCx);
+  assert.equal(reads,1,'Candidate enumeration reads the verified provider once, not once per unrelated agent');
+  for(const key of ['agents','panes','spaces','terminals','machines'])assert.equal(nativeReads[key],1,`Enumeration reuses frame ${key}`);
+  assert.deepEqual([...model.pending.keys()],[member],'Only exact same-home live membership is selected');
+  assert.equal(panel.agentPresentation,null);
+  const before=calls.length;verified=false;
+  await Promise.all(jobs.map(fn=>fn(scanCx)));await tick();
+  assert.ok(reads>1,'Async continuation resolves fresh provider authority after yielding');
+  assert.equal(calls.length,before,'Retired membership starts no canonical repository or footer read');
+  assert.equal(model.entries.size,0,'The old frame cannot publish an association after verification retires');
+  assert.equal(model.pending.size,0);
+}
+console.log('PASS: Canonical role labels, isolated actions, metadata-line motion above repository headers, remote/background identity, freshness and bounded frame-local candidate enumeration');
