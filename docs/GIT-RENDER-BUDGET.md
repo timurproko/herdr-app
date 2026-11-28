@@ -160,6 +160,38 @@ The mounted-row budget retains its frozen PR/probe baseline and caps; only the
 six removed coordinator tab-badge chrome nodes are deducted from its element
 expectation. Ordinary budget measurements render the list body without tabs.
 
+## Reproduced provider fan-out during coordinator refresh
+
+`tests/features/git-refresh-native.mjs --run --zoom 1|1.3 --workers 4
+--unrelated 120 --cycles 120 --output <outside>` exercises the production Git
+controller, Crew provider and AgentLinks rather than the earlier four-row
+renderer-only stress. Four PRs load first; unrelated synthetic agents/spaces
+appear after tick 10. No infinite loop or watchdog override is injected.
+
+Before the fix, `AgentLinks.refresh` called its admission predicate for every
+candidate. The coordinator predicate rebuilt verified Crew context, including
+native topology and `bindFleet`, for every unrelated agent during render. The
+real 50ms watchdog interrupted those frames: paired 100%/130% runs retained the
+last-good update-9 list beneath the actual interrupted-render banner (42/44
+incomplete markers). The screenshot stack also identifies `fleetContexts` /
+`bindFleet`; the preceding completed component was coordinator-context.
+
+Enumeration now uses one frame-local verified membership set and the existing
+native presentation snapshot. The separate admission callback still resolves
+fresh provider context after every asynchronous yield; stale membership cannot
+start IO or publish an association. Action-time navigation remains uncached.
+No render diagnostics, retries, row caps or watchdog settings were changed.
+
+The paired corrected runs completed 120 update ticks, 169/176 render builds,
+with zero native errors or incomplete markers. Final build ranges were 2–28ms / 2–29ms
+at 100%/130%, including first load and provider/controller work, not later paint
+or live-network latency. All owned App/Core instances stopped. Pictures, source
+hashes and receipts are in the crew task's external `gr-*` evidence folders.
+The failed exploratory cold run is not a successful loaded-list proof; the
+paired warm replays above are. `pr-agent-links.test.mjs` independently bounds
+provider/native collection reads during enumeration and revokes verification
+before queued continuations to prove fresh read authority remains required.
+
 ## Measurement lifetime audit
 
 - Notice measurement IDs include text/width/zoom and owner identity; equal-height

@@ -659,15 +659,17 @@ separate from CI checking.
 Cold ordinary and coordinator Git show only their pulsing **Loading** message.
 Warm returns and background updates retain their list and use one stationary,
 full-width 1px accent line **immediately below the header**, above Open/Closed.
-The line and Git's cold dot share a native opacity-only 2.4-second ease-in-out
-cycle, from 25% to 65% opacity, never travelling or vanishing. Reduced motion
-uses static 35% opacity. Git reads this local accessibility preference once on
+The line eases in from transparent, breathes between 0% and 65% opacity on a
+native 2.4-second ease-in-out cycle, and eases back to transparent on completion.
+It never travels or shifts the list. Git's cold dot keeps its 25%–65% pulse.
+Reduced motion uses static 35% opacity without entry/exit animation. Git reads this local accessibility preference once on
 show (Windows client-area animations, macOS reduceMotion, Linux GNOME animations),
 outside render, with a static fallback on refusal; hide/show rechecks it. An
 explicit boolean `reduced_motion`/`reducedMotion` host setting takes precedence.
-Other panels' dots keep their existing rhythm. There are no JavaScript frame timers. It stays present through pending work and disappears on completion,
-failure, hide or context retirement; dormant retry cooldowns and unknown totals
-alone do not animate. The pinned block and its bottom divider stay still.
+Other panels' dots keep their existing rhythm. There are no JavaScript frame timers.
+The line's native exit takes 140ms after completion or failure; overlapping work
+continues the same presentation, while hide or context retirement removes it
+immediately. Dormant retry cooldowns and unknown totals alone do not animate. The pinned block and its bottom divider stay still.
 
 An open PR with GitHub's explicit `CONFLICTING` mergeability replaces its normal
 PR icon with a **red outlined circle and X**, using the same stroke style as PR icons. Hover that icon for **Merge conflicts**.

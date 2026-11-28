@@ -296,8 +296,11 @@ outside folder, and finally verifies both processes stop.
 
 `git-motion-preference.test.mjs` fakes Windows/macOS/Linux accessibility reads,
 checking local routing, static unknown/refused defaults and no per-frame reads.
-`git-loading-line.test.mjs` checks matching 2400ms opacity-only line/dot loops,
-nonzero bounds, static reduced-motion feedback and unchanged work admission,
+`git-loading-line.test.mjs` checks 2400ms opacity-only line/dot cadence,
+zero-based line breathing, unchanged nonzero cold-dot bounds, static reduced-motion
+feedback and unchanged work admission. Fake one-shot timers cover initial hiding,
+zero-target transition arming, reveal, 140ms exit, overlap/resumption, short work,
+context/hide/disable/close retirement and no per-render pulse reset. It also checks
 plus the cold ordinary/coordinator
 Loading, equal message placement at 100%/130%, no simultaneous repository headers
 or moving line, warm/background/verification/safety line activity, overlap,
@@ -311,7 +314,18 @@ Loading blue pixels occupy y=241–261 at 100% and y=312–338 at 130% in the sa
 2560×1640 capture geometry; dot brightness changes while text stays fixed. Cold
 frames have no repository header or line, and loaded tabs have no badge space.
 `--stress` adds frequent four-PR updates beside a repainting sibling; see
-[GIT-RENDER-BUDGET.md](GIT-RENDER-BUDGET.md) for the honest non-reproduction result.
+[GIT-RENDER-BUDGET.md](GIT-RENDER-BUDGET.md) for that renderer-only non-reproduction
+and the later successful production-provider reproduction.
+`--lifecycle` captures bounded parallel native surface screenshots of ordinary and
+coordinator entrance, breathing, completion, short work and static reduced motion.
+Request/start/save/end times accompany each sample; CLI capture is not every native
+paint, so deterministic first-frame style guards remain independent. Paired
+100%/130% native samples show transparent entry, gradual rise, and exit returning
+to the idle pixels. HWND BitBlt video was black on the accelerated host and is
+rejected as proof; no desktop recording substitutes for the disposable surface.
+The separate `git-refresh-native.mjs` production-provider replay reproduces the
+real last-good-frame interruption without forced loops and requires error-free
+completion after the fix; `--expect-interruption` checks an inert baseline source.
 The fixture checks native logs as well as status.errors, writes proof outside the
 checkout, and stops every owned desktop/Core instance in finally. It is not a
 live-agent, network or native pointer hit-test.
