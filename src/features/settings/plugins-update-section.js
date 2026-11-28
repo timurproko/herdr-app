@@ -7,11 +7,12 @@ export function pluginUpdateSection(owner, t) {
   const snapshot = pluginUpdateSnapshot(), rows = pluginUpdateRows();
   const busy = snapshot.batch?.running === true;
   const pending = pluginUpdateAvailable();
+  if (!pending && !busy && !rows.length) return null;
   return v_flex().id('st-plugin-updates').w_full().pt(20)
     .child(h_flex().items_center().gap(16).pb(12)
       .child(owner.heading(t, 'Plugins').pt(0).pb(0).flex_1())
       .when(pending || busy, el => el.child(owner.button(t, 'st-update-plugins', busy ? 'Updating…' : 'Update',
-        (_e, cx) => updatePlugins(owner, cx), { primary: true, enabled: pending && !busy && !snapshot.scan && !owner.pluginFixing }))))
+        (_e, cx) => updatePlugins(owner, cx), { primary: true, enabled: pending && !busy && !(snapshot.scan?.expires > Date.now()) && !owner.pluginFixing }))))
     .children(rows.map((row, index) => {
       const status = row.error ? updateSentence(row.error)
         : row.outcome === 'updated' ? 'Up to date.'

@@ -140,7 +140,7 @@ await settle();
 compact.render = () => duringRender(() => { const before = width; width = 44; compact.tree = compact.view.render(compact.cx); compact.renders++; width = before; });
 compact.render();
 const updateBody = duringRender(() => settings.view.updates(theme));
-assert.equal(updateBody.kids.at(-1).attrs.id[0], 'st-plugin-updates', 'Plugins follows the complete Herdr block');
+assert.equal(find(updateBody, 'st-plugin-updates'), undefined, 'no empty Plugins section below the complete Herdr block');
 assert.ok(updateBody.kids.at(-2).kids.includes('Herdr looks for both every hour and tells you in the corner. herdr-core runs your terminals, so they keep running through its updates.'), 'native explanation remains immediately below its three rows');
 assert.equal(find(updateBody, 'st-update-plugins'), undefined, 'no Update action when nothing is pending');
 const settingsEntry = () => {
@@ -236,6 +236,9 @@ for (const native of [false, true]) for (const custom of [false, true]) for (con
   settings.pluginApi.refreshPluginUpdates(settings.view, settings.cx, { force: true });
   await settle();
   assert.deepEqual(markers().map(Boolean), Array(4).fill(native || custom || pending));
+  const body = duringRender(() => settings.view.updates(theme));
+  assert.equal(Boolean(find(body, 'st-plugin-updates')), pending, 'Plugins section follows connected pending availability');
+  if (pending) assert.equal(body.kids.at(-1).attrs.id[0], 'st-plugin-updates', 'Plugins follows the complete Herdr block');
   if (pending && !native && !custom) assert.deepEqual(markers().map(signature), customSignatures, 'plugin-only markers reuse exact native styling');
 }
 pluginPending = false; settings.pluginApi.refreshPluginUpdates(settings.view, settings.cx, { force: true }); await settle();
