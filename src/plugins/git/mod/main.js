@@ -3,10 +3,11 @@ import { View, div, svg, PathBuilder } from 'gpui-kit';
 import { v_flex, h_flex } from 'gpui-base';
 import * as base from 'gpui-base';
 import { TaskReveal } from './task-reveal.js';
+import { RepositoryDisclosure } from './repository-disclosure.js';
 import { RowPresentations } from './row-presentation.js';
 import { SidebarScrollState } from './sidebar-scroll.js';
 import { topFade, bottomFade } from './scroll-fade.js';
-import { U, headerTools, reveal, subtleActionFill, refreshButton, sidebarSectionHeader, sidebarNumericSlot } from './ui.js';
+import { U, headerTools, reveal, subtleActionFill, refreshButton, sidebarSectionHeader, sidebarNumericSlot, iconButton } from './ui.js';
 import { exec, hc, theme, run, layout, openOverlay, closeOverlay, props, notify, nextCommand, window, settings } from './host.js';
 import { location } from './location.js';
 import { AgentLinks } from './agent-links.js';
@@ -28,7 +29,6 @@ import { stageLabels, REPO_ARGS, countArgs, parseCounts, agentPullNumber, pullEr
 
 const VIEWS = ['open', 'closed'];
 const VIEW_KEY = 'custom.git.view';
-const FOLDED_REPOS_KEY = 'custom.git.task-repositories.folded';
 const LOCAL_CONTEXT_TTL = 10000; // shell branch/footer only, never a GitHub poll
 const BREATHE_MS = 2400;
 const LINE_FADE_MS = 140;
@@ -60,11 +60,7 @@ export default class Changes extends View {
     let view = null;
     try { view = localStorage.getItem(VIEW_KEY); } catch {}
     this.view = VIEWS.includes(view) ? view : 'open';
-    this.foldedRepositories = new Set();
-    try {
-      const folded = JSON.parse(localStorage.getItem(FOLDED_REPOS_KEY) ?? '[]');
-      if (Array.isArray(folded)) this.foldedRepositories = new Set(folded.filter(repo => typeof repo === 'string').map(repo => repo.toLowerCase()));
-    } catch {}
+    this.foldedRepositories = new RepositoryDisclosure();
     // Old installations may have remembered the retired Changes tab.
     if (view !== this.view) try { localStorage.setItem(VIEW_KEY, this.view); } catch {}
     this.resetRepository();
@@ -185,6 +181,7 @@ export default class Changes extends View {
 
   refresh(cx, notify = true) {
     if (!sidebarPanelEnabled('changes')) return;
+    this.syncDisclosure();
     this.recoverReadTasks();
     if (this.syncAggregate(cx)) return;
     const target = location(), { cwd, on } = target, context = folderKey(target);
@@ -858,6 +855,28 @@ export default class Changes extends View {
       .text_size(U.meta).text_color(on ? t.foreground : t.muted).when(on, el => el.font_semibold())
       .hover(s => s.bg(t.hover)).on_click((_e, cx) => onClick(cx))
       .child(div().id(`${id}-label`).flex_none().child(label));
+  }
+
+  invalidateDisclosure() {
+    this.taskSelectionEpoch=(this.taskSelectionEpoch??0)+1;
+    this.pinMotion?.cancel();
+  }
+
+  syncDisclosure() {
+    if(this.foldedRepositories?.sync?.())this.invalidateDisclosure();
+  }
+
+  disclosureButton(t) {
+    const collapsed=Boolean(this.foldedRepositories?.collapsed);
+    const activate=cx=>{
+      if(!this.shown())return;
+      this.foldedRepositories.toggleAll();
+      this.invalidateDisclosure();cx.notify();
+    };
+    return iconButton(t,{id:'git-disclosure',icon:`mods/custom-changes/${collapsed?'sections-collapsed':'sections-expanded'}.svg`,
+      label:`${collapsed?'Expand':'Collapse'} all repository sections`,onClick:(_event,cx)=>activate(cx)})
+      .tab_index(0).focus(s=>s.bg(subtleActionFill(t)))
+      .on_key_down((event,cx)=>{if(['enter','space',' '].includes(event.key)){cx.stop_propagation();activate(cx);}});
   }
 
   pullIcon(t, pr) {
@@ -1544,9 +1563,9 @@ export default class Changes extends View {
         .when(loading,el=>el.tooltip(`Count loading; showing ${count}`)),
     ]}).cursor_pointer().hover(s=>s.bg(t.selected)).on_click((_e,cx)=>{
       cx.stop_propagation();if(!this.repositoryScopeCurrent(repo,scope))return;
-      this.taskSelectionEpoch=(this.taskSelectionEpoch??0)+1;
+      this.syncDisclosure();this.invalidateDisclosure();
       this.foldedRepositories.has(repo)?this.foldedRepositories.delete(repo):this.foldedRepositories.add(repo);
-      try {localStorage.setItem(FOLDED_REPOS_KEY,JSON.stringify([...this.foldedRepositories]));}catch{}
+      this.foldedRepositories.save?.();
       cx.notify();
     });
   }
@@ -1770,7 +1789,8 @@ export default class Changes extends View {
           .child(headerTool(t,{id:'git-close',icon:'mods/custom-pane/close.svg',label:'Close Git panel',enabled:this.headerHovered,onClick:()=>changePanel({open:false})}))))
       .child(h_flex().id('git-views').h(40).flex_none().px(4).gap(2).items_center().border_b(1).border_color(t.border)
         .child(this.segment(t,'git-view-open','Open',this.view==='open',view=>this.setView('open',view)))
-        .child(this.segment(t,'git-view-closed','Closed',this.view==='closed',view=>this.setView('closed',view))))
+        .child(this.segment(t,'git-view-closed','Closed',this.view==='closed',view=>this.setView('closed',view)))
+        .child(div().flex_1()).child(this.disclosureButton(t)))
       .when(cold,el=>el.child(div().id('git-task-waiting').flex_none().pt(4).px(LIST_INSET)
         .child(this.loadingMessage(t,sections.length?'git-task-loading':'git-task-empty')
           .when(aggregate.context.stale,message=>message.tooltip(verificationHint)))))
@@ -1859,6 +1879,7 @@ export default class Changes extends View {
       return div();
     }
     if (this.pullMenu) return this.renderPullMenu(theme());
+    this.syncDisclosure();
     if (this.renderPart('coordinator-context',()=>this.syncAggregate(cx,this.agentPresentation))) {
       const scope=this.aggregate?.context?.scope;
       if(this.shown()) {
@@ -1920,7 +1941,8 @@ export default class Changes extends View {
       .child(v_flex().id('git-panel-body').relative().flex_1().min_h(0)
       .child(h_flex().id('git-views').h(40).flex_none().px(4).gap(2).items_center().border_b(1).border_color(t.border)
         .child(this.segment(t, 'git-view-open', 'Open', this.view === 'open', cx => this.setView('open', cx)))
-        .child(this.segment(t, 'git-view-closed', 'Closed', this.view === 'closed', cx => this.setView('closed', cx))))
+        .child(this.segment(t, 'git-view-closed', 'Closed', this.view === 'closed', cx => this.setView('closed', cx)))
+        .child(div().flex_1()).child(this.disclosureButton(t)))
       .child(this.renderPulls(t))
       .when(Boolean(notice), el => el.child(this.liveCIInfo(t,notice)))
       .when(this.syncLoadingLine(loading,cx,cold), el => el.child(this.loadingLine(t,cx))));
