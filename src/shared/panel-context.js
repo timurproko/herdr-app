@@ -31,6 +31,10 @@ export function capturePanelSource(view) {
   // Capture mode/provenance once at the event, for either starting view. No
   // inventory, verification token or action permission enters the held record.
   const context = resolvePullContext(source.space);
+  // A provisional presentation (for example cold coordinator Loading) has no
+  // immutable home scope yet. Keep the toggle unpressed until verification;
+  // never freeze a temporary identity which cannot match its eventual source.
+  if (context?.stale === true) return null;
   const git = context ? cleanPullSource({mode:'tasks',identity:{...context,parent:context.parent ?? source.space}}) : {mode:'folder'};
   return git ? {...source,git} : null;
 }

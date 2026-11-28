@@ -11,6 +11,6 @@ export function panelPin(t,{id,enabled}) {
     .bg(pinned ? t.selected : '#00000000').text_color(pinned ? t.foreground : t.dim)
     .when(active, el => el.cursor_pointer().hover(s => s.bg(pinned ? itemHover(t,true) : subtleActionFill(t))))
     .on_mouse_down('left',(_e,cx)=>cx.stop_propagation())
-    .on_change((on,cx)=>{cx.stop_propagation();if(active && on !== pinned)togglePanelPin(tab,on);})
+    .on_change((on,cx)=>{cx.stop_propagation();if(active && on !== pinned && !togglePanelPin(tab,on))cx.notify?.();})
     .child(svg('mods/custom-workspace-chrome/panel-pin.svg').size(U.smallIcon));
 }

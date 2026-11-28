@@ -605,13 +605,19 @@ native/global. No Core or layout-document writes or new polling are involved.
 Files/Git `location.js` adapters expose that held source without changing Git's
 render or animation path. Files retains an explorer behind its file-viewer tab;
 file opens still target the current native space with the held machine in viewer
-props. Reuse requires an exact pane's proven path and read-machine record from
-acknowledged creation, in the session-only file-header bridge; space machine and
-filename never prove a viewer route. Unknown/ambiguous/delayed identities open a
-new viewer rather than focusing a potentially different machine's file.
+props. Reuse requires an exact pane's proven path and read-machine record in the
+session-only file-header bridge. Before queuing a new tab, a bounded open receipt
+captures its route, destination and pre-command tab IDs. Later file-open events
+acknowledge a unique new pane before reuse; receipt lifetime is independent of the
+three-second duplicate-click lease and survives browser recreation. Conflicting
+routes or ambiguous native arrivals never qualify, and no poller or IO is added.
+Space machine and filename alone never prove a viewer route.
 Git's ordinary PR association uses the held terminal. Capture also fixes folder
 versus coordinator mode and the registry's provider ID plus exact scope, owner,
-home, parent, machine and owner tab/pane scalars. `AggregatePulls.currentContext`
+home, parent, machine and owner tab/pane scalars. A stale/provisional provider
+cannot install a new hold: Pin stays unpressed until a fresh coordinator identity
+is established, then a new explicit press captures it. Already-held identities
+still retain stale last-good presentation during outages. `AggregatePulls.currentContext`
 rejects replacement identities even at the same parent. Unavailable held scope
 retains only existing stale/last-good presentation, never new inventory or action
 authority. Live facts and independent fresh provider/action checks remain.

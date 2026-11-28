@@ -5,7 +5,7 @@ import { v_flex, h_flex, Editor, EditorState } from "gpui-base";
 import { U, slot, headerTools, reveal, subtleActionFill, refreshButton } from "./ui.js";
 import { spaces, panes, terminals, focused, home, exec, readTextFile, writeTextFile, notify, theme, window, run, props, openOverlay, closeOverlay, nextCommand, layout } from "./host.js";
 import { fileIconAsset } from './file-icons.js';
-import { fullFilePath, fileHeader, publishFileHeader, fileViewerRoute, publishFileViewerRoute, fileReloadStamp, finishFileReload } from './file-header.js';
+import { fullFilePath, fileHeader, publishFileHeader, fileViewerRoute, beginFileViewerOpen, cancelFileViewerOpen, acknowledgeFileViewers, fileReloadStamp, finishFileReload } from './file-header.js';
 import { previewFont } from './preview-font.js';
 import { location } from './location.js';
 import { runPluginHook, sidebarPanelEnabled } from './plugins.js';
@@ -491,6 +491,7 @@ export default class Files extends View {
     if (!space) return;
     const fullPath = fullFilePath(this.root, path), identity = filePathKey(fullPath);
     const allPanes = panes(), tabs = destination.tabs ?? [];
+    acknowledgeFileViewers(spaces(),allPanes,filePathKey);
     const matches = tabs.flatMap(tab => {
       if (filePathKey(fileHeader(tab.id, tab.name)) !== identity) return [];
       const viewers = allPanes.filter(p => p.tab === tab.id && p.mod === 'custom-files');
@@ -516,20 +517,15 @@ export default class Files extends View {
     // an open, and permits an explicit retry if creation did not succeed.
     if (this.openingFiles.has(pendingKey)) return;
     this.openingFiles.set(pendingKey, Date.now() + 3000);
-    const before = new Set(tabs.map(tab => tab.id));
+    const request = beginFileViewerOpen(space,fullPath,this.on ?? null,tabs);
     try {
       run('tab.new', { name: fullPath, space, folder: this.root,
         mod: 'custom-files', props: { fileViewer: true, fileRoot: this.root,
           fileRelative: path, fileMachine: this.on ?? null, fileSpace: space } });
-      // Public run() normally applies structural commands before returning. Bind
-      // only a unique new native tab/pane acknowledged in that same event. A
-      // delayed/ambiguous acknowledgement remains unknown, never a route guess.
-      const created = (spaces().find(s=>s.id===space)?.tabs ?? []).filter(tab=>!before.has(tab.id) && filePathKey(tab.name)===identity);
-      if (created.length === 1) {
-        const viewers = panes().filter(p=>p.tab===created[0].id && p.mod==='custom-files');
-        if (viewers.length === 1) publishFileViewerRoute(viewers[0].pane,fullPath,this.on ?? null);
-      }
-    } catch (e) { this.openingFiles.delete(pendingKey); throw e; }
+      // Normally still pending: run() queues while readers retain their snapshot.
+      // The next file-open event acknowledges it before attempting viewer reuse.
+      acknowledgeFileViewers(spaces(),panes(),filePathKey);
+    } catch (e) { cancelFileViewerOpen(request);this.openingFiles.delete(pendingKey);throw e; }
   }
 
   renderViewer(t, cx) {
