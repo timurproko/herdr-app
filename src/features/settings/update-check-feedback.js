@@ -4,9 +4,15 @@ import { U } from './ui.js';
 // Native Settings' request-age window, shared by native and Custom checks.
 export const recentlyAsked = (owner, key) => Boolean(owner[key] && Date.now() - owner[key] < 3000);
 export function initUpdateCheckFeedback(owner, cx, channels) {
+  const watched = new Set();
   cx.timer.every(300, cx => {
     let active = false;
-    for (const { key, checking } of channels) {
+    for (const { key, checking, watching } of channels) {
+      // Reuse this cadence for expiring shared work, including one final redraw
+      // when its owner disappeared. It does not arm recent-check confirmation.
+      const pending = watching?.() === true;
+      if (pending || watched.has(key)) active = true;
+      if (pending) watched.add(key); else watched.delete(key);
       if (!owner[key]) continue;
       active = true;
       if (checking()) owner[key] = Date.now();

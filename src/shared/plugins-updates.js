@@ -6,7 +6,9 @@ import { settingsCommands } from './settings-requests.js';
 export const PLUGIN_UPDATES_KEY = 'custom.plugin-updates';
 const INTERVAL = 120000, LEASE = 90000;
 export const pluginUpdateSnapshot = () => {
-  const value = shared(PLUGIN_UPDATES_KEY) ?? {};
+  let value = shared(PLUGIN_UPDATES_KEY) ?? {};
+  if (value.scan && !(value.scan.expires > Date.now())) value = { ...value, scan: null,
+    check: { ...value.check, known: false, error: 'Check failed. Try again.' } };
   // An abandoned native Task cannot leave an eternal spinner or grant replay.
   if (value.batch?.running && value.batch.expires <= Date.now()) return { ...value, batch: { ...value.batch, running: false },
     rows: value.rows?.map(row => row.outcome === 'running' ? { ...row, outcome: 'unknown', error: 'Update outcome unknown.' }
@@ -18,6 +20,7 @@ const providers = () => PLUGINS.flatMap(plugin => (plugin.prerequisites ?? [])
 const id = pluginOperationId;
 const connected = machine => machine === null || machines().some(m => m.name === machine && m.layout === 'ready');
 export const pluginUpdateAvailable = () => (pluginUpdateSnapshot().rows ?? []).some(row => row.pending && connected(row.machine));
+const knownUpdate = result => result.status !== 'error' && (result.update === false || (result.update === true && typeof result.fix?.run === 'function'));
 const errorText = error => String(error?.message ?? error).split(/[\r\n]/)[0].slice(0, 240);
 const publish = value => setShared(PLUGIN_UPDATES_KEY, value);
 const generation = plugin => JSON.stringify((plugin.settings ?? []).filter(def => def.type !== 'machine').map(def => [def.key, pluginSetting(plugin, def.key)]));
@@ -32,7 +35,7 @@ export function recordPluginUpdate(machine, plugin, result) {
   const pending = result.update === true && typeof result.fix?.run === 'function' ? true
     : result.update === false ? false : Boolean(old?.pending);
   const row = { id: key, machine, plugin: plugin.id, prerequisite: result.id, name: plugin.name,
-    pending, detail: typeof result.detail === 'string' ? result.detail.slice(0, 240) : '',
+    pending, known: knownUpdate(result), detail: typeof result.detail === 'string' ? result.detail.slice(0, 240) : '',
     ...(old?.outcome && !(old.outcome === 'updated' && pending) && !(result.update === false && result.status !== 'ready')
       ? { outcome: result.update === false ? 'updated' : old.outcome, error: result.update === false ? null : old.error } : {}) };
   publish({ ...snapshot, machines: [...new Set([null, ...(snapshot.machines ?? []), machine])],
@@ -60,7 +63,7 @@ export function pluginUpdateRows() {
 export function updatePlugins(owner, cx) {
   if (checking() || owner.pluginUpdatesClosed || owner.pluginFixing) return;
   const before = pluginUpdateSnapshot();
-  if (before.batch?.running) return;
+  if (before.batch?.running || before.scan?.expires > Date.now()) return;
   const rows = (before.rows ?? []).filter(row => row.pending && connected(row.machine));
   if (!rows.length) return;
   const token = `${Date.now()}-${Math.random()}`;
@@ -78,8 +81,9 @@ export function updatePlugins(owner, cx) {
         rows: snapshot.rows.map(row => row.id === key ? { ...row, ...values } : row) });
       cx.notify();
     };
+    let targets;
     try {
-      const targets = await pluginUpdateMachines({ isCurrent: current }, taskContext, done);
+      targets = await pluginUpdateMachines({ isCurrent: current }, taskContext, done);
       if (!current()) return;
       publish({ ...pluginUpdateSnapshot(), machines: targets });
       for (const machine of [...targets, ...(before.machines ?? []).filter(name => !targets.includes(name))]) {
@@ -101,7 +105,7 @@ export function updatePlugins(owner, cx) {
             result = await checkPluginUpdate(plugin, pre, { ...context, session: {} }, taskContext, done);
             if (!current()) return;
             reconcilePluginFix(machine, plugin, pre, result);
-            change(row.id, { pending: result.update === false ? false : true });
+            change(row.id, { pending: result.update === false ? false : true, known: knownUpdate(result) });
           };
           try {
             change(row.id, { outcome: 'checking' });
@@ -128,7 +132,15 @@ export function updatePlugins(owner, cx) {
     } finally {
       if (pluginUpdateSnapshot().batch?.token === token) {
         const snapshot = pluginUpdateSnapshot();
-        publish({ ...snapshot, batch: { ...snapshot.batch, running: false }, nextCheck: Date.now() + INTERVAL,
+        const successful = rows.every(target => {
+          const row = snapshot.rows.find(row => row.id === target.id);
+          return row && !row.pending && !row.error && !['running', 'checking', 'queued', 'failed', 'unknown'].includes(row.outcome);
+        });
+        const checked = successful && targets && targets.every(machine => providers().every(({ plugin, pre }) =>
+          snapshot.rows.some(row => row.id === id(machine, plugin, pre) && row.known && !row.pending && !row.error)))
+          && !snapshot.rows.some(row => row.pending && connected(row.machine));
+        publish({ ...snapshot, batch: { ...snapshot.batch, running: false, completed: Date.now() }, nextCheck: Date.now() + INTERVAL,
+          ...(checked ? { error: null, check: { ...snapshot.check, completed: Date.now(), checked: Date.now(), known: true, machines: targets, error: null } } : {}),
           rows: snapshot.rows.map(row => ['running', 'checking', 'queued'].includes(row.outcome)
             ? { ...row, outcome: row.outcome === 'running' ? 'unknown' : 'failed', error: row.outcome === 'running' ? 'Could not verify the update.' : 'Not updated.' } : row) });
         cx.notify();
@@ -143,7 +155,7 @@ export function refreshPluginUpdates(owner, cx, { force = false } = {}) {
   const captured = configuration();
   if (before.batch?.running || (before.scan?.expires > now && before.scan.configuration === captured) || (!force && before.nextCheck > now)) return;
   const token = `${now}-${Math.random()}`, scan = { token, configuration: captured, expires: now + LEASE };
-  publish({ ...before, scan });
+  publish({ ...before, scan, check: { ...before.check, attempted: now } });
   let task;
   task = cx.spawn(async taskContext => {
     // Native spawn may begin inline; no IO/publication on a render stack.
@@ -151,6 +163,7 @@ export function refreshPluginUpdates(owner, cx, { force = false } = {}) {
     const done = () => Boolean(task?.is_done?.());
     const current = () => !owner.pluginUpdatesClosed && !done() && pluginUpdateSnapshot().scan?.token === token && configuration() === captured;
     const context = { isCurrent: current };
+    let known = true;
     try {
       const targets = await pluginUpdateMachines(context, taskContext, done);
       if (!current()) return;
@@ -163,11 +176,21 @@ export function refreshPluginUpdates(owner, cx, { force = false } = {}) {
           machine, current, task: taskContext, done,
         }), taskContext, done);
         if (!current()) return;
+        known &&= knownUpdate(result);
         recordPluginUpdate(machine, plugin, result);
       }
-      if (current()) publish({ ...pluginUpdateSnapshot(), error: null, nextCheck: Date.now() + INTERVAL });
+      if (current()) {
+        const snapshot = pluginUpdateSnapshot(), completed = Date.now();
+        publish({ ...snapshot, error: null, nextCheck: completed + INTERVAL,
+          check: { ...snapshot.check, completed, known, machines: targets,
+            ...(known ? { checked: completed } : {}), error: known ? null : 'Check failed. Try again.' } });
+      }
     } catch (error) {
-      if (current()) publish({ ...pluginUpdateSnapshot(), error: errorText(error), nextCheck: Date.now() + INTERVAL });
+      if (current()) {
+        const snapshot = pluginUpdateSnapshot();
+        publish({ ...snapshot, error: errorText(error), nextCheck: Date.now() + INTERVAL,
+          check: { ...snapshot.check, completed: Date.now(), known: false, error: errorText(error) } });
+      }
     } finally {
       if (current()) { publish({ ...pluginUpdateSnapshot(), scan: null }); cx.notify(); }
     }

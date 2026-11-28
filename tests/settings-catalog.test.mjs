@@ -54,7 +54,7 @@ const mocks = {
   './palette-startup.js': { initPalettePolicy() {} },
   './look.js': { enterCustom() {} }, './startup.js': { restoreFrames() {} }, './sidebar-usage.js': { syncSidebarUsage() {} },
   './customization-updates.js': { initCustomizationUpdates() {}, customizationUpdateAvailable: () => false, observeCustomizationUpdates() {}, invalidateCustomizationUpdates() {} },
-  './plugins-updates.js': { pluginUpdateAvailable: () => false, refreshPluginUpdates() {} },
+  './plugins-updates.js': { pluginUpdateAvailable: () => false, pluginUpdateSnapshot: () => ({}), refreshPluginUpdates() {} },
   './space-colors.js': { spaceColorPicker() {}, setSpaceColor() {}, selectedColorIndex() {}, colorAt() {}, COLOR_COUNT: 0 },
   './tab-rename.js': { requestInlineTabRename() {} }, './space-rename.js': { requestInlineSpaceRename() {} },
   './close-space.js': { closeWithConfirmation() {} },
