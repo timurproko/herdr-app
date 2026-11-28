@@ -13,15 +13,17 @@ const h=await formsHarness({checking:()=>false,appHome:()=>'/fake-owned-home',ex
 const plugin=registry.pluginById('trello');registry.setPluginEnabled(plugin,true);view.settingsMachine='fixture-ssh';ui.initPlugins(view,cx,'trello');view.pluginOpen['trello-requirements']=true;view.pluginOpen['trello-boards']=true;view.pluginOpen['trello-settings']=true;
 const refresh=async()=>{ui.reloadPlugins(view,cx,'trello');await flush();};
 const unavailable=()=>find(render(),'st-plugin-trello-unavailable');
-const assertElevated=()=>{
+const assertElevated=(code='MACHINE_ELEVATED')=>{
   const text=words(render());assert.ok(unavailable());
-  const explanation=text.filter(t=>t.includes('administrator (elevated) SSH login'));assert.equal(explanation.length,1);assert.equal(explanation[0].split('. ').length,2);
-  assert.match(explanation[0],/refuses for safety/);assert.match(explanation[0],/normal user running Herdr Core/);assert.match(explanation[0],/set up the plugin on that machine directly/);
-  assert.ok(!text.some(t=>/\d+ to fix|All ready|Check failed|Elevated SSH login unsupported/.test(t)));
+  const marker={MACHINE_ELEVATED:'This SSH connection runs as root',CORE_ELEVATED:'Herdr Core on this machine is elevated',SSH_ELEVATED_PENDING:'Elevated SSH setup is not available until protected output is verified'}[code];
+  const explanation=text.filter(t=>t.includes(marker));assert.equal(explanation.length,1);assert.match(explanation[0],/Check again/);
+  if(code==='CORE_ELEVATED')assert.match(explanation[0],/normal-user Core/);
+  if(code==='MACHINE_ELEVATED')assert.match(explanation[0],/normal user running the selected Herdr Core/);
+  assert.ok(!text.some(t=>/\d+ to fix|All ready|Check failed|Trello refuses|Trello cannot verify|Check Node 20/.test(t)));
   for(const id of ['st-plugin-req-trello-runtime','st-plugin-req-trello-local-setup','st-plugin-list-trello-boards-where','st-plugin-form-trello-local-setup-save','st-plugin-fix-trello-runtime','st-plugin-trello-access-read-write'])assert.ok(!find(render(),id),id);
 };
 await refresh();const stale=find(render(),'st-plugin-form-trello-local-setup-save');assert.ok(stale);
-for(const [r,s] of [['MACHINE_ELEVATED','MACHINE_ELEVATED'],['MACHINE_ELEVATED',null],[null,'MACHINE_ELEVATED']]){runtimeCode=r;statusCode=s;await refresh();assertElevated();}
+for(const code of ['MACHINE_ELEVATED','CORE_ELEVATED','SSH_ELEVATED_PENDING'])for(const [r,s] of [[code,code],[code,null],[null,code]]){runtimeCode=r;statusCode=s;await refresh();assertElevated(code);}
 const before=calls.length;stale.attrs.on_click[0]({},cx);await flush();assert.equal(calls.length,before,'A pre-refusal Save node cannot dispatch');
 // The visible Check must recover a refusal published by Boards as well as Requirements.
 runtimeCode=statusCode='MACHINE_ELEVATED';await refresh();assertElevated();runtimeCode=statusCode=null;
@@ -38,4 +40,4 @@ hold=true;statusCode='MACHINE_ELEVATED';ui.reloadPlugins(view,cx,'trello','board
 view.settingsMachine=null;ui.followSettingsMachine(view);statusCode=null;await refresh();release();await old;assert.ok(!unavailable());assert.ok(find(render(),'st-plugin-form-trello-local-setup-save'));
 // Disable retires a pending check session as well as any old rendered controls.
 view.settingsMachine='fixture-ssh';ui.followSettingsMachine(view);hold=true;statusCode='MACHINE_ELEVATED';ui.reloadPlugins(view,cx,'trello','boards');const late=jobs.shift()(cx);for(let i=0;i<50&&!release;i++)await Promise.resolve();click('st-plugin-trello-enabled');release();await late;assert.equal(registry.pluginEnabled(plugin),false);assert.ok(!unavailable());assert.equal(view.pluginChecks.trello,undefined);
-console.log('PASS: one actionable card-level elevated SSH explanation, no fix count/duplicate controls, independent groups, safe retry and stale/disabled refusal guards');
+console.log('PASS: one accurate root/elevated-Core/pending-output explanation, no fix count/duplicate controls, independent groups, safe retry and stale/disabled refusal guards');

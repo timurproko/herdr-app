@@ -37,7 +37,7 @@ global.Function=new Proxy(Function,{construct(target,parameters){
   return function(...args){
     Reflect.apply(initialise,this,args);
     assert.equal(typeof args[1].exports.main,'function');
-    args[1].exports.main=(config,installer)=>process.stdout.write(JSON.stringify({config,installerHash:crypto.createHash('sha256').update(installer).digest('hex')}));
+    args[1].exports.main=(config,installer)=>process.stdout.write(JSON.stringify({config,installerHash:installer}));
   };
 }});
 `);
@@ -79,10 +79,11 @@ global.Function=new Proxy(Function,{construct(target,parameters){
     const input=new PassThrough(),output=new PassThrough();let text='',sent=false;
     output.on('data',chunk=>{text+=chunk;if(!sent&&text.includes('"phase":"ready"')){sent=true;input.write(JSON.stringify({version:1,kind:'install',payload})+'\n');}});
     const machine=shapes[0];
-    await bootstrap.main({version:1,machine,expected},installerSource,{
-      input,output,getHello:async()=>({generation:1,core:{id:machine.id}}),
+    const done=bootstrap.main({version:1,machine,expected},installer.hash(Buffer.from(installerSource)),{
+      input,output,platform:'linux',connectCore:()=>({current:()=>true,close(){}}),verifyCore:async()=>{},
       executionHome:()=>({home,user:'fake-user',uid:1000,userHome:root}),checkWindows:()=>{},
     });
+    input.write(JSON.stringify({phase:'bootstrap',source:installerSource})+'\n');await done;
     frames=text.trim().split('\n').map(JSON.parse);
   } finally {
     if(oldPath===undefined)delete process.env.PATH;else process.env.PATH=oldPath;

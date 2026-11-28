@@ -6,7 +6,7 @@ const controller=require('./trello-controller.cjs');
 const defaults=()=>path.resolve(__dirname,'../..');
 // CMD accepts 8,191 characters, not Windows CreateProcess's 32K. Reserve shell overhead.
 const COMMAND_LIMIT=7600;
-const safeMessages={SSH_UNAVAILABLE:'SSH or Node unavailable. Check host trust and prerequisites.',MACHINE_UNAVAILABLE:'The configured Core session is unavailable.',MACHINE_CHANGED:'Machine changed. Check again.',MACHINE_IDENTITY:'Execution user or home could not be verified.',MACHINE_ELEVATED:'Elevated SSH logins are unsupported. Use the Core user without elevation.',MACHINE_UNSUPPORTED:'Temporary or custom-via machines are unsupported.',RUNTIME_PREREQUISITE:'Node 20+ and the configured Core session are required.',RUNTIME_MISSING:'Install Trello on this machine.',RUNTIME_OUTDATED:'Update Trello on this machine.',RUNTIME_CONFLICT:'Trello runtime ownership conflict.',RUNTIME_BUSY:'Trello installer is busy.',RUNTIME_INVALID:'Trello runtime payload is invalid.',RUNTIME_PATH:'Add the user bin to PATH first.',CONFIG_UNKNOWN:'Setup outcome unknown. Check this machine before retrying.'};
+const safeMessages={SSH_UNAVAILABLE:'SSH or Node unavailable. Check host trust and prerequisites.',MACHINE_UNAVAILABLE:'The configured Core session is unavailable.',MACHINE_CHANGED:'Machine changed. Check again.',MACHINE_IDENTITY:'Execution user or home could not be verified.',MACHINE_ELEVATED:'Root SSH setup is unsupported. Connect as the normal Core user.',CORE_ELEVATED:'Herdr Core is elevated. Use a normal-user Core, then Check again.',SSH_ELEVATED_PENDING:'Elevated SSH setup is not available until protected output is verified. Connect without elevation as the Core user, then Check again.',MACHINE_UNSUPPORTED:'Temporary or custom-via machines are unsupported.',RUNTIME_PREREQUISITE:'Node 20+ and the configured Core session are required.',RUNTIME_MISSING:'Install Trello on this machine.',RUNTIME_OUTDATED:'Update Trello on this machine.',RUNTIME_CONFLICT:'Trello runtime ownership conflict.',RUNTIME_BUSY:'Trello installer is busy.',RUNTIME_INVALID:'Trello runtime payload is invalid.',RUNTIME_PATH:'Add the user bin to PATH first.',CONFIG_UNKNOWN:'Setup outcome unknown. Check this machine before retrying.'};
 const fail=code=>{throw Object.assign(Error(code),{code});};
 function error(code,runtime){let messages={};try{messages=require(path.join(runtime,'lib/trello/errors.cjs')).messages;}catch{}const known=Object.hasOwn(safeMessages,code)||Object.hasOwn(messages,code);code=known?code:'INTERNAL';return {version:1,ok:false,error:{code,message:safeMessages[code]??messages[code]??'Setup failed. No retry was started.',outcome:code==='CONFIG_UNKNOWN'?'unknown':code==='WRITE_CHANGED'?'applied':code==='UNKNOWN_WRITE'?'unknown':'refused'}};}
 function bindingFor(home){return {id:'local',session:'local',principal:installer.hash(Buffer.from(JSON.stringify([os.userInfo().username,os.userInfo().uid,os.homedir()]))),home:installer.hash(Buffer.from(JSON.stringify(path.resolve(home)))) };}
@@ -35,7 +35,7 @@ function commandFor(machine,binding,expected,runtime){
  const config={version:1,machine:{id:machine.id,session:machine.session},binding:binding??null,expected};
  const source=fs.readFileSync(path.join(runtime,'lib/private-actions/trello-bootstrap.cjs'),'utf8');
  const installSource=fs.readFileSync(path.join(runtime,'lib/private-actions/trello-install.cjs'),'utf8');
- const script=`const m={exports:{}};new Function('require','module','exports',${JSON.stringify(source)})(require,m,m.exports);m.exports.main(${JSON.stringify(config)},${JSON.stringify(installSource)});`;
+ const script=`const m={exports:{}};new Function('require','module','exports',${JSON.stringify(source)})(require,m,m.exports);m.exports.main(${JSON.stringify(config)},${JSON.stringify(installer.hash(Buffer.from(installSource)))});`;
  const encoded=zlib.brotliCompressSync(Buffer.from(script),{params:{[zlib.constants.BROTLI_PARAM_QUALITY]:11}}).toString('base64');
  const command=`node -e "eval(require('node:zlib').brotliDecompressSync(Buffer.from('${encoded}','base64')).toString())"`;
  if(command.length>COMMAND_LIMIT)fail('RUNTIME_INVALID');
@@ -84,6 +84,8 @@ async function remote(home,destination,payload,register,{runtime=defaults(),spaw
      }else return failed();
     }
    });
+   // Public, digest-pinned installer only. The action (and any secrets) waits for READY.
+   child.stdin.write(JSON.stringify({phase:'bootstrap',source:fs.readFileSync(path.join(runtime,'lib/private-actions/trello-install.cjs'),'utf8')})+'\n');
   }catch{failed();}
  });
 }
