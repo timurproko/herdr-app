@@ -6,6 +6,13 @@ See proposal.md for motivation. `Usage.startClaim` captures the machine, submits
 
 The existing reset regression exercises a single view's card, successful transport and refilled bar. It does not assert automatic updates in a separately mounted sidebar view. The native shared-state contract says `setShared` rerenders all mods, so adding another force refresh or optimistic percentage assignment without reproducing the missing boundary would be speculative.
 
+The new cross-view fixture exposed two concrete boundaries: Claude reset follow-up
+was provider-wide rather than account-scoped, and a pre-reset collector lasting
+over 60 seconds exhausted the retry loop before its 135-second loading lease
+ended. The latter dropped the forced fresh read entirely. The implementation
+uses an account-only refresh option and the existing lease duration for both
+waits; reset continuations carry the original enable epoch.
+
 ## Goals / Non-Goals
 
 **Goals:** Correct the smallest existing target/publication boundary that the cross-view regression exposes, retaining captured identity, shared cache ownership and native rendering.
@@ -21,7 +28,7 @@ The existing reset regression exercises a single view's card, successful transpo
 
 ## Risks / Trade-offs
 
-- [The reported failure is not reproduced by current fixtures] → Add independently mounted view coverage before selecting a correction; record the exact failing cache/target/publication assertion. Do not ship an unproven redundant refresh.
+- [A synthetic reproduction may not cover every native cause of stale presentation] → The regression demonstrates lost post-reset collection and account replacement using independent VMs; native-only repaint behavior is not claimed as independently validated.
 - [Synthetic shared-state behavior differs from native mod snapshots] → Model separate props/context and shared publication explicitly; if native-only behavior remains, request focused disposable UI evidence rather than modifying native internals.
 - [A provider reset only clears selected windows] → Publish the returned authoritative windows rather than inventing quota values.
 - [A late reset/read can outlive selection or enable changes] → Keep request and plugin-generation checks and assert isolation from unrelated caches.
