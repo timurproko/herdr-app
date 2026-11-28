@@ -295,12 +295,17 @@ action freshness, while existing same-home rows remain unverified with the movin
 
 Spaces accepts multiple verified same-machine children per coordinator through the
 existing registry contribution. Crew placement v1 validates `crew.space.version=1`,
-`mode`, `project` and `name` against each supplied status task project and exact native
-membership. The minimal fleet view omits task projects: only combined placement can
+`mode` and `project` against each supplied status task project and exact native
+membership. Saved `name` is independently validated repository display metadata,
+not a project-identity equality check: aliases, directory case/dots and internal
+repair `core` captions are accepted alongside legacy project/`crew` names. Live
+and durable decoding share the nonblank, control/separator-free basename check
+with a 4096-character bound; conflicting names within one child still refuse.
+Older minimal fleet views omit task projects: only combined placement can
 accept that absence, because its child identity is project-independent. Present
 malformed/contradictory projects still refuse; per-project placement always requires
 matching authoritative task project evidence. Legacy/combined `fm-crew-<home>`,
-`-project-<registered-name>` and internal `-self` (`crew:self`, display `crew`) are supported together; `crew.home` remains
+`-project-<registered-name>` and internal `-self` (`crew:self`, repository display name) are supported together; `crew.home` remains
 unchanged. The transport keeps task project, not reports or placement authority.
 Durable display identity may contain multiple child placement records, never PRs.
 Projected child order follows native order; explicit user names override project

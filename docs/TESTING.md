@@ -165,8 +165,15 @@ the updated oracle preserves the requested fixed-column behavior, not the old dr
 
 `tests/fleet-project-spaces.test.mjs` uses the Crew PR #22 placement-v1 contract
 with combined-only, project-only and mixed populations on local/qualified remote
-models. It covers exact native membership, malformed labels, project names versus
-user renames, durable registry links and colour authority. `fleet-command.test.mjs`
+models. It covers exact native membership, malformed labels, repository display
+names versus project IDs and user renames, durable registry links and colour
+authority. Its Crew PR #28 regression combines an application child and an internal
+`crew:self` repair named `core`: actual Spaces rows retain count/disclosure and
+child connectors. Alias/case/dot captions, legacy `crew`, the shared repair project
+exception, cold provider restoration, off/on and unsafe/conflicting-name refusals
+use the same real provider. `fleet-git.test.mjs` renders this two-child shape both
+locally and qualified as `pc2`, with task PRs in Open/Closed and a guard forbidding
+any coordinator directory Git probe. `fleet-command.test.mjs`
 checks actual PowerShell project projection; set `FLEET_TEST_ROOT` to an existing
 outside-checkout scratch directory for local disposable output.
 

@@ -77,6 +77,9 @@ export function recordedSource(stdout) {
 }
 // Placement labels are trusted only after exact live task/native membership.
 const projectName = name => text(name,40) && /^(?:[a-z0-9]|\.[a-z0-9])[a-z0-9.-]*$/.test(name) && !name.includes('..') && !name.endsWith('.');
+// Crew saves repository basenames separately from placement project keys. The
+// same predicate is used by live binding and durable display restoration.
+const displayName = name => text(name,4096) && name.trim().length>0 && !['.','..'].includes(name) && !/[/\\]/.test(name);
 function placement(labels, task, tag) {
   const base=`fm-crew-${tag}`, version=labels['crew.space.version'], mode=labels['crew.space.mode'];
   if(version===undefined && mode===undefined && labels['crew.space.project']===undefined && labels['crew.space.name']===undefined)
@@ -89,9 +92,9 @@ function placement(labels, task, tag) {
   // borrow this allowance for a per-project child or a contradictory task.
   const matches=project===task.project || task.project==='crew:self' && project==='crew';
   if(mode==='combined')return name===undefined && (matches || !Object.hasOwn(task,'project')) ? {child:base,adoption:tag,mode,project:null,name:null}:null;
-  if(!matches)return null;
-  if(project==='crew:self')return name==='crew'?{child:`${base}-self`,adoption:tag,mode,project,name}:null;
-  return projectName(project) && name===project ? {child:`${base}-project-${project}`,adoption:tag,mode,project,name}:null;
+  if(!matches || !displayName(name))return null;
+  if(project==='crew:self')return {child:`${base}-self`,adoption:tag,mode,project,name};
+  return projectName(project) ? {child:`${base}-project-${project}`,adoption:tag,mode,project,name}:null;
 }
 export const fleetChildren = value => value?.children ?? (value?.child ? [{child:value.child,adoption:value.adoption,mode:'combined',project:null,name:null}] : []);
 export const fleetLinks = context => fleetChildren(context).map(child=>({...context,...child,binding:context.binding}));

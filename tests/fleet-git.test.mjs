@@ -8,7 +8,7 @@ const state={'custom.plugins':{crew:{enabled:true},git:{enabled:true}},'custom.s
 let selected={space:'coordinator',cwd:'/not-a-repository',on:null,terminal:'t1'},shown=true,failRepo=null,defer=false,pendingCI=false,bClosed=true;
 const waiting=[],settingsOpened=[],noticeModes={};
 let holdStatus=false,releaseStatus,failStatus=false,now=Date.now();
-let checkFacts=null;
+let checkFacts=null,fixtureMachine=null;
 // Keep this legacy-robot lifecycle fixture unmanaged; role-labelled stage
 // navigation is covered through the real AgentLinks/aggregate in pr-agent-links.
 let assignedLabels=[{name:'fixture label',color:'840479'}];
@@ -20,7 +20,7 @@ const status={home:'C:/fixture/.crew',owner:{terminal:'t1',live:true},tasks:[{id
 let rendering=false,lifecycle,consumerRegistry;
 const calls=[],focus=[],jobs=[];const cx={focus_handle(){assert.equal(rendering,false,'Never create a focus handle inside render');return {};},notify(){assert.equal(rendering,false,'No synchronous notify from fleet render');},stop_propagation(){},spawn(fn){const p=Promise.resolve().then(()=>fn(cx));jobs.push(p);},timer:{every(){},after(){} }};
 const drain=async()=>{for(let pass=0;pass<3;pass++){for(let i=0;i<30;i++)await Promise.resolve();while(jobs.length)await Promise.all(jobs.splice(0));}};
-const host={closeOverlay(){},openOverlay(){},nextCommand(){return new Promise(()=>{});},shared:k=>state[k],setShared:(k,v)=>{assert.equal(rendering,false,'No shared-state writes from fleet render');state[k]=v;if(k==='custom.fleet.request'&&v&&lifecycle)Promise.resolve().then(()=>lifecycle.pluginEvent('spaces.refresh',{cx}));if(k==='custom.fleet.reads'&&consumerRegistry)consumerRegistry.pluginWorkspaceLinks({presentation:true});},spaces:()=>groups,panes:()=>all,terminals:()=>list,machines:()=>[{name:null,layout:'ready'}],checking:()=>false,
+const host={closeOverlay(){},openOverlay(){},nextCommand(){return new Promise(()=>{});},shared:k=>state[k],setShared:(k,v)=>{assert.equal(rendering,false,'No shared-state writes from fleet render');state[k]=v;if(k==='custom.fleet.request'&&v&&lifecycle)Promise.resolve().then(()=>lifecycle.pluginEvent('spaces.refresh',{cx}));if(k==='custom.fleet.reads'&&consumerRegistry)consumerRegistry.pluginWorkspaceLinks({presentation:true});},spaces:()=>groups,panes:()=>all,terminals:()=>list,machines:()=>[{name:fixtureMachine,layout:'ready'}],checking:()=>false,
   props:()=>null,layout:()=>({id:'panel',hidden:!shown,children:[{id:'panel-body',active:'changes'}]}),settings:()=>({zoom:1}),theme:()=>({}),window:()=>({platform:'windows'}),notify(){},run:(...args)=>focus.push(args),
   hc:async args=>{assert.equal(rendering,false,'Status reads yield out of render');if(failStatus)throw Error('Crew status unavailable');assert.match(args.at(-1),/status '--all' '--json'/);if(holdStatus)await new Promise(resolve=>releaseStatus=resolve);return {code:0,stdout:JSON.stringify({code:0,stdout:Buffer.from(JSON.stringify(status)).toString('base64'),stderr:'',timed_out:false})};},
   exec:async(cmd,args)=>{assert.equal(rendering,false,'GitHub reads never start during render');if(cmd==='git'){assert.equal(state['custom.spaces.preferences'].connectFleetToCoordinator,false,'Enabled coordinator verification must never probe its non-repository cwd');return {code:128,stdout:'',stderr:'fatal: not a git repository'};}assert.equal(cmd,'gh','Coordinator cwd must not be probed as Git');calls.push(args);const capturedChecks=checkFacts??(pendingCI?[{name:'build',status:'IN_PROGRESS'}]:[]);if(defer)await new Promise(resolve=>waiting.push(resolve));const repo=args[args.indexOf('--repo')+1];if(repo===failRepo)return {code:1,stderr:'unreachable'};return {code:0,stdout:JSON.stringify({number:12,title:repo,url:`https://github.com/${repo}/pull/12`,state:repo==='example/b'&&bClosed?'CLOSED':'OPEN',author:{login:'fixture'},body:'',labels:assignedLabels,statusCheckRollup:capturedChecks})};}};
@@ -41,6 +41,29 @@ host.exec=legacyTargetResponses(host.exec);
 const {Main,f,A,r,GitWebhooks,gitReads}=await loadMod({host,modules,globals:{URL,localStorage,Date:class extends Date{static now(){return now;}}},mod:'custom-changes',entry:'export {default as Main} from "./main.js";export * as f from "./plugins/crew/fleet.js";export * as A from "./aggregate.js";export * as r from "./plugins.js";export {GitWebhooks} from "./relay-consumer.js";export {gitReads} from "./pulls.js";'});
 consumerRegistry=r;
 ({r:lifecycle}=await loadMod({host,modules,globals:{Date:class extends Date{static now(){return now;}}},mod:'custom-spaces',entry:'export * as r from "./plugins.js";'}));
+// Crew PR 28's safe core caption must not invalidate its application sibling
+// or route the coordinator into ordinary Git. Exercise the real panel/provider.
+const original={groups:[...groups],all:[...all],list:[...list],tasks:status.tasks,owner:status.owner,selected};
+for(const machine of [null,'pc2']) {
+ fixtureMachine=machine;const q=id=>machine?`${machine}/${id}`:id;
+ groups.splice(0,groups.length,{id:q('coordinator'),machine,tabs:[{id:q('c')}]},
+  ...['herdr-app','self'].map((project,i)=>({id:q(`fm-crew-home-${project==='self'?'self':`project-${project}`}`),machine,named:false,name:'worktree',tabs:[{id:q(`w${i}`)}]})));
+ all.splice(0,all.length,{pane:q('cp'),tab:q('c'),terminal:q('t1')},...groups.slice(1).map((group,i)=>({pane:q(`wp${i}`),tab:group.tabs[0].id,terminal:q(`t${i+2}`)})));
+ list.splice(0,list.length,{address:q('t1'),state:'live',labels:{'custom.crew.home':'1'}},...groups.slice(1).map((group,i)=>({address:q(`t${i+2}`),state:'live',labels:{'crew.home':'home','crew.task':i?'repair':'app','herdr.space':group.id.split('/').at(-1),'crew.space.version':'1','crew.space.mode':'per-project','crew.space.project':i?'crew:self':'herdr-app','crew.space.name':i?'core':'Herdr-App'}})));
+ status.owner={terminal:'t1',live:true};status.tasks=['app','repair'].map((id,i)=>({id,terminal:`t${i+2}`,state:'working',project:i?'crew:self':'herdr-app',pr:url(i?'b':'a')}));
+ selected={space:q('coordinator'),cwd:'/not-a-repository',on:machine,terminal:q('t1')};
+ f.invalidateFleet();f.refreshFleets(cx,async()=>JSON.stringify(status),true);await drain();
+ assert.equal(r.pluginWorkspaceLinks().length,2);assert.equal(r.pluginWorkspaceLinks().find(link=>link.project==='crew:self').name,'core');
+ assert.equal(r.pluginPullContext(q('coordinator')).links.length,2);
+ const mixed=new Main();mixed.init({},cx);mixed.setView('open',cx);await drain();mixed.render(cx);await drain();const mixedTree=mixed.render(cx);
+ assert.equal(mixed.aggregate.entries.size,2);assert.ok(find(mixedTree,'pr-example/a#12'));
+ assert.doesNotMatch(text(mixedTree),/Not a git repository|Could not read repository/);
+ mixed.setView('closed',cx);assert.ok(find(mixed.render(cx),'pr-example/b#12'));
+ mixed.close();await drain();
+}
+fixtureMachine=null;groups.splice(0,groups.length,...original.groups);all.splice(0,all.length,...original.all);list.splice(0,list.length,...original.list);status.tasks=original.tasks;status.owner=original.owner;selected=original.selected;
+for(const key of Object.keys(state))if(key.startsWith('custom.fleet.'))delete state[key];
+f.invalidateFleet();calls.length=0;storage.clear();gitReads(host.exec).facts.clear();
 f.refreshFleets(cx,async()=>JSON.stringify(status));await drain();
 const panel=new Main();panel.init({},cx);await drain();let tree=panel.render(cx);await drain();tree=panel.render(cx);
 // Explicit change injection for the existing semantic/race cases below;
