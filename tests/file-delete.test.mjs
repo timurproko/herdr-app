@@ -150,7 +150,7 @@ const imports = {
     dialogHeader: (_t, title, close) => element().child(title).on_click(close), description: (_t, text) => element().child(text),
     button: (_t, id, label, click) => element().id(id).child(label).on_click(click) },
   './delete-entry.js': { deleteEntry: async target => { deletions.push(plain(target)); await new Promise(resolve => { release = resolve; }); if (failDelete) throw Error('offline'); } },
-  './file-icons.js': { fileIconAsset() {} }, './file-header.js': { fullFilePath: (root, path) => `${root}/${path}`, fileHeader() {}, publishFileHeader() {}, fileReloadStamp() {}, finishFileReload() {} },
+  './file-icons.js': { fileIconAsset() {} }, './file-header.js': { fullFilePath: (root, path) => `${root}/${path}`, fileHeader() {}, publishFileHeader() {}, fileViewerRoute() {}, beginFileViewerOpen() {}, cancelFileViewerOpen() {}, acknowledgeFileViewers() {}, fileReloadStamp() {}, finishFileReload() {} },
   './preview-font.js': { previewFont() {} }, './location.js': { location() {} }, './plugins.js': { runPluginHook() {}, sidebarPanelEnabled: () => true }, './sidebar-title.js': { sidebarTitle: element },
   './panel-pin.js': { panelPin() {} }, './panel-state.js': { changePanel() {} },
 };

@@ -79,7 +79,7 @@ async function harness(feature, pluginOn = true) {
     './panel-state.js': {changePanel(){}},
 
     './file-icons.js': {fileIconAsset: () => ''},
-    './file-header.js': {fullFilePath() {}, fileHeader: (_tab, fallback) => fallback, publishFileHeader() {}, fileReloadStamp() {}, finishFileReload() {}},
+    './file-header.js': {fullFilePath() {}, fileHeader: (_tab, fallback) => fallback, publishFileHeader() {}, fileViewerRoute() {}, beginFileViewerOpen() {}, cancelFileViewerOpen() {}, acknowledgeFileViewers() {}, fileReloadStamp() {}, finishFileReload() {}},
     './preview-font.js': {previewFont: () => ({})},
     './plugins.js': {pluginPullContext: () => null, pluginEvent() {}, runPluginHook: async () => false, sidebarPanelEnabled: () => pluginOn},
     './sidebar-title.js': {sidebarTitle: () => element()},

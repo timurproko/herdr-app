@@ -165,8 +165,15 @@ the updated oracle preserves the requested fixed-column behavior, not the old dr
 
 `tests/fleet-project-spaces.test.mjs` uses the Crew PR #22 placement-v1 contract
 with combined-only, project-only and mixed populations on local/qualified remote
-models. It covers exact native membership, malformed labels, project names versus
-user renames, durable registry links and colour authority. `fleet-command.test.mjs`
+models. It covers exact native membership, malformed labels, repository display
+names versus project IDs and user renames, durable registry links and colour
+authority. Its Crew PR #28 regression combines an application child and an internal
+`crew:self` repair named `core`: actual Spaces rows retain count/disclosure and
+child connectors. Alias/case/dot captions, legacy `crew`, the shared repair project
+exception, cold provider restoration, off/on and unsafe/conflicting-name refusals
+use the same real provider. `fleet-git.test.mjs` renders this two-child shape both
+locally and qualified as `pc2`, with task PRs in Open/Closed and a guard forbidding
+any coordinator directory Git probe. `fleet-command.test.mjs`
 checks actual PowerShell project projection; set `FLEET_TEST_ROOT` to an existing
 outside-checkout scratch directory for local disposable output.
 
@@ -1859,6 +1866,7 @@ deploy, enroll hooks, authorize accounts or send to real agents.
 
 - Lifecycle: checkout build; full/scoped/shell-only deployment and guarded rollback; installed shell reload/export and preference-home fixtures; ownership-report; preferences/frame-registry/frame-palette; host-facade and tab-move compatibility. Architecture verifies single-source packaging and the native boundary.
 - Workspace: close-space, rename-selection, panel-state/pin, profile-workflow/Firstmate-role, new-menu, tab-move and tab-move-ui fixtures. Real native interactions remain excluded.
+- Sidebar hold: `tests/panel-state.test.mjs` covers session-only storage, legacy migration, restart, stale controls and native acknowledgements. `tests/panel-context.test.mjs` joins real packaged Files/Git location adapters with independent mod graphs, coordinator scope/authority and all availability combinations. Built `dist/scripts/files-location.test.mjs` and `tests/git-location.test.mjs` exercise the unchanged panel consumers through held navigation, refresh and release races; Files also covers captured remote file actions and file-viewer origin. Review regressions additionally cover queued creation followed by later native acknowledgement and repeat-open without fixture-published routes (including lease expiry and browser recreation), remote-open into a local space followed by unpin/local-same-path open, ambiguous/unknown routes, and coordinator replacement at the same parent. `tests/panel-cold-coordinator.test.mjs` uses the actual Crew provider, registry, pin capture and aggregate to refuse provisional capture, complete initial verification and successfully pin its canonical scope. Same-scope owner/home/provider/tab/pane changes, folder-to-coordinator refusal and stale-only retention remain covered. These are fake-data tests, not live native interaction proof.
 - Plugins: plugin lifecycle/UI, file viewer/recycle policy, Git/PR/CI policy and webhook mocks, Usage/Claude/account fixtures, A1 adapters and Crew fixtures. External service correctness is not inferred from mocks.
 
 The scaffold package contract and scripts/ci-required.test.mjs also run in each lane.
@@ -2026,6 +2034,8 @@ tests/native-selection.test.mjs
 tests/ownership-report.test.mjs
 tests/pane-crew-role.test.mjs
 tests/panel-kit.test.mjs
+tests/panel-context.test.mjs
+tests/panel-cold-coordinator.test.mjs
 tests/panel-pin-ui.test.mjs
 tests/panel-state.test.mjs
 tests/palette-native-stock.test.mjs
