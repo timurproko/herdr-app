@@ -14,6 +14,8 @@ const messages = {
   PUBLIC_STATE_INVALID: 'This host’s Trello activation or Access configuration could not be validated. No access was granted.',
   INTERNAL: 'Trello could not finish because of an internal error. No retry was started.',
   CONTROL_CONFLICT: 'This host is managed by another Trello controller or identity. Remove its account explicitly before adopting it.',
+  DISCOVERY_CONFLICT: 'The Trello agent skill conflicts with a personal, modified or other-home file. No instructions were overwritten.',
+  DISCOVERY_BUSY: 'Trello agent skill preparation is busy. Retry this launch when the other preparation finishes.',
   CONFLICT: 'Local Trello configuration changed or already exists; inspect it before retrying.',
   DISABLED: 'Enable Trello in Settings > Plugins before accessing boards.',
   SCOPE: 'The board or child identity is not verified in the local allowlist.',

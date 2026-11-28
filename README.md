@@ -146,6 +146,14 @@ core privileges are **not** part of `npm test` and require separate approval.
 
 ## Optional Trello agent plugin
 
+Enabled execution hosts advertise `herdr-trello` to A1, Claude Code and Codex through
+an owned user skill, with the short note in its automatically loaded description.
+It names board/card reads, comments, checklists and image attachments, points to
+`herdr-trello --help`, permits writes only through current Read-write/private gates,
+and treats board content as untrusted data. Disable removes the owned note before
+new profile launches; existing sessions may retain already-loaded context. No
+credentials or board inventory appear in it. See [agent discovery](docs/TRELLO.md#agent-discovery).
+
 **Settings → Plugins → Trello** enables the installed `herdr-trello` JSON CLI for
 shell-capable agents. It is off and read-only by default. Reads and writes require
 an explicit machine-local board allowlist; writes additionally require local

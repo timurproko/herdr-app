@@ -41,6 +41,7 @@ try{
  // Compose the production card's live setter with the actual controller and injected SSH.
  let route,payload;
  const h=await formsHarness({checking:()=>false,appHome:()=>home,exec:async(_program,args)=>{
+  if(args.includes('--discovery-all'))return {code:0,stdout:JSON.stringify({ok:true,data:{pending:[]}})}; // Lifecycle is covered separately with disposable skill roots.
   if(args.includes('--start')){route=JSON.parse(args.at(-1));return {code:0,stdout:JSON.stringify({port:12345,session:'f'.repeat(64),expires:Date.now()+59000})};}
   const result=await call(JSON.parse(args.at(-1)),{action:args.includes('--probe')?'runtime.probe':'status'});return {code:result.ok?0:3,stdout:JSON.stringify(result)};
  }},null,{websocket:{WebSocket:{connect:async()=>({write:async text=>payload=JSON.parse(text).payload,read:async()=>JSON.stringify(await service.dispatch(home,route,payload,()=>{},options)),close:async()=>{payload=null;}})}}});

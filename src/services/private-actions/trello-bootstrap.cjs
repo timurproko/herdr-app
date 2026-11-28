@@ -67,13 +67,14 @@ async function main(config,installerSource,{getHello=hello,executionHome=private
   if(request.kind==='probe')result={version:1,ok:true,data:{...state,destination:binding}};
   else if(request.kind==='install'){
    installer.validate(request.payload);
-   if(Object.entries(config.expected).some(([name,digest])=>installer.hash(Buffer.from(request.payload.files[name]??'','base64'))!==digest))refused('RUNTIME_INVALID');
+   if(typeof config.expected==='string'?request.payload.revision!==config.expected:Object.entries(config.expected).some(([name,digest])=>installer.hash(Buffer.from(request.payload.files[name]??'','base64'))!==digest))refused('RUNTIME_INVALID');
    result={version:1,ok:true,data:{...await installer.install(execution.home,request.payload,{beforeCommit(){if(!current())refused('STALE');}}),destination:binding}};
   }
+  else if(state.runtime==='missing'&&request.payload?.action==='discovery.prepare'&&request.payload.enabled===false&&!fs.existsSync(path.join(execution.home,'.customizations/trello-announcement.json')))result={version:1,ok:true,data:{announced:false,destination:binding}};
   else{
    if(state.runtime!=='ready')refused(state.runtime==='missing'?'RUNTIME_MISSING':state.runtime==='outdated'?'RUNTIME_OUTDATED':'RUNTIME_CONFLICT');
    const owner=require(path.join(runtime,'lib/trello/owner.cjs'));
-   result=await owner.execute(request.payload,{home:execution.home,isCurrent:current,binding,initialControl:request.initialControl});
+   result=await owner.execute(request.payload,{home:execution.home,userHome:execution.userHome,isCurrent:current,binding,initialControl:request.initialControl});
    if(result.ok)result.data={...result.data,destination:binding};
   }
   send({version:1,phase:'result',result});

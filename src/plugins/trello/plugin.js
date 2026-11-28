@@ -1,6 +1,10 @@
 import {localStatus, runtimeStatus, credentialAction, removeAccount, boardCheck, boardCandidates, removeBoard, accessState, setAccess} from './actions.js';
+import {prepareProfile, enabledChanged, syncLifecycle} from './discovery.js';
 export default {
-  id: 'trello', name: 'Trello', category: 'Agents', version: '1.3.0', icon: 'code',
+  id: 'trello', name: 'Trello', category: 'Agents', version: '1.4.0', icon: 'code',
+  prepareProfile,
+  onEnabledChange: enabledChanged,
+  lifecycle: {'sidebar.sync': syncLifecycle},
   description: 'Let agents read and update cards on the boards you choose.',
   descriptionLinks: [{label: 'API key and token', url: 'https://trello.com/apps/admin'}],
   defaultEnabled: false, machineScoped: true,

@@ -122,6 +122,7 @@
     "lib/trello/attachments.cjs": "src/plugins/trello/attachments.cjs",
     "lib/trello/download.cjs": "src/plugins/trello/download.cjs",
     "lib/trello/control.cjs": "src/plugins/trello/control.cjs",
+    "lib/trello/discovery.cjs": "src/plugins/trello/discovery.cjs",
     "lib/trello/credentials.cjs": "src/plugins/trello/credentials.cjs",
     "lib/trello/errors.cjs": "src/plugins/trello/errors.cjs",
     "lib/trello/operations.cjs": "src/plugins/trello/operations.cjs",

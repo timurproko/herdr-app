@@ -3,7 +3,7 @@
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const hash=bytes=>bytes===null?null:crypto.createHash('sha256').update(bytes).digest('hex');
 const reject=code=>{throw Object.assign(Error(code),{code});};
-const names=['attachments','download','cli','client','control','credentials','errors','help','operations','owner','policy','setup'];
+const names=['attachments','download','cli','client','control','credentials','discovery','errors','help','operations','owner','policy','setup'];
 const paths=[...names.map(n=>`lib/trello/${n}.cjs`),'lib/trello/TRELLO.txt','scripts/trello-launchers.mjs','scripts/files.mjs','package.json'];
 function safe(file){for(let p=path.resolve(file);;p=path.dirname(p)){try{if(fs.lstatSync(p).isSymbolicLink())reject('RUNTIME_CONFLICT');}catch(e){if(e.code!=='ENOENT')throw e;}if(path.dirname(p)===p)break;}return file;}
 function bytes(file){safe(file);try{const s=fs.statSync(file);if(!s.isFile()||s.size>2097152)reject('RUNTIME_CONFLICT');return fs.readFileSync(file);}catch(e){if(e.code==='ENOENT')return null;throw e;}}
@@ -19,7 +19,11 @@ function validate(p){
  return p;
 }
 function probe(runtime,expected){
- try{return {runtime:paths.every(rel=>hash(bytes(path.join(runtime,rel)))===expected[rel])?'ready':bytes(path.join(runtime,'lib/trello/cli.cjs'))?'outdated':'missing'};}
+ try{
+  const hashes=Object.fromEntries(paths.map(rel=>[rel,hash(bytes(path.join(runtime,rel)))]));
+  const matches=typeof expected==='string'?hash(Buffer.from(JSON.stringify(Object.entries(hashes).sort(([a],[b])=>a.localeCompare(b)))))===expected:paths.every(rel=>hashes[rel]===expected[rel]);
+  return {runtime:matches?'ready':bytes(path.join(runtime,'lib/trello/cli.cjs'))?'outdated':'missing'};
+ }
  catch{return {runtime:'blocked'};}
 }
 async function launcherModule(p){

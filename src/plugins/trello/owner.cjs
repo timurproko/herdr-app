@@ -146,6 +146,10 @@ async function operate(input, {store, ...io}) {
 async function execute(input, options = {}) {
   let commitAttempted = false;
   try {
+    if(input?.action==='discovery.prepare'){
+      if(!exact(input,['action','enabled'])||typeof input.enabled!=='boolean')fail('INPUT');
+      return {version:1,ok:true,data:require('./discovery.cjs').prepare(options.home,{enabled:input.enabled,userHome:options.userHome,isCurrent:options.isCurrent,storeOptions:options.storeOptions})};
+    }
     const backing = options.store ?? new Store(options.home);
     // The transport's lifetime is checked again under the local commit lock.
     const store = new Proxy(backing, {get(target, key, receiver) {

@@ -32,7 +32,8 @@ function machineAt(name,expected,spawnSync=cp.spawnSync){
  sshTarget(m.target);return {...m,session};
 }
 function commandFor(machine,binding,expected,runtime){
- const config={version:1,machine:{id:machine.id,session:machine.session},binding:binding??null,expected};
+ const revision=installer.hash(Buffer.from(JSON.stringify(Object.entries(expected).sort(([a],[b])=>a.localeCompare(b)))));
+ const config={version:1,machine:{id:machine.id,session:machine.session},binding:binding??null,expected:revision};
  const source=fs.readFileSync(path.join(runtime,'lib/private-actions/trello-bootstrap.cjs'),'utf8');
  const installSource=fs.readFileSync(path.join(runtime,'lib/private-actions/trello-install.cjs'),'utf8');
  const script=`const m={exports:{}};new Function('require','module','exports',${JSON.stringify(source)})(require,m,m.exports);m.exports.main(${JSON.stringify(config)},${JSON.stringify(installSource)});`;
@@ -96,6 +97,12 @@ async function dispatch(home,destination,payload,register=()=>{},options={}){
  try{
   if(!isCurrent())fail('STALE');
   if(!destination||destination.machine!==null&&typeof destination.machine!=='string'||!payload||typeof payload!=='object'||Array.isArray(payload))fail('INPUT');
+  if(payload.action==='discovery.all'){
+   if(destination.machine!==null||typeof payload.enabled!=='boolean'||Object.keys(payload).some(k=>!['action','enabled'].includes(k)))fail('INPUT');
+   const {record}=controller.read(home,settings),hosts=[{machine:null},...(record?.hosts??[]).filter(h=>h.machine!==null)];
+   const pending=[];for(const host of hosts){if(!isCurrent())fail('STALE');const r=await dispatch(home,{machine:host.machine,...(host.binding?{binding:host.binding}:{})},{action:'discovery.prepare',enabled:payload.enabled},track,{...options,runtime,isCurrent});if(!r.ok)pending.push(host.machine??'This computer');}
+   return {version:1,ok:true,data:{pending:[...new Set(pending)]}};
+  }
   if(payload.action==='global.status')result={version:1,ok:true,data:{global:controller.status(home,settings)}};
   else if(payload.action==='global.apply'){
    if(destination.machine!==null||Object.keys(payload).some(k=>!['action','access','expected'].includes(k)))fail('INPUT');
@@ -105,6 +112,10 @@ async function dispatch(home,destination,payload,register=()=>{},options={}){
   else{
    const binding=bindingFor(home);
    if(destination.binding&&JSON.stringify(destination.binding)!==JSON.stringify(binding))fail('MACHINE_CHANGED');
+   if(payload.action==='discovery.prepare'){
+    if(typeof payload.enabled!=='boolean'||Object.keys(payload).some(k=>!['action','enabled'].includes(k)))fail('INPUT');
+    return {version:1,ok:true,data:{...require(path.join(runtime,'lib/trello/discovery.cjs')).prepare(home,{enabled:payload.enabled,isCurrent,...options.discoveryOptions}),destination:binding}};
+   }
    if(payload.action==='runtime.probe')result={version:1,ok:true,data:{runtime:'ready',destination:binding}};
    else if(payload.action==='runtime.install')result={version:1,ok:true,data:{...await installer.install(home,installer.payload(runtime),{beforeCommit(){if(!isCurrent())fail('STALE');}}),destination:binding}};
    else{
@@ -113,6 +124,7 @@ async function dispatch(home,destination,payload,register=()=>{},options={}){
     if(result.ok)result={...result,data:{...result.data,runtime:'ready',destination:binding}};
    }
   }
+  if(payload.action==='discovery.prepare')return result;
   if(result.ok&&payload.action==='save'){
    try{controller.register(home,destination.machine,result.data.destination,result.data.control,settings);}catch{result=error('CONFIG_UNKNOWN',runtime);}
   }
@@ -125,9 +137,10 @@ async function dispatch(home,destination,payload,register=()=>{},options={}){
  return result;
 }
 if(require.main===module){
- const [mode,home,machine]=process.argv.slice(2);
- if(!['--status','--probe'].includes(mode)||!path.isAbsolute(home||''))process.exitCode=2;
+ const [mode,home,machine,enabled]=process.argv.slice(2);
+ if(!['--status','--probe','--prepare','--discovery-all'].includes(mode)||!path.isAbsolute(home||'')||['--prepare','--discovery-all'].includes(mode)&&!['true','false'].includes(enabled))process.exitCode=2;
  else{let target;try{target=JSON.parse(machine??'null');}catch{target=undefined;}
-  dispatch(home,{machine:target},{action:mode==='--probe'?'runtime.probe':'status'}).then(result=>{process.stdout.write(JSON.stringify(result)+'\n');process.exitCode=result.ok?0:3;});}
+  const payload=mode==='--prepare'||mode==='--discovery-all'?{action:mode==='--prepare'?'discovery.prepare':'discovery.all',enabled:enabled==='true'}:{action:mode==='--probe'?'runtime.probe':'status'};
+  dispatch(home,{machine:target},payload).then(result=>{process.stdout.write(JSON.stringify(result)+'\n');process.exitCode=result.ok?0:3;});}
 }
 module.exports={dispatch,remote,machineAt,sshTarget,commandFor,validBinding,safeMessages,bindingFor,COMMAND_LIMIT};

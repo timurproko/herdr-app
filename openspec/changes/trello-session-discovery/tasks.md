@@ -2,13 +2,13 @@
 
 ## 1. Enabled agents receive a lifecycle-correct Trello standing note
 
-- [ ] 1.1 Add the canonical short skill description/body and narrow owned-file publisher for shared A1/Codex and Claude user skill roots; verify all required capabilities, help reference, conditional writes and untrusted-data wording are in advertised metadata with no secret sentinels.
-- [ ] 1.2 Add exact-name user/home-bound ownership, linked-path refusal, compare-before-write, transactional update/removal and rollback; verify personal, modified and other-home skill fixtures remain unchanged and repeated reconciliation is a no-op.
-- [ ] 1.3 Package the helper in full and Trello-only runtimes without enabling it during install or adding anything to shell-only deployments; verify disposable installation closure and absent-off output in targeted deployment/remote fixtures.
-- [ ] 1.4 Connect explicit enable/disable and startup/reload reconciliation to the existing plugin lifecycle with generation and execution-host identity guards; verify toggle races, re-enable, offline pending/refusal and zero local fallback in discovery and remote fixtures.
-- [ ] 1.5 Add an awaited generic profile-preparation contribution before agent resource loading, preserving role gates and Claude mirror ordering; verify +/Start, ordinary and role launches cannot silently skip required note preparation or use another machine's files.
-- [ ] 1.6 Cover A1/Codex skill metadata discovery and shared/isolated Claude skill discovery in focused fixtures, including an initially absent Claude skills parent; distinguish actual loader checks from mocked model behavior in test output.
-- [ ] 1.7 Document each agent's note delivery, enabled/off behavior, conditional access wording and already-loaded/offline limits in README.md and docs/TRELLO.md; verify the documentation agrees with the note and targeted lifecycle tests.
+- [x] 1.1 Add the canonical short skill description/body and narrow owned-file publisher for shared A1/Codex and Claude user skill roots; verify all required capabilities, help reference, conditional writes and untrusted-data wording are in advertised metadata with no secret sentinels.
+- [x] 1.2 Add exact-name user/home-bound ownership, linked-path refusal, compare-before-write, transactional update/removal and rollback; verify personal, modified and other-home skill fixtures remain unchanged and repeated reconciliation is a no-op.
+- [x] 1.3 Package the helper in full and Trello-only runtimes without enabling it during install or adding anything to shell-only deployments; verify disposable installation closure and absent-off output in targeted deployment/remote fixtures.
+- [x] 1.4 Connect explicit enable/disable and startup/reload reconciliation to the existing plugin lifecycle with generation and execution-host identity guards; verify toggle races, re-enable, offline pending/refusal and zero local fallback in discovery and remote fixtures.
+- [x] 1.5 Add an awaited generic profile-preparation contribution before agent resource loading, preserving role gates and Claude mirror ordering; verify +/Start, ordinary and role launches cannot silently skip required note preparation or use another machine's files.
+- [x] 1.6 Cover A1/Codex skill metadata discovery and shared/isolated Claude skill discovery in focused fixtures, including an initially absent Claude skills parent; distinguish actual loader checks from mocked model behavior in test output.
+- [x] 1.7 Document each agent's note delivery, enabled/off behavior, conditional access wording and already-loaded/offline limits in README.md and docs/TRELLO.md; verify the documentation agrees with the note and targeted lifecycle tests.
 
 ## 2. Agent shells resolve the installed Trello command by name
 

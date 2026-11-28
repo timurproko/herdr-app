@@ -64,7 +64,7 @@ global.Function=new Proxy(Function,{construct(target,parameters){
       const result=cp.spawnSync(shell,args,{env,encoding:'utf8',timeout:15000,windowsHide:true,windowsVerbatimArguments:process.platform==='win32'});
       assert.equal(result.error,undefined,`${action}: shell failed to start`);
       assert.equal(result.status,0,`${action} (${command.length} chars): ${result.stderr}`);
-      assert.deepEqual(JSON.parse(result.stdout),{config:{version:1,machine,binding,expected},installerHash:installer.hash(Buffer.from(installerSource))});
+      assert.deepEqual(JSON.parse(result.stdout),{config:{version:1,machine,binding,expected:payload.revision},installerHash:installer.hash(Buffer.from(installerSource))});
       shellRuns++;
     }
   }

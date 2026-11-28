@@ -18,7 +18,7 @@ try {
  const privateFiles=['credentials','policy'].map(n=>path.join(home,`.customizations/trello/${n}.json`));
  privateFiles.forEach(f=>fs.writeFileSync(f,'fake-private-bytes-do-not-read'));fs.writeFileSync(path.join(home,'.migration-fixture'),'fixture');
  const {output}=build(),manifest=JSON.parse(fs.readFileSync(path.join(output,'bundle.json')));
- for(const name of ['attachments','download','cli','help','client','credentials','errors','operations','policy','setup'])assert.ok(manifest.files[`.customizations/runtime/lib/trello/${name}.cjs`]);
+ for(const name of ['attachments','download','cli','help','client','credentials','discovery','errors','operations','policy','setup'])assert.ok(manifest.files[`.customizations/runtime/lib/trello/${name}.cjs`]);
  assert.ok(manifest.files['.customizations/runtime/lib/trello/TRELLO.txt']);
  const binLock=path.join(bin,'.herdr-trello.lock'),beforeFirst=snapshot(home);
  fs.writeFileSync(binLock,'another installer');
@@ -92,6 +92,7 @@ try {
  const shellHome=path.join(root,'shell-only');deploy(output,shellHome,{shellOnly:true,trelloBin:bin});
  assert.deepEqual(Object.keys(JSON.parse(fs.readFileSync(path.join(shellHome,'.customizations/manifest.json'))).files).sort(),[...shellPaths].sort());
  assert.ok(!fs.existsSync(path.join(shellHome,'.customizations/trello-launchers.json')));
+ assert.ok(!fs.existsSync(path.join(home,'.customizations/trello-announcement.json')),'Deployment never enables or publishes a skill by itself');
  rollback(home,first.backup,{fixture:true});
  assert.ok(!fs.existsSync(path.join(bin,'herdr-trello')));
  assert.ok(!fs.existsSync(path.join(home,'.customizations/trello-launchers.json')));
