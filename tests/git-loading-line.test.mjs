@@ -64,9 +64,15 @@ p.motionReduced=false;const dot=animations(p.loadingMessage(t,'normal'))[0],line
  const cx={spawn:fn=>jobs.push(fn(cx)),notify:()=>notifications++,timer:{after(ms,fn){timers.push({ms,fn});}}};
  const flush=async()=>{for(let i=0;i<5;i++)await Promise.resolve();};
  const step=ms=>{const timer=timers.shift();assert.equal(timer?.ms,ms);timer.fn(cx);};
- const draw=active=>p.syncLoadingLine(active,cx)?p.loadingLine(t):null;
+ const draw=active=>p.syncLoadingLine(active,cx)?p.loadingLine(t,cx):null;
  let tree=draw(true),state=p.loadingLineState;assert.equal(jobs.length,0,'Lifecycle uses the view timer directly like StatusReveal, not a spawned task that can lose arming');assert.equal(timers.length,1);assert.equal(tree.attrs.opacity[0],0);assert.equal(tree.attrs.transition,undefined,'First paint hides without a transition from native default opacity');
- await flush();assert.equal(timers.length,1);step(16);tree=draw(true);assert.equal(tree.attrs.opacity[0],0);assert.equal(tree.attrs.transition[0],'opacity');
+ await flush();assert.equal(timers.length,1);step(16);
+ assert.equal(timers.length,0,'Elapsed time cannot queue reveal before an armed tree is built');
+ assert.equal(p.loadingLineState.phase,'armed','A deferred/coalesced redraw stays armed, never visible');
+ // Drain every queued callback without drawing: there is no second callback
+ // to jump straight from hidden to opacity 1 as in the review reproduction.
+ for(let elapsed=0;elapsed<5;elapsed++){assert.equal(timers.length,0);await flush();}
+ tree=draw(true);assert.equal(tree.attrs.opacity[0],0);assert.equal(tree.attrs.transition[0],'opacity');
  step(16);tree=draw(true);assert.equal(tree.attrs.opacity[0],1);assert.equal(timers.length,0);
  for(let i=0;i<20;i++){draw(true);assert.equal(p.loadingLineState,state);}assert.equal(timers.length,0,'Routine refresh/rerender never restarts pulse or schedules a frame timer');
  tree=draw(false);assert.equal(tree.attrs.opacity[0],0);assert.equal(tree.attrs.role,undefined,'Fading presentation is not active work');await flush();assert.equal(timers[0].ms,140);

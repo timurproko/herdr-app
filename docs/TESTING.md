@@ -312,6 +312,8 @@ native breathing, then one 140ms exit callback after the read completes. CI run
 46146489908 exposed its obsolete zero-total-timer and bright-endpoint expectations;
 the updated assertions retain the no-polling/no-frame-loop guards and check the
 transparent/armed/visible/exiting states rather than skipping timer validation.
+The deferred-redraw case drains callbacks without rendering and requires that
+reveal remain unqueued until the armed zero-opacity tree is actually built.
 `tests/features/git-loading-native.mjs --run --zoom 1|1.3 --output <outside>`
 uses a checksum-verified release 0.1.18 executable, synthetic data and isolated
 app/Core homes. It captures ordinary/coordinator cold Loading (two pulse phases),
@@ -329,9 +331,27 @@ paint, so deterministic first-frame style guards remain independent. Paired
 100%/130% native samples show transparent entry, gradual rise, and exit returning
 to the idle pixels. HWND BitBlt video was black on the accelerated host and is
 rejected as proof; no desktop recording substitutes for the disposable surface.
-The separate `git-refresh-native.mjs` production-provider replay reproduces the
-real last-good-frame interruption without forced loops and requires error-free
-completion after the fix; `--expect-interruption` checks an inert baseline source.
+The separate `git-refresh-native.mjs` production-provider replay now defaults to
+four workers initially, adds unrelated agents at tick 10 and grows to fourteen
+mixed ship/review workers in the same child at tick 20. It requires all fourteen
+rows actually mounted, no native interruption/continuation errors and at most
+35ms measured construction, without changing the native 50ms watchdog. Repeat
+`--workers 14 --unrelated 20 --cycles 60` three times at each `--zoom 1` / `1.3`;
+120 unrelated agents provide an additional stress matrix. `--profile` records
+bounded method/native-read counters and times. The real production location helper
+is exercised rather than stubbed. Samples are buffered during render
+and flushed outside it, so synchronous tracing cannot manufacture a render abort.
+`--expect-interruption` checks inert baseline sources; a baseline that does not
+interrupt is reported honestly, not accepted as reproduction. See the full
+controller profile and retained timing-limit evidence in GIT-RENDER-BUDGET.md.
+`git-refresh-frame.test.mjs` independently tests fresh dispatch/publication after
+yields and awaited error handling; `pr-agent-links.test.mjs` additionally bounds
+provider/settings reads and forbids directory resolution for unrelated candidates.
+`git-location.test.mjs` separately proves repeated same-frame location projections
+reuse captured native collections, while unframed read/action lookups stay live.
+The final 12-replay native matrix had zero interruptions but two 20-unrelated
+runs (36ms/40ms) failed the 35ms margin guard; this stricter validation gap was not
+silenced or relaxed.
 The fixture checks native logs as well as status.errors, writes proof outside the
 checkout, and stops every owned desktop/Core instance in finally. It is not a
 live-agent, network or native pointer hit-test.
