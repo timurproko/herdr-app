@@ -459,8 +459,16 @@ change the global icon. The next bulk toggle flips that default and clears all
 exceptions, even for hidden repositories. Both the default and exceptions survive
 app restart on this client, without portable preference export. Existing saved
 folds are preserved on upgrade until a bulk toggle replaces them. Collapsing keeps
-the current agent's pinned PR visible above its header; expanding respects existing
-pagination and reveal limits rather than fetching or mounting every PR.
+the current agent's pinned PR visible and live above its header. Collapsed ordinary
+and coordinator repositories do no list, sibling/task-PR or count-only refresh
+work, including on manual Refresh and webhook updates; their header keeps its
+last-known per-tab count. New task links in collapsed or filter-hidden repositories
+wait too; expanded siblings keep updating without waiting for those quiet groups. Only the
+resolved selected-agent PR is refreshed through targeted reads and existing safety
+cadence. Explicit PR/footer links and cached branch matches can select it without
+listing the collapsed repository; a cold branch-only match waits for expansion.
+Expanding respects existing pagination and reveal limits rather than fetching or
+mounting every PR.
 
 Entering a worker space immediately reuses its exact machine/repository's cached
 section, including data already loaded by the coordinator. Returning to the

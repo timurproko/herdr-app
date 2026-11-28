@@ -387,7 +387,9 @@ than mounted rows or GitHub repository totals. The flexible name
 uses all remaining width; a clipped invisible natural-width probe and the label's
 available width enable its full-name tooltip only on actual overflow. Geometry is
 local, scope-keyed and updated after layout with changed-only notifications, not
-render-time effects. Internal task totals still include folded repositories; Open/Closed controls show labels only, without badge subtrees or reservations.
+render-time effects. Internal task totals still include last-known folded repositories, retaining
+unknown/incomplete metadata for unread identities; Open/Closed controls show labels
+only, without badge subtrees or reservations.
 Git's `repository-disclosure.js` owns a version-1 localStorage record
 (`custom.git.repositories.disclosure`) with a global collapsed default and
 canonical repository exceptions. Initially expanded, it imports the previous
@@ -401,11 +403,19 @@ this client, separately from PR snapshots and without portable preference export
 An unchanged or refused store preserves unsaved in-memory choices; restart
 persistence requires working localStorage. Unsupported data is not rewritten by
 restoration. Retained views reconcile saved disclosure before section publication.
-Explicit toggles are UI-only: no preference export or Crew/host-document writes,
-and no new fetch or cancellation. Fold state survives tab/context changes and
-panel recreation. Scoped rows/errors and repository-specific diagnostics fold with
-the body; global setup stays visible. Counts and webhook-driven facts continue
-updating while folded. One shared projection derives selected-tab sections from known eligible rows
+Toggles now also gate panel PR-read admission: no preference export or
+Crew/host-document writes. Collapsing starts no group list, targeted PR, count-only
+or detail work; already-dispatched requests cannot start follow-ups or publish
+into the folded snapshot. Expanding schedules the normal eligible bounded refresh.
+Repository-scoped epochs reject collapse-expand races without retiring unrelated
+repositories. Fold state survives tab/context changes and panel recreation.
+Scoped rows/errors and repository-specific diagnostics fold with the body; global
+setup stays visible. Folded per-tab headers/counts retain the last-known section,
+including across local task membership/history aging, until expansion; action
+membership and context/enable invalidation still take precedence over display.
+Deliberately deferred unknown entries do not keep cold publication or warm activity
+waiting. The ordinary selected-agent PR alone keeps targeted/event/safety reads
+when folded, without refreshing siblings or group counts. One shared projection derives selected-tab sections from known eligible rows
 or an applicable `readNotice` before applying folds. Header eligibility separately
 requires selected-tab PRs: notice-only sections have neither count nor chevron,
 ignore saved folds and never acquire synthetic continuation headers. Unknown-state queued,
@@ -455,7 +465,14 @@ probe widths use a bounded zoom/style-keyed cache; PR label presentation caches
 immutable facts, never native callback-bearing elements. Coordinator rows build
 at most three pills but retain all names in metadata/strip tooltips. See
 [GIT-RENDER-BUDGET.md](GIT-RENDER-BUDGET.md) for measurements and native-check limits. The cross-tab repository inventory remains separate from this render
-projection so membership reads, enrollment and webhook updates do not lose hidden sections.
+projection so membership, enrollment and invalidation do not lose filter-hidden
+sections. Canonical disclosure, never a mounted header or selected-tab eligibility,
+admits PR refresh. Independent Custom update attention uses the chrome relay and
+its own subscription; Core CI/conflict/merge monitors use their own evidence.
+Native/Crew badges, worker availability and rounds, setup/enrollment checks and
+local identity/footer work remain live. GitHub-derived hidden stages/checklists/
+checks and panel totals go quiet with the group; no outside-panel consumer of
+those panel PR facts is paused or used to justify extra group reads.
 
 Coordinator enrollment uses one non-shrinking footer after `task-pulls-scroll`.
 `GitNotices.presentation` is a pure cached snapshot of confirmed unenrolled

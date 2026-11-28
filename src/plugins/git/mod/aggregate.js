@@ -47,7 +47,7 @@ function rememberMissing(entry) {
   }
 }
 export class AggregatePulls {
-  constructor({shown,onUpdate,presentationEpoch=()=>0,presentationAlive=()=>true}) {this.shown=shown;this.onUpdate=onUpdate;this.presentationEpoch=presentationEpoch;this.presentationAlive=presentationAlive;this.presentations=new PresentationMemory();this.stagePresentations=new Map();this.publication=new Publication();this.entries=new Map();this.pending=new Map();this.diagnostics=new Map();this.serial=0;this.factOrder=new PullFactsOrder();}
+  constructor({shown,onUpdate,presentationEpoch=()=>0,presentationAlive=()=>true,readToken=()=>0}) {this.readToken=readToken;this.frozen=new Map();this.shown=shown;this.onUpdate=onUpdate;this.presentationEpoch=presentationEpoch;this.presentationAlive=presentationAlive;this.presentations=new PresentationMemory();this.stagePresentations=new Map();this.publication=new Publication();this.entries=new Map();this.pending=new Map();this.diagnostics=new Map();this.serial=0;this.factOrder=new PullFactsOrder();}
   currentContext({presentation = false,space} = {}) {
     const source=location(), held=source.git;
     if(space===undefined)space=source.space;
@@ -87,10 +87,10 @@ export class AggregatePulls {
     if(context?.scope!==previous?.scope || !compatible) {
       if(previous && compatible && sidebarPanelEnabled('changes') && (context || location(snapshot).space!==previous.parent))this.rememberPresentation();
       else if(previous && !context)this.presentations.delete(previous.scope);
-      this.readWake=null;this.manualRead=null;this.serial++;this.factOrder.reset();this.entries.clear();this.pending.clear();this.diagnostics.clear();this.lastCounts=null;this.returning=false;this.published=null;
+      this.readWake=null;this.manualRead=null;this.serial++;this.factOrder.reset();this.entries.clear();this.frozen.clear();this.pending.clear();this.diagnostics.clear();this.lastCounts=null;this.returning=false;this.published=null;
       if(context && !context.stale && context.parent)for(const [scope,saved]of this.presentations)if(scope!==context.scope && saved.parent===context.parent && saved.machine===context.machine)this.presentations.delete(scope);
       const saved=context && this.presentations.get(context.scope);
-      if(saved){this.returning=true;this.entries=new Map(saved.entries.map(([key,e])=>[key,{...e,link:{...e.link},dirty:true}]));this.lastCounts=saved.lastCounts;this.published=saved.published?new Map(saved.published):null;this.presentations.delete(context.scope);}
+      if(saved){this.returning=true;this.entries=new Map(saved.entries.map(([key,e])=>[key,{...e,link:{...e.link},dirty:true}]));this.lastCounts=saved.lastCounts;this.frozen=new Map(saved.frozen??[]);this.published=saved.published?new Map(saved.published):null;this.presentations.delete(context.scope);}
     }
     if(!sidebarPanelEnabled('changes'))this.presentations.clear();
     this.context=context;
@@ -101,6 +101,9 @@ export class AggregatePulls {
       // an authoritative deletion, nor permission to read or navigate.
       return true;
     }
+    // Freeze the published section before authoritative membership changes.
+    // Retained presentation never grants actions to removed live entries.
+    this.reconcileDisclosure();
     const links=new Map();
     for(const source of context.links) {const link=taskPullLink(source.url);if(!link)continue;const entry=links.get(link.key)??{...link,targets:[]};entry.targets.push({terminal:source.terminal,task:source.task,historical:source.historical===true,...(typeof source.space==='string'?{space:source.space}:{})});links.set(link.key,entry);}
     for(const key of this.entries.keys()) if(!links.has(key)) {this.entries.delete(key);this.pending.delete(key);}
@@ -114,7 +117,7 @@ export class AggregatePulls {
         if(liveLink(link) && Date.now()-missingAt>=MISSING_LIVE_MS && !this.pending.has(key))entry.dirty=true;
       }
     }
-    this.rememberCounts();
+    this.reconcileDisclosure();this.rememberCounts();
     if(!this.shown()) {this.serial++;this.factOrder.reset();this.pending.clear();this.diagnostics.clear();for(const e of this.entries.values())e.dirty=true;}
     else this.pump(cx,snapshot);
     return true;
@@ -124,25 +127,43 @@ export class AggregatePulls {
     this.rememberCounts();
     const entries=[...this.entries].map(([key,e])=>[key,{...e,link:{...e.link},dirty:true}]);
     this.presentations.delete(this.context.scope);
-    this.presentations.set(this.context.scope,{scope:this.context.scope,providerGeneration:this.context.presentationGeneration??0,entries,published:this.published?[...this.published]:null,lastCounts:this.lastCounts?new Map(this.lastCounts):null,parent:this.context.parent,machine:this.context.machine});
+    this.presentations.set(this.context.scope,{scope:this.context.scope,providerGeneration:this.context.presentationGeneration??0,entries,frozen:[...this.frozen],published:this.published?[...this.published]:null,lastCounts:this.lastCounts?new Map(this.lastCounts):null,parent:this.context.parent,machine:this.context.machine});
   }
-  stop() {this.presentations.clear();this.stagePresentations.clear();this.published=null;this.returning=false;this.lastCounts=null;this.serial++;this.factOrder.reset();this.context=null;this.entries.clear();this.pending.clear();this.diagnostics.clear();}
+  stop() {this.presentations.clear();this.stagePresentations.clear();this.published=null;this.returning=false;this.lastCounts=null;this.serial++;this.factOrder.reset();this.context=null;this.entries.clear();this.frozen.clear();this.pending.clear();this.diagnostics.clear();}
+  readable(entry) {return this.readToken(entry.link.repo)!==null;}
+  get deferredUnknown() {return [...this.entries.values()].some(e=>this.unresolved(e) && !this.readable(e));}
+  reconcileDisclosure() {
+    const repositories=new Set([...this.entries.values()].map(e=>e.link.repo)),closing=new Set(),opening=new Set();
+    for(const repo of new Set([...this.frozen.keys(),...repositories])) {
+      if(this.readToken(repo)===null) {
+        if(!this.frozen.has(repo)){closing.add(repo);this.frozen.set(repo,new Map());}
+      } else if(this.frozen.delete(repo))opening.add(repo);
+    }
+    if(closing.size)for(const [key,e]of this.published??this.entries)if(closing.has(e.link.repo) && this.eligible(e))
+      this.frozen.get(e.link.repo).set(key,{...e,link:{...e.link}});
+    if(opening.size)for(const entry of this.entries.values())if(opening.has(entry.link.repo))entry.dirty=true;
+    // Same bounds as retained repository identities and PR presentation memory.
+    for(const [repo,rows]of this.frozen)if(!rows.size && !repositories.has(repo))this.frozen.delete(repo);
+    while(this.frozen.size>256 || [...this.frozen.values()].reduce((sum,rows)=>sum+rows.size,0)>4096)this.frozen.delete(this.frozen.keys().next().value);
+  }
+  get dirty() {return [...this.entries.values()].some(e=>e.dirty && this.readable(e));}
   get busy() {return this.pending.size>0 || Boolean(this.fallbackBusy);}
   unresolved(entry) {return !entry.pr && !entry.missing;}
   get countsLoading() {return [...this.entries.values()].some(e=>this.unresolved(e)) || Boolean(this.context?.stale && !this.entries.size);}
-  loading(repository) {return [...this.entries.values()].some(e=>e.link.repo===repository && this.unresolved(e) && !e.error);}
-  get waiting() {return Boolean(this.returning) || [...this.entries.values()].some(e=>this.unresolved(e) && !e.error);}
+  loading(repository) {return [...this.entries.values()].some(e=>e.link.repo===repository && this.readable(e) && this.unresolved(e) && !e.error);}
+  get waiting() {return Boolean(this.returning && [...this.entries.values()].some(e=>this.readable(e))) || [...this.entries.values()].some(e=>this.readable(e) && this.unresolved(e) && !e.error);}
   get published() {return this.publication.value;}
   set published(value) {this.publication.value=value;}
-  get publicationPending() {return Boolean(this.context?.stale || this.returning || this.busy || [...this.entries.values()].some(e=>e.dirty));}
+  get publicationPending() {return Boolean(this.context?.stale || this.busy || this.dirty);}
   get hasPresentation() {return this.published!==null || !this.publicationPending && !this.waiting;}
-  get updating() {return Boolean(this.context?.stale || this.busy || (!this.readWake || this.readWake.due<=Date.now()) && (this.returning || [...this.entries.values()].some(e=>e.dirty)));}
+  get updating() {return Boolean(this.context?.stale || this.busy || (!this.readWake || this.readWake.due<=Date.now()) && this.dirty);}
   // Pure projection: a cold partial read cannot become warm on re-entry.
-  presentationEntries() {return this.publication.project(this.entries,this.publicationPending || this.waiting)??new Map();}
+  presentationEntries() {return this.publication.project(this.sectionEntries(),this.publicationPending || this.waiting)??new Map();}
   presentationRows(state) {
     const now=Date.now();return [...this.presentationEntries()].flatMap(([key,entry])=>{
-      const current=this.entries.get(key);
-      return current && !current.missing && this.eligible({...entry,link:current.link},now) && (state==='open'?['open','draft']:['closed','merged']).includes(entry.pr.state)?[entry.pr]:[];
+      const frozen=this.readToken(entry.link.repo)===null && this.frozen.get(entry.link.repo)?.has(key);
+      const current=frozen?entry:this.entries.get(key);
+      return current && !current.missing && (frozen || this.eligible({...entry,link:current.link},now)) && (state==='open'?['open','draft']:['closed','merged']).includes(entry.pr.state)?[entry.pr]:[];
     });
   }
   eligible(entry, now = Date.now()) {
@@ -151,7 +172,12 @@ export class AggregatePulls {
     const age=now-entry.completedAt;
     return Number.isFinite(age) && age>=0 && age<HISTORY_MS;
   }
-  rows(state) {const now=Date.now();return [...this.entries.values()].flatMap(e=>this.eligible(e,now) && (state==='open'?['open','draft']:['closed','merged']).includes(e.pr.state)?[e.pr]:[]);}
+  rows(state) {const now=Date.now();return [...this.sectionEntries().values()].flatMap(e=>(this.frozen.get(e.link.repo)?.has(e.link.key) || this.eligible(e,now)) && (state==='open'?['open','draft']:['closed','merged']).includes(e.pr.state)?[e.pr]:[]);}
+  sectionEntries() {
+    const entries=new Map([...this.entries].filter(([,e])=>!this.frozen.has(e.link.repo)));
+    for(const section of this.frozen.values())for(const [key,entry]of section)entries.set(key,entry);
+    return entries;
+  }
   readNotice(repository, state) {
     const now=Date.now();
     const failed=[...this.entries.values()].filter(e=>e.link.repo===repository && e.error && (e.pr
@@ -171,13 +197,13 @@ export class AggregatePulls {
   }
   repositories(snapshot) {
     const now=Date.now();
-    const repositories=[...new Set([...this.entries.values()].filter(e=>!e.missing && (!e.pr || this.eligible(e,now))).map(e=>e.link.repo))].sort();
+    const repositories=[...new Set([...this.sectionEntries().values(),...this.entries.values()].filter(e=>!e.missing && (!e.pr || this.frozen.get(e.link.repo)?.has(e.link.key) || this.eligible(e,now))).map(e=>e.link.repo))].sort();
     return [...this.entries.values()].some(e=>e.link.targets.some(t=>t.space))
       ? repositorySpaceOrder(repositories,this.context,this.entries.values(),snapshot?.groups??spaces()) : repositories;
   }
   rememberCounts() {
     if(!this.publicationPending && !this.waiting) {
-      this.publication.commit(new Map([...this.entries].map(([key,e])=>[key,{...e,link:{...e.link}}])));
+      this.publication.commit(new Map([...this.sectionEntries()].map(([key,e])=>[key,{...e,link:{...e.link}}])));
       if(!this.countsLoading)this.lastCounts=new Map(this.published);
     }
   }
@@ -186,21 +212,22 @@ export class AggregatePulls {
     if(!this.lastCounts)return {open:null,closed:null};
     const now=Date.now(),counts={open:0,closed:0};
     for(const [key,prior]of this.lastCounts) {
-      const current=this.entries.get(key);
-      if(current && !current.missing && this.eligible({...prior,link:current.link},now))counts[['open','draft'].includes(prior.pr.state)?'open':'closed']++;
+      const frozen=this.frozen.get(prior.link.repo)?.get(key),current=frozen??this.entries.get(key);
+      if(current && !current.missing && (frozen || this.eligible({...prior,link:current.link},now)))counts[['open','draft'].includes(prior.pr.state)?'open':'closed']++;
     }
     return counts;
   }
   invalidate(repository=null) {this.rememberCounts();this.diagnostics.clear();for(const e of this.entries.values())if((!repository || e.link.repo===repository.toLowerCase()) && !finalPull(e.pr))e.dirty=true;}
   refresh(cx) {pluginEvent('workspace.context.refresh',{cx,space:location().space,force:true});this.manualRead={remaining:1,expires:Date.now()+30000};this.readWake=null;this.invalidate();this.pump(cx);}
   pump(cx,snapshot) {
+    this.reconcileDisclosure();
     if(this.fallbackBusy || this.readWake?.due>Date.now())return;
     // A frame may project demand once; the spawned read always revalidates
     // live provider identity after yielding before dispatch or publication.
     if(!this.context || this.context.stale || !this.shown() || this.frameContext(snapshot)?.scope!==this.context.scope) {this.manualRead=null;return;}
     const context=this.context,scope=context.scope,serial=this.serial,epoch=this.presentationEpoch(),providerGeneration=context.presentationGeneration??0,groups=new Map();
     for(const [key,entry]of this.entries) {
-      if(!entry.dirty || this.pending.has(key))continue;
+      if(!entry.dirty || !this.readable(entry) || this.pending.has(key))continue;
       const missingAt=missingPulls.get(key);
       if(missingAt!==undefined && (!liveLink(entry.link) || Date.now()-missingAt<MISSING_LIVE_MS)) {
         entry.pr=null;entry.error=null;entry.missing=true;entry.dirty=false;continue;
@@ -210,9 +237,10 @@ export class AggregatePulls {
     for(const [repository,entries]of groups)for(let at=0;at<entries.length;at+=20) {
       if([...this.pending.keys()].some(key=>this.entries.get(key)?.link.repo===repository))break;
       if(new Set(this.pending.values()).size>=3)return;
-      const batch=entries.slice(at,at+20),token={},read=this.factOrder.begin();
+      const batch=entries.slice(at,at+20),token={},read=this.factOrder.begin(),admission=this.readToken(repository,true);
+      if(admission===null)continue;
       for(const entry of batch) {entry.dirty=false;this.pending.set(entry.link.key,token);}
-      const live=()=>this.serial===serial && this.shown() && this.presentationEpoch()===epoch;
+      const live=()=>this.serial===serial && this.shown() && this.presentationEpoch()===epoch && admission!==null && this.readToken(repository,true)===admission;
       const liveContext=()=>{
         if(!live())return null;
         const latest=this.currentContext();
@@ -255,15 +283,18 @@ export class AggregatePulls {
           }
         }catch(error){for(const entry of batch)await failed(entry,error);}
         finally {
-          for(const entry of batch)if(this.pending.get(entry.link.key)===token)this.pending.delete(entry.link.key);
+          for(const entry of batch)if(this.pending.get(entry.link.key)===token) {
+            if(!live() && this.entries.get(entry.link.key)===entry)entry.dirty=true;
+            this.pending.delete(entry.link.key);
+          }
           if(this.serial===serial && this.shown())this.pump(view);
-          if(!this.pending.size && ![...this.entries.values()].some(e=>e.dirty)) {this.diagnostics.clear();this.manualRead=null;this.returning=false;}
+          if(!this.pending.size && !this.dirty) {this.diagnostics.clear();this.manualRead=null;this.returning=false;}
           this.rememberCounts();view.notify();
         }
         if(updated && current())this.onUpdate?.(view);
       });
     }
-    if(!this.pending.size && ![...this.entries.values()].some(e=>e.dirty)){this.manualRead=null;this.returning=false;}
+    if(!this.pending.size && !this.dirty){this.manualRead=null;this.returning=false;}
     this.rememberCounts();
   }
   // A render may reuse read-only context, never action authority. Click/focus

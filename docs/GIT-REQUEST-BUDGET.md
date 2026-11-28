@@ -119,13 +119,35 @@ GraphQL cannot condition contexts on a summary returned in that same response.
 The documented measured aggregate and steady-state savings are the target, not
 an assertion that every isolated first page uses fewer operations.
 
+## Collapsed repositories
+
+Saved disclosure gates ordinary panel PR admission, not just row rendering.
+Manual, webhook/reconnect, page/append, retry and safety demand start no group
+list, sibling PR, detail or count-only request while collapsed. Already-started
+requests may finish but cannot launch retired follow-ups or replace the folded
+snapshot. The resolved selected-agent pin alone keeps targeted mutable facts and
+its existing safety cadence; those reads never refresh group counts. An explicit
+older link remains targeted, and a known cached branch match remains usable. A
+cold branch-only association waits for expansion rather than listing a quiet group.
+Coordinator targeted queues use the same canonical policy, including new task
+links and repositories hidden by Open/Closed. Deferred folded identities do not
+block expanded sibling publication or hold active-work feedback. Folded task
+sections/counts retain the last-known per-tab snapshot until expansion; removed
+members cannot acquire actions from that presentation. Counts/history aging do
+not trigger reads. Expanded groups retain the measured budgets above; collapsed
+groups use zero panel PR operations, apart from the ordinary pin exception.
+Local root/branch/footer identity, enrollment/setup checks, Crew/native status,
+independent Custom update attention and Core-side CI/conflict/merge monitoring
+are not disabled. No external consumer of panel-derived PR stages/checklists or
+checks is silently frozen.
+
 ## Complete request inventory
 
 | Reader / trigger | Before | Current policy |
 |---|---|---|
 | Aggregate initial unknown live/history | One full PR query per identity | Repository metadata batches, then only needed details; unknown history is classified once for truthful totals |
 | Aggregate warm manual/events/reconnect/show | All linked identities reread | Mutable facts only; session-final facts and their labels/checks reused |
-| Aggregate counts/history aging | Local, no GitHub count API | Still local, full verified task inventory, independent of UI paging/folding |
+| Aggregate counts/history aging | Local, no GitHub count API | Local verified inventory for expanded groups; folded per-tab presentation/counts stay last-known until expansion |
 | Ordinary initial/Open pages | Canonical repo lookup, then ten-row page including checks/totals | Canonical lookup then metadata/summary page and only new/changed details |
 | Ordinary Closed pages | Full ten-row page with checks | Membership numbers/counts only; cached final details reused, unknown rows hydrated once |
 | Ordinary events after both tabs visited | Every loaded Open and Closed page, plus older pin | Selected-tab pages only, no hidden Closed rereads |
