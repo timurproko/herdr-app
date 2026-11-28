@@ -1,6 +1,8 @@
 # Tasks
 
-The three groups below map one-to-one, in order, to the draft PR's Implementation outcomes. All remain pending until the plan is approved. Run targeted tests only, with fake credentials/provider/SSH and disposable output in the crew task folder.
+The three groups below map one-to-one, in order, to the draft PR's Implementation outcomes. The plan was approved; group 1 is implemented. Run targeted tests only, with fake credentials/provider/SSH and disposable output in the crew task folder.
+
+Implementation is paused before group 2: this worker has a normal Windows token and no supplied elevated test context. The required real elevated-write/non-elevated-read proof cannot be claimed from mocked identities or normal-token ACL tests. Supply explicitly authorized same-user elevated and normal test contexts before continuing; do not auto-elevate or change Core startup. Groups 2 and 3 remain unimplemented, and this partial draft must not be deployed or treated as complete.
 
 ## 1. Same-user SSH proof preserves the private boundary
 

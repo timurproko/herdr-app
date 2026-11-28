@@ -21,17 +21,24 @@ try{
  // Elevated SSH is not rejected for its token: metadata ownership is still enforced.
  for(const elevated of [true,false])b.windowsUser('named',{env:{LOCALAPPDATA:root,SystemRoot:'C:/Windows'},execute(_file,args,options){const script=Buffer.from(args.at(-1),'base64').toString('utf16le');assert.ok(!script.includes('exit 31'));assert.ok(script.includes('$o -ne $i.User.Value'));assert.equal(options.env.HC_SESSION,'named');assert.equal(typeof elevated,'boolean');}});
  process.env.LOCALAPPDATA=root;const metadata=path.join(root,'herdr-core/named/core.json');fs.mkdirSync(path.dirname(metadata),{recursive:true});
- async function boot({beforeReady,afterReady,verify=b.proveCore,source=installer,kind='probe',current=()=>true}={}){
-  fs.writeFileSync(metadata,JSON.stringify({id:machine.id}));const input=new PassThrough(),output=new PassThrough();let text='',sent=false;
+ async function boot({beforeReady,afterReady,verify=b.proveCore,source=installer,kind='probe',current=()=>true,prepare,windowsCheck=()=>{}}={}){
+  fs.writeFileSync(metadata,JSON.stringify({id:machine.id}));prepare?.(metadata);const input=new PassThrough(),output=new PassThrough();let text='',sent=false;
   output.on('data',chunk=>{text+=chunk;if(!sent&&text.includes('"phase":"ready"')){sent=true;afterReady?.();input.write(JSON.stringify({version:1,kind,payload:{action:'runtime.probe'}})+'\n');}});
   let verifications=0;
-  const done=b.main({version:1,machine,expected:{}},require('node:crypto').createHash('sha256').update(source).digest('hex'),{platform:'win32',input,output,executionHome:()=>({...execution}),checkWindows:()=>{},getWindowsFacts:()=>({sid:execution.sid,profile:root,elevated:true}),connectCore:()=>({...fake(),current}),verifyCore:async(...args)=>{await verify(...args);if(++verifications===1)beforeReady?.();}});
+  const done=b.main({version:1,machine,expected:{}},require('node:crypto').createHash('sha256').update(source).digest('hex'),{platform:'win32',input,output,executionHome:()=>({...execution}),checkWindows:windowsCheck,getWindowsFacts:()=>({sid:execution.sid,profile:root,elevated:true}),connectCore:()=>({...fake(),current}),verifyCore:async(...args)=>{await verify(...args);if(++verifications===1)beforeReady?.();}});
   input.write(JSON.stringify({phase:'bootstrap',source})+'\n');await done;
   return text.trim().split('\n').map(JSON.parse);
  }
  let frames=await boot();assert.equal(frames[0].phase,'ready');assert.equal(frames.at(-1).result.ok,true);
  frames=await boot({beforeReady:()=>fs.writeFileSync(metadata,JSON.stringify({id:'replaced'}))});assert.equal(frames.length,1);assert.equal(frames[0].result.error.code,'MACHINE_CHANGED');
  frames=await boot({afterReady:()=>fs.writeFileSync(metadata,JSON.stringify({id:'replaced'}))});assert.equal(frames.at(-1).result.error.code,'MACHINE_CHANGED');
+ frames=await boot({prepare:file=>fs.unlinkSync(file)});assert.equal(frames[0].result.error.code,'MACHINE_UNAVAILABLE');
+ frames=await boot({windowsCheck:()=>{throw Object.assign(Error(),{code:'MACHINE_IDENTITY'});}});assert.equal(frames.length,1);assert.equal(frames[0].result.error.code,'MACHINE_IDENTITY');
+ const linked=path.join(root,'hardlink');frames=await boot({prepare:file=>fs.linkSync(file,linked)});assert.equal(frames[0].result.error.code,'MACHINE_IDENTITY');fs.unlinkSync(linked);
+ if(process.platform==='win32'){
+  const actual=path.join(root,'actual-session');fs.renameSync(path.dirname(metadata),actual);fs.symlinkSync(actual,path.dirname(metadata),'junction');
+  try{frames=await boot();assert.equal(frames[0].result.error.code,'MACHINE_IDENTITY');}finally{fs.unlinkSync(path.dirname(metadata));fs.renameSync(actual,path.dirname(metadata));}
+ }
  let guards=0;frames=await boot({kind:'install',source:`module.exports={probe:()=>({runtime:'missing'}),validate(){},async install(home,p,{beforeCommit}){beforeCommit();throw Error('Must refuse at commit');}};`,current:()=>++guards<3});assert.equal(frames.at(-1).result.error.code,'MACHINE_CHANGED');assert.equal(guards,3);
  facts={...facts,elevated:true};frames=await boot();assert.equal(frames.length,1);assert.equal(frames[0].result.error.code,'CORE_ELEVATED');facts.elevated=false;
  // Real public RPC IO, injected endpoint only: no hc subprocess or Core startup.
