@@ -64,7 +64,7 @@ async function coordinator(count=1,modules={}) {
  let scope='home',notice='Task history: owner/repo #36 could not be read',repos=['owner/repo'];
  const list=rows(h,count).map(pr=>({...pr,key:`owner/repo#${pr.number}`,repo:'owner/repo'}));
  panel.context='tasks:home';panel.shown=()=>true;
- panel.aggregate={context:{scope},entries:new Map(list.map(pr=>[pr.key,{pr,link:{repo:pr.repo}}])),currentContext:()=>({scope}),repositories:()=>repos,rows:()=>repos.length?list:[],readNotice:()=>notice,counts:()=>({open:count,closed:0}),target:()=>null};
+ panel.aggregate={context:{scope},entries:new Map(list.map(pr=>[pr.key,{pr,link:{repo:pr.repo}}])),currentContext:()=>({scope}),frameContext(){return this.currentContext();},repositories:()=>repos,rows:()=>repos.length?list:[],readNotice:()=>notice,counts:()=>({open:count,closed:0}),target:()=>null};
  panel.notices={sync(){},presentation(){}};panel.enrollmentPicker={render(){}};panel.syncChecksFallback=()=>{};
  const render=()=>h.render(()=>panel.renderAggregate(cx,t));
  const size=nativeSizes();

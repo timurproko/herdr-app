@@ -4,7 +4,7 @@ import path from 'node:path';
 import cp from 'node:child_process';
 import {pathToFileURL} from 'node:url';
 import {isDeepStrictEqual} from 'node:util';
-import {defaultHome,allowedPath,app,shellPaths,shellRevisionPath,reconcilePalette} from './deploy.mjs';
+import {defaultHome,allowedPath,app,shellPaths,shellRevisionPath,reconcilePalette,runStartupFrames} from './deploy.mjs';
 import {json,read,digest,put,contained} from './files.mjs';
 import {nativePaletteRecoveryPlan} from './palette-recovery.mjs';
 import {checkLaunchers,applyLaunchers} from './trello-launchers.mjs';
@@ -63,7 +63,7 @@ export function rollback(home,id,{fixture=false,shellOnly=false}={}) {
   for(const job of jobs)if(!deferred(job))applyJob(job);
   const palette=shellOnly?null:reconcilePalette(home);
   const worker=path.join(owner,'runtime/scripts/startup-frames.mjs');let patches=null;
-  if(!shellOnly&&fs.existsSync(worker))patches=JSON.parse(cp.execFileSync(process.execPath,[worker,home],{encoding:'utf8',timeout:30000}));
+  if(!shellOnly&&fs.existsSync(worker))patches=runStartupFrames(worker,home);
   if(palette?.nativeRefreshRequired)assertPaletteRefresh(patches);
   for(const job of jobs)if(deferred(job))applyJob(job);
   return {restored:jobs.length,patches,palette};

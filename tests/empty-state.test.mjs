@@ -21,7 +21,7 @@ for(const zoom of [1,1.3])for(const error of [false,true]){
 }
 const loading=h.panel.loadingMessage(t,'loading'),line=h.panel.loadingLine(t);
 assert.equal(words(loading).join(' '),'Loading');assert.equal(nodes(loading).some(n=>n.attrs.asset),false,'Cold Git loading uses a dot, not a bulb/spinner');
-assert.equal(loading.kids[0].attrs.loop[0],'opacity');assert.equal(line.attrs.h[0],1);assert.equal(line.attrs.left[0],0);assert.equal(line.attrs.right[0],0);assert.deepEqual(line.kids[0].attrs.loop,loading.kids[0].attrs.loop,'Stationary line and dot share one breathing rhythm');
+assert.equal(loading.kids[0].attrs.loop[0],'opacity');assert.equal(line.attrs.h[0],1);assert.equal(line.attrs.left[0],0);assert.equal(line.attrs.right[0],0);assert.equal(line.kids[0].attrs.loop[1].period,loading.kids[0].attrs.loop[1].period,'Stationary line and dot share a breathing cadence');assert.equal(line.kids[0].attrs.loop[1].to,0);assert.equal(loading.kids[0].attrs.loop[1].from,0.25);
 {const view=context.emptyState(theme,{title:'Loading…',icon:'refresh.svg',loading:true}),[icon]=view.kids;assert.equal(icon.style.size[0],20,'The loading glyph looks the size of the search glyph');assert.equal(icon.style.m[0],2,'It keeps the 24px footprint');assert.equal(icon.style.spin[0],1000,'It turns while loading');
  assert.equal(context.emptyState(theme,{title:'x'}).kids[0].style.spin,undefined,'Ordinary empty states never spin');}
 console.log('PASS: reusable empty-state component, centered 24px icon/8px gap, muted regular 13px text, no trailing periods and shared list/panel consumers');

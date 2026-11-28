@@ -52,16 +52,26 @@ export class AggregatePulls {
     const context=sidebarPanelEnabled('changes') ? pluginPullContext(space,{presentation}) : null;
     return !presentation && context?.stale ? null : context;
   }
-  sync(cx) {
-    if(this.shown()) pluginEvent('workspace.context.refresh',{cx,space:location().space});
-    const context=this.currentContext({presentation:true}), previous=this.context;
+  sync(cx,snapshot) {
+    if(this.shown()) {
+      const space=location(snapshot).space;
+      // The refresh hint's provider also performs native witness/proof work.
+      // Rendering needs only its own strict binding, not that duplicate bind;
+      // issue the hint after this frame with a fresh visibility/selection guard.
+      if(snapshot)cx.spawn(async view=>{
+        await Promise.resolve();
+        if(this.shown() && location().space===space)pluginEvent('workspace.context.refresh',{cx:view,space});
+      });
+      else pluginEvent('workspace.context.refresh',{cx,space});
+    }
+    const context=snapshot?(this.frameContext(snapshot)??this.frameContext(snapshot,true)):this.currentContext({presentation:true}), previous=this.context;
     const generation=JSON.stringify([this.presentationEpoch(),context?.presentationGeneration??this.providerGeneration??0]);
     if(this.presentationGeneration!==undefined && generation!==this.presentationGeneration){this.presentations.clear();this.stagePresentations.clear();}
     for(const [scope,saved]of this.presentations)if(!saved.repository && !this.presentationAlive(saved))this.presentations.delete(scope);
     const compatible=this.presentationGeneration===generation;
     this.presentationGeneration=generation;if(context)this.providerGeneration=context.presentationGeneration??0;
     if(context?.scope!==previous?.scope || !compatible) {
-      if(previous && compatible && sidebarPanelEnabled('changes') && (context || location().space!==previous.parent))this.rememberPresentation();
+      if(previous && compatible && sidebarPanelEnabled('changes') && (context || location(snapshot).space!==previous.parent))this.rememberPresentation();
       else if(previous && !context)this.presentations.delete(previous.scope);
       this.readWake=null;this.manualRead=null;this.serial++;this.factOrder.reset();this.entries.clear();this.pending.clear();this.diagnostics.clear();this.lastCounts=null;this.returning=false;this.published=null;
       if(context && !context.stale && context.parent)for(const [scope,saved]of this.presentations)if(scope!==context.scope && saved.parent===context.parent && saved.machine===context.machine)this.presentations.delete(scope);
@@ -92,7 +102,7 @@ export class AggregatePulls {
     }
     this.rememberCounts();
     if(!this.shown()) {this.serial++;this.factOrder.reset();this.pending.clear();this.diagnostics.clear();for(const e of this.entries.values())e.dirty=true;}
-    else this.pump(cx);
+    else this.pump(cx,snapshot);
     return true;
   }
   rememberPresentation() {
@@ -145,11 +155,11 @@ export class AggregatePulls {
     if(refused.length)message+=` · PR ${[...new Set(refused)].join(', ')}`;
     return failed.every(e=>!e.pr && e.link.targets.every(t=>t.historical)) ? `Task PR history: ${message}` : message;
   }
-  repositories() {
+  repositories(snapshot) {
     const now=Date.now();
     const repositories=[...new Set([...this.entries.values()].filter(e=>!e.missing && (!e.pr || this.eligible(e,now))).map(e=>e.link.repo))].sort();
     return [...this.entries.values()].some(e=>e.link.targets.some(t=>t.space))
-      ? repositorySpaceOrder(repositories,this.context,this.entries.values(),spaces()) : repositories;
+      ? repositorySpaceOrder(repositories,this.context,this.entries.values(),snapshot?.groups??spaces()) : repositories;
   }
   rememberCounts() {
     if(!this.publicationPending && !this.waiting) {
@@ -169,9 +179,11 @@ export class AggregatePulls {
   }
   invalidate(repository=null) {this.rememberCounts();this.diagnostics.clear();for(const e of this.entries.values())if((!repository || e.link.repo===repository.toLowerCase()) && !finalPull(e.pr))e.dirty=true;}
   refresh(cx) {pluginEvent('workspace.context.refresh',{cx,space:location().space,force:true});this.manualRead={remaining:1,expires:Date.now()+30000};this.readWake=null;this.invalidate();this.pump(cx);}
-  pump(cx) {
+  pump(cx,snapshot) {
     if(this.fallbackBusy || this.readWake?.due>Date.now())return;
-    if(!this.context || this.context.stale || !this.shown() || this.currentContext()?.scope!==this.context.scope) {this.manualRead=null;return;}
+    // A frame may project demand once; the spawned read always revalidates
+    // live provider identity after yielding before dispatch or publication.
+    if(!this.context || this.context.stale || !this.shown() || this.frameContext(snapshot)?.scope!==this.context.scope) {this.manualRead=null;return;}
     const context=this.context,scope=context.scope,serial=this.serial,epoch=this.presentationEpoch(),providerGeneration=context.presentationGeneration??0,groups=new Map();
     for(const [key,entry]of this.entries) {
       if(!entry.dirty || this.pending.has(key))continue;
@@ -186,10 +198,16 @@ export class AggregatePulls {
       if(new Set(this.pending.values()).size>=3)return;
       const batch=entries.slice(at,at+20),token={},read=this.factOrder.begin();
       for(const entry of batch) {entry.dirty=false;this.pending.set(entry.link.key,token);}
-      const current=()=>this.serial===serial && this.shown() && this.currentContext()?.scope===scope
-        && this.presentationEpoch()===epoch && (this.currentContext()?.presentationGeneration??0)===providerGeneration;
-      const member=entry=>current() && this.pending.get(entry.link.key)===token && this.entries.get(entry.link.key)===entry
-        && this.currentContext()?.links.some(l=>taskPullLink(l.url)?.key===entry.link.key);
+      const live=()=>this.serial===serial && this.shown() && this.presentationEpoch()===epoch;
+      const liveContext=()=>{
+        if(!live())return null;
+        const latest=this.currentContext();
+        return latest?.scope===scope && (latest.presentationGeneration??0)===providerGeneration?latest:null;
+      };
+      const current=()=>Boolean(liveContext());
+      const admitted=(entry,latest)=>latest && live() && this.pending.get(entry.link.key)===token && this.entries.get(entry.link.key)===entry
+        && latest.links.some(l=>taskPullLink(l.url)?.key===entry.link.key);
+      const member=entry=>admitted(entry,liveContext());
       cx.spawn(async view=>{
         let updated=false;
         const failed=async(entry,error)=>{
@@ -207,9 +225,13 @@ export class AggregatePulls {
           await Promise.resolve();if(!current())return;
           view.notify(); // Show pending-work feedback for timer-driven retries too.
           const results=await readTargetPulls(exec,batch.map(e=>e.link.number),repository,{on:context.machine,timeout:30000,current,manual:this.manualRead});
+          // One fresh verification admits this synchronous commit, not one
+          // complete native/Crew rebind per alias. No success below yields;
+          // any error path that awaits must acquire fresh membership again.
+          let membership=liveContext();
           for(const entry of batch) {
-            if(!member(entry))continue;
-            const result=results.get(entry.link.number);if(result.error) {await failed(entry,result.error);continue;}
+            if(!admitted(entry,membership))continue;
+            const result=results.get(entry.link.number);if(result.error) {await failed(entry,result.error);membership=liveContext();continue;}
             const value=result.row,key=entry.link.key;
             const published=this.factOrder.publish(read,key,()=>({...value,key,repo:repository}));
             if(!published.accepted) {entry.dirty=true;continue;}
@@ -235,7 +257,10 @@ export class AggregatePulls {
   frameContext(snapshot,presentation=false) {
     if(!snapshot)return this.currentContext({presentation});
     const contexts=snapshot.pullContexts??=new Map();
-    if(!contexts.has(presentation))contexts.set(presentation,this.currentContext({presentation}));
+    // A strict witnessed context already supplies the same frame's display.
+    // Only unavailable strict identity needs the retained presentation query.
+    if(presentation && contexts.get(false))return contexts.get(false);
+    if(!contexts.has(presentation))contexts.set(presentation,this.currentContext({presentation,space:location(snapshot).space}));
     return contexts.get(presentation);
   }
   stageTarget(pr, role, agentLinks, snapshot) {
@@ -246,7 +271,8 @@ export class AggregatePulls {
     // reviewer need not publish a task PR: its explicit crew.pr identifies the
     // row, but only this home's currently verified task membership permits focus.
     const members=(context.tasks??context.links).filter(t=>!t.historical && typeof t.terminal==='string' && t.terminal);
-    const agent=agentLinks?.related?.(pr,pr.repo,location().terminal,role,address=>members.some(t=>t.terminal===address),snapshot);
+    const addresses=new Set(members.map(t=>t.terminal));
+    const agent=agentLinks?.related?.(pr,pr.repo,location(snapshot).terminal,role,address=>addresses.has(address),snapshot);
     if(!agent)return null;
     const member=members.find(t=>t.terminal===agent.address);
     const target={terminal:agent.address,task:member.id??member.task,role,agent};
@@ -272,7 +298,7 @@ export class AggregatePulls {
   target(pr,snapshot) {
     const context=this.frameContext(snapshot);if(!context || context.scope!==this.context?.scope)return null;
     const matches=context.links.filter(l=>!l.historical && typeof l.terminal==='string' && l.terminal && taskPullLink(l.url)?.key===pr.key);
-    return matches.find(l=>l.terminal===location().terminal)??matches[0]??null;
+    return matches.find(l=>l.terminal===location(snapshot).terminal)??matches[0]??null;
   }
   focus(pr,target,scope,agentLinks,beforeFocus=()=>{}) {
     const context=this.currentContext();

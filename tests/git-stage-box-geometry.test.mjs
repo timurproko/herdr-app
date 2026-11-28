@@ -37,4 +37,16 @@ for(const zoom of [1,1.3])for(const coordinator of [false,true])for(const ghost 
  const maxLine=maximum.geometry.visibleTextLines.find(l=>l.ancestors.includes(find(maximum.tree,`${prefix}pr-stage-${longest.key??17}`)));
  near(maxBox.width,maxLine.naturalWidth+12*zoom,'Longest supported caption has exactly normal padding, no extra allowance');
 }
-console.log('PASS stable tight common stage/verdict widths through every supported round length, centred hit boxes and unchanged title/row/right rail at 100/130%');
+// Main's routine-refresh fix supplies settings once per frame. Stage sizing must
+// share that snapshot rather than walking the native bridge for each row/probe.
+let settingsReads=0;
+const framed=await rowHarness({host:{settings:()=>{settingsReads++;return {zoom:1};}}}),p=framed.panel;
+p.stageBoxWidths=new Map([[1.3,80]]);p.agentPresentation={settings:{zoom:1.3}};
+const before=settingsReads;
+for(let i=0;i<60;i++){assert.equal(p.stageBoxWidth(),80);assert.equal(p.stageBoxProbe(),null);}
+p.agentPresentation={settings:{zoom:2}};
+const pending=p.stageBoxProbe(),measure=find(pending,'pr-stage-box-measure-2');
+assert.ok(measure);assert.equal(settingsReads,before,'Stage sizing reuses the frame zoom without native settings reads');
+p.agentPresentation=null;measure.attrs.on_size_change[0]({width:200},framed.cx);
+assert.equal(p.stageBoxWidths.has(2),false,'A post-layout callback rechecks live zoom and rejects a retired frame');
+console.log('PASS stable tight common stage/verdict widths, frame-local zoom without per-row native reads, stale-probe rejection and unchanged title/row/right rail at 100/130%');
