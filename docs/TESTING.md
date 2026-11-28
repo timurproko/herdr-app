@@ -157,6 +157,11 @@ children, 160–360px, local/pc2 and 100%/130%. Agents' numeric defaults are unc
 Machine/coordinator chevrons share a centre and a 24px target, including hover.
 `agents-dot-column.test.mjs` protects existing numeric/status geometry; unrelated
 tags, native selection/numbering, connectors and captured block reorder stay intact.
+`git-right-edge.test.mjs` also checks that connected and childless crew labels end
+79 logical pixels from the panel edge, with two inert 24px trailing slots when
+controls are absent. Its Git 3px inner-inset oracle remains independent. CI run
+46144727979 exposed the old childless-label 41px expectation on both platforms;
+the updated oracle preserves the requested fixed-column behavior, not the old drift.
 
 `tests/fleet-project-spaces.test.mjs` uses the Crew PR #22 placement-v1 contract
 with combined-only, project-only and mixed populations on local/qualified remote
