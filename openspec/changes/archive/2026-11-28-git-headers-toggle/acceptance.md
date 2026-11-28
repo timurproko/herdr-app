@@ -17,7 +17,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-28-git-headers-toggle/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-28-git-headers-toggle/acceptance.md",
   "finalizedDate": "2026-11-28",
-  "specBaseSha": "43edc5b0b67fed1d1b8a6d200a98716c6e203b21",
+  "specBaseSha": "5c2a170707dc72b1ecb5d8d06d5fb0cde0f52056",
   "acceptanceScenarios": [
     "Both Git views have one right-aligned 24px disclosure icon in the existing Open/Closed strip, with pointer, Enter and Space activation.",
     "The global default applies to unseen repositories across agents and spaces; individual exceptions persist until the next bulk toggle clears them all.",
@@ -25,7 +25,7 @@ The maintainer integration decision accepts these scenarios:
     "Collapsing retains the selected agent pin, scoped counts, cursor state, headerless failures and the existing coordinator reveal and render guards."
   ],
   "archiveDigest": "c3099e9587ea4049ab1813e3705ee042f6c111dad6810cb0d924960379589736",
-  "specDigest": "628941aee1e49c464909494fa89443d8dfae7568020e70ed02daf1d808ffdecd",
+  "specDigest": "41e45e48ba4fb24cdc66ca78748144c019cfeb37c0fb1af7a77a1d978075a9ab",
   "tasksDigest": "9f74ba1526d59a0309a9bd9e157fe3a91e957dccd696f28b560a66b11cb8dae6",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []

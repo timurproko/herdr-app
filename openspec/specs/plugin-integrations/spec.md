@@ -2189,6 +2189,18 @@ After a successful explicit quota reset and its authoritative usage read, the Us
 - **THEN** the app preserves its existing failure and last-known-value handling without inventing a successful refill
 - **AND** obsolete completions cannot replace a newer target's quota values or start disabled follow-up collection
 
+### Requirement: Routine Git refresh completes without interrupted-render fallback
+Routine same-context refreshes in ordinary and coordinator Git SHALL preserve the displayed list until a coherent replacement is available and SHALL NOT trigger the host's interrupted-render fallback. Genuine unexpected render failures SHALL retain existing diagnostics; suppressing the banner, increasing the host deadline or replacing rows with placeholders SHALL NOT constitute a fix.
+
+#### Scenario: Repeated background refresh of a loaded list
+- **WHEN** manual, local-context, webhook, verification or checks updates repeatedly refresh a shown same-context list
+- **THEN** loaded rows, pins, folds, pagination and scroll remain stable until authoritative changes publish in place, without a blank frame, replacement Loading or interrupted-render banner
+- **AND** existing row geometry, measured render budgets, reveal limits and stale-reply rejection remain intact
+
+#### Scenario: Actual render failure remains diagnosable
+- **WHEN** an unexpected row exception or native render abort occurs outside the corrected routine-refresh path
+- **THEN** existing component diagnostics, fixed-height row fallback where applicable and bounded once-only recovery remain available without claiming an unobserved cause
+
 ### Requirement: Global Git repository disclosure control
 Ordinary and coordinator Git SHALL show exactly one icon-only bulk disclosure button at the right end of the Open/Closed strip using existing button styling. The icon SHALL reflect the chosen global expanded or collapsed default and its accessible action SHALL name the opposite choice. Activation SHALL invert that default and reset all individual exceptions, including hidden repositories. No other controls, messages or options SHALL be added.
 
@@ -2232,15 +2244,3 @@ The global disclosure default and canonical repository exceptions SHALL survive 
 #### Scenario: Missing or invalid saved data
 - **WHEN** saved disclosure data is missing, malformed or of an unsupported version
 - **THEN** Git remains renderable using expanded disclosure and valid legacy folds when available, without a new message or overwriting unsupported-version data merely by rendering
-
-### Requirement: Routine Git refresh completes without interrupted-render fallback
-Routine same-context refreshes in ordinary and coordinator Git SHALL preserve the displayed list until a coherent replacement is available and SHALL NOT trigger the host's interrupted-render fallback. Genuine unexpected render failures SHALL retain existing diagnostics; suppressing the banner, increasing the host deadline or replacing rows with placeholders SHALL NOT constitute a fix.
-
-#### Scenario: Repeated background refresh of a loaded list
-- **WHEN** manual, local-context, webhook, verification or checks updates repeatedly refresh a shown same-context list
-- **THEN** loaded rows, pins, folds, pagination and scroll remain stable until authoritative changes publish in place, without a blank frame, replacement Loading or interrupted-render banner
-- **AND** existing row geometry, measured render budgets, reveal limits and stale-reply rejection remain intact
-
-#### Scenario: Actual render failure remains diagnosable
-- **WHEN** an unexpected row exception or native render abort occurs outside the corrected routine-refresh path
-- **THEN** existing component diagnostics, fixed-height row fallback where applicable and bounded once-only recovery remain available without claiming an unobserved cause
