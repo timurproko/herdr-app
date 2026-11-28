@@ -2109,7 +2109,7 @@ The Projects description SHALL append Delivery kinds in inline accent styling wi
 
 #### Scenario: Complete explanation
 - **WHEN** the person hovers or focuses Delivery kinds after Git folders crew may work in on this machine.
-- **THEN** Plain explains that the worker codes immediately, Crew reviews and Crew opens the pull request after review
+- **THEN** Plain says The worker codes right away; Crew opens the pull request and reviews it.
 - **AND** Delivery explains that the worker plans in a draft pull request and codes after approval; Crew reviews
 - **AND** Gate explains that the gate tool reviews, tests and opens the pull request
 - **AND** each entry stays one short sentence, without small-fix or gate-skip detail

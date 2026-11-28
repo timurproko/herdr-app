@@ -792,7 +792,7 @@ const PROJECTS = Object.freeze({
     picker: Object.freeze({ kind: 'folders', label: 'Add project' }),
     descriptionHint: Object.freeze({ label: 'Delivery kinds',
       entries: [
-        ['Plain', 'The worker codes right away; Crew reviews, then opens the pull request.'],
+        ['Plain', 'The worker codes right away; Crew opens the pull request and reviews it.'],
         ['Delivery', 'The worker plans in a draft pull request and codes after approval; Crew reviews.'],
         ['Gate', 'The gate tool reviews, tests and opens the pull request.'],
       ],

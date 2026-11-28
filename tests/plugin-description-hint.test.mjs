@@ -12,7 +12,7 @@ const trigger=card.attrs.trigger[0],body=card.attrs.content[0];
 assert.equal(trigger.attrs.on_click,undefined);assert.equal(trigger.attrs.underline,undefined);
 assert.ok(trigger.kids[0].attrs.border_dashed);assert.equal(trigger.attrs.tab_index[0],0);
 const entries = [
-  ['Plain', 'The worker codes right away; Crew reviews, then opens the pull request.'],
+  ['Plain', 'The worker codes right away; Crew opens the pull request and reviews it.'],
   ['Delivery', 'The worker plans in a draft pull request and codes after approval; Crew reviews.'],
   ['Gate', 'The gate tool reviews, tests and opens the pull request.'],
 ];
