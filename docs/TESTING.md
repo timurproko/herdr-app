@@ -470,6 +470,16 @@ limits 1/50/100, and checks multi-page read/write membership with explicit `sort
 repeated local CAS conflicts, checking that the longest deadline persists and a
 new invocation cannot dispatch early. It makes no real HTTP request.
 `tests/trello-contract.test.mjs` checks documentation/catalog and payload boundaries.
+`src/plugins/trello/remote-errors.test.mjs` checks additive HTTP status/reasons,
+fixed safe reason mapping, hostile/oversized/stalled bodies and rate-limit details.
+`src/plugins/trello/deadline.test.mjs` checks a shared monotonic command budget
+before authority acquisition, request preflight, stalled headers/JSON/error/image
+streams, non-finishing cancellation, late replies and expired-output cleanup.
+It injects ACL execution to verify remaining subprocess timeouts, kills one
+purpose-built disposable Node child at its deadline, and runs a fake-only CLI
+subprocess with a retained provider handle to require prompt JSON/exit. No real
+Trello setup or network fallback is used; the main-machine card/image remains a
+separate live acceptance check for the person after merge.
 `src/plugins/trello/attachments.test.mjs` and `download.test.mjs` use loopback fake
 Trello/external servers with test-only production-URL mapping and no live-fetch
 fallback. They cover metadata/card counts, parent proofs, original/scaled preview

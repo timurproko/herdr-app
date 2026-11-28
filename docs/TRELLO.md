@@ -288,6 +288,11 @@ herdr-trello checkitems list --board aaaaaaaaaaaaaaaaaaaaaaaa --card ccccccccccc
 IDs in examples are fake. Every child access needs an allowed board context;
 unknown IDs are not looked up globally. `boards list` reads only locally listed
 boards, never the account-wide board inventory. Card reads include comments, checklist/item state and attachment metadata/IDs.
+Card facts request only explicit fields, leaving nested resources at Trello's defaults;
+comments, checklists and attachments use their separate scoped routes. Attachment
+listing omits `filter` (documented default `false`, meaning all attachments); `all`
+is not the documented attachment filter. Singular metadata requests use `fields=all`;
+original/preview downloads retain the validated Trello path and OAuth header.
 `card.attachmentCount` is exact only when `attachmentCountExact:true`; otherwise
 it is the returned lower bound. Attachment lists cap at 100 and report
 incompleteness without inventing a cursor. Metadata includes uploaded/link kind,
@@ -297,7 +302,14 @@ external HTTP(S) links are untrusted metadata, never automatically fetched. Trel
 Results are one `{version:1,ok:true,data:...}` JSON object. Errors use
 `{version:1,ok:false,error:{code,message,outcome,retryAt?}}`. Help alone is text.
 Exit codes: 0 success, 2 invalid command/input, 3 refusal/read failure, 4 unknown
-write outcome. No raw provider errors or authenticated URLs are printed.
+write outcome. HTTP rejections additionally include `httpStatus` and `httpReason`,
+and the message names that status and short reason. For example, HTTP 400 Bad
+Request can include the recognized reason `Invalid value for filter`; 401/403
+remain authentication/access refusals, not proof of a particular token-scope cause.
+Unknown or hostile provider text falls back to a standard HTTP phrase. Error-body
+inspection caps at 4 KiB and 200 ms within the existing request deadline; stalled
+or malformed bodies cannot hide an already observed HTTP status. No raw provider
+errors, API keys, tokens or authenticated URLs are printed.
 
 Card/comment pages default to 50, maximum 100. Board/list card reads and membership
 scans explicitly request `sort=-id` (newest creation first), not board/list position
@@ -313,9 +325,19 @@ Membership proof is bounded too; an unverified ID refuses rather than
 falling back to a global lookup. Returned `itemsComplete`/`itemsTruncated` on each
 checklist describe its check-item collection independently.
 
-Each command has a 256 KiB input limit, 2 MiB response limit, 20-second per-request
+Data commands have a 256 KiB input limit, 2 MiB response limit, 20-second per-request
 and 60-second overall deadline, at most 20 network requests, and no automatic
-read retries. Reads are sequential. HTTP 429 persists only a non-secret cooldown
+read retries. Reads are sequential. The monotonic command budget begins before
+initial authority acquisition, not after setup/ACL reads. Request budgets include
+preflight, headers, body/error inspection and cancellation; every follow-up and
+protected output publication checks the remaining command time. Windows ACL
+subprocesses receive at most 10 seconds or the remaining request/command time,
+whichever is shorter, and are killed on timeout; verification is never skipped.
+Budget exhaustion refuses with LIMIT or TRANSPORT and publishes no partial image.
+The one-shot CLI aborts pending work, flushes its JSON result and exits instead of
+waiting for an aborted provider socket to drain. These are execution budgets,
+subject to OS scheduling and completion of synchronous filesystem operations,
+not a hard real-time guarantee. HTTP 429 persists only a non-secret cooldown
 deadline; concurrent refusals atomically merge the longest deadline, re-reading
 after local compare-and-swap conflicts rather than discarding a longer refusal.
 Local merge retries never replay an HTTP request. Another invocation cannot
