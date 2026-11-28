@@ -12,6 +12,32 @@ export function reconcilePalette(home){
   const worker=fs.existsSync(development)?development:path.join(directory,'palette-policy.mjs');
   return JSON.parse(cp.execFileSync(process.execPath,[worker,'reconcile',home],{encoding:'utf8',timeout:15000,windowsHide:true}));
 }
+// The running App's own mount-time repair runs the same worker under
+// startup-frames.lock, and a killed worker leaves a stale lock that the next
+// run clears before exiting busy (75). Both are transient: wait for the lock
+// within a bounded time instead of failing the whole install.
+export const STARTUP_FRAMES_BUSY=75;
+export function stepFailure(error){
+  const lines=[error?.stderr,error?.stdout].map(text=>String(text??'').trim()).filter(Boolean).flatMap(text=>text.split(/\r?\n/)).map(line=>line.trim()).filter(Boolean);
+  const detail=lines.find(line=>!/^\s*at\s/.test(line));
+  if(error?.code==='ETIMEDOUT'||error?.signal==='SIGTERM')return 'timed out';
+  if(detail)return detail;
+  return typeof error?.status==='number'?`exited with code ${error.status}`:String(error?.message||error||'failed').split(/\r?\n/)[0];
+}
+const pause=ms=>Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,ms);
+export function runStartupFrames(worker,home,{budget=45000,interval=500,exec=cp.execFileSync,now=Date.now,sleep=pause}={}){
+  const deadline=now()+budget;
+  for(let attempt=1;;attempt++){
+    let output;
+    try{output=exec(process.execPath,[worker,home],{encoding:'utf8',timeout:30000,windowsHide:true});}
+    catch(error){
+      if(error?.status===STARTUP_FRAMES_BUSY&&now()+interval<deadline){sleep(interval);continue;}
+      if(error?.status===STARTUP_FRAMES_BUSY)throw Error(`Native patch refresh stayed busy for ${Math.round(budget/1000)}s after ${attempt} attempts: another startup repair holds .customizations/startup-frames.lock`);
+      throw Error(`Native patch refresh failed: ${stepFailure(error)}`);
+    }
+    try{return JSON.parse(output);}catch{throw Error('Native patch refresh returned unreadable output');}
+  }
+}
 export const defaultHome=()=>process.env.HERDR_APP_HOME||path.join(os.homedir(),'.config/herdr-app');
 export const shellPaths=['bash-cwd-loader.sh','bash-cwd.sh','powershell-cwd.ps1','revision'].map(name=>`.customizations/runtime/shell/${name}`);
 export const shellRevisionPath=shellPaths.at(-1);
@@ -130,7 +156,7 @@ export function deploy(root,home=defaultHome(),{adopt={},repair=true,sources=nul
     const palette=shellOnly?null:reconcilePalette(home);
     // Native compatibility patches are not regular payload. Refresh only existing opt-ins.
     let patches=null;
-    if(!shellOnly&&(repair||palette?.nativeRefreshRequired)){const worker=path.join(owner,'runtime/scripts/startup-frames.mjs');if(fs.existsSync(worker)){const output=cp.execFileSync(process.execPath,[worker,home],{encoding:'utf8',timeout:30000,windowsHide:true});patches=JSON.parse(output);}}
+    if(!shellOnly&&(repair||palette?.nativeRefreshRequired)){const worker=path.join(owner,'runtime/scripts/startup-frames.mjs');if(fs.existsSync(worker))patches=runStartupFrames(worker,home);}
     return {changed:changed.length,removed:stale.length,patches,palette,backup,...(launchers?{trelloCLI:{installed:true,bin:launchers.bin}}:{}),...(retained?{...(shellOnly?{scope:'shell'}:{sources}),preserved:Object.keys(old?.files??{}).filter(rel=>!selected.some(([target])=>target===rel)).length}:{})};
     };
     // Acquire even when launcher bytes are unchanged: runtime/mod upgrades and
@@ -215,5 +241,5 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1]
   else if(action==='remove')result=remove(home);
   else throw Error('Use deploy, deploy-shell, doctor, check, enable, disable or remove.');
   console.log(typeof result==='string'?result:JSON.stringify(result,null,2));if(result?.ok===false||result?.patches?.ok===false)process.exitCode=1;
- }catch(e){console.error(JSON.stringify({deploymentFailure:{stage:'install',reason:e.message}}));process.exitCode=1;}
+ }catch(e){console.error(JSON.stringify({deploymentFailure:{stage:'install',reason:Array.isArray(e.spawnargs)?`${path.basename(e.spawnargs.find(arg=>/\.[cm]?js$/.test(arg))??e.spawnargs[0]??'step')} failed: ${stepFailure(e)}`:e.message}}));process.exitCode=1;}
 }
