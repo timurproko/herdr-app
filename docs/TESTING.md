@@ -358,6 +358,11 @@ yields and awaited error handling; `pr-agent-links.test.mjs` additionally bounds
 provider/settings reads and forbids directory resolution for unrelated candidates.
 `git-location.test.mjs` separately proves repeated same-frame location projections
 reuse captured native collections, while unframed read/action lookups stay live.
+Thin coordinator-renderer fixtures must expose `frameContext()` as well as
+`currentContext()`. The enrollment, measurement-lifetime, native-scroll, anchor
+and fade fixtures delegate it to their current context getter, so before-redraw
+scope mutations still invalidate retained callbacks. These fixtures do not mock
+or bypass the real frame-cache authority tests above.
 After preserving the published natural-caption sizing changes, the final combined
 revision passed all 12 growth replays (three per zoom and unrelated population),
 with 14 rows fully mounted, no interruptions and maxima 15–30ms. Earlier

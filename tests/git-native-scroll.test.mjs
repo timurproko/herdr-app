@@ -12,7 +12,7 @@ async function fixture(count=100,host={}){
  const h=await rowHarness({host,modules:{'gpui-base':{h_flex:()=>element().flex(),v_flex:()=>element().flex().flex_col(),Popover:{},Input:{},ScrollHandle:{new(){assert.equal(rendering,false);const handle=new NativeHandle();handles.push(handle);return handle;}}}}});
  const {panel}=h;panel.context='tasks:home';panel.shown=()=>true;
  const rows=Array.from({length:count},(_,i)=>Object.assign(h.facts.pullRow({number:i+1,title:`PR ${i+1}`,state:'OPEN',author:{login:'fixture'}},'owner'),{key:`owner/repo#${i+1}`,repo:'owner/repo'}));
- panel.aggregate={context:{scope:'home'},entries:new Map(rows.map(pr=>[pr.key,{pr,link:{repo:pr.repo}}])),currentContext:()=>({scope:'home'}),repositories:()=>['owner/repo'],rows:state=>state==='open'?rows:[],readNotice:()=>null,counts:()=>({open:count,closed:0}),target:()=>null};
+ panel.aggregate={context:{scope:'home'},entries:new Map(rows.map(pr=>[pr.key,{pr,link:{repo:pr.repo}}])),currentContext:()=>({scope:'home'}),frameContext(){return this.currentContext();},repositories:()=>['owner/repo'],rows:state=>state==='open'?rows:[],readNotice:()=>null,counts:()=>({open:count,closed:0}),target:()=>null};
  panel.notices={sync(){},presentation(){}};panel.enrollmentPicker={render(){},stop(){}};panel.syncChecksFallback=()=>{};
  const cx={notify(){assert.equal(rendering,false);notifications++;},spawn(fn){jobs.push(fn(cx));},timer:{after(ms,fn){assert.equal(ms,16);timers.push(fn);}}};
  const snapshots=new WeakMap();
