@@ -19,8 +19,12 @@ user/home-bound ownership refuses personal, modified, linked or other-home targe
 Intentionally disabled/custom skill loaders are not bypassed.
 
 Enable/disable and startup/reload reconcile owned notes on this computer and known
-configured execution hosts. Every agent profile awaits target-host preparation
-before loading resources. An unavailable/offline host is reported as pending rather
+configured execution hosts. Enabled agent profiles await target-host preparation
+before loading resources. With Trello off, a public, read-only ownership probe keeps
+never-announced hosts out of the Trello SSH/runtime gate; unsupported connections,
+an unused old runtime or unavailable optional tooling cannot block those launches.
+Hosts with owned announcements still require safe cleanup. An unavailable/offline
+cleanup host is reported as pending rather
 than replaced with this computer's files; a later reachable launch reconciles again.
 The note uses invariant conditional write wording, not a saved claim of write rights,
 so Access changes require no prompt rewrite and never replay a grant. CLI activation,
@@ -36,19 +40,27 @@ Trello service and grants no permission.
 
 Normal `npm run build` packages the complete runtime. Normal **full**
 `npm run deploy` installs it under the resolved Herdr home and installs owned
-`herdr-trello` and `herdr-trello.cmd` launchers in `~/.local/bin` (or the explicitly
+`herdr-trello`, `herdr-trello.cmd` and (on Windows) `herdr-trello.exe` launchers in
+`~/.local/bin` (or the explicitly
 selected `HERDR_TRELLO_BIN` directory). The deploying shell need not already have
 that bin on PATH. Every enabled agent profile prepares its execution host's exact
 owned bin in the new session's PATH, including ordinary and coordinator profiles,
 explicit executable paths and new isolated Claude sessions. Core need not restart.
 Node 20+ must already be available; no global npm package or checkout is needed.
 
-Bash/POSIX uses the shell launcher; PowerShell and CMD resolve the `.cmd` shim by
-name. Upgrade retires only the hash-matching owned `.ps1` that could shadow it.
-A personal/modified `.ps1` refuses migration rather than being overwritten. No
-execution-policy bypass is required or configured.
+Bash/POSIX uses the shell launcher. Windows PowerShell and CMD resolve the owned
+console `.exe` shim by name. It starts the installation's Node executable directly,
+without passing arguments through CMD: a PowerShell literal such as `%USERNAME%`
+stays literal. The `.cmd` alternative retains CMD's own quoting/expansion rules.
+The small console shim is compiled at installation with Windows' in-box .NET
+Framework C# compiler, already supplied with Windows PowerShell; no downloaded SDK,
+committed binary, native Herdr change or execution-policy bypass is involved.
+An unchanged owned shim is reused by its source/config recipe hash. Missing tooling
+refuses before application payload writes. Upgrade retires only the hash-matching
+owned `.ps1`; personal/modified scripts or executables refuse overwrite.
 
-Agent-only startup preparation preserves coordinator PATH prefixes and uses an
+Agent-only startup preparation prepends the needed coordinator/Trello prefixes to
+the shell's current initialized PATH, preserving PowerShell-profile tools, and uses an
 owned BASH_ENV hook for noninteractive/login Bash tool shells, chaining the previous
 hook. It edits no shell profile or persistent user/system PATH. Shells opened
 outside Herdr's profile launch path still need their bin on PATH explicitly.
@@ -59,8 +71,9 @@ is off, but no credentials, boards or write permission are provisioned.
 User-bin launchers have exact-name, home-bound ownership under
 `.customizations/trello-launchers.json`. Modified/unknown launchers and a launcher
 belonging to another Herdr home refuse before unrelated installation writes.
-Version-2 ownership journals retain the retired script's null slot and support
-rollback to the earlier owned launcher set, with later-edit protection.
+Version-3 ownership journals include the native executable and retired script's
+null slot. Versions 1 and 2 upgrade with rollback to their earlier owned launcher
+set, with later-edit protection.
 Full deployment acquires the user-bin lock before journals or application payload
 writes and holds it through ownership publication, even if launcher bytes are
 unchanged. An existing bin lock refuses without installing or replacing payload;

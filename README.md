@@ -174,7 +174,8 @@ directly. Copying credentials cannot fix an unsafe execution identity.
 Normal full build/deploy installs the standalone runtime and owned user-bin
 launchers. New enabled agent profiles prepare that host's bin in PATH automatically,
 including Bash, PowerShell and CMD tool shells, without restarting Core or relaxing
-PowerShell policy. Standalone shells outside this launch path need PATH configured
+PowerShell policy. Windows uses an owned console shim built with in-box .NET tools,
+so PowerShell literals do not pass through CMD expansion. Standalone shells outside this launch path need PATH configured
 explicitly. Shell-only peers get no credentials or Trello installation. See [Trello setup, commands and security limits](docs/TRELLO.md).
 Card reads expose attachment IDs/counts. Agents can list attachment metadata and
 use `attachments get --out PRIVATE_DIR` to inspect an uploaded screenshot locally,

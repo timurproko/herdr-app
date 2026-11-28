@@ -482,7 +482,15 @@ subprocesses from a restricted starting PATH. Help/status resolve by name with n
 execution-policy bypass; prior BASH_ENV and coordinator prefixes are preserved.
 All stores, skills, binaries and hooks are disposable under `TRELLO_TEST_ROOT`;
 no real agent, account, App or Core is started. Deployment tests additionally cover
-version-1 to version-2 launcher migration, safe `.ps1` retirement and rollback.
+version-1/2 to version-3 launcher migration, safe `.ps1` retirement, native shim
+ownership and rollback. Actual PowerShell 5/7 by-name calls preserve percent-delimited
+literals such as `%USERNAME%` without invoking CMD, and propagate the child exit code.
+Only the disposable Windows console shim is compiled with the in-box .NET compiler;
+no native Herdr component is built. Startup-command regressions simulate a profile's
+PATH addition before the exact generated command and check both bare and explicit
+agent paths. Disabled-plugin fixtures cover custom-via/outdated/unavailable unused
+hosts without entering the mandatory Trello gate, while owned notes still require
+cleanup.
 Remote tests run the actual bootstrap/owner/discovery path with fake host identities
 and homes, including stale enable after disable and no desktop-bin substitution.
 `src/plugins/trello/remote-errors.test.mjs` checks additive HTTP status/reasons,

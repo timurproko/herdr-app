@@ -68,13 +68,18 @@ try{
  assert.ok(provider>0);assert.ok(starts>0);
  // Run the real bootstrap/owner/discovery path against a separate fake host.
  const noteHome=path.join(root,'note-host'),noteUser=path.join(root,'note-user'),noteBin=path.join(root,'note-bin');await installer.install(noteHome,p,{bin:noteBin,envPath:''});fs.writeFileSync(path.join(noteHome,'shared.json'),JSON.stringify({'custom.plugins':{trello:{enabled:true}}}));
- async function noteBoot(enabled,generation){
+ async function noteBoot(enabled,generation,execution=noteHome){
   const input=new PassThrough(),out=new PassThrough();let text='',sent=false;
   out.on('data',chunk=>{text+=chunk;if(!sent&&text.includes('"phase":"ready"')){sent=true;input.write(JSON.stringify({version:1,kind:'owner',payload:{action:'discovery.prepare',enabled,generation}})+'\n');}});
-  await bootstrap.main({version:1,machine,expected:p.revision},fs.readFileSync(path.join(runtime,'lib/private-actions/trello-install.cjs'),'utf8'),{input,output:out,getHello:async()=>({core:{id:machine.id},generation:1}),executionHome:()=>({home:noteHome,user:'fake-user',uid:1000,userHome:noteUser}),checkWindows:()=>{}});
+  await bootstrap.main({version:1,machine,expected:p.revision},fs.readFileSync(path.join(runtime,'lib/private-actions/trello-install.cjs'),'utf8'),{input,output:out,getHello:async()=>({core:{id:machine.id},generation:1}),executionHome:()=>({home:execution,user:'fake-user',uid:1000,userHome:noteUser}),checkWindows:()=>{}});
   return text.trim().split('\n').map(JSON.parse).at(-1).result;
  }
  const noteResult=await noteBoot(true,100);assert.equal(noteResult.ok,true,JSON.stringify(noteResult));assert.deepEqual(noteResult.data.launch.pathEntries,[noteBin]);assert.ok(fs.existsSync(path.join(noteUser,'.agents/skills/herdr-trello/SKILL.md')));assert.equal((await noteBoot(false,101)).ok,true);assert.equal((await noteBoot(true,100)).error.code,'STALE');assert.ok(!fs.existsSync(path.join(noteUser,'.claude/skills/herdr-trello/SKILL.md')));
+ // An unused disabled plugin must not demand a remote runtime upgrade. Once
+ // an owned announcement/journal exists, strict cleanup still cannot be skipped.
+ const outdated=path.join(root,'disabled-outdated');await installer.install(outdated,p,{bin:path.join(root,'disabled-bin'),envPath:''});fs.appendFileSync(path.join(outdated,'.customizations/runtime/lib/trello/cli.cjs'),'\n// fake old runtime');
+ assert.equal((await noteBoot(false,200,outdated)).ok,true);
+ const announcement=path.join(outdated,'.customizations/trello-announcement.json');fs.writeFileSync(announcement,'owned cleanup required');assert.equal((await noteBoot(false,201,outdated)).error.code,'RUNTIME_OUTDATED');assert.equal(fs.readFileSync(announcement,'utf8'),'owned cleanup required');
  // Exercise the production bootstrap with only identity/Core/IO injected, never real SSH.
  const source=fs.readFileSync(new URL('../src/services/private-actions/trello-install.cjs',import.meta.url),'utf8');
  async function boot(kind,identity={core:{id:machine.id},generation:1}){

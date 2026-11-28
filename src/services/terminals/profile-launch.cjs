@@ -56,8 +56,8 @@ function profileShellArgv(shell, command, preparation = null) {
   const name = shell[0].split(/[\\/]/).pop().replace(/\.exe$/i, '').toLowerCase();
   let line = profileLine(shell, command);
   if(preparation){
-    if(['powershell','pwsh'].includes(name))line='$env:PATH=$env:HERDR_AGENT_NATIVE_PATH; '+line;
-    else if(name==='cmd')line='setlocal DisableDelayedExpansion & set "PATH=%HERDR_AGENT_NATIVE_PATH%" & '+line;
+    if(['powershell','pwsh'].includes(name))line='$env:PATH=$env:HERDR_AGENT_PATH+[IO.Path]::PathSeparator+$env:PATH; '+line;
+    else if(name==='cmd')line='setlocal DisableDelayedExpansion & set "PATH=%HERDR_AGENT_PATH%;%PATH%" & '+line;
     else if(['bash','sh','zsh','dash','ksh'].includes(name))line='. '+profileLine(shell,[preparation.bashEnv.replace(/\\/g,'/')])+'; '+line;
   }
   const tail = shell.slice(1);
@@ -151,7 +151,7 @@ function preparedEnvironment(target, role, options={}) {
   const PATH=[head,prefix?base:rolePath].filter(Boolean).join(delimiter);
   if(PATH.length>24576||/[\0\r\n]/.test(PATH))throw Error('Invalid prepared PATH.');
   const previous=get('BASH_ENV')===bashEnv.replace(/\\/g,'/')?get('HERDR_AGENT_PREVIOUS_BASH_ENV'):get('BASH_ENV');
-  return {env:{...role,PATH,BASH_ENV:bashEnv.replace(/\\/g,'/'),HERDR_AGENT_PREVIOUS_BASH_ENV:previous,HERDR_AGENT_PATH:head,HERDR_AGENT_NATIVE_PATH:PATH},shell:{bashEnv}};
+  return {env:{...role,PATH,BASH_ENV:bashEnv.replace(/\\/g,'/'),HERDR_AGENT_PREVIOUS_BASH_ENV:previous,HERDR_AGENT_PATH:head},shell:{bashEnv}};
 }
 
 async function launchProfile(target, rpc, options = {}) {

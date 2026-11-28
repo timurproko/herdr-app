@@ -100,8 +100,8 @@ async function dispatch(home,destination,payload,register=()=>{},options={}){
   if(payload.action==='discovery.all'){
    if(destination.machine!==null||typeof payload.enabled!=='boolean'||Object.keys(payload).some(k=>!['action','enabled','generation'].includes(k)))fail('INPUT');
    const {record}=controller.read(home,settings),hosts=[{machine:null},...(record?.hosts??[]).filter(h=>h.machine!==null)];
-   const pending=[];for(const host of hosts){if(!isCurrent())fail('STALE');const r=await dispatch(home,{machine:host.machine,...(host.binding?{binding:host.binding}:{})},{action:'discovery.prepare',enabled:payload.enabled,generation:payload.generation},track,{...options,runtime,isCurrent});if(!r.ok)pending.push(host.machine??'This computer');}
-   return {version:1,ok:true,data:{pending:[...new Set(pending)]}};
+   const pending=[],announced=[],cleaned=[];for(const host of hosts){if(!isCurrent())fail('STALE');const r=await dispatch(home,{machine:host.machine,...(host.binding?{binding:host.binding}:{})},{action:'discovery.prepare',enabled:payload.enabled,generation:payload.generation},track,{...options,runtime,isCurrent});if(!r.ok)pending.push(host.machine??'This computer');else (r.data.announced?announced:cleaned).push(host.machine);}
+   return {version:1,ok:true,data:{pending:[...new Set(pending)],announced,cleaned}};
   }
   if(payload.action==='global.status')result={version:1,ok:true,data:{global:controller.status(home,settings)}};
   else if(payload.action==='global.apply'){
