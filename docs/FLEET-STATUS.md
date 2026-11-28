@@ -129,16 +129,23 @@ labels on new workers. This adapter accepts legacy/combined `fm-crew-<home>`,
 per-project `fm-crew-<home>-project-<registered-name>` and internal repair
 `fm-crew-<home>-self`, including mixed populations. New placement labels require
 `crew.space.version=1` and `crew.space.mode=combined|per-project`. A supplied task
-project must match the placement project. Crew's minimal fleet view currently omits
+project must match the placement project, with the documented `crew:self` to
+registered `crew` repair exception. Older minimal fleet views omit
 `tasks[].project`: combined identity is project-independent, so an omitted task
 project permits a valid combined worker alongside legacy workers in the same space.
 A present malformed or contradictory project still refuses; per-project placement
 always requires authoritative matching task project evidence. No full-status retry,
 label repair or worker restart is needed for combined fleets.
-Per-project `crew.space.name` equals the exact registered name,
-or `crew` for internal `crew:self`; a repair bound to registered `crew` retains
-that documented exception. Combined omits a requested name. Unknown versions,
-partial/mismatching labels and nonmatching adoption IDs fail closed.
+Per-project `crew.space.name` is saved repository display metadata, independent of
+the authoritative project and automatic space ID. Registered aliases and directory
+case/dots are retained; internal `crew:self` repairs may request `core` for a source
+checkout named `core`. Legacy registered-name captions and internal `crew` remain
+valid. A name must be a nonblank basename of at most 4096 characters, not `.` or
+`..`, with no control characters, slash or backslash. Workers in one child must
+agree on the saved name; explicit user renames still win in Spaces. The same
+validation applies when restoring durable display. Combined omits a requested
+name. Unknown versions, mismatching identity labels, unsafe/conflicting names and
+nonmatching adoption IDs fail closed; names never establish membership.
 
 Every worker still requires exact `crew.task`, home tag, `herdr.space` and actual
 machine-qualified terminal/pane/tab/space membership. Project names are never
