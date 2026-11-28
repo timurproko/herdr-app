@@ -37,7 +37,7 @@ const nativeReads={},readNative=(key,value)=>{nativeReads[key]=(nativeReads[key]
 const host={
   agents:()=>readNative('agents',allAgents),panes:()=>readNative('panes',allPanes),spaces:()=>readNative('spaces',allSpaces),terminals:()=>readNative('terminals',allTerminals),machines:()=>readNative('machines',[{name:'pc2',layout:connected?'ready':'disconnected'}]),
   focused:()=>null,home:()=>'/home/test',shared:()=>null,setShared(){},
-  settings:()=>({zoom:currentZoom}),theme:()=>colors,window:()=>({platform:'linux'}),openOverlay(){},
+  settings:()=>readNative('settings',{zoom:currentZoom}),theme:()=>colors,window:()=>({platform:'linux'}),openOverlay(){},
   props:()=>null,closeOverlay(){},notify(){},nextCommand(){},
   layout:()=>({id:'panel',hidden:!shown,children:[{id:'panel-body',active:'changes'}]}),
   run:(...args)=>actions.push(args),
@@ -624,7 +624,40 @@ await Promise.all(tasks);
   const coordinated=rows.map(pr=>({...pr,key:`owner/repo#${pr.number}`,repo:'owner/repo'}));
   for(const pr of coordinated)group.entries.set(pr.key,{pr,link:{targets:[{terminal:'pc2/frame-review'}]}});
   const frame=model.presentationSnapshot();for(const pr of coordinated)group.stagePresentation(pr,'review',model,frame);
-  assert.equal(contextReads,2,'Provider verified/presentation contexts are each read at most once per frame');
-  verified=false;assert.equal(group.stageTarget(coordinated[0],'review',model),null,'Action rechecks provider verification outside the frame snapshot');assert.equal(contextReads,3);
+  assert.equal(contextReads,1,'A strict verified context supplies this same frame presentation without a second provider bind');
+  verified=false;assert.equal(group.stageTarget(coordinated[0],'review',model),null,'Action rechecks provider verification outside the frame snapshot');assert.equal(contextReads,2);
 }
-console.log('PASS: Canonical role labels, isolated actions, metadata-line motion above repository headers, remote/background identity, freshness and one native presentation snapshot per frame');
+// The production coordinator scan used to revalidate Crew once per candidate,
+// including every unrelated terminal, before any row could render. Its async
+// admission must remain fresh even when enumeration uses a frame snapshot.
+{
+  shown=true;connected=true;
+  const model=new AgentLinks(),panel=new main.namespace.default();panel.resetRepository();panel.agentLinks=model;panel.view='open';panel.shown=()=>true;
+  const group=panel.aggregate=new AggregatePulls({shown:()=>true}),member='pc2/frame-review';
+  const context={scope:'scan-frame',tasks:[{id:'review',terminal:member}],links:[]};group.context=context;panel.context='tasks:scan-frame';
+  let reads=0,verified=true;group.currentContext=()=>{reads++;return verified?context:null;};
+  panel.syncAggregate=()=>true;panel.syncMotionPreference=()=>{};panel.renderAggregate=()=>element();
+  const jobs=[],scanCx={...cx,spawn:fn=>{jobs.push(fn);}};
+  // A known entry must not trigger another native terminal collection read.
+  model.entries.set(member,{...model.liveTarget(member),repo:'owner/repo',at:0});
+  let unrelatedDirectories=0;
+  const noisyPanes=allPanes.filter(p=>p.terminal!==member).map(p=>({p,descriptor:Object.getOwnPropertyDescriptor(p,'cwd')}));
+  for(const {p,descriptor}of noisyPanes)Object.defineProperty(p,'cwd',{configurable:true,get(){unrelatedDirectories++;return descriptor.value;}});
+  for(const key of Object.keys(nativeReads))nativeReads[key]=0;
+  panel.render(scanCx);
+  assert.equal(reads,1,'Candidate enumeration reads the verified provider once, not once per unrelated agent');
+  for(const key of ['agents','panes','spaces','terminals','machines'])assert.equal(nativeReads[key],1,`Enumeration reuses frame ${key}`);
+  assert.deepEqual([...model.pending.keys()],[member],'Only exact same-home live membership is selected');
+  assert.equal(panel.agentPresentation,null);
+  assert.equal(nativeReads.settings,1,'The entire frame shares one immutable settings/zoom read');
+  assert.equal(unrelatedDirectories,0,'Select membership before resolving unrelated agent directories');
+  for(const {p,descriptor}of noisyPanes)Object.defineProperty(p,'cwd',descriptor);
+  model.entries.clear();
+  const before=calls.length;verified=false;
+  await Promise.all(jobs.map(fn=>fn(scanCx)));await tick();
+  assert.ok(reads>1,'Async continuation resolves fresh provider authority after yielding');
+  assert.equal(calls.length,before,'Retired membership starts no canonical repository or footer read');
+  assert.equal(model.entries.size,0,'The old frame cannot publish an association after verification retires');
+  assert.equal(model.pending.size,0);
+}
+console.log('PASS: Canonical role labels, isolated actions, metadata-line motion above repository headers, remote/background identity, freshness and bounded frame-local candidate enumeration');

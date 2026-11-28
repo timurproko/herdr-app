@@ -181,16 +181,14 @@ export const overdueChecks = (pr,now=Date.now()) => needsChecks(pr) && (!Number.
 export class ChecksFallback {
   constructor({snapshot,read,now=()=>Date.now()}) {this.snapshot=snapshot;this.read=read;this.now=now;this.jobs=new Map();this.cooldowns=new Map();}
   stop() {this.jobs.clear();this.wakeup=null;}
-  eligible() {
-    const state=this.snapshot();
+  eligible(state=this.snapshot()) {
     return state?.enabled ? {...state,repositories:state.repositories.map(repo=>{
       const rows=repo.rows.filter(pr=>['open','draft'].includes(pr?.state));
       return {...repo,rows,interval:repo.uncovered || rows.some(needsChecks)?CHECKS_INTERVAL:STATE_SAFETY_INTERVAL,
         fresh:rows.some(pr=>overdueChecks(pr,this.now()))};
     }).filter(repo=>repo.rows.length)} : null;
   }
-  sync(cx) {
-    const state=this.eligible();
+  sync(cx,state=this.eligible()) {
     if(!state) {this.stop();return;}
     for(const [name,until]of this.cooldowns)if(until<=this.now())this.cooldowns.delete(name);
     const wanted=new Set(state.repositories.map(repo=>repo.name));
