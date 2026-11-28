@@ -515,6 +515,11 @@ Spaces and Agents SHALL share trailing label and disclosure/status rails, with e
 - **THEN** no role label or child count is fabricated and ordinary tag, worktree, hover, selection and truncation behavior remains unchanged
 - **AND** Agents retains its existing numeric rail and collapsed-count behavior
 
+#### Scenario: Crew label without child controls
+- **WHEN** a space row has a crew label but no child spaces, or combined view is off
+- **THEN** the label retains exactly the column it occupies when child count and chevron are present, at both 100% and 130% zoom
+- **AND** absent count and disclosure leave empty space rather than visible placeholder controls, and the label never shifts to the far-right edge
+
 #### Scenario: Sidebar-only casing
 - **WHEN** the same coordinator is represented in Spaces and a terminal-pane header
 - **THEN** its Spaces role text is `crew` while the terminal-pane badge remains `Crew`
