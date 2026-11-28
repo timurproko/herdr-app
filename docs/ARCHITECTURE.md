@@ -1164,8 +1164,21 @@ outcomes, restarts and toggle changes cannot clear an episode. Later authoritati
 recovery of all recorded low quotas, or a proven new natural period after the
 old period actually ends, rearms it; a changed reset timestamp alone does not.
 No unresolved record is evicted to make space. A dead process lock can be
-reclaimed, never its spend receipt. This journal and account consent are excluded
+reclaimed, never its spend receipt. Workers refuse to start a POST after their
+90-second action deadline. A crashed uncompleted claim stays excluded; after a
+conservative five-minute transport bound it can settle only from a later fresh
+recovery or proven natural-period read, never from timeout alone. This journal
+and account consent are excluded
 from portable preferences and contain no credentials or raw provider responses.
+
+Both reset origins use `refreshAfterReset()` in the canonical controller, retaining
+PR #107's full collector-lease wait, captured enable epoch and account-only scope.
+An automatic confirmed spend owns one standard host success notification with
+captured machine/provider/account/type; manual success remains silent. A result
+already submitted can still report that confirmed spend after disablement, but
+cannot revive disabled refresh work. A failed validation read publishes only its
+existing unavailable/error report and Retry-After rather than immediately retrying
+it. Follow-up read failure never invents a refill or triggers a second spend.
 
 The collector discovers the default A1 Codex OAuth store (`~/.a1/agent/auth.json`)
 even when the desktop/SSH environment lacks `PI_CODING_AGENT_DIR`. Login candidates

@@ -388,8 +388,6 @@ async function copilotPremium(candidate,account,get,now) {
 const RATE_LIMITED='Usage requests are rate limited. Try again later.';
 function unavailable(candidate,kind,extra={}) {return {status:'unavailable',problem:{kind,refreshedBy:candidate.harness,...extra}};}
 async function collect(request={},options={}) {
-  // The host allows 120s: leave cleanup time after a coordinated rotation
-  // (45s account-lock wait + 30s OAuth). Ordinary quota requests still cap at 7s.
   const now=options.now??Date.now(),deadline=Date.now()+105000,transport=options.requestJson??requestJson;
   const get=(url,headers,request={})=>{
     const remaining=deadline-Date.now();if(remaining<=0)return Promise.reject(Error('Usage deadline exceeded'));
@@ -403,8 +401,6 @@ async function collect(request={},options={}) {
     if(request.sourceId?first.provider!==request.sourceId:request.reportId&&request.reportId!==id)return null;
     const previousId=first.provider==='claude'&&first.accountId&&first.organizationId?`claude:${hash(`claude:${first.accountId}`)}`:undefined;
     const entry={id,previousId,sourceId:first.provider,sourceLabel:{claude:'Claude',codex:'Codex',copilot:'Copilot'}[first.provider],account:{label:first.email,email:first.provider==='claude'?first.email:undefined,id:first.accountId,organizationId:first.organizationId},fetchedAt:new Date(now).toISOString()};
-    // The UI names accounts not to ask about now: one still inside a provider's
-    // Retry-After window, or one another machine reported moments ago.
     const held=number(request.hold?.[id]);
     if(held!==undefined&&held>now)return {...entry,report:{status:'error',error:RATE_LIMITED,retryAt:Math.min(now+3600000,held)}};
     if(Array.isArray(request.reuse)&&request.reuse.includes(id))return {...entry,report:{status:'reused'}};
@@ -457,6 +453,7 @@ async function login(request={},options={}) {
 // Exact-account claims; request IDs provide provider idempotency.
 const RESET_RESULTS=['reset','already_used','not_limited','cooldown','ineligible','unavailable'];
 async function claudeReset(request={},options={}) {
+  const deadline=Date.now()+90000;
   const accountId=text(request.accountId,80),organizationId=text(request.organizationId,80),grantId=text(request.grantId,64),requestId=text(request.requestId,64);
   if(!accountId||!ORGANIZATION.test(organizationId??'')||!RESET_ID.test(grantId??'')||!REQUEST_ID.test(requestId??''))return {error:'Invalid reset request.'};
   const now=options.now??Date.now(),get=options.requestJson??requestJson;
@@ -466,7 +463,8 @@ async function claudeReset(request={},options={}) {
   if(!c)return {error:'This Claude account is not signed in on this machine.'};
   try{if(c.expires!==undefined&&c.expires<=now+60000)c=await renewClaude(c,options);}
   catch{return {error:'Login required. Sign in again, then reset.'};}
-  if(request.automatic&&!await revalidateReset(request,'claude',options))return {result:'unavailable'};
+  if(request.automatic){const v=await revalidateReset(request,'claude',options);if(!v.allowed)return {result:'unavailable',validationReport:v.report};}
+  if(Date.now()>deadline)return {result:'unavailable'};
   let response;
   try{response=await get(`https://api.anthropic.com/api/organizations/${organizationId.toLowerCase()}/reset_rate_limits`,
     {Authorization:`Bearer ${c.token}`,Accept:'application/json','anthropic-beta':'oauth-2025-04-20','User-Agent':CLAUDE_USER_AGENT},
@@ -495,13 +493,15 @@ async function codexResetList(c,get) {
   return groups.length?{available:groups.length,groups}:null;
 }
 async function codexReset(request={},options={}) {
+  const deadline=Date.now()+90000;
   const accountId=text(request.accountId,80),creditId=text(request.grantId,100),requestId=text(request.requestId,64);
   if(!accountId||!CREDIT_ID.test(creditId??'')||!REQUEST_ID.test(requestId??''))return {error:'Invalid reset request.'};
   const now=options.now??Date.now(),get=options.requestJson??requestJson;
   const c=(await discover(options)).find(x=>x.provider==='codex'&&x.accountId===accountId&&x.token);
   if(!c)return {error:'This Codex account is not signed in on this machine.'};
   if(c.expires!==undefined&&c.expires<=now)return {error:'Login required. Sign in to Codex again, then reset.'};
-  if(request.automatic&&!await revalidateReset(request,'codex',options))return {result:'unavailable'};
+  if(request.automatic){const v=await revalidateReset(request,'codex',options);if(!v.allowed)return {result:'unavailable',validationReport:v.report};}
+  if(Date.now()>deadline)return {result:'unavailable'};
   let response;
   try{response=await get(CODEX_CONSUME,{...codexHeaders(c),'Content-Type':'application/json','x-openai-codex-luna-reserve':'1'},
     {method:'POST',body:{credit_id:creditId,redeem_request_id:requestId},timeout:25000});}
@@ -518,14 +518,15 @@ async function revalidateReset(request,provider,options) {
   const {reports}=await collect({reportId:`${provider}:${hash(identity)}`},options);
   const entry=reports.find(e=>e.sourceId===provider&&e.account?.id===request.accountId&&
     (e.account.organizationId??null)===(request.organizationId??null));
-  if(entry?.report?.status!=='available'||(provider==='codex'&&!(entry.report.resetCredits?.applicable>0)))return false;
+  if(entry?.report?.status!=='available')return {allowed:false,report:entry?.report};
+  if(provider==='codex'&&!(entry.report.resetCredits?.applicable>0))return {allowed:false};
   const group=entry.report[provider==='claude'?'claudeResets':'codexResets']?.groups?.find(g=>g.typeId===request.automatic.typeId&&
     (g.grants??[g]).some(grant=>grant.grantId===request.grantId));
   const grant=(group?.grants??(group?[group]:[])).find(g=>g.grantId===request.grantId),now=options.now??Date.now();
   if(!grant||grant.usable!==true||!(grant.left>0)||!grant.covers?.length||JSON.stringify(grant.covers)!==JSON.stringify(request.automatic.covers)||
-    (grant.endsAt&&!(Date.parse(grant.endsAt)>now))||(grant.cooldownUntil&&!(Date.parse(grant.cooldownUntil)<=now)))return false;
-  return entry.report.windows.some(w=>grant.covers.includes(w.id)&&typeof w.remainingPct==='number'&&Number.isFinite(w.remainingPct)&&w.remainingPct>=0&&w.remainingPct<=1&&
-    (!w.resetsAt||Date.parse(w.resetsAt)>now));
+    (grant.endsAt&&!(Date.parse(grant.endsAt)>now))||(grant.cooldownUntil&&!(Date.parse(grant.cooldownUntil)<=now)))return {allowed:false};
+  return {allowed:entry.report.windows.some(w=>grant.covers.includes(w.id)&&typeof w.remainingPct==='number'&&Number.isFinite(w.remainingPct)&&w.remainingPct>=0&&w.remainingPct<=1&&
+    (!w.resetsAt||Date.parse(w.resetsAt)>now))};
 }
 module.exports={revalidateReset,codexReset,codexResetList,claudeReset,login,discover,discoverExecutables,collect,codexReport,claudeReport,copilotReport,duration,ENDPOINTS,requestJson,renewClaude,CLAUDE_CLIENT_ID,copilotBillingUrl,isBillingUrl,copilotPremiumReport};
 if(require.main===module || process.argv[1]?.startsWith('{')) {

@@ -6,8 +6,8 @@ import { U, DIALOG_SCROLL, slot, control, button as uiButton, dialogHeader, dial
 import { machinePicker } from './machine-picker.js';
 import { tag, inlineDropdown, hintTable } from './panel-kit.js';
 import { liveTheme as theme } from './look.js';
-import { preferences, updatePreferences, cache, refresh, signIn, claimReset, openPrivate } from './store.js';
-import { percentage, summaryWindows, windowKey, togglePin, resetInfo, sidebarUsageVisible, reportDisplayable, providerBlock, loginRequired, fetchedInfo, REFRESH_INTERVAL, REFRESH_TIMEOUT, orderKey, orderReports } from './model.js';
+import { preferences, updatePreferences, cache, refresh, signIn, claimReset, refreshAfterReset, openPrivate } from './store.js';
+import { percentage, summaryWindows, windowKey, togglePin, resetInfo, sidebarUsageVisible, reportDisplayable, providerBlock, loginRequired, fetchedInfo, REFRESH_INTERVAL, orderKey, orderReports } from './model.js';
 import { reorder } from './reorder.js';
 import { pluginIsEnabled } from './plugins.js';
 import { claudeSelection, selectClaude, usageOpeningContext, claudeContext, claudeView } from './accounts.js';
@@ -258,13 +258,7 @@ export default class Usage extends View {
         cooldown:'Resets are cooling down. Try again later.',ineligible:'This account can’t use that reset.',unavailable:'That reset isn’t available right now.',
         rate_limited:'Too many requests. Try again shortly.'}[r.result]??'The reset did not finish.'));
       this.resetOutcome=text?{id:entry.id,machine,text}:null;cx.notify();
-      if(r.result){
-        // A pre-reset collector may own the full loading lease. Do not drop the
-        // forced read after 60s while that older request is still allowed to run.
-        const attempts=Math.ceil(REFRESH_TIMEOUT/500),options={force:true,reportId:entry.id,signedIn:true,accountOnly:true,epoch:r.epoch};
-        for(let i=0;i<=attempts&&refresh(machine,cx,options)===false;i++)await cx.sleep(500);
-        for(let i=0;i<=attempts&&cache(machine).loading&&(cache(machine).generation??0)===r.epoch;i++)await cx.sleep(500);
-      }
+      if(r.result)await refreshAfterReset(machine,cx,entry.id,r.epoch);
       this.claiming=null;cx.notify();
     });
   }

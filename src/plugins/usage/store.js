@@ -1,4 +1,4 @@
-import { shared, setShared, exec, readTextFile, appHome, machines, spaces, window as appWindow, pluginFile, checking } from '../api.js';
+import { shared, setShared, exec, readTextFile, appHome, machines, spaces, window as appWindow, pluginFile, checking, notify } from '../api.js';
 import { machineKey, prefs, TTL, REFRESH_INTERVAL, REFRESH_TIMEOUT, reportFresh, resetTypes, resetWindows, automaticCandidate } from './model.js';
 const usageEnabled=()=>shared('custom.plugins')?.usage?.enabled!==false;
 const generation=()=>Number(shared('custom.usage.generation'))||0;
@@ -38,9 +38,10 @@ async function evaluateAutomatic(machine,cx,fetched,epoch) {
     if(!['claude','codex'].includes(entry.sourceId)||!entry.account?.id||!entry.actionRead)continue;
     if(shared('custom.usage.reset-journal-active')||preferences(machine).automaticReset)await resetJournal({action:'observe',provider:entry.sourceId,accountId:entry.account.id,organizationId:entry.account.organizationId,windows:resetWindows(entry),startedAt:entry.actionRead.startedAt});
     const candidate=automaticCandidate(entry,preferences(machine));if(!candidate)continue;
-    const automatic={typeId:candidate.type.id,covers:candidate.grant.covers,grantId:candidate.grant.grantId};
+    const automatic={typeId:candidate.type.id,covers:candidate.grant.covers,grantId:candidate.grant.grantId,label:candidate.type.label};
     if(!automaticCurrent(machine,entry,epoch,automatic))continue;
-    await claimReset(machine,{provider:entry.sourceId,accountId:entry.account.id,organizationId:entry.account.organizationId,grantId:candidate.grant.grantId,automatic,entry});
+    const result=await claimReset(machine,{provider:entry.sourceId,accountId:entry.account.id,organizationId:entry.account.organizationId,grantId:candidate.grant.grantId,automatic,entry});
+    if(!result.obsolete&&result.result&&!result.validationReport)await refreshAfterReset(machine,cx,entry.id,result.epoch);
     cx.notify();
   }
 }
@@ -96,7 +97,8 @@ export async function openPrivate(url) {
 }
 // Uses one limit reset (Claude or Codex) for one account. Resolves {result} or {error}; never retried here.
 export async function claimReset(machine,{provider,accountId,organizationId,grantId,automatic,entry}) {
-  const epoch=generation(),current=()=>usageEnabled()&&generation()===epoch&&preferences(machine).enabled&&(!automatic||automaticCurrent(machine,entry,epoch,automatic));
+  const epoch=generation(),alive=()=>usageEnabled()&&generation()===epoch&&preferences(machine).enabled;
+  const current=()=>alive()&&(!automatic||automaticCurrent(machine,entry,epoch,automatic));
   if(!current())return {obsolete:true};
   try {
     const source=await readTextFile(`${appHome()}/mods/custom-usage/bridge.cjs`);
@@ -113,11 +115,27 @@ export async function claimReset(machine,{provider,accountId,organizationId,gran
     try {
       const reply=await exec('node',['--input-type=commonjs','-e',source,'--',JSON.stringify({action:provider==='codex'?'codex-reset':'claude-reset',accountId,organizationId,grantId,requestId,automatic})],{on:machine??null,timeout:120000});
       result=reply.code===0?JSON.parse(reply.stdout):{error:'The reset did not finish. Check usage before trying again.'};
-    } finally {await resetJournal({...admission,action:'finish',requestId});}
-    if(!current())return {obsolete:true};
+    } finally {await resetJournal({...admission,action:'finish',requestId,outcome:result?.result==='reset'?'reset':'unknown'});}
+    // Report the confirmed irreversible fact even if consent changed after dispatch.
+    // The one admitted request owns this notification; obsolete results still cannot refresh.
+    if(automatic&&result?.result==='reset')try{notify({title:'Automatic reset used',
+      body:`${machine??'This computer'} · ${provider==='claude'?'Claude':'Codex'} · ${entry?.account?.email??entry?.account?.label??accountId} · ${automatic.label}`,level:'success'});}catch{}
+    if(!alive())return {obsolete:true};
+    if(['error','unavailable'].includes(result?.validationReport?.status)&&entry) {
+      const cached=cache(machine);
+      setShared(key(machine,'cache'),{...cached,reports:(cached.reports??[]).map(e=>e.id!==entry.id?e:{...e,actionRead:null,report:result.validationReport,
+        lastSuccessful:usable(e)?{fetchedAt:e.fetchedAt,report:e.report}:e.lastSuccessful})});
+    }
     if(result?.result){const cached=cache(machine);if(cached.at)setShared(key(machine,'cache'),{...cached,at:0});}
     return result?.result||result?.error?{...result,epoch}:{error:'The reset did not finish. Nothing was claimed.'};
   } catch { return current()?{error:'The reset did not finish. Check usage before trying again.'}:{obsolete:true}; }
+}
+// Shared PR #107 continuation: wait through the old collector's complete lease,
+// then force only the captured account, never the newly inspected account/machine.
+export async function refreshAfterReset(machine,cx,reportId,epoch) {
+  const attempts=Math.ceil(REFRESH_TIMEOUT/500),options={force:true,reportId,signedIn:true,accountOnly:true,epoch};
+  for(let i=0;i<=attempts&&refresh(machine,cx,options)===false;i++)await cx.sleep(500);
+  for(let i=0;i<=attempts&&cache(machine).loading&&(cache(machine).generation??0)===epoch;i++)await cx.sleep(500);
 }
 // missing: the session's account has no report yet (a login saved since the
 // last collection). Skip the TTL wait; fresh reports are still reused, so only

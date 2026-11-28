@@ -1396,6 +1396,13 @@ later authoritative recovery or a proven new natural quota period permits a new
 depletion. Storage failures fail closed. These receipts are neither synced nor
 exported, and do not coordinate independent clients outside this installation.
 
+A confirmed automatic spend shows one existing-style **Automatic reset used**
+success toast naming the machine, provider, account and reset type. It then uses
+the same account-only refresh as the dialog's Reset button: dialog quotas, reset
+inventory and pinned sidebar values update together without Refresh all. The
+toast confirms the spend, not a successful read; failed follow-up reads retain
+normal last-known/unavailable handling. Manual reset success remains silent.
+
 ## Usage request limits
 
 Healthy usage accounts are checked at most every 10 minutes while the window is active.
