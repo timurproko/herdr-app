@@ -1417,6 +1417,49 @@ other refreshes show Checking there rather than presenting cached Running as rea
 Once fresh Running facts arrive, eligible runtime controls re-enable immediately,
 without waiting for the refresh icon's separate visual minimum.
 
+## Automatic Usage resets
+
+**Settings → Usage → Automatic reset** is off by default for each machine.
+Turning it on reveals a Resets-style expandable area with simple checkboxes
+under each provider and account. Only types that Claude or Codex reports appear;
+nothing is selected automatically, including newly discovered reset types.
+Several credits of one type share one checkbox. Turning the switch off preserves
+choices. Account-bound reset authorization is not a portable preference.
+
+With Check usage enabled, the open, active Herdr desktop checks its selected
+space's machine at the normal Usage cadence, even with the summary hidden and
+Usage closed. The trigger runs on the desktop; quota reads and reset actions run
+on the captured machine through the existing local/remote transport. It does not
+scan unselected machines or run a daemon when Herdr is closed, inactive or asleep.
+A submitted provider action may still finish after closure. Checks are normally
+up to ten minutes apart, not real-time depletion monitoring.
+
+A checked, usable reset can be spent only for a proven applicable quota reading
+1% remaining or less, before rounding. Failed, cached, cross-machine reused and
+obsolete readings never authorize spending; the execution machine revalidates
+the account and grant before the existing reset action. Unknown coverage stays
+ineligible rather than guessing from a model name. In particular, a provider
+label alone cannot prove what a future model-specific reset clears.
+
+A private desktop receipt under `.customizations/usage/` serializes the same
+account across windows and selected machines. The receipt survives reloads,
+restarts and toggle cycling. A refusal, timeout or uncertain spend is not retried
+automatically, and a still-low follow-up cannot consume another reset. Only a
+later authoritative recovery or a proven new natural quota period permits a new
+depletion. Storage failures fail closed for automation, but do not disable the
+confirmed manual Reset action on the target machine. A manual reset made while
+the journal is unavailable still inhibits automatic spending for that account
+until a fresh reading proves recovery. These receipts and recovery fences are
+neither synced nor exported, and do not coordinate independent clients outside
+this installation.
+
+A confirmed automatic spend shows one existing-style **Automatic reset used**
+success toast naming the machine, provider, account and reset type. It then uses
+the same account-only refresh as the dialog's Reset button: dialog quotas, reset
+inventory and pinned sidebar values update together without Refresh all. The
+toast confirms the spend, not a successful read; failed follow-up reads retain
+normal last-known/unavailable handling. Manual reset success remains silent.
+
 ## Usage request limits
 
 Healthy usage accounts are checked at most every 10 minutes while the window is active.

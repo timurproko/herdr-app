@@ -6,7 +6,7 @@ import { createRequire } from 'node:module';
 import { machineKey,prefs,percentage,summaryWindow,summaryWindows,windowKey,togglePin,resetLabel,resetInfo,fetchedInfo,problem,reportFresh,TTL,orderKey,orderReports } from '../mods/custom-usage/model.js';
 const collector=createRequire(import.meta.url)('../mods/custom-usage/bridge.cjs');
 assert.notEqual(machineKey(null),machineKey('local'));
-assert.deepEqual(prefs(null),{enabled:true,summary:true,remaining:true,claudeAutomatic:true,pins:[],order:[]});
+assert.deepEqual(prefs(null),{enabled:true,summary:true,remaining:true,claudeAutomatic:true,automaticReset:false,resetSelections:[],pins:[],order:[]});
 // Card order: by provider, stable, unknown providers after the saved ones; bad values dropped.
 assert.deepEqual(prefs({order:['claude',3,'claude','codex']}).order,['claude','codex']);
 const cards=[{id:'a',sourceId:'codex'},{id:'b',sourceId:'copilot'},{id:'c',sourceId:'claude'}];

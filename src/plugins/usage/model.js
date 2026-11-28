@@ -9,9 +9,51 @@ export const machineKey = machine => machine == null ? 'local' : `remote:${machi
 export const windowKey = (report, window) => JSON.stringify([report, window]);
 export function prefs(value) {
   return { enabled:value?.enabled!==false, summary:value?.summary!==false, remaining:value?.remaining!==false, claudeAutomatic:value?.claudeAutomatic!==false,
+    automaticReset:value?.automaticReset===true,
+    resetSelections:Array.isArray(value?.resetSelections)?[...new Set(value.resetSelections.filter(x=>typeof x==='string'&&x.length<=1024))].slice(0,256):[],
     pins:Array.isArray(value?.pins)?value.pins.filter(x=>typeof x==='string'):[],
     // Card order in the Usage dialog, by provider (claude, codex, copilot); dragged by the user.
     order:Array.isArray(value?.order)?[...new Set(value.order.filter(x=>typeof x==='string'&&x.length<=64))]:[] };
+}
+// Consent identifies a semantic reset, never an expendable grant or an email.
+export const resetSelectionKey = (entry,typeId) => JSON.stringify([entry.sourceId,entry.account?.id,entry.account?.organizationId??null,typeId]);
+export function resetTypes(entry) {
+  const groups=entry?.report?.[entry.sourceId==='claude'?'claudeResets':'codexResets']?.groups??[],types=new Map();
+  if(!['claude','codex'].includes(entry?.sourceId)||!entry.account?.id)return [];
+  for(const grant of groups) {
+    if(typeof grant.typeId!=='string')continue;
+    const type=types.get(grant.typeId)??{id:grant.typeId,label:grant.name,key:resetSelectionKey(entry,grant.typeId),grants:[]};
+    type.grants.push(...(grant.grants??[grant]));types.set(type.id,type);
+  }
+  return [...types.values()];
+}
+export function resetChoiceGroups(reports) {
+  return ['claude','codex'].flatMap(provider=>{
+    const accounts=(reports??[]).filter(e=>e.sourceId===provider&&e.report?.status==='available').flatMap(entry=>{
+      const options=resetTypes(entry).map(type=>({key:type.key,label:type.label}));
+      return options.length?[{id:entry.id,label:entry.account?.email??entry.account?.label??entry.account.id,options}]:[];
+    });
+    return accounts.length?[{id:provider,label:provider==='claude'?'Claude':'Codex',groups:accounts}]:[];
+  });
+}
+export function resetWindows(entry) {
+  return (entry?.report?.windows??[]).map(w=>({id:w.id,remaining:percentage(w,true),end:Number.isFinite(Date.parse(w.resetsAt))?Date.parse(w.resetsAt):null}));
+}
+export function automaticCandidate(entry,preferences,now=Date.now()) {
+  if(!preferences?.automaticReset||!preferences.enabled||entry?.report?.status!=='available')return null;
+  if(entry.sourceId==='codex'&&!(entry.report.resetCredits?.applicable>0))return null;
+  const windows=resetWindows(entry),candidates=[];
+  for(const type of resetTypes(entry)) {
+    if(!preferences.resetSelections.includes(type.key))continue;
+    for(const grant of type.grants) {
+      if(grant.usable!==true||!(grant.left>0)||!grant.grantId||!grant.covers?.length||
+        (grant.endsAt&&!(Date.parse(grant.endsAt)>now))||(grant.cooldownUntil&&!(Date.parse(grant.cooldownUntil)<=now)))continue;
+      if(!windows.some(w=>grant.covers.includes(w.id)&&typeof w.remaining==='number'&&w.remaining>=0&&w.remaining<=1&&(w.end===null||w.end>now)))continue;
+      candidates.push({type,grant});
+    }
+  }
+  return candidates.sort((a,b)=>a.grant.covers.length-b.grant.covers.length||
+    (Date.parse(a.grant.endsAt)||Infinity)-(Date.parse(b.grant.endsAt)||Infinity)||a.type.id.localeCompare(b.type.id)||a.grant.grantId.localeCompare(b.grant.grantId))[0]??null;
 }
 // A card's place in the user's order: one per provider, so Claude keeps its
 // spot whichever saved account the card shows.

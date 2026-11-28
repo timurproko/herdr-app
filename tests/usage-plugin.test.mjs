@@ -11,13 +11,18 @@ const preferences={enabled:true,summary:true,remaining:true,claudeAutomatic:fals
 state.set('custom.usage.local.preferences',structuredClone(preferences));
 state.set('custom.usage.remote:pc2.preferences',structuredClone(preferences));
 const widget={id:'sidebar-usage',content:{mod:'custom-usage',props:{summary:true}}};
-const host={shared:key=>state.get(key),setShared:(key,value)=>state.set(key,structuredClone(value)),
+const host={checking:()=>false,shared:key=>state.get(key),setShared:(key,value)=>state.set(key,structuredClone(value)),
   layout:()=>({id:'sidebar',children:[widget]}),spaces:()=>[{active:true,machine:null}],machines:()=>[{name:'pc2'}],
   window:()=>({active:true,platform:'windows'}),panes:()=>[],home:()=>null,settings:()=>({zoom:1}),props:()=>props,focused:()=>null,terminals:()=>[],appHome:()=>'/fixture',
   run:(name,args)=>{commands.push([name,args]);widget.hidden=name==='layout.hide';},notify(){},
   closeOverlay:id=>closed.push(id),openOverlay(){throw Error('Disabled Usage must not open anything');},
   readTextFile:()=>new Promise(resolve=>reads.push(resolve)),
-  exec:(...args)=>new Promise(resolve=>executions.push({args,resolve})),
+  exec:(...args)=>{
+    // Main's independent Trello cleanup lifecycle is outside this Usage fixture.
+    if(args[1]?.[0]?.endsWith('trello-transport.cjs'))return Promise.resolve({code:0,stdout:JSON.stringify({ok:true,data:{announced:[],cleaned:[],pending:[]}})});
+    if(args[1]?.[0]?.endsWith('reset-journal.cjs'))return Promise.resolve({code:0,stdout:JSON.stringify({requestId:'herdr-fixture',observed:true,finished:true})});
+    return new Promise(resolve=>executions.push({args,resolve}));},
+  pluginFile:(id,name)=>`/fixture/plugins/${id}/${name}`,
 };
 const {r}=await loadMod({host,modules:{'space-color-state.js':{currentSpaceColor(){}}},entry:'import * as r from "./plugins.js";export {r};'});
 const plugin=r.pluginById('usage');assert.equal(r.pluginEnabled(plugin),true,'Usage preserves the enabled default');
@@ -34,7 +39,7 @@ function moduleFor(file){if(!cache.has(file))cache.set(file,new vm.SourceTextMod
 async function load(file){const mod=moduleFor(file);if(mod.status==='unlinked')await mod.link((name,from)=>{
  if(name==='gpui-kit')return synthetic({View:class{},div:element,svg:element,image:element});
  if(name==='gpui-base')return synthetic({h_flex:element,v_flex:element,Textarea:{new:element},TextareaState:{new:o=>{let value=o?.value??'';return {on(){},value:()=>value,set_value:v=>{value=v;}};}},Toggle:{new:element},Popover:{new:element},Popup:{new:element},HoverCard:{new:element},InputState:{new:()=>({on(){},value:()=>'',set_value(){}})},Input:{new:element},Checkbox:{new:element},Scrollbar:{vertical:element},ScrollHandle:{new:()=>({scroll_to_item(){}})}});
- if(name==='./host.js')return synthetic(host);if(name==='./plugins.js')return synthetic(r);
+ if(name==='./host.js'||name==='../api.js')return synthetic(host);if(name==='./plugins.js')return synthetic(r);
  if(name==='./ui.js')return synthetic(ui);if(name==='./look.js')return synthetic({liveTheme:()=>({})});
  if(name==='./machine-picker.js')return synthetic({machinePicker:element});
  if(name==='./plugins-updates.js')return synthetic({recordPluginUpdate(){throw Error('Usage must not publish unrelated plugin update checks');}});
@@ -49,6 +54,18 @@ const drain=async()=>{while(jobs.length)await jobs.shift()(cx);};
 const tick=async()=>{for(let i=0;i<12;i++)await Promise.resolve();};
 const owner={settingsMachine:null,heading:element,row:element,toggle:element};
 assert.ok(pages.renderPluginSettings('usage',owner,{}));
+// Declared grouped checkboxes use the real common panel, with captured-machine guards.
+const choiceKey=JSON.stringify(['codex','fixture',null,'full']);
+store.updatePreferences(null,{automaticReset:true});
+state.set('custom.usage.local.cache',{version:5,reports:[{id:'codex-fixture',sourceId:'codex',account:{id:'fixture',label:'fixture@example.test'},report:{status:'available',codexResets:{groups:[{name:'Full reset',typeId:'full',covers:['weekly'],grantId:'g',left:1,usable:true}]}}}]});
+const flatten=node=>node&&typeof node==='object'?[node,...(node.kids??[]).flatMap(flatten)]:[];
+let checks=flatten(pages.renderPluginSettings('usage',owner,{})).filter(n=>n.attrs.accessibility_label?.[0]==='Full reset');
+assert.equal(checks.length,1);assert.equal(checks[0].attrs.checked[0],false);
+checks[0].attrs.on_change[0](true,cx);assert.deepEqual(Array.from(store.preferences(null).resetSelections),[choiceKey]);
+owner.settingsMachine='pc2';checks[0].attrs.on_change[0](false,cx);assert.deepEqual(Array.from(store.preferences(null).resetSelections),[choiceKey],'Old machine checkbox is inert');owner.settingsMachine=null;
+store.updatePreferences(null,{automaticReset:false});checks[0].attrs.on_change[0](false,cx);assert.equal(store.preferences(null).resetSelections.length,1,'Off toggle rejects stale checkbox');
+assert.equal(flatten(pages.renderPluginSettings('usage',owner,{})).some(n=>n.attrs.accessibility_label?.[0]==='Full reset'),false);
+state.set('custom.usage.local.preferences',structuredClone(preferences));state.delete('custom.usage.local.cache');
 const pageRefresh=pages.pluginPageRefresh('usage');assert.ok(pageRefresh,'Usage declares a header Refresh for the Settings machine');
 assert.equal(pageRefresh.label,'Refresh usage');assert.equal(typeof pageRefresh.run,'function');assert.equal(pages.pluginPageRefresh('look'),null);
 r.setPluginEnabled(plugin,false);const saved=JSON.stringify([...state].filter(([key])=>key.endsWith('.preferences')));

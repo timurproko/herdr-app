@@ -4,6 +4,7 @@
 // Settings header.
 import { preferences, updatePreferences, refresh, cache } from './store.js';
 import { pluginIsEnabled } from './plugins.js';
+import { resetChoiceGroups } from './model.js';
 
 export const usagePage = Object.freeze({
   id: 'usage', title: 'Usage', about: 'Account quota preferences for the selected machine.', machine: true,
@@ -23,6 +24,15 @@ export const usagePage = Object.freeze({
       get: machine => preferences(machine).summary, set: (machine, summary) => updatePreferences(machine, { summary }) },
     { key: 'claude-automatic', type: 'toggle', label: 'Automatic Claude account', about: 'Use the selected Claude session’s account when opening Usage.',
       get: machine => preferences(machine).claudeAutomatic, set: (machine, claudeAutomatic) => updatePreferences(machine, { claudeAutomatic }) },
+    { key: 'automatic-reset', type: 'toggle', label: 'Automatic reset',
+      get: machine => preferences(machine).automaticReset,
+      set: (machine, automaticReset, cx) => { updatePreferences(machine, { automaticReset }); if(automaticReset)refresh(machine,cx); },
+      checkboxGroups: {
+        title: 'Resets', groups: machine => resetChoiceGroups(cache(machine).reports),
+        selected: machine => preferences(machine).resetSelections,
+        set: (machine,key,on) => { const selected=preferences(machine).resetSelections;
+          updatePreferences(machine,{resetSelections:on?[...new Set([...selected,key])]:selected.filter(value=>value!==key)}); },
+      } },
     { key: 'percentages', type: 'choice', label: 'Percentages', about: 'Choose how quota percentages are displayed.',
       options: [[false, 'Used'], [true, 'Remaining']],
       get: machine => preferences(machine).remaining, set: (machine, remaining) => updatePreferences(machine, { remaining }) },

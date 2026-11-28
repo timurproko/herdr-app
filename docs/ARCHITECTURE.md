@@ -1229,6 +1229,71 @@ from this machine as well as peers, so one expiring account does not re-query he
 siblings. Manual refresh still bypasses reuse; Retry-After and generation/single-flight
 guards remain unchanged.
 
+Automatic reset adds a Usage-owned collection coordinator on the same mounted
+header lifecycle. It yields before work and uses the existing minute cadence,
+ten-minute TTL and shared machine collection lease; a hidden/absent summary is
+not its owner. Only the active-space machine is eligible, while the desktop is
+active, Usage/Check usage are enabled and that machine's Automatic reset is on.
+No closed-app worker or hidden-machine scan exists. Settings Refresh for another
+machine remains a display read, not automatic spend permission.
+
+The canonical controller is `plugins/usage/store.js`; each panel's `store.js` is
+a packaging adapter. New successful real readings carry request, machine, enable
+epoch and local receipt provenance; reused and retained reports are display-only.
+Consent keys bind provider/account/organization and semantic reset scope. The
+collector preserves explicit cleared-window scope and per-grant eligibility;
+unknown coverage has no automatic authority. The target worker rechecks that
+exact account, scope and grant immediately before an automatic consume action.
+
+`plugins/usage/reset-journal.cjs` is a Node-builtins-only local admission worker.
+It uses exclusive process-owned locks, atomic synced writes and bounded hashed
+account records under the desktop home's `.customizations/usage/`. Acquisition
+prepares and syncs a uniquely named owner record in a private temporary directory,
+then atomically renames the complete nonempty directory to `admission.lock`.
+A writer killed before publication owns no lock. Legacy missing, empty or malformed
+owner records are reclaimable after the journal's ten-second exec budget; a known
+live PID is never reclaimed on age alone. Cleanup uses the captured unique owner
+name so racing recovery cannot remove a newly published owner. No spend receipt
+is deleted or expired by lock recovery. It reserves before submission and shares
+healthy-journal arbitration with manual claims. An account's episode
+spans selected machines and reset types, preventing cascading grants. Unknown
+outcomes, restarts and toggle changes cannot clear an episode. Later authoritative
+recovery of all recorded low quotas, or a proven new natural period after the
+old period actually ends, rearms it; a changed reset timestamp alone does not.
+No unresolved record is evicted to make space. A dead process lock can be
+reclaimed, never its spend receipt. Workers refuse to start a POST after their
+90-second action deadline. A crashed uncompleted claim stays excluded; after a
+conservative five-minute transport bound it can settle only from a later fresh
+recovery or proven natural-period read, never from timeout alone. This journal
+and account consent are excluded
+from portable preferences and contain no credentials or raw provider responses.
+
+An unhealthy/unavailable journal is distinct from a healthy pending owner: the
+former denies automatic claims but cannot remove the person's already-confirmed
+manual Reset action. That manual fallback uses the existing target-machine action
+and request ID, without requiring local Node/journal success. It first writes a
+bounded account/machine recovery fence to runtime-only
+`custom.usage.manual-reset-fences`; current active claims still exclude a racing
+manual fallback. The fence survives module replacement and journal repair and
+cannot rearm from another low reading, cached data, restart or timeout alone.
+A later real target-machine recovery/new-natural-period read clears it; an
+unfinished fallback also requires the existing five-minute transport bound.
+Unknown/full fence state keeps automation fail-closed without deleting records.
+These fences are not settings or portable preferences and add no UI controls.
+
+Both reset origins use `refreshAfterReset()` in the canonical controller, retaining
+PR #107's full collector-lease wait, captured enable epoch and account-only scope.
+An automatic confirmed spend owns one standard host success notification with
+captured machine/provider/account/type; manual success remains silent. A result
+already submitted can still report that confirmed spend after disablement, but
+cannot revive disabled refresh work. A failed validation read publishes only its
+existing unavailable/error report and Retry-After rather than immediately retrying
+it, only while its captured account-read identity and latest collection ownership
+still match. Collection ownership is retained through completion, failure and lease
+expiry, so an older validation cannot erase a newer reading or install an obsolete
+Retry-After even within the same enable generation. Follow-up read failure never
+invents a refill or triggers a second spend.
+
 The collector discovers the default A1 Codex OAuth store (`~/.a1/agent/auth.json`)
 even when the desktop/SSH environment lacks `PI_CODING_AGENT_DIR`. Login candidates
 remain grouped by account identity, so a fresh A1 copy can replace expired CLI copies

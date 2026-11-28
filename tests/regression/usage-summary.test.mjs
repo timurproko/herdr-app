@@ -23,7 +23,7 @@ const hasRefresh=view=>nodes(view).some(n=>n.style.asset?.[0]?.endsWith('/refres
 let machine=null,width=248,replyReports=[],fail=false,stops=0,summaryMode=true,uiZoom=1,appActive=true,focusSnapshot={terminal:'t1'},terminalSnapshot=[];
 const storage=new Map(),jobs=[],executions=[],overlays=[],timers=[];
 const context=vm.createContext({
-  pluginIsEnabled:()=>true,
+  pluginIsEnabled:()=>true,checking:()=>false,
   View:class{},div:()=>element(),svg:asset=>element('svg').asset(asset),h_flex:()=>element('hflex'),v_flex:()=>element('vflex'),
   settings:()=>({zoom:uiZoom}),spaces:()=>[{active:true,machine}],layout:()=>({id:'sidebar',size:{px:width}}),props:()=>({summary:summaryMode}),
   machinePicker:()=>element('machine-picker'),Toggle:{new:()=>element('toggle')},Scrollbar:{vertical:()=>element('scrollbar')},Popover:{new:id=>element('popover').id(id)},HoverCard:{new:id=>element('hovercard').id(id)},
@@ -31,11 +31,12 @@ const context=vm.createContext({
   theme:()=>({foreground:'#fff',muted:'#aaa',dim:'#888',hover:'#333',done:'#0f0',border:'#444'}),
   shared:k=>storage.get(k),setShared:(k,v)=>storage.set(k,v),appWindow:()=>({active:appActive}),appHome:()=>'/fixture',machines:()=>[{name:null},{name:'pc2'}],
   readTextFile:async()=> 'synthetic collector: never executed',
-  exec:async(command,args,options)=>{executions.push({command,args,options});return fail?{code:1}:{code:0,stdout:JSON.stringify({reports:replyReports})};},
+  pluginFile:(id,name)=>`/fixture/plugins/${id}/${name}`,
+  exec:async(command,args,options)=>{if(args[0]?.endsWith('reset-journal.cjs'))return {code:0,stdout:JSON.stringify({requestId:'herdr-fixture',observed:true,finished:true})};executions.push({command,args,options});return fail?{code:1}:{code:0,stdout:JSON.stringify({reports:replyReports})};},
   openOverlay:spec=>overlays.push(spec),closeOverlay(){},
 });
 function loadUsage(context){
-  for(const file of ['lib/ui.js','mods/custom-usage/model.js','mods/custom-usage/store.js','mods/custom-usage/claude-context.js','mods/custom-usage/accounts.js','mods/custom-usage/panel-kit.js','mods/custom-usage/reorder.js','mods/custom-usage/main.js']){
+  for(const file of ['lib/ui.js','mods/custom-usage/model.js','mods/custom-usage/plugins/usage/store.js','mods/custom-usage/claude-context.js','mods/custom-usage/accounts.js','mods/custom-usage/panel-kit.js','mods/custom-usage/reorder.js','mods/custom-usage/main.js']){
     const source=fs.readFileSync(new URL(file,root),'utf8').replace(/^import .*;\r?\n/gm,'').replace('export default class Usage','class Usage').replace(/^export \{[^\n]+\r?\n/gm,'').replace(/export /g,'');
     vm.runInContext(source,context);
   }
@@ -435,6 +436,7 @@ for(const host of [null,'pc2'])for(const sourceLabel of ['Claude','Codex'])for(c
   assert.equal(byId(render(),`usage-fill-${quotaKey}`).style.w[0],0);
   const claimed=deferred(),collected=deferred(),claimStarted=deferred(),collectionStarted=deferred();
   context.exec=async(command,args,options)=>{
+    if(args[0]?.endsWith('reset-journal.cjs'))return originalExec(command,args,options);
     const request=JSON.parse(args.at(-1));
     if(request.action){
       executions.push({command,args,options});claimStarted.resolve();await claimed.promise;
@@ -486,7 +488,7 @@ for(const sourceLabel of ['Claude','Codex'])for(const [reply,message] of [
   setup({reports:[entry]});replyReports=[entry];viewInstance.machine=null;viewInstance.resetsOpen=new Set([entry.id]);
   const render=()=>card(storage.get(key(null,'cache')).reports[0]);
   const before=render(),prefix=`usage-claude-resets-${entry.id}`;
-  context.exec=async(command,args,options)=>JSON.parse(args.at(-1)).action?{code:0,stdout:JSON.stringify(reply)}:originalExec(command,args,options);
+  context.exec=async(command,args,options)=>args[0]?.endsWith('reset-journal.cjs')?originalExec(command,args,options):JSON.parse(args.at(-1)).action?{code:0,stdout:JSON.stringify(reply)}:originalExec(command,args,options);
   viewInstance.startClaim(entry,group,`${entry.id}:${group.grantId}`,cx);
   await jobs.shift()({...cx,sleep:async()=>{if(jobs.length)await jobs.shift()(cx);}});
   const after=render(),outcome=byId(after,`usage-claude-reset-outcome-${entry.id}`);
@@ -520,6 +522,7 @@ for(const host of [null,'pc2'])for(const sourceLabel of ['Claude','Codex'])for(c
   assert.match(byId(sidebarTree,'usage-summary-open').style.accessibility_label[0],/0% left/);
   if(slow)storage.set(key(host,'cache'),{...storage.get(key(host,'cache')),loading:true,request:'pre-reset',started:clock});
   context.exec=async(command,args,options)=>{
+    if(args[0]?.endsWith('reset-journal.cjs'))return originalExec(command,args,options);
     const request=JSON.parse(args.at(-1));assert.equal(options.on,host);
     if(request.action){
       if(slow){dialog.machine=otherHost;dialog.accountOverride=sibling.id;paint();}
