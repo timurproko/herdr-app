@@ -48,8 +48,22 @@ function rememberMissing(entry) {
 }
 export class AggregatePulls {
   constructor({shown,onUpdate,presentationEpoch=()=>0,presentationAlive=()=>true}) {this.shown=shown;this.onUpdate=onUpdate;this.presentationEpoch=presentationEpoch;this.presentationAlive=presentationAlive;this.presentations=new PresentationMemory();this.stagePresentations=new Map();this.publication=new Publication();this.entries=new Map();this.pending=new Map();this.diagnostics=new Map();this.serial=0;this.factOrder=new PullFactsOrder();}
-  currentContext({presentation = false,space = location().space} = {}) {
+  currentContext({presentation = false,space} = {}) {
+    const source=location(), held=source.git;
+    if(space===undefined)space=source.space;
     const context=sidebarPanelEnabled('changes') ? pluginPullContext(space,{presentation}) : null;
+    if(held) {
+      if(source.space!==space || held.mode==='folder')return null;
+      const identity=held.mode==='tasks' ? held.identity : null;
+      const matches=identity && context?.kind==='tasks' && Object.keys(identity).every(key=>(context[key]??null)===identity[key]);
+      if(!matches) {
+        if(!presentation || !sidebarPanelEnabled('changes'))return null;
+        // Preserve only the held overview's unavailable/last-good presentation.
+        // A replacement at the same parent never grants its scope or inventory.
+        const retained=identity && this.context?.scope===identity.scope ? this.context : identity;
+        return {...retained,kind:'tasks',parent:source.space,scope:identity?.scope??JSON.stringify(['held-unavailable',source.space,source.terminal]),stale:true,loading:false,links:[]};
+      }
+    }
     return !presentation && context?.stale ? null : context;
   }
   sync(cx,snapshot) {

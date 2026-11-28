@@ -611,18 +611,45 @@ section header. The main header's repository label and repository-page popup
 (including keyboard actions) are removed; diagnostics remain on existing native
 activity/count feedback and PR row menus are unchanged.
 
-## Right-sidebar tab pins
+## Right-sidebar context pin
 
-`shared/panel-state.js` is the single owner of `custom.panel.tabs` (version 1):
-`{ default: {open,view}, pins: { [qualifiedTabId]: {space,open,view} } }`. Valid views
-come from plugin sidebar declarations (the shipped stable IDs remain `files` and
-`changes`). It uses supported native layout commands; no Core or layout-document
-writes. Availability is only a projection: disabled pinned views fall back to the
-first enabled panel and both disabled hides the sidebar. Stored choices survive
-so re-enabling restores them. With no pins, the existing global choice is captured
-only when availability first masks it; ordinary navigation stays native. This tab-runtime state is deliberately excluded from
-preference export. The unpinned default stays separate from pinned choices; the
-legacy `custom.panel.view` reopen hint follows only the shared/default choice.
+`shared/panel-state.js` owns one sidebar hold for the running app session.
+Durable `custom.panel.tabs` version 2 contains only `{default:{open,view}}`;
+legacy version-1 per-tab pins migrate to unpinned, preserving their shared default.
+The held `{open,view,source}` record lives only in cross-mod `sessionStorage`
+(`custom.panel.session`), like the file-header/reload bridge. Restart always starts
+unpinned and follows the current agent. Neither durable shared values nor portable
+preferences receive the held machine, folder or agent context. This header hold is
+separate from Git's selected PR-row pin.
+
+The pure `shared/panel-context.js` registration boundary captures a bounded source
+from the displayed panel's resolver at the pin event. Native navigation does not
+change that source. View and visibility edits update only the hold; Unpin returns
+to the shared default and current selection. Availability remains a projection:
+disabled held views fall back to an enabled panel, both disabled hides it, and
+re-enabling restores the remembered choice unless deliberately changed. Width is
+native/global. No Core or layout-document writes or new polling are involved.
+
+Files/Git `location.js` adapters expose that held source without changing Git's
+render or animation path. Files retains an explorer behind its file-viewer tab;
+file opens still target the current native space with the held machine in viewer
+props. Reuse requires an exact pane's proven path and read-machine record in the
+session-only file-header bridge. Before queuing a new tab, a bounded open receipt
+captures its route, destination and pre-command tab IDs. Later file-open events
+acknowledge a unique new pane before reuse; receipt lifetime is independent of the
+three-second duplicate-click lease and survives browser recreation. Conflicting
+routes or ambiguous native arrivals never qualify, and no poller or IO is added.
+Space machine and filename alone never prove a viewer route.
+Git's ordinary PR association uses the held terminal. Capture also fixes folder
+versus coordinator mode and the registry's provider ID plus exact scope, owner,
+home, parent, machine and owner tab/pane scalars. A stale/provisional provider
+cannot install a new hold: Pin stays unpressed until a fresh coordinator identity
+is established, then a new explicit press captures it. Already-held identities
+still retain stale last-good presentation during outages. `AggregatePulls.currentContext`
+rejects replacement identities even at the same parent. Unavailable held scope
+retains only existing stale/last-good presentation, never new inventory or action
+authority. Live facts and independent fresh provider/action checks remain.
+Native stage/robot navigation cannot settle the hold into its destination.
 
 Files/Git headers share `ui/panel-pin.js`. Their Close actions, the tab-bar toggle
 and the panel switcher all use `changePanel`, recording the source tab before

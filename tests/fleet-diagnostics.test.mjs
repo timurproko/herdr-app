@@ -67,6 +67,7 @@ try {
   const x=await fixture();x.setAnswer(()=>reply('',null,{timed_out:true}));x.event();await x.drain();
   x.setAnswer(()=>reply(status));x.event();await x.drain();assert.equal(x.diagnostic().resolvedAt,100000);assert.equal(x.diagnostic().lastFailure.reason,'status-timeout');
   assert.equal(x.r.pluginWorkspaceLinks().length,1);assert.equal(x.r.pluginPullContext('coordinator',{presentation:true}).stale,false);
+  assert.equal(x.r.pluginPullContext('coordinator',{presentation:true}).provider,'crew','The registry supplies immutable provider provenance, not a provider-supplied alias');
   const at=x.state[x.f.FLEET_KEY].entries.local.at;x.advance(31000);x.setAnswer(()=>{throw Error(secret);});x.event();await x.drain();
   assert.equal(x.state[x.f.FLEET_KEY].entries.local.at,at,'Failure never renews success');
   const stale=x.r.pluginPullContext('coordinator',{presentation:true});assert.equal(stale.stale,true);assert.equal(stale.verification.reason,'transport-error');

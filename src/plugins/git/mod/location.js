@@ -2,15 +2,22 @@
 import { focused, panes, spaces, terminals } from './host.js';
 import { paneDirectory } from './directory.js';
 
-export function namedPullNumber(tab) {
-  const match = tab?.named === true ? /^(?:PR\s*#?\s*|#)?([1-9]\d*)$/i.exec(tab.name.trim()) : null;
-  const number = match ? Number(match[1]) : null;
-  return Number.isSafeInteger(number) ? number : null;
-}
+import { panelSource } from './panel-state.js';
+import { registerPanelSource, registerPanelPullContext, namedPullNumber } from './panel-context.js';
+import { pluginPullContext } from './plugins.js';
+registerPanelPullContext(space => pluginPullContext(space,{presentation:true}));
+export { namedPullNumber } from './panel-context.js';
 
 // A frame may reuse pure selection/directory facts, never read or action
-// authority. All non-render callers omit the snapshot and resolve live state.
+// authority. A held source takes precedence over an unheld frame projection;
+// pin events and non-render callers omit the snapshot and resolve live state.
 export function location(snapshot) {
+  const held = panelSource();
+  if (held) return held;
+  return liveLocation(snapshot);
+}
+registerPanelSource('changes', liveLocation);
+function liveLocation(snapshot) {
   if(snapshot?.place)return snapshot.place;
   const space = (snapshot?.groups??spaces()).find(s => s.active), f = focused(), all = snapshot?.all??panes();
   const selectedTab = space?.tabs?.find(t => t.active), tab = selectedTab?.id;
