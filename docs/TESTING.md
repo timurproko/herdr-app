@@ -1182,8 +1182,11 @@ hand-linked menu, pinned-refresh and sidebar-refresh VMs load the real disclosur
 helper through `git-scroll-modules.mjs`. Pinned refresh checks the finite native
 line entrance/exit lifecycle rather than the retired instantaneous-line contract.
 The mounted-row budget accounts separately for exactly three fixed disclosure
-chrome elements (spacer/button/SVG), retaining the frozen row/probe limits and
-operation ceiling; mutation checks reject extra row, chrome or probe subtrees.
+chrome elements (spacer/button/SVG), 29 subtree builder operations and two strip
+attachment calls. These costs stay constant across row counts, tabs and zoom.
+The frozen row/probe baseline and two-decoration-operations-per-row ceiling are
+unchanged; mutation checks reject extra row/chrome/probe subtrees and additional
+row or chrome builder operations.
 
 Use `delivery openspec validate <change> --type change --strict --no-interactive`
 for the workflow-pinned validator, rather than a potentially older global CLI;
