@@ -50,6 +50,18 @@ Package any needed Git-owned icon assets through `src/plugins/git/panel.json`, n
 
 At implementation time inspect the current state of #104. If its fix is merged, rebase this task onto the updated default branch before touching the affected render sites. If it is still in flight, coordinate the dependency and retain the narrow helper/call-site shape; do not copy, revert or independently refactor its render lifecycle. Resolve only actual overlap and rerun the relevant targeted guards on the integrated result. Planning itself changes no render code.
 
+When building on #104's still-unmerged head, retain its source changes and archived
+planning/finalization artifacts, but keep the canonical `openspec/specs/` baseline
+byte-identical to the actual default branch until this PR's bot finalization.
+Otherwise the bot refuses the completed draft with `draft-delivery-specs-diverged`.
+The active disclosure delta remains pending and owned by this PR; #104 retains
+ownership of its separate loading/render spec delta in its archive. Do not copy
+that delta into this change, which would duplicate its added requirement when
+both PRs finalize. This is spec-baseline bookkeeping only, not a runtime rollback,
+archive rewrite, force-push or permission to merge either PR. A read-only bot
+preparation preview must accept the canonical baseline and apply the disclosure
+delta without modifying #104's archive.
+
 ## Risks / Trade-offs
 
 - [Mixed individual disclosure differs from the global icon] → The indicator intentionally represents the chosen default; its next action is deterministic and clears all exceptions. Cover both symmetric cases in tests and document this explicitly.
