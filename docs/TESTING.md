@@ -1108,7 +1108,13 @@ count badges, repeat tooltip or extra messages. There is no real transport,
 installed preference read, worker navigation or live app interaction. These are
 deterministic render-tree/geometry assertions, not native pixel or hit-test proof.
 Existing Closed-fold, section-reveal, entry-cache, safety-paging, label-only-tab
-and loading-line fixtures guard their respective unchanged contracts.
+and loading-line fixtures guard their respective unchanged contracts. The older
+hand-linked menu, pinned-refresh and sidebar-refresh VMs load the real disclosure
+helper through `git-scroll-modules.mjs`. Pinned refresh checks the finite native
+line entrance/exit lifecycle rather than the retired instantaneous-line contract.
+The mounted-row budget accounts separately for exactly three fixed disclosure
+chrome elements (spacer/button/SVG), retaining the frozen row/probe limits and
+operation ceiling; mutation checks reject extra row, chrome or probe subtrees.
 
 Use `delivery openspec validate <change> --type change --strict --no-interactive`
 for the workflow-pinned validator, rather than a potentially older global CLI;

@@ -81,13 +81,25 @@ async function harness() {
   const line=find(track,'git-ci-line');assert.equal(line.attrs.loop[0],'opacity');
   assert.equal(line.attrs.loop[1].period,2400);assert.equal(line.attrs.transition,undefined);
   assert.equal(track.attrs.on_size_change,undefined,'Stationary full-width line has no width/position scheduling');
-  assert.equal(h.phases.length,0,'Native loop has no JavaScript phase/frame timers');
-  assert.equal(find(h.render(),'git-ci-line').attrs.loop[1].to,0.65);
+  const advance=ms=>{const phase=h.phases.shift();assert.equal(phase?.ms,ms);phase.fn(h.cx);};
+  assert.equal(track.attrs.opacity[0],0);assert.equal(track.attrs.transition,undefined,'First paint hides without transitioning from native default opacity');
+  assert.equal(h.phases.length,1,'Only the finite entrance lifecycle is queued, never a frame loop');
+  advance(16);tree=h.render();assert.equal(find(tree,'git-loading-track').attrs.opacity[0],0);assert.equal(find(tree,'git-loading-track').attrs.transition[0],'opacity');
+  advance(16);tree=h.render();assert.equal(find(tree,'git-loading-track').attrs.opacity[0],1);
+  const lifecycle=v.loadingLineState;
+  for(let n=0;n<10;n++){h.render();assert.equal(v.loadingLineState,lifecycle);}
+  assert.equal(h.phases.length,0,'Routine renders preserve the native pulse without scheduling JavaScript frame timers');
+  assert.equal(find(tree,'git-ci-line').attrs.loop[1].from,0.65);
+  assert.equal(find(tree,'git-ci-line').attrs.loop[1].to,0,'Native pulse starts transparent at its to endpoint');
   await h.reply(page([raw(1),raw(2,{title:'Unpinned CI completed'})]));
   await h.reply(JSON.stringify({data:{repository:{open:{totalCount:2},closed:{totalCount:0}}}}));
   assert.equal(v.pulls.open[1].title,'Unpinned CI completed');
-  assert.equal(find(h.render(),'git-ci-line'),undefined,'Line stops on read completion, not a fixed timeout');
-  assert.equal(h.pending.length,0);assert.equal(h.timers.length,0,'No periodic GitHub or animation timers');
+  tree=h.render();const exiting=find(tree,'git-loading-track');
+  assert.equal(v.panelLoading(),false,'Read completion retires active work immediately');
+  assert.equal(exiting.attrs.opacity[0],0);assert.equal(exiting.attrs.role,undefined,'Native fade-out is presentation only, not active work');
+  assert.equal(h.phases.length,1);advance(140);
+  assert.equal(find(h.render(),'git-ci-line'),undefined,'Finite exit cleanup retires the native faded line');
+  assert.equal(h.phases.length,0);assert.equal(h.pending.length,0);assert.equal(h.timers.length,0,'No periodic GitHub or JavaScript animation-frame timers');
 }
 {
   const h=await harness(),v=h.view;
