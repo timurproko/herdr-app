@@ -24,7 +24,7 @@ The maintainer integration decision accepts these scenarios:
     "A refresh lock held beyond 45 seconds fails with a reason naming the busy lock, never a command line.",
     "Rollback uses the same bounded wait for its native patch refresh."
   ],
-  "archiveDigest": "50cf96fb4963f5c31eed16dbb457fbde66818394cf03a5f7a15e5e5fd871466a",
+  "archiveDigest": "13e58b12be2fcd81774fe1f64f0f0d15c0218804e2648748bf28a5f9a1b7caa4",
   "specDigest": "030f1c7ec5097d98fd975f4ef36c460ee2b8c7b611cf88eae4313074c790c79c",
   "tasksDigest": "5f515917a29d477bc9369411a01f6520be4e6af447db0258dce4b940c92ea82c",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
