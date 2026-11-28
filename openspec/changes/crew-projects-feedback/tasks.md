@@ -8,6 +8,6 @@
 
 ## 2. Slow project lists retain pending feedback
 
-- [ ] 2.1 Give JSON and legacy project-list commands a dedicated 60-second allowance without changing probe or write limits; verify the propagated execution and Settings queue allowances in a focused Crew provider regression.
-- [ ] 2.2 Add held-response/fake-clock coverage for cold and warm twenty-second reads, retained rows past fifteen seconds, successful replacement, real deadline failures and retired contexts; run `node tests/settings-request-queue.test.mjs` and relevant Crew project-kind/provider tests only.
-- [ ] 2.3 Document the list-specific deadline and retained loading behavior alongside its tests, preserving kind-set uncertainty and no-replay guards; record targeted results and any remaining native limits in the complete task report.
+- [x] 2.1 Give JSON and legacy project-list commands a dedicated 60-second allowance without changing probe or write limits; verify the propagated execution and Settings queue allowances in a focused Crew provider regression.
+- [x] 2.2 Add held-response/fake-clock coverage for cold and warm twenty-second reads, retained rows past fifteen seconds, successful replacement, real deadline failures and retired contexts; run `node tests/settings-request-queue.test.mjs` and relevant Crew project-kind/provider tests only.
+- [x] 2.3 Document the list-specific deadline and retained loading behavior alongside its tests, preserving kind-set uncertainty and no-replay guards; record targeted results and any remaining native limits in the complete task report.

@@ -182,7 +182,9 @@ client's allowlist/read-only policy is not a security sandbox.
 folder list, Add and Remove, with no inferred kind. Settings queues checks and batches
 tool discovery within native execution capacity; pending refreshes keep confirmed
 projects and requirement badges rather than reporting capacity contention as broken
-setup. A task's recorded delivery kind
+setup. Project-list commands may take up to 60 seconds; the existing loading state
+and last-confirmed rows remain during that wait, so a 20-second read needs no repeated
+refreshes. Real failures still offer Refresh. A task's recorded delivery kind
 is not used as a project setting; re-adding a project is never a kind-edit workaround.
 Kind captions share a fixed left-aligned column without truncation. Hover or
 keyboard-focus a supported row to reveal the standard kind dropdown beside Remove;

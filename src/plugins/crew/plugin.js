@@ -18,6 +18,8 @@ import { setProjectKind } from './project-kind-set.js';
 
 const winPath = path => String(path).replace(/\//g, '\\');
 const CHECK_TIMEOUT = 15, INSTALL_TIMEOUT = 300;
+// Listing can inspect several published repositories; keep ordinary probes short.
+const PROJECT_LIST_TIMEOUT = 60;
 const NOT_INSTALLED = 127; // what a PowerShell wrapper exits with when the command is absent
 const psQuote = text => "'" + String(text).replace(/['‘’‚‛]/g, "$&$&") + "'";
 
@@ -835,7 +837,7 @@ const PROJECTS = Object.freeze({
       if (!p.home) return { status: 'missing', statusLabel: null, detail: 'Create the crew home first (Requirements).', ...retained() };
       const facts = await readProjectKinds(args => {
         if (!current()) throw new Error('This check is no longer current.');
-        return ps(cx, crewProjectScript(args), CHECK_TIMEOUT);
+        return ps(cx, crewProjectScript(args), args[0] === 'list' ? PROJECT_LIST_TIMEOUT : CHECK_TIMEOUT);
       }, parseProjects);
       if (cx.isCurrent && !cx.isCurrent()) return { status: 'error', rows: [], usable: false };
       listedProjects.set(machineOf(cx), facts.rows);
