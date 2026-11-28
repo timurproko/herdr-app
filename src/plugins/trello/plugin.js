@@ -32,7 +32,7 @@ export default {
         ],
       }},
     {id: 'boards', label: 'Boards', section: true, check: boardCheck,
-      list: {recheck: 'plugin', hideUnavailable: true, scope: {header: true, divider: 'items'}, picker: {kind: 'items', label: 'Add boards', search: 'Search boards…',
+      list: {recheck: 'plugin', refreshOnOpen: true, hideUnavailable: true, scope: {header: true, divider: 'items'}, picker: {kind: 'items', label: 'Add boards', search: 'Search boards…',
         tabStyle: 'tabs', tabs: [['active', 'Active'], ['inactive', 'Inactive']]}, candidates: boardCandidates, remove: removeBoard}},
   ],
 };

@@ -516,6 +516,8 @@ owner action; Review targets the reviewer. Common interaction decoration provide
 hover, focus, Enter/Space and pointer handling without verdict tooltips or PR-link
 fallback. Missing/ended/disconnected targets are dim and inert. The original
 single-element verdict projection keeps its row element count and fixed height.
+Stage and verdict boxes fit their own captions with 6px side padding and 18px
+height; there is no shared widest-caption minimum or width-probe cache.
 
 Git's optional `crew.round` is Crew's current work/review round, initialized to
 1 and incremented on actual requested-changes reviews. The stage caption uses
@@ -1117,6 +1119,14 @@ Claude-card refresh collects every Claude account on the selected machine, inclu
 hidden accounts and new discoveries, without querying or replacing other providers.
 The selected report ID still owns feedback; per-account Retry-After and last-success
 history remain intact. Account selection and pins are not rewritten by refreshing.
+A reset's follow-up is narrower than an ordinary Claude card refresh: it forces
+one authoritative read for the captured machine/report, then publishes through
+the same shared cache consumed by the dialog and mounted sidebar. It waits through
+an existing collector's full 135-second lease rather than dropping the forced
+read after 60 seconds. Other accounts and machine caches are preserved; no quota
+is optimistically set to full. Reset worker reads, results and waiting refresh
+continuations retain their enable generation, so disabling/re-enabling cannot
+revive an old reset's collection. No additional timer or success UI is added.
 The Usage view coordinates one active refresh icon: only the initiating provider or
 global icon rotates; all refresh controls stay disabled through collection and
 the existing 600ms feedback floor. Live click guards also reject stale pre-paint

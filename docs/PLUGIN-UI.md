@@ -203,7 +203,7 @@ Action/check context includes captured `machine` (`null` for this computer) and
 `isCurrent()`. Check context also has `checkReason: 'automatic' | 'manual'`:
 only an explicit Requirements Check is manual, not opening or an action recheck.
 A requirement returning `refreshSections: true` refreshes its list sections after
-publication without rerunning Requirements. `result(id)` reads that view’s latest prerequisite result and an
+publication without rerunning Requirements or repeating an opted-in list refresh. `result(id)` reads that view’s latest prerequisite result and an
 opaque `session` object permits non-secret view/machine-local hint memoization.
 `machineScoped: true` on a plugin rechecks it on header-machine
 changes without a portable machine setting. A form action additionally receives
@@ -236,6 +236,18 @@ A saved row can replace a `form.when`-controlled empty state. Labels/confirmatio
 contain public names only; no stored credential is loaded into input fields.
 
 ## List sections
+
+A list may opt into `list.refreshOnOpen: true`. Its existing disclosure then
+rechecks that group on opening; an already-open section refreshes on entry or
+machine change too. Check refreshes it even when collapsed. The check context's
+`refreshList` boolean distinguishes these provider refreshes from local status
+reads and post-Requirements result publication. A list result can return
+`refreshRequirements: true` when changed metadata requires fresh account-row revisions;
+this rechecks Requirements locally without repeating list refresh or manual verification.
+No polling or new control is added.
+An opted-in list check can call `publish(result)` with cached local rows before its
+bounded refresh finishes; the same captured group/machine guards apply, and controls
+remain locked until completion. Unopted lists retain their existing behavior.
 
 A list of things added to the plugin (project folders, repositories): a scope row (what it
 belongs to, then Add), the description, and one row per item with **Remove** on hover.

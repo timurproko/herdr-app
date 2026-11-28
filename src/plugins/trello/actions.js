@@ -99,7 +99,7 @@ function remember(cx, d, reset = false) {
 async function invoke(cx, action, expected, extra = {}) {
   current(cx);
   const d = data(await privateAction('trello', {action, expected, ...extra}, {...cx, privateDestination: hints(cx).destination}));
-  if (cx.isCurrent?.() === false) throw Error('Settings changed. Check again.');
+  current(cx);
   // Own acknowledged policy edits preserve known board names/account hints.
   const h = hints(cx); if (h.revision === expected && !['save', 'replace', 'remove'].includes(action)) h.revision = d.revision;
   remember(cx, d, ['save', 'replace', 'remove'].includes(action));
@@ -154,11 +154,21 @@ export async function credentialAction(cx, values, item, action) {
   } catch (e) { return {detail: e.message}; } // Only our own sanitized errors, never provider/worker text.
 }
 export async function removeAccount(cx, item) { await invoke(cx, 'remove', item.revision); }
-export async function boardCheck(cx) {
-  const d = await localStatus(cx), h = hints(cx);
+function boardResult(cx, d) {
+  const h = hints(cx);
   return {...d, status: d.status === 'ready' && d.namesMissing ? 'missing' : d.status, statusLabel: d.configured ? `${d.allowedBoards} added` : null,
     rows: (d.boards ?? []).map(id => ({id, label: h.names.get(id) ?? 'Check to load name'})),
     detail: d.status === 'error' ? d.detail : d.configured ? null : 'Add an account first.'};
+}
+export async function boardCheck(cx) {
+  let d = await localStatus({...cx, checkReason:'automatic'});
+  const revision = d.revision;
+  if (cx.refreshList === true && d.usable && d.allowedBoards > 0 && cx.enabled?.() !== false && cx.isCurrent?.() !== false) {
+    cx.publish?.(boardResult(cx, d));
+    try { d = {...d, ...await invoke(cx, 'discover', d.revision)}; }
+    catch { /* Silent best-effort name refresh; keep the local snapshot. */ }
+  }
+  return {...boardResult(cx, d), refreshRequirements:d.revision !== revision};
 }
 export async function boardCandidates(cx) {
   const saved = cx.result?.('boards');

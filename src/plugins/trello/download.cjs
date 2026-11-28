@@ -59,19 +59,19 @@ async function binary(response, signal, expectedType, allowOtherTypes) {
   if (imageTypes.has(type) && signature(buffer) !== type) fail('ATTACHMENT_TYPE');
   return {buffer, type};
 }
-function outputFile(out, name, buffer, check) {
+function outputFile(out, name, buffer, check, budget) {
   let dir, file, fd, owned;
   try {
     out = path.resolve(out); safePath(out);
     if (!fs.lstatSync(out).isDirectory()) fail('STORE_UNSAFE_PATH');
     check(); dir = fs.mkdtempSync(path.join(out, 'trello-attachment-'));
-    safePath(dir); security(dir, true, true); check();
+    safePath(dir); security(dir, true, true, {budget}); check();
     file = path.join(dir, name); fd = fs.openSync(file, 'wx', 0o600); owned = fs.fstatSync(fd);
-    safePath(file); security(file, true); check();
+    safePath(file); security(file, true, false, {budget}); check();
     const current = fs.lstatSync(file);
     if (!current.isFile() || current.nlink !== 1 || current.ino !== owned.ino || current.dev !== owned.dev) fail('STORE_UNSAFE_PATH');
     fs.writeFileSync(fd, buffer); fs.fsyncSync(fd);
-    safePath(file); security(file); check();
+    safePath(file); security(file, false, false, {budget}); check();
     fs.closeSync(fd); fd = undefined;
     return file;
   } catch (e) {
@@ -95,14 +95,14 @@ async function downloadAttachment(client, scope, a) {
   // No disk output before the complete bounded body and MIME/signature validation.
   const {buffer} = await client.download(selected.url, a.card, a.attachment, async (response, signal) => {
     try { return await binary(response, signal, type, a.allowOtherTypes === true); }
-    catch (e) { await response.body?.cancel().catch(() => {}); throw e; }
+    catch (e) { try { Promise.resolve(response.body?.cancel()).catch(() => {}); } catch {} throw e; }
   });
   await scope.card(a.board, a.card); // Re-prove board membership before publishing.
   const extension = ({'image/png': '.png', 'image/jpeg': '.jpg', 'image/gif': '.gif', 'image/webp': '.webp'})[type] ?? '';
   let name = selected.preview ? 'preview' + extension : selected.name;
   for (const secret of [client.gate.credentials.apiKey, client.gate.credentials.token]) name = name.split(secret).join('redacted');
   name = `${row.id}-${name.replace(/[^\p{L}\p{N}._-]/gu, '_').slice(0, 180)}`;
-  const file = outputFile(a.out, name, buffer, () => client.check());
+  const file = outputFile(a.out, name, buffer, () => client.check(), client.budget);
   return {board: a.board, card: a.card, attachment: row.id, preview: selected.preview, ...(selected.preview ? {width: selected.width, height: selected.height} : {}), mimeType: type, bytes: buffer.length, path: file};
 }
 module.exports = {downloadAttachment, outputFile, representation, binary, signature, MAX_BYTES};

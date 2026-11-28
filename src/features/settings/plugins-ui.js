@@ -416,7 +416,7 @@ export function recheckAllPlugins(view, cx) {
   for (const key of Object.keys(view.pluginFixError ?? {})) delete view.pluginFixError[key];
   reloadPlugins(view, cx);
 }
-export function reloadPlugins(view, cx, only = null, checkingTarget = null, {reason = 'automatic'} = {}) {
+export function reloadPlugins(view, cx, only = null, checkingTarget = null, {reason = 'automatic', refreshLists = true} = {}) {
   if(view.pluginClosed)return;
   for (const plugin of PLUGINS) {
     if (!plugin.prerequisites?.length || (only && plugin.id !== only)) continue;
@@ -426,7 +426,8 @@ export function reloadPlugins(view, cx, only = null, checkingTarget = null, {rea
       const selected=plugin.prerequisites.filter(pre=>(pre.section?pre.id:'requirements')===group);
       if(!selected.length)continue;
       const machine=view.settingsMachine??null,session=view.pluginSessions?.[plugin.id];
-      const previous=view.pluginChecks[plugin.id],round={loading:true,target:checkingTarget??group};
+      const previous=view.pluginChecks[plugin.id],round={loading:true,target:checkingTarget??group,
+        refreshList:refreshLists && selected.some(pre=>pre.list?.refreshOnOpen === true && (checkingTarget === pre.id || view.pluginOpen[`${plugin.id}-${pre.id}`] === true))};
       const groups={...previous?.groups,[group]:round};
       view.pluginChecks[plugin.id]={...previous,loading:true,serial:(previous?.serial??0)+1,groups,
         items:previous?.items??plugin.prerequisites.map(pre=>({...pre,status:null}))};
@@ -437,11 +438,21 @@ export function reloadPlugins(view, cx, only = null, checkingTarget = null, {rea
         const done=()=>{try{return Boolean(task?.is_done?.());}catch{return true;}};
         await settingsGroups(async()=>{
         if(!alive())return;
-        const context={...viewContext(view,plugin,alive,machine,cx,done),checkReason:reason,checkMemo};
+        const context={...viewContext(view,plugin,alive,machine,cx,done),checkReason:reason,checkMemo,refreshList:round.refreshList};
         // Keep the registry's checking/error boundary, but run only this group.
         // Benign same-round probe facts may coalesce; completion tokens stay group-local.
         const items=await checkPlugin({...plugin,prerequisites:selected.map(pre=>({...pre,
-          ...(pre.updates ? {updateRead:beginPluginUpdateCheck(machine,plugin,pre)} : {}),check:()=>pre.check(context)}))});
+          ...(pre.updates ? {updateRead:beginPluginUpdateCheck(machine,plugin,pre)} : {}),
+          check:()=>pre.check(pre.list?.refreshOnOpen === true ? {...context,
+          // A refreshing list can publish its local snapshot first. Controls remain
+          // locked by the group until the bounded provider read settles.
+          publish: result => {
+            if (!alive() || !pluginEnabled(plugin)) return;
+            const item={...pre,...result}, current=view.pluginChecks[plugin.id];
+            prepareRowChoices(view,cx,plugin,item);
+            view.pluginChecks[plugin.id]={...current,items:current.items.map(old=>old.id===pre.id?item:old)};
+            cx.notify();
+          }} : context)}))});
         if(!alive())return;
         for(const pre of selected)delete view.pluginSettling?.[`${plugin.id}:${pre.id}`];
         for(const item of items)if(item.updates)recordPluginUpdate(machine,plugin,item);
@@ -458,7 +469,9 @@ export function reloadPlugins(view, cx, only = null, checkingTarget = null, {rea
           if (view.pluginConfirm?.plugin===plugin.id) view.pluginConfirm=null;
         }
         if (group === 'requirements' && items.some(item => item.refreshSections === true))
-          for (const pre of plugin.prerequisites.filter(pre => pre.section)) reloadPlugins(view, cx, plugin.id, pre.id);
+          for (const pre of plugin.prerequisites.filter(pre => pre.section)) reloadPlugins(view, cx, plugin.id, pre.id, {refreshLists:false});
+        if (group !== 'requirements' && items.some(item => item.refreshRequirements === true))
+          reloadPlugins(view, cx, plugin.id, 'requirements', {refreshLists:false});
         cx.notify();
         },{current:alive,done,sleep:ms=>cx.sleep(ms)}).catch(error=>{if(alive()&&!error.obsolete)throw error;});
       });
@@ -841,6 +854,7 @@ function prerequisiteSections(view,t,plugin) {
   if (setupUnavailable(view,plugin)) return [];
   const check=view.pluginChecks[plugin.id];
   return (check?.items??plugin.prerequisites??[]).filter(item=>item.section&&item.list).map(item=>{
+    const machine=view.settingsMachine??null,session=view.pluginSessions?.[plugin.id];
     const key=sectionKey(plugin,item),busy=view.pluginFixing===key||view.pluginSettling?.[key]===true,checking=itemState(view,plugin,item.id);
     const summary=busy?workingStatus(t,'Applying'):item.status&&item.statusLabel!==null?badge(t,item.status,item.statusLabel):checking.loading?workingStatus(t):null;
     const tools=checkButton(t,`st-plugin-refresh-${plugin.id}-${item.id}`,Boolean(checking.loading),(_e,cx)=>{
@@ -848,7 +862,12 @@ function prerequisiteSections(view,t,plugin) {
     },!checking.loading&&!view.pluginFixing);
     // Lists start closed: their header already says how many there are.
     return v_flex().id(`st-plugin-section-${plugin.id}-${item.id}`).w_full()
-      .child(disclosure(view,t,`${plugin.id}-${item.id}`,item.label,{summary,tools},()=>listSection(view,t,plugin,item,Boolean(checking.loading))));
+      .child(disclosure(view,t,`${plugin.id}-${item.id}`,item.label,{summary,tools,
+        onOpen: item.list.refreshOnOpen === true ? cx => {
+          const state=itemState(view,plugin,item.id);
+          if (!view.pluginClosed && pluginEnabled(plugin) && !view.pluginFixing && (view.settingsMachine??null)===machine && view.pluginSessions?.[plugin.id]===session && (!state.loading || !state.refreshList))
+            reloadPlugins(view,cx,plugin.id,item.id);
+        } : null},()=>listSection(view,t,plugin,item,Boolean(checking.loading))));
   });
 }
 
