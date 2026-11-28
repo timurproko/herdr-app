@@ -40,13 +40,13 @@ The header pin SHALL hold one sidebar source and view across agents and spaces u
 - **THEN** the held directory does not follow that change or the newly selected agent
 - **AND** existing Refresh and live data updates remain scoped to the held source rather than producing a static screenshot
 
-### Requirement: Local sidebar pin persistence and compatibility
-The held sidebar context SHALL survive an ordinary app restart as bounded client-local state, excluded from portable preferences. Restart SHALL NOT restore rendered content or read/action authority. Legacy per-tab choices SHALL migrate without inventing a held source. Unknown future formats SHALL remain untouched and SHALL NOT enable pin changes.
+### Requirement: Session-only sidebar pin and compatibility
+The held sidebar context SHALL exist only in the running app session, excluded from durable and portable preferences. Restart SHALL begin unpinned and follow the current agent. Legacy per-tab choices SHALL migrate without inventing a held source. Unknown future formats SHALL remain untouched and SHALL NOT enable pin changes.
 
 #### Scenario: Restart with a valid source
-- **WHEN** the app restarts with a saved pin and its exact source identities remain available
-- **THEN** the pin, view, visibility and captured source are restored even if another agent is selected
-- **AND** Files/Git obtain data under their normal lifecycle and authorization checks rather than restoring inventory from the pin record
+- **WHEN** the app restarts after a sidebar was pinned, even if its source identities still exist
+- **THEN** the pin starts unpressed and the sidebar follows the current agent
+- **AND** no held context, rendered inventory or read/action authority is restored
 
 #### Scenario: Old per-tab state
 - **WHEN** the app encounters the previous per-tab view and visibility records that contain no captured content source

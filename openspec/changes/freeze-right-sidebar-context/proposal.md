@@ -9,7 +9,7 @@ The right-sidebar pin currently remembers a tab's panel choice and visibility, b
 - **BREAKING**: Replace multiple per-tab Files/Git visibility pins with one client-local sidebar pin capturing the currently displayed machine, folder and agent/space context plus view and visibility.
 - Agent, tab, pane and space navigation will not retarget a pinned sidebar. Manually choosing Files or Git updates the pinned view without recapturing its source; unpin resumes following the current selection.
 - Keep the existing pin icon, pressed styling, title dropdown, Refresh and Close controls. Add no messages, buttons, settings or native changes.
-- Preserve host-local restart persistence for the pin's small context record, not rendered trees or Files/PR inventory. Migrate old per-tab state without inventing an agent context.
+- Keep the held context in app-session memory only. Restart begins unpinned and follows the current agent; legacy per-tab pins migrate to unpinned without inventing a source.
 - Replace the workspace spec's explicit per-tab pin scenario and qualify existing selected-agent Git/File rules with the sidebar's effective source while pinned.
 
 ## Capabilities

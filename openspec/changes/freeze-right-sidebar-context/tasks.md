@@ -1,11 +1,11 @@
 # Tasks
 
-## 1. Sidebar pin holds one client-local source, view and visibility across navigation, with safe legacy migration and restart persistence
+## 1. Sidebar pin holds one session-only source, view and visibility across navigation, with safe legacy migration and an unpinned restart
 
 - [ ] 1.1 Add bounded source capture and the version-2 single-pin/default model in the shared panel boundary; panel-state fixtures cover qualified identity, click-time capture, idempotent pin/unpin and no render-time writes or IO.
 - [ ] 1.2 Reconcile the global held choice through existing yielded native layout acknowledgements, retaining explicit view/visibility controls and stale callback guards; panel-state and panel-switch fixtures cover tab/space navigation, delayed acknowledgements, close/reopen and stale popups.
 - [ ] 1.3 Preserve the existing pin asset, size, pressed and hover styling while replacing per-tab accessibility wording; panel-pin-ui fixtures assert appearance parity and release from a different current tab or a source-less selection.
-- [ ] 1.4 Migrate valid v1 state to its preserved default with no fabricated held source, preserve unknown versions and restore bounded v2 context across module/app restart; focused serialization/reload fixtures assert no inventory, credentials or portable preference leakage.
+- [ ] 1.4 Migrate valid v1 state to its preserved default with no fabricated held source, preserve unknown versions and share the hold only within the running app session; focused reload/restart fixtures assert restart is unpinned and no source reaches durable or portable storage.
 - [ ] 1.5 Update docs/ARCHITECTURE.md with the single owner, storage shape, restart lifetime and legacy migration; documentation matches the tested v2 state and explicitly distinguishes the sidebar pin from Git's PR-row pin.
 
 ## 2. Files uses the held directory and machine across agent and space switches, including view changes and release to the current agent
