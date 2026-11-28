@@ -28,7 +28,7 @@ Files and Git source-selection requirements SHALL use the sidebar's held source 
 ## MODIFIED Requirements
 
 ### Requirement: Space entry preserves order without pin motion
-The effective sidebar agent's resolved PR SHALL pin above its section for every selection path, without direct-entry motion. A pressed header pin SHALL hold that agent context across native selection changes. Only panel stage/robot activation SHALL animate under existing guards when following selection. Collapse SHALL retain the PR pin; headers SHALL count only remaining rows and disappear for lone pins, while tab totals stay full. Remaining rows and coordinator returns SHALL retain relative order.
+The effective sidebar agent's resolved PR SHALL pin above its section on every selection path without entry motion. A pressed header pin SHALL hold that context across native selection changes. Only panel stage/robot activation SHALL animate under existing guards when following selection. Collapse SHALL retain the PR pin; headers SHALL count remaining rows and disappear for lone pins. Tab totals SHALL stay full. Remaining rows and coordinator returns SHALL retain relative order.
 
 #### Scenario: Direct agent-space entry
 - **WHEN** the unheld sidebar follows direct entry to an agent space and its PR or branch matches a row in the cached section
@@ -66,7 +66,7 @@ The effective sidebar agent's resolved PR SHALL pin above its section for every 
 - **AND** unpinning the header resolves B under the ordinary coherent-entry rules
 
 ### Requirement: Selected-agent pin and remaining-section projection
-The resolved effective sidebar agent PR SHALL own the PR pin independently of clickPin state. The effective agent SHALL remain the captured source while the header pin is pressed. Unheld direct tab/sidebar/keyboard selection SHALL pin without animation; existing row-control clicks alone SHALL retain move-to-top motion. The PR pin SHALL appear above its section and remain visible when collapsed. A header SHALL count only unpinned rows beneath it and SHALL disappear for a lone PR pin; tab totals SHALL remain full.
+The resolved effective sidebar agent PR SHALL own the PR pin independently of clickPin. A pressed header pin SHALL hold the captured agent source. Unheld tab/sidebar/keyboard selection SHALL pin without animation; only existing row-control clicks SHALL retain move-to-top motion. The PR pin SHALL remain above its section, visible when collapsed. Headers SHALL count only unpinned rows beneath them and disappear for a lone PR pin; tab totals SHALL remain full.
 
 #### Scenario: Selection follows the agent
 - **WHEN** tab, sidebar or keyboard selection switches between agents or to a resolved no-PR terminal while the header pin is unpressed
