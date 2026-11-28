@@ -2,9 +2,9 @@
 
 ## 1. Git stage and verdict controls fit their captions with normal padding
 
-- [ ] 1.1 Remove the common stage/verdict minimum-width probe/cache and dependent keys/harness assumptions; assert each caption's natural width plus 6px side padding with `node tests/git-stage-box-geometry.test.mjs` at 100% and 130% zoom.
-- [ ] 1.2 Preserve guarded actions, title width, right rail and 74px row height across ordinary, coordinator, pinned and ghost presentations; check `node tests/git-stage-chips.test.mjs`, `node tests/pr-agent-links.test.mjs` and `node tests/git-row-geometry.test.mjs`.
-- [ ] 1.3 Replace README and docs/ARCHITECTURE.md common-width wording with the caption-sized contract and check the diff contains no unrelated behavior changes.
+- [x] 1.1 Remove the common stage/verdict minimum-width probe/cache and dependent keys/harness assumptions; assert each caption's natural width plus 6px side padding with `node tests/git-stage-box-geometry.test.mjs` at 100% and 130% zoom.
+- [x] 1.2 Preserve guarded actions, title width, right rail and 74px row height across ordinary, coordinator, pinned and ghost presentations; check `node tests/git-stage-chips.test.mjs`, `node tests/pr-agent-links.test.mjs` and `node tests/git-row-geometry.test.mjs`.
+- [x] 1.3 Replace README and docs/ARCHITECTURE.md common-width wording with the caption-sized contract and check the diff contains no unrelated behavior changes.
 
 ## 2. Spaces crew labels retain their column with or without child controls
 

@@ -678,9 +678,9 @@ Managed review labels supply one tight bottom-right plain chip: **Build**,
 **Review** or **Approved**, independently of CI and GitHub's separate review decision.
 It uses stage-coloured text on the existing subtle raised background, 6px side
 padding, no emoji, outline or hover tooltip, and leaves the entire title content width free.
-Stages and verdicts share an 18px-high, centred box whose common minimum width is
-native-measured from all fixed captions and two-digit Build rounds. A longer round
-grows only its own box; the right rail and title truncation remain unchanged. The
+Stages and verdicts use 18px-high, centred boxes sized to each caption with 6px
+side padding, without a shared minimum width. Longer captions grow only their own
+box; the right rail and title truncation remain unchanged. The
 compatibility snapshot follows MyWorkflows `labels/base.json`: stable role
 `review-changes-needed` accepts Build and previous names Rework / Changes needed;
 `under-review` accepts Review / Under review; `review-approved` accepts Approved.
