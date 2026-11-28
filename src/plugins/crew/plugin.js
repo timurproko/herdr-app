@@ -143,7 +143,7 @@ const machineOf = cx => cx?.setting?.('machine') ?? null;
 async function machineState(cx) {
   const machine = machineOf(cx);
   if (!machine) return { ready: true, detail: 'This computer' };
-  const r = await hc(['machine', 'ls']);
+  const r = await (cx.request ? cx.request(() => hc(['machine', 'ls']), { timeout: 17000 }) : hc(['machine', 'ls']));
   if (r.code !== 0) throw new Error(r.stderr || 'Cannot list machines');
   const list = json(r.stdout)?.machines;
   const found = Array.isArray(list) ? list.find(m => m.name === machine) : null;
@@ -154,8 +154,8 @@ const connected = cx => once(cx, 'machine', () => machineState(cx).catch(() => (
 
 // { windows, arch } of the chosen machine; non-Windows when PowerShell is absent.
 const platform = cx => once(cx, 'platform', async () => {
-  if (cx.request) return (await toolInventory(cx)).platform;
-  const r = await on(machineOf(cx), ['powershell', '-NoProfile', '-NonInteractive', '-Command', '$env:PROCESSOR_ARCHITECTURE'], { timeout: CHECK_TIMEOUT });
+  if (cx.request && !cx.updateCheck) return (await toolInventory(cx)).platform;
+  const r = await on(machineOf(cx), ['powershell', '-NoProfile', '-NonInteractive', '-Command', '$env:PROCESSOR_ARCHITECTURE'], { timeout: CHECK_TIMEOUT, request: cx.request });
   return r.missing ? { windows: false, arch: null } : { windows: true, arch: firstLine(r.stdout).toUpperCase() };
 });
 
@@ -1058,19 +1058,21 @@ export default {
       }) },
     { id: 'hc', versionTool:'hc', label: 'herdr-core', about: '`hc` 0.1.14 or newer on that machine.',
       check: reachable(async cx => toolStatus(await checkedTool(cx, 'hc'), { min: '0.1.14' })) },
-    { id: 'crew', label: 'Crew tool', about: `A clone of ${CREW_SOURCE.url} in ~/.crew/core on that machine.`,
+    { id: 'crew', updates: true, label: 'Crew tool', about: `A clone of ${CREW_SOURCE.url} in ~/.crew/core on that machine.`,
       check: reachable(async cx => {
         const p = await crewProbe(cx, true);
-        await claudeAccounts(cx).catch(() => null); // refreshes the list the Settings dropdown shows
-        await pooledCopies(cx).catch(() => null); // and what the pooled working copies switch shows
+        if (!cx.updateCheck) {
+          await claudeAccounts(cx).catch(() => null); // refreshes the Settings dropdown
+          await pooledCopies(cx).catch(() => null);
+        }
         if (p.unsupported) return { status: 'recommended', fix: null, detail: UNSUPPORTED };
         if (p.error) return { status: 'error', detail: p.error };
-        if (!p.tool) return { status: 'missing', detail: 'Not installed.' };
+        if (!p.tool) return { status: 'missing', update: false, detail: 'Not installed.' };
         const installed = `${p.version || 'unknown version'}${p.revision ? ` · ${p.revision}` : ''}`;
         // A confirmed update needs attention, not an optional-tool recommendation.
         // Keep the installed revision and explicit Update action; unknown checks stay quiet.
-        if (p.latest && p.revision && p.latest !== p.revision) return { status: 'missing', statusLabel: 'Outdated', detail: installed, fix: UPDATE_CREW };
-        return { status: 'ready', detail: installed };
+        if (p.latest && p.revision && p.latest !== p.revision) return { status: 'missing', update: true, statusLabel: 'Outdated', detail: installed, fix: UPDATE_CREW };
+        return { status: 'ready', update: p.latest && p.revision ? false : null, detail: installed };
       }),
       fix: INSTALL_CREW },
     { id: 'home', label: 'Crew home', about: '~/.crew on that machine: the registered projects and the task records, with the coordinator’s rules in ~/.crew/coordinator.',

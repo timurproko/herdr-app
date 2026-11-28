@@ -12,6 +12,7 @@ import { openSettings } from './settings-dialog.js';
 import { inspectTabMove, tabMoveDestinations, requestTabMove } from './tab-moves.js';
 import { footerItems } from './sidebar-footer.js';
 import { customizationUpdateAvailable } from './customization-updates.js';
+import { pluginUpdateAvailable } from './plugin-updates.js';
 import { divider, dividerHeight } from './modal-layout.js';
 import { spaceColorPicker, setSpaceColor, selectedColorIndex, colorAt as colorValueAt, COLOR_COUNT } from './space-colors.js';
 import { requestInlineTabRename } from './tab-rename.js';
@@ -309,7 +310,7 @@ export default class Menu extends View {
               onHover: (hovered, cx) => { if (hovered) { if (!this.keyboard) { this.at = -1;this.colorAt = -1; } if (it[1] === 'custom.move-menu') this.checkMove(cx); } cx.notify(); },
               onClick: (_e, cx) => this.choose(i, cx) })
               .text_color(this.unavailable(it) ? t.dim : t.foreground)
-              .when(props()?.tab === 'footer' && it[7] === 'settings' && Boolean(updates().app.ready || customizationUpdateAvailable()),
+              .when(props()?.tab === 'footer' && it[7] === 'settings' && Boolean(updates().app.ready || customizationUpdateAvailable() || pluginUpdateAvailable()),
                 el => el.child(div().size(6).rounded_full().bg(t.accent)))
               .on_mouse_move((_e, cx) => {
                 if (this.keyboard || this.at >= 0 || this.colorAt >= 0) { this.keyboard = false; this.at = -1; this.colorAt = -1; cx.notify(); }

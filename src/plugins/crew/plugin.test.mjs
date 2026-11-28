@@ -273,7 +273,8 @@ same(r.pluginOptions(plugin, { options: [['a', 'A'], ['b'], 'x', [1, 'one']] }),
 accountsOut = 'helper=\r\n';
 let s = await statuses();
 same([s.git.status, s.node.status, s.hc.status], ['ready', 'ready', 'ready']);
-same([s.crew.status, s.crew.detail], ['missing', 'Not installed.']);
+same([s.crew.status, s.crew.detail, s.crew.update], ['missing', 'Not installed.', false]);
+assert.equal(plugin.prerequisites.find(pre => pre.id === 'crew').updates, true);
 same([s.home.status, s.home.detail, s.home.fix], ['missing', 'Install the crew tool first.', null], 'The home waits for the tool');
 // Old Node and a missing tool are named, not guessed.
 table['node --version'] = ran('v18.19.0\n'); assert.match((await statuses()).node.detail, /needs 20\.0\.0 or newer/);
@@ -284,7 +285,7 @@ crew.installFails = 'Could not clone the crew tool. Check the network and Git si
 await assert.rejects(fix('crew'), /Could not clone the crew tool/);
 crew.installFails = null; await fix('crew');
 s = await statuses();
-same([s.crew.status, s.crew.detail], ['ready', '0.1.0 · aaaaaaaaaaaa']);
+same([s.crew.status, s.crew.detail, s.crew.update], ['ready', '0.1.0 · aaaaaaaaaaaa', false]);
 same([s.home.status, s.home.detail], ['missing', 'Not created yet. It is also created at the first coordinator launch.']);
 crew.latest = 'bbbbbbbbbbbb'; s = await statuses();
 same([s.crew.status, s.crew.statusLabel, s.crew.detail, s.crew.fix?.label, s.crew.fix?.statusLabel], ['missing', 'Outdated', '0.1.0 · aaaaaaaaaaaa', 'Update', 'Updating'], 'An available update needs attention and keeps the installed description');
@@ -294,7 +295,7 @@ for (const machine of [null, 'pc2', 'peer']) {
   r.setPluginSetting(plugin, 'machine', machine);
   hcCalls.length = 0;
   const outdated = await statuses();
-  same([outdated.crew.status, outdated.crew.statusLabel, outdated.crew.fix.label], ['missing', 'Outdated', 'Update']);
+  same([outdated.crew.status, outdated.crew.statusLabel, outdated.crew.fix.label, outdated.crew.update], ['missing', 'Outdated', 'Update', true]);
   assert.equal(outdated.gh.status, 'recommended', 'Genuinely optional tools stay optional beside an update');
   const probes = hcCalls.filter(a => a[0] === 'exec' && a.at(-1).includes("'root=' + $root"));
   assert.ok(probes.length);
@@ -303,7 +304,7 @@ for (const machine of [null, 'pc2', 'peer']) {
   crew.latest = revision;
   same([(await statuses()).crew.status, (await statuses()).crew.statusLabel], ['ready', undefined], 'Current has no stale update label');
   crew.latest = '';
-  same([(await statuses()).crew.status, (await statuses()).crew.statusLabel], ['ready', undefined], 'An unknown or failed latest lookup cannot claim outdated');
+  same([(await statuses()).crew.status, (await statuses()).crew.statusLabel, (await statuses()).crew.update], ['ready', undefined, null], 'An unknown or failed latest lookup cannot claim outdated');
   crew.latest = 'bbbbbbbbbbbb'; crew.revision = '';
   assert.equal((await statuses()).crew.status, 'ready', 'Unknown installed revision is not update evidence');
   crew.revision = revision;

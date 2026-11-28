@@ -108,6 +108,15 @@ machine has a confirmed available update, retaining Update and the installed rev
 This is an attention notice, not a new coordinator-launch or project-action block;
 unknown update evidence does not claim outdated, and optional tools remain Optional.
 
+A prerequisite with `updates: true` also participates in connected-machine update
+discovery. Its same check receives `updateCheck: true` (skip unrelated setup/list reads)
+and returns `update: true` only for a confirmed pending update, `false` for confirmed
+current/absent tools, or `null`/omitted for unknown evidence. A pending result retains
+its existing `fix.run` update action; missing-tool installation is never a pending update.
+Discovery captures machine context without changing saved machine settings and runs
+read-only checks through bounded execution admission. Unknown reads preserve confirmed
+pending facts; disconnected machines do not contribute notification dots.
+
 - `fix: { label, busyLabel?, statusLabel?, primary?, manual?, requiresEnabled?, confirm?, run(cx) }`:
   the row's button. `manual` fixes are left out of Install all; `confirm: { title, detail, label }`
   asks first.

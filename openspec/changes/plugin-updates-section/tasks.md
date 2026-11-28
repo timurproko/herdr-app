@@ -2,9 +2,9 @@
 
 ## 1. Connected-machine pending plugin discovery and existing update dots
 
-- [ ] 1.1 Declare explicit generic update eligibility and mark Crew's confirmed outdated tool result while retaining its existing fix callback; cover missing, current, outdated and unknown evidence in focused Crew/registry tests and document the declaration in docs/PLUGIN-UI.md.
-- [ ] 1.2 Add shared coalesced discovery for this computer and connected peers using captured contexts, existing admission and mounted lifecycle ownership; focused controller tests cover inventory order, failed rechecks, disconnects, stale generations and no writes during discovery.
-- [ ] 1.3 Connect pending plugin availability to all existing expanded/compact Settings and Updates markers without altering native/customization predicates; extend tests/update-markers.test.mjs for plugin-only availability, mixed readiness and clearing.
+- [x] 1.1 Declare explicit generic update eligibility and mark Crew's confirmed outdated tool result while retaining its existing fix callback; cover missing, current, outdated and unknown evidence in focused Crew/registry tests and document the declaration in docs/PLUGIN-UI.md.
+- [x] 1.2 Add shared coalesced discovery for this computer and connected peers using captured contexts, existing admission and mounted lifecycle ownership; focused controller tests cover inventory order, failed rechecks, disconnects, stale generations and no writes during discovery.
+- [x] 1.3 Connect pending plugin availability to all existing expanded/compact Settings and Updates markers without altering native/customization predicates; extend tests/update-markers.test.mjs for plugin-only availability, mixed readiness and clearing.
 
 ## 2. Minimal Plugins section with local-first batch updates and inline outcomes
 

@@ -10,6 +10,7 @@ import { initPalettePolicy } from './palette-startup.js';
 import { pluginEvent } from './plugins.js';
 import { reorder, groupedInsertion } from './reorder.js';
 import { initCustomizationUpdates, customizationUpdateAvailable, observeCustomizationUpdates, invalidateCustomizationUpdates } from './customization-updates.js';
+import { refreshPluginUpdates, pluginUpdateAvailable } from './plugin-updates.js';
 import { theme, run, props, window, shared, setShared, updates, layout, openOverlay, closeOverlay } from "./host.js";
 
 function find(node, id) {
@@ -45,13 +46,14 @@ export default class WorkspaceChrome extends View {
       enterCustom(this, cx);
       restoreFrames(cx);
       initPalettePolicy(this, cx);
-      initCustomizationUpdates(this, cx, 'custom-workspace-chrome', { chrome: true });
+      initCustomizationUpdates(this, cx, 'custom-workspace-chrome', { chrome: true, onCheck: cx => refreshPluginUpdates(this, cx) });
     }
   }
   close() {
     this.sidebarClosed = true;
     this.paletteTimer?.cancel();
     this.customUpdateClosed = true;
+    this.pluginUpdatesClosed = true;
     this.customAutoTimer = null;
     this.customAutoDirty = false;
     pluginEvent('sidebar.close', { owner:this });
@@ -131,7 +133,7 @@ export default class WorkspaceChrome extends View {
       .on_mouse_up('left', (_e, cx) => { cx.stop_propagation(); this.dropFooter(item.id, cx); })
       .on_mouse_down('right', drag.guard((_e, cx) => { cx.stop_propagation(); this.openFooterMenu(); }))
       .child(slot(svg(item.icon).size(Math.min(U.smallIcon, unit)), Math.min(U.icon, unit)))
-      .when(item.id === 'settings' && Boolean(updates().app.ready || customizationUpdateAvailable()), el => el.child(div().absolute().top(2).right(2).size(6).rounded_full().bg(t.accent)));
+      .when(item.id === 'settings' && Boolean(updates().app.ready || customizationUpdateAvailable() || pluginUpdateAvailable()), el => el.child(div().absolute().top(2).right(2).size(6).rounded_full().bg(t.accent)));
   }
   footerGroup(side, t) {
     const items = footerItems(side), drag = this.drag;
@@ -171,7 +173,7 @@ export default class WorkspaceChrome extends View {
       if (collapsed) return this.footerSurface(t).justify_center()
         .when(FOOTER_ITEMS.some(item => footerVisible(item.id)), el => el.child(this.button("footer-menu", svg("mods/custom-workspace-chrome/more.svg").size(U.smallIcon),
           () => openOverlay({ mod: "custom-menu", kind: "popup", frame: "none", width: 200, height: 10 + footerItems().length * U.row, props: { tab: "footer" } }))
-          .relative().when(footerVisible('settings') && Boolean(updates().app.ready || customizationUpdateAvailable()), el => el.child(div().absolute().top(2).right(2).size(6).rounded_full().bg(t.accent)))));
+          .relative().when(footerVisible('settings') && Boolean(updates().app.ready || customizationUpdateAvailable() || pluginUpdateAvailable()), el => el.child(div().absolute().top(2).right(2).size(6).rounded_full().bg(t.accent)))));
       return this.footerSurface(t)
         .child(this.footerGroup('left', t))
         .child(div().flex_1())

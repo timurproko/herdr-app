@@ -28,7 +28,11 @@ const subscription = await loadMod({host:{shared:key=>store.get(key),checking:()
 let rendering = false;
 const duringRender = fn => { const before=rendering; rendering=true; try{return fn();}finally{rendering=before;} };
 let width = 248, nativeReady = false, coreReady = false, managed = false, failExec = false, transport = null;
-let nativeStatus = {};
+let nativeStatus = {}, pluginPending = false;
+const pluginReads = [], pluginWrites = [];
+const updatePlugin = { id: 'probe', name: 'Probe', prerequisites: [{ id: 'tool', updates: true,
+  check: async cx => { pluginReads.push(cx.machine); return { update: pluginPending, status: 'ready', fix: { run: async () => pluginWrites.push('update') } }; },
+}] };
 let clock = Date.now();
 class Clock extends Date { static now() { return clock; } }
 let next = { revision: 'a'.repeat(40), check: { checked: 1000, available: false } };
@@ -39,6 +43,9 @@ const realFiles = {
   './settings-back.js': 'src/ui/settings-back.js',
   './settings-dialog.js': 'src/ui/settings-dialog.js',
   './customization-updates.js': 'src/shared/customization-updates.js',
+  './plugin-updates.js': 'src/shared/plugin-updates.js',
+  './plugin-operations.js': 'src/shared/plugin-operations.js',
+  './settings-requests.js': 'src/shared/settings-requests.js',
   './customization-update-model.js': 'src/shared/customization-update-model.js',
   './customization-update-row.js': 'src/features/settings/customization-update-row.js',
   './update-check-feedback.js': 'src/features/settings/update-check-feedback.js',
@@ -60,7 +67,8 @@ async function mount(kind, props) {
       for (const root of copies) refreshes.add(root);
     },
     exec: async (_command, args) => { assert.equal(rendering,false,'No worker request during render'); const request = JSON.parse(args[1]); calls.push({ kind, ...request }); if (failExec) throw Error('fixture transport unavailable'); return transport ? transport(request) : { code: 0, stdout: JSON.stringify(next) }; },
-    keys: () => [], spaces: () => [], terminals: () => [], panes: () => [], agents: () => [],
+    keys: () => [], spaces: () => [], terminals: () => [], panes: () => [], agents: () => [], machines: () => [],
+    hc: async () => ({ code: 0, stdout: '{"machines":[]}' }),
     readTextFile: async () => null,
     run: noop, openOverlay: spec => { copy.openings.push(clone(spec)); return 'o1'; },
     closeOverlay: id => calls.push({ kind, action: 'closeOverlay', id }),
@@ -69,6 +77,8 @@ async function mount(kind, props) {
     Input: {}, InputState: { new: () => ({ on() {}, value: () => '' }) }, Popover: {}, Scrollbar: { vertical: element }, ScrollHandle: { new: () => ({ scroll_to_item() {} }) },
     Popup: { new: (id, trigger) => element().id(id).child(trigger) } };
   const values = { liveTheme: host.theme, pluginIsEnabled: () => true, pluginTextOpen: () => false,
+    PLUGINS: [updatePlugin], pluginEnabled: () => true, pluginContext: () => ({ setting: () => null }),
+    checkPlugin: async (plugin, context) => Promise.all(plugin.prerequisites.map(async pre => ({ ...pre, ...await pre.check(context) }))),
     pluginEvent(name,context){if(name==='updates.watch')subscription.watchUpdates({...context,enabled:true,setting:()=> 'https://relay.test'});},
     M: { bodyInset: 16 }, sectionRow: (_t, el) => el, sectionStack: (_t, el) => el, divider: () => element(), dividerHeight: () => 1 };
   function source(name, file) {
@@ -87,6 +97,7 @@ async function mount(kind, props) {
     if (file) mod = source(name, file);
     else {
       const exports = name === './host.js' ? { ...Object.fromEntries([...(requested.get(name) ?? [])].map(key => [key, () => { throw Error(`Unexpected host call: ${key}`); }])), ...host } : name.startsWith('gpui-') ? primitives
+        : name === './plugins.js' ? { ...Object.fromEntries([...(requested.get(name) ?? [])].map(key => [key, values[key] ?? noop])), ...values }
         : Object.fromEntries([...(requested.get(name) ?? [])].map(key => [key, values[key] ?? noop]));
       mod = new vm.SyntheticModule(Object.keys(exports), function() { for (const [key, value] of Object.entries(exports)) this.setExport(key, value); }, { context });
     }
@@ -94,7 +105,7 @@ async function mount(kind, props) {
   }
   const main = await load('./main.js'); await main.link(load); await main.evaluate();
   copy.view = new main.namespace.default();
-  copy.cx = { notify: () => {assert.equal(rendering,false,'No synchronous notify from Settings/chrome/menu render');refreshes.add(copy);}, stop_propagation() {}, focus_handle: () => ({ focus() {} }),
+  copy.cx = { sleep: async () => {}, notify: () => {assert.equal(rendering,false,'No synchronous notify from Settings/chrome/menu render');refreshes.add(copy);}, stop_propagation() {}, focus_handle: () => ({ focus() {} }),
     spawn: fn => jobs.push(fn(copy.cx)), timer: { every: (ms, fn) => copy.timers.push({ ms, fn }), after: (ms,fn)=>copy.afters.push({at:clock+ms,fn}) } };
   copy.render = () => duringRender(() => { copy.tree = copy.view.render(copy.cx); copy.renders++; });
   copies.push(copy);
@@ -105,6 +116,7 @@ async function mount(kind, props) {
     copy.view.init({}, copy.cx);
   } else copy.view.init({}, copy.cx);
   copy.api = cache.get('./customization-updates.js')?.namespace;
+  copy.pluginApi = cache.get('./plugin-updates.js')?.namespace;
   copy.render(); return copy;
 }
 async function settle() {
@@ -211,6 +223,18 @@ for (const native of [false, true]) for (const custom of [false, true]) {
   assert.deepEqual(markers().map(Boolean), Array(4).fill(native || custom), `native=${native}, custom=${custom}`);
   if (native && !custom) assert.deepEqual(markers().map(signature), customSignatures, 'native-only and custom-only markers have identical markup');
 }
+// Real plugin discovery publishes across independently mounted marker readers.
+for (const native of [false, true]) for (const custom of [false, true]) for (const pending of [false, true]) {
+  nativeReady = native; pluginPending = pending;
+  next = { ...next, check: { checked: 3500, available: custom } };
+  settings.api.refreshCustomizationUpdates(settings.view, settings.cx);
+  settings.pluginApi.refreshPluginUpdates(settings.view, settings.cx, { force: true });
+  await settle();
+  assert.deepEqual(markers().map(Boolean), Array(4).fill(native || custom || pending));
+  if (pending && !native && !custom) assert.deepEqual(markers().map(signature), customSignatures, 'plugin-only markers reuse exact native styling');
+}
+pluginPending = false; settings.pluginApi.refreshPluginUpdates(settings.view, settings.cx, { force: true }); await settle();
+assert.ok(pluginReads.length > 0); assert.equal(pluginWrites.length, 0, 'availability never updates a plugin');
 nativeReady = false; coreReady = true;
 next = { ...next, check: { checked: 4000, available: false } };
 settings.api.refreshCustomizationUpdates(settings.view, settings.cx); await settle();
