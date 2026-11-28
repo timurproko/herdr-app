@@ -1,9 +1,10 @@
 import {exec, appHome, checking, shared, setShared, notify} from '../api.js';
 const key='custom.trello.discovery';
+function nextGeneration(){const clock=key+'.clock',value=Math.max(Date.now(),(shared(clock)??0)+1);setShared(clock,value);return value;}
 async function request(mode,machine,enabled){
- const r=await exec('node',[`${appHome()}/.customizations/runtime/lib/private-actions/trello-transport.cjs`,mode,appHome(),JSON.stringify(machine??null),String(enabled)],{timeout:60000});
+ const r=await exec('node',[`${appHome()}/.customizations/runtime/lib/private-actions/trello-transport.cjs`,mode,appHome(),JSON.stringify(machine??null),String(enabled),String(nextGeneration())],{timeout:60000});
  let result;try{result=JSON.parse(r.stdout);}catch{}
- if(r.code!==0||result?.ok!==true)throw Error(result?.error?.message??'Trello agent preparation failed. Check the execution machine in Settings.');
+ if(r.code!==0||result?.ok!==true)throw Error('Trello agent preparation failed. Check skill/launcher ownership and setup on the execution machine in Settings.');
  return result.data;
 }
 export async function prepareProfile(cx){
@@ -20,6 +21,7 @@ export async function enabledChanged(enabled){
  await synchronize(enabled);
 }
 async function synchronize(enabled){
+ if((shared('custom.plugins')?.trello?.enabled===true)!==enabled)return;
  const old=shared(key),token=`${Date.now()}-${Math.random()}`;
  if(old?.enabled===enabled&&old.phase==='running'&&old.expires>Date.now())return;
  setShared(key,{enabled,generation:token,phase:'running',expires:Date.now()+65000});

@@ -18,7 +18,7 @@ try{
  const changed=structuredClone(p);changed.files['lib/trello/help.cjs']=Buffer.from(Buffer.from(changed.files['lib/trello/help.cjs'],'base64').toString()+'\n// fake update').toString('base64');changed.revision=installer.revision(changed.files);
  await installer.install(remote,changed,{bin,envPath:bin});await installer.rollback(remote);assert.equal(installer.probe(path.join(remote,'.customizations/runtime'),expected).runtime,'ready');
  fs.appendFileSync(path.join(remote,'.customizations/runtime/lib/trello/help.cjs'),'\n// personal');await assert.rejects(installer.install(remote,p,{bin,envPath:bin}),{code:'RUNTIME_CONFLICT'});fs.writeFileSync(path.join(remote,'.customizations/runtime/lib/trello/help.cjs'),Buffer.from(p.files['lib/trello/help.cjs'],'base64'));
- await assert.rejects(installer.install(path.join(root,'offpath'),p,{bin:path.join(root,'offpath-bin'),envPath:''}),/PATH/);
+ assert.equal((await installer.install(path.join(root,'offpath'),p,{bin:path.join(root,'offpath-bin'),envPath:''})).runtime,'ready','Off-PATH installation is paired with agent launch preparation');
  const failedHome=path.join(root,'failed');await assert.rejects(installer.install(failedHome,p,{bin:path.join(root,'failed-bin'),envPath:path.join(root,'failed-bin'),beforeCommit(){throw Error('fake failure');}}));assert.ok(!fs.existsSync(path.join(failedHome,'.customizations/runtime/lib/trello/cli.cjs')));
  fs.unlinkSync(privateFile);
  const installedRequire=createRequire(path.join(remote,'.customizations/runtime/lib/trello/owner.cjs')),owner=installedRequire('./owner.cjs'),{Store}=installedRequire('./credentials.cjs'),store=new Store(remote,{security:()=>{}});
@@ -66,6 +66,15 @@ try{
  const oldRevision=state.data.revision;let active=true;const refusedCommit=await owner.execute({action:'replace',expected:oldRevision,apiKey:key,token},{store,isCurrent:()=>active,transport:async()=>{active=false;return Response.json({id:A,username:'late',fullName:'Late owner'});}});assert.equal(refusedCommit.error.code,'STALE');assert.equal((await run('status')).data.account.name,'Remote owner');
  for(const action of ['status','verify']){let observations=0;const changed=await transport.dispatch(local,{machine:'pc2',binding},{action,...(action==='verify'?{expected:state.data.revision}:{})},()=>{},{...options,spawnSync:()=>({status:0,stdout:JSON.stringify({machines:[++observations<3?machine:{...machine,id:'replacement-after-dispatch'}]})})});assert.equal(changed.error.code,action==='status'?'MACHINE_CHANGED':'CONFIG_UNKNOWN');assert.equal(changed.data,undefined,'Old peer facts cannot be published for its replacement');}
  assert.ok(provider>0);assert.ok(starts>0);
+ // Run the real bootstrap/owner/discovery path against a separate fake host.
+ const noteHome=path.join(root,'note-host'),noteUser=path.join(root,'note-user'),noteBin=path.join(root,'note-bin');await installer.install(noteHome,p,{bin:noteBin,envPath:''});fs.writeFileSync(path.join(noteHome,'shared.json'),JSON.stringify({'custom.plugins':{trello:{enabled:true}}}));
+ async function noteBoot(enabled,generation){
+  const input=new PassThrough(),out=new PassThrough();let text='',sent=false;
+  out.on('data',chunk=>{text+=chunk;if(!sent&&text.includes('"phase":"ready"')){sent=true;input.write(JSON.stringify({version:1,kind:'owner',payload:{action:'discovery.prepare',enabled,generation}})+'\n');}});
+  await bootstrap.main({version:1,machine,expected:p.revision},fs.readFileSync(path.join(runtime,'lib/private-actions/trello-install.cjs'),'utf8'),{input,output:out,getHello:async()=>({core:{id:machine.id},generation:1}),executionHome:()=>({home:noteHome,user:'fake-user',uid:1000,userHome:noteUser}),checkWindows:()=>{}});
+  return text.trim().split('\n').map(JSON.parse).at(-1).result;
+ }
+ const noteResult=await noteBoot(true,100);assert.equal(noteResult.ok,true,JSON.stringify(noteResult));assert.deepEqual(noteResult.data.launch.pathEntries,[noteBin]);assert.ok(fs.existsSync(path.join(noteUser,'.agents/skills/herdr-trello/SKILL.md')));assert.equal((await noteBoot(false,101)).ok,true);assert.equal((await noteBoot(true,100)).error.code,'STALE');assert.ok(!fs.existsSync(path.join(noteUser,'.claude/skills/herdr-trello/SKILL.md')));
  // Exercise the production bootstrap with only identity/Core/IO injected, never real SSH.
  const source=fs.readFileSync(new URL('../src/services/private-actions/trello-install.cjs',import.meta.url),'utf8');
  async function boot(kind,identity={core:{id:machine.id},generation:1}){

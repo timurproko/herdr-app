@@ -36,23 +36,31 @@ Trello service and grants no permission.
 
 Normal `npm run build` packages the complete runtime. Normal **full**
 `npm run deploy` installs it under the resolved Herdr home and installs owned
-`herdr-trello`, `herdr-trello.cmd` and `herdr-trello.ps1` launchers in
-`~/.local/bin` (or the explicitly selected `HERDR_TRELLO_BIN` directory).
-The chosen bin must already be on the deploying shell's PATH; otherwise deploy
-fails early with guidance. Add it explicitly to your environment and rerun normal
-deploy. No profiles or PATH configuration are edited for you, and no global npm
-package or source-checkout path is needed at runtime. Node 20+ must be on PATH.
+`herdr-trello` and `herdr-trello.cmd` launchers in `~/.local/bin` (or the explicitly
+selected `HERDR_TRELLO_BIN` directory). The deploying shell need not already have
+that bin on PATH. Every enabled agent profile prepares its execution host's exact
+owned bin in the new session's PATH, including ordinary and coordinator profiles,
+explicit executable paths and new isolated Claude sessions. Core need not restart.
+Node 20+ must already be available; no global npm package or checkout is needed.
 
-Bash/POSIX uses the shell launcher; PowerShell can use the `.ps1` launcher when
-local script policy permits, and CMD uses `.cmd`. Quote file paths as required by
-your shell. No execution-policy setting is changed. Existing agents with an old
-inherited PATH need an explicit environment refresh/new shell; deployment never
-restarts them or injects input. The command is installed while the plugin is off,
-but no credentials, boards or write permission are provisioned.
+Bash/POSIX uses the shell launcher; PowerShell and CMD resolve the `.cmd` shim by
+name. Upgrade retires only the hash-matching owned `.ps1` that could shadow it.
+A personal/modified `.ps1` refuses migration rather than being overwritten. No
+execution-policy bypass is required or configured.
+
+Agent-only startup preparation preserves coordinator PATH prefixes and uses an
+owned BASH_ENV hook for noninteractive/login Bash tool shells, chaining the previous
+hook. It edits no shell profile or persistent user/system PATH. Shells opened
+outside Herdr's profile launch path still need their bin on PATH explicitly.
+Existing sessions keep their inherited environment until a new launch; deployment
+never restarts them or injects input. The command is installed while the plugin
+is off, but no credentials, boards or write permission are provisioned.
 
 User-bin launchers have exact-name, home-bound ownership under
 `.customizations/trello-launchers.json`. Modified/unknown launchers and a launcher
 belonging to another Herdr home refuse before unrelated installation writes.
+Version-2 ownership journals retain the retired script's null slot and support
+rollback to the earlier owned launcher set, with later-edit protection.
 Full deployment acquires the user-bin lock before journals or application payload
 writes and holds it through ownership publication, even if launcher bytes are
 unchanged. An existing bin lock refuses without installing or replacing payload;
@@ -211,7 +219,7 @@ setup remains supported; transient connectivity/storage failures stay distinct.
  Existing
 SSH host trust, key authentication, Node 20+ and the selected user's Core session
 are prerequisites; the feature never accepts a new host key, prompts for a password
-or installs Node/changes PATH. A missing Trello runtime gets the normal Requirements
+or installs Node/changes persistent PATH. A missing Trello runtime gets the normal Requirements
 Install action. Conflicting or modified launchers/runtime files refuse overwrite;
 owned installation keeps uniquely named public rollback records and preserves
 private setup and unrelated journals. Monotonic request budgets are checked
@@ -483,6 +491,7 @@ race or prevent another same-user process from using the token directly.
 | MACHINE_UNAVAILABLE | The configured Core session could not be queried; this is not proof that its identity changed |
 | SSH_UNAVAILABLE / RUNTIME_MISSING / RUNTIME_OUTDATED / RUNTIME_CONFLICT | Check SSH prerequisites or use the explicit Requirements runtime fix; modified/unknown owned files are never overwritten |
 | CONFIG_UNKNOWN | Private setup may have committed without acknowledgement; read destination status before an explicit retry |
+| DISCOVERY_CONFLICT / DISCOVERY_BUSY | Agent skill or launcher preparation conflicts with an owned/personal file or active preparation; inspect setup before another launch, never overwrite instructions |
 | CONFLICT | Existing credentials, concurrent local edit or unexpected rotation; inspect current local state and use explicit rotation only when intended |
 | DISABLED / STALE | Plugin disabled or authority changed; recheck Settings and local policy before a new command |
 | SCOPE | Board not allowed or child membership unverified within bounds; correct explicit IDs or allowlist, never bypass with an arbitrary URL |

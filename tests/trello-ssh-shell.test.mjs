@@ -69,9 +69,9 @@ global.Function=new Proxy(Function,{construct(target,parameters){
     }
   }
   // Exercise the production installer + bootstrap with a fake Core/home only.
-  // The failure must precede every install write, not be rewritten as SSH failure.
+  // Installation no longer mistakes installer PATH for the agent environment.
   const home=path.join(root,'offpath-home'),bin=path.join(root,'offpath-bin');
-  await assert.rejects(installer.install(home,payload,{bin,envPath:''}),{code:'RUNTIME_PATH'});
+  assert.equal((await installer.install(home,payload,{bin,envPath:''})).runtime,'ready');
   const oldPath=process.env.PATH,oldBin=process.env.HERDR_TRELLO_BIN;
   let frames;
   try {
@@ -89,8 +89,8 @@ global.Function=new Proxy(Function,{construct(target,parameters){
     if(oldBin===undefined)delete process.env.HERDR_TRELLO_BIN;else process.env.HERDR_TRELLO_BIN=oldBin;
   }
   assert.equal(frames[0].phase,'ready');
-  assert.equal(frames.at(-1).result.error.code,'RUNTIME_PATH');
-  assert.ok(!fs.existsSync(home)&&!fs.existsSync(bin),'Off-PATH refusal writes no runtime/launcher files');
+  assert.equal(frames.at(-1).result.ok,true);
+  assert.ok(fs.existsSync(path.join(bin,'herdr-trello.cmd')),'An empty installer PATH does not block owned installation');
   // Fail closed before SSH if future public source grows beyond this budget.
   fs.appendFileSync(bootstrapFile,'\n// '+crypto.randomBytes(16384).toString('hex'));
   assert.throws(()=>transport.commandFor(shapes[0],null,expected,runtime),{code:'RUNTIME_INVALID'});
@@ -100,5 +100,5 @@ global.Function=new Proxy(Function,{construct(target,parameters){
     spawnSync:()=>({status:0,stdout:JSON.stringify({machines:[{name:'fixture',...shapes[0],target:'fixture-host'}]})}),
   });
   assert.equal(refused.error.code,'RUNTIME_INVALID');assert.equal(spawned,false);
-  console.log(`PASS: ${shellRuns} actual ${process.platform==='win32'?'cmd.exe':'POSIX shell'} executions; public commands <= ${maximum}/${transport.COMMAND_LIMIT} chars; bootstrap preserves RUNTIME_PATH before writes`);
+  console.log(`PASS: ${shellRuns} actual ${process.platform==='win32'?'cmd.exe':'POSIX shell'} executions; public commands <= ${maximum}/${transport.COMMAND_LIMIT} chars; bootstrap supports off-PATH installation without changing global PATH`);
 } finally {fs.rmSync(root,{recursive:true,force:true});}

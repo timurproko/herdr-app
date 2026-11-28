@@ -172,8 +172,10 @@ failures or a fix count: connect as the normal Core user or set up on that machi
 directly. Copying credentials cannot fix an unsafe execution identity.
 `herdr-trello setup` remains the headless alternative.
 Normal full build/deploy installs the standalone runtime and owned user-bin
-launchers (the selected bin must be on PATH); shell-only peers get no credentials
-or Trello installation. See [Trello setup, commands and security limits](docs/TRELLO.md).
+launchers. New enabled agent profiles prepare that host's bin in PATH automatically,
+including Bash, PowerShell and CMD tool shells, without restarting Core or relaxing
+PowerShell policy. Standalone shells outside this launch path need PATH configured
+explicitly. Shell-only peers get no credentials or Trello installation. See [Trello setup, commands and security limits](docs/TRELLO.md).
 Card reads expose attachment IDs/counts. Agents can list attachment metadata and
 use `attachments get --out PRIVATE_DIR` to inspect an uploaded screenshot locally,
 optionally selecting a preview width. Downloads cap at 20 MiB, accept images by

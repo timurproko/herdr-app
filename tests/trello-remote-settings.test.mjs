@@ -8,6 +8,7 @@ const binding={id:'fake-remote-core',session:'test',principal:'e'.repeat(64),hom
 const B='b'.repeat(24);
 const transport=async url=>{provider++;return Response.json(new URL(url).pathname.endsWith('/boards')?[{id:A,name:'Remote design',closed:false},{id:B,name:'Archive design',closed:true}]:{id:A,username:'remote-user',fullName:'Remote owner'});};
 const host={checking:()=>false,appHome:()=>local.home,exec:async(_p,args)=>{
+ if(args.includes('--discovery-all'))return {code:0,stdout:JSON.stringify({ok:true,data:{pending:[]}})};
  assert.ok(!JSON.stringify(args).includes(key));assert.ok(!JSON.stringify(args).includes(token));
  if(args.includes('--start')){route=JSON.parse(args.at(-1));return {code:0,stdout:JSON.stringify({port:12345,session:'f'.repeat(64),expires:Date.now()+59000})};}
  const machine=JSON.parse(args.at(-1)),destination=machine?binding:localBinding;

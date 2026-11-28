@@ -51,10 +51,16 @@ function profileLine(shell, argv) {
   throw Error('This default shell is not supported for profile startup. Choose Bash or PowerShell in Settings → Terminals.');
 }
 
-function profileShellArgv(shell, command) {
+function profileShellArgv(shell, command, preparation = null) {
   if (!Array.isArray(shell) || !shell.length || shell.some(v => typeof v !== 'string' || /[\0\r\n]/.test(v))) throw Error('Invalid default terminal.');
   const name = shell[0].split(/[\\/]/).pop().replace(/\.exe$/i, '').toLowerCase();
-  const line = profileLine(shell, command), tail = shell.slice(1);
+  let line = profileLine(shell, command);
+  if(preparation){
+    if(['powershell','pwsh'].includes(name))line='$env:PATH=$env:HERDR_AGENT_NATIVE_PATH; '+line;
+    else if(name==='cmd')line='setlocal DisableDelayedExpansion & set "PATH=%HERDR_AGENT_NATIVE_PATH%" & '+line;
+    else if(['bash','sh','zsh','dash','ksh'].includes(name))line='. '+profileLine(shell,[preparation.bashEnv.replace(/\\/g,'/')])+'; '+line;
+  }
+  const tail = shell.slice(1);
   const hasCommand = tail.some(v => ['cmd'].includes(name) ? /^\/[ck]$/i.test(v)
     : ['pwsh','powershell'].includes(name) ? /^-(?:c|command|commandwithargs|f|file|e|ec|enc|encodedcommand)$/i.test(v)
     : name === 'nu' ? /^(?:-[ce]|--commands|--execute)$/.test(v)
@@ -123,6 +129,31 @@ function roleEnvironment(target) {
   return env;
 }
 
+// Generic bounded launch preparation: plugin code resolves/validates owned paths
+// on the execution host. This worker never accepts arbitrary environment keys.
+function preparedEnvironment(target, role, options={}) {
+  const preparations=target.preparations??[];
+  if(!Array.isArray(preparations)||preparations.length>8)throw Error('Invalid profile preparation.');
+  if(!preparations.length)return {env:role,shell:null};
+  const platform=options.platform??process.platform,p=require('node:path')[platform==='win32'?'win32':'posix'],delimiter=platform==='win32'?';':':';
+  const absolute=v=>typeof v==='string'&&v.length<=8192&&!/[\0\r\n]/.test(v)&&p.isAbsolute(v);
+  const entries=[];let bashEnv;
+  for(const value of preparations){
+    if(!value||Object.keys(value).some(k=>!['pathEntries','bashEnv'].includes(k))||!Array.isArray(value.pathEntries)||value.pathEntries.length>8||value.pathEntries.some(v=>!absolute(v))||!absolute(value.bashEnv))throw Error('Invalid profile preparation.');
+    if(bashEnv&&bashEnv!==value.bashEnv)throw Error('Conflicting shell preparation.');
+    bashEnv=value.bashEnv;entries.push(...value.pathEntries);
+  }
+  const source=options.env??process.env,get=key=>Object.entries(source).find(([k])=>k.toLowerCase()===key.toLowerCase())?.[1]??'';
+  const base=get('PATH'),rolePath=role.PATH??base;
+  // Keep a coordinator's launcher prefix ahead of the shared user bin (e.g. pi).
+  const prefix=role.PATH&&base&&rolePath.endsWith(base)?rolePath.slice(0,-base.length).replace(new RegExp(delimiter+'$'),''):'';
+  const head=[prefix,...new Set(entries)].filter(Boolean).join(delimiter);
+  const PATH=[head,prefix?base:rolePath].filter(Boolean).join(delimiter);
+  if(PATH.length>24576||/[\0\r\n]/.test(PATH))throw Error('Invalid prepared PATH.');
+  const previous=get('BASH_ENV')===bashEnv.replace(/\\/g,'/')?get('HERDR_AGENT_PREVIOUS_BASH_ENV'):get('BASH_ENV');
+  return {env:{...role,PATH,BASH_ENV:bashEnv.replace(/\\/g,'/'),HERDR_AGENT_PREVIOUS_BASH_ENV:previous,HERDR_AGENT_PATH:head,HERDR_AGENT_NATIVE_PATH:PATH},shell:{bashEnv}};
+}
+
 async function launchProfile(target, rpc, options = {}) {
   let address = null;
   const fresh = prefix => prefix + require('node:crypto').randomUUID().replace(/-/g, '');
@@ -135,7 +166,7 @@ async function launchProfile(target, rpc, options = {}) {
   };
   try {
     if (!Array.isArray(target.argv) || !target.argv.length) throw Error('Missing profile command.');
-    const extra = roleLabels(target), environment = roleEnvironment(target);
+    const extra = roleLabels(target), prepared=preparedEnvironment(target,roleEnvironment(target),options),environment=prepared.env;
     // Ignore retired automatic sessionColor metadata, including in-flight jobs
     // from an older mod. Preserve explicit user arguments and literal prompts.
     await assertSpace();
@@ -150,7 +181,7 @@ async function launchProfile(target, rpc, options = {}) {
       }
     }
     const command = await isolatedClaudeCommand(target, shell, options);
-    const argv = profileShellArgv(shell, command);
+    const argv = profileShellArgv(shell, command, prepared.shell);
     await assertSpace();
     // Labels are present from birth; no terminal input injection or prompt wait.
     const started = await rpc('terminal.run', { argv, cwd: target.cwd ?? null,
@@ -168,7 +199,7 @@ async function launchProfile(target, rpc, options = {}) {
     return { ok: false, error: error.message || 'Could not start the profile.', ...(address ? { address, space, tab } : {}) };
   }
 }
-module.exports = { connect, profileLine, profileShellArgv, isolatedClaudeCommand, launchProfile, roleLabels, roleEnvironment };
+module.exports = { connect, profileLine, profileShellArgv, isolatedClaudeCommand, launchProfile, roleLabels, roleEnvironment, preparedEnvironment };
 if (require.main === module || !module.parent) {
   const client = connect();
   Promise.resolve().then(() => {

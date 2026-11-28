@@ -4,7 +4,7 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
 const hash=bytes=>bytes===null?null:crypto.createHash('sha256').update(bytes).digest('hex');
 const reject=code=>{throw Object.assign(Error(code),{code});};
 const names=['attachments','download','cli','client','control','credentials','discovery','errors','help','operations','owner','policy','setup'];
-const paths=[...names.map(n=>`lib/trello/${n}.cjs`),'lib/trello/TRELLO.txt','scripts/trello-launchers.mjs','scripts/files.mjs','package.json'];
+const paths=[...names.map(n=>`lib/trello/${n}.cjs`),'lib/trello/TRELLO.txt','lib/trello/bash-env.txt','scripts/trello-launchers.mjs','scripts/files.mjs','package.json'];
 function safe(file){for(let p=path.resolve(file);;p=path.dirname(p)){try{if(fs.lstatSync(p).isSymbolicLink())reject('RUNTIME_CONFLICT');}catch(e){if(e.code!=='ENOENT')throw e;}if(path.dirname(p)===p)break;}return file;}
 function bytes(file){safe(file);try{const s=fs.statSync(file);if(!s.isFile()||s.size>2097152)reject('RUNTIME_CONFLICT');return fs.readFileSync(file);}catch(e){if(e.code==='ENOENT')return null;throw e;}}
 function json(file){const b=bytes(file);return b===null?null:JSON.parse(b);}

@@ -21,7 +21,7 @@ try{
  if(process.env.PI_SKILLS_MODULE){const {loadSkillsFromDir,formatSkillsForPrompt}=await import(pathToFileURL(process.env.PI_SKILLS_MODULE));const loaded=loadSkillsFromDir({dir:path.join(userHome,'.agents/skills'),source:'user'});assert.equal(loaded.skills.length,1);assert.ok(formatSkillsForPrompt(loaded.skills).includes(d.description));console.log('PASS: actual installed Pi skill loader advertises the complete note');}
  // A partially committed transition rolls back its own writes, including delete.
  const snap=targets.map(f=>fs.readFileSync(f,'utf8'));let calls=0;
- assert.throws(()=>d.reconcile(home,{...options,enabled:false,beforeCommit(){if(++calls===2)throw Error('injected failure');}}),/injected failure/);
+ assert.throws(()=>d.reconcile(home,{...options,enabled:false,beforeCommit(){if(++calls===3)throw Error('injected failure');}}),/injected failure/);
  assert.deepEqual(targets.map(f=>fs.readFileSync(f,'utf8')),snap);
  fs.appendFileSync(targets[1],'personal');assert.throws(()=>d.reconcile(home,{...options,enabled:false}),{code:'DISCOVERY_CONFLICT'});assert.equal(fs.readFileSync(targets[0],'utf8'),d.skill);fs.writeFileSync(targets[1],d.skill);
  assert.throws(()=>d.reconcile(path.join(root,'other-home'),{...options,enabled:true}),{code:'DISCOVERY_CONFLICT'});
@@ -35,6 +35,11 @@ try{
  assert.throws(()=>d.prepare(home,{...options,enabled:true,isCurrent:()=>false}),{code:'STALE'});
  fs.writeFileSync(path.join(home,'shared.json'),JSON.stringify({'custom.plugins':{trello:{enabled:false}}}));assert.equal(d.prepare(home,{...options,enabled:true}).announced,false);assert.ok(targets.every(f=>!fs.existsSync(f)));
  fs.writeFileSync(path.join(home,'shared.json'),'invalid');assert.throws(()=>d.prepare(home,{...options,enabled:true}),{code:'PUBLIC_STATE_INVALID'});assert.equal(d.prepare(home,{...options,enabled:false}).announced,false);
+ // A delayed enable may not republish after a newer acknowledged disable.
+ d.reconcile(home,{...options,enabled:false,generation:20});assert.throws(()=>d.reconcile(home,{...options,enabled:true,generation:19}),{code:'STALE'});assert.ok(targets.every(f=>!fs.existsSync(f)));
+ d.reconcile(home,{...options,enabled:true,generation:21});assert.ok(targets.every(f=>fs.existsSync(f)));d.reconcile(home,{...options,enabled:false,generation:22});
+ // Simulate an interrupted owned write: only the public journal's exact targets recover.
+ const pending=d.locations(home,userHome).journal;fs.writeFileSync(d.locations(home,userHome).lock,JSON.stringify({kind:'herdr-trello-skills-v1',pid:2147483647,token:'a'.repeat(32)}));fs.writeFileSync(targets[0],d.skill);fs.writeFileSync(pending,JSON.stringify({home,userHome,jobs:[{file:targets[0],before:null,after:Buffer.from(d.skill).toString('base64')}]}));d.reconcile(home,{...options,enabled:false,generation:23});assert.ok(!fs.existsSync(targets[0]));assert.ok(!fs.existsSync(pending));
  // Linked target/parent and personal files are never adopted.
  const personalUser=path.join(root,'personal'),personal=d.locations(home,personalUser).targets[0];fs.mkdirSync(path.dirname(personal),{recursive:true});fs.writeFileSync(personal,'personal skill');assert.throws(()=>d.reconcile(home,{userHome:personalUser,enabled:true}),{code:'DISCOVERY_CONFLICT'});assert.equal(fs.readFileSync(personal,'utf8'),'personal skill');
  const linkedUser=path.join(root,'linked');fs.mkdirSync(linkedUser);fs.symlinkSync(path.join(userHome,'.agents'),path.join(linkedUser,'.agents'),process.platform==='win32'?'junction':'dir');assert.throws(()=>d.reconcile(path.join(root,'linked-home'),{userHome:linkedUser,enabled:true}),{code:'DISCOVERY_CONFLICT'});
