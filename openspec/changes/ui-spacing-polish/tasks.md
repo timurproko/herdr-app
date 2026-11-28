@@ -13,6 +13,8 @@
 
 ## 3. Delivery kinds tooltips use aligned regular names and muted descriptions
 
-- [ ] 3.1 Reuse the shared description-hint surface for two aligned columns with regular foreground names, muted wrapping descriptions and no separating dashes; extend `node tests/plugin-description-hint.test.mjs` to assert shared description starts and unchanged passive hover/focus, wording and legacy table support.
-- [ ] 3.2 Update README's bold-name tooltip description and relevant docs/TESTING.md expectations; check `node tests/crew-projects-ui.test.mjs` for unchanged Projects controls, list and actions.
-- [ ] 3.3 Inspect safe disposable renderer output for the three changed areas if available, keeping proof in the crew task folder and stopping all started instances; otherwise explicitly report the native visual gap without claiming proof.
+- [x] 3.1 Reuse the shared description-hint surface for two aligned columns with regular foreground names, muted wrapping descriptions and no separating dashes; extend `node tests/plugin-description-hint.test.mjs` to assert shared description starts and unchanged passive hover/focus, wording and legacy table support.
+- [x] 3.2 Update README's bold-name tooltip description and relevant docs/TESTING.md expectations; check `node tests/crew-projects-ui.test.mjs` for unchanged Projects controls, list and actions.
+- [x] 3.3 Inspect safe disposable renderer output for the three changed areas if available, keeping proof in the crew task folder and stopping all started instances; otherwise explicitly report the native visual gap without claiming proof.
+
+Native visual gap: HERDR_APP_BIN is unset and no executable was found at the standard Programs/herdr-app install path. No app/server was started and no screenshots are claimed. Synthetic production-renderer geometry and interaction checks passed; native pixel validation remains a maintainer follow-up.

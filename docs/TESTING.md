@@ -33,20 +33,21 @@ The existing full row geometry and stage interaction fixtures remain independent
 `tests/agents-grouping.test.mjs` additionally exercises the real Crew/registry
 metadata contribution with interleaved coordinator groups on several machines,
 no-coordinator and misleading-name cases, and unchanged folds/counts/focus/pins.
-Fixed verdict boxes yield whole before labels on real overflow, rather than shrinking
-their hit target. One clipped invisible column supplies the native maximum width;
-it is measured once per panel/zoom and reused by all captions and natural probes.
+Verdict boxes yield whole before labels on real overflow, rather than shrinking
+their hit target. Stage and verdict boxes fit each caption plus 6px side padding;
+there is no shared maximum-width probe or cache.
 
 Disposable pixel proof (explicit opt-in, output outside the checkout):
 `HERDR_APP_BIN=<verified-exe> node tests/features/pr-stage-native.mjs --run --sizing --zoom 1 --output <outside>`;
 repeat with `--zoom 1.3` and add `--baseline <before-commit>` for paired pictures.
 The existing fixture still supports its original non-sizing pointer scenarios.
 The sizing mode uses synthetic agents/PRs, including a long title, Build 10/99,
-Changes requested and a rare long round. Native 0.1.18 measured Changes requested
-as widest: 121×18 at 100%, 158×23.5 at 130% (native rounding); a long round was
-145×18 / 189×23.5 without enlarging other rows. Receipts record geometry, screenshots,
-checksum provenance and confirmed disposable App/Core shutdown. Failed exploratory
-frames are not accepted proof; use the successful sizing receipts and matching pictures.
+Changes requested and a rare long round. Sizing assertions now require Build,
+Review, Approved and Changes requested to have their own increasing widths while
+retaining 18px height (with native zoom rounding); a long round grows independently.
+Older common-width receipts describe the superseded presentation, not current proof.
+Receipts record geometry, screenshots, checksum provenance and confirmed disposable
+App/Core shutdown. Failed exploratory frames are not accepted proof.
 
 
 The split retained imported suites, apart from neutral status-reveal labels
@@ -61,7 +62,8 @@ to reproduce hosted CI.
 ## Crew Projects tooltip and slow-list regressions
 
 `node --experimental-vm-modules tests/plugin-description-hint.test.mjs` checks the
-three bold-name explanations, wrapping/spacing, identical passive hover/focus content,
+three aligned two-column explanations with regular foreground names and muted
+descriptions, no separating dashes, wrapping/spacing, identical passive hover/focus content,
 no reads and retained support for other declarative table hints.
 `node --experimental-vm-modules tests/crew-project-list-wait.test.mjs` drives the real
 Crew provider and Settings renderer with synthetic transport time: cold and warm
