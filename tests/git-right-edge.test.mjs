@@ -17,10 +17,18 @@ function spacesInset(width,zoom) {
     near(metrics.leading,8*zoom,'Spaces badge starts 8px inside its highlight');
     near(metrics.trailing,3*zoom,'Git preserves its independent 3px inset after Crew is restyled');
     near(metrics.radius,6,'Spaces radius remains 6 logical pixels');
-    near(width*zoom-right(geometry.get(pill)),41*zoom,'Spaces plain Crew now shares the plus/numeric right edge');
+    near(width*zoom-right(geometry.get(pill)),79*zoom,'Spaces Crew retains its count-and-chevron-present column');
+    near(right(geometry.get(pill)),right(geometry.get(find(tree,'space-tag-coordinator-crew-0'))),'Childless and connected Crew labels share one column');
+    const metadata=find(tree,`space-meta-${id}`);
+    assert.equal(metadata.kids.length,3,'Childless Crew reserves both trailing rails');
+    for(const slot of metadata.kids.slice(1)) {
+      near(geometry.get(slot).width,24*zoom,'Absent controls retain their existing rail widths');
+      assert.equal(slot.kids.length,0,'No visible placeholder count or chevron');
+      for(const key of ['on_click','tab_index','role','tooltip'])assert.equal(slot.attrs[key],undefined,'Empty rail stays inert');
+    }
     return metrics;
   });
-  assert.equal(find(tree,'space-tag-fleet-crew-0'),undefined,'Connected children have no Crew pills; ordinary trailing pills remain the Git alignment reference');
+  assert.equal(find(tree,'space-tag-fleet-crew-0'),undefined,'Connected children have no Crew labels; parent and childless Crew use the same fixed column');
   assert.ok(find(tree,'space-branch-fleet'),'The child has its own indented connector instead');
   const parentContent=find(tree,'space-content-coordinator');assert.equal(find(parentContent,'space-meta-coordinator').kids.at(-1),find(tree,'space-fold-coordinator'),'The connected parent now reserves its far-right edge for disclosure, after Crew');
   spacesMeasurements.set(`${width}/${zoom}`,measurements[0]);
@@ -77,7 +85,7 @@ for(const width of [280,320,360,390,480])for(const zoom of [0.75,1,1.25,1.3,1.5,
       const robot=geometry.get(slot),pill=geometry.get(find(block,`${prefix}pr-labels-${id}`).kids.at(-1));
       gitHighlight(geometry,block,width,zoom);
       if(slot)near(inset(geometry,block,slot),expectedInset,'Live robot slot retains its highlight inset');
-      near(right(geometry.get(block))-right(pill),expectedInset,'Actual label pill inset from its highlight equals actual Spaces Crew inset');
+      near(right(geometry.get(block))-right(pill),expectedInset,'Actual label pill retains the independent Git highlight-relative inset');
       if(robot)near(width*zoom-right(robot),11*zoom,'Git control ends 11px from the panel, matching Spaces');
       near(geometry.get(find(block,`${prefix}pr-state-slot-${id}`)).x-geometry.get(block).x,
         spacesMeasurements.get(`${width}/${zoom}`).leading,'Git state slot matches actual Spaces highlight-to-badge inset');
