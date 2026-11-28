@@ -33,6 +33,10 @@ Definite update failures keep their stage/cause in the Settings row, for example
 **host check refused Herdr 0.1.17: missing command tab.new**, **build failed** or
 **install failed: Personal file conflict**. Details still link the matching log or
 result; timeout/missing-result outcomes never imply success or automatic replay.
+A failed install step reports that step's own diagnostic, not its command line. The
+native patch refresh waits up to 45 seconds while the running App's startup repair
+holds `.customizations/startup-frames.lock` (or after clearing a stale one) before it
+fails with **Native patch refresh stayed busy**.
 Evidence-based settlement and deliberate unknown-retry rules are described below.
 
 ## Build and install
