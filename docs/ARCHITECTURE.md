@@ -600,6 +600,15 @@ disabled held views fall back to an enabled panel, both disabled hides it, and
 re-enabling restores the remembered choice unless deliberately changed. Width is
 native/global. No Core or layout-document writes or new polling are involved.
 
+Files/Git `location.js` adapters expose that held source without changing Git's
+render or animation path. Files retains an explorer behind its file-viewer tab;
+file opens still target the current native space with the held machine in viewer
+props. Cross-machine same-path viewers are not reused without route evidence.
+Git's ordinary PR association and coordinator provider lookup use the held
+terminal/space; live facts continue refreshing and fresh provider/action checks
+remain independent. Native stage/robot navigation cannot settle the held source
+into its destination. Missing/offline source identity never selects a substitute.
+
 Files/Git headers share `ui/panel-pin.js`. Their Close actions, the tab-bar toggle
 and the panel switcher all use `changePanel`, recording the source tab before
 commands queue. The switcher captures its target when opened; stale popups cannot

@@ -11,7 +11,7 @@ function sessionValue() { try { return sessionStorage.getItem(SESSION); } catch 
 function sessionPin() {
   try { const pin = JSON.parse(sessionValue()); return valid(pin) && cleanPanelSource(pin.source) ? pin : null; } catch { return null; }
 }
-export function panelSource() { return custom() && store() ? cleanPanelSource(sessionPin()?.source) : null; }
+export function panelSource() { return custom() ? cleanPanelSource(store()?.pin?.source) : null; }
 // Availability is a projection only: disabling a plugin never erases the hold.
 export function projectPanelChoice(choice) {
   const enabled = available();

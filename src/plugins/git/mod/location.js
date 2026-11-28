@@ -2,13 +2,13 @@
 import { focused, panes, spaces, terminals } from './host.js';
 import { paneDirectory } from './directory.js';
 
-export function namedPullNumber(tab) {
-  const match = tab?.named === true ? /^(?:PR\s*#?\s*|#)?([1-9]\d*)$/i.exec(tab.name.trim()) : null;
-  const number = match ? Number(match[1]) : null;
-  return Number.isSafeInteger(number) ? number : null;
-}
+import { panelSource } from './panel-state.js';
+import { registerPanelSource, namedPullNumber } from './panel-context.js';
+export { namedPullNumber } from './panel-context.js';
 
-export function location() {
+export function location() { return panelSource() ?? liveLocation(); }
+registerPanelSource('changes', liveLocation);
+function liveLocation() {
   const space = spaces().find(s => s.active), f = focused(), all = panes();
   const selectedTab = space?.tabs?.find(t => t.active), tab = selectedTab?.id;
   const mine = all.filter(p => p.tab === tab);

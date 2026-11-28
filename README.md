@@ -403,6 +403,14 @@ agent. Old per-tab pins become unpinned, preserving their shared default; no Cor
 out of render and waits for native acknowledgements rather than polling/replaying
 layout commands.
 
+While the header pin is pressed, Git keeps that source agent's repository and PR
+association, or that coordinator's task-repository overview, even when another
+space or machine is selected. Live checks and Refresh still update the held
+content. Coordinator reads/actions still require fresh verified identity; a
+missing or offline source never substitutes the current agent. Stage/robot
+navigation may select an agent without moving the held sidebar into its context.
+The following agent-entry and selected-PR behavior applies when the header is unpinned.
+
 Git's list-replacing empty, informational and error feedback uses the repository
 header's 28px row and text anchor, not PR-title padding. Open/Closed empty text
 and initial failures therefore replace header text without a vertical jump;

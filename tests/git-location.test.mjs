@@ -19,6 +19,8 @@ let branch = 'fix/active-agent', heldBranch = null;
 const branchCalls = [], screenCalls = [];
 let screenReply = {code:1,stdout:''};
 let rendering = false;
+const allSpaces=[space],allPanes=[pane],allTerminals=[terminal],sharedValues=new Map(),session=new Map();
+let pinLayout=null;
 function element(asset) {
   const node = {asset, attrs:{}, kids:[]}; let proxy;
   proxy = new Proxy(node, {get(target,key) {
@@ -31,9 +33,9 @@ function element(asset) {
   return proxy;
 }
 const native = {
-  shared:()=>null, setShared(){}, settings:()=>({zoom:1}), machines:()=>[{name:'pc2',layout:'ready'}],
-  agents:()=>[], spaces:()=>[space], panes:()=>[pane], terminals:()=>[terminal], focused:()=>focus,
-  home:()=>home, theme:()=>({dim:'dim',hover:'hover',foreground:'foreground'}), layout:()=>null, window:()=>({platform:'windows'}), run(){}, openOverlay(){}, props:()=>null, closeOverlay(){}, notify(){}, nextCommand(){},
+  shared:key=>sharedValues.get(key)??null, setShared:(key,value)=>sharedValues.set(key,value), settings:()=>({zoom:1}), machines:()=>[{name:'pc2',layout:'ready'}],
+  agents:()=>[], spaces:()=>allSpaces, panes:()=>allPanes, terminals:()=>allTerminals, focused:()=>focus,
+  home:()=>home, theme:()=>({dim:'dim',hover:'hover',foreground:'foreground'}), layout:()=>pinLayout, window:()=>({platform:'windows'}), run(){}, openOverlay(){}, props:()=>null, closeOverlay(){}, notify(){}, nextCommand(){},
   hc:args=> { screenCalls.push(args); return Promise.resolve(screenReply); },
   exec:(cmd,args,options)=> {
     ({command:cmd,args,options}=githubInvocation(cmd,args,options));
@@ -52,7 +54,7 @@ const native = {
     return new Promise((resolve,reject)=>pending.push({cmd,args,options,resolve,reject}));
   },
 };
-const context = vm.createContext({localStorage:{getItem:()=>null,setItem(){}}});
+const context = vm.createContext({localStorage:{getItem:()=>null,setItem(){}},sessionStorage:{getItem:key=>session.get(key)??null,setItem:(key,value)=>session.set(key,value),removeItem:key=>session.delete(key)}});
 const cache = new Map();
 function synthetic(exports) {
   return new vm.SyntheticModule(Object.keys(exports), function() {
@@ -419,6 +421,38 @@ assert.equal(view.error,null);assert.deepEqual(ids(view.renderPulls(native.theme
 // Only a normal, explicit Git non-repository refusal is affirmative absence.
 view.refresh(cx);await reply(take('git'),'',128);
 assert.equal(view.root,null);assert.equal(view.repo,null);assert.equal(view.pulls.open,null);assert.equal(view.error,'Not a git repository');
+// Pinning feeds the unchanged real Git controller a stable effective location.
+sharedValues.set('layout','Custom');pinLayout={id:'root',children:[{id:'panel'},{id:'panel-body',active:'changes'}]};
+const panelState=cache.get(path.join(folder,'panel-state.js')).namespace;
+// Page/detail transport is covered above; isolate root and association admission here.
+view.loadPulls=()=>{};view.loadRelatedPull=()=>{};
+pane.app='bash';selectedTab.name='#109';selectedTab.named=true;
+select(repo);await reply(take('git'),repo);seedRepo();render();
+assert.equal(panelState.togglePanelPin(),true);const heldLocation=JSON.stringify(location()),heldRows=view.pulls,heldPages=view.pages;
+const nextSpace={id:'local-other',active:true,machine:null,tabs:[{id:'next-tab',name:'#110',named:true,active:true}]};
+allSpaces.push(nextSpace);allPanes.push({pane:'next-pane',tab:'next-tab',terminal:'local-agent',app:'bash'});
+allTerminals.push({address:'local-agent',foreground:{name:'bash',cwd:'/another-repo'},labels:{'custom.cwd':'/another-repo'}});space.active=false;
+focus={space:nextSpace.id,tab:'next-tab',pane:'next-pane',terminal:'local-agent'};
+terminal.labels['custom.cwd']='D:/original-agent-moved';const requests=pending.length;render();
+assert.equal(JSON.stringify(location()),heldLocation);assert.equal(view.pulls,heldRows);assert.equal(view.pages,heldPages);
+assert.equal(pending.length,requests,'Held navigation starts no new destination Git reads');
+assert.equal(view.agentPull ?? location().pullNumber,109,'The original named PR association remains the effective agent');
+view.refresh(cx);const pinnedRead=await take('git');assert.equal(pinnedRead.options.cwd,repo);assert.equal(pinnedRead.options.on,'pc2');
+await reply(pinnedRead,repo);assert.equal(view.pulls,heldRows,'Held refresh updates the original repository');
+// The existing motion controller may wait for native selection, but cannot
+// arrive at a destination which the held resolver deliberately does not follow.
+view.shown=()=>true;view.repo={name:'example/xrbuild'};view.view='open';
+const first={number:109,state:'open'},clicked={number:110,state:'open'};view.pulls.open=[first,clicked];view.pullsAt.open=Date.now();
+view.pinMotion.measureBody({width:300,height:400});view.pinMotion.bodyPointer({bounds:{x:0,y:100,width:300,height:400}});
+for(const n of [109,110])view.pinMotion.measureRow(n,{width:292,height:74});
+view.pullPresentation={context:view.context,state:'open',rows:[first,clicked],pinned:first};
+assert.equal(view.beginAgentMotion(clicked,{number:110,at:Date.now(),bounds:{x:268,y:190,width:24,height:24}},{address:'local-agent',cwd:'/another-repo',on:null,repo:'example/xrbuild'},cx),true);
+view.pinMotion.resolve(location().terminal,109,true);assert.equal(view.pinMotion.current.phase,'waiting','No destination animation while held');
+assert.equal(view.pinMotion.current.arrived,undefined);view.pinMotion.cancel();view.shown=originalShown;
+view.refresh(cx);const obsolete=await take('git');assert.equal(panelState.togglePanelPin(undefined,false),true);render();const released=await take('git');
+assert.equal(released.options.cwd,'/another-repo');assert.equal(released.options.on,null);
+await reply(obsolete,'D:/obsolete');assert.equal(view.root,null,'A held reply cannot restore the released context');
+await reply(released,'',128);assert.equal(location().terminal,'local-agent');assert.equal(location().pullNumber,110);
 await Promise.all(tasks);
 assert.equal(pending.length,0);
 console.log('PASS: Git live shell cwd, selected tab/machine, non-repo clearing, pending git/GitHub replies and A-B-A race protection');
