@@ -3,7 +3,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Collapsible coordinator repository sections
-Nonempty coordinator sections SHALL inherit the initially expanded global default with locally persisted exceptions. Headers SHALL show canonical repository, last-known selected-tab eligible task PR count and chevron, using existing section styling and Agents number styling and number-to-chevron spacing. Names SHALL truncate only on overflow, with a full-name tooltip then. Folding SHALL quiet repository PR reads and retain last-known counts until expansion. Notice-only sections SHALL have no header.
+Nonempty coordinator sections SHALL inherit the initially expanded global default with local exceptions. Headers SHALL show canonical repository, last-known selected-tab eligible task PR count and chevron, with existing section and Agents count/spacing styles. Names SHALL truncate only on overflow, with a full-name tooltip then. Folding SHALL quiet PR reads and retain counts until expansion. Notice-only sections SHALL have no header.
 
 #### Scenario: First display
 - **WHEN** a repository has known selected-tab PRs, no saved individual exception and appears in the coordinator overview
