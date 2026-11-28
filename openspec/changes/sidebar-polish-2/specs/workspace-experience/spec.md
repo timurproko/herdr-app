@@ -1,7 +1,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Shared sidebar trailing grid
-Spaces and Agents SHALL share trailing label and disclosure/status rails, with existing native row semantics. Spaces' coordinator role label SHALL read lowercase `crew`, retaining plain Agents machine-label styling and its tooltip. With children it SHALL stay before count and disclosure; without both it SHALL end on the machine-chevron column without reserved empty rails. Counts, machine plus and rename approve SHALL share one inner axis; chevrons and rename cancel one outer axis. Terminal Crew SHALL remain unchanged.
+Spaces and Agents SHALL share trailing label and disclosure/status rails without changing native row semantics. Spaces SHALL show lowercase `crew` in plain Agents machine-label style with its tooltip: before count/disclosure with children, at the machine-chevron column without empty rails otherwise. Counts, machine plus and rename approve SHALL share an inner axis; chevrons and rename cancel an outer axis. Terminal Crew SHALL remain unchanged.
 
 #### Scenario: Expanded and collapsed coordinator metadata
 - **WHEN** a coordinator with connected children is shown expanded or collapsed in a local or remote group
