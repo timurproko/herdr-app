@@ -31,8 +31,8 @@ export async function rowHarness({host={},modules={},globals={}}={}) {
     // Native post-layout callbacks, not render-time heuristics. Include hidden
     // intrinsic probes; visible text assertions below exclude their paint.
     for(let pass=0;pass<8;pass++) {
-      const tree=render(()=>build().child(panel.stageBoxProbe())),geometry=rowGeometry(tree,width,zoom,height);let changed=false;
-      for(const node of nodes(tree))if(/pr-(?:(?:byline|meta)-|stage-box-measure-)/.test(node.attrs?.id?.[0]??'')) {
+      const tree=render(build),geometry=rowGeometry(tree,width,zoom,height);let changed=false;
+      for(const node of nodes(tree))if(/pr-(?:byline|meta)-/.test(node.attrs?.id?.[0]??'')) {
         const callback=node.attrs.on_size_change?.[0];if(callback){
           const size=geometry.get(node),id=node.attrs.id[0],before=nativeSizes.get(id);
           nativeSizes.set(id,{width:size.width,height:size.height});

@@ -13,6 +13,16 @@ try{
  const reopened=await execute({action:'status'},{store:new Store(f.home,{security:()=>{}}),transport:()=>assert.fail('Opening cannot contact Trello')});
  assert.equal(reopened.data.account.name,'Владелец 🐑');assert.equal(reopened.data.namedBoards[0].label,'Проект 🐑');assert.equal(reopened.data.namesMissing,false);
  await run('policy',{add:[B]});assert.deepEqual((await run('status')).data.namedBoards.map(b=>b.label),['Проект 🐑','Dormant board']);
+ const policyBefore=f.store.read('policy'),credentialsBefore=f.store.read('credentials');
+ const verifyWith=async boards=>execute({action:'verify',expected:(await run('status')).data.revision},{store:f.store,transport:async url=>new URL(url).pathname.endsWith('/boards')?boards():transport(url)});
+ const renamed=await verifyWith(()=>Response.json([{id:B,name:'xr',closed:true},{id:A,name:'ai',closed:false}]));
+ assert.equal(renamed.ok,true);assert.deepEqual(renamed.data.namedBoards,[{id:A,label:'ai'},{id:B,label:'xr'}],'Existing hints refresh by ID, retaining grant order');
+ const partial=await verifyWith(()=>Response.json([{id:A,name:'ai 🐑',closed:false}]));
+ assert.deepEqual(partial.data.namedBoards,[{id:A,label:'ai 🐑'},{id:B,label:'xr'}],'Unseen grants keep their last name');
+ const displayBefore=f.store.read('display');
+ const offline=await verifyWith(()=>{throw Error('fake unreachable provider');});
+ assert.equal(offline.ok,true);assert.deepEqual(offline.data.namedBoards,partial.data.namedBoards);assert.deepEqual(f.store.read('display'),displayBefore);
+ assert.deepEqual(f.store.read('policy'),policyBefore);assert.deepEqual(f.store.read('credentials'),credentialsBefore);
  await run('policy',{remove:[A]});assert.deepEqual((await run('status')).data.namedBoards.map(b=>b.id),[B]);
  assert.equal(fs.readFileSync(f.store.file('display'),'utf8').includes(credentials.token),false);
  const old=f.store.read('display');fs.writeFileSync(f.store.file('display'),'{broken');

@@ -62,23 +62,29 @@ export async function openPrivate(url) {
 }
 // Uses one limit reset (Claude or Codex) for one account. Resolves {result} or {error}; never retried here.
 export async function claimReset(machine,{provider,accountId,organizationId,grantId}) {
+  const epoch=generation(),current=()=>pluginIsEnabled('usage')&&generation()===epoch&&preferences(machine).enabled;
+  if(!current())return {obsolete:true};
   try {
     const source=await readTextFile(`${appHome()}/mods/custom-usage/bridge.cjs`);
     if(!source) return {error:'The usage bridge is missing. Reinstall the skin.'};
+    if(!current())return {obsolete:true};
     const requestId=`herdr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`;
     const reply=await exec('node',['--input-type=commonjs','-e',source,'--',JSON.stringify({action:provider==='codex'?'codex-reset':'claude-reset',accountId,organizationId,grantId,requestId})],{on:machine??null,timeout:60000});
     const result=JSON.parse(reply.stdout);
-    if(result?.result){const current=cache(machine);if(current.at)setShared(key(machine,'cache'),{...current,at:0});}
-    return result?.result||result?.error?result:{error:'The reset did not finish. Nothing was claimed.'};
-  } catch { return {error:'The reset did not finish. Check usage before trying again.'}; }
+    if(!current())return {obsolete:true};
+    if(result?.result){const cached=cache(machine);if(cached.at)setShared(key(machine,'cache'),{...cached,at:0});}
+    return result?.result||result?.error?{...result,epoch}:{error:'The reset did not finish. Nothing was claimed.'};
+  } catch { return current()?{error:'The reset did not finish. Check usage before trying again.'}:{obsolete:true}; }
 }
 // missing: the session's account has no report yet (a login saved since the
 // last collection). Skip the TTL wait; fresh reports are still reused, so only
 // the new account is asked about.
 // signedIn: a browser sign-in just finished. The browser holds focus then, so
 // collect anyway; returns false when another collection is still running.
-export function refresh(machine,cx,{force=false,reportId,missing=false,signedIn=false}={}) {
-  if(!pluginIsEnabled('usage') || !(signedIn||appWindow()?.active) || !preferences(machine).enabled) return true;
+// Reset continuations keep the captured enable epoch and one account's scope;
+// ordinary Claude card refreshes still collect all of that provider's accounts.
+export function refresh(machine,cx,{force=false,reportId,missing=false,signedIn=false,accountOnly=false,epoch:expectedEpoch}={}) {
+  if(!pluginIsEnabled('usage') || (expectedEpoch!==undefined&&expectedEpoch!==generation()) || !(signedIn||appWindow()?.active) || !preferences(machine).enabled) return true;
   const epoch=generation(),previous=cache(machine),now=Date.now();
   if(previous.loading && now-previous.started<REFRESH_TIMEOUT) return false;
   // Reused accounts (or accounts untouched by a scoped refresh) keep their
@@ -88,7 +94,7 @@ export function refresh(machine,cx,{force=false,reportId,missing=false,signedIn=
   const request=`${now}-${Math.random()}`;
   // Claude's card represents the provider, including accounts hidden by its picker.
   // Keep reportId as the feedback owner, but collect/merge all Claude identities.
-  const sourceId=reportId&&(previous.reports??[]).find(e=>e.id===reportId)?.sourceId==='claude'?'claude':null;
+  const sourceId=!accountOnly&&reportId&&(previous.reports??[]).find(e=>e.id===reportId)?.sourceId==='claude'?'claude':null;
   // A manual refresh asks the provider again, except inside its Retry-After window:
   // asking then only prolongs the limit. The collector compares with its own clock.
   const reuse=force?new Map():fetchedElsewhere(machine,now),hold={};
@@ -115,7 +121,7 @@ export function refresh(machine,cx,{force=false,reportId,missing=false,signedIn=
     // checkedAt is this app's clock at the real fetch; a failed account keeps
     // its last good numbers for the "Last known usage" card.
     const before=new Map((current.reports??[]).map(e=>[e.id,e]));
-    const fetched=result.error?[]:result.reports.filter(r=>!sourceId||r.sourceId===sourceId).map(r=>{
+    const fetched=result.error?[]:result.reports.filter(r=>sourceId?r.sourceId===sourceId:reportId?r.id===reportId:true).map(r=>{
       const old=before.get(r.id),other=reuse.get(r.id);
       if(r.report?.status==='reused'&&other)return {...r,account:other.account,fetchedAt:other.fetchedAt,checkedAt:other.checkedAt,report:other.report};
       if(usable(r))return {...r,checkedAt:Date.now()};

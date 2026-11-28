@@ -34,11 +34,14 @@ const context=vm.createContext({
   exec:async(command,args,options)=>{executions.push({command,args,options});return fail?{code:1}:{code:0,stdout:JSON.stringify({reports:replyReports})};},
   openOverlay:spec=>overlays.push(spec),closeOverlay(){},
 });
-for(const file of ['lib/ui.js','mods/custom-usage/model.js','mods/custom-usage/store.js','mods/custom-usage/claude-context.js','mods/custom-usage/accounts.js','mods/custom-usage/panel-kit.js','mods/custom-usage/reorder.js','mods/custom-usage/main.js']){
-  const source=fs.readFileSync(new URL(file,root),'utf8').replace(/^import .*;\r?\n/gm,'').replace('export default class Usage','class Usage').replace(/^export \{[^\n]+\r?\n/gm,'').replace(/export /g,'');
-  vm.runInContext(source,context);
+function loadUsage(context){
+  for(const file of ['lib/ui.js','mods/custom-usage/model.js','mods/custom-usage/store.js','mods/custom-usage/claude-context.js','mods/custom-usage/accounts.js','mods/custom-usage/panel-kit.js','mods/custom-usage/reorder.js','mods/custom-usage/main.js']){
+    const source=fs.readFileSync(new URL(file,root),'utf8').replace(/^import .*;\r?\n/gm,'').replace('export default class Usage','class Usage').replace(/^export \{[^\n]+\r?\n/gm,'').replace(/export /g,'');
+    vm.runInContext(source,context);
+  }
+  vm.runInContext('const uiButton=button;globalThis.UsageView=Usage;',context);
 }
-vm.runInContext('const uiButton=button;globalThis.UsageView=Usage;',context);
+loadUsage(context);
 const cx={stop_propagation:()=>stops++,notify(){},sleep:async()=>{},spawn:fn=>jobs.push(fn),timer:{after:(ms,fn)=>timers.push({ms,fn})}};
 const finishFeedback=()=>{while(timers.length){const timer=timers.shift();assert.equal(timer.ms,600);timer.fn(cx);}};
 const available={id:'report',sourceLabel:'Codex',checkedAt:Date.now(),fetchedAt:new Date().toISOString(),report:{status:'available',windows:[{id:'weekly',label:'Weekly',usedPct:18}]}};
@@ -464,7 +467,7 @@ for(const host of [null,'pc2'])for(const sourceLabel of ['Claude','Codex'])for(c
   assert.equal(fill.style.transition[0],'width');assert.equal(fill.style.transition[1].duration,700);
   assert.equal(fill.style.transition[1].easing,'ease-out');
   const collectRequest=JSON.parse(executions.at(-1).args.at(-1));
-  assert.equal(collectRequest.refresh,true);assert.equal(sourceLabel==='Claude'?collectRequest.sourceId:collectRequest.reportId,sourceLabel==='Claude'?'claude':entry.id);
+  assert.equal(collectRequest.refresh,true);assert.equal(collectRequest.reportId,entry.id);assert.equal(collectRequest.sourceId,undefined,'Reset follow-up is account-scoped for both providers');
 }
 // Transport failures and every provider refusal retain the existing message slot.
 for(const sourceLabel of ['Claude','Codex'])for(const [reply,message] of [
@@ -493,4 +496,59 @@ for(const sourceLabel of ['Claude','Codex'])for(const [reply,message] of [
   const other=card({...entry,id:'other-account'});assert.equal(byId(other,'usage-claude-reset-outcome-other-account'),undefined,'Failure stays on the initiating card');
 }
 context.exec=originalExec;
-console.log('PASS: stale widget/dialog navigation, provider recovery, reset success silence/stable height/refill/refresh, failure feedback, account context and single-flight refresh');
+// Separate mounted dialog and sidebar copies consume the same publication. A reset
+// must still collect after a slow pre-reset request, not silently exhaust its wait.
+for(const host of [null,'pc2'])for(const sourceLabel of ['Claude','Codex'])for(const slow of [false,true,'timeout'])for(const failure of [false,true]){
+  let clock=Date.now();context.Date=class extends Date{static now(){return clock;}};
+  const entry={...available,id:'reset-target',sourceId:sourceLabel.toLowerCase(),sourceLabel,
+    account:{id:'target',organizationId:'org'},report:{status:'available',windows:[{id:'weekly',label:'Weekly',usedPct:100}]}};
+  const sibling={...entry,id:'other-account',account:{id:'other',organizationId:'org'},report:available.report};
+  const targetPin=JSON.stringify([entry.id,'weekly']),siblingPin=JSON.stringify([sibling.id,'weekly']);
+  setup({host,reports:[entry,sibling],prefs:{pins:[targetPin,siblingPin]}});
+  const sidebarContext=vm.createContext({...context,props:()=>({summary:true}),spaces:()=>[{active:true,machine:host}]});loadUsage(sidebarContext);
+  const sidebar=new sidebarContext.UsageView(),dialog=new context.UsageView();dialog.machine=host;dialog.accountOverride=entry.id;
+  const otherHost=host===null?'pc2':null,otherCache={version:5,reports:[entry,sibling],at:Date.now()};
+  storage.set(key(otherHost,'cache'),otherCache);
+  const beforePins=JSON.stringify(storage.get(key(host,'preferences')).pins);
+  let sidebarTree,dialogTree,collects=0,sleeps=0;
+  const paint=()=>{
+    sidebarTree=sidebar.render();
+    const mode=summaryMode;summaryMode=false;dialogTree=dialog.render();summaryMode=mode;
+  };
+  const set=context.setShared;
+  context.setShared=(k,v)=>{set(k,v);paint();};paint();
+  assert.match(byId(sidebarTree,'usage-summary-open').style.accessibility_label[0],/0% left/);
+  if(slow)storage.set(key(host,'cache'),{...storage.get(key(host,'cache')),loading:true,request:'pre-reset',started:clock});
+  context.exec=async(command,args,options)=>{
+    const request=JSON.parse(args.at(-1));assert.equal(options.on,host);
+    if(request.action){
+      if(slow){dialog.machine=otherHost;dialog.accountOverride=sibling.id;paint();}
+      return {code:0,stdout:JSON.stringify({result:'reset'})};
+    }
+    assert.equal(request.reportId,entry.id);assert.equal(request.sourceId,undefined);assert.deepEqual(request.reuse,[]);
+    collects++;return {code:0,stdout:JSON.stringify({reports:[{...entry,report:failure?{status:'error',error:'Fixture read failed.'}:{...entry.report,windows:[{id:'weekly',label:'Weekly',usedPct:7}]}},
+      {...sibling,report:{...sibling.report,windows:[{id:'weekly',label:'Weekly',usedPct:99}]}}]})};
+  };
+  const claimCx={...cx,sleep:async()=>{
+    sleeps++;clock+=500;
+    if(slow===true&&sleeps===130)context.setShared(key(host,'cache'),{...storage.get(key(host,'cache')),loading:false,request:null});
+    if(jobs.length)await jobs.shift()(claimCx);
+  }};
+  dialog.startClaim(entry,{grantId:'one'},'reset-target:one',claimCx);
+  await jobs.shift()(claimCx);
+  assert.equal(collects,1,'A successful reset must not lose its fresh collection behind a slow pre-reset read');
+  if(failure){
+    assert.match(byId(sidebarTree,'usage-summary-open').style.accessibility_label[0],/---/,'A failed follow-up never fabricates refilled quota');
+    assert.doesNotMatch(text(byId(dialogTree,'usage-report-reset-target')),/93% left/);
+  }else{
+    assert.match(byId(sidebarTree,'usage-summary-open').style.accessibility_label[0],/93% left/,'Shared completion repaints the mounted sidebar without a tick or Refresh all');
+    if(!slow)assert.match(text(byId(dialogTree,'usage-report-reset-target')),/93% left/,'Dialog and sidebar use the same authoritative values');
+  }
+  assert.equal(JSON.stringify(storage.get(key(host,'preferences')).pins),beforePins);
+  assert.equal(dialog.machine,slow?otherHost:host);assert.equal(dialog.accountOverride,slow?sibling.id:entry.id);
+  if(slow)assert.doesNotMatch(text(dialogTree),/93% left/,'Completion cannot retarget the newly inspected machine/account');
+  assert.equal(storage.get(key(otherHost,'cache')),otherCache);
+  assert.deepEqual(storage.get(key(host,'cache')).reports.find(e=>e.id===sibling.id),sibling);
+  context.setShared=set;context.exec=originalExec;context.Date=Date;
+}
+console.log('PASS: stale widget/dialog navigation, provider recovery, reset success silence/stable height/refill/refresh, mounted sidebar publication, failure feedback, account context and single-flight refresh');

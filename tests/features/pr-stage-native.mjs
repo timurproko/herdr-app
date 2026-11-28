@@ -77,13 +77,13 @@ export default class Fixture extends Changes {
  init(p,cx){this.resetRepository();this.repo={name:'fixture/repo'};this.root='/fixture';this.context=mode==='coordinator'?'tasks:synthetic-home':JSON.stringify([place.cwd,place.on]);this.view='open';this.foldedRepositories=new Set();this.agentLinks=new AgentLinks();this.aggregate=new AggregatePulls({shown:()=>true});this.aggregate.context=context;this.rows=specs.map(s=>{const pr=pullRow({number:s.n,title:s.title,url:'https://github.com/fixture/repo/pull/'+s.n,state:s.state??'OPEN',reviewDecision:s.verdict,isDraft:s.draft,labels:s.labels.map(name=>({name,color:'840479'})),createdAt:'2026-11-26T10:00:00Z',author:{login:'fixture'},body:'- [x] Synthetic proof',statusCheckRollup:[]});pr.checks={state:'pending',label:'2/3'};return mode==='coordinator'?{...pr,key:'fixture/repo#'+s.n,repo:'fixture/repo'}:pr;});
  this.mixedRows=this.rows.filter(pr=>pr.number===5).map(pr=>({...pr,labels:[...pr.labels,...Array.from({length:5},(_,i)=>({name:'Other '+i+' with a long label name',color:'#123456'}))]}));
  for(const pr of this.rows)this.aggregate.entries.set(pr.key,{pr,link:{targets:[{terminal:'worker-'+pr.number}]}});
- this.pulls.open=this.rows;this.pulls.closed=[];cx.timer.every(100,cx=>cx.spawn(async view=>{const phase=await readTextFile(${JSON.stringify(control)});if(this.phase!==phase){this.phase=phase;this.agentPull=phase==='pinned'?1:null;this.visibleRows=phase==='mixed'?this.mixedRows:phase==='unavailable'?this.rows.slice(-2):this.rows;this.pulls.open=this.visibleRows;view.notify();}setShared('fixture.stage.'+mode,{phase:this.phase,rows:this.rows.length,zoom:${zoom},commonWidth:this.stageBoxWidth?.()});}));}
+ this.pulls.open=this.rows;this.pulls.closed=[];cx.timer.every(100,cx=>cx.spawn(async view=>{const phase=await readTextFile(${JSON.stringify(control)});if(this.phase!==phase){this.phase=phase;this.agentPull=phase==='pinned'?1:null;this.visibleRows=phase==='mixed'?this.mixedRows:phase==='unavailable'?this.rows.slice(-2):this.rows;this.pulls.open=this.visibleRows;view.notify();}setShared('fixture.stage.'+mode,{phase:this.phase,rows:this.rows.length,zoom:${zoom}});}));}
  shown(){return true;}
  labelPill(t,label,id){return super.labelPill(t,label,id).on_mouse_move(()=>setShared('fixture.labels.hover.'+mode,label.name));}
  stageChip(t,pr,...args){const node=super.stageChip(t,pr,...args);return node?.on_size_change(size=>setShared('fixture.box.'+mode+'.'+pr.number,{...size,caption:this.stageDescriptor(pr)?.label.name})).on_mouse_move(event=>setShared('fixture.stage.hover.'+mode,{number:pr.number,bounds:event.bounds}));}
  verdictChip(t,pr,...args){return super.verdictChip(t,pr,...args).on_size_change(size=>setShared('fixture.box.'+mode+'.verdict',{...size,caption:'Changes requested'}));}
  openPull(pr){setShared('fixture.stage.open.'+mode,pr.number);}
- render(cx){const t=theme();return div().size_full().bg(t.background).flex().flex_col().child(div().h(38).px(8).text_size(13).child((mode==='coordinator'?'Coordinator':'Ordinary / '+(this.phase??'ordinary'))+' · synthetic PR stage proof · ${zoom*100}%')).child(div().flex_1().min_h(0).flex().flex_col().overflow_y_scrollbar().when(this.phase==='mixed',el=>el.w(390)).child(mode==='ordinary'?this.renderPulls(t):this.repositorySection(t,this.taskSections([{repo:'fixture/repo',rows:this.visibleRows??this.rows}],'synthetic-home').sections[0],'synthetic-home',this.selectedTaskWindow))).when(Boolean(this.stageBoxProbe?.()),el=>el.child(this.stageBoxProbe()));}
+ render(cx){const t=theme();return div().size_full().bg(t.background).flex().flex_col().child(div().h(38).px(8).text_size(13).child((mode==='coordinator'?'Coordinator':'Ordinary / '+(this.phase??'ordinary'))+' · synthetic PR stage proof · ${zoom*100}%')).child(div().flex_1().min_h(0).flex().flex_col().overflow_y_scrollbar().when(this.phase==='mixed',el=>el.w(390)).child(mode==='ordinary'?this.renderPulls(t):this.repositorySection(t,this.taskSections([{repo:'fixture/repo',rows:this.visibleRows??this.rows}],'synthetic-home').sections[0],'synthetic-home',this.selectedTaskWindow)));}
 }`);
 }
 const app=args=>execFileSync(appBin,args,{env,encoding:'utf8',timeout:20000}),sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -126,10 +126,12 @@ try {
  assert.doesNotMatch(fs.readFileSync(path.join(root,'app.log'),'utf8'),/render failed|previous render did not complete|FIXTURE_RENDER_ERROR|child\(value\) expects/);
  if(process.argv.includes('--sizing')&&!baseline){
   for(const mode of ['ordinary','coordinator']){
-   const common=receipt.geometry['fixture.stage.'+mode].commonWidth;
-   assert.ok(common>0);
-   for(const n of [1,2,3,4,5,6]){const box=receipt.geometry['fixture.box.'+mode+'.'+n];assert.ok(Math.abs(box.width-common*zoom)<=1);assert.ok(Math.abs(box.height-18*zoom)<=1);}
-   assert.ok(receipt.geometry['fixture.box.'+mode+'.8'].width>common*zoom,'Longer round grows only itself');
+   const box=n=>receipt.geometry['fixture.box.'+mode+'.'+n];
+   for(const n of [1,2,3,4,5,6,'verdict',8])assert.ok(Math.abs(box(n).height-18*zoom)<=1);
+   assert.ok(box(1).width<box(5).width,'Build fits more tightly than Review');
+   assert.ok(box(5).width<box(6).width,'Review fits more tightly than Approved');
+   assert.ok(box(6).width<box('verdict').width,'Approved does not inherit the longer verdict width');
+   assert.ok(box(8).width>box(4).width,'Longer round grows only itself');
   }
  }
 }finally {

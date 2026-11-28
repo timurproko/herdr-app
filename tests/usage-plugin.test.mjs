@@ -75,6 +75,30 @@ r.setPluginEnabled(plugin,false);r.setPluginEnabled(plugin,true);store.refresh('
 executions[1].resolve({code:0,stdout:JSON.stringify({reports:[{id:'fresh',report:{status:'available'}}]})});await fresh;
 executions[0].resolve({code:0,stdout:JSON.stringify({reports:[{id:'stale',report:{status:'available'}}]})});await old;
 assert.equal(store.cache('pc2').reports[0].id,'fresh','Only the newest enabled collection can publish');
+// Reset continuations must not survive an enable-generation change either.
+const reset={provider:'claude',accountId:'fixture',organizationId:'org',grantId:'grant'};
+let count=executions.length;
+const pendingResetRead=store.claimReset(null,reset);assert.equal(reads.length,1);
+r.setPluginEnabled(plugin,false);reads.shift()('fixture worker');
+assert.equal((await pendingResetRead).obsolete,true);assert.equal(executions.length,count,'Disabling while loading reset worker bytes prevents a new reset process');
+r.setPluginEnabled(plugin,true);
+const pendingResetExec=store.claimReset('pc2',reset);reads.shift()('fixture worker');await tick();
+assert.equal(executions.length,count+1);assert.equal(executions.at(-1).args[2].on,'pc2');
+const cacheBeforeReset=state.get('custom.usage.remote:pc2.cache');
+r.setPluginEnabled(plugin,false);r.setPluginEnabled(plugin,true);
+executions.at(-1).resolve({code:0,stdout:JSON.stringify({result:'reset'})});
+assert.equal((await pendingResetExec).obsolete,true);
+assert.equal(state.get('custom.usage.remote:pc2.cache'),cacheBeforeReset,'A reset from an obsolete generation cannot invalidate the newer cache');
+// A reset waiting behind a running collector also retains its original epoch.
+const epoch=state.get('custom.usage.generation');
+state.set('custom.usage.remote:pc2.cache',{version:5,reports:[],at:Date.now(),loading:true,generation:epoch,request:'pre-reset',started:Date.now()});
+const resetView=new Usage();resetView.machine='pc2';
+resetView.startClaim({id:'fixture',sourceLabel:'Claude',account:{id:'fixture',organizationId:'org'}},{grantId:'grant'},'fixture:grant',cx);
+const resetting=jobs.shift()({...cx,sleep:async()=>{r.setPluginEnabled(plugin,false);r.setPluginEnabled(plugin,true);}});
+reads.shift()('fixture worker');await tick();
+count=executions.length;executions.at(-1).resolve({code:0,stdout:JSON.stringify({result:'reset'})});await resetting;
+assert.equal(executions.length,count);assert.equal(jobs.length,0,'Re-enabling while a reset waits cannot queue its old follow-up collection');
+assert.equal(resetView.claiming,null);
 assert.ok(!fs.existsSync(path.join(output,'mods/custom-workspace-status/accounts.js')),'Session controls no longer depend on optional Usage');
 assert.doesNotMatch(fs.readFileSync(new URL('../src/features/settings/main.js',import.meta.url),'utf8'),/st-usage-page|st-usage-enabled/,'Core Settings delegates Usage rendering to its plugin');
 console.log('PASS: complete Usage plugin lifecycle, dialog/settings/footer/summary gating, preserved preferences, no disabled IO and stale local/SSH collection generations');
