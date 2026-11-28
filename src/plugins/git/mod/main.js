@@ -31,6 +31,7 @@ const VIEW_KEY = 'custom.git.view';
 const FOLDED_REPOS_KEY = 'custom.git.task-repositories.folded';
 const LOCAL_CONTEXT_TTL = 10000; // shell branch/footer only, never a GitHub poll
 const BREATHE_MS = 2400;
+const LINE_FADE_MS = 140;
 // The panel's 1px border plus this padding matches Spaces' 8px outer gutter.
 const LIST_INSET = 7;
 const TEXT_CACHE_LIMIT = 512;
@@ -87,6 +88,7 @@ export default class Changes extends View {
   }
 
   close() {
+    this.loadingLineState=null;
     this.renderClosed=true;this.renderAttempt=null;this.agentPresentation=null;this.agentAssociations?.clear();this.agentRequest?.timeout?.cancel?.();this.agentRequest=null;this.agentRefresh=null;
     this.checksFallback?.stop();this.factOrder?.reset();
     this.enrollmentPicker?.stop();this.aggregate?.stop();this.webhooks?.stop();this.notices?.stop();
@@ -1478,10 +1480,49 @@ export default class Changes extends View {
       .child(div().text_size(U.meta).text_color(t.working).child('Loading'));
   }
 
+  syncLoadingLine(active,cx,cold=false) {
+    const scope=JSON.stringify([this.context,this.view,this.readEpoch(),this.aggregate?.presentationGeneration]);
+    if(cold || !this.shown() || this.loadingLineScope!==scope || this.motionReduced) {
+      this.loadingLineState=null;this.loadingLineScope=scope;
+    }
+    if(cold || !this.shown())return false;
+    if(this.motionReduced)return active;
+    let line=this.loadingLineState;
+    const current=()=>!this.renderClosed && this.shown() && this.loadingLineState===line
+      && JSON.stringify([this.context,this.view,this.readEpoch(),this.aggregate?.presentationGeneration])===scope;
+    if(active) {
+      if(!line) {
+        line=this.loadingLineState={phase:'hidden',exit:null};
+        // Like StatusReveal: first hide WITHOUT a transition (native defaults
+        // otherwise paint a full-opacity frame), then arm at zero, then reveal.
+        cx.timer?.after(16,arm=>{
+          if(!current())return;line.phase='armed';arm.notify();
+          arm.timer.after(16,reveal=>{if(!current())return;line.phase='visible';reveal.notify();});
+        });
+      } else line.exit=null; // Native transition reverses from its current opacity.
+      return true;
+    }
+    if(!line)return false;
+    if(line.phase!=='visible'){this.loadingLineState=null;return false;}
+    if(!line.exit) {
+      const exit=line.exit={};
+      cx.timer?.after(LINE_FADE_MS,next=>{
+        if(!current() || line.exit!==exit)return;
+        this.loadingLineState=null;next.notify();
+      });
+    }
+    return true;
+  }
+
   loadingLine(t) {
+    const line=this.loadingLineState,reduced=this.motionReduced;
     return div().id('git-loading-track').absolute().left(0).right(0).top(0).h(1).overflow_hidden()
-      .role('status').accessibility_label('Loading Git')
-      .child(this.breathe(div().id('git-ci-line').size_full().bg(t.accent)));
+      .opacity(reduced?0.35:line?.phase==='visible'&&!line.exit?1:0)
+      .when(!reduced && line?.phase!=='hidden',el=>el.transition('opacity',{duration:LINE_FADE_MS,easing:'ease-in-out'}))
+      .when(!line?.exit,el=>el.role('status').accessibility_label('Loading Git'))
+      .child(div().id('git-ci-line').size_full().bg(t.accent).opacity(reduced?1:0)
+        // Native loops begin at the `to` endpoint, not the static opacity.
+        .when(!reduced,el=>el.loop('opacity',{from:0.65,to:0,period:BREATHE_MS,easing:'ease-in-out'})));
   }
 
   enrollmentPresentation() {
@@ -1760,7 +1801,7 @@ export default class Changes extends View {
           .when(taskWindow.metrics.moreBelow,el=>el.child(bottomFade(taskWindow.metrics,'task-pulls-list',t.background,{left:LIST_INSET,right:LIST_INSET})))))
       .when(setup,el=>el.child(this.liveCIInfo(t)))
       .when(Boolean(enrollment),el=>el.child(enrollment))
-      .when(loading && !cold,el=>el.child(this.loadingLine(t).top(U.section)));
+      .when(this.syncLoadingLine(loading && !cold,cx,cold),el=>el.child(this.loadingLine(t).top(U.section)));
   }
 
   liveCIInfo(t,kind='setup',capturedRepository=null) {
@@ -1859,7 +1900,7 @@ export default class Changes extends View {
       pending:Boolean(this.loading||(this.root&&!this.repo&&!this.pullError))});
     this.syncChecksFallback(cx);
     const t = theme(), busy = Boolean(this.loading || this.pullLoading);
-    const loading = this.panelLoading() && !this.pullFeedback().cold;
+    const cold=this.pullFeedback().cold,loading=this.panelLoading()&&!cold;
     const rootRetryable=Boolean(this.error&&this.error!=='Not a git repository');
     return v_flex().id('changes').size_full().min_h(0).rounded(8).overflow_hidden().bg(t.background).border_1().border_color(t.input).text_color(t.foreground).text_size(U.font)
       .child(h_flex().id('changes-header').relative().bg(t.surface).h(U.section).flex_none().pl(4).pr(U.gutter).gap(U.gap).items_center().border_b(1).border_color(t.border)
@@ -1886,6 +1927,6 @@ export default class Changes extends View {
         .child(this.segment(t, 'git-view-closed', 'Closed', this.view === 'closed', cx => this.setView('closed', cx))))
       .child(this.renderPulls(t))
       .when(Boolean(notice), el => el.child(this.liveCIInfo(t,notice)))
-      .when(loading, el => el.child(this.loadingLine(t))));
+      .when(this.syncLoadingLine(loading,cx,cold), el => el.child(this.loadingLine(t))));
   }
 }

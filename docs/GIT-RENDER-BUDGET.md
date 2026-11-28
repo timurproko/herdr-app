@@ -183,7 +183,7 @@ start IO or publish an association. Action-time navigation remains uncached.
 No render diagnostics, retries, row caps or watchdog settings were changed.
 
 The paired corrected runs completed 120 update ticks, 169/176 render builds,
-with zero native errors or incomplete markers. Build ranges were 2–31ms / 3–29ms
+with zero native errors or incomplete markers. Final build ranges were 2–28ms / 2–29ms
 at 100%/130%, including first load and provider/controller work, not later paint
 or live-network latency. All owned App/Core instances stopped. Pictures, source
 hashes and receipts are in the crew task's external `gr-*` evidence folders.
