@@ -4,10 +4,10 @@ The three groups below map one-to-one, in order, to the draft PR's Implementatio
 
 ## 1. Same-user SSH proof preserves the private boundary
 
-- [ ] 1.1 Replace blanket Windows SSH-elevation refusal with verified SSH SID/session-metadata ownership plus same normal-Core SID/profile/resolved-home proof; add bootstrap cases for elevated same-user success, ordinary-user compatibility, different SID, elevated Core, unavailable/unverifiable Core, mismatched home and Unix root.
-- [ ] 1.2 Bind public proof to the configured Core ID and named session, refuse metadata reparse/unsafe paths and avoid implicit Core startup; cover changed Core/session/user/home before READY, before action handling and at commit guards in targeted bootstrap/remote tests.
-- [ ] 1.3 Preserve strict direct-SSH routing, deterministic command-size limits, READY-before-secret stdin, secret-free arguments/environment/output and stale/cancel/unknown-result behavior; exercise `tests/trello-remote.test.mjs` and `tests/trello-ssh-shell.test.mjs` with injected identity/SSH only.
-- [ ] 1.4 Update the transport/security guidance in `docs/PLUGIN-UI.md` and applicable architecture text to describe same-user direct SSH, public-only Core inspection and no Core startup/permission changes; check it against the new proof tests and spec delta.
+- [x] 1.1 Replace blanket Windows SSH-elevation refusal with verified SSH SID/session-metadata ownership plus same normal-Core SID/profile/resolved-home proof; add bootstrap cases for elevated same-user success, ordinary-user compatibility, different SID, elevated Core, unavailable/unverifiable Core, mismatched home and Unix root.
+- [x] 1.2 Bind public proof to the configured Core ID and named session, refuse metadata reparse/unsafe paths and avoid implicit Core startup; cover changed Core/session/user/home before READY, before action handling and at commit guards in targeted bootstrap/remote tests.
+- [x] 1.3 Preserve strict direct-SSH routing, deterministic command-size limits, READY-before-secret stdin, secret-free arguments/environment/output and stale/cancel/unknown-result behavior; exercise `tests/trello-remote.test.mjs` and `tests/trello-ssh-shell.test.mjs` with injected identity/SSH only.
+- [x] 1.4 Update the transport/security guidance in `docs/PLUGIN-UI.md` and applicable architecture text to describe same-user direct SSH, public-only Core inspection and no Core startup/permission changes; check it against the new proof tests and spec delta.
 
 ## 2. Elevated output remains private and usable by the normal user
 

@@ -31,7 +31,7 @@ try{
   const encoded=/Buffer.from\('([^']+)','base64'\)/.exec(lastCommand)[1],publicSource=zlib.brotliDecompressSync(Buffer.from(encoded,'base64')).toString();assert.ok(!publicSource.includes(key));assert.ok(!publicSource.includes(token));
   const child=new EventEmitter();child.stdin=new PassThrough();child.stdout=new PassThrough();child.stderr=new PassThrough();child.kill=()=>{child.stdin.destroy();child.stdout.destroy();};
   child.stdin.on('data',async bytes=>{
-   sends++;const req=JSON.parse(bytes.toString());assert.equal(req.version,1);
+   const req=JSON.parse(bytes.toString());if(req.phase==='bootstrap'){assert.equal(typeof req.source,'string');assert.ok(!req.source.includes(token));return;}sends++;assert.equal(req.version,1);
    if(mode==='lost'){await owner.execute(req.payload,{store,transport:fakeFetch,binding,initialControl:req.initialControl});queueMicrotask(()=>child.emit('close',1));return;}
    let result;
    if(req.kind==='probe')result={version:1,ok:true,data:{runtime:'ready',destination:binding}};
@@ -71,12 +71,13 @@ try{
  async function boot(kind,identity={core:{id:machine.id},generation:1}){
   const input=new PassThrough(),out=new PassThrough();let text='',ready;
   out.on('data',chunk=>{text+=chunk;for(const line of text.trim().split('\n')){try{const r=JSON.parse(line);if(r.phase==='ready'&&!ready){ready=r;input.write(JSON.stringify({version:1,kind,payload:{action:'status'}})+'\n');}}catch{}}});
-  await bootstrap.main({version:1,machine,expected},source,{input,output:out,getHello:async()=>{if(identity==='unavailable')throw Object.assign(Error(),{code:'MACHINE_UNAVAILABLE'});return identity;},executionHome:()=>({home:remote,user:'fake-user',uid:1000,userHome:root}),checkWindows:()=>{}});
+  const done=bootstrap.main({version:1,machine,expected},installer.hash(Buffer.from(source)),{input,output:out,platform:'linux',connectCore:()=>({current:()=>true,close(){}}),verifyCore:async()=>{if(identity==='unavailable')throw Object.assign(Error(),{code:'MACHINE_UNAVAILABLE'});if(identity.generation!==1)throw Object.assign(Error(),{code:'MACHINE_IDENTITY'});if(identity.core.id!==machine.id)throw Object.assign(Error(),{code:'MACHINE_CHANGED'});},executionHome:()=>({home:remote,user:'fake-user',uid:1000,userHome:root}),checkWindows:()=>{}});
+  input.write(JSON.stringify({phase:'bootstrap',source})+'\n');await done;
   return text.trim().split('\n').map(line=>JSON.parse(line));
  }
  const fullHome=path.join(root,'full-home'),fullBin=path.join(root,'full-bin');await installer.install(fullHome,p,{bin:fullBin,envPath:fullBin});const owned=JSON.parse(fs.readFileSync(path.join(fullHome,'.customizations/trello-runtime.json')));const fullManifest=path.join(fullHome,'.customizations/manifest.json');fs.writeFileSync(fullManifest,JSON.stringify({version:2,id:'custom',files:{...owned.files,'unrelated-owned-file':'f'.repeat(64)}}));await installer.install(fullHome,changed,{bin:fullBin,envPath:fullBin});assert.equal(JSON.parse(fs.readFileSync(fullManifest)).files['unrelated-owned-file'],'f'.repeat(64));
  fs.writeFileSync(path.join(fullBin,'.herdr-trello.lock'),'other installer');await assert.rejects(installer.install(fullHome,changed,{bin:fullBin,envPath:fullBin}),{code:'RUNTIME_BUSY'});fs.unlinkSync(path.join(fullBin,'.herdr-trello.lock'));
- for(const [exit,code] of [[31,'MACHINE_ELEVATED'],[32,'MACHINE_IDENTITY'],[33,'MACHINE_IDENTITY']])assert.throws(()=>bootstrap.windowsUser('test',{env:{SystemRoot:'C:/Windows',LOCALAPPDATA:'C:/fake'},execute(){throw Object.assign(Error('hostile'),{status:exit});}}),{code});
+ for(const [exit,code] of [[32,'MACHINE_IDENTITY'],[33,'MACHINE_IDENTITY']])assert.throws(()=>bootstrap.windowsUser('test',{env:{SystemRoot:'C:/Windows',LOCALAPPDATA:'C:/fake'},execute(){throw Object.assign(Error('hostile'),{status:exit});}}),{code});
  const frames=await boot('probe');assert.equal(frames[0].phase,'ready');assert.equal(frames.at(-1).result.data.runtime,'ready');assert.equal((await boot('probe',{core:{id:'wrong-core'},generation:1}))[0].result.error.code,'MACHINE_CHANGED');assert.equal((await boot('probe','unavailable'))[0].result.error.code,'MACHINE_UNAVAILABLE');
  console.log('PASS: injected direct SSH/stdin routing, pre-secret identity refusal, per-host owner lifecycle, unknown outcome, bootstrap proof and conflict-safe Trello-only install/rollback');
 }finally{fs.rmSync(root,{recursive:true,force:true});}
