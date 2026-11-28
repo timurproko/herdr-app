@@ -679,6 +679,7 @@ separate from CI checking.
 Cold ordinary and coordinator Git show only their pulsing **Loading** message.
 Warm returns and background updates retain their list and use one stationary,
 full-width 1px accent line **immediately below the header**, above Open/Closed.
+Its horizontal glow fades to transparent at both ends and is strongest in the middle.
 The line eases in from transparent, breathes between 0% and 65% opacity on a
 native 2.4-second ease-in-out cycle, and eases back to transparent on completion.
 It never travels or shifts the list. Git's cold dot keeps its 25%–65% pulse.

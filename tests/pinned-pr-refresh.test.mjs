@@ -21,7 +21,7 @@ const page=(nodes,cursor='cursor',hasMore=false)=>JSON.stringify({data:{reposito
 async function harness() {
   let shown=true,enabled=true;
   const place={cwd:'/repo',on:'pc2',terminal:'pc2/t1',app:'a1'},pending=[],tasks=[],timers=[],phases=[],opened=[];
-  const context=vm.createContext({localStorage:{getItem:()=>null,setItem(){}}});
+  const context=vm.createContext({window:{paint_path:element},localStorage:{getItem:()=>null,setItem(){}}});
   const host={layout:()=>({id:'panel',hidden:!shown,children:[{id:'panel-body',active:'changes'}]}),
     exec:(cmd,args,options)=>{({command:cmd,args,options}=githubInvocation(cmd,args,options));return new Promise(resolve=>pending.push({cmd,args,options,resolve}));},
     machines:()=>[{name:'pc2',layout:'ready'}],settings:()=>({zoom:1}),theme:()=>({dim:'dim'}),run(){},openOverlay:spec=>opened.push(spec),closeOverlay(){},props(){},notify(){},nextCommand(){},window(){},hc:async()=>({code:1})};
@@ -30,7 +30,7 @@ async function harness() {
     './presentations.js':{Publication},
     './label-colors.js':labelColors,
     './aggregate.js':{AggregatePulls:class {sync(){return false;}stop(){}}},
-    'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{},Background},'gpui-base':{h_flex:element,v_flex:element},
+    'gpui-kit':{View:class{},div:element,svg:element,PathBuilder:{fill:element},Background},'gpui-base':{h_flex:element,v_flex:element},
     './host.js':host,'./location.js':{location:()=>place},'./pulls.js':pulls,'./pin-swap.js':{PinSwap,PIN_SWAP_MS},
     './ci-fix.js':{CIFix:class {sync(){}stop(){}}},
     './notices.js':{GitNotices:class {sync(){return null;}stop(){}retryNow(){}}},
