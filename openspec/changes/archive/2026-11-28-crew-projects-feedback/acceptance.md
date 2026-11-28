@@ -22,8 +22,8 @@ The maintainer integration decision accepts these scenarios:
     "JSON and legacy project lists receive sixty seconds while capability probes retain fifteen seconds and write limits remain unchanged.",
     "Twenty-second cold and warm reads keep pending feedback and confirmed rows; real failures retain retry feedback and retired responses cannot publish."
   ],
-  "archiveDigest": "116e4d6cd9ba5362e561be35a797cf90f53b8193a29d8648863f2e71c25567ed",
-  "specDigest": "095ad67976975edbd02b92808ef7aa96ac28522f62b9ebf5b12e7bae9ab6611d",
+  "archiveDigest": "468d6a6d622faa2de5dc53065b3234299f10327148296ac7e5105d74c7a6588a",
+  "specDigest": "5c3fadb99576bcfed5566cf3bf852882d6b6a083cc88a2d94d973e5d21b42f80",
   "tasksDigest": "5be31ba6fa0d30bd7c8eb8bedd657458ded59dbaf1b7bbbe970b5b32f6d67559",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []
