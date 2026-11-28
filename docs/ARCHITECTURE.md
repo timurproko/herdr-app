@@ -1201,7 +1201,11 @@ captured machine/provider/account/type; manual success remains silent. A result
 already submitted can still report that confirmed spend after disablement, but
 cannot revive disabled refresh work. A failed validation read publishes only its
 existing unavailable/error report and Retry-After rather than immediately retrying
-it. Follow-up read failure never invents a refill or triggers a second spend.
+it, only while its captured account-read identity and latest collection ownership
+still match. Collection ownership is retained through completion, failure and lease
+expiry, so an older validation cannot erase a newer reading or install an obsolete
+Retry-After even within the same enable generation. Follow-up read failure never
+invents a refill or triggers a second spend.
 
 The collector discovers the default A1 Codex OAuth store (`~/.a1/agent/auth.json`)
 even when the desktop/SSH environment lacks `PI_CODING_AGENT_DIR`. Login candidates

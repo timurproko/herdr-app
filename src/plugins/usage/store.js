@@ -122,7 +122,13 @@ export async function claimReset(machine,{provider,accountId,organizationId,gran
       body:`${machine??'This computer'} · ${provider==='claude'?'Claude':'Codex'} · ${entry?.account?.email??entry?.account?.label??accountId} · ${automatic.label}`,level:'success'});}catch{}
     if(!alive())return {obsolete:true};
     if(['error','unavailable'].includes(result?.validationReport?.status)&&entry) {
-      const cached=cache(machine);
+      const cached=cache(machine),live=(cached.reports??[]).find(e=>e.id===entry.id),read=entry.actionRead;
+      // Same enable epoch is insufficient: a later collector may have replaced
+      // this account or taken ownership, even if it failed or its lease expired.
+      if(!read?.request||live?.sourceId!==provider||live?.account?.id!==accountId||
+        (live?.account?.organizationId??null)!==(organizationId??null)||
+        live.actionRead?.request!==read.request||live.actionRead?.machine!==machine||live.actionRead?.epoch!==epoch||
+        cached.loading||(cached.collectionRequest??cached.request??read.request)!==read.request)return {obsolete:true};
       setShared(key(machine,'cache'),{...cached,reports:(cached.reports??[]).map(e=>e.id!==entry.id?e:{...e,actionRead:null,report:result.validationReport,
         lastSuccessful:usable(e)?{fetchedAt:e.fetchedAt,report:e.report}:e.lastSuccessful})});
     }
@@ -167,7 +173,7 @@ export function refresh(machine,cx,{force=false,reportId,missing=false,signedIn=
   // Consented accounts must be read on this machine; cross-host reuse stays display-only.
   const p=preferences(machine);
   if(p.automaticReset)for(const [id,entry] of reuse)if(resetTypes(entry).some(type=>p.resetSelections.includes(type.key)))reuse.delete(id);
-  setShared(key(machine,'cache'),{...previous,version:VERSION,generation:epoch,request,started:now,loading:true,reportId:reportId??null});
+  setShared(key(machine,'cache'),{...previous,version:VERSION,generation:epoch,request,collectionRequest:request,started:now,loading:true,reportId:reportId??null});
   cx.spawn(async cx=>{
     let result;
     try {
@@ -207,7 +213,7 @@ export function refresh(machine,cx,{force=false,reportId,missing=false,signedIn=
       });
       if(JSON.stringify(pins)!==JSON.stringify(p.pins))updatePreferences(machine,{pins});
     }
-    setShared(key(machine,'cache'),{version:VERSION,reports,at:Date.now(),loading:false,error:result.error??null});
+    setShared(key(machine,'cache'),{version:VERSION,reports,collectionRequest:request,at:Date.now(),loading:false,error:result.error??null});
     cx.notify();
     await evaluateAutomatic(machine,cx,fetched,epoch);
   });
