@@ -44,7 +44,8 @@ const realFiles = {
   './settings-dialog.js': 'src/ui/settings-dialog.js',
   './customization-updates.js': 'src/shared/customization-updates.js',
   './plugins-updates.js': 'src/shared/plugins-updates.js',
-  './plugins-update-section.js': 'src/features/settings/plugins-update-section.js',
+  './plugins-update-row.js': 'src/features/settings/plugins-update-row.js',
+  './plugins-update-model.js': 'src/shared/plugins-update-model.js',
   './plugins-operations.js': 'src/shared/plugins-operations.js',
   './settings-requests.js': 'src/shared/settings-requests.js',
   './customization-update-model.js': 'src/shared/customization-update-model.js',
@@ -140,9 +141,10 @@ await settle();
 compact.render = () => duringRender(() => { const before = width; width = 44; compact.tree = compact.view.render(compact.cx); compact.renders++; width = before; });
 compact.render();
 const updateBody = duringRender(() => settings.view.updates(theme));
-assert.equal(updateBody.kids.at(-1).attrs.id[0], 'st-plugin-updates', 'Plugins follows the complete Herdr block');
-assert.ok(updateBody.kids.at(-2).kids.includes('Herdr looks for both every hour and tells you in the corner. herdr-core runs your terminals, so they keep running through its updates.'), 'native explanation remains immediately below its three rows');
-assert.equal(find(updateBody, 'st-update-plugins'), undefined, 'no Update action when nothing is pending');
+assert.equal(find(updateBody, 'st-plugin-updates'), undefined, 'no separate Plugins section');
+assert.equal(updateBody.kids.at(-2).attrs.id[0], 'st-row-herdr-app-plugins', 'the fourth native-style row follows Custom');
+assert.ok(updateBody.kids.at(-1).kids.includes('Herdr looks for both every hour and tells you in the corner. herdr-core runs your terminals, so they keep running through its updates.'), 'native explanation remains immediately below all four rows');
+assert.ok(find(updateBody, 'st-update-plugins').kids.includes('Check now'), 'current plugin row offers Check now');
 const settingsEntry = () => {
   const index = menu.view.list().findIndex(it => it[7] === 'settings');
   return find(menu.tree, `mi-${index}`);
@@ -157,7 +159,8 @@ assert.ok(header.afters.some(timer => timer.at === clock+120000));
 const captureUpdateRows = () => {
   const rows = [], original = settings.view.row;
   settings.view.row = function(t, title, description, control) {
-    rows.push({ title, description }); return original.call(this, t, title, description, control);
+    const text = typeof description === 'string' ? description : nodes(description).flatMap(node => node.kids.filter(child => typeof child === 'string')).join('');
+    rows.push({ title, description: text }); return original.call(this, t, title, description, control);
   };
   try { settings.render(); return rows; } finally { settings.view.row = original; }
 };
@@ -176,7 +179,8 @@ const nativeCases = [
 for (const test of nativeCases) {
   nativeStatus = test.status;
   const rows = captureUpdateRows();
-  assert.equal(rows.length, 3, test.name);
+  assert.equal(rows.length, 4, test.name);
+  assert.equal(rows[3].title, 'herdr-app-plugins');
   for (const row of rows) {
     assert.match(row.description, /[^.]\.$/, `${test.name}: ${row.title}`);
     assert.doesNotMatch(row.description, /\.\./, `${test.name}: ${row.title}`);
@@ -236,6 +240,11 @@ for (const native of [false, true]) for (const custom of [false, true]) for (con
   settings.pluginApi.refreshPluginUpdates(settings.view, settings.cx, { force: true });
   await settle();
   assert.deepEqual(markers().map(Boolean), Array(4).fill(native || custom || pending));
+  const body = duringRender(() => settings.view.updates(theme));
+  assert.equal(find(body, 'st-plugin-updates'), undefined, 'Plugins never adds a separate block');
+  assert.equal(body.kids.at(-2).attrs.id[0], 'st-row-herdr-app-plugins');
+  assert.ok(find(body, 'st-update-plugins').kids.includes(pending ? 'Update' : 'Check now'));
+  if (pending) assert.ok(captureUpdateRows()[3].description.includes('Update available: Probe on This computer.'));
   if (pending && !native && !custom) assert.deepEqual(markers().map(signature), customSignatures, 'plugin-only markers reuse exact native styling');
 }
 pluginPending = false; settings.pluginApi.refreshPluginUpdates(settings.view, settings.cx, { force: true }); await settle();
@@ -363,7 +372,10 @@ for (const [state, expected] of [['partial', /some machines skipped or failed/],
   store.set(KEY, { ...running, resume }); next = { ...final, job: { ...final.job, state, error: 'fixture result' } };
   const result = await mount('settings', settings.props);
   assert.equal(result.view.section, 'updates'); assert.ok(rowButton(result).kids.includes('Updating…'));
-  await settle(); assert.match(text(result), expected); assert.ok(!text(result).includes('Up to date'));
+  await settle();
+  const customRow = nodes(result.tree).find(node => node.attrs.id?.[0]?.startsWith('st-row-herdr-app-custom'));
+  const customText = text({ tree: customRow });
+  assert.match(customText, expected); assert.ok(!customText.includes('Up to date'), 'a current plugin sibling cannot mask Custom failure feedback');
   retire(result);
 }
 store.set(KEY, { ...running, resume }); next = running;

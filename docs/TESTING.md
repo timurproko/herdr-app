@@ -790,8 +790,15 @@ a real update or demonstrates native process survival.
 with connected-machine inventories and mocked plugin callbacks: local-first sequential
 order, cross-copy coalescing, preserved unknown evidence, fresh preflight, shared action
 reuse, failure continuation, disconnect/close retirement, per-target read tickets and
-uncertain-write guards. `tests/plugin-update-section.test.mjs` checks minimal heading,
-rows, one action and inline machine outcomes. Crew's plugin fixture verifies update-only
+uncertain-write guards, aggregate successful check time versus failed/unknown evidence,
+and recovery after an expired discovery lease. `tests/plugin-update-row.test.mjs` checks
+one always-visible **herdr-app-plugins** row, the shared action-slot dimensions and
+recent-check feedback, concise availability/progress/results, named failures, stale
+callbacks, and real-controller owner retirement immediately before/at/after expiry.
+The existing Settings feedback cadence includes one final expiry redraw without arming
+check confirmation. The marker fixture checks all four update rows, no separate Plugins
+section, the unchanged explanation and native/Custom/plugin notification parity.
+Crew's plugin fixture verifies update-only
 checks reuse its exact existing callback and skip unrelated projects/accounts/tool scans.
 The existing prerequisite UI fixture proves its original Update button claims the same
 executor. No fixture installs tools or starts a native app; native pixels and real
@@ -2114,7 +2121,7 @@ tests/palette-native-stock.test.mjs
 tests/pin-swap.test.mjs
 tests/pinned-pr-refresh.test.mjs
 tests/plugin-prerequisite-ui.test.mjs
-tests/plugin-update-section.test.mjs
+tests/plugin-update-row.test.mjs
 tests/plugin-updates.test.mjs
 tests/plugin-section-geometry.test.mjs
 tests/plugin-ui-contract.test.mjs

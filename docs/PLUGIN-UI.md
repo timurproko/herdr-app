@@ -121,9 +121,16 @@ pending facts; disconnected machines do not contribute notification dots.
 
 The ordinary requirement Update and Updates' batch share `plugins-operations.js`:
 check, captured context, fix callback, settling recheck and update-action ownership.
-`plugins-updates.js` owns discovery/connected-machine projection and batch ordering;
-the Settings section uses existing row/heading/button components. Check tickets
-reject older result publications across entrypoints. Runtime availability, read tickets,
+`plugins-updates.js` owns discovery/connected-machine projection and batch ordering.
+Settings Updates renders one **herdr-app-plugins** row directly after **herdr-app-custom**,
+using the same row and check-action slot, without a Plugins heading or machine block.
+A complete successful discovery supplies the local checked-at time and **Check now**;
+confirmed availability names plugins/machines and offers **Update**. Checks, progress,
+results and named failures share that row's bounded two-line status. Unknown or failed
+checks cannot renew successful check time or confirm currency. Check tickets
+reject older result publications across entrypoints; expired 90-second discovery
+leases release row actions and reject late replies. The existing Settings feedback
+cadence redraws expiry even when the initiating owner is gone, without another timer. Runtime availability, read tickets,
 progress and uncertain-action guards use `custom.plugin-updates`,
 `custom.plugin-update-reads` and `custom.plugin-update-actions`, outside portable
 preferences. A successful command still needs a fresh authoritative check to clear

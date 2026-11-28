@@ -5,7 +5,9 @@ const state = {}, reads = [], jobs = [], writes = [];
 let inventory = [{ name: 'z-peer', state: 'connected' }, { name: 'a-peer', state: 'connected' }, { name: 'offline', state: 'disconnected' }];
 let layout = inventory.map(m => ({ name: m.name, layout: m.state === 'connected' ? 'ready' : 'unavailable' }));
 let modes = new Map([[null, true], ['z-peer', true], ['a-peer', false]]), hold = null, nativeChecking = false;
-let failures = new Map(), afterWrite = () => {}, holdWrite = null;
+let failures = new Map(), afterWrite = () => {}, holdWrite = null, inventoryError = false;
+let clock = 1000000;
+class Clock extends Date { static now() { return clock; } }
 const update = { label: 'Update', async run(cx) {
   const machine = cx.setting('machine'); writes.push(machine);
   if (holdWrite) await holdWrite;
@@ -27,17 +29,17 @@ const plugin = { id: 'probe', name: 'Probe', settings: [{ key: 'machine', type: 
 const host = {
   shared: key => state[key], setShared: (key, value) => { state[key] = JSON.parse(JSON.stringify(value)); },
   checking: () => nativeChecking, machines: () => layout,
-  hc: async args => { assert.deepEqual([...args], ['machine', 'ls', '--json']); return { code: 0, stdout: JSON.stringify({ machines: inventory }) }; },
+  hc: async args => { assert.deepEqual([...args], ['machine', 'ls', '--json']); return inventoryError ? { code: 1, stdout: '' } : { code: 0, stdout: JSON.stringify({ machines: inventory }) }; },
 };
 async function load() {
-  return loadMod({ host, modules: { 'plugins/index.js': { default: [plugin] } },
+  return loadMod({ host, globals: { Date: Clock }, modules: { 'plugins/index.js': { default: [plugin] } },
     entry: "export * from './plugins-updates.js'; export * as registry from './plugins.js'; export * as operations from './plugins-operations.js';" });
 }
 const api = await load(), other = await load();
 const cx = { notify() {}, sleep: async () => {}, spawn(fn) { const job = { done: false, is_done() { return this.done; } }; jobs.push(Promise.resolve().then(() => fn(cx)).finally(() => { job.done = true; })); return job; } };
 const drain = async () => { while (jobs.length) await Promise.all(jobs.splice(0)); };
 const owner = {};
-const refresh = async () => { api.refreshPluginUpdates(owner, cx, { force: true }); await drain(); };
+const refresh = async () => { clock += 1000; api.refreshPluginUpdates(owner, cx, { force: true }); await drain(); };
 const snapshot = () => api.pluginUpdateSnapshot();
 api.registry.setPluginSetting(plugin, 'machine', 'saved-selection');
 const saved = JSON.stringify(state['custom.plugins']);
@@ -54,10 +56,19 @@ assert.equal(JSON.stringify(state['custom.plugins']), saved, 'discovery does not
 assert.deepEqual(writes, [], 'discovery never invokes fixes');
 assert.equal(snapshot().rows.filter(row => row.pending).length, 2);
 assert.equal(snapshot().scan, null);
+assert.equal(snapshot().check.known, true);
+assert.equal(snapshot().check.attempted, clock);
+assert.equal(snapshot().check.completed, clock);
+assert.equal(snapshot().check.checked, clock);
+assert.deepEqual([...snapshot().check.machines], [null, 'z-peer', 'a-peer']);
+const checkedBeforeUnknown = snapshot().check.checked;
 const count = reads.length; api.refreshPluginUpdates(owner, cx); await drain();
 assert.equal(reads.length, count, 'healthy read is bounded by shared cadence');
 modes = new Map([[null, null], ['z-peer', 'error'], ['a-peer', true]]); await refresh();
 assert.equal(snapshot().rows.filter(row => row.pending).length, 3, 'unknown and failed reads preserve known pending facts');
+assert.equal(snapshot().check.known, false, 'an unknown provider cannot establish aggregate currency');
+assert.equal(snapshot().check.checked, checkedBeforeUnknown, 'failed/unknown checks do not renew successful check time');
+assert.ok(snapshot().check.completed > snapshot().check.checked);
 layout = layout.map(m => ({ ...m, layout: 'unavailable' }));
 modes.set(null, false); await refresh();
 assert.equal(api.pluginUpdateAvailable(), false, 'disconnected peers do not light dots');
@@ -96,6 +107,7 @@ assert.equal(snapshot().batch.running, true);
 await drain();
 assert.deepEqual(writes, [null, 'z-peer', 'a-peer'], 'one batch, sequential local-first inventory order');
 assert.equal(snapshot().batch.running, false);
+assert.equal(snapshot().check.checked, snapshot().batch.completed, 'successful batch rechecks supply the current result time');
 assert.ok(snapshot().rows.every(row => !row.pending && row.outcome === 'updated'));
 assert.equal(api.pluginUpdateAvailable(), false);
 assert.equal(JSON.stringify(state['custom.plugins']), saved, 'batch does not mutate portable machine selection');
@@ -182,10 +194,36 @@ assert.equal(snapshot().rows.find(row => row.machine === null).pending, true, 'r
 await refresh();
 assert.equal(snapshot().rows.find(row => row.machine === null).pending, false);
 
+// Successful aggregate time requires a complete inventory and known providers.
+const lastSuccess = snapshot().check.checked;
+inventoryError = true; await refresh(); inventoryError = false;
+assert.equal(snapshot().check.known, false);
+assert.equal(snapshot().check.checked, lastSuccess, 'inventory failure cannot renew successful time');
+assert.match(snapshot().check.error, /connected machines/);
+modes.set(null, null); await refresh();
+assert.equal(snapshot().check.known, false);
+modes.set(null, false); await refresh();
+assert.equal(snapshot().check.known, true);
+assert.equal(snapshot().check.checked, clock);
+assert.equal(snapshot().check.error, null);
+
+// The controller also guards stale pre-paint clicks during a live discovery.
+await prepare();
+state[api.PLUGIN_UPDATES_KEY].scan = { token: 'abandoned-scan', expires: clock + 1 };
+api.updatePlugins(owner, cx); await drain();
+assert.deepEqual(writes, [], 'an unexpired scan blocks dispatch, not just the rendered button');
+clock++;
+api.updatePlugins(owner, cx); await drain();
+assert.deepEqual(writes, [null, 'z-peer', 'a-peer'], 'explicit Update works at exact scan expiry');
+assert.equal(snapshot().check.known, true, 'complete batch evidence recovers aggregate current feedback after scan expiry');
+assert.equal(snapshot().check.checked, clock);
+assert.equal(snapshot().check.error, null);
+
 // Abandoned native batch metadata becomes truthful unknown, never eternal busy.
+const writesBeforeExpiry = writes.length;
 state[api.PLUGIN_UPDATES_KEY].batch = { token: 'abandoned', running: true, expires: 0 };
 state[api.PLUGIN_UPDATES_KEY].rows[0].outcome = 'running';
 assert.equal(snapshot().batch.running, false);
 assert.equal(snapshot().rows[0].outcome, 'unknown');
-assert.equal(writes.filter(machine => machine === 'captured').length, 1, 'expiry itself cannot dispatch');
+assert.equal(writes.length, writesBeforeExpiry, 'expiry itself cannot dispatch');
 console.log('PASS: plugin discovery, shared dots facts, captured context/action reuse, sequential batches, single-flight, failure continuation, preflight, disconnect, cancellation and uncertain-write guards');

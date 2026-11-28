@@ -1701,16 +1701,21 @@ assumed: timer retry and supported activation signals are the fallback.
 The native Herdr and herdr-core rows retain their hourly update checks; that
 schedule does not apply to Custom.
 
-Below Herdr, **Settings → Updates → Plugins** lists confirmed plugin-tool updates
-on this computer and connected peers, such as an outdated Crew tool. These share
-the existing Settings/Updates dots. One **Update** applies the existing plugin actions
-sequentially: this computer first, then peers in the all-machine inventory order.
-Progress and machine-specific failures stay in that section; a failure does not
-stop other machines. Separate read-only plugin checks run on mounted update-check
-opportunities and on entering Updates; they do not install missing tools or change
-the Plugins machine selection. A timed-out submitted update is never automatically
+In **Settings → Updates**, **herdr-app-plugins** is one more row in the Herdr list,
+directly below **herdr-app-custom**, with the same status and action-slot styling.
+A complete successful check with nothing pending shows **Up to date. Checked at
+HH:MM.** and **Check now**; unknown or failed checks never invent currency or a
+check time. Confirmed updates name the plugins and machines in a concise status
+and offer **Update**. That action applies the existing plugin actions sequentially:
+this computer first, then connected peers in the all-machine inventory order.
+Progress, named machine failures and results stay in that row, not a separate
+Plugins section; a failure does not stop other machines. The existing Settings/Updates
+dots are unchanged. Checks are read-only, including **Check now**, mounted update-check
+opportunities and entering Updates; they neither install missing tools nor change
+the Plugins machine selection. An abandoned discovery scan stops disabling the row
+when its 90-second lease expires. A timed-out submitted update is never automatically
 replayed: check that machine's actual tool state before retrying. Existing Plugins
-Update buttons remain available and use the same action path.
+requirement Update buttons remain available and use the same action path.
 
 For near-immediate discovery, the updater independently subscribes to the shared
 Git relay while Git is enabled: only `timurproko/herdr-app` main pushes or closed,

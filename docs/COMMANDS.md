@@ -346,12 +346,15 @@ uncertain remote request.
 
 ### Plugin-tool updates on connected machines
 
-**Settings → Updates → Plugins** lists confirmed pending updates with each machine's
-name. Its single **Update** button invokes the same plugin-declared actions as the
-individual Plugins requirement rows: this computer first, then connected peers in
-`hc machine ls --json` inventory order, sequentially. Progress, completion and
-per-machine failures remain inline; a failure does not prevent the other machines
-from being attempted. No missing tools are installed by this shortcut.
+**Settings → Updates → herdr-app-plugins** is the fourth row in the Herdr list,
+directly below **herdr-app-custom**, not a separate Plugins section. A complete
+successful check shows **Up to date. Checked at HH:MM.** with **Check now**. Pending
+updates name their plugins and machines and offer **Update**, invoking the same
+plugin-declared actions as the individual Plugins requirement rows: this computer
+first, then connected peers in `hc machine ls --json` inventory order, sequentially.
+Progress, completion and named machine failures stay in that row's status; a failure
+does not prevent other machines from being attempted. No missing tools are installed
+by this shortcut. An expired 90-second discovery lease cannot strand its actions.
 
 Pending connected-machine plugin updates contribute to the existing Settings and
 Updates dots. Checks are read-only and share bounded Settings execution admission;
