@@ -519,7 +519,9 @@ Git's loading line is a stationary full-width 1px accent surface with a native
 0–0.65 opacity pulse over 2400ms ease-in-out. The cold dot retains 0.25–0.65;
 reduced motion is static 0.35 without entrance/exit animation. A separate 140ms
 native opacity envelope first hides without a transition, then arms at zero,
-then reveals, following StatusReveal's native-default guard. The pulse uses
+then reveals, following StatusReveal's native-default guard. The reveal callback
+is queued only after constructing the armed opacity-zero tree, never just after
+another elapsed interval; a deferred redraw cannot skip that tree. The pulse uses
 `to: 0` because this host starts native loops at the `to` endpoint. Completion
 fades the envelope before retirement; resumption reverses the same transition.
 Only two one-shot arming callbacks and one guarded exit callback are used, never
@@ -598,7 +600,20 @@ and resets only after complete branch-resolution success; page errors are per ta
 keep actual diagnostics and a safe fixed-height fallback. Native aborts bypass catch:
 a surviving render marker gets one deferred 64ms retry, not a frame loop. Successful
 frames allocate no retry timer. Presentation collections/provider context may be
-shared within one frame only; every focus action resolves live identity again. Repository name/count/folding live in the shared
+shared within one frame only; every focus action resolves live identity again.
+A strict frame context also supplies its presentation, safety-job scheduling and
+repository-order projection. Provider refresh hints yield before their separate
+witness/proof work. Enumeration filters membership before directory resolution,
+role candidates are indexed per frame, and frame settings/zoom are read once.
+`location(snapshot)` reuses those collections and memoizes pure selection/cwd
+facts within the frame, avoiding a native collection walk for every stage/robot
+control. Unframed location calls for reads and actions always resolve live state.
+Post-yield reads never borrow these objects: one fresh membership check admits a
+synchronous alias commit, and any awaited error path renews that check before the
+next alias. Pending token, entry, scope and generation guards remain per entry.
+A freshly bound Crew child needs no additional remembered-display lookup; only
+childless history follows that existing fallback. No native callback tree is
+cached, and no additional healthy polling or animation scheduler is introduced. Repository name/count/folding live in the shared
 section header. The main header's repository label and repository-page popup
 (including keyboard actions) are removed; diagnostics remain on existing native
 activity/count feedback and PR row menus are unchanged.

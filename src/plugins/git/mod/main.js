@@ -258,11 +258,11 @@ export default class Changes extends View {
     });
   }
 
-  syncAggregate(cx) {
+  syncAggregate(cx,snapshot) {
     this.aggregate ??= new AggregatePulls({shown:()=>this.shown(),presentationEpoch:()=>host.shared('custom.git.presentation-generation')??0,
       presentationAlive:saved=>!saved.parent || Boolean(saved.machine && host.machines().some(machine=>machine.name===saved.machine && machine.layout!=='ready'))
         || host.spaces().some(space=>space.id===saved.parent && (space.machine??null)===(saved.machine??null))});
-    if(!this.aggregate.sync(cx)) return false;
+    if(!this.aggregate.sync(cx,snapshot)) return false;
     const scope=`tasks:${this.aggregate.context.scope}`;
     if(this.context!==scope || this.aggregateGeneration!==this.aggregate.presentationGeneration) {
       this.rememberRepository();
@@ -550,24 +550,24 @@ export default class Changes extends View {
     return !warm && Boolean(aggregate.context.stale || aggregate.waiting);
   }
 
-  repositorySections() {
-    const aggregate=this.aggregate,groups=new Map(aggregate.repositories().map(repo=>[repo,{repo,rows:[],error:aggregate.readNotice(repo,this.view)}]));
+  repositorySections(snapshot) {
+    const aggregate=this.aggregate,groups=new Map(aggregate.repositories(snapshot).map(repo=>[repo,{repo,rows:[],error:aggregate.readNotice(repo,this.view)}]));
     for(const row of (aggregate.presentationRows?.(this.view)??aggregate.rows(this.view)))groups.get(row.repo)?.rows.push(row);
     return [...groups.values()].filter(section=>section.rows.length || section.error);
   }
 
-  fallbackSnapshot() {
+  fallbackSnapshot(snapshot) {
     const aggregate=this.aggregate,task=this.context?.startsWith('tasks:');
     const on=task?aggregate?.context?.machine:this.on;
     let online=!on;
     if(on)try {online=host.machines().some(m=>m.name===on && m.layout==='ready');}catch {}
     const enabled=this.shown() && online && (task
-      ? !aggregate?.context?.stale && aggregate?.currentContext()?.scope===aggregate?.context?.scope
+      ? !aggregate?.context?.stale && aggregate?.frameContext(snapshot)?.scope===aggregate?.context?.scope
       : key()===this.context && !this.entryVerify && !this.loading && Boolean(this.root && this.repo));
     const uncovered=name=>Boolean(this.notices?.active && this.notices.members?.get(name.toLowerCase())!==true);
     if(task) {
-      const repositories=aggregate?.repositories()??[],rows=aggregate?.rows(this.view)??[];
-      const sections=this.repositorySections();
+      const repositories=aggregate?.repositories(snapshot)??[];
+      const sections=this.repositorySections(snapshot);
       const paging=this.taskSections(sections,aggregate.context.scope);
       // The native host cannot reliably notify viewport motion. Safety covers
       // the entire revealed unfolded batch, never guessed pixel intersections.
@@ -578,9 +578,11 @@ export default class Changes extends View {
     return {enabled,scope:JSON.stringify([this.context,on,this.view,this.repo?.name]),repositories:this.repo?[{name:this.repo.name,uncovered:uncovered(this.repo.name),rows:[...selection.liveRows,...(selection.active?[selection.active]:[])]}]:[]};
   }
 
-  syncChecksFallback(cx) {
+  syncChecksFallback(cx,snapshot) {
     this.checksFallback ??= new ChecksFallback({snapshot:()=>this.fallbackSnapshot(),read:(repo,view,current)=>this.readPendingChecks(repo,view,current)});
-    this.checksFallback.sync(cx);
+    // Only synchronous scheduling uses frame facts. The timer/read callbacks
+    // retain their original fresh snapshot function, never this frame object.
+    this.checksFallback.sync(cx,snapshot?this.checksFallback.eligible(this.fallbackSnapshot(snapshot)):undefined);
   }
 
   async readPendingChecks(repo,cx,current) {
@@ -920,7 +922,7 @@ export default class Changes extends View {
     const role=stage==='review'?'review':'build',repo=pr.repo??this.repo?.name,context=this.context;
     const scope=this.aggregate?.context?.scope;
     const target=role && pr.key?(pr.stage&&this.aggregate?.stagePresentation?this.aggregate.stagePresentation(pr,role,this.agentLinks,this.agentPresentation):this.aggregate?.stageTarget?.(pr,role,this.agentLinks,this.agentPresentation)):null;
-    const agent=role?(pr.key?target?.agent:this.agentLinks?.related?.(pr,repo,location().terminal,role,undefined,this.agentPresentation)):null;
+    const agent=role?(pr.key?target?.agent:this.agentLinks?.related?.(pr,repo,location(this.agentPresentation).terminal,role,undefined,this.agentPresentation)):null;
     const available=agent?.availability==='live';
     if(!pr.stage && (!available || !['ship','fix'].includes(agent?.crew?.kind)))return null;
     const round=role==='build'?agent?.crew?.round:null;
@@ -971,6 +973,11 @@ export default class Changes extends View {
     return element;
   }
 
+  renderZoom() {
+    const zoom=(this.agentPresentation?.settings??settings()).zoom;
+    return zoom>0?zoom:1;
+  }
+
   stageChip(t,pr,interactive=true,probe=false,descriptor=this.stageDescriptor(pr)) {
     if(!descriptor)return null;
     const color=pr.stage==='approved'?t.ansi2:descriptor.role==='review'?t.ansi5:t.ansi3;
@@ -1005,7 +1012,7 @@ export default class Changes extends View {
         .when(Boolean(name),el=>el.tooltip(`Open agent: ${name}`))
         .child(svg('icons/agent.svg').size(U.icon)) : null;
     }
-    const agent = this.agentLinks?.related(pr, this.repo?.name, location().terminal,null,undefined,this.agentPresentation);
+    const agent = this.agentLinks?.related(pr, this.repo?.name, location(this.agentPresentation).terminal,null,undefined,this.agentPresentation);
     if (!agent) return null;
     // A separate foreground robot, like the Agents sidebar. Its usual 24px
     // target fits around the title line without changing the PR icon or height.
@@ -1082,7 +1089,7 @@ export default class Changes extends View {
     this.pullTextWidths ??= new Map();
     this.pullTextPending ??= new Set();
     this.pullTextRequests ??= new Map();
-    const zoom = settings().zoom > 0 ? settings().zoom : 1;
+    const zoom = this.renderZoom();
     const context = this.context;
     const textKey = (item, short) => `${zoom}\0${item.kind}\0${short ? item.compactKey : item.measureKey}`;
     const keyed = this.context?.startsWith('tasks:') && items.every(item => item.measureKey != null);
@@ -1490,12 +1497,11 @@ export default class Changes extends View {
       && JSON.stringify([this.context,this.view,this.readEpoch(),this.aggregate?.presentationGeneration])===scope;
     if(active) {
       if(!line) {
-        line=this.loadingLineState={phase:'hidden',exit:null};
+        line=this.loadingLineState={phase:'hidden',exit:null,scope};
         // Like StatusReveal: first hide WITHOUT a transition (native defaults
         // otherwise paint a full-opacity frame), then arm at zero, then reveal.
         cx.timer?.after(16,arm=>{
           if(!current())return;line.phase='armed';arm.notify();
-          arm.timer.after(16,reveal=>{if(!current())return;line.phase='visible';reveal.notify();});
         });
       } else line.exit=null; // Native transition reverses from its current opacity.
       return true;
@@ -1512,23 +1518,34 @@ export default class Changes extends View {
     return true;
   }
 
-  loadingLine(t) {
+  loadingLine(t,cx) {
     const line=this.loadingLineState,reduced=this.motionReduced;
-    return div().id('git-loading-track').absolute().left(0).right(0).top(0).h(1).overflow_hidden()
+    const element=div().id('git-loading-track').absolute().left(0).right(0).top(0).h(1).overflow_hidden()
       .opacity(reduced?0.35:line?.phase==='visible'&&!line.exit?1:0)
       .when(!reduced && line?.phase!=='hidden',el=>el.transition('opacity',{duration:LINE_FADE_MS,easing:'ease-in-out'}))
       .when(!line?.exit,el=>el.role('status').accessibility_label('Loading Git'))
       .child(div().id('git-ci-line').size_full().bg(t.accent).opacity(reduced?1:0)
         // Native loops begin at the `to` endpoint, not the static opacity.
         .when(!reduced,el=>el.loop('opacity',{from:0.65,to:0,period:BREATHE_MS,easing:'ease-in-out'})));
+    // An elapsed timer cannot prove an armed tree was built. Queue reveal only
+    // after constructing that zero-opacity tree, even when redraws coalesce.
+    if(!reduced && line?.phase==='armed' && !line.revealQueued && cx?.timer) {
+      line.revealQueued=true;
+      cx.timer.after(16,reveal=>{
+        if(this.renderClosed || !this.shown() || this.loadingLineState!==line
+          || JSON.stringify([this.context,this.view,this.readEpoch(),this.aggregate?.presentationGeneration])!==line.scope)return;
+        line.phase='visible';reveal.notify();
+      });
+    }
+    return element;
   }
 
-  enrollmentPresentation() {
-    const aggregate=this.aggregate,context=aggregate?.currentContext({presentation:true});
+  enrollmentPresentation(snapshot) {
+    const aggregate=this.aggregate,context=aggregate?.frameContext(snapshot,true);
     if(!this.shown() || !context || context.stale || context.scope!==aggregate.context?.scope)return null;
-    const notice=this.notices?.presentation(aggregate.repositories());
+    const notice=this.notices?.presentation(aggregate.repositories(snapshot));
     if(!notice)return null;
-    return {choices:notice.choices,key:JSON.stringify([context.scope,location(),this.view,notice.key])};
+    return {choices:notice.choices,key:JSON.stringify([context.scope,location(snapshot),this.view,notice.key])};
   }
 
   repositoryScopeCurrent(repo,scope) {
@@ -1561,7 +1578,7 @@ export default class Changes extends View {
       sizes={measurement:this.repositoryNameMeasureSequence=(this.repositoryNameMeasureSequence??0)+1};
       this.repositoryNameSizes.set(id,sizes);
     }
-    const zoom=settings().zoom>0?settings().zoom:1;
+    const zoom=this.renderZoom();
     const overflowing=()=>Number.isFinite(sizes.available)&&Number.isFinite(sizes.intrinsic)&&sizes.intrinsic>sizes.available+0.5;
     const measure=(kind,size,cx)=>{
       if(!this.shown() || (settings().zoom>0?settings().zoom:1)!==zoom || this.repositoryNameSizes.get(id)!==sizes || !this.repositoryScopeCurrent(repo,scope) || !Number.isFinite(size.width))return;
@@ -1625,7 +1642,7 @@ export default class Changes extends View {
       window.correction=null;window.anchorMarker=null;window.scheduledCorrection=null;
     }
     if(window.restoreOffset){window.correction={from:0,to:window.restoreOffset};delete window.restoreOffset;}
-    const zoom=settings().zoom||1;
+    const zoom=this.renderZoom();
     if(window.zoom && window.zoom!==zoom) {
       window.metrics.awaitZoom=true;
       window.zoomSequence=(window.zoomSequence??0)+1;
@@ -1739,8 +1756,8 @@ export default class Changes extends View {
     const verificationHint='Fleet status is unverified; actions are paused until fresh verification' + (aggregate.context.verification
       ? `\n${aggregate.context.verification.reason} at ${new Date(aggregate.context.verification.at).toISOString()} (generation ${aggregate.context.verification.generation})` : '');
     // Membership is cross-tab: enrollment and updates must retain hidden sections.
-    const repositories=aggregate.repositories(), rows=aggregate.rows(this.view);
-    const sections=this.repositorySections();
+    const repositories=aggregate.repositories(this.agentPresentation);
+    const sections=this.repositorySections(this.agentPresentation);
     const waiting=Boolean(aggregate.context.stale || aggregate.waiting);
     if(this.repositoryNameSizes){
       const ids=new Set(repositories.map(repo=>`task-repo-name-${scope}-${repo}`));
@@ -1757,8 +1774,8 @@ export default class Changes extends View {
     const setup=repositories.length ? [...notices.values()].includes('setup') : this.notices.sync(cx,{enabled:this.shown() && !aggregate.context.stale,repository:null})==='setup';
     this.enrollmentPicker ??= new EnrollmentPicker({focus:this.enrollmentFocus,current:()=>this.enrollmentPresentation(),
       onChoose:repository=>openSettings({section:'plugins',plugin:'git',pluginSection:'repository',pluginSearch:repository})});
-    const enrollment=this.enrollmentPicker.render(t,setup?null:this.enrollmentPresentation());
-    this.syncChecksFallback(cx);
+    const enrollment=this.enrollmentPicker.render(t,setup?null:this.enrollmentPresentation(this.agentPresentation));
+    this.syncChecksFallback(cx,this.agentPresentation);
     const loading=this.panelLoading();
     return v_flex().id('changes').relative().size_full().min_h(0).rounded(8).overflow_hidden().bg(t.background).border_1().border_color(t.input).text_color(t.foreground).text_size(U.font)
       .child(h_flex().id('changes-header').relative().bg(t.surface).h(U.section).flex_none().pl(4).pr(U.gutter).gap(U.gap).items_center().border_b(1).border_color(t.border)
@@ -1800,7 +1817,7 @@ export default class Changes extends View {
           .when(taskWindow.metrics.moreBelow,el=>el.child(bottomFade(taskWindow.metrics,'task-pulls-list',t.background,{left:LIST_INSET,right:LIST_INSET})))))
       .when(setup,el=>el.child(this.liveCIInfo(t)))
       .when(Boolean(enrollment),el=>el.child(enrollment))
-      .when(this.syncLoadingLine(loading && !cold,cx,cold),el=>el.child(this.loadingLine(t).top(U.section)));
+      .when(this.syncLoadingLine(loading && !cold,cx,cold),el=>el.child(this.loadingLine(t,cx).top(U.section)));
   }
 
   liveCIInfo(t,kind='setup',capturedRepository=null) {
@@ -1845,7 +1862,8 @@ export default class Changes extends View {
     try {
       // Read native identity collections once for presentation. Captured actions
       // always re-query without this frame-local snapshot before granting focus.
-      this.agentPresentation=this.shown()?this.agentLinks?.presentationSnapshot?.():null;
+      this.agentPresentation=this.shown()?(this.agentLinks?.presentationSnapshot?.()??{}):null;
+      if(this.agentPresentation)this.agentPresentation.settings=settings();
       const tree=this.renderPart('panel',()=>this.renderPanel(cx));
       this.renderAttempt=null;this.agentPresentation=null;
       return tree;
@@ -1862,7 +1880,7 @@ export default class Changes extends View {
     }
     if (this.pullMenu) return this.renderPullMenu(theme());
     this.syncDisclosure();
-    if (this.renderPart('coordinator-context',()=>this.syncAggregate(cx))) {
+    if (this.renderPart('coordinator-context',()=>this.syncAggregate(cx,this.agentPresentation))) {
       const scope=this.aggregate?.context?.scope;
       if(this.shown()) {
         // Candidate enumeration is presentation work, not read authority. Do
@@ -1927,6 +1945,6 @@ export default class Changes extends View {
         .child(div().flex_1()).child(this.disclosureButton(t)))
       .child(this.renderPulls(t))
       .when(Boolean(notice), el => el.child(this.liveCIInfo(t,notice)))
-      .when(this.syncLoadingLine(loading,cx,cold), el => el.child(this.loadingLine(t))));
+      .when(this.syncLoadingLine(loading,cx,cold), el => el.child(this.loadingLine(t,cx))));
   }
 }

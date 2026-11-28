@@ -315,6 +315,14 @@ Loading, equal message placement at 100%/130%, no simultaneous repository header
 or moving line, warm/background/verification/safety line activity, overlap,
 completion, cooldown and retired callbacks. Folded cold failures stay visible.
 Refresh remains static during its 600ms disabled feedback; other panels are unchanged.
+`pinned-pr-refresh.test.mjs` additionally exercises that lifecycle through an actual
+webhook refresh: exactly two 16ms entrance callbacks, no callbacks during sustained
+native breathing, then one 140ms exit callback after the read completes. CI run
+46146489908 exposed its obsolete zero-total-timer and bright-endpoint expectations;
+the updated assertions retain the no-polling/no-frame-loop guards and check the
+transparent/armed/visible/exiting states rather than skipping timer validation.
+The deferred-redraw case drains callbacks without rendering and requires that
+reveal remain unqueued until the armed zero-opacity tree is actually built.
 `tests/features/git-loading-native.mjs --run --zoom 1|1.3 --output <outside>`
 uses a checksum-verified release 0.1.18 executable, synthetic data and isolated
 app/Core homes. It captures ordinary/coordinator cold Loading (two pulse phases),
@@ -332,9 +340,34 @@ paint, so deterministic first-frame style guards remain independent. Paired
 100%/130% native samples show transparent entry, gradual rise, and exit returning
 to the idle pixels. HWND BitBlt video was black on the accelerated host and is
 rejected as proof; no desktop recording substitutes for the disposable surface.
-The separate `git-refresh-native.mjs` production-provider replay reproduces the
-real last-good-frame interruption without forced loops and requires error-free
-completion after the fix; `--expect-interruption` checks an inert baseline source.
+The separate `git-refresh-native.mjs` production-provider replay now defaults to
+four workers initially, adds unrelated agents at tick 10 and grows to fourteen
+mixed ship/review workers in the same child at tick 20. It requires all fourteen
+rows actually mounted, no native interruption/continuation errors and at most
+35ms measured construction, without changing the native 50ms watchdog. Repeat
+`--workers 14 --unrelated 20 --cycles 60` three times at each `--zoom 1` / `1.3`;
+120 unrelated agents provide an additional stress matrix. `--profile` records
+bounded method/native-read counters and times. The real production location helper
+is exercised rather than stubbed. Samples are buffered during render
+and flushed outside it, so synchronous tracing cannot manufacture a render abort.
+`--expect-interruption` checks inert baseline sources; a baseline that does not
+interrupt is reported honestly, not accepted as reproduction. See the full
+controller profile and retained timing-limit evidence in GIT-RENDER-BUDGET.md.
+`git-refresh-frame.test.mjs` independently tests fresh dispatch/publication after
+yields and awaited error handling; `pr-agent-links.test.mjs` additionally bounds
+provider/settings reads and forbids directory resolution for unrelated candidates.
+`git-location.test.mjs` separately proves repeated same-frame location projections
+reuse captured native collections, while unframed read/action lookups stay live.
+Thin coordinator-renderer fixtures must expose `frameContext()` as well as
+`currentContext()`. The enrollment, measurement-lifetime, native-scroll, anchor
+and fade fixtures delegate it to their current context getter, so before-redraw
+scope mutations still invalidate retained callbacks. These fixtures do not mock
+or bypass the real frame-cache authority tests above.
+After preserving the published natural-caption sizing changes, the final combined
+revision passed all 12 growth replays (three per zoom and unrelated population),
+with 14 rows fully mounted, no interruptions and maxima 15–30ms. Earlier
+pre-integration 36ms/40ms margin failures remain in the task evidence; the 35ms
+guard and native 50ms watchdog were not relaxed.
 The fixture checks native logs as well as status.errors, writes proof outside the
 checkout, and stops every owned desktop/Core instance in finally. It is not a
 live-agent, network or native pointer hit-test.
@@ -706,10 +739,23 @@ known target and peer-only scope until durable status acknowledges it, or become
 The real Settings controller harness covers the same section-and-row flow together,
 including final success, partial, failure and unknown outcomes. No fixture launches
 a real update or demonstrates native process survival.
+`tests/plugin-updates.test.mjs` exercises the shared plugin discovery/action controller
+with connected-machine inventories and mocked plugin callbacks: local-first sequential
+order, cross-copy coalescing, preserved unknown evidence, fresh preflight, shared action
+reuse, failure continuation, disconnect/close retirement, per-target read tickets and
+uncertain-write guards. `tests/plugin-update-section.test.mjs` checks minimal heading,
+rows, one action and inline machine outcomes. Crew's plugin fixture verifies update-only
+checks reuse its exact existing callback and skip unrelated projects/accounts/tool scans.
+The existing prerequisite UI fixture proves its original Update button claims the same
+executor. No fixture installs tools or starts a native app; native pixels and real
+remote-process survival are not proven by these tests.
+
 `tests/update-markers.test.mjs` uses separate Settings/header/footer/menu VM
 contexts, the real controller/helper and a changed-shared-value refresh queue:
-manual checks reach already-mounted roots, and all native/Custom combinations
-produce the same marker markup. The Settings harness also runs real initialization
+manual checks reach already-mounted roots, and all native/Custom/plugin combinations
+produce the same marker markup. Plugin-only availability and clearing are covered through
+real discovery publications; the actual Updates body retains its native rows/explanation
+and appends Plugins beneath them. The Settings harness also runs real initialization
 and navigation, replacing the complete module graph with original overlay props
 and retained shared state to check update-only restoration and lifecycle teardown.
 The actual Settings opener supplies fresh per-opening identities: native/backdrop
@@ -2015,6 +2061,8 @@ tests/palette-native-stock.test.mjs
 tests/pin-swap.test.mjs
 tests/pinned-pr-refresh.test.mjs
 tests/plugin-prerequisite-ui.test.mjs
+tests/plugin-update-section.test.mjs
+tests/plugin-updates.test.mjs
 tests/plugin-section-geometry.test.mjs
 tests/plugin-ui-contract.test.mjs
 tests/plugins.test.mjs
