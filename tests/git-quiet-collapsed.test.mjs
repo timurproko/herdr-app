@@ -89,3 +89,73 @@ console.log('PASS collapse during ordinary metadata and collapse-expand retire f
   p.agentPull=2;held.release();await f.drain();assert.notEqual(p.relatedPull?.number,1);
 }
 console.log('PASS obsolete pin replies cannot overwrite another selected PR');
+
+async function coordinatorFixture(options={}) {
+  const f=await fixture({coordinator:true,...options}),{p,context,data,cx}=f;
+  data.set(101,raw(101,'other/repo'));
+  context.links=[...data.values()].map(pr=>({url:pr.url,terminal:'worker'}));
+  p.context='tasks:quiet';
+  const aggregate=p.aggregate=new f.AggregatePulls({shown:()=>p.shown(),readToken:repo=>p.groupReadToken(repo)});
+  aggregate.sync(cx);return {...f,aggregate};
+}
+
+for(const view of ['open','closed']) {
+  const f=await coordinatorFixture({collapsed:true}),{p,aggregate:a,cx,calls}=f;p.view=view;
+  a.refresh(cx);a.invalidate();a.pump(cx);await f.drain();
+  assert.equal(calls.length,0);assert.equal(a.waiting,false);assert.equal(a.updating,false);assert.equal(a.busy,false);
+  assert.equal(a.deferredUnknown,true);assert.equal(a.presentationRows(view).length,0);
+  assert.equal(a.counts().open,null,'Unread folded identities do not invent totals');
+  // An expanded exception loads while the other unknown folded repository is deferred.
+  f.fold('other/repo');a.pump(cx);await f.drain();
+  assert.ok(calls.length>0);assert.ok(calls.every(c=>c.repo==='other/repo'));
+  assert.equal(a.waiting,false);assert.equal(a.presentationRows('open').length,1);
+  assert.equal(a.presentationRows('open')[0].repo,'other/repo');
+}
+console.log('PASS coordinator saved folds, filter-hidden groups and cold mixed publication without blocked siblings');
+
+{
+  const f=await coordinatorFixture(),{p,aggregate:a,cx,calls,context,data}=f;await f.drain();
+  assert.equal(a.presentationRows('open').length,5);
+  f.fold('owner/repo');a.pump(cx);calls.length=0;
+  const before=Array.from(a.presentationRows('open').filter(pr=>pr.repo==='owner/repo'),pr=>pr.number);
+  context.links=context.links.filter(link=>!link.url.endsWith('/1'));
+  data.set(5,raw(5));context.links.push({url:data.get(5).url,terminal:'worker'});
+  a.sync(cx);a.refresh(cx);a.invalidate('owner/repo');a.pump(cx);await f.drain();
+  assert.ok(calls.every(c=>c.repo==='other/repo'));
+  assert.deepEqual(Array.from(a.presentationRows('open').filter(pr=>pr.repo==='owner/repo'),pr=>pr.number),before);
+  assert.equal(a.entries.has('owner/repo#1'),false,'Frozen presentation does not restore removed action membership');
+  const sections=p.repositorySections();assert.equal(sections.find(s=>s.repo==='owner/repo').rows.length,4);
+  assert.equal(a.dirty,false);assert.equal(a.updating,false);
+  // A new group hidden by the selected filter still obeys the global choice.
+  f.folds.toggleAll();p.invalidateDisclosure();a.pump(cx);await f.drain();calls.length=0;
+  data.set(201,raw(201,'hidden/repo','CLOSED'));context.links.push({url:data.get(201).url,historical:true});
+  p.view='open';a.sync(cx);await f.drain();assert.equal(calls.length,0);
+  a.invalidate();a.pump(cx);await f.drain();assert.equal(calls.length,0);
+}
+console.log('PASS coordinator frozen counts/membership presentation, independent siblings and hidden new links');
+
+for(const expandAgain of [false,true]) {
+  const f=await fixture({coordinator:true}),{p,cx,calls,context}=f;
+  context.links=[{url:raw(1).url,terminal:'worker'},{url:raw(2).url,terminal:'worker'}];p.context='tasks:quiet';
+  const a=p.aggregate=new f.AggregatePulls({shown:()=>p.shown(),readToken:repo=>p.groupReadToken(repo)});
+  const held=f.hold(c=>c.query.includes('title'));a.sync(cx);
+  for(let i=0;i<60&&!held.release;i++)await Promise.resolve();assert.ok(held.release);
+  f.fold('owner/repo');if(expandAgain)f.fold('owner/repo');
+  held.release();await f.drain();
+  if(expandAgain) {
+    assert.equal(calls.filter(c=>c.query.includes('title')).length,2,'Expansion needs a current metadata read');
+    assert.equal(a.presentationRows('open').length,2);
+  } else {assert.equal(calls.length,1,'Collapsed aliases cannot start details/diagnosis');assert.equal(a.waiting,false);}
+}
+console.log('PASS coordinator held metadata, collapsed follow-up retirement and collapse-expand generation');
+
+{
+  const f=await coordinatorFixture(),{aggregate:a,cx,calls}=f;await f.drain();
+  const entry=a.entries.get('owner/repo#4');entry.pr={...entry.pr,state:'merged',closedAt:new Date().toISOString()};entry.link.targets=[{historical:true}];entry.completedAt=Date.now();
+  a.rememberCounts();f.fold('owner/repo');a.pump(cx);const frozen=a.presentationRows('closed').length;
+  entry.completedAt-=25*60*60*1000;a.sync(cx);await f.drain();assert.equal(a.presentationRows('closed').length,frozen);
+  for(const retire of [()=>f.setShown(false),()=>f.setEnabled(false),()=>{f.context.stale=true;}]) {
+    retire();calls.length=0;a.invalidate();a.pump(cx);await f.drain();assert.equal(calls.length,0);
+  }
+}
+console.log('PASS folded history presentation ages quietly and hidden/disabled/unverified scopes do no new reads');

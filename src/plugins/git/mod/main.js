@@ -259,7 +259,7 @@ export default class Changes extends View {
   }
 
   syncAggregate(cx,snapshot) {
-    this.aggregate ??= new AggregatePulls({shown:()=>this.shown(),presentationEpoch:()=>host.shared('custom.git.presentation-generation')??0,
+    this.aggregate ??= new AggregatePulls({shown:()=>this.shown(),readToken:(repo,sync)=>this.groupReadToken(repo,sync),presentationEpoch:()=>host.shared('custom.git.presentation-generation')??0,
       presentationAlive:saved=>!saved.parent || Boolean(saved.machine && host.machines().some(machine=>machine.name===saved.machine && machine.layout!=='ready'))
         || host.spaces().some(space=>space.id===saved.parent && (space.machine??null)===(saved.machine??null))});
     if(!this.aggregate.sync(cx,snapshot)) return false;
@@ -362,13 +362,13 @@ export default class Changes extends View {
 
   loadPulls(state, cx, force = false, notify = true, append = false) {
     if (!this.shown() || !this.repositoryOnline() || this.entryRootPending() || !VIEWS.includes(state) || !this.root || this.pullLoading || key() !== this.context || (!force && !this.pullsDue(state))) return;
-    if(this.repo && !this.entryVerify && this.groupReadToken(this.repo.name)===null) {if(force&&!append)this.loadRelatedPull(cx,true);return;}
+    if(this.repo && !this.entryVerify && this.groupReadToken(this.repo.name,true)===null) {if(force&&!append)this.loadRelatedPull(cx,true);return;}
     const after = append ? this.pages[state].cursor : null;
     if (append && (!this.pages[state].hasMore || !after || state !== this.view || !this.shown())) return;
     const root = this.root, on = this.on, context = this.context;
     const request = this.pullRequest = {state},read=this.factOrder.begin(),epoch=this.readEpoch();
     let repo=this.repo,repository=repo?.name,admission,group=false;
-    const current = () => (!group || admission!==null && admission===this.groupReadToken(repository)) && this.readEpoch()===epoch && this.repositoryOnline() && sidebarPanelEnabled('changes') && this.pullRequest === request && this.root === root && this.context === context && key() === context && this.repo===repo && this.repo?.name===repository;
+    const current = () => (!group || admission!==null && admission===this.groupReadToken(repository,true)) && this.readEpoch()===epoch && this.repositoryOnline() && sidebarPanelEnabled('changes') && this.pullRequest === request && this.root === root && this.context === context && key() === context && this.repo===repo && this.repo?.name===repository;
     this.pullLoading = true; this.loadingState = state; this.appending = append; this.pageError = null;this.entryAttempted=true;
     if (notify) cx.notify();
     request.task=cx.spawn(async cx => {
@@ -480,6 +480,7 @@ export default class Changes extends View {
   }
 
   loadRelatedPull(cx, force=false) {
+    this.syncDisclosure();
     const number = this.pinNumber();
     // Related reads use the same lease as list, event and fallback snapshots.
     // Do not cache a selection that has not actually acquired the queue.
@@ -600,7 +601,7 @@ export default class Changes extends View {
     const aggregate=this.context?.startsWith('tasks:')?this.aggregate:null;
     const token=this.groupReadToken(repo.name),pin=!aggregate && token===null?this.pinNumber():null;
     const admitted=current,epoch=this.readEpoch();current=()=>this.readEpoch()===epoch && admitted()
-      && (pin!=null?this.pinNumber()===pin:token!==null && this.groupReadToken(repo.name)===token);
+      && (pin!=null?this.pinNumber()===pin:token!==null && this.groupReadToken(repo.name,true)===token);
     if(!current())return;
     if(this.pullLoading || this.relatedRequest || aggregate?.busy)return {busy:true};
     const root=this.root,on=aggregate?aggregate.context.machine:this.on;
@@ -730,7 +731,7 @@ export default class Changes extends View {
     // Related/older reads cannot overlap this snapshot's queue lease.
     const root=this.root,on=this.on,repo=this.repo,context=this.context,requestedState=this.view;
     const request=this.pullRequest={state:requestedState},read=this.factOrder.begin(),epoch=this.readEpoch(),admission=this.groupReadToken(repo.name);this.pullLoading=true;
-    const current=()=>admission!==null && this.groupReadToken(repo.name)===admission && this.readEpoch()===epoch && this.repositoryOnline() && this.pullRequest===request && this.context===context && key()===context && this.repo===repo && this.shown();
+    const current=()=>admission!==null && this.groupReadToken(repo.name,true)===admission && this.readEpoch()===epoch && this.repositoryOnline() && this.pullRequest===request && this.context===context && key()===context && this.repo===repo && this.shown();
     cx.spawn(async cx=>{
       await Promise.resolve(); // request feedback must not notify synchronously from render
       try {
@@ -882,8 +883,8 @@ export default class Changes extends View {
 
   // Repository-scoped epochs retire only changed groups, including an
   // expanded -> collapsed -> expanded transition while a read is held.
-  groupReadToken(repo) {
-    this.syncDisclosure();
+  groupReadToken(repo,sync=false) {
+    if(sync)this.syncDisclosure();
     return this.disclosureToken(repo);
   }
 
@@ -1701,7 +1702,7 @@ export default class Changes extends View {
     }
     window.zoom=zoom;
     if(this.sampleNativeScroll(window.metrics,window.handle,zoom))window.observe(window.metrics.offset/zoom,window.metrics.viewport/zoom,true);
-    window.repositoryCounts=new Map(sections.map(section=>[section.repo,{value:section.rows.length,loading:Boolean(this.aggregate.loading?.(section.repo) || [...(this.aggregate.entries?.values()??[])].some(e=>e.link?.repo===section.repo && !e.pr && !e.missing))}]));
+    window.repositoryCounts=new Map(sections.map(section=>[section.repo,{value:section.rows.length,loading:Boolean(this.aggregate.loading?.(section.repo) || !this.foldedRepositories?.has(section.repo) && [...(this.aggregate.entries?.values()??[])].some(e=>e.link?.repo===section.repo && !e.pr && !e.missing))}]));
     window.project(sections,this.foldedRepositories,U.control,U.rowGap,`${zoom}:${window.width??0}`,this.aggregateCold());
     const range=window.range(),visible=[];
     for(const item of range.items) {

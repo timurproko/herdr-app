@@ -9,10 +9,10 @@
 
 ## 2. Coordinator collapsed repositories defer PR work without blocking expanded siblings
 
-- [ ] 2.1 Add a narrow disclosure-admission callback to the aggregate queue and all post-yield follow-up/publication checks, retaining deferred dirty demand without polling or changing transport ownership; verify mixed repositories, new links, manual/events/retries and filter-hidden groups in the focused fixture.
-- [ ] 2.2 Exclude intentionally deferred folded entries from active-work/cold-publication waiting and retain compatible folded per-tab presentation/counts while current membership still gates actions; verify cold mixed groups, local task changes/history aging, frozen counts and no indefinite loading or false empty result.
-- [ ] 2.3 Preserve fresh coordinator identity, machine routing, final-fact caching and bounded targeted batching; verify obsolete held responses and missing/disabled/offline scopes with targeted aggregate inventory and safety fixtures.
-- [ ] 2.4 Update architecture and coordinator request-budget guidance to replace live-folded claims and list independent live consumers; verify no panel PR-fact dependency is silently frozen outside Git, stopping for a decision if one is found.
+- [x] 2.1 Add a narrow disclosure-admission callback to the aggregate queue and all post-yield follow-up/publication checks, retaining deferred dirty demand without polling or changing transport ownership; verify mixed repositories, new links, manual/events/retries and filter-hidden groups in the focused fixture.
+- [x] 2.2 Exclude intentionally deferred folded entries from active-work/cold-publication waiting and retain compatible folded per-tab presentation/counts while current membership still gates actions; verify cold mixed groups, local task changes/history aging, frozen counts and no indefinite loading or false empty result.
+- [x] 2.3 Preserve fresh coordinator identity, machine routing, final-fact caching and bounded targeted batching; verify obsolete held responses and missing/disabled/offline scopes with targeted aggregate inventory and safety fixtures.
+- [x] 2.4 Update architecture and coordinator request-budget guidance to replace live-folded claims and list independent live consumers; verify no panel PR-fact dependency is silently frozen outside Git, stopping for a decision if one is found.
 
 ## 3. Saved disclosure and expansion consistently control refresh in both views and tabs
 

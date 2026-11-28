@@ -449,8 +449,10 @@ exceptions, even for hidden repositories. Both the default and exceptions surviv
 app restart on this client, without portable preference export. Existing saved
 folds are preserved on upgrade until a bulk toggle replaces them. Collapsing keeps
 the current agent's pinned PR visible and live above its header. Collapsed ordinary
-repositories do no list, sibling-PR or count-only refresh work, including on manual
-Refresh and webhook updates; their header keeps its last-known count. Only the
+and coordinator repositories do no list, sibling/task-PR or count-only refresh
+work, including on manual Refresh and webhook updates; their header keeps its
+last-known per-tab count. New task links in collapsed or filter-hidden repositories
+wait too; expanded siblings keep updating without waiting for those quiet groups. Only the
 resolved selected-agent PR is refreshed through targeted reads and existing safety
 cadence. Explicit PR/footer links and cached branch matches can select it without
 listing the collapsed repository; a cold branch-only match waits for expansion.
