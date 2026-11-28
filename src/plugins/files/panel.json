@@ -6,6 +6,7 @@
     "directory.js": "src/ui/directory.js",
     "file-header.js": "src/shared/file-header.js",
     "panel-state.js": "src/shared/panel-state.js",
+    "panel-context.js": "src/shared/panel-context.js",
     "panel-pin.js": "src/ui/panel-pin.js",
     "sidebar-title.js": "src/ui/sidebar-title.js",
     "file-icons.js": "src/shared/file-icons.js",

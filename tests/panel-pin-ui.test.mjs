@@ -22,7 +22,7 @@ for(const enabled of [false,true])for(const value of [false,true]) {
   assert.equal(button.attrs.id[0],'files-pin');assert.equal(button.attrs.size[0],24);assert.equal(button.kids[0].attrs.size[0],14);
   assert.equal(button.attrs.disabled[0],!enabled);assert.equal(button.attrs.text_color[0],pinned?'foreground':'dim');
   assert.equal(button.attrs.bg[0],pinned?'selected':'#00000000');assert.equal(button.attrs.border_color[0],pinned?'border':'#00000000');
-  assert.equal(button.attrs.accessibility_label[0],`${pinned?'Unpin':'Pin'} right sidebar for this tab`);
+  assert.equal(button.attrs.accessibility_label[0],`${pinned?'Unpin':'Pin'} right sidebar`);
   assert.equal(button.kids[0].asset,'mods/custom-workspace-chrome/panel-pin.svg','Both states use the same Usage pin icon');
   assert.equal(button.attrs.tooltip,undefined,'No hover tooltip; keep an accessible label');
   const before=toggles.length;button.attrs.on_change[0](!pinned,cx);
@@ -33,8 +33,10 @@ for(const enabled of [false,true])for(const value of [false,true]) {
 }
 const captured=panelPin(t,{id:'git-pin',enabled:true}),old=tab;tab={id:'new-tab',space:'new-space'};
 captured.attrs.on_change[0](false,cx);assert.equal(toggles.at(-1).target,old,'The controller validates the captured source binding');
-tab=null;const empty=panelPin(t,{id:'git-pin',enabled:true});assert.equal(empty.attrs.disabled[0],true);
-const before=toggles.length;empty.attrs.on_change[0](false,cx);assert.equal(toggles.length,before);assert.ok(stops>0);
+tab=null;pinned=true;const held=panelPin(t,{id:'git-pin',enabled:true});assert.equal(held.attrs.disabled[0],false,'A hold can be released with no selected tab');
+held.attrs.on_change[0](false,cx);assert.equal(toggles.at(-1).target,null);
+pinned=false;const empty=panelPin(t,{id:'git-pin',enabled:true});assert.equal(empty.attrs.disabled[0],true);
+const before=toggles.length;empty.attrs.on_change[0](true,cx);assert.equal(toggles.length,before);assert.ok(stops>0);
 const manifest=JSON.parse(fs.readFileSync(new URL('../customization.json',import.meta.url),'utf8'));
 const usage=JSON.parse(fs.readFileSync(new URL('../src/plugins/usage/panel.json',import.meta.url),'utf8'));
 assert.equal(manifest.files['mods/custom-workspace-chrome/panel-pin.svg'],usage.shared['pin.svg'],'Package the exact same canonical shared pin icon, not a hand-copied variant');
