@@ -2191,6 +2191,18 @@ After a successful explicit quota reset and its authoritative usage read, the Us
 - **THEN** the app preserves its existing failure and last-known-value handling without inventing a successful refill
 - **AND** obsolete completions cannot replace a newer target's quota values or start disabled follow-up collection
 
+### Requirement: Routine Git refresh completes without interrupted-render fallback
+Routine same-context refreshes in ordinary and coordinator Git SHALL preserve the displayed list until a coherent replacement is available and SHALL NOT trigger the host's interrupted-render fallback. Genuine unexpected render failures SHALL retain existing diagnostics; suppressing the banner, increasing the host deadline or replacing rows with placeholders SHALL NOT constitute a fix.
+
+#### Scenario: Repeated background refresh of a loaded list
+- **WHEN** manual, local-context, webhook, verification or checks updates repeatedly refresh a shown same-context list
+- **THEN** loaded rows, pins, folds, pagination and scroll remain stable until authoritative changes publish in place, without a blank frame, replacement Loading or interrupted-render banner
+- **AND** existing row geometry, measured render budgets, reveal limits and stale-reply rejection remain intact
+
+#### Scenario: Actual render failure remains diagnosable
+- **WHEN** an unexpected row exception or native render abort occurs outside the corrected routine-refresh path
+- **THEN** existing component diagnostics, fixed-height row fallback where applicable and bounded once-only recovery remain available without claiming an unobserved cause
+
 ### Requirement: Crew owns its Spaces label visibility contribution
 The enabled Crew plugin SHALL contribute its own Crew label toggle to Spaces through the generic plugin boundary. The choice SHALL default true, survive plugin disablement and affect only its Spaces tag presentation. Disabled-plugin or obsolete popup callbacks SHALL NOT change it. Opening or toggling the entry SHALL start no plugin work or external operation.
 
@@ -2203,15 +2215,3 @@ The enabled Crew plugin SHALL contribute its own Crew label toggle to Spaces thr
 - **WHEN** Crew becomes disabled after its menu entry was built
 - **THEN** a retained callback cannot change the hidden plugin's setting
 - **AND** the current menu projection omits its entry and re-enabling restores the last saved choice without replaying an action
-
-### Requirement: Routine Git refresh completes without interrupted-render fallback
-Routine same-context refreshes in ordinary and coordinator Git SHALL preserve the displayed list until a coherent replacement is available and SHALL NOT trigger the host's interrupted-render fallback. Genuine unexpected render failures SHALL retain existing diagnostics; suppressing the banner, increasing the host deadline or replacing rows with placeholders SHALL NOT constitute a fix.
-
-#### Scenario: Repeated background refresh of a loaded list
-- **WHEN** manual, local-context, webhook, verification or checks updates repeatedly refresh a shown same-context list
-- **THEN** loaded rows, pins, folds, pagination and scroll remain stable until authoritative changes publish in place, without a blank frame, replacement Loading or interrupted-render banner
-- **AND** existing row geometry, measured render budgets, reveal limits and stale-reply rejection remain intact
-
-#### Scenario: Actual render failure remains diagnosable
-- **WHEN** an unexpected row exception or native render abort occurs outside the corrected routine-refresh path
-- **THEN** existing component diagnostics, fixed-height row fallback where applicable and bounded once-only recovery remain available without claiming an unobserved cause
