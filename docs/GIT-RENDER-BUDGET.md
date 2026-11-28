@@ -224,8 +224,9 @@ synchronous alias commit and renews it after any awaited error path; native
 identity, generation, pending-token and entry checks remain. No native element,
 callback tree, watchdog setting, row cap or diagnostic is cached or suppressed.
 
-With the final source, buffered profile runs of 4-to-14 growth at 130% measured
-9ms median / 23ms p95 with 20 unrelated agents and 11ms / 31ms with 120. Each
+After preserving the published branch's natural-caption sizing change and
+re-finalization, buffered profiles of 4-to-14 growth at 130% measured 8ms median /
+11ms p95 with 20 unrelated agents and 10ms / 14ms with 120. Each
 explicit frame provider bind, settings read and selected-location/focus resolution
 is exactly one. The old completed fourteen-row frame made 39/33/47 space/pane/
 terminal collection reads, versus 3/2/2 now (including provider work). The native
@@ -233,14 +234,16 @@ fixture buffers samples and flushes one per existing controller tick, outside
 render: synchronous tracing IO in the old per-component probe could itself
 consume the measured deadline. Production failure diagnostics remain unchanged.
 
-Three growth replays at each zoom and each 20/120-unrelated population all mounted
-fourteen rows, with zero interruptions or continuation errors. However this is not
-an all-green performance result: with 20 unrelated agents, maxima were 36/12/21ms
-at 100% and 26/40/23ms at 130%; the 36ms and 40ms runs correctly failed the new
-35ms margin guard. The 120-unrelated maxima were 16/23/35ms and 21/18/15ms, all
-passing. The guard was not raised; the two remaining strict timing failures are
-retained in the task report for review. These are bounded synthetic native
-samples, not a universal latency guarantee.
+The final combined revision passed all twelve native growth replays: three at
+each zoom and each 20/120-unrelated population. Every replay fully mounted fourteen
+rows, completed, and had zero interruptions or continuation errors. Maximum full
+builds were 25/22/27ms at 100% and 22/22/15ms at 130% with 20 unrelated agents;
+with 120 they were 15/17/16ms and 17/21/30ms. All passed the unchanged new 35ms
+margin guard below the native 50ms deadline. Two earlier pre-integration runs had
+36/40ms samples and failed that guard; those receipts remain in the task report,
+not silently replaced or accepted. No native watchdog, frozen row budget or
+diagnostic was weakened. These are bounded synthetic native samples, not a
+universal latency guarantee.
 
 `git-refresh-frame.test.mjs` proves one same-frame bind, deferred proof hints,
 fresh post-yield dispatch, a bounded fourteen-alias commit, and revocation after

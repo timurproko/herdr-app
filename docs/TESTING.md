@@ -358,9 +358,11 @@ yields and awaited error handling; `pr-agent-links.test.mjs` additionally bounds
 provider/settings reads and forbids directory resolution for unrelated candidates.
 `git-location.test.mjs` separately proves repeated same-frame location projections
 reuse captured native collections, while unframed read/action lookups stay live.
-The final 12-replay native matrix had zero interruptions but two 20-unrelated
-runs (36ms/40ms) failed the 35ms margin guard; this stricter validation gap was not
-silenced or relaxed.
+After preserving the published natural-caption sizing changes, the final combined
+revision passed all 12 growth replays (three per zoom and unrelated population),
+with 14 rows fully mounted, no interruptions and maxima 15–30ms. Earlier
+pre-integration 36ms/40ms margin failures remain in the task evidence; the 35ms
+guard and native 50ms watchdog were not relaxed.
 The fixture checks native logs as well as status.errors, writes proof outside the
 checkout, and stops every owned desktop/Core instance in finally. It is not a
 live-agent, network or native pointer hit-test.
