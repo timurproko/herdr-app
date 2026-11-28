@@ -41,6 +41,10 @@ for(const width of [220,268,300,390])for(const zoom of [.75,1,1.25,1.3,1.5,2]) {
     for(let g=0;g<3;g++) {
       const header=find(tree,`sp-Group ${g}`),meta=find(tree,`agent-group-meta-sp-Group ${g}`);
       const bulb=nodes(header).find(n=>n.attrs.size?.[0]===7),count=find(tree,`agent-count-sp-Group ${g}`);
+      const disclosure=find(tree,`agent-group-fold-sp-Group ${g}`),target=boxes.get(disclosure);
+      near(target.width,24*zoom,'Spaces-sized disclosure width');near(target.height,24*zoom,'Spaces-sized disclosure height');
+      near(center(boxes,disclosure),(width-12)*zoom,'Original header-local disclosure centre');
+      const hover=element();disclosure.attrs.hover[0](hover);assert.equal(hover.attrs.bg[0],`${t.foreground}0a`,'Shared inset hover, not full-row hover');
       assert.ok(bulb);const x=center(boxes,bulb),box=boxes.get(count),right=box.x+box.width;
       if(g===0){dotX=x;countRight=right;chevronX=center(boxes,meta.kids.at(-1));}
       near(x,dotX,'Mixed-state 1/2/3-digit group dots occupy one column');

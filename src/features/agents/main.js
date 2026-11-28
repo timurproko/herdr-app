@@ -4,7 +4,7 @@
 
 import { View, div, image, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { U, slot, itemHover, statusBulb, menuSurface, chevron, menuHeading, emptyState, sidebarNumericSlot, sidebarMachineLabel, sidebarChildBranch, sidebarParentFold } from "./ui.js";
+import { U, slot, itemHover, statusBulb, menuSurface, chevron, menuHeading, emptyState, sidebarNumericSlot, sidebarMachineLabel, sidebarChildBranch, sidebarParentFold, sidebarDisclosure, subtleActionFill } from "./ui.js";
 import { programIcon } from './program-icon.js';
 import { sidebarScroll } from './sidebar-scroll.js';
 import { paneDirectory } from './directory.js';
@@ -377,9 +377,13 @@ export default class Agents extends View {
     const header = (g) => {
       const open = !this.folded.has(g.id);
       const top = g.members.reduce((m, a) => ((RANK[a.status] ?? 0) > (RANK[m] ?? 0) ? a.status : m), null);
+      const toggle = (_e, cx) => {
+        this.folded.has(g.id) ? this.folded.delete(g.id) : this.folded.add(g.id);
+        cx.notify();
+      };
       return h_flex()
         .id(g.id)
-        .w_full().pl(8).pr(4)
+        .w_full().pl(8).pr(0)
         .rounded(U.radius)
         .h(U.row)
         .flex_none()
@@ -388,17 +392,16 @@ export default class Agents extends View {
         .text_size(U.meta)
         .cursor_pointer()
         .hover((s) => s.bg(t.hover).text_color(t.foreground))
-        .on_click((_e, cx) => {
-          open ? this.folded.add(g.id) : this.folded.delete(g.id);
-          cx.notify();
-        })
+        .on_click(toggle)
         .child(div().flex_1().min_w(0).truncate().text_color(t.muted).child(g.label))
         .child(h_flex().id(`agent-group-meta-${g.id}`).flex_none().gap(6).items_center()
           // Status styles have different margins (Done versus Working). Centre
           // them in one fixed rail before the three-digit count slot.
           .when(!open && !byPriority && top && top !== "idle", el => el.child(this.statusSlot(t, { status: top }, true).id(`agent-group-status-${g.id}`)))
-          .child(this.numericSlot(t, `agent-count-${g.id}`, String(g.members.length)))
-          .child(slot(chevron(t, open))));
+          .child(sidebarNumericSlot(t, `agent-count-${g.id}`, String(g.members.length), {trailingSize:24}))
+          .child(sidebarDisclosure(t, {id:`agent-group-fold-${g.id}`,open,label:`${open?'Collapse':'Expand'} ${g.label}`,onClick:toggle})
+            .tab_index(0).focus(s=>s.bg(subtleActionFill(t)))
+            .on_key_down((event,cx)=>{if(['enter','space',' '].includes(event.key)){cx.stop_propagation();toggle(event,cx);}})));
     };
     const rows = collapsed
       ? list.flatMap(withKids)

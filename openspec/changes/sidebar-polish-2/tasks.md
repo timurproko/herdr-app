@@ -2,9 +2,9 @@
 
 ## 1. Agents group chevrons use Spaces square hover controls
 
-- [ ] 1.1 Reuse the shared Spaces disclosure presentation in Agents group headers with propagation-safe fold handlers; verify one toggle per activation, unchanged header folding and no agent selection in a focused renderer fixture.
-- [ ] 1.2 Preserve chevron centres and number/status spacing at 100% and 130%; extend and run tests/agents-dot-column.test.mjs and tests/agents-grouping.test.mjs for both fold states and unchanged group order.
-- [ ] 1.3 Document the shared group-chevron treatment in the relevant README sidebar description and confirm the diff changes no unrelated sidebar interaction.
+- [x] 1.1 Reuse the shared Spaces disclosure presentation in Agents group headers with propagation-safe fold handlers; verify one toggle per activation, unchanged header folding and no agent selection in a focused renderer fixture.
+- [x] 1.2 Preserve chevron centres and number/status spacing at 100% and 130%; extend and run tests/agents-dot-column.test.mjs and tests/agents-grouping.test.mjs for both fold states and unchanged group order.
+- [x] 1.3 Document the shared group-chevron treatment in the relevant README sidebar description and confirm the diff changes no unrelated sidebar interaction.
 
 ## 2. Git stage and verdict buttons share tight longest-caption sizing
 

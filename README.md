@@ -1259,7 +1259,9 @@ Priority sorting is unchanged. The sort icon has no hover tooltip; its accessibl
 label and sort menu remain available. Group counts are right-aligned in a fixed
 three-digit slot, even when expanded. Collapsed group status dots share one column
 across Working and Done states; agent-row dots keep their separate rightmost rail
-(shared with the group chevrons), without moving the time text.
+(shared with the group chevrons), without moving the time text. Group chevrons
+use Spaces' 24px square inset hover/focus treatment; either the header or its
+chevron folds that group, without selecting an agent.
 
 ## A1 session names
 
