@@ -112,7 +112,8 @@ async function readStatus(cx) {
 export async function runtimeStatus(cx = {}) {
   if (checking()) return {status: 'recommended', statusLabel: 'Check in app', fix: null};
   try {
-    const r = await exec('node', [`${appHome()}/.customizations/runtime/lib/private-actions/trello-transport.cjs`, '--probe', appHome(), JSON.stringify(cx.machine ?? null)], {timeout: 60000});
+    const probe = () => exec('node', [`${appHome()}/.customizations/runtime/lib/private-actions/trello-transport.cjs`, '--probe', appHome(), JSON.stringify(cx.machine ?? null)], {timeout: 60000});
+    const r = await (cx.request ? cx.request(probe, {timeout: 62000}) : probe());
     const result = JSON.parse(r.stdout); rememberGlobal(cx, result);
     if (!result.ok) throw Object.assign(Error(safeErrors[result.error?.code] ?? 'Runtime check failed.'), {code: result.error?.code});
     const d = result.data, binding = destination(d?.destination);
@@ -120,11 +121,13 @@ export async function runtimeStatus(cx = {}) {
     if (cx.isCurrent?.() === false) return {status: 'error', statusLabel: 'Check again', fix: null};
     hints(cx).destination = binding;
     const ready = d.runtime === 'ready';
-    return {status: ready ? 'ready' : 'missing', statusLabel: ready ? 'Ready' : d.runtime === 'missing' ? 'Not installed' : 'Outdated',
+    return {status: ready ? 'ready' : 'missing', update: d.runtime === 'outdated', statusLabel: ready ? 'Ready' : d.runtime === 'missing' ? 'Not installed' : 'Outdated',
       fix: ready ? null : {label: d.runtime === 'missing' ? 'Install' : 'Update', manual: true, requiresEnabled: true,
         run: async current => {
-          const result = await privateAction('trello', {action: 'runtime.install'}, {...current, privateDestination: binding});
-          if (!result?.ok) throw Error(safeErrors[result?.error?.code] ?? 'Installation failed. Check again.');
+          let result;
+          try { result = await privateAction('trello', {action: 'runtime.install'}, {...current, privateDestination: binding}); }
+          catch { throw Object.assign(Error('Installation outcome unknown. Check this machine.'), {uncertain: true}); }
+          if (!result?.ok) throw Object.assign(Error(safeErrors[result?.error?.code] ?? 'Installation failed. Check again.'), {uncertain: result?.error?.outcome === 'unknown'});
         }}};
   } catch (e) { return {status: 'error', statusLabel: 'Unavailable', problem: e.code ?? 'INTERNAL', ...unavailable(cx,e.code), detail: Object.values(safeErrors).includes(e.message) ? e.message : 'Check Node 20+ and the Trello runtime.', fix: null}; }
 }

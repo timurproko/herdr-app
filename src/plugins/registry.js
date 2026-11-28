@@ -266,8 +266,7 @@ export async function pluginGate(name, context = {}) {
 // Runs a plugin's prerequisite checks: [{ id, label, about, status, detail, fix }].
 // status: 'ready' | 'missing' | 'recommended' | 'error'. A result may set fix: null
 // to hide the fix where it can't help.
-export async function checkPlugin(plugin) {
-  const context = pluginContext(plugin);
+export async function checkPlugin(plugin, context = pluginContext(plugin)) {
   return Promise.all((plugin.prerequisites ?? []).map(async pre => {
     try {
       const result = await pre.check(context);

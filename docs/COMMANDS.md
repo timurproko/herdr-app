@@ -340,6 +340,24 @@ be unknown until the next successful full deployment. Never delete
 `.customizations/deploy.lock` to force an update, reset a checkout or replay an
 uncertain remote request.
 
+### Plugin-tool updates on connected machines
+
+**Settings → Updates → Plugins** lists confirmed pending updates with each machine's
+name. Its single **Update** button invokes the same plugin-declared actions as the
+individual Plugins requirement rows: this computer first, then connected peers in
+`hc machine ls --json` inventory order, sequentially. Progress, completion and
+per-machine failures remain inline; a failure does not prevent the other machines
+from being attempted. No missing tools are installed by this shortcut.
+
+Pending connected-machine plugin updates contribute to the existing Settings and
+Updates dots. Checks are read-only and share bounded Settings execution admission;
+entering Updates refreshes them without changing saved plugin machine preferences.
+Unknown checks retain confirmed pending evidence; offline peers do not light the dots.
+Timed-out or interrupted submitted writes are not automatically replayed. A fresh
+confirmed current/absent result can retire an unresolved update; otherwise inspect
+that machine directly rather than deleting runtime guards or repeatedly clicking.
+Native Herdr and customization update controls, cadence and recovery stay separate.
+
 ### Retrying the App 0.1.17 blocked update after merge
 
 For an installation that already has the Updates row, no manual deployment or
