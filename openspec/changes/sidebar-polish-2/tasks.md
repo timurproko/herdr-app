@@ -14,8 +14,8 @@
 
 ## 3. Crew contributes a default-on Spaces label toggle with contextual alignment
 
-- [ ] 3.1 Declare Crew's hidden default-true label-visibility setting and generic Show icons menu contribution; verify enabled-only checked rows, setting persistence and disabled callback refusal in focused registry/Crew fixtures.
-- [ ] 3.2 Compose plugin entries through Spaces' existing checked menu rows and include them in popup height; verify row order, check updates, menu staying open and unchanged Machine status/Worktree icon toggles.
-- [ ] 3.3 Scope Crew tag suppression to Spaces queries without removing attachment/count/disclosure or terminal-pane Crew badges; cover local/remote, connected/independent and plugin off/on cases in focused Spaces/tag fixtures.
-- [ ] 3.4 Remove blank count/disclosure rails on childless Crew rows and align label right edges with the machine-chevron column; update PR 103 assertions in Spaces layout and Git right-edge tests at 100%/130%, retaining the existing parent grid when children exist.
-- [ ] 3.5 Update README and plugin contribution documentation for the new menu entry and its presentation-only scope; run only directly affected Spaces, Crew and plugin-boundary tests and record any remaining native pixel-validation gap.
+- [x] 3.1 Declare Crew's hidden default-true label-visibility setting and generic Show icons menu contribution; verify enabled-only checked rows, setting persistence and disabled callback refusal in focused registry/Crew fixtures.
+- [x] 3.2 Compose plugin entries through Spaces' existing checked menu rows and include them in popup height; verify row order, check updates, menu staying open and unchanged Machine status/Worktree icon toggles.
+- [x] 3.3 Scope Crew tag suppression to Spaces queries without removing attachment/count/disclosure or terminal-pane Crew badges; cover local/remote, connected/independent and plugin off/on cases in focused Spaces/tag fixtures.
+- [x] 3.4 Remove blank count/disclosure rails on childless Crew rows and align label right edges with the machine-chevron column; update PR 103 assertions in Spaces layout and Git right-edge tests at 100%/130%, retaining the existing parent grid when children exist.
+- [x] 3.5 Update README and plugin contribution documentation for the new menu entry and its presentation-only scope; run only directly affected Spaces, Crew and plugin-boundary tests and record any remaining native pixel-validation gap.

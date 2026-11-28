@@ -1027,6 +1027,7 @@ export default {
   defaultEnabled: false,
   settingsRows: workerSpaceRows,
   settings: [
+    { key:'showSpaceLabel',type:'toggle',default:true,hidden:true },
     { key: WORKER_SPACE_SETTING, type: 'toggle', hidden: true, default: false },
     // Shown at the top of Requirements: it is where everything in that list is checked and installed.
     { key: 'machine', type: 'machine', place: 'requirements', default: null, label: 'Machine' },
@@ -1092,6 +1093,7 @@ export default {
     ...FIRSTMATE_TOOLS,
     PROJECTS,
   ],
+  menus: { 'spaces.icons': () => [{id:'crew-label',label:'Crew label',icon:'icons/agent.svg',setting:'showSpaceLabel'}] },
   hooks: {},
   lifecycle: { 'spaces.refresh': refreshFleetContext,
     'workspace.settings.refresh': context => refreshWorkerSpaces({...context,knownHomes:knownFleetHomes}, (machine, request) =>
@@ -1110,7 +1112,8 @@ export default {
   },
 
   // The Spaces sidebar's tag for a space the coordinator or crew workers run in.
-  spaceTags: space => {
+  spaceTags: (space, {surface,setting} = {}) => {
+    if(surface==='spaces' && setting?.('showSpaceLabel')===false)return [];
     const display = fleetContexts({presentation:true});
     const kind = display.some(c=>c.parent===space.id) ? 'coordinator'
       : display.some(c=>fleetLinks(c).some(link=>link.child===space.id)) ? 'worker' : crewInSpace(space);

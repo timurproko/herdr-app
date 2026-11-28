@@ -172,9 +172,16 @@ export function pluginMenuItems(name, context = {}) {
   return PLUGINS.flatMap(plugin => {
     if (!pluginEnabled(plugin) || !plugin.menus?.[name]) return [];
     try {
-      return plugin.menus[name]({ ...context, ...pluginContext(plugin) }).map(item => ({ ...item,
-        run(cx) { if (pluginEnabled(plugin)) return item.run(cx); },
-      }));
+      return plugin.menus[name]({ ...context, ...pluginContext(plugin) }).flatMap(item => {
+        const toggle=typeof item.setting==='string' && field(plugin,item.setting)?.type==='toggle';
+        if(item.setting!=null&&!toggle)return [];
+        return [{...item,...(toggle?{checked:pluginSetting(plugin,item.setting)}:{}),
+          run(cx) {
+            if(!pluginEnabled(plugin))return;
+            if(toggle){setPluginSetting(plugin,item.setting,!pluginSetting(plugin,item.setting));cx?.notify();}
+            else return item.run(cx);
+          }}];
+      });
     } catch (error) { failed(plugin, name, error); return []; }
   });
 }

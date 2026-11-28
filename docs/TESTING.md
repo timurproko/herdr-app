@@ -150,19 +150,26 @@ terminal, uses no real Crew home and verifies disposable app/Core shutdown.
 ## Connected project Spaces and coherent coordinator inventory
 
 `spaces-worktree-layout.test.mjs` covers the fixed metadata grid: Crew and child
-count stay in place through disclosure; crew also retains that column without
-children or with combined view off, using inert empty count/disclosure slots.
+count stay in place through disclosure when children exist. Without children or
+with combined view off, Crew ends on the machine-chevron glyph's right edge
+without reserving empty count/disclosure slots.
 Count, machine + and rename Confirm share
 a centred inner axis; chevron and Cancel share the outer axis, including 1/12/123
 children, 160–360px, local/pc2 and 100%/130%. Agents' numeric defaults are unchanged.
 Machine/coordinator chevrons share a centre and a 24px target, including hover.
 `agents-dot-column.test.mjs` protects existing numeric/status geometry; unrelated
 tags, native selection/numbering, connectors and captured block reorder stay intact.
-`git-right-edge.test.mjs` also checks that connected and childless crew labels end
-79 logical pixels from the panel edge, with two inert 24px trailing slots when
-controls are absent. Its Git 3px inner-inset oracle remains independent. CI run
-46144727979 exposed the old childless-label 41px expectation on both platforms;
-the updated oracle preserves the requested fixed-column behavior, not the old drift.
+`git-right-edge.test.mjs` retains the connected label's 79px panel inset and checks
+childless Crew against the chevron glyph's actual right edge with no empty rails.
+Its Git 3px inner-inset oracle remains independent. These assertions supersede
+PR 103's fixed-childless-column expectations.
+
+`tests/spaces-crew-label.test.mjs` mounts the real Spaces, Crew and registry code
+with synthetic local/remote spaces. It checks the default-on Crew label entry,
+typed persistence, enablement guards, checkmarks, menu staying open, contribution-aware
+popup height, independent built-in toggles, connected/independent row labels,
+unchanged count/disclosure geometry, unrelated tags and unscoped terminal badges.
+Any external operation or navigation fails the fixture.
 
 `tests/fleet-project-spaces.test.mjs` uses the Crew PR #22 placement-v1 contract
 with combined-only, project-only and mixed populations on local/qualified remote

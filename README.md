@@ -884,7 +884,11 @@ motion are implemented once, not copied into each feature. See
 Worktree spaces keep normal avatar/title alignment. Rows with plugin tags show
 name, ahead/behind counts, worktree icon, then tags. Crew uses the same plain,
 regular 12px dim label as Agents' machine text, not a filled pill; unrelated tags
-keep their existing styling and tooltips. Untagged worktree icons
+keep their existing styling and tooltips. **Spaces → … → Show icons → Crew label**
+is checked by default and appears only while Crew is enabled. It hides only the
+sidebar's crew text, preserving its saved choice, child counts, disclosure,
+fleet behavior and terminal-pane Crew badges; the menu stays open like the other
+toggles. Untagged worktree icons
 keep the machine-header chevron's right inset and centre line. Drag them like other spaces within their machine: repository discovery
 never regroups them or overrides the saved order. This is Spaces presentation and
 works independently of the Git plugin.
@@ -974,8 +978,9 @@ Neither row shows a chain, and only the coordinator shows lowercase `crew` in
 Spaces; the terminal-pane header still shows its unchanged `Crew` badge. Unrelated plugin
 tags remain. Crew precedes the coordinator's far-right chevron, which folds its children.
 The chevron and its 24px hover target align with machine headers. Crew stays fixed
-across disclosure, without children and with combined view off; absent count and
-chevron slots stay empty rather than moving the label. The connected-child-space
+before the count and chevron across disclosure when children exist. Without both
+controls, including with combined view off, the label moves right to the machine
+chevron's right edge and reserves no empty count/disclosure slots. The connected-child-space
 count stays visible in both disclosure states.
 Counts, machine + and rename Confirm share one centred inner column; chevrons and
 rename Cancel share the outer column. The coordinator itself is not counted.

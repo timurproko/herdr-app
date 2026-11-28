@@ -316,7 +316,9 @@ colour inheritance, but is indented; neither row has a chain and only the parent
 shows lowercase `crew`. Casing is changed only at the Spaces rendering boundary;
 the shared plugin contribution and terminal-pane `Crew` badge remain unchanged.
 Unrelated tags and worktree metadata keep their ordinary trailing
-edge. A separate local `custom.spaces.parents.folded` set is bounded to 256 exact
+edge. Childless Crew labels end at the machine-chevron glyph's right edge with
+no empty count/disclosure rails; connected parents retain their label/count/chevron
+grid across folding. A separate local `custom.spaces.parents.folded` set is bounded to 256 exact
 machine/block/binding keys and is never exported. Full block order remains the
 reorder authority; only drawing/drop geometry filters hidden children. A folded
 parent moves its hidden child too, and native selection transitions disclose a
@@ -767,6 +769,19 @@ src/plugins/
 - Add a hook only where a feature can fall back cleanly. Integration plugins keep
   their hooks free of UI; Settings draws their controls from their declaration
   (`features/settings/plugins-ui.js`).
+
+### Plugin-owned Spaces label visibility
+
+Spaces composes `pluginMenuItems('spaces.icons')` after its two built-in Show icons
+entries using the same checked menu row and contribution-aware popup height.
+A menu contribution can name one declared toggle with `setting`; the registry
+derives `checked` and rechecks plugin enablement before flipping the current typed
+value. Ordinary `run` menu contributions keep their existing behavior. Crew owns
+one hidden, default-true `showSpaceLabel` setting and the Crew label entry; no second
+Settings switch or feature-to-Crew import is needed. Spaces supplies
+`{surface:'spaces'}` to the existing tag query, so Crew can suppress only that
+surface's tag. Default/unscoped queries keep terminal-pane Crew badges unchanged.
+The choice never invalidates fleet identity, counts or disclosure and starts no IO.
 
 ### Plugin-owned agent context actions
 
