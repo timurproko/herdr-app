@@ -2,9 +2,9 @@
 
 ## 1. Readable delivery kind explanations
 
-- [ ] 1.1 Replace Crew's table declaration with three named sentences, preserving small-fix and configured-gate qualifications; update the shared hint body with bold names, wrapping, comfortable width and spacing, verified by `node tests/plugin-description-hint.test.mjs`.
-- [ ] 1.2 Extend hint regressions for hover/focus equivalence, exactly three kind explanations, no headers, bold names, passive clicks and no reads; retain table compatibility and update `docs/PLUGIN-UI.md` and README wording in the same outcome.
-- [ ] 1.3 Capture before/after native tooltip screenshots at 100% and 130% with synthetic projects in disposable app homes, keep proof in the crew task folder and record confirmed shutdown before reporting.
+- [x] 1.1 Replace Crew's table declaration with three named sentences, using the approved short copy without small-fix or gate-skip detail; update the shared hint body with bold names, wrapping, comfortable width and spacing, verified by `node tests/plugin-description-hint.test.mjs`.
+- [x] 1.2 Extend hint regressions for hover/focus equivalence, exactly three kind explanations, no headers, bold names, passive clicks and no reads; retain table compatibility and update `docs/PLUGIN-UI.md` and README wording in the same outcome.
+- [x] 1.3 Capture before/after native tooltip screenshots at 100% and 130% with synthetic projects in disposable app homes, keep proof in the crew task folder and record confirmed shutdown before reporting.
 
 ## 2. Slow project lists retain pending feedback
 

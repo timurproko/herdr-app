@@ -789,10 +789,11 @@ const PROJECTS = Object.freeze({
     scope: Object.freeze({ label: 'Machine', setting: 'machine' }),
     picker: Object.freeze({ kind: 'folders', label: 'Add project' }),
     descriptionHint: Object.freeze({ label: 'Delivery kinds',
-      columns: ['Kind', 'Plan first', 'Who reviews', 'Who opens the pull request'],
-      rows: [['Plain', 'no', 'a crew reviewer', 'crew after review'],
-        ['Delivery', 'yes', 'a crew reviewer', 'the worker as a draft at the start'],
-        ['Gate', 'no', 'the gate tool', 'the gate tool']],
+      entries: [
+        ['Plain', 'The worker codes right away; Crew reviews, then opens the pull request.'],
+        ['Delivery', 'The worker plans in a draft pull request and codes after approval; Crew reviews.'],
+        ['Gate', 'The gate tool reviews, tests and opens the pull request.'],
+      ],
     }),
     rowChoice: Object.freeze({ label: 'Delivery kind', options: PROJECT_KINDS,
       async set(cx, row, value) {
