@@ -18,7 +18,7 @@ export const KIT = Object.freeze({
 });
 
 // Informational, not a link: same inline accent placement, dashed underline.
-// Reuse Usage's HoverCard treatment for prose entries or the existing table format.
+// Reuse Usage's HoverCard treatment with aligned entry columns or the existing table format.
 export function descriptionHint(t, id, hint, focus) {
   const trigger = div().id(id).relative().track_focus(focus).tab_index(0)
     .text_size(U.meta).text_color(t.accent).whitespace_nowrap().accessibility_label(hint.label)
@@ -27,9 +27,9 @@ export function descriptionHint(t, id, hint, focus) {
   const body = () => hint.entries
     ? menuSurface(t, v_flex()).w(440).max_w(440).px(10).py(8).gap(8)
       .text_size(U.meta).line_height('18px').text_color(t.foreground)
-      .children(hint.entries.map(([name, sentence]) => h_flex().items_start().gap(4)
-        .child(div().flex_none().font_bold().child(`${name} —`))
-        .child(div().flex_1().min_w(0).whitespace_normal().child(sentence))))
+      .children(hint.entries.map(([name, sentence]) => h_flex().items_start().gap(8)
+        .child(div().w(52).flex_none().font_normal().child(name))
+        .child(div().flex_1().min_w(0).text_color(t.dim).whitespace_normal().child(sentence))))
     : hintTable(t, [hint.columns, ...hint.rows]);
   // HoverCard itself is hover-only. Popup supplies the identical passive body
   // for native keyboard focus without a click-to-open Popover or focus trap.
