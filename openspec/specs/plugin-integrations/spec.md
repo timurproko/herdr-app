@@ -2096,29 +2096,6 @@ Ordinary and coordinator Git SHALL omit a repository's header, count and chevron
 - **THEN** folding alone does not make the section empty and existing remaining-row counts and lone-pin header suppression remain intact
 - **AND** omitted empty sections retain their saved fold keys for later reappearance
 
-### Requirement: Space-mode Agents groups follow Spaces order
-The Agents menu's Space mode SHALL follow displayed Spaces order, local machine first then remote machines in Spaces order, including connected children. No role SHALL promote a group. Equal names on different machines SHALL remain separate; same-machine groups spanning spaces SHALL use the earliest represented row. Pinned agents SHALL retain their leading section. Priority mode SHALL remain unchanged.
-
-#### Scenario: Interleaved agent groups and machines
-- **WHEN** agents arrive in a different order from Spaces, with coordinators on multiple machines
-- **THEN** their Space-mode groups follow the Spaces machine blocks and row order, not agent arrival or coordinator-first promotion
-- **AND** equal names across machines remain independent groups with their own counts and folds
-
-#### Scenario: Native reorder and attached children
-- **WHEN** a native space or connected sibling changes position
-- **THEN** Space-mode groups follow the updated full Spaces projection, with attached children under their coordinator even if folded in Spaces
-- **AND** group order changes no space, terminal, tab or fleet identity and starts no discovery work
-
-#### Scenario: Shared group or unavailable space
-- **WHEN** one same-machine group represents several spaces or its native space is temporarily unavailable
-- **THEN** a shared group uses its earliest represented Spaces position, while unavailable groups remain in stable order at their machine's tail
-- **AND** existing same-machine grouping, fold identities, counts and full navigation membership remain intact
-
-#### Scenario: Pinned rows and Priority mode
-- **WHEN** agents are pinned or the person selects Group agents by: Priority
-- **THEN** pinned agents retain their separate leading section and Priority retains its existing urgency, time and sequence ordering
-- **AND** native space reorder and coordinator metadata changes do not alter Priority or start attachment presentation queries there
-
 ### Requirement: Consistent Git stage and verdict boxes
 Git stage and verdict controls SHALL share a tight width equal to the longest supported caption's natural text width plus 6px side padding on each side, with equal 18px height and centred text. There SHALL be no additional common-width allowance. Interaction bounds SHALL match the visible boxes. Existing right alignment, title truncation, row height, guarded actions and tooltip suppression SHALL remain unchanged.
 
@@ -2251,6 +2228,29 @@ Files and Git source-selection requirements SHALL use the sidebar's held source 
 - **WHEN** manual or existing automatic refresh runs while pinned, or a reply arrives after unpinning or recapturing a different source
 - **THEN** refresh updates only the held source under existing lifecycle rules, and obsolete replies cannot populate a newer effective context
 - **AND** hidden or disabled plugins start no new work and the pin persists no file tree, PR inventory, callbacks or credentials
+
+### Requirement: Space-mode Agents groups follow Spaces order
+The Agents menu's Space mode SHALL follow displayed Spaces order, local machine first then remote machines in Spaces order, including connected children. No role SHALL promote a group. Equal names on different machines SHALL remain separate; same-machine groups spanning spaces SHALL use the earliest represented row. Pinned agents SHALL retain their leading section. Priority mode SHALL remain unchanged.
+
+#### Scenario: Interleaved agent groups and machines
+- **WHEN** agents arrive in a different order from Spaces, with coordinators on multiple machines
+- **THEN** their Space-mode groups follow the Spaces machine blocks and row order, not agent arrival or coordinator-first promotion
+- **AND** equal names across machines remain independent groups with their own counts and folds
+
+#### Scenario: Native reorder and attached children
+- **WHEN** a native space or connected sibling changes position
+- **THEN** Space-mode groups follow the updated full Spaces projection, with attached children under their coordinator even if folded in Spaces
+- **AND** group order changes no space, terminal, tab or fleet identity and starts no discovery work
+
+#### Scenario: Shared group or unavailable space
+- **WHEN** one same-machine group represents several spaces or its native space is temporarily unavailable
+- **THEN** a shared group uses its earliest represented Spaces position, while unavailable groups remain in stable order at their machine's tail
+- **AND** existing same-machine grouping, fold identities, counts and full navigation membership remain intact
+
+#### Scenario: Pinned rows and Priority mode
+- **WHEN** agents are pinned or the person selects Group agents by: Priority
+- **THEN** pinned agents retain their separate leading section and Priority retains its existing urgency, time and sequence ordering
+- **AND** native space reorder and coordinator metadata changes do not alter Priority or start attachment presentation queries there
 
 ### Requirement: Crew owns its Spaces label visibility contribution
 The enabled Crew plugin SHALL contribute its own Crew label toggle to Spaces through the generic plugin boundary. The choice SHALL default true, survive plugin disablement and affect only its Spaces tag presentation. Disabled-plugin or obsolete popup callbacks SHALL NOT change it. Opening or toggling the entry SHALL start no plugin work or external operation.

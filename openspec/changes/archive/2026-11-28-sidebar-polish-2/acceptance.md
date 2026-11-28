@@ -4,6 +4,7 @@ Verdict: accepted only when an authorized human directly merges the containing e
 
 The maintainer integration decision accepts these scenarios:
 - Agents group chevrons share Spaces inset hover and focus without shifting count or status columns, and activate their group once.
+- Space-mode Agents groups follow displayed Spaces order in machine blocks, including attached children, while pinned rows and exact Priority ordering retain their behavior.
 - Git stages and verdicts share the longest supported caption width plus existing padding, independent of displayed statuses and accepted rounds.
 - Crew label is checked by default in Show icons only while Crew is enabled, preserves its choice and leaves terminal badges and fleet behavior unchanged.
 - Childless Crew labels end at the machine-chevron glyph edge without empty rails; connected parents keep their existing label, count and disclosure grid.
@@ -21,14 +22,15 @@ The maintainer integration decision accepts these scenarios:
   "specBaseSha": "971941d01749393996ababf31f547653170e1c99",
   "acceptanceScenarios": [
     "Agents group chevrons share Spaces inset hover and focus without shifting count or status columns, and activate their group once.",
+    "Space-mode Agents groups follow displayed Spaces order in machine blocks, including attached children, while pinned rows and exact Priority ordering retain their behavior.",
     "Git stages and verdicts share the longest supported caption width plus existing padding, independent of displayed statuses and accepted rounds.",
     "Crew label is checked by default in Show icons only while Crew is enabled, preserves its choice and leaves terminal badges and fleet behavior unchanged.",
     "Childless Crew labels end at the machine-chevron glyph edge without empty rails; connected parents keep their existing label, count and disclosure grid.",
     "Targeted synthetic geometry, interaction, plugin and ownership checks pass; native pixel validation remains unperformed."
   ],
-  "archiveDigest": "79ccd71a2dff24932c383a4f2c208e405493cc64dd65133e3a68ff2598c4c47d",
-  "specDigest": "4b266c789d691668ab70609a893c66b80d54c7e16b119958f858b32defa1cb05",
-  "tasksDigest": "2b2c7f99fe3f7a5624a72c704ef59ab01fcdf980d7780bbbc9e8f7451c8a27f1",
+  "archiveDigest": "71c0d7ecd8a21af37815cca5adea2ca787231e918c2a73ce056ad65e845c31f1",
+  "specDigest": "d08244402b4e48c93451d2938f0e0835d08dd7f9719521bb5e24e87237536bf5",
+  "tasksDigest": "9a7abafddc8c268ece9b6d5a965e84024967f4f170d2a987e4b07e5ce6f18fd3",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []
 }
