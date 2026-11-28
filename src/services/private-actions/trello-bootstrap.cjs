@@ -1,17 +1,24 @@
 'use strict';
-// Public bootstrap: no secrets or listener.
+// Fixed public bootstrap.
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),cp=require('node:child_process'),crypto=require('node:crypto'),net=require('node:net');
 const hash=value=>crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const refused=code=>{throw Object.assign(Error(code),{code});};
 function cleanEnv(session,source=process.env){const env={...source,HC_SESSION:session};for(const k of Object.keys(env))if(['hc_socket','hc_terminal_id','psmodulepath'].includes(k.toLowerCase()))delete env[k];return env;}
-// Connect to the existing public RPC endpoint directly: hc connect/exec can autostart Core.
+// Existing-only RPC; no Core autostart.
 function endpoint(session){
  if(process.platform==='win32')return `\\\\.\\pipe\\herdr-core-${os.userInfo().username.replace(/[^a-zA-Z0-9]/g,'')}-${session}.sock`;
  const state=path.join(process.env.XDG_STATE_HOME||path.join(os.homedir(),'.local/state'),'herdr-core',session);
  const run=process.env.XDG_RUNTIME_DIR||(fs.existsSync(`/run/user/${process.getuid()}`)?`/run/user/${process.getuid()}`:null);
  return path.join(run?path.join(run,'herdr-core'):state,session+'.sock');
 }
-function coreConnection(session,{connect=net.createConnection}={}){
+// Identification sets pipe SQOS before open; never use Node/libuv on Windows.
+function windowsPipe(address,{spawn=cp.spawn,env=process.env}={}){
+ if(!address.startsWith('\\\\.\\pipe\\')||/[\r\n']/.test(address))refused('MACHINE_IDENTITY');
+ const script=`$ErrorActionPreference='Stop';[Console]::InputEncoding=[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false);$p=[IO.Pipes.NamedPipeClientStream]::new('.', '${address.slice(9)}',[IO.Pipes.PipeDirection]::InOut,[IO.Pipes.PipeOptions]::Asynchronous,[Security.Principal.TokenImpersonationLevel]::Identification);try{$p.Connect(3000);$r=[IO.StreamReader]::new($p);$w=[IO.StreamWriter]::new($p,[Text.UTF8Encoding]::new($false));$w.AutoFlush=$true;while($null -ne ($line=[Console]::ReadLine())){$w.WriteLine($line);$s=[Text.StringBuilder]::new();while(($c=$r.Read()) -ne 10){if($c -lt 0 -or $s.Length -ge 262144){throw 'Closed'};[void]$s.Append([char]$c)};[Console]::WriteLine($s.ToString())}}finally{$p.Dispose()}`;
+ const child=spawn(path.join(env.SystemRoot,'System32/WindowsPowerShell/v1.0/powershell.exe'),['-NoProfile','-NonInteractive','-EncodedCommand',Buffer.from(script,'utf16le').toString('base64')],{env:cleanEnv('default',env),windowsHide:true,stdio:['pipe','pipe','pipe']});
+ const stream=child.stdout,destroy=stream.destroy.bind(stream);stream.write=child.stdin.write.bind(child.stdin);stream.destroy=(error)=>{child.kill();child.stdin.destroy();return destroy(error);};child.stderr.resume();child.on('error',e=>stream.destroy(e));child.stdin.on('error',e=>stream.destroy(e));return stream;
+}
+function coreConnection(session,{connect=process.platform==='win32'?windowsPipe:net.createConnection}={}){
  const socket=connect(endpoint(session)),pending=new Map();let seq=0,text='',size=0;
  const close=()=>{socket.destroy();for(const p of pending.values())p.reject(Object.assign(Error(),{code:'MACHINE_UNAVAILABLE'}));pending.clear();};
  socket.on('error',close);socket.on('close',close);socket.setEncoding('utf8');
@@ -70,7 +77,6 @@ async function main(config,installerDigest,{connectCore=coreConnection,verifyCor
  let consumed=false;
  input.on('error',()=>{retired=true;rejectInput(Object.assign(Error(),{code:'SSH_UNAVAILABLE'}));});
  input.on('end',()=>{retired=true;if(!consumed)rejectInput(Object.assign(Error(),{code:'INPUT'}));});
- // Handle early input rejection before probing.
  let receive=nextInput();receive.catch(()=>{});
  timer=setTimeout(()=>{retired=true;input.destroy?.();rejectInput(Object.assign(Error(),{code:'SSH_UNAVAILABLE'}));},55000);
  output.on?.('error',()=>{retired=true;});
@@ -83,9 +89,11 @@ async function main(config,installerDigest,{connectCore=coreConnection,verifyCor
   const execution=executionHome();let metadata,metadataBytes,metadataStamp;
   if(platform==='win32'){
    try{
-   checkWindows(config.machine.session);const facts=getWindowsFacts();if(!/^S-1-/.test(facts.sid)||facts.profile!==execution.userHome)refused('MACHINE_IDENTITY');execution.sid=facts.sid;
+   checkWindows(config.machine.session);const facts=getWindowsFacts();
+   if(facts.elevated===true)refused('SSH_ELEVATED_PENDING');if(facts.elevated!==false)refused('MACHINE_IDENTITY');
+   if(!/^S-1-/.test(facts.sid)||facts.profile!==execution.userHome)refused('MACHINE_IDENTITY');execution.sid=facts.sid;
    metadata=path.join(process.env.LOCALAPPDATA,'herdr-core',config.machine.session,'core.json');safePath(metadata);const stat=fs.lstatSync(metadata);if(!stat.isFile()||stat.nlink!==1||stat.size>32768)refused('MACHINE_IDENTITY');metadataStamp=JSON.stringify([stat.ino,stat.ctimeMs,stat.mtimeMs]);metadataBytes=fs.readFileSync(metadata);if(JSON.parse(metadataBytes).id!==config.machine.id)refused('MACHINE_CHANGED');
-   }catch(e){refused(e.code?.startsWith('MACHINE_')?e.code:e.code==='ENOENT'?'MACHINE_UNAVAILABLE':'MACHINE_IDENTITY');}
+   }catch(e){refused(e.code?.startsWith('MACHINE_')||e.code==='SSH_ELEVATED_PENDING'?e.code:e.code==='ENOENT'?'MACHINE_UNAVAILABLE':'MACHINE_IDENTITY');}
   }
   connection=connectCore(config.machine.session);await verifyCore(connection,config.machine,execution);
   const guard=()=>{if(!current())refused('STALE');if(!connection.current())refused('MACHINE_CHANGED');const now=executionHome();if(execution.sid){now.sid=execution.sid;safePath(metadata);const s=fs.lstatSync(metadata);if(!s.isFile()||s.nlink!==1||JSON.stringify([s.ino,s.ctimeMs,s.mtimeMs])!==metadataStamp||!fs.readFileSync(metadata).equals(metadataBytes))refused('MACHINE_CHANGED');}if(!sameExecution(execution,now))refused('MACHINE_CHANGED');if(!current())refused('STALE');};
@@ -111,7 +119,7 @@ async function main(config,installerDigest,{connectCore=coreConnection,verifyCor
    if(result.ok)result.data={...result.data,destination:binding};
   }
   send({version:1,phase:'result',result});
- }catch(e){send({version:1,phase:'result',result:{version:1,ok:false,error:{code:['INPUT','MACHINE_CHANGED','MACHINE_IDENTITY','MACHINE_ELEVATED','CORE_ELEVATED','MACHINE_UNAVAILABLE','STALE','RUNTIME_PREREQUISITE','RUNTIME_MISSING','RUNTIME_OUTDATED','RUNTIME_CONFLICT','RUNTIME_BUSY','RUNTIME_INVALID','RUNTIME_PATH','SSH_UNAVAILABLE'].includes(e.code)?e.code:'SSH_UNAVAILABLE'}}});}
+ }catch(e){send({version:1,phase:'result',result:{version:1,ok:false,error:{code:['INPUT','MACHINE_CHANGED','MACHINE_IDENTITY','MACHINE_ELEVATED','CORE_ELEVATED','SSH_ELEVATED_PENDING','MACHINE_UNAVAILABLE','STALE','RUNTIME_PREREQUISITE','RUNTIME_MISSING','RUNTIME_OUTDATED','RUNTIME_CONFLICT','RUNTIME_BUSY','RUNTIME_INVALID','RUNTIME_PATH','SSH_UNAVAILABLE'].includes(e.code)?e.code:'SSH_UNAVAILABLE'}}});}
  finally{clearTimeout(timer);connection?.close();input.destroy?.();}
 }
-module.exports={main,privateHome,windowsUser,windowsFacts,proveCore,coreConnection,endpoint,sameExecution};
+module.exports={main,privateHome,windowsUser,windowsFacts,proveCore,coreConnection,windowsPipe,endpoint,sameExecution};

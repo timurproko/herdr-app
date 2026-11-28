@@ -198,13 +198,20 @@ license are installed with the runtime. Only fixed owner workers are allowed;
 there is no arbitrary command facility. Native checking refuses private actions. The fixed Trello route supports captured
 direct-SSH destinations through the local bridge: Core/session/user/home readiness
 precedes stdin secrets, strict existing host trust is required and no remote socket
-or arbitrary command facility is exposed. Elevated Windows SSH is accepted only
-for the verified same SID/profile/home as the selected normal-user Core. Fixed
-public identity probes use an existing Core RPC connection without autostart;
+or arbitrary command facility is exposed. The planned elevated Windows SSH route
+requires the same SID/profile/home as a selected normal-user Core, but remains
+hard-refused until protected-output implementation and real two-token storage
+proof are complete. This refusal precedes even a Core pipe connection. Windows
+public RPC opens use an explicit .NET Identification-level client, not Node's
+impersonation-capable default pipe open. A fake server therefore cannot borrow
+an elevated client's authority. Fixed public identity probes use an existing Core
+RPC connection without autostart;
 credentials never travel through Core. A digest-pinned public installer frame is
 sent over SSH before READY to keep the fixed command within CMD limits; the
 credential/action frame still waits for validated READY. Root, different users,
-unsafe metadata and elevated/unverifiable Core remain refused. No Core launch,
+unsafe metadata and elevated/unverifiable Core remain refused with their actual
+reason and next action; the elevated-Core error reaches the single card-level
+explanation rather than duplicate requirement failures. No Core launch,
 permission, SSH or UAC configuration changes occur. Closing/cancelling cannot promise an
 already accepted private-store write was undone; reconcile destination status
 explicitly before retrying. Runtime install is a separate explicit prerequisite

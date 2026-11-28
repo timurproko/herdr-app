@@ -18,18 +18,19 @@ try{
  changeAfterHello=true;hellos=0;await assert.rejects(b.proveCore(fake(),machine,execution),{code:'MACHINE_CHANGED'});changeAfterHello=false;
  await assert.rejects(b.proveCore({call:async()=>{throw Object.assign(Error(),{code:'MACHINE_UNAVAILABLE'});}},machine,execution),{code:'MACHINE_UNAVAILABLE'});
  assert.throws(()=>b.privateHome({user:{uid:0},platform:'linux'}),{code:'MACHINE_ELEVATED'});
- // Elevated SSH is not rejected for its token: metadata ownership is still enforced.
+ // Metadata ownership remains enforced independently of the separate elevation gate.
  for(const elevated of [true,false])b.windowsUser('named',{env:{LOCALAPPDATA:root,SystemRoot:'C:/Windows'},execute(_file,args,options){const script=Buffer.from(args.at(-1),'base64').toString('utf16le');assert.ok(!script.includes('exit 31'));assert.ok(script.includes('$o -ne $i.User.Value'));assert.equal(options.env.HC_SESSION,'named');assert.equal(typeof elevated,'boolean');}});
  process.env.LOCALAPPDATA=root;const metadata=path.join(root,'herdr-core/named/core.json');fs.mkdirSync(path.dirname(metadata),{recursive:true});
- async function boot({beforeReady,afterReady,verify=b.proveCore,source=installer,kind='probe',current=()=>true,prepare,windowsCheck=()=>{}}={}){
+ async function boot({beforeReady,afterReady,verify=b.proveCore,source=installer,kind='probe',current=()=>true,prepare,windowsCheck=()=>{},sshElevated=false,onConnect=()=>{}}={}){
   fs.writeFileSync(metadata,JSON.stringify({id:machine.id}));prepare?.(metadata);const input=new PassThrough(),output=new PassThrough();let text='',sent=false;
   output.on('data',chunk=>{text+=chunk;if(!sent&&text.includes('"phase":"ready"')){sent=true;afterReady?.();input.write(JSON.stringify({version:1,kind,payload:{action:'runtime.probe'}})+'\n');}});
   let verifications=0;
-  const done=b.main({version:1,machine,expected:{}},require('node:crypto').createHash('sha256').update(source).digest('hex'),{platform:'win32',input,output,executionHome:()=>({...execution}),checkWindows:windowsCheck,getWindowsFacts:()=>({sid:execution.sid,profile:root,elevated:true}),connectCore:()=>({...fake(),current}),verifyCore:async(...args)=>{await verify(...args);if(++verifications===1)beforeReady?.();}});
+  const done=b.main({version:1,machine,expected:{}},require('node:crypto').createHash('sha256').update(source).digest('hex'),{platform:'win32',input,output,executionHome:()=>({...execution}),checkWindows:windowsCheck,getWindowsFacts:()=>({sid:execution.sid,profile:root,elevated:sshElevated}),connectCore:()=>{onConnect();return {...fake(),current};},verifyCore:async(...args)=>{await verify(...args);if(++verifications===1)beforeReady?.();}});
   input.write(JSON.stringify({phase:'bootstrap',source})+'\n');await done;
   return text.trim().split('\n').map(JSON.parse);
  }
  let frames=await boot();assert.equal(frames[0].phase,'ready');assert.equal(frames.at(-1).result.ok,true);
+ for(const kind of ['probe','install','owner']){let connected=false;frames=await boot({sshElevated:true,kind,onConnect:()=>{connected=true;}});assert.equal(frames.length,1);assert.equal(frames[0].result.error.code,'SSH_ELEVATED_PENDING');assert.equal(connected,false,'No pipe connection, READY, installer or owner action before elevated-output proof');}
  frames=await boot({beforeReady:()=>fs.writeFileSync(metadata,JSON.stringify({id:'replaced'}))});assert.equal(frames.length,1);assert.equal(frames[0].result.error.code,'MACHINE_CHANGED');
  frames=await boot({afterReady:()=>fs.writeFileSync(metadata,JSON.stringify({id:'replaced'}))});assert.equal(frames.at(-1).result.error.code,'MACHINE_CHANGED');
  frames=await boot({prepare:file=>fs.unlinkSync(file)});assert.equal(frames[0].result.error.code,'MACHINE_UNAVAILABLE');
@@ -45,5 +46,5 @@ try{
  const address=process.platform==='win32'?`\\\\.\\pipe\\trello-fixture-${process.pid}`:path.join(root,'rpc.sock');
  server=net.createServer(socket=>{let text='';socket.on('data',bytes=>{text+=bytes;let i;while((i=text.indexOf('\n'))>=0){const request=JSON.parse(text.slice(0,i));text=text.slice(i+1);socket.write(JSON.stringify({jsonrpc:'2.0',id:request.id,result:{generation:1,core:{id:machine.id}}})+'\n');}});});
  await new Promise(resolve=>server.listen(address,resolve));const connection=b.coreConnection('named',{connect:()=>net.createConnection(address)});assert.equal((await connection.call('hello',{generation:1})).core.id,machine.id);connection.close();assert.equal(connection.current(),false);
- console.log('PASS: same-user/Core token/home proof, named-session binding, root/elevated-Core refusal, metadata races before/after READY, existing-only public RPC');
+ console.log('PASS: same-user/Core token/home proof, named-session binding, root/elevated-Core refusal, metadata races before/after READY, elevated-output gate before every pipe/action, existing-only public RPC');
 }finally{if(old===undefined)delete process.env.LOCALAPPDATA;else process.env.LOCALAPPDATA=old;if(server)await new Promise(resolve=>server.close(resolve));fs.rmSync(root,{recursive:true,force:true});}

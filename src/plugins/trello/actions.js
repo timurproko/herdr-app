@@ -33,7 +33,9 @@ const safeErrors = {
   MACHINE_UNAVAILABLE: 'Configured Core session unavailable.',
   MACHINE_CHANGED: 'Machine changed. Check again.',
   MACHINE_IDENTITY: 'Execution user or home could not be verified.',
-  MACHINE_ELEVATED: 'This machine is connected with an administrator (elevated) SSH login, which Trello refuses for safety. Connect to this machine as a normal user running Herdr Core, or set up the plugin on that machine directly.',
+  MACHINE_ELEVATED: 'This SSH connection runs as root. Connect as the normal user running the selected Herdr Core, then Check again.',
+  CORE_ELEVATED: 'Herdr Core on this machine is elevated. Use a normal-user Core, then Check again; Herdr will not change or restart Core here.',
+  SSH_ELEVATED_PENDING: 'Elevated SSH setup is not available until protected output is verified. Connect without elevation as the Core user, then Check again.',
   MACHINE_UNSUPPORTED: 'Temporary or custom-via machine unsupported.',
   RUNTIME_PREREQUISITE: 'Node 20+ and the configured Core are required.',
   RUNTIME_MISSING: 'Install Trello on this machine.',
@@ -48,8 +50,10 @@ const safeErrors = {
 };
 const unsupported = {
   MACHINE_ELEVATED: safeErrors.MACHINE_ELEVATED,
-  MACHINE_UNSUPPORTED: 'This machine uses a temporary or custom-routed connection, so Trello cannot verify where credentials would be saved. Use a direct SSH connection as a normal user, or set up the plugin on that machine directly.',
-  MACHINE_IDENTITY: 'Trello cannot verify the user and home for this SSH connection, so no credentials were sent. Connect as the normal user running Herdr Core, or set up the plugin on that machine directly.',
+  CORE_ELEVATED: safeErrors.CORE_ELEVATED,
+  SSH_ELEVATED_PENDING: safeErrors.SSH_ELEVATED_PENDING,
+  MACHINE_UNSUPPORTED: 'Herdr cannot verify this temporary or custom-routed connection. Use a direct SSH connection for the Core user, then Check again.',
+  MACHINE_IDENTITY: 'Herdr cannot verify the user and home for this SSH connection, so no credentials were sent. Connect as the user running the selected Herdr Core, then Check again.',
 };
 function unavailable(cx, code) {
   return cx.machine != null && unsupported[code] ? {unavailable: {detail: unsupported[code]}} : {};
