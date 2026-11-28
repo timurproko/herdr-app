@@ -8,8 +8,8 @@
 
 ## 2. Spaces crew labels retain their column with or without child controls
 
-- [ ] 2.1 Reserve the existing numeric/disclosure rail geometry for every crew-bearing row without inventing visible controls; extend `node tests/spaces-worktree-layout.test.mjs` for combined-off, childless, expanded/folded, local/remote, long-name and 100%/130% cases.
-- [ ] 2.2 Keep unrelated metadata, rename, Agents and compact rail unchanged; update the relevant README/docs/TESTING.md alignment description and check the focused layout assertions.
+- [x] 2.1 Reserve the existing numeric/disclosure rail geometry for every crew-bearing row without inventing visible controls; extend `node tests/spaces-worktree-layout.test.mjs` for combined-off, childless, expanded/folded, local/remote, long-name and 100%/130% cases.
+- [x] 2.2 Keep unrelated metadata, rename, Agents and compact rail unchanged; update the relevant README/docs/TESTING.md alignment description and check the focused layout assertions.
 
 ## 3. Delivery kinds tooltips use aligned regular names and muted descriptions
 

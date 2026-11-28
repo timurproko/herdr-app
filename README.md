@@ -971,7 +971,9 @@ Neither row shows a chain, and only the coordinator shows lowercase `crew` in
 Spaces; the terminal-pane header still shows its unchanged `Crew` badge. Unrelated plugin
 tags remain. Crew precedes the coordinator's far-right chevron, which folds its children.
 The chevron and its 24px hover target align with machine headers. Crew stays fixed
-across disclosure; the connected-child-space count stays visible in both states.
+across disclosure, without children and with combined view off; absent count and
+chevron slots stay empty rather than moving the label. The connected-child-space
+count stays visible in both disclosure states.
 Counts, machine + and rename Confirm share one centred inner column; chevrons and
 rename Cancel share the outer column. The coordinator itself is not counted.
 Agents keeps its existing numeric rail. These logical axes scale together at 130%. Folds are local,

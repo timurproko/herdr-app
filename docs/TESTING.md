@@ -147,7 +147,9 @@ terminal, uses no real Crew home and verifies disposable app/Core shutdown.
 ## Connected project Spaces and coherent coordinator inventory
 
 `spaces-worktree-layout.test.mjs` covers the fixed metadata grid: Crew and child
-count stay in place through disclosure. Count, machine + and rename Confirm share
+count stay in place through disclosure; crew also retains that column without
+children or with combined view off, using inert empty count/disclosure slots.
+Count, machine + and rename Confirm share
 a centred inner axis; chevron and Cancel share the outer axis, including 1/12/123
 children, 160–360px, local/pc2 and 100%/130%. Agents' numeric defaults are unchanged.
 Machine/coordinator chevrons share a centre and a 24px target, including hover.
