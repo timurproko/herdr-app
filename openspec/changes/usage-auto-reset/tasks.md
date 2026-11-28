@@ -2,10 +2,10 @@
 
 ## 1. Per-machine reset choices use the existing Settings patterns
 
-- [ ] 1.1 Add stable reset-type/account/scope metadata to the Usage model and worker, retaining individual grant eligibility within grouped types; fixture tests cover Claude Full/model scopes, Codex coverage, repeated credits, unknown types and unusable grants.
-- [ ] 1.2 Normalize default-off automatic reset preferences and empty machine-scoped selections; focused preference tests prove account/organization isolation, no implicit new-type consent and exclusion from portable exports.
-- [ ] 1.3 Add a generic declarative expandable grouped-checkbox body to page fields and declare Automatic reset in Usage; renderer/contract tests cover native checkbox behavior, existing toggle/panel styles, off/on/fold behavior, captured-machine callbacks and absence of extra controls or messages.
-- [ ] 1.4 Document the declaration extension in docs/PLUGIN-UI.md and the defaults/choices in README.md; compare the declared UI with the two supplied reference pictures using synthetic provider data and save proof outside the checkout in the crew task folder.
+- [x] 1.1 Add stable reset-type/account/scope metadata to the Usage model and worker, retaining individual grant eligibility within grouped types; fixture tests cover Claude Full/model scopes, Codex coverage, repeated credits, unknown types and unusable grants.
+- [x] 1.2 Normalize default-off automatic reset preferences and empty machine-scoped selections; focused preference tests prove account/organization isolation, no implicit new-type consent and exclusion from portable exports.
+- [x] 1.3 Add a generic declarative expandable grouped-checkbox body to page fields and declare Automatic reset in Usage; renderer/contract tests cover native checkbox behavior, existing toggle/panel styles, off/on/fold behavior, captured-machine callbacks and absence of extra controls or messages.
+- [x] 1.4 Document the declaration extension in docs/PLUGIN-UI.md and the defaults/choices in README.md; compare the declared UI with the two supplied reference pictures using synthetic provider data and save proof outside the checkout in the crew task folder.
 
 ## 2. Fresh selected-machine quota readings spend at most one authorized reset per depletion
 

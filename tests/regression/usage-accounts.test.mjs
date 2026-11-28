@@ -74,7 +74,9 @@ try {
     grant('New model launch: one Fable reset',['five_hour'],'2027-03-09T07:59:00Z',{gives_back_weekly:true}),
     grant('New model launch: one more Fable reset',['five_hour'],'2027-03-01T07:59:00Z',{gives_back_weekly:true}),
     grant('Paused',['five_hour'],'2027-01-01T00:00:00Z',{paused:true}),grant('Spent',['five_hour'],'2027-01-01T00:00:00Z',{resets_left:0})]}},'max').claudeResets;
-  assert.deepEqual(resets,{available:3,groups:[
+  assert.equal(resets.groups[0].grants.length,1);assert.deepEqual(resets.groups[0].covers,['session','weekly']);
+  assert.deepEqual(resets.groups[1].covers,[],'Model labels alone grant no automatic authority');
+  assert.deepEqual({...resets,groups:resets.groups.map(({typeId,covers,grants,...group})=>group)},{available:3,groups:[
     {name:'Full reset',left:1,endsAt:'2026-12-10T22:00:00.000Z',grantId:'grant-1',usable:false,needsLimit:true,cooldownUntil:null,reason:null},
     {name:'Fable reset',left:2,endsAt:'2027-03-01T07:59:00.000Z',grantId:'grant-3',usable:true,needsLimit:false,cooldownUntil:null,reason:null}]},'The soonest-expiring usable grant is the one claimed');
   // Claiming: exactly the shown account, one fixed POST shape, answers mapped; no other writes.

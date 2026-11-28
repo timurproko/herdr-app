@@ -54,7 +54,7 @@ function copilotBillingUrl(login,now=Date.now()) {
   return `https://api.github.com/users/${login}/settings/billing/premium_request/usage?year=${date.getUTCFullYear()}&month=${date.getUTCMonth()+1}`;
 }
 const isBillingUrl=url=>/^https:\/\/api\.github\.com\/users\/[A-Za-z0-9][A-Za-z0-9_-]{0,99}\/settings\/billing\/premium_request\/usage\?year=20\d{2}&month=(?:[1-9]|1[0-2])$/.test(url);
-// Claiming a Claude limit reset: only on the person's click, for one grant of one account.
+// Reset actions are explicit claims, never part of ordinary collection.
 const RESET_ID=/^[a-z0-9_-]{1,64}$/,REQUEST_ID=/^[A-Za-z0-9_-]{1,64}$/,ORGANIZATION=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CODEX_CONSUME='https://chatgpt.com/backend-api/wham/rate-limit-reset-credits/consume',CREDIT_ID=/^[A-Za-z0-9_-]{1,100}$/;
 const validConsumeBody=body=>CREDIT_ID.test(body?.credit_id??'')&&REQUEST_ID.test(body?.redeem_request_id??'')&&Object.keys(body).length===2;
@@ -314,7 +314,13 @@ function claudeResets(value) {
     const clears=Array.isArray(g.clears)?g.clears:[],label=text(g.label,200)??'';
     const model=/\bfable\b/i.test(label)?'Fable':null;
     const name=clears.includes('seven_day')&&!g.gives_back_weekly?'Full reset':model?`${model} reset`:'Limit reset';
-    const ends=stamp(g.ends_at),group=groups.get(name)??{name,left:0,endsAt:null,grantId:null,usable:false,needsLimit:false,cooldownUntil:null,reason:null};
+    // Scope comes from cleared quota fields, never from the friendly model name.
+    const mapped=clears.map(field=>field==='five_hour'?'session':field==='seven_day'?'weekly':/^seven_day_[a-z0-9_-]+$/.test(field)?`model:${field.slice(10)}`:null);
+    const covers=mapped.length&&mapped.every(Boolean)&&g.gives_back_weekly!==true?[...new Set(mapped)].sort():[];
+    const typeId=covers.length?JSON.stringify(covers):`unknown:${name.toLowerCase()}`;
+    const groupKey=JSON.stringify([name,typeId]);
+    const ends=stamp(g.ends_at),group=groups.get(groupKey)??{name,typeId,covers,left:0,endsAt:null,grantId:null,usable:false,needsLimit:false,cooldownUntil:null,reason:null,grants:[]};
+    group.grants.push({name,typeId,covers,grantId:g.id,left,endsAt:ends,usable:g.usable_now===true&&!(Array.isArray(g.blocking)&&g.blocking.length),needsLimit:g.use_requires_limit===true,cooldownUntil:stamp(g.cooldown_until??value.cooldown_until)});
     group.left+=left;
     if(ends&&(group.endsAt===null||ends<group.endsAt))group.endsAt=ends;
     // The button claims the grant that expires first among those usable now (as claude.ai does).
@@ -322,7 +328,7 @@ function claudeResets(value) {
     const better=!group.grantId||(usable&&!group.usable)||(usable===group.usable&&ends&&(!group.grantEnds||ends<group.grantEnds));
     if(better)Object.assign(group,{grantId:g.id,grantEnds:ends,usable,needsLimit:g.use_requires_limit===true,
       cooldownUntil:stamp(g.cooldown_until??value.cooldown_until),reason:text(g.unavailable_reason,80)??null});
-    groups.set(name,group);
+    groups.set(groupKey,group);
   }
   const list=[...groups.values()].map(({grantEnds,...g})=>g);
   return {available:list.reduce((n,g)=>n+g.left,0),groups:list};
@@ -484,7 +490,10 @@ async function codexResetList(c,get) {
   for(const credit of response.body.credits.slice(0,32)) {
     if(!CREDIT_ID.test(credit?.id??'')||credit.status!=='available')continue;
     const ends=Date.parse(credit.expires_at);
-    groups.push({name:text(credit.title,40)??'Reset',left:1,endsAt:Number.isFinite(ends)?new Date(ends).toISOString():null,grantId:credit.id,
+    const name=text(credit.title,40)??'Reset';
+    // Full reset is the known Codex base rate-limit reset, not extra/model quotas.
+    const covers=name==='Full reset'?['session','weekly']:[];
+    groups.push({name,typeId:covers.length?'full':`unknown:${name.toLowerCase()}`,covers,left:1,endsAt:Number.isFinite(ends)?new Date(ends).toISOString():null,grantId:credit.id,
       usable:credit.is_supported_by_plan!==false,needsLimit:false,cooldownUntil:null,reason:credit.is_supported_by_plan===false?'plan':null});
   }
   groups.sort((a,b)=>(a.endsAt??'9')<(b.endsAt??'9')?-1:1);

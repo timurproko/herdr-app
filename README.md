@@ -1364,6 +1364,15 @@ other refreshes show Checking there rather than presenting cached Running as rea
 Once fresh Running facts arrive, eligible runtime controls re-enable immediately,
 without waiting for the refresh icon's separate visual minimum.
 
+## Automatic Usage resets
+
+**Settings → Usage → Automatic reset** is off by default for each machine.
+Turning it on reveals a Resets-style expandable area with simple checkboxes
+under each provider and account. Only types that Claude or Codex reports appear;
+nothing is selected automatically, including newly discovered reset types.
+Several credits of one type share one checkbox. Turning the switch off preserves
+choices. Account-bound reset authorization is not a portable preference.
+
 ## Usage request limits
 
 Healthy usage accounts are checked at most every 10 minutes while the window is active.

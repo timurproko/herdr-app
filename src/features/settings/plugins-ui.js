@@ -4,7 +4,7 @@
 // particular plugin: wording comes from the declarations, geometry from the kit.
 import { div, svg, image } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, Checkbox, TextareaState, Textarea } from "gpui-base";
-import { U, slot, description, button, control, chevron, emptyState, dropdown, menuSurface, searchField, settingsRow, iconButton, chevronSlot } from "./ui.js";
+import { U, slot, description, button, control, chevron, emptyState, dropdown, menuSurface, searchField, settingsRow, iconButton, chevronSlot, collapsible } from "./ui.js";
 import { KIT, descriptionHint, badge, statusText, workingStatus, statusRail, actionButton, actionTrigger, checkButton, choice, pickerTabs, optionDropdown, skeleton,
   disclosure, fieldRow, scopeRow, removableRow, pickerHeader, pickerListHeight, pickerFooter, changeCount, changeLabel, actionInput } from './settings-kit.js';
 import { PLUGINS, pluginEnabled, setPluginEnabled, pluginSetting, setPluginSetting, checkPlugin, pluginContext, pluginOptions, orderedPlugins, setPluginOrder } from './plugins.js';
@@ -1033,6 +1033,7 @@ export function pluginPage(owner, t, page) {
   const scope = page.machine ? owner.settingsMachine ?? null : null;
   const act = (field, value) => (_e, cx) => {
     if ((page.machine ? owner.settingsMachine ?? null : null) !== scope || page.enabled?.() === false) return;
+    if(field.checkboxGroups&&value===true)owner.pageCheckboxFolds?.delete(JSON.stringify([page.id,field.key,scope]));
     field.set(scope, value, cx); cx.notify();
   };
   return v_flex().id(`st-${page.id}-page`)
@@ -1041,7 +1042,27 @@ export function pluginPage(owner, t, page) {
       const id = `st-${page.id}-${field.key}`, value = field.get(scope);
       const widget = field.type === 'toggle' ? owner.toggle(t, id, value, act(field, !value))
         : choice(t, id, field.options, value, (v, cx) => act(field, v)(null, cx));
-      return owner.row(t, field.label, field.about, widget, index === page.fields.length - 1);
+      const row=owner.row(t, field.label, field.about, widget, index === page.fields.length - 1);
+      const body=field.checkboxGroups;
+      if(!body||!value)return row;
+      const groups=body.groups(scope),selected=body.selected(scope),foldKey=JSON.stringify([page.id,field.key,scope]);
+      const open=!(owner.pageCheckboxFolds??=new Set()).has(foldKey);
+      const current=()=>page.enabled?.()!==false&&(page.machine?owner.settingsMachine??null:null)===scope&&field.get(scope);
+      const check=option=>Checkbox.new(`${id}-check-${option.key}`).checked(selected.includes(option.key))
+        .flex().gap(8).items_center().cursor_pointer().accessibility_label(option.label)
+        .on_change((checked,cx)=>{if(typeof checked!=='boolean'||!current()||!body.groups(scope).some(g=>g.groups.some(a=>a.options.some(o=>o.key===option.key))))return;
+          body.set(scope,option.key,checked,cx);cx.notify();})
+        .child(div().size(14).flex_none().rounded(3).border_1().border_color(selected.includes(option.key)?t.solid:t.input)
+          .bg(selected.includes(option.key)?t.solid:'#00000000').flex().items_center().justify_center()
+          .when(selected.includes(option.key),e=>e.child(svg(I('check')).size(10).text_color(t.solid_foreground))))
+        .child(div().child(option.label));
+      const contents=()=>v_flex().gap(10).children(groups.map(group=>v_flex().gap(6)
+        .child(div().text_size(U.font).child(group.label))
+        .children(group.groups.map(account=>v_flex().gap(4)
+          .child(div().text_size(U.meta).text_color(t.muted).child(account.label))
+          .children(account.options.map(check))))));
+      return v_flex().child(row).child(collapsible(t,{id:`${id}-resets`,title:body.title,open,chevron:'end',on:t.background,
+        onToggle:(_e,cx)=>{if(!current())return;open?owner.pageCheckboxFolds.add(foldKey):owner.pageCheckboxFolds.delete(foldKey);cx.notify();}},contents));
     }));
 }
 

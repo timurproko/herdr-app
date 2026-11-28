@@ -48,6 +48,18 @@ const drain=async()=>{while(jobs.length)await jobs.shift()(cx);};
 const tick=async()=>{for(let i=0;i<12;i++)await Promise.resolve();};
 const owner={settingsMachine:null,heading:element,row:element,toggle:element};
 assert.ok(pages.renderPluginSettings('usage',owner,{}));
+// Declared grouped checkboxes use the real common panel, with captured-machine guards.
+const choiceKey=JSON.stringify(['codex','fixture',null,'full']);
+store.updatePreferences(null,{automaticReset:true});
+state.set('custom.usage.local.cache',{version:5,reports:[{id:'codex-fixture',sourceId:'codex',account:{id:'fixture',label:'fixture@example.test'},report:{status:'available',codexResets:{groups:[{name:'Full reset',typeId:'full',covers:['weekly'],grantId:'g',left:1,usable:true}]}}}]});
+const flatten=node=>node&&typeof node==='object'?[node,...(node.kids??[]).flatMap(flatten)]:[];
+let checks=flatten(pages.renderPluginSettings('usage',owner,{})).filter(n=>n.attrs.accessibility_label?.[0]==='Full reset');
+assert.equal(checks.length,1);assert.equal(checks[0].attrs.checked[0],false);
+checks[0].attrs.on_change[0](true,cx);assert.deepEqual(Array.from(store.preferences(null).resetSelections),[choiceKey]);
+owner.settingsMachine='pc2';checks[0].attrs.on_change[0](false,cx);assert.deepEqual(Array.from(store.preferences(null).resetSelections),[choiceKey],'Old machine checkbox is inert');owner.settingsMachine=null;
+store.updatePreferences(null,{automaticReset:false});checks[0].attrs.on_change[0](false,cx);assert.equal(store.preferences(null).resetSelections.length,1,'Off toggle rejects stale checkbox');
+assert.equal(flatten(pages.renderPluginSettings('usage',owner,{})).some(n=>n.attrs.accessibility_label?.[0]==='Full reset'),false);
+state.set('custom.usage.local.preferences',structuredClone(preferences));state.delete('custom.usage.local.cache');
 const pageRefresh=pages.pluginPageRefresh('usage');assert.ok(pageRefresh,'Usage declares a header Refresh for the Settings machine');
 assert.equal(pageRefresh.label,'Refresh usage');assert.equal(typeof pageRefresh.run,'function');assert.equal(pages.pluginPageRefresh('look'),null);
 r.setPluginEnabled(plugin,false);const saved=JSON.stringify([...state].filter(([key])=>key.endsWith('.preferences')));

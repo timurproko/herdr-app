@@ -391,6 +391,14 @@ export const usagePage = {
 };
 ```
 
+A page toggle can declare `checkboxGroups: {title, groups(machine), selected(machine),
+set(machine, key, on, cx)}`. While on, the shared renderer shows an initially open
+collapsible panel beneath the row, using the existing panel and native checkboxes.
+`groups` returns `[{id,label,groups:[{id,label,options:[{key,label}]}]}]`;
+`selected` returns checked keys. The renderer rechecks machine, toggle, page
+availability and current option membership before calling `set`. No plugin draws
+its own checkbox markup. Folding is view-local and machine-qualified.
+
 The plugin owns where values live (`get`/`set`); the generated `plugin-pages.js` passes the
 declaration to `pluginPage()`, which draws it with Settings' own rows.
 
