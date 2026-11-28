@@ -10,6 +10,9 @@ let pairLinks=[],freshLinks=null;
 const warnings=[];
 const context={pluginAllows:(_name,{pair})=>{const fresh=freshLinks??pairLinks;return fresh.length===1&&fresh[0].parent===pair.parent&&fresh[0].child===pair.child&&fresh[0].binding===pair.binding;},pluginEvent(){},pluginWorkspaceLinks:options=>options?.presentation?pairLinks:(freshLinks??pairLinks),notify:spec=>warnings.push(spec),updates:()=>({app:{ready:null}}),pluginIsEnabled:()=>true,console,View:class{},div:element,svg:element,h_flex:element,v_flex:element,shared:k=>state.get(k),setShared:(k,v)=>{state.set(k,structuredClone(v));writes.push(v);},spaces:()=>list,panes:()=>[],terminals:()=>[],agents:()=>[],keys:()=>[],props:()=>props,closeOverlay:id=>closed.push(id),openOverlay:()=>{},theme:()=>theme,run:(...v)=>runs.push(v),requestInlineTabRename:p=>(requests.push(p),true),requestInlineSpaceRename:p=>(requests.push(p),true),exec:async()=>{throw Error('Unexpected execution');}};
 const clean=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8').replace(/^import .*;\r?\n/gm,'').replace(/export /g,'');
+// This color/menu fixture has no pending plugin updates; dedicated marker tests
+// exercise the real update controller in separate module graphs.
+context.pluginUpdateAvailable=()=>false;
 vm.createContext(context);
 vm.runInContext(clean('../mods/custom-menu/space-color-state.js')+'\nglobalThis.spaceColorState={savedSpaceColors,reconcileSpaceColors};',context);
 vm.runInContext(clean('../mods/custom-menu/ui.js'),context);

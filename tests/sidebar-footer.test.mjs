@@ -39,6 +39,7 @@ const exports = {
   './sidebar-usage.js': { syncSidebarUsage: () => boot++ },
   './customization-updates.js': { initCustomizationUpdates() {}, customizationUpdateAvailable: () => customReady, observeCustomizationUpdates() {}, invalidateCustomizationUpdates() {} },
   './plugins.js': {pluginIsEnabled:()=>true,pluginEvent:()=>boot++},
+  './plugins-updates.js': {pluginUpdateAvailable:()=>false,refreshPluginUpdates:()=>boot++},
 };
 const cache = new Map();
 async function load(name) {

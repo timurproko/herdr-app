@@ -376,7 +376,9 @@ function actionForm(view, t, plugin, item) {
 }
 
 export function prerequisiteContext(plugin, alive = () => true, machine = null) {
-  return {...pluginMachineContext(plugin, { machine, current: alive }),
+  // Existing list scopes (including a folder picked on another machine) retain
+  // their plugin-owned setting; update discovery/batches explicitly pin theirs.
+  return {...pluginMachineContext(plugin, { machine, current: alive, captureMachine: false }),
     directory() {
       const space=spaces().find(s=>s.active);if(!space)return null;
       const all=panes(),list=terminals(),focus=focused(),tab=space.tabs?.find(t=>t.active)?.id;

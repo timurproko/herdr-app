@@ -37,6 +37,7 @@ async function load(file){const mod=moduleFor(file);if(mod.status==='unlinked')a
  if(name==='./host.js')return synthetic(host);if(name==='./plugins.js')return synthetic(r);
  if(name==='./ui.js')return synthetic(ui);if(name==='./look.js')return synthetic({liveTheme:()=>({})});
  if(name==='./machine-picker.js')return synthetic({machinePicker:element});
+ if(name==='./plugins-updates.js')return synthetic({recordPluginUpdate(){throw Error('Usage must not publish unrelated plugin update checks');}});
  return moduleFor(path.resolve(path.dirname(from.identifier),name));
 });await mod.evaluate();return mod.namespace;}
 const root=path.join(output,'mods/custom-usage'),store=await load(path.join(root,'store.js'));

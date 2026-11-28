@@ -41,6 +41,10 @@ const refresh = async () => { api.refreshPluginUpdates(owner, cx, { force: true 
 const snapshot = () => api.pluginUpdateSnapshot();
 api.registry.setPluginSetting(plugin, 'machine', 'saved-selection');
 const saved = JSON.stringify(state['custom.plugins']);
+assert.equal(api.operations.pluginMachineContext(plugin, { machine: 'captured' }).setting('machine'), 'captured', 'Update contexts pin the captured machine');
+const scoped = api.operations.pluginMachineContext(plugin, { machine: 'captured', captureMachine: false });
+assert.equal(scoped.setting('machine'), 'saved-selection', 'Ordinary plugin contexts preserve their existing list scope');
+assert.equal(scoped.machine, 'captured', 'The header context remains separately captured');
 api.refreshPluginUpdates(owner, cx, { force: true });
 other.refreshPluginUpdates({}, cx, { force: true });
 await drain();
