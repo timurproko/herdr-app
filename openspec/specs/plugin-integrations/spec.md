@@ -2204,6 +2204,18 @@ After a successful explicit quota reset and its authoritative usage read, the Us
 - **THEN** the app preserves its existing failure and last-known-value handling without inventing a successful refill
 - **AND** obsolete completions cannot replace a newer target's quota values or start disabled follow-up collection
 
+### Requirement: Routine Git refresh completes without interrupted-render fallback
+Routine same-context refreshes in ordinary and coordinator Git SHALL preserve the displayed list until a coherent replacement is available and SHALL NOT trigger the host's interrupted-render fallback. Genuine unexpected render failures SHALL retain existing diagnostics; suppressing the banner, increasing the host deadline or replacing rows with placeholders SHALL NOT constitute a fix.
+
+#### Scenario: Repeated background refresh of a loaded list
+- **WHEN** manual, local-context, webhook, verification or checks updates repeatedly refresh a shown same-context list
+- **THEN** loaded rows, pins, folds, pagination and scroll remain stable until authoritative changes publish in place, without a blank frame, replacement Loading or interrupted-render banner
+- **AND** existing row geometry, measured render budgets, reveal limits and stale-reply rejection remain intact
+
+#### Scenario: Actual render failure remains diagnosable
+- **WHEN** an unexpected row exception or native render abort occurs outside the corrected routine-refresh path
+- **THEN** existing component diagnostics, fixed-height row fallback where applicable and bounded once-only recovery remain available without claiming an unobserved cause
+
 ### Requirement: Sidebar source selection respects the header pin
 Files and Git source-selection requirements SHALL use the sidebar's held source while its header pin is pressed, and the current native selection otherwise. This scope SHALL cover directory, machine, agent association and ordinary or coordinator Git mode. Navigation SHALL NOT replace held content; existing refresh, plugin lifecycle, identity and action-safety checks SHALL remain authoritative.
 
@@ -2226,15 +2238,3 @@ Files and Git source-selection requirements SHALL use the sidebar's held source 
 - **WHEN** manual or existing automatic refresh runs while pinned, or a reply arrives after unpinning or recapturing a different source
 - **THEN** refresh updates only the held source under existing lifecycle rules, and obsolete replies cannot populate a newer effective context
 - **AND** hidden or disabled plugins start no new work and the pin persists no file tree, PR inventory, callbacks or credentials
-
-### Requirement: Routine Git refresh completes without interrupted-render fallback
-Routine same-context refreshes in ordinary and coordinator Git SHALL preserve the displayed list until a coherent replacement is available and SHALL NOT trigger the host's interrupted-render fallback. Genuine unexpected render failures SHALL retain existing diagnostics; suppressing the banner, increasing the host deadline or replacing rows with placeholders SHALL NOT constitute a fix.
-
-#### Scenario: Repeated background refresh of a loaded list
-- **WHEN** manual, local-context, webhook, verification or checks updates repeatedly refresh a shown same-context list
-- **THEN** loaded rows, pins, folds, pagination and scroll remain stable until authoritative changes publish in place, without a blank frame, replacement Loading or interrupted-render banner
-- **AND** existing row geometry, measured render budgets, reveal limits and stale-reply rejection remain intact
-
-#### Scenario: Actual render failure remains diagnosable
-- **WHEN** an unexpected row exception or native render abort occurs outside the corrected routine-refresh path
-- **THEN** existing component diagnostics, fixed-height row fallback where applicable and bounded once-only recovery remain available without claiming an unobserved cause

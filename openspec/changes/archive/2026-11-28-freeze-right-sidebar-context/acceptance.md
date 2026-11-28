@@ -19,7 +19,7 @@ The maintainer integration decision accepts these scenarios:
   "archive": "openspec/changes/archive/2026-11-28-freeze-right-sidebar-context/",
   "acceptanceManifest": "openspec/changes/archive/2026-11-28-freeze-right-sidebar-context/acceptance.md",
   "finalizedDate": "2026-11-28",
-  "specBaseSha": "43edc5b0b67fed1d1b8a6d200a98716c6e203b21",
+  "specBaseSha": "5c2a170707dc72b1ecb5d8d06d5fb0cde0f52056",
   "acceptanceScenarios": [
     "Pin holds the displayed machine, folder and agent context across agent, tab and space navigation while scoped refresh continues.",
     "Manual Files or Git changes and explicit close or reopen retain the same held source; Unpin resumes following the current agent.",
@@ -29,7 +29,7 @@ The maintainer integration decision accepts these scenarios:
     "Existing pin visuals and controls remain unchanged apart from accessible wording, with no new messages, buttons or options."
   ],
   "archiveDigest": "2a2d63b526610390135d38c11de50d6739dd56f8b4de816d8405dc0955aaa50f",
-  "specDigest": "49628acc39328a5ab6a3c377dd0ec5a930ad2549519f8d303d9c120dc67206ff",
+  "specDigest": "445f59e5680b97f04b9d742504354ae55865626b06cd283dcebd567669ac72c3",
   "tasksDigest": "439dde954d8c660093f954587184a3816aa93912ec33cb6e1b4fa6548f820d4e",
   "evidenceDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "knownGaps": []
